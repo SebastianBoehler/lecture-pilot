@@ -1,38 +1,17 @@
 import { BookOpen, ChevronLeft, FileText, Grid2X2, MessageSquare, Moon, Sun } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
-type Theme = "light" | "dark";
-type View = "dashboard" | "lesson";
+import { sendAgentTurn } from "./api";
+import { LessonCanvas } from "./LessonCanvas";
+import { lectures } from "./sampleData";
+import { TutorDrawer } from "./TutorDrawer";
+import type { CanvasSectionId, ChatMessage, Lecture, Theme, View } from "./types";
 
-type Lecture = {
-  id: string;
-  number: string;
-  title: string;
-  date: string;
-  attendance: "unknown" | "present" | "absent";
-};
-
-const lectures: Lecture[] = [
+const initialMessages: ChatMessage[] = [
   {
-    id: "lecture-01",
-    number: "01",
-    title: "Introduction and Learning Setup",
-    date: "May 6",
-    attendance: "present",
-  },
-  {
-    id: "lecture-02",
-    number: "02",
-    title: "Linear Models and Generalization",
-    date: "May 13",
-    attendance: "unknown",
-  },
-  {
-    id: "lecture-03",
-    number: "03",
-    title: "Kernels and Feature Maps",
-    date: "Jun 4",
-    attendance: "absent",
+    id: "agent-welcome",
+    role: "agent",
+    content: "I highlighted the definition that drives the proof. Want a short derivation check?",
   },
 ];
 
@@ -41,6 +20,8 @@ function App() {
   const [view, setView] = useState<View>("dashboard");
   const [selectedLecture, setSelectedLecture] = useState(lectures[2]);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [focusedSectionId, setFocusedSectionId] = useState<CanvasSectionId>("feature-maps");
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -48,6 +29,33 @@ function App() {
 
   const nextTheme = theme === "light" ? "dark" : "light";
   const themeLabel = `Switch to ${nextTheme} mode`;
+
+  async function handleTutorMessage(message: string) {
+    setMessages((current) => [
+      ...current,
+      { id: `user-${Date.now()}`, role: "user", content: message },
+    ]);
+
+    const result = await sendAgentTurn({
+      user_id: "local-preview-user",
+      course_id: "martius-ml",
+      lecture_id: selectedLecture.id,
+      attendance: selectedLecture.attendance,
+      message,
+      canvas_state: { focused_section_id: focusedSectionId },
+    });
+
+    for (const command of result.canvas_commands) {
+      if (command.type === "focus_section" && isCanvasSection(command.section_id)) {
+        setFocusedSectionId(command.section_id);
+      }
+    }
+
+    setMessages((current) => [
+      ...current,
+      { id: `agent-${Date.now()}`, role: "agent", content: result.message },
+    ]);
+  }
 
   return (
     <div className="app-shell">
@@ -84,16 +92,21 @@ function App() {
             setSelectedLecture(lecture);
             setView("lesson");
             setDrawerOpen(false);
+            setFocusedSectionId("feature-maps");
+            setMessages(initialMessages);
           }}
         />
       ) : (
         <LessonWorkspace
-          lecture={selectedLecture}
           drawerOpen={drawerOpen}
+          focusedSectionId={focusedSectionId}
+          lecture={selectedLecture}
+          messages={messages}
           onBack={() => {
             setView("dashboard");
             setDrawerOpen(false);
           }}
+          onSendMessage={handleTutorMessage}
           onToggleDrawer={() => setDrawerOpen((open) => !open)}
         />
       )}
@@ -139,12 +152,18 @@ function Dashboard({ lectures, onOpen }: { lectures: Lecture[]; onOpen: (lecture
 function LessonWorkspace({
   lecture,
   drawerOpen,
+  focusedSectionId,
+  messages,
   onBack,
+  onSendMessage,
   onToggleDrawer,
 }: {
   lecture: Lecture;
   drawerOpen: boolean;
+  focusedSectionId: CanvasSectionId;
+  messages: ChatMessage[];
   onBack: () => void;
+  onSendMessage: (message: string) => Promise<void>;
   onToggleDrawer: () => void;
 }) {
   const layoutClass = drawerOpen ? "lesson-layout drawer-open" : "lesson-layout";
@@ -159,7 +178,7 @@ function LessonWorkspace({
           </button>
           <span>{lecture.date}</span>
         </div>
-        <LessonCanvas lecture={lecture} />
+        <LessonCanvas lecture={lecture} focusedSectionId={focusedSectionId} />
       </section>
 
       <aside className="rail" aria-label="Lesson controls">
@@ -179,68 +198,13 @@ function LessonWorkspace({
         </button>
       </aside>
 
-      {drawerOpen ? <TutorDrawer /> : null}
+      {drawerOpen ? <TutorDrawer messages={messages} onSendMessage={onSendMessage} /> : null}
     </main>
   );
 }
 
-function LessonCanvas({ lecture }: { lecture: Lecture }) {
-  return (
-    <article className="canvas">
-      <p className="section-label">Lecture {lecture.number}</p>
-      <h1>{lecture.title}</h1>
-      <p className="lead">
-        The official notes introduce a feature map view first, then use it to motivate kernels as
-        inner products in a lifted space.
-      </p>
-      <section className="canvas-section">
-        <h2>Feature maps</h2>
-        <p>
-          A feature map <code>phi(x)</code> transforms input data into a representation where simple
-          linear methods can express richer decision boundaries.
-        </p>
-        <p className="highlighted">
-          The key argument is that the learning algorithm only needs inner products between mapped
-          examples, not the explicit coordinates of the mapped vectors.
-        </p>
-      </section>
-      <section className="canvas-section">
-        <h2>Kernel trick</h2>
-        <p>
-          A kernel function computes <code>k(x, x')</code> directly, matching the inner product in
-          feature space while avoiding an expensive explicit expansion.
-        </p>
-      </section>
-    </article>
-  );
-}
-
-function TutorDrawer() {
-  const tabs = useMemo(() => ["Summary", "Quiz", "Code", "Diagram"], []);
-
-  return (
-    <aside className="drawer" aria-label="Tutor drawer">
-      <div className="drawer-section">
-        <h2>Tutor</h2>
-        <div className="chat-message agent">
-          I highlighted the definition that drives the proof. Want a short derivation check?
-        </div>
-        <textarea placeholder="Ask about this lecture..." rows={4} />
-      </div>
-      <div className="artifact-tabs" role="tablist" aria-label="Artifacts">
-        {tabs.map((tab) => (
-          <button role="tab" type="button" key={tab}>
-            {tab}
-          </button>
-        ))}
-      </div>
-      <div className="artifact-card">
-        <h3>Quiz: Feature Maps</h3>
-        <p>Which part of the kernel trick avoids explicitly constructing feature vectors?</p>
-      </div>
-    </aside>
-  );
+function isCanvasSection(sectionId: string | null | undefined): sectionId is CanvasSectionId {
+  return sectionId === "feature-maps" || sectionId === "kernel-trick";
 }
 
 export default App;
-

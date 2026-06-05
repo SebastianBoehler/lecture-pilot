@@ -71,6 +71,23 @@ npm run test --workspace apps/web
 npm run dev --workspace apps/web
 ```
 
+## Try The Chat
+
+Run the API and web app in two terminals:
+
+```bash
+source .venv/bin/activate
+OPENROUTER_API_KEY=local-preview uvicorn lecturepilot.app:app --app-dir apps/api/src --reload
+```
+
+```bash
+npm run dev --workspace apps/web
+```
+
+Open `http://127.0.0.1:5173`, select lecture 03, click the speech-bubble button
+on the right rail, type `Explain the kernel trick`, and press **Send**. The
+tutor reply appears in the drawer and the canvas focuses the kernel section.
+
 ## Provider Setup
 
 Copy `.env.example` to `.env` and set one provider key.

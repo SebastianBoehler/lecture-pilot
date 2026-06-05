@@ -36,11 +36,19 @@
 
 .canvas-section {
   margin-top: 32px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 14px;
 }
 
 .canvas-section h2 {
   margin-bottom: 8px;
   font-size: 22px;
+}
+
+.canvas-section.is-focused {
+  border-color: var(--color-highlight-border);
+  background: var(--color-highlight-bg);
 }
 
 code {
@@ -79,11 +87,50 @@ code {
   gap: 14px;
 }
 
+.message-list {
+  display: grid;
+  gap: 10px;
+}
+
 .chat-message {
   border: 1px solid var(--color-border-primary);
   border-radius: 8px;
   padding: 12px;
   background: var(--color-bg-secondary);
+}
+
+.chat-message.user {
+  border-color: transparent;
+  color: var(--color-bg-primary);
+  background: var(--color-text-primary);
+}
+
+.chat-form {
+  display: grid;
+  gap: 10px;
+}
+
+.chat-form button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  justify-self: end;
+  border: 1px solid var(--color-accent-primary);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #ffffff;
+  background: var(--color-accent-primary);
+}
+
+.chat-form button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.form-error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 14px;
 }
 
 textarea {
@@ -138,4 +185,3 @@ textarea {
     padding: 28px 22px;
   }
 }
-
