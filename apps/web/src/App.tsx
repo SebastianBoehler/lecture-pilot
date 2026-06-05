@@ -23,6 +23,19 @@ const initialMessages: ChatMessage[] = [
   },
 ];
 
+const localDemoSession: LoginSession = {
+  username: "local-demo",
+  term: "Sommer 2026",
+  courses: [
+    {
+      id: "martius-ml",
+      title: "Grundlagen des Maschinellen Lernens",
+      professor: "Prof. Georg Martius",
+      term: "Sommer 2026",
+    },
+  ],
+};
+
 function App() {
   const [theme, setTheme] = useState<Theme>("light");
   const [view, setView] = useState<View>("login");
@@ -103,6 +116,10 @@ function App() {
         <LoginView
           onLogin={(nextSession) => {
             setSession(nextSession);
+            setView("dashboard");
+          }}
+          onOpenDemo={() => {
+            setSession(localDemoSession);
             setView("dashboard");
           }}
         />

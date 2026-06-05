@@ -63,6 +63,12 @@
   font-weight: 700;
 }
 
+.login-form .secondary-button {
+  color: var(--color-text-primary);
+  background: var(--color-bg-secondary);
+  border-color: var(--color-border-primary);
+}
+
 .login-form button:disabled {
   cursor: not-allowed;
   opacity: 0.55;

@@ -35,6 +35,19 @@ describe("LecturePilot app shell", () => {
     );
   });
 
+  it("opens a local demo workspace without submitting credentials", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /preview local demo/i }));
+
+    expect(screen.getByText(/connected as local-demo/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /available lectures/i })).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("opens a focused lesson workspace without showing the course dashboard", async () => {
     const user = userEvent.setup();
     vi.stubGlobal("fetch", mockLoginFetch());
@@ -70,6 +83,33 @@ describe("LecturePilot app shell", () => {
 
     expect(screen.getByRole("heading", { name: /source notes/i })).toBeInTheDocument();
     expect(screen.getByText(/official latex source/i)).toBeInTheDocument();
+  });
+
+  it("renders visual and interactive demo artifacts", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal("fetch", mockLoginFetch());
+    render(<App />);
+
+    await logIn(user);
+    await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
+    await user.click(screen.getByLabelText(/open artifacts panel/i));
+
+    expect(screen.getByRole("heading", { name: /generated summary/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /diagram/i }));
+
+    expect(screen.getByRole("img", { name: /feature map diagram/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /code/i }));
+
+    expect(screen.getByText(/rbfKernel/)).toBeInTheDocument();
+
+    expect(screen.getByRole("group", { name: /kernel playground/i })).toBeInTheDocument();
+    expect(screen.getByText(/balanced local similarity/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /wide kernel/i }));
+
+    expect(screen.getByText(/smooth boundary/i)).toBeInTheDocument();
   });
 
   it("renders learning goals and skill checks in the lesson canvas", async () => {

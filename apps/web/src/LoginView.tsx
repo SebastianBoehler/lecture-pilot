@@ -3,7 +3,13 @@ import { FormEvent, useState } from "react";
 import { loginWithTuebingen } from "./api";
 import type { LoginSession } from "./types";
 
-export function LoginView({ onLogin }: { onLogin: (session: LoginSession) => void }) {
+export function LoginView({
+  onLogin,
+  onOpenDemo,
+}: {
+  onLogin: (session: LoginSession) => void;
+  onOpenDemo: () => void;
+}) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [term, setTerm] = useState("Sommer 2026");
@@ -75,6 +81,9 @@ export function LoginView({ onLogin }: { onLogin: (session: LoginSession) => voi
           </label>
           <button disabled={isSubmitting || !username.trim() || !password} type="submit">
             {isSubmitting ? "Connecting" : "Connect to TUE API"}
+          </button>
+          <button className="secondary-button" type="button" onClick={onOpenDemo}>
+            Preview local demo
           </button>
           {error ? <p className="form-error">{error}</p> : null}
         </form>
