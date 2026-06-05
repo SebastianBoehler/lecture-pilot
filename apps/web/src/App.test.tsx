@@ -180,6 +180,7 @@ describe("LecturePilot app shell", () => {
 
     expect(await screen.findByText(/learning-goal answer/i)).toBeInTheDocument();
     expect(screen.getByText("focus: learning-goals")).toBeInTheDocument();
+    expect(screen.getAllByText("gate: needs evidence").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole("region", { name: /learning goals/i })).toHaveAttribute(
       "aria-current",
       "true",
@@ -218,6 +219,12 @@ function mockLoginAndTutorFetch() {
       json: async () => ({
         message: "Learning-goal answer from the tutor.",
         canvas_commands: [{ type: "focus_section", section_id: "learning-goals" }],
+        quality_gate: {
+          gate_id: "kernel-skill-check",
+          status: "needs_evidence",
+          reason: "Student has not answered the concrete gate yet.",
+          next_prompt: "State what k(x, x') replaces.",
+        },
         artifacts: [],
         model: "openrouter/z-ai/glm-5.1",
         created_at: "2026-06-05T20:00:00Z",

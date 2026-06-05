@@ -1,7 +1,7 @@
 import { BookOpen, LogOut, Moon, Sun, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { sendAgentTurn, type CanvasCommand } from "./api";
+import { sendAgentTurn, type AgentTurnResult, type CanvasCommand } from "./api";
 import { Dashboard } from "./Dashboard";
 import { LessonWorkspace } from "./LessonWorkspace";
 import { LoginView } from "./LoginView";
@@ -20,7 +20,9 @@ const initialMessages: ChatMessage[] = [
   {
     id: "agent-welcome",
     role: "agent",
-    content: "I highlighted the definition that drives the proof. Want a short derivation check?",
+    content:
+      "I’m starting with the kernel skill gate. Answer this in one sentence: what does k(x, x') replace in the feature-space view?",
+    toolTags: ["gate: needs evidence"],
   },
 ];
 
@@ -61,7 +63,8 @@ function App() {
     ]);
 
     const result = await sendAgentTurn({
-      user_id: "local-preview-user",
+      user_id:
+        session?.username === "local-demo" ? "local-preview-user" : (session?.username ?? "unknown-user"),
       course_id: "martius-ml",
       lecture_id: selectedLecture.id,
       attendance: selectedLecture.attendance,
@@ -81,7 +84,7 @@ function App() {
         id: `agent-${Date.now()}`,
         role: "agent",
         content: result.message,
-        toolTags: toolTagsFromCommands(result.canvas_commands),
+        toolTags: toolTagsFromResult(result),
       },
     ]);
   }
@@ -202,8 +205,8 @@ function isCanvasSection(sectionId: string | null | undefined): sectionId is Can
   );
 }
 
-function toolTagsFromCommands(commands: CanvasCommand[]): string[] {
-  return commands.flatMap((command) => {
+function toolTagsFromResult(result: AgentTurnResult): string[] {
+  const commandTags = result.canvas_commands.flatMap((command) => {
     if (command.type === "focus_section" && command.section_id) {
       return [`focus: ${command.section_id}`];
     }
@@ -215,6 +218,10 @@ function toolTagsFromCommands(commands: CanvasCommand[]): string[] {
     }
     return [];
   });
+  const gateTags = result.quality_gate
+    ? [`gate: ${result.quality_gate.status.replace("_", " ")}`]
+    : [];
+  return [...commandTags, ...gateTags];
 }
 
 export default App;

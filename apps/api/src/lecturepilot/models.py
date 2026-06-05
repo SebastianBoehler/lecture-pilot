@@ -13,6 +13,12 @@ class AttendanceStatus(StrEnum):
     UNKNOWN = "unknown"
 
 
+class QualityGateStatus(StrEnum):
+    PASSED = "passed"
+    NEEDS_EVIDENCE = "needs_evidence"
+    NOT_ASSESSED = "not_assessed"
+
+
 class ProviderCapability(StrEnum):
     CHAT = "chat"
     TOOL_CALLS = "tool_calls"
@@ -107,10 +113,18 @@ class ArtifactCommand(BaseModel):
     payload: dict[str, Any]
 
 
+class QualityGateDecision(BaseModel):
+    gate_id: str = Field(min_length=1, max_length=120)
+    status: QualityGateStatus
+    reason: str = Field(min_length=1, max_length=500)
+    next_prompt: str | None = Field(default=None, max_length=500)
+
+
 class AgentTurnResult(BaseModel):
     message: str
     canvas_commands: list[CanvasCommand] = Field(default_factory=list)
     artifacts: list[ArtifactCommand] = Field(default_factory=list)
+    quality_gate: QualityGateDecision | None = None
     model: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 

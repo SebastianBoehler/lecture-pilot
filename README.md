@@ -35,6 +35,8 @@ This repository is intentionally small but runnable:
 - Strict lecture unlock policy.
 - Typed workspace file policy.
 - Provider capability checks with OpenRouter GLM 5.1 as the default model.
+- Local preview tutor that leads a deterministic quality-gate loop without a
+  provider key.
 - React/Vite frontend with dashboard and focused lesson workspace.
 - TUE API login form backed by the local FastAPI API and `tue-api-wrapper`.
 - Tenant/profile policy foundation for professors, tutors, and students.
@@ -42,8 +44,8 @@ This repository is intentionally small but runnable:
 - Backend and frontend tests.
 - CI, Dockerfiles, and Compose starter.
 
-Provider-backed tutor turns intentionally fail with a clear error until a real
-API key is configured.
+Provider-backed tutor turns for real authenticated users intentionally fail with
+a clear error until a real API key is configured.
 
 ## Repository Layout
 
@@ -116,10 +118,13 @@ uvicorn lecturepilot.app:app --app-dir apps/api/src --reload
 npm run dev --workspace apps/web
 ```
 
-Open `http://127.0.0.1:5173`, sign in with your Uni credentials through the
-local backend, select lecture 03, click the speech-bubble button on the right
-rail, type `Explain the kernel trick`, and press **Send**. The tutor reply
-appears in the drawer and the canvas focuses the kernel section.
+Open `http://127.0.0.1:5173`, use **Preview local demo**, select lecture 03,
+click the speech-bubble button on the right rail, answer the kernel skill check,
+and press **Send**. The preview tutor leads the conversation, marks the quality
+gate as pending or passed, and focuses the relevant canvas section.
+
+For provider-backed turns, sign in with your Uni credentials through the local
+backend after configuring a provider key.
 
 ## Provider Setup
 

@@ -10,6 +10,12 @@ export type CanvasCommand = {
 export type AgentTurnResult = {
   message: string;
   canvas_commands: CanvasCommand[];
+  quality_gate?: {
+    gate_id: string;
+    status: "passed" | "needs_evidence" | "not_assessed";
+    reason: string;
+    next_prompt?: string | null;
+  } | null;
   model: string;
 };
 

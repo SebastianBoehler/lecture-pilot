@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from lecturepilot.guided_tutor import LOCAL_PREVIEW_USER_ID, run_local_preview_turn
 from lecturepilot.model_client import LiteLLMModelClient, ModelClient
 from lecturepilot.models import AgentTurnInput, AgentTurnResult, ProviderCapability
 from lecturepilot.providers import ProviderRegistry
@@ -17,6 +18,9 @@ class LecturePilotHarness:
         self.model_client = model_client or LiteLLMModelClient()
 
     async def run_turn(self, turn: AgentTurnInput) -> AgentTurnResult:
+        if turn.user_id == LOCAL_PREVIEW_USER_ID:
+            return run_local_preview_turn(turn)
+
         settings = self.provider_registry.require_ready(
             [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
         )
