@@ -25,6 +25,7 @@ This repository is intentionally small but runnable:
 - Typed workspace file policy.
 - Provider capability checks with OpenRouter GLM 5.1 as the default model.
 - React/Vite frontend with dashboard and focused lesson workspace.
+- TUE API login form backed by the local FastAPI API and `tue-api-wrapper`.
 - Light and dark mode.
 - Backend and frontend tests.
 - CI, Dockerfiles, and Compose starter.
@@ -63,6 +64,18 @@ pytest apps/api/tests
 uvicorn lecturepilot.app:app --app-dir apps/api/src --reload
 ```
 
+Live Uni Tübingen login also needs the wrapper package in the API environment:
+
+```bash
+pip install -e "apps/api[tuebingen]"
+```
+
+When developing both repos locally, use the editable wrapper checkout instead:
+
+```bash
+pip install -e ../tue-api-wrapper/package
+```
+
 Frontend:
 
 ```bash
@@ -84,9 +97,10 @@ OPENROUTER_API_KEY=local-preview uvicorn lecturepilot.app:app --app-dir apps/api
 npm run dev --workspace apps/web
 ```
 
-Open `http://127.0.0.1:5173`, select lecture 03, click the speech-bubble button
-on the right rail, type `Explain the kernel trick`, and press **Send**. The
-tutor reply appears in the drawer and the canvas focuses the kernel section.
+Open `http://127.0.0.1:5173`, sign in with your Uni credentials through the
+local backend, select lecture 03, click the speech-bubble button on the right
+rail, type `Explain the kernel trick`, and press **Send**. The tutor reply
+appears in the drawer and the canvas focuses the kernel section.
 
 ## Provider Setup
 

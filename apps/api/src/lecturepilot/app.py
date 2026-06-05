@@ -4,13 +4,19 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from lecturepilot.harness import LecturePilotHarness
-from lecturepilot.models import AgentTurnInput, AgentTurnResult
+from lecturepilot.models import AgentTurnInput, AgentTurnResult, TuebingenLoginInput, TuebingenLoginResult
 from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.sample_data import COURSE, unlocked_lectures
+from lecturepilot.tuebingen_adapter import (
+    TuebingenCourseAdapter,
+    TuebingenIntegrationUnavailable,
+    TuebingenLoginError,
+)
 
 
 def create_app() -> FastAPI:
     app = FastAPI(title="LecturePilot API", version="0.1.0")
+    app.state.tuebingen_adapter = TuebingenCourseAdapter()
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -26,6 +32,19 @@ def create_app() -> FastAPI:
     @app.get("/courses")
     def courses() -> list[dict]:
         return [COURSE.model_dump()]
+
+    @app.post("/auth/login", response_model=TuebingenLoginResult)
+    def login(input_data: TuebingenLoginInput) -> TuebingenLoginResult:
+        try:
+            return app.state.tuebingen_adapter.login(
+                username=input_data.username,
+                password=input_data.password.get_secret_value(),
+                term=input_data.term,
+            )
+        except TuebingenIntegrationUnavailable as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except TuebingenLoginError as exc:
+            raise HTTPException(status_code=401, detail=str(exc)) from exc
 
     @app.get("/courses/{course_id}/lectures")
     def lectures(course_id: str) -> list[dict]:
@@ -44,4 +63,3 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
-

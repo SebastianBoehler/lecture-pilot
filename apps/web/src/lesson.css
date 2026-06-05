@@ -4,7 +4,7 @@
   min-height: calc(100vh - 56px);
 }
 
-.lesson-layout.drawer-open {
+.lesson-layout.panel-open {
   grid-template-columns: minmax(0, 1fr) 56px minmax(320px, 380px);
 }
 
@@ -96,6 +96,12 @@ code {
   padding: 16px 10px;
   border-left: 1px solid var(--color-border-primary);
   background: var(--color-bg-primary);
+}
+
+.rail-button.is-active {
+  border-color: var(--color-accent-primary);
+  color: var(--color-accent-primary);
+  background: var(--color-bg-secondary);
 }
 
 .drawer {
@@ -192,14 +198,14 @@ textarea {
   background: var(--color-bg-primary);
 }
 
-.artifact-tabs {
+.artifact-actions {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 6px;
   margin-top: 20px;
 }
 
-.artifact-tabs button {
+.artifact-actions button {
   border: 1px solid var(--color-border-primary);
   border-radius: 6px;
   padding: 7px 6px;
@@ -215,9 +221,33 @@ textarea {
   background: var(--color-bg-secondary);
 }
 
+.source-list {
+  display: grid;
+  gap: 10px;
+}
+
+.source-list article {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--color-bg-secondary);
+}
+
+.source-list span {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.source-list strong {
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+
 @media (max-width: 860px) {
   .lesson-layout,
-  .lesson-layout.drawer-open {
+  .lesson-layout.panel-open {
     grid-template-columns: 1fr 52px;
   }
 

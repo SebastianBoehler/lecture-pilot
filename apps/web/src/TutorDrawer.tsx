@@ -1,5 +1,5 @@
 import { SendHorizontal } from "lucide-react";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
 
 import type { ChatMessage } from "./types";
 
@@ -10,7 +10,6 @@ export function TutorDrawer({
   messages: ChatMessage[];
   onSendMessage: (message: string) => Promise<void>;
 }) {
-  const tabs = useMemo(() => ["Summary", "Quiz", "Code", "Diagram"], []);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
@@ -67,17 +66,6 @@ export function TutorDrawer({
           </button>
         </form>
         {error ? <p className="form-error">{error}</p> : null}
-      </div>
-      <div className="artifact-tabs" role="tablist" aria-label="Artifacts">
-        {tabs.map((tab) => (
-          <button role="tab" type="button" key={tab}>
-            {tab}
-          </button>
-        ))}
-      </div>
-      <div className="artifact-card">
-        <h3>Gate: Kernel Skill Check</h3>
-        <p>Ready means you can name the replaced computation and explain why it saves work.</p>
       </div>
     </aside>
   );

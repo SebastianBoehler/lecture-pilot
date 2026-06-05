@@ -1,4 +1,4 @@
-import type { Attendance } from "./types";
+import type { Attendance, LoginSession } from "./types";
 
 export type CanvasCommand = {
   type: "focus_section" | "highlight_span" | "open_artifact";
@@ -24,7 +24,29 @@ type AgentTurnInput = {
   };
 };
 
+type TuebingenLoginInput = {
+  username: string;
+  password: string;
+  term: string;
+};
+
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
+
+export async function loginWithTuebingen(input: TuebingenLoginInput): Promise<LoginSession> {
+  const response = await fetch(`${apiBaseUrl}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  const payload = await response.json();
+  if (!response.ok) {
+    const detail = typeof payload.detail === "string" ? payload.detail : "Login failed.";
+    throw new Error(detail);
+  }
+
+  return payload as LoginSession;
+}
 
 export async function sendAgentTurn(input: AgentTurnInput): Promise<AgentTurnResult> {
   const response = await fetch(`${apiBaseUrl}/agent/turn`, {

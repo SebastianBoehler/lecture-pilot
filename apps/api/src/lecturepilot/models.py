@@ -4,7 +4,7 @@ from datetime import date, datetime
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 
 
 class AttendanceStatus(StrEnum):
@@ -25,6 +25,18 @@ class Course(BaseModel):
     title: str
     professor: str
     term: str
+
+
+class TuebingenLoginInput(BaseModel):
+    username: str = Field(min_length=1, max_length=120)
+    password: SecretStr = Field(min_length=1, max_length=500)
+    term: str = Field(default="Sommer 2026", min_length=1, max_length=80)
+
+
+class TuebingenLoginResult(BaseModel):
+    username: str
+    term: str
+    courses: list[Course]
 
 
 class Lecture(BaseModel):
@@ -81,4 +93,3 @@ class ProviderSettings(BaseModel):
     model: str
     api_key_env: str
     capabilities: set[ProviderCapability]
-

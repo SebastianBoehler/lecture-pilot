@@ -1,5 +1,6 @@
 export type Theme = "light" | "dark";
-export type View = "dashboard" | "lesson";
+export type View = "login" | "dashboard" | "lesson";
+export type LessonPanelMode = "chat" | "artifacts" | "notes";
 
 export type Attendance = "unknown" | "present" | "absent";
 
@@ -9,6 +10,20 @@ export type Lecture = {
   title: string;
   date: string;
   attendance: Attendance;
+  materialPath?: string;
+};
+
+export type UniversityCourse = {
+  id: string;
+  title: string;
+  professor: string;
+  term: string;
+};
+
+export type LoginSession = {
+  username: string;
+  term: string;
+  courses: UniversityCourse[];
 };
 
 export type CanvasSectionId =
