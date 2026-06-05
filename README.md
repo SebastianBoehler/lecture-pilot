@@ -1,6 +1,16 @@
-# LecturePilot
-
-LecturePilot is a lightweight, text-first course tutor for university settings.
+<div align="center">
+  <h1>LecturePilot</h1>
+  <p><strong>A lightweight, text-first course tutor for university settings.</strong></p>
+  <p>
+    <a href="https://github.com/SebastianBoehler/lecture-pilot/actions/workflows/ci.yml">
+      <img alt="CI" src="https://github.com/SebastianBoehler/lecture-pilot/actions/workflows/ci.yml/badge.svg" />
+    </a>
+    <img alt="UI test suite: Vitest" src="https://img.shields.io/badge/UI%20test%20suite-Vitest-6E9FEE" />
+    <img alt="API test suite: pytest" src="https://img.shields.io/badge/API%20test%20suite-pytest-3776AB" />
+    <img alt="UI build: Vite" src="https://img.shields.io/badge/UI%20build-Vite-646CFF" />
+    <img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-2F4858" />
+  </p>
+</div>
 
 It combines a normal web app, a typed learner workspace, and a constrained agent
 harness. The first target integration is University of Tübingen via
