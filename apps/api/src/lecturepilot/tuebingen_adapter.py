@@ -35,7 +35,12 @@ class TuebingenCourseAdapter:
         finally:
             client.close()
 
-        return TuebingenLoginResult(username=username, term=term, courses=courses)
+        return TuebingenLoginResult(
+            username=username,
+            email=_email_from_username(username),
+            term=term,
+            courses=courses,
+        )
 
 
 def _courses_from_assignments(assignments: Any, *, term: str) -> list[Course]:
@@ -77,3 +82,8 @@ def _read(raw_course: Any, field: str) -> str | None:
     else:
         value = getattr(raw_course, field, None)
     return str(value).strip() if value not in (None, "") else None
+
+
+def _email_from_username(username: str) -> str | None:
+    cleaned = username.strip()
+    return cleaned if "@" in cleaned else None

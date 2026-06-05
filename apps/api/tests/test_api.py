@@ -31,7 +31,6 @@ def test_tuebingen_login_returns_courses_without_echoing_password() -> None:
         json={
             "username": "student01",
             "password": "very-secret-password",
-            "term": "Sommer 2026",
         },
     )
 
@@ -39,6 +38,7 @@ def test_tuebingen_login_returns_courses_without_echoing_password() -> None:
     assert "very-secret-password" not in response.text
     assert response.json() == {
         "username": "student01",
+        "email": None,
         "term": "Sommer 2026",
         "courses": [
             {
@@ -61,7 +61,6 @@ def test_tuebingen_login_reports_missing_wrapper_dependency() -> None:
         json={
             "username": "student01",
             "password": "secret",
-            "term": "Sommer 2026",
         },
     )
 

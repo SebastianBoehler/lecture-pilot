@@ -15,6 +15,7 @@ describe("LecturePilot app shell", () => {
     expect(screen.getByRole("heading", { name: /sign in with uni tübingen/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/zdv username/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/term/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /available lectures/i })).not.toBeInTheDocument();
   });
 
@@ -29,10 +30,33 @@ describe("LecturePilot app shell", () => {
     expect(await screen.findByText(/connected as student01/i)).toBeInTheDocument();
     expect(screen.getByText(/machine learning/i)).toBeInTheDocument();
     expect(screen.queryByText("very-secret-password")).not.toBeInTheDocument();
+    const request = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    expect(request).toEqual({
+      username: "student01",
+      password: "very-secret-password",
+    });
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8000/auth/login",
       expect.objectContaining({ method: "POST" }),
     );
+  });
+
+  it("opens the profile view and logs out", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal("fetch", mockLoginFetch());
+    render(<App />);
+
+    await logIn(user);
+    await user.click(screen.getByRole("button", { name: /open profile/i }));
+
+    expect(screen.getByRole("heading", { name: /profile/i })).toBeInTheDocument();
+    expect(screen.getByText("student01")).toBeInTheDocument();
+    expect(screen.getByText(/not loaded/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /log out/i }));
+
+    expect(screen.getByRole("heading", { name: /sign in with uni tübingen/i })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /available lectures/i })).not.toBeInTheDocument();
   });
 
   it("opens a local demo workspace without submitting credentials", async () => {
@@ -196,6 +220,7 @@ function mockLoginAndTutorFetch() {
 function loginPayload() {
   return {
     username: "student01",
+    email: null,
     term: "Sommer 2026",
     courses: [
       {

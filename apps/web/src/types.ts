@@ -1,5 +1,5 @@
 export type Theme = "light" | "dark";
-export type View = "login" | "dashboard" | "lesson";
+export type View = "login" | "dashboard" | "lesson" | "profile";
 export type LessonPanelMode = "chat" | "artifacts" | "notes";
 export type ArtifactBlockId =
   | "artifact-summary"
@@ -28,6 +28,7 @@ export type UniversityCourse = {
 
 export type LoginSession = {
   username: string;
+  email?: string | null;
   term: string;
   courses: UniversityCourse[];
 };

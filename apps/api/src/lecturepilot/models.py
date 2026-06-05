@@ -35,6 +35,7 @@ class TuebingenLoginInput(BaseModel):
 
 class TuebingenLoginResult(BaseModel):
     username: str
+    email: str | None = None
     term: str
     courses: list[Course]
 

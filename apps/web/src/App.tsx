@@ -1,10 +1,11 @@
-import { BookOpen, Moon, Sun } from "lucide-react";
+import { BookOpen, LogOut, Moon, Sun, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { sendAgentTurn, type CanvasCommand } from "./api";
 import { Dashboard } from "./Dashboard";
 import { LessonWorkspace } from "./LessonWorkspace";
 import { LoginView } from "./LoginView";
+import { ProfileView } from "./ProfileView";
 import { lectures } from "./sampleData";
 import type {
   CanvasSectionId,
@@ -25,6 +26,7 @@ const initialMessages: ChatMessage[] = [
 
 const localDemoSession: LoginSession = {
   username: "local-demo",
+  email: null,
   term: "Sommer 2026",
   courses: [
     {
@@ -84,6 +86,14 @@ function App() {
     ]);
   }
 
+  function handleLogout() {
+    setSession(null);
+    setView("login");
+    setPanelMode(null);
+    setFocusedSectionId("feature-maps");
+    setMessages(initialMessages);
+  }
+
   return (
     <div className="app-shell">
       <header className="top-bar">
@@ -101,6 +111,31 @@ function App() {
         <div className="top-status">
           <span>OpenRouter GLM 5.1</span>
           <span>Local workspace</span>
+          {session ? (
+            <div className="top-actions" aria-label="Account controls">
+              <button
+                className="top-action-button"
+                type="button"
+                aria-label="Open profile"
+                onClick={() => {
+                  setView("profile");
+                  setPanelMode(null);
+                }}
+              >
+                <UserRound size={16} />
+                <span>Profile</span>
+              </button>
+              <button
+                className="top-action-button"
+                type="button"
+                aria-label="Log out"
+                onClick={handleLogout}
+              >
+                <LogOut size={16} />
+                <span>Log out</span>
+              </button>
+            </div>
+          ) : null}
           <button
             className="icon-button"
             type="button"
@@ -135,6 +170,8 @@ function App() {
             setMessages(initialMessages);
           }}
         />
+      ) : view === "profile" && session ? (
+        <ProfileView session={session} onBack={() => setView("dashboard")} />
       ) : (
         <LessonWorkspace
           focusedSectionId={focusedSectionId}

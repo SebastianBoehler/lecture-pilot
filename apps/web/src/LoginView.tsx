@@ -12,7 +12,6 @@ export function LoginView({
 }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [term, setTerm] = useState("Sommer 2026");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -28,7 +27,6 @@ export function LoginView({
       const session = await loginWithTuebingen({
         username: username.trim(),
         password,
-        term: term.trim() || "Sommer 2026",
       });
       onLogin(session);
     } catch (loginError) {
@@ -69,14 +67,6 @@ export function LoginView({
               onChange={(event) => setPassword(event.target.value)}
               type="password"
               value={password}
-            />
-          </label>
-          <label>
-            Term
-            <input
-              name="term"
-              onChange={(event) => setTerm(event.target.value)}
-              value={term}
             />
           </label>
           <button disabled={isSubmitting || !username.trim() || !password} type="submit">

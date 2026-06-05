@@ -4,6 +4,12 @@
   padding: 48px 0;
 }
 
+.profile-screen {
+  width: min(880px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 48px 0;
+}
+
 .dashboard-header {
   margin-bottom: 28px;
 }
@@ -23,6 +29,7 @@
 }
 
 .course-panel,
+.profile-panel,
 .canvas,
 .drawer {
   border: 1px solid var(--color-border-primary);
@@ -45,6 +52,12 @@
 .panel-heading h2 {
   margin: 0;
   font-size: 18px;
+}
+
+.profile-panel h1 {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 38px);
+  line-height: 1.1;
 }
 
 .panel-heading span {
@@ -96,6 +109,41 @@
   color: var(--color-text-secondary);
 }
 
+.profile-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  background: var(--color-border-primary);
+}
+
+.profile-fields div {
+  display: grid;
+  gap: 4px;
+  padding: 18px 20px;
+  background: var(--color-bg-primary);
+}
+
+.profile-fields dt {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.profile-fields dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 16px;
+}
+
+.profile-courses h2 {
+  margin: 0;
+  padding: 18px 20px;
+  border-top: 1px solid var(--color-border-primary);
+  border-bottom: 1px solid var(--color-border-primary);
+  font-size: 18px;
+}
+
 .lecture-number {
   color: var(--color-text-secondary);
   font-variant-numeric: tabular-nums;
@@ -112,6 +160,10 @@
 @media (max-width: 860px) {
   .lecture-row {
     grid-template-columns: 38px 1fr;
+  }
+
+  .profile-fields {
+    grid-template-columns: 1fr;
   }
 
   .lecture-row button {
