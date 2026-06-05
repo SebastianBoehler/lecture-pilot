@@ -41,7 +41,16 @@ export function TutorDrawer({
         <div className="message-list" aria-live="polite">
           {messages.map((message) => (
             <div className={`chat-message ${message.role}`} key={message.id}>
-              {message.content}
+              <p>{message.content}</p>
+              {message.toolTags?.length ? (
+                <div className="tool-tags" aria-label="Tool calls">
+                  {message.toolTags.map((tag) => (
+                    <span className="tool-tag" key={tag}>
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ))}
         </div>
@@ -67,8 +76,8 @@ export function TutorDrawer({
         ))}
       </div>
       <div className="artifact-card">
-        <h3>Quiz: Feature Maps</h3>
-        <p>Which part of the kernel trick avoids explicitly constructing feature vectors?</p>
+        <h3>Gate: Kernel Skill Check</h3>
+        <p>Ready means you can name the replaced computation and explain why it saves work.</p>
       </div>
     </aside>
   );

@@ -60,3 +60,49 @@ def test_agent_turn_focuses_kernel_section(monkeypatch) -> None:
         "artifact_id": None,
     }
     assert "kernel trick" in payload["message"].lower()
+
+
+def test_agent_turn_focuses_learning_goals(monkeypatch) -> None:
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setenv("LECTUREPILOT_MODEL", "openrouter/z-ai/glm-5.1")
+    client = TestClient(create_app())
+
+    response = client.post(
+        "/agent/turn",
+        json={
+            "user_id": "u1",
+            "course_id": "c1",
+            "lecture_id": "l1",
+            "attendance": "absent",
+            "message": "What are the learning goals for this lecture?",
+            "canvas_state": {"focused_section_id": "feature-maps"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["canvas_commands"][0]["section_id"] == "learning-goals"
+    assert "learning goals" in payload["message"].lower()
+
+
+def test_agent_turn_focuses_skill_check(monkeypatch) -> None:
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setenv("LECTUREPILOT_MODEL", "openrouter/z-ai/glm-5.1")
+    client = TestClient(create_app())
+
+    response = client.post(
+        "/agent/turn",
+        json={
+            "user_id": "u1",
+            "course_id": "c1",
+            "lecture_id": "l1",
+            "attendance": "present",
+            "message": "Test whether I understood the skill goals.",
+            "canvas_state": {"focused_section_id": "kernel-trick"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["canvas_commands"][0]["section_id"] == "skill-check"
+    assert "answer this" in payload["message"].lower()

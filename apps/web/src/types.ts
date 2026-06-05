@@ -11,10 +11,16 @@ export type Lecture = {
   attendance: Attendance;
 };
 
-export type CanvasSectionId = "feature-maps" | "kernel-trick";
+export type CanvasSectionId =
+  | "learning-goals"
+  | "feature-maps"
+  | "kernel-trick"
+  | "skill-check"
+  | "failure-mode";
 
 export type ChatMessage = {
   id: string;
   role: "agent" | "user";
   content: string;
+  toolTags?: string[];
 };

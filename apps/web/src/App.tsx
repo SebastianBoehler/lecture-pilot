@@ -1,7 +1,7 @@
 import { BookOpen, ChevronLeft, FileText, Grid2X2, MessageSquare, Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { sendAgentTurn } from "./api";
+import { sendAgentTurn, type CanvasCommand } from "./api";
 import { LessonCanvas } from "./LessonCanvas";
 import { lectures } from "./sampleData";
 import { TutorDrawer } from "./TutorDrawer";
@@ -53,7 +53,12 @@ function App() {
 
     setMessages((current) => [
       ...current,
-      { id: `agent-${Date.now()}`, role: "agent", content: result.message },
+      {
+        id: `agent-${Date.now()}`,
+        role: "agent",
+        content: result.message,
+        toolTags: toolTagsFromCommands(result.canvas_commands),
+      },
     ]);
   }
 
@@ -204,7 +209,28 @@ function LessonWorkspace({
 }
 
 function isCanvasSection(sectionId: string | null | undefined): sectionId is CanvasSectionId {
-  return sectionId === "feature-maps" || sectionId === "kernel-trick";
+  return (
+    sectionId === "learning-goals" ||
+    sectionId === "feature-maps" ||
+    sectionId === "kernel-trick" ||
+    sectionId === "skill-check" ||
+    sectionId === "failure-mode"
+  );
+}
+
+function toolTagsFromCommands(commands: CanvasCommand[]): string[] {
+  return commands.flatMap((command) => {
+    if (command.type === "focus_section" && command.section_id) {
+      return [`focus: ${command.section_id}`];
+    }
+    if (command.type === "open_artifact" && command.artifact_id) {
+      return [`artifact: ${command.artifact_id}`];
+    }
+    if (command.type === "highlight_span" && command.span_id) {
+      return [`highlight: ${command.span_id}`];
+    }
+    return [];
+  });
 }
 
 export default App;

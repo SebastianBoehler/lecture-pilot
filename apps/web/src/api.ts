@@ -1,6 +1,6 @@
 import type { Attendance } from "./types";
 
-type CanvasCommand = {
+export type CanvasCommand = {
   type: "focus_section" | "highlight_span" | "open_artifact";
   section_id?: string | null;
   span_id?: string | null;
