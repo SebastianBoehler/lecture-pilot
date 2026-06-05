@@ -1,0 +1,2 @@
+"""LecturePilot backend package."""
+

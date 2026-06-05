@@ -1,0 +1,16 @@
+{
+  "name": "lecture-pilot",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/web"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace apps/web",
+    "test": "npm run test --workspace apps/web",
+    "test:api": "pytest apps/api/tests",
+    "dev:web": "npm run dev --workspace apps/web",
+    "dev:api": "uvicorn lecturepilot.app:app --app-dir apps/api/src --reload"
+  }
+}
+
