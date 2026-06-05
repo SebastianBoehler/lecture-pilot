@@ -1,33 +1,62 @@
 import { useState } from "react";
 
-import type { ArtifactBlockId } from "./types";
+type FocusProps = {
+  focused: boolean;
+};
 
-export const artifactBlocks: { id: ArtifactBlockId; title: string }[] = [
-  { id: "artifact-summary", title: "Generated summary" },
-  { id: "artifact-quiz", title: "Micro quiz" },
-  { id: "artifact-code", title: "Runnable code cell" },
-  { id: "artifact-diagram", title: "Feature map diagram" },
-  { id: "artifact-playground", title: "Kernel playground" },
+const videoCheckpoints = [
+  { label: "Kernel trick", time: "28:56", seconds: 1736 },
+  { label: "Designing feature vectors", time: "1:17:03", seconds: 4623 },
 ];
-
-export function ArtifactBlocks({ focusedArtifactId }: { focusedArtifactId: ArtifactBlockId | null }) {
-  return (
-    <section className="canvas-section artifact-section" aria-labelledby="generated-artifacts-heading">
-      <h2 id="generated-artifacts-heading">Generated artifacts</h2>
-      <SummaryBlock focused={focusedArtifactId === "artifact-summary"} />
-      <QuizBlock focused={focusedArtifactId === "artifact-quiz"} />
-      <CodeBlock focused={focusedArtifactId === "artifact-code"} />
-      <DiagramBlock focused={focusedArtifactId === "artifact-diagram"} />
-      <KernelPlayground focused={focusedArtifactId === "artifact-playground"} />
-    </section>
-  );
-}
 
 function blockClass(isFocused: boolean) {
   return isFocused ? "artifact-card is-focused" : "artifact-card";
 }
 
-function SummaryBlock({ focused }: { focused: boolean }) {
+export function SourcePacketBlock({ focused }: FocusProps) {
+  return (
+    <article
+      aria-current={focused ? "true" : undefined}
+      aria-labelledby="source-packet-heading"
+      className={blockClass(focused)}
+      id="source-packet"
+    >
+      <h2 id="source-packet-heading">Course source packet</h2>
+      <p>
+        This lesson document is assembled from the lecture LaTeX notes, a figure asset, a short
+        code cell, and one video selected by the media discovery pipeline. Private course files
+        stay outside git.
+      </p>
+      <div className="source-grid">
+        <span>notes/lecture-03-kernels.tex</span>
+        <span>figures/feature-map-lift.pdf</span>
+        <span>snippets/rbf-kernel.js</span>
+        <span>video/cs229-kernels.discovery.json</span>
+      </div>
+    </article>
+  );
+}
+
+export function ConceptCounterBlock({ focused }: FocusProps) {
+  const [count, setCount] = useState(2);
+
+  return (
+    <article
+      aria-current={focused ? "true" : undefined}
+      aria-labelledby="artifact-counter-heading"
+      className={`${blockClass(focused)} concept-counter`}
+      id="artifact-counter"
+    >
+      <h2 id="artifact-counter-heading">Concept counter</h2>
+      <p>Check count: {count}</p>
+      <button type="button" onClick={() => setCount((current) => current + 1)}>
+        Record another check
+      </button>
+    </article>
+  );
+}
+
+export function SummaryBlock({ focused }: FocusProps) {
   return (
     <article
       aria-current={focused ? "true" : undefined}
@@ -35,9 +64,9 @@ function SummaryBlock({ focused }: { focused: boolean }) {
       className={blockClass(focused)}
       id="artifact-summary"
     >
-      <h3 id="artifact-summary-heading">Generated summary</h3>
+      <h2 id="artifact-summary-heading">Generated summary</h2>
       <ul className="artifact-list">
-        <li>Start with the explicit feature map view.</li>
+        <li>Start with the explicit feature-map view.</li>
         <li>Replace explicit coordinates with kernel evaluations.</li>
         <li>Check whether the similarity still matches the learning problem.</li>
       </ul>
@@ -45,7 +74,7 @@ function SummaryBlock({ focused }: { focused: boolean }) {
   );
 }
 
-function QuizBlock({ focused }: { focused: boolean }) {
+export function QuizBlock({ focused }: FocusProps) {
   const [answer, setAnswer] = useState<"inner-product" | "coordinates" | null>(null);
 
   return (
@@ -55,7 +84,7 @@ function QuizBlock({ focused }: { focused: boolean }) {
       className={blockClass(focused)}
       id="artifact-quiz"
     >
-      <h3 id="artifact-quiz-heading">Micro quiz</h3>
+      <h2 id="artifact-quiz-heading">Micro quiz</h2>
       <p>In the kernel trick, what computation does k(x, x') stand in for?</p>
       <div className="quiz-options">
         <button type="button" onClick={() => setAnswer("inner-product")}>
@@ -76,7 +105,7 @@ function QuizBlock({ focused }: { focused: boolean }) {
   );
 }
 
-function CodeBlock({ focused }: { focused: boolean }) {
+export function CodeBlock({ focused }: FocusProps) {
   return (
     <article
       aria-current={focused ? "true" : undefined}
@@ -84,7 +113,7 @@ function CodeBlock({ focused }: { focused: boolean }) {
       className={`${blockClass(focused)} code-artifact`}
       id="artifact-code"
     >
-      <h3 id="artifact-code-heading">Runnable code cell</h3>
+      <h2 id="artifact-code-heading">Runnable code cell</h2>
       <pre>
         <code>{`function rbfKernel(x, y, gamma) {
   const distance = x.reduce((sum, value, index) => {
@@ -97,7 +126,7 @@ function CodeBlock({ focused }: { focused: boolean }) {
   );
 }
 
-function DiagramBlock({ focused }: { focused: boolean }) {
+export function DiagramBlock({ focused }: FocusProps) {
   return (
     <article
       aria-current={focused ? "true" : undefined}
@@ -106,8 +135,46 @@ function DiagramBlock({ focused }: { focused: boolean }) {
       id="artifact-diagram"
       role="region"
     >
-      <h3 id="artifact-diagram-heading">Feature map diagram</h3>
+      <h2 id="artifact-diagram-heading">Feature map diagram</h2>
       <FeatureMapDiagram />
+    </article>
+  );
+}
+
+export function ProfessorVideoBlock({ focused }: FocusProps) {
+  const [startSeconds, setStartSeconds] = useState(1736);
+
+  return (
+    <article
+      aria-current={focused ? "true" : undefined}
+      aria-labelledby="artifact-video-heading"
+      className={`${blockClass(focused)} youtube-artifact`}
+      id="artifact-video"
+    >
+      <h2 id="artifact-video-heading">Professor-selected video</h2>
+      <p>
+        Selected as a workspace pre-asset: Stanford CS229 Lecture 7, used here for a second pass on
+        the kernel trick and feature-vector design.
+      </p>
+      <div className="youtube-frame">
+        <iframe
+          title="Stanford CS229 kernels video"
+          src={`https://www.youtube-nocookie.com/embed/8NYoQiRANpg?start=${startSeconds}`}
+          allow="accelerometer; encrypted-media; picture-in-picture"
+          allowFullScreen
+        />
+      </div>
+      <div className="checkpoint-list" aria-label="Video checkpoints">
+        {videoCheckpoints.map((checkpoint) => (
+          <button
+            key={checkpoint.seconds}
+            type="button"
+            onClick={() => setStartSeconds(checkpoint.seconds)}
+          >
+            {checkpoint.time} · {checkpoint.label}
+          </button>
+        ))}
+      </div>
     </article>
   );
 }
@@ -135,7 +202,7 @@ function FeatureMapDiagram() {
   );
 }
 
-function KernelPlayground({ focused }: { focused: boolean }) {
+export function KernelPlayground({ focused }: FocusProps) {
   const [mode, setMode] = useState<"narrow" | "medium" | "wide">("medium");
   const descriptions = {
     narrow: "sharp local similarity; useful for tight clusters but easy to overfit.",

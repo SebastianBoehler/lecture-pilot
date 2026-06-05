@@ -1,30 +1,31 @@
-import { artifactBlocks } from "./ArtifactBlocks";
-import type { ArtifactBlockId, Lecture } from "./types";
+import { documentOutlineItems } from "./lessonOutline";
+import type { DocumentAnchorId, Lecture } from "./types";
 
-export function ArtifactsPanel({
-  focusedArtifactId,
-  onJumpArtifact,
+export function OutlinePanel({
+  activeAnchorId,
+  onJumpAnchor,
 }: {
-  focusedArtifactId: ArtifactBlockId | null;
-  onJumpArtifact: (artifactId: ArtifactBlockId) => void;
+  activeAnchorId: DocumentAnchorId | null;
+  onJumpAnchor: (anchorId: DocumentAnchorId) => void;
 }) {
   return (
-    <aside className="drawer" aria-label="Artifacts panel">
+    <aside className="drawer" aria-label="Document outline panel">
       <div className="drawer-section">
-        <h2>Artifact index</h2>
+        <h2>Document outline</h2>
         <p className="drawer-note">
-          Generated blocks live in the lesson canvas. Use this overview to jump through the document.
+          Navigate the lesson document by sections, source packets, checks, and embedded media.
         </p>
-        <nav className="artifact-jump-list" aria-label="Generated artifact blocks">
-          {artifactBlocks.map((artifact) => (
+        <nav className="outline-list" aria-label="Lesson document outline">
+          {documentOutlineItems.map((item) => (
             <button
-              className={focusedArtifactId === artifact.id ? "is-active" : undefined}
+              className={activeAnchorId === item.id ? "is-active" : undefined}
               type="button"
-              aria-pressed={focusedArtifactId === artifact.id}
-              key={artifact.id}
-              onClick={() => onJumpArtifact(artifact.id)}
+              aria-pressed={activeAnchorId === item.id}
+              key={item.id}
+              onClick={() => onJumpAnchor(item.id)}
             >
-              Jump to {artifact.title}
+              <span>{item.kind}</span>
+              {item.title}
             </button>
           ))}
         </nav>

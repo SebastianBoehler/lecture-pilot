@@ -1,10 +1,10 @@
-import { ChevronLeft, FileText, Grid2X2, MessageSquare } from "lucide-react";
+import { ChevronLeft, FileText, MessageSquare, TableOfContents } from "lucide-react";
 import { useState } from "react";
 
 import { LessonCanvas } from "./LessonCanvas";
-import { ArtifactsPanel, NotesPanel } from "./LessonSidePanels";
+import { NotesPanel, OutlinePanel } from "./LessonSidePanels";
 import { TutorDrawer } from "./TutorDrawer";
-import type { ArtifactBlockId, CanvasSectionId, ChatMessage, Lecture, LessonPanelMode } from "./types";
+import type { CanvasSectionId, ChatMessage, DocumentAnchorId, Lecture, LessonPanelMode } from "./types";
 
 export function LessonWorkspace({
   lecture,
@@ -24,13 +24,13 @@ export function LessonWorkspace({
   onTogglePanel: (mode: LessonPanelMode) => void;
 }) {
   const layoutClass = panelMode ? "lesson-layout panel-open" : "lesson-layout";
-  const [focusedArtifactId, setFocusedArtifactId] = useState<ArtifactBlockId | null>(null);
+  const [activeAnchorId, setActiveAnchorId] = useState<DocumentAnchorId | null>(null);
 
-  function jumpToArtifact(artifactId: ArtifactBlockId) {
-    setFocusedArtifactId(artifactId);
-    const artifact = document.getElementById(artifactId);
-    if (typeof artifact?.scrollIntoView === "function") {
-      artifact.scrollIntoView({ behavior: "smooth", block: "center" });
+  function jumpToAnchor(anchorId: DocumentAnchorId) {
+    setActiveAnchorId(anchorId);
+    const anchor = document.getElementById(anchorId);
+    if (typeof anchor?.scrollIntoView === "function") {
+      anchor.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }
 
@@ -47,7 +47,7 @@ export function LessonWorkspace({
         <LessonCanvas
           lecture={lecture}
           focusedSectionId={focusedSectionId}
-          focusedArtifactId={focusedArtifactId}
+          activeAnchorId={activeAnchorId}
         />
       </section>
 
@@ -62,13 +62,13 @@ export function LessonWorkspace({
           <MessageSquare size={18} />
         </button>
         <button
-          className={panelMode === "artifacts" ? "rail-button is-active" : "rail-button"}
+          className={panelMode === "outline" ? "rail-button is-active" : "rail-button"}
           type="button"
-          aria-label="Open artifacts panel"
-          aria-pressed={panelMode === "artifacts"}
-          onClick={() => onTogglePanel("artifacts")}
+          aria-label="Open document outline"
+          aria-pressed={panelMode === "outline"}
+          onClick={() => onTogglePanel("outline")}
         >
-          <Grid2X2 size={18} />
+          <TableOfContents size={18} />
         </button>
         <button
           className={panelMode === "notes" ? "rail-button is-active" : "rail-button"}
@@ -84,8 +84,8 @@ export function LessonWorkspace({
       {panelMode === "chat" ? (
         <TutorDrawer messages={messages} onSendMessage={onSendMessage} />
       ) : null}
-      {panelMode === "artifacts" ? (
-        <ArtifactsPanel focusedArtifactId={focusedArtifactId} onJumpArtifact={jumpToArtifact} />
+      {panelMode === "outline" ? (
+        <OutlinePanel activeAnchorId={activeAnchorId} onJumpAnchor={jumpToAnchor} />
       ) : null}
       {panelMode === "notes" ? <NotesPanel lecture={lecture} /> : null}
     </main>

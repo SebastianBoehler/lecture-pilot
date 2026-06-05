@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -86,7 +86,7 @@ describe("LecturePilot app shell", () => {
     expect(screen.queryByPlaceholderText(/ask about this lecture/i)).not.toBeInTheDocument();
   });
 
-  it("switches the focused workspace rail between tutor, artifacts, and notes", async () => {
+  it("switches the focused workspace rail between tutor, outline, and notes", async () => {
     const user = userEvent.setup();
     vi.stubGlobal("fetch", mockLoginFetch());
     render(<App />);
@@ -97,10 +97,12 @@ describe("LecturePilot app shell", () => {
 
     expect(screen.getByPlaceholderText(/ask about this lecture/i)).toBeInTheDocument();
 
-    await user.click(screen.getByLabelText(/open artifacts panel/i));
+    await user.click(screen.getByLabelText(/open document outline/i));
 
-    expect(screen.getByRole("heading", { name: /artifact index/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /jump to micro quiz/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /document outline/i })).toBeInTheDocument();
+    const outline = screen.getByRole("navigation", { name: /lesson document outline/i });
+    expect(within(outline).getByRole("button", { name: /kernel trick/i })).toBeInTheDocument();
+    expect(within(outline).getByRole("button", { name: /feature map diagram/i })).toBeInTheDocument();
     expect(screen.queryByPlaceholderText(/ask about this lecture/i)).not.toBeInTheDocument();
 
     await user.click(screen.getByLabelText(/open lecture notes panel/i));
@@ -117,18 +119,25 @@ describe("LecturePilot app shell", () => {
     await logIn(user);
     await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
 
+    expect(screen.getByRole("heading", { name: /course source packet/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /generated summary/i })).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /feature map diagram/i })).toBeInTheDocument();
+    expect(screen.getByTitle(/stanford cs229 kernels video/i)).toBeInTheDocument();
     expect(screen.getByText(/rbfKernel/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /concept counter/i })).toBeInTheDocument();
     expect(screen.getByRole("group", { name: /kernel playground/i })).toBeInTheDocument();
     expect(screen.getByText(/balanced local similarity/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /record another check/i }));
+
+    expect(screen.getByText(/check count: 3/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /wide kernel/i }));
 
     expect(screen.getByText(/smooth boundary/i)).toBeInTheDocument();
 
-    await user.click(screen.getByLabelText(/open artifacts panel/i));
-    await user.click(screen.getByRole("button", { name: /jump to feature map diagram/i }));
+    await user.click(screen.getByLabelText(/open document outline/i));
+    await user.click(screen.getByRole("button", { name: /feature map diagram/i }));
 
     expect(screen.getByRole("region", { name: /feature map diagram/i })).toHaveAttribute(
       "aria-current",

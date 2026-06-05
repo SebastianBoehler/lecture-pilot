@@ -1,12 +1,22 @@
 export type Theme = "light" | "dark";
 export type View = "login" | "dashboard" | "lesson" | "profile";
-export type LessonPanelMode = "chat" | "artifacts" | "notes";
+export type LessonPanelMode = "chat" | "outline" | "notes";
+export type CanvasSectionId =
+  | "learning-goals"
+  | "feature-maps"
+  | "kernel-trick"
+  | "skill-check"
+  | "failure-mode";
 export type ArtifactBlockId =
+  | "source-packet"
+  | "artifact-counter"
   | "artifact-summary"
   | "artifact-quiz"
   | "artifact-code"
   | "artifact-diagram"
-  | "artifact-playground";
+  | "artifact-playground"
+  | "artifact-video";
+export type DocumentAnchorId = CanvasSectionId | ArtifactBlockId;
 
 export type Attendance = "unknown" | "present" | "absent";
 
@@ -32,13 +42,6 @@ export type LoginSession = {
   term: string;
   courses: UniversityCourse[];
 };
-
-export type CanvasSectionId =
-  | "learning-goals"
-  | "feature-maps"
-  | "kernel-trick"
-  | "skill-check"
-  | "failure-mode";
 
 export type ChatMessage = {
   id: string;

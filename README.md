@@ -14,6 +14,7 @@ harness. The first target integration is University of Tübingen via
 - Ask whether the learner attended.
 - Load official lecture material from LaTeX/PDF/Markdown sources.
 - Render a focused lesson canvas.
+- Discover curated external media as workspace pre-assets.
 - Let a text-only agent highlight, explain, quiz, and save progress.
 
 ## Current Slice
@@ -46,6 +47,9 @@ integrations/tuebingen   TUE API wrapper integration placeholder
 docs                     Architecture and design notes
 deploy                   Docker and self-hosting files
 ```
+
+See [docs/media-discovery.md](docs/media-discovery.md) for the YouTube/media
+pre-asset contract.
 
 ## Local Development
 

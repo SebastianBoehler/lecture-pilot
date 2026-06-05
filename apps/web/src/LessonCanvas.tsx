@@ -1,8 +1,17 @@
 import type { ReactNode } from "react";
 import { useEffect } from "react";
 
-import { ArtifactBlocks } from "./ArtifactBlocks";
-import type { ArtifactBlockId, CanvasSectionId, Lecture } from "./types";
+import {
+  CodeBlock,
+  ConceptCounterBlock,
+  DiagramBlock,
+  KernelPlayground,
+  ProfessorVideoBlock,
+  QuizBlock,
+  SourcePacketBlock,
+  SummaryBlock,
+} from "./ArtifactBlocks";
+import type { CanvasSectionId, DocumentAnchorId, Lecture } from "./types";
 
 type CanvasSection = {
   id: CanvasSectionId;
@@ -10,8 +19,8 @@ type CanvasSection = {
   body: ReactNode;
 };
 
-const sections: CanvasSection[] = [
-  {
+const sections: Record<CanvasSectionId, CanvasSection> = {
+  "learning-goals": {
     id: "learning-goals",
     title: "Learning goals",
     body: (
@@ -29,7 +38,7 @@ const sections: CanvasSection[] = [
       </>
     ),
   },
-  {
+  "feature-maps": {
     id: "feature-maps",
     title: "Feature maps",
     body: (
@@ -45,7 +54,7 @@ const sections: CanvasSection[] = [
       </>
     ),
   },
-  {
+  "kernel-trick": {
     id: "kernel-trick",
     title: "Kernel trick",
     body: (
@@ -61,7 +70,7 @@ const sections: CanvasSection[] = [
       </>
     ),
   },
-  {
+  "skill-check": {
     id: "skill-check",
     title: "Skill check",
     body: (
@@ -78,7 +87,7 @@ const sections: CanvasSection[] = [
       </>
     ),
   },
-  {
+  "failure-mode": {
     id: "failure-mode",
     title: "Common failure mode",
     body: (
@@ -89,27 +98,28 @@ const sections: CanvasSection[] = [
       </p>
     ),
   },
-];
+};
 
 export function LessonCanvas({
   lecture,
   focusedSectionId,
-  focusedArtifactId,
+  activeAnchorId,
 }: {
   lecture: Lecture;
   focusedSectionId: CanvasSectionId;
-  focusedArtifactId: ArtifactBlockId | null;
+  activeAnchorId: DocumentAnchorId | null;
 }) {
   useEffect(() => {
     const section = document.getElementById(focusedSectionId);
     if (typeof section?.scrollIntoView !== "function") {
       return;
     }
-    section.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
+    section.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [focusedSectionId]);
+
+  function isActive(id: DocumentAnchorId) {
+    return activeAnchorId ? activeAnchorId === id : focusedSectionId === id;
+  }
 
   return (
     <article className="canvas">
@@ -117,26 +127,39 @@ export function LessonCanvas({
       <h1>{lecture.title}</h1>
       <p className="lead">
         The official notes introduce a feature-map view first, then use it to motivate kernels as
-        inner products in a lifted space. The tutor can focus goals, concepts, checks, or failure
-        modes depending on the learner turn.
+        inner products in a lifted space. This document combines notes, figures, code, video, and
+        checks into one navigable teaching surface.
       </p>
-      {sections.map((section) => {
-        const isFocused = focusedSectionId === section.id;
-        return (
-          <section
-            aria-current={isFocused ? "true" : undefined}
-            aria-labelledby={`${section.id}-heading`}
-            className={isFocused ? "canvas-section is-focused" : "canvas-section"}
-            id={section.id}
-            key={section.id}
-          >
-            {isFocused ? <span className="focus-chip">In focus</span> : null}
-            <h2 id={`${section.id}-heading`}>{section.title}</h2>
-            {section.body}
-          </section>
-        );
-      })}
-      <ArtifactBlocks focusedArtifactId={focusedArtifactId} />
+
+      <SourcePacketBlock focused={isActive("source-packet")} />
+      {renderSection(sections["learning-goals"], isActive("learning-goals"))}
+      <ConceptCounterBlock focused={isActive("artifact-counter")} />
+      {renderSection(sections["feature-maps"], isActive("feature-maps"))}
+      <DiagramBlock focused={isActive("artifact-diagram")} />
+      <ProfessorVideoBlock focused={isActive("artifact-video")} />
+      {renderSection(sections["kernel-trick"], isActive("kernel-trick"))}
+      <CodeBlock focused={isActive("artifact-code")} />
+      {renderSection(sections["skill-check"], isActive("skill-check"))}
+      <QuizBlock focused={isActive("artifact-quiz")} />
+      <KernelPlayground focused={isActive("artifact-playground")} />
+      {renderSection(sections["failure-mode"], isActive("failure-mode"))}
+      <SummaryBlock focused={isActive("artifact-summary")} />
     </article>
+  );
+}
+
+function renderSection(section: CanvasSection, isFocused: boolean) {
+  return (
+    <section
+      aria-current={isFocused ? "true" : undefined}
+      aria-labelledby={`${section.id}-heading`}
+      className={isFocused ? "canvas-section is-focused" : "canvas-section"}
+      id={section.id}
+      key={section.id}
+    >
+      {isFocused ? <span className="focus-chip">In focus</span> : null}
+      <h2 id={`${section.id}-heading`}>{section.title}</h2>
+      {section.body}
+    </section>
   );
 }
