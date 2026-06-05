@@ -16,3 +16,14 @@ coverage/
 .vscode/
 storage/
 tmp/
+
+# Private/local course material. Keep professor files, licensed PDFs,
+# lecture source drops, and learner workspace data out of git.
+local-course-materials/
+course-materials/
+lecture-materials/
+prof-course-files/
+content/private/
+content/courses/
+data/courses/
+workspaces/

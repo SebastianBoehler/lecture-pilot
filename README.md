@@ -48,6 +48,11 @@ deploy                   Docker and self-hosting files
 
 ## Local Development
 
+Keep private professor/course files in `local-course-materials/`,
+`course-materials/`, `lecture-materials/`, or `content/private/`. These paths
+are gitignored on purpose; only sanitized examples and public fixtures should
+be committed.
+
 Backend:
 
 ```bash
@@ -94,4 +99,3 @@ npm run build --workspace apps/web
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
-
