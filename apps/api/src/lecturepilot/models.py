@@ -20,6 +20,32 @@ class ProviderCapability(StrEnum):
     LONG_CONTEXT = "long_context"
 
 
+class TenantRole(StrEnum):
+    TENANT_ADMIN = "tenant_admin"
+    PROFESSOR = "professor"
+    TUTOR = "tutor"
+    STUDENT = "student"
+
+
+class Tenant(BaseModel):
+    id: str = Field(min_length=8, max_length=120)
+    name: str = Field(min_length=1, max_length=200)
+    domain: str | None = Field(default=None, max_length=200)
+
+
+class TenantMembership(BaseModel):
+    tenant_id: str = Field(min_length=8, max_length=120)
+    role: TenantRole
+
+
+class UserProfile(BaseModel):
+    id: str = Field(min_length=1, max_length=120)
+    username: str = Field(min_length=1, max_length=120)
+    email: str | None = Field(default=None, max_length=320)
+    display_name: str | None = Field(default=None, max_length=200)
+    memberships: list[TenantMembership] = Field(default_factory=list)
+
+
 class Course(BaseModel):
     id: str
     title: str

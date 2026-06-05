@@ -37,6 +37,7 @@ This repository is intentionally small but runnable:
 - Provider capability checks with OpenRouter GLM 5.1 as the default model.
 - React/Vite frontend with dashboard and focused lesson workspace.
 - TUE API login form backed by the local FastAPI API and `tue-api-wrapper`.
+- Tenant/profile policy foundation for professors, tutors, and students.
 - Light and dark mode.
 - Backend and frontend tests.
 - CI, Dockerfiles, and Compose starter.
@@ -60,6 +61,8 @@ deploy                   Docker and self-hosting files
 
 See [docs/media-discovery.md](docs/media-discovery.md) for the YouTube/media
 pre-asset contract.
+See [docs/tenancy-security.md](docs/tenancy-security.md) for the tenant,
+profile, and secure course-material upload contract.
 
 ## Local Development
 

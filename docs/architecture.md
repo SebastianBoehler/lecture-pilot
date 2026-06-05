@@ -7,7 +7,7 @@ Web app
   login, dashboard, lecture selection, focused canvas
 
 Backend API
-  auth sessions, course discovery, unlock policy, workspace API
+  auth sessions, tenant context, course discovery, unlock policy, workspace API
 
 Agent harness
   model routing, tool contract, canvas commands, progress events
@@ -26,10 +26,16 @@ learning state. The agent operates inside that sandbox.
 Lecture access is not prompt-enforced. The backend checks:
 
 ```txt
+profile belongs to tenant
+profile has course membership
 lecture.date <= today
 ```
 
 The agent receives only already-authorized course material ids.
+
+Professor and tutor capabilities are tenant-local. Course creation, material
+uploads, and progress review must be authorized against the active tenant before
+any course or file lookup happens.
 
 ## Workspace Model
 
@@ -55,6 +61,9 @@ Blocked by default:
 Local development can use folders. Production should back the workspace with
 Postgres metadata and S3-compatible object storage such as MinIO.
 
+See [tenancy-security.md](tenancy-security.md) for the professor/student role
+model, tenant isolation rules, and secure material-upload contract.
+
 ## Provider Model
 
 The app depends on a harness contract, not a provider SDK.
@@ -79,4 +88,3 @@ the existing `LecturePilotHarness.run_turn` contract. It should emit:
 - tool/model events
 
 No UI code should depend directly on ADK.
-
