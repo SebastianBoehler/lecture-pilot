@@ -75,8 +75,8 @@ describe("LecturePilot app shell", () => {
 
     await user.click(screen.getByLabelText(/open artifacts panel/i));
 
-    expect(screen.getByRole("heading", { name: /artifacts/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /quiz/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /artifact index/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /jump to micro quiz/i })).toBeInTheDocument();
     expect(screen.queryByPlaceholderText(/ask about this lecture/i)).not.toBeInTheDocument();
 
     await user.click(screen.getByLabelText(/open lecture notes panel/i));
@@ -92,24 +92,24 @@ describe("LecturePilot app shell", () => {
 
     await logIn(user);
     await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
-    await user.click(screen.getByLabelText(/open artifacts panel/i));
 
     expect(screen.getByRole("heading", { name: /generated summary/i })).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /diagram/i }));
-
     expect(screen.getByRole("img", { name: /feature map diagram/i })).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /code/i }));
-
     expect(screen.getByText(/rbfKernel/)).toBeInTheDocument();
-
     expect(screen.getByRole("group", { name: /kernel playground/i })).toBeInTheDocument();
     expect(screen.getByText(/balanced local similarity/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /wide kernel/i }));
 
     expect(screen.getByText(/smooth boundary/i)).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText(/open artifacts panel/i));
+    await user.click(screen.getByRole("button", { name: /jump to feature map diagram/i }));
+
+    expect(screen.getByRole("region", { name: /feature map diagram/i })).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
   });
 
   it("renders learning goals and skill checks in the lesson canvas", async () => {

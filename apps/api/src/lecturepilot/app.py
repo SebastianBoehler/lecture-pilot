@@ -4,7 +4,13 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from lecturepilot.harness import LecturePilotHarness
-from lecturepilot.models import AgentTurnInput, AgentTurnResult, TuebingenLoginInput, TuebingenLoginResult
+from lecturepilot.model_client import ModelExecutionError
+from lecturepilot.models import (
+    AgentTurnInput,
+    AgentTurnResult,
+    TuebingenLoginInput,
+    TuebingenLoginResult,
+)
 from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.sample_data import COURSE, unlocked_lectures
 from lecturepilot.tuebingen_adapter import (
@@ -17,6 +23,7 @@ from lecturepilot.tuebingen_adapter import (
 def create_app() -> FastAPI:
     app = FastAPI(title="LecturePilot API", version="0.1.0")
     app.state.tuebingen_adapter = TuebingenCourseAdapter()
+    app.state.agent_harness = LecturePilotHarness()
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -55,9 +62,11 @@ def create_app() -> FastAPI:
     @app.post("/agent/turn", response_model=AgentTurnResult)
     async def agent_turn(turn: AgentTurnInput) -> AgentTurnResult:
         try:
-            return await LecturePilotHarness().run_turn(turn)
+            return await app.state.agent_harness.run_turn(turn)
         except ProviderConfigurationError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except ModelExecutionError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     return app
 

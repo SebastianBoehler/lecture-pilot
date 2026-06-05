@@ -1,7 +1,14 @@
 from fastapi.testclient import TestClient
 
 from lecturepilot.app import create_app
-from lecturepilot.models import Course, TuebingenLoginResult
+from lecturepilot.model_client import ModelExecutionError
+from lecturepilot.models import (
+    AgentTurnInput,
+    AgentTurnResult,
+    CanvasCommand,
+    Course,
+    TuebingenLoginResult,
+)
 from lecturepilot.tuebingen_adapter import TuebingenIntegrationUnavailable
 
 
@@ -86,7 +93,12 @@ def test_agent_turn_requires_configured_provider(monkeypatch) -> None:
 def test_agent_turn_focuses_kernel_section(monkeypatch) -> None:
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     monkeypatch.setenv("LECTUREPILOT_MODEL", "openrouter/z-ai/glm-5.1")
-    client = TestClient(create_app())
+    app = create_app()
+    app.state.agent_harness = _FakeHarness(
+        message="A real model can answer this as a conversation.",
+        section_id="kernel-trick",
+    )
+    client = TestClient(app)
 
     response = client.post(
         "/agent/turn",
@@ -109,13 +121,18 @@ def test_agent_turn_focuses_kernel_section(monkeypatch) -> None:
         "span_id": None,
         "artifact_id": None,
     }
-    assert "kernel trick" in payload["message"].lower()
+    assert "real model" in payload["message"].lower()
 
 
 def test_agent_turn_focuses_learning_goals(monkeypatch) -> None:
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     monkeypatch.setenv("LECTUREPILOT_MODEL", "openrouter/z-ai/glm-5.1")
-    client = TestClient(create_app())
+    app = create_app()
+    app.state.agent_harness = _FakeHarness(
+        message="Learning goals came from the model client.",
+        section_id="learning-goals",
+    )
+    client = TestClient(app)
 
     response = client.post(
         "/agent/turn",
@@ -132,13 +149,18 @@ def test_agent_turn_focuses_learning_goals(monkeypatch) -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["canvas_commands"][0]["section_id"] == "learning-goals"
-    assert "learning goals" in payload["message"].lower()
+    assert "model client" in payload["message"].lower()
 
 
 def test_agent_turn_focuses_skill_check(monkeypatch) -> None:
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     monkeypatch.setenv("LECTUREPILOT_MODEL", "openrouter/z-ai/glm-5.1")
-    client = TestClient(create_app())
+    app = create_app()
+    app.state.agent_harness = _FakeHarness(
+        message="The model selected the skill check.",
+        section_id="skill-check",
+    )
+    client = TestClient(app)
 
     response = client.post(
         "/agent/turn",
@@ -155,7 +177,30 @@ def test_agent_turn_focuses_skill_check(monkeypatch) -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["canvas_commands"][0]["section_id"] == "skill-check"
-    assert "answer this" in payload["message"].lower()
+    assert "model selected" in payload["message"].lower()
+
+
+def test_agent_turn_reports_model_execution_error(monkeypatch) -> None:
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setenv("LECTUREPILOT_MODEL", "openrouter/z-ai/glm-5.1")
+    app = create_app()
+    app.state.agent_harness = _FailingHarness()
+    client = TestClient(app)
+
+    response = client.post(
+        "/agent/turn",
+        json={
+            "user_id": "u1",
+            "course_id": "c1",
+            "lecture_id": "l1",
+            "attendance": "present",
+            "message": "hello",
+            "canvas_state": {"focused_section_id": "feature-maps"},
+        },
+    )
+
+    assert response.status_code == 502
+    assert "Model request failed" in response.json()["detail"]
 
 
 class _FakeTuebingenAdapter:
@@ -178,3 +223,23 @@ class _FakeTuebingenAdapter:
 class _UnavailableTuebingenAdapter:
     def login(self, *, username: str, password: str, term: str) -> TuebingenLoginResult:
         raise TuebingenIntegrationUnavailable("tue-api-wrapper is not installed.")
+
+
+class _FakeHarness:
+    def __init__(self, *, message: str, section_id: str) -> None:
+        self.message = message
+        self.section_id = section_id
+
+    async def run_turn(self, turn: AgentTurnInput) -> AgentTurnResult:
+        return AgentTurnResult(
+            message=self.message,
+            canvas_commands=[CanvasCommand(type="focus_section", section_id=self.section_id)],
+            model="openrouter/z-ai/glm-5.1",
+        )
+
+
+class _FailingHarness:
+    async def run_turn(self, turn: AgentTurnInput) -> AgentTurnResult:
+        raise ModelExecutionError(
+            "Model request failed. Check the provider key and model configuration."
+        )

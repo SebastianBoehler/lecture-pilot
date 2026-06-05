@@ -1,9 +1,10 @@
 import { ChevronLeft, FileText, Grid2X2, MessageSquare } from "lucide-react";
+import { useState } from "react";
 
 import { LessonCanvas } from "./LessonCanvas";
 import { ArtifactsPanel, NotesPanel } from "./LessonSidePanels";
 import { TutorDrawer } from "./TutorDrawer";
-import type { CanvasSectionId, ChatMessage, Lecture, LessonPanelMode } from "./types";
+import type { ArtifactBlockId, CanvasSectionId, ChatMessage, Lecture, LessonPanelMode } from "./types";
 
 export function LessonWorkspace({
   lecture,
@@ -23,6 +24,15 @@ export function LessonWorkspace({
   onTogglePanel: (mode: LessonPanelMode) => void;
 }) {
   const layoutClass = panelMode ? "lesson-layout panel-open" : "lesson-layout";
+  const [focusedArtifactId, setFocusedArtifactId] = useState<ArtifactBlockId | null>(null);
+
+  function jumpToArtifact(artifactId: ArtifactBlockId) {
+    setFocusedArtifactId(artifactId);
+    const artifact = document.getElementById(artifactId);
+    if (typeof artifact?.scrollIntoView === "function") {
+      artifact.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }
 
   return (
     <main className={layoutClass}>
@@ -34,7 +44,11 @@ export function LessonWorkspace({
           </button>
           <span>{lecture.date}</span>
         </div>
-        <LessonCanvas lecture={lecture} focusedSectionId={focusedSectionId} />
+        <LessonCanvas
+          lecture={lecture}
+          focusedSectionId={focusedSectionId}
+          focusedArtifactId={focusedArtifactId}
+        />
       </section>
 
       <aside className="rail" aria-label="Lesson controls">
@@ -70,7 +84,9 @@ export function LessonWorkspace({
       {panelMode === "chat" ? (
         <TutorDrawer messages={messages} onSendMessage={onSendMessage} />
       ) : null}
-      {panelMode === "artifacts" ? <ArtifactsPanel /> : null}
+      {panelMode === "artifacts" ? (
+        <ArtifactsPanel focusedArtifactId={focusedArtifactId} onJumpArtifact={jumpToArtifact} />
+      ) : null}
       {panelMode === "notes" ? <NotesPanel lecture={lecture} /> : null}
     </main>
   );

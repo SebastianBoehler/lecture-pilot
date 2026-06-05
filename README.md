@@ -59,7 +59,7 @@ Backend:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -e "apps/api[test]"
+pip install -e "apps/api[test,agent]"
 pytest apps/api/tests
 uvicorn lecturepilot.app:app --app-dir apps/api/src --reload
 ```
@@ -90,7 +90,9 @@ Run the API and web app in two terminals:
 
 ```bash
 source .venv/bin/activate
-OPENROUTER_API_KEY=local-preview uvicorn lecturepilot.app:app --app-dir apps/api/src --reload
+export OPENROUTER_API_KEY=...
+export LECTUREPILOT_MODEL=openrouter/z-ai/glm-5.1
+uvicorn lecturepilot.app:app --app-dir apps/api/src --reload
 ```
 
 ```bash

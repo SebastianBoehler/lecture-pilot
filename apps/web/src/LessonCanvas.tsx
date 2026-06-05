@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { useEffect } from "react";
 
-import type { CanvasSectionId, Lecture } from "./types";
+import { ArtifactBlocks } from "./ArtifactBlocks";
+import type { ArtifactBlockId, CanvasSectionId, Lecture } from "./types";
 
 type CanvasSection = {
   id: CanvasSectionId;
@@ -93,9 +94,11 @@ const sections: CanvasSection[] = [
 export function LessonCanvas({
   lecture,
   focusedSectionId,
+  focusedArtifactId,
 }: {
   lecture: Lecture;
   focusedSectionId: CanvasSectionId;
+  focusedArtifactId: ArtifactBlockId | null;
 }) {
   useEffect(() => {
     const section = document.getElementById(focusedSectionId);
@@ -133,6 +136,7 @@ export function LessonCanvas({
           </section>
         );
       })}
+      <ArtifactBlocks focusedArtifactId={focusedArtifactId} />
     </article>
   );
 }

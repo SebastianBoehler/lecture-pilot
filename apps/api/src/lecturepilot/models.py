@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from enum import StrEnum
 from typing import Any, Literal
 
@@ -85,7 +85,7 @@ class AgentTurnResult(BaseModel):
     canvas_commands: list[CanvasCommand] = Field(default_factory=list)
     artifacts: list[ArtifactCommand] = Field(default_factory=list)
     model: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class ProviderSettings(BaseModel):

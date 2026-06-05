@@ -1,12 +1,32 @@
-.artifact-actions {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.artifact-card.is-focused {
+  border-color: var(--color-accent-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent-primary), transparent 82%);
 }
 
-.artifact-actions button.is-active,
+.artifact-jump-list {
+  display: grid;
+  gap: 8px;
+}
+
+.artifact-jump-list button {
+  border: 1px solid var(--color-border-primary);
+  border-radius: 6px;
+  padding: 9px 10px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-secondary);
+  text-align: left;
+}
+
+.artifact-jump-list button.is-active,
 .kernel-buttons button:focus-visible {
   border-color: var(--color-accent-primary);
   color: var(--color-accent-primary);
   background: var(--color-bg-primary);
+}
+
+.artifact-section {
+  display: grid;
+  gap: 14px;
 }
 
 .artifact-list {
@@ -114,6 +134,12 @@
 .kernel-playground {
   display: grid;
   gap: 12px;
+}
+
+.drawer-note {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
 }
 
 .kernel-playground legend {

@@ -1,6 +1,12 @@
 export type Theme = "light" | "dark";
 export type View = "login" | "dashboard" | "lesson";
 export type LessonPanelMode = "chat" | "artifacts" | "notes";
+export type ArtifactBlockId =
+  | "artifact-summary"
+  | "artifact-quiz"
+  | "artifact-code"
+  | "artifact-diagram"
+  | "artifact-playground";
 
 export type Attendance = "unknown" | "present" | "absent";
 
