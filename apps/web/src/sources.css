@@ -1,0 +1,138 @@
+.section-sources {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+  border-top: 1px solid var(--color-border-primary);
+  padding-top: 10px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.section-sources > span,
+.workspace-block h3 {
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.source-token-list,
+.section-sources ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+
+.section-sources li {
+  list-style: none;
+}
+
+.source-token,
+.workspace-file {
+  min-width: 0;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+}
+
+.source-token {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 7px;
+}
+
+.source-button {
+  cursor: pointer;
+  font: inherit;
+}
+
+.source-button:hover,
+.workspace-file:hover,
+.workspace-file.is-selected {
+  border-color: var(--color-accent-primary);
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+}
+
+.source-token span,
+.workspace-file span {
+  flex: 0 0 auto;
+  font-weight: 800;
+}
+
+.section-sources code,
+.workspace-file code,
+.workspace-block code,
+.workspace-preview code {
+  overflow-wrap: anywhere;
+}
+
+.section-sources code {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font-size: 12px;
+}
+
+.workspace-files,
+.workspace-block ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.workspace-file {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.workspace-file code {
+  display: block;
+}
+
+.workspace-block {
+  display: grid;
+  gap: 10px;
+}
+
+.workspace-block h3 {
+  margin: 0;
+}
+
+.workspace-block ul {
+  padding-left: 0;
+}
+
+.workspace-block li {
+  list-style: none;
+}
+
+.workspace-preview {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--color-bg-secondary);
+}
+
+.workspace-preview span {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.workspace-preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+}

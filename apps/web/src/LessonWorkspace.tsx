@@ -1,10 +1,18 @@
-import { ChevronLeft, FileText, MessageSquare, TableOfContents } from "lucide-react";
-import { useState } from "react";
+import { ChevronLeft, FileText, FolderTree, MessageSquare, TableOfContents } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { LessonCanvas } from "./LessonCanvas";
 import { NotesPanel, OutlinePanel } from "./LessonSidePanels";
 import { TutorDrawer } from "./TutorDrawer";
-import type { CanvasDocument, ChatMessage, DocumentAnchorId, Lecture, LessonPanelMode } from "./types";
+import { WorkspaceFilesPanel } from "./WorkspaceFilesPanel";
+import type {
+  CanvasDocument,
+  ChatMessage,
+  DocumentAnchorId,
+  Lecture,
+  LessonPanelMode,
+  WorkspaceResource,
+} from "./types";
 
 export function LessonWorkspace({
   lecture,
@@ -12,7 +20,9 @@ export function LessonWorkspace({
   canvasError,
   focusedSectionId,
   highlightedBlockId,
+  highlightedText,
   messages,
+  navigationVersion,
   panelMode,
   onBack,
   onSendMessage,
@@ -23,7 +33,9 @@ export function LessonWorkspace({
   canvasError: string | null;
   focusedSectionId: string;
   highlightedBlockId: string | null;
+  highlightedText: string | null;
   messages: ChatMessage[];
+  navigationVersion: number;
   panelMode: LessonPanelMode | null;
   onBack: () => void;
   onSendMessage: (message: string) => Promise<void>;
@@ -31,12 +43,32 @@ export function LessonWorkspace({
 }) {
   const layoutClass = panelMode ? "lesson-layout panel-open" : "lesson-layout";
   const [activeAnchorId, setActiveAnchorId] = useState<DocumentAnchorId | null>(null);
+  const [outlinePulse, setOutlinePulse] = useState<{ id: DocumentAnchorId; version: number } | null>(
+    null,
+  );
+  const [selectedResource, setSelectedResource] = useState<WorkspaceResource | null>(null);
+
+  useEffect(() => {
+    if (!outlinePulse) {
+      return undefined;
+    }
+    const timeout = window.setTimeout(() => setOutlinePulse(null), 5000);
+    return () => window.clearTimeout(timeout);
+  }, [outlinePulse]);
 
   function jumpToAnchor(anchorId: DocumentAnchorId) {
     setActiveAnchorId(anchorId);
+    setOutlinePulse((current) => ({ id: anchorId, version: (current?.version ?? 0) + 1 }));
     const anchor = document.getElementById(anchorId);
     if (typeof anchor?.scrollIntoView === "function") {
       anchor.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }
+
+  function openWorkspaceResource(resource: WorkspaceResource) {
+    setSelectedResource(resource);
+    if (panelMode !== "files") {
+      onTogglePanel("files");
     }
   }
 
@@ -58,7 +90,12 @@ export function LessonWorkspace({
             lecture={lecture}
             focusedSectionId={focusedSectionId}
             highlightedBlockId={highlightedBlockId}
+            highlightedText={highlightedText}
             activeAnchorId={activeAnchorId}
+            navigationVersion={navigationVersion}
+            outlinePulseId={outlinePulse?.id ?? null}
+            outlinePulseVersion={outlinePulse?.version ?? 0}
+            onOpenResource={openWorkspaceResource}
           />
         ) : null}
       </section>
@@ -91,6 +128,15 @@ export function LessonWorkspace({
         >
           <FileText size={18} />
         </button>
+        <button
+          className={panelMode === "files" ? "rail-button is-active" : "rail-button"}
+          type="button"
+          aria-label="Open file workspace"
+          aria-pressed={panelMode === "files"}
+          onClick={() => onTogglePanel("files")}
+        >
+          <FolderTree size={18} />
+        </button>
       </aside>
 
       {panelMode === "chat" ? (
@@ -104,6 +150,14 @@ export function LessonWorkspace({
         />
       ) : null}
       {panelMode === "notes" ? <NotesPanel lecture={lecture} /> : null}
+      {panelMode === "files" ? (
+        <WorkspaceFilesPanel
+          canvasDocument={canvasDocument}
+          lecture={lecture}
+          selectedResource={selectedResource}
+          onSelectResource={setSelectedResource}
+        />
+      ) : null}
     </main>
   );
 }

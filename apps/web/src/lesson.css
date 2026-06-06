@@ -51,6 +51,45 @@
   background: var(--color-highlight-bg);
 }
 
+.is-outline-pulsed {
+  outline: 2px solid transparent;
+  outline-offset: 3px;
+}
+
+.is-outline-pulsed.pulse-even {
+  animation: outline-target-pulse-even 5s ease-out forwards;
+}
+
+.is-outline-pulsed.pulse-odd {
+  animation: outline-target-pulse-odd 5s ease-out forwards;
+}
+
+@keyframes outline-target-pulse-even {
+  0%,
+  18% {
+    outline-color: var(--color-accent-primary);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent-primary) 24%, transparent);
+  }
+
+  100% {
+    outline-color: transparent;
+    box-shadow: none;
+  }
+}
+
+@keyframes outline-target-pulse-odd {
+  0%,
+  18% {
+    outline-color: var(--color-accent-primary);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent-primary) 24%, transparent);
+  }
+
+  100% {
+    outline-color: transparent;
+    box-shadow: none;
+  }
+}
+
 .focus-chip {
   display: inline-flex;
   margin-bottom: 8px;

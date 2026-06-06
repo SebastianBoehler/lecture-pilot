@@ -8,6 +8,13 @@
   background: var(--color-highlight-bg);
 }
 
+.phrase-highlight {
+  border-radius: 3px;
+  padding: 0 2px;
+  background: var(--color-highlight-border);
+  color: inherit;
+}
+
 .canvas-list {
   padding-left: 22px;
 }

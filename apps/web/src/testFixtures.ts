@@ -132,7 +132,7 @@ function canvasPayload() {
           {
             id: "bayes-formula-list",
             type: "list",
-            items: ["Prior", "Likelihood", "Evidence", "Posterior"],
+            items: ["Prior", "Likelihood", "Evidence", "Posterior", "P(heads) = $\\nicefrac 12$"],
           },
           {
             id: "bayes-formula-math-1",

@@ -1,36 +1,53 @@
 import { useEffect } from "react";
-import katex from "katex";
-import "katex/dist/katex.min.css";
 
 import { apiUrl } from "./api";
-import type { CanvasBlock, CanvasDocument, CanvasSection, DocumentAnchorId, Lecture } from "./types";
+import { DisplayMath, MathText } from "./MathText";
+import { SectionSources } from "./SectionSources";
+import type {
+  CanvasBlock,
+  CanvasDocument,
+  CanvasSection,
+  DocumentAnchorId,
+  Lecture,
+  WorkspaceResource,
+} from "./types";
 
 export function LessonCanvas({
   canvasDocument,
   lecture,
   focusedSectionId,
   highlightedBlockId,
+  highlightedText,
   activeAnchorId,
+  navigationVersion,
+  outlinePulseId,
+  outlinePulseVersion,
+  onOpenResource,
 }: {
   canvasDocument: CanvasDocument;
   lecture: Lecture;
   focusedSectionId: string;
   highlightedBlockId: string | null;
+  highlightedText: string | null;
   activeAnchorId: DocumentAnchorId | null;
+  navigationVersion: number;
+  outlinePulseId: DocumentAnchorId | null;
+  outlinePulseVersion: number;
+  onOpenResource: (resource: WorkspaceResource) => void;
 }) {
   useEffect(() => {
     const section = document.getElementById(focusedSectionId);
     if (typeof section?.scrollIntoView === "function") {
       section.scrollIntoView({ behavior: "smooth", block: "center" });
     }
-  }, [focusedSectionId]);
+  }, [focusedSectionId, navigationVersion]);
 
   useEffect(() => {
     const block = highlightedBlockId ? document.getElementById(highlightedBlockId) : null;
     if (typeof block?.scrollIntoView === "function") {
       block.scrollIntoView({ behavior: "smooth", block: "center" });
     }
-  }, [highlightedBlockId]);
+  }, [highlightedBlockId, navigationVersion]);
 
   function isActive(id: DocumentAnchorId) {
     return activeAnchorId ? activeAnchorId === id : focusedSectionId === id;
@@ -47,9 +64,14 @@ export function LessonCanvas({
 
       {canvasDocument.sections.map((section) =>
         renderSection({
+          canvasDocument,
           section,
           isFocused: isActive(section.id),
           highlightedBlockId,
+          highlightedText,
+          outlinePulseId,
+          outlinePulseVersion,
+          onOpenResource,
         }),
       )}
     </article>
@@ -57,38 +79,87 @@ export function LessonCanvas({
 }
 
 function renderSection({
+  canvasDocument,
   section,
   isFocused,
   highlightedBlockId,
+  highlightedText,
+  outlinePulseId,
+  outlinePulseVersion,
+  onOpenResource,
 }: {
+  canvasDocument: CanvasDocument;
   section: CanvasSection;
   isFocused: boolean;
   highlightedBlockId: string | null;
+  highlightedText: string | null;
+  outlinePulseId: DocumentAnchorId | null;
+  outlinePulseVersion: number;
+  onOpenResource: (resource: WorkspaceResource) => void;
 }) {
+  const className = [
+    "canvas-section",
+    isFocused ? "is-focused" : "",
+    pulseClass(outlinePulseId === section.id, outlinePulseVersion),
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <section
       aria-current={isFocused ? "true" : undefined}
       aria-labelledby={`${section.id}-heading`}
-      className={isFocused ? "canvas-section is-focused" : "canvas-section"}
+      className={className}
       id={section.id}
       key={section.id}
     >
       {isFocused ? <span className="focus-chip">In focus</span> : null}
-      {section.source_ref ? <p className="section-label">{section.source_ref}</p> : null}
       <h2 id={`${section.id}-heading`}>{section.title}</h2>
-      {section.blocks.map((block) => renderBlock(block, highlightedBlockId === block.id))}
+      {section.blocks.map((block) =>
+        renderBlock(block, {
+          isHighlighted: highlightedBlockId === block.id,
+          isPulsed: outlinePulseId === block.id,
+          highlightedText,
+          outlinePulseVersion,
+        }),
+      )}
+      <SectionSources
+        canvasDocument={canvasDocument}
+        section={section}
+        onOpenResource={onOpenResource}
+      />
     </section>
   );
 }
 
-function renderBlock(block: CanvasBlock, isHighlighted: boolean) {
-  const className = isHighlighted ? "canvas-block is-highlighted" : "canvas-block";
+function renderBlock(
+  block: CanvasBlock,
+  {
+    isHighlighted,
+    isPulsed,
+    highlightedText,
+    outlinePulseVersion,
+  }: {
+    isHighlighted: boolean;
+    isPulsed: boolean;
+    highlightedText: string | null;
+    outlinePulseVersion: number;
+  },
+) {
+  const className = [
+    "canvas-block",
+    isHighlighted ? "is-highlighted" : "",
+    pulseClass(isPulsed, outlinePulseVersion),
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const phrase = isHighlighted ? highlightedText : null;
   if (block.type === "list") {
     return (
       <ul className={`${className} canvas-list`} id={block.id} key={block.id}>
         {block.items.map((item) => (
           <li key={item}>
-            <MathText text={item} />
+            <MathText highlightedText={phrase} text={item} />
           </li>
         ))}
       </ul>
@@ -107,7 +178,7 @@ function renderBlock(block: CanvasBlock, isHighlighted: boolean) {
   if (block.type === "callout") {
     return (
       <aside className={`${className} canvas-callout`} id={block.id} key={block.id}>
-        <MathText text={block.text ?? ""} />
+        <MathText highlightedText={phrase} text={block.text ?? ""} />
       </aside>
     );
   }
@@ -116,68 +187,22 @@ function renderBlock(block: CanvasBlock, isHighlighted: boolean) {
     return (
       <div
         className={`${className} canvas-math`}
-        dangerouslySetInnerHTML={{ __html: renderMath(block.text, true) }}
         id={block.id}
         key={block.id}
-      />
+      >
+        <DisplayMath expression={block.text} />
+      </div>
     );
   }
 
   return (
     <p className={className} id={block.id} key={block.id}>
-      <MathText text={block.text ?? ""} />
+      <MathText highlightedText={phrase} text={block.text ?? ""} />
     </p>
   );
 }
 
-function MathText({ text }: { text: string }) {
-  const pieces = splitInlineMath(text);
-  return (
-    <>
-      {pieces.map((piece, index) =>
-        piece.math ? (
-          <span
-            dangerouslySetInnerHTML={{ __html: renderMath(piece.text, false) }}
-            key={`${piece.text}-${index}`}
-          />
-        ) : (
-          <span key={`${piece.text}-${index}`}>{piece.text}</span>
-        ),
-      )}
-    </>
-  );
-}
-
-function splitInlineMath(text: string) {
-  const pieces: Array<{ text: string; math: boolean }> = [];
-  let cursor = 0;
-  for (const match of text.matchAll(/\$([^$]+)\$|\\\((.*?)\\\)/g)) {
-    if (match.index === undefined) {
-      continue;
-    }
-    if (match.index > cursor) {
-      pieces.push({ text: text.slice(cursor, match.index), math: false });
-    }
-    pieces.push({ text: match[1] ?? match[2] ?? "", math: true });
-    cursor = match.index + match[0].length;
-  }
-  if (cursor < text.length) {
-    pieces.push({ text: text.slice(cursor), math: false });
-  }
-  return pieces.length ? pieces : [{ text, math: false }];
-}
-
-function renderMath(expression: string, displayMode: boolean) {
-  return katex.renderToString(expression, {
-    displayMode,
-    macros: {
-      "\\D": "\\mathcal{D}",
-      "\\N": "\\mathbb{N}",
-      "\\x": "\\mathbf{x}",
-    },
-    output: "html",
-    strict: "ignore",
-    throwOnError: false,
-    trust: false,
-  });
+function pulseClass(isPulsed: boolean, version: number) {
+  if (!isPulsed) return "";
+  return `is-outline-pulsed pulse-${version % 2 === 0 ? "even" : "odd"}`;
 }

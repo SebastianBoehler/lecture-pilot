@@ -54,6 +54,8 @@ function App() {
   const [canvasError, setCanvasError] = useState<string | null>(null);
   const [focusedSectionId, setFocusedSectionId] = useState("bayesian-decision-theory-the-aim");
   const [highlightedBlockId, setHighlightedBlockId] = useState<string | null>(null);
+  const [highlightedText, setHighlightedText] = useState<string | null>(null);
+  const [navigationVersion, setNavigationVersion] = useState(0);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
 
   useEffect(() => {
@@ -85,9 +87,12 @@ function App() {
       }
       if (command.type === "focus_section" && command.section_id) {
         setFocusedSectionId(command.section_id);
+        setNavigationVersion((current) => current + 1);
       }
       if (command.type === "highlight_span" && command.span_id) {
         setHighlightedBlockId(command.span_id);
+        setHighlightedText(command.highlight_text ?? null);
+        setNavigationVersion((current) => current + 1);
       }
     }
 
@@ -108,6 +113,8 @@ function App() {
     setPanelMode(null);
     setFocusedSectionId("bayesian-decision-theory-the-aim");
     setHighlightedBlockId(null);
+    setHighlightedText(null);
+    setNavigationVersion((current) => current + 1);
     setCanvasDocument(null);
     setCanvasError(null);
     setMessages(initialMessages);
@@ -121,6 +128,8 @@ function App() {
     setCanvasError(null);
     setFocusedSectionId("bayesian-decision-theory-the-aim");
     setHighlightedBlockId(null);
+    setHighlightedText(null);
+    setNavigationVersion((current) => current + 1);
     setMessages(initialMessages);
 
     try {
@@ -219,8 +228,10 @@ function App() {
           canvasError={canvasError}
           focusedSectionId={focusedSectionId}
           highlightedBlockId={highlightedBlockId}
+          highlightedText={highlightedText}
           lecture={selectedLecture}
           messages={messages}
+          navigationVersion={navigationVersion}
           panelMode={panelMode}
           onBack={() => {
             setView("dashboard");
@@ -258,7 +269,9 @@ function toolTagsFromResult(result: AgentTurnResult): string[] {
       return [`artifact: ${command.artifact_id}`];
     }
     if (command.type === "highlight_span" && command.span_id) {
-      return [`highlight: ${command.span_id}`];
+      return command.highlight_text
+        ? [`highlight: ${command.span_id}`, `phrase: ${command.highlight_text}`]
+        : [`highlight: ${command.span_id}`];
     }
     if ((command.type === "append_section" || command.type === "update_section") && command.section_id) {
       return [`canvas: ${command.section_id}`];

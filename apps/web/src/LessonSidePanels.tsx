@@ -15,35 +15,40 @@ export function OutlinePanel({
         <h2>Document outline</h2>
         <nav className="outline-tree" aria-label="Lesson document outline">
           {canvasDocument ? (
-            canvasDocument.sections.map((section, index) => (
-              <section className="outline-group" key={section.id}>
-              {renderOutlineNode({
-                id: section.id,
-                title: section.title,
-                kind: "section",
-                activeAnchorId,
-                onJumpAnchor,
-                index,
-                variant: "section",
-              })}
-              <div
-                aria-label={`${section.title} related items`}
-                className="outline-children"
-                role="group"
-              >
-                {section.blocks.map((block) =>
-                  renderOutlineNode({
-                    id: block.id,
-                    title: blockTitle(block),
-                    kind: block.type,
+            canvasDocument.sections.map((section, index) => {
+              const interestBlocks = outlineInterestBlocks(section.blocks);
+              return (
+                <section className="outline-group" key={section.id}>
+                  {renderOutlineNode({
+                    id: section.id,
+                    title: section.title,
+                    kind: "section",
                     activeAnchorId,
                     onJumpAnchor,
-                    variant: "child",
-                  }),
-                )}
-              </div>
-              </section>
-            ))
+                    index,
+                    variant: "section",
+                  })}
+                  {interestBlocks.length ? (
+                    <div
+                      aria-label={`${section.title} related items`}
+                      className="outline-children"
+                      role="group"
+                    >
+                      {interestBlocks.map((block) =>
+                        renderOutlineNode({
+                          id: block.id,
+                          title: blockTitle(block),
+                          kind: outlineKind(block),
+                          activeAnchorId,
+                          onJumpAnchor,
+                          variant: "child",
+                        }),
+                      )}
+                    </div>
+                  ) : null}
+                </section>
+              );
+            })
           ) : (
             <p className="drawer-note">Canvas loading...</p>
           )}
@@ -100,13 +105,28 @@ function blockTitle(block: CanvasBlock) {
     return block.caption;
   }
   if (block.type === "list") {
-    return "Key points";
-  }
-  if (block.type === "math") {
-    return "Formula";
+    return "Key ideas";
   }
   if (block.text) {
     return outlineTextExcerpt(block.text);
+  }
+  return block.type;
+}
+
+function outlineInterestBlocks(blocks: CanvasBlock[]) {
+  return blocks.filter(isOutlineInterest).slice(0, 2);
+}
+
+function isOutlineInterest(block: CanvasBlock) {
+  return block.type === "asset" || block.type === "callout" || block.type === "list";
+}
+
+function outlineKind(block: CanvasBlock) {
+  if (block.type === "asset") {
+    return "figure";
+  }
+  if (block.type === "list") {
+    return "key point";
   }
   return block.type;
 }

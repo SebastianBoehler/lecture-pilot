@@ -1,6 +1,6 @@
 export type Theme = "light" | "dark";
 export type View = "login" | "dashboard" | "lesson" | "profile";
-export type LessonPanelMode = "chat" | "outline" | "notes";
+export type LessonPanelMode = "chat" | "outline" | "notes" | "files";
 export type CanvasSectionId = string;
 export type DocumentAnchorId = string;
 
@@ -63,4 +63,12 @@ export type ChatMessage = {
   role: "agent" | "user";
   content: string;
   toolTags?: string[];
+};
+
+export type WorkspaceResource = {
+  id: string;
+  kind: "canvas" | "source" | "asset";
+  label: string;
+  path: string;
+  url?: string | null;
 };

@@ -11,12 +11,14 @@ export function Dashboard({
   onOpen: (lecture: Lecture) => void;
   onSetAttendance: (lectureId: string, attendance: Attendance) => void;
 }) {
+  const studentLabel = session?.email ?? session?.username ?? "student";
+
   return (
     <main className="dashboard">
       <section className="dashboard-header">
-        <p className="section-label">Sommer 2026</p>
-        <h1>Grundlagen des Maschinellen Lernens</h1>
-        <p>Prof. Georg Martius</p>
+        <p className="section-label">Student workspace</p>
+        <h1>Welcome, {studentLabel}</h1>
+        <p>Choose an AI tutor workspace or continue with a past lecture.</p>
       </section>
 
       {session ? (

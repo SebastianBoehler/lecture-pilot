@@ -71,6 +71,10 @@ describe("LecturePilot app shell", () => {
     await user.click(screen.getByRole("button", { name: /preview local demo/i }));
 
     expect(screen.getByText(/connected as local-demo/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /welcome, local-demo/i, level: 1 })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /grundlagen des maschinellen lernens/i, level: 1 }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /available lectures/i })).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -110,6 +114,7 @@ describe("LecturePilot app shell", () => {
       within(outline).getByRole("button", { name: /bayes formula and conditional probability/i }),
     ).toBeInTheDocument();
     expect(within(outline).getByRole("button", { name: /ch3\/spam-dall-e.jpg/i })).toBeInTheDocument();
+    expect(within(outline).queryByRole("button", { name: /^formula$/i })).not.toBeInTheDocument();
     expect(
       within(outline).getByRole("group", { name: /decision making under uncertainty related items/i }),
     ).toBeInTheDocument();
@@ -117,9 +122,10 @@ describe("LecturePilot app shell", () => {
 
     await user.click(screen.getByLabelText(/open lecture notes panel/i));
 
-    expect(screen.getByRole("heading", { name: /source notes/i })).toBeInTheDocument();
-    expect(screen.getByText(/official latex source/i)).toBeInTheDocument();
-    expect(screen.getByText(/lecture03-eng\.tex/i)).toBeInTheDocument();
+    const notesPanel = screen.getByRole("complementary", { name: /lecture notes panel/i });
+    expect(within(notesPanel).getByRole("heading", { name: /source notes/i })).toBeInTheDocument();
+    expect(within(notesPanel).getByText(/official latex source/i)).toBeInTheDocument();
+    expect(within(notesPanel).getByText(/lecture03-eng\.tex/i)).toBeInTheDocument();
   });
 
   it("renders professor course canvas blocks instead of old demo artifacts", async () => {
@@ -136,7 +142,8 @@ describe("LecturePilot app shell", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /ch3\/spam-dall-e.jpg/i })).toBeInTheDocument();
     expect(document.querySelector(".canvas-math .katex")).not.toBeNull();
-    expect(screen.queryByText(/lecture03-eng\.tex/i)).not.toBeInTheDocument();
+    expect(document.body.textContent).not.toContain("\\nicefrac");
+    expect(screen.getAllByText(/lecture03-eng\.tex/i).length).toBeGreaterThan(0);
 
     await user.click(screen.getByLabelText(/open document outline/i));
     const outline = screen.getByRole("navigation", { name: /lesson document outline/i });

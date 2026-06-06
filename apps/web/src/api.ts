@@ -4,6 +4,7 @@ export type CanvasCommand = {
   type: "focus_section" | "highlight_span" | "open_artifact" | "append_section" | "update_section";
   section_id?: string | null;
   span_id?: string | null;
+  highlight_text?: string | null;
   artifact_id?: string | null;
   section?: CanvasSection | null;
 };
