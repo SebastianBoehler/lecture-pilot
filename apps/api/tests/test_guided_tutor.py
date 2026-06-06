@@ -51,7 +51,8 @@ async def test_local_preview_tutor_keeps_definition_only_answer_pending(monkeypa
         )
     )
 
-    assert result.canvas_commands[0].section_id == "bayesian-decision-theory-the-aim"
+    assert result.canvas_commands[0].section_id == "bayes-formula"
+    assert result.canvas_commands[1].highlight_text == "probability"
     assert result.quality_gate is not None
     assert result.quality_gate.status == QualityGateStatus.NEEDS_EVIDENCE
     assert "verification mode" in result.message.lower()
@@ -79,7 +80,7 @@ async def test_local_preview_tutor_marks_worked_bayes_answer_passed(monkeypatch)
         )
     )
 
-    assert result.canvas_commands[0].section_id == "bayes-rule-to-sum-up"
+    assert result.canvas_commands[0].section_id == "losses-and-risks"
     assert result.quality_gate is not None
     assert result.quality_gate.status == QualityGateStatus.PASSED
     assert "gate passed" in result.message.lower()
@@ -107,6 +108,30 @@ async def test_local_preview_tutor_appends_personalized_canvas_section(monkeypat
     assert result.canvas_commands[1].section_id == "student-soccer-bayes-example"
     assert result.quality_gate is not None
     assert result.quality_gate.status == QualityGateStatus.NEEDS_EVIDENCE
+
+
+async def test_local_preview_tutor_routes_risk_questions_to_risk_section(monkeypatch) -> None:
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    harness = LecturePilotHarness()
+
+    result = await harness.run_turn(
+        AgentTurnInput(
+            user_id="local-preview-user",
+            course_id="martius-ml",
+            lecture_id="lecture-03",
+            attendance=AttendanceStatus.ABSENT,
+            message="False positives and false negatives have different costs, so risk changes the threshold.",
+            canvas_state=CanvasState(focused_section_id="bayes-formula"),
+        )
+    )
+
+    assert result.canvas_commands[0] == CanvasCommand(
+        type="focus_section",
+        section_id="losses-and-risks",
+    )
+    assert result.canvas_commands[1].section_id == "losses-and-risks"
+    assert result.canvas_commands[1].span_id == "losses-and-risks-list"
+    assert result.canvas_commands[1].highlight_text == "costly"
 
 
 def test_model_prompt_requires_guided_quality_gate_turns() -> None:

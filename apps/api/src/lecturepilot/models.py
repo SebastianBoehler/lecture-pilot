@@ -112,6 +112,7 @@ class CanvasCommand(BaseModel):
     ]
     section_id: str | None = None
     span_id: str | None = None
+    highlight_text: str | None = Field(default=None, max_length=160)
     artifact_id: str | None = None
     section: CanvasSection | None = None
 

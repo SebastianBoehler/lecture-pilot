@@ -17,6 +17,13 @@ LOCAL_PREVIEW_USER_ID = "local-preview-user"
 _BAYES_GATE_ID = "bayes-decision-check"
 
 
+@dataclass(frozen=True)
+class TopicTarget:
+    section_id: str
+    span_id: str
+    highlight_text: str
+
+
 def run_local_preview_turn(turn: AgentTurnInput) -> AgentTurnResult:
     learning_mode = _learning_mode(turn)
     if _asks_for_soccer_example(turn.message):
@@ -29,7 +36,12 @@ def run_local_preview_turn(turn: AgentTurnInput) -> AgentTurnResult:
             canvas_commands=[
                 CanvasCommand(type="append_section", section_id=section.id, section=section),
                 CanvasCommand(type="focus_section", section_id=section.id),
-                CanvasCommand(type="highlight_span", section_id=section.id, span_id=f"{section.id}-p-1"),
+                CanvasCommand(
+                    type="highlight_span",
+                    section_id=section.id,
+                    span_id=f"{section.id}-p-1",
+                    highlight_text="evidence X",
+                ),
             ],
             quality_gate=QualityGateDecision(
                 gate_id=_BAYES_GATE_ID,
@@ -45,14 +57,15 @@ def run_local_preview_turn(turn: AgentTurnInput) -> AgentTurnResult:
         return AgentTurnResult(
             message=(
                 "Gate passed: you connected Bayes terms to the decision and risk. I focused "
-                "the decision-rule part so the next step is to apply it to one example."
+                "the risk-decision part so the next step is to apply it to one example."
             ),
             canvas_commands=[
-                CanvasCommand(type="focus_section", section_id="bayes-rule-to-sum-up"),
+                CanvasCommand(type="focus_section", section_id="losses-and-risks"),
                 CanvasCommand(
                     type="highlight_span",
-                    section_id="bayes-rule-to-sum-up",
-                    span_id="bayes-rule-to-sum-up-p-1",
+                    section_id="losses-and-risks",
+                    span_id="losses-and-risks-list",
+                    highlight_text="decision",
                 ),
             ],
             quality_gate=QualityGateDecision(
@@ -65,17 +78,19 @@ def run_local_preview_turn(turn: AgentTurnInput) -> AgentTurnResult:
         )
 
     missing = ", ".join(evidence.missing_labels)
+    target = _topic_target(turn.message)
     return AgentTurnResult(
         message=(
             f"{learning_mode} Gate pending: explain how Bayes' formula turns evidence into a posterior, "
             f"then say how costs or risk change the final classifier decision. Missing evidence: {missing}."
         ),
         canvas_commands=[
-            CanvasCommand(type="focus_section", section_id="bayesian-decision-theory-the-aim"),
+            CanvasCommand(type="focus_section", section_id=target.section_id),
             CanvasCommand(
                 type="highlight_span",
-                section_id="bayesian-decision-theory-the-aim",
-                span_id="bayesian-decision-theory-the-aim-p-1",
+                section_id=target.section_id,
+                span_id=target.span_id,
+                highlight_text=target.highlight_text,
             ),
         ],
         quality_gate=QualityGateDecision(
@@ -92,6 +107,26 @@ def run_local_preview_turn(turn: AgentTurnInput) -> AgentTurnResult:
 
 def _mentions_any(text: str, needles: tuple[str, ...]) -> bool:
     return any(needle in text for needle in needles)
+
+
+def _topic_target(message: str) -> TopicTarget:
+    normalized = message.lower()
+    if _mentions_any(
+        normalized,
+        ("risk", "cost", "loss", "false positive", "false negative", "threshold", "reject"),
+    ):
+        return TopicTarget("losses-and-risks", "losses-and-risks-list", "costly")
+    if _mentions_any(normalized, ("spam", "naive", "filter", "independence")):
+        return TopicTarget("naive-bayes-classifiers", "naive-bayes-classifiers-p-1", "Naive Bayes")
+    if _mentions_any(normalized, ("decision", "classif", "predict", "choose")):
+        return TopicTarget("losses-and-risks", "losses-and-risks-list", "decision")
+    if _mentions_any(normalized, ("posterior", "prior", "likelihood", "evidence", "formula", "p(c|x")):
+        return TopicTarget("bayes-formula", "bayes-formula-list", "probability")
+    return TopicTarget(
+        "bayesian-decision-theory-the-aim",
+        "bayesian-decision-theory-the-aim-p-1",
+        "decisions",
+    )
 
 
 @dataclass(frozen=True)

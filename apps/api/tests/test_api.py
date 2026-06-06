@@ -119,6 +119,7 @@ def test_agent_turn_focuses_bayes_section(monkeypatch) -> None:
         "type": "focus_section",
         "section_id": "bayes-formula",
         "span_id": None,
+        "highlight_text": None,
         "artifact_id": None,
         "section": None,
     }
