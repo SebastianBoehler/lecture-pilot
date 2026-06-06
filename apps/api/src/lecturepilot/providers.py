@@ -23,6 +23,8 @@ _DEFAULT_CAPABILITIES = {
     ProviderCapability.STRUCTURED_JSON,
 }
 
+DEFAULT_MODEL = "gemini/gemini-2.5-flash-lite"
+
 
 @dataclass(frozen=True)
 class ProviderRegistry:
@@ -30,7 +32,7 @@ class ProviderRegistry:
 
     @classmethod
     def from_env(cls, model: str | None = None) -> "ProviderRegistry":
-        configured = model or os.getenv("LECTUREPILOT_MODEL") or "openrouter/z-ai/glm-5.1"
+        configured = model or os.getenv("LECTUREPILOT_MODEL") or DEFAULT_MODEL
         return cls(model=configured)
 
     @property
@@ -55,4 +57,3 @@ class ProviderRegistry:
             api_key_env=key_env,
             capabilities=set(_DEFAULT_CAPABILITIES),
         )
-

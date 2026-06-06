@@ -9,6 +9,7 @@ from lecturepilot.models import (
     Course,
     TuebingenLoginResult,
 )
+from lecturepilot.providers import DEFAULT_MODEL
 from lecturepilot.tuebingen_adapter import TuebingenIntegrationUnavailable
 
 
@@ -69,8 +70,8 @@ def test_tuebingen_login_reports_missing_wrapper_dependency() -> None:
 
 
 def test_agent_turn_requires_configured_provider(monkeypatch) -> None:
-    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
-    monkeypatch.setenv("LECTUREPILOT_MODEL", "openrouter/z-ai/glm-5.1")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
     client = TestClient(create_app())
 
     response = client.post(
@@ -86,12 +87,12 @@ def test_agent_turn_requires_configured_provider(monkeypatch) -> None:
     )
 
     assert response.status_code == 503
-    assert "OPENROUTER_API_KEY" in response.json()["detail"]
+    assert "GEMINI_API_KEY" in response.json()["detail"]
 
 
 def test_agent_turn_focuses_bayes_section(monkeypatch) -> None:
-    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
-    monkeypatch.setenv("LECTUREPILOT_MODEL", "openrouter/z-ai/glm-5.1")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
     app = create_app()
     app.state.agent_harness = _FakeHarness(
         message="A real model can answer this as a conversation.",
@@ -113,7 +114,7 @@ def test_agent_turn_focuses_bayes_section(monkeypatch) -> None:
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["model"] == "openrouter/z-ai/glm-5.1"
+    assert payload["model"] == DEFAULT_MODEL
     assert payload["canvas_commands"][0] == {
         "type": "focus_section",
         "section_id": "bayes-formula",
@@ -125,8 +126,8 @@ def test_agent_turn_focuses_bayes_section(monkeypatch) -> None:
 
 
 def test_agent_turn_focuses_learning_goals(monkeypatch) -> None:
-    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
-    monkeypatch.setenv("LECTUREPILOT_MODEL", "openrouter/z-ai/glm-5.1")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
     app = create_app()
     app.state.agent_harness = _FakeHarness(
         message="The Bayes formula section came from the model client.",
@@ -153,8 +154,8 @@ def test_agent_turn_focuses_learning_goals(monkeypatch) -> None:
 
 
 def test_agent_turn_focuses_skill_check(monkeypatch) -> None:
-    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
-    monkeypatch.setenv("LECTUREPILOT_MODEL", "openrouter/z-ai/glm-5.1")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
     app = create_app()
     app.state.agent_harness = _FakeHarness(
         message="The model selected the skill check.",
@@ -181,8 +182,8 @@ def test_agent_turn_focuses_skill_check(monkeypatch) -> None:
 
 
 def test_agent_turn_reports_model_execution_error(monkeypatch) -> None:
-    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
-    monkeypatch.setenv("LECTUREPILOT_MODEL", "openrouter/z-ai/glm-5.1")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
     app = create_app()
     app.state.agent_harness = _FailingHarness()
     client = TestClient(app)
@@ -234,7 +235,7 @@ class _FakeHarness:
         return AgentTurnResult(
             message=self.message,
             canvas_commands=[CanvasCommand(type="focus_section", section_id=self.section_id)],
-            model="openrouter/z-ai/glm-5.1",
+            model=DEFAULT_MODEL,
         )
 
 

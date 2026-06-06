@@ -156,8 +156,7 @@ function App() {
           <span>LecturePilot</span>
         </button>
         <div className="top-status">
-          <span>OpenRouter GLM 5.1</span>
-          <span>Local workspace</span>
+          <span>Course workspace</span>
           {session ? (
             <div className="top-actions" aria-label="Account controls">
               <button

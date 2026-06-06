@@ -8,13 +8,13 @@ from lecturepilot.models import (
     ProviderCapability,
     ProviderSettings,
 )
-from lecturepilot.providers import ProviderRegistry
+from lecturepilot.providers import DEFAULT_MODEL, ProviderRegistry
 
 
 async def test_harness_uses_model_client_for_agent_turn(monkeypatch) -> None:
-    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     harness = LecturePilotHarness(
-        provider_registry=ProviderRegistry.from_env(model="openrouter/z-ai/glm-5.1"),
+        provider_registry=ProviderRegistry.from_env(model=DEFAULT_MODEL),
         model_client=_FakeModelClient(),
     )
 
@@ -33,7 +33,7 @@ async def test_harness_uses_model_client_for_agent_turn(monkeypatch) -> None:
     assert result.canvas_commands == [
         CanvasCommand(type="focus_section", section_id="bayes-formula")
     ]
-    assert result.model == "openrouter/z-ai/glm-5.1"
+    assert result.model == DEFAULT_MODEL
 
 
 class _FakeModelClient:

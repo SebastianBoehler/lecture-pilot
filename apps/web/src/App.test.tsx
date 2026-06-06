@@ -18,6 +18,8 @@ describe("LecturePilot app shell", () => {
     expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/term/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /available lectures/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/course workspace/i)).toBeInTheDocument();
+    expect(screen.queryByText(/openrouter glm/i)).not.toBeInTheDocument();
   });
 
   it("logs in through the local backend and shows authenticated courses", async () => {

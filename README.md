@@ -34,7 +34,7 @@ This repository is intentionally small but runnable:
 - FastAPI backend with health, course, lecture, and agent-turn endpoints.
 - Strict lecture unlock policy.
 - Typed workspace file policy.
-- Provider capability checks with OpenRouter GLM 5.1 as the default model.
+- Provider capability checks with Gemini Flash-Lite as the default text model.
 - Local preview tutor that leads a deterministic quality-gate loop without a
   provider key.
 - React/Vite frontend with dashboard and focused lesson workspace.
@@ -116,8 +116,8 @@ Run the API and web app in two terminals:
 
 ```bash
 source .venv/bin/activate
-export OPENROUTER_API_KEY=...
-export LECTUREPILOT_MODEL=openrouter/z-ai/glm-5.1
+export GEMINI_API_KEY=...
+export LECTUREPILOT_MODEL=gemini/gemini-2.5-flash-lite
 uvicorn lecturepilot.app:app --app-dir apps/api/src --reload
 ```
 
@@ -140,8 +140,8 @@ backend after configuring a provider key.
 Copy `.env.example` to `.env` and set one provider key.
 
 ```bash
-OPENROUTER_API_KEY=...
-LECTUREPILOT_MODEL=openrouter/z-ai/glm-5.1
+GEMINI_API_KEY=...
+LECTUREPILOT_MODEL=gemini/gemini-2.5-flash-lite
 ```
 
 The app is designed so provider routing sits behind the agent harness contract.

@@ -10,7 +10,7 @@ from lecturepilot.models import (
 
 
 async def test_local_preview_tutor_runs_without_provider_key(monkeypatch) -> None:
-    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     harness = LecturePilotHarness()
 
     result = await harness.run_turn(
@@ -37,7 +37,7 @@ async def test_local_preview_tutor_runs_without_provider_key(monkeypatch) -> Non
 
 
 async def test_local_preview_tutor_keeps_definition_only_answer_pending(monkeypatch) -> None:
-    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     harness = LecturePilotHarness()
 
     result = await harness.run_turn(
@@ -61,7 +61,7 @@ async def test_local_preview_tutor_keeps_definition_only_answer_pending(monkeypa
 
 
 async def test_local_preview_tutor_marks_worked_bayes_answer_passed(monkeypatch) -> None:
-    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     harness = LecturePilotHarness()
 
     result = await harness.run_turn(
@@ -86,7 +86,7 @@ async def test_local_preview_tutor_marks_worked_bayes_answer_passed(monkeypatch)
 
 
 async def test_local_preview_tutor_appends_personalized_canvas_section(monkeypatch) -> None:
-    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     harness = LecturePilotHarness()
 
     result = await harness.run_turn(
