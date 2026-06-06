@@ -13,7 +13,7 @@ export function OutlinePanel({
       <div className="drawer-section">
         <h2>Document outline</h2>
         <p className="drawer-note">
-          Navigate the lesson document by sections, source packets, checks, and embedded media.
+          Navigate the lesson document by concepts, checks, and embedded learning artifacts.
         </p>
         <nav className="outline-list" aria-label="Lesson document outline">
           {documentOutlineItems.map((item) => (

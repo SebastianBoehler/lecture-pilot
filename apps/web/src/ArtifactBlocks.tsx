@@ -13,30 +13,6 @@ function blockClass(isFocused: boolean) {
   return isFocused ? "artifact-card is-focused" : "artifact-card";
 }
 
-export function SourcePacketBlock({ focused }: FocusProps) {
-  return (
-    <article
-      aria-current={focused ? "true" : undefined}
-      aria-labelledby="source-packet-heading"
-      className={blockClass(focused)}
-      id="source-packet"
-    >
-      <h2 id="source-packet-heading">Course source packet</h2>
-      <p>
-        This lesson document is assembled from the lecture LaTeX notes, a figure asset, a short
-        code cell, and one video selected by the media discovery pipeline. Private course files
-        stay outside git.
-      </p>
-      <div className="source-grid">
-        <span>notes/lecture-03-kernels.tex</span>
-        <span>figures/feature-map-lift.pdf</span>
-        <span>snippets/rbf-kernel.js</span>
-        <span>video/cs229-kernels.discovery.json</span>
-      </div>
-    </article>
-  );
-}
-
 export function ConceptCounterBlock({ focused }: FocusProps) {
   const [count, setCount] = useState(2);
 

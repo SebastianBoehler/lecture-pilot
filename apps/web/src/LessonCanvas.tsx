@@ -8,7 +8,6 @@ import {
   KernelPlayground,
   ProfessorVideoBlock,
   QuizBlock,
-  SourcePacketBlock,
   SummaryBlock,
 } from "./ArtifactBlocks";
 import type { CanvasSectionId, DocumentAnchorId, Lecture } from "./types";
@@ -127,11 +126,10 @@ export function LessonCanvas({
       <h1>{lecture.title}</h1>
       <p className="lead">
         The official notes introduce a feature-map view first, then use it to motivate kernels as
-        inner products in a lifted space. This document combines notes, figures, code, video, and
-        checks into one navigable teaching surface.
+        inner products in a lifted space. This document combines explanations, figures, code,
+        video, and checks into one navigable teaching surface.
       </p>
 
-      <SourcePacketBlock focused={isActive("source-packet")} />
       {renderSection(sections["learning-goals"], isActive("learning-goals"))}
       <ConceptCounterBlock focused={isActive("artifact-counter")} />
       {renderSection(sections["feature-maps"], isActive("feature-maps"))}

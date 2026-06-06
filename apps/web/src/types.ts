@@ -8,7 +8,6 @@ export type CanvasSectionId =
   | "skill-check"
   | "failure-mode";
 export type ArtifactBlockId =
-  | "source-packet"
   | "artifact-counter"
   | "artifact-summary"
   | "artifact-quiz"

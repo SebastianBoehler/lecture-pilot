@@ -119,7 +119,7 @@ describe("LecturePilot app shell", () => {
     await logIn(user);
     await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
 
-    expect(screen.getByRole("heading", { name: /course source packet/i })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /course source packet/i })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /generated summary/i })).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /feature map diagram/i })).toBeInTheDocument();
     expect(screen.getByTitle(/stanford cs229 kernels video/i)).toBeInTheDocument();
@@ -137,6 +137,10 @@ describe("LecturePilot app shell", () => {
     expect(screen.getByText(/smooth boundary/i)).toBeInTheDocument();
 
     await user.click(screen.getByLabelText(/open document outline/i));
+    const outline = screen.getByRole("navigation", { name: /lesson document outline/i });
+
+    expect(within(outline).queryByRole("button", { name: /course source packet/i })).not.toBeInTheDocument();
+
     await user.click(screen.getByRole("button", { name: /feature map diagram/i }));
 
     expect(screen.getByRole("region", { name: /feature map diagram/i })).toHaveAttribute(
