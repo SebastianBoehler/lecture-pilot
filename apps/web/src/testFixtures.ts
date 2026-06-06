@@ -101,7 +101,7 @@ function canvasPayload() {
     source_kind: "latex",
     source_ref: "Lecture03-eng.tex",
     workspace_path:
-      ".lecturepilot/workspaces/students/hash/courses/martius-ml/lectures/lecture-03/canvas.json",
+      ".lecturepilot/workspaces/students/hash/courses/martius-ml/lectures/lecture-03/canvas/index.md",
     sections: [
       {
         id: "bayesian-decision-theory-the-aim",

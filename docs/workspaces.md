@@ -8,7 +8,15 @@ course source root
   images/...
 
 .lecturepilot/workspaces
-  students/<hashed-user-id>/courses/<course-id>/lectures/<lecture-id>/canvas.json
+  students/<hashed-user-id>/courses/<course-id>/lectures/<lecture-id>/
+    canvas/
+      index.md
+      sections/
+        01-decision-making-under-uncertainty.md
+        02-bayes-formula.md
+      student/
+        90-student-soccer-bayes-example.md
+    canvas.json
 ```
 
 The course source root is configured with `LECTUREPILOT_COURSE_MATERIAL_ROOT`.
@@ -18,12 +26,16 @@ workspace is gitignored.
 
 ## Canvas Import
 
-On first open, the API imports the lecture LaTeX into a typed `CanvasDocument`.
+On first open, the API imports the lecture LaTeX into Markdown section files.
 The importer does not expose every Beamer frame as a page. It groups related
 frames into study sections, keeps official figures and formulas, and writes the
-result into the student's workspace. Later agent commands can append or update
-sections, so personalized explanations, examples, diagrams, or quiz blocks
-remain scoped to that learner.
+result into `canvas/sections/*.md`. The API then compiles the Markdown directory
+into the typed `CanvasDocument` that the web UI renders.
+
+Later agent commands append or update files in `canvas/student/*.md`, so
+personalized explanations, examples, diagrams, or quiz blocks remain scoped to
+that learner. `canvas.json` is only a compiled cache and API artifact; it is not
+the editable source of truth.
 
 The current implementation imports Lecture 03 from `Lecture03-eng.tex` and
 serves only browser-safe image assets from the course material root. The web
