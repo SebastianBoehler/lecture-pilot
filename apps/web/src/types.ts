@@ -70,5 +70,6 @@ export type WorkspaceResource = {
   kind: "canvas" | "source" | "asset";
   label: string;
   path: string;
+  detail?: string | null;
   url?: string | null;
 };

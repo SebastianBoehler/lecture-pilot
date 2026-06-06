@@ -129,11 +129,27 @@ function WorkspacePreview({ selectedResource }: { selectedResource: WorkspaceRes
   if (!selectedResource) return <p className="drawer-note">Select a file to preview it here.</p>;
   return (
     <section className="workspace-preview" aria-label="Selected file preview">
-      <span>{selectedResource.kind}</span>
+      <span>{previewLabel(selectedResource.kind)}</span>
       <strong>{selectedResource.label}</strong>
-      {selectedResource.url ? <img alt={selectedResource.label} src={apiUrl(selectedResource.url)} /> : <code>{selectedResource.path}</code>}
+      {selectedResource.detail ? (
+        <p className="workspace-preview-trace">
+          <span>Trace target</span>
+          <strong>{selectedResource.detail}</strong>
+        </p>
+      ) : null}
+      {selectedResource.url ? (
+        <img alt={selectedResource.label} src={apiUrl(selectedResource.url)} />
+      ) : (
+        <code>{selectedResource.path}</code>
+      )}
     </section>
   );
+}
+
+function previewLabel(kind: WorkspaceResource["kind"]) {
+  if (kind === "source") return "Source trace";
+  if (kind === "asset") return "Asset preview";
+  return "Canvas file";
 }
 
 function assetResource(asset: CanvasBlock): WorkspaceResource {

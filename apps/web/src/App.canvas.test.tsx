@@ -103,6 +103,31 @@ describe("LecturePilot canvas interactions", () => {
     expect(within(filePanel).getByRole("button", { name: /Ch3\/spam-DALL-E\.jpg/i })).toBeInTheDocument();
   });
 
+  it("opens inline source markers as traced source previews", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal("fetch", mockLoginFetch());
+    render(<App />);
+
+    await logIn(user);
+    await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
+
+    const bayesSection = screen.getByRole("region", {
+      name: /bayes formula and conditional probability/i,
+    });
+    await user.click(
+      within(bayesSection).getAllByRole("button", {
+        name: /open source 1 for bayes formula and conditional probability/i,
+      })[0],
+    );
+
+    const filePanel = screen.getByRole("complementary", { name: /file workspace panel/i });
+    const preview = within(filePanel).getByRole("region", { name: /selected file preview/i });
+    expect(within(preview).getByText(/source trace/i)).toBeInTheDocument();
+    expect(within(preview).getByText(/trace target/i)).toBeInTheDocument();
+    expect(within(preview).getByText(/frames 6, 7, 8, 9/i)).toBeInTheDocument();
+    expect(within(filePanel).getAllByText(/Lecture03-eng\.tex/i).length).toBeGreaterThan(0);
+  });
+
   it("opens source assets inside the workspace drawer instead of navigating away", async () => {
     const user = userEvent.setup();
     vi.stubGlobal("fetch", mockLoginFetch());
