@@ -1,0 +1,52 @@
+.canvas-block {
+  margin: 12px 0 0;
+}
+
+.canvas-block.is-highlighted {
+  border-left: 3px solid var(--color-accent-primary);
+  padding: 10px 14px;
+  background: var(--color-highlight-bg);
+}
+
+.canvas-list {
+  padding-left: 22px;
+}
+
+.canvas-list li {
+  margin: 6px 0;
+}
+
+.canvas-asset {
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  padding: 10px;
+  background: var(--color-bg-secondary);
+}
+
+.canvas-asset img {
+  display: block;
+  max-width: 100%;
+  max-height: 360px;
+  object-fit: contain;
+}
+
+.canvas-asset figcaption {
+  margin-top: 8px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.canvas-callout {
+  border-left: 3px solid var(--color-highlight-border);
+  padding: 10px 14px;
+  background: var(--color-highlight-bg);
+  font-weight: 700;
+}
+
+.canvas-math {
+  overflow-x: auto;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  padding: 14px;
+  background: var(--color-bg-primary);
+}

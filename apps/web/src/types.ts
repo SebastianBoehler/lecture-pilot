@@ -1,21 +1,8 @@
 export type Theme = "light" | "dark";
 export type View = "login" | "dashboard" | "lesson" | "profile";
 export type LessonPanelMode = "chat" | "outline" | "notes";
-export type CanvasSectionId =
-  | "learning-goals"
-  | "feature-maps"
-  | "kernel-trick"
-  | "skill-check"
-  | "failure-mode";
-export type ArtifactBlockId =
-  | "artifact-counter"
-  | "artifact-summary"
-  | "artifact-quiz"
-  | "artifact-code"
-  | "artifact-diagram"
-  | "artifact-playground"
-  | "artifact-video";
-export type DocumentAnchorId = CanvasSectionId | ArtifactBlockId;
+export type CanvasSectionId = string;
+export type DocumentAnchorId = string;
 
 export type Attendance = "unknown" | "present" | "absent";
 
@@ -26,6 +13,35 @@ export type Lecture = {
   date: string;
   attendance: Attendance;
   materialPath?: string;
+};
+
+export type CanvasBlock = {
+  id: string;
+  type: "paragraph" | "list" | "asset" | "callout" | "math";
+  text?: string | null;
+  items: string[];
+  asset_path?: string | null;
+  asset_url?: string | null;
+  caption?: string | null;
+};
+
+export type CanvasSection = {
+  id: string;
+  title: string;
+  source_ref?: string | null;
+  blocks: CanvasBlock[];
+};
+
+export type CanvasDocument = {
+  id: string;
+  import_version?: number;
+  course_id: string;
+  lecture_id: string;
+  title: string;
+  source_kind: "latex" | "markdown" | "generated";
+  source_ref: string;
+  workspace_path: string;
+  sections: CanvasSection[];
 };
 
 export type UniversityCourse = {

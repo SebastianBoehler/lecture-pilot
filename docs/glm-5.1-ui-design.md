@@ -117,7 +117,7 @@ Hidden until requested:
 ## Demo Copy
 
 - Course: `Grundlagen des Maschinellen Lernens`
-- Lecture: `Lecture 03: Kernels and Feature Maps`
+- Lecture: `Lecture 03: Bayesian Decision Theory`
 - Chat placeholder: `Ask about this lecture...`
 - Agent message: `I highlighted the definition that drives the proof. Want a short derivation check?`
 - Quiz title: `Quiz: Feature Maps`
@@ -135,4 +135,3 @@ Hidden until requested:
 8. Render artifacts in tabs inside the drawer.
 9. Use a bottom sheet on mobile.
 10. Keep all controls keyboard accessible.
-

@@ -25,6 +25,9 @@ class WorkspacePolicy:
         ".txt": ("text", 2 * 1024 * 1024),
         ".json": ("json", 2 * 1024 * 1024),
         ".png": ("image", 20 * 1024 * 1024),
+        ".jpg": ("image", 20 * 1024 * 1024),
+        ".jpeg": ("image", 20 * 1024 * 1024),
+        ".webp": ("image", 20 * 1024 * 1024),
         ".svg": ("svg", 2 * 1024 * 1024),
     }
     allowed_course_material_uploads: dict[str, tuple[str, int]] = {
@@ -36,6 +39,7 @@ class WorkspacePolicy:
         ".png": ("image", 20 * 1024 * 1024),
         ".jpg": ("image", 20 * 1024 * 1024),
         ".jpeg": ("image", 20 * 1024 * 1024),
+        ".webp": ("image", 20 * 1024 * 1024),
     }
 
     def validate_write(self, path: str, size_bytes: int) -> CheckedWorkspaceFile:

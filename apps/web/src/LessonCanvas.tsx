@@ -1,120 +1,36 @@
-import type { ReactNode } from "react";
 import { useEffect } from "react";
+import katex from "katex";
+import "katex/dist/katex.min.css";
 
-import {
-  CodeBlock,
-  ConceptCounterBlock,
-  DiagramBlock,
-  KernelPlayground,
-  ProfessorVideoBlock,
-  QuizBlock,
-  SummaryBlock,
-} from "./ArtifactBlocks";
-import type { CanvasSectionId, DocumentAnchorId, Lecture } from "./types";
-
-type CanvasSection = {
-  id: CanvasSectionId;
-  title: string;
-  body: ReactNode;
-};
-
-const sections: Record<CanvasSectionId, CanvasSection> = {
-  "learning-goals": {
-    id: "learning-goals",
-    title: "Learning goals",
-    body: (
-      <>
-        <p>
-          By the end of this lecture, the learner should be able to explain why kernels
-          are useful, identify when a feature map is only implicit, and choose a valid
-          kernel for a simple similarity problem.
-        </p>
-        <ul className="goal-list">
-          <li>Connect feature maps to linear models in a lifted representation.</li>
-          <li>Use inner products to avoid constructing the lifted coordinates.</li>
-          <li>Check whether a proposed kernel fits the learning problem.</li>
-        </ul>
-      </>
-    ),
-  },
-  "feature-maps": {
-    id: "feature-maps",
-    title: "Feature maps",
-    body: (
-      <>
-        <p>
-          A feature map <code>phi(x)</code> transforms input data into a representation where simple
-          linear methods can express richer decision boundaries.
-        </p>
-        <p className="highlighted">
-          The important move is not the drawing of a higher-dimensional space. It is the
-          claim that the classifier becomes linear after the representation changes.
-        </p>
-      </>
-    ),
-  },
-  "kernel-trick": {
-    id: "kernel-trick",
-    title: "Kernel trick",
-    body: (
-      <>
-        <p>
-          A kernel function computes <code>k(x, x')</code> directly, matching the inner product in
-          feature space while avoiding an expensive explicit expansion.
-        </p>
-        <p className="highlighted">
-          The algorithm only needs inner products between mapped examples, not the explicit
-          coordinates of the mapped vectors.
-        </p>
-      </>
-    ),
-  },
-  "skill-check": {
-    id: "skill-check",
-    title: "Skill check",
-    body: (
-      <>
-        <p>
-          A good tutor turn should test the active learning goal before moving on. For this lecture,
-          the check is whether the learner can map a concrete question to the right representation.
-        </p>
-        <ol className="skill-list">
-          <li>State what object <code>k(x, x')</code> replaces.</li>
-          <li>Explain why this saves computation for a high-dimensional map.</li>
-          <li>Give one situation where the kernel view is the wrong tool.</li>
-        </ol>
-      </>
-    ),
-  },
-  "failure-mode": {
-    id: "failure-mode",
-    title: "Common failure mode",
-    body: (
-      <p>
-        The common mistake is saying that kernels make nonlinear problems easy by magic. The
-        precise claim is narrower: the model is linear in feature space, and the kernel lets the
-        algorithm access the needed inner products there.
-      </p>
-    ),
-  },
-};
+import { apiUrl } from "./api";
+import type { CanvasBlock, CanvasDocument, CanvasSection, DocumentAnchorId, Lecture } from "./types";
 
 export function LessonCanvas({
+  canvasDocument,
   lecture,
   focusedSectionId,
+  highlightedBlockId,
   activeAnchorId,
 }: {
+  canvasDocument: CanvasDocument;
   lecture: Lecture;
-  focusedSectionId: CanvasSectionId;
+  focusedSectionId: string;
+  highlightedBlockId: string | null;
   activeAnchorId: DocumentAnchorId | null;
 }) {
   useEffect(() => {
     const section = document.getElementById(focusedSectionId);
-    if (typeof section?.scrollIntoView !== "function") {
-      return;
+    if (typeof section?.scrollIntoView === "function") {
+      section.scrollIntoView({ behavior: "smooth", block: "center" });
     }
-    section.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [focusedSectionId]);
+
+  useEffect(() => {
+    const block = highlightedBlockId ? document.getElementById(highlightedBlockId) : null;
+    if (typeof block?.scrollIntoView === "function") {
+      block.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlightedBlockId]);
 
   function isActive(id: DocumentAnchorId) {
     return activeAnchorId ? activeAnchorId === id : focusedSectionId === id;
@@ -123,30 +39,32 @@ export function LessonCanvas({
   return (
     <article className="canvas">
       <p className="section-label">Lecture {lecture.number}</p>
-      <h1>{lecture.title}</h1>
+      <h1>{canvasDocument.title}</h1>
       <p className="lead">
-        The official notes introduce a feature-map view first, then use it to motivate kernels as
-        inner products in a lifted space. This document combines explanations, figures, code,
-        video, and checks into one navigable teaching surface.
+        A study document for probabilities, Bayes' rule, Naive Bayes classification, and
+        risk-aware decisions.
       </p>
 
-      {renderSection(sections["learning-goals"], isActive("learning-goals"))}
-      <ConceptCounterBlock focused={isActive("artifact-counter")} />
-      {renderSection(sections["feature-maps"], isActive("feature-maps"))}
-      <DiagramBlock focused={isActive("artifact-diagram")} />
-      <ProfessorVideoBlock focused={isActive("artifact-video")} />
-      {renderSection(sections["kernel-trick"], isActive("kernel-trick"))}
-      <CodeBlock focused={isActive("artifact-code")} />
-      {renderSection(sections["skill-check"], isActive("skill-check"))}
-      <QuizBlock focused={isActive("artifact-quiz")} />
-      <KernelPlayground focused={isActive("artifact-playground")} />
-      {renderSection(sections["failure-mode"], isActive("failure-mode"))}
-      <SummaryBlock focused={isActive("artifact-summary")} />
+      {canvasDocument.sections.map((section) =>
+        renderSection({
+          section,
+          isFocused: isActive(section.id),
+          highlightedBlockId,
+        }),
+      )}
     </article>
   );
 }
 
-function renderSection(section: CanvasSection, isFocused: boolean) {
+function renderSection({
+  section,
+  isFocused,
+  highlightedBlockId,
+}: {
+  section: CanvasSection;
+  isFocused: boolean;
+  highlightedBlockId: string | null;
+}) {
   return (
     <section
       aria-current={isFocused ? "true" : undefined}
@@ -156,8 +74,110 @@ function renderSection(section: CanvasSection, isFocused: boolean) {
       key={section.id}
     >
       {isFocused ? <span className="focus-chip">In focus</span> : null}
+      {section.source_ref ? <p className="section-label">{section.source_ref}</p> : null}
       <h2 id={`${section.id}-heading`}>{section.title}</h2>
-      {section.body}
+      {section.blocks.map((block) => renderBlock(block, highlightedBlockId === block.id))}
     </section>
   );
+}
+
+function renderBlock(block: CanvasBlock, isHighlighted: boolean) {
+  const className = isHighlighted ? "canvas-block is-highlighted" : "canvas-block";
+  if (block.type === "list") {
+    return (
+      <ul className={`${className} canvas-list`} id={block.id} key={block.id}>
+        {block.items.map((item) => (
+          <li key={item}>
+            <MathText text={item} />
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  if (block.type === "asset" && block.asset_url) {
+    return (
+      <figure className={`${className} canvas-asset`} id={block.id} key={block.id}>
+        <img alt={block.caption ?? "Course figure"} src={apiUrl(block.asset_url)} />
+        {block.caption ? <figcaption>{block.caption}</figcaption> : null}
+      </figure>
+    );
+  }
+
+  if (block.type === "callout") {
+    return (
+      <aside className={`${className} canvas-callout`} id={block.id} key={block.id}>
+        <MathText text={block.text ?? ""} />
+      </aside>
+    );
+  }
+
+  if (block.type === "math" && block.text) {
+    return (
+      <div
+        className={`${className} canvas-math`}
+        dangerouslySetInnerHTML={{ __html: renderMath(block.text, true) }}
+        id={block.id}
+        key={block.id}
+      />
+    );
+  }
+
+  return (
+    <p className={className} id={block.id} key={block.id}>
+      <MathText text={block.text ?? ""} />
+    </p>
+  );
+}
+
+function MathText({ text }: { text: string }) {
+  const pieces = splitInlineMath(text);
+  return (
+    <>
+      {pieces.map((piece, index) =>
+        piece.math ? (
+          <span
+            dangerouslySetInnerHTML={{ __html: renderMath(piece.text, false) }}
+            key={`${piece.text}-${index}`}
+          />
+        ) : (
+          <span key={`${piece.text}-${index}`}>{piece.text}</span>
+        ),
+      )}
+    </>
+  );
+}
+
+function splitInlineMath(text: string) {
+  const pieces: Array<{ text: string; math: boolean }> = [];
+  let cursor = 0;
+  for (const match of text.matchAll(/\$([^$]+)\$|\\\((.*?)\\\)/g)) {
+    if (match.index === undefined) {
+      continue;
+    }
+    if (match.index > cursor) {
+      pieces.push({ text: text.slice(cursor, match.index), math: false });
+    }
+    pieces.push({ text: match[1] ?? match[2] ?? "", math: true });
+    cursor = match.index + match[0].length;
+  }
+  if (cursor < text.length) {
+    pieces.push({ text: text.slice(cursor), math: false });
+  }
+  return pieces.length ? pieces : [{ text, math: false }];
+}
+
+function renderMath(expression: string, displayMode: boolean) {
+  return katex.renderToString(expression, {
+    displayMode,
+    macros: {
+      "\\D": "\\mathcal{D}",
+      "\\N": "\\mathbb{N}",
+      "\\x": "\\mathbf{x}",
+    },
+    output: "html",
+    strict: "ignore",
+    throwOnError: false,
+    trust: false,
+  });
 }

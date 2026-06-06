@@ -16,6 +16,7 @@ coverage/
 .vscode/
 storage/
 tmp/
+.lecturepilot/
 
 # Private/local course material. Keep professor files, licensed PDFs,
 # lecture source drops, and learner workspace data out of git.

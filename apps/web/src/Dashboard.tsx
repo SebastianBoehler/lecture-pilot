@@ -1,13 +1,15 @@
-import type { Lecture, LoginSession } from "./types";
+import type { Attendance, Lecture, LoginSession, UniversityCourse } from "./types";
 
 export function Dashboard({
   lectures,
   session,
   onOpen,
+  onSetAttendance,
 }: {
   lectures: Lecture[];
   session: LoginSession | null;
   onOpen: (lecture: Lecture) => void;
+  onSetAttendance: (lectureId: string, attendance: Attendance) => void;
 }) {
   return (
     <main className="dashboard">
@@ -30,7 +32,7 @@ export function Dashboard({
                   <h3>{course.title}</h3>
                   <p>{course.professor}</p>
                 </div>
-                <span>{course.term}</span>
+                <span>{hasTutorWorkspace(course) ? "AI tutor available" : course.term}</span>
               </article>
             ))}
           </div>
@@ -51,6 +53,19 @@ export function Dashboard({
                 <p>
                   {lecture.date} · attendance {lecture.attendance}
                 </p>
+                <div className="attendance-control" aria-label={`Attendance for ${lecture.title}`}>
+                  {(["present", "absent", "unknown"] as const).map((status) => (
+                    <button
+                      aria-pressed={lecture.attendance === status}
+                      className={lecture.attendance === status ? "is-active" : undefined}
+                      key={status}
+                      onClick={() => onSetAttendance(lecture.id, status)}
+                      type="button"
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
               </div>
               <button type="button" onClick={() => onOpen(lecture)}>
                 Open lecture {lecture.number}
@@ -61,4 +76,9 @@ export function Dashboard({
       </section>
     </main>
   );
+}
+
+function hasTutorWorkspace(course: UniversityCourse) {
+  const normalized = `${course.id} ${course.title}`.toLowerCase();
+  return normalized.includes("machine learning") || normalized.includes("maschinellen lernens");
 }

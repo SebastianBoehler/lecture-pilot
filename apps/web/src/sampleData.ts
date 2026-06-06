@@ -20,9 +20,9 @@ export const lectures: Lecture[] = [
   {
     id: "lecture-03",
     number: "03",
-    title: "Kernels and Feature Maps",
+    title: "Bayesian Decision Theory",
     date: "Jun 4",
     attendance: "absent",
-    materialPath: "courses/martius-ml/lectures/03/source.tex",
+    materialPath: "Lecture03-eng.tex",
   },
 ];

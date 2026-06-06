@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
+import { mockLoginAndTutorFetch, mockLoginFetch, soccerCanvasSection } from "./testFixtures";
 
 describe("LecturePilot app shell", () => {
   afterEach(() => {
@@ -80,7 +81,9 @@ describe("LecturePilot app shell", () => {
     await logIn(user);
     await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
 
-    expect(screen.getByRole("heading", { name: /kernels and feature maps/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /^bayesian decision theory$/i, level: 1 }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /available lectures/i })).not.toBeInTheDocument();
     expect(screen.getByLabelText(/open tutor chat/i)).toBeInTheDocument();
     expect(screen.queryByPlaceholderText(/ask about this lecture/i)).not.toBeInTheDocument();
@@ -101,17 +104,23 @@ describe("LecturePilot app shell", () => {
 
     expect(screen.getByRole("heading", { name: /document outline/i })).toBeInTheDocument();
     const outline = screen.getByRole("navigation", { name: /lesson document outline/i });
-    expect(within(outline).getByRole("button", { name: /kernel trick/i })).toBeInTheDocument();
-    expect(within(outline).getByRole("button", { name: /feature map diagram/i })).toBeInTheDocument();
+    expect(
+      within(outline).getByRole("button", { name: /bayes formula and conditional probability/i }),
+    ).toBeInTheDocument();
+    expect(within(outline).getByRole("button", { name: /ch3\/spam-dall-e.jpg/i })).toBeInTheDocument();
+    expect(
+      within(outline).getByRole("group", { name: /decision making under uncertainty related items/i }),
+    ).toBeInTheDocument();
     expect(screen.queryByPlaceholderText(/ask about this lecture/i)).not.toBeInTheDocument();
 
     await user.click(screen.getByLabelText(/open lecture notes panel/i));
 
     expect(screen.getByRole("heading", { name: /source notes/i })).toBeInTheDocument();
     expect(screen.getByText(/official latex source/i)).toBeInTheDocument();
+    expect(screen.getByText(/lecture03-eng\.tex/i)).toBeInTheDocument();
   });
 
-  it("renders visual and interactive demo artifacts", async () => {
+  it("renders professor course canvas blocks instead of old demo artifacts", async () => {
     const user = userEvent.setup();
     vi.stubGlobal("fetch", mockLoginFetch());
     render(<App />);
@@ -120,36 +129,29 @@ describe("LecturePilot app shell", () => {
     await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
 
     expect(screen.queryByRole("heading", { name: /course source packet/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /generated summary/i })).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: /feature map diagram/i })).toBeInTheDocument();
-    expect(screen.getByTitle(/stanford cs229 kernels video/i)).toBeInTheDocument();
-    expect(screen.getByText(/rbfKernel/)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /concept counter/i })).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: /kernel playground/i })).toBeInTheDocument();
-    expect(screen.getByText(/balanced local similarity/i)).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /record another check/i }));
-
-    expect(screen.getByText(/check count: 3/i)).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /wide kernel/i }));
-
-    expect(screen.getByText(/smooth boundary/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /bayes formula and conditional probability/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /ch3\/spam-dall-e.jpg/i })).toBeInTheDocument();
+    expect(document.querySelector(".canvas-math .katex")).not.toBeNull();
+    expect(screen.queryByText(/lecture03-eng\.tex/i)).not.toBeInTheDocument();
 
     await user.click(screen.getByLabelText(/open document outline/i));
     const outline = screen.getByRole("navigation", { name: /lesson document outline/i });
 
     expect(within(outline).queryByRole("button", { name: /course source packet/i })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /feature map diagram/i }));
+    await user.click(
+      within(outline).getByRole("button", { name: /bayes formula and conditional probability/i }),
+    );
 
-    expect(screen.getByRole("region", { name: /feature map diagram/i })).toHaveAttribute(
+    expect(screen.getByRole("region", { name: /bayes formula and conditional probability/i })).toHaveAttribute(
       "aria-current",
       "true",
     );
   });
 
-  it("renders learning goals and skill checks in the lesson canvas", async () => {
+  it("renders imported lecture sections in the lesson canvas", async () => {
     const user = userEvent.setup();
     vi.stubGlobal("fetch", mockLoginFetch());
     render(<App />);
@@ -157,8 +159,9 @@ describe("LecturePilot app shell", () => {
     await logIn(user);
     await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
 
-    expect(screen.getByRole("region", { name: /learning goals/i })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: /skill check/i })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /bayes rule for classification/i })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /naive bayes spam filter/i })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /losses, risks, and reject decisions/i })).toBeInTheDocument();
   });
 
   it("toggles dark mode with a document theme attribute", async () => {
@@ -182,10 +185,10 @@ describe("LecturePilot app shell", () => {
     await user.type(screen.getByPlaceholderText(/ask about this lecture/i), "What are the goals?");
     await user.click(screen.getByRole("button", { name: /send message/i }));
 
-    expect(await screen.findByText(/learning-goal answer/i)).toBeInTheDocument();
-    expect(screen.getByText("focus: learning-goals")).toBeInTheDocument();
+    expect(await screen.findByText(/bayes answer/i)).toBeInTheDocument();
+    expect(screen.getByText("focus: bayes-formula")).toBeInTheDocument();
     expect(screen.getAllByText("gate: needs evidence").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByRole("region", { name: /learning goals/i })).toHaveAttribute(
+    expect(screen.getByRole("region", { name: /bayes formula and conditional probability/i })).toHaveAttribute(
       "aria-current",
       "true",
     );
@@ -194,61 +197,70 @@ describe("LecturePilot app shell", () => {
       expect.objectContaining({ method: "POST" }),
     );
   });
+
+  it("uses attendance as tutor mode context and appends personalized canvas sections", async () => {
+    const user = userEvent.setup();
+    const fetchMock = mockLoginAndTutorFetch({
+      tutorResponse: {
+        message: "Guided walkthrough mode: I added a soccer example to the canvas.",
+        canvas_commands: [
+          {
+            type: "append_section",
+            section_id: "student-soccer-bayes-example",
+            section: soccerCanvasSection(),
+          },
+          { type: "focus_section", section_id: "student-soccer-bayes-example" },
+          {
+            type: "highlight_span",
+            section_id: "student-soccer-bayes-example",
+            span_id: "student-soccer-bayes-example-p-1",
+          },
+        ],
+        quality_gate: {
+          gate_id: "bayes-decision-check",
+          status: "needs_evidence",
+          reason: "The student needs to map the example to Bayes terms.",
+          next_prompt: "Name prior, likelihood, posterior, and risk in the soccer example.",
+        },
+        artifacts: [],
+        model: "local-guided-preview",
+        created_at: "2026-06-05T20:00:00Z",
+      },
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+
+    await logIn(user);
+    const lectureRow = screen.getByRole("heading", { name: /bayesian decision theory/i }).closest("article");
+    expect(lectureRow).not.toBeNull();
+    await user.click(within(lectureRow as HTMLElement).getByRole("button", { name: "absent" }));
+    await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
+    await user.click(screen.getByLabelText(/open tutor chat/i));
+    await user.type(
+      screen.getByPlaceholderText(/ask about this lecture/i),
+      "Explain this with a soccer example.",
+    );
+    await user.click(screen.getByRole("button", { name: /send message/i }));
+
+    expect(await screen.findByRole("heading", { name: /soccer scouting example/i })).toBeInTheDocument();
+    expect(screen.getByText("canvas: student-soccer-bayes-example")).toBeInTheDocument();
+    expect(screen.getByText("highlight: student-soccer-bayes-example-p-1")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /soccer scouting example/i })).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+
+    const agentRequest = JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body));
+    expect(agentRequest).toMatchObject({
+      user_id: "student01",
+      attendance: "absent",
+      canvas_state: { focused_section_id: "bayesian-decision-theory-the-aim" },
+    });
+  });
 });
 
 async function logIn(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/zdv username/i), "student01");
   await user.type(screen.getByLabelText(/^password$/i), "very-secret-password");
   await user.click(screen.getByRole("button", { name: /connect to tue api/i }));
-}
-
-function mockLoginFetch() {
-  return vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => loginPayload(),
-  });
-}
-
-function mockLoginAndTutorFetch() {
-  return vi.fn(async (url: string) => {
-    if (url.endsWith("/auth/login")) {
-      return {
-        ok: true,
-        json: async () => loginPayload(),
-      };
-    }
-
-    return {
-      ok: true,
-      json: async () => ({
-        message: "Learning-goal answer from the tutor.",
-        canvas_commands: [{ type: "focus_section", section_id: "learning-goals" }],
-        quality_gate: {
-          gate_id: "kernel-skill-check",
-          status: "needs_evidence",
-          reason: "Student has not answered the concrete gate yet.",
-          next_prompt: "State what k(x, x') replaces.",
-        },
-        artifacts: [],
-        model: "openrouter/z-ai/glm-5.1",
-        created_at: "2026-06-05T20:00:00Z",
-      }),
-    };
-  });
-}
-
-function loginPayload() {
-  return {
-    username: "student01",
-    email: null,
-    term: "Sommer 2026",
-    courses: [
-      {
-        id: "alma-machine-learning",
-        title: "Machine Learning",
-        professor: "Department of Computer Science",
-        term: "Sommer 2026",
-      },
-    ],
-  };
 }

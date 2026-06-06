@@ -6,6 +6,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, SecretStr
 
+from lecturepilot.canvas_models import CanvasSection
+
 
 class AttendanceStatus(StrEnum):
     PRESENT = "present"
@@ -101,10 +103,17 @@ class AgentTurnInput(BaseModel):
 
 
 class CanvasCommand(BaseModel):
-    type: Literal["focus_section", "highlight_span", "open_artifact"]
+    type: Literal[
+        "focus_section",
+        "highlight_span",
+        "open_artifact",
+        "append_section",
+        "update_section",
+    ]
     section_id: str | None = None
     span_id: str | None = None
     artifact_id: str | None = None
+    section: CanvasSection | None = None
 
 
 class ArtifactCommand(BaseModel):

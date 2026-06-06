@@ -1,16 +1,19 @@
 import { BookOpen, LogOut, Moon, Sun, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { sendAgentTurn, type AgentTurnResult, type CanvasCommand } from "./api";
+import { getLectureCanvas, sendAgentTurn, type AgentTurnResult } from "./api";
 import { Dashboard } from "./Dashboard";
 import { LessonWorkspace } from "./LessonWorkspace";
 import { LoginView } from "./LoginView";
 import { ProfileView } from "./ProfileView";
 import { lectures } from "./sampleData";
 import type {
-  CanvasSectionId,
+  Attendance,
+  CanvasDocument,
+  CanvasSection,
   ChatMessage,
   LessonPanelMode,
+  Lecture,
   LoginSession,
   Theme,
   View,
@@ -21,7 +24,7 @@ const initialMessages: ChatMessage[] = [
     id: "agent-welcome",
     role: "agent",
     content:
-      "I’m starting with the kernel skill gate. Answer this in one sentence: what does k(x, x') replace in the feature-space view?",
+      "I’m starting from the lecture canvas. Mark whether you attended, then I’ll either verify the key ideas or guide you through the material.",
     toolTags: ["gate: needs evidence"],
   },
 ];
@@ -44,9 +47,13 @@ function App() {
   const [theme, setTheme] = useState<Theme>("light");
   const [view, setView] = useState<View>("login");
   const [session, setSession] = useState<LoginSession | null>(null);
+  const [availableLectures, setAvailableLectures] = useState(lectures);
   const [selectedLecture, setSelectedLecture] = useState(lectures[2]);
   const [panelMode, setPanelMode] = useState<LessonPanelMode | null>(null);
-  const [focusedSectionId, setFocusedSectionId] = useState<CanvasSectionId>("feature-maps");
+  const [canvasDocument, setCanvasDocument] = useState<CanvasDocument | null>(null);
+  const [canvasError, setCanvasError] = useState<string | null>(null);
+  const [focusedSectionId, setFocusedSectionId] = useState("bayesian-decision-theory-the-aim");
+  const [highlightedBlockId, setHighlightedBlockId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
 
   useEffect(() => {
@@ -63,8 +70,7 @@ function App() {
     ]);
 
     const result = await sendAgentTurn({
-      user_id:
-        session?.username === "local-demo" ? "local-preview-user" : (session?.username ?? "unknown-user"),
+      user_id: effectiveUserId(session),
       course_id: "martius-ml",
       lecture_id: selectedLecture.id,
       attendance: selectedLecture.attendance,
@@ -73,8 +79,15 @@ function App() {
     });
 
     for (const command of result.canvas_commands) {
-      if (command.type === "focus_section" && isCanvasSection(command.section_id)) {
+      const section = command.section;
+      if ((command.type === "append_section" || command.type === "update_section") && section) {
+        setCanvasDocument((current) => applyCanvasSection(current, section));
+      }
+      if (command.type === "focus_section" && command.section_id) {
         setFocusedSectionId(command.section_id);
+      }
+      if (command.type === "highlight_span" && command.span_id) {
+        setHighlightedBlockId(command.span_id);
       }
     }
 
@@ -93,8 +106,39 @@ function App() {
     setSession(null);
     setView("login");
     setPanelMode(null);
-    setFocusedSectionId("feature-maps");
+    setFocusedSectionId("bayesian-decision-theory-the-aim");
+    setHighlightedBlockId(null);
+    setCanvasDocument(null);
+    setCanvasError(null);
     setMessages(initialMessages);
+  }
+
+  async function handleOpenLecture(lecture: Lecture) {
+    setSelectedLecture(lecture);
+    setView("lesson");
+    setPanelMode(null);
+    setCanvasDocument(null);
+    setCanvasError(null);
+    setFocusedSectionId("bayesian-decision-theory-the-aim");
+    setHighlightedBlockId(null);
+    setMessages(initialMessages);
+
+    try {
+      const document = await getLectureCanvas("martius-ml", lecture.id, effectiveUserId(session));
+      setCanvasDocument(document);
+      setFocusedSectionId(document.sections[0]?.id ?? "bayesian-decision-theory-the-aim");
+    } catch (error) {
+      setCanvasError(error instanceof Error ? error.message : "Canvas loading failed.");
+    }
+  }
+
+  function handleSetAttendance(lectureId: string, attendance: Attendance) {
+    setAvailableLectures((current) =>
+      current.map((lecture) => (lecture.id === lectureId ? { ...lecture, attendance } : lecture)),
+    );
+    if (selectedLecture.id === lectureId) {
+      setSelectedLecture((current) => ({ ...current, attendance }));
+    }
   }
 
   return (
@@ -163,21 +207,19 @@ function App() {
         />
       ) : view === "dashboard" ? (
         <Dashboard
-          lectures={lectures}
+          lectures={availableLectures}
           session={session}
-          onOpen={(lecture) => {
-            setSelectedLecture(lecture);
-            setView("lesson");
-            setPanelMode(null);
-            setFocusedSectionId("feature-maps");
-            setMessages(initialMessages);
-          }}
+          onOpen={handleOpenLecture}
+          onSetAttendance={handleSetAttendance}
         />
       ) : view === "profile" && session ? (
         <ProfileView session={session} onBack={() => setView("dashboard")} />
       ) : (
         <LessonWorkspace
+          canvasDocument={canvasDocument}
+          canvasError={canvasError}
           focusedSectionId={focusedSectionId}
+          highlightedBlockId={highlightedBlockId}
           lecture={selectedLecture}
           messages={messages}
           panelMode={panelMode}
@@ -195,14 +237,17 @@ function App() {
   );
 }
 
-function isCanvasSection(sectionId: string | null | undefined): sectionId is CanvasSectionId {
-  return (
-    sectionId === "learning-goals" ||
-    sectionId === "feature-maps" ||
-    sectionId === "kernel-trick" ||
-    sectionId === "skill-check" ||
-    sectionId === "failure-mode"
-  );
+function applyCanvasSection(document: CanvasDocument | null, section: CanvasSection) {
+  if (!document) {
+    return document;
+  }
+  const sectionIndex = document.sections.findIndex((candidate) => candidate.id === section.id);
+  if (sectionIndex === -1) {
+    return { ...document, sections: [...document.sections, section] };
+  }
+  const sections = [...document.sections];
+  sections[sectionIndex] = section;
+  return { ...document, sections };
 }
 
 function toolTagsFromResult(result: AgentTurnResult): string[] {
@@ -216,12 +261,22 @@ function toolTagsFromResult(result: AgentTurnResult): string[] {
     if (command.type === "highlight_span" && command.span_id) {
       return [`highlight: ${command.span_id}`];
     }
+    if ((command.type === "append_section" || command.type === "update_section") && command.section_id) {
+      return [`canvas: ${command.section_id}`];
+    }
     return [];
   });
   const gateTags = result.quality_gate
     ? [`gate: ${result.quality_gate.status.replace("_", " ")}`]
     : [];
   return [...commandTags, ...gateTags];
+}
+
+function effectiveUserId(session: LoginSession | null) {
+  if (session?.username === "local-demo") {
+    return "local-preview-user";
+  }
+  return session?.username ?? "unknown-user";
 }
 
 export default App;

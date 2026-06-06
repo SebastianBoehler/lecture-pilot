@@ -25,13 +25,13 @@ async def test_harness_uses_model_client_for_agent_turn(monkeypatch) -> None:
             lecture_id="lecture-03",
             attendance=AttendanceStatus.PRESENT,
             message="what is your name?",
-            canvas_state=CanvasState(focused_section_id="feature-maps"),
+            canvas_state=CanvasState(focused_section_id="bayes-formula"),
         )
     )
 
     assert result.message == "My name is LecturePilot."
     assert result.canvas_commands == [
-        CanvasCommand(type="focus_section", section_id="feature-maps")
+        CanvasCommand(type="focus_section", section_id="bayes-formula")
     ]
     assert result.model == "openrouter/z-ai/glm-5.1"
 
@@ -50,6 +50,6 @@ class _FakeModelClient:
         assert turn.message == "what is your name?"
         return AgentTurnResult(
             message="My name is LecturePilot.",
-            canvas_commands=[CanvasCommand(type="focus_section", section_id="feature-maps")],
+            canvas_commands=[CanvasCommand(type="focus_section", section_id="bayes-formula")],
             model=settings.model,
         )

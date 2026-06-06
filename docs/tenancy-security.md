@@ -56,9 +56,9 @@ Uploads must be treated as untrusted input even when they come from professors:
 6. Serve risky formats as attachments unless they are converted or sanitized.
 
 The current code implements the first policy layer for typed uploads:
-`.tex`, `.md`, `.txt`, `.json`, `.pdf`, `.png`, `.jpg`, and `.jpeg` only.
-SVG uploads are intentionally not accepted as course material because active
-content in SVG can become a stored-XSS vector when served incorrectly.
+`.tex`, `.md`, `.txt`, `.json`, `.pdf`, `.png`, `.jpg`, `.jpeg`, and `.webp`
+only. SVG uploads are intentionally not accepted as course material because
+active content in SVG can become a stored-XSS vector when served incorrectly.
 
 ## Student Access
 

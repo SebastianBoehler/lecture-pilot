@@ -27,14 +27,14 @@ Example workspace record:
 
 ```json
 {
-  "videoId": "8NYoQiRANpg",
-  "title": "Stanford CS229 kernels video",
-  "url": "https://www.youtube.com/watch?v=8NYoQiRANpg",
+  "videoId": "selected-video-id",
+  "title": "Naive Bayes classifier lecture",
+  "url": "https://www.youtube.com/watch?v=selected-video-id",
   "source": "youtube-discovery",
-  "query": "kernels feature maps kernel trick machine learning lecture",
+  "query": "Bayesian decision theory Naive Bayes classifier lecture",
   "checkpoints": [
-    { "label": "Kernel trick", "seconds": 1736 },
-    { "label": "Designing feature vectors", "seconds": 4623 }
+    { "label": "Bayes rule", "seconds": 420 },
+    { "label": "Classification decision", "seconds": 980 }
   ]
 }
 ```

@@ -63,6 +63,8 @@ deploy                   Docker and self-hosting files
 
 See [docs/media-discovery.md](docs/media-discovery.md) for the YouTube/media
 pre-asset contract.
+See [docs/workspaces.md](docs/workspaces.md) for filesystem-backed canvas and
+learner storage.
 See [docs/tenancy-security.md](docs/tenancy-security.md) for the tenant,
 profile, and secure course-material upload contract.
 
@@ -72,6 +74,11 @@ Keep private professor/course files in `local-course-materials/`,
 `course-materials/`, `lecture-materials/`, or `content/private/`. These paths
 are gitignored on purpose; only sanitized examples and public fixtures should
 be committed.
+
+For the Martius demo slice, point `LECTUREPILOT_COURSE_MATERIAL_ROOT` at the
+private Overleaf checkout containing `Lecture03-eng.tex`. If the variable is
+empty, the API searches the local Tübingen course folder and then falls back to
+`local-course-materials/martius-ml`.
 
 Backend:
 
@@ -119,9 +126,11 @@ npm run dev --workspace apps/web
 ```
 
 Open `http://127.0.0.1:5173`, use **Preview local demo**, select lecture 03,
-click the speech-bubble button on the right rail, answer the kernel skill check,
-and press **Send**. The preview tutor leads the conversation, marks the quality
-gate as pending or passed, and focuses the relevant canvas section.
+click the speech-bubble button on the right rail, and ask for a Bayes concept
+check or a personalized example such as `Explain this with a soccer example`.
+The preview tutor leads the conversation, persists new canvas sections in the
+ignored student workspace, marks the quality gate as pending or passed, and
+focuses or highlights the relevant canvas block.
 
 For provider-backed turns, sign in with your Uni credentials through the local
 backend after configuring a provider key.

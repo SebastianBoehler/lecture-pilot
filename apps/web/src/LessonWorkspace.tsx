@@ -4,11 +4,14 @@ import { useState } from "react";
 import { LessonCanvas } from "./LessonCanvas";
 import { NotesPanel, OutlinePanel } from "./LessonSidePanels";
 import { TutorDrawer } from "./TutorDrawer";
-import type { CanvasSectionId, ChatMessage, DocumentAnchorId, Lecture, LessonPanelMode } from "./types";
+import type { CanvasDocument, ChatMessage, DocumentAnchorId, Lecture, LessonPanelMode } from "./types";
 
 export function LessonWorkspace({
   lecture,
+  canvasDocument,
+  canvasError,
   focusedSectionId,
+  highlightedBlockId,
   messages,
   panelMode,
   onBack,
@@ -16,7 +19,10 @@ export function LessonWorkspace({
   onTogglePanel,
 }: {
   lecture: Lecture;
-  focusedSectionId: CanvasSectionId;
+  canvasDocument: CanvasDocument | null;
+  canvasError: string | null;
+  focusedSectionId: string;
+  highlightedBlockId: string | null;
   messages: ChatMessage[];
   panelMode: LessonPanelMode | null;
   onBack: () => void;
@@ -44,11 +50,17 @@ export function LessonWorkspace({
           </button>
           <span>{lecture.date}</span>
         </div>
-        <LessonCanvas
-          lecture={lecture}
-          focusedSectionId={focusedSectionId}
-          activeAnchorId={activeAnchorId}
-        />
+        {canvasError ? <p className="form-error">{canvasError}</p> : null}
+        {!canvasDocument && !canvasError ? <p className="drawer-note">Loading lecture canvas...</p> : null}
+        {canvasDocument ? (
+          <LessonCanvas
+            canvasDocument={canvasDocument}
+            lecture={lecture}
+            focusedSectionId={focusedSectionId}
+            highlightedBlockId={highlightedBlockId}
+            activeAnchorId={activeAnchorId}
+          />
+        ) : null}
       </section>
 
       <aside className="rail" aria-label="Lesson controls">
@@ -85,7 +97,11 @@ export function LessonWorkspace({
         <TutorDrawer messages={messages} onSendMessage={onSendMessage} />
       ) : null}
       {panelMode === "outline" ? (
-        <OutlinePanel activeAnchorId={activeAnchorId} onJumpAnchor={jumpToAnchor} />
+        <OutlinePanel
+          activeAnchorId={activeAnchorId}
+          canvasDocument={canvasDocument}
+          onJumpAnchor={jumpToAnchor}
+        />
       ) : null}
       {panelMode === "notes" ? <NotesPanel lecture={lecture} /> : null}
     </main>

@@ -1,10 +1,11 @@
-import type { Attendance, LoginSession } from "./types";
+import type { Attendance, CanvasDocument, CanvasSection, LoginSession } from "./types";
 
 export type CanvasCommand = {
-  type: "focus_section" | "highlight_span" | "open_artifact";
+  type: "focus_section" | "highlight_span" | "open_artifact" | "append_section" | "update_section";
   section_id?: string | null;
   span_id?: string | null;
   artifact_id?: string | null;
+  section?: CanvasSection | null;
 };
 
 export type AgentTurnResult = {
@@ -37,6 +38,13 @@ type TuebingenLoginInput = {
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 
+export function apiUrl(path: string): string {
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+  return `${apiBaseUrl}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 export async function loginWithTuebingen(input: TuebingenLoginInput): Promise<LoginSession> {
   const response = await fetch(`${apiBaseUrl}/auth/login`, {
     method: "POST",
@@ -67,4 +75,22 @@ export async function sendAgentTurn(input: AgentTurnInput): Promise<AgentTurnRes
   }
 
   return payload as AgentTurnResult;
+}
+
+export async function getLectureCanvas(
+  courseId: string,
+  lectureId: string,
+  userId: string,
+): Promise<CanvasDocument> {
+  const searchParams = new URLSearchParams({ user_id: userId });
+  const response = await fetch(
+    apiUrl(`/courses/${courseId}/lectures/${lectureId}/canvas?${searchParams}`),
+  );
+  const payload = await response.json();
+  if (!response.ok) {
+    const detail = typeof payload.detail === "string" ? payload.detail : "Canvas loading failed.";
+    throw new Error(detail);
+  }
+
+  return payload as CanvasDocument;
 }

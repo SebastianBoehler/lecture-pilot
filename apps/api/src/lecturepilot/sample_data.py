@@ -31,9 +31,9 @@ LECTURES = [
     Lecture(
         id="lecture-03",
         course_id=COURSE.id,
-        title="Kernels and Feature Maps",
+        title="Bayesian Decision Theory",
         date=date(2026, 6, 4),
-        material_path="courses/martius-ml/lectures/03/source.tex",
+        material_path="Lecture03-eng.tex",
     ),
 ]
 
@@ -48,4 +48,3 @@ def unlocked_lectures(today: date | None = None) -> list[LectureView]:
         for lecture in LECTURES
         if is_lecture_unlocked(lecture, today=today)
     ]
-

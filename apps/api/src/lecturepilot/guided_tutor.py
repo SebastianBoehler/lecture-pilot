@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.models import (
     AgentTurnInput,
     AgentTurnResult,
+    AttendanceStatus,
     CanvasCommand,
     QualityGateDecision,
     QualityGateStatus,
@@ -12,59 +14,52 @@ from lecturepilot.models import (
 
 
 LOCAL_PREVIEW_USER_ID = "local-preview-user"
-_KERNEL_GATE_ID = "kernel-skill-check"
-
-
-@dataclass(frozen=True)
-class KernelGateEvidence:
-    has_replacement: bool
-    has_feature_space: bool
-    has_computation_reason: bool
-    has_transfer_or_failure: bool
-
-    @property
-    def is_complete(self) -> bool:
-        return all(
-            (
-                self.has_replacement,
-                self.has_feature_space,
-                self.has_computation_reason,
-                self.has_transfer_or_failure,
-            )
-        )
-
-    @property
-    def missing_labels(self) -> tuple[str, ...]:
-        missing = []
-        if not self.has_replacement:
-            missing.append("what k(x, x') replaces")
-        if not self.has_feature_space:
-            missing.append("feature-space mechanism")
-        if not self.has_computation_reason:
-            missing.append("computational reason")
-        if not self.has_transfer_or_failure:
-            missing.append("concrete example or failure mode")
-        return tuple(missing)
+_BAYES_GATE_ID = "bayes-decision-check"
 
 
 def run_local_preview_turn(turn: AgentTurnInput) -> AgentTurnResult:
-    evidence = _read_kernel_gate_evidence(turn.message)
+    learning_mode = _learning_mode(turn)
+    if _asks_for_soccer_example(turn.message):
+        section = _soccer_bayes_section()
+        return AgentTurnResult(
+            message=(
+                f"{learning_mode} I added a soccer scouting example to your personal canvas "
+                "and focused it. Use it to explain posterior, risk, and the final decision."
+            ),
+            canvas_commands=[
+                CanvasCommand(type="append_section", section_id=section.id, section=section),
+                CanvasCommand(type="focus_section", section_id=section.id),
+                CanvasCommand(type="highlight_span", section_id=section.id, span_id=f"{section.id}-p-1"),
+            ],
+            quality_gate=QualityGateDecision(
+                gate_id=_BAYES_GATE_ID,
+                status=QualityGateStatus.NEEDS_EVIDENCE,
+                reason="The learner asked for a personalized transfer example.",
+                next_prompt="Use the soccer example to identify prior, likelihood, posterior, and cost.",
+            ),
+            model="local-guided-preview",
+        )
+
+    evidence = _read_bayes_gate_evidence(turn.message)
     if evidence.is_complete:
         return AgentTurnResult(
             message=(
-                "Gate passed: you gave the definition, feature-space mechanism, computation "
-                "reason, and transfer check. I moved the canvas to the kernel trick; next gate "
-                "is a worked failure-mode example."
+                "Gate passed: you connected Bayes terms to the decision and risk. I focused "
+                "the decision-rule part so the next step is to apply it to one example."
             ),
-            canvas_commands=[CanvasCommand(type="focus_section", section_id="kernel-trick")],
-            quality_gate=QualityGateDecision(
-                gate_id=_KERNEL_GATE_ID,
-                status=QualityGateStatus.PASSED,
-                reason=(
-                    "The student explained replacement, feature space, computation, "
-                    "and transfer or failure mode."
+            canvas_commands=[
+                CanvasCommand(type="focus_section", section_id="bayes-rule-to-sum-up"),
+                CanvasCommand(
+                    type="highlight_span",
+                    section_id="bayes-rule-to-sum-up",
+                    span_id="bayes-rule-to-sum-up-p-1",
                 ),
-                next_prompt="Apply the same idea to one kernel failure mode.",
+            ],
+            quality_gate=QualityGateDecision(
+                gate_id=_BAYES_GATE_ID,
+                status=QualityGateStatus.PASSED,
+                reason="The learner explained posterior, prior, likelihood, evidence, and decision risk.",
+                next_prompt="Apply the decision rule to a concrete classification case.",
             ),
             model="local-guided-preview",
         )
@@ -72,62 +67,107 @@ def run_local_preview_turn(turn: AgentTurnInput) -> AgentTurnResult:
     missing = ", ".join(evidence.missing_labels)
     return AgentTurnResult(
         message=(
-            "Gate pending: answer this check with all parts before we move on. State what "
-            "k(x, x') replaces, explain why implicit phi(x) saves computation, and give one "
-            f"concrete example or failure mode. Missing evidence: {missing}."
+            f"{learning_mode} Gate pending: explain how Bayes' formula turns evidence into a posterior, "
+            f"then say how costs or risk change the final classifier decision. Missing evidence: {missing}."
         ),
-        canvas_commands=[CanvasCommand(type="focus_section", section_id="skill-check")],
+        canvas_commands=[
+            CanvasCommand(type="focus_section", section_id="bayesian-decision-theory-the-aim"),
+            CanvasCommand(
+                type="highlight_span",
+                section_id="bayesian-decision-theory-the-aim",
+                span_id="bayesian-decision-theory-the-aim-p-1",
+            ),
+        ],
         quality_gate=QualityGateDecision(
-            gate_id=_KERNEL_GATE_ID,
+            gate_id=_BAYES_GATE_ID,
             status=QualityGateStatus.NEEDS_EVIDENCE,
             reason=f"Missing evidence: {missing}.",
             next_prompt=(
-                "Answer with replacement, feature-space mechanism, computation reason, "
-                "and one example or failure mode."
+                "Answer with posterior, prior, likelihood, evidence, and one risk-sensitive decision."
             ),
         ),
         model="local-guided-preview",
     )
 
 
-def _read_kernel_gate_evidence(message: str) -> KernelGateEvidence:
-    normalized = message.lower()
-    has_kernel_symbol = "k(x" in normalized or "kernel" in normalized
-    has_inner_product = "inner product" in normalized or "dot product" in normalized
-    has_feature_space = _mentions_any(
-        normalized,
-        ("feature space", "phi", "lift", "mapped representation", "lifted representation"),
-    )
-    has_computation_reason = _mentions_any(
-        normalized,
-        ("avoid", "without", "implicit", "not build", "do not build", "don't build", "skip"),
-    ) and _mentions_any(
-        normalized,
-        ("comput", "expensive", "high-dimensional", "coordinates", "explicit expansion"),
-    )
-    has_transfer_or_failure = _mentions_any(
-        normalized,
-        (
-            "for ",
-            "example",
-            "classification",
-            "if ",
-            "only works",
-            "wrong tool",
-            "failure",
-            "invalid",
-            "does not match",
-            "matches the task",
-            "similarity matches",
-        ),
-    )
-    return KernelGateEvidence(
-        has_replacement=has_kernel_symbol and has_inner_product,
-        has_feature_space=has_feature_space,
-        has_computation_reason=has_computation_reason,
-        has_transfer_or_failure=has_transfer_or_failure,
-    )
-
-
 def _mentions_any(text: str, needles: tuple[str, ...]) -> bool:
     return any(needle in text for needle in needles)
+
+
+@dataclass(frozen=True)
+class BayesGateEvidence:
+    has_posterior: bool
+    has_bayes_terms: bool
+    has_decision: bool
+    has_risk_or_cost: bool
+
+    @property
+    def is_complete(self) -> bool:
+        return all((self.has_posterior, self.has_bayes_terms, self.has_decision, self.has_risk_or_cost))
+
+    @property
+    def missing_labels(self) -> tuple[str, ...]:
+        missing = []
+        if not self.has_posterior:
+            missing.append("posterior from evidence")
+        if not self.has_bayes_terms:
+            missing.append("prior, likelihood, and evidence")
+        if not self.has_decision:
+            missing.append("classifier decision")
+        if not self.has_risk_or_cost:
+            missing.append("risk or cost")
+        return tuple(missing)
+
+
+def _read_bayes_gate_evidence(message: str) -> BayesGateEvidence:
+    normalized = message.lower()
+    return BayesGateEvidence(
+        has_posterior="posterior" in normalized or "p(c|x" in normalized or "p(c | x" in normalized,
+        has_bayes_terms=_mentions_any(normalized, ("prior", "likelihood")) and _mentions_any(
+            normalized, ("evidence", "p(x)", "normalizer")
+        ),
+        has_decision=_mentions_any(normalized, ("decision", "classif", "predict", "choose")),
+        has_risk_or_cost=_mentions_any(normalized, ("risk", "cost", "loss", "false positive")),
+    )
+
+
+def _asks_for_soccer_example(message: str) -> bool:
+    normalized = message.lower()
+    return _mentions_any(normalized, ("soccer", "football", "spieler", "verein"))
+
+
+def _learning_mode(turn: AgentTurnInput) -> str:
+    if turn.attendance == AttendanceStatus.PRESENT:
+        return "Verification mode: you marked yourself present, so I will check understanding before reteaching."
+    if turn.attendance == AttendanceStatus.ABSENT:
+        return "Guided walkthrough mode: you marked yourself absent, so I will teach from the lecture material."
+    return "Diagnostic mode: attendance is unknown, so I will first locate the missing concept."
+
+
+def _soccer_bayes_section() -> CanvasSection:
+    return CanvasSection(
+        id="student-soccer-bayes-example",
+        title="Soccer scouting example",
+        source_ref="student workspace",
+        blocks=[
+            CanvasBlock(
+                id="student-soccer-bayes-example-p-1",
+                type="paragraph",
+                text=(
+                    "Treat a scouting report as evidence X and the hidden event C as whether "
+                    "a player will fit the team. Bayes updates the prior belief into a posterior "
+                    "after observing the report, match data, and training signals."
+                ),
+            ),
+            CanvasBlock(
+                id="student-soccer-bayes-example-list",
+                type="list",
+                items=[
+                    "Prior: the base chance that a player succeeds before the new report.",
+                    "Likelihood: how probable this report is if the player truly fits.",
+                    "Evidence: how common this report is across all players.",
+                    "Decision risk: missing a strong player and signing a poor fit have different costs.",
+                ],
+            ),
+        ],
+    )

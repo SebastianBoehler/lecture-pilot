@@ -89,13 +89,13 @@ def test_agent_turn_requires_configured_provider(monkeypatch) -> None:
     assert "OPENROUTER_API_KEY" in response.json()["detail"]
 
 
-def test_agent_turn_focuses_kernel_section(monkeypatch) -> None:
+def test_agent_turn_focuses_bayes_section(monkeypatch) -> None:
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     monkeypatch.setenv("LECTUREPILOT_MODEL", "openrouter/z-ai/glm-5.1")
     app = create_app()
     app.state.agent_harness = _FakeHarness(
         message="A real model can answer this as a conversation.",
-        section_id="kernel-trick",
+        section_id="bayes-formula",
     )
     client = TestClient(app)
 
@@ -106,8 +106,8 @@ def test_agent_turn_focuses_kernel_section(monkeypatch) -> None:
             "course_id": "c1",
             "lecture_id": "l1",
             "attendance": "absent",
-            "message": "Can you explain the kernel trick?",
-            "canvas_state": {"focused_section_id": "feature-maps"},
+            "message": "Can you explain Bayes formula?",
+            "canvas_state": {"focused_section_id": "bayesian-decision-theory-the-aim"},
         },
     )
 
@@ -116,9 +116,10 @@ def test_agent_turn_focuses_kernel_section(monkeypatch) -> None:
     assert payload["model"] == "openrouter/z-ai/glm-5.1"
     assert payload["canvas_commands"][0] == {
         "type": "focus_section",
-        "section_id": "kernel-trick",
+        "section_id": "bayes-formula",
         "span_id": None,
         "artifact_id": None,
+        "section": None,
     }
     assert "real model" in payload["message"].lower()
 
@@ -128,8 +129,8 @@ def test_agent_turn_focuses_learning_goals(monkeypatch) -> None:
     monkeypatch.setenv("LECTUREPILOT_MODEL", "openrouter/z-ai/glm-5.1")
     app = create_app()
     app.state.agent_harness = _FakeHarness(
-        message="Learning goals came from the model client.",
-        section_id="learning-goals",
+        message="The Bayes formula section came from the model client.",
+        section_id="bayes-formula",
     )
     client = TestClient(app)
 
@@ -140,14 +141,14 @@ def test_agent_turn_focuses_learning_goals(monkeypatch) -> None:
             "course_id": "c1",
             "lecture_id": "l1",
             "attendance": "absent",
-            "message": "What are the learning goals for this lecture?",
-            "canvas_state": {"focused_section_id": "feature-maps"},
+            "message": "Explain Bayes formula from the lecture.",
+            "canvas_state": {"focused_section_id": "bayesian-decision-theory-the-aim"},
         },
     )
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["canvas_commands"][0]["section_id"] == "learning-goals"
+    assert payload["canvas_commands"][0]["section_id"] == "bayes-formula"
     assert "model client" in payload["message"].lower()
 
 
@@ -157,7 +158,7 @@ def test_agent_turn_focuses_skill_check(monkeypatch) -> None:
     app = create_app()
     app.state.agent_harness = _FakeHarness(
         message="The model selected the skill check.",
-        section_id="skill-check",
+        section_id="bayes-rule-to-sum-up",
     )
     client = TestClient(app)
 
@@ -168,14 +169,14 @@ def test_agent_turn_focuses_skill_check(monkeypatch) -> None:
             "course_id": "c1",
             "lecture_id": "l1",
             "attendance": "present",
-            "message": "Test whether I understood the skill goals.",
-            "canvas_state": {"focused_section_id": "kernel-trick"},
+            "message": "Test whether I understood the Bayes decision rule.",
+            "canvas_state": {"focused_section_id": "bayes-formula"},
         },
     )
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["canvas_commands"][0]["section_id"] == "skill-check"
+    assert payload["canvas_commands"][0]["section_id"] == "bayes-rule-to-sum-up"
     assert "model selected" in payload["message"].lower()
 
 
@@ -194,7 +195,7 @@ def test_agent_turn_reports_model_execution_error(monkeypatch) -> None:
             "lecture_id": "l1",
             "attendance": "present",
             "message": "hello",
-            "canvas_state": {"focused_section_id": "feature-maps"},
+            "canvas_state": {"focused_section_id": "bayes-formula"},
         },
     )
 
