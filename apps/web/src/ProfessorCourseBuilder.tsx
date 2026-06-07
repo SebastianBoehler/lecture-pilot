@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 import {
   getLectureCanvas,
@@ -11,20 +11,89 @@ import type { CanvasDocument, SourceBundleManifest, YoutubeVideoCandidate } from
 
 const courseId = "martius-ml";
 const lectureId = "lecture-03";
+const flowStorageKey = "lecturepilot.professor-builder.martius-ml.lecture-03";
+const defaultProfile = { name: "Prof. Georg Martius", email: "prof@uni-tuebingen.de" };
 
-export function ProfessorCourseBuilder({ onBack }: { onBack: () => void }) {
-  const [profile, setProfile] = useState({ name: "Prof. Georg Martius", email: "prof@uni-tuebingen.de" });
-  const [accountReady, setAccountReady] = useState(false);
-  const [courseReady, setCourseReady] = useState(false);
+type SavedProfessorFlow = {
+  profile: typeof defaultProfile;
+  accountReady: boolean;
+  courseReady: boolean;
+  uploadPath: string;
+  bundleReady: boolean;
+  canvasReady: boolean;
+  query: string;
+};
+
+const defaultFlow: SavedProfessorFlow = {
+  profile: defaultProfile,
+  accountReady: false,
+  courseReady: false,
+  uploadPath: "uploads/supplement.md",
+  bundleReady: false,
+  canvasReady: false,
+  query: "Bayesian decision theory machine learning Tübingen",
+};
+
+export function ProfessorCourseBuilder({
+  onBack,
+  onPreviewWorkspace,
+}: {
+  onBack: () => void;
+  onPreviewWorkspace: () => void;
+}) {
+  const [savedFlow] = useState(readSavedFlow);
+  const [profile, setProfile] = useState(savedFlow.profile);
+  const [accountReady, setAccountReady] = useState(savedFlow.accountReady);
+  const [courseReady, setCourseReady] = useState(savedFlow.courseReady);
   const [bundle, setBundle] = useState<SourceBundleManifest | null>(null);
-  const [uploadPath, setUploadPath] = useState("uploads/supplement.md");
+  const [uploadPath, setUploadPath] = useState(savedFlow.uploadPath);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [canvas, setCanvas] = useState<CanvasDocument | null>(null);
-  const [query, setQuery] = useState("Bayesian decision theory machine learning Tübingen");
+  const [query, setQuery] = useState(savedFlow.query);
   const [videos, setVideos] = useState<YoutubeVideoCandidate[]>([]);
   const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [restored, setRestored] = useState(!savedFlow.bundleReady && !savedFlow.canvasReady);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function restoreGeneratedState() {
+      try {
+        if (savedFlow.bundleReady) {
+          const restoredBundle = await getSourceBundle(courseId);
+          if (!cancelled) setBundle(restoredBundle);
+        }
+        if (savedFlow.canvasReady) {
+          const restoredCanvas = await getLectureCanvas(courseId, lectureId, "professor-preview");
+          if (!cancelled) setCanvas(restoredCanvas);
+        }
+      } catch (restoreError) {
+        if (!cancelled) {
+          setError(restoreError instanceof Error ? restoreError.message : "Could not restore professor preview.");
+        }
+      } finally {
+        if (!cancelled) setRestored(true);
+      }
+    }
+    if (!restored) void restoreGeneratedState();
+    return () => {
+      cancelled = true;
+    };
+  }, [restored, savedFlow]);
+
+  useEffect(() => {
+    if (!restored) return;
+    writeSavedFlow({
+      profile,
+      accountReady,
+      courseReady,
+      uploadPath,
+      bundleReady: Boolean(bundle),
+      canvasReady: Boolean(canvas),
+      query,
+    });
+  }, [accountReady, bundle, canvas, courseReady, profile, query, restored, uploadPath]);
 
   async function run(action: () => Promise<string | void>) {
     setError(null);
@@ -120,6 +189,9 @@ export function ProfessorCourseBuilder({ onBack }: { onBack: () => void }) {
             Generate draft canvas
           </button>
           {canvas ? <p>{canvas.sections.length} sections ready for review.</p> : null}
+          <button disabled={!canvas} type="button" onClick={onPreviewWorkspace}>
+            Preview course workspace
+          </button>
         </section>
 
         <section className="flow-card wide">
@@ -193,4 +265,23 @@ function toggleSelected(selectedVideos: Set<string>, videoId: string) {
   if (next.has(videoId)) next.delete(videoId);
   else next.add(videoId);
   return next;
+}
+
+function readSavedFlow(): SavedProfessorFlow {
+  if (typeof window === "undefined") return defaultFlow;
+  try {
+    const saved = window.sessionStorage.getItem(flowStorageKey);
+    if (!saved) return defaultFlow;
+    return { ...defaultFlow, ...(JSON.parse(saved) as Partial<SavedProfessorFlow>) };
+  } catch {
+    return defaultFlow;
+  }
+}
+
+function writeSavedFlow(flow: SavedProfessorFlow) {
+  try {
+    window.sessionStorage.setItem(flowStorageKey, JSON.stringify(flow));
+  } catch {
+    // Session storage can be disabled; the professor flow still works without restoration.
+  }
 }

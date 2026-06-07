@@ -6,6 +6,7 @@ import App from "./App";
 
 describe("Professor course builder", () => {
   afterEach(() => {
+    window.sessionStorage.clear();
     vi.unstubAllGlobals();
   });
 
@@ -39,6 +40,13 @@ describe("Professor course builder", () => {
     await user.click(screen.getByRole("button", { name: /include selected videos/i }));
 
     expect(await screen.findByText(/included 1 approved video/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /preview course workspace/i }));
+    expect(
+      await screen.findByRole("heading", { name: /^bayesian decision theory$/i, level: 1 }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /course builder/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /course builder/i }));
+    expect(await screen.findByText(/2 sections ready for review/i)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/admin/courses/martius-ml/materials"),
       expect.objectContaining({ method: "POST" }),

@@ -25,6 +25,7 @@ export function LessonWorkspace({
   navigationVersion,
   panelMode,
   tutorModel,
+  backLabel = "Dashboard",
   onBack,
   onSendMessage,
   onTogglePanel,
@@ -39,6 +40,7 @@ export function LessonWorkspace({
   navigationVersion: number;
   panelMode: LessonPanelMode | null;
   tutorModel: string | null;
+  backLabel?: string;
   onBack: () => void;
   onSendMessage: (message: string) => Promise<void>;
   onTogglePanel: (mode: LessonPanelMode) => void;
@@ -80,7 +82,7 @@ export function LessonWorkspace({
         <div className="lesson-toolbar">
           <button className="ghost-button" type="button" onClick={onBack}>
             <ChevronLeft size={17} />
-            Dashboard
+            {backLabel}
           </button>
           <span>{lecture.date}</span>
         </div>

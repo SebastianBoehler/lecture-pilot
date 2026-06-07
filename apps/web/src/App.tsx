@@ -27,6 +27,7 @@ function App() {
   const [session, setSession] = useState<LoginSession | null>(null);
   const [availableLectures, setAvailableLectures] = useState(lectures);
   const [selectedLecture, setSelectedLecture] = useState(lectures[2]);
+  const [lessonBackView, setLessonBackView] = useState<"dashboard" | "professor">("dashboard");
   const [panelMode, setPanelMode] = useState<LessonPanelMode | null>(null);
   const [canvasDocument, setCanvasDocument] = useState<CanvasDocument | null>(null);
   const [canvasError, setCanvasError] = useState<string | null>(null);
@@ -101,8 +102,13 @@ function App() {
     setLastTutorModel(null);
   }
 
-  async function handleOpenLecture(lecture: Lecture) {
+  async function handleOpenLecture(
+    lecture: Lecture,
+    backView: "dashboard" | "professor" = "dashboard",
+    userId = effectiveUserId(session),
+  ) {
     setSelectedLecture(lecture);
+    setLessonBackView(backView);
     setView("lesson");
     setPanelMode(null);
     setCanvasDocument(null);
@@ -115,7 +121,7 @@ function App() {
     setLastTutorModel(null);
 
     try {
-      const document = await getLectureCanvas("martius-ml", lecture.id, effectiveUserId(session));
+      const document = await getLectureCanvas("martius-ml", lecture.id, userId);
       setCanvasDocument(document);
       setFocusedSectionId(document.sections[0]?.id ?? "bayesian-decision-theory-the-aim");
     } catch (error) {
@@ -208,7 +214,12 @@ function App() {
       ) : view === "profile" && session ? (
         <ProfileView session={session} onBack={() => setView("dashboard")} />
       ) : view === "professor" ? (
-        <ProfessorCourseBuilder onBack={() => setView("login")} />
+        <ProfessorCourseBuilder
+          onBack={() => setView("login")}
+          onPreviewWorkspace={() => {
+            void handleOpenLecture(lectures[2], "professor", "professor-preview");
+          }}
+        />
       ) : (
         <LessonWorkspace
           canvasDocument={canvasDocument}
@@ -221,8 +232,9 @@ function App() {
           tutorModel={lastTutorModel}
           navigationVersion={navigationVersion}
           panelMode={panelMode}
+          backLabel={lessonBackView === "professor" ? "Course builder" : "Dashboard"}
           onBack={() => {
-            setView("dashboard");
+            setView(lessonBackView);
             setPanelMode(null);
           }}
           onSendMessage={handleTutorMessage}
