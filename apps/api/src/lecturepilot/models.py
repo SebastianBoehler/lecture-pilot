@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, SecretStr
 
-from lecturepilot.canvas_models import CanvasSection
+from lecturepilot.canvas_models import CanvasDocument, CanvasSection
 
 
 class AttendanceStatus(StrEnum):
@@ -88,6 +88,74 @@ class LectureView(BaseModel):
     attendance: AttendanceStatus = AttendanceStatus.UNKNOWN
 
 
+class SourceBundleEntry(BaseModel):
+    path: str = Field(min_length=1, max_length=500)
+    kind: str = Field(min_length=1, max_length=80)
+    size_bytes: int = Field(ge=0)
+
+
+class CourseMaterialUploadType(BaseModel):
+    suffix: str = Field(min_length=2, max_length=20)
+    kind: str = Field(min_length=1, max_length=80)
+    max_bytes: int = Field(gt=0)
+
+
+class SourceBundleManifest(BaseModel):
+    course_id: str = Field(min_length=1)
+    files: list[SourceBundleEntry]
+    counts_by_kind: dict[str, int]
+    supported_uploads: list[CourseMaterialUploadType]
+
+
+class CourseMaterialUploadResult(BaseModel):
+    course_id: str = Field(min_length=1)
+    path: str = Field(min_length=1, max_length=500)
+    kind: str = Field(min_length=1, max_length=80)
+    size_bytes: int = Field(ge=0)
+    storage_path: str = Field(min_length=1, max_length=700)
+
+
+class YoutubeDuration(BaseModel):
+    iso8601: str | None = None
+    seconds: int | None = Field(default=None, ge=0)
+    display: str | None = Field(default=None, max_length=32)
+
+
+class YoutubeVideoCandidate(BaseModel):
+    video_id: str = Field(min_length=1, max_length=32)
+    title: str = Field(min_length=1, max_length=200)
+    channel_title: str = Field(min_length=1, max_length=200)
+    description: str = Field(default="", max_length=4000)
+    url: str = Field(min_length=1, max_length=500)
+    thumbnail_url: str | None = Field(default=None, max_length=500)
+    published_at: str | None = Field(default=None, max_length=80)
+    view_count: int | None = Field(default=None, ge=0)
+    duration: YoutubeDuration = Field(default_factory=YoutubeDuration)
+    score: float = 0
+    reason: str = Field(default="", max_length=500)
+
+
+class YoutubeSearchResponse(BaseModel):
+    query: str = Field(min_length=1, max_length=300)
+    items: list[YoutubeVideoCandidate]
+    next_page_token: str | None = Field(default=None, max_length=200)
+
+
+class YoutubeSelectionInput(BaseModel):
+    section_id: str | None = Field(default=None, max_length=120)
+    video: YoutubeVideoCandidate
+    note: str | None = Field(default=None, max_length=500)
+
+
+class YoutubeSelectionResult(BaseModel):
+    course_id: str = Field(min_length=1)
+    lecture_id: str = Field(min_length=1)
+    section_id: str | None = None
+    block_id: str = Field(min_length=1)
+    video: YoutubeVideoCandidate
+    storage_path: str = Field(min_length=1, max_length=700)
+
+
 class CanvasState(BaseModel):
     focused_section_id: str | None = None
     active_artifact_id: str | None = None
@@ -100,6 +168,7 @@ class AgentTurnInput(BaseModel):
     attendance: AttendanceStatus
     message: str = Field(min_length=1, max_length=4000)
     canvas_state: CanvasState = Field(default_factory=CanvasState)
+    canvas_context: CanvasDocument | None = None
 
 
 class CanvasCommand(BaseModel):

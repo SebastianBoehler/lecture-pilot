@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from lecturepilot.app import create_app
+from lecturepilot.canvas_models import CanvasDocument, CanvasSection
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import (
     AgentTurnInput,
@@ -205,6 +206,30 @@ def test_agent_turn_reports_model_execution_error(monkeypatch) -> None:
     assert "Model request failed" in response.json()["detail"]
 
 
+def test_agent_turn_enriches_harness_with_canvas_context(monkeypatch) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
+    app = create_app()
+    app.state.canvas_workspace = _FakeCanvasWorkspace()
+    app.state.agent_harness = _ContextHarness()
+    client = TestClient(app)
+
+    response = client.post(
+        "/agent/turn",
+        json={
+            "user_id": "u1",
+            "course_id": "martius-ml",
+            "lecture_id": "lecture-03",
+            "attendance": "present",
+            "message": "verify this",
+            "canvas_state": {"focused_section_id": "bayes-formula"},
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["message"] == "Saw Bayesian Decision Theory."
+
+
 class _FakeTuebingenAdapter:
     def login(self, *, username: str, password: str, term: str) -> TuebingenLoginResult:
         assert password == "very-secret-password"
@@ -240,8 +265,33 @@ class _FakeHarness:
         )
 
 
+class _ContextHarness:
+    async def run_turn(self, turn: AgentTurnInput) -> AgentTurnResult:
+        assert turn.canvas_context is not None
+        assert turn.canvas_context.title == "Bayesian Decision Theory"
+        return AgentTurnResult(
+            message="Saw Bayesian Decision Theory.",
+            canvas_commands=[CanvasCommand(type="focus_section", section_id="bayes-formula")],
+            model=DEFAULT_MODEL,
+        )
+
+
 class _FailingHarness:
     async def run_turn(self, turn: AgentTurnInput) -> AgentTurnResult:
         raise ModelExecutionError(
             "Model request failed. Check the provider key and model configuration."
+        )
+
+
+class _FakeCanvasWorkspace:
+    def read_document(self, *, course_id: str, lecture_id: str, user_id: str) -> CanvasDocument:
+        return CanvasDocument(
+            id="martius-ml-lecture-03",
+            course_id=course_id,
+            lecture_id=lecture_id,
+            title="Bayesian Decision Theory",
+            source_kind="latex",
+            source_ref="Lecture03-eng.tex",
+            workspace_path=".lecturepilot/workspaces/test/canvas/index.md",
+            sections=[CanvasSection(id="bayes-formula", title="Bayes formula")],
         )

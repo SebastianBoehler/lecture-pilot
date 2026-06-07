@@ -1,16 +1,13 @@
 from __future__ import annotations
 
 import json
-import re
 from typing import Protocol
 
+from lecturepilot.model_commands import canvas_context, read_canvas_commands, read_quality_gate
 from lecturepilot.models import (
     AgentTurnInput,
     AgentTurnResult,
-    CanvasCommand,
     ProviderSettings,
-    QualityGateDecision,
-    QualityGateStatus,
 )
 from lecturepilot.providers import ProviderConfigurationError
 
@@ -55,12 +52,12 @@ class LiteLLMModelClient:
             ) from exc
         payload = _parse_model_payload(response.choices[0].message.content)
         message = _read_message(payload)
-        section_id = _read_section_id(payload, turn)
-        quality_gate = _read_quality_gate(payload)
+        commands = read_canvas_commands(payload, turn)
+        quality_gate = read_quality_gate(payload, turn)
 
         return AgentTurnResult(
             message=message,
-            canvas_commands=[CanvasCommand(type="focus_section", section_id=section_id)],
+            canvas_commands=commands,
             quality_gate=quality_gate,
             model=settings.model,
         )
@@ -84,23 +81,34 @@ def _messages(turn: AgentTurnInput) -> list[dict[str, str]]:
                 "and transfer or failure mode. "
                 "If evidence is partial, return needs_evidence and ask one concrete missing "
                 "worked-example check. "
-                "Return only JSON with keys message, focus_section_id, and quality_gate. "
-                "focus_section_id must be the current section id or another canvas section id. "
+                "Return only JSON with keys message, canvas_commands, and quality_gate. "
+                "canvas_commands must contain focus_section and highlight_span commands. "
+                "When the student asks for an infographic, diagram, personalized example, "
+                "or expanded note, include one append_section or update_section command with "
+                "a student-facing CanvasSection using paragraph, callout, list, or math blocks. "
+                "Use focus_section to scroll to the section that supports your next check, "
+                "not just the current section. "
+                "Use highlight_span with a block id and short phrase when a precise sentence, "
+                "list, formula, or asset supports the explanation. "
+                "Only use section_id and span_id values from the canvas context; do not "
+                "return multiple focus_section commands. "
                 "quality_gate must be an object with gate_id, status, reason, and next_prompt. "
-                "For this lecture the main gate is bayes-decision-check."
+                "Use bayes-decision-check for lecture-03. For other lectures use "
+                "lecture-learning-outcome-check."
             ),
         },
         {
             "role": "user",
             "content": (
+                f"Lecture id: {turn.lecture_id}\n"
                 f"Attendance: {turn.attendance.value}\n"
                 "Current section: "
                 f"{turn.canvas_state.focused_section_id or 'bayesian-decision-theory-the-aim'}\n"
+                f"{canvas_context(turn)}\n"
                 f"Student message: {turn.message}"
             ),
         },
     ]
-
 
 def _parse_model_payload(content: str | None) -> dict:
     if not content:
@@ -116,35 +124,8 @@ def _parse_model_payload(content: str | None) -> dict:
         raise ProviderConfigurationError("Model JSON must be an object.")
     return payload
 
-
 def _read_message(payload: dict) -> str:
     message = payload.get("message")
     if not isinstance(message, str) or not message.strip():
         raise ProviderConfigurationError("Model JSON must include a non-empty message.")
     return message.strip()
-
-
-def _read_section_id(payload: dict, turn: AgentTurnInput) -> str:
-    requested = payload.get("focus_section_id")
-    if isinstance(requested, str) and _SAFE_SECTION_RE.fullmatch(requested):
-        return requested
-    current = turn.canvas_state.focused_section_id
-    return current if current and _SAFE_SECTION_RE.fullmatch(current) else "bayesian-decision-theory-the-aim"
-
-
-def _read_quality_gate(payload: dict) -> QualityGateDecision:
-    raw_gate = payload.get("quality_gate")
-    if not isinstance(raw_gate, dict):
-        return QualityGateDecision(
-            gate_id="bayes-decision-check",
-            status=QualityGateStatus.NOT_ASSESSED,
-            reason="The model did not return a quality gate decision.",
-            next_prompt="Answer the current skill check in one sentence.",
-        )
-    try:
-        return QualityGateDecision.model_validate(raw_gate)
-    except ValueError as exc:
-        raise ProviderConfigurationError("Model returned an invalid quality_gate.") from exc
-
-
-_SAFE_SECTION_RE = re.compile(r"[a-z0-9][a-z0-9-]{0,119}")

@@ -162,25 +162,34 @@ def test_cache_key_is_tenant_scoped_and_validated() -> None:
 def test_course_material_uploads_are_tenant_prefixed_and_allowlisted() -> None:
     policy = WorkspacePolicy()
 
-    checked = policy.validate_course_material_upload(
-        tenant_id="tenant-tuebingen",
-        path="lectures/03/source.tex",
-        size_bytes=32_000,
-    )
+    checked = [
+        policy.validate_course_material_upload(
+            tenant_id="tenant-tuebingen",
+            path=path,
+            size_bytes=32_000,
+        )
+        for path in (
+            "lectures/03/source.tex",
+            "lectures/03/slides.pdf",
+            "lectures/03/figure.svg",
+            "lectures/03/demo.mp4",
+            "lectures/03/notebook.ipynb",
+        )
+    ]
 
-    assert checked.kind == "latex"
-    assert checked.path.startswith("tenants/")
-    assert checked.path.endswith("/course-materials/lectures/03/source.tex")
-    assert "tenant-tuebingen" not in checked.path
+    assert [item.kind for item in checked] == ["latex", "pdf", "svg", "video", "notebook"]
+    assert all(item.path.startswith("tenants/") for item in checked)
+    assert checked[0].path.endswith("/course-materials/lectures/03/source.tex")
+    assert all("tenant-tuebingen" not in item.path for item in checked)
 
 
 @pytest.mark.parametrize(
     ("path", "size"),
     [
         ("lectures/03/source.exe", 100),
-        ("lectures/03/source.svg", 100),
         ("../source.tex", 100),
         ("lectures/03/source.pdf", 101 * 1024 * 1024),
+        ("lectures/03/demo.mp4", 501 * 1024 * 1024),
     ],
 )
 def test_course_material_uploads_reject_unsafe_files(path: str, size: int) -> None:

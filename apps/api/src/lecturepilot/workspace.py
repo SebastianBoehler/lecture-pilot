@@ -34,12 +34,22 @@ class WorkspacePolicy:
         ".tex": ("latex", 10 * 1024 * 1024),
         ".md": ("markdown", 5 * 1024 * 1024),
         ".txt": ("text", 2 * 1024 * 1024),
+        ".csv": ("table", 5 * 1024 * 1024),
         ".json": ("json", 2 * 1024 * 1024),
         ".pdf": ("pdf", 100 * 1024 * 1024),
         ".png": ("image", 20 * 1024 * 1024),
         ".jpg": ("image", 20 * 1024 * 1024),
         ".jpeg": ("image", 20 * 1024 * 1024),
         ".webp": ("image", 20 * 1024 * 1024),
+        ".gif": ("image", 20 * 1024 * 1024),
+        ".svg": ("svg", 2 * 1024 * 1024),
+        ".mp4": ("video", 500 * 1024 * 1024),
+        ".webm": ("video", 500 * 1024 * 1024),
+        ".mov": ("video", 500 * 1024 * 1024),
+        ".mkv": ("video", 500 * 1024 * 1024),
+        ".avi": ("video", 500 * 1024 * 1024),
+        ".py": ("code", 5 * 1024 * 1024),
+        ".ipynb": ("notebook", 20 * 1024 * 1024),
     }
 
     def validate_write(self, path: str, size_bytes: int) -> CheckedWorkspaceFile:

@@ -8,13 +8,13 @@ def is_allowed_canvas_asset(path: Path) -> bool:
     return (
         path.exists()
         and path.is_file()
-        and path.suffix.lower() in BROWSER_IMAGE_SUFFIXES
+        and path.suffix.lower() in BROWSER_ASSET_SUFFIXES
         and path.stat().st_size <= _MAX_CANVAS_ASSET_BYTES
     )
 
 
 def read_items(body: str) -> list[str]:
-    items = [clean_inline(item) for item in _ITEM_RE.findall(body)]
+    items = [clean_inline(remove_display_math(item)) for item in _ITEM_RE.findall(body)]
     return unique([item for item in items if is_learning_text(item)])
 
 
@@ -44,7 +44,7 @@ def read_assets(body: str, *, material_root: Path) -> list[str]:
         asset = resolve_image_asset(match.group("path").strip(), material_root=material_root)
         if asset and asset not in assets:
             assets.append(asset)
-    return assets
+    return collapse_overlay_assets(assets)
 
 
 def resolve_image_asset(raw_path: str, *, material_root: Path) -> str | None:
@@ -52,9 +52,9 @@ def resolve_image_asset(raw_path: str, *, material_root: Path) -> str | None:
         raw_path = raw_path.removeprefix("images/")
     suffix = Path(raw_path).suffix.lower()
     image_path = material_root / "images" / raw_path
-    if suffix in BROWSER_IMAGE_SUFFIXES and is_allowed_canvas_asset(image_path):
+    if suffix in BROWSER_ASSET_SUFFIXES and is_allowed_canvas_asset(image_path):
         return raw_path
-    for extension in (".jpg", ".jpeg", ".png", ".webp", ".svg"):
+    for extension in (".jpg", ".jpeg", ".png", ".webp", ".svg", ".pdf"):
         candidate = f"{raw_path}{extension}"
         if is_allowed_canvas_asset(material_root / "images" / candidate):
             return candidate
@@ -63,6 +63,7 @@ def resolve_image_asset(raw_path: str, *, material_root: Path) -> str | None:
 
 def clean_inline(text: str) -> str:
     text, formulas = protect_inline_math(text)
+    text = text.replace("\\\\", " ")
     text = re.sub(r"\\(alert|textbf|underline|emph|term|Blue|Green)\{([^{}]*)\}", r"\2", text)
     text = re.sub(r"\\(?:only|onslide)<[^>]*>\{", " ", text)
     text = re.sub(r"\\(item|pause|homestudy|centering|newline|null|hfill)\b", " ", text)
@@ -71,9 +72,10 @@ def clean_inline(text: str) -> str:
     text = re.sub(r"\\[a-zA-Z]+\*?(?:\[[^\]]*])?(?:\{[^{}]*})?", " ", text)
     text = text.replace("~", " ").replace("``", '"').replace("''", '"')
     text = text.replace("\\%", "%").replace("\\rightarrow", "->")
+    text = re.sub(r"[{}]\s*|\s+", " ", text).strip()
     for token, formula in formulas.items():
         text = text.replace(token, formula)
-    return re.sub(r"[{}]\s*|\s+", " ", text).strip()
+    return text.strip()
 
 
 def protect_inline_math(text: str) -> tuple[str, dict[str, str]]:
@@ -90,13 +92,48 @@ def protect_inline_math(text: str) -> tuple[str, dict[str, str]]:
 def clean_formula(formula: str) -> str:
     formula = re.sub(r"\\(pause|onslide|only)<[^>]*>", " ", formula)
     formula = re.sub(r"\\(Blue|Green|alert|textbf)\{([^{}]*)\}", r"\2", formula)
-    return re.sub(r"\s+", " ", formula).strip()
+    formula = re.sub(r"\s+", " ", formula).strip()
+    if _needs_aligned_wrapper(formula):
+        return rf"\begin{{aligned}}{formula}\end{{aligned}}"
+    return formula
 
 
 def remove_noisy_environments(text: str) -> str:
     for env in ("tikzpicture", "tabular", "table", "figure"):
         text = re.sub(rf"\\begin\{{{env}}}.*?\\end\{{{env}}}", " ", text, flags=re.DOTALL)
     return text
+
+
+def remove_display_math(text: str) -> str:
+    text = _MATH_BLOCK_RE.sub(" ", text)
+    return re.sub(r"[:;]\s*$|\s+", " ", text).strip()
+
+
+def collapse_overlay_assets(assets: list[str]) -> list[str]:
+    selected: dict[str, tuple[int, str]] = {}
+    order: list[str] = []
+    for asset in assets:
+        key, number = _overlay_asset_key(asset)
+        if key not in selected:
+            order.append(key)
+            selected[key] = (number, asset)
+            continue
+        if number >= selected[key][0]:
+            selected[key] = (number, asset)
+    return [selected[key][1] for key in order]
+
+
+def _needs_aligned_wrapper(formula: str) -> bool:
+    if "\\begin{" in formula:
+        return False
+    return "&" in formula or "\\\\" in formula
+
+
+def _overlay_asset_key(asset: str) -> tuple[str, int]:
+    match = _OVERLAY_ASSET_RE.match(asset)
+    if not match:
+        return asset, 0
+    return f"{match.group('base')}{match.group('suffix')}", int(match.group("number"))
 
 
 def read_title(source: str) -> str | None:
@@ -133,22 +170,24 @@ def unique(values: list[str]) -> list[str]:
     return result
 
 
-BROWSER_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".svg"}
+BROWSER_ASSET_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".svg", ".pdf"}
+BROWSER_IMAGE_SUFFIXES = BROWSER_ASSET_SUFFIXES
 _MAX_CANVAS_ASSET_BYTES = 20 * 1024 * 1024
 _TITLE_RE = re.compile(r"\\mytitle(?:\[[^]]*])?\{[^{}]*}\{(?P<title>[^{}]+)}")
 _ITEM_RE = re.compile(r"\\item\s+(.*?)(?=\\item|\\end\{itemize}|$)", re.DOTALL)
 _ITEM_ENV_RE = re.compile(r"\\begin\{itemize}.*?\\end\{itemize}", re.DOTALL)
 _ASSET_RE = re.compile(r"\\(?:ig|includegraphics)(?:\[[^]]*])?\{(?P<path>[^{}]+)}")
+_OVERLAY_ASSET_RE = re.compile(r"(?P<base>.+)[_-](?P<number>\d+)(?P<suffix>\.[^.]+)$")
 _INLINE_MATH_RE = re.compile(r"\$[^$\n]+\$|\\\([^)]*\\\)")
 _MATH_BLOCK_RE = re.compile(
     r"\$\$.*?\$\$"
-    r"|\\\[.*?\\\]"
+    r"|(?<!\\)\\\[.*?(?<!\\)\\\]"
     r"|\\begin\{(?:equation|align|myeqn)\*?}.*?\\end\{(?:equation|align|myeqn)\*?}",
     re.DOTALL,
 )
 _MATH_PATTERNS = (
     re.compile(r"\$\$(?P<formula>.*?)\$\$", re.DOTALL),
-    re.compile(r"\\\[(?P<formula>.*?)\\\]", re.DOTALL),
+    re.compile(r"(?<!\\)\\\[(?P<formula>.*?)(?<!\\)\\\]", re.DOTALL),
     re.compile(
         r"\\begin\{(?:equation|align|myeqn)\*?}(?P<formula>.*?)\\end\{(?:equation|align|myeqn)\*?}",
         re.DOTALL,

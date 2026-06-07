@@ -12,11 +12,14 @@ from lecturepilot.canvas_markdown import (
     write_document_source,
     write_student_sections,
 )
+from lecturepilot.course_media import apply_course_media
+from lecturepilot.generated_infographics import materialize_infographic_sections
 from lecturepilot.latex_canvas_importer import CANVAS_IMPORT_VERSION, import_latex_canvas
 from lecturepilot.latex_canvas_text import (
-    BROWSER_IMAGE_SUFFIXES,
+    BROWSER_ASSET_SUFFIXES,
     is_allowed_canvas_asset,
 )
+from lecturepilot.pdf_preview import PdfPreviewError, render_pdf_preview
 
 
 class CanvasWorkspaceError(RuntimeError):
@@ -42,15 +45,25 @@ class CanvasWorkspace:
     ) -> CanvasDocument:
         canvas_dir = self._canvas_dir(course_id, lecture_id, user_id)
         manifest_path = canvas_dir / "index.md"
-        if not manifest_path.exists():
+        if not manifest_path.exists() or self._is_stale_canvas_manifest(manifest_path):
+            student_sections = self._read_student_sections(
+                course_id=course_id,
+                lecture_id=lecture_id,
+                user_id=user_id,
+                canvas_dir=canvas_dir,
+            )
             document = self._initial_document(
                 course_id=course_id,
                 lecture_id=lecture_id,
                 user_id=user_id,
             )
+            if student_sections:
+                document = document.model_copy(
+                    update={"sections": _merge_sections([*document.sections, *student_sections])}
+                )
             self._write_initial_source(document, canvas_dir)
 
-        document = read_document_source(canvas_dir)
+        document = apply_course_media(read_document_source(canvas_dir), self.material_root)
         self._write_compiled_document(document, course_id, lecture_id, user_id)
         return document
 
@@ -68,11 +81,33 @@ class CanvasWorkspace:
         self._write_compiled_document(document, course_id, lecture_id, user_id)
         return document
 
+    def prepare_generated_sections(
+        self,
+        *,
+        course_id: str,
+        lecture_id: str,
+        user_id: str,
+        prompt: str,
+        sections: list[CanvasSection],
+    ) -> list[CanvasSection]:
+        student_key = _pseudonymous_id(user_id)
+        canvas_dir = self._canvas_dir(course_id, lecture_id, user_id)
+        return materialize_infographic_sections(
+            sections=sections,
+            prompt=prompt,
+            asset_dir=canvas_dir / "student-assets",
+            asset_url_prefix=(
+                f"/workspace-assets/{_safe_id(course_id)}/{_safe_id(lecture_id)}/"
+                f"{student_key}/student-assets"
+            ),
+            image_generator=getattr(self, "image_generator", None),
+        )
+
     def asset_path(self, *, lecture_id: str, asset_path: str) -> Path:
         if ".." in Path(asset_path).parts or asset_path.startswith("/"):
             raise CanvasWorkspaceError("Asset path must stay inside course material root.")
-        if Path(asset_path).suffix.lower() not in BROWSER_IMAGE_SUFFIXES:
-            raise CanvasWorkspaceError("Canvas assets are limited to browser image files.")
+        if Path(asset_path).suffix.lower() not in BROWSER_ASSET_SUFFIXES:
+            raise CanvasWorkspaceError("Canvas assets are limited to browser-renderable course files.")
         source = self._source_path(lecture_id)
         candidate = source.parent / asset_path
         if is_allowed_canvas_asset(candidate):
@@ -82,16 +117,46 @@ class CanvasWorkspace:
             return image_candidate
         raise CanvasWorkspaceError("Canvas asset was not found.")
 
-    def _initial_document(self, *, course_id: str, lecture_id: str, user_id: str) -> CanvasDocument:
-        compiled_path = self._compiled_path(course_id, lecture_id, user_id)
-        canvas_dir = self._canvas_dir(course_id, lecture_id, user_id)
-        if compiled_path.exists():
-            payload = json.loads(compiled_path.read_text(encoding="utf-8"))
-            if payload.get("import_version") == CANVAS_IMPORT_VERSION:
-                return CanvasDocument.model_validate(payload).model_copy(
-                    update={"workspace_path": str(canvas_dir / "index.md")}
-                )
+    def asset_preview_path(self, *, lecture_id: str, asset_path: str) -> Path:
+        source = self.asset_path(lecture_id=lecture_id, asset_path=asset_path)
+        if source.suffix.lower() != ".pdf":
+            return source
+        try:
+            return render_pdf_preview(source, self.material_root / ".lecturepilot-previews")
+        except PdfPreviewError as exc:
+            raise CanvasWorkspaceError(str(exc)) from exc
 
+    def workspace_asset_path(
+        self,
+        *,
+        course_id: str,
+        lecture_id: str,
+        student_key: str,
+        asset_path: str,
+    ) -> Path:
+        if not re.fullmatch(r"[a-f0-9]{24}", student_key):
+            raise CanvasWorkspaceError("Workspace asset user key is invalid.")
+        if ".." in Path(asset_path).parts or asset_path.startswith("/"):
+            raise CanvasWorkspaceError("Asset path must stay inside learner workspace.")
+        if Path(asset_path).suffix.lower() not in BROWSER_ASSET_SUFFIXES:
+            raise CanvasWorkspaceError("Workspace assets are limited to browser-renderable files.")
+        root = (
+            self.workspace_root
+            / "students"
+            / student_key
+            / "courses"
+            / _safe_id(course_id)
+            / "lectures"
+            / _safe_id(lecture_id)
+            / "canvas"
+        )
+        candidate = root / asset_path
+        if not is_allowed_canvas_asset(candidate):
+            raise CanvasWorkspaceError("Workspace asset was not found.")
+        return candidate
+
+    def _initial_document(self, *, course_id: str, lecture_id: str, user_id: str) -> CanvasDocument:
+        canvas_dir = self._canvas_dir(course_id, lecture_id, user_id)
         source_path = self._source_path(lecture_id)
         return import_latex_canvas(
             source_path=source_path,
@@ -100,6 +165,32 @@ class CanvasWorkspace:
             lecture_id=lecture_id,
             workspace_path=str(canvas_dir / "index.md"),
         )
+
+    def _is_stale_canvas_manifest(self, manifest_path: Path) -> bool:
+        return read_document_source(manifest_path.parent).import_version != CANVAS_IMPORT_VERSION
+
+    def _read_student_sections(
+        self,
+        *,
+        course_id: str,
+        lecture_id: str,
+        user_id: str,
+        canvas_dir: Path,
+    ) -> list[CanvasSection]:
+        sections: list[CanvasSection] = []
+        if (canvas_dir / "index.md").exists():
+            sections.extend(
+                section for section in read_document_source(canvas_dir).sections if _is_student_section(section)
+            )
+        compiled_path = self._compiled_path(course_id, lecture_id, user_id)
+        if compiled_path.exists():
+            payload = json.loads(compiled_path.read_text(encoding="utf-8"))
+            sections.extend(
+                section
+                for section in CanvasDocument.model_validate(payload).sections
+                if _is_student_section(section)
+            )
+        return _merge_sections(sections)
 
     def _write_compiled_document(
         self,
@@ -115,6 +206,10 @@ class CanvasWorkspace:
     def _write_initial_source(self, document: CanvasDocument, canvas_dir: Path) -> None:
         base_sections = [section for section in document.sections if not _is_student_section(section)]
         student_sections = [section for section in document.sections if _is_student_section(section)]
+        sections_dir = canvas_dir / "sections"
+        if sections_dir.exists():
+            for path in sections_dir.glob("*.md"):
+                path.unlink()
         write_document_source(document.model_copy(update={"sections": base_sections}), canvas_dir)
         if student_sections:
             write_student_sections(canvas_dir, student_sections)
@@ -161,6 +256,18 @@ def _is_student_section(section: CanvasSection) -> bool:
     return section.source_ref == "student workspace" or section.id.startswith("student-")
 
 
+def _merge_sections(sections: list[CanvasSection]) -> list[CanvasSection]:
+    result: list[CanvasSection] = []
+    by_id: dict[str, int] = {}
+    for section in sections:
+        if section.id in by_id:
+            result[by_id[section.id]] = section
+            continue
+        by_id[section.id] = len(result)
+        result.append(section)
+    return result
+
+
 def _default_workspace_root() -> Path:
     configured = os.environ.get("LECTUREPILOT_WORKSPACE_ROOT")
     return Path(configured or ".lecturepilot/workspaces").expanduser()
@@ -170,6 +277,9 @@ def _default_material_root() -> Path:
     configured = os.environ.get("LECTUREPILOT_COURSE_MATERIAL_ROOT")
     if configured:
         return Path(configured).expanduser()
+    local_materials = Path("local-course-materials/martius-ml").expanduser()
+    if (local_materials / "Lecture03-eng.tex").exists():
+        return local_materials
     candidates = Path.home().glob(
         "Documents/Studium/*/Kurse/Grundlagen des Maschinellen Lernens Vorlesung"
     )
@@ -179,4 +289,8 @@ def _default_material_root() -> Path:
     return Path("local-course-materials/martius-ml").expanduser()
 
 
-_LECTURE_SOURCES = {"lecture-03": "Lecture03-eng.tex"}
+_LECTURE_SOURCES = {
+    "lecture-01": "Lecture01-eng.tex",
+    "lecture-02": "Lecture02-eng.tex",
+    "lecture-03": "Lecture03-eng.tex",
+}

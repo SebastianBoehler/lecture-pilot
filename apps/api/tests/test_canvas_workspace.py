@@ -4,6 +4,7 @@ import pytest
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace, CanvasWorkspaceError
+from lecturepilot.latex_canvas_importer import CANVAS_IMPORT_VERSION
 
 
 def test_imports_latex_canvas_into_pseudonymous_student_workspace(tmp_path: Path) -> None:
@@ -27,8 +28,9 @@ def test_imports_latex_canvas_into_pseudonymous_student_workspace(tmp_path: Path
         "naive-bayes-classifiers",
         "losses-and-risks",
     ]
-    assert document.sections[0].blocks[0].asset_url == (
-        "/course-assets/martius-ml/lecture-03/Ch3/spam-DALL-E.jpg"
+    assert any(
+        block.asset_url == "/course-assets/martius-ml/lecture-03/Ch3/spam-DALL-E.jpg"
+        for block in document.sections[0].blocks
     )
     assert any(block.type == "math" for block in document.sections[1].blocks)
     assert "student01" not in document.workspace_path
@@ -156,9 +158,51 @@ def test_migrates_existing_compiled_student_sections_to_overlay(tmp_path: Path) 
     document = workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="alice")
 
     canvas_dir = Path(document.workspace_path).parent
-    assert (canvas_dir / "sections" / "01-bayes-formula.md").exists()
+    assert next((canvas_dir / "sections").glob("*-bayes-formula.md"), None) is not None
     assert not (canvas_dir / "sections" / "02-student-soccer-bayes-example.md").exists()
     assert (canvas_dir / "student" / "90-student-soccer-bayes-example.md").exists()
+
+
+def test_refreshes_stale_markdown_canvas_and_keeps_student_overlay(tmp_path: Path) -> None:
+    material_root = _write_course_source(tmp_path)
+    workspace = CanvasWorkspace(
+        workspace_root=tmp_path / "workspaces",
+        material_root=material_root,
+    )
+    document = workspace.apply_sections(
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        user_id="alice",
+        sections=[
+            CanvasSection(
+                id="student-transfer-example",
+                title="Student transfer example",
+                source_ref="student workspace",
+                blocks=[CanvasBlock(id="student-transfer-example-p-1", type="paragraph", text="Personal note.")],
+            )
+        ],
+    )
+    canvas_dir = Path(document.workspace_path).parent
+    manifest_path = canvas_dir / "index.md"
+    manifest_path.write_text(
+        manifest_path.read_text(encoding="utf-8").replace(
+            f"import_version: {CANVAS_IMPORT_VERSION}", "import_version: 1"
+        ),
+        encoding="utf-8",
+    )
+    stale_section = canvas_dir / "sections" / "04-naive-bayes-classifiers.md"
+    stale_section.write_text(stale_section.read_text(encoding="utf-8") + "\nRaw stale official text.\n")
+
+    refreshed = workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="alice")
+    naive_section = next(section for section in refreshed.sections if section.id == "naive-bayes-classifiers")
+    naive_items = [item for block in naive_section.blocks if block.type == "list" for item in block.items]
+
+    assert refreshed.import_version == CANVAS_IMPORT_VERSION
+    assert "Raw stale official text." not in stale_section.read_text(encoding="utf-8")
+    assert any("likelihood term" in item for item in naive_items)
+    assert all(r"\[" not in item and r"\]" not in item for item in naive_items)
+    assert all(r"\\" not in item for item in naive_items)
+    assert any(section.id == "student-transfer-example" for section in refreshed.sections)
 
 
 @pytest.mark.parametrize("asset_path", ["../secret.png", "/tmp/image.png", "notes.pdf"])
@@ -181,6 +225,24 @@ def _write_course_source(tmp_path: Path) -> Path:
     image_dir = material_root / "images" / "Ch3"
     image_dir.mkdir(parents=True)
     (image_dir / "spam-DALL-E.jpg").write_bytes(b"not-a-real-jpeg")
+    (material_root / "Lecture01-eng.tex").write_text(
+        r"""
+\mytitle[6 May, 2026]{1}{Introduction}
+\begin{frame}{Course setup}
+This lecture explains course logistics and the machine learning overview.
+\end{frame}
+""",
+        encoding="utf-8",
+    )
+    (material_root / "Lecture02-eng.tex").write_text(
+        r"""
+\mytitle[13 May, 2026]{2}{Linear Models and Generalization}
+\begin{frame}{Linear model recap}
+Linear models combine features and weights before studying generalization.
+\end{frame}
+""",
+        encoding="utf-8",
+    )
     (material_root / "Lecture03-eng.tex").write_text(
         r"""
 \mytitle[29 April, 2025]{3}{Bayesian Decision Theory}
@@ -213,9 +275,13 @@ Prior, likelihood, evidence, and posterior determine the classifier score.
 \end{frame}
 \begin{frame}{Naive Bayes Classifiers}
 The independence assumption reduces joint probabilities to per-feature probabilities.
+\begin{itemize}
+\item This assumption simplifies the computation of likelihood term:
 \[
 P(x_1, ..., x_n | C) = P(x_1 | C) \cdot \ldots \cdot P(x_n | C)
 \]
+\item we reduce the complexity: \\ instead of computing joint probabilities of all features
+\end{itemize}
 \end{frame}
 \begin{frame}{Losses and Risks}
 Expected risk compares actions when mistakes have different costs.

@@ -7,7 +7,6 @@ from pathlib import Path
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.latex_canvas_text import (
     clean_inline,
-    is_allowed_canvas_asset,
     is_skipped_frame_title,
     paragraphs_from_latex,
     read_assets,
@@ -63,6 +62,9 @@ def _read_grouped_sections(
     course_id: str,
     lecture_id: str,
 ) -> list[CanvasSection]:
+    if lecture_id != "lecture-03":
+        return _read_frame_chunk_sections(frames, material_root, course_id, lecture_id)
+
     by_slug: dict[str, list[LatexFrame]] = {}
     for frame in frames:
         by_slug.setdefault(frame.slug, []).append(frame)
@@ -92,14 +94,14 @@ def _read_group_blocks(
 ) -> list[CanvasBlock]:
     body = "\n".join(frame.body for frame in frames)
     blocks: list[CanvasBlock] = []
-    for asset_index, asset in enumerate(read_assets(body, material_root=material_root)[:2], start=1):
-        blocks.append(_asset_block(section_id, asset_index, asset, course_id, lecture_id))
     if items := read_items(body):
-        blocks.append(CanvasBlock(id=f"{section_id}-list", type="list", items=items[:8]))
-    for math_index, formula in enumerate(read_math_blocks(body)[:4], start=1):
+        blocks.append(CanvasBlock(id=f"{section_id}-list", type="list", items=items))
+    for math_index, formula in enumerate(read_math_blocks(body), start=1):
         blocks.append(CanvasBlock(id=f"{section_id}-math-{math_index}", type="math", text=formula))
-    for paragraph_index, paragraph in enumerate(paragraphs_from_latex(body)[:2], start=1):
+    for paragraph_index, paragraph in enumerate(paragraphs_from_latex(body), start=1):
         blocks.append(CanvasBlock(id=f"{section_id}-p-{paragraph_index}", type="paragraph", text=paragraph))
+    for asset_index, asset in enumerate(read_assets(body, material_root=material_root), start=1):
+        blocks.append(_asset_block(section_id, asset_index, asset, course_id, lecture_id))
     return blocks
 
 
@@ -110,7 +112,7 @@ def _read_frame_chunk_sections(
     lecture_id: str,
 ) -> list[CanvasSection]:
     sections = []
-    for frame in frames[:12]:
+    for frame in frames:
         blocks = _read_group_blocks(frame.slug, [frame], material_root, course_id, lecture_id)
         if blocks:
             sections.append(
@@ -159,7 +161,7 @@ def _asset_block(
 
 
 def _source_ref(frames: list[LatexFrame]) -> str:
-    return "frames " + ", ".join(str(frame.index) for frame in frames[:8])
+    return "frames " + ", ".join(str(frame.index) for frame in frames)
 
 
 def _unique_slug(title: str, seen_ids: dict[str, int]) -> str:
@@ -198,18 +200,48 @@ _LECTURE_03_GROUPS = (
     ),
     CanvasGroup(
         id="naive-bayes-classifiers",
-        title="Naive Bayes spam filter",
+        title="Naive Bayes assumption",
+        frame_slugs=("naive-bayes-classifiers",),
+    ),
+    CanvasGroup(
+        id="naive-bayes-tradeoffs",
+        title="Strengths, limits, and use cases",
+        frame_slugs=("advantages-disadvantages-and-application-of-naive-bayes",),
+    ),
+    CanvasGroup(
+        id="spam-filter-example",
+        title="Spam filter example",
+        frame_slugs=("naive-bayes-in-action-spam-filter",),
+    ),
+    CanvasGroup(
+        id="text-preprocessing-pipeline",
+        title="Text preprocessing pipeline",
+        frame_slugs=("from-text-to-tokens", "identifying-top-words"),
+    ),
+    CanvasGroup(
+        id="word-probability-estimates",
+        title="Estimating word probabilities",
+        frame_slugs=("computing-probabilities", "computing-probabilities-2"),
+    ),
+    CanvasGroup(
+        id="laplace-smoothing",
+        title="Laplace smoothing",
+        frame_slugs=("laplace-smoothing",),
+    ),
+    CanvasGroup(
+        id="classifying-new-email",
+        title="Classifying a new email",
+        frame_slugs=("classifying-a-new-email",),
+    ),
+    CanvasGroup(
+        id="log-probability-scores",
+        title="Log probability scores",
+        frame_slugs=("using-log-probabilities",),
+    ),
+    CanvasGroup(
+        id="decision-boundary-and-roc",
+        title="Decision boundary and ROC",
         frame_slugs=(
-            "naive-bayes-classifiers",
-            "advantages-disadvantages-and-application-of-naive-bayes",
-            "naive-bayes-in-action-spam-filter",
-            "from-text-to-tokens",
-            "identifying-top-words",
-            "computing-probabilities",
-            "laplace-smoothing",
-            "computing-probabilities-2",
-            "classifying-a-new-email",
-            "using-log-probabilities",
             "adjusting-the-decision-boundary",
             "receiver-operating-characteristics-roc",
         ),
@@ -227,7 +259,7 @@ _LECTURE_03_GROUPS = (
         ),
     ),
 )
-CANVAS_IMPORT_VERSION = 2
+CANVAS_IMPORT_VERSION = 10
 _FRAME_RE = re.compile(
     r"\\begin\{frame}(?:\[[^]]*])?(?:\{(?P<title>[^{}]+)})?(?P<body>.*?)\\end\{frame}",
     re.DOTALL,

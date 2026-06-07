@@ -19,14 +19,14 @@ LECTURES = [
         course_id=COURSE.id,
         title="Introduction and Learning Setup",
         date=date(2026, 5, 6),
-        material_path="courses/martius-ml/lectures/01/source.tex",
+        material_path="Lecture01-eng.tex",
     ),
     Lecture(
         id="lecture-02",
         course_id=COURSE.id,
         title="Linear Models and Generalization",
         date=date(2026, 5, 13),
-        material_path="courses/martius-ml/lectures/02/source.tex",
+        material_path="Lecture02-eng.tex",
     ),
     Lecture(
         id="lecture-03",

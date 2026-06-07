@@ -1,5 +1,7 @@
 from lecturepilot.harness import LecturePilotHarness
+from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.model_client import _messages
+from lecturepilot.model_commands import read_canvas_commands
 from lecturepilot.models import (
     AgentTurnInput,
     AttendanceStatus,
@@ -154,3 +156,130 @@ def test_model_prompt_requires_guided_quality_gate_turns() -> None:
     assert "do not mark a gate passed from keywords" in system_prompt
     assert "definition, mechanism, computation, and transfer" in system_prompt
     assert "attendance selects the tutor stance" in system_prompt
+    assert "canvas_commands" in system_prompt
+    assert "highlight_span" in system_prompt
+
+
+def test_model_prompt_includes_canvas_targets() -> None:
+    messages = _messages(_contextual_turn())
+
+    user_prompt = messages[1]["content"]
+    assert "Canvas title: Bayesian Decision Theory" in user_prompt
+    assert "section_id=bayes-formula" in user_prompt
+    assert "span_id=bayes-formula-list" in user_prompt
+    assert "Posterior" in user_prompt
+
+
+def test_model_parser_accepts_focus_and_highlight_commands() -> None:
+    commands = read_canvas_commands(
+        {
+            "canvas_commands": [
+                {"type": "focus_section", "section_id": "bayes-formula"},
+                {
+                    "type": "highlight_span",
+                    "section_id": "wrong-section",
+                    "span_id": "bayes-formula-list",
+                    "highlight_text": "Posterior",
+                },
+            ]
+        },
+        _contextual_turn(),
+    )
+
+    assert commands == [
+        CanvasCommand(type="focus_section", section_id="bayes-formula"),
+        CanvasCommand(
+            type="highlight_span",
+            section_id="bayes-formula",
+            span_id="bayes-formula-list",
+            highlight_text="Posterior",
+        ),
+    ]
+
+
+def test_model_parser_rejects_invalid_canvas_ids() -> None:
+    commands = read_canvas_commands(
+        {
+            "canvas_commands": [
+                {"type": "focus_section", "section_id": "not-in-canvas"},
+                {"type": "highlight_span", "section_id": "bayes-formula", "span_id": "missing-block"},
+            ]
+        },
+        _contextual_turn(),
+    )
+
+    assert commands == [
+        CanvasCommand(type="focus_section", section_id="bayes-formula"),
+        CanvasCommand(
+            type="highlight_span",
+            section_id="bayes-formula",
+            span_id="bayes-formula-list",
+            highlight_text="Prior",
+        ),
+    ]
+
+
+def test_model_parser_accepts_generated_student_section() -> None:
+    commands = read_canvas_commands(
+        {
+            "canvas_commands": [
+                {
+                    "type": "append_section",
+                    "section": {
+                        "id": "soccer-risk-infographic",
+                        "title": "Soccer risk infographic",
+                        "blocks": [
+                            {
+                                "type": "callout",
+                                "text": "A scouting report is evidence; the signing decision depends on risk.",
+                            },
+                            {
+                                "type": "list",
+                                "items": ["Prior player fit", "Likelihood of report", "Posterior belief"],
+                            },
+                        ],
+                    },
+                }
+            ]
+        },
+        _contextual_turn(),
+    )
+
+    assert commands[0].type == "append_section"
+    assert commands[0].section is not None
+    assert commands[0].section.id.startswith("student-soccer-risk-infographic")
+    assert commands[0].section.source_ref == "student workspace"
+    assert commands[1].type == "focus_section"
+
+
+def _contextual_turn() -> AgentTurnInput:
+    return AgentTurnInput(
+        user_id="student01",
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        attendance=AttendanceStatus.UNKNOWN,
+        message="hello",
+        canvas_state=CanvasState(focused_section_id="bayes-formula"),
+        canvas_context=CanvasDocument(
+            id="martius-ml-lecture-03",
+            course_id="martius-ml",
+            lecture_id="lecture-03",
+            title="Bayesian Decision Theory",
+            source_kind="latex",
+            source_ref="Lecture03-eng.tex",
+            workspace_path=".lecturepilot/workspaces/test/canvas/index.md",
+            sections=[
+                CanvasSection(
+                    id="bayes-formula",
+                    title="Bayes formula and conditional probability",
+                    blocks=[
+                        CanvasBlock(
+                            id="bayes-formula-list",
+                            type="list",
+                            items=["Prior", "Likelihood", "Evidence", "Posterior"],
+                        )
+                    ],
+                )
+            ],
+        ),
+    )

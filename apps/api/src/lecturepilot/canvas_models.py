@@ -7,9 +7,9 @@ from pydantic import BaseModel, Field
 
 class CanvasBlock(BaseModel):
     id: str = Field(min_length=1, max_length=120)
-    type: Literal["paragraph", "list", "asset", "callout", "math"]
-    text: str | None = Field(default=None, max_length=4000)
-    items: list[str] = Field(default_factory=list, max_length=20)
+    type: Literal["paragraph", "list", "asset", "callout", "math", "video"]
+    text: str | None = None
+    items: list[str] = Field(default_factory=list)
     asset_path: str | None = Field(default=None, max_length=500)
     asset_url: str | None = Field(default=None, max_length=500)
     caption: str | None = Field(default=None, max_length=500)
@@ -19,7 +19,7 @@ class CanvasSection(BaseModel):
     id: str = Field(min_length=1, max_length=120)
     title: str = Field(min_length=1, max_length=200)
     source_ref: str | None = Field(default=None, max_length=500)
-    blocks: list[CanvasBlock] = Field(default_factory=list, max_length=60)
+    blocks: list[CanvasBlock] = Field(default_factory=list)
 
 
 class CanvasDocument(BaseModel):
@@ -31,4 +31,4 @@ class CanvasDocument(BaseModel):
     source_kind: Literal["latex", "markdown", "generated"]
     source_ref: str = Field(min_length=1, max_length=500)
     workspace_path: str = Field(min_length=1, max_length=500)
-    sections: list[CanvasSection] = Field(default_factory=list, max_length=80)
+    sections: list[CanvasSection] = Field(default_factory=list)

@@ -4,12 +4,12 @@ import json
 import re
 from pathlib import Path
 
+from lecturepilot.canvas_asset_refs import asset_markdown_target, parsed_asset_target
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 
 
 class CanvasMarkdownError(RuntimeError):
     pass
-
 def write_document_source(document: CanvasDocument, canvas_dir: Path) -> None:
     canvas_dir.mkdir(parents=True, exist_ok=True)
     (canvas_dir / "sections").mkdir(exist_ok=True)
@@ -81,9 +81,9 @@ def _section_to_markdown(section: CanvasSection) -> str:
 def _block_to_markdown(block: CanvasBlock) -> str:
     header = f'<!-- block id="{block.id}" type="{block.type}" -->'
     if block.type == "asset":
-        target = block.asset_path or block.asset_url or ""
+        target = asset_markdown_target(block)
         caption = block.caption or block.asset_path or "Course figure"
-        return f"{header}\n![{caption}](asset:{target})"
+        return f"{header}\n![{caption}]({target})"
     if block.type == "list":
         return f"{header}\n" + "\n".join(f"- {item}" for item in block.items)
     if block.type == "math":
@@ -181,12 +181,12 @@ def _read_block(
     if block_type == "asset":
         match = _IMAGE_RE.search(chunk)
         target = match.group("target") if match else ""
-        asset_path = target.removeprefix("asset:")
+        asset_path, asset_url = parsed_asset_target(target, course_id=course_id, lecture_id=lecture_id)
         return CanvasBlock(
             id=block_id,
             type="asset",
             asset_path=asset_path,
-            asset_url=f"/course-assets/{course_id}/{lecture_id}/{asset_path}",
+            asset_url=asset_url,
             caption=match.group("caption") if match else asset_path,
         )
     if block_type == "list":
