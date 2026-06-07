@@ -35,8 +35,8 @@ This repository is intentionally small but runnable:
 - Strict lecture unlock policy.
 - Typed workspace file policy.
 - Provider capability checks with Gemini Flash-Lite as the default text model.
-- Local preview tutor that leads a deterministic quality-gate loop without a
-  provider key.
+- Credential-free local demo that opens the course shell while tutor turns use
+  the configured provider model.
 - React/Vite frontend with dashboard and focused lesson workspace.
 - TUE API login form backed by the local FastAPI API and `tue-api-wrapper`.
 - Tenant/profile policy foundation for professors, tutors, and students.
@@ -44,8 +44,8 @@ This repository is intentionally small but runnable:
 - Backend and frontend tests.
 - CI, Dockerfiles, and Compose starter.
 
-Provider-backed tutor turns for real authenticated users intentionally fail with
-a clear error until a real API key is configured.
+Provider-backed tutor turns intentionally fail with a clear error until a real
+API key is configured.
 
 ## Repository Layout
 
@@ -63,6 +63,8 @@ deploy                   Docker and self-hosting files
 
 See [docs/media-discovery.md](docs/media-discovery.md) for the YouTube/media
 pre-asset contract.
+See [docs/course-ingestion-pipeline.md](docs/course-ingestion-pipeline.md) for
+the long-context LLM upload, canvas planning, and professor approval pipeline.
 See [docs/workspaces.md](docs/workspaces.md) for filesystem-backed canvas and
 learner storage.
 See [docs/tenancy-security.md](docs/tenancy-security.md) for the tenant,
@@ -75,10 +77,10 @@ Keep private professor/course files in `local-course-materials/`,
 are gitignored on purpose; only sanitized examples and public fixtures should
 be committed.
 
-For the Martius demo slice, point `LECTUREPILOT_COURSE_MATERIAL_ROOT` at the
-private Overleaf checkout containing `Lecture03-eng.tex`. If the variable is
-empty, the API searches the local Tübingen course folder and then falls back to
-`local-course-materials/martius-ml`.
+For the Martius demo slice, keep the private local copy in
+`local-course-materials/martius-ml`. If `LECTUREPILOT_COURSE_MATERIAL_ROOT` is
+empty, the API uses that repo-local folder first and only then searches the old
+local Tübingen course checkout as a convenience fallback.
 
 Backend:
 
@@ -128,12 +130,11 @@ npm run dev --workspace apps/web
 Open `http://127.0.0.1:5173`, use **Preview local demo**, select lecture 03,
 click the speech-bubble button on the right rail, and ask for a Bayes concept
 check or a personalized example such as `Explain this with a soccer example`.
-The preview tutor leads the conversation, persists new canvas sections in the
-ignored student workspace, marks the quality gate as pending or passed, and
-focuses or highlights the relevant canvas block.
+The tutor calls the configured provider through the backend harness, marks the
+quality gate as pending or passed, and focuses the relevant canvas block.
 
-For provider-backed turns, sign in with your Uni credentials through the local
-backend after configuring a provider key.
+The deterministic `local-guided-preview` path remains available only as a
+backend fixture for `local-preview-user` tests.
 
 ## Provider Setup
 
@@ -142,10 +143,23 @@ Copy `.env.example` to `.env` and set one provider key.
 ```bash
 GEMINI_API_KEY=...
 LECTUREPILOT_MODEL=gemini/gemini-2.5-flash-lite
+LECTUREPILOT_IMAGE_PROVIDER=auto
+GEMINI_IMAGE_MODEL=gemini-3.1-flash-image
 ```
 
 The app is designed so provider routing sits behind the agent harness contract.
 The frontend never calls model providers directly.
+
+Infographic requests support Gemini, OpenRouter, and Hugging Face image
+providers. `auto` prefers Gemini, then OpenRouter, then Hugging Face, and writes
+the generated raster asset under the learner workspace. Without an image
+provider key, infographic requests fail clearly instead of generating local SVG
+placeholders.
+
+Professor-side YouTube discovery is optional. Set `YOUTUBE_API_KEY` to enable
+admin searches during course creation; approved selections are stored in the
+private course-material workspace and render as inline video blocks in the
+lesson canvas.
 
 ## Design Source
 

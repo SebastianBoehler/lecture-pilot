@@ -56,9 +56,11 @@ Uploads must be treated as untrusted input even when they come from professors:
 6. Serve risky formats as attachments unless they are converted or sanitized.
 
 The current code implements the first policy layer for typed uploads:
-`.tex`, `.md`, `.txt`, `.json`, `.pdf`, `.png`, `.jpg`, `.jpeg`, and `.webp`
-only. SVG uploads are intentionally not accepted as course material because
-active content in SVG can become a stored-XSS vector when served incorrectly.
+TeX, Markdown/text, CSV/JSON, PDFs, images including SVG/GIF, videos, Python
+source files, and notebooks. Code and notebooks are course source artifacts;
+they must be reviewed and displayed as inert files unless a separate sandboxed
+execution path is built. SVG and video files require careful MIME handling,
+sanitization or attachment serving, and signed URLs in production.
 
 ## Student Access
 

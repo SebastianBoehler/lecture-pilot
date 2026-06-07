@@ -70,6 +70,8 @@ agent-flow checks without sending real credentials.
 
 Professor material is private. Do not commit raw lecture sources, PDFs, course
 assets, learner workspaces, or `.lecturepilot/` contents.
+The 300-line file guideline applies to code and authored repository docs, not
+to gitignored uploaded course sources or professor material.
 
 Gitignored private roots include:
 
@@ -85,12 +87,39 @@ workspaces/
 .lecturepilot/
 ```
 
-For the Martius demo, point the API at the private Overleaf checkout containing
-`Lecture03-eng.tex`:
+For the Martius demo, keep the private source slice in the repo-local ignored
+folder:
+
+```txt
+local-course-materials/martius-ml/
+```
+
+For Overleaf-backed courses, sync the full professor checkout into that folder
+and exclude only source-control metadata:
+
+```bash
+rsync -a --exclude '.git/' "$OVERLEAF_CHECKOUT/" local-course-materials/martius-ml/
+```
+
+Override it only when needed:
 
 ```bash
 export LECTUREPILOT_COURSE_MATERIAL_ROOT=/absolute/path/to/private/course
 ```
+
+The current professor/admin staging endpoint is:
+
+```bash
+curl -F path=Lecture03-eng.tex -F file=@Lecture03-eng.tex \
+  -H 'X-Tenant-Id: tenant-tuebingen' \
+  -H 'X-User-Id: prof01' \
+  -H 'X-User-Role: professor' \
+  http://127.0.0.1:8000/admin/courses/martius-ml/materials
+```
+
+It accepts the file types listed in `WorkspacePolicy.allowed_course_material_uploads`
+and rejects unsafe paths, unsupported suffixes, oversized payloads, and
+non-professor roles.
 
 On first lecture open, the API imports LaTeX into a learner workspace:
 
@@ -129,9 +158,11 @@ app.py                    FastAPI routes
 canvas_workspace.py       workspace lifecycle and canvas loading
 canvas_markdown.py        Markdown canvas compiler
 latex_canvas_importer.py  LaTeX-to-canvas import grouping
+source_bundle.py          professor source bundle scanner
 guided_tutor.py           local deterministic tutor behavior
 harness.py                agent turn contract
 model_client.py           provider-backed model call boundary
+image_generation*.py      provider-agnostic text-to-image boundaries
 policies.py               lecture unlock and workspace file policies
 providers.py              provider readiness/capability checks
 tenancy.py                tenant/profile/role models and gates
@@ -163,6 +194,9 @@ types.ts                  shared frontend data contracts
   gates after meaningful evidence from the student.
 - Canvas commands may focus sections, highlight specific blocks or phrases, and
   append/update learner-specific Markdown sections.
+- Infographic requests may call the backend image-generation tool. Provider
+  raster images are stored under the learner workspace. Do not generate local
+  SVG fallback infographics.
 - Tool calls shown in the chat should correspond to real harness actions.
 - Generated learner content belongs in `canvas/student/*.md`, not in official
   source sections.
