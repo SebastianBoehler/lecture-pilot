@@ -2,7 +2,7 @@ import { LogOut, Moon, Sun, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { getLectureCanvas, sendAgentTurn, type AgentTurnResult } from "./api";
-import { initialMessages, localDemoSession } from "./appDefaults";
+import { initialMessagesForAttendance, localDemoSession } from "./appDefaults";
 import { Dashboard } from "./Dashboard";
 import { LessonWorkspace } from "./LessonWorkspace";
 import { LoginView } from "./LoginView";
@@ -35,7 +35,9 @@ function App() {
   const [highlightedBlockId, setHighlightedBlockId] = useState<string | null>(null);
   const [highlightedText, setHighlightedText] = useState<string | null>(null);
   const [navigationVersion, setNavigationVersion] = useState(0);
-  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const [messages, setMessages] = useState<ChatMessage[]>(
+    initialMessagesForAttendance(lectures[2].attendance),
+  );
   const [lastTutorModel, setLastTutorModel] = useState<string | null>(null);
 
   useEffect(() => {
@@ -98,7 +100,7 @@ function App() {
     setNavigationVersion((current) => current + 1);
     setCanvasDocument(null);
     setCanvasError(null);
-    setMessages(initialMessages);
+    setMessages(initialMessagesForAttendance(lectures[2].attendance));
     setLastTutorModel(null);
   }
 
@@ -117,7 +119,7 @@ function App() {
     setHighlightedBlockId(null);
     setHighlightedText(null);
     setNavigationVersion((current) => current + 1);
-    setMessages(initialMessages);
+    setMessages(initialMessagesForAttendance(lecture.attendance));
     setLastTutorModel(null);
 
     try {

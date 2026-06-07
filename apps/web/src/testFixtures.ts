@@ -83,9 +83,15 @@ function loginPayload() {
     term: "Sommer 2026",
     courses: [
       {
-        id: "alma-machine-learning",
-        title: "Machine Learning",
-        professor: "Department of Computer Science",
+        id: "alma-ml4202-probabilistic-machine-learning",
+        title: "ML4202 Probabilistic Machine Learning (Probabilistic Inference and Learning)",
+        professor: "Fachbereich Informatik, Methoden des Maschinellen Lernens",
+        term: "Sommer 2026",
+      },
+      {
+        id: "alma-info4193-natural-language-processing",
+        title: "INFO4193 Natural Language Processing",
+        professor: "Fachbereich Informatik",
         term: "Sommer 2026",
       },
     ],

@@ -1,5 +1,12 @@
 import type { Attendance, Lecture, LoginSession, UniversityCourse } from "./types";
 
+const demoTutorCourse: UniversityCourse = {
+  id: "martius-ml",
+  title: "Grundlagen des Maschinellen Lernens",
+  professor: "Prof. Georg Martius",
+  term: "Sommer 2026",
+};
+
 export function Dashboard({
   lectures,
   session,
@@ -79,23 +86,24 @@ export function Dashboard({
 }
 
 function buildCourseGroups(session: LoginSession | null, lectures: Lecture[]) {
-  const courses = session?.courses.length
-    ? session.courses
-    : [
-        {
-          id: "martius-ml",
-          title: "Grundlagen des Maschinellen Lernens",
-          professor: "Prof. Georg Martius",
-          term: "Sommer 2026",
-        },
-      ];
+  const courses = session?.courses.length ? withDemoTutorCourse(session.courses) : [demoTutorCourse];
   return courses.map((course) => {
     const tutorAvailable = hasTutorWorkspace(course);
     return { course, tutorAvailable, courseLectures: tutorAvailable ? lectures : [] };
   });
 }
 
+function withDemoTutorCourse(courses: UniversityCourse[]) {
+  if (courses.some(hasTutorWorkspace)) {
+    return courses;
+  }
+  return [...courses, demoTutorCourse];
+}
+
 function hasTutorWorkspace(course: UniversityCourse) {
-  const normalized = `${course.id} ${course.title}`.toLowerCase();
-  return normalized.includes("machine learning") || normalized.includes("maschinellen lernens");
+  return course.id === demoTutorCourse.id || normalizeCourseTitle(course.title) === normalizeCourseTitle(demoTutorCourse.title);
+}
+
+function normalizeCourseTitle(title: string) {
+  return title.toLowerCase().replace(/\s+/g, " ").trim();
 }
