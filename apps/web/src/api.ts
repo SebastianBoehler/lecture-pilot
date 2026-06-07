@@ -1,4 +1,11 @@
-import type { Attendance, CanvasDocument, CanvasSection, LoginSession } from "./types";
+import type {
+  Attendance,
+  CanvasDocument,
+  CanvasSection,
+  LoginSession,
+  SourceBundleManifest,
+  YoutubeVideoCandidate,
+} from "./types";
 
 export type CanvasCommand = {
   type: "focus_section" | "highlight_span" | "open_artifact" | "append_section" | "update_section";
@@ -38,6 +45,11 @@ type TuebingenLoginInput = {
 };
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
+const professorHeaders = {
+  "X-Tenant-Id": "tenant-tuebingen",
+  "X-User-Id": "professor-demo",
+  "X-User-Role": "professor",
+};
 
 export function apiUrl(path: string): string {
   if (path.startsWith("http://") || path.startsWith("https://")) {
@@ -94,4 +106,64 @@ export async function getLectureCanvas(
   }
 
   return payload as CanvasDocument;
+}
+
+export async function getSourceBundle(courseId = "martius-ml"): Promise<SourceBundleManifest> {
+  const response = await fetch(apiUrl(`/courses/${courseId}/source-bundle`));
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "Source scan failed."));
+  return payload as SourceBundleManifest;
+}
+
+export async function uploadCourseMaterial(input: {
+  courseId: string;
+  path: string;
+  file: File;
+}) {
+  const body = new FormData();
+  body.append("path", input.path);
+  body.append("file", input.file);
+  const response = await fetch(apiUrl(`/admin/courses/${input.courseId}/materials`), {
+    method: "POST",
+    headers: professorHeaders,
+    body,
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "Material upload failed."));
+  return payload as { path: string; kind: string; size_bytes: number };
+}
+
+export async function searchYoutubeMedia(courseId: string, query: string) {
+  const params = new URLSearchParams({ q: query, max_results: "5" });
+  const response = await fetch(apiUrl(`/admin/courses/${courseId}/media/youtube/search?${params}`), {
+    headers: professorHeaders,
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "YouTube search failed."));
+  return payload as { items: YoutubeVideoCandidate[] };
+}
+
+export async function includeYoutubeMedia(input: {
+  courseId: string;
+  lectureId: string;
+  sectionId: string | null;
+  video: YoutubeVideoCandidate;
+}) {
+  const response = await fetch(
+    apiUrl(`/admin/courses/${input.courseId}/lectures/${input.lectureId}/media/youtube`),
+    {
+      method: "POST",
+      headers: { ...professorHeaders, "Content-Type": "application/json" },
+      body: JSON.stringify({ section_id: input.sectionId, video: input.video }),
+    },
+  );
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "YouTube include failed."));
+  return payload as { block_id: string };
+}
+
+function readApiError(payload: unknown, fallback: string) {
+  return typeof (payload as { detail?: unknown }).detail === "string"
+    ? String((payload as { detail: string }).detail)
+    : fallback;
 }

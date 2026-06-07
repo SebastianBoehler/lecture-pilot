@@ -1,13 +1,15 @@
 import { SendHorizontal } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, KeyboardEvent, useState } from "react";
 
 import type { ChatMessage } from "./types";
 
 export function TutorDrawer({
   messages,
+  model,
   onSendMessage,
 }: {
   messages: ChatMessage[];
+  model: string | null;
   onSendMessage: (message: string) => Promise<void>;
 }) {
   const [draft, setDraft] = useState("");
@@ -33,10 +35,21 @@ export function TutorDrawer({
     }
   }
 
+  function handleDraftKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter" || event.shiftKey) {
+      return;
+    }
+    event.preventDefault();
+    event.currentTarget.form?.requestSubmit();
+  }
+
   return (
     <aside className="drawer" aria-label="Tutor drawer">
       <div className="drawer-section">
-        <h2>Tutor</h2>
+        <div className="tutor-heading">
+          <h2>Tutor</h2>
+          <span className="tutor-status">{tutorStatus(model)}</span>
+        </div>
         <div className="message-list" aria-live="polite">
           {messages.map((message) => (
             <div className={`chat-message ${message.role}`} key={message.id}>
@@ -54,19 +67,35 @@ export function TutorDrawer({
           ))}
         </div>
         <form className="chat-form" onSubmit={submitMessage}>
-          <textarea
-            onChange={(event) => setDraft(event.target.value)}
-            placeholder="Ask about this lecture..."
-            rows={4}
-            value={draft}
-          />
-          <button aria-label="Send message" disabled={isSending || !draft.trim()} type="submit">
-            <SendHorizontal size={16} />
-            <span>{isSending ? "Sending" : "Send"}</span>
-          </button>
+          <div className="chat-composer">
+            <textarea
+              aria-label="Tutor message"
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={handleDraftKeyDown}
+              placeholder="Ask about this lecture..."
+              rows={1}
+              value={draft}
+            />
+            <button
+              aria-label="Send message"
+              className="chat-send-button"
+              disabled={isSending || !draft.trim()}
+              title="Send message"
+              type="submit"
+            >
+              <SendHorizontal size={17} />
+            </button>
+          </div>
         </form>
         {error ? <p className="form-error">{error}</p> : null}
       </div>
     </aside>
   );
+}
+
+function tutorStatus(model: string | null) {
+  if (model) {
+    return model === "local-guided-preview" ? "Local guided preview" : `Model: ${model}`;
+  }
+  return "Model after first turn";
 }

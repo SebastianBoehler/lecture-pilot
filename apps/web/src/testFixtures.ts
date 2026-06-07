@@ -79,7 +79,7 @@ export function soccerCanvasSection() {
 function loginPayload() {
   return {
     username: "student01",
-    email: null,
+    email: "student01@uni-tuebingen.de",
     term: "Sommer 2026",
     courses: [
       {
@@ -130,6 +130,14 @@ function canvasPayload() {
         source_ref: "frames 6, 7, 8, 9",
         blocks: [
           {
+            id: "bayes-formula-asset-1",
+            type: "asset",
+            items: [],
+            asset_path: "Ch3/Venn_C-X_1.pdf",
+            asset_url: "/course-assets/martius-ml/lecture-03/Ch3/Venn_C-X_1.pdf",
+            caption: "Ch3/Venn_C-X_1.pdf",
+          },
+          {
             id: "bayes-formula-list",
             type: "list",
             items: ["Prior", "Likelihood", "Evidence", "Posterior", "P(heads) = $\\nicefrac 12$"],
@@ -175,6 +183,21 @@ function canvasPayload() {
         ],
       },
       {
+        id: "professor-selected-videos",
+        title: "Professor selected videos",
+        source_ref: "course media workspace",
+        blocks: [
+          {
+            id: "youtube-abc123abc12",
+            type: "video",
+            text: "ML Course · 12:30",
+            items: [],
+            asset_url: "https://www.youtube.com/watch?v=abc123abc12",
+            caption: "Bayesian decision theory walkthrough",
+          },
+        ],
+      },
+      {
         id: "losses-and-risks",
         title: "Losses, risks, and reject decisions",
         source_ref: "frames 33, 34, 35, 36, 37, 38",
@@ -183,6 +206,36 @@ function canvasPayload() {
             id: "losses-and-risks-p-1",
             type: "paragraph",
             text: "Expected risk changes the best action when mistakes have different costs.",
+            items: [],
+          },
+          {
+            id: "losses-and-risks-p-2",
+            type: "paragraph",
+            text: "The learner should compare posterior probabilities with loss values.",
+            items: [],
+          },
+          {
+            id: "losses-and-risks-p-3",
+            type: "paragraph",
+            text: "Reject decisions are useful when every class assignment is too risky.",
+            items: [],
+          },
+          {
+            id: "losses-and-risks-math-1",
+            type: "math",
+            text: "R(\\alpha_i\\mid x) = \\sum_k \\lambda_{ik}P(C_k\\mid x)",
+            items: [],
+          },
+          {
+            id: "losses-and-risks-math-2",
+            type: "math",
+            text: "R(\\alpha_{K+1}\\mid x) = \\lambda",
+            items: [],
+          },
+          {
+            id: "losses-and-risks-math-3",
+            type: "math",
+            text: "\\text{choose reject if } R(\\alpha_{K+1}\\mid x) < R(\\alpha_i\\mid x)",
             items: [],
           },
         ],

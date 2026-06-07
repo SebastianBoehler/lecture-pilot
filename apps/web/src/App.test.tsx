@@ -17,7 +17,7 @@ describe("LecturePilot app shell", () => {
     expect(screen.getByLabelText(/zdv username/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/term/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: /available lectures/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /course workspaces/i })).not.toBeInTheDocument();
     expect(screen.getByText(/course workspace/i)).toBeInTheDocument();
     expect(screen.queryByText(/openrouter glm/i)).not.toBeInTheDocument();
   });
@@ -31,7 +31,9 @@ describe("LecturePilot app shell", () => {
     await logIn(user);
 
     expect(await screen.findByText(/connected as student01/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /course workspaces/i })).toBeInTheDocument();
     expect(screen.getByText(/machine learning/i)).toBeInTheDocument();
+    expect(screen.getByText(/ai tutor available/i)).toBeInTheDocument();
     expect(screen.queryByText("very-secret-password")).not.toBeInTheDocument();
     const request = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
     expect(request).toEqual({
@@ -54,12 +56,12 @@ describe("LecturePilot app shell", () => {
 
     expect(screen.getByRole("heading", { name: /profile/i })).toBeInTheDocument();
     expect(screen.getByText("student01")).toBeInTheDocument();
-    expect(screen.getByText(/not loaded/i)).toBeInTheDocument();
+    expect(screen.getByText(/student01@uni-tuebingen\.de/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /log out/i }));
 
     expect(screen.getByRole("heading", { name: /sign in with uni tübingen/i })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: /available lectures/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /course workspaces/i })).not.toBeInTheDocument();
   });
 
   it("opens a local demo workspace without submitting credentials", async () => {
@@ -75,7 +77,9 @@ describe("LecturePilot app shell", () => {
     expect(
       screen.queryByRole("heading", { name: /grundlagen des maschinellen lernens/i, level: 1 }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /available lectures/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /course workspaces/i })).toBeInTheDocument();
+    expect(screen.getByText(/ai tutor available/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /open lecture 03/i })).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -90,7 +94,7 @@ describe("LecturePilot app shell", () => {
     expect(
       screen.getByRole("heading", { name: /^bayesian decision theory$/i, level: 1 }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: /available lectures/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /course workspaces/i })).not.toBeInTheDocument();
     expect(screen.getByLabelText(/open tutor chat/i)).toBeInTheDocument();
     expect(screen.queryByPlaceholderText(/ask about this lecture/i)).not.toBeInTheDocument();
   });
@@ -188,19 +192,28 @@ describe("LecturePilot app shell", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<App />);
 
-    await logIn(user);
+    await user.click(screen.getByRole("button", { name: /preview local demo/i }));
     await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
     await user.click(screen.getByLabelText(/open tutor chat/i));
-    await user.type(screen.getByPlaceholderText(/ask about this lecture/i), "What are the goals?");
-    await user.click(screen.getByRole("button", { name: /send message/i }));
+    expect(screen.getByText(/model after first turn/i)).toBeInTheDocument();
+
+    const prompt = screen.getByPlaceholderText(/ask about this lecture/i);
+    await user.type(prompt, "What are");
+    await user.keyboard("{Shift>}{Enter}{/Shift}");
+    await user.type(prompt, "the goals?");
+    expect(prompt).toHaveValue("What are\nthe goals?");
+    await user.keyboard("{Enter}");
 
     expect(await screen.findByText(/bayes answer/i)).toBeInTheDocument();
+    expect(screen.getByText(/model: gemini\/gemini-2\.5-flash-lite/i)).toBeInTheDocument();
     expect(screen.getByText("focus: bayes-formula")).toBeInTheDocument();
     expect(screen.getAllByText("gate: needs evidence").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole("region", { name: /bayes formula and conditional probability/i })).toHaveAttribute(
       "aria-current",
       "true",
     );
+    const agentRequest = JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body));
+    expect(agentRequest.user_id).toBe("local-demo");
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8000/agent/turn",
       expect.objectContaining({ method: "POST" }),

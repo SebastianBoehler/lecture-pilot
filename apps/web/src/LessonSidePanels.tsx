@@ -114,16 +114,25 @@ function blockTitle(block: CanvasBlock) {
 }
 
 function outlineInterestBlocks(blocks: CanvasBlock[]) {
-  return blocks.filter(isOutlineInterest).slice(0, 2);
+  const preferredTypes: CanvasBlock["type"][] = ["list", "video", "asset", "callout"];
+  const result: CanvasBlock[] = [];
+  for (const type of preferredTypes) {
+    const block = blocks.find((candidate) => candidate.type === type);
+    if (block) result.push(block);
+  }
+  return result.slice(0, 3);
 }
 
 function isOutlineInterest(block: CanvasBlock) {
-  return block.type === "asset" || block.type === "callout" || block.type === "list";
+  return block.type === "asset" || block.type === "video" || block.type === "callout" || block.type === "list";
 }
 
 function outlineKind(block: CanvasBlock) {
   if (block.type === "asset") {
     return "figure";
+  }
+  if (block.type === "video") {
+    return "video";
   }
   if (block.type === "list") {
     return "key point";

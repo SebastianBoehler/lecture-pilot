@@ -1,0 +1,123 @@
+.professor-screen {
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 42px 0 56px;
+}
+
+.professor-flow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.flow-card {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  padding: 18px;
+  background: var(--color-bg-primary);
+}
+
+.flow-card.wide {
+  grid-column: 1 / -1;
+}
+
+.step-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.step-header span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 6px;
+  color: var(--color-text-tertiary);
+  font-weight: 800;
+}
+
+.step-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.step-header strong {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.flow-card label {
+  display: grid;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.flow-card input {
+  border: 1px solid var(--color-border-primary);
+  border-radius: 6px;
+  padding: 9px 10px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+}
+
+.flow-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.flow-facts {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.flow-facts div {
+  display: grid;
+  gap: 3px;
+}
+
+.flow-facts dt {
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.flow-facts dd {
+  margin: 0;
+}
+
+.video-candidate-list {
+  display: grid;
+  gap: 8px;
+}
+
+.video-candidate {
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--color-bg-secondary);
+}
+
+.video-candidate span {
+  display: grid;
+  gap: 4px;
+}
+
+@media (max-width: 860px) {
+  .professor-flow {
+    grid-template-columns: 1fr;
+  }
+}

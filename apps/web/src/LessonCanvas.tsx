@@ -1,12 +1,8 @@
 import { useEffect } from "react";
 
-import { apiUrl } from "./api";
-import { DisplayMath, MathText } from "./MathText";
+import { CanvasBlocks } from "./CanvasBlocks";
 import { SectionSources } from "./SectionSources";
-import { SourceMarker } from "./SourceMarker";
-import { blockSourceReference, sectionSourceReferences } from "./sourceReferences";
 import type {
-  CanvasBlock,
   CanvasDocument,
   CanvasSection,
   DocumentAnchorId,
@@ -99,7 +95,6 @@ function renderSection({
   outlinePulseVersion: number;
   onOpenResource: (resource: WorkspaceResource) => void;
 }) {
-  const sourceReferences = sectionSourceReferences(canvasDocument, section);
   const className = [
     "canvas-section",
     isFocused ? "is-focused" : "",
@@ -118,113 +113,21 @@ function renderSection({
     >
       {isFocused ? <span className="focus-chip">In focus</span> : null}
       <h2 id={`${section.id}-heading`}>{section.title}</h2>
-      {section.blocks.map((block) =>
-        renderBlock(block, {
-          isHighlighted: highlightedBlockId === block.id,
-          isPulsed: outlinePulseId === block.id,
-          highlightedText,
-          outlinePulseVersion,
-          onOpenResource,
-          sourceLabel: section.title,
-          sourceReference: blockSourceReference(sourceReferences, block),
-        }),
-      )}
+      <CanvasBlocks
+        canvasDocument={canvasDocument}
+        section={section}
+        highlightedBlockId={highlightedBlockId}
+        highlightedText={highlightedText}
+        outlinePulseId={outlinePulseId}
+        outlinePulseVersion={outlinePulseVersion}
+        onOpenResource={onOpenResource}
+      />
       <SectionSources
         canvasDocument={canvasDocument}
         section={section}
         onOpenResource={onOpenResource}
       />
     </section>
-  );
-}
-
-function renderBlock(
-  block: CanvasBlock,
-  {
-    isHighlighted,
-    isPulsed,
-    highlightedText,
-    outlinePulseVersion,
-    onOpenResource,
-    sourceLabel,
-    sourceReference,
-  }: {
-    isHighlighted: boolean;
-    isPulsed: boolean;
-    highlightedText: string | null;
-    outlinePulseVersion: number;
-    onOpenResource: (resource: WorkspaceResource) => void;
-    sourceLabel: string;
-    sourceReference: ReturnType<typeof sectionSourceReferences>[number];
-  },
-) {
-  const className = [
-    "canvas-block",
-    isHighlighted ? "is-highlighted" : "",
-    pulseClass(isPulsed, outlinePulseVersion),
-  ]
-    .filter(Boolean)
-    .join(" ");
-  const phrase = isHighlighted ? highlightedText : null;
-  const sourceMarker = (
-    <SourceMarker
-      label={sourceLabel}
-      reference={sourceReference}
-      onOpenResource={onOpenResource}
-    />
-  );
-  if (block.type === "list") {
-    return (
-      <ul className={`${className} canvas-list`} id={block.id} key={block.id}>
-        {block.items.map((item, index) => (
-          <li key={item}>
-            <MathText highlightedText={phrase} text={item} />
-            {index === block.items.length - 1 ? sourceMarker : null}
-          </li>
-        ))}
-      </ul>
-    );
-  }
-
-  if (block.type === "asset" && block.asset_url) {
-    return (
-      <figure className={`${className} canvas-asset`} id={block.id} key={block.id}>
-        <img alt={block.caption ?? "Course figure"} src={apiUrl(block.asset_url)} />
-        <figcaption>
-          {block.caption}
-          {sourceMarker}
-        </figcaption>
-      </figure>
-    );
-  }
-
-  if (block.type === "callout") {
-    return (
-      <aside className={`${className} canvas-callout`} id={block.id} key={block.id}>
-        <MathText highlightedText={phrase} text={block.text ?? ""} />
-        {sourceMarker}
-      </aside>
-    );
-  }
-
-  if (block.type === "math" && block.text) {
-    return (
-      <div
-        className={`${className} canvas-math`}
-        id={block.id}
-        key={block.id}
-      >
-        <DisplayMath expression={block.text} />
-        {sourceMarker}
-      </div>
-    );
-  }
-
-  return (
-    <p className={className} id={block.id} key={block.id}>
-      <MathText highlightedText={phrase} text={block.text ?? ""} />
-      {sourceMarker}
-    </p>
   );
 }
 

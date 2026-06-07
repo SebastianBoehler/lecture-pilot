@@ -1,5 +1,5 @@
 export type Theme = "light" | "dark";
-export type View = "login" | "dashboard" | "lesson" | "profile";
+export type View = "login" | "dashboard" | "lesson" | "profile" | "professor";
 export type LessonPanelMode = "chat" | "outline" | "notes" | "files";
 export type CanvasSectionId = string;
 export type DocumentAnchorId = string;
@@ -17,7 +17,7 @@ export type Lecture = {
 
 export type CanvasBlock = {
   id: string;
-  type: "paragraph" | "list" | "asset" | "callout" | "math";
+  type: "paragraph" | "list" | "asset" | "callout" | "math" | "video";
   text?: string | null;
   items: string[];
   asset_path?: string | null;
@@ -44,6 +44,30 @@ export type CanvasDocument = {
   sections: CanvasSection[];
 };
 
+export type SourceBundleEntry = {
+  path: string;
+  kind: string;
+  size_bytes: number;
+};
+
+export type SourceBundleManifest = {
+  course_id: string;
+  files: SourceBundleEntry[];
+  counts_by_kind: Record<string, number>;
+};
+
+export type YoutubeVideoCandidate = {
+  video_id: string;
+  title: string;
+  channel_title: string;
+  description: string;
+  url: string;
+  thumbnail_url?: string | null;
+  duration: { display?: string | null; seconds?: number | null };
+  score: number;
+  reason: string;
+};
+
 export type UniversityCourse = {
   id: string;
   title: string;
@@ -67,9 +91,10 @@ export type ChatMessage = {
 
 export type WorkspaceResource = {
   id: string;
-  kind: "canvas" | "source" | "asset";
+  kind: "canvas" | "source" | "asset" | "video";
   label: string;
   path: string;
+  displayPath?: string | null;
   detail?: string | null;
   url?: string | null;
 };

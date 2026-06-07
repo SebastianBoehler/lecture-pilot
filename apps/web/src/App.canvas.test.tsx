@@ -79,7 +79,7 @@ describe("LecturePilot canvas interactions", () => {
     expect(target).not.toHaveClass("is-outline-pulsed");
   });
 
-  it("shows section source references and the workspace file panel", async () => {
+  it("shows a collapsible workspace file explorer", async () => {
     const user = userEvent.setup();
     vi.stubGlobal("fetch", mockLoginFetch());
     render(<App />);
@@ -93,14 +93,27 @@ describe("LecturePilot canvas interactions", () => {
     const sourceFooter = within(bayesSection).getByText("Sources").closest("footer");
     expect(sourceFooter).toHaveTextContent(/Lecture03-eng\.tex/);
     expect(sourceFooter).toHaveTextContent(/frames 6, 7, 8, 9/);
+    expect(within(bayesSection).getByRole("img", { name: /Ch3\/Venn_C-X_1\.pdf/i })).toBeInTheDocument();
 
     await user.click(screen.getByLabelText(/open file workspace/i));
 
     const filePanel = screen.getByRole("complementary", { name: /file workspace panel/i });
     expect(within(filePanel).getByRole("heading", { name: /workspace files/i })).toBeInTheDocument();
-    expect(within(filePanel).getByText(/student canvas/i)).toBeInTheDocument();
-    expect(within(filePanel).getAllByText(/Lecture03-eng\.tex/i).length).toBeGreaterThan(0);
-    expect(within(filePanel).getByRole("button", { name: /Ch3\/spam-DALL-E\.jpg/i })).toBeInTheDocument();
+    expect(within(filePanel).queryByText(/section references/i)).not.toBeInTheDocument();
+
+    const tree = within(filePanel).getByRole("tree", { name: /workspace file tree/i });
+    expect(within(tree).getByRole("button", { name: /collapse \.lecturepilot/i })).toBeInTheDocument();
+    expect(within(tree).getByRole("button", { name: /collapse local-course-materials/i })).toBeInTheDocument();
+    expect(within(tree).getByRole("button", { name: /open index\.md/i })).toBeInTheDocument();
+    expect(within(tree).getByRole("button", { name: /open Lecture03-eng\.tex/i })).toBeInTheDocument();
+    expect(within(tree).getByRole("button", { name: /open Venn_C-X_1\.pdf/i })).toBeInTheDocument();
+    expect(within(tree).getByRole("button", { name: /open spam-DALL-E\.jpg/i })).toBeInTheDocument();
+
+    await user.click(within(tree).getByRole("button", { name: /collapse sections/i }));
+    expect(within(tree).queryByRole("button", { name: /open 02-bayes-formula\.md/i })).not.toBeInTheDocument();
+
+    await user.click(within(tree).getByRole("button", { name: /expand sections/i }));
+    expect(within(tree).getByRole("button", { name: /open 02-bayes-formula\.md/i })).toBeInTheDocument();
   });
 
   it("opens inline source markers as traced source previews", async () => {
@@ -114,18 +127,60 @@ describe("LecturePilot canvas interactions", () => {
     const bayesSection = screen.getByRole("region", {
       name: /bayes formula and conditional probability/i,
     });
-    await user.click(
-      within(bayesSection).getAllByRole("button", {
-        name: /open source 1 for bayes formula and conditional probability/i,
-      })[0],
-    );
+    const inlineSourceMarkers = within(bayesSection).getAllByRole("button", {
+      name: /open source 1 for bayes formula and conditional probability/i,
+    });
+    expect(inlineSourceMarkers).toHaveLength(1);
+    expect(document.querySelector("#bayes-formula-math-1 .inline-source-marker")).toBeNull();
+    await user.click(inlineSourceMarkers[0]);
 
     const filePanel = screen.getByRole("complementary", { name: /file workspace panel/i });
     const preview = within(filePanel).getByRole("region", { name: /selected file preview/i });
-    expect(within(preview).getByText(/source trace/i)).toBeInTheDocument();
+    expect(within(preview).getByText(/source file/i)).toBeInTheDocument();
     expect(within(preview).getByText(/trace target/i)).toBeInTheDocument();
     expect(within(preview).getByText(/frames 6, 7, 8, 9/i)).toBeInTheDocument();
-    expect(within(filePanel).getAllByText(/Lecture03-eng\.tex/i).length).toBeGreaterThan(0);
+    expect(within(filePanel).getByRole("button", { name: /open Lecture03-eng\.tex/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("groups consecutive formulas into a compact derivation block", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal("fetch", mockLoginFetch());
+    render(<App />);
+
+    await logIn(user);
+    await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
+
+    const lossesSection = screen.getByRole("region", {
+      name: /losses, risks, and reject decisions/i,
+    });
+    const derivation = lossesSection.querySelector(".canvas-derivation");
+
+    expect(derivation).not.toBeNull();
+    expect(within(lossesSection).getByText("Derivation")).toBeInTheDocument();
+    expect(derivation?.querySelectorAll(".canvas-math")).toHaveLength(3);
+    expect(lossesSection.querySelector(".canvas-prose-run")).not.toBeNull();
+  });
+
+  it("renders approved YouTube videos as inline canvas artifacts", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal("fetch", mockLoginFetch());
+    render(<App />);
+
+    await logIn(user);
+    await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
+
+    const videoSection = screen.getByRole("region", { name: /professor selected videos/i });
+    const frame = within(videoSection).getByTitle(/bayesian decision theory walkthrough/i);
+
+    expect(frame).toHaveAttribute("src", "https://www.youtube-nocookie.com/embed/abc123abc12");
+    expect(within(videoSection).getByText(/ML Course · 12:30/i)).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText(/open document outline/i));
+    const outline = screen.getByRole("navigation", { name: /lesson document outline/i });
+    expect(within(outline).getByRole("button", { name: /bayesian decision theory walkthrough/i })).toBeInTheDocument();
   });
 
   it("opens source assets inside the workspace drawer instead of navigating away", async () => {
@@ -142,7 +197,7 @@ describe("LecturePilot canvas interactions", () => {
     const filePanel = screen.getByRole("complementary", { name: /file workspace panel/i });
     expect(within(filePanel).getByRole("heading", { name: /workspace files/i })).toBeInTheDocument();
     expect(within(filePanel).getByRole("img", { name: /Ch3\/spam-DALL-E\.jpg/i })).toBeInTheDocument();
-    expect(within(filePanel).getByRole("button", { name: /Ch3\/spam-DALL-E\.jpg/i })).toHaveAttribute(
+    expect(within(filePanel).getByRole("button", { name: /open spam-DALL-E\.jpg/i })).toHaveAttribute(
       "aria-pressed",
       "true",
     );

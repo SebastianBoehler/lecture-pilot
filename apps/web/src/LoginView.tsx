@@ -6,9 +6,11 @@ import type { LoginSession } from "./types";
 export function LoginView({
   onLogin,
   onOpenDemo,
+  onOpenProfessor,
 }: {
   onLogin: (session: LoginSession) => void;
   onOpenDemo: () => void;
+  onOpenProfessor: () => void;
 }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -74,6 +76,9 @@ export function LoginView({
           </button>
           <button className="secondary-button" type="button" onClick={onOpenDemo}>
             Preview local demo
+          </button>
+          <button className="secondary-button" type="button" onClick={onOpenProfessor}>
+            Professor course builder
           </button>
           {error ? <p className="form-error">{error}</p> : null}
         </form>

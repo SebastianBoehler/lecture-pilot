@@ -7,7 +7,7 @@ export const lectures: Lecture[] = [
     title: "Introduction and Learning Setup",
     date: "May 6",
     attendance: "present",
-    materialPath: "courses/martius-ml/lectures/01/source.tex",
+    materialPath: "Lecture01-eng.tex",
   },
   {
     id: "lecture-02",
@@ -15,7 +15,7 @@ export const lectures: Lecture[] = [
     title: "Linear Models and Generalization",
     date: "May 13",
     attendance: "unknown",
-    materialPath: "courses/martius-ml/lectures/02/source.tex",
+    materialPath: "Lecture02-eng.tex",
   },
   {
     id: "lecture-03",

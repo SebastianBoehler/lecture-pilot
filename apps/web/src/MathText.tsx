@@ -85,6 +85,8 @@ function renderMath(expression: string, displayMode: boolean) {
     displayMode,
     macros: {
       "\\D": "\\mathcal{D}",
+      "\\H": "\\mathcal{H}",
+      "\\L": "\\mathcal{L}",
       "\\N": "\\mathbb{N}",
       "\\nicefrac": "\\frac{#1}{#2}",
       "\\x": "\\mathbf{x}",

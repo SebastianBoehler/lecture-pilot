@@ -23,24 +23,102 @@
   margin: 6px 0;
 }
 
+.canvas-paragraph {
+  max-width: 72ch;
+  line-height: 1.65;
+}
+
+.canvas-prose-run {
+  margin: 18px 0;
+  border-left: 2px solid var(--color-border-primary);
+  padding: 2px 0 2px 18px;
+}
+
+.canvas-prose-run .canvas-paragraph {
+  margin-top: 8px;
+}
+
+.canvas-prose-run .canvas-paragraph:first-child {
+  margin-top: 0;
+}
+
 .canvas-asset {
+  display: grid;
+  justify-items: center;
+  width: fit-content;
+  max-width: 100%;
+  margin-right: auto;
+  margin-left: auto;
   border: 1px solid var(--color-border-primary);
   border-radius: 8px;
   padding: 10px;
   background: var(--color-bg-secondary);
 }
 
+.canvas-asset.is-highlighted {
+  border-left: 1px solid var(--color-accent-primary);
+  background: var(--color-highlight-bg);
+}
+
 .canvas-asset img {
   display: block;
   max-width: 100%;
   max-height: 360px;
+  margin: 0 auto;
   object-fit: contain;
 }
 
 .canvas-asset figcaption {
+  justify-self: stretch;
+  width: 100%;
   margin-top: 8px;
   color: var(--color-text-secondary);
   font-size: 13px;
+}
+
+.canvas-video {
+  overflow: hidden;
+  width: min(100%, 720px);
+  margin: 22px auto;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  background: var(--color-bg-secondary);
+}
+
+.canvas-video-frame {
+  aspect-ratio: 16 / 9;
+  background: #0f172a;
+}
+
+.canvas-video iframe,
+.canvas-video-frame a {
+  width: 100%;
+  height: 100%;
+}
+
+.canvas-video iframe {
+  display: block;
+  border: 0;
+}
+
+.canvas-video-frame a {
+  display: grid;
+  place-items: center;
+  color: white;
+  text-decoration: none;
+}
+
+.canvas-video figcaption {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.canvas-video figcaption strong {
+  color: var(--color-text-primary);
+  font-size: 15px;
 }
 
 .canvas-callout {
@@ -56,4 +134,71 @@
   border-radius: 8px;
   padding: 14px;
   background: var(--color-bg-primary);
+}
+
+.canvas-math + .canvas-math {
+  margin-top: 0;
+  border-top-color: color-mix(in srgb, var(--color-border-primary) 45%, transparent);
+  border-radius: 0;
+}
+
+.canvas-math:has(+ .canvas-math) {
+  border-bottom-color: color-mix(in srgb, var(--color-border-primary) 45%, transparent);
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.canvas-math .katex-display {
+  margin: 0.15em 0;
+}
+
+.canvas-derivation {
+  overflow: hidden;
+  margin: 18px 0;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  background: var(--color-bg-secondary);
+}
+
+.canvas-derivation-header {
+  border-bottom: 1px solid var(--color-border-primary);
+  padding: 9px 14px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.canvas-derivation-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: stretch;
+  border-top: 1px solid var(--color-border-primary);
+}
+
+.canvas-derivation-header + .canvas-derivation-row {
+  border-top: 0;
+}
+
+.canvas-step-number {
+  display: grid;
+  place-items: center;
+  border-right: 1px solid var(--color-border-primary);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.canvas-derivation .canvas-math {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 14px 16px;
+  background: transparent;
+}
+
+.canvas-derivation .canvas-math + .canvas-math,
+.canvas-derivation .canvas-math:has(+ .canvas-math) {
+  border: 0;
 }

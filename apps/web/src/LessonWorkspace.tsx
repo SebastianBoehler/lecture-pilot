@@ -24,6 +24,7 @@ export function LessonWorkspace({
   messages,
   navigationVersion,
   panelMode,
+  tutorModel,
   onBack,
   onSendMessage,
   onTogglePanel,
@@ -37,6 +38,7 @@ export function LessonWorkspace({
   messages: ChatMessage[];
   navigationVersion: number;
   panelMode: LessonPanelMode | null;
+  tutorModel: string | null;
   onBack: () => void;
   onSendMessage: (message: string) => Promise<void>;
   onTogglePanel: (mode: LessonPanelMode) => void;
@@ -140,7 +142,11 @@ export function LessonWorkspace({
       </aside>
 
       {panelMode === "chat" ? (
-        <TutorDrawer messages={messages} onSendMessage={onSendMessage} />
+        <TutorDrawer
+          messages={messages}
+          model={tutorModel}
+          onSendMessage={onSendMessage}
+        />
       ) : null}
       {panelMode === "outline" ? (
         <OutlinePanel
@@ -153,7 +159,6 @@ export function LessonWorkspace({
       {panelMode === "files" ? (
         <WorkspaceFilesPanel
           canvasDocument={canvasDocument}
-          lecture={lecture}
           selectedResource={selectedResource}
           onSelectResource={setSelectedResource}
         />

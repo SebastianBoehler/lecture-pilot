@@ -1,11 +1,13 @@
-import { BookOpen, LogOut, Moon, Sun, UserRound } from "lucide-react";
+import { LogOut, Moon, Sun, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { getLectureCanvas, sendAgentTurn, type AgentTurnResult } from "./api";
+import { initialMessages, localDemoSession } from "./appDefaults";
 import { Dashboard } from "./Dashboard";
 import { LessonWorkspace } from "./LessonWorkspace";
 import { LoginView } from "./LoginView";
 import { ProfileView } from "./ProfileView";
+import { ProfessorCourseBuilder } from "./ProfessorCourseBuilder";
 import { lectures } from "./sampleData";
 import type {
   Attendance,
@@ -18,30 +20,6 @@ import type {
   Theme,
   View,
 } from "./types";
-
-const initialMessages: ChatMessage[] = [
-  {
-    id: "agent-welcome",
-    role: "agent",
-    content:
-      "I’m starting from the lecture canvas. Mark whether you attended, then I’ll either verify the key ideas or guide you through the material.",
-    toolTags: ["gate: needs evidence"],
-  },
-];
-
-const localDemoSession: LoginSession = {
-  username: "local-demo",
-  email: null,
-  term: "Sommer 2026",
-  courses: [
-    {
-      id: "martius-ml",
-      title: "Grundlagen des Maschinellen Lernens",
-      professor: "Prof. Georg Martius",
-      term: "Sommer 2026",
-    },
-  ],
-};
 
 function App() {
   const [theme, setTheme] = useState<Theme>("light");
@@ -57,6 +35,7 @@ function App() {
   const [highlightedText, setHighlightedText] = useState<string | null>(null);
   const [navigationVersion, setNavigationVersion] = useState(0);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const [lastTutorModel, setLastTutorModel] = useState<string | null>(null);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -79,6 +58,7 @@ function App() {
       message,
       canvas_state: { focused_section_id: focusedSectionId },
     });
+    setLastTutorModel(result.model);
 
     for (const command of result.canvas_commands) {
       const section = command.section;
@@ -118,6 +98,7 @@ function App() {
     setCanvasDocument(null);
     setCanvasError(null);
     setMessages(initialMessages);
+    setLastTutorModel(null);
   }
 
   async function handleOpenLecture(lecture: Lecture) {
@@ -131,6 +112,7 @@ function App() {
     setHighlightedText(null);
     setNavigationVersion((current) => current + 1);
     setMessages(initialMessages);
+    setLastTutorModel(null);
 
     try {
       const document = await getLectureCanvas("martius-ml", lecture.id, effectiveUserId(session));
@@ -161,7 +143,6 @@ function App() {
             setPanelMode(null);
           }}
         >
-          <BookOpen size={18} />
           <span>LecturePilot</span>
         </button>
         <div className="top-status">
@@ -212,6 +193,10 @@ function App() {
             setSession(localDemoSession);
             setView("dashboard");
           }}
+          onOpenProfessor={() => {
+            setSession(null);
+            setView("professor");
+          }}
         />
       ) : view === "dashboard" ? (
         <Dashboard
@@ -222,6 +207,8 @@ function App() {
         />
       ) : view === "profile" && session ? (
         <ProfileView session={session} onBack={() => setView("dashboard")} />
+      ) : view === "professor" ? (
+        <ProfessorCourseBuilder onBack={() => setView("login")} />
       ) : (
         <LessonWorkspace
           canvasDocument={canvasDocument}
@@ -231,6 +218,7 @@ function App() {
           highlightedText={highlightedText}
           lecture={selectedLecture}
           messages={messages}
+          tutorModel={lastTutorModel}
           navigationVersion={navigationVersion}
           panelMode={panelMode}
           onBack={() => {
@@ -285,9 +273,6 @@ function toolTagsFromResult(result: AgentTurnResult): string[] {
 }
 
 function effectiveUserId(session: LoginSession | null) {
-  if (session?.username === "local-demo") {
-    return "local-preview-user";
-  }
   return session?.username ?? "unknown-user";
 }
 

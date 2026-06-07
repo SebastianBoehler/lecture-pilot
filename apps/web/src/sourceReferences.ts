@@ -32,7 +32,7 @@ export function blockSourceReference(
   references: SectionSourceReference[],
   block: CanvasBlock,
 ): SectionSourceReference {
-  if (block.type !== "asset") return references[0];
+  if (block.type !== "asset" && block.type !== "video") return references[0];
   return references.find((reference) => reference.resource.path === (block.asset_path ?? block.caption ?? block.id)) ?? references[0];
 }
 
@@ -49,7 +49,7 @@ function lectureSourceResource(canvasDocument: CanvasDocument, section: CanvasSe
 function assetSourceResource(asset: CanvasBlock, number: number): WorkspaceResource {
   return {
     id: `asset-${number}-${asset.id}`,
-    kind: "asset",
+    kind: asset.type === "video" ? "video" : "asset",
     label: asset.asset_path ?? asset.caption ?? asset.id,
     path: asset.asset_path ?? asset.caption ?? asset.id,
     detail: asset.caption ?? null,
