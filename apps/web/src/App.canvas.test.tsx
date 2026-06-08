@@ -1,11 +1,16 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
+import { DEMO_TUTOR_WORKSPACE_STORAGE_KEY } from "./demoTutorWorkspace";
 import { mockLoginAndTutorFetch, mockLoginFetch } from "./testFixtures";
 
 describe("LecturePilot canvas interactions", () => {
+  beforeEach(() => {
+    window.localStorage.setItem(DEMO_TUTOR_WORKSPACE_STORAGE_KEY, "true");
+  });
+
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();

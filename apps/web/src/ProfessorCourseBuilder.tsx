@@ -7,6 +7,8 @@ import {
   searchYoutubeMedia,
   uploadCourseMaterial,
 } from "./api";
+import { BundleSummary, hasCanvasVideo, StepHeader, toggleSelected, VideoCandidates } from "./ProfessorCourseBuilderParts";
+import { uploadDestination } from "./professorUpload";
 import type { CanvasDocument, SourceBundleManifest, YoutubeVideoCandidate } from "./types";
 
 const courseId = "martius-ml";
@@ -36,10 +38,16 @@ const defaultFlow: SavedProfessorFlow = {
 
 export function ProfessorCourseBuilder({
   onBack,
+  onPublishWorkspace,
+  onResetWorkspace,
   onPreviewWorkspace,
+  workspacePublished,
 }: {
   onBack: () => void;
+  onPublishWorkspace: () => void;
+  onResetWorkspace: () => void;
   onPreviewWorkspace: () => void;
+  workspacePublished: boolean;
 }) {
   const [savedFlow] = useState(readSavedFlow);
   const [profile, setProfile] = useState(savedFlow.profile);
@@ -47,7 +55,7 @@ export function ProfessorCourseBuilder({
   const [courseReady, setCourseReady] = useState(savedFlow.courseReady);
   const [bundle, setBundle] = useState<SourceBundleManifest | null>(null);
   const [uploadPath, setUploadPath] = useState(savedFlow.uploadPath);
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [canvas, setCanvas] = useState<CanvasDocument | null>(null);
   const [query, setQuery] = useState(savedFlow.query);
   const [videos, setVideos] = useState<YoutubeVideoCandidate[]>([]);
@@ -55,6 +63,7 @@ export function ProfessorCourseBuilder({
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [restored, setRestored] = useState(!savedFlow.bundleReady && !savedFlow.canvasReady);
+  const videoReviewReady = selectedVideos.size > 0 || hasCanvasVideo(canvas);
 
   useEffect(() => {
     let cancelled = false;
@@ -112,10 +121,27 @@ export function ProfessorCourseBuilder({
     setNotice("Professor account ready for tenant-tuebingen.");
   }
 
+  function resetFlow() {
+    setProfile(defaultProfile);
+    setAccountReady(false);
+    setCourseReady(false);
+    setBundle(null);
+    setUploadPath(defaultFlow.uploadPath);
+    setUploadFiles([]);
+    setCanvas(null);
+    setVideos([]);
+    setSelectedVideos(new Set());
+    onResetWorkspace();
+    setNotice("Professor flow reset.");
+    setError(null);
+    writeSavedFlow(defaultFlow);
+  }
+
   return (
     <main className="professor-screen">
       <section className="dashboard-header">
         <button className="ghost-button" type="button" onClick={onBack}>Back</button>
+        <button className="ghost-button" type="button" onClick={resetFlow}>Reset flow</button>
         <p className="section-label">Professor workspace</p>
         <h1>Course creation flow</h1>
         <p>Register, upload material, draft the canvas, then approve YouTube media.</p>
@@ -155,17 +181,27 @@ export function ProfessorCourseBuilder({
           <input
             aria-label="Upload course material"
             disabled={!courseReady}
-            onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}
+            multiple
+            onChange={(event) => setUploadFiles(Array.from(event.target.files ?? []))}
             type="file"
+            {...{ directory: "", webkitdirectory: "" }}
           />
           <div className="flow-actions">
             <button
-              disabled={!courseReady || !uploadFile}
+              disabled={!courseReady || !uploadFiles.length}
               type="button"
               onClick={() => run(async () => {
-                if (!uploadFile) return;
-                const result = await uploadCourseMaterial({ courseId, path: uploadPath, file: uploadFile });
-                return `Uploaded ${result.path} as ${result.kind}.`;
+                const uploaded = [];
+                for (const file of uploadFiles) {
+                  uploaded.push(await uploadCourseMaterial({
+                    courseId,
+                    path: uploadDestination(uploadPath, file, uploadFiles.length),
+                    file,
+                  }));
+                }
+                setBundle(await getSourceBundle(courseId));
+                if (uploaded.length === 1) return `Uploaded ${uploaded[0].path} as ${uploaded[0].kind}.`;
+                return `Uploaded ${uploaded.length} materials into the source bundle.`;
               })}
             >
               Upload material
@@ -195,7 +231,7 @@ export function ProfessorCourseBuilder({
         </section>
 
         <section className="flow-card wide">
-          <StepHeader number="05" title="Review YouTube candidates" done={selectedVideos.size > 0} />
+          <StepHeader number="05" title="Review YouTube candidates" done={videoReviewReady} />
           <label>
             Search query
             <input value={query} onChange={(event) => setQuery(event.target.value)} />
@@ -223,48 +259,22 @@ export function ProfessorCourseBuilder({
             Include selected videos
           </button>
         </section>
+
+        <section className="flow-card wide">
+          <StepHeader number="06" title="Publish tutor workspace" done={workspacePublished} />
+          <p className="drawer-note">Student dashboards show the AI tutor only after this course workspace is published.</p>
+          <button disabled={!canvas} type="button" onClick={() => {
+            onPublishWorkspace();
+            setNotice("Tutor workspace published. Refresh the student dashboard to show AI tutor available.");
+          }}>
+            Publish tutor workspace
+          </button>
+        </section>
       </div>
       {notice ? <p className="form-success">{notice}</p> : null}
       {error ? <p className="form-error">{error}</p> : null}
     </main>
   );
-}
-
-function StepHeader({ number, title, done }: { number: string; title: string; done: boolean }) {
-  return <header className="step-header"><span>{number}</span><h2>{title}</h2><strong>{done ? "Ready" : "Pending"}</strong></header>;
-}
-
-function BundleSummary({ bundle }: { bundle: SourceBundleManifest }) {
-  return <p>{bundle.files.length} files indexed · {Object.entries(bundle.counts_by_kind).map(([kind, count]) => `${count} ${kind}`).join(", ")}</p>;
-}
-
-function VideoCandidates({ videos, selectedVideos, onToggle }: {
-  videos: YoutubeVideoCandidate[];
-  selectedVideos: Set<string>;
-  onToggle: (videoId: string) => void;
-}) {
-  if (!videos.length) return <p className="drawer-note">No candidates searched yet.</p>;
-  return (
-    <div className="video-candidate-list">
-      {videos.map((video) => (
-        <label className="video-candidate" key={video.video_id}>
-          <input
-            checked={selectedVideos.has(video.video_id)}
-            onChange={() => onToggle(video.video_id)}
-            type="checkbox"
-          />
-          <span><strong>{video.title}</strong>{video.channel_title} · {video.duration.display ?? "duration unknown"}</span>
-        </label>
-      ))}
-    </div>
-  );
-}
-
-function toggleSelected(selectedVideos: Set<string>, videoId: string) {
-  const next = new Set(selectedVideos);
-  if (next.has(videoId)) next.delete(videoId);
-  else next.add(videoId);
-  return next;
 }
 
 function readSavedFlow(): SavedProfessorFlow {

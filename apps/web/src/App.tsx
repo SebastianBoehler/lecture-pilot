@@ -1,11 +1,13 @@
-import { LogOut, Moon, Sun, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { getLectureCanvas, sendAgentTurn, type AgentTurnResult } from "./api";
+import { AppHeader } from "./AppHeader";
 import { initialMessagesForAttendance, localDemoSession } from "./appDefaults";
 import { Dashboard } from "./Dashboard";
+import { useDemoTutorWorkspace } from "./demoTutorWorkspace";
 import { LessonWorkspace } from "./LessonWorkspace";
 import { LoginView } from "./LoginView";
+import { useStoredLoginSession } from "./loginSessionStorage";
 import { ProfileView } from "./ProfileView";
 import { ProfessorCourseBuilder } from "./ProfessorCourseBuilder";
 import { lectures } from "./sampleData";
@@ -23,8 +25,8 @@ import type {
 
 function App() {
   const [theme, setTheme] = useState<Theme>("light");
-  const [view, setView] = useState<View>("login");
-  const [session, setSession] = useState<LoginSession | null>(null);
+  const [session, setSession] = useStoredLoginSession();
+  const [view, setView] = useState<View>(session ? "dashboard" : "login");
   const [availableLectures, setAvailableLectures] = useState(lectures);
   const [selectedLecture, setSelectedLecture] = useState(lectures[2]);
   const [lessonBackView, setLessonBackView] = useState<"dashboard" | "professor">("dashboard");
@@ -39,13 +41,11 @@ function App() {
     initialMessagesForAttendance(lectures[2].attendance),
   );
   const [lastTutorModel, setLastTutorModel] = useState<string | null>(null);
+  const [demoTutorPublished, publishDemoTutor, unpublishDemoTutor] = useDemoTutorWorkspace();
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
-
-  const nextTheme = theme === "light" ? "dark" : "light";
-  const themeLabel = `Switch to ${nextTheme} mode`;
 
   async function handleTutorMessage(message: string) {
     setMessages((current) => [
@@ -142,54 +142,24 @@ function App() {
 
   return (
     <div className="app-shell">
-      <header className="top-bar">
-        <button
-          className="brand"
-          type="button"
-          onClick={() => {
-            setView(session ? "dashboard" : "login");
-            setPanelMode(null);
-          }}
-        >
-          <span>LecturePilot</span>
-        </button>
-        <div className="top-status">
-          <span>Course workspace</span>
-          {session ? (
-            <div className="top-actions" aria-label="Account controls">
-              <button
-                className="top-action-button"
-                type="button"
-                aria-label="Open profile"
-                onClick={() => {
-                  setView("profile");
-                  setPanelMode(null);
-                }}
-              >
-                <UserRound size={16} />
-                <span>Profile</span>
-              </button>
-              <button
-                className="top-action-button"
-                type="button"
-                aria-label="Log out"
-                onClick={handleLogout}
-              >
-                <LogOut size={16} />
-                <span>Log out</span>
-              </button>
-            </div>
-          ) : null}
-          <button
-            className="icon-button"
-            type="button"
-            aria-label={themeLabel}
-            onClick={() => setTheme(nextTheme)}
-          >
-            {theme === "light" ? <Moon size={17} /> : <Sun size={17} />}
-          </button>
-        </div>
-      </header>
+      <AppHeader
+        session={session}
+        theme={theme}
+        onBrand={() => {
+          setView(session ? "dashboard" : "login");
+          setPanelMode(null);
+        }}
+        onLogout={handleLogout}
+        onOpenProfile={() => {
+          setView("profile");
+          setPanelMode(null);
+        }}
+        onOpenProfessor={() => {
+          setView("professor");
+          setPanelMode(null);
+        }}
+        onToggleTheme={() => setTheme(theme === "light" ? "dark" : "light")}
+      />
 
       {view === "login" ? (
         <LoginView
@@ -209,6 +179,7 @@ function App() {
       ) : view === "dashboard" ? (
         <Dashboard
           lectures={availableLectures}
+          tutorWorkspacePublished={demoTutorPublished}
           session={session}
           onOpen={handleOpenLecture}
           onSetAttendance={handleSetAttendance}
@@ -218,9 +189,12 @@ function App() {
       ) : view === "professor" ? (
         <ProfessorCourseBuilder
           onBack={() => setView("login")}
+          onPublishWorkspace={publishDemoTutor}
+          onResetWorkspace={unpublishDemoTutor}
           onPreviewWorkspace={() => {
             void handleOpenLecture(lectures[2], "professor", "professor-preview");
           }}
+          workspacePublished={demoTutorPublished}
         />
       ) : (
         <LessonWorkspace

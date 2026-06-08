@@ -9,17 +9,19 @@ const demoTutorCourse: UniversityCourse = {
 
 export function Dashboard({
   lectures,
+  tutorWorkspacePublished,
   session,
   onOpen,
   onSetAttendance,
 }: {
   lectures: Lecture[];
+  tutorWorkspacePublished: boolean;
   session: LoginSession | null;
   onOpen: (lecture: Lecture) => void;
   onSetAttendance: (lectureId: string, attendance: Attendance) => void;
 }) {
   const studentLabel = session?.email ?? session?.username ?? "student";
-  const courseGroups = buildCourseGroups(session, lectures);
+  const courseGroups = buildCourseGroups(session, lectures, tutorWorkspacePublished);
 
   return (
     <main className="dashboard">
@@ -85,22 +87,22 @@ export function Dashboard({
   );
 }
 
-function buildCourseGroups(session: LoginSession | null, lectures: Lecture[]) {
+function buildCourseGroups(session: LoginSession | null, lectures: Lecture[], tutorWorkspacePublished: boolean) {
   const courses = session?.courses.length ? withDemoTutorCourse(session.courses) : [demoTutorCourse];
   return courses.map((course) => {
-    const tutorAvailable = hasTutorWorkspace(course);
+    const tutorAvailable = tutorWorkspacePublished && isDemoTutorCourse(course);
     return { course, tutorAvailable, courseLectures: tutorAvailable ? lectures : [] };
   });
 }
 
 function withDemoTutorCourse(courses: UniversityCourse[]) {
-  if (courses.some(hasTutorWorkspace)) {
+  if (courses.some(isDemoTutorCourse)) {
     return courses;
   }
   return [...courses, demoTutorCourse];
 }
 
-function hasTutorWorkspace(course: UniversityCourse) {
+function isDemoTutorCourse(course: UniversityCourse) {
   return course.id === demoTutorCourse.id || normalizeCourseTitle(course.title) === normalizeCourseTitle(demoTutorCourse.title);
 }
 

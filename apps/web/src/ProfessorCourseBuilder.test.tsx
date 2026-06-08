@@ -6,6 +6,7 @@ import App from "./App";
 
 describe("Professor course builder", () => {
   afterEach(() => {
+    window.localStorage.clear();
     window.sessionStorage.clear();
     vi.unstubAllGlobals();
   });
@@ -40,6 +41,8 @@ describe("Professor course builder", () => {
     await user.click(screen.getByRole("button", { name: /include selected videos/i }));
 
     expect(await screen.findByText(/included 1 approved video/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /publish tutor workspace/i }));
+    expect(await screen.findByText(/tutor workspace published/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /preview course workspace/i }));
     expect(
       await screen.findByRole("heading", { name: /^bayesian decision theory$/i, level: 1 }),
@@ -47,6 +50,9 @@ describe("Professor course builder", () => {
     expect(screen.getByRole("button", { name: /course builder/i })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /course builder/i }));
     expect(await screen.findByText(/2 sections ready for review/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^back$/i }));
+    await user.click(screen.getByRole("button", { name: /preview local demo/i }));
+    expect(screen.getByText(/ai tutor available/i)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/admin/courses/martius-ml/materials"),
       expect.objectContaining({ method: "POST" }),
@@ -55,6 +61,17 @@ describe("Professor course builder", () => {
       expect.stringContaining("/media/youtube/search"),
       expect.objectContaining({ headers: expect.objectContaining({ "X-User-Role": "professor" }) }),
     );
+  });
+
+  it("opens the course builder from an authenticated student tab", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /preview local demo/i }));
+    await user.click(screen.getByRole("button", { name: /^course builder$/i }));
+
+    expect(screen.getByRole("heading", { name: /course creation flow/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /create professor account/i })).toBeInTheDocument();
   });
 });
 

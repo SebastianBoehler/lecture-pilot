@@ -5,5 +5,7 @@ import { afterEach, vi } from "vitest";
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  window.localStorage.clear();
+  window.sessionStorage.clear();
   document.documentElement.dataset.theme = "light";
 });

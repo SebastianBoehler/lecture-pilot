@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
+import { DEMO_TUTOR_WORKSPACE_STORAGE_KEY } from "./demoTutorWorkspace";
 import { mockLoginAndTutorFetch, mockLoginFetch, soccerCanvasSection } from "./testFixtures";
 
 describe("LecturePilot app shell", () => {
@@ -41,8 +42,8 @@ describe("LecturePilot app shell", () => {
     expect(probabilisticCourse).not.toBeNull();
     expect(martiusCourse).not.toBeNull();
     expect(within(probabilisticCourse as HTMLElement).getByText(/no tutor workspace yet/i)).toBeInTheDocument();
-    expect(within(martiusCourse as HTMLElement).getByText(/ai tutor available/i)).toBeInTheDocument();
-    expect(within(martiusCourse as HTMLElement).getByRole("button", { name: /open lecture 03/i })).toBeInTheDocument();
+    expect(within(martiusCourse as HTMLElement).getByText(/no tutor workspace yet/i)).toBeInTheDocument();
+    expect(within(martiusCourse as HTMLElement).queryByRole("button", { name: /open lecture 03/i })).not.toBeInTheDocument();
     expect(screen.queryByText("very-secret-password")).not.toBeInTheDocument();
     const request = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
     expect(request).toEqual({
@@ -50,7 +51,7 @@ describe("LecturePilot app shell", () => {
       password: "very-secret-password",
     });
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/auth/login",
+      expect.stringContaining("/auth/login"),
       expect.objectContaining({ method: "POST" }),
     );
   });
@@ -87,15 +88,15 @@ describe("LecturePilot app shell", () => {
       screen.queryByRole("heading", { name: /grundlagen des maschinellen lernens/i, level: 1 }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /course workspaces/i })).toBeInTheDocument();
-    expect(screen.getByText(/ai tutor available/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /open lecture 03/i })).toBeInTheDocument();
+    expect(screen.getByText(/no tutor workspace yet/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /open lecture 03/i })).not.toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("opens a focused lesson workspace without showing the course dashboard", async () => {
     const user = userEvent.setup();
     vi.stubGlobal("fetch", mockLoginFetch());
-    render(<App />);
+    renderPublishedApp();
 
     await logIn(user);
     await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
@@ -111,7 +112,7 @@ describe("LecturePilot app shell", () => {
   it("switches the focused workspace rail between tutor, outline, and notes", async () => {
     const user = userEvent.setup();
     vi.stubGlobal("fetch", mockLoginFetch());
-    render(<App />);
+    renderPublishedApp();
 
     await logIn(user);
     await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
@@ -144,7 +145,7 @@ describe("LecturePilot app shell", () => {
   it("renders professor course canvas blocks instead of old demo artifacts", async () => {
     const user = userEvent.setup();
     vi.stubGlobal("fetch", mockLoginFetch());
-    render(<App />);
+    renderPublishedApp();
 
     await logIn(user);
     await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
@@ -176,7 +177,7 @@ describe("LecturePilot app shell", () => {
   it("renders imported lecture sections in the lesson canvas", async () => {
     const user = userEvent.setup();
     vi.stubGlobal("fetch", mockLoginFetch());
-    render(<App />);
+    renderPublishedApp();
 
     await logIn(user);
     await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
@@ -188,7 +189,7 @@ describe("LecturePilot app shell", () => {
 
   it("toggles dark mode with a document theme attribute", async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderPublishedApp();
 
     await user.click(screen.getByRole("button", { name: /switch to dark mode/i }));
 
@@ -199,7 +200,7 @@ describe("LecturePilot app shell", () => {
     const user = userEvent.setup();
     const fetchMock = mockLoginAndTutorFetch();
     vi.stubGlobal("fetch", fetchMock);
-    render(<App />);
+    renderPublishedApp();
 
     await user.click(screen.getByRole("button", { name: /preview local demo/i }));
     await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
@@ -224,7 +225,7 @@ describe("LecturePilot app shell", () => {
     const agentRequest = JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body));
     expect(agentRequest.user_id).toBe("local-demo");
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/agent/turn",
+      expect.stringContaining("/agent/turn"),
       expect.objectContaining({ method: "POST" }),
     );
   });
@@ -259,7 +260,7 @@ describe("LecturePilot app shell", () => {
       },
     });
     vi.stubGlobal("fetch", fetchMock);
-    render(<App />);
+    renderPublishedApp();
 
     await logIn(user);
     const lectureRow = screen.getByRole("heading", { name: /bayesian decision theory/i }).closest("article");
@@ -295,3 +296,5 @@ async function logIn(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/^password$/i), "very-secret-password");
   await user.click(screen.getByRole("button", { name: /connect to tue api/i }));
 }
+
+function renderPublishedApp() { window.localStorage.setItem(DEMO_TUTOR_WORKSPACE_STORAGE_KEY, "true"); render(<App />); }
