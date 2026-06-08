@@ -56,6 +56,25 @@ def test_students_cannot_manage_youtube_course_media(tmp_path) -> None:
     assert response.status_code == 403
 
 
+def test_professor_can_clear_course_youtube_media(tmp_path) -> None:
+    app = create_app()
+    app.state.canvas_workspace = SimpleNamespace(material_root=tmp_path)
+    client = TestClient(app)
+    add_youtube_selection(
+        material_root=tmp_path,
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        selection=YoutubeSelectionInput(section_id="bayes-formula", video=_candidate()),
+        approved_by="professor-1",
+    )
+
+    response = client.delete("/admin/courses/martius-ml/media/youtube", headers=HEADERS)
+
+    assert response.status_code == 200
+    assert response.json() == {"deleted": 1}
+    assert not (tmp_path / "canvas" / "media" / "martius-ml-lecture-03.json").exists()
+
+
 def test_approved_youtube_selection_merges_into_canvas_section(tmp_path) -> None:
     video = _candidate()
     add_youtube_selection(

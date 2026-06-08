@@ -162,6 +162,16 @@ export async function includeYoutubeMedia(input: {
   return payload as { block_id: string };
 }
 
+export async function clearCourseYoutubeMedia(courseId: string) {
+  const response = await fetch(apiUrl(`/admin/courses/${courseId}/media/youtube`), {
+    method: "DELETE",
+    headers: professorHeaders,
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "Course media reset failed."));
+  return payload as { deleted: number };
+}
+
 function readApiError(payload: unknown, fallback: string) {
   return typeof (payload as { detail?: unknown }).detail === "string"
     ? String((payload as { detail: string }).detail)

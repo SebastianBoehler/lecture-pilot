@@ -63,6 +63,20 @@ def list_course_media(*, material_root: Path, course_id: str, lecture_id: str) -
     return _read_payload(path, course_id=course_id, lecture_id=lecture_id)["videos"]
 
 
+def clear_course_media(*, material_root: Path, course_id: str) -> int:
+    media_dir = material_root / "canvas" / "media"
+    if not media_dir.exists():
+        return 0
+    prefix = f"{_safe_id(course_id)}-"
+    deleted = 0
+    for path in media_dir.glob(f"{prefix}*.json"):
+        if not path.is_file():
+            continue
+        path.unlink()
+        deleted += 1
+    return deleted
+
+
 def _insert_video_block(
     sections: list[CanvasSection],
     *,

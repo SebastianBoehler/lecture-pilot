@@ -53,6 +53,7 @@ describe("Professor course builder", () => {
     await user.click(screen.getByRole("button", { name: /^back$/i }));
     await user.click(screen.getByRole("button", { name: /preview local demo/i }));
     expect(screen.getByText(/ai tutor available/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^course builder$/i }));
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/admin/courses/martius-ml/materials"),
       expect.objectContaining({ method: "POST" }),
@@ -60,6 +61,12 @@ describe("Professor course builder", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/media/youtube/search"),
       expect.objectContaining({ headers: expect.objectContaining({ "X-User-Role": "professor" }) }),
+    );
+    await user.click(screen.getByRole("button", { name: /reset flow/i }));
+    expect(await screen.findByText(/professor flow reset/i)).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/admin/courses/martius-ml/media/youtube"),
+      expect.objectContaining({ method: "DELETE" }),
     );
   });
 
@@ -81,6 +88,7 @@ function professorFetchMock() {
     if (url.includes("/materials")) return json({ path: "uploads/supplement.md", kind: "markdown", size_bytes: 12 });
     if (url.includes("/canvas")) return json(canvasPayload());
     if (url.includes("/media/youtube/search")) return json({ items: [youtubeCandidate()] });
+    if (url.includes("/media/youtube") && init?.method === "DELETE") return json({ deleted: 1 });
     if (url.includes("/media/youtube")) return json({ block_id: "youtube-j4yxsEQqPMI" });
     throw new Error(`Unexpected fetch: ${url} ${init?.method ?? "GET"}`);
   });

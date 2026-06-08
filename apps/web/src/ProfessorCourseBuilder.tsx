@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 
 import {
+  clearCourseYoutubeMedia,
   getLectureCanvas,
   getSourceBundle,
   includeYoutubeMedia,
@@ -120,8 +121,7 @@ export function ProfessorCourseBuilder({
     setAccountReady(true);
     setNotice("Professor account ready for tenant-tuebingen.");
   }
-
-  function resetFlow() {
+  async function resetFlow() {
     setProfile(defaultProfile);
     setAccountReady(false);
     setCourseReady(false);
@@ -132,16 +132,18 @@ export function ProfessorCourseBuilder({
     setVideos([]);
     setSelectedVideos(new Set());
     onResetWorkspace();
-    setNotice("Professor flow reset.");
-    setError(null);
     writeSavedFlow(defaultFlow);
+    await run(async () => {
+      await clearCourseYoutubeMedia(courseId);
+      return "Professor flow reset.";
+    });
   }
 
   return (
     <main className="professor-screen">
       <section className="dashboard-header">
         <button className="ghost-button" type="button" onClick={onBack}>Back</button>
-        <button className="ghost-button" type="button" onClick={resetFlow}>Reset flow</button>
+        <button className="ghost-button" type="button" onClick={() => void resetFlow()}>Reset flow</button>
         <p className="section-label">Professor workspace</p>
         <h1>Course creation flow</h1>
         <p>Register, upload material, draft the canvas, then approve YouTube media.</p>

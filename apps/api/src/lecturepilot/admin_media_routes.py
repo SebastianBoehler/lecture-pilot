@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI, Header, HTTPException, Query
 
-from lecturepilot.course_media import add_youtube_selection, list_course_media
+from lecturepilot.course_media import add_youtube_selection, clear_course_media, list_course_media
 from lecturepilot.models import (
     Course,
     Lecture,
@@ -82,6 +82,22 @@ def register_admin_media_routes(
             course_id=course_id,
             lecture_id=lecture_id,
         )
+
+    @app.delete("/admin/courses/{course_id}/media/youtube")
+    def clear_youtube_media(
+        course_id: str,
+        x_tenant_id: str = Header(..., alias="X-Tenant-Id"),
+        x_user_id: str = Header(..., alias="X-User-Id"),
+        x_user_role: TenantRole = Header(..., alias="X-User-Role"),
+    ) -> dict[str, int]:
+        _assert_course(course_id, course)
+        _assert_professor(x_tenant_id, x_user_id, x_user_role, course_tenant_id)
+        return {
+            "deleted": clear_course_media(
+                material_root=app.state.canvas_workspace.material_root,
+                course_id=course_id,
+            )
+        }
 
 
 def _assert_professor(
