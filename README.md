@@ -77,10 +77,10 @@ Keep private professor/course files in `local-course-materials/`,
 are gitignored on purpose; only sanitized examples and public fixtures should
 be committed.
 
-For the Martius demo slice, keep the private local copy in
-`local-course-materials/martius-ml`. If `LECTUREPILOT_COURSE_MATERIAL_ROOT` is
-empty, the API uses that repo-local folder first and only then searches the old
-local Tübingen course checkout as a convenience fallback.
+Course-material roots are intentionally private. By default, the API first
+checks the repo-local ignored course-material folder used by the bundled demo
+workspace. Set `LECTUREPILOT_COURSE_MATERIAL_ROOT` to point at another private
+course checkout or upload workspace.
 
 Backend:
 
