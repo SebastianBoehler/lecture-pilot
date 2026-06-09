@@ -52,4 +52,4 @@ SOURCE_SUFFIXES = {
 
 
 def _is_hidden(path: Path) -> bool:
-    return any(part.startswith(".") for part in path.parts)
+    return path.parts[:1] == ("canvas",) or any(part.startswith(".") for part in path.parts)

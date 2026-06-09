@@ -12,6 +12,7 @@ def test_source_bundle_scans_professor_material_types(tmp_path: Path) -> None:
     _write(root / "videos" / "demo.mp4")
     _write(root / "code" / "notebook.ipynb")
     _write(root / "code" / "demo.py")
+    _write(root / "canvas" / "lectures" / "lecture-03" / "index.md")
     _write(root / ".git" / "HEAD")
     _write(root / ".lecturepilot-previews" / "preview.png")
 

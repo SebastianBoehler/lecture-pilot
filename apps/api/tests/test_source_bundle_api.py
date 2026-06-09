@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from lecturepilot.app import create_app
+from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
 
 
@@ -124,6 +125,37 @@ def test_uploaded_latex_can_seed_a_canvas_document(tmp_path: Path) -> None:
     ]
 
 
+def test_professor_canvas_draft_uses_planner_and_seeds_students(tmp_path: Path) -> None:
+    client, material_root = _client(tmp_path)
+    client.app.state.course_planner = _FakeCoursePlanner()
+    stale = material_root / "canvas" / "lectures" / "martius-ml" / "lecture-03" / "sections" / "99-stale.md"
+    _write(stale)
+    client.post(
+        "/admin/courses/martius-ml/materials",
+        data={"path": "Lecture03-eng.tex"},
+        files={"file": ("Lecture03-eng.tex", _latex_source())},
+        headers=_professor_headers(),
+    )
+
+    draft = client.post(
+        "/admin/courses/martius-ml/lectures/lecture-03/canvas/draft",
+        headers=_professor_headers(),
+    )
+
+    assert draft.status_code == 200
+    assert draft.json()["source_kind"] == "generated"
+    assert (material_root / "canvas" / "lectures" / "martius-ml" / "lecture-03" / "index.md").exists()
+    assert not stale.exists()
+
+    student = client.get("/courses/martius-ml/lectures/lecture-03/canvas?user_id=student01")
+
+    assert student.status_code == 200
+    payload = student.json()
+    assert payload["source_kind"] == "generated"
+    assert [section["title"] for section in payload["sections"]] == ["Planner summary"]
+    assert payload["sections"][0]["blocks"][0]["text"] == "Bayes rule becomes a compact learning section."
+
+
 def _client(tmp_path: Path) -> tuple[TestClient, Path]:
     material_root = tmp_path / "course"
     app = create_app()
@@ -164,3 +196,28 @@ Expected risk changes the decision threshold.
 def _write(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("demo", encoding="utf-8")
+
+
+class _FakeCoursePlanner:
+    async def plan_canvas(self, source_document):
+        assert source_document.source_ref == "Lecture03-eng.tex"
+        return source_document.model_copy(
+            update={
+                "source_kind": "generated",
+                "source_ref": "course planner from Lecture03-eng.tex",
+                "sections": [
+                    CanvasSection(
+                        id="planner-summary",
+                        title="Planner summary",
+                        source_ref="Lecture03-eng.tex frame 1",
+                        blocks=[
+                            CanvasBlock(
+                                id="planner-summary-p-1",
+                                type="paragraph",
+                                text="Bayes rule becomes a compact learning section.",
+                            )
+                        ],
+                    )
+                ],
+            }
+        )

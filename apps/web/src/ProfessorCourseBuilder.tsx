@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 
 import {
   clearCourseYoutubeMedia,
+  draftLectureCanvas,
   getLectureCanvas,
   getSourceBundle,
   includeYoutubeMedia,
@@ -221,8 +222,8 @@ export function ProfessorCourseBuilder({
         <section className="flow-card">
           <StepHeader number="04" title="Generate canvas draft" done={Boolean(canvas)} />
           <button disabled={!bundle} type="button" onClick={() => run(async () => {
-            setCanvas(await getLectureCanvas(courseId, lectureId, "professor-preview"));
-            return "Canvas draft generated from course materials.";
+            setCanvas(await draftLectureCanvas(courseId, lectureId));
+            return "Course-builder agent generated a source-grounded canvas draft.";
           })}>
             Generate draft canvas
           </button>
@@ -294,6 +295,5 @@ function writeSavedFlow(flow: SavedProfessorFlow) {
   try {
     window.sessionStorage.setItem(flowStorageKey, JSON.stringify(flow));
   } catch {
-    // Session storage can be disabled; the professor flow still works without restoration.
   }
 }

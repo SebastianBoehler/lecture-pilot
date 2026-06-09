@@ -33,6 +33,7 @@ describe("Professor course builder", () => {
     expect(await screen.findByText(/3 files indexed/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /generate draft canvas/i }));
+    expect(await screen.findByText(/course-builder agent generated/i)).toBeInTheDocument();
     expect(await screen.findByText(/2 sections ready for review/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /search youtube/i }));
@@ -86,6 +87,7 @@ function professorFetchMock() {
   return vi.fn(async (url: string, init?: RequestInit) => {
     if (url.includes("/source-bundle")) return json(sourceBundle());
     if (url.includes("/materials")) return json({ path: "uploads/supplement.md", kind: "markdown", size_bytes: 12 });
+    if (url.includes("/canvas/draft")) return json(canvasPayload());
     if (url.includes("/canvas")) return json(canvasPayload());
     if (url.includes("/media/youtube/search")) return json({ items: [youtubeCandidate()] });
     if (url.includes("/media/youtube") && init?.method === "DELETE") return json({ deleted: 1 });

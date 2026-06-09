@@ -108,6 +108,16 @@ export async function getLectureCanvas(
   return payload as CanvasDocument;
 }
 
+export async function draftLectureCanvas(courseId: string, lectureId: string): Promise<CanvasDocument> {
+  const response = await fetch(apiUrl(`/admin/courses/${courseId}/lectures/${lectureId}/canvas/draft`), {
+    method: "POST",
+    headers: professorHeaders,
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "Canvas planner failed."));
+  return payload as CanvasDocument;
+}
+
 export async function getSourceBundle(courseId = "martius-ml"): Promise<SourceBundleManifest> {
   const response = await fetch(apiUrl(`/courses/${courseId}/source-bundle`));
   const payload = await response.json();
