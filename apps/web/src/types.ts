@@ -18,13 +18,25 @@ export type Lecture = {
 
 export type CanvasBlock = {
   id: string;
-  type: "paragraph" | "list" | "asset" | "callout" | "math" | "video" | "checkpoint" | "quiz" | "table";
+  type:
+    | "paragraph"
+    | "list"
+    | "asset"
+    | "callout"
+    | "math"
+    | "video"
+    | "checkpoint"
+    | "quiz"
+    | "table"
+    | "component";
   text?: string | null;
   items: string[];
   asset_path?: string | null;
   asset_url?: string | null;
   caption?: string | null;
   answer_index?: number | null;
+  component_id?: string | null;
+  component_type?: string | null;
 };
 
 export type CanvasSection = {

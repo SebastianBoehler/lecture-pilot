@@ -17,6 +17,7 @@ class CanvasBlock(BaseModel):
         "checkpoint",
         "quiz",
         "table",
+        "component",
     ]
     text: str | None = None
     items: list[str] = Field(default_factory=list)
@@ -24,6 +25,8 @@ class CanvasBlock(BaseModel):
     asset_url: str | None = Field(default=None, max_length=500)
     caption: str | None = Field(default=None, max_length=500)
     answer_index: int | None = Field(default=None, ge=0, le=25)
+    component_id: str | None = Field(default=None, max_length=120)
+    component_type: str | None = Field(default=None, max_length=120)
 
 
 class CanvasSection(BaseModel):

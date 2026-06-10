@@ -80,6 +80,22 @@ describe("LecturePilot canvas interactions", () => {
     expect(correct).toHaveClass("is-correct");
   });
 
+  it("renders prefab component quizzes inside the canvas", async () => {
+    const user = userEvent.setup();
+    const fetchMock = mockLoginAndTutorFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+
+    await logIn(user);
+    await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
+    const componentAnswer = screen.getByRole("button", { name: /A The loss-sensitive threshold/i });
+    await user.click(componentAnswer);
+
+    expect(await screen.findByText(/Retrieval quiz answer for "Risk threshold component": A/i))
+      .toBeInTheDocument();
+    expect(componentAnswer).toHaveClass("is-correct");
+  });
+
   it("pulses an outline jump target and clears it after five seconds", async () => {
     const user = userEvent.setup();
     vi.stubGlobal("fetch", mockLoginFetch());

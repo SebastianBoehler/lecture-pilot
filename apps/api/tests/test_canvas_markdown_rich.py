@@ -48,6 +48,19 @@ Which quantity changes when false negatives are ten times costlier?
 - [x] Loss term
 - Evidence normalizer
 :::
+
+:::component risk-threshold-check
+{
+  "id": "risk-threshold-check",
+  "type": "single_choice_quiz",
+  "title": "Risk threshold component",
+  "prompt": "Which action should minimize cost-sensitive risk?",
+  "options": [
+    {"id": "A", "text": "Choose the lowest expected risk", "correct": true},
+    {"id": "B", "text": "Always choose the highest posterior", "correct": false}
+  ]
+}
+:::
 """,
         encoding="utf-8",
     )
@@ -55,7 +68,15 @@ Which quantity changes when false negatives are ten times costlier?
     document = read_document_source(canvas_dir)
     blocks = document.sections[0].blocks
 
-    assert [block.type for block in blocks] == ["paragraph", "asset", "video", "table", "checkpoint", "quiz"]
+    assert [block.type for block in blocks] == [
+        "paragraph",
+        "asset",
+        "video",
+        "table",
+        "checkpoint",
+        "quiz",
+        "component",
+    ]
     assert blocks[1].asset_path is None
     assert blocks[1].asset_url == "https://example.test/risk-plot.png"
     assert blocks[2].caption == "Bayesian decision theory recap"
@@ -65,3 +86,8 @@ Which quantity changes when false negatives are ten times costlier?
     assert blocks[5].caption == "Threshold check"
     assert blocks[5].items == ["Prior probability", "Loss term", "Evidence normalizer"]
     assert blocks[5].answer_index == 1
+    assert blocks[6].component_id == "risk-threshold-check"
+    assert blocks[6].component_type == "single_choice_quiz"
+    assert blocks[6].caption == "Risk threshold component"
+    assert blocks[6].items == ["Choose the lowest expected risk", "Always choose the highest posterior"]
+    assert blocks[6].answer_index == 0

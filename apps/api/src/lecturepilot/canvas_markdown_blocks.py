@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 
 from lecturepilot.canvas_asset_refs import asset_markdown_target, parsed_asset_target
+from lecturepilot.canvas_component_blocks import component_to_markdown, read_component_block
 from lecturepilot.canvas_models import CanvasBlock
 
 
@@ -25,6 +26,8 @@ def block_to_markdown(block: CanvasBlock) -> str:
         return f"{header}\n{_rich_container(block)}"
     if block.type == "table":
         return f"{header}\n{block.text or ''}"
+    if block.type == "component":
+        return f"{header}\n{component_to_markdown(block)}"
     if block.type == "callout":
         return f"{header}\n" + "\n".join(f"> {line}" for line in (block.text or "").splitlines())
     return f"{header}\n{block.text or ''}"
@@ -62,6 +65,7 @@ def type_suffix(block_type: str) -> str:
         "asset": "asset",
         "callout": "callout",
         "checkpoint": "checkpoint",
+        "component": "component",
         "list": "list",
         "math": "math",
         "paragraph": "p",
@@ -140,6 +144,8 @@ def _read_block(
             caption=caption,
             answer_index=answer_index,
         )
+    if block_type == "component":
+        return _read_component(block_id, chunk)
     if block_type == "table":
         return CanvasBlock(id=block_id, type="table", text=chunk.strip())
     if block_type != "paragraph":
@@ -149,7 +155,7 @@ def _read_block(
 
 def _infer_block_type(chunk: str) -> str:
     rich = _rich_match(chunk)
-    if rich and rich.group("kind") in {"checkpoint", "quiz"}:
+    if rich and rich.group("kind") in {"checkpoint", "component", "quiz"}:
         return rich.group("kind")
     if _IMAGE_RE.search(chunk):
         return "asset"
@@ -202,6 +208,11 @@ def _read_quiz_item(item: str) -> tuple[str, bool]:
     if not match:
         return item, False
     return match.group("text").strip(), match.group("checked").lower() == "x"
+
+
+def _read_component(block_id: str, chunk: str) -> CanvasBlock:
+    label, body = _read_rich_text(chunk, "component")
+    return read_component_block(block_id, label, body)
 
 
 def _read_video(chunk: str) -> tuple[str, str, str | None]:

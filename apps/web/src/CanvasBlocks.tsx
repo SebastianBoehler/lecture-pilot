@@ -1,8 +1,10 @@
 import { apiUrl } from "./api";
 import { assetPreviewUrl } from "./assetMedia";
 import { CheckpointBlock, QuizBlock, TableBlock } from "./CanvasLearningBlocks";
+import { ComponentBlock } from "./CanvasInteractiveComponents";
 import { DisplayMath, MathText } from "./MathText";
 import { SourceMarker } from "./SourceMarker";
+import { findKeySourceBlockId, shouldShowSourceMarker } from "./canvasBlockSourceRules";
 import { blockSourceReference, sectionSourceReferences } from "./sourceReferences";
 import type { CanvasBlock, CanvasDocument, CanvasSection, DocumentAnchorId, WorkspaceResource } from "./types";
 import { youtubeEmbedUrl } from "./youtubeEmbedUrl";
@@ -268,6 +270,18 @@ function renderBlock(
     );
   }
 
+  if (block.type === "component") {
+    return (
+      <ComponentBlock
+        block={block}
+        className={className}
+        key={block.id}
+        sourceMarker={sourceMarker}
+        onSubmitAnswer={onSubmitQuizAnswer}
+      />
+    );
+  }
+
   return (
     <p className={`${className} canvas-paragraph`} id={block.id} key={block.id}>
       <MathText highlightedText={phrase} text={block.text ?? ""} />
@@ -279,19 +293,4 @@ function renderBlock(
 function pulseClass(isPulsed: boolean, version: number) {
   if (!isPulsed) return "";
   return `is-outline-pulsed pulse-${version % 2 === 0 ? "even" : "odd"}`;
-}
-
-function findKeySourceBlockId(blocks: CanvasBlock[]) {
-  return (
-    blocks.find((block) => block.type === "callout")?.id ??
-    blocks.find((block) => block.type === "checkpoint")?.id ??
-    blocks.find((block) => block.type === "list")?.id ??
-    blocks.find((block) => block.type === "paragraph")?.id ??
-    null
-  );
-}
-
-function shouldShowSourceMarker(block: CanvasBlock, keySourceBlockId: string | null) {
-  if (block.type === "quiz") return false;
-  return Boolean((block.type === "asset" || block.type === "video") && block.asset_url) || block.id === keySourceBlockId;
 }
