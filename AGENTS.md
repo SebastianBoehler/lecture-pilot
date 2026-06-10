@@ -22,49 +22,67 @@ behind the backend agent harness contract.
 
 ## Setup Commands
 
-Install frontend dependencies:
-
 ```bash
 npm install
-```
-
-Create the API environment:
-
-```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e "apps/api[test,agent]"
 ```
 
-Add Uni Tuebingen wrapper support only when working on live university login:
+Add Uni Tuebingen wrapper support only when working on live university login.
 
 ```bash
 pip install -e "apps/api[tuebingen]"
-```
-
-If developing against a local wrapper checkout:
-
-```bash
+# or, against a local wrapper checkout:
 pip install -e ../tue-api-wrapper/package
 ```
 
 ## Dev Servers
 
-Run API:
-
 ```bash
 source .venv/bin/activate
 uvicorn lecturepilot.app:app --app-dir apps/api/src --reload
-```
-
-Run web app:
-
-```bash
 npm run dev --workspace apps/web
 ```
 
 Open `http://127.0.0.1:5173`. Use **Preview local demo** for local UI and
 agent-flow checks without sending real credentials.
+
+## Agent Storage Image
+
+The agent should be seeded with a clear filesystem image. Treat this as the
+logical structure even when production storage is backed by Postgres and object
+storage instead of local folders.
+
+```txt
+.lecturepilot/
+  users/<user-key>/
+    profile.json
+    memories/{global.md,preferences.json}
+    courses/<course-id>/
+      progress.json
+      memories/course.md
+      lectures/<lecture-id>/
+        {attendance.json,gates.json,tutor-state.json}
+        canvas/{student/*.md,student-assets/*}
+  courses/<tenant-id>/<course-id>/
+    course.json
+    source/{uploads/,normalized/,assets/,source-index.json}
+    canvas/lectures/<lecture-id>/{index.md,sections/*.md,assets/}
+    builder/{drafts/,review-state.json}
+  cache/{pdf-previews/,thumbnails/,extracted-text/}
+```
+
+Official source material belongs to `courses/<tenant>/<course>/source`.
+Professor-approved learning documents belong to
+`courses/<tenant>/<course>/canvas`. Cross-course teaching preferences belong to
+`users/<user-key>/memories`. Lecture-specific attendance, gates, progress,
+generated notes, and generated images belong under the user's course/lecture
+workspace.
+
+The agent may navigate this image only through typed tools. It should not freely
+read host paths, mutate official source files, duplicate large course assets
+into learner folders, or use browser-supplied ids as authority.
 
 ## Course Material And Workspace Seeding
 
@@ -87,18 +105,18 @@ workspaces/
 .lecturepilot/
 ```
 
-For the Martius demo, keep the private source slice in the repo-local ignored
-folder:
+For a local demo course, keep the private source slice in a repo-local ignored
+folder such as:
 
 ```txt
-local-course-materials/martius-ml/
+local-course-materials/<course-slug>/
 ```
 
 For Overleaf-backed courses, sync the full professor checkout into that folder
 and exclude only source-control metadata:
 
 ```bash
-rsync -a --exclude '.git/' "$OVERLEAF_CHECKOUT/" local-course-materials/martius-ml/
+rsync -a --exclude '.git/' "$OVERLEAF_CHECKOUT/" local-course-materials/<course-slug>/
 ```
 
 Override it only when needed:
@@ -107,21 +125,12 @@ Override it only when needed:
 export LECTUREPILOT_COURSE_MATERIAL_ROOT=/absolute/path/to/private/course
 ```
 
-The current professor/admin staging endpoint is:
+The professor/admin staging endpoint accepts the file types listed in
+`WorkspacePolicy.allowed_course_material_uploads` and rejects unsafe paths,
+unsupported suffixes, oversized payloads, and non-professor roles.
 
-```bash
-curl -F path=Lecture03-eng.tex -F file=@Lecture03-eng.tex \
-  -H 'X-Tenant-Id: tenant-tuebingen' \
-  -H 'X-User-Id: prof01' \
-  -H 'X-User-Role: professor' \
-  http://127.0.0.1:8000/admin/courses/martius-ml/materials
-```
-
-It accepts the file types listed in `WorkspacePolicy.allowed_course_material_uploads`
-and rejects unsafe paths, unsupported suffixes, oversized payloads, and
-non-professor roles.
-
-On first lecture open, the API imports LaTeX into a learner workspace:
+The current local implementation still writes learner overlays into the older
+workspace path:
 
 ```txt
 .lecturepilot/workspaces/
@@ -134,6 +143,10 @@ On first lecture open, the API imports LaTeX into a learner workspace:
           student/*.md
         canvas.json
 ```
+
+The target structure is the `users/<user-key>/courses/...` image above. Keep new
+work moving toward that split instead of adding more behavior to the legacy
+`workspaces/students` path.
 
 The Markdown files under `canvas/` are the editable source of truth. Treat
 `canvas.json` as a compiled API cache/artifact, not as the primary authoring
@@ -151,39 +164,14 @@ packages/                 Future package boundaries/placeholders
 services/agent/           Future external agent runtime notes
 ```
 
-Important API modules:
+Important API modules: `app.py`, `canvas_workspace.py`,
+`canvas_markdown.py`, `source_bundle.py`, `harness.py`, `model_client.py`,
+`image_generation*.py`, `policies.py`, `providers.py`, `tenancy.py`,
+`tuebingen_adapter.py`, and `workspace.py`.
 
-```txt
-app.py                    FastAPI routes
-canvas_workspace.py       workspace lifecycle and canvas loading
-canvas_markdown.py        Markdown canvas compiler
-latex_canvas_importer.py  LaTeX-to-canvas import grouping
-source_bundle.py          professor source bundle scanner
-guided_tutor.py           local deterministic tutor behavior
-harness.py                agent turn contract
-model_client.py           provider-backed model call boundary
-image_generation*.py      provider-agnostic text-to-image boundaries
-policies.py               lecture unlock and workspace file policies
-providers.py              provider readiness/capability checks
-tenancy.py                tenant/profile/role models and gates
-tuebingen_adapter.py      TUE API wrapper boundary
-workspace.py              path, type, and size validation
-```
-
-Important web modules:
-
-```txt
-App.tsx                   top-level app state and API wiring
-Dashboard.tsx             course and lecture selection
-LessonWorkspace.tsx       lesson shell, right rail, panel routing
-LessonCanvas.tsx          rendered learning document
-SectionSources.tsx        numbered source references per section
-SourceMarker.tsx          inline source citation buttons
-WorkspaceFilesPanel.tsx   in-app file/source/asset preview drawer
-TutorDrawer.tsx           text-only guided tutor chat
-api.ts                    frontend API client
-types.ts                  shared frontend data contracts
-```
+Important web modules: `App.tsx`, `Dashboard.tsx`, `LessonWorkspace.tsx`,
+`LessonCanvas.tsx`, `SectionSources.tsx`, `SourceMarker.tsx`,
+`WorkspaceFilesPanel.tsx`, `TutorDrawer.tsx`, `api.ts`, and `types.ts`.
 
 ## Agent Harness Rules
 
@@ -200,6 +188,9 @@ types.ts                  shared frontend data contracts
 - Tool calls shown in the chat should correspond to real harness actions.
 - Generated learner content belongs in `canvas/student/*.md`, not in official
   source sections.
+- Durable personalization belongs in user memory files, not in prompt-only
+  state. Use structured JSON for enforceable preferences and Markdown for rich
+  tutor memory.
 
 ## UI And Canvas Rules
 
@@ -243,27 +234,10 @@ types.ts                  shared frontend data contracts
 Run the narrowest meaningful check first, then the broader suite before
 finishing.
 
-API tests:
-
 ```bash
 pytest apps/api/tests -q
-```
-
-Web tests:
-
-```bash
 npm run test --workspace apps/web
-```
-
-Web build:
-
-```bash
 npm run build --workspace apps/web
-```
-
-Whitespace check:
-
-```bash
 git diff --check
 ```
 
