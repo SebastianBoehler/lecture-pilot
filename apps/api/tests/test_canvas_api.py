@@ -5,7 +5,13 @@ from fastapi.testclient import TestClient
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.models import AgentTurnInput, AgentTurnResult, CanvasCommand
+from lecturepilot.models import (
+    AgentTurnInput,
+    AgentTurnResult,
+    CanvasCommand,
+    QualityGateDecision,
+    QualityGateStatus,
+)
 
 
 def test_canvas_endpoint_loads_private_course_source_for_student(tmp_path: Path) -> None:
@@ -52,10 +58,21 @@ def test_agent_appended_canvas_section_persists_for_same_student(tmp_path: Path)
     assert response.status_code == 200
     assert _section_ids(same_student.json())[-1] == "student-soccer-bayes-example"
     assert "student-soccer-bayes-example" not in _section_ids(other_student.json())
+    lecture_root = app.state.canvas_workspace.layout.user_lecture_root(
+        "student01",
+        "martius-ml",
+        "lecture-03",
+    )
+    user_root = app.state.canvas_workspace.layout.user_root("student01")
+    assert (user_root / "memories" / "global.md").exists()
+    assert (user_root / "memories" / "preferences.json").exists()
+    assert '"attendance": "absent"' in (lecture_root / "attendance.json").read_text()
+    assert "demo-gate" in (lecture_root / "gates.json").read_text()
 
 
 class _AppendingHarness:
     async def run_turn(self, turn: AgentTurnInput) -> AgentTurnResult:
+        assert turn.user_memory.preferences == {}
         section = CanvasSection(
             id="student-soccer-bayes-example",
             title="Soccer scouting example",
@@ -76,6 +93,11 @@ class _AppendingHarness:
                     section=section,
                 )
             ],
+            quality_gate=QualityGateDecision(
+                gate_id="demo-gate",
+                status=QualityGateStatus.NEEDS_EVIDENCE,
+                reason="The student still needs one concrete explanation.",
+            ),
             model="local-guided-preview",
         )
 

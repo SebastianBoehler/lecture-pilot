@@ -1,119 +1,137 @@
 # Workspace Storage
 
-LecturePilot uses a private course source plus per-student overlays.
+LecturePilot uses one shared course source/canvas plus private user memories
+and per-lecture learner overlays.
 
 ```txt
-course source root
-  Lecture03-eng.tex
-  images/...
-  videos/...
-  code/...
-
-.lecturepilot/workspaces
-  students/<hashed-user-id>/courses/<course-id>/lectures/<lecture-id>/
+.lecturepilot/
+  courses/<tenant-id>/<course-id>/
+    source/
+      uploads/
+      normalized/
+      assets/
+      source-index.json
     canvas/
-      index.md
-      sections/
-        01-decision-making-under-uncertainty.md
-        02-bayes-formula.md
-      student/
-        90-student-soccer-bayes-example.md
-    canvas.json
+      lectures/<lecture-id>/
+        index.md
+        sections/*.md
+        assets/
+      media/
+    builder/
+      drafts/
+      review-state.json
+
+  users/<hashed-user-id>/
+    profile.json
+    memories/
+      global.md
+      preferences.json
+    courses/<course-id>/lectures/<lecture-id>/
+      attendance.json
+      gates.json
+      tutor-state.json
+      canvas/
+        index.md
+        sections/*.md
+        student/*.md
+        student-assets/*
+      canvas.json
+
+  cache/
+    pdf-previews/
 ```
 
-The course source root is configured with `LECTUREPILOT_COURSE_MATERIAL_ROOT`.
-For local development, keep the private course slice in
-`local-course-materials/martius-ml`; the API prefers that repo-local folder
-when no environment variable is set. Professor material stays outside git, and
-the generated `.lecturepilot/` workspace is gitignored.
+The default local workspace root is `.lecturepilot/`. It is gitignored.
+Production can keep this logical layout while storing metadata in Postgres and
+files in S3-compatible object storage such as MinIO.
 
-For Overleaf-backed courses, copy or sync the full professor checkout into that
-gitignored root, excluding only `.git/`. The source bundle scanner keeps the
-professor's folder structure and classifies TeX, Markdown/text, CSV/JSON, PDF,
-images, SVG, videos, Python code, and notebooks as course source artifacts.
-The API exposes the current scan through
-`GET /courses/{course_id}/source-bundle` for future professor/admin tooling.
+## Source Roots
 
-## Course Material Resolver
+Professor material is private. The local demo source root is configured with
+`LECTUREPILOT_COURSE_MATERIAL_ROOT`; when unset, the API still looks for a
+repo-local private folder under `local-course-materials/` for demo use.
 
-The target resolver should be filesystem-first, with manifests as the stable
-contract and folder names as convenient defaults:
+Professor uploads go to:
 
 ```txt
-local-course-materials/
-  martius-ml/
-    course.json
-    lectures/
-      lecture-03/
-        lecture.json
-        sources/
-          Lecture03-eng.tex
-          images/
-            Ch3/spam-DALL-E.jpg
-            Ch3/Venn_C-X_1.pdf
-        canvas/
-          index.md
-          sections/
-            01-decision-making-under-uncertainty.md
-            02-bayes-formula.md
-          assets/
-        coverage.json
+.lecturepilot/courses/<tenant-id>/<course-id>/source/uploads/
 ```
 
-`course.json` should hold stable ids, title aliases, term, teacher metadata, and
-matching hints for Alma/TUE API course discovery. `lecture.json` should hold the
-lecture id, date, title, source files, published status, and canvas entrypoint.
+The source bundle endpoint scans uploaded course sources first and then the
+private local course root for compatibility:
 
-The resolver flow is intentionally simple:
+```txt
+GET /courses/{course_id}/source-bundle
+```
 
-1. Scan `local-course-materials/*/course.json`.
-2. Match the student's enrolled courses by stable id first, then normalized
-   title aliases.
-3. Scan `lectures/*/lecture.json` for the matched course.
-4. Expose only lectures with `date <= today` and `published=true`.
-5. Load `canvas/index.md` when it exists.
-6. If no canvas exists but sources exist, run the ingestion pipeline into a
-   draft canvas for professor/admin review.
+It classifies TeX, Markdown/text, CSV/JSON, PDF, images, SVG, videos, Python
+code, and notebooks as course source artifacts.
+
+## Course Canvas
+
+The course planner writes professor-approved base canvases to:
+
+```txt
+.lecturepilot/courses/<tenant-id>/<course-id>/canvas/lectures/<lecture-id>/
+  index.md
+  sections/*.md
+  assets/
+```
 
 Original source files remain immutable evidence. The base canvas is the
-professor-approved learning document derived from those sources. Student
-workspaces only store private overlays, progress, and generated additions.
+professor-approved learning document derived from those sources. It is shared by
+students and should not contain private learner state.
 
-## Canvas Import
+If no approved course canvas exists, the API can still bootstrap from mapped
+LaTeX source files. The long-context LLM ingestion pipeline described in
+[course-ingestion-pipeline.md](course-ingestion-pipeline.md) is the target
+course-creation path: upload sources, generate a draft canvas, stage optional
+videos or generated infographics, and require professor approval before
+publishing.
 
-On first open today, the API can import the lecture LaTeX into Markdown section
-files as a bootstrap path. The target workflow is the long-context LLM ingestion
-pipeline described in [course-ingestion-pipeline.md](course-ingestion-pipeline.md):
-upload sources, generate a draft canvas, stage optional videos or generated
-infographics, and require professor approval before publishing.
+## Learner Workspace
 
-The canvas schema should not clip lecture coverage by arbitrary item, block, or
-section counts. Operational quotas still belong at the file-storage and upload
-policy layer.
+Each student gets a pseudonymous user root:
 
-The current LaTeX importer groups related frames into study sections, keeps
-official figures and formulas, and writes the result into `canvas/sections/*.md`.
-The API then compiles the Markdown directory into the typed `CanvasDocument`
-that the web UI renders.
+```txt
+.lecturepilot/users/<hashed-user-id>/
+```
 
-Later agent commands append or update files in `canvas/student/*.md`, so
-personalized explanations, examples, diagrams, or quiz blocks remain scoped to
-that learner. `canvas.json` is only a compiled cache and API artifact; it is not
-the editable source of truth.
+Raw usernames are not used in filesystem paths. The user root holds cross-course
+memory:
 
-The current implementation maps the demo lectures to `Lecture01-eng.tex`,
-`Lecture02-eng.tex`, and `Lecture03-eng.tex`, serves browser-renderable course
-assets, and renders single-page PDF figures through generated PNG previews so
-the learning canvas does not show browser PDF controls. The web canvas renders
-preserved TeX formulas with KaTeX.
+```txt
+profile.json
+memories/global.md
+memories/preferences.json
+```
 
-## Student Scope
+Lecture-specific state lives below the user/course/lecture intersection:
 
-Raw usernames are not used in filesystem paths. The workspace path uses a short
-SHA-256 prefix derived from the authenticated user id. This is not a full GDPR
-design by itself, but it keeps local storage keys pseudonymous and gives the
-production design a clear place for retention, export, deletion, and quota
-hooks.
+```txt
+courses/<course-id>/lectures/<lecture-id>/
+  attendance.json
+  gates.json
+  tutor-state.json
+  canvas/
+    index.md
+    sections/*.md
+    student/*.md
+    student-assets/*
+  canvas.json
+```
+
+Agent commands append or update `canvas/student/*.md`. Personalized generated
+images are stored in `canvas/student-assets/`. `canvas.json` is a compiled API
+cache and not the editable source of truth.
+
+## Agent Rules
+
+The agent sees this filesystem image through typed tools only. It may read user
+memory, search course source evidence, focus/highlight canvas blocks, append or
+update learner sections, generate infographics, and record gate state. It must
+not freely traverse host paths, mutate official source files, duplicate large
+course assets into learner folders, or reveal future lecture material.
 
 ## File Policy
 
@@ -127,7 +145,7 @@ PNG/JPG/JPEG/WEBP: 20 MB
 SVG: 2 MB
 ```
 
-Course uploads are stricter and should remain professor-controlled:
+Course uploads are stricter and professor-controlled:
 
 ```txt
 TeX: 10 MB
@@ -139,6 +157,6 @@ Python/notebooks: 5-20 MB
 ```
 
 The API rejects hidden paths, absolute paths, `..` traversal, unsupported file
-types, and oversized payloads. Production deployments should back this with
-object storage, tenant quotas, audit logs, malware scanning for uploads, and
+types, and oversized payloads. Production deployments should add object storage,
+tenant quotas, audit logs, malware scanning, retention, deletion, and
 short-lived signed URLs for protected assets.

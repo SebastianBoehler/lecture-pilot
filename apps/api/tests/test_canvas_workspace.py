@@ -36,6 +36,8 @@ def test_imports_latex_canvas_into_pseudonymous_student_workspace(tmp_path: Path
     assert "student01" not in document.workspace_path
     assert Path(document.workspace_path).exists()
     assert Path(document.workspace_path).name == "index.md"
+    assert "users" in Path(document.workspace_path).parts
+    assert "students" not in Path(document.workspace_path).parts
     canvas_dir = Path(document.workspace_path).parent
     assert (canvas_dir / "sections" / "02-bayes-formula.md").exists()
     assert (canvas_dir.parent / "canvas.json").exists()
@@ -119,7 +121,7 @@ def test_migrates_existing_compiled_student_sections_to_overlay(tmp_path: Path) 
         workspace_root=tmp_path / "workspaces",
         material_root=material_root,
     )
-    compiled_path = workspace._compiled_path("martius-ml", "lecture-03", "alice")
+    compiled_path = workspace.layout.legacy_compiled_canvas_path("alice", "martius-ml", "lecture-03")
     compiled_path.parent.mkdir(parents=True)
     compiled_path.write_text(
         CanvasDocument(
@@ -206,10 +208,7 @@ def test_refreshes_stale_markdown_canvas_and_keeps_student_overlay(tmp_path: Pat
 
 
 @pytest.mark.parametrize("asset_path", ["../secret.png", "/tmp/image.png", "notes.pdf"])
-def test_asset_paths_stay_inside_browser_image_allowlist(
-    tmp_path: Path,
-    asset_path: str,
-) -> None:
+def test_asset_paths_stay_inside_browser_image_allowlist(tmp_path: Path, asset_path: str) -> None:
     material_root = _write_course_source(tmp_path)
     workspace = CanvasWorkspace(
         workspace_root=tmp_path / "workspaces",
@@ -217,7 +216,11 @@ def test_asset_paths_stay_inside_browser_image_allowlist(
     )
 
     with pytest.raises(CanvasWorkspaceError):
-        workspace.asset_path(lecture_id="lecture-03", asset_path=asset_path)
+        workspace.asset_path(
+            course_id="martius-ml",
+            lecture_id="lecture-03",
+            asset_path=asset_path,
+        )
 
 
 def _write_course_source(tmp_path: Path) -> Path:

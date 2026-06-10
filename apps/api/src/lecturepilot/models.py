@@ -161,6 +161,11 @@ class CanvasState(BaseModel):
     active_artifact_id: str | None = None
 
 
+class UserMemoryContext(BaseModel):
+    global_notes: str = Field(default="", max_length=4000)
+    preferences: dict[str, Any] = Field(default_factory=dict)
+
+
 class AgentTurnInput(BaseModel):
     user_id: str = Field(min_length=1)
     course_id: str = Field(min_length=1)
@@ -169,6 +174,7 @@ class AgentTurnInput(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
     canvas_state: CanvasState = Field(default_factory=CanvasState)
     canvas_context: CanvasDocument | None = None
+    user_memory: UserMemoryContext = Field(default_factory=UserMemoryContext)
 
 
 class CanvasCommand(BaseModel):

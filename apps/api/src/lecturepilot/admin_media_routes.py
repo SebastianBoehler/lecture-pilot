@@ -57,7 +57,7 @@ def register_admin_media_routes(
         _assert_professor(x_tenant_id, x_user_id, x_user_role, course_tenant_id)
         try:
             return add_youtube_selection(
-                material_root=app.state.canvas_workspace.material_root,
+                material_root=_course_media_root(app, course_id),
                 course_id=course_id,
                 lecture_id=lecture_id,
                 selection=selection,
@@ -78,7 +78,7 @@ def register_admin_media_routes(
         _assert_lecture(lecture_id, lecture_ids)
         _assert_professor(x_tenant_id, x_user_id, x_user_role, course_tenant_id)
         return list_course_media(
-            material_root=app.state.canvas_workspace.material_root,
+            material_root=_course_media_root(app, course_id),
             course_id=course_id,
             lecture_id=lecture_id,
         )
@@ -94,7 +94,7 @@ def register_admin_media_routes(
         _assert_professor(x_tenant_id, x_user_id, x_user_role, course_tenant_id)
         return {
             "deleted": clear_course_media(
-                material_root=app.state.canvas_workspace.material_root,
+                material_root=_course_media_root(app, course_id),
                 course_id=course_id,
             )
         }
@@ -121,3 +121,10 @@ def _assert_course(course_id: str, course: Course) -> None:
 def _assert_lecture(lecture_id: str, lecture_ids: set[str]) -> None:
     if lecture_id not in lecture_ids:
         raise HTTPException(status_code=404, detail="Lecture not found.")
+
+
+def _course_media_root(app: FastAPI, course_id: str):
+    workspace = app.state.canvas_workspace
+    if hasattr(workspace, "course_media_root"):
+        return workspace.course_media_root(course_id)
+    return workspace.material_root

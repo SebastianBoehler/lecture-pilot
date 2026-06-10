@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import json
-import re
-from hashlib import sha256
 from pathlib import Path
 
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
+from lecturepilot.canvas_asset_store import CanvasAssetError, CanvasAssetStore
 from lecturepilot.canvas_markdown import (
     read_document_source,
     write_document_source,
@@ -21,11 +20,7 @@ from lecturepilot.course_canvas_store import CourseCanvasStore
 from lecturepilot.course_media import apply_course_media
 from lecturepilot.generated_infographics import materialize_infographic_sections
 from lecturepilot.latex_canvas_importer import CANVAS_IMPORT_VERSION, import_latex_canvas
-from lecturepilot.latex_canvas_text import (
-    BROWSER_ASSET_SUFFIXES,
-    is_allowed_canvas_asset,
-)
-from lecturepilot.pdf_preview import PdfPreviewError, render_pdf_preview
+from lecturepilot.storage_layout import DEFAULT_TENANT_ID, StorageLayout, safe_id
 
 
 class CanvasWorkspaceError(RuntimeError):
@@ -38,10 +33,16 @@ class CanvasWorkspace:
         *,
         workspace_root: Path | None = None,
         material_root: Path | None = None,
+        tenant_id: str = DEFAULT_TENANT_ID,
     ) -> None:
         self.workspace_root = workspace_root or _default_workspace_root()
         self.material_root = material_root or _default_material_root()
-        self.course_canvas_store = CourseCanvasStore(self.material_root)
+        self.layout = StorageLayout(self.workspace_root, tenant_id=tenant_id)
+        self.course_canvas_store = CourseCanvasStore(
+            self.layout,
+            legacy_material_root=self.material_root,
+        )
+        self.asset_store = CanvasAssetStore(layout=self.layout, material_root=self.material_root)
 
     def read_document(
         self,
@@ -71,6 +72,7 @@ class CanvasWorkspace:
             self._write_initial_source(document, canvas_dir)
 
         document = apply_course_media(read_document_source(canvas_dir), self.material_root)
+        document = apply_course_media(document, self.course_media_root(course_id))
         self._write_compiled_document(document, course_id, lecture_id, user_id)
         return document
 
@@ -97,40 +99,49 @@ class CanvasWorkspace:
         prompt: str,
         sections: list[CanvasSection],
     ) -> list[CanvasSection]:
-        student_key = _pseudonymous_id(user_id)
+        student_key = self.layout.user_key(user_id)
         canvas_dir = self._canvas_dir(course_id, lecture_id, user_id)
         return materialize_infographic_sections(
             sections=sections,
             prompt=prompt,
             asset_dir=canvas_dir / "student-assets",
             asset_url_prefix=(
-                f"/workspace-assets/{_safe_id(course_id)}/{_safe_id(lecture_id)}/"
+                f"/workspace-assets/{safe_id(course_id)}/{safe_id(lecture_id)}/"
                 f"{student_key}/student-assets"
             ),
             image_generator=getattr(self, "image_generator", None),
         )
 
-    def asset_path(self, *, lecture_id: str, asset_path: str) -> Path:
-        if ".." in Path(asset_path).parts or asset_path.startswith("/"):
-            raise CanvasWorkspaceError("Asset path must stay inside course material root.")
-        if Path(asset_path).suffix.lower() not in BROWSER_ASSET_SUFFIXES:
-            raise CanvasWorkspaceError("Canvas assets are limited to browser-renderable course files.")
-        source = self._source_path(lecture_id)
-        candidate = source.parent / asset_path
-        if is_allowed_canvas_asset(candidate):
-            return candidate
-        image_candidate = self.material_root / "images" / asset_path
-        if is_allowed_canvas_asset(image_candidate):
-            return image_candidate
-        raise CanvasWorkspaceError("Canvas asset was not found.")
-
-    def asset_preview_path(self, *, lecture_id: str, asset_path: str) -> Path:
-        source = self.asset_path(lecture_id=lecture_id, asset_path=asset_path)
-        if source.suffix.lower() != ".pdf":
-            return source
+    def asset_path(
+        self,
+        *,
+        course_id: str,
+        lecture_id: str,
+        asset_path: str,
+    ) -> Path:
         try:
-            return render_pdf_preview(source, self.material_root / ".lecturepilot-previews")
-        except PdfPreviewError as exc:
+            return self.asset_store.course_asset_path(
+                course_id=course_id,
+                lecture_id=lecture_id,
+                asset_path=asset_path,
+            )
+        except CanvasAssetError as exc:
+            raise CanvasWorkspaceError(str(exc)) from exc
+
+    def asset_preview_path(
+        self,
+        *,
+        course_id: str,
+        lecture_id: str,
+        asset_path: str,
+    ) -> Path:
+        try:
+            return self.asset_store.course_asset_preview_path(
+                course_id=course_id,
+                lecture_id=lecture_id,
+                asset_path=asset_path,
+            )
+        except CanvasAssetError as exc:
             raise CanvasWorkspaceError(str(exc)) from exc
 
     def workspace_asset_path(
@@ -141,26 +152,27 @@ class CanvasWorkspace:
         student_key: str,
         asset_path: str,
     ) -> Path:
-        if not re.fullmatch(r"[a-f0-9]{24}", student_key):
-            raise CanvasWorkspaceError("Workspace asset user key is invalid.")
-        if ".." in Path(asset_path).parts or asset_path.startswith("/"):
-            raise CanvasWorkspaceError("Asset path must stay inside learner workspace.")
-        if Path(asset_path).suffix.lower() not in BROWSER_ASSET_SUFFIXES:
-            raise CanvasWorkspaceError("Workspace assets are limited to browser-renderable files.")
-        root = (
-            self.workspace_root
-            / "students"
-            / student_key
-            / "courses"
-            / _safe_id(course_id)
-            / "lectures"
-            / _safe_id(lecture_id)
-            / "canvas"
-        )
-        candidate = root / asset_path
-        if not is_allowed_canvas_asset(candidate):
-            raise CanvasWorkspaceError("Workspace asset was not found.")
-        return candidate
+        try:
+            return self.asset_store.workspace_asset_path(
+                course_id=course_id,
+                lecture_id=lecture_id,
+                student_key=student_key,
+                asset_path=asset_path,
+            )
+        except CanvasAssetError as exc:
+            raise CanvasWorkspaceError(str(exc)) from exc
+
+    def course_upload_path(self, *, course_id: str, path: str) -> Path:
+        if ".." in Path(path).parts or path.startswith("/"):
+            raise CanvasWorkspaceError("Course source path must stay inside source uploads.")
+        return self.layout.course_uploads_dir(course_id) / path
+
+    def course_media_root(self, course_id: str) -> Path:
+        return self.layout.course_root(course_id)
+
+    def source_bundle_roots(self, course_id: str) -> list[Path]:
+        roots = [self.layout.course_uploads_dir(course_id), self.material_root]
+        return [root for index, root in enumerate(roots) if root.exists() and root not in roots[:index]]
 
     def _initial_document(self, *, course_id: str, lecture_id: str, user_id: str) -> CanvasDocument:
         canvas_dir = self._canvas_dir(course_id, lecture_id, user_id)
@@ -183,10 +195,10 @@ class CanvasWorkspace:
         lecture_id: str,
         workspace_path: str,
     ) -> CanvasDocument:
-        source_path = self._source_path(lecture_id)
+        source_path = self._source_path(course_id, lecture_id)
         return import_latex_canvas(
             source_path=source_path,
-            material_root=self.material_root,
+            material_root=source_path.parent,
             course_id=course_id,
             lecture_id=lecture_id,
             workspace_path=workspace_path,
@@ -219,8 +231,13 @@ class CanvasWorkspace:
             sections.extend(
                 section for section in read_document_source(canvas_dir).sections if _is_student_section(section)
             )
-        compiled_path = self._compiled_path(course_id, lecture_id, user_id)
-        if compiled_path.exists():
+        compiled_paths = [
+            self._compiled_path(course_id, lecture_id, user_id),
+            self.layout.legacy_compiled_canvas_path(user_id, course_id, lecture_id),
+        ]
+        for compiled_path in compiled_paths:
+            if not compiled_path.exists():
+                continue
             payload = json.loads(compiled_path.read_text(encoding="utf-8"))
             sections.extend(
                 section
@@ -252,15 +269,7 @@ class CanvasWorkspace:
             write_student_sections(canvas_dir, student_sections)
 
     def _lecture_workspace_dir(self, course_id: str, lecture_id: str, user_id: str) -> Path:
-        return (
-            self.workspace_root
-            / "students"
-            / _pseudonymous_id(user_id)
-            / "courses"
-            / _safe_id(course_id)
-            / "lectures"
-            / _safe_id(lecture_id)
-        )
+        return self.layout.user_lecture_root(user_id, course_id, lecture_id)
 
     def _canvas_dir(self, course_id: str, lecture_id: str, user_id: str) -> Path:
         return self._lecture_workspace_dir(course_id, lecture_id, user_id) / "canvas"
@@ -268,26 +277,18 @@ class CanvasWorkspace:
     def _compiled_path(self, course_id: str, lecture_id: str, user_id: str) -> Path:
         return self._lecture_workspace_dir(course_id, lecture_id, user_id) / "canvas.json"
 
-    def _source_path(self, lecture_id: str) -> Path:
+    def _source_path(self, course_id: str, lecture_id: str) -> Path:
         source_name = lecture_source_name(lecture_id)
         if source_name is None:
             raise CanvasWorkspaceError(f"No source mapping configured for {lecture_id}.")
-        source_path = self.material_root / source_name
-        if not source_path.exists():
-            raise CanvasWorkspaceError(f"Course source not found: {source_path}")
-        return source_path
-
-
-def _safe_id(value: str) -> str:
-    safe = re.sub(r"[^a-zA-Z0-9_-]+", "-", value).strip("-")
-    if not safe:
-        raise CanvasWorkspaceError("Workspace id cannot be empty.")
-    return safe[:120]
-
-
-def _pseudonymous_id(user_id: str) -> str:
-    return sha256(user_id.encode("utf-8")).hexdigest()[:24]
-
+        candidates = [
+            self.layout.course_uploads_dir(course_id) / source_name,
+            self.material_root / source_name,
+        ]
+        for source_path in candidates:
+            if source_path.exists():
+                return source_path
+        raise CanvasWorkspaceError(f"Course source not found: {candidates[-1]}")
 
 def _is_student_section(section: CanvasSection) -> bool:
     return section.source_ref == "student workspace" or section.id.startswith("student-")

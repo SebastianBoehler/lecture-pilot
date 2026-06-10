@@ -61,7 +61,12 @@ def test_professor_uploads_course_materials_into_source_bundle(tmp_path: Path) -
         )
 
         assert response.status_code == 200
-        assert (material_root / path).exists()
+        upload_path = client.app.state.canvas_workspace.course_upload_path(
+            course_id="martius-ml",
+            path=path,
+        )
+        assert upload_path.exists()
+        assert response.json()["storage_path"] == str(upload_path)
 
     payload = client.get("/courses/martius-ml/source-bundle").json()
     assert payload["counts_by_kind"] == {
@@ -128,7 +133,8 @@ def test_uploaded_latex_can_seed_a_canvas_document(tmp_path: Path) -> None:
 def test_professor_canvas_draft_uses_planner_and_seeds_students(tmp_path: Path) -> None:
     client, material_root = _client(tmp_path)
     client.app.state.course_planner = _FakeCoursePlanner()
-    stale = material_root / "canvas" / "lectures" / "martius-ml" / "lecture-03" / "sections" / "99-stale.md"
+    canvas_dir = client.app.state.canvas_workspace.course_canvas_store.path("martius-ml", "lecture-03")
+    stale = canvas_dir / "sections" / "99-stale.md"
     _write(stale)
     client.post(
         "/admin/courses/martius-ml/materials",
@@ -144,7 +150,7 @@ def test_professor_canvas_draft_uses_planner_and_seeds_students(tmp_path: Path) 
 
     assert draft.status_code == 200
     assert draft.json()["source_kind"] == "generated"
-    assert (material_root / "canvas" / "lectures" / "martius-ml" / "lecture-03" / "index.md").exists()
+    assert (canvas_dir / "index.md").exists()
     assert not stale.exists()
 
     student = client.get("/courses/martius-ml/lectures/lecture-03/canvas?user_id=student01")

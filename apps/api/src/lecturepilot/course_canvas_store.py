@@ -5,11 +5,13 @@ from pathlib import Path
 
 from lecturepilot.canvas_markdown import read_document_source, write_document_source
 from lecturepilot.canvas_models import CanvasDocument
+from lecturepilot.storage_layout import StorageLayout
 
 
 class CourseCanvasStore:
-    def __init__(self, material_root: Path) -> None:
-        self.material_root = material_root
+    def __init__(self, layout: StorageLayout, *, legacy_material_root: Path | None = None) -> None:
+        self.layout = layout
+        self.legacy_material_root = legacy_material_root
 
     def read(
         self,
@@ -18,8 +20,8 @@ class CourseCanvasStore:
         lecture_id: str,
         workspace_path: str,
     ) -> CanvasDocument | None:
-        canvas_dir = self.path(course_id, lecture_id)
-        if not (canvas_dir / "index.md").exists():
+        canvas_dir = self._read_path(course_id, lecture_id)
+        if canvas_dir is None:
             return None
         return read_document_source(canvas_dir).model_copy(update={"workspace_path": workspace_path})
 
@@ -33,7 +35,22 @@ class CourseCanvasStore:
         return read_document_source(canvas_dir)
 
     def path(self, course_id: str, lecture_id: str) -> Path:
-        return self.material_root / "canvas" / "lectures" / _safe_id(course_id) / _safe_id(lecture_id)
+        return self.layout.course_canvas_dir(course_id, lecture_id)
+
+    def _read_path(self, course_id: str, lecture_id: str) -> Path | None:
+        primary = self.path(course_id, lecture_id)
+        if (primary / "index.md").exists():
+            return primary
+        if self.legacy_material_root is None:
+            return None
+        legacy = (
+            self.legacy_material_root
+            / "canvas"
+            / "lectures"
+            / _safe_id(course_id)
+            / _safe_id(lecture_id)
+        )
+        return legacy if (legacy / "index.md").exists() else None
 
 
 def _safe_id(value: str) -> str:

@@ -6,7 +6,7 @@ from pathlib import Path
 
 def default_workspace_root() -> Path:
     configured = os.environ.get("LECTUREPILOT_WORKSPACE_ROOT")
-    return Path(configured or ".lecturepilot/workspaces").expanduser()
+    return Path(configured or ".lecturepilot").expanduser()
 
 
 def default_material_root() -> Path:

@@ -14,7 +14,11 @@ def test_pdf_course_asset_preview_renders_png(tmp_path: Path) -> None:
         material_root=material_root,
     )
 
-    preview = workspace.asset_preview_path(lecture_id="lecture-03", asset_path="Ch3/diagram.pdf")
+    preview = workspace.asset_preview_path(
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        asset_path="Ch3/diagram.pdf",
+    )
 
     assert preview.suffix == ".png"
     assert preview.exists()

@@ -7,16 +7,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from lecturepilot.admin_media_routes import register_admin_media_routes
+from lecturepilot.agent_routes import register_agent_routes
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspace, CanvasWorkspaceError
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner
 from lecturepilot.harness import LecturePilotHarness
-from lecturepilot.image_generation import ImageGenerationError
 from lecturepilot.image_generation_registry import image_generator_from_env
+from lecturepilot.learner_state import LearnerStateStore
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import (
-    AgentTurnInput,
-    AgentTurnResult,
     CourseMaterialUploadResult,
     CourseMaterialUploadType,
     SourceBundleEntry,
@@ -34,6 +33,7 @@ from lecturepilot.tuebingen_adapter import (
     TuebingenIntegrationUnavailable,
     TuebingenLoginError,
 )
+from lecturepilot.user_memory import UserMemoryStore
 from lecturepilot.workspace import WorkspacePolicy, WorkspacePolicyError
 from lecturepilot.youtube_discovery import YoutubeDiscovery
 
@@ -47,6 +47,8 @@ def create_app() -> FastAPI:
     app.state.agent_harness = LecturePilotHarness()
     app.state.course_planner = CourseCanvasPlanner()
     app.state.canvas_workspace = CanvasWorkspace()
+    app.state.learner_state = LearnerStateStore(app.state.canvas_workspace.layout)
+    app.state.user_memory_store = UserMemoryStore(app.state.canvas_workspace.layout)
     app.state.image_generator = image_generator_from_env()
     app.state.canvas_workspace.image_generator = app.state.image_generator
     app.state.youtube_discovery = YoutubeDiscovery.from_env()
@@ -68,6 +70,7 @@ def create_app() -> FastAPI:
         lectures=LECTURES,
         course_tenant_id=COURSE_TENANT_ID,
     )
+    register_agent_routes(app, course=COURSE)
 
     @app.get("/courses")
     def courses() -> list[dict]:
@@ -96,7 +99,7 @@ def create_app() -> FastAPI:
     def source_bundle(course_id: str) -> SourceBundleManifest:
         if course_id != COURSE.id:
             raise HTTPException(status_code=404, detail="Course not found.")
-        files = scan_source_bundle(app.state.canvas_workspace.material_root)
+        files = _scan_source_bundles(app.state.canvas_workspace.source_bundle_roots(course_id))
         counts = Counter(item.kind for item in files)
         uploads = [
             CourseMaterialUploadType(suffix=suffix, kind=kind, max_bytes=max_bytes)
@@ -140,7 +143,7 @@ def create_app() -> FastAPI:
         except WorkspacePolicyError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-        target = app.state.canvas_workspace.material_root / path
+        target = app.state.canvas_workspace.course_upload_path(course_id=course_id, path=path)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(payload)
         return CourseMaterialUploadResult(
@@ -148,7 +151,7 @@ def create_app() -> FastAPI:
             path=path,
             kind=checked.kind,
             size_bytes=len(payload),
-            storage_path=checked.path,
+            storage_path=str(target),
         )
 
     @app.post(
@@ -215,11 +218,13 @@ def create_app() -> FastAPI:
         try:
             if preview == "png":
                 path = app.state.canvas_workspace.asset_preview_path(
+                    course_id=course_id,
                     lecture_id=lecture_id,
                     asset_path=asset_path,
                 )
             else:
                 path = app.state.canvas_workspace.asset_path(
+                    course_id=course_id,
                     lecture_id=lecture_id,
                     asset_path=asset_path,
                 )
@@ -247,53 +252,14 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         return FileResponse(path)
 
-    @app.post("/agent/turn", response_model=AgentTurnResult)
-    async def agent_turn(turn: AgentTurnInput) -> AgentTurnResult:
-        if turn.course_id == COURSE.id:
-            try:
-                document = app.state.canvas_workspace.read_document(
-                    course_id=turn.course_id,
-                    lecture_id=turn.lecture_id,
-                    user_id=turn.user_id,
-                )
-                turn = turn.model_copy(update={"canvas_context": document})
-            except CanvasWorkspaceError:
-                pass
-        try:
-            result = await app.state.agent_harness.run_turn(turn)
-        except ProviderConfigurationError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-        except ModelExecutionError as exc:
-            raise HTTPException(status_code=502, detail=str(exc)) from exc
-        sections = [command.section for command in result.canvas_commands if command.section]
-        if sections:
-            try:
-                sections = app.state.canvas_workspace.prepare_generated_sections(
-                    course_id=turn.course_id,
-                    lecture_id=turn.lecture_id,
-                    user_id=turn.user_id,
-                    prompt=turn.message,
-                    sections=sections,
-                )
-            except ImageGenerationError as exc:
-                raise HTTPException(status_code=502, detail=str(exc)) from exc
-            sections_by_id = {section.id: section for section in sections}
-            commands = [
-                command.model_copy(update={"section": sections_by_id[command.section.id]})
-                if command.section and command.section.id in sections_by_id
-                else command
-                for command in result.canvas_commands
-            ]
-            result = result.model_copy(update={"canvas_commands": commands})
-            app.state.canvas_workspace.apply_sections(
-                course_id=turn.course_id,
-                lecture_id=turn.lecture_id,
-                user_id=turn.user_id,
-                sections=sections,
-            )
-        return result
-
     return app
 
+
+def _scan_source_bundles(roots) -> list:
+    files_by_path = {}
+    for root in roots:
+        for item in scan_source_bundle(root):
+            files_by_path.setdefault(item.path, item)
+    return list(files_by_path.values())
 
 app = create_app()

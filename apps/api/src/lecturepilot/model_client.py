@@ -104,11 +104,24 @@ def _messages(turn: AgentTurnInput) -> list[dict[str, str]]:
                 f"Attendance: {turn.attendance.value}\n"
                 "Current section: "
                 f"{turn.canvas_state.focused_section_id or 'bayesian-decision-theory-the-aim'}\n"
+                f"{_user_memory_context(turn)}\n"
                 f"{canvas_context(turn)}\n"
                 f"Student message: {turn.message}"
             ),
         },
     ]
+
+
+def _user_memory_context(turn: AgentTurnInput) -> str:
+    preferences = json.dumps(turn.user_memory.preferences, ensure_ascii=True, sort_keys=True)
+    notes = turn.user_memory.global_notes.strip() or "none"
+    return (
+        "Durable user memory:\n"
+        f"- preferences: {preferences}\n"
+        f"- global notes: {notes}\n"
+        "Use this only to adapt examples, pace, and explanation style. "
+        "Do not treat memory as course evidence."
+    )
 
 def _parse_model_payload(content: str | None) -> dict:
     if not content:
