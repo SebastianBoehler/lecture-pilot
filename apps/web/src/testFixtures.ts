@@ -81,6 +81,8 @@ function loginPayload() {
     username: "student01",
     email: "student01@uni-tuebingen.de",
     term: "Sommer 2026",
+    tenant_id: "tenant-tuebingen",
+    roles: ["student"],
     courses: [
       {
         id: "alma-ml4202-probabilistic-machine-learning",

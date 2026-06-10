@@ -29,6 +29,8 @@ export const localDemoSession: LoginSession = {
   username: "local-demo",
   email: null,
   term: "Sommer 2026",
+  tenant_id: "tenant-tuebingen",
+  roles: ["student"],
   courses: [
     {
       id: "martius-ml",
@@ -37,4 +39,11 @@ export const localDemoSession: LoginSession = {
       term: "Sommer 2026",
     },
   ],
+};
+
+export const localProfessorSession: LoginSession = {
+  ...localDemoSession,
+  username: "professor-demo",
+  email: "professor-demo@uni-tuebingen.de",
+  roles: ["professor"],
 };

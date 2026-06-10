@@ -5,6 +5,7 @@ export type CanvasSectionId = string;
 export type DocumentAnchorId = string;
 
 export type Attendance = "unknown" | "present" | "absent";
+export type TenantRole = "tenant_admin" | "professor" | "tutor" | "student";
 
 export type Lecture = {
   id: string;
@@ -80,6 +81,8 @@ export type LoginSession = {
   username: string;
   email?: string | null;
   term: string;
+  tenant_id?: string;
+  roles?: TenantRole[];
   courses: UniversityCourse[];
 };
 
@@ -87,6 +90,7 @@ export type ChatMessage = {
   id: string;
   role: "agent" | "user";
   content: string;
+  isPending?: boolean;
   toolTags?: string[];
 };
 

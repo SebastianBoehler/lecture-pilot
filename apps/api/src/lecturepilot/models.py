@@ -71,6 +71,8 @@ class TuebingenLoginResult(BaseModel):
     username: str
     email: str | None = None
     term: str
+    tenant_id: str = "tenant-tuebingen"
+    roles: list[TenantRole] = Field(default_factory=lambda: [TenantRole.STUDENT])
     courses: list[Course]
 
 

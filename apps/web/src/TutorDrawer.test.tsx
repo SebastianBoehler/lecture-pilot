@@ -41,3 +41,28 @@ it("keeps the composer docked and renders only the latest tool tags outside mess
   expect(composer.closest(".chat-dock")).not.toBeNull();
   expect(composer.closest(".message-list")).toBeNull();
 });
+
+it("shows live activity tags while a tutor turn is pending", () => {
+  render(
+    <TutorDrawer
+      messages={[
+        {
+          id: "agent-pending",
+          role: "agent",
+          content: "Working through the lecture canvas...",
+          isPending: true,
+          toolTags: ["read request", "call tutor model"],
+        },
+      ]}
+      model={null}
+      onSendMessage={vi.fn()}
+    />,
+  );
+
+  expect(screen.getByText("Working...")).toBeInTheDocument();
+  const pendingBubble = screen.getByText(/Working through the lecture canvas/).closest(".chat-message");
+  expect(pendingBubble).not.toBeNull();
+  expect(pendingBubble as HTMLElement).toHaveAttribute("aria-busy", "true");
+  expect(screen.getByText("read request")).toBeInTheDocument();
+  expect(screen.getByText("call tutor model")).toBeInTheDocument();
+});

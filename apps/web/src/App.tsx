@@ -1,8 +1,15 @@
 import { useEffect, useState } from "react";
 
-import { getLectureCanvas, sendAgentTurn, type AgentTurnResult } from "./api";
+import { getLectureCanvas, sendAgentTurnStream } from "./api";
+import {
+  appendLiveToolTag,
+  applyCanvasSection,
+  completePendingTutorMessage,
+  pendingTutorMessage,
+} from "./agentTurnUi";
 import { AppHeader } from "./AppHeader";
-import { initialMessagesForAttendance, localDemoSession } from "./appDefaults";
+import { initialMessagesForAttendance, localDemoSession, localProfessorSession } from "./appDefaults";
+import { canManageCourses } from "./authz";
 import { Dashboard } from "./Dashboard";
 import { useDemoTutorWorkspace } from "./demoTutorWorkspace";
 import { LessonWorkspace } from "./LessonWorkspace";
@@ -14,7 +21,6 @@ import { lectures } from "./sampleData";
 import type {
   Attendance,
   CanvasDocument,
-  CanvasSection,
   ChatMessage,
   LessonPanelMode,
   Lecture,
@@ -30,6 +36,9 @@ function App() {
   const [availableLectures, setAvailableLectures] = useState(lectures);
   const [selectedLecture, setSelectedLecture] = useState(lectures[2]);
   const [lessonBackView, setLessonBackView] = useState<"dashboard" | "professor">("dashboard");
+  const [professorBackView, setProfessorBackView] = useState<"login" | "dashboard">(
+    session ? "dashboard" : "login",
+  );
   const [panelMode, setPanelMode] = useState<LessonPanelMode | null>(null);
   const [canvasDocument, setCanvasDocument] = useState<CanvasDocument | null>(null);
   const [canvasError, setCanvasError] = useState<string | null>(null);
@@ -48,19 +57,35 @@ function App() {
   }, [theme]);
 
   async function handleTutorMessage(message: string) {
+    const timestamp = Date.now();
+    const pendingMessageId = `agent-pending-${timestamp}`;
     setMessages((current) => [
       ...current,
-      { id: `user-${Date.now()}`, role: "user", content: message },
+      { id: `user-${timestamp}`, role: "user", content: message },
+      pendingTutorMessage(pendingMessageId),
     ]);
 
-    const result = await sendAgentTurn({
-      user_id: effectiveUserId(session),
-      course_id: "martius-ml",
-      lecture_id: selectedLecture.id,
-      attendance: selectedLecture.attendance,
-      message,
-      canvas_state: { focused_section_id: focusedSectionId },
-    });
+    let result;
+    try {
+      result = await sendAgentTurnStream(
+        {
+          user_id: effectiveUserId(session),
+          course_id: "martius-ml",
+          lecture_id: selectedLecture.id,
+          attendance: selectedLecture.attendance,
+          message,
+          canvas_state: { focused_section_id: focusedSectionId },
+        },
+        {
+          onActivity: (tag) => {
+            setMessages((current) => appendLiveToolTag(current, pendingMessageId, tag));
+          },
+        },
+      );
+    } catch (error) {
+      setMessages((current) => current.filter((item) => item.id !== pendingMessageId));
+      throw error;
+    }
     setLastTutorModel(result.model);
 
     for (const command of result.canvas_commands) {
@@ -79,15 +104,7 @@ function App() {
       }
     }
 
-    setMessages((current) => [
-      ...current,
-      {
-        id: `agent-${Date.now()}`,
-        role: "agent",
-        content: result.message,
-        toolTags: toolTagsFromResult(result),
-      },
-    ]);
+    setMessages((current) => completePendingTutorMessage(current, pendingMessageId, result));
   }
 
   function handleLogout() {
@@ -140,6 +157,8 @@ function App() {
     }
   }
 
+  const courseManagerSession = canManageCourses(session) ? session : null;
+
   return (
     <div className="app-shell">
       <AppHeader
@@ -155,8 +174,11 @@ function App() {
           setPanelMode(null);
         }}
         onOpenProfessor={() => {
-          setView("professor");
-          setPanelMode(null);
+          if (courseManagerSession) {
+            setProfessorBackView("dashboard");
+            setView("professor");
+            setPanelMode(null);
+          }
         }}
         onToggleTheme={() => setTheme(theme === "light" ? "dark" : "light")}
       />
@@ -171,8 +193,9 @@ function App() {
             setSession(localDemoSession);
             setView("dashboard");
           }}
-          onOpenProfessor={() => {
-            setSession(null);
+          onOpenProfessorDemo={() => {
+            setSession(localProfessorSession);
+            setProfessorBackView("dashboard");
             setView("professor");
           }}
         />
@@ -186,9 +209,10 @@ function App() {
         />
       ) : view === "profile" && session ? (
         <ProfileView session={session} onBack={() => setView("dashboard")} />
-      ) : view === "professor" ? (
+      ) : view === "professor" && courseManagerSession ? (
         <ProfessorCourseBuilder
-          onBack={() => setView("login")}
+          session={courseManagerSession}
+          onBack={() => setView(professorBackView)}
           onPublishWorkspace={publishDemoTutor}
           onResetWorkspace={unpublishDemoTutor}
           onPreviewWorkspace={() => {
@@ -196,6 +220,17 @@ function App() {
           }}
           workspacePublished={demoTutorPublished}
         />
+      ) : view === "professor" ? (
+        <main className="dashboard">
+          <section className="dashboard-header">
+            <button className="ghost-button" type="button" onClick={() => setView(session ? "dashboard" : "login")}>
+              Back
+            </button>
+            <p className="section-label">Course management</p>
+            <h1>Professor account required</h1>
+            <p>Only professor and tenant admin accounts can create course workspaces.</p>
+          </section>
+        </main>
       ) : (
         <LessonWorkspace
           canvasDocument={canvasDocument}
@@ -221,43 +256,6 @@ function App() {
       )}
     </div>
   );
-}
-
-function applyCanvasSection(document: CanvasDocument | null, section: CanvasSection) {
-  if (!document) {
-    return document;
-  }
-  const sectionIndex = document.sections.findIndex((candidate) => candidate.id === section.id);
-  if (sectionIndex === -1) {
-    return { ...document, sections: [...document.sections, section] };
-  }
-  const sections = [...document.sections];
-  sections[sectionIndex] = section;
-  return { ...document, sections };
-}
-
-function toolTagsFromResult(result: AgentTurnResult): string[] {
-  const commandTags = result.canvas_commands.flatMap((command) => {
-    if (command.type === "focus_section" && command.section_id) {
-      return [`focus: ${command.section_id}`];
-    }
-    if (command.type === "open_artifact" && command.artifact_id) {
-      return [`artifact: ${command.artifact_id}`];
-    }
-    if (command.type === "highlight_span" && command.span_id) {
-      return command.highlight_text
-        ? [`highlight: ${command.span_id}`, `phrase: ${command.highlight_text}`]
-        : [`highlight: ${command.span_id}`];
-    }
-    if ((command.type === "append_section" || command.type === "update_section") && command.section_id) {
-      return [`canvas: ${command.section_id}`];
-    }
-    return [];
-  });
-  const gateTags = result.quality_gate
-    ? [`gate: ${result.quality_gate.status.replace("_", " ")}`]
-    : [];
-  return [...commandTags, ...gateTags];
 }
 
 function effectiveUserId(session: LoginSession | null) {

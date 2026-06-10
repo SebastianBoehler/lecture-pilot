@@ -17,6 +17,7 @@ export function TutorDrawer({
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const messageListRef = useRef<HTMLDivElement>(null);
+  const hasPendingTurn = messages.some((message) => message.isPending);
 
   useEffect(() => {
     const list = messageListRef.current;
@@ -57,12 +58,19 @@ export function TutorDrawer({
       <div className="drawer-section tutor-drawer-section">
         <div className="tutor-heading">
           <h2>Tutor</h2>
-          <span className="tutor-status">{tutorStatus(model)}</span>
+          <span className="tutor-status">{hasPendingTurn ? "Working..." : tutorStatus(model)}</span>
         </div>
         <div className="message-list" aria-live="polite" ref={messageListRef}>
           {messages.map((message) => (
             <div className={`chat-turn ${message.role}`} key={message.id}>
-              <div className={`chat-message ${message.role}`}>
+              <div
+                aria-busy={message.isPending ? "true" : undefined}
+                className={[
+                  "chat-message",
+                  message.role,
+                  message.isPending ? "is-pending" : "",
+                ].filter(Boolean).join(" ")}
+              >
                 <p><MathText highlightedText={null} text={message.content} /></p>
               </div>
               <ToolTags tags={message.toolTags} />

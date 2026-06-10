@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -11,15 +11,18 @@ describe("Professor course builder", () => {
     vi.unstubAllGlobals();
   });
 
-  it("walks through account, course, upload, canvas, and YouTube approval", async () => {
+  it("walks through course upload, canvas, and YouTube approval as a professor account", async () => {
     const user = userEvent.setup();
     const fetchMock = professorFetchMock();
     vi.stubGlobal("fetch", fetchMock);
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: /professor course builder/i }));
-    await user.click(screen.getByRole("button", { name: /create professor account/i }));
-    expect(screen.getByText(/professor account ready/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /preview professor account/i }));
+    expect(screen.queryByRole("heading", { name: /professor sign up/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /create professor account/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/signed in as professor-demo/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /create course workspace/i })).toBeEnabled();
+    expect(screen.getByLabelText(/upload course material/i)).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: /create course workspace/i }));
     await user.upload(
@@ -48,11 +51,11 @@ describe("Professor course builder", () => {
     expect(
       await screen.findByRole("heading", { name: /^bayesian decision theory$/i, level: 1 }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /course builder/i })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /course builder/i }));
+    const lessonToolbar = screen.getByText("Jun 4").closest(".lesson-toolbar") as HTMLElement;
+    expect(within(lessonToolbar).getByRole("button", { name: /course builder/i })).toBeInTheDocument();
+    await user.click(within(lessonToolbar).getByRole("button", { name: /course builder/i }));
     expect(await screen.findByText(/2 sections ready for review/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^back$/i }));
-    await user.click(screen.getByRole("button", { name: /preview local demo/i }));
     expect(screen.getByText(/ai tutor available/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^course builder$/i }));
     expect(fetchMock).toHaveBeenCalledWith(
@@ -61,7 +64,12 @@ describe("Professor course builder", () => {
     );
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/media/youtube/search"),
-      expect.objectContaining({ headers: expect.objectContaining({ "X-User-Role": "professor" }) }),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "X-User-Id": "professor-demo",
+          "X-User-Role": "professor",
+        }),
+      }),
     );
     await user.click(screen.getByRole("button", { name: /reset flow/i }));
     expect(await screen.findByText(/professor flow reset/i)).toBeInTheDocument();
@@ -71,15 +79,14 @@ describe("Professor course builder", () => {
     );
   });
 
-  it("opens the course builder from an authenticated student tab", async () => {
+  it("hides the course builder from student accounts", async () => {
     const user = userEvent.setup();
     render(<App />);
 
     await user.click(screen.getByRole("button", { name: /preview local demo/i }));
-    await user.click(screen.getByRole("button", { name: /^course builder$/i }));
 
-    expect(screen.getByRole("heading", { name: /course creation flow/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /create professor account/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /welcome, local-demo/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^course builder$/i })).not.toBeInTheDocument();
   });
 });
 

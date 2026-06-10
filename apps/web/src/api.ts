@@ -6,6 +6,7 @@ import type {
   SourceBundleManifest,
   YoutubeVideoCandidate,
 } from "./types";
+import { courseManagerHeaders } from "./authz";
 
 export type CanvasCommand = {
   type: "focus_section" | "highlight_span" | "open_artifact" | "append_section" | "update_section";
@@ -28,7 +29,7 @@ export type AgentTurnResult = {
   model: string;
 };
 
-type AgentTurnInput = {
+export type AgentTurnInput = {
   user_id: string;
   course_id: string;
   lecture_id: string;
@@ -39,17 +40,17 @@ type AgentTurnInput = {
   };
 };
 
+type AgentTurnStreamEvent =
+  | { type: "activity"; tag: string }
+  | { type: "result"; result: AgentTurnResult }
+  | { type: "error"; message: string };
+
 type TuebingenLoginInput = {
   username: string;
   password: string;
 };
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
-const professorHeaders = {
-  "X-Tenant-Id": "tenant-tuebingen",
-  "X-User-Id": "professor-demo",
-  "X-User-Role": "professor",
-};
 
 export function apiUrl(path: string): string {
   if (path.startsWith("http://") || path.startsWith("https://")) {
@@ -90,6 +91,71 @@ export async function sendAgentTurn(input: AgentTurnInput): Promise<AgentTurnRes
   return payload as AgentTurnResult;
 }
 
+export async function sendAgentTurnStream(
+  input: AgentTurnInput,
+  { onActivity }: { onActivity?: (tag: string) => void } = {},
+): Promise<AgentTurnResult> {
+  const response = await fetch(`${apiBaseUrl}/agent/turn/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw new Error(readApiError(payload, "Tutor stream failed."));
+  }
+  if (!response.body) {
+    return sendAgentTurn(input);
+  }
+
+  return readAgentTurnStream(response.body, onActivity);
+}
+
+async function readAgentTurnStream(
+  body: ReadableStream<Uint8Array>,
+  onActivity?: (tag: string) => void,
+): Promise<AgentTurnResult> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let finalResult: AgentTurnResult | null = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      finalResult = readAgentTurnStreamLine(line, onActivity) ?? finalResult;
+    }
+    if (done) {
+      break;
+    }
+  }
+
+  finalResult = readAgentTurnStreamLine(buffer, onActivity) ?? finalResult;
+  if (!finalResult) {
+    throw new Error("Tutor stream ended without a result.");
+  }
+  return finalResult;
+}
+
+function readAgentTurnStreamLine(line: string, onActivity?: (tag: string) => void) {
+  if (!line.trim()) {
+    return null;
+  }
+  const event = JSON.parse(line) as AgentTurnStreamEvent;
+  if (event.type === "activity") {
+    onActivity?.(event.tag);
+    return null;
+  }
+  if (event.type === "error") {
+    throw new Error(event.message);
+  }
+  return event.result;
+}
+
 export async function getLectureCanvas(
   courseId: string,
   lectureId: string,
@@ -108,10 +174,14 @@ export async function getLectureCanvas(
   return payload as CanvasDocument;
 }
 
-export async function draftLectureCanvas(courseId: string, lectureId: string): Promise<CanvasDocument> {
+export async function draftLectureCanvas(
+  courseId: string,
+  lectureId: string,
+  session: LoginSession,
+): Promise<CanvasDocument> {
   const response = await fetch(apiUrl(`/admin/courses/${courseId}/lectures/${lectureId}/canvas/draft`), {
     method: "POST",
-    headers: professorHeaders,
+    headers: courseManagerHeaders(session),
   });
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Canvas planner failed."));
@@ -129,13 +199,14 @@ export async function uploadCourseMaterial(input: {
   courseId: string;
   path: string;
   file: File;
+  session: LoginSession;
 }) {
   const body = new FormData();
   body.append("path", input.path);
   body.append("file", input.file);
   const response = await fetch(apiUrl(`/admin/courses/${input.courseId}/materials`), {
     method: "POST",
-    headers: professorHeaders,
+    headers: courseManagerHeaders(input.session),
     body,
   });
   const payload = await response.json();
@@ -143,10 +214,10 @@ export async function uploadCourseMaterial(input: {
   return payload as { path: string; kind: string; size_bytes: number };
 }
 
-export async function searchYoutubeMedia(courseId: string, query: string) {
+export async function searchYoutubeMedia(courseId: string, query: string, session: LoginSession) {
   const params = new URLSearchParams({ q: query, max_results: "5" });
   const response = await fetch(apiUrl(`/admin/courses/${courseId}/media/youtube/search?${params}`), {
-    headers: professorHeaders,
+    headers: courseManagerHeaders(session),
   });
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "YouTube search failed."));
@@ -158,12 +229,13 @@ export async function includeYoutubeMedia(input: {
   lectureId: string;
   sectionId: string | null;
   video: YoutubeVideoCandidate;
+  session: LoginSession;
 }) {
   const response = await fetch(
     apiUrl(`/admin/courses/${input.courseId}/lectures/${input.lectureId}/media/youtube`),
     {
       method: "POST",
-      headers: { ...professorHeaders, "Content-Type": "application/json" },
+      headers: { ...courseManagerHeaders(input.session), "Content-Type": "application/json" },
       body: JSON.stringify({ section_id: input.sectionId, video: input.video }),
     },
   );
@@ -172,10 +244,10 @@ export async function includeYoutubeMedia(input: {
   return payload as { block_id: string };
 }
 
-export async function clearCourseYoutubeMedia(courseId: string) {
+export async function clearCourseYoutubeMedia(courseId: string, session: LoginSession) {
   const response = await fetch(apiUrl(`/admin/courses/${courseId}/media/youtube`), {
     method: "DELETE",
-    headers: professorHeaders,
+    headers: courseManagerHeaders(session),
   });
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Course media reset failed."));

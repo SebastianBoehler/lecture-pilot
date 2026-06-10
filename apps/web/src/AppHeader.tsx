@@ -1,5 +1,6 @@
 import { FilePlus2, LogOut, Moon, Sun, UserRound } from "lucide-react";
 
+import { canManageCourses } from "./authz";
 import type { LoginSession, Theme } from "./types";
 
 export function AppHeader({
@@ -29,10 +30,12 @@ export function AppHeader({
         <span>Course workspace</span>
         {session ? (
           <div className="top-actions" aria-label="Account controls">
-            <button className="top-action-button" type="button" onClick={onOpenProfessor}>
-              <FilePlus2 size={16} />
-              <span>Course builder</span>
-            </button>
+            {canManageCourses(session) ? (
+              <button className="top-action-button" type="button" onClick={onOpenProfessor}>
+                <FilePlus2 size={16} />
+                <span>Course builder</span>
+              </button>
+            ) : null}
             <button className="top-action-button" type="button" aria-label="Open profile" onClick={onOpenProfile}>
               <UserRound size={16} />
               <span>Profile</span>

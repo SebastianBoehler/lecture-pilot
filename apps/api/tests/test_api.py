@@ -42,6 +42,8 @@ def test_tuebingen_login_returns_courses_without_echoing_password() -> None:
         "username": "student01",
         "email": None,
         "term": "Sommer 2026",
+        "tenant_id": "tenant-tuebingen",
+        "roles": ["student"],
         "courses": [
             {
                 "id": "alma-machine-learning",
