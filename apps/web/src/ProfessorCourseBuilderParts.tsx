@@ -1,7 +1,58 @@
 import type { CanvasDocument, SourceBundleManifest, YoutubeVideoCandidate } from "./types";
+import type { CourseSetup } from "./professorBuilderState";
 
 export function StepHeader({ number, title, done }: { number: string; title: string; done: boolean }) {
   return <header className="step-header"><span>{number}</span><h2>{title}</h2><strong>{done ? "Ready" : "Pending"}</strong></header>;
+}
+
+export function CourseSetupStep({
+  courseReady,
+  isReady,
+  onCreate,
+  onSetupChange,
+  setup,
+}: {
+  courseReady: boolean;
+  isReady: boolean;
+  onCreate: () => void;
+  onSetupChange: (setup: CourseSetup) => void;
+  setup: CourseSetup;
+}) {
+  return (
+    <section className="flow-card wide">
+      <StepHeader number="01" title="Define course and lecture scope" done={courseReady} />
+      <label>
+        Course name
+        <input value={setup.courseTitle} onChange={(event) => onSetupChange({ ...setup, courseTitle: event.target.value })} />
+      </label>
+      <div className="scope-toggle" role="group" aria-label="Canvas generation scope">
+        <button className={setup.target === "single-lecture" ? "is-active" : ""} type="button" onClick={() => onSetupChange({ ...setup, target: "single-lecture" })}>
+          Specific lecture
+        </button>
+        <button className={setup.target === "full-course" ? "is-active" : ""} type="button" onClick={() => onSetupChange({ ...setup, target: "full-course" })}>
+          Full course
+        </button>
+      </div>
+      {setup.target === "single-lecture" ? (
+        <div className="flow-grid">
+          <label>
+            Lecture number
+            <input value={setup.lectureNumber} onChange={(event) => onSetupChange({ ...setup, lectureNumber: event.target.value })} />
+          </label>
+          <label>
+            Lecture title
+            <input value={setup.lectureTitle} onChange={(event) => onSetupChange({ ...setup, lectureTitle: event.target.value })} />
+          </label>
+        </div>
+      ) : (
+        <label>
+          Number of lectures
+          <input min="1" type="number" value={setup.lectureCount} onChange={(event) => onSetupChange({ ...setup, lectureCount: event.target.value })} />
+        </label>
+      )}
+      <button disabled={!isReady} type="button" onClick={onCreate}>Create course workspace</button>
+    </section>
+  );
 }
 
 export function BundleSummary({ bundle }: { bundle: SourceBundleManifest }) {

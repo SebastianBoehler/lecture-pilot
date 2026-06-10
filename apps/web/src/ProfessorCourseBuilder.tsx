@@ -11,33 +11,19 @@ import {
 } from "./api";
 import {
   BundleSummary,
+  CourseSetupStep,
   hasCanvasVideo,
   StepHeader,
   toggleSelected,
   VideoCandidates,
 } from "./ProfessorCourseBuilderParts";
+import { defaultFlow, isCourseSetupReady, readSavedFlow, writeSavedFlow } from "./professorBuilderState";
 import { uploadDestination } from "./professorUpload";
 import type { CanvasDocument, LoginSession, SourceBundleManifest, YoutubeVideoCandidate } from "./types";
+import type { CourseSetup } from "./professorBuilderState";
 
 const courseId = "martius-ml";
 const lectureId = "lecture-03";
-const flowStorageKey = "lecturepilot.professor-builder.martius-ml.lecture-03";
-
-type SavedProfessorFlow = {
-  courseReady: boolean;
-  uploadPath: string;
-  bundleReady: boolean;
-  canvasReady: boolean;
-  query: string;
-};
-
-const defaultFlow: SavedProfessorFlow = {
-  courseReady: false,
-  uploadPath: "uploads/supplement.md",
-  bundleReady: false,
-  canvasReady: false,
-  query: "Bayesian decision theory machine learning Tübingen",
-};
 
 export function ProfessorCourseBuilder({
   session,
@@ -55,6 +41,7 @@ export function ProfessorCourseBuilder({
   workspacePublished: boolean;
 }) {
   const [savedFlow] = useState(readSavedFlow);
+  const [setup, setSetup] = useState(savedFlow.setup);
   const [courseReady, setCourseReady] = useState(savedFlow.courseReady);
   const [bundle, setBundle] = useState<SourceBundleManifest | null>(null);
   const [uploadPath, setUploadPath] = useState(savedFlow.uploadPath);
@@ -67,6 +54,12 @@ export function ProfessorCourseBuilder({
   const [error, setError] = useState<string | null>(null);
   const [restored, setRestored] = useState(!savedFlow.bundleReady && !savedFlow.canvasReady);
   const videoReviewReady = selectedVideos.size > 0 || hasCanvasVideo(canvas);
+  const setupReady = isCourseSetupReady(setup);
+  const materialScope = setup.target === "full-course" ? "all course materials" : "materials for this lecture";
+  const defaultYoutubeQuery = [
+    setup.courseTitle,
+    setup.target === "single-lecture" ? setup.lectureTitle : "machine learning lecture",
+  ].filter(Boolean).join(" ");
 
   useEffect(() => {
     let cancelled = false;
@@ -97,13 +90,14 @@ export function ProfessorCourseBuilder({
   useEffect(() => {
     if (!restored) return;
     writeSavedFlow({
+      setup,
       courseReady,
       uploadPath,
       bundleReady: Boolean(bundle),
       canvasReady: Boolean(canvas),
       query,
     });
-  }, [bundle, canvas, courseReady, query, restored, uploadPath]);
+  }, [bundle, canvas, courseReady, query, restored, setup, uploadPath]);
 
   async function run(action: () => Promise<string | void>) {
     setError(null);
@@ -117,6 +111,7 @@ export function ProfessorCourseBuilder({
   }
 
   async function resetFlow() {
+    setSetup(defaultFlow.setup);
     setCourseReady(false);
     setBundle(null);
     setUploadPath(defaultFlow.uploadPath);
@@ -132,6 +127,15 @@ export function ProfessorCourseBuilder({
     });
   }
 
+  function updateSetup(nextSetup: CourseSetup) {
+    setSetup(nextSetup);
+    setCourseReady(false);
+    setBundle(null);
+    setCanvas(null);
+    setVideos([]);
+    setSelectedVideos(new Set());
+  }
+
   return (
     <main className="professor-screen">
       <section className="dashboard-header">
@@ -139,23 +143,21 @@ export function ProfessorCourseBuilder({
         <button className="ghost-button" type="button" onClick={() => void resetFlow()}>Reset flow</button>
         <p className="section-label">Professor workspace</p>
         <h1>Course creation flow</h1>
-        <p>Signed in as {session.username}. Upload material, draft the canvas, then approve YouTube media.</p>
+        <p>Signed in as {session.username}. Define the course scope, upload material, draft the canvas, then approve media.</p>
       </section>
 
       <div className="professor-flow">
-        <section className="flow-card">
-          <StepHeader number="01" title="Create course workspace" done={courseReady} />
-          <dl className="flow-facts">
-            <div><dt>Course</dt><dd>Grundlagen des Maschinellen Lernens</dd></div>
-            <div><dt>Lecture draft</dt><dd>Lecture 03 · Bayesian Decision Theory</dd></div>
-          </dl>
-          <button type="button" onClick={() => setCourseReady(true)}>
-            Create course workspace
-          </button>
-        </section>
+        <CourseSetupStep
+          courseReady={courseReady}
+          isReady={setupReady}
+          onCreate={() => setCourseReady(true)}
+          onSetupChange={updateSetup}
+          setup={setup}
+        />
 
         <section className="flow-card">
           <StepHeader number="02" title="Upload and scan materials" done={Boolean(bundle)} />
+          <p className="drawer-note">Upload {materialScope} for {setup.courseTitle}.</p>
           <label>
             Workspace path
             <input value={uploadPath} onChange={(event) => setUploadPath(event.target.value)} />
@@ -215,12 +217,17 @@ export function ProfessorCourseBuilder({
 
         <section className="flow-card wide">
           <StepHeader number="04" title="Review YouTube candidates" done={videoReviewReady} />
+          <p className="drawer-note">
+            Search candidates as soon as the course scope is known. Selected videos can be attached after a canvas draft exists.
+          </p>
           <label>
             Search query
             <input value={query} onChange={(event) => setQuery(event.target.value)} />
           </label>
-          <button disabled={!canvas} type="button" onClick={() => run(async () => {
-            const response = await searchYoutubeMedia(courseId, query, session);
+          <button disabled={!setupReady} type="button" onClick={() => run(async () => {
+            const searchQuery = query.trim() || defaultYoutubeQuery;
+            if (!query.trim()) setQuery(searchQuery);
+            const response = await searchYoutubeMedia(courseId, searchQuery, session);
             setVideos(response.items);
             return `Found ${response.items.length} YouTube candidates.`;
           })}>
@@ -241,6 +248,9 @@ export function ProfessorCourseBuilder({
           })}>
             Include selected videos
           </button>
+          {!canvas && selectedVideos.size ? (
+            <p className="drawer-note">Generate a canvas draft before attaching the selected videos.</p>
+          ) : null}
         </section>
 
         <section className="flow-card wide">
@@ -258,22 +268,4 @@ export function ProfessorCourseBuilder({
       {error ? <p className="form-error">{error}</p> : null}
     </main>
   );
-}
-
-function readSavedFlow(): SavedProfessorFlow {
-  if (typeof window === "undefined") return defaultFlow;
-  try {
-    const saved = window.sessionStorage.getItem(flowStorageKey);
-    if (!saved) return defaultFlow;
-    return { ...defaultFlow, ...(JSON.parse(saved) as Partial<SavedProfessorFlow>) };
-  } catch {
-    return defaultFlow;
-  }
-}
-
-function writeSavedFlow(flow: SavedProfessorFlow) {
-  try {
-    window.sessionStorage.setItem(flowStorageKey, JSON.stringify(flow));
-  } catch {
-  }
 }
