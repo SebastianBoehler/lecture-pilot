@@ -146,9 +146,10 @@ function renderBlock(
     sourceReference: ReturnType<typeof sectionSourceReferences>[number];
   },
 ) {
+  const canHighlightBlock = block.type !== "quiz";
   const className = [
     "canvas-block",
-    isHighlighted && (!highlightedText?.trim() || block.type === "math") ? "is-highlighted" : "",
+    canHighlightBlock && isHighlighted && (!highlightedText?.trim() || block.type === "math") ? "is-highlighted" : "",
     pulseClass(isPulsed, outlinePulseVersion),
   ]
     .filter(Boolean)
@@ -284,7 +285,6 @@ function findKeySourceBlockId(blocks: CanvasBlock[]) {
   return (
     blocks.find((block) => block.type === "callout")?.id ??
     blocks.find((block) => block.type === "checkpoint")?.id ??
-    blocks.find((block) => block.type === "quiz")?.id ??
     blocks.find((block) => block.type === "list")?.id ??
     blocks.find((block) => block.type === "paragraph")?.id ??
     null
@@ -292,7 +292,6 @@ function findKeySourceBlockId(blocks: CanvasBlock[]) {
 }
 
 function shouldShowSourceMarker(block: CanvasBlock, keySourceBlockId: string | null) {
-  if (block.type === "asset" && block.asset_url) return true;
-  if (block.type === "video" && block.asset_url) return true;
-  return block.id === keySourceBlockId;
+  if (block.type === "quiz") return false;
+  return Boolean((block.type === "asset" || block.type === "video") && block.asset_url) || block.id === keySourceBlockId;
 }

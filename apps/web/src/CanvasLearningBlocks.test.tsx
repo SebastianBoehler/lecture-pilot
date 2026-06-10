@@ -61,6 +61,7 @@ describe("CanvasLearningBlocks", () => {
 
     expect(onSubmitAnswer).toHaveBeenCalledWith(quiz, "Expected risk", 1);
     expect(correct).toHaveClass("is-correct");
+    expect(correct).toHaveTextContent("Correct");
   });
 
   it("marks incorrect quiz selections and still reveals the correct option", async () => {
@@ -78,7 +79,29 @@ describe("CanvasLearningBlocks", () => {
     await user.click(wrong);
 
     expect(wrong).toHaveClass("is-incorrect");
+    expect(wrong).toHaveTextContent("Review");
     expect(correct).toHaveClass("is-correct");
+    expect(correct).toHaveTextContent("Correct");
+  });
+
+  it("keeps source markers and phrase highlights out of quiz cards", () => {
+    const quiz = block("quiz", {
+      items: ["Expected risk"],
+      text: "Which answer captures expected risk?",
+      answer_index: 0,
+    });
+
+    render(
+      <QuizBlock
+        block={quiz}
+        className="canvas-block"
+        highlightedText="expected risk"
+        sourceMarker={<span>source marker</span>}
+      />,
+    );
+
+    expect(screen.queryByText("source marker")).not.toBeInTheDocument();
+    expect(document.querySelector(".phrase-highlight")).toBeNull();
   });
 });
 

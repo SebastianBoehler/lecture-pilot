@@ -26,8 +26,6 @@ export function CheckpointBlock({ block, className, highlightedText, sourceMarke
 export function QuizBlock({
   block,
   className,
-  highlightedText,
-  sourceMarker,
   onSubmitAnswer,
 }: LearningBlockProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -36,7 +34,7 @@ export function QuizBlock({
     <section className={`${className} canvas-quiz`} id={block.id} key={block.id}>
       <div className="canvas-learning-label">{block.caption || "Quality gate quiz"}</div>
       <p>
-        <MathText highlightedText={highlightedText} text={block.text ?? ""} />
+        <MathText highlightedText={null} text={block.text ?? ""} />
       </p>
       {block.items.length ? (
         <ol className="canvas-quiz-options">
@@ -53,13 +51,19 @@ export function QuizBlock({
                 }}
               >
                 <span>{optionLetter(index)}</span>
-                <MathText highlightedText={highlightedText} text={item} />
+                <span className="canvas-quiz-option-text">
+                  <MathText highlightedText={null} text={item} />
+                </span>
+                {quizResultLabel(index, selectedIndex, correctIndex) ? (
+                  <span aria-hidden="true" className="canvas-quiz-result">
+                    {quizResultLabel(index, selectedIndex, correctIndex)}
+                  </span>
+                ) : null}
               </button>
             </li>
           ))}
         </ol>
       ) : null}
-      {sourceMarker}
     </section>
   );
 }
@@ -124,4 +128,11 @@ function quizOptionClass(index: number, selectedIndex: number | null, correctInd
   if (correctIndex === index) return "is-correct";
   if (selectedIndex === index) return correctIndex === null ? "is-selected" : "is-incorrect";
   return "";
+}
+
+function quizResultLabel(index: number, selectedIndex: number | null, correctIndex: number | null) {
+  if (selectedIndex === null || correctIndex === null) return null;
+  if (correctIndex === index) return "Correct";
+  if (selectedIndex === index) return "Review";
+  return null;
 }
