@@ -23,6 +23,7 @@ async def test_course_planner_restyles_source_evidence(monkeypatch) -> None:
         "paragraph",
         "math",
         "asset",
+        "list",
         "callout",
     ]
     assert section.blocks[2].asset_path == "Ch3/venn.pdf"
@@ -48,7 +49,12 @@ class _FakePlanClient:
             "blocks": [
                 {
                     "type": "paragraph",
-                    "text": "Evidence updates a prior into a posterior before risk changes the action.",
+                    "text": (
+                        "Evidence updates a prior into a posterior before risk changes the action. "
+                        "The learner first identifies the observed signal, then asks how likely "
+                        "that signal would be under each class, and only then compares the resulting "
+                        "posterior probabilities with the decision costs."
+                    ),
                 },
                 {
                     "type": "math",
@@ -65,8 +71,21 @@ class _FakePlanClient:
                     "caption": "This unsupported asset must be ignored",
                 },
                 {
+                    "type": "list",
+                    "items": [
+                        "Start from the prior belief before seeing the measurement.",
+                        "Use the likelihood to score how compatible the evidence is with each class.",
+                        "Normalize with the evidence term so the posterior can be compared.",
+                    ],
+                },
+                {
                     "type": "callout",
-                    "text": "Infographic brief: show prior, likelihood, posterior, and decision risk.",
+                    "text": (
+                        "Infographic brief: show prior, likelihood, posterior, and decision risk as "
+                        "a left-to-right workflow so the student can trace where each number enters. "
+                        "The learner should be able to point at the canvas and explain which source "
+                        "quantity changes after observation and which quantity is a fixed modeling choice."
+                    ),
                 },
             ],
         }
@@ -76,8 +95,39 @@ class _FakePlanClient:
                 "title": f"Planner section {index}",
                 "source_ref": "Lecture03-eng.tex frame 1",
                 "blocks": [
-                    {"type": "paragraph", "text": f"Source-grounded explanation {index}."},
-                    {"type": "callout", "text": f"Worked example checkpoint {index}."},
+                    {
+                        "type": "paragraph",
+                        "text": (
+                            f"Source-grounded explanation {index} connects the lecture claim to the "
+                            "mathematical object the student sees on the slide. It gives enough context "
+                            "to read the section independently before the tutor starts asking checks."
+                        ),
+                    },
+                    {
+                        "type": "paragraph",
+                        "text": (
+                            f"Step-by-step mechanism {index} explains what is computed first, what "
+                            "changes after observing evidence, and why the final decision can differ. "
+                            "The explanation is deliberately longer than a slide bullet so the learner "
+                            "can follow the reasoning without needing the original lecture narration."
+                        ),
+                    },
+                    {
+                        "type": "list",
+                        "items": [
+                            f"Identify the relevant variable for topic {index}.",
+                            "Compute the probability or risk term from the source formula and state what each symbol means.",
+                            "Interpret the result as a modeling decision, including what would change in a failure case.",
+                        ],
+                    },
+                    {
+                        "type": "callout",
+                        "text": (
+                            f"Worked example checkpoint {index}: ask the learner to transfer the "
+                            "formula to a small classification case before moving on. The example is "
+                            "grounded in the source section and prepares a later quality gate."
+                        ),
+                    },
                 ],
             }
             for index in range(2, 9)

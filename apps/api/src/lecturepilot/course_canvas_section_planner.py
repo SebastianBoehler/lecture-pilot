@@ -72,12 +72,14 @@ def _section_messages(source_document: CanvasDocument, section: CanvasSection) -
             "content": (
                 "Rewrite this extracted lecture section into a clean markdown learning "
                 "canvas section. Return JSON only with id, title, source_ref, and blocks. "
-                "Use 2 to 5 blocks. Blocks may be paragraph, list, callout, math, asset, "
+                "Use 4 to 7 blocks with self-study paragraphs, examples, and steps. "
+                "Blocks may be paragraph, list, callout, math, asset, "
                 "table, checkpoint, or quiz. Quiz blocks use text as the question and "
                 "items as possible answers plus answer_index for the correct option. "
                 "Do not preserve raw slide ids; create a stable learning topic id. Preserve "
                 "key formulas and source-backed assets. Add a worked example or infographic "
-                "brief when it helps learning. Use light Markdown for key terms and notation. "
+                "brief when it helps learning. Explain why each key idea matters before "
+                "asking for retrieval. Use light Markdown for key terms and notation. "
                 "Do not invent unsupported topics."
             ),
         },
@@ -173,7 +175,7 @@ def _read_blocks(
         return []
     blocks = []
     counters: dict[str, int] = {}
-    for raw_block in raw_blocks[:6]:
+    for raw_block in raw_blocks[:8]:
         if not isinstance(raw_block, dict):
             continue
         block_type = raw_block.get("type")
@@ -201,7 +203,7 @@ def _read_block(
 ) -> CanvasBlock:
     if block_type == "list":
         raw_items = _block_items(raw_block)
-        return CanvasBlock(id=block_id, type="list", items=[_trim(str(item), 260) for item in raw_items[:10]])
+        return CanvasBlock(id=block_id, type="list", items=[_trim(str(item), 340) for item in raw_items[:12]])
     if block_type == "asset":
         asset_path = str(raw_block.get("asset_path"))
         return CanvasBlock(
@@ -215,7 +217,7 @@ def _read_block(
         return CanvasBlock(
             id=block_id,
             type="quiz",
-            text=_trim(str(raw_block.get("text") or raw_block.get("question") or ""), 1000),
+            text=_trim(str(raw_block.get("text") or raw_block.get("question") or ""), 1400),
             items=[_trim(str(item), 180) for item in _block_items(raw_block)[:6]],
             caption=str(raw_block.get("caption") or raw_block.get("title") or "Checkpoint quiz")[:500],
             answer_index=_answer_index(raw_block),
@@ -224,13 +226,13 @@ def _read_block(
         return CanvasBlock(
             id=block_id,
             type=block_type,
-            text=_trim(str(raw_block.get("text") or raw_block.get("content") or ""), 1600),
+            text=_trim(str(raw_block.get("text") or raw_block.get("content") or ""), 2400),
             caption=str(raw_block.get("caption") or raw_block.get("title") or "")[:500] or None,
         )
     return CanvasBlock(
         id=block_id,
         type=block_type,
-        text=_trim(str(raw_block.get("text") or raw_block.get("content") or ""), 1600),
+        text=_trim(str(raw_block.get("text") or raw_block.get("content") or ""), 2400),
     )
 
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 from lecturepilot.providers import ProviderConfigurationError
 
@@ -12,6 +13,7 @@ def parse_model_json(content: str | None) -> dict:
     candidates = [cleaned]
     if extracted := _extract_first_json_object(cleaned):
         candidates.append(extracted)
+    candidates.extend(_escape_invalid_json_backslashes(candidate) for candidate in list(candidates))
     for candidate in candidates:
         try:
             payload = json.loads(candidate)
@@ -21,6 +23,10 @@ def parse_model_json(content: str | None) -> dict:
             return payload
         raise ProviderConfigurationError("Course planner JSON must be an object.")
     raise ProviderConfigurationError("Course planner did not return valid JSON.")
+
+
+def _escape_invalid_json_backslashes(content: str) -> str:
+    return re.sub(r'\\(?!["\\/bfnrtu])', r"\\\\", content)
 
 
 def _strip_code_fence(content: str) -> str:

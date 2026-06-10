@@ -20,7 +20,6 @@ class CoursePlanModelClient(Protocol):
     async def complete_plan(self, *, settings: ProviderSettings, messages: list[dict[str, str]]) -> dict:
         """Return one source-grounded course canvas plan."""
 
-
 class LiteLLMCoursePlanClient:
     async def complete_plan(self, *, settings: ProviderSettings, messages: list[dict[str, str]]) -> dict:
         try:
@@ -34,7 +33,7 @@ class LiteLLMCoursePlanClient:
             response = await acompletion(
                 model=settings.model,
                 messages=messages,
-                max_tokens=12000,
+                max_tokens=18000,
                 temperature=0.2,
                 response_format={"type": "json_object"},
             )
@@ -88,11 +87,13 @@ def _planner_messages(source_document: CanvasDocument) -> list[dict[str, str]]:
                 "source-grounded study document from extracted lecture material. "
                 "Do not mirror slide-by-slide order, do not preserve extracted slide ids, "
                 "and do not create one section per frame. Synthesize the full evidence into "
-                "5 to 8 pedagogical sections with stable topic ids, three to five narrative "
+                "5 to 8 pedagogical sections with stable topic ids, four to seven detailed "
                 "teaching blocks per section, key formulas, grouped lists, worked examples, "
                 "callouts, infographic briefs, and existing source assets when "
                 "they help learning. Collapse long "
                 "formula runs into a named derivation with only the essential equations. "
+                "Make paragraphs self-study friendly: explain the reason, mechanism, and "
+                "consequence in 2 to 4 sentences, then add examples or steps where useful. "
                 "Use light Markdown inside text blocks for emphasis, for example "
                 "**posterior** or `p(x | C)`, but keep block structure explicit. "
                 "Leave room for professor-approved YouTube videos instead of inventing "
@@ -119,8 +120,8 @@ def _repair_message(error: str, source_document: CanvasDocument) -> dict[str, st
         "content": (
             f"The previous draft failed validation: {error}. Return a corrected JSON draft. "
             "Do not mirror extracted slide ids. Group source evidence into 5 to 8 study "
-            "sections, cite source files and frames in source_ref, and use at least 3 "
-            "teaching blocks per section. Source outline ids available for coverage: "
+            "sections, cite source files and frames in source_ref, and use at least 4 "
+            "teaching blocks and 600 explanatory characters per section. Source outline ids available for coverage: "
             f"{', '.join(required_section_ids(source_document)) or 'see evidence titles'}."
         ),
     }
@@ -204,7 +205,7 @@ def _read_blocks(raw_blocks: object, section_id: str, allowed_assets: dict[str, 
         return []
     blocks: list[CanvasBlock] = []
     counters: dict[str, int] = {}
-    for raw_block in raw_blocks[:8]:
+    for raw_block in raw_blocks[:10]:
         if not isinstance(raw_block, dict):
             continue
         block_type = raw_block.get("type")
@@ -217,7 +218,7 @@ def _read_blocks(raw_blocks: object, section_id: str, allowed_assets: dict[str, 
         block = _read_block(raw_block, block_id, block_type, allowed_assets)
         if _is_usable_block(block):
             blocks.append(block)
-    return blocks[:6]
+    return blocks[:8]
 
 
 def _read_block(
@@ -231,7 +232,7 @@ def _read_block(
         return CanvasBlock(
             id=block_id,
             type="list",
-            items=[_trim(str(item), 260) for item in raw_items[:10] if str(item).strip()],
+            items=[_trim(str(item), 340) for item in raw_items[:12] if str(item).strip()],
         )
     if block_type == "asset":
         asset_path = str(raw_block.get("asset_path"))
@@ -246,7 +247,7 @@ def _read_block(
         return CanvasBlock(
             id=block_id,
             type="quiz",
-            text=_trim(str(raw_block.get("text") or raw_block.get("question") or ""), 1000),
+            text=_trim(str(raw_block.get("text") or raw_block.get("question") or ""), 1400),
             items=[_trim(str(item), 180) for item in _block_items(raw_block)[:6]],
             caption=str(raw_block.get("caption") or raw_block.get("title") or "Checkpoint quiz")[:500],
             answer_index=_answer_index(raw_block),
@@ -255,13 +256,13 @@ def _read_block(
         return CanvasBlock(
             id=block_id,
             type=block_type,
-            text=_trim(str(raw_block.get("text") or raw_block.get("content") or ""), 1600),
+            text=_trim(str(raw_block.get("text") or raw_block.get("content") or ""), 2400),
             caption=str(raw_block.get("caption") or raw_block.get("title") or "")[:500] or None,
         )
     return CanvasBlock(
         id=block_id,
         type=block_type,
-        text=_trim(str(raw_block.get("text") or raw_block.get("content") or ""), 1600),
+        text=_trim(str(raw_block.get("text") or raw_block.get("content") or ""), 2400),
     )
 
 
