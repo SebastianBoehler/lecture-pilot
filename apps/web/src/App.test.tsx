@@ -1,16 +1,12 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import App from "./App";
 import { DEMO_TUTOR_WORKSPACE_STORAGE_KEY } from "./demoTutorWorkspace";
 import { mockLoginAndTutorFetch, mockLoginFetch, soccerCanvasSection } from "./testFixtures";
 
 describe("LecturePilot app shell", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
   it("starts with a TUE API wrapper login form", () => {
     render(<App />);
 
@@ -275,7 +271,9 @@ describe("LecturePilot app shell", () => {
     await user.click(screen.getByRole("button", { name: /send message/i }));
 
     expect(await screen.findByRole("heading", { name: /soccer scouting example/i })).toBeInTheDocument();
-    expect(screen.getByText("canvas: student-soccer-bayes-example")).toBeInTheDocument();
+    expect(screen.queryByText("canvas: student-soccer-bayes-example")).not.toBeInTheDocument();
+    expect(screen.getByText("+1 earlier")).toBeInTheDocument();
+    expect(screen.getByText("focus: student-soccer-bayes-example")).toBeInTheDocument();
     expect(screen.getByText("highlight: student-soccer-bayes-example-p-1")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: /soccer scouting example/i })).toHaveAttribute(
       "aria-current",

@@ -103,7 +103,9 @@ Expected planner output:
       "blocks": [
         { "type": "paragraph", "source_refs": ["Lecture03-eng.tex#frames=6-9"] },
         { "type": "math", "source_refs": ["Lecture03-eng.tex#frame=7"] },
-        { "type": "asset", "source_refs": ["images/Ch3/Venn_C-X_1.pdf"] }
+        { "type": "asset", "source_refs": ["images/Ch3/Venn_C-X_1.pdf"] },
+        { "type": "checkpoint", "text": "Explain posterior, likelihood, and evidence." },
+        { "type": "quiz", "text": "Which term normalizes Bayes' rule?", "items": ["Prior", "Evidence"] }
       ]
     }
   ]
@@ -112,6 +114,12 @@ Expected planner output:
 
 The model may reorganize slides into better learning sections, but every block
 must cite source material. It should not introduce unsupported topics.
+
+Published drafts are written as `index.md` plus `sections/*.md`, not as hand
+edited JSON. The current parser supports narrative Markdown paragraphs, image
+references, YouTube links, Markdown tables, math fences, callouts, checkpoints,
+and quiz blocks. JSON is still used as the model interchange and API cache, but
+Markdown remains the editable canvas source.
 
 ## Optional Media Discovery
 

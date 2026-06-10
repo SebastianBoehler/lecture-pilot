@@ -13,6 +13,18 @@
   padding: 0 2px;
   background: var(--color-highlight-border);
   color: inherit;
+  animation: phrase-target-fade 5s ease-out forwards;
+}
+
+@keyframes phrase-target-fade {
+  0%,
+  45% {
+    background: var(--color-highlight-border);
+  }
+
+  100% {
+    background: transparent;
+  }
 }
 
 .canvas-list {
@@ -26,6 +38,16 @@
 .canvas-paragraph {
   max-width: 72ch;
   line-height: 1.65;
+}
+
+.canvas-paragraph code,
+.canvas-list code,
+.canvas-callout code {
+  border: 1px solid var(--color-border-primary);
+  border-radius: 4px;
+  padding: 1px 4px;
+  background: var(--color-bg-secondary);
+  font-size: 0.92em;
 }
 
 .canvas-prose-run {

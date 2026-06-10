@@ -11,6 +11,7 @@ from lecturepilot.canvas_markdown import (
     write_student_sections,
 )
 from lecturepilot.canvas_sections import merge_sections
+from lecturepilot.canvas_signatures import official_canvas_signature, is_student_section
 from lecturepilot.canvas_workspace_config import (
     default_material_root as _default_material_root,
     default_workspace_root as _default_workspace_root,
@@ -213,7 +214,11 @@ class CanvasWorkspace:
             lecture_id=document.lecture_id,
             workspace_path=document.workspace_path,
         )
-        return base is not None and document.source_kind != "generated"
+        if base is None:
+            return False
+        if document.source_kind != "generated":
+            return True
+        return official_canvas_signature(document) != official_canvas_signature(base)
 
     def write_course_canvas(self, document: CanvasDocument) -> CanvasDocument:
         return self.course_canvas_store.write(document)
@@ -229,7 +234,7 @@ class CanvasWorkspace:
         sections: list[CanvasSection] = []
         if (canvas_dir / "index.md").exists():
             sections.extend(
-                section for section in read_document_source(canvas_dir).sections if _is_student_section(section)
+                section for section in read_document_source(canvas_dir).sections if is_student_section(section)
             )
         compiled_paths = [
             self._compiled_path(course_id, lecture_id, user_id),
@@ -242,7 +247,7 @@ class CanvasWorkspace:
             sections.extend(
                 section
                 for section in CanvasDocument.model_validate(payload).sections
-                if _is_student_section(section)
+                if is_student_section(section)
             )
         return merge_sections(sections)
 
@@ -258,8 +263,8 @@ class CanvasWorkspace:
         path.write_text(json.dumps(document.model_dump(), indent=2), encoding="utf-8")
 
     def _write_initial_source(self, document: CanvasDocument, canvas_dir: Path) -> None:
-        base_sections = [section for section in document.sections if not _is_student_section(section)]
-        student_sections = [section for section in document.sections if _is_student_section(section)]
+        base_sections = [section for section in document.sections if not is_student_section(section)]
+        student_sections = [section for section in document.sections if is_student_section(section)]
         sections_dir = canvas_dir / "sections"
         if sections_dir.exists():
             for path in sections_dir.glob("*.md"):
@@ -289,6 +294,3 @@ class CanvasWorkspace:
             if source_path.exists():
                 return source_path
         raise CanvasWorkspaceError(f"Course source not found: {candidates[-1]}")
-
-def _is_student_section(section: CanvasSection) -> bool:
-    return section.source_ref == "student workspace" or section.id.startswith("student-")

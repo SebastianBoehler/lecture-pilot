@@ -37,13 +37,26 @@ export function blockSourceReference(
 }
 
 function lectureSourceResource(canvasDocument: CanvasDocument, section: CanvasSection): WorkspaceResource {
+  const path = displaySourcePath(canvasDocument.source_ref);
   return {
     id: `source-${canvasDocument.id}-${section.id}`,
     kind: "source",
-    label: canvasDocument.source_ref,
-    path: canvasDocument.source_ref,
-    detail: section.source_ref ?? section.title,
+    label: path,
+    path,
+    detail: displaySourceDetail(section.source_ref ?? section.title, path),
   };
+}
+
+function displaySourcePath(sourceRef: string) {
+  return sourceRef.replace(/^course planner from\s+/i, "").trim() || sourceRef;
+}
+
+function displaySourceDetail(detail: string, path: string) {
+  return detail.replace(new RegExp(`^${escapeRegExp(path)}\\s*,?\\s*`, "i"), "").trim() || detail;
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function assetSourceResource(asset: CanvasBlock, number: number): WorkspaceResource {

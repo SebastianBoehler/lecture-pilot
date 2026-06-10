@@ -47,8 +47,7 @@
 }
 
 .canvas-section.is-focused {
-  border-color: var(--color-highlight-border);
-  background: var(--color-highlight-bg);
+  scroll-margin-block: 80px;
 }
 
 .is-outline-pulsed {

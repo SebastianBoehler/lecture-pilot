@@ -152,6 +152,23 @@ The Markdown files under `canvas/` are the editable source of truth. Treat
 `canvas.json` as a compiled API cache/artifact, not as the primary authoring
 format.
 
+Canvas Markdown supports these source-backed learning blocks:
+
+- paragraphs with light Markdown and LaTeX
+- `![caption](asset:relative/course/path.png)` for course assets
+- `![caption](/workspace-assets/.../student-assets/file.jpg)` for learner assets
+- YouTube links such as `[title](https://youtu.be/...)`
+- Markdown tables
+- math fences with ```math
+- `:::checkpoint Title ... :::`
+- `:::quiz Title ... - option :::`
+
+Use explicit block comments such as
+`<!-- block id="risk-check" type="checkpoint" -->` when generated content needs
+stable focus/highlight ids. Quiz blocks use `text` as the question and `items`
+as possible answers. Checkpoint blocks use `text` as the evidence the student
+must produce before a gate can pass.
+
 ## Repository Map
 
 ```txt

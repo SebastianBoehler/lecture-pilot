@@ -125,6 +125,37 @@ Agent commands append or update `canvas/student/*.md`. Personalized generated
 images are stored in `canvas/student-assets/`. `canvas.json` is a compiled API
 cache and not the editable source of truth.
 
+Canvas section Markdown is intentionally close to the learning-app explainer
+model: one section file is one stable teaching unit, and assets remain normal
+file references. Supported section blocks are:
+
+```md
+Long narrative paragraph with **Markdown emphasis**, inline math, and source markers.
+
+![Course image](asset:Ch3/spam-DALL-E.jpg)
+![Generated learner image](/workspace-assets/<course>/<lecture>/<user-key>/student-assets/risk.jpg)
+[Professor-approved video](https://youtu.be/12345678901)
+
+| Action | Expected risk |
+| --- | --- |
+| Reject | Prefer more evidence |
+
+:::checkpoint Risk gate
+Explain why changing a loss term can move the decision threshold.
+:::
+
+:::quiz Retrieval check
+Which quantity directly changes the expected-risk decision?
+- Posterior probability
+- Slide number
+- Font size
+:::
+```
+
+The parser also accepts explicit block comments such as
+`<!-- block id="risk-table" type="table" -->` when a pipeline or agent needs a
+stable block id for later focus/highlight commands.
+
 ## Agent Rules
 
 The agent sees this filesystem image through typed tools only. It may read user

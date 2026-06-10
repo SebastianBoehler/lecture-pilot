@@ -19,9 +19,19 @@ async def test_course_planner_restyles_source_evidence(monkeypatch) -> None:
     assert document.title == "Bayes as a decision workflow"
     section = document.sections[0]
     assert section.title == "Evidence, update, decision"
-    assert [block.type for block in section.blocks] == ["paragraph", "math", "asset", "callout"]
+    assert [block.type for block in section.blocks] == [
+        "paragraph",
+        "math",
+        "asset",
+        "callout",
+    ]
     assert section.blocks[2].asset_path == "Ch3/venn.pdf"
     assert section.blocks[2].asset_url == "/course-assets/martius-ml/lecture-03/Ch3/venn.pdf"
+    middle_checkpoint = next(block for block in document.sections[3].blocks if block.type == "checkpoint")
+    assert middle_checkpoint.caption == "Quality gate"
+    final_quiz = next(block for block in document.sections[-1].blocks if block.type == "quiz")
+    assert final_quiz.answer_index == 0
+    assert final_quiz.items[0].startswith("The concept controls")
     assert all(block.asset_path != "unseen.png" for block in section.blocks)
 
 
@@ -32,7 +42,7 @@ class _FakePlanClient:
         assert "Slide dump" in evidence
         assert "asset_path=Ch3/venn.pdf" in evidence
         base_section = {
-            "id": "evidence-update-decision",
+            "id": "bayes-decision-workflow",
             "title": "Evidence, update, decision",
             "source_ref": "Lecture03-eng.tex frames 1, 2, 3",
             "blocks": [
@@ -62,7 +72,7 @@ class _FakePlanClient:
         }
         extra_sections = [
             {
-                "id": f"source-section-{index}",
+                "id": f"learning-topic-{index}",
                 "title": f"Planner section {index}",
                 "source_ref": "Lecture03-eng.tex frame 1",
                 "blocks": [

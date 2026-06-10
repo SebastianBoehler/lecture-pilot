@@ -17,12 +17,13 @@ export type Lecture = {
 
 export type CanvasBlock = {
   id: string;
-  type: "paragraph" | "list" | "asset" | "callout" | "math" | "video";
+  type: "paragraph" | "list" | "asset" | "callout" | "math" | "video" | "checkpoint" | "quiz" | "table";
   text?: string | null;
   items: string[];
   asset_path?: string | null;
   asset_url?: string | null;
   caption?: string | null;
+  answer_index?: number | null;
 };
 
 export type CanvasSection = {

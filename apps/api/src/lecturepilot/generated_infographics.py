@@ -69,7 +69,10 @@ def _with_infographic(
 
 def _asks_for_image(prompt: str) -> bool:
     normalized = prompt.lower()
-    return any(word in normalized for word in ("infographic", "diagram", "image", "visual"))
+    return any(
+        word in normalized
+        for word in ("chart", "diagram", "graph", "image", "infographic", "plot", "table", "visual")
+    )
 
 
 def _is_student_section(section: CanvasSection) -> bool:

@@ -53,6 +53,54 @@ def test_example_word_without_write_request_does_not_generate_section() -> None:
     assert [command.type for command in commands] == ["focus_section", "highlight_span"]
 
 
+def test_append_word_triggers_student_section_fallback() -> None:
+    turn = _turn("no pls append a section to the cavnas")
+
+    commands = read_canvas_commands({"message": "I added a note.", "canvas_commands": []}, turn)
+
+    assert commands[0].type == "append_section"
+    assert commands[0].section is not None
+    assert commands[0].section.title == "Generated learning note"
+    assert commands[1].type == "focus_section"
+    assert commands[1].section_id == commands[0].section_id
+
+
+def test_new_infographic_table_plot_triggers_visual_section_fallback() -> None:
+    turn = _turn("new infographic, section, table, plot pls")
+
+    commands = read_canvas_commands({"message": "I added it.", "canvas_commands": []}, turn)
+
+    assert commands[0].type == "append_section"
+    assert commands[0].section is not None
+    assert commands[0].section.title == "Generated concept infographic"
+    assert "Locate" in " ".join(commands[0].section.blocks[1].items)
+
+
+def test_requested_learning_blocks_are_preserved_when_model_appends_section() -> None:
+    turn = _turn("append a checkpoint quiz and table section about expected risk")
+    section = CanvasSection(
+        id="student-risk",
+        title="Risk practice",
+        blocks=[CanvasBlock(id="student-risk-p-1", type="paragraph", text="Risk practice note.")],
+    )
+
+    commands = read_canvas_commands(
+        {
+            "message": "Added.",
+            "canvas_commands": [
+                {
+                    "type": "append_section",
+                    "section": section.model_dump(),
+                }
+            ],
+        },
+        turn,
+    )
+
+    assert commands[0].section is not None
+    assert {"checkpoint", "quiz", "table"}.issubset({block.type for block in commands[0].section.blocks})
+
+
 def _turn(message: str) -> AgentTurnInput:
     return AgentTurnInput(
         user_id="student01",

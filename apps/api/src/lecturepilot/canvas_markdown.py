@@ -4,8 +4,8 @@ import json
 import re
 from pathlib import Path
 
-from lecturepilot.canvas_asset_refs import asset_markdown_target, parsed_asset_target
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.canvas_markdown_blocks import block_to_markdown, read_blocks
 
 
 class CanvasMarkdownError(RuntimeError):
@@ -79,18 +79,7 @@ def _section_to_markdown(section: CanvasSection) -> str:
 
 
 def _block_to_markdown(block: CanvasBlock) -> str:
-    header = f'<!-- block id="{block.id}" type="{block.type}" -->'
-    if block.type == "asset":
-        target = asset_markdown_target(block)
-        caption = block.caption or block.asset_path or "Course figure"
-        return f"{header}\n![{caption}]({target})"
-    if block.type == "list":
-        return f"{header}\n" + "\n".join(f"- {item}" for item in block.items)
-    if block.type == "math":
-        return f"{header}\n```math\n{block.text or ''}\n```"
-    if block.type == "callout":
-        return f"{header}\n" + "\n".join(f"> {line}" for line in (block.text or "").splitlines())
-    return f"{header}\n{block.text or ''}"
+    return block_to_markdown(block)
 
 
 def _read_section_dir(path: Path, manifest: dict[str, str]) -> list[CanvasSection]:
@@ -106,98 +95,13 @@ def _read_section(path: Path, manifest: dict[str, str]) -> CanvasSection:
         id=section_id,
         title=_required(frontmatter, "title"),
         source_ref=frontmatter.get("source_ref") or None,
-        blocks=_read_blocks(
+        blocks=read_blocks(
             body,
             section_id=section_id,
             course_id=_required(manifest, "course_id"),
             lecture_id=_required(manifest, "lecture_id"),
         ),
     )
-
-
-def _read_blocks(
-    body: str,
-    *,
-    section_id: str,
-    course_id: str,
-    lecture_id: str,
-) -> list[CanvasBlock]:
-    matches = list(_BLOCK_RE.finditer(body))
-    if not matches:
-        return _read_unmarked_blocks(body, section_id=section_id, course_id=course_id, lecture_id=lecture_id)
-    blocks = []
-    for index, match in enumerate(matches):
-        start = match.end()
-        end = matches[index + 1].start() if index + 1 < len(matches) else len(body)
-        blocks.append(
-            _read_block(
-                match.group("id"),
-                match.group("type"),
-                body[start:end].strip(),
-                section_id=section_id,
-                course_id=course_id,
-                lecture_id=lecture_id,
-            )
-        )
-    return blocks
-
-
-def _read_unmarked_blocks(
-    body: str,
-    *,
-    section_id: str,
-    course_id: str,
-    lecture_id: str,
-) -> list[CanvasBlock]:
-    blocks = []
-    chunks = [chunk.strip() for chunk in re.split(r"\n\s*\n", body) if chunk.strip()]
-    counters: dict[str, int] = {}
-    for chunk in chunks:
-        block_type = _infer_block_type(chunk)
-        counters[block_type] = counters.get(block_type, 0) + 1
-        block_id = f"{section_id}-{_type_suffix(block_type)}-{counters[block_type]}"
-        blocks.append(
-            _read_block(
-                block_id,
-                block_type,
-                chunk,
-                section_id=section_id,
-                course_id=course_id,
-                lecture_id=lecture_id,
-            )
-        )
-    return blocks
-
-
-def _read_block(
-    block_id: str,
-    block_type: str,
-    chunk: str,
-    *,
-    section_id: str,
-    course_id: str,
-    lecture_id: str,
-) -> CanvasBlock:
-    if block_type == "asset":
-        match = _IMAGE_RE.search(chunk)
-        target = match.group("target") if match else ""
-        asset_path, asset_url = parsed_asset_target(target, course_id=course_id, lecture_id=lecture_id)
-        return CanvasBlock(
-            id=block_id,
-            type="asset",
-            asset_path=asset_path,
-            asset_url=asset_url,
-            caption=match.group("caption") if match else asset_path,
-        )
-    if block_type == "list":
-        return CanvasBlock(id=block_id, type="list", items=_read_list_items(chunk))
-    if block_type == "math":
-        return CanvasBlock(id=block_id, type="math", text=_read_math(chunk))
-    if block_type == "callout":
-        return CanvasBlock(id=block_id, type="callout", text=_read_callout(chunk))
-    if block_type != "paragraph":
-        raise CanvasMarkdownError(f"Unsupported canvas block type: {block_type}")
-    return CanvasBlock(id=block_id, type="paragraph", text=chunk.strip())
 
 
 def _read_frontmatter(text: str) -> tuple[dict[str, str], str]:
@@ -263,38 +167,5 @@ def _merged_sections(sections: list[CanvasSection]) -> list[CanvasSection]:
     return result
 
 
-def _read_list_items(chunk: str) -> list[str]:
-    return [line[2:].strip() for line in chunk.splitlines() if line.startswith("- ")]
-
-
-def _read_math(chunk: str) -> str:
-    match = _MATH_RE.search(chunk)
-    return (match.group("formula") if match else chunk).strip()
-
-
-def _read_callout(chunk: str) -> str:
-    return "\n".join(line.removeprefix("> ").strip() for line in chunk.splitlines()).strip()
-
-
-def _infer_block_type(chunk: str) -> str:
-    if _IMAGE_RE.search(chunk):
-        return "asset"
-    if chunk.startswith("```math"):
-        return "math"
-    if all(line.startswith("- ") for line in chunk.splitlines()):
-        return "list"
-    if all(line.startswith(">") for line in chunk.splitlines()):
-        return "callout"
-    return "paragraph"
-
-
-def _type_suffix(block_type: str) -> str:
-    return {"paragraph": "p", "list": "list", "asset": "asset", "callout": "callout", "math": "math"}[block_type]
-
-
 def _safe_filename(value: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_-]+", "-", value).strip("-")[:120] or "section"
-
-_BLOCK_RE = re.compile(r'<!--\s*block\s+id="(?P<id>[^"]+)"\s+type="(?P<type>[^"]+)"\s*-->')
-_IMAGE_RE = re.compile(r"!\[(?P<caption>[^]]*)]\((?P<target>[^)]+)\)")
-_MATH_RE = re.compile(r"```math\s*(?P<formula>.*?)```", re.DOTALL)

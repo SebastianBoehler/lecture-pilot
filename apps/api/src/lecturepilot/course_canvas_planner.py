@@ -1,38 +1,28 @@
 from __future__ import annotations
 
-import json
 import re
 from typing import Protocol
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.course_canvas_enrichment import enrich_learning_document
+from lecturepilot.course_canvas_json import parse_model_json
 from lecturepilot.course_canvas_section_planner import plan_sections_individually
-from lecturepilot.course_canvas_validation import (
-    MAX_PLANNED_SECTIONS,
-    required_section_ids,
-    validate_planned_document,
-)
+from lecturepilot.course_canvas_validation import required_section_ids, validate_planned_document
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import ProviderCapability, ProviderSettings
 from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
 
 
+MAX_SOURCE_EVIDENCE_SECTIONS = 80
+
+
 class CoursePlanModelClient(Protocol):
-    async def complete_plan(
-        self,
-        *,
-        settings: ProviderSettings,
-        messages: list[dict[str, str]],
-    ) -> dict:
+    async def complete_plan(self, *, settings: ProviderSettings, messages: list[dict[str, str]]) -> dict:
         """Return one source-grounded course canvas plan."""
 
 
 class LiteLLMCoursePlanClient:
-    async def complete_plan(
-        self,
-        *,
-        settings: ProviderSettings,
-        messages: list[dict[str, str]],
-    ) -> dict:
+    async def complete_plan(self, *, settings: ProviderSettings, messages: list[dict[str, str]]) -> dict:
         try:
             from litellm import acompletion
         except ImportError as exc:
@@ -50,7 +40,7 @@ class LiteLLMCoursePlanClient:
             )
         except Exception as exc:
             raise ModelExecutionError("Course planner model request failed.") from exc
-        return _parse_json(response.choices[0].message.content)
+        return parse_model_json(response.choices[0].message.content)
 
 
 class CourseCanvasPlanner:
@@ -71,7 +61,7 @@ class CourseCanvasPlanner:
         for _ in range(2):
             try:
                 payload = await self.model_client.complete_plan(settings=settings, messages=messages)
-                document = _planned_document(payload, source_document)
+                document = enrich_learning_document(_planned_document(payload, source_document))
                 validate_planned_document(document, source_document)
                 return document
             except ProviderConfigurationError as exc:
@@ -83,6 +73,7 @@ class CourseCanvasPlanner:
                 settings=settings,
                 source_document=source_document,
             )
+            sectionwise = enrich_learning_document(sectionwise)
             validate_planned_document(sectionwise, source_document)
             return sectionwise
         raise last_error or ProviderConfigurationError("Course planner returned no usable draft.")
@@ -94,21 +85,25 @@ def _planner_messages(source_document: CanvasDocument) -> list[dict[str, str]]:
             "role": "system",
             "content": (
                 "You are the LecturePilot course-builder agent. Create an editable, "
-                "source-grounded learning canvas from extracted lecture material. "
-                "Do not mirror slide-by-slide order. Combine slide fragments into coherent "
-                "teaching sections, summarize long lists, keep important formulas, include "
-                "worked examples, callouts, infographic briefs, and existing assets when "
-                "they help learning. Leave room for professor-approved YouTube videos "
-                "instead of inventing video links. "
-                "Return only JSON with title and sections. Each section must include id, "
-                "title, source_ref, and blocks. Blocks may be paragraph, list, callout, "
-                "math, or asset. Asset blocks may only use asset_path values listed in "
-                "the evidence. Do not invent unsupported topics. Cite source frames in "
-                "source_ref. Hard requirements: preserve the required output outline ids "
-                "from the evidence; every section needs at least 2 useful blocks; include "
-                "formulas where the source uses formulas; include worked examples or "
-                "transfer examples; include concise infographic briefs as callout blocks "
-                "where a visual would help. Never return a short overview."
+                "source-grounded study document from extracted lecture material. "
+                "Do not mirror slide-by-slide order, do not preserve extracted slide ids, "
+                "and do not create one section per frame. Synthesize the full evidence into "
+                "5 to 8 pedagogical sections with stable topic ids, three to five narrative "
+                "teaching blocks per section, key formulas, grouped lists, worked examples, "
+                "callouts, infographic briefs, and existing source assets when "
+                "they help learning. Collapse long "
+                "formula runs into a named derivation with only the essential equations. "
+                "Use light Markdown inside text blocks for emphasis, for example "
+                "**posterior** or `p(x | C)`, but keep block structure explicit. "
+                "Leave room for professor-approved YouTube videos instead of inventing "
+                "video links. Return only JSON with title and sections. Each section must "
+                "include id, title, source_ref, and blocks. Blocks may be paragraph, list, "
+                "callout, math, asset, table, checkpoint, or quiz. Use only 2 "
+                "checkpoint or quiz blocks for the full lecture, not after every section. "
+                "Quiz blocks use text as the question, items as answers, and answer_index "
+                "for the correct option. Asset blocks may only use asset_path values "
+                "listed in the evidence. Do not invent unsupported topics. Cite source "
+                "files and frames in every source_ref. Never return a short overview."
             ),
         },
         {
@@ -123,9 +118,10 @@ def _repair_message(error: str, source_document: CanvasDocument) -> dict[str, st
         "role": "user",
         "content": (
             f"The previous draft failed validation: {error}. Return a corrected JSON draft. "
-            "The sections array must preserve this exact section id outline: "
-            f"{', '.join(required_section_ids(source_document))}. "
-            "Use at least 2 non-empty blocks per section."
+            "Do not mirror extracted slide ids. Group source evidence into 5 to 8 study "
+            "sections, cite source files and frames in source_ref, and use at least 3 "
+            "teaching blocks per section. Source outline ids available for coverage: "
+            f"{', '.join(required_section_ids(source_document)) or 'see evidence titles'}."
         ),
     }
 
@@ -136,12 +132,12 @@ def _source_evidence(document: CanvasDocument) -> str:
         f"Lecture id: {document.lecture_id}",
         f"Lecture title: {document.title}",
         f"Primary source: {document.source_ref}",
-        "Required output outline; preserve these ids and cover each topic:",
+        "Extracted source outline; cover these topics but create new learning-section ids:",
     ]
-    for index, section in enumerate(document.sections[:MAX_PLANNED_SECTIONS], start=1):
+    for index, section in enumerate(document.sections[:MAX_SOURCE_EVIDENCE_SECTIONS], start=1):
         lines.append(f"{index}. id={section.id}; title={section.title}; source_ref={section.source_ref}")
     lines.append("\nExtracted source evidence by outline section:")
-    for section in document.sections[:MAX_PLANNED_SECTIONS]:
+    for section in document.sections[:MAX_SOURCE_EVIDENCE_SECTIONS]:
         lines.append(f"\nSECTION {section.id}: {section.title} ({section.source_ref or 'source unknown'})")
         for block in section.blocks:
             lines.append(_block_evidence(block))
@@ -212,7 +208,7 @@ def _read_blocks(raw_blocks: object, section_id: str, allowed_assets: dict[str, 
         if not isinstance(raw_block, dict):
             continue
         block_type = raw_block.get("type")
-        if block_type not in {"paragraph", "list", "callout", "math", "asset"}:
+        if block_type not in {"paragraph", "list", "callout", "math", "asset", "table", "checkpoint", "quiz"}:
             block_type = "paragraph"
         if block_type == "asset" and raw_block.get("asset_path") not in allowed_assets:
             continue
@@ -246,6 +242,22 @@ def _read_block(
             asset_url=allowed_assets.get(asset_path),
             caption=str(raw_block.get("caption") or asset_path)[:500],
         )
+    if block_type == "quiz":
+        return CanvasBlock(
+            id=block_id,
+            type="quiz",
+            text=_trim(str(raw_block.get("text") or raw_block.get("question") or ""), 1000),
+            items=[_trim(str(item), 180) for item in _block_items(raw_block)[:6]],
+            caption=str(raw_block.get("caption") or raw_block.get("title") or "Checkpoint quiz")[:500],
+            answer_index=_answer_index(raw_block),
+        )
+    if block_type in {"checkpoint", "table"}:
+        return CanvasBlock(
+            id=block_id,
+            type=block_type,
+            text=_trim(str(raw_block.get("text") or raw_block.get("content") or ""), 1600),
+            caption=str(raw_block.get("caption") or raw_block.get("title") or "")[:500] or None,
+        )
     return CanvasBlock(
         id=block_id,
         type=block_type,
@@ -261,27 +273,18 @@ def _block_items(raw_block: dict) -> list:
     return []
 
 
+def _answer_index(raw_block: dict) -> int:
+    items = _block_items(raw_block)[:6]
+    value = raw_block.get("answer_index", raw_block.get("correct_index", 0))
+    return value if isinstance(value, int) and 0 <= value < len(items) else 0
+
+
 def _is_usable_block(block: CanvasBlock) -> bool:
     if block.type == "asset":
         return bool(block.asset_path)
     if block.type == "list":
         return bool(block.items)
     return bool(block.text and block.text.strip())
-
-
-def _parse_json(content: str | None) -> dict:
-    if not content:
-        raise ProviderConfigurationError("Course planner returned an empty response.")
-    cleaned = content.strip()
-    if cleaned.startswith("```"):
-        cleaned = cleaned.strip("`").removeprefix("json").strip()
-    try:
-        payload = json.loads(cleaned)
-    except json.JSONDecodeError as exc:
-        raise ProviderConfigurationError("Course planner did not return valid JSON.") from exc
-    if not isinstance(payload, dict):
-        raise ProviderConfigurationError("Course planner JSON must be an object.")
-    return payload
 
 
 def _safe_id(value: str) -> str:

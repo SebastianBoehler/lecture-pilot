@@ -114,7 +114,15 @@ function blockTitle(block: CanvasBlock) {
 }
 
 function outlineInterestBlocks(blocks: CanvasBlock[]) {
-  const preferredTypes: CanvasBlock["type"][] = ["list", "video", "asset", "callout"];
+  const preferredTypes: CanvasBlock["type"][] = [
+    "checkpoint",
+    "quiz",
+    "table",
+    "list",
+    "video",
+    "asset",
+    "callout",
+  ];
   const result: CanvasBlock[] = [];
   for (const type of preferredTypes) {
     const block = blocks.find((candidate) => candidate.type === type);
@@ -124,7 +132,7 @@ function outlineInterestBlocks(blocks: CanvasBlock[]) {
 }
 
 function isOutlineInterest(block: CanvasBlock) {
-  return block.type === "asset" || block.type === "video" || block.type === "callout" || block.type === "list";
+  return ["asset", "callout", "checkpoint", "list", "quiz", "table", "video"].includes(block.type);
 }
 
 function outlineKind(block: CanvasBlock) {
@@ -136,6 +144,12 @@ function outlineKind(block: CanvasBlock) {
   }
   if (block.type === "list") {
     return "key point";
+  }
+  if (block.type === "checkpoint") {
+    return "gate";
+  }
+  if (block.type === "quiz") {
+    return "quiz";
   }
   return block.type;
 }

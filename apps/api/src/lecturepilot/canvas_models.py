@@ -7,12 +7,23 @@ from pydantic import BaseModel, Field
 
 class CanvasBlock(BaseModel):
     id: str = Field(min_length=1, max_length=120)
-    type: Literal["paragraph", "list", "asset", "callout", "math", "video"]
+    type: Literal[
+        "paragraph",
+        "list",
+        "asset",
+        "callout",
+        "math",
+        "video",
+        "checkpoint",
+        "quiz",
+        "table",
+    ]
     text: str | None = None
     items: list[str] = Field(default_factory=list)
     asset_path: str | None = Field(default=None, max_length=500)
     asset_url: str | None = Field(default=None, max_length=500)
     caption: str | None = Field(default=None, max_length=500)
+    answer_index: int | None = Field(default=None, ge=0, le=25)
 
 
 class CanvasSection(BaseModel):

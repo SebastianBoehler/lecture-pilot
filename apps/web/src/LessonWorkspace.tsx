@@ -7,6 +7,7 @@ import { TutorDrawer } from "./TutorDrawer";
 import { WorkspaceFilesPanel } from "./WorkspaceFilesPanel";
 import type {
   CanvasDocument,
+  CanvasBlock,
   ChatMessage,
   DocumentAnchorId,
   Lecture,
@@ -76,6 +77,13 @@ export function LessonWorkspace({
     }
   }
 
+  function submitQuizAnswer(block: CanvasBlock, answer: string, optionIndex: number) {
+    if (panelMode !== "chat") {
+      onTogglePanel("chat");
+    }
+    void onSendMessage(quizAnswerMessage(block, answer, optionIndex));
+  }
+
   return (
     <main className={layoutClass}>
       <section className="lesson-main">
@@ -100,6 +108,7 @@ export function LessonWorkspace({
             outlinePulseId={outlinePulse?.id ?? null}
             outlinePulseVersion={outlinePulse?.version ?? 0}
             onOpenResource={openWorkspaceResource}
+            onSubmitQuizAnswer={submitQuizAnswer}
           />
         ) : null}
       </section>
@@ -167,4 +176,14 @@ export function LessonWorkspace({
       ) : null}
     </main>
   );
+}
+
+function quizAnswerMessage(block: CanvasBlock, answer: string, optionIndex: number) {
+  const letter = String.fromCharCode(65 + optionIndex);
+  const prompt = block.text?.trim();
+  const title = block.caption?.trim() || "retrieval quiz";
+  return [
+    `Retrieval quiz answer for "${title}": ${letter}. ${answer}`,
+    prompt ? `Question: ${prompt}` : "",
+  ].filter(Boolean).join("\n");
 }

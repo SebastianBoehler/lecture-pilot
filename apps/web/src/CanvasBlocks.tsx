@@ -1,9 +1,11 @@
 import { apiUrl } from "./api";
 import { assetPreviewUrl } from "./assetMedia";
+import { CheckpointBlock, QuizBlock, TableBlock } from "./CanvasLearningBlocks";
 import { DisplayMath, MathText } from "./MathText";
 import { SourceMarker } from "./SourceMarker";
 import { blockSourceReference, sectionSourceReferences } from "./sourceReferences";
 import type { CanvasBlock, CanvasDocument, CanvasSection, DocumentAnchorId, WorkspaceResource } from "./types";
+import { youtubeEmbedUrl } from "./youtubeEmbedUrl";
 
 type CanvasBlocksProps = {
   canvasDocument: CanvasDocument;
@@ -13,6 +15,7 @@ type CanvasBlocksProps = {
   outlinePulseId: DocumentAnchorId | null;
   outlinePulseVersion: number;
   onOpenResource: (resource: WorkspaceResource) => void;
+  onSubmitQuizAnswer: (block: CanvasBlock, answer: string, optionIndex: number) => void;
 };
 
 type RenderBlockOptions = {
@@ -21,6 +24,7 @@ type RenderBlockOptions = {
   outlinePulseId: DocumentAnchorId | null;
   outlinePulseVersion: number;
   onOpenResource: (resource: WorkspaceResource) => void;
+  onSubmitQuizAnswer: (block: CanvasBlock, answer: string, optionIndex: number) => void;
   sourceLabel: string;
   sourceReferences: ReturnType<typeof sectionSourceReferences>;
   keySourceBlockId: string | null;
@@ -34,6 +38,7 @@ export function CanvasBlocks({
   outlinePulseId,
   outlinePulseVersion,
   onOpenResource,
+  onSubmitQuizAnswer,
 }: CanvasBlocksProps) {
   return renderBlocks(section.blocks, {
     highlightedBlockId,
@@ -41,6 +46,7 @@ export function CanvasBlocks({
     outlinePulseId,
     outlinePulseVersion,
     onOpenResource,
+    onSubmitQuizAnswer,
     sourceLabel: section.title,
     sourceReferences: sectionSourceReferences(canvasDocument, section),
     keySourceBlockId: findKeySourceBlockId(section.blocks),
@@ -109,6 +115,7 @@ function renderBlockWithOptions(block: CanvasBlock, options: RenderBlockOptions)
     highlightedText: options.highlightedText,
     outlinePulseVersion: options.outlinePulseVersion,
     onOpenResource: options.onOpenResource,
+    onSubmitQuizAnswer: options.onSubmitQuizAnswer,
     showSourceMarker: shouldShowSourceMarker(block, options.keySourceBlockId),
     sourceLabel: options.sourceLabel,
     sourceReference: blockSourceReference(options.sourceReferences, block),
@@ -126,12 +133,14 @@ function renderBlock(
     showSourceMarker,
     sourceLabel,
     sourceReference,
+    onSubmitQuizAnswer,
   }: {
     isHighlighted: boolean;
     isPulsed: boolean;
     highlightedText: string | null;
     outlinePulseVersion: number;
     onOpenResource: (resource: WorkspaceResource) => void;
+    onSubmitQuizAnswer: (block: CanvasBlock, answer: string, optionIndex: number) => void;
     showSourceMarker: boolean;
     sourceLabel: string;
     sourceReference: ReturnType<typeof sectionSourceReferences>[number];
@@ -139,7 +148,7 @@ function renderBlock(
 ) {
   const className = [
     "canvas-block",
-    isHighlighted ? "is-highlighted" : "",
+    isHighlighted && (!highlightedText?.trim() || block.type === "math") ? "is-highlighted" : "",
     pulseClass(isPulsed, outlinePulseVersion),
   ]
     .filter(Boolean)
@@ -221,6 +230,43 @@ function renderBlock(
     );
   }
 
+  if (block.type === "checkpoint") {
+    return (
+      <CheckpointBlock
+        block={block}
+        className={className}
+        highlightedText={phrase}
+        key={block.id}
+        sourceMarker={sourceMarker}
+      />
+    );
+  }
+
+  if (block.type === "quiz") {
+    return (
+      <QuizBlock
+        block={block}
+        className={className}
+        highlightedText={phrase}
+        key={block.id}
+        sourceMarker={sourceMarker}
+        onSubmitAnswer={onSubmitQuizAnswer}
+      />
+    );
+  }
+
+  if (block.type === "table") {
+    return (
+      <TableBlock
+        block={block}
+        className={className}
+        highlightedText={phrase}
+        key={block.id}
+        sourceMarker={sourceMarker}
+      />
+    );
+  }
+
   return (
     <p className={`${className} canvas-paragraph`} id={block.id} key={block.id}>
       <MathText highlightedText={phrase} text={block.text ?? ""} />
@@ -237,6 +283,8 @@ function pulseClass(isPulsed: boolean, version: number) {
 function findKeySourceBlockId(blocks: CanvasBlock[]) {
   return (
     blocks.find((block) => block.type === "callout")?.id ??
+    blocks.find((block) => block.type === "checkpoint")?.id ??
+    blocks.find((block) => block.type === "quiz")?.id ??
     blocks.find((block) => block.type === "list")?.id ??
     blocks.find((block) => block.type === "paragraph")?.id ??
     null
@@ -247,25 +295,4 @@ function shouldShowSourceMarker(block: CanvasBlock, keySourceBlockId: string | n
   if (block.type === "asset" && block.asset_url) return true;
   if (block.type === "video" && block.asset_url) return true;
   return block.id === keySourceBlockId;
-}
-
-function youtubeEmbedUrl(url: string) {
-  try {
-    const parsed = new URL(url);
-    const host = parsed.hostname.toLowerCase();
-    const parts = parsed.pathname.split("/").filter(Boolean);
-    const videoId = host.endsWith("youtu.be")
-      ? parts[0]
-      : parsed.pathname === "/watch"
-        ? parsed.searchParams.get("v")
-        : parts[0] === "embed"
-          ? parts[1]
-          : null;
-    if (!videoId || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) return null;
-    const start = parsed.searchParams.get("t") ?? parsed.searchParams.get("start");
-    const params = start ? `?start=${Number.parseInt(start, 10) || 0}` : "";
-    return `https://www.youtube-nocookie.com/embed/${videoId}${params}`;
-  } catch {
-    return null;
-  }
 }

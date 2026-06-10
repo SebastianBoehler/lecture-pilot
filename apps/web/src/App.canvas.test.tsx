@@ -54,6 +54,30 @@ describe("LecturePilot canvas interactions", () => {
 
     expect(await screen.findByText(/focus moved/i)).toBeInTheDocument();
     expect(document.querySelector(".phrase-highlight")?.textContent).toMatch(/posterior/i);
+    expect(document.getElementById("bayes-formula-list")).not.toHaveClass("is-highlighted");
+  });
+
+  it("submits retrieval quiz options as tutor turns", async () => {
+    const user = userEvent.setup();
+    const fetchMock = mockLoginAndTutorFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+
+    await logIn(user);
+    await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
+    const correct = screen.getByRole("button", { name: /B Expected risk/i });
+    await user.click(correct);
+
+    expect(await screen.findByPlaceholderText(/ask about this lecture/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Retrieval quiz answer for "Retrieval check": B\. Expected risk/i))
+      .toBeInTheDocument();
+
+    const agentCall = fetchMock.mock.calls.find(([url]) => String(url).includes("/agent/turn"));
+    expect(agentCall).toBeDefined();
+    const request = JSON.parse(String(agentCall?.[1]?.body));
+    expect(request.message).toContain("Question: Which quantity should be minimized");
+    expect(request.message).toContain("B. Expected risk");
+    expect(correct).toHaveClass("is-correct");
   });
 
   it("pulses an outline jump target and clears it after five seconds", async () => {

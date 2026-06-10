@@ -16,6 +16,7 @@ from lecturepilot.latex_canvas_text import (
     slug,
     strip_comments,
 )
+from lecturepilot.latex_canvas_study_sections import read_study_sections
 
 
 @dataclass(frozen=True)
@@ -63,7 +64,12 @@ def _read_grouped_sections(
     lecture_id: str,
 ) -> list[CanvasSection]:
     if lecture_id != "lecture-03":
-        return _read_frame_chunk_sections(frames, material_root, course_id, lecture_id)
+        return read_study_sections(frames, material_root, course_id, lecture_id) or _read_frame_chunk_sections(
+            frames,
+            material_root,
+            course_id,
+            lecture_id,
+        )
 
     by_slug: dict[str, list[LatexFrame]] = {}
     for frame in frames:
@@ -259,7 +265,7 @@ _LECTURE_03_GROUPS = (
         ),
     ),
 )
-CANVAS_IMPORT_VERSION = 10
+CANVAS_IMPORT_VERSION = 11
 _FRAME_RE = re.compile(
     r"\\begin\{frame}(?:\[[^]]*])?(?:\{(?P<title>[^{}]+)})?(?P<body>.*?)\\end\{frame}",
     re.DOTALL,

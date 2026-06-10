@@ -8,6 +8,7 @@ import type {
   DocumentAnchorId,
   Lecture,
   WorkspaceResource,
+  CanvasBlock,
 } from "./types";
 
 export function LessonCanvas({
@@ -21,6 +22,7 @@ export function LessonCanvas({
   outlinePulseId,
   outlinePulseVersion,
   onOpenResource,
+  onSubmitQuizAnswer,
 }: {
   canvasDocument: CanvasDocument;
   lecture: Lecture;
@@ -32,6 +34,7 @@ export function LessonCanvas({
   outlinePulseId: DocumentAnchorId | null;
   outlinePulseVersion: number;
   onOpenResource: (resource: WorkspaceResource) => void;
+  onSubmitQuizAnswer: (block: CanvasBlock, answer: string, optionIndex: number) => void;
 }) {
   useEffect(() => {
     const section = document.getElementById(focusedSectionId);
@@ -70,6 +73,8 @@ export function LessonCanvas({
           outlinePulseId,
           outlinePulseVersion,
           onOpenResource,
+          onSubmitQuizAnswer,
+          navigationVersion,
         }),
       )}
     </article>
@@ -85,6 +90,8 @@ function renderSection({
   outlinePulseId,
   outlinePulseVersion,
   onOpenResource,
+  onSubmitQuizAnswer,
+  navigationVersion,
 }: {
   canvasDocument: CanvasDocument;
   section: CanvasSection;
@@ -94,10 +101,13 @@ function renderSection({
   outlinePulseId: DocumentAnchorId | null;
   outlinePulseVersion: number;
   onOpenResource: (resource: WorkspaceResource) => void;
+  onSubmitQuizAnswer: (block: CanvasBlock, answer: string, optionIndex: number) => void;
+  navigationVersion: number;
 }) {
   const className = [
     "canvas-section",
     isFocused ? "is-focused" : "",
+    isFocused ? pulseClass(true, navigationVersion) : "",
     pulseClass(outlinePulseId === section.id, outlinePulseVersion),
   ]
     .filter(Boolean)
@@ -111,7 +121,6 @@ function renderSection({
       id={section.id}
       key={section.id}
     >
-      {isFocused ? <span className="focus-chip">In focus</span> : null}
       <h2 id={`${section.id}-heading`}>{section.title}</h2>
       <CanvasBlocks
         canvasDocument={canvasDocument}
@@ -121,6 +130,7 @@ function renderSection({
         outlinePulseId={outlinePulseId}
         outlinePulseVersion={outlinePulseVersion}
         onOpenResource={onOpenResource}
+        onSubmitQuizAnswer={onSubmitQuizAnswer}
       />
       <SectionSources
         canvasDocument={canvasDocument}

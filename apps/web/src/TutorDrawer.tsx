@@ -1,6 +1,7 @@
 import { SendHorizontal } from "lucide-react";
-import { FormEvent, KeyboardEvent, useState } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
 
+import { MathText } from "./MathText";
 import type { ChatMessage } from "./types";
 
 export function TutorDrawer({
@@ -15,6 +16,14 @@ export function TutorDrawer({
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const messageListRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const list = messageListRef.current;
+    if (list) {
+      list.scrollTop = list.scrollHeight;
+    }
+  }, [messages.length]);
 
   async function submitMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -44,52 +53,66 @@ export function TutorDrawer({
   }
 
   return (
-    <aside className="drawer" aria-label="Tutor drawer">
-      <div className="drawer-section">
+    <aside className="drawer tutor-drawer" aria-label="Tutor drawer">
+      <div className="drawer-section tutor-drawer-section">
         <div className="tutor-heading">
           <h2>Tutor</h2>
           <span className="tutor-status">{tutorStatus(model)}</span>
         </div>
-        <div className="message-list" aria-live="polite">
+        <div className="message-list" aria-live="polite" ref={messageListRef}>
           {messages.map((message) => (
-            <div className={`chat-message ${message.role}`} key={message.id}>
-              <p>{message.content}</p>
-              {message.toolTags?.length ? (
-                <div className="tool-tags" aria-label="Tool calls">
-                  {message.toolTags.map((tag) => (
-                    <span className="tool-tag" key={tag}>
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
+            <div className={`chat-turn ${message.role}`} key={message.id}>
+              <div className={`chat-message ${message.role}`}>
+                <p><MathText highlightedText={null} text={message.content} /></p>
+              </div>
+              <ToolTags tags={message.toolTags} />
             </div>
           ))}
         </div>
-        <form className="chat-form" onSubmit={submitMessage}>
-          <div className="chat-composer">
-            <textarea
-              aria-label="Tutor message"
-              onChange={(event) => setDraft(event.target.value)}
-              onKeyDown={handleDraftKeyDown}
-              placeholder="Ask about this lecture..."
-              rows={1}
-              value={draft}
-            />
-            <button
-              aria-label="Send message"
-              className="chat-send-button"
-              disabled={isSending || !draft.trim()}
-              title="Send message"
-              type="submit"
-            >
-              <SendHorizontal size={17} />
-            </button>
-          </div>
-        </form>
-        {error ? <p className="form-error">{error}</p> : null}
+        <div className="chat-dock">
+          <form className="chat-form" onSubmit={submitMessage}>
+            <div className="chat-composer">
+              <textarea
+                aria-label="Tutor message"
+                onChange={(event) => setDraft(event.target.value)}
+                onKeyDown={handleDraftKeyDown}
+                placeholder="Ask about this lecture..."
+                rows={1}
+                value={draft}
+              />
+              <button
+                aria-label="Send message"
+                className="chat-send-button"
+                disabled={isSending || !draft.trim()}
+                title="Send message"
+                type="submit"
+              >
+                <SendHorizontal size={17} />
+              </button>
+            </div>
+          </form>
+          {error ? <p className="form-error">{error}</p> : null}
+        </div>
       </div>
     </aside>
+  );
+}
+
+function ToolTags({ tags }: { tags?: string[] }) {
+  if (!tags?.length) {
+    return null;
+  }
+  const visibleTags = tags.slice(-3);
+  const hiddenCount = tags.length - visibleTags.length;
+  return (
+    <div className="tool-tags" aria-label="Tool calls">
+      {hiddenCount > 0 ? <span className="tool-tag tool-tag-muted">+{hiddenCount} earlier</span> : null}
+      {visibleTags.map((tag, index) => (
+        <span className="tool-tag" key={`${tag}-${index}`}>
+          <MathText highlightedText={null} text={tag} />
+        </span>
+      ))}
+    </div>
   );
 }
 

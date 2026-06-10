@@ -5,12 +5,7 @@ from datetime import UTC, datetime
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.model_generated_sections import fallback_generated_command
-from lecturepilot.models import (
-    AgentTurnInput,
-    CanvasCommand,
-    QualityGateDecision,
-    QualityGateStatus,
-)
+from lecturepilot.models import AgentTurnInput, CanvasCommand, QualityGateDecision, QualityGateStatus
 
 _SAFE_ID_RE = re.compile(r"[a-z0-9][a-z0-9-]{0,119}")
 
@@ -38,6 +33,7 @@ def read_canvas_commands(payload: dict, turn: AgentTurnInput) -> list[CanvasComm
         fallback_generated = fallback_generated_command(turn, _default_section_id(turn))
         if fallback_generated is not None:
             commands.insert(0, fallback_generated)
+    commands = [_ensure_requested_learning_blocks(command, turn) for command in commands]
     focus_id = _read_section_id(payload.get("focus_section_id"), turn)
     if not any(command.type == "focus_section" for command in commands):
         commands.insert(0, CanvasCommand(type="focus_section", section_id=focus_id))
@@ -92,19 +88,73 @@ def _read_generated_blocks(raw_blocks: object, section_id: str) -> list[CanvasBl
     for index, raw_block in enumerate(raw_blocks[:8], start=1):
         if not isinstance(raw_block, dict):
             continue
-        block_type = raw_block.get("type") if raw_block.get("type") in {"paragraph", "list", "callout", "math"} else "paragraph"
+        block_type = raw_block.get("type")
+        if block_type not in {"paragraph", "list", "callout", "math", "table", "checkpoint", "quiz"}:
+            block_type = "paragraph"
         block_id = _safe_generated_id(str(raw_block.get("id") or f"{section_id}-b-{index}"))
+        raw_items = raw_block.get("items", [])
         blocks.append(
             CanvasBlock(
                 id=block_id,
                 type=block_type,
-                text=_trim_text(str(raw_block.get("text") or ""), 1200) or None,
-                items=[_trim_text(str(item), 240) for item in raw_block.get("items", [])[:8]]
-                if isinstance(raw_block.get("items"), list)
-                else [],
+                text=_trim_text(str(raw_block.get("text") or raw_block.get("question") or ""), 1200) or None,
+                items=[_trim_text(str(item), 240) for item in raw_items[:8]] if isinstance(raw_items, list) else [],
+                caption=str(raw_block.get("caption") or raw_block.get("title") or "")[:500] or None,
             )
         )
     return blocks
+
+
+def _ensure_requested_learning_blocks(command: CanvasCommand, turn: AgentTurnInput) -> CanvasCommand:
+    if command.type not in {"append_section", "update_section"} or command.section is None:
+        return command
+    lowered = turn.message.lower()
+    requested = {
+        "checkpoint": "checkpoint" in lowered or "gate" in lowered,
+        "quiz": "quiz" in lowered,
+        "table": "table" in lowered,
+    }
+    if not any(requested.values()):
+        return command
+    blocks = list(command.section.blocks)
+    present = {block.type for block in blocks}
+    if requested["table"] and "table" not in present:
+        blocks.append(
+            CanvasBlock(
+                id=_safe_generated_id(f"{command.section.id}-table"),
+                type="table",
+                text=(
+                    "| Action | What to compute |\n"
+                    "| --- | --- |\n"
+                    "| Classify | Posterior probability times decision loss |\n"
+                    "| Reject | Cost of asking for more evidence |\n"
+                    "| Choose | Lowest expected risk |"
+                ),
+                caption="Expected-risk table",
+            )
+        )
+    if requested["checkpoint"] and "checkpoint" not in present:
+        blocks.append(
+            CanvasBlock(
+                id=_safe_generated_id(f"{command.section.id}-checkpoint"),
+                type="checkpoint",
+                caption="Quality gate",
+                text="Explain the decision rule, then name which cost or posterior term changes the chosen action.",
+            )
+        )
+    if requested["quiz"] and "quiz" not in present:
+        blocks.append(
+            CanvasBlock(
+                id=_safe_generated_id(f"{command.section.id}-quiz"),
+                type="quiz",
+                caption="Retrieval check",
+                text="Which value directly changes the expected-risk threshold?",
+                items=["A loss term", "The slide number", "The notation font"],
+                answer_index=0,
+            )
+        )
+    section = command.section.model_copy(update={"blocks": blocks[:8]})
+    return command.model_copy(update={"section": section})
 
 
 def _read_highlight_command(raw_command: dict, turn: AgentTurnInput) -> CanvasCommand | None:

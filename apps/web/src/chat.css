@@ -1,3 +1,15 @@
+.tutor-drawer {
+  display: flex;
+  overflow: hidden;
+}
+
+.tutor-drawer-section {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: 100%;
+  min-height: calc(100vh - 92px);
+}
+
 .tutor-heading {
   display: flex;
   align-items: baseline;
@@ -16,7 +28,16 @@
 
 .message-list {
   display: grid;
+  align-content: start;
   gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.chat-turn {
+  display: grid;
+  gap: 6px;
 }
 
 .chat-message {
@@ -40,7 +61,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 10px;
+  padding: 0 2px;
 }
 
 .tool-tag {
@@ -51,6 +72,18 @@
   background: var(--color-bg-primary);
   font-size: 12px;
   font-weight: 700;
+}
+
+.tool-tag-muted {
+  color: var(--color-text-tertiary);
+  font-weight: 600;
+}
+
+.chat-dock {
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  background: var(--color-bg-primary);
 }
 
 .chat-form {
@@ -100,4 +133,10 @@
 .chat-send-button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
+}
+
+@media (max-width: 860px) {
+  .tutor-drawer-section {
+    min-height: calc(78vh - 36px);
+  }
 }

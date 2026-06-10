@@ -71,10 +71,14 @@ def _section_messages(source_document: CanvasDocument, section: CanvasSection) -
             "role": "system",
             "content": (
                 "Rewrite this extracted lecture section into a clean markdown learning "
-                "canvas section. Return JSON only with title, source_ref, and blocks. "
-                "Use 2 to 5 blocks. Blocks may be paragraph, list, callout, math, or asset. "
-                "Preserve formulas and source-backed assets. Add a worked example or "
-                "infographic brief when it helps learning. Do not invent unsupported topics."
+                "canvas section. Return JSON only with id, title, source_ref, and blocks. "
+                "Use 2 to 5 blocks. Blocks may be paragraph, list, callout, math, asset, "
+                "table, checkpoint, or quiz. Quiz blocks use text as the question and "
+                "items as possible answers plus answer_index for the correct option. "
+                "Do not preserve raw slide ids; create a stable learning topic id. Preserve "
+                "key formulas and source-backed assets. Add a worked example or infographic "
+                "brief when it helps learning. Use light Markdown for key terms and notation. "
+                "Do not invent unsupported topics."
             ),
         },
         {
@@ -109,12 +113,13 @@ def _read_section_payload(
     allowed_assets: dict[str, str | None],
 ) -> CanvasSection:
     payload = _section_payload(payload)
-    blocks = _read_blocks(payload.get("blocks"), source_section.id, allowed_assets)
+    section_id = _safe_id(str(payload.get("id") or payload.get("section_id") or f"learning-{source_section.id}"))
+    blocks = _read_blocks(payload.get("blocks"), section_id, allowed_assets)
     if not blocks:
         raise ProviderConfigurationError(f"{source_section.id} has no usable blocks.")
     source_ref = str(payload.get("source_ref") or source_section.source_ref or "source evidence")
     return CanvasSection(
-        id=source_section.id,
+        id=section_id,
         title=str(payload.get("title") or source_section.title)[:200],
         source_ref=source_ref[:500],
         blocks=blocks,
@@ -172,7 +177,7 @@ def _read_blocks(
         if not isinstance(raw_block, dict):
             continue
         block_type = raw_block.get("type")
-        if block_type not in {"paragraph", "list", "callout", "math", "asset"}:
+        if block_type not in {"paragraph", "list", "callout", "math", "asset", "table", "checkpoint", "quiz"}:
             block_type = "paragraph"
         if block_type == "asset" and raw_block.get("asset_path") not in allowed_assets:
             continue
@@ -206,6 +211,22 @@ def _read_block(
             asset_url=allowed_assets.get(asset_path),
             caption=str(raw_block.get("caption") or asset_path)[:500],
         )
+    if block_type == "quiz":
+        return CanvasBlock(
+            id=block_id,
+            type="quiz",
+            text=_trim(str(raw_block.get("text") or raw_block.get("question") or ""), 1000),
+            items=[_trim(str(item), 180) for item in _block_items(raw_block)[:6]],
+            caption=str(raw_block.get("caption") or raw_block.get("title") or "Checkpoint quiz")[:500],
+            answer_index=_answer_index(raw_block),
+        )
+    if block_type in {"checkpoint", "table"}:
+        return CanvasBlock(
+            id=block_id,
+            type=block_type,
+            text=_trim(str(raw_block.get("text") or raw_block.get("content") or ""), 1600),
+            caption=str(raw_block.get("caption") or raw_block.get("title") or "")[:500] or None,
+        )
     return CanvasBlock(
         id=block_id,
         type=block_type,
@@ -221,12 +242,23 @@ def _block_items(raw_block: dict) -> list:
     return []
 
 
+def _answer_index(raw_block: dict) -> int:
+    items = _block_items(raw_block)[:6]
+    value = raw_block.get("answer_index", raw_block.get("correct_index", 0))
+    return value if isinstance(value, int) and 0 <= value < len(items) else 0
+
+
 def _allowed_assets(section: CanvasSection) -> dict[str, str | None]:
     return {
         block.asset_path: block.asset_url
         for block in section.blocks
         if block.type == "asset" and block.asset_path
     }
+
+
+def _safe_id(value: str) -> str:
+    safe = "".join(char.lower() if char.isalnum() else "-" for char in value)
+    return "-".join(part for part in safe.split("-") if part)[:120] or "learning-section"
 
 
 def _trim(value: str, limit: int) -> str:
