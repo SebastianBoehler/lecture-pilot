@@ -78,12 +78,9 @@ def run_local_preview_turn(turn: AgentTurnInput) -> AgentTurnResult:
         )
 
     missing = ", ".join(evidence.missing_labels)
-    target = _topic_target(turn.message)
+    target = _topic_target(turn)
     return AgentTurnResult(
-        message=(
-            f"{learning_mode} Gate pending: explain how Bayes' formula turns evidence into a posterior, "
-            f"then say how costs or risk change the final classifier decision. Missing evidence: {missing}."
-        ),
+        message=_pending_gate_message(turn, learning_mode, missing, target),
         canvas_commands=[
             CanvasCommand(type="focus_section", section_id=target.section_id),
             CanvasCommand(
@@ -109,24 +106,101 @@ def _mentions_any(text: str, needles: tuple[str, ...]) -> bool:
     return any(needle in text for needle in needles)
 
 
-def _topic_target(message: str) -> TopicTarget:
-    normalized = message.lower()
+def _pending_gate_message(
+    turn: AgentTurnInput,
+    learning_mode: str,
+    missing: str,
+    target: TopicTarget,
+) -> str:
+    if turn.attendance == AttendanceStatus.PRESENT:
+        return (
+            f"{learning_mode} Feedback: your answer is not complete yet. Gate pending; "
+            f"missing evidence: {missing}. I focused the supporting canvas text. Now give "
+            "one compact answer that states the definition, mechanism, computation, and one "
+            "risk-sensitive decision consequence."
+        )
+    if turn.attendance == AttendanceStatus.ABSENT:
+        return (
+            f"{learning_mode} Start with this section, then move toward the gate in small steps. "
+            "First, identify the probability or risk term in the highlighted text. Second, say "
+            "what information changes after observing evidence. Third, connect that updated "
+            f"belief to a decision cost. Gate pending; missing evidence: {missing}."
+        )
+    return (
+        f"{learning_mode} I focused the most relevant canvas section to diagnose the gap. "
+        f"Gate pending; missing evidence: {missing}. Answer the highlighted point first."
+    )
+
+
+def _topic_target(turn: AgentTurnInput) -> TopicTarget:
+    normalized = turn.message.lower()
     if _mentions_any(
         normalized,
         ("risk", "cost", "loss", "false positive", "false negative", "threshold", "reject"),
     ):
-        return TopicTarget("losses-and-risks", "losses-and-risks-list", "costly")
+        return _canvas_target(turn, ("risk", "loss", "cost", "boundar"), "cost") or TopicTarget(
+            "losses-and-risks",
+            "losses-and-risks-list",
+            "costly",
+        )
     if _mentions_any(normalized, ("spam", "naive", "filter", "independence")):
-        return TopicTarget("naive-bayes-classifiers", "naive-bayes-classifiers-p-1", "Naive Bayes")
+        return _canvas_target(turn, ("naive", "spam", "text"), "Naive Bayes") or TopicTarget(
+            "naive-bayes-classifiers",
+            "naive-bayes-classifiers-p-1",
+            "Naive Bayes",
+        )
     if _mentions_any(normalized, ("decision", "classif", "predict", "choose")):
-        return TopicTarget("losses-and-risks", "losses-and-risks-list", "decision")
+        return _canvas_target(turn, ("decision", "risk", "classif"), "decision") or TopicTarget(
+            "losses-and-risks",
+            "losses-and-risks-list",
+            "decision",
+        )
     if _mentions_any(normalized, ("posterior", "prior", "likelihood", "evidence", "formula", "p(c|x")):
-        return TopicTarget("bayes-formula", "bayes-formula-list", "probability")
-    return TopicTarget(
+        return _canvas_target(turn, ("bayes", "conditional", "formula"), "probability") or TopicTarget(
+            "bayes-formula",
+            "bayes-formula-list",
+            "probability",
+        )
+    return _focused_canvas_target(turn) or TopicTarget(
         "bayesian-decision-theory-the-aim",
         "bayesian-decision-theory-the-aim-p-1",
         "decisions",
     )
+
+
+def _canvas_target(
+    turn: AgentTurnInput,
+    needles: tuple[str, ...],
+    highlight_text: str,
+) -> TopicTarget | None:
+    if turn.canvas_context is None:
+        return None
+    for section in turn.canvas_context.sections:
+        haystack = f"{section.id} {section.title}".lower()
+        if not any(needle in haystack for needle in needles):
+            continue
+        return TopicTarget(section.id, _first_teaching_block_id(section), highlight_text)
+    return None
+
+
+def _focused_canvas_target(turn: AgentTurnInput) -> TopicTarget | None:
+    if turn.canvas_context is None:
+        return None
+    focused = turn.canvas_state.focused_section_id
+    for section in turn.canvas_context.sections:
+        if section.id == focused:
+            return TopicTarget(section.id, _first_teaching_block_id(section), "key idea")
+    if turn.canvas_context.sections:
+        section = turn.canvas_context.sections[0]
+        return TopicTarget(section.id, _first_teaching_block_id(section), "key idea")
+    return None
+
+
+def _first_teaching_block_id(section) -> str:
+    for block in section.blocks:
+        if block.type in {"paragraph", "list", "math", "callout"}:
+            return block.id
+    return section.blocks[0].id if section.blocks else f"{section.id}-heading"
 
 
 @dataclass(frozen=True)
@@ -173,9 +247,15 @@ def _asks_for_soccer_example(message: str) -> bool:
 
 def _learning_mode(turn: AgentTurnInput) -> str:
     if turn.attendance == AttendanceStatus.PRESENT:
-        return "Verification mode: you marked yourself present, so I will check understanding before reteaching."
+        return (
+            "Verification mode: you marked yourself present, so I will verify your knowledge "
+            "and give feedback before reteaching."
+        )
     if turn.attendance == AttendanceStatus.ABSENT:
-        return "Guided walkthrough mode: you marked yourself absent, so I will teach from the lecture material."
+        return (
+            "Guided walkthrough mode: you marked yourself absent, so I will teach the material "
+            "step by step toward the quality gate."
+        )
     return "Diagnostic mode: attendance is unknown, so I will first locate the missing concept."
 
 

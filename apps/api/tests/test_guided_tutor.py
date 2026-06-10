@@ -34,6 +34,7 @@ async def test_local_preview_tutor_runs_without_provider_key(monkeypatch) -> Non
     assert result.quality_gate is not None
     assert result.quality_gate.status == QualityGateStatus.NEEDS_EVIDENCE
     assert "guided walkthrough mode" in result.message.lower()
+    assert "step" in result.message.lower()
     assert "gate pending" in result.message.lower()
     assert "what would you like" not in result.message.lower()
 
@@ -58,6 +59,7 @@ async def test_local_preview_tutor_keeps_definition_only_answer_pending(monkeypa
     assert result.quality_gate is not None
     assert result.quality_gate.status == QualityGateStatus.NEEDS_EVIDENCE
     assert "verification mode" in result.message.lower()
+    assert "feedback" in result.message.lower()
     assert "gate pending" in result.message.lower()
     assert "risk or cost" in result.message.lower()
     assert "gate passed" not in result.message.lower()
@@ -156,6 +158,8 @@ def test_model_prompt_requires_guided_quality_gate_turns() -> None:
     assert "do not mark a gate passed from keywords" in system_prompt
     assert "definition, mechanism, computation, and transfer" in system_prompt
     assert "attendance selects the tutor stance" in system_prompt
+    assert "examiner and coach" in system_prompt
+    assert "teacher for an absent student" in system_prompt
     assert "canvas_commands" in system_prompt
     assert "highlight_span" in system_prompt
 

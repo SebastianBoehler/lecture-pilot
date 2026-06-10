@@ -11,10 +11,10 @@ export function initialMessagesForAttendance(attendance: Attendance): ChatMessag
 
 function initialMessage(attendance: Attendance) {
   if (attendance === "present") {
-    return "You marked this lecture as attended. I’ll start in verification mode and check the key ideas before reteaching.";
+    return "You marked this lecture as attended. I’ll verify the key learning goals and give feedback on what is secure or still missing.";
   }
   if (attendance === "absent") {
-    return "You marked this lecture as missed. I’ll start in guided walkthrough mode and teach from the lecture canvas.";
+    return "You marked this lecture as missed. I’ll teach the canvas step by step and lead you toward the quality gates without jumping straight into quizzes.";
   }
   return "Attendance is unknown for this lecture. I’ll start in diagnostic mode and locate the first missing concept.";
 }
