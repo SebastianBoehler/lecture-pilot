@@ -35,6 +35,7 @@ function App() {
   const [view, setView] = useState<View>(session ? "dashboard" : "login");
   const [availableLectures, setAvailableLectures] = useState(lectures);
   const [selectedLecture, setSelectedLecture] = useState(lectures[2]);
+  const [lessonUserId, setLessonUserId] = useState(effectiveUserId(session));
   const [lessonBackView, setLessonBackView] = useState<"dashboard" | "professor">("dashboard");
   const [professorBackView, setProfessorBackView] = useState<"login" | "dashboard">(
     session ? "dashboard" : "login",
@@ -69,7 +70,7 @@ function App() {
     try {
       result = await sendAgentTurnStream(
         {
-          user_id: effectiveUserId(session),
+          user_id: lessonUserId,
           course_id: "martius-ml",
           lecture_id: selectedLecture.id,
           attendance: selectedLecture.attendance,
@@ -118,6 +119,7 @@ function App() {
     setCanvasDocument(null);
     setCanvasError(null);
     setMessages(initialMessagesForAttendance(lectures[2].attendance));
+    setLessonUserId("local-demo");
     setLastTutorModel(null);
   }
 
@@ -127,6 +129,7 @@ function App() {
     userId = effectiveUserId(session),
   ) {
     setSelectedLecture(lecture);
+    setLessonUserId(userId);
     setLessonBackView(backView);
     setView("lesson");
     setPanelMode(null);
