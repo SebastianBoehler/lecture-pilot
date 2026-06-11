@@ -73,6 +73,12 @@ export type SourceBundleManifest = {
   counts_by_kind: Record<string, number>;
 };
 
+export type CourseWorkspaceResult = {
+  course: UniversityCourse;
+  lectures: Lecture[];
+  active_lecture_id: string;
+};
+
 export type YoutubeVideoCandidate = {
   video_id: string;
   title: string;

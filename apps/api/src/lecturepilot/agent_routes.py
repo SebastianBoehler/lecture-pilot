@@ -88,7 +88,7 @@ async def _complete_agent_turn_inner(
             emit(tag)
 
     tool_executor = None
-    if turn.course_id == course.id:
+    if turn.course_id:
         activity("read canvas")
         try:
             activity("load learner memory")
@@ -170,7 +170,7 @@ async def _complete_agent_turn_inner(
     if tool_executor is not None:
         result = _merge_tool_outputs(result, tool_executor)
     result = keep_canvas_actions_from_passing_gate(result, turn.message)
-    if result.quality_gate is not None and turn.course_id == course.id:
+    if result.quality_gate is not None and turn.course_id:
         activity("save quality gate")
         with observability.tool_span(
             "record_quality_gate",

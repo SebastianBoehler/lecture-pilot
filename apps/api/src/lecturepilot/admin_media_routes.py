@@ -31,7 +31,6 @@ def register_admin_media_routes(
         max_results: int = Query(default=5, ge=1, le=10),
         context: TenantContext = Depends(request_context),
     ) -> YoutubeSearchResponse:
-        _assert_course(course_id, course)
         require_course_manager(context, course_tenant_id=course_tenant_id)
         try:
             return app.state.youtube_discovery.search(q, max_results=max_results)
@@ -48,8 +47,7 @@ def register_admin_media_routes(
         selection: YoutubeSelectionInput,
         context: TenantContext = Depends(request_context),
     ) -> YoutubeSelectionResult:
-        _assert_course(course_id, course)
-        _assert_lecture(lecture_id, lecture_ids)
+        _assert_seeded_lecture(course_id, lecture_id, course, lecture_ids)
         require_course_manager(context, course_tenant_id=course_tenant_id)
         try:
             return add_youtube_selection(
@@ -68,8 +66,7 @@ def register_admin_media_routes(
         lecture_id: str,
         context: TenantContext = Depends(request_context),
     ) -> list[dict]:
-        _assert_course(course_id, course)
-        _assert_lecture(lecture_id, lecture_ids)
+        _assert_seeded_lecture(course_id, lecture_id, course, lecture_ids)
         require_course_manager(context, course_tenant_id=course_tenant_id)
         return list_course_media(
             material_root=_course_media_root(app, course_id),
@@ -82,7 +79,6 @@ def register_admin_media_routes(
         course_id: str,
         context: TenantContext = Depends(request_context),
     ) -> dict[str, int]:
-        _assert_course(course_id, course)
         require_course_manager(context, course_tenant_id=course_tenant_id)
         return {
             "deleted": clear_course_media(
@@ -92,13 +88,13 @@ def register_admin_media_routes(
         }
 
 
-def _assert_course(course_id: str, course: Course) -> None:
-    if course_id != course.id:
-        raise HTTPException(status_code=404, detail="Course not found.")
-
-
-def _assert_lecture(lecture_id: str, lecture_ids: set[str]) -> None:
-    if lecture_id not in lecture_ids:
+def _assert_seeded_lecture(
+    course_id: str,
+    lecture_id: str,
+    course: Course,
+    lecture_ids: set[str],
+) -> None:
+    if course_id == course.id and lecture_id not in lecture_ids:
         raise HTTPException(status_code=404, detail="Lecture not found.")
 
 

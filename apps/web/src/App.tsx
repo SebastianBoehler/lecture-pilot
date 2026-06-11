@@ -34,6 +34,7 @@ function App() {
   const [session, setSession] = useStoredLoginSession();
   const [view, setView] = useState<View>(session ? "dashboard" : "login");
   const [availableLectures, setAvailableLectures] = useState(lectures);
+  const [selectedCourseId, setSelectedCourseId] = useState("martius-ml");
   const [selectedLecture, setSelectedLecture] = useState(lectures[2]);
   const [lessonUserId, setLessonUserId] = useState(effectiveUserId(session));
   const [lessonBackView, setLessonBackView] = useState<"dashboard" | "professor">("dashboard");
@@ -71,7 +72,7 @@ function App() {
       result = await sendAgentTurnStream(
         {
           user_id: lessonUserId,
-          course_id: "martius-ml",
+          course_id: selectedCourseId,
           lecture_id: selectedLecture.id,
           attendance: selectedLecture.attendance,
           message,
@@ -120,15 +121,18 @@ function App() {
     setCanvasDocument(null);
     setCanvasError(null);
     setMessages(initialMessagesForAttendance(lectures[2].attendance));
+    setSelectedCourseId("martius-ml");
     setLessonUserId("local-demo");
     setLastTutorModel(null);
   }
 
   async function handleOpenLecture(
+    courseId: string,
     lecture: Lecture,
     backView: "dashboard" | "professor" = "dashboard",
     userId = effectiveUserId(session),
   ) {
+    setSelectedCourseId(courseId);
     setSelectedLecture(lecture);
     setLessonUserId(userId);
     setLessonBackView(backView);
@@ -144,7 +148,7 @@ function App() {
     setLastTutorModel(null);
 
     try {
-      const document = await getLectureCanvas("martius-ml", lecture.id, userId, session ?? localDemoSession);
+      const document = await getLectureCanvas(courseId, lecture.id, userId, session ?? localDemoSession);
       setCanvasDocument(document);
       setFocusedSectionId(document.sections[0]?.id ?? "bayesian-decision-theory-the-aim");
     } catch (error) {
@@ -208,7 +212,9 @@ function App() {
           lectures={availableLectures}
           tutorWorkspacePublished={demoTutorPublished}
           session={session}
-          onOpen={handleOpenLecture}
+          onOpen={(lecture) => {
+            void handleOpenLecture("martius-ml", lecture);
+          }}
           onSetAttendance={handleSetAttendance}
         />
       ) : view === "profile" && session ? (
@@ -219,8 +225,8 @@ function App() {
           onBack={() => setView(professorBackView)}
           onPublishWorkspace={publishDemoTutor}
           onResetWorkspace={unpublishDemoTutor}
-          onPreviewWorkspace={() => {
-            void handleOpenLecture(lectures[2], "professor", "professor-preview");
+          onPreviewWorkspace={(courseId, lecture) => {
+            void handleOpenLecture(courseId, lecture, "professor", "professor-preview");
           }}
           workspacePublished={demoTutorPublished}
         />

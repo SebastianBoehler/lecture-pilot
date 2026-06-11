@@ -16,6 +16,7 @@ from lecturepilot.canvas_workspace_config import (
     default_material_root as _default_material_root,
     default_workspace_root as _default_workspace_root,
     lecture_source_name,
+    SEEDED_COURSE_ID,
 )
 from lecturepilot.course_canvas_store import CourseCanvasStore
 from lecturepilot.course_media import apply_course_media
@@ -171,8 +172,10 @@ class CanvasWorkspace:
     def course_media_root(self, course_id: str) -> Path:
         return self.layout.course_root(course_id)
 
-    def source_bundle_roots(self, course_id: str) -> list[Path]:
-        roots = [self.layout.course_uploads_dir(course_id), self.material_root]
+    def source_bundle_roots(self, course_id: str, *, include_seeded_materials: bool = True) -> list[Path]:
+        roots = [self.layout.course_uploads_dir(course_id)]
+        if include_seeded_materials:
+            roots.append(self.material_root)
         return [root for index, root in enumerate(roots) if root.exists() and root not in roots[:index]]
 
     def _initial_document(self, *, course_id: str, lecture_id: str, user_id: str) -> CanvasDocument:
@@ -284,13 +287,13 @@ class CanvasWorkspace:
 
     def _source_path(self, course_id: str, lecture_id: str) -> Path:
         source_name = lecture_source_name(lecture_id)
-        if source_name is None:
-            raise CanvasWorkspaceError(f"No source mapping configured for {lecture_id}.")
-        candidates = [
-            self.layout.course_uploads_dir(course_id) / source_name,
-            self.material_root / source_name,
-        ]
+        uploads_dir = self.layout.course_uploads_dir(course_id)
+        source_names = [source_name] if source_name else []
+        source_names.extend(str(path.relative_to(uploads_dir)) for path in sorted(uploads_dir.rglob("*.tex")))
+        candidates = [uploads_dir / name for name in dict.fromkeys(source_names)]
+        if source_name and course_id == SEEDED_COURSE_ID:
+            candidates.append(self.material_root / source_name)
         for source_path in candidates:
             if source_path.exists():
                 return source_path
-        raise CanvasWorkspaceError(f"Course source not found: {candidates[-1]}")
+        raise CanvasWorkspaceError(f"No LaTeX source found for {course_id}/{lecture_id}.")

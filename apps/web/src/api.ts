@@ -2,11 +2,13 @@ import type {
   Attendance,
   CanvasDocument,
   CanvasSection,
+  CourseWorkspaceResult,
   LoginSession,
   SourceBundleManifest,
   YoutubeVideoCandidate,
 } from "./types";
 import { authHeaders, courseManagerHeaders } from "./authz";
+import type { CourseSetup } from "./professorBuilderState";
 
 export type CanvasCommand = {
   type: "focus_section" | "highlight_span" | "open_artifact" | "append_section" | "update_section";
@@ -189,6 +191,26 @@ export async function draftLectureCanvas(
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Canvas planner failed."));
   return payload as CanvasDocument;
+}
+
+export async function createCourseWorkspace(
+  setup: CourseSetup,
+  session: LoginSession,
+): Promise<CourseWorkspaceResult> {
+  const response = await fetch(apiUrl("/admin/course-workspaces"), {
+    method: "POST",
+    headers: { ...courseManagerHeaders(session), "Content-Type": "application/json" },
+    body: JSON.stringify({
+      course_title: setup.courseTitle,
+      lecture_title: setup.lectureTitle,
+      lecture_number: setup.lectureNumber,
+      lecture_count: Number(setup.lectureCount) || null,
+      target: setup.target,
+    }),
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "Course workspace creation failed."));
+  return payload as CourseWorkspaceResult;
 }
 
 export async function getSourceBundle(courseId: string, session: LoginSession): Promise<SourceBundleManifest> {

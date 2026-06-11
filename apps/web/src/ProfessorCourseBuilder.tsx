@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-
 import {
   clearCourseYoutubeMedia,
+  createCourseWorkspace,
   draftLectureCanvas,
   getLectureCanvas,
   getSourceBundle,
@@ -18,13 +18,10 @@ import {
   VideoCandidates,
 } from "./ProfessorCourseBuilderParts";
 import { defaultFlow, isCourseSetupReady, readSavedFlow, writeSavedFlow } from "./professorBuilderState";
+import { lectureFromWorkspace, requireWorkspace } from "./professorWorkspaceView";
 import { uploadDestination } from "./professorUpload";
 import type { CanvasDocument, LoginSession, SourceBundleManifest, YoutubeVideoCandidate } from "./types";
 import type { CourseSetup } from "./professorBuilderState";
-
-const courseId = "martius-ml";
-const lectureId = "lecture-03";
-
 export function ProfessorCourseBuilder({
   session,
   onBack,
@@ -37,12 +34,13 @@ export function ProfessorCourseBuilder({
   onBack: () => void;
   onPublishWorkspace: () => void;
   onResetWorkspace: () => void;
-  onPreviewWorkspace: () => void;
+  onPreviewWorkspace: (courseId: string, lecture: ReturnType<typeof lectureFromWorkspace>) => void;
   workspacePublished: boolean;
 }) {
   const [savedFlow] = useState(readSavedFlow);
   const [setup, setSetup] = useState(savedFlow.setup);
-  const [courseReady, setCourseReady] = useState(savedFlow.courseReady);
+  const [workspace, setWorkspace] = useState(savedFlow.workspace);
+  const [courseReady, setCourseReady] = useState(savedFlow.courseReady && Boolean(savedFlow.workspace));
   const [bundle, setBundle] = useState<SourceBundleManifest | null>(null);
   const [uploadPath, setUploadPath] = useState(savedFlow.uploadPath);
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
@@ -60,18 +58,22 @@ export function ProfessorCourseBuilder({
     setup.courseTitle,
     setup.target === "single-lecture" ? setup.lectureTitle : "machine learning lecture",
   ].filter(Boolean).join(" ");
-
   useEffect(() => {
     let cancelled = false;
     async function restoreGeneratedState() {
       try {
-        if (savedFlow.bundleReady) {
-          const restoredBundle = await getSourceBundle(courseId, session);
+        if (savedFlow.bundleReady && savedFlow.workspace) {
+          const restoredBundle = await getSourceBundle(savedFlow.workspace.courseId, session);
           if (!cancelled) setBundle(restoredBundle);
         }
-        if (savedFlow.bundleReady || savedFlow.canvasReady) {
+        if ((savedFlow.bundleReady || savedFlow.canvasReady) && savedFlow.workspace) {
           try {
-            const restoredCanvas = await getLectureCanvas(courseId, lectureId, "professor-preview", session);
+            const restoredCanvas = await getLectureCanvas(
+              savedFlow.workspace.courseId,
+              savedFlow.workspace.lectureId,
+              "professor-preview",
+              session,
+            );
             if (!cancelled) setCanvas(restoredCanvas);
           } catch (canvasError) {
             if (savedFlow.canvasReady && !cancelled) {
@@ -92,19 +94,18 @@ export function ProfessorCourseBuilder({
       cancelled = true;
     };
   }, [restored, savedFlow]);
-
   useEffect(() => {
     if (!restored) return;
     writeSavedFlow({
       setup,
+      workspace,
       courseReady,
       uploadPath,
       bundleReady: Boolean(bundle),
       canvasReady: Boolean(canvas),
       query,
     });
-  }, [bundle, canvas, courseReady, query, restored, setup, uploadPath]);
-
+  }, [bundle, canvas, courseReady, query, restored, setup, uploadPath, workspace]);
   async function run(action: () => Promise<string | void>) {
     setError(null);
     setNotice(null);
@@ -115,9 +116,10 @@ export function ProfessorCourseBuilder({
       setError(runError instanceof Error ? runError.message : "Professor workflow step failed.");
     }
   }
-
   async function resetFlow() {
+    const activeWorkspace = workspace;
     setSetup(defaultFlow.setup);
+    setWorkspace(null);
     setCourseReady(false);
     setBundle(null);
     setUploadPath(defaultFlow.uploadPath);
@@ -128,20 +130,19 @@ export function ProfessorCourseBuilder({
     onResetWorkspace();
     writeSavedFlow(defaultFlow);
     await run(async () => {
-      await clearCourseYoutubeMedia(courseId, session);
+      if (activeWorkspace) await clearCourseYoutubeMedia(activeWorkspace.courseId, session);
       return "Professor flow reset.";
     });
   }
-
   function updateSetup(nextSetup: CourseSetup) {
     setSetup(nextSetup);
+    setWorkspace(null);
     setCourseReady(false);
     setBundle(null);
     setCanvas(null);
     setVideos([]);
     setSelectedVideos(new Set());
   }
-
   return (
     <main className="professor-screen">
       <section className="dashboard-header">
@@ -151,16 +152,22 @@ export function ProfessorCourseBuilder({
         <h1>Course creation flow</h1>
         <p>Signed in as {session.username}. Define the course scope, upload material, draft the canvas, then approve media.</p>
       </section>
-
       <div className="professor-flow">
         <CourseSetupStep
           courseReady={courseReady}
           isReady={setupReady}
-          onCreate={() => setCourseReady(true)}
+          onCreate={() => run(async () => {
+            const created = await createCourseWorkspace(setup, session);
+            setWorkspace({
+              courseId: created.course.id,
+              lectureId: created.active_lecture_id,
+            });
+            setCourseReady(true);
+            return `Course workspace ${created.course.id}/${created.active_lecture_id} ready.`;
+          })}
           onSetupChange={updateSetup}
           setup={setup}
         />
-
         <section className="flow-card">
           <StepHeader number="02" title="Upload and scan materials" done={Boolean(bundle)} />
           <p className="drawer-note">Upload {materialScope} for {setup.courseTitle}.</p>
@@ -170,7 +177,7 @@ export function ProfessorCourseBuilder({
           </label>
           <input
             aria-label="Upload course material"
-            disabled={!courseReady}
+            disabled={!courseReady || !workspace}
             multiple
             onChange={(event) => setUploadFiles(Array.from(event.target.files ?? []))}
             type="file"
@@ -178,27 +185,29 @@ export function ProfessorCourseBuilder({
           />
           <div className="flow-actions">
             <button
-              disabled={!courseReady || !uploadFiles.length}
+              disabled={!courseReady || !workspace || !uploadFiles.length}
               type="button"
               onClick={() => run(async () => {
+                const activeWorkspace = requireWorkspace(workspace);
                 const uploaded = [];
                 for (const file of uploadFiles) {
                   uploaded.push(await uploadCourseMaterial({
-                    courseId,
+                    courseId: activeWorkspace.courseId,
                     path: uploadDestination(uploadPath, file, uploadFiles.length),
                     file,
                     session,
                   }));
                 }
-                setBundle(await getSourceBundle(courseId, session));
+                setBundle(await getSourceBundle(activeWorkspace.courseId, session));
                 if (uploaded.length === 1) return `Uploaded ${uploaded[0].path} as ${uploaded[0].kind}.`;
                 return `Uploaded ${uploaded.length} materials into the source bundle.`;
               })}
             >
               Upload material
             </button>
-            <button disabled={!courseReady} type="button" onClick={() => run(async () => {
-              setBundle(await getSourceBundle(courseId, session));
+            <button disabled={!courseReady || !workspace} type="button" onClick={() => run(async () => {
+              const activeWorkspace = requireWorkspace(workspace);
+              setBundle(await getSourceBundle(activeWorkspace.courseId, session));
               return "Source bundle scanned.";
             })}>
               Scan source bundle
@@ -206,21 +215,23 @@ export function ProfessorCourseBuilder({
           </div>
           {bundle ? <BundleSummary bundle={bundle} /> : null}
         </section>
-
         <section className="flow-card">
           <StepHeader number="03" title="Generate canvas draft" done={Boolean(canvas)} />
-          <button disabled={!bundle} type="button" onClick={() => run(async () => {
-            setCanvas(await draftLectureCanvas(courseId, lectureId, session));
+          <button disabled={!bundle || !workspace} type="button" onClick={() => run(async () => {
+            const activeWorkspace = requireWorkspace(workspace);
+            setCanvas(await draftLectureCanvas(activeWorkspace.courseId, activeWorkspace.lectureId, session));
             return "Course-builder agent generated a source-grounded canvas draft.";
           })}>
             Generate draft canvas
           </button>
           {canvas ? <p>{canvas.sections.length} sections ready for review.</p> : null}
-          <button disabled={!canvas} type="button" onClick={onPreviewWorkspace}>
+          <button disabled={!canvas || !workspace} type="button" onClick={() => {
+            const activeWorkspace = requireWorkspace(workspace);
+            onPreviewWorkspace(activeWorkspace.courseId, lectureFromWorkspace(activeWorkspace, setup));
+          }}>
             Preview course workspace
           </button>
         </section>
-
         <section className="flow-card wide">
           <StepHeader number="04" title="Review YouTube candidates" done={videoReviewReady} />
           <p className="drawer-note">
@@ -230,10 +241,11 @@ export function ProfessorCourseBuilder({
             Search query
             <input value={query} onChange={(event) => setQuery(event.target.value)} />
           </label>
-          <button disabled={!setupReady} type="button" onClick={() => run(async () => {
+          <button disabled={!setupReady || !workspace} type="button" onClick={() => run(async () => {
             const searchQuery = query.trim() || defaultYoutubeQuery;
             if (!query.trim()) setQuery(searchQuery);
-            const response = await searchYoutubeMedia(courseId, searchQuery, session);
+            const activeWorkspace = requireWorkspace(workspace);
+            const response = await searchYoutubeMedia(activeWorkspace.courseId, searchQuery, session);
             setVideos(response.items);
             return `Found ${response.items.length} YouTube candidates.`;
           })}>
@@ -244,12 +256,24 @@ export function ProfessorCourseBuilder({
             selectedVideos={selectedVideos}
             onToggle={(videoId) => setSelectedVideos(toggleSelected(selectedVideos, videoId))}
           />
-          <button disabled={!selectedVideos.size || !canvas} type="button" onClick={() => run(async () => {
+          <button disabled={!selectedVideos.size || !canvas || !workspace} type="button" onClick={() => run(async () => {
+            const activeWorkspace = requireWorkspace(workspace);
             const selected = videos.filter((video) => selectedVideos.has(video.video_id));
             for (const video of selected) {
-              await includeYoutubeMedia({ courseId, lectureId, sectionId: canvas?.sections[1]?.id ?? null, video, session });
+              await includeYoutubeMedia({
+                courseId: activeWorkspace.courseId,
+                lectureId: activeWorkspace.lectureId,
+                sectionId: canvas?.sections[1]?.id ?? null,
+                video,
+                session,
+              });
             }
-            setCanvas(await getLectureCanvas(courseId, lectureId, "professor-preview", session));
+            setCanvas(await getLectureCanvas(
+              activeWorkspace.courseId,
+              activeWorkspace.lectureId,
+              "professor-preview",
+              session,
+            ));
             return `Included ${selected.length} approved video${selected.length === 1 ? "" : "s"} in the canvas.`;
           })}>
             Include selected videos
@@ -258,11 +282,10 @@ export function ProfessorCourseBuilder({
             <p className="drawer-note">Generate a canvas draft before attaching the selected videos.</p>
           ) : null}
         </section>
-
         <section className="flow-card wide">
           <StepHeader number="05" title="Publish tutor workspace" done={workspacePublished} />
           <p className="drawer-note">Student dashboards show the AI tutor only after this course workspace is published.</p>
-          <button disabled={!canvas} type="button" onClick={() => {
+          <button disabled={!canvas || !workspace} type="button" onClick={() => {
             onPublishWorkspace();
             setNotice("Tutor workspace published. Refresh the student dashboard to show AI tutor available.");
           }}>

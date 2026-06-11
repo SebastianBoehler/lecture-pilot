@@ -30,7 +30,8 @@ def test_agent_turn_stream_emits_activity_and_result(monkeypatch) -> None:
 
     assert response.status_code == 200
     events = [json.loads(line) for line in response.text.splitlines()]
-    assert events[0] == {"type": "activity", "tag": "call tutor model"}
+    activity_tags = [event["tag"] for event in events if event["type"] == "activity"]
+    assert activity_tags == ["read canvas", "load learner memory", "call tutor model"]
     assert events[-1]["type"] == "result"
     assert events[-1]["result"]["message"] == "A streamed model answer."
 

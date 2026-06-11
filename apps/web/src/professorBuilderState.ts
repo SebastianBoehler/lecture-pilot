@@ -8,8 +8,14 @@ export type CourseSetup = {
   target: BuilderTarget;
 };
 
+export type CourseWorkspaceState = {
+  courseId: string;
+  lectureId: string;
+};
+
 export type SavedProfessorFlow = {
   setup: CourseSetup;
+  workspace: CourseWorkspaceState | null;
   courseReady: boolean;
   uploadPath: string;
   bundleReady: boolean;
@@ -27,6 +33,7 @@ export const defaultCourseSetup: CourseSetup = {
 
 export const defaultFlow: SavedProfessorFlow = {
   setup: defaultCourseSetup,
+  workspace: null,
   courseReady: false,
   uploadPath: "uploads",
   bundleReady: false,
@@ -34,7 +41,7 @@ export const defaultFlow: SavedProfessorFlow = {
   query: "Bayesian decision theory machine learning Tübingen",
 };
 
-const flowStorageKey = "lecturepilot.professor-builder.martius-ml.lecture-03";
+const flowStorageKey = "lecturepilot.professor-builder.current";
 
 export function isCourseSetupReady(setup: CourseSetup) {
   if (!setup.courseTitle.trim()) return false;

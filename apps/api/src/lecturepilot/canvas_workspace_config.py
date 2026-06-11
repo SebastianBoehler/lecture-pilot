@@ -4,6 +4,9 @@ import os
 from pathlib import Path
 
 
+SEEDED_COURSE_ID = "martius-ml"
+
+
 def default_workspace_root() -> Path:
     configured = os.environ.get("LECTUREPILOT_WORKSPACE_ROOT")
     return Path(configured or ".lecturepilot").expanduser()

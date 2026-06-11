@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from lecturepilot.canvas_workspace_config import lecture_source_name
+from lecturepilot.canvas_workspace_config import SEEDED_COURSE_ID, lecture_source_name
 from lecturepilot.latex_canvas_text import BROWSER_ASSET_SUFFIXES, is_allowed_canvas_asset
 from lecturepilot.pdf_preview import PdfPreviewError, render_pdf_preview
 from lecturepilot.storage_layout import StorageLayout
@@ -62,16 +62,16 @@ class CanvasAssetStore:
 
     def _source_path(self, course_id: str, lecture_id: str) -> Path:
         source_name = lecture_source_name(lecture_id)
-        if source_name is None:
-            raise CanvasAssetError(f"No source mapping configured for {lecture_id}.")
-        candidates = [
-            self.layout.course_uploads_dir(course_id) / source_name,
-            self.material_root / source_name,
-        ]
+        uploads_dir = self.layout.course_uploads_dir(course_id)
+        source_names = [source_name] if source_name else []
+        source_names.extend(str(path.relative_to(uploads_dir)) for path in sorted(uploads_dir.rglob("*.tex")))
+        candidates = [uploads_dir / name for name in dict.fromkeys(source_names)]
+        if source_name and course_id == SEEDED_COURSE_ID:
+            candidates.append(self.material_root / source_name)
         for source_path in candidates:
             if source_path.exists():
                 return source_path
-        raise CanvasAssetError(f"Course source not found: {candidates[-1]}")
+        raise CanvasAssetError(f"No LaTeX source found for {course_id}/{lecture_id}.")
 
 
 def _assert_safe_asset_path(asset_path: str, label: str) -> None:

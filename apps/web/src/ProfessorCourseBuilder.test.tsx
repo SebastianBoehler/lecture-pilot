@@ -40,16 +40,18 @@ describe("Professor course builder", () => {
     await user.type(screen.getByLabelText(/lecture title/i), "Bayesian Decision Theory");
     expect(screen.getByRole("button", { name: /create course workspace/i })).toBeEnabled();
     expect(screen.getByLabelText(/upload course material/i)).toBeDisabled();
-    expect(screen.getByRole("button", { name: /search youtube/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /search youtube/i })).toBeDisabled();
 
+    await user.click(screen.getByRole("button", { name: /create course workspace/i }));
+    expect(await screen.findByText(/course workspace demo-ml-course\/lecture-03 ready/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /search youtube/i })).toBeEnabled();
+    expect(screen.getByText(/upload materials for this lecture for demo ml course/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /search youtube/i }));
     const candidate = await screen.findByLabelText(/bayesian decision theory/i);
     await user.click(candidate);
     expect(screen.getByRole("button", { name: /include selected videos/i })).toBeDisabled();
     expect(screen.getByText(/generate a canvas draft before attaching/i)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /create course workspace/i }));
-    expect(screen.getByText(/upload materials for this lecture for demo ml course/i)).toBeInTheDocument();
     await user.upload(
       screen.getByLabelText(/upload course material/i),
       new File(["# extra note"], "supplement.md", { type: "text/markdown" }),
@@ -73,7 +75,7 @@ describe("Professor course builder", () => {
     expect(
       await screen.findByRole("heading", { name: /^bayesian decision theory$/i, level: 1 }),
     ).toBeInTheDocument();
-    const lessonToolbar = screen.getByText("Jun 4").closest(".lesson-toolbar") as HTMLElement;
+    const lessonToolbar = screen.getByText("Draft").closest(".lesson-toolbar") as HTMLElement;
     expect(within(lessonToolbar).getByRole("button", { name: /course builder/i })).toBeInTheDocument();
     await user.click(within(lessonToolbar).getByRole("button", { name: /course builder/i }));
     expect(await screen.findByText(/2 sections ready for review/i)).toBeInTheDocument();
@@ -81,11 +83,15 @@ describe("Professor course builder", () => {
     expect(screen.getByText(/ai tutor available/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^course builder$/i }));
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/admin/courses/martius-ml/materials"),
+      expect.stringContaining("/admin/courses/demo-ml-course/materials"),
       expect.objectContaining({ method: "POST" }),
     );
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/media/youtube/search"),
+      expect.stringContaining("/admin/courses/demo-ml-course/lectures/lecture-03/canvas/draft"),
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/admin/courses/demo-ml-course/media/youtube/search"),
       expect.objectContaining({
         headers: expect.objectContaining({
           "X-User-Id": "professor-demo",
@@ -96,7 +102,7 @@ describe("Professor course builder", () => {
     await user.click(screen.getByRole("button", { name: /reset flow/i }));
     expect(await screen.findByText(/professor flow reset/i)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/admin/courses/martius-ml/media/youtube"),
+      expect.stringContaining("/admin/courses/demo-ml-course/media/youtube"),
       expect.objectContaining({ method: "DELETE" }),
     );
   });
@@ -114,6 +120,7 @@ describe("Professor course builder", () => {
 
 function professorFetchMock() {
   return vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.endsWith("/admin/course-workspaces")) return json(courseWorkspacePayload(init));
     if (url.includes("/source-bundle")) return json(sourceBundle());
     if (url.includes("/materials")) return json({ path: "uploads/supplement.md", kind: "markdown", size_bytes: 12 });
     if (url.includes("/canvas/draft")) return json(canvasPayload());
@@ -131,7 +138,7 @@ function json(payload: unknown) {
 
 function sourceBundle() {
   return {
-    course_id: "martius-ml",
+    course_id: "demo-ml-course",
     files: [
       { path: "Lecture03-eng.tex", kind: "latex", size_bytes: 1000 },
       { path: "Ch3/Venn_C-X_1.pdf", kind: "pdf", size_bytes: 2000 },
@@ -143,8 +150,8 @@ function sourceBundle() {
 
 function canvasPayload() {
   return {
-    id: "martius-ml-lecture-03",
-    course_id: "martius-ml",
+    id: "demo-ml-course-lecture-03",
+    course_id: "demo-ml-course",
     lecture_id: "lecture-03",
     title: "Bayesian Decision Theory",
     source_kind: "latex",
@@ -154,6 +161,27 @@ function canvasPayload() {
       { id: "aim", title: "Decision making", blocks: [] },
       { id: "bayes-formula", title: "Bayes formula", blocks: [] },
     ],
+  };
+}
+
+function courseWorkspacePayload(init?: RequestInit) {
+  const body = JSON.parse(String(init?.body ?? "{}"));
+  return {
+    course: {
+      id: "demo-ml-course",
+      title: body.course_title,
+      professor: "professor-demo",
+      term: "Sommer 2026",
+    },
+    lectures: [
+      {
+        id: "lecture-03",
+        course_id: "demo-ml-course",
+        title: body.lecture_title,
+        date: "2026-06-11",
+      },
+    ],
+    active_lecture_id: "lecture-03",
   };
 }
 

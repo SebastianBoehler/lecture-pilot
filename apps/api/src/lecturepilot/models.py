@@ -117,6 +117,20 @@ class CourseMaterialUploadResult(BaseModel):
     storage_path: str = Field(min_length=1, max_length=700)
 
 
+class CourseWorkspaceSetupInput(BaseModel):
+    course_title: str = Field(min_length=1, max_length=200)
+    lecture_title: str | None = Field(default=None, max_length=200)
+    lecture_number: str | None = Field(default=None, max_length=20)
+    lecture_count: int | None = Field(default=None, ge=1, le=80)
+    target: Literal["single-lecture", "full-course"] = "single-lecture"
+
+
+class CourseWorkspaceResult(BaseModel):
+    course: Course
+    lectures: list[Lecture]
+    active_lecture_id: str
+
+
 class YoutubeDuration(BaseModel):
     iso8601: str | None = None
     seconds: int | None = Field(default=None, ge=0)

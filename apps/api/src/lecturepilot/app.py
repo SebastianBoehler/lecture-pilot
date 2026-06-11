@@ -15,7 +15,9 @@ from lecturepilot.api_auth import (
 from lecturepilot.agent_routes import register_agent_routes
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspace, CanvasWorkspaceError
+from lecturepilot.canvas_workspace_config import SEEDED_COURSE_ID
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner
+from lecturepilot.course_workspace import resolve_course_workspace
 from lecturepilot.harness import LecturePilotHarness
 from lecturepilot.image_generation_registry import image_generator_from_env
 from lecturepilot.learner_state import LearnerStateStore
@@ -23,6 +25,8 @@ from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import (
     CourseMaterialUploadResult,
     CourseMaterialUploadType,
+    CourseWorkspaceResult,
+    CourseWorkspaceSetupInput,
     SourceBundleEntry,
     SourceBundleManifest,
     TuebingenLoginInput,
@@ -101,15 +105,30 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=404, detail="Course not found.")
         return [item.model_dump(mode="json") for item in unlocked_lectures()]
 
+    @app.post("/admin/course-workspaces", response_model=CourseWorkspaceResult)
+    def create_course_workspace(
+        setup: CourseWorkspaceSetupInput,
+        context: TenantContext = Depends(request_context),
+    ) -> CourseWorkspaceResult:
+        require_course_manager(context, course_tenant_id=COURSE_TENANT_ID)
+        return resolve_course_workspace(
+            setup,
+            professor=context.user_id,
+            term=COURSE.term,
+        )
+
     @app.get("/courses/{course_id}/source-bundle", response_model=SourceBundleManifest)
     def source_bundle(
         course_id: str,
         context: TenantContext = Depends(request_context),
     ) -> SourceBundleManifest:
-        if course_id != COURSE.id:
-            raise HTTPException(status_code=404, detail="Course not found.")
         require_course_manager(context, course_tenant_id=COURSE_TENANT_ID)
-        files = _scan_source_bundles(app.state.canvas_workspace.source_bundle_roots(course_id))
+        files = _scan_source_bundles(
+            app.state.canvas_workspace.source_bundle_roots(
+                course_id,
+                include_seeded_materials=course_id == SEEDED_COURSE_ID,
+            )
+        )
         counts = Counter(item.kind for item in files)
         uploads = [
             CourseMaterialUploadType(suffix=suffix, kind=kind, max_bytes=max_bytes)
@@ -131,8 +150,6 @@ def create_app() -> FastAPI:
         file: UploadFile = File(...),
         context: TenantContext = Depends(request_context),
     ) -> CourseMaterialUploadResult:
-        if course_id != COURSE.id:
-            raise HTTPException(status_code=404, detail="Course not found.")
         try:
             require_course_manager(context, course_tenant_id=COURSE_TENANT_ID)
             payload = await file.read()
@@ -164,9 +181,7 @@ def create_app() -> FastAPI:
         lecture_id: str,
         context: TenantContext = Depends(request_context),
     ) -> CanvasDocument:
-        if course_id != COURSE.id:
-            raise HTTPException(status_code=404, detail="Course not found.")
-        if lecture_id not in {lecture.id for lecture in LECTURES}:
+        if course_id == SEEDED_COURSE_ID and lecture_id not in {lecture.id for lecture in LECTURES}:
             raise HTTPException(status_code=404, detail="Lecture not found.")
         try:
             require_course_manager(context, course_tenant_id=COURSE_TENANT_ID)
@@ -191,8 +206,6 @@ def create_app() -> FastAPI:
         user_id: str,
         context: TenantContext = Depends(request_context),
     ) -> dict:
-        if course_id != COURSE.id:
-            raise HTTPException(status_code=404, detail="Course not found.")
         require_learner_workspace_access(
             context,
             learner_user_id=user_id,
@@ -215,8 +228,6 @@ def create_app() -> FastAPI:
         asset_path: str,
         preview: str | None = None,
     ) -> FileResponse:
-        if course_id != COURSE.id:
-            raise HTTPException(status_code=404, detail="Course not found.")
         try:
             if preview == "png":
                 path = app.state.canvas_workspace.asset_preview_path(
@@ -241,8 +252,6 @@ def create_app() -> FastAPI:
         student_key: str,
         asset_path: str,
     ) -> FileResponse:
-        if course_id != COURSE.id:
-            raise HTTPException(status_code=404, detail="Course not found.")
         try:
             path = app.state.canvas_workspace.workspace_asset_path(
                 course_id=course_id,
