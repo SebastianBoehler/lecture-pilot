@@ -70,13 +70,13 @@ The tutor should eventually use a small set of general workspace tools instead
 of many product-specific commands. The model should learn one environment: a
 course/user filesystem image plus a rendered canvas.
 
-Core tools:
+Implemented low-level tools are profile-scoped:
 
-- `list_workspace`, `read_file`, `write_file`, `patch_file`
-- `search_course_source`, `read_source_excerpt`
-- `focus_canvas`, `highlight_span`, `scroll_to`
-- `generate_image`, `discover_media`
-- `record_gate`, `read_memory`, `write_memory`
+- default tutor: `pwd`, `ls`, `read`, `write`, `edit`, `focus`,
+  `highlight`, `generate_image`, `record_gate`, `remember`
+- evidence tutor: default tutor tools plus `find` and `grep`
+- course-builder/admin: `pwd`, `ls`, `find`, `grep`, `read`, `write`,
+  `edit`, `generate_image`, with no learner gate or memory tools
 
 `append_section` and `update_section` remain useful compatibility commands, but
 they should compile down to file writes inside `canvas/student/*.md`,
@@ -87,6 +87,23 @@ and tenant/profile authorization.
 This keeps the harness close to coding-agent ergonomics: the model reasons over
 files and navigation, while the application turns those edits into a safe
 student-facing learning interface.
+
+## Observability
+
+Observability is a backend runtime concern, not a student-facing dashboard. The
+default tracer is a no-op; deployments can opt into MLflow by setting
+`LECTUREPILOT_OBSERVABILITY=mlflow` and `MLFLOW_TRACKING_URI`.
+
+The trace model mirrors the agent harness:
+
+- one root span per tutor turn
+- model-call spans for provider execution
+- tool spans for canvas reads, memory reads, attendance writes, canvas writes,
+  and quality-gate records
+
+Trace payloads are metadata-only by default. `redacted` mode records prompt and
+response hashes for correlation, while `full` mode is reserved for local or
+approved debugging environments.
 
 ## Provider Model
 

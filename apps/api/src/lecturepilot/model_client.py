@@ -1,14 +1,20 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from typing import Protocol
 
-from lecturepilot.model_commands import canvas_context, read_canvas_commands, read_quality_gate
+from lecturepilot.agent_tool_executor import AgentToolExecutor
+from lecturepilot.agent_tool_loop import complete_tool_turn
+from lecturepilot.agent_tool_schemas import AgentToolProfile, tutor_tool_profile_for_message
+from lecturepilot.model_commands import canvas_context
+from lecturepilot.model_payload import agent_result_from_content
 from lecturepilot.models import (
     AgentTurnInput,
     AgentTurnResult,
     ProviderSettings,
 )
+from lecturepilot.observability import Observability
 from lecturepilot.providers import ProviderConfigurationError
 
 
@@ -22,6 +28,10 @@ class ModelClient(Protocol):
         *,
         settings: ProviderSettings,
         turn: AgentTurnInput,
+        tool_executor: AgentToolExecutor | None = None,
+        observability: Observability | None = None,
+        emit: Callable[[str], None] | None = None,
+        tool_profile: AgentToolProfile | None = None,
     ) -> AgentTurnResult:
         """Complete one tutor turn."""
 
@@ -32,6 +42,10 @@ class LiteLLMModelClient:
         *,
         settings: ProviderSettings,
         turn: AgentTurnInput,
+        tool_executor: AgentToolExecutor | None = None,
+        observability: Observability | None = None,
+        emit: Callable[[str], None] | None = None,
+        tool_profile: AgentToolProfile | None = None,
     ) -> AgentTurnResult:
         try:
             from litellm import acompletion
@@ -41,26 +55,23 @@ class LiteLLMModelClient:
             ) from exc
 
         try:
-            response = await acompletion(
-                model=settings.model,
-                messages=_messages(turn),
-                temperature=0.3,
-            )
+            if tool_executor is not None:
+                return await complete_tool_turn(
+                    acompletion=acompletion,
+                    settings=settings,
+                    turn=turn,
+                    tool_executor=tool_executor,
+                    observability=observability or Observability(),
+                    emit=emit,
+                    messages=_messages(turn),
+                    tool_profile=tool_profile or tutor_tool_profile_for_message(turn.message),
+                )
+            response = await acompletion(model=settings.model, messages=_messages(turn), temperature=0.3)
         except Exception as exc:
             raise ModelExecutionError(
                 "Model request failed. Check the provider key and model configuration."
             ) from exc
-        payload = _parse_model_payload(response.choices[0].message.content)
-        message = _read_message(payload)
-        commands = read_canvas_commands(payload, turn)
-        quality_gate = read_quality_gate(payload, turn)
-
-        return AgentTurnResult(
-            message=message,
-            canvas_commands=commands,
-            quality_gate=quality_gate,
-            model=settings.model,
-        )
+        return agent_result_from_content(response.choices[0].message.content, turn, settings.model)
 
 
 def _messages(turn: AgentTurnInput) -> list[dict[str, str]]:
@@ -143,23 +154,3 @@ def _user_memory_context(turn: AgentTurnInput) -> str:
         "Use this only to adapt examples, pace, and explanation style. "
         "Do not treat memory as course evidence."
     )
-
-def _parse_model_payload(content: str | None) -> dict:
-    if not content:
-        raise ProviderConfigurationError("Model returned an empty response.")
-    cleaned = content.strip()
-    if cleaned.startswith("```"):
-        cleaned = cleaned.strip("`").removeprefix("json").strip()
-    try:
-        payload = json.loads(cleaned)
-    except json.JSONDecodeError as exc:
-        raise ProviderConfigurationError("Model did not return valid LecturePilot JSON.") from exc
-    if not isinstance(payload, dict):
-        raise ProviderConfigurationError("Model JSON must be an object.")
-    return payload
-
-def _read_message(payload: dict) -> str:
-    message = payload.get("message")
-    if not isinstance(message, str) or not message.strip():
-        raise ProviderConfigurationError("Model JSON must include a non-empty message.")
-    return message.strip()

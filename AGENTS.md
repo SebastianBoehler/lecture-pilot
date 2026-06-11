@@ -80,13 +80,16 @@ Professor-approved learning documents belong to
 generated notes, and generated images belong under the user's course/lecture
 workspace.
 
-The agent should eventually use a small set of low-level typed tools over this
-image: list/read/write/patch permitted files, search/read course source
-excerpts, focus/highlight/scroll the canvas, generate media, discover media,
-record gates, and read/write memory. Product-level actions such as
-`append_section` and `update_section` are conveniences over those file tools:
-they should compile to writes in `canvas/student/*.md`,
-`canvas/components/*.yaml`, and `canvas/student-assets/`.
+The agent uses a small set of low-level typed tools over this image, using
+Pi-style Unix names where they fit. Tool availability is profile-scoped:
+default tutor gets `pwd`, `ls`, `read`, `write`, `edit`, `focus`,
+`highlight`, `generate_image`, `record_gate`, and `remember`; evidence-heavy
+tutor turns add `find` and `grep`; course-builder/admin agents use `pwd`,
+`ls`, `find`, `grep`, `read`, `write`, `edit`, and `generate_image` without
+learner gate or memory tools. Product-level actions such as `append_section`
+and `update_section` are conveniences over those file tools: they should
+compile to writes in `canvas/student/*.md`, `canvas/components/*.yaml`, and
+`canvas/student-assets/`.
 
 The agent may navigate this image only through typed tools. It should not freely
 read host paths, mutate official source files, duplicate large course assets

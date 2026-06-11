@@ -24,6 +24,8 @@ class WorkspacePolicy:
         ".md": ("markdown", 5 * 1024 * 1024),
         ".txt": ("text", 2 * 1024 * 1024),
         ".json": ("json", 2 * 1024 * 1024),
+        ".yaml": ("yaml", 2 * 1024 * 1024),
+        ".yml": ("yaml", 2 * 1024 * 1024),
         ".png": ("image", 20 * 1024 * 1024),
         ".jpg": ("image", 20 * 1024 * 1024),
         ".jpeg": ("image", 20 * 1024 * 1024),

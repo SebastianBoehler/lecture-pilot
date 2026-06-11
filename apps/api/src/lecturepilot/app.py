@@ -24,6 +24,7 @@ from lecturepilot.models import (
     TuebingenLoginInput,
     TuebingenLoginResult,
 )
+from lecturepilot.observability import observability_from_env
 from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.sample_data import COURSE, LECTURES, unlocked_lectures
 from lecturepilot.source_bundle import scan_source_bundle
@@ -52,6 +53,7 @@ def create_app() -> FastAPI:
     app.state.image_generator = image_generator_from_env()
     app.state.canvas_workspace.image_generator = app.state.image_generator
     app.state.youtube_discovery = YoutubeDiscovery.from_env()
+    app.state.observability = observability_from_env()
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],

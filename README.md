@@ -53,18 +53,16 @@ LecturePilot is an agent harness for teaching, not a generic chatbot. The agent
 acts as a text-first tutor that can also build and revise the learning
 interface by operating on a constrained filesystem-like workspace.
 
-The long-term tool model should stay small and low-level:
+The tool model stays small and low-level with Pi-style Unix names where that
+fits the filesystem image. Tools are profile-scoped:
 
-- `list_workspace`, `read_file`, `write_file`, `patch_file` for permitted user
-  and course paths.
-- `search_course_source` and `read_source_excerpt` for grounding answers in
-  professor-provided material.
-- `focus_canvas`, `highlight_span`, and `scroll_to` for directing attention in
-  the rendered lesson.
-- `generate_image`, `discover_media`, and component writes for richer teaching
-  artifacts.
-- `record_gate`, `write_memory`, and `read_memory` for learning progress and
-  personalization.
+- default tutor: `pwd`, `ls`, `read`, `write`, `edit`, `focus`,
+  `highlight`, `record_gate`, `remember`, `generate_image`
+- evidence tutor: default tutor tools plus `find` and `grep` for exact
+  source/course-material search
+- course-builder/admin: `pwd`, `ls`, `find`, `grep`, `read`, `write`,
+  `edit`, `generate_image`, without learner-state tools such as
+  `record_gate` or `remember`
 
 High-level commands such as `append_section` and `update_section` are product
 conveniences over those workspace primitives. In the storage layer they become
@@ -195,6 +193,25 @@ Professor-side YouTube discovery is optional. Set `YOUTUBE_API_KEY` to enable
 admin searches during course creation; approved selections are stored in the
 private course-material workspace and render as inline video blocks in the
 lesson canvas.
+
+## Optional Observability
+
+LecturePilot ships with a no-op observability layer by default. To trace agent
+turns, model calls, low-level workspace tools, canvas writes, and quality-gate
+decisions into a self-hosted MLflow tracking server, install the optional
+backend dependency and enable the backend:
+
+```bash
+pip install -e "apps/api[observability]"
+export LECTUREPILOT_OBSERVABILITY=mlflow
+export MLFLOW_TRACKING_URI=http://127.0.0.1:5000
+export MLFLOW_EXPERIMENT=lecturepilot-dev
+```
+
+Trace content defaults to metadata only. Set
+`LECTUREPILOT_TRACE_CONTENT=redacted` to add hashed prompt/response payloads, or
+`LECTUREPILOT_TRACE_CONTENT=full` only in local/private debugging sessions where
+course and student text may be stored in the tracing backend.
 
 ## Design Source
 

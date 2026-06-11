@@ -18,6 +18,9 @@ dependencies = [
 agent = [
   "litellm>=1.72.0",
 ]
+observability = [
+  "mlflow>=3.0.0",
+]
 tuebingen = [
   "tue-api-wrapper>=0.1.0",
 ]

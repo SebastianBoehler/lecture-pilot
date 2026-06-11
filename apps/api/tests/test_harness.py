@@ -42,6 +42,7 @@ class _FakeModelClient:
         *,
         settings: ProviderSettings,
         turn: AgentTurnInput,
+        **kwargs,
     ) -> AgentTurnResult:
         assert settings.capabilities >= {
             ProviderCapability.CHAT,

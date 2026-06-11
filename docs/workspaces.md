@@ -158,11 +158,13 @@ stable block id for later focus/highlight commands.
 
 ## Agent Rules
 
-The agent sees this filesystem image through typed tools only. It may read user
-memory, search course source evidence, focus/highlight canvas blocks, append or
-update learner sections, generate infographics, and record gate state. It must
-not freely traverse host paths, mutate official source files, duplicate large
-course assets into learner folders, or reveal future lecture material.
+The agent sees this filesystem image through typed tools only. It may use
+`pwd`, `ls`, `find`, `grep`, and `read` to inspect authorized roots; `write` and
+`edit` to update learner-owned Markdown/component/memory files; `focus` and
+`highlight` to navigate the canvas; `generate_image` for raster infographics;
+and `record_gate` plus `remember` for progress and personalization. It must not
+freely traverse host paths, mutate official source files, duplicate large course
+assets into learner folders, or reveal future lecture material.
 
 ## File Policy
 
