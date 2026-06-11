@@ -4,6 +4,7 @@ import re
 from typing import Protocol
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.canvas_text_normalizer import clean_canvas_items, clean_canvas_text
 from lecturepilot.course_canvas_enrichment import enrich_learning_document
 from lecturepilot.course_canvas_json import parse_model_json
 from lecturepilot.course_canvas_section_planner import plan_sections_individually
@@ -11,7 +12,6 @@ from lecturepilot.course_canvas_validation import required_section_ids, validate
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import ProviderCapability, ProviderSettings
 from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
-
 
 MAX_SOURCE_EVIDENCE_SECTIONS = 80
 
@@ -232,7 +232,7 @@ def _read_block(
         return CanvasBlock(
             id=block_id,
             type="list",
-            items=[_trim(str(item), 340) for item in raw_items[:12] if str(item).strip()],
+            items=[_trim(item, 340) for item in clean_canvas_items(raw_items[:12])],
         )
     if block_type == "asset":
         asset_path = str(raw_block.get("asset_path"))
@@ -247,8 +247,8 @@ def _read_block(
         return CanvasBlock(
             id=block_id,
             type="quiz",
-            text=_trim(str(raw_block.get("text") or raw_block.get("question") or ""), 1400),
-            items=[_trim(str(item), 180) for item in _block_items(raw_block)[:6]],
+            text=_trim(clean_canvas_text(raw_block.get("text") or raw_block.get("question")), 1400),
+            items=[_trim(item, 180) for item in clean_canvas_items(_block_items(raw_block)[:6])],
             caption=str(raw_block.get("caption") or raw_block.get("title") or "Checkpoint quiz")[:500],
             answer_index=_answer_index(raw_block),
         )
@@ -256,13 +256,13 @@ def _read_block(
         return CanvasBlock(
             id=block_id,
             type=block_type,
-            text=_trim(str(raw_block.get("text") or raw_block.get("content") or ""), 2400),
+            text=_trim(clean_canvas_text(raw_block.get("text") or raw_block.get("content")), 2400),
             caption=str(raw_block.get("caption") or raw_block.get("title") or "")[:500] or None,
         )
     return CanvasBlock(
         id=block_id,
         type=block_type,
-        text=_trim(str(raw_block.get("text") or raw_block.get("content") or ""), 2400),
+        text=_trim(clean_canvas_text(raw_block.get("text") or raw_block.get("content")), 2400),
     )
 
 

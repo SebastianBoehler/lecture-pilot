@@ -34,6 +34,11 @@ async def test_course_planner_restyles_source_evidence(monkeypatch) -> None:
     assert final_quiz.answer_index == 0
     assert final_quiz.items[0].startswith("The concept controls")
     assert all(block.asset_path != "unseen.png" for block in section.blocks)
+    text_pipeline = next(item for item in document.sections if item.id == "text-preprocessing-pipeline")
+    assert text_pipeline.blocks[0].text.startswith("Tokenization turns raw email text into tokens.")
+    assert "###" not in text_pipeline.blocks[0].text
+    assert "{'type'" not in text_pipeline.blocks[0].text
+    assert text_pipeline.blocks[1].items == ["Lowercase words.", "Remove endings."]
 
 
 class _FakePlanClient:
@@ -132,6 +137,49 @@ class _FakePlanClient:
             }
             for index in range(2, 9)
         ]
+        extra_sections[1] = {
+            "id": "text-preprocessing-pipeline",
+            "title": "Text preprocessing pipeline",
+            "source_ref": "Lecture03-eng.tex frames 24, 25",
+            "blocks": [
+                {
+                    "type": "paragraph",
+                    "content": [
+                        {
+                            "type": "paragraph",
+                            "content": (
+                                "### Tokenization turns raw email text into tokens. This matters because the "
+                                "classifier never sees the original message as prose; it sees a controlled "
+                                "sequence of units that can be counted and compared across classes."
+                            ),
+                        }
+                    ],
+                },
+                {
+                    "type": "list",
+                    "content": [
+                        {"type": "paragraph", "content": "Lowercase words."},
+                        {"type": "paragraph", "content": "Remove endings."},
+                    ],
+                },
+                {
+                    "type": "paragraph",
+                    "text": (
+                        "After tokenization, preprocessing reduces variation that is irrelevant for the "
+                        "classification decision. Words such as Email and email should not become two "
+                        "different pieces of evidence unless capitalization itself is part of the model."
+                    ),
+                },
+                {
+                    "type": "callout",
+                    "text": (
+                        "A useful learner check is to take one short spam sentence and identify which "
+                        "tokens remain after lowercasing, stemming, and stop-word removal. This connects "
+                        "the source slides to the later probability estimates used by Naive Bayes."
+                    ),
+                },
+            ],
+        }
         return {
             "title": "Bayes as a decision workflow",
             "sections": [base_section, *extra_sections],
