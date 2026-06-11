@@ -7,6 +7,7 @@ from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.models import AgentTurnInput, AgentTurnResult, CanvasCommand
 from lecturepilot.providers import DEFAULT_MODEL
+from auth_helpers import student_headers
 
 
 def test_agent_turn_materializes_infographic_asset(monkeypatch, tmp_path: Path) -> None:
@@ -23,6 +24,7 @@ def test_agent_turn_materializes_infographic_asset(monkeypatch, tmp_path: Path) 
 
     response = client.post(
         "/agent/turn",
+        headers=student_headers("student01"),
         json={
             "user_id": "student01",
             "course_id": "martius-ml",
@@ -48,6 +50,7 @@ def test_agent_turn_materializes_infographic_asset(monkeypatch, tmp_path: Path) 
     reloaded = client.get(
         "/courses/martius-ml/lectures/lecture-03/canvas",
         params={"user_id": "student01"},
+        headers=student_headers("student01"),
     ).json()
     student_section = next(item for item in reloaded["sections"] if item["id"] == section["id"])
     assert student_section["blocks"][0]["asset_url"] == asset["asset_url"]
@@ -55,6 +58,7 @@ def test_agent_turn_materializes_infographic_asset(monkeypatch, tmp_path: Path) 
     other_student = client.get(
         "/courses/martius-ml/lectures/lecture-03/canvas",
         params={"user_id": "student02"},
+        headers=student_headers("student02"),
     ).json()
     assert all(item["id"] != section["id"] for item in other_student["sections"])
 
@@ -71,6 +75,7 @@ def test_agent_turn_requires_image_provider_for_infographics(monkeypatch, tmp_pa
 
     response = client.post(
         "/agent/turn",
+        headers=student_headers("student01"),
         json={
             "user_id": "student01",
             "course_id": "martius-ml",

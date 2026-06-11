@@ -66,12 +66,12 @@ export function ProfessorCourseBuilder({
     async function restoreGeneratedState() {
       try {
         if (savedFlow.bundleReady) {
-          const restoredBundle = await getSourceBundle(courseId);
+          const restoredBundle = await getSourceBundle(courseId, session);
           if (!cancelled) setBundle(restoredBundle);
         }
         if (savedFlow.bundleReady || savedFlow.canvasReady) {
           try {
-            const restoredCanvas = await getLectureCanvas(courseId, lectureId, "professor-preview");
+            const restoredCanvas = await getLectureCanvas(courseId, lectureId, "professor-preview", session);
             if (!cancelled) setCanvas(restoredCanvas);
           } catch (canvasError) {
             if (savedFlow.canvasReady && !cancelled) {
@@ -190,7 +190,7 @@ export function ProfessorCourseBuilder({
                     session,
                   }));
                 }
-                setBundle(await getSourceBundle(courseId));
+                setBundle(await getSourceBundle(courseId, session));
                 if (uploaded.length === 1) return `Uploaded ${uploaded[0].path} as ${uploaded[0].kind}.`;
                 return `Uploaded ${uploaded.length} materials into the source bundle.`;
               })}
@@ -198,7 +198,7 @@ export function ProfessorCourseBuilder({
               Upload material
             </button>
             <button disabled={!courseReady} type="button" onClick={() => run(async () => {
-              setBundle(await getSourceBundle(courseId));
+              setBundle(await getSourceBundle(courseId, session));
               return "Source bundle scanned.";
             })}>
               Scan source bundle
@@ -249,7 +249,7 @@ export function ProfessorCourseBuilder({
             for (const video of selected) {
               await includeYoutubeMedia({ courseId, lectureId, sectionId: canvas?.sections[1]?.id ?? null, video, session });
             }
-            setCanvas(await getLectureCanvas(courseId, lectureId, "professor-preview"));
+            setCanvas(await getLectureCanvas(courseId, lectureId, "professor-preview", session));
             return `Included ${selected.length} approved video${selected.length === 1 ? "" : "s"} in the canvas.`;
           })}>
             Include selected videos

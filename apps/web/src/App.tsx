@@ -77,6 +77,7 @@ function App() {
           message,
           canvas_state: { focused_section_id: focusedSectionId },
         },
+        session ?? localDemoSession,
         {
           onActivity: (tag) => {
             setMessages((current) => appendLiveToolTag(current, pendingMessageId, tag));
@@ -143,7 +144,7 @@ function App() {
     setLastTutorModel(null);
 
     try {
-      const document = await getLectureCanvas("martius-ml", lecture.id, userId);
+      const document = await getLectureCanvas("martius-ml", lecture.id, userId, session ?? localDemoSession);
       setCanvasDocument(document);
       setFocusedSectionId(document.sections[0]?.id ?? "bayesian-decision-theory-the-aim");
     } catch (error) {

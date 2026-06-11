@@ -4,9 +4,10 @@ import asyncio
 import json
 from collections.abc import Callable
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 
+from lecturepilot.api_auth import request_context, require_learner_workspace_access
 from lecturepilot.agent_tool_executor import AgentToolExecutor
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.gate_policy import keep_canvas_actions_from_passing_gate
@@ -16,20 +17,42 @@ from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import AgentTurnInput, AgentTurnResult, CanvasCommand, Course
 from lecturepilot.observability import Observability
 from lecturepilot.providers import ProviderConfigurationError
+from lecturepilot.tenancy import TenantContext
 from lecturepilot.user_memory import UserMemoryStore
 
 
-def register_agent_routes(app: FastAPI, *, course: Course) -> None:
+def register_agent_routes(app: FastAPI, *, course: Course, course_tenant_id: str) -> None:
     @app.post("/agent/turn", response_model=AgentTurnResult)
-    async def agent_turn(turn: AgentTurnInput) -> AgentTurnResult:
+    async def agent_turn(
+        turn: AgentTurnInput,
+        context: TenantContext = Depends(request_context),
+    ) -> AgentTurnResult:
+        _authorize_turn(context, course_tenant_id=course_tenant_id, turn=turn)
         return await _complete_agent_turn(app, course=course, turn=turn)
 
     @app.post("/agent/turn/stream")
-    async def agent_turn_stream(turn: AgentTurnInput) -> StreamingResponse:
+    async def agent_turn_stream(
+        turn: AgentTurnInput,
+        context: TenantContext = Depends(request_context),
+    ) -> StreamingResponse:
+        _authorize_turn(context, course_tenant_id=course_tenant_id, turn=turn)
         return StreamingResponse(
             _agent_turn_events(app, course=course, turn=turn),
             media_type="application/x-ndjson",
         )
+
+
+def _authorize_turn(
+    context: TenantContext,
+    *,
+    course_tenant_id: str,
+    turn: AgentTurnInput,
+) -> None:
+    require_learner_workspace_access(
+        context,
+        learner_user_id=turn.user_id,
+        course_tenant_id=course_tenant_id,
+    )
 
 
 async def _complete_agent_turn(
@@ -212,10 +235,7 @@ async def _agent_turn_events(app: FastAPI, *, course: Course, turn: AgentTurnInp
         await task
 
 
-def _replace_generated_sections(
-    result: AgentTurnResult,
-    sections,
-) -> AgentTurnResult:
+def _replace_generated_sections(result: AgentTurnResult, sections) -> AgentTurnResult:
     sections_by_id = {section.id: section for section in sections}
     commands = [
         command.model_copy(update={"section": sections_by_id[command.section.id]})

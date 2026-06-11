@@ -2,11 +2,16 @@ from __future__ import annotations
 
 from collections import Counter
 
-from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from lecturepilot.admin_media_routes import register_admin_media_routes
+from lecturepilot.api_auth import (
+    request_context,
+    require_course_manager,
+    require_learner_workspace_access,
+)
 from lecturepilot.agent_routes import register_agent_routes
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspace, CanvasWorkspaceError
@@ -20,7 +25,6 @@ from lecturepilot.models import (
     CourseMaterialUploadType,
     SourceBundleEntry,
     SourceBundleManifest,
-    TenantRole,
     TuebingenLoginInput,
     TuebingenLoginResult,
 )
@@ -28,7 +32,7 @@ from lecturepilot.observability import observability_from_env
 from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.sample_data import COURSE, LECTURES, unlocked_lectures
 from lecturepilot.source_bundle import scan_source_bundle
-from lecturepilot.tenancy import TenantAccessError, TenantContext, assert_can_upload_course_material
+from lecturepilot.tenancy import TenantContext
 from lecturepilot.tuebingen_adapter import (
     TuebingenCourseAdapter,
     TuebingenIntegrationUnavailable,
@@ -72,7 +76,7 @@ def create_app() -> FastAPI:
         lectures=LECTURES,
         course_tenant_id=COURSE_TENANT_ID,
     )
-    register_agent_routes(app, course=COURSE)
+    register_agent_routes(app, course=COURSE, course_tenant_id=COURSE_TENANT_ID)
 
     @app.get("/courses")
     def courses() -> list[dict]:
@@ -98,9 +102,13 @@ def create_app() -> FastAPI:
         return [item.model_dump(mode="json") for item in unlocked_lectures()]
 
     @app.get("/courses/{course_id}/source-bundle", response_model=SourceBundleManifest)
-    def source_bundle(course_id: str) -> SourceBundleManifest:
+    def source_bundle(
+        course_id: str,
+        context: TenantContext = Depends(request_context),
+    ) -> SourceBundleManifest:
         if course_id != COURSE.id:
             raise HTTPException(status_code=404, detail="Course not found.")
+        require_course_manager(context, course_tenant_id=COURSE_TENANT_ID)
         files = _scan_source_bundles(app.state.canvas_workspace.source_bundle_roots(course_id))
         counts = Counter(item.kind for item in files)
         uploads = [
@@ -121,27 +129,18 @@ def create_app() -> FastAPI:
         course_id: str,
         path: str = Form(..., min_length=1, max_length=500),
         file: UploadFile = File(...),
-        x_tenant_id: str = Header(..., alias="X-Tenant-Id"),
-        x_user_id: str = Header(..., alias="X-User-Id"),
-        x_user_role: TenantRole = Header(..., alias="X-User-Role"),
+        context: TenantContext = Depends(request_context),
     ) -> CourseMaterialUploadResult:
         if course_id != COURSE.id:
             raise HTTPException(status_code=404, detail="Course not found.")
-        context = TenantContext(
-            tenant_id=x_tenant_id,
-            user_id=x_user_id,
-            roles=frozenset({x_user_role}),
-        )
         try:
-            assert_can_upload_course_material(context, course_tenant_id=COURSE_TENANT_ID)
+            require_course_manager(context, course_tenant_id=COURSE_TENANT_ID)
             payload = await file.read()
             checked = WorkspacePolicy().validate_course_material_upload(
-                tenant_id=x_tenant_id,
+                tenant_id=context.tenant_id,
                 path=path,
                 size_bytes=len(payload),
             )
-        except TenantAccessError as exc:
-            raise HTTPException(status_code=403, detail=str(exc)) from exc
         except WorkspacePolicyError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -163,21 +162,14 @@ def create_app() -> FastAPI:
     async def draft_course_canvas(
         course_id: str,
         lecture_id: str,
-        x_tenant_id: str = Header(..., alias="X-Tenant-Id"),
-        x_user_id: str = Header(..., alias="X-User-Id"),
-        x_user_role: TenantRole = Header(..., alias="X-User-Role"),
+        context: TenantContext = Depends(request_context),
     ) -> CanvasDocument:
         if course_id != COURSE.id:
             raise HTTPException(status_code=404, detail="Course not found.")
         if lecture_id not in {lecture.id for lecture in LECTURES}:
             raise HTTPException(status_code=404, detail="Lecture not found.")
-        context = TenantContext(
-            tenant_id=x_tenant_id,
-            user_id=x_user_id,
-            roles=frozenset({x_user_role}),
-        )
         try:
-            assert_can_upload_course_material(context, course_tenant_id=COURSE_TENANT_ID)
+            require_course_manager(context, course_tenant_id=COURSE_TENANT_ID)
             source = app.state.canvas_workspace.source_document(
                 course_id=course_id,
                 lecture_id=lecture_id,
@@ -185,8 +177,6 @@ def create_app() -> FastAPI:
             )
             document = await app.state.course_planner.plan_canvas(source)
             return app.state.canvas_workspace.write_course_canvas(document)
-        except TenantAccessError as exc:
-            raise HTTPException(status_code=403, detail=str(exc)) from exc
         except CanvasWorkspaceError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ProviderConfigurationError as exc:
@@ -195,9 +185,19 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     @app.get("/courses/{course_id}/lectures/{lecture_id}/canvas")
-    def lecture_canvas(course_id: str, lecture_id: str, user_id: str) -> dict:
+    def lecture_canvas(
+        course_id: str,
+        lecture_id: str,
+        user_id: str,
+        context: TenantContext = Depends(request_context),
+    ) -> dict:
         if course_id != COURSE.id:
             raise HTTPException(status_code=404, detail="Course not found.")
+        require_learner_workspace_access(
+            context,
+            learner_user_id=user_id,
+            course_tenant_id=COURSE_TENANT_ID,
+        )
         try:
             document = app.state.canvas_workspace.read_document(
                 course_id=course_id,

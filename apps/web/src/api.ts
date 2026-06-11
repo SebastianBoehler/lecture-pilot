@@ -6,7 +6,7 @@ import type {
   SourceBundleManifest,
   YoutubeVideoCandidate,
 } from "./types";
-import { courseManagerHeaders } from "./authz";
+import { authHeaders, courseManagerHeaders } from "./authz";
 
 export type CanvasCommand = {
   type: "focus_section" | "highlight_span" | "open_artifact" | "append_section" | "update_section";
@@ -75,10 +75,10 @@ export async function loginWithTuebingen(input: TuebingenLoginInput): Promise<Lo
   return payload as LoginSession;
 }
 
-export async function sendAgentTurn(input: AgentTurnInput): Promise<AgentTurnResult> {
+export async function sendAgentTurn(input: AgentTurnInput, session: LoginSession): Promise<AgentTurnResult> {
   const response = await fetch(`${apiBaseUrl}/agent/turn`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { ...authHeaders(session), "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
 
@@ -93,11 +93,12 @@ export async function sendAgentTurn(input: AgentTurnInput): Promise<AgentTurnRes
 
 export async function sendAgentTurnStream(
   input: AgentTurnInput,
+  session: LoginSession,
   { onActivity }: { onActivity?: (tag: string) => void } = {},
 ): Promise<AgentTurnResult> {
   const response = await fetch(`${apiBaseUrl}/agent/turn/stream`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { ...authHeaders(session), "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
 
@@ -106,7 +107,7 @@ export async function sendAgentTurnStream(
     throw new Error(readApiError(payload, "Tutor stream failed."));
   }
   if (!response.body) {
-    return sendAgentTurn(input);
+    return sendAgentTurn(input, session);
   }
 
   return readAgentTurnStream(response.body, onActivity);
@@ -160,10 +161,12 @@ export async function getLectureCanvas(
   courseId: string,
   lectureId: string,
   userId: string,
+  session: LoginSession,
 ): Promise<CanvasDocument> {
   const searchParams = new URLSearchParams({ user_id: userId });
   const response = await fetch(
     apiUrl(`/courses/${courseId}/lectures/${lectureId}/canvas?${searchParams}`),
+    { headers: authHeaders(session) },
   );
   const payload = await response.json();
   if (!response.ok) {
@@ -188,8 +191,10 @@ export async function draftLectureCanvas(
   return payload as CanvasDocument;
 }
 
-export async function getSourceBundle(courseId = "martius-ml"): Promise<SourceBundleManifest> {
-  const response = await fetch(apiUrl(`/courses/${courseId}/source-bundle`));
+export async function getSourceBundle(courseId: string, session: LoginSession): Promise<SourceBundleManifest> {
+  const response = await fetch(apiUrl(`/courses/${courseId}/source-bundle`), {
+    headers: courseManagerHeaders(session),
+  });
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Source scan failed."));
   return payload as SourceBundleManifest;

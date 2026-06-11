@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
+from auth_helpers import professor_headers, student_headers
 
 
 def test_source_bundle_endpoint_lists_professor_materials(tmp_path: Path) -> None:
@@ -22,7 +23,7 @@ def test_source_bundle_endpoint_lists_professor_materials(tmp_path: Path) -> Non
     )
     client = TestClient(app)
 
-    response = client.get("/courses/martius-ml/source-bundle")
+    response = client.get("/courses/martius-ml/source-bundle", headers=professor_headers())
 
     assert response.status_code == 200
     payload = response.json()
@@ -68,7 +69,7 @@ def test_professor_uploads_course_materials_into_source_bundle(tmp_path: Path) -
         assert upload_path.exists()
         assert response.json()["storage_path"] == str(upload_path)
 
-    payload = client.get("/courses/martius-ml/source-bundle").json()
+    payload = client.get("/courses/martius-ml/source-bundle", headers=professor_headers()).json()
     assert payload["counts_by_kind"] == {
         "image": 1,
         "latex": 1,
@@ -89,6 +90,22 @@ def test_student_cannot_upload_course_material(tmp_path: Path) -> None:
     )
 
     assert response.status_code == 403
+
+
+def test_student_cannot_scan_source_bundle(tmp_path: Path) -> None:
+    client, _ = _client(tmp_path)
+
+    response = client.get("/courses/martius-ml/source-bundle", headers=student_headers("student01"))
+
+    assert response.status_code == 403
+
+
+def test_source_bundle_requires_authenticated_headers(tmp_path: Path) -> None:
+    client, _ = _client(tmp_path)
+
+    response = client.get("/courses/martius-ml/source-bundle")
+
+    assert response.status_code == 401
 
 
 def test_course_material_upload_rejects_unsafe_paths(tmp_path: Path) -> None:
@@ -113,7 +130,10 @@ def test_uploaded_latex_can_seed_a_canvas_document(tmp_path: Path) -> None:
         headers=_professor_headers(),
     )
 
-    response = client.get("/courses/martius-ml/lectures/lecture-03/canvas?user_id=student01")
+    response = client.get(
+        "/courses/martius-ml/lectures/lecture-03/canvas?user_id=student01",
+        headers=student_headers("student01"),
+    )
 
     assert response.status_code == 200
     payload = response.json()
@@ -153,7 +173,10 @@ def test_professor_canvas_draft_uses_planner_and_seeds_students(tmp_path: Path) 
     assert (canvas_dir / "index.md").exists()
     assert not stale.exists()
 
-    student = client.get("/courses/martius-ml/lectures/lecture-03/canvas?user_id=student01")
+    student = client.get(
+        "/courses/martius-ml/lectures/lecture-03/canvas?user_id=student01",
+        headers=student_headers("student01"),
+    )
 
     assert student.status_code == 200
     payload = student.json()
@@ -173,11 +196,7 @@ def _client(tmp_path: Path) -> tuple[TestClient, Path]:
 
 
 def _professor_headers() -> dict[str, str]:
-    return {
-        "X-Tenant-Id": "tenant-tuebingen",
-        "X-User-Id": "prof01",
-        "X-User-Role": "professor",
-    }
+    return professor_headers()
 
 
 def _latex_source() -> bytes:

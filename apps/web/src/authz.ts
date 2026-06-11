@@ -11,6 +11,10 @@ export function courseManagerHeaders(session: LoginSession) {
   if (!role) {
     throw new Error("Course management requires a professor account.");
   }
+  return authHeaders(session, role);
+}
+
+export function authHeaders(session: LoginSession, role = session.roles?.[0] ?? "student") {
   return {
     "X-Tenant-Id": session.tenant_id ?? "tenant-tuebingen",
     "X-User-Id": session.username,

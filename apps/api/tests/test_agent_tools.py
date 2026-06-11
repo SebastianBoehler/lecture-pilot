@@ -15,6 +15,7 @@ from lecturepilot.gate_policy import keep_canvas_actions_from_passing_gate
 from lecturepilot.models import AgentTurnInput, AgentTurnResult, ProviderSettings, QualityGateDecision, QualityGateStatus
 from lecturepilot.observability import Observability
 from lecturepilot.providers import DEFAULT_MODEL
+from auth_helpers import student_headers
 
 
 def test_unix_named_tools_search_read_and_write_canvas(tmp_path) -> None:
@@ -92,6 +93,7 @@ def test_agent_route_merges_low_level_canvas_write(tmp_path, monkeypatch) -> Non
 
     response = client.post(
         "/agent/turn",
+        headers=student_headers("u1"),
         json={
             "user_id": "u1",
             "course_id": "martius-ml",

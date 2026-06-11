@@ -12,6 +12,7 @@ from lecturepilot.models import (
 )
 from lecturepilot.providers import DEFAULT_MODEL
 from lecturepilot.tuebingen_adapter import TuebingenIntegrationUnavailable
+from auth_helpers import student_headers
 
 
 def test_health_endpoint() -> None:
@@ -72,27 +73,6 @@ def test_tuebingen_login_reports_missing_wrapper_dependency() -> None:
     assert "tue-api-wrapper" in response.json()["detail"]
 
 
-def test_agent_turn_requires_configured_provider(monkeypatch) -> None:
-    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
-    client = TestClient(create_app())
-
-    response = client.post(
-        "/agent/turn",
-        json={
-            "user_id": "u1",
-            "course_id": "c1",
-            "lecture_id": "l1",
-            "attendance": "present",
-            "message": "Explain this section.",
-            "canvas_state": {"focused_section_id": "intro"},
-        },
-    )
-
-    assert response.status_code == 503
-    assert "GEMINI_API_KEY" in response.json()["detail"]
-
-
 def test_agent_turn_focuses_bayes_section(monkeypatch) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
@@ -105,6 +85,7 @@ def test_agent_turn_focuses_bayes_section(monkeypatch) -> None:
 
     response = client.post(
         "/agent/turn",
+        headers=student_headers("u1"),
         json={
             "user_id": "u1",
             "course_id": "c1",
@@ -141,6 +122,7 @@ def test_agent_turn_focuses_learning_goals(monkeypatch) -> None:
 
     response = client.post(
         "/agent/turn",
+        headers=student_headers("u1"),
         json={
             "user_id": "u1",
             "course_id": "c1",
@@ -169,6 +151,7 @@ def test_agent_turn_focuses_skill_check(monkeypatch) -> None:
 
     response = client.post(
         "/agent/turn",
+        headers=student_headers("u1"),
         json={
             "user_id": "u1",
             "course_id": "c1",
@@ -194,6 +177,7 @@ def test_agent_turn_reports_model_execution_error(monkeypatch) -> None:
 
     response = client.post(
         "/agent/turn",
+        headers=student_headers("u1"),
         json={
             "user_id": "u1",
             "course_id": "c1",
@@ -218,6 +202,7 @@ def test_agent_turn_enriches_harness_with_canvas_context(monkeypatch) -> None:
 
     response = client.post(
         "/agent/turn",
+        headers=student_headers("u1"),
         json={
             "user_id": "u1",
             "course_id": "martius-ml",

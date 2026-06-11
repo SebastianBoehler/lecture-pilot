@@ -18,6 +18,7 @@ from lecturepilot.models import (
 )
 from lecturepilot.observability import Observability, observability_from_env
 from lecturepilot.providers import DEFAULT_MODEL
+from auth_helpers import student_headers
 
 
 def test_observability_is_disabled_by_default(monkeypatch) -> None:
@@ -78,6 +79,7 @@ def test_agent_turn_records_workflow_spans(monkeypatch) -> None:
 
     response = client.post(
         "/agent/turn",
+        headers=student_headers("u1"),
         json={
             "user_id": "u1",
             "course_id": "martius-ml",

@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from lecturepilot.app import create_app
 from lecturepilot.models import AgentTurnInput, AgentTurnResult, CanvasCommand
 from lecturepilot.providers import DEFAULT_MODEL
+from auth_helpers import student_headers
 
 
 def test_agent_turn_stream_emits_activity_and_result(monkeypatch) -> None:
@@ -16,6 +17,7 @@ def test_agent_turn_stream_emits_activity_and_result(monkeypatch) -> None:
 
     response = client.post(
         "/agent/turn/stream",
+        headers=student_headers("u1"),
         json={
             "user_id": "u1",
             "course_id": "c1",

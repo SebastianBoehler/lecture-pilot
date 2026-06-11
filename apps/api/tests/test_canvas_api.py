@@ -12,6 +12,7 @@ from lecturepilot.models import (
     QualityGateDecision,
     QualityGateStatus,
 )
+from auth_helpers import professor_headers, student_headers
 
 
 def test_canvas_endpoint_loads_private_course_source_for_student(tmp_path: Path) -> None:
@@ -20,7 +21,8 @@ def test_canvas_endpoint_loads_private_course_source_for_student(tmp_path: Path)
     client = TestClient(app)
 
     response = client.get(
-        "/courses/martius-ml/lectures/lecture-03/canvas?user_id=student01"
+        "/courses/martius-ml/lectures/lecture-03/canvas?user_id=student01",
+        headers=student_headers("student01"),
     )
 
     assert response.status_code == 200
@@ -39,6 +41,7 @@ def test_agent_appended_canvas_section_persists_for_same_student(tmp_path: Path)
 
     response = client.post(
         "/agent/turn",
+        headers=student_headers("student01"),
         json={
             "user_id": "student01",
             "course_id": "martius-ml",
@@ -49,15 +52,23 @@ def test_agent_appended_canvas_section_persists_for_same_student(tmp_path: Path)
         },
     )
     same_student = client.get(
-        "/courses/martius-ml/lectures/lecture-03/canvas?user_id=student01"
+        "/courses/martius-ml/lectures/lecture-03/canvas?user_id=student01",
+        headers=student_headers("student01"),
     )
     other_student = client.get(
-        "/courses/martius-ml/lectures/lecture-03/canvas?user_id=student02"
+        "/courses/martius-ml/lectures/lecture-03/canvas?user_id=student02",
+        headers=student_headers("student01"),
+    )
+    professor_view = client.get(
+        "/courses/martius-ml/lectures/lecture-03/canvas?user_id=student02",
+        headers=professor_headers(),
     )
 
     assert response.status_code == 200
     assert _section_ids(same_student.json())[-1] == "student-soccer-bayes-example"
-    assert "student-soccer-bayes-example" not in _section_ids(other_student.json())
+    assert other_student.status_code == 403
+    assert professor_view.status_code == 200
+    assert "student-soccer-bayes-example" not in _section_ids(professor_view.json())
     lecture_root = app.state.canvas_workspace.layout.user_lecture_root(
         "student01",
         "martius-ml",
@@ -71,6 +82,16 @@ def test_agent_appended_canvas_section_persists_for_same_student(tmp_path: Path)
     component_file = lecture_root / "canvas" / "components" / "student-risk-check.yaml"
     assert component_file.exists()
     assert "id: posterior-risk" in component_file.read_text(encoding="utf-8")
+
+
+def test_canvas_endpoint_requires_authenticated_learner_identity(tmp_path: Path) -> None:
+    app = create_app()
+    app.state.canvas_workspace = _workspace(tmp_path)
+    client = TestClient(app)
+
+    response = client.get("/courses/martius-ml/lectures/lecture-03/canvas?user_id=student01")
+
+    assert response.status_code == 401
 
 
 class _AppendingHarness:

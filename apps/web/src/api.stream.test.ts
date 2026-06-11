@@ -24,7 +24,7 @@ it("emits tutor activity tags while reading the streamed agent turn", async () =
   vi.stubGlobal("fetch", fetchMock);
 
   const activityTags: string[] = [];
-  const result = await sendAgentTurnStream(streamInput(), {
+  const result = await sendAgentTurnStream(streamInput(), streamSession(), {
     onActivity: (tag) => activityTags.push(tag),
   });
 
@@ -32,7 +32,13 @@ it("emits tutor activity tags while reading the streamed agent turn", async () =
   expect(result.message).toBe("Streamed tutor answer.");
   expect(fetchMock).toHaveBeenCalledWith(
     expect.stringContaining("/agent/turn/stream"),
-    expect.objectContaining({ method: "POST" }),
+    expect.objectContaining({
+      headers: expect.objectContaining({
+        "X-User-Id": "student01",
+        "X-User-Role": "student",
+      }),
+      method: "POST",
+    }),
   );
 });
 
@@ -57,5 +63,16 @@ function streamResult() {
       reason: "Needs more evidence.",
     },
     model: "local-guided-preview",
+  };
+}
+
+function streamSession() {
+  return {
+    username: "student01",
+    email: "student01@uni-tuebingen.de",
+    term: "Sommer 2026",
+    tenant_id: "tenant-tuebingen",
+    roles: ["student" as const],
+    courses: [],
   };
 }
