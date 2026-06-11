@@ -68,6 +68,9 @@ def test_agent_appended_canvas_section_persists_for_same_student(tmp_path: Path)
     assert (user_root / "memories" / "preferences.json").exists()
     assert '"attendance": "absent"' in (lecture_root / "attendance.json").read_text()
     assert "demo-gate" in (lecture_root / "gates.json").read_text()
+    component_file = lecture_root / "canvas" / "components" / "student-risk-check.yaml"
+    assert component_file.exists()
+    assert "id: posterior-risk" in component_file.read_text(encoding="utf-8")
 
 
 class _AppendingHarness:
@@ -81,6 +84,18 @@ class _AppendingHarness:
                     id="student-soccer-bayes-example-p-1",
                     type="paragraph",
                     text="Student-specific explanation.",
+                ),
+                CanvasBlock(
+                    id="student-risk-check",
+                    type="component",
+                    component_id="student-risk-check",
+                    component_type="single_choice_quiz",
+                    component_version=1,
+                    caption="Risk check",
+                    text="Which value changes the expected-risk decision?",
+                    items=["The posterior-weighted loss", "The slide number"],
+                    option_ids=["posterior-risk", "slide-number"],
+                    answer_index=0,
                 )
             ],
         )

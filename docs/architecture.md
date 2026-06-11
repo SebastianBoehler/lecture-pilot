@@ -64,6 +64,30 @@ Postgres metadata and S3-compatible object storage such as MinIO.
 See [tenancy-security.md](tenancy-security.md) for the professor/student role
 model, tenant isolation rules, and secure material-upload contract.
 
+## Low-Level Agent Tools
+
+The tutor should eventually use a small set of general workspace tools instead
+of many product-specific commands. The model should learn one environment: a
+course/user filesystem image plus a rendered canvas.
+
+Core tools:
+
+- `list_workspace`, `read_file`, `write_file`, `patch_file`
+- `search_course_source`, `read_source_excerpt`
+- `focus_canvas`, `highlight_span`, `scroll_to`
+- `generate_image`, `discover_media`
+- `record_gate`, `read_memory`, `write_memory`
+
+`append_section` and `update_section` remain useful compatibility commands, but
+they should compile down to file writes inside `canvas/student/*.md`,
+`canvas/components/*.yaml`, and `canvas/student-assets/`. The backend owns path
+validation, file-size limits, course-source read-only rules, lecture unlocks,
+and tenant/profile authorization.
+
+This keeps the harness close to coding-agent ergonomics: the model reasons over
+files and navigation, while the application turns those edits into a safe
+student-facing learning interface.
+
 ## Provider Model
 
 The app depends on a harness contract, not a provider SDK.

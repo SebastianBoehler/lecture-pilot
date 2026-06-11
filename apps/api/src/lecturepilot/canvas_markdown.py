@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.canvas_component_blocks import write_component_sources
 from lecturepilot.canvas_markdown_blocks import block_to_markdown, read_blocks
 
 
@@ -16,15 +17,18 @@ def write_document_source(document: CanvasDocument, canvas_dir: Path) -> None:
     _write_manifest(document, canvas_dir / "index.md")
     for index, section in enumerate(document.sections, start=1):
         section_path = canvas_dir / "sections" / f"{index:02d}-{_safe_filename(section.id)}.md"
-        write_section_source(section, section_path)
+        write_section_source(section, section_path, canvas_dir=canvas_dir)
 
 
 def write_student_sections(canvas_dir: Path, sections: list[CanvasSection]) -> None:
     student_dir = canvas_dir / "student"
     student_dir.mkdir(parents=True, exist_ok=True)
     for section in sections:
-        path = _find_section_path(student_dir, section.id) or _new_student_path(student_dir, section.id)
-        write_section_source(section, path)
+        path = _find_section_path(student_dir, section.id) or _new_student_path(
+            student_dir,
+            section.id,
+        )
+        write_section_source(section, path, canvas_dir=canvas_dir)
 
 
 def read_document_source(canvas_dir: Path) -> CanvasDocument:
@@ -48,8 +52,15 @@ def read_document_source(canvas_dir: Path) -> CanvasDocument:
     )
 
 
-def write_section_source(section: CanvasSection, path: Path) -> None:
+def write_section_source(
+    section: CanvasSection,
+    path: Path,
+    *,
+    canvas_dir: Path | None = None,
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    if canvas_dir is not None:
+        write_component_sources(section, canvas_dir)
     path.write_text(_section_to_markdown(section), encoding="utf-8")
 
 
@@ -100,6 +111,7 @@ def _read_section(path: Path, manifest: dict[str, str]) -> CanvasSection:
             section_id=section_id,
             course_id=_required(manifest, "course_id"),
             lecture_id=_required(manifest, "lecture_id"),
+            components_dir=path.parent.parent / "components",
         ),
     )
 

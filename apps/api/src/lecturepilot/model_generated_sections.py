@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import re
-from datetime import UTC, datetime
-
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
+from lecturepilot.model_generated_ids import safe_generated_id, student_section_id
 from lecturepilot.models import AgentTurnInput, CanvasCommand
 
 
@@ -30,11 +28,14 @@ def fallback_generated_command(turn: AgentTurnInput, focus_section_id: str) -> C
         for word in (
             "canvas",
             "chart",
+            "component",
             "diagram",
             "graph",
             "infographic",
+            "interactive",
             "note",
             "plot",
+            "quiz",
             "section",
             "table",
             "visual",
@@ -44,21 +45,21 @@ def fallback_generated_command(turn: AgentTurnInput, focus_section_id: str) -> C
     if not has_action or not (has_target or has_explicit_example):
         return None
     title = _generated_title(turn.message)
-    section_id = _student_section_id(title)
+    section_id = student_section_id(title)
     blocks = [
         CanvasBlock(
-            id=_safe_generated_id(f"{section_id}-callout"),
+            id=safe_generated_id(f"{section_id}-callout"),
             type="callout",
             text=f"Generated learner note anchored in {_section_title(turn, focus_section_id)}.",
         ),
         CanvasBlock(
-            id=_safe_generated_id(f"{section_id}-steps"),
+            id=safe_generated_id(f"{section_id}-steps"),
             type="list",
             items=_generated_items(turn.message),
         ),
         *_practice_blocks(turn.message, section_id),
         CanvasBlock(
-            id=_safe_generated_id(f"{section_id}-check"),
+            id=safe_generated_id(f"{section_id}-check"),
             type="paragraph",
             text="Use this personalized explanation, then answer the tutor's next check in your own words.",
         ),
@@ -113,10 +114,27 @@ def _generated_items(message: str) -> list[str]:
 def _practice_blocks(message: str, section_id: str) -> list[CanvasBlock]:
     lowered = message.lower()
     blocks: list[CanvasBlock] = []
+    if "component" in lowered or "interactive" in lowered:
+        component_id = safe_generated_id(f"{section_id}-risk-check")
+        blocks.append(
+            CanvasBlock(
+                id=safe_generated_id(f"{section_id}-component"),
+                type="component",
+                component_id=component_id,
+                component_type="single_choice_quiz",
+                component_ref=f"{component_id}.yaml",
+                component_version=1,
+                caption="Interactive risk check",
+                text="Which value directly changes a cost-sensitive classifier decision?",
+                items=["The posterior-weighted loss", "The slide number", "The notation font"],
+                option_ids=["posterior-loss", "slide-number", "notation-font"],
+                answer_index=0,
+            )
+        )
     if "checkpoint" in lowered or "gate" in lowered:
         blocks.append(
             CanvasBlock(
-                id=_safe_generated_id(f"{section_id}-checkpoint"),
+                id=safe_generated_id(f"{section_id}-checkpoint"),
                 type="checkpoint",
                 caption="Quality gate",
                 text="State the concept, apply it to one concrete case, and explain the failure mode the formula prevents.",
@@ -125,7 +143,7 @@ def _practice_blocks(message: str, section_id: str) -> list[CanvasBlock]:
     if "quiz" in lowered:
         blocks.append(
             CanvasBlock(
-                id=_safe_generated_id(f"{section_id}-quiz"),
+                id=safe_generated_id(f"{section_id}-quiz"),
                 type="quiz",
                 caption="Retrieval check",
                 text="Which piece of evidence would change the expected-risk decision most directly?",
@@ -143,16 +161,3 @@ def _section_title(turn: AgentTurnInput, section_id: str) -> str:
         if section.id == section_id:
             return section.title
     return "the current lecture section"
-
-
-def _student_section_id(value: str) -> str:
-    safe = _safe_generated_id(value)
-    if safe.startswith("student-"):
-        return safe
-    suffix = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
-    return f"student-{safe[:80]}-{suffix}"
-
-
-def _safe_generated_id(value: str) -> str:
-    safe = re.sub(r"[^a-zA-Z0-9_-]+", "-", value.lower()).strip("-")
-    return (safe or "generated-note")[:120]

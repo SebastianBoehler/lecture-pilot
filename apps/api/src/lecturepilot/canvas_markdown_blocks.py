@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 from lecturepilot.canvas_asset_refs import asset_markdown_target, parsed_asset_target
 from lecturepilot.canvas_component_blocks import component_to_markdown, read_component_block
@@ -39,10 +40,17 @@ def read_blocks(
     section_id: str,
     course_id: str,
     lecture_id: str,
+    components_dir: Path | None = None,
 ) -> list[CanvasBlock]:
     matches = list(_BLOCK_RE.finditer(body))
     if not matches:
-        return _read_unmarked_blocks(body, section_id=section_id, course_id=course_id, lecture_id=lecture_id)
+        return _read_unmarked_blocks(
+            body,
+            section_id=section_id,
+            course_id=course_id,
+            lecture_id=lecture_id,
+            components_dir=components_dir,
+        )
     blocks = []
     for index, match in enumerate(matches):
         start = match.end()
@@ -55,6 +63,7 @@ def read_blocks(
                 section_id=section_id,
                 course_id=course_id,
                 lecture_id=lecture_id,
+                components_dir=components_dir,
             )
         )
     return blocks
@@ -81,6 +90,7 @@ def _read_unmarked_blocks(
     section_id: str,
     course_id: str,
     lecture_id: str,
+    components_dir: Path | None,
 ) -> list[CanvasBlock]:
     blocks = []
     chunks = [chunk.strip() for chunk in re.split(r"\n\s*\n", body) if chunk.strip()]
@@ -97,6 +107,7 @@ def _read_unmarked_blocks(
                 section_id=section_id,
                 course_id=course_id,
                 lecture_id=lecture_id,
+                components_dir=components_dir,
             )
         )
     return blocks
@@ -110,11 +121,16 @@ def _read_block(
     section_id: str,
     course_id: str,
     lecture_id: str,
+    components_dir: Path | None,
 ) -> CanvasBlock:
     if block_type == "asset":
         match = _IMAGE_RE.search(chunk)
         target = match.group("target") if match else ""
-        asset_path, asset_url = parsed_asset_target(target, course_id=course_id, lecture_id=lecture_id)
+        asset_path, asset_url = parsed_asset_target(
+            target,
+            course_id=course_id,
+            lecture_id=lecture_id,
+        )
         return CanvasBlock(
             id=block_id,
             type="asset",
@@ -145,7 +161,7 @@ def _read_block(
             answer_index=answer_index,
         )
     if block_type == "component":
-        return _read_component(block_id, chunk)
+        return _read_component(block_id, chunk, components_dir=components_dir)
     if block_type == "table":
         return CanvasBlock(id=block_id, type="table", text=chunk.strip())
     if block_type != "paragraph":
@@ -210,14 +226,14 @@ def _read_quiz_item(item: str) -> tuple[str, bool]:
     return match.group("text").strip(), match.group("checked").lower() == "x"
 
 
-def _read_component(block_id: str, chunk: str) -> CanvasBlock:
+def _read_component(block_id: str, chunk: str, *, components_dir: Path | None) -> CanvasBlock:
     label, body = _read_rich_text(chunk, "component")
-    return read_component_block(block_id, label, body)
+    return read_component_block(block_id, label, body, components_dir=components_dir)
 
 
 def _read_video(chunk: str) -> tuple[str, str, str | None]:
     match = _LINK_RE.search(chunk)
-    url = match.group("target") if match and match.group("target") else match.group("bare") if match else ""
+    url = _matched_url(match)
     caption = match.group("caption") if match and match.group("caption") else "Course video"
     detail = chunk.replace(match.group(0), "").strip() if match else None
     return caption, url, detail or None
@@ -225,8 +241,14 @@ def _read_video(chunk: str) -> tuple[str, str, str | None]:
 
 def _youtube_link(chunk: str) -> bool:
     match = _LINK_RE.search(chunk)
-    target = match.group("target") if match and match.group("target") else match.group("bare") if match else ""
+    target = _matched_url(match)
     return "youtube.com/" in target or "youtu.be/" in target
+
+
+def _matched_url(match: re.Match[str] | None) -> str:
+    if not match:
+        return ""
+    return match.group("target") or match.group("bare") or ""
 
 
 def _is_markdown_table(chunk: str) -> bool:
@@ -255,5 +277,8 @@ _BLOCK_RE = re.compile(r'<!--\s*block\s+id="(?P<id>[^"]+)"\s+type="(?P<type>[^"]
 _IMAGE_RE = re.compile(r"!\[(?P<caption>[^]]*)]\((?P<target>[^)]+)\)")
 _LINK_RE = re.compile(r"\[(?P<caption>[^]]+)]\((?P<target>https?://[^)]+)\)|(?P<bare>https?://\S+)")
 _MATH_RE = re.compile(r"```math\s*(?P<formula>.*?)```", re.DOTALL)
-_RICH_RE = re.compile(r":::(?P<kind>[a-zA-Z_-]+)\s*(?P<label>[^\n]*)\n(?P<body>.*?)\n:::", re.DOTALL)
+_RICH_RE = re.compile(
+    r":::(?P<kind>[a-zA-Z_-]+)\s*(?P<label>[^\n]*)\n(?P<body>.*?)\n?:::",
+    re.DOTALL,
+)
 _TABLE_SEPARATOR_RE = re.compile(r"\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?")

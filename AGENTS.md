@@ -64,7 +64,7 @@ storage instead of local folders.
       memories/course.md
       lectures/<lecture-id>/
         {attendance.json,gates.json,tutor-state.json}
-        canvas/{student/*.md,student-assets/*}
+        canvas/{student/*.md,components/*.yaml,student-assets/*}
   courses/<tenant-id>/<course-id>/
     course.json
     source/{uploads/,normalized/,assets/,source-index.json}
@@ -79,6 +79,14 @@ Professor-approved learning documents belong to
 `users/<user-key>/memories`. Lecture-specific attendance, gates, progress,
 generated notes, and generated images belong under the user's course/lecture
 workspace.
+
+The agent should eventually use a small set of low-level typed tools over this
+image: list/read/write/patch permitted files, search/read course source
+excerpts, focus/highlight/scroll the canvas, generate media, discover media,
+record gates, and read/write memory. Product-level actions such as
+`append_section` and `update_section` are conveniences over those file tools:
+they should compile to writes in `canvas/student/*.md`,
+`canvas/components/*.yaml`, and `canvas/student-assets/`.
 
 The agent may navigate this image only through typed tools. It should not freely
 read host paths, mutate official source files, duplicate large course assets

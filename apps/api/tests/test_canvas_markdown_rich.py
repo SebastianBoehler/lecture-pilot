@@ -1,12 +1,14 @@
 from pathlib import Path
 
-from lecturepilot.canvas_markdown import read_document_source
+from lecturepilot.canvas_markdown import read_document_source, write_document_source
 
 
 def test_canvas_markdown_parses_rich_learning_blocks(tmp_path: Path) -> None:
     canvas_dir = tmp_path / "canvas"
     sections_dir = canvas_dir / "sections"
+    components_dir = canvas_dir / "components"
     sections_dir.mkdir(parents=True)
+    components_dir.mkdir()
     (canvas_dir / "index.md").write_text(
         """---
 id: "martius-ml-lecture-03"
@@ -50,17 +52,23 @@ Which quantity changes when false negatives are ten times costlier?
 :::
 
 :::component risk-threshold-check
-{
-  "id": "risk-threshold-check",
-  "type": "single_choice_quiz",
-  "title": "Risk threshold component",
-  "prompt": "Which action should minimize cost-sensitive risk?",
-  "options": [
-    {"id": "A", "text": "Choose the lowest expected risk", "correct": true},
-    {"id": "B", "text": "Always choose the highest posterior", "correct": false}
-  ]
-}
 :::
+""",
+        encoding="utf-8",
+    )
+    (components_dir / "risk-threshold-check.yaml").write_text(
+        """id: risk-threshold-check
+version: 2
+type: single_choice_quiz
+title: Risk threshold component
+prompt: Which action should minimize cost-sensitive risk?
+options:
+  - id: lowest-risk
+    text: Choose the lowest expected risk
+    correct: true
+  - id: highest-posterior
+    text: Always choose the highest posterior
+    correct: false
 """,
         encoding="utf-8",
     )
@@ -88,6 +96,23 @@ Which quantity changes when false negatives are ten times costlier?
     assert blocks[5].answer_index == 1
     assert blocks[6].component_id == "risk-threshold-check"
     assert blocks[6].component_type == "single_choice_quiz"
+    assert blocks[6].component_ref == "risk-threshold-check.yaml"
+    assert blocks[6].component_version == 2
     assert blocks[6].caption == "Risk threshold component"
-    assert blocks[6].items == ["Choose the lowest expected risk", "Always choose the highest posterior"]
+    assert blocks[6].items == [
+        "Choose the lowest expected risk",
+        "Always choose the highest posterior",
+    ]
+    assert blocks[6].option_ids == ["lowest-risk", "highest-posterior"]
     assert blocks[6].answer_index == 0
+
+    output_dir = tmp_path / "roundtrip"
+    write_document_source(document, output_dir)
+    section_text = next((output_dir / "sections").glob("01-*.md")).read_text(encoding="utf-8")
+    component_text = (output_dir / "components" / "risk-threshold-check.yaml").read_text(
+        encoding="utf-8"
+    )
+
+    assert ":::component risk-threshold-check.yaml\n:::" in section_text
+    assert "version: 2" in component_text
+    assert "id: lowest-risk" in component_text

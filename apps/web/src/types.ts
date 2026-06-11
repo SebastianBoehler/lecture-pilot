@@ -37,6 +37,9 @@ export type CanvasBlock = {
   answer_index?: number | null;
   component_id?: string | null;
   component_type?: string | null;
+  component_ref?: string | null;
+  component_version?: number | null;
+  option_ids?: string[];
 };
 
 export type CanvasSection = {

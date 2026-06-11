@@ -47,6 +47,41 @@ This repository is intentionally small but runnable:
 Provider-backed tutor turns intentionally fail with a clear error until a real
 API key is configured.
 
+## Agent Harness Direction
+
+LecturePilot is an agent harness for teaching, not a generic chatbot. The agent
+acts as a text-first tutor that can also build and revise the learning
+interface by operating on a constrained filesystem-like workspace.
+
+The long-term tool model should stay small and low-level:
+
+- `list_workspace`, `read_file`, `write_file`, `patch_file` for permitted user
+  and course paths.
+- `search_course_source` and `read_source_excerpt` for grounding answers in
+  professor-provided material.
+- `focus_canvas`, `highlight_span`, and `scroll_to` for directing attention in
+  the rendered lesson.
+- `generate_image`, `discover_media`, and component writes for richer teaching
+  artifacts.
+- `record_gate`, `write_memory`, and `read_memory` for learning progress and
+  personalization.
+
+High-level commands such as `append_section` and `update_section` are product
+conveniences over those workspace primitives. In the storage layer they become
+plain file operations: Markdown sections in `canvas/student/*.md`, interactive
+component definitions in `canvas/components/*.yaml`, and generated media under
+`canvas/student-assets/`. This keeps the model close to the same basic
+capabilities that make coding agents useful, while the backend still enforces
+tenant access, lecture unlocks, path safety, file-type limits, source
+immutability, and auditability.
+
+This direction matches current agent frameworks: agents are configured with
+instructions, tools, state, and runtime guardrails; MCP-style tools expose
+external systems through controlled roots; durable runtimes add persistence,
+human review, and traceability around those tool calls. Optional observability
+such as MLflow/OpenTelemetry should wrap these low-level tool spans rather than
+being built into the student-facing UI first.
+
 ## Repository Layout
 
 ```txt

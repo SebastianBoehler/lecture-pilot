@@ -22,6 +22,11 @@ def official_canvas_signature(document: CanvasDocument):
                     block.asset_path,
                     block.asset_url,
                     block.caption,
+                    block.component_id,
+                    block.component_type,
+                    block.component_ref,
+                    block.component_version,
+                    tuple(block.option_ids),
                 )
                 for block in section.blocks
             ],

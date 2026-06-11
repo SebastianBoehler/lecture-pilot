@@ -14,9 +14,12 @@ describe("CanvasInteractiveComponents", () => {
       type: "component",
       component_id: "risk-threshold-check",
       component_type: "single_choice_quiz",
+      component_ref: "risk-threshold-check.yaml",
+      component_version: 2,
       caption: "Risk threshold component",
       text: "Which action should minimize cost-sensitive risk?",
       items: ["Choose the lowest expected risk", "Always choose the highest posterior"],
+      option_ids: ["lowest-risk", "highest-posterior"],
       answer_index: 0,
     };
 

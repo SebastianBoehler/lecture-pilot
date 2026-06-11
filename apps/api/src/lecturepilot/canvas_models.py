@@ -27,6 +27,9 @@ class CanvasBlock(BaseModel):
     answer_index: int | None = Field(default=None, ge=0, le=25)
     component_id: str | None = Field(default=None, max_length=120)
     component_type: str | None = Field(default=None, max_length=120)
+    component_ref: str | None = Field(default=None, max_length=240)
+    component_version: int | None = Field(default=None, ge=1)
+    option_ids: list[str] = Field(default_factory=list, max_length=26)
 
 
 class CanvasSection(BaseModel):

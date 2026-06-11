@@ -76,6 +76,19 @@ def test_new_infographic_table_plot_triggers_visual_section_fallback() -> None:
     assert "Locate" in " ".join(commands[0].section.blocks[1].items)
 
 
+def test_interactive_component_request_gets_component_fallback() -> None:
+    turn = _turn("append an interactive component quiz about expected risk")
+
+    commands = read_canvas_commands({"message": "I added it.", "canvas_commands": []}, turn)
+
+    assert commands[0].section is not None
+    component = next(block for block in commands[0].section.blocks if block.type == "component")
+    assert component.component_type == "single_choice_quiz"
+    assert component.component_ref.endswith(".yaml")
+    assert component.option_ids == ["posterior-loss", "slide-number", "notation-font"]
+    assert component.answer_index == 0
+
+
 def test_requested_learning_blocks_are_preserved_when_model_appends_section() -> None:
     turn = _turn("append a checkpoint quiz and table section about expected risk")
     section = CanvasSection(
@@ -99,6 +112,56 @@ def test_requested_learning_blocks_are_preserved_when_model_appends_section() ->
 
     assert commands[0].section is not None
     assert {"checkpoint", "quiz", "table"}.issubset({block.type for block in commands[0].section.blocks})
+
+
+def test_generated_component_blocks_keep_file_backed_metadata() -> None:
+    turn = _turn("append an interactive risk quiz component")
+
+    commands = read_canvas_commands(
+        {
+            "message": "Added.",
+            "canvas_commands": [
+                {
+                    "type": "append_section",
+                    "section": {
+                        "id": "student-risk-practice",
+                        "title": "Risk practice",
+                        "blocks": [
+                            {
+                                "id": "risk-check",
+                                "type": "component",
+                                "component_id": "risk-threshold-check",
+                                "component_type": "single_choice_quiz",
+                                "version": 2,
+                                "text": "Which rule should drive a cost-sensitive classifier?",
+                                "options": [
+                                    {
+                                        "id": "lowest-risk",
+                                        "text": "Choose the lowest expected risk.",
+                                        "correct": True,
+                                    },
+                                    {
+                                        "id": "highest-posterior",
+                                        "text": "Always choose the highest posterior.",
+                                    },
+                                ],
+                            }
+                        ],
+                    },
+                }
+            ],
+        },
+        turn,
+    )
+
+    block = commands[0].section.blocks[0]
+    assert block.type == "component"
+    assert block.component_id == "risk-threshold-check"
+    assert block.component_type == "single_choice_quiz"
+    assert block.component_ref == "risk-threshold-check.yaml"
+    assert block.component_version == 2
+    assert block.option_ids == ["lowest-risk", "highest-posterior"]
+    assert block.answer_index == 0
 
 
 def _turn(message: str) -> AgentTurnInput:
