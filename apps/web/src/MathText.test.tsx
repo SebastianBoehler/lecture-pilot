@@ -22,10 +22,8 @@ describe("MathText", () => {
       </p>,
     );
 
-    expect(document.body.textContent).not.toContain("\\lambda");
-    expect(document.body.textContent).not.toContain("\\rho");
     expect(document.querySelectorAll(".katex")).toHaveLength(2);
-    expect(document.querySelector(".phrase-highlight .katex")).not.toBeNull();
+    expect(document.querySelector(".phrase-highlight")?.textContent).toBe("loss function");
   });
 
   it("renders bracketed display math embedded in imported slide text", () => {
@@ -39,7 +37,37 @@ describe("MathText", () => {
     );
 
     expect(document.body.textContent).not.toContain("\\[");
-    expect(document.querySelector(".math-display .katex")).not.toBeNull();
+    expect(document.querySelector(".katex-display")).not.toBeNull();
+  });
+
+  it("renders full markdown blocks with lists, tables, links, and math", () => {
+    render(
+      <div>
+        <MathText
+          highlightedText={null}
+          mode="block"
+          text={[
+            "### Prerequisites",
+            "",
+            "* **Probability** with $P(C|x)$",
+            "* `Python` basics",
+            "",
+            "| Skill | Why |",
+            "| --- | --- |",
+            "| Linear algebra | vectors |",
+            "",
+            "[Course page](https://example.com)",
+          ].join("\n")}
+        />
+      </div>,
+    );
+
+    expect(screen.getByRole("heading", { name: "Prerequisites" })).toBeInTheDocument();
+    expect(screen.getByText("Probability").closest("strong")).not.toBeNull();
+    expect(screen.getByText("Python").tagName).toBe("CODE");
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Course page" })).toHaveAttribute("href", "https://example.com");
+    expect(document.querySelector(".katex")).not.toBeNull();
   });
 
   it("highlights a useful prefix when the model returns a truncated phrase", () => {

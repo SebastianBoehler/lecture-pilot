@@ -33,7 +33,7 @@ describe("CanvasLearningBlocks", () => {
     expect(screen.getByText("Retrieval check")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "A Prior" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Action" })).toBeInTheDocument();
-    expect(document.body.textContent).not.toContain("\\lambda");
+    expect(document.querySelector(".katex")).not.toBeNull();
   });
 
   it("emits selected quiz options", async () => {

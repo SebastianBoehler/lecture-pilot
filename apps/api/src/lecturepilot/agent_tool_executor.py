@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from lecturepilot.agent_canvas_write import normalize_student_canvas_markdown, student_canvas_section_id
+from lecturepilot.agent_canvas_write import prepare_student_canvas_write
 from lecturepilot.agent_highlight import highlight_command_for
 from lecturepilot.agent_image_tool import AgentImageToolError, generate_workspace_image
 from lecturepilot.agent_tool_utils import (
@@ -187,13 +187,14 @@ class AgentToolExecutor:
 
     def _write(self, logical_path: str, content: str) -> dict[str, Any]:
         resolved = self._resolve(logical_path, for_write=True)
-        content = normalize_student_canvas_markdown(resolved.logical, content)
+        path, content, section_id = prepare_student_canvas_write(resolved.logical, resolved.path, content)
+        if path != resolved.path:
+            resolved = ToolPath(self._logical_for(path), path)
         self.policy.validate_write(relative_write_path(resolved.logical), len(content.encode("utf-8")))
         previous = resolved.path.read_text(encoding="utf-8") if resolved.path.exists() else None
         resolved.path.parent.mkdir(parents=True, exist_ok=True)
         resolved.path.write_text(content, encoding="utf-8")
         self._validate_canvas_write(resolved, previous)
-        section_id = student_canvas_section_id(resolved.logical, content)
         self.latest_written_section_id = section_id or self.latest_written_section_id
         return {"path": resolved.logical, "bytes": len(content.encode("utf-8")), "section_id": section_id}
 

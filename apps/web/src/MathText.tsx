@@ -1,131 +1,111 @@
+import ReactMarkdown, { type Components } from "react-markdown";
+import type { ComponentProps } from "react";
+import { useLayoutEffect, useRef } from "react";
+import rehypeKatex from "rehype-katex";
+import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 
-export function MathText({ highlightedText, text }: { highlightedText: string | null; text: string }) {
-  const pieces = splitInlineMath(text);
-  return (
-    <>
-      {pieces.map((piece, index) =>
-        piece.math ? (
-          <span
-            className={piece.displayMode ? "math-display" : undefined}
-            dangerouslySetInnerHTML={{ __html: renderMath(piece.text, piece.displayMode) }}
-            key={`${piece.text}-${index}`}
-          />
-        ) : (
-          <TextWithHighlight
-            highlightedText={highlightedText}
-            key={`${piece.text}-${index}`}
-            text={piece.text}
-          />
-        ),
-      )}
-    </>
-  );
-}
+type MathTextMode = "inline" | "block";
 
-export function DisplayMath({ expression }: { expression: string }) {
-  return <div dangerouslySetInnerHTML={{ __html: renderMath(expression, true) }} />;
-}
+const katexOptions = {
+  macros: {
+    "\\D": "\\mathcal{D}",
+    "\\H": "\\mathcal{H}",
+    "\\L": "\\mathcal{L}",
+    "\\N": "\\mathbb{N}",
+    "\\nicefrac": "\\frac{#1}{#2}",
+    "\\x": "\\mathbf{x}",
+  },
+  strict: "ignore" as const,
+  throwOnError: false,
+  trust: false,
+};
 
-function TextWithHighlight({
+export function MathText({
   highlightedText,
+  mode = "inline",
   text,
 }: {
   highlightedText: string | null;
+  mode?: MathTextMode;
   text: string;
 }) {
-  if (!highlightedText?.trim()) return <MarkdownInline text={text} />;
-  const ranges = splitByPhrase(text, highlightedText.trim());
+  const markdown = normalizeMarkdownMath(text);
+  const highlightedMarkdown = highlightedText?.trim()
+    ? normalizeMarkdownMath(highlightedText.trim()).trim()
+    : null;
+  const target = highlightedMarkdown
+    ? (
+      highlightTarget(plainMarkdownText(markdown), plainMarkdownText(highlightedMarkdown))
+      ?? highlightTarget(markdown, highlightedMarkdown)
+      ?? leadingTextBeforeMath(highlightedMarkdown)
+    )
+    : null;
+  return <MarkdownRenderer highlightedText={target} mode={mode} text={markdown} />;
+}
+
+export function DisplayMath({ expression }: { expression: string }) {
   return (
-    <span>
-      {ranges.map((range, index) =>
-        range.highlight ? (
-          <mark className="phrase-highlight" key={`${range.text}-${index}`}>
-            <MarkdownInline text={range.text} />
-          </mark>
-        ) : (
-          <MarkdownInline key={`${range.text}-${index}`} text={range.text} />
-        ),
-      )}
-    </span>
+    <div
+      dangerouslySetInnerHTML={{ __html: renderMath(expression, true) }}
+    />
   );
 }
 
-function MarkdownInline({ text }: { text: string }) {
-  const pieces = splitMarkdownInline(text);
+function MarkdownRenderer({
+  highlightedText,
+  mode,
+  text,
+}: {
+  highlightedText?: string | null;
+  mode: MathTextMode;
+  text: string;
+}) {
+  const ref = useRef<HTMLDivElement & HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    if (ref.current && highlightedText) {
+      applyDomHighlight(ref.current, highlightedText);
+    }
+  }, [highlightedText, text]);
+  const content = (
+    <ReactMarkdown
+      components={mode === "inline" ? inlineComponents : blockComponents}
+      rehypePlugins={[[rehypeKatex, katexOptions]]}
+      remarkPlugins={[remarkGfm, remarkMath, looseLatexPlugin]}
+    >
+      {text}
+    </ReactMarkdown>
+  );
+  return mode === "inline" ? <span ref={ref}>{content}</span> : <div ref={ref}>{content}</div>;
+}
+
+const inlineComponents: Components = {
+  a: SafeLink,
+  p: ({ children }) => <>{children}</>,
+};
+
+const blockComponents: Components = {
+  a: SafeLink,
+};
+
+function SafeLink({
+  children,
+  href,
+}: ComponentProps<"a">) {
+  const target = safeHref(href);
+  if (!target) return <>{children}</>;
   return (
-    <>
-      {pieces.map((piece, index) => {
-        const key = `${piece.text}-${index}`;
-        if (piece.kind === "strong") return <strong key={key}><LooseInlineMath text={piece.text} /></strong>;
-        if (piece.kind === "code") return <code key={key}>{piece.text}</code>;
-        return <LooseInlineMath key={key} text={piece.text} />;
-      })}
-    </>
+    <a href={target} rel="noreferrer" target="_blank">
+      {children}
+    </a>
   );
 }
 
-function LooseInlineMath({ text }: { text: string }) {
-  const pieces = splitLooseInlineMath(text);
-  return (
-    <>
-      {pieces.map((piece, index) =>
-        piece.math ? (
-          <span
-            dangerouslySetInnerHTML={{ __html: renderMath(piece.text, false) }}
-            key={`${piece.text}-${index}`}
-          />
-        ) : (
-          <span key={`${piece.text}-${index}`}>{piece.text}</span>
-        ),
-      )}
-    </>
-  );
-}
-
-function splitMarkdownInline(text: string) {
-  const pieces: Array<{ kind: "text" | "strong" | "code"; text: string }> = [];
-  let cursor = 0;
-  for (const match of text.matchAll(/`([^`]+)`|\*\*([^*]+)\*\*/g)) {
-    if (match.index === undefined) continue;
-    if (match.index > cursor) pieces.push({ kind: "text", text: text.slice(cursor, match.index) });
-    pieces.push({ kind: match[1] ? "code" : "strong", text: match[1] ?? match[2] ?? "" });
-    cursor = match.index + match[0].length;
-  }
-  if (cursor < text.length) pieces.push({ kind: "text", text: text.slice(cursor) });
-  return pieces.length ? pieces : [{ kind: "text", text }];
-}
-
-function splitLooseInlineMath(text: string) {
-  const pieces: Array<{ text: string; math: boolean }> = [];
-  let cursor = 0;
-  for (const match of text.matchAll(/\\[a-zA-Z]+(?:\s*[_^](?:\{[^{}]+\}|[a-zA-Z0-9]+))*/g)) {
-    if (match.index === undefined) continue;
-    if (match.index > cursor) pieces.push({ text: text.slice(cursor, match.index), math: false });
-    pieces.push({ text: match[0], math: true });
-    cursor = match.index + match[0].length;
-  }
-  if (cursor < text.length) pieces.push({ text: text.slice(cursor), math: false });
-  return pieces.length ? pieces : [{ text, math: false }];
-}
-
-function splitByPhrase(text: string, phrase: string) {
-  const target = highlightTarget(text, phrase);
-  if (!target) return [{ text, highlight: false }];
-  const lowerText = text.toLowerCase();
-  const lowerPhrase = target.toLowerCase();
-  const pieces: Array<{ text: string; highlight: boolean }> = [];
-  let cursor = 0;
-  let matchIndex = lowerText.indexOf(lowerPhrase, cursor);
-  while (matchIndex !== -1) {
-    if (matchIndex > cursor) pieces.push({ text: text.slice(cursor, matchIndex), highlight: false });
-    pieces.push({ text: text.slice(matchIndex, matchIndex + target.length), highlight: true });
-    cursor = matchIndex + target.length;
-    matchIndex = lowerText.indexOf(lowerPhrase, cursor);
-  }
-  if (cursor < text.length) pieces.push({ text: text.slice(cursor), highlight: false });
-  return pieces.length ? pieces : [{ text, highlight: false }];
+function safeHref(href: string | undefined) {
+  if (!href) return "";
+  return /^(https?:|mailto:|\/)/.test(href) ? href : "";
 }
 
 function highlightTarget(text: string, phrase: string) {
@@ -141,43 +121,153 @@ function highlightTarget(text: string, phrase: string) {
   return null;
 }
 
-function splitInlineMath(text: string) {
-  const pieces: Array<{ text: string; math: boolean; displayMode: boolean }> = [];
+function applyDomHighlight(root: HTMLElement, phrase: string) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      if (!node.nodeValue?.toLowerCase().includes(phrase.toLowerCase())) {
+        return NodeFilter.FILTER_REJECT;
+      }
+      return isHighlightBlocked(node.parentElement)
+        ? NodeFilter.FILTER_REJECT
+        : NodeFilter.FILTER_ACCEPT;
+    },
+  });
+  const nodes: Text[] = [];
+  while (true) {
+    const node = walker.nextNode();
+    if (!node) break;
+    nodes.push(node as Text);
+  }
+  for (const node of nodes) {
+    replaceTextWithHighlight(node, phrase);
+  }
+}
+
+function replaceTextWithHighlight(node: Text, phrase: string) {
+  const value = node.nodeValue ?? "";
+  const lowerValue = value.toLowerCase();
+  const lowerPhrase = phrase.toLowerCase();
   let cursor = 0;
-  for (const match of text.matchAll(/\\{1,2}\[([\s\S]*?)\\{1,2}\]|\$\$([\s\S]*?)\$\$|\$([^$]+)\$|\\{1,2}\((.*?)\\{1,2}\)/g)) {
-    if (match.index === undefined) continue;
-    if (match.index > cursor) {
-      pieces.push({ displayMode: false, text: text.slice(cursor, match.index), math: false });
+  let matchIndex = lowerValue.indexOf(lowerPhrase, cursor);
+  if (matchIndex === -1) return;
+  const fragment = document.createDocumentFragment();
+  while (matchIndex !== -1) {
+    if (matchIndex > cursor) fragment.append(value.slice(cursor, matchIndex));
+    const mark = document.createElement("mark");
+    mark.className = "phrase-highlight";
+    mark.textContent = value.slice(matchIndex, matchIndex + phrase.length);
+    fragment.append(mark);
+    cursor = matchIndex + phrase.length;
+    matchIndex = lowerValue.indexOf(lowerPhrase, cursor);
+  }
+  if (cursor < value.length) fragment.append(value.slice(cursor));
+  node.replaceWith(fragment);
+}
+
+function isHighlightBlocked(element: HTMLElement | null) {
+  for (let current = element; current; current = current.parentElement) {
+    if (["CODE", "PRE", "SCRIPT", "STYLE"].includes(current.tagName)) return true;
+    if (current.classList.contains("katex")) return true;
+  }
+  return false;
+}
+
+function textNode(value: string): MarkdownNode {
+  return { type: "text", value };
+}
+
+function normalizeMarkdownMath(value: string) {
+  return value
+    .replace(/\\{1,2}\[([\s\S]*?)\\{1,2}\]/g, (_, formula: string) => `\n$$\n${formula}\n$$\n`)
+    .replace(/\\{1,2}\(([\s\S]*?)\\{1,2}\)/g, (_, formula: string) => `$${formula}$`);
+}
+
+function plainMarkdownText(value: string) {
+  return value
+    .replace(/\$\$[\s\S]*?\$\$/g, " ")
+    .replace(/\$[^$\n]+\$/g, " ")
+    .replace(/\\+[a-zA-Z]+(?:\s*[_^](?:\{[^{}]+\}|[a-zA-Z0-9]+))*/g, " ")
+    .replace(/[`*_~#[\]()]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function leadingTextBeforeMath(value: string) {
+  const text = value.split(/\\+[a-zA-Z]+|\$|\n\$\$/)[0]?.trim();
+  return text && text.length >= 4 ? text : null;
+}
+
+function looseLatexPlugin() {
+  return (tree: unknown) => {
+    splitLooseLatexText(tree as MarkdownNode);
+    return tree;
+  };
+}
+
+function splitLooseLatexText(node: MarkdownNode) {
+  if (!node || blockedMarkdownNode(node) || !Array.isArray(node.children)) return;
+  const next = [];
+  for (const child of node.children) {
+    if (child.type === "text" && typeof child.value === "string") {
+      next.push(...looseLatexPieces(child.value));
+    } else {
+      splitLooseLatexText(child);
+      next.push(child);
     }
-    pieces.push({
-      displayMode: match[1] !== undefined || match[2] !== undefined,
-      math: true,
-      text: match[1] ?? match[2] ?? match[3] ?? match[4] ?? "",
-    });
+  }
+  node.children = next;
+}
+
+function looseLatexPieces(value: string): MarkdownNode[] {
+  const pieces: MarkdownNode[] = [];
+  let cursor = 0;
+  for (const match of value.matchAll(/\\+[a-zA-Z]+(?:\s*[_^](?:\{[^{}]+\}|[a-zA-Z0-9]+))*/g)) {
+    if (match.index === undefined) continue;
+    if (match.index > cursor) pieces.push(textNode(value.slice(cursor, match.index)));
+    pieces.push(inlineMathNode(normalizeLooseLatexCommand(match[0])));
     cursor = match.index + match[0].length;
   }
-  if (cursor < text.length) pieces.push({ displayMode: false, text: text.slice(cursor), math: false });
-  return pieces.length ? pieces : [{ displayMode: false, text, math: false }];
+  if (cursor < value.length) pieces.push(textNode(value.slice(cursor)));
+  return pieces.length ? pieces : [textNode(value)];
+}
+
+function blockedMarkdownNode(node: MarkdownNode) {
+  return ["code", "inlineCode", "math", "inlineMath"].includes(String(node.type || ""));
+}
+
+function inlineMathNode(value: string): MarkdownNode {
+  return {
+    type: "inlineMath",
+    value,
+    data: {
+      hName: "code",
+      hProperties: { className: ["language-math", "math-inline"] },
+      hChildren: [textNode(value)],
+    },
+  };
+}
+
+function normalizeLooseLatexCommand(value: string) {
+  return value.replace(/^\\+/, "\\");
 }
 
 function renderMath(expression: string, displayMode: boolean) {
   return katex.renderToString(normalizeMathExpression(expression), {
+    ...katexOptions,
     displayMode,
-    macros: {
-      "\\D": "\\mathcal{D}",
-      "\\H": "\\mathcal{H}",
-      "\\L": "\\mathcal{L}",
-      "\\N": "\\mathbb{N}",
-      "\\nicefrac": "\\frac{#1}{#2}",
-      "\\x": "\\mathbf{x}",
-    },
     output: "html",
-    strict: "ignore",
-    throwOnError: false,
-    trust: false,
   });
 }
 
 function normalizeMathExpression(expression: string) {
   return expression.replaceAll("...", "\\dots");
 }
+
+type MarkdownNode = {
+  type?: string;
+  tagName?: string;
+  value?: string;
+  properties?: Record<string, unknown>;
+  data?: Record<string, unknown>;
+  children?: MarkdownNode[];
+};

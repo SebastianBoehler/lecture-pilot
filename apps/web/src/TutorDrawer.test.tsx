@@ -27,7 +27,7 @@ it("keeps the composer docked and renders only the latest tool tags outside mess
   const messageBubble = screen.getByText(/Look at the risk section/).closest(".chat-message");
   expect(messageBubble).not.toBeNull();
   expect(within(messageBubble as HTMLElement).queryByLabelText("Tool calls")).not.toBeInTheDocument();
-  expect(document.body.textContent).not.toContain("\\lambda");
+  expect((messageBubble as HTMLElement).querySelector(".katex")).not.toBeNull();
 
   const toolCalls = screen.getByLabelText("Tool calls");
   expect(toolCalls.closest(".chat-message")).toBeNull();

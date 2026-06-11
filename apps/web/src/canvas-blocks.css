@@ -40,9 +40,82 @@
   line-height: 1.65;
 }
 
+.canvas-markdown > :first-child {
+  margin-top: 0;
+}
+
+.canvas-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.canvas-markdown h3,
+.canvas-markdown h4 {
+  margin: 18px 0 8px;
+  line-height: 1.25;
+}
+
+.canvas-markdown h3 {
+  font-size: 18px;
+}
+
+.canvas-markdown h4 {
+  font-size: 16px;
+}
+
+.canvas-markdown p,
+.canvas-markdown ul,
+.canvas-markdown ol,
+.canvas-markdown blockquote,
+.canvas-markdown pre,
+.canvas-markdown table {
+  margin: 10px 0;
+}
+
+.canvas-markdown ul,
+.canvas-markdown ol {
+  padding-left: 24px;
+}
+
+.canvas-markdown li {
+  margin: 5px 0;
+}
+
+.canvas-markdown blockquote {
+  border-left: 3px solid var(--color-highlight-border);
+  padding: 8px 12px;
+  background: var(--color-highlight-bg);
+}
+
+.canvas-markdown pre {
+  overflow-x: auto;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--color-bg-secondary);
+}
+
+.canvas-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.canvas-markdown th,
+.canvas-markdown td {
+  border: 1px solid var(--color-border-primary);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.canvas-markdown th {
+  background: var(--color-bg-secondary);
+  font-weight: 800;
+}
+
 .canvas-paragraph code,
 .canvas-list code,
-.canvas-callout code {
+.canvas-callout code,
+.canvas-markdown code {
   border: 1px solid var(--color-border-primary);
   border-radius: 4px;
   padding: 1px 4px;

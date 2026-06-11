@@ -15,9 +15,9 @@ export function CheckpointBlock({ block, className, highlightedText, sourceMarke
   return (
     <aside className={`${className} canvas-checkpoint`} id={block.id} key={block.id}>
       <div className="canvas-learning-label">{block.caption || "Checkpoint"}</div>
-      <p>
-        <MathText highlightedText={highlightedText} text={block.text ?? ""} />
-      </p>
+      <div className="canvas-markdown">
+        <MathText highlightedText={highlightedText} mode="block" text={block.text ?? ""} />
+      </div>
       {sourceMarker}
     </aside>
   );
@@ -33,9 +33,9 @@ export function QuizBlock({
   return (
     <section className={`${className} canvas-quiz`} id={block.id} key={block.id}>
       <div className="canvas-learning-label">{block.caption || "Quality gate quiz"}</div>
-      <p>
-        <MathText highlightedText={null} text={block.text ?? ""} />
-      </p>
+      <div className="canvas-markdown">
+        <MathText highlightedText={null} mode="block" text={block.text ?? ""} />
+      </div>
       {block.items.length ? (
         <ol className="canvas-quiz-options">
           {block.items.map((item, index) => (

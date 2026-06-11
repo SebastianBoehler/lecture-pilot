@@ -218,7 +218,7 @@ function renderBlock(
   if (block.type === "callout") {
     return (
       <aside className={`${className} canvas-callout`} id={block.id} key={block.id}>
-        <MathText highlightedText={phrase} text={block.text ?? ""} />
+        <MathText highlightedText={phrase} mode="block" text={block.text ?? ""} />
         {sourceMarker}
       </aside>
     );
@@ -283,10 +283,10 @@ function renderBlock(
   }
 
   return (
-    <p className={`${className} canvas-paragraph`} id={block.id} key={block.id}>
-      <MathText highlightedText={phrase} text={block.text ?? ""} />
+    <div className={`${className} canvas-paragraph canvas-markdown`} id={block.id} key={block.id}>
+      <MathText highlightedText={phrase} mode="block" text={block.text ?? ""} />
       {sourceMarker}
-    </p>
+    </div>
   );
 }
 

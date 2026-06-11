@@ -47,8 +47,33 @@
   background: var(--color-bg-secondary);
 }
 
-.chat-message p {
-  margin: 0;
+.chat-message-content > :first-child {
+  margin-top: 0;
+}
+
+.chat-message-content > :last-child {
+  margin-bottom: 0;
+}
+
+.chat-message-content p,
+.chat-message-content ul,
+.chat-message-content ol,
+.chat-message-content blockquote,
+.chat-message-content pre {
+  margin: 8px 0;
+}
+
+.chat-message-content ul,
+.chat-message-content ol {
+  padding-left: 22px;
+}
+
+.chat-message-content pre {
+  overflow-x: auto;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  padding: 10px;
+  background: var(--color-bg-primary);
 }
 
 .chat-message.user {
@@ -62,7 +87,7 @@
   color: var(--color-text-secondary);
 }
 
-.chat-message.is-pending p::after {
+.chat-message.is-pending .chat-message-content::after {
   content: "";
   display: inline-block;
   width: 1.6em;

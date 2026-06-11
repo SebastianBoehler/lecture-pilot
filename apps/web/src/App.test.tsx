@@ -152,7 +152,7 @@ describe("LecturePilot app shell", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /ch3\/spam-dall-e.jpg/i })).toBeInTheDocument();
     expect(document.querySelector(".canvas-math .katex")).not.toBeNull();
-    expect(document.body.textContent).not.toContain("\\nicefrac");
+    expect(document.querySelectorAll(".katex").length).toBeGreaterThan(1);
     expect(screen.getAllByText(/lecture03-eng\.tex/i).length).toBeGreaterThan(0);
 
     await user.click(screen.getByLabelText(/open document outline/i));

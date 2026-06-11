@@ -49,6 +49,7 @@ def test_unix_named_tools_search_read_and_write_canvas(tmp_path) -> None:
     )
 
     assert result["ok"] is True
+    assert result["path"] == "/lecture/canvas/student/90-loss-note.md"
     commands = executor.canvas_update_commands()
     assert commands[0].type == "update_section"
     assert commands[0].section_id == "student-loss-note"
@@ -60,6 +61,7 @@ def test_unix_named_tools_search_read_and_write_canvas(tmp_path) -> None:
         },
     )
     assert plain["ok"] is True
+    assert plain["path"] == "/lecture/canvas/student/91-plain-threshold-note.md"
     assert plain["section_id"] == "plain-threshold-note-md"
     section_ids = {command.section_id for command in executor.canvas_update_commands()}
     assert "plain-threshold-note-md" in section_ids

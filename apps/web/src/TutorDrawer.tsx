@@ -71,7 +71,9 @@ export function TutorDrawer({
                   message.isPending ? "is-pending" : "",
                 ].filter(Boolean).join(" ")}
               >
-                <p><MathText highlightedText={null} text={message.content} /></p>
+                <div className="chat-message-content">
+                  <MathText highlightedText={null} mode="block" text={message.content} />
+                </div>
               </div>
               <ToolTags tags={message.toolTags} />
             </div>
