@@ -99,6 +99,10 @@
   background: var(--color-bg-secondary);
 }
 
+.course-workspace.is-demo .course-row {
+  background: color-mix(in srgb, var(--color-accent-primary) 6%, var(--color-bg-secondary));
+}
+
 .course-workspace .lecture-row:last-child {
   border-bottom: 0;
 }
@@ -119,6 +123,35 @@
 .course-row p,
 .course-row span {
   color: var(--color-text-secondary);
+}
+
+.workspace-status {
+  flex: 0 0 auto;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: var(--color-bg-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.workspace-status.is-matched {
+  border-color: var(--color-accent-primary);
+  color: var(--color-accent-primary);
+}
+
+.workspace-status.is-demo {
+  border-color: color-mix(in srgb, var(--color-accent-primary) 55%, var(--color-border-primary));
+  color: var(--color-text-primary);
+}
+
+.workspace-helper {
+  margin: 0;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--color-border-primary);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-primary);
+  font-size: 14px;
 }
 
 .workspace-empty {
