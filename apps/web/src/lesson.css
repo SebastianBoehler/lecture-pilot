@@ -56,16 +56,16 @@
 }
 
 .is-outline-pulsed.pulse-even {
-  animation: outline-target-pulse-even 5s ease-out forwards;
+  animation: outline-target-pulse-even 2s ease-out forwards;
 }
 
 .is-outline-pulsed.pulse-odd {
-  animation: outline-target-pulse-odd 5s ease-out forwards;
+  animation: outline-target-pulse-odd 2s ease-out forwards;
 }
 
 @keyframes outline-target-pulse-even {
   0%,
-  18% {
+  12% {
     outline-color: var(--color-accent-primary);
     box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent-primary) 24%, transparent);
   }
@@ -78,7 +78,7 @@
 
 @keyframes outline-target-pulse-odd {
   0%,
-  18% {
+  12% {
     outline-color: var(--color-accent-primary);
     box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent-primary) 24%, transparent);
   }

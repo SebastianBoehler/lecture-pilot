@@ -13,12 +13,12 @@
   padding: 0 2px;
   background: var(--color-highlight-border);
   color: inherit;
-  animation: phrase-target-fade 5s ease-out forwards;
+  animation: phrase-target-fade 1.8s ease-out forwards;
 }
 
 @keyframes phrase-target-fade {
   0%,
-  45% {
+  22% {
     background: var(--color-highlight-border);
   }
 
