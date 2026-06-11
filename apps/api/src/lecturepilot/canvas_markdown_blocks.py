@@ -15,7 +15,7 @@ def block_to_markdown(block: CanvasBlock) -> str:
         caption = block.caption or block.asset_path or "Course figure"
         return f"{header}\n![{caption}]({target})"
     if block.type == "video":
-        target = block.asset_url or ""
+        target = asset_markdown_target(block)
         caption = block.caption or "Course video"
         detail = f"\n{block.text}" if block.text else ""
         return f"{header}\n[{caption}]({target}){detail}"
@@ -140,7 +140,15 @@ def _read_block(
         )
     if block_type == "video":
         caption, url, detail = _read_video(chunk)
-        return CanvasBlock(id=block_id, type="video", text=detail, asset_url=url, caption=caption)
+        asset_path, asset_url = parsed_asset_target(url, course_id=course_id, lecture_id=lecture_id)
+        return CanvasBlock(
+            id=block_id,
+            type="video",
+            text=detail,
+            asset_path=asset_path,
+            asset_url=asset_url,
+            caption=caption,
+        )
     if block_type == "list":
         return CanvasBlock(id=block_id, type="list", items=_read_list_items(chunk))
     if block_type == "math":
@@ -275,7 +283,7 @@ def _rich_match(chunk: str):
 
 _BLOCK_RE = re.compile(r'<!--\s*block\s+id="(?P<id>[^"]+)"\s+type="(?P<type>[^"]+)"\s*-->')
 _IMAGE_RE = re.compile(r"!\[(?P<caption>[^]]*)]\((?P<target>[^)]+)\)")
-_LINK_RE = re.compile(r"\[(?P<caption>[^]]+)]\((?P<target>https?://[^)]+)\)|(?P<bare>https?://\S+)")
+_LINK_RE = re.compile(r"\[(?P<caption>[^]]+)]\((?P<target>[^)]+)\)|(?P<bare>https?://\S+)")
 _MATH_RE = re.compile(r"```math\s*(?P<formula>.*?)```", re.DOTALL)
 _RICH_RE = re.compile(
     r":::(?P<kind>[a-zA-Z_-]+)\s*(?P<label>[^\n]*)\n(?P<body>.*?)\n?:::",

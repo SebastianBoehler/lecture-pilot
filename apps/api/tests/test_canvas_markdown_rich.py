@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_markdown import read_document_source, write_document_source
 
 
@@ -116,3 +117,41 @@ options:
     assert ":::component risk-threshold-check.yaml\n:::" in section_text
     assert "version: 2" in component_text
     assert "id: lowest-risk" in component_text
+
+
+def test_canvas_markdown_roundtrips_local_video_assets(tmp_path: Path) -> None:
+    document = CanvasDocument(
+        id="demo-course-lecture-01",
+        course_id="demo-course",
+        lecture_id="lecture-01",
+        title="Demo",
+        source_kind="generated",
+        source_ref="source bundle",
+        workspace_path=str(tmp_path / "canvas" / "index.md"),
+        sections=[
+            CanvasSection(
+                id="media-section",
+                title="Media section",
+                source_ref="videos/prof-risk.mp4",
+                blocks=[
+                    CanvasBlock(
+                        id="media-section-video-1",
+                        type="video",
+                        asset_path="videos/prof-risk.mp4",
+                        asset_url="/course-assets/demo-course/lecture-01/videos/prof-risk.mp4",
+                        caption="Professor risk walkthrough",
+                        text="Uploaded local video.",
+                    )
+                ],
+            )
+        ],
+    )
+
+    write_document_source(document, tmp_path / "canvas")
+    reloaded = read_document_source(tmp_path / "canvas")
+    block = reloaded.sections[0].blocks[0]
+
+    assert block.type == "video"
+    assert block.asset_path == "videos/prof-risk.mp4"
+    assert block.asset_url == "/course-assets/demo-course/lecture-01/videos/prof-risk.mp4"
+    assert block.caption == "Professor risk walkthrough"
