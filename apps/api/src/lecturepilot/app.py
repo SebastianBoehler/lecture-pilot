@@ -6,6 +6,8 @@ from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
+from lecturepilot.analytics import AnalyticsStore
+from lecturepilot.analytics_routes import register_analytics_routes
 from lecturepilot.admin_media_routes import register_admin_media_routes
 from lecturepilot.api_auth import (
     request_context,
@@ -59,6 +61,7 @@ def create_app() -> FastAPI:
     app.state.canvas_workspace = CanvasWorkspace()
     app.state.learner_state = LearnerStateStore(app.state.canvas_workspace.layout)
     app.state.user_memory_store = UserMemoryStore(app.state.canvas_workspace.layout)
+    app.state.analytics_store = AnalyticsStore(app.state.canvas_workspace.layout)
     app.state.image_generator = image_generator_from_env()
     app.state.canvas_workspace.image_generator = app.state.image_generator
     app.state.youtube_discovery = YoutubeDiscovery.from_env()
@@ -82,6 +85,7 @@ def create_app() -> FastAPI:
         course_tenant_id=COURSE_TENANT_ID,
     )
     register_agent_routes(app, course=COURSE, course_tenant_id=COURSE_TENANT_ID)
+    register_analytics_routes(app, course_tenant_id=COURSE_TENANT_ID)
 
     @app.get("/courses")
     def courses() -> list[dict]:

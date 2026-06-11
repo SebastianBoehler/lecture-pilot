@@ -146,12 +146,139 @@
   gap: 4px;
 }
 
+.performance-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.35fr) minmax(0, 1fr);
+  gap: 16px;
+  padding: 18px;
+}
+
+.performance-lecture-list {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.performance-lecture-list button {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  text-align: left;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  padding: 12px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+}
+
+.performance-lecture-list button.is-active {
+  border-color: var(--color-accent-primary);
+  background: var(--color-bg-secondary);
+}
+
+.performance-lecture-list span {
+  grid-row: span 2;
+  color: var(--color-text-tertiary);
+  font-weight: 800;
+}
+
+.performance-lecture-list small {
+  color: var(--color-text-secondary);
+}
+
+.analytics-page-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.analytics-page-heading h2 {
+  margin: 0;
+}
+
+.analytics-summary {
+  display: grid;
+  gap: 12px;
+}
+
+.analytics-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  padding: 14px;
+  background: var(--color-bg-secondary);
+}
+
+.analytics-panel header {
+  display: grid;
+  gap: 3px;
+}
+
+.analytics-panel header span,
+.analytics-panel small,
+.analytics-counts dt {
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.analytics-options {
+  display: grid;
+  gap: 8px;
+}
+
+.analytics-option {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 7px;
+  padding: 9px;
+  background: var(--color-bg-primary);
+}
+
+.analytics-option.is-correct {
+  border-color: color-mix(in srgb, #22c55e 70%, var(--color-border-primary));
+}
+
+.analytics-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
+
+.analytics-counts dt {
+  width: 100%;
+}
+
+.analytics-counts div {
+  display: inline-flex;
+  gap: 6px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: var(--color-bg-primary);
+}
+
+.analytics-counts dd {
+  margin: 0;
+}
+
 @media (max-width: 860px) {
   .professor-flow {
     grid-template-columns: 1fr;
   }
 
   .flow-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .performance-layout {
     grid-template-columns: 1fr;
   }
 }

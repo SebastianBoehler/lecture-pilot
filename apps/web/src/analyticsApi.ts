@@ -1,0 +1,49 @@
+import { apiUrl } from "./api";
+import { authHeaders, courseManagerHeaders } from "./authz";
+import type { Attendance, LectureAnalyticsSummary, LoginSession } from "./types";
+
+export async function recordQuizAnswer(input: {
+  courseId: string;
+  lectureId: string;
+  userId: string;
+  attendance: Attendance;
+  blockId: string;
+  optionIndex: number;
+  session: LoginSession;
+}) {
+  const response = await fetch(
+    apiUrl(`/courses/${input.courseId}/lectures/${input.lectureId}/analytics/quiz-answer`),
+    {
+      method: "POST",
+      headers: { ...authHeaders(input.session), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: input.userId,
+        attendance: input.attendance,
+        block_id: input.blockId,
+        option_index: input.optionIndex,
+      }),
+    },
+  );
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "Quiz analytics recording failed."));
+  return payload as { correct: boolean | null };
+}
+
+export async function getLectureAnalytics(
+  courseId: string,
+  lectureId: string,
+  session: LoginSession,
+): Promise<LectureAnalyticsSummary> {
+  const response = await fetch(apiUrl(`/admin/courses/${courseId}/lectures/${lectureId}/analytics`), {
+    headers: courseManagerHeaders(session),
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "Lecture analytics loading failed."));
+  return payload as LectureAnalyticsSummary;
+}
+
+function readApiError(payload: unknown, fallback: string) {
+  return typeof (payload as { detail?: unknown }).detail === "string"
+    ? String((payload as { detail: string }).detail)
+    : fallback;
+}

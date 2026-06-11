@@ -10,6 +10,7 @@ import {
 import { AppHeader } from "./AppHeader";
 import { initialMessagesForAttendance, localDemoSession, localProfessorSession } from "./appDefaults";
 import { canManageCourses } from "./authz";
+import { CourseManagementAccessRequired } from "./CourseManagementAccessRequired";
 import { Dashboard } from "./Dashboard";
 import { useDemoTutorWorkspace } from "./demoTutorWorkspace";
 import { LessonWorkspace } from "./LessonWorkspace";
@@ -17,6 +18,7 @@ import { LoginView } from "./LoginView";
 import { useStoredLoginSession } from "./loginSessionStorage";
 import { ProfileView } from "./ProfileView";
 import { ProfessorCourseBuilder } from "./ProfessorCourseBuilder";
+import { ProfessorCoursePerformance } from "./ProfessorCoursePerformance";
 import { lectures } from "./sampleData";
 import type {
   Attendance,
@@ -177,6 +179,12 @@ function App() {
           setPanelMode(null);
         }}
         onLogout={handleLogout}
+        onOpenPerformance={() => {
+          if (courseManagerSession) {
+            setView("performance");
+            setPanelMode(null);
+          }
+        }}
         onOpenProfile={() => {
           setView("profile");
           setPanelMode(null);
@@ -230,29 +238,37 @@ function App() {
           }}
           workspacePublished={demoTutorPublished}
         />
+      ) : view === "performance" && courseManagerSession ? (
+        <ProfessorCoursePerformance
+          lectures={availableLectures}
+          session={courseManagerSession}
+          onBack={() => setView("dashboard")}
+        />
+      ) : view === "performance" ? (
+        <CourseManagementAccessRequired
+          label="Course performance"
+          onBack={() => setView(session ? "dashboard" : "login")}
+        />
       ) : view === "professor" ? (
-        <main className="dashboard">
-          <section className="dashboard-header">
-            <button className="ghost-button" type="button" onClick={() => setView(session ? "dashboard" : "login")}>
-              Back
-            </button>
-            <p className="section-label">Course management</p>
-            <h1>Professor account required</h1>
-            <p>Only professor and tenant admin accounts can create course workspaces.</p>
-          </section>
-        </main>
+        <CourseManagementAccessRequired
+          label="Course management"
+          onBack={() => setView(session ? "dashboard" : "login")}
+        />
       ) : (
         <LessonWorkspace
           canvasDocument={canvasDocument}
           canvasError={canvasError}
+          courseId={selectedCourseId}
           focusedSectionId={focusedSectionId}
           highlightedBlockId={highlightedBlockId}
           highlightedText={highlightedText}
           lecture={selectedLecture}
           messages={messages}
+          session={session ?? localDemoSession}
           tutorModel={lastTutorModel}
           navigationVersion={navigationVersion}
           panelMode={panelMode}
+          userId={lessonUserId}
           backLabel={lessonBackView === "professor" ? "Course builder" : "Dashboard"}
           onBack={() => {
             setView(lessonBackView);

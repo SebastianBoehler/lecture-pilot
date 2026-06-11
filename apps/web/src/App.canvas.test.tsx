@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 
@@ -77,6 +77,16 @@ describe("LecturePilot canvas interactions", () => {
     const request = JSON.parse(String(agentCall?.[1]?.body));
     expect(request.message).toContain("Question: Which quantity should be minimized");
     expect(request.message).toContain("B. Expected risk");
+    await waitFor(() => {
+      const analyticsCall = fetchMock.mock.calls.find(([url]) => String(url).includes("/analytics/quiz-answer"));
+      expect(analyticsCall).toBeDefined();
+      expect(JSON.parse(String(analyticsCall?.[1]?.body))).toMatchObject({
+        user_id: "student01",
+        attendance: "absent",
+        block_id: "losses-and-risks-quiz",
+        option_index: 1,
+      });
+    });
     expect(correct).toHaveClass("is-correct");
   });
 

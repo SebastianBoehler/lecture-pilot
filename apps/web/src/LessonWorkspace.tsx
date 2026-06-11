@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { LessonCanvas } from "./LessonCanvas";
 import { NotesPanel, OutlinePanel } from "./LessonSidePanels";
+import { recordQuizAnswer } from "./analyticsApi";
 import { TutorDrawer } from "./TutorDrawer";
 import { WorkspaceFilesPanel } from "./WorkspaceFilesPanel";
 import type {
@@ -12,11 +13,15 @@ import type {
   DocumentAnchorId,
   Lecture,
   LessonPanelMode,
+  LoginSession,
   WorkspaceResource,
 } from "./types";
 
 export function LessonWorkspace({
   lecture,
+  courseId,
+  userId,
+  session,
   canvasDocument,
   canvasError,
   focusedSectionId,
@@ -32,6 +37,9 @@ export function LessonWorkspace({
   onTogglePanel,
 }: {
   lecture: Lecture;
+  courseId: string;
+  userId: string;
+  session: LoginSession;
   canvasDocument: CanvasDocument | null;
   canvasError: string | null;
   focusedSectionId: string;
@@ -81,6 +89,15 @@ export function LessonWorkspace({
     if (panelMode !== "chat") {
       onTogglePanel("chat");
     }
+    void recordQuizAnswer({
+      courseId,
+      lectureId: lecture.id,
+      userId,
+      attendance: lecture.attendance,
+      blockId: block.id,
+      optionIndex,
+      session,
+    }).catch(() => undefined);
     void onSendMessage(quizAnswerMessage(block, answer, optionIndex));
   }
 

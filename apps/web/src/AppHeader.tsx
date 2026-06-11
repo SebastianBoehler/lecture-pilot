@@ -1,4 +1,4 @@
-import { FilePlus2, LogOut, Moon, Sun, UserRound } from "lucide-react";
+import { ChartNoAxesColumn, FilePlus2, LogOut, Moon, Sun, UserRound } from "lucide-react";
 
 import { canManageCourses } from "./authz";
 import type { LoginSession, Theme } from "./types";
@@ -8,6 +8,7 @@ export function AppHeader({
   theme,
   onBrand,
   onLogout,
+  onOpenPerformance,
   onOpenProfile,
   onOpenProfessor,
   onToggleTheme,
@@ -16,6 +17,7 @@ export function AppHeader({
   theme: Theme;
   onBrand: () => void;
   onLogout: () => void;
+  onOpenPerformance: () => void;
   onOpenProfile: () => void;
   onOpenProfessor: () => void;
   onToggleTheme: () => void;
@@ -31,10 +33,16 @@ export function AppHeader({
         {session ? (
           <div className="top-actions" aria-label="Account controls">
             {canManageCourses(session) ? (
-              <button className="top-action-button" type="button" onClick={onOpenProfessor}>
-                <FilePlus2 size={16} />
-                <span>Course builder</span>
-              </button>
+              <>
+                <button className="top-action-button" type="button" onClick={onOpenPerformance}>
+                  <ChartNoAxesColumn size={16} />
+                  <span>Course performance</span>
+                </button>
+                <button className="top-action-button" type="button" onClick={onOpenProfessor}>
+                  <FilePlus2 size={16} />
+                  <span>Course builder</span>
+                </button>
+              </>
             ) : null}
             <button className="top-action-button" type="button" aria-label="Open profile" onClick={onOpenProfile}>
               <UserRound size={16} />

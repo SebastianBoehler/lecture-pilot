@@ -1,0 +1,87 @@
+.analytics-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.analytics-kpi {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--color-bg-primary);
+}
+
+.analytics-kpi span,
+.analytics-insight-grid h3 {
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  font-weight: 800;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.analytics-kpi strong {
+  font-size: 24px;
+}
+
+.analytics-insight-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(180px, 0.7fr);
+  gap: 14px;
+}
+
+.analytics-insight-grid section {
+  display: grid;
+  gap: 8px;
+}
+
+.metric-bar-list {
+  display: grid;
+  gap: 8px;
+}
+
+.metric-row {
+  display: grid;
+  gap: 6px;
+}
+
+.metric-row > div:first-child {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.metric-row span {
+  overflow-wrap: anywhere;
+}
+
+.metric-row strong {
+  color: var(--color-text-secondary);
+}
+
+.metric-track {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-bg-tertiary);
+}
+
+.metric-fill {
+  width: var(--metric-width);
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-accent-primary);
+}
+
+.metric-row.is-correct .metric-fill {
+  background: #22c55e;
+}
+
+@media (max-width: 860px) {
+  .analytics-kpis,
+  .analytics-insight-grid {
+    grid-template-columns: 1fr;
+  }
+}

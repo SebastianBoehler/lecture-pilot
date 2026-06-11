@@ -1,5 +1,5 @@
 export type Theme = "light" | "dark";
-export type View = "login" | "dashboard" | "lesson" | "profile" | "professor";
+export type View = "login" | "dashboard" | "lesson" | "profile" | "professor" | "performance";
 export type LessonPanelMode = "chat" | "outline" | "notes" | "files";
 export type CanvasSectionId = string;
 export type DocumentAnchorId = string;
@@ -123,4 +123,43 @@ export type WorkspaceResource = {
   displayPath?: string | null;
   detail?: string | null;
   url?: string | null;
+};
+
+export type AnalyticsOptionMetric = {
+  option_index: number;
+  option_id?: string | null;
+  text: string;
+  selections: number;
+  correct: boolean;
+};
+
+export type AnalyticsQuizMetric = {
+  component_id: string;
+  component_type: string;
+  title: string;
+  question: string;
+  total_attempts: number;
+  unique_learners: number;
+  correct_attempts: number;
+  correct_rate: number | null;
+  latest_activity?: string | null;
+  attendance_split: Record<string, number>;
+  options: AnalyticsOptionMetric[];
+};
+
+export type AnalyticsGateMetric = {
+  gate_id: string;
+  total_events: number;
+  unique_learners: number;
+  latest_activity?: string | null;
+  status_counts: Record<string, number>;
+  attendance_split: Record<string, number>;
+};
+
+export type LectureAnalyticsSummary = {
+  course_id: string;
+  lecture_id: string;
+  total_events: number;
+  quizzes: AnalyticsQuizMetric[];
+  gates: AnalyticsGateMetric[];
 };

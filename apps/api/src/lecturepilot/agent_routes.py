@@ -7,6 +7,7 @@ from collections.abc import Callable
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 
+from lecturepilot.analytics import AnalyticsStore
 from lecturepilot.api_auth import request_context, require_learner_workspace_access
 from lecturepilot.agent_tool_executor import AgentToolExecutor
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
@@ -183,6 +184,15 @@ async def _complete_agent_turn_inner(
                 user_id=turn.user_id,
                 decision=result.quality_gate,
             )
+            analytics_store = _analytics_store(app)
+            if analytics_store is not None:
+                analytics_store.record_quality_gate(
+                    course_id=turn.course_id,
+                    lecture_id=turn.lecture_id,
+                    user_id=turn.user_id,
+                    attendance=turn.attendance,
+                    decision=result.quality_gate,
+                )
     return result
 
 
@@ -292,6 +302,21 @@ def _learner_state_store(app: FastAPI) -> LearnerStateStore:
         store = LearnerStateStore(layout)
         app.state.learner_state = store
     return store
+
+
+def _analytics_store(app: FastAPI) -> AnalyticsStore | None:
+    store = app.state.analytics_store
+    layout = getattr(app.state.canvas_workspace, "layout", None)
+    if not _supports_analytics_layout(layout):
+        return None
+    if layout is not None and store.layout is not layout:
+        store = AnalyticsStore(layout)
+        app.state.analytics_store = store
+    return store
+
+
+def _supports_analytics_layout(layout) -> bool:
+    return hasattr(layout, "course_root") and hasattr(layout, "user_key")
 
 
 def _observability(app: FastAPI) -> Observability:

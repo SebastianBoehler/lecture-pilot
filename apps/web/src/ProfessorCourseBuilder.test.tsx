@@ -22,6 +22,7 @@ describe("Professor course builder", () => {
     expect(screen.queryByRole("button", { name: /create professor account/i })).not.toBeInTheDocument();
     expect(screen.getByText(/signed in as professor-demo/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /define course and lecture scope/i })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /live course analytics/i })).not.toBeInTheDocument();
     expect(screen.getByLabelText(/course name/i)).toHaveValue("Grundlagen des Maschinellen Lernens");
     expect(screen.getByLabelText(/lecture number/i)).toHaveValue("03");
     expect(screen.getByLabelText(/lecture title/i)).toHaveValue("Bayesian Decision Theory");
@@ -71,6 +72,16 @@ describe("Professor course builder", () => {
     expect(await screen.findByText(/included 1 approved video/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /publish tutor workspace/i }));
     expect(await screen.findByText(/tutor workspace published/i)).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /live course analytics/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^course performance$/i }));
+    expect(await screen.findByRole("heading", { name: /course performance/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /refresh analytics/i }));
+    expect(await screen.findByText("Events")).toBeInTheDocument();
+    expect(screen.getByText("Quiz success")).toBeInTheDocument();
+    expect(screen.getByText("50%")).toBeInTheDocument();
+    expect(screen.getByText(/answer distribution/i)).toBeInTheDocument();
+    expect(screen.getByText(/posterior-weighted loss/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^course builder$/i }));
     await user.click(screen.getByRole("button", { name: /preview course workspace/i }));
     expect(
       await screen.findByRole("heading", { name: /^bayesian decision theory$/i, level: 1 }),
@@ -123,6 +134,7 @@ function professorFetchMock() {
     if (url.endsWith("/admin/course-workspaces")) return json(courseWorkspacePayload(init));
     if (url.includes("/source-bundle")) return json(sourceBundle());
     if (url.includes("/materials")) return json({ path: "uploads/supplement.md", kind: "markdown", size_bytes: 12 });
+    if (url.includes("/analytics")) return json(analyticsPayload());
     if (url.includes("/canvas/draft")) return json(canvasPayload());
     if (url.includes("/canvas")) return json(canvasPayload());
     if (url.includes("/media/youtube/search")) return json({ items: [youtubeCandidate()] });
@@ -160,6 +172,40 @@ function canvasPayload() {
     sections: [
       { id: "aim", title: "Decision making", blocks: [] },
       { id: "bayes-formula", title: "Bayes formula", blocks: [] },
+    ],
+  };
+}
+
+function analyticsPayload() {
+  return {
+    course_id: "demo-ml-course",
+    lecture_id: "lecture-03",
+    total_events: 3,
+    quizzes: [
+      {
+        component_id: "risk-check",
+        component_type: "single_choice_quiz",
+        title: "Risk threshold check",
+        question: "Which action minimizes expected risk?",
+        total_attempts: 2,
+        unique_learners: 2,
+        correct_attempts: 1,
+        correct_rate: 0.5,
+        attendance_split: { absent: 1, present: 1 },
+        options: [
+          { option_index: 0, option_id: "prior-only", text: "Use the largest class prior.", selections: 1, correct: false },
+          { option_index: 1, option_id: "posterior-loss", text: "Use posterior-weighted loss.", selections: 1, correct: true },
+        ],
+      },
+    ],
+    gates: [
+      {
+        gate_id: "risk-gate",
+        total_events: 1,
+        unique_learners: 1,
+        status_counts: { passed: 1 },
+        attendance_split: { present: 1 },
+      },
     ],
   };
 }
