@@ -69,9 +69,15 @@ export function ProfessorCourseBuilder({
           const restoredBundle = await getSourceBundle(courseId);
           if (!cancelled) setBundle(restoredBundle);
         }
-        if (savedFlow.canvasReady) {
-          const restoredCanvas = await getLectureCanvas(courseId, lectureId, "professor-preview");
-          if (!cancelled) setCanvas(restoredCanvas);
+        if (savedFlow.bundleReady || savedFlow.canvasReady) {
+          try {
+            const restoredCanvas = await getLectureCanvas(courseId, lectureId, "professor-preview");
+            if (!cancelled) setCanvas(restoredCanvas);
+          } catch (canvasError) {
+            if (savedFlow.canvasReady && !cancelled) {
+              setError(canvasError instanceof Error ? canvasError.message : "Could not restore professor preview.");
+            }
+          }
         }
       } catch (restoreError) {
         if (!cancelled) {
@@ -159,7 +165,7 @@ export function ProfessorCourseBuilder({
           <StepHeader number="02" title="Upload and scan materials" done={Boolean(bundle)} />
           <p className="drawer-note">Upload {materialScope} for {setup.courseTitle}.</p>
           <label>
-            Workspace path
+            Store uploaded files under
             <input value={uploadPath} onChange={(event) => setUploadPath(event.target.value)} />
           </label>
           <input

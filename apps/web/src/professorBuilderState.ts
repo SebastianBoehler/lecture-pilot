@@ -28,7 +28,7 @@ export const defaultCourseSetup: CourseSetup = {
 export const defaultFlow: SavedProfessorFlow = {
   setup: defaultCourseSetup,
   courseReady: false,
-  uploadPath: "uploads/supplement.md",
+  uploadPath: "uploads",
   bundleReady: false,
   canvasReady: false,
   query: "Bayesian decision theory machine learning Tübingen",
