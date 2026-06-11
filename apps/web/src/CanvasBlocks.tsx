@@ -189,6 +189,7 @@ function renderBlock(
 
   if (block.type === "video" && block.asset_url) {
     const embedUrl = youtubeEmbedUrl(block.asset_url);
+    const nativeVideo = /\.(mp4|webm|mov)(?:$|\?)/i.test(block.asset_url);
     const title = block.caption ?? "YouTube video";
     return (
       <figure className={`${className} canvas-video`} id={block.id} key={block.id}>
@@ -200,6 +201,8 @@ function renderBlock(
               src={embedUrl}
               title={title}
             />
+          ) : nativeVideo ? (
+            <video controls src={block.asset_url} title={title} />
           ) : (
             <a href={block.asset_url} rel="noreferrer" target="_blank">
               Open video

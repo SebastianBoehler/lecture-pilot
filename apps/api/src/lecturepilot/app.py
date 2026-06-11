@@ -36,6 +36,7 @@ from lecturepilot.observability import observability_from_env
 from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.sample_data import COURSE, LECTURES, unlocked_lectures
 from lecturepilot.source_bundle import scan_source_bundle
+from lecturepilot.source_bundle_canvas import SourceBundleCanvasError, import_source_bundle_canvas
 from lecturepilot.tenancy import TenantContext
 from lecturepilot.tuebingen_adapter import (
     TuebingenCourseAdapter,
@@ -185,15 +186,13 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=404, detail="Lecture not found.")
         try:
             require_course_manager(context, course_tenant_id=COURSE_TENANT_ID)
-            source = app.state.canvas_workspace.source_document(
-                course_id=course_id,
-                lecture_id=lecture_id,
-                workspace_path=f"course-planner/{lecture_id}/source.json",
-            )
+            source = _course_builder_source_document(app, course_id, lecture_id)
             document = await app.state.course_planner.plan_canvas(source)
             return app.state.canvas_workspace.write_course_canvas(document)
         except CanvasWorkspaceError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except SourceBundleCanvasError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
         except ProviderConfigurationError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         except ModelExecutionError as exc:
@@ -272,5 +271,23 @@ def _scan_source_bundles(roots) -> list:
         for item in scan_source_bundle(root):
             files_by_path.setdefault(item.path, item)
     return list(files_by_path.values())
+
+
+def _course_builder_source_document(app: FastAPI, course_id: str, lecture_id: str) -> CanvasDocument:
+    workspace = app.state.canvas_workspace
+    workspace_path = f"course-planner/{lecture_id}/source.json"
+    uploads_dir = workspace.layout.course_uploads_dir(course_id)
+    if uploads_dir.exists() and any(path.is_file() for path in uploads_dir.rglob("*")):
+        return import_source_bundle_canvas(
+            source_root=uploads_dir,
+            course_id=course_id,
+            lecture_id=lecture_id,
+            workspace_path=workspace_path,
+        )
+    return workspace.source_document(
+        course_id=course_id,
+        lecture_id=lecture_id,
+        workspace_path=workspace_path,
+    )
 
 app = create_app()

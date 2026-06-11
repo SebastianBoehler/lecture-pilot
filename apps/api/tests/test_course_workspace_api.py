@@ -56,6 +56,46 @@ def test_dynamic_course_workspace_uses_uploaded_source(tmp_path: Path) -> None:
     assert student.json()["sections"][0]["title"] == "Planner summary"
 
 
+def test_course_canvas_draft_can_use_markdown_text_and_pdf_without_latex(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    client.app.state.course_planner = _FakeMixedSourcePlanner()
+    _create_workspace(client, "Mixed Source Course", "01", "Evidence and Risk")
+
+    uploads = [
+        ("notes/overview.md", b"# Evidence Update\n\nBayes combines prior belief with likelihood evidence."),
+        ("notes/risk.txt", b"Risk-sensitive classification changes decisions when errors have different costs."),
+        ("slides/risk.pdf", _pdf_source("PDF slide text explains posterior risk and reject decisions.")),
+        ("figures/risk.png", b"\x89PNG\r\n"),
+        ("figures/risk.png.json", b'{"title":"Risk regions","description":"Posterior and loss threshold graphic"}'),
+        ("videos/decision.mp4", b"\x00\x00\x00\x18ftypmp42"),
+        ("videos/decision.json", b'{"title":"Decision walkthrough","description":"Professor-provided media"}'),
+    ]
+    for path, content in uploads:
+        response = client.post(
+            "/admin/courses/mixed-source-course/materials",
+            data={"path": path},
+            files={"file": (Path(path).name, content)},
+            headers=professor_headers(),
+        )
+        assert response.status_code == 200
+
+    draft = client.post(
+        "/admin/courses/mixed-source-course/lectures/lecture-01/canvas/draft",
+        headers=professor_headers(),
+    )
+
+    assert draft.status_code == 200
+    assert draft.json()["source_kind"] == "generated"
+    assert draft.json()["source_ref"] == "course planner from notes/overview.md, notes/risk.txt, slides/risk.pdf"
+
+    asset = client.get("/course-assets/mixed-source-course/lecture-01/figures/risk.png")
+    assert asset.status_code == 200
+    assert asset.content.startswith(b"\x89PNG")
+    video = client.get("/course-assets/mixed-source-course/lecture-01/videos/decision.mp4")
+    assert video.status_code == 200
+    assert video.content.startswith(b"\x00\x00\x00\x18ftyp")
+
+
 def _client(tmp_path: Path) -> TestClient:
     app = create_app()
     app.state.canvas_workspace = CanvasWorkspace(
@@ -97,11 +137,23 @@ P(C\mid X)=\frac{P(X\mid C)P(C)}{P(X)}
 """
 
 
+def _pdf_source(text: str) -> bytes:
+    import fitz
+
+    document = fitz.open()
+    page = document.new_page(width=320, height=160)
+    page.insert_text((24, 72), text)
+    payload = document.tobytes()
+    document.close()
+    return payload
+
+
 class _FakeCoursePlanner:
     async def plan_canvas(self, source_document):
         assert source_document.course_id == "demo-ml-course"
         assert source_document.lecture_id == "lecture-07"
-        assert source_document.source_ref == "Lecture07.tex"
+        assert source_document.source_ref == "uploads/Lecture07.tex"
+        assert source_document.source_kind == "markdown"
         return source_document.model_copy(
             update={
                 "source_kind": "generated",
@@ -116,6 +168,54 @@ class _FakeCoursePlanner:
                                 id="planner-summary-p-1",
                                 type="paragraph",
                                 text="The uploaded dynamic course source seeded this canvas.",
+                            )
+                        ],
+                    )
+                ],
+            }
+        )
+
+
+class _FakeMixedSourcePlanner:
+    async def plan_canvas(self, source_document):
+        evidence = "\n".join(
+            block.text or ""
+            for section in source_document.sections
+            for block in section.blocks
+        )
+        assert source_document.source_kind == "markdown"
+        assert "Bayes combines prior belief" in evidence
+        assert "different costs" in evidence
+        assert "posterior risk" in evidence
+        assert any(
+            block.type == "asset" and block.asset_path == "slides/risk.pdf"
+            for section in source_document.sections
+            for block in section.blocks
+        )
+        assert any(
+            block.type == "asset" and block.caption.startswith("Risk regions")
+            for section in source_document.sections
+            for block in section.blocks
+        )
+        assert any(
+            block.type == "video" and block.asset_path == "videos/decision.mp4"
+            for section in source_document.sections
+            for block in section.blocks
+        )
+        return source_document.model_copy(
+            update={
+                "source_kind": "generated",
+                "source_ref": f"course planner from {source_document.source_ref}",
+                "sections": [
+                    CanvasSection(
+                        id="mixed-source-summary",
+                        title="Mixed source summary",
+                        source_ref=source_document.source_ref,
+                        blocks=[
+                            CanvasBlock(
+                                id="mixed-source-summary-p-1",
+                                type="paragraph",
+                                text="The planner saw Markdown, text, and PDF evidence.",
                             )
                         ],
                     )

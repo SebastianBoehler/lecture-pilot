@@ -23,11 +23,13 @@ async def test_course_planner_restyles_source_evidence(monkeypatch) -> None:
         "paragraph",
         "math",
         "asset",
+        "video",
         "list",
         "callout",
     ]
     assert section.blocks[2].asset_path == "Ch3/venn.pdf"
     assert section.blocks[2].asset_url == "/course-assets/martius-ml/lecture-03/Ch3/venn.pdf"
+    assert section.blocks[3].asset_path == "videos/bayes-risk.mp4"
     middle_checkpoint = next(block for block in document.sections[3].blocks if block.type == "checkpoint")
     assert middle_checkpoint.caption == "Quality gate"
     final_quiz = next(block for block in document.sections[-1].blocks if block.type == "quiz")
@@ -47,6 +49,7 @@ class _FakePlanClient:
         evidence = messages[1]["content"]
         assert "Slide dump" in evidence
         assert "asset_path=Ch3/venn.pdf" in evidence
+        assert "video id=frame-1-video" in evidence
         base_section = {
             "id": "bayes-decision-workflow",
             "title": "Evidence, update, decision",
@@ -74,6 +77,12 @@ class _FakePlanClient:
                     "type": "asset",
                     "asset_path": "unseen.png",
                     "caption": "This unsupported asset must be ignored",
+                },
+                {
+                    "type": "video",
+                    "asset_path": "videos/bayes-risk.mp4",
+                    "caption": "Professor walkthrough clip",
+                    "text": "Short local video showing the Bayes-risk workflow.",
                 },
                 {
                     "type": "list",
@@ -201,6 +210,13 @@ def _source_document() -> CanvasDocument:
                     asset_path="Ch3/venn.pdf",
                     asset_url="/course-assets/martius-ml/lecture-03/Ch3/venn.pdf",
                     caption="Venn diagram",
+                ),
+                CanvasBlock(
+                    id="frame-1-video",
+                    type="video",
+                    asset_path="videos/bayes-risk.mp4",
+                    asset_url="/course-assets/martius-ml/lecture-03/videos/bayes-risk.mp4",
+                    caption="Professor walkthrough clip",
                 ),
             ],
         )

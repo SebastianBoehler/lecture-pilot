@@ -19,7 +19,6 @@ MAX_SOURCE_EVIDENCE_SECTIONS = 80
 class CoursePlanModelClient(Protocol):
     async def complete_plan(self, *, settings: ProviderSettings, messages: list[dict[str, str]]) -> dict:
         """Return one source-grounded course canvas plan."""
-
 class LiteLLMCoursePlanClient:
     async def complete_plan(self, *, settings: ProviderSettings, messages: list[dict[str, str]]) -> dict:
         try:
@@ -40,8 +39,6 @@ class LiteLLMCoursePlanClient:
         except Exception as exc:
             raise ModelExecutionError("Course planner model request failed.") from exc
         return parse_model_json(response.choices[0].message.content)
-
-
 class CourseCanvasPlanner:
     def __init__(
         self,
@@ -76,8 +73,6 @@ class CourseCanvasPlanner:
             validate_planned_document(sectionwise, source_document)
             return sectionwise
         raise last_error or ProviderConfigurationError("Course planner returned no usable draft.")
-
-
 def _planner_messages(source_document: CanvasDocument) -> list[dict[str, str]]:
     return [
         {
@@ -89,7 +84,7 @@ def _planner_messages(source_document: CanvasDocument) -> list[dict[str, str]]:
                 "and do not create one section per frame. Synthesize the full evidence into "
                 "5 to 8 pedagogical sections with stable topic ids, four to seven detailed "
                 "teaching blocks per section, key formulas, grouped lists, worked examples, "
-                "callouts, infographic briefs, and existing source assets when "
+                "callouts, infographic briefs, and existing source assets or videos when "
                 "they help learning. Collapse long "
                 "formula runs into a named derivation with only the essential equations. "
                 "Make paragraphs self-study friendly: explain the reason, mechanism, and "
@@ -99,10 +94,10 @@ def _planner_messages(source_document: CanvasDocument) -> list[dict[str, str]]:
                 "Leave room for professor-approved YouTube videos instead of inventing "
                 "video links. Return only JSON with title and sections. Each section must "
                 "include id, title, source_ref, and blocks. Blocks may be paragraph, list, "
-                "callout, math, asset, table, checkpoint, or quiz. Use only 2 "
+                "callout, math, asset, video, table, checkpoint, or quiz. Use only 2 "
                 "checkpoint or quiz blocks for the full lecture, not after every section. "
                 "Quiz blocks use text as the question, items as answers, and answer_index "
-                "for the correct option. Asset blocks may only use asset_path values "
+                "for the correct option. Asset and video blocks may only use asset_path values "
                 "listed in the evidence. Do not invent unsupported topics. Cite source "
                 "files and frames in every source_ref. Never return a short overview."
             ),
@@ -148,6 +143,8 @@ def _source_evidence(document: CanvasDocument) -> str:
 def _block_evidence(block: CanvasBlock) -> str:
     if block.type == "asset":
         return f"- asset id={block.id}; asset_path={block.asset_path}; caption={block.caption or ''}"
+    if block.type == "video":
+        return f"- video id={block.id}; asset_path={block.asset_path}; caption={block.caption or ''}"
     if block.type == "math":
         return f"- math id={block.id}: {_trim(block.text or '', 900)}"
     if block.type == "list":
@@ -164,7 +161,7 @@ def _planned_document(payload: dict, source_document: CanvasDocument) -> CanvasD
         block.asset_path: block.asset_url
         for section in source_document.sections
         for block in section.blocks
-        if block.type == "asset" and block.asset_path
+        if block.type in {"asset", "video"} and block.asset_path
     }
     sections = [
         section
@@ -209,9 +206,9 @@ def _read_blocks(raw_blocks: object, section_id: str, allowed_assets: dict[str, 
         if not isinstance(raw_block, dict):
             continue
         block_type = raw_block.get("type")
-        if block_type not in {"paragraph", "list", "callout", "math", "asset", "table", "checkpoint", "quiz"}:
+        if block_type not in {"paragraph", "list", "callout", "math", "asset", "video", "table", "checkpoint", "quiz"}:
             block_type = "paragraph"
-        if block_type == "asset" and raw_block.get("asset_path") not in allowed_assets:
+        if block_type in {"asset", "video"} and raw_block.get("asset_path") not in allowed_assets:
             continue
         counters[block_type] = counters.get(block_type, 0) + 1
         block_id = _safe_id(str(raw_block.get("id") or f"{section_id}-{block_type}-{counters[block_type]}"))
@@ -234,14 +231,15 @@ def _read_block(
             type="list",
             items=[_trim(item, 340) for item in clean_canvas_items(raw_items[:12])],
         )
-    if block_type == "asset":
+    if block_type in {"asset", "video"}:
         asset_path = str(raw_block.get("asset_path"))
         return CanvasBlock(
             id=block_id,
-            type="asset",
+            type=block_type,
             asset_path=asset_path,
             asset_url=allowed_assets.get(asset_path),
             caption=str(raw_block.get("caption") or asset_path)[:500],
+            text=_trim(clean_canvas_text(raw_block.get("text") or raw_block.get("content")), 700) or None,
         )
     if block_type == "quiz":
         return CanvasBlock(
@@ -281,7 +279,7 @@ def _answer_index(raw_block: dict) -> int:
 
 
 def _is_usable_block(block: CanvasBlock) -> bool:
-    if block.type == "asset":
+    if block.type in {"asset", "video"}:
         return bool(block.asset_path)
     if block.type == "list":
         return bool(block.items)

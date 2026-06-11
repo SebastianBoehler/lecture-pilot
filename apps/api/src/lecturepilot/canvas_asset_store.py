@@ -9,6 +9,10 @@ from lecturepilot.pdf_preview import PdfPreviewError, render_pdf_preview
 from lecturepilot.storage_layout import StorageLayout
 
 
+COURSE_MEDIA_SUFFIXES = BROWSER_ASSET_SUFFIXES | {".mp4", ".webm", ".mov", ".mkv", ".avi"}
+MAX_COURSE_MEDIA_BYTES = 500 * 1024 * 1024
+
+
 class CanvasAssetError(RuntimeError):
     """Raised when a course or learner canvas asset cannot be served."""
 
@@ -19,15 +23,16 @@ class CanvasAssetStore:
         self.material_root = material_root
 
     def course_asset_path(self, *, course_id: str, lecture_id: str, asset_path: str) -> Path:
-        _assert_safe_asset_path(asset_path, "course material root")
-        source = self._source_path(course_id, lecture_id)
+        _assert_safe_asset_path(asset_path, "course material root", COURSE_MEDIA_SUFFIXES)
         candidates = [
-            source.parent / asset_path,
+            self.layout.course_uploads_dir(course_id) / asset_path,
             self.layout.course_uploads_dir(course_id) / "images" / asset_path,
             self.material_root / "images" / asset_path,
         ]
+        if source := self._maybe_source_path(course_id, lecture_id):
+            candidates.insert(0, source.parent / asset_path)
         for candidate in candidates:
-            if is_allowed_canvas_asset(candidate):
+            if _is_allowed_course_media(candidate):
                 return candidate
         raise CanvasAssetError("Canvas asset was not found.")
 
@@ -50,7 +55,7 @@ class CanvasAssetStore:
     ) -> Path:
         if not re.fullmatch(r"[a-f0-9]{24}", student_key):
             raise CanvasAssetError("Workspace asset user key is invalid.")
-        _assert_safe_asset_path(asset_path, "learner workspace")
+        _assert_safe_asset_path(asset_path, "learner workspace", BROWSER_ASSET_SUFFIXES)
         candidates = [
             self.layout.user_canvas_dir_by_key(student_key, course_id, lecture_id) / asset_path,
             self.layout.legacy_canvas_dir_by_key(student_key, course_id, lecture_id) / asset_path,
@@ -73,9 +78,23 @@ class CanvasAssetStore:
                 return source_path
         raise CanvasAssetError(f"No LaTeX source found for {course_id}/{lecture_id}.")
 
+    def _maybe_source_path(self, course_id: str, lecture_id: str) -> Path | None:
+        try:
+            return self._source_path(course_id, lecture_id)
+        except CanvasAssetError:
+            return None
 
-def _assert_safe_asset_path(asset_path: str, label: str) -> None:
+
+def _assert_safe_asset_path(asset_path: str, label: str, suffixes: set[str]) -> None:
     if ".." in Path(asset_path).parts or asset_path.startswith("/"):
         raise CanvasAssetError(f"Asset path must stay inside {label}.")
-    if Path(asset_path).suffix.lower() not in BROWSER_ASSET_SUFFIXES:
-        raise CanvasAssetError("Canvas assets are limited to browser-renderable files.")
+    if Path(asset_path).suffix.lower() not in suffixes:
+        raise CanvasAssetError("Canvas assets are limited to supported media files.")
+
+
+def _is_allowed_course_media(path: Path) -> bool:
+    return (
+        path.is_file()
+        and path.suffix.lower() in COURSE_MEDIA_SUFFIXES
+        and path.stat().st_size <= MAX_COURSE_MEDIA_BYTES
+    )

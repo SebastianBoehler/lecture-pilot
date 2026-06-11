@@ -74,7 +74,7 @@ def _section_messages(source_document: CanvasDocument, section: CanvasSection) -
                 "Rewrite this extracted lecture section into a clean markdown learning "
                 "canvas section. Return JSON only with id, title, source_ref, and blocks. "
                 "Use 4 to 7 blocks with self-study paragraphs, examples, and steps. "
-                "Blocks may be paragraph, list, callout, math, asset, "
+                "Blocks may be paragraph, list, callout, math, asset, video, "
                 "table, checkpoint, or quiz. Quiz blocks use text as the question and "
                 "items as possible answers plus answer_index for the correct option. "
                 "Do not preserve raw slide ids; create a stable learning topic id. Preserve "
@@ -101,8 +101,8 @@ def _section_evidence(source_document: CanvasDocument, section: CanvasSection) -
         f"Source frames: {section.source_ref or 'unknown'}",
     ]
     for block in section.blocks:
-        if block.type == "asset":
-            lines.append(f"- asset asset_path={block.asset_path}; caption={block.caption or ''}")
+        if block.type in {"asset", "video"}:
+            lines.append(f"- {block.type} asset_path={block.asset_path}; caption={block.caption or ''}")
         elif block.type == "list":
             lines.append("- list: " + "; ".join(block.items[:24]))
         else:
@@ -180,9 +180,9 @@ def _read_blocks(
         if not isinstance(raw_block, dict):
             continue
         block_type = raw_block.get("type")
-        if block_type not in {"paragraph", "list", "callout", "math", "asset", "table", "checkpoint", "quiz"}:
+        if block_type not in {"paragraph", "list", "callout", "math", "asset", "video", "table", "checkpoint", "quiz"}:
             block_type = "paragraph"
-        if block_type == "asset" and raw_block.get("asset_path") not in allowed_assets:
+        if block_type in {"asset", "video"} and raw_block.get("asset_path") not in allowed_assets:
             continue
         counters[block_type] = counters.get(block_type, 0) + 1
         block = _read_block(
@@ -205,14 +205,15 @@ def _read_block(
     if block_type == "list":
         raw_items = _block_items(raw_block)
         return CanvasBlock(id=block_id, type="list", items=[_trim(item, 340) for item in clean_canvas_items(raw_items[:12])])
-    if block_type == "asset":
+    if block_type in {"asset", "video"}:
         asset_path = str(raw_block.get("asset_path"))
         return CanvasBlock(
             id=block_id,
-            type="asset",
+            type=block_type,
             asset_path=asset_path,
             asset_url=allowed_assets.get(asset_path),
             caption=str(raw_block.get("caption") or asset_path)[:500],
+            text=_trim(clean_canvas_text(raw_block.get("text") or raw_block.get("content")), 700) or None,
         )
     if block_type == "quiz":
         return CanvasBlock(
@@ -255,7 +256,7 @@ def _allowed_assets(section: CanvasSection) -> dict[str, str | None]:
     return {
         block.asset_path: block.asset_url
         for block in section.blocks
-        if block.type == "asset" and block.asset_path
+        if block.type in {"asset", "video"} and block.asset_path
     }
 
 
