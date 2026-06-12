@@ -3,7 +3,7 @@ from lecturepilot.model_commands import read_canvas_commands
 from lecturepilot.models import AgentTurnInput, AttendanceStatus, CanvasState
 
 
-def test_missing_generated_section_tool_gets_student_workspace_fallback() -> None:
+def test_missing_generated_section_command_does_not_create_fake_section() -> None:
     turn = AgentTurnInput(
         user_id="student01",
         course_id="martius-ml",
@@ -37,12 +37,7 @@ def test_missing_generated_section_tool_gets_student_workspace_fallback() -> Non
 
     commands = read_canvas_commands({"message": "I added it.", "canvas_commands": []}, turn)
 
-    assert commands[0].type == "append_section"
-    assert commands[0].section is not None
-    assert commands[0].section.title == "Soccer scouting example"
-    assert commands[0].section.source_ref == "student workspace"
-    assert commands[1].type == "focus_section"
-    assert commands[1].section_id == commands[0].section_id
+    assert [command.type for command in commands] == ["focus_section", "highlight_span"]
 
 
 def test_example_word_without_write_request_does_not_generate_section() -> None:
@@ -53,43 +48,31 @@ def test_example_word_without_write_request_does_not_generate_section() -> None:
     assert [command.type for command in commands] == ["focus_section", "highlight_span"]
 
 
-def test_append_word_triggers_student_section_fallback() -> None:
+def test_append_word_without_section_command_does_not_create_fake_section() -> None:
     turn = _turn("no pls append a section to the cavnas")
 
     commands = read_canvas_commands({"message": "I added a note.", "canvas_commands": []}, turn)
 
-    assert commands[0].type == "append_section"
-    assert commands[0].section is not None
-    assert commands[0].section.title == "Generated learning note"
-    assert commands[1].type == "focus_section"
-    assert commands[1].section_id == commands[0].section_id
+    assert [command.type for command in commands] == ["focus_section", "highlight_span"]
 
 
-def test_new_infographic_table_plot_triggers_visual_section_fallback() -> None:
+def test_visual_request_without_section_command_does_not_create_fake_section() -> None:
     turn = _turn("new infographic, section, table, plot pls")
 
     commands = read_canvas_commands({"message": "I added it.", "canvas_commands": []}, turn)
 
-    assert commands[0].type == "append_section"
-    assert commands[0].section is not None
-    assert commands[0].section.title == "Generated concept infographic"
-    assert "Locate" in " ".join(commands[0].section.blocks[1].items)
+    assert [command.type for command in commands] == ["focus_section", "highlight_span"]
 
 
-def test_interactive_component_request_gets_component_fallback() -> None:
+def test_interactive_component_request_requires_explicit_component_block() -> None:
     turn = _turn("append an interactive component quiz about expected risk")
 
     commands = read_canvas_commands({"message": "I added it.", "canvas_commands": []}, turn)
 
-    assert commands[0].section is not None
-    component = next(block for block in commands[0].section.blocks if block.type == "component")
-    assert component.component_type == "single_choice_quiz"
-    assert component.component_ref.endswith(".yaml")
-    assert component.option_ids == ["posterior-loss", "slide-number", "notation-font"]
-    assert component.answer_index == 0
+    assert [command.type for command in commands] == ["focus_section", "highlight_span"]
 
 
-def test_requested_learning_blocks_are_preserved_when_model_appends_section() -> None:
+def test_model_appended_section_is_not_augmented_with_synthetic_blocks() -> None:
     turn = _turn("append a checkpoint quiz and table section about expected risk")
     section = CanvasSection(
         id="student-risk",
@@ -111,7 +94,7 @@ def test_requested_learning_blocks_are_preserved_when_model_appends_section() ->
     )
 
     assert commands[0].section is not None
-    assert {"checkpoint", "quiz", "table"}.issubset({block.type for block in commands[0].section.blocks})
+    assert [block.type for block in commands[0].section.blocks] == ["paragraph"]
 
 
 def test_generated_component_blocks_keep_file_backed_metadata() -> None:

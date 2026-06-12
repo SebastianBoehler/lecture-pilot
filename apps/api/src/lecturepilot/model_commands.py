@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import re
 
-from lecturepilot.model_generated_sections import fallback_generated_command
 from lecturepilot.model_section_commands import (
-    ensure_requested_learning_blocks,
     read_generated_section,
 )
 from lecturepilot.models import AgentTurnInput, CanvasCommand, QualityGateDecision, QualityGateStatus
@@ -31,17 +29,9 @@ def read_canvas_commands(payload: dict, turn: AgentTurnInput) -> list[CanvasComm
     raw_commands = payload.get("canvas_commands")
     if isinstance(raw_commands, list):
         commands.extend(_read_command(item, turn) for item in raw_commands if isinstance(item, dict))
-    if not any(command.type in {"append_section", "update_section"} for command in commands):
-        fallback_generated = fallback_generated_command(turn, _default_section_id(turn))
-        if fallback_generated is not None:
-            commands.insert(0, fallback_generated)
-    commands = [_ensure_requested_learning_blocks(command, turn) for command in commands]
-    focus_id = _read_section_id(payload.get("focus_section_id"), turn)
+    focus_id = _default_section_id(turn)
     if not any(command.type == "focus_section" for command in commands):
         commands.insert(0, CanvasCommand(type="focus_section", section_id=focus_id))
-    legacy_highlight = _read_highlight_command(payload, turn)
-    if legacy_highlight is not None:
-        commands.append(legacy_highlight)
     return _normalize_commands([command for command in commands if command.section_id], focus_id, turn)
 
 
@@ -70,12 +60,8 @@ def _read_command(raw_command: dict, turn: AgentTurnInput) -> CanvasCommand:
     return CanvasCommand(type="focus_section", section_id=_read_section_id(raw_command.get("section_id"), turn))
 
 
-def _ensure_requested_learning_blocks(command: CanvasCommand, turn: AgentTurnInput) -> CanvasCommand:
-    return ensure_requested_learning_blocks(command, turn)
-
-
 def _read_highlight_command(raw_command: dict, turn: AgentTurnInput) -> CanvasCommand | None:
-    span_id = raw_command.get("span_id") or raw_command.get("block_id") or raw_command.get("highlight_span_id")
+    span_id = raw_command.get("span_id")
     if not isinstance(span_id, str) or not _is_valid_span_id(span_id, turn):
         return None
     inferred_section = _section_for_span(turn, span_id)

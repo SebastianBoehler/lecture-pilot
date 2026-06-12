@@ -93,7 +93,7 @@ def _planner_messages(source_document: CanvasDocument) -> list[dict[str, str]]:
                 "Use light Markdown inside text blocks for emphasis, for example "
                 "**posterior** or `p(x | C)`, but keep block structure explicit. "
                 "Leave room for professor-approved YouTube videos instead of inventing "
-                "video links. Return only JSON with title and sections. Each section must "
+                "video links. Return one structured draft with title and sections. Each section must "
                 "include id, title, source_ref, and blocks. Blocks may be paragraph, list, "
                 "callout, math, asset, video, table, checkpoint, or quiz. Use only 2 "
                 "checkpoint or quiz blocks for the full lecture, not after every section. "

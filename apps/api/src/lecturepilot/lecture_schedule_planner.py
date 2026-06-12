@@ -92,7 +92,7 @@ def _schedule_messages(
                 "You are the LecturePilot course-builder scheduling agent. Infer the "
                 "course lecture structure from an uploaded source bundle. Use file names, "
                 "LaTeX sections, Markdown headings, text excerpts, and media metadata as "
-                "evidence. Return exactly one JSON object with a top-level lectures "
+                "evidence. Return exactly one structured schedule with a top-level lectures "
                 "array. Each lecture needs "
                 "number, title, date, and material_path. Prefer concise real lecture topic "
                 "titles over housekeeping frames such as plan, recap, feedback, note, or "
@@ -113,7 +113,7 @@ def _repair_message(error: str) -> dict[str, str]:
         "role": "user",
         "content": (
             f"The previous schedule response violated the contract: {error}. "
-            "Return exactly one JSON object with this shape and no surrounding prose: "
+            "Return exactly one structured schedule with this shape and no surrounding prose: "
             '{"lectures":[{"number":"01","title":"Topic title","date":"YYYY-MM-DD",'
             '"material_path":"Lecture01-eng.tex"}]}. Do not return a bare array.'
         ),

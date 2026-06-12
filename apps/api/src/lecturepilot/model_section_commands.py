@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.model_generated_ids import safe_generated_id, student_section_id, trim_generated_text
-from lecturepilot.models import AgentTurnInput, CanvasCommand
 
 _GENERATED_BLOCK_TYPES = {
     "paragraph",
@@ -27,36 +26,6 @@ def read_generated_section(raw_command: dict) -> CanvasSection | None:
     if not blocks:
         return None
     return CanvasSection(id=section_id, title=title, source_ref="student workspace", blocks=blocks[:8])
-
-
-def ensure_requested_learning_blocks(command: CanvasCommand, turn: AgentTurnInput) -> CanvasCommand:
-    if command.type not in {"append_section", "update_section"} or command.section is None:
-        return command
-    requested = _requested_blocks(turn.message)
-    if not any(requested.values()):
-        return command
-    blocks = list(command.section.blocks)
-    present = {block.type for block in blocks}
-    if requested["table"] and "table" not in present:
-        blocks.append(_fallback_table(command.section.id))
-    if requested["component"] and "component" not in present:
-        blocks.append(_fallback_component(command.section.id))
-    if requested["checkpoint"] and "checkpoint" not in present:
-        blocks.append(_fallback_checkpoint(command.section.id))
-    if requested["quiz"] and "quiz" not in present:
-        blocks.append(_fallback_quiz(command.section.id))
-    section = command.section.model_copy(update={"blocks": blocks[:8]})
-    return command.model_copy(update={"section": section})
-
-
-def _requested_blocks(message: str) -> dict[str, bool]:
-    lowered = message.lower()
-    return {
-        "checkpoint": "checkpoint" in lowered or "gate" in lowered,
-        "component": "component" in lowered or "interactive" in lowered,
-        "quiz": "quiz" in lowered,
-        "table": "table" in lowered,
-    }
 
 
 def _read_generated_blocks(raw_blocks: object, section_id: str) -> list[CanvasBlock]:
@@ -126,58 +95,6 @@ def _read_items(raw_items: object) -> list[str]:
     if not isinstance(raw_items, list):
         return []
     return [trim_generated_text(str(item), 240) for item in raw_items[:8]]
-
-
-def _fallback_table(section_id: str) -> CanvasBlock:
-    return CanvasBlock(
-        id=safe_generated_id(f"{section_id}-table"),
-        type="table",
-        text=(
-            "| Action | What to compute |\n"
-            "| --- | --- |\n"
-            "| Classify | Posterior probability times decision loss |\n"
-            "| Reject | Cost of asking for more evidence |\n"
-            "| Choose | Lowest expected risk |"
-        ),
-        caption="Expected-risk table",
-    )
-
-
-def _fallback_checkpoint(section_id: str) -> CanvasBlock:
-    return CanvasBlock(
-        id=safe_generated_id(f"{section_id}-checkpoint"),
-        type="checkpoint",
-        caption="Quality gate",
-        text="Explain the decision rule, then name which cost or posterior term changes the chosen action.",
-    )
-
-
-def _fallback_quiz(section_id: str) -> CanvasBlock:
-    return CanvasBlock(
-        id=safe_generated_id(f"{section_id}-quiz"),
-        type="quiz",
-        caption="Retrieval check",
-        text="Which value directly changes the expected-risk threshold?",
-        items=["A loss term", "The slide number", "The notation font"],
-        answer_index=0,
-    )
-
-
-def _fallback_component(section_id: str) -> CanvasBlock:
-    component_id = safe_generated_id(f"{section_id}-risk-check")
-    return CanvasBlock(
-        id=safe_generated_id(f"{section_id}-component"),
-        type="component",
-        component_id=component_id,
-        component_type="single_choice_quiz",
-        component_ref=f"{component_id}.yaml",
-        component_version=1,
-        caption="Interactive risk check",
-        text="Which value directly changes a cost-sensitive classifier decision?",
-        items=["The posterior-weighted loss", "The slide number", "The notation font"],
-        option_ids=["posterior-loss", "slide-number", "notation-font"],
-        answer_index=0,
-    )
 
 
 def _answer_index(value: object, item_count: int) -> int | None:

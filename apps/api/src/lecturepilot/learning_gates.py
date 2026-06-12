@@ -63,6 +63,7 @@ def gate_rubric_context(lecture_id: str) -> str:
         f"{labels}\n"
         "Mark passed only when the student's answer covers all groups. "
         "When all groups are covered, return passed without asking for bonus examples. "
+        "Do not add extra pass requirements beyond these groups. "
         "If exactly one or two groups are missing, return needs_evidence and ask for the first "
         "missing group only."
     )

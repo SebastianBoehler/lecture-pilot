@@ -12,10 +12,9 @@ def test_parse_model_json_accepts_fenced_json() -> None:
     assert payload["title"] == "Draft"
 
 
-def test_parse_model_json_extracts_json_from_provider_text() -> None:
-    payload = parse_model_json('Here is the draft:\n{"title": "Draft", "sections": []}\nDone.')
-
-    assert payload["sections"] == []
+def test_parse_model_json_rejects_provider_text_wrapping() -> None:
+    with pytest.raises(ProviderConfigurationError):
+        parse_model_json('Here is the draft:\n{"title": "Draft", "sections": []}\nDone.')
 
 
 def test_parse_model_json_repairs_latex_backslashes() -> None:

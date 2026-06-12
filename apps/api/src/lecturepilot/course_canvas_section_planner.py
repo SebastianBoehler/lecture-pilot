@@ -72,7 +72,7 @@ def _section_messages(source_document: CanvasDocument, section: CanvasSection) -
             "role": "system",
             "content": (
                 "Rewrite this extracted lecture section into a clean markdown learning "
-                "canvas section. Return JSON only with title and a sections array containing "
+                "canvas section. Return one structured object with title and a sections array containing "
                 "exactly one object with id, title, source_ref, and blocks. "
                 "Use 4 to 7 blocks with self-study paragraphs, examples, and steps. "
                 "Blocks may be paragraph, list, callout, math, asset, video, "

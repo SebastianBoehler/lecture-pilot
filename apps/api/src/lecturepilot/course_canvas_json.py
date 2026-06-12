@@ -11,8 +11,6 @@ def parse_model_json(content: str | None) -> dict:
         raise ProviderConfigurationError("Course planner returned an empty response.")
     cleaned = _strip_code_fence(content.strip())
     candidates = [cleaned]
-    if extracted := _extract_first_json_object(cleaned):
-        candidates.append(extracted)
     candidates.extend(_escape_invalid_json_backslashes(candidate) for candidate in list(candidates))
     for candidate in candidates:
         try:
@@ -38,31 +36,3 @@ def _strip_code_fence(content: str) -> str:
     if lines and lines[-1].strip() == "```":
         lines = lines[:-1]
     return "\n".join(lines).strip()
-
-
-def _extract_first_json_object(content: str) -> str | None:
-    start = content.find("{")
-    if start < 0:
-        return None
-    depth = 0
-    in_string = False
-    escaped = False
-    for index, char in enumerate(content[start:], start=start):
-        if escaped:
-            escaped = False
-            continue
-        if char == "\\":
-            escaped = in_string
-            continue
-        if char == '"':
-            in_string = not in_string
-            continue
-        if in_string:
-            continue
-        if char == "{":
-            depth += 1
-        elif char == "}":
-            depth -= 1
-            if depth == 0:
-                return content[start : index + 1]
-    return None
