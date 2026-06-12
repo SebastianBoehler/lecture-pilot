@@ -127,7 +127,7 @@ function buildEnrolledCourseGroup(
     course,
     status: tutorAvailable ? "matched" : "unmatched",
     statusLabel: tutorAvailable ? "AI tutor available" : "No tutor workspace yet",
-    helperText: tutorAvailable ? "Matched from your Alma course list." : null,
+    helperText: null,
     emptyText: "No matched LecturePilot workspace for this course yet.",
     tutorAvailable,
     courseLectures: tutorAvailable ? publishedLectures : [],

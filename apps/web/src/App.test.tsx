@@ -39,6 +39,7 @@ describe("LecturePilot app shell", () => {
     expect(martiusCourse).not.toBeNull();
     expect(within(probabilisticCourse as HTMLElement).getByText(/no tutor workspace yet/i)).toBeInTheDocument();
     expect(within(martiusCourse as HTMLElement).getByText(/no tutor workspace yet/i)).toBeInTheDocument();
+    expect(screen.queryByText(/matched from your alma course list/i)).not.toBeInTheDocument();
     expect(within(martiusCourse as HTMLElement).queryByRole("button", { name: /open lecture 03/i })).not.toBeInTheDocument();
     expect(screen.queryByText("very-secret-password")).not.toBeInTheDocument();
     const request = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
