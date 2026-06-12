@@ -38,7 +38,6 @@ export function Dashboard({
   return (
     <main className="dashboard">
       <section className="dashboard-header">
-        <p className="section-label">Student workspace</p>
         <h1>Welcome, {studentLabel}</h1>
         <p>Choose an AI tutor workspace or continue with a past lecture.</p>
       </section>
