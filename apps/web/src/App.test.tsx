@@ -217,7 +217,7 @@ describe("LecturePilot app shell", () => {
     await user.keyboard("{Enter}");
 
     expect(await screen.findByText(/bayes answer/i)).toBeInTheDocument();
-    expect(screen.getByText(/model: gemini\/gemini-2\.5-flash-lite/i)).toBeInTheDocument();
+    expect(screen.getByText(/model: gemini\/gemini-3\.1-flash-lite/i)).toBeInTheDocument();
     expect(screen.getByText("focus: bayes-formula")).toBeInTheDocument();
     expect(screen.getAllByText("gate: needs evidence").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole("region", { name: /bayes formula and conditional probability/i })).toHaveAttribute(

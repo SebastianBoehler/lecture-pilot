@@ -100,6 +100,8 @@ See [docs/course-ingestion-pipeline.md](docs/course-ingestion-pipeline.md) for
 the long-context LLM upload, canvas planning, and professor approval pipeline.
 See [docs/workspaces.md](docs/workspaces.md) for filesystem-backed canvas and
 learner storage.
+See [docs/agent-tool-contracts.md](docs/agent-tool-contracts.md) for the
+profile-scoped tutor tool contracts and UI activity tags.
 See [docs/tenancy-security.md](docs/tenancy-security.md) for the tenant,
 profile, and secure course-material upload contract.
 

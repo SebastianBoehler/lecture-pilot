@@ -179,5 +179,12 @@ def _tool_args(call: Any) -> dict[str, Any]:
 
 
 def _tool_activity(name: str, args: dict[str, Any]) -> str:
-    target = args.get("path") or args.get("pattern") or args.get("section_id") or ""
+    target = (
+        args.get("path")
+        or args.get("pattern")
+        or args.get("section_id")
+        or args.get("span_id")
+        or args.get("gate_id")
+        or ""
+    )
     return f"{name}: {str(target)[:80]}" if target else name
