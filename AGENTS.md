@@ -269,6 +269,13 @@ npm run build --workspace apps/web
 git diff --check
 ```
 
+Provider/model behavior checks are benchmarks, not CI gates. Use them to compare
+role-following, structured output, and quality-gate reliability across models:
+
+```bash
+python scripts/benchmark_gate_models.py --model gemini/gemini-2.5-flash-lite
+```
+
 File-size guard:
 
 ```bash

@@ -226,6 +226,17 @@ npm run test --workspace apps/web
 npm run build --workspace apps/web
 ```
 
+Provider behavior is benchmarked separately from CI because real model calls are
+non-deterministic and depend on configured keys. To compare whether candidate
+models follow the tutor role, quality-gate policy, and structured output
+contract, run:
+
+```bash
+python scripts/benchmark_gate_models.py \
+  --model gemini/gemini-2.5-flash-lite \
+  --model gemini/gemini-2.5-flash
+```
+
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).

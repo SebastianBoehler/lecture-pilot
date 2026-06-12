@@ -11,10 +11,10 @@ from lecturepilot.models import (
     QualityGateDecision,
     QualityGateStatus,
 )
+from lecturepilot.learning_gates import GateEvaluation, GateTarget, evaluate_learning_gate
 
 
 LOCAL_PREVIEW_USER_ID = "local-preview-user"
-_BAYES_GATE_ID = "bayes-decision-check"
 
 
 @dataclass(frozen=True)
@@ -26,6 +26,7 @@ class TopicTarget:
 
 def run_local_preview_turn(turn: AgentTurnInput) -> AgentTurnResult:
     learning_mode = _learning_mode(turn)
+    evidence = evaluate_learning_gate(turn.lecture_id, turn.message)
     if _asks_for_soccer_example(turn.message):
         section = _soccer_bayes_section()
         return AgentTurnResult(
@@ -44,34 +45,34 @@ def run_local_preview_turn(turn: AgentTurnInput) -> AgentTurnResult:
                 ),
             ],
             quality_gate=QualityGateDecision(
-                gate_id=_BAYES_GATE_ID,
+                gate_id=evidence.spec.gate_id,
                 status=QualityGateStatus.NEEDS_EVIDENCE,
                 reason="The learner asked for a personalized transfer example.",
-                next_prompt="Use the soccer example to identify prior, likelihood, posterior, and cost.",
+                next_prompt=f"Use the example to add evidence for: {evidence.next_missing_label}.",
             ),
             model="local-guided-preview",
         )
 
-    evidence = _read_bayes_gate_evidence(turn.message)
     if evidence.is_complete:
+        target = _gate_target(turn, evidence.spec.passed_target)
         return AgentTurnResult(
             message=(
-                "Gate passed: you connected Bayes terms to the decision and risk. I focused "
-                "the risk-decision part so the next step is to apply it to one example."
+                f"Gate passed: you connected the required ideas for {evidence.spec.title}. "
+                "I focused the next application point so you can transfer it to one example."
             ),
             canvas_commands=[
-                CanvasCommand(type="focus_section", section_id="losses-and-risks"),
+                CanvasCommand(type="focus_section", section_id=target.section_id),
                 CanvasCommand(
                     type="highlight_span",
-                    section_id="losses-and-risks",
-                    span_id="losses-and-risks-list",
-                    highlight_text="decision",
+                    section_id=target.section_id,
+                    span_id=target.span_id,
+                    highlight_text=target.highlight_text,
                 ),
             ],
             quality_gate=QualityGateDecision(
-                gate_id=_BAYES_GATE_ID,
+                gate_id=evidence.spec.gate_id,
                 status=QualityGateStatus.PASSED,
-                reason="The learner explained posterior, prior, likelihood, evidence, and decision risk.",
+                reason=f"The learner supplied evidence for {evidence.spec.title}.",
                 next_prompt="Apply the decision rule to a concrete classification case.",
             ),
             model="local-guided-preview",
@@ -80,7 +81,7 @@ def run_local_preview_turn(turn: AgentTurnInput) -> AgentTurnResult:
     missing = ", ".join(evidence.missing_labels)
     target = _topic_target(turn)
     return AgentTurnResult(
-        message=_pending_gate_message(turn, learning_mode, missing, target),
+        message=_pending_gate_message(turn, learning_mode, missing, evidence),
         canvas_commands=[
             CanvasCommand(type="focus_section", section_id=target.section_id),
             CanvasCommand(
@@ -91,12 +92,10 @@ def run_local_preview_turn(turn: AgentTurnInput) -> AgentTurnResult:
             ),
         ],
         quality_gate=QualityGateDecision(
-            gate_id=_BAYES_GATE_ID,
+            gate_id=evidence.spec.gate_id,
             status=QualityGateStatus.NEEDS_EVIDENCE,
             reason=f"Missing evidence: {missing}.",
-            next_prompt=(
-                "Answer with posterior, prior, likelihood, evidence, and one risk-sensitive decision."
-            ),
+            next_prompt=f"Add one concrete sentence for: {evidence.next_missing_label}.",
         ),
         model="local-guided-preview",
     )
@@ -110,25 +109,24 @@ def _pending_gate_message(
     turn: AgentTurnInput,
     learning_mode: str,
     missing: str,
-    target: TopicTarget,
+    evidence: GateEvaluation,
 ) -> str:
+    next_check = evidence.next_missing_label
     if turn.attendance == AttendanceStatus.PRESENT:
         return (
             f"{learning_mode} Feedback: your answer is not complete yet. Gate pending; "
-            f"missing evidence: {missing}. I focused the supporting canvas text. Now give "
-            "one compact answer that states the definition, mechanism, computation, and one "
-            "risk-sensitive decision consequence."
+            f"missing evidence: {missing}. I focused the supporting canvas text. Next check: "
+            f"add {next_check} with one concrete example or worked consequence."
         )
     if turn.attendance == AttendanceStatus.ABSENT:
         return (
             f"{learning_mode} Start with this section, then move toward the gate in small steps. "
-            "First, identify the probability or risk term in the highlighted text. Second, say "
-            "what information changes after observing evidence. Third, connect that updated "
-            f"belief to a decision cost. Gate pending; missing evidence: {missing}."
+            f"First work on {next_check}. Use the highlighted text, then answer with one "
+            f"sentence before we continue. Gate pending; missing evidence: {missing}."
         )
     return (
         f"{learning_mode} I focused the most relevant canvas section to diagnose the gap. "
-        f"Gate pending; missing evidence: {missing}. Answer the highlighted point first."
+        f"Gate pending; missing evidence: {missing}. First add {next_check}."
     )
 
 
@@ -161,11 +159,21 @@ def _topic_target(turn: AgentTurnInput) -> TopicTarget:
             "bayes-formula-list",
             "probability",
         )
-    return _focused_canvas_target(turn) or TopicTarget(
-        "bayesian-decision-theory-the-aim",
-        "bayesian-decision-theory-the-aim-p-1",
-        "decisions",
-    )
+    default = evaluate_learning_gate(turn.lecture_id, turn.message).spec.pending_target
+    return _focused_canvas_target(turn) or _topic_target_from_gate(default)
+
+
+def _gate_target(turn: AgentTurnInput, target: GateTarget) -> TopicTarget:
+    if turn.canvas_context is None:
+        return _topic_target_from_gate(target)
+    for section in turn.canvas_context.sections:
+        if section.id == target.section_id:
+            return TopicTarget(section.id, _first_teaching_block_id(section), target.highlight_text)
+    return _topic_target_from_gate(target)
+
+
+def _topic_target_from_gate(target: GateTarget) -> TopicTarget:
+    return TopicTarget(target.section_id, target.span_id, target.highlight_text)
 
 
 def _canvas_target(
@@ -201,43 +209,6 @@ def _first_teaching_block_id(section) -> str:
         if block.type in {"paragraph", "list", "math", "callout"}:
             return block.id
     return section.blocks[0].id if section.blocks else f"{section.id}-heading"
-
-
-@dataclass(frozen=True)
-class BayesGateEvidence:
-    has_posterior: bool
-    has_bayes_terms: bool
-    has_decision: bool
-    has_risk_or_cost: bool
-
-    @property
-    def is_complete(self) -> bool:
-        return all((self.has_posterior, self.has_bayes_terms, self.has_decision, self.has_risk_or_cost))
-
-    @property
-    def missing_labels(self) -> tuple[str, ...]:
-        missing = []
-        if not self.has_posterior:
-            missing.append("posterior from evidence")
-        if not self.has_bayes_terms:
-            missing.append("prior, likelihood, and evidence")
-        if not self.has_decision:
-            missing.append("classifier decision")
-        if not self.has_risk_or_cost:
-            missing.append("risk or cost")
-        return tuple(missing)
-
-
-def _read_bayes_gate_evidence(message: str) -> BayesGateEvidence:
-    normalized = message.lower()
-    return BayesGateEvidence(
-        has_posterior="posterior" in normalized or "p(c|x" in normalized or "p(c | x" in normalized,
-        has_bayes_terms=_mentions_any(normalized, ("prior", "likelihood")) and _mentions_any(
-            normalized, ("evidence", "p(x)", "normalizer")
-        ),
-        has_decision=_mentions_any(normalized, ("decision", "classif", "predict", "choose")),
-        has_risk_or_cost=_mentions_any(normalized, ("risk", "cost", "loss", "false positive")),
-    )
 
 
 def _asks_for_soccer_example(message: str) -> bool:
