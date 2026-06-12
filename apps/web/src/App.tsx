@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { getDraftLectureCanvas, getLectureCanvas, publishLectureCanvas, sendAgentTurnStream } from "./api";
 import {
@@ -40,9 +40,6 @@ function App() {
   const [selectedLecture, setSelectedLecture] = useState(lectures[2]);
   const [lessonUserId, setLessonUserId] = useState(effectiveUserId(session));
   const [lessonBackView, setLessonBackView] = useState<"dashboard" | "professor">("dashboard");
-  const [professorBackView, setProfessorBackView] = useState<"login" | "dashboard">(
-    session ? "dashboard" : "login",
-  );
   const [panelMode, setPanelMode] = useState<LessonPanelMode | null>(null);
   const [canvasDocument, setCanvasDocument] = useState<CanvasDocument | null>(null);
   const [canvasError, setCanvasError] = useState<string | null>(null);
@@ -55,10 +52,34 @@ function App() {
   );
   const [lastTutorModel, setLastTutorModel] = useState<string | null>(null);
   const [publishedLectureIds, setPublishedLectureIds] = usePublishedLectures("martius-ml", lectures, session);
+  const initialDraftPreviewHandled = useRef(false);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+
+  useEffect(() => {
+    if (initialDraftPreviewHandled.current) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("preview") !== "draft") return;
+    if (!session) return;
+    initialDraftPreviewHandled.current = true;
+    if (!canManageCourses(session)) {
+      setView("dashboard");
+      setCanvasError("Draft preview requires a course-management account.");
+      return;
+    }
+    const courseId = params.get("courseId") ?? "martius-ml";
+    const lectureId = params.get("lectureId") ?? "lecture-03";
+    const lecture = availableLectures.find((item) => item.id === lectureId) ?? {
+      id: lectureId,
+      number: params.get("lectureNumber") ?? lectureId.replace("lecture-", ""),
+      title: params.get("lectureTitle") ?? "Draft lecture",
+      date: "Draft",
+      attendance: "unknown" as Attendance,
+    };
+    void handleOpenLecture(courseId, lecture, "professor", "professor-preview", true);
+  }, [availableLectures, session]);
 
   async function handleTutorMessage(message: string) {
     const timestamp = Date.now();
@@ -171,11 +192,23 @@ function App() {
     }
   }
 
+  function draftPreviewUrl(courseId: string, lecture: Lecture) {
+    const params = new URLSearchParams({
+      preview: "draft",
+      courseId,
+      lectureId: lecture.id,
+      lectureNumber: lecture.number,
+      lectureTitle: lecture.title,
+    });
+    return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+  }
+
   const courseManagerSession = canManageCourses(session) ? session : null;
 
   return (
     <div className="app-shell">
       <AppHeader
+        activeView={view}
         session={session}
         theme={theme}
         onBrand={() => {
@@ -195,7 +228,6 @@ function App() {
         }}
         onOpenProfessor={() => {
           if (courseManagerSession) {
-            setProfessorBackView("dashboard");
             setView("professor");
             setPanelMode(null);
           }
@@ -215,7 +247,6 @@ function App() {
           }}
           onOpenProfessorDemo={() => {
             setSession(localProfessorSession);
-            setProfessorBackView("dashboard");
             setView("professor");
           }}
         />
@@ -234,22 +265,18 @@ function App() {
       ) : view === "professor" && courseManagerSession ? (
         <ProfessorCourseBuilder
           session={courseManagerSession}
-          onBack={() => setView(professorBackView)}
           onPublishWorkspace={async (courseId, lectureId) => {
             const result = await publishLectureCanvas(courseId, lectureId, courseManagerSession);
             setPublishedLectureIds((current) => Array.from(new Set([...current, lectureId])));
             return result;
           }}
-          onPreviewWorkspace={(courseId, lecture) => {
-            void handleOpenLecture(courseId, lecture, "professor", "professor-preview", true);
-          }}
+          previewWorkspaceUrl={draftPreviewUrl}
           publishedLectureIds={publishedLectureIds}
         />
       ) : view === "performance" && courseManagerSession ? (
         <ProfessorCoursePerformance
           lectures={availableLectures}
           session={courseManagerSession}
-          onBack={() => setView("dashboard")}
         />
       ) : view === "performance" ? (
         <CourseManagementAccessRequired

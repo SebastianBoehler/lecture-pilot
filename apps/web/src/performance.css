@@ -1,20 +1,109 @@
+.refresh-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+}
+
+.refresh-button .is-spinning {
+  animation: spin 0.8s linear infinite;
+}
+
+.performance-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.35fr) minmax(0, 1fr);
+  gap: 16px;
+  padding: 18px;
+}
+
+.performance-lecture-list {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.performance-lecture-list button {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  text-align: left;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  padding: 12px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+}
+
+.performance-lecture-list button:hover,
+.performance-lecture-list button.is-active {
+  border-color: var(--color-accent-primary);
+  background: var(--color-bg-secondary);
+}
+
+.performance-lecture-list span {
+  grid-row: span 2;
+  color: var(--color-text-tertiary);
+  font-weight: 800;
+}
+
+.performance-lecture-list small {
+  color: var(--color-text-secondary);
+}
+
+.analytics-card {
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  padding: 18px;
+  background: var(--color-bg-primary);
+}
+
+.analytics-page-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.analytics-page-heading p {
+  margin: 0 0 4px;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.analytics-page-heading h2 {
+  margin: 0;
+}
+
+.analytics-summary {
+  display: grid;
+  gap: 12px;
+}
+
 .analytics-kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
 
+.analytics-kpi,
+.analytics-panel {
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  background: var(--color-bg-secondary);
+}
+
 .analytics-kpi {
   display: grid;
   gap: 4px;
-  border: 1px solid var(--color-border-primary);
-  border-radius: 8px;
   padding: 12px;
-  background: var(--color-bg-primary);
 }
 
 .analytics-kpi span,
-.analytics-insight-grid h3 {
+.analytics-insight-grid h3,
+.analytics-panel header span,
+.analytics-panel small {
   color: var(--color-text-tertiary);
   font-size: 12px;
   font-weight: 800;
@@ -24,6 +113,17 @@
 
 .analytics-kpi strong {
   font-size: 24px;
+}
+
+.analytics-panel {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.analytics-panel header {
+  display: grid;
+  gap: 3px;
 }
 
 .analytics-insight-grid {
@@ -79,9 +179,16 @@
   background: #22c55e;
 }
 
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (max-width: 860px) {
   .analytics-kpis,
-  .analytics-insight-grid {
+  .analytics-insight-grid,
+  .performance-layout {
     grid-template-columns: 1fr;
   }
 }

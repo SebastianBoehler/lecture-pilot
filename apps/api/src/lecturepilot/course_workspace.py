@@ -3,7 +3,10 @@ from __future__ import annotations
 import re
 from datetime import date
 
+from lecturepilot.canvas_workspace_config import SEEDED_COURSE_ID
 from lecturepilot.models import Course, CourseWorkspaceResult, CourseWorkspaceSetupInput, Lecture
+
+SEEDED_COURSE_SLUGS = {"grundlagen-des-maschinellen-lernens"}
 
 
 def resolve_course_workspace(
@@ -12,8 +15,9 @@ def resolve_course_workspace(
     professor: str,
     term: str,
 ) -> CourseWorkspaceResult:
+    course_id = _course_id(setup.course_title)
     course = Course(
-        id=_slug(setup.course_title),
+        id=course_id,
         title=setup.course_title.strip(),
         professor=professor,
         term=term,
@@ -60,3 +64,10 @@ def _lecture_id(*, number: str, title: str) -> str:
 def _slug(value: str) -> str:
     slug = re.sub(r"[^a-zA-Z0-9_-]+", "-", value.lower()).strip("-")
     return (slug or "course")[:80]
+
+
+def _course_id(course_title: str) -> str:
+    title_slug = _slug(course_title)
+    if title_slug in SEEDED_COURSE_SLUGS:
+        return SEEDED_COURSE_ID
+    return title_slug

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import {
-  clearCourseYoutubeMedia,
   createCourseWorkspace,
   draftLectureCanvas,
   getDraftLectureCanvas,
@@ -24,15 +23,13 @@ import type { CanvasDocument, CanvasPublicationResult, LoginSession, SourceBundl
 import type { CourseSetup } from "./professorBuilderState";
 export function ProfessorCourseBuilder({
   session,
-  onBack,
   onPublishWorkspace,
-  onPreviewWorkspace,
+  previewWorkspaceUrl,
   publishedLectureIds,
 }: {
   session: LoginSession;
-  onBack: () => void;
   onPublishWorkspace: (courseId: string, lectureId: string) => Promise<CanvasPublicationResult>;
-  onPreviewWorkspace: (courseId: string, lecture: ReturnType<typeof lectureFromWorkspace>) => void;
+  previewWorkspaceUrl: (courseId: string, lecture: ReturnType<typeof lectureFromWorkspace>) => string;
   publishedLectureIds: string[];
 }) {
   const [savedFlow] = useState(readSavedFlow);
@@ -114,23 +111,6 @@ export function ProfessorCourseBuilder({
       setError(runError instanceof Error ? runError.message : "Professor workflow step failed.");
     }
   }
-  async function resetFlow() {
-    const activeWorkspace = workspace;
-    setSetup(defaultFlow.setup);
-    setWorkspace(null);
-    setCourseReady(false);
-    setBundle(null);
-    setUploadPath(defaultFlow.uploadPath);
-    setUploadFiles([]);
-    setCanvas(null);
-    setVideos([]);
-    setSelectedVideos(new Set());
-    writeSavedFlow(defaultFlow);
-    await run(async () => {
-      if (activeWorkspace) await clearCourseYoutubeMedia(activeWorkspace.courseId, session);
-      return "Professor flow reset.";
-    });
-  }
   function updateSetup(nextSetup: CourseSetup) {
     setSetup(nextSetup);
     setWorkspace(null);
@@ -142,13 +122,20 @@ export function ProfessorCourseBuilder({
   }
   return (
     <main className="professor-screen">
-      <section className="dashboard-header">
-        <button className="ghost-button" type="button" onClick={onBack}>Back</button>
-        <button className="ghost-button" type="button" onClick={() => void resetFlow()}>Reset flow</button>
-        <p className="section-label">Professor workspace</p>
-        <h1>Course creation flow</h1>
-        <p>Signed in as {session.username}. Define the course scope, upload material, draft the canvas, then approve media.</p>
+      <section className="professor-page-header">
+        <div>
+          <h1>Course builder</h1>
+          <p>Define the course scope, upload material, draft the canvas, approve media, then publish for students.</p>
+        </div>
+        <p className="professor-session">Signed in as {session.username}</p>
       </section>
+      <ol className="flow-stepper" aria-label="Course builder progress">
+        <li className={courseReady ? "is-ready" : "is-current"}><span>01</span>Define</li>
+        <li className={bundle ? "is-ready" : courseReady ? "is-current" : ""}><span>02</span>Upload</li>
+        <li className={canvas ? "is-ready" : bundle ? "is-current" : ""}><span>03</span>Generate</li>
+        <li className={videoReviewReady ? "is-ready" : canvas ? "is-current" : ""}><span>04</span>Review</li>
+        <li className={workspacePublished ? "is-ready" : videoReviewReady ? "is-current" : ""}><span>05</span>Publish</li>
+      </ol>
       <div className="professor-flow">
         <CourseSetupStep
           courseReady={courseReady}
@@ -222,12 +209,20 @@ export function ProfessorCourseBuilder({
             Generate draft canvas
           </button>
           {canvas ? <p>{canvas.sections.length} sections ready for review.</p> : null}
-          <button disabled={!canvas || !workspace} type="button" onClick={() => {
-            const activeWorkspace = requireWorkspace(workspace);
-            onPreviewWorkspace(activeWorkspace.courseId, lectureFromWorkspace(activeWorkspace, setup));
-          }}>
-            Preview course workspace
-          </button>
+          {canvas && workspace ? (
+            <a
+              className="button-link"
+              href={previewWorkspaceUrl(workspace.courseId, lectureFromWorkspace(workspace, setup))}
+              rel="noreferrer"
+              target="_blank"
+            >
+              Preview course workspace
+            </a>
+          ) : (
+            <button disabled type="button">
+              Preview course workspace
+            </button>
+          )}
         </section>
         <section className="flow-card wide">
           <StepHeader number="04" title="Review YouTube candidates" done={videoReviewReady} />

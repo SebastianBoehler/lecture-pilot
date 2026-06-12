@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -82,15 +82,12 @@ describe("Professor course builder", () => {
     expect(screen.getByText(/answer distribution/i)).toBeInTheDocument();
     expect(screen.getByText(/posterior-weighted loss/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^course builder$/i }));
-    await user.click(screen.getByRole("button", { name: /preview course workspace/i }));
-    expect(
-      await screen.findByRole("heading", { name: /^bayesian decision theory$/i, level: 1 }),
-    ).toBeInTheDocument();
-    const lessonToolbar = screen.getByText("Draft").closest(".lesson-toolbar") as HTMLElement;
-    expect(within(lessonToolbar).getByRole("button", { name: /course builder/i })).toBeInTheDocument();
-    await user.click(within(lessonToolbar).getByRole("button", { name: /course builder/i }));
+    const previewLink = screen.getByRole("link", { name: /preview course workspace/i });
+    expect(previewLink).toHaveAttribute("target", "_blank");
+    expect(previewLink).toHaveAttribute("href", expect.stringContaining("preview=draft"));
+    expect(previewLink).toHaveAttribute("href", expect.stringContaining("courseId=demo-ml-course"));
     expect(await screen.findByText(/2 sections ready for review/i)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /^back$/i }));
+    await user.click(screen.getByRole("button", { name: /^lecturepilot$/i }));
     expect(screen.getByText(/ai tutor available/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^course builder$/i }));
     expect(fetchMock).toHaveBeenCalledWith(
@@ -109,12 +106,6 @@ describe("Professor course builder", () => {
           "X-User-Role": "professor",
         }),
       }),
-    );
-    await user.click(screen.getByRole("button", { name: /reset flow/i }));
-    expect(await screen.findByText(/professor flow reset/i)).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/admin/courses/demo-ml-course/media/youtube"),
-      expect.objectContaining({ method: "DELETE" }),
     );
   });
 

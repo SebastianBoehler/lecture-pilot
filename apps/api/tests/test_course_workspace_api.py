@@ -13,6 +13,7 @@ def test_professor_creates_stable_course_workspace_ids(tmp_path: Path) -> None:
 
     first = _create_workspace(client, "Demo ML Course", "03", "Bayesian Decision Theory")
     second = _create_workspace(client, "Robotics Seminar", "7", "Policy Gradients")
+    seeded = _create_workspace(client, "Grundlagen des Maschinellen Lernens", "03", "Bayesian Decision Theory")
 
     assert first["course"]["id"] == "demo-ml-course"
     assert first["active_lecture_id"] == "lecture-03"
@@ -20,6 +21,8 @@ def test_professor_creates_stable_course_workspace_ids(tmp_path: Path) -> None:
     assert second["course"]["id"] == "robotics-seminar"
     assert second["active_lecture_id"] == "lecture-07"
     assert second["lectures"][0]["course_id"] == "robotics-seminar"
+    assert seeded["course"]["id"] == "martius-ml"
+    assert seeded["lectures"][0]["course_id"] == "martius-ml"
 
 
 def test_dynamic_course_workspace_uses_uploaded_source(tmp_path: Path) -> None:

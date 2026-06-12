@@ -71,9 +71,9 @@ textarea:focus-visible {
   position: sticky;
   top: 0;
   z-index: 10;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) auto minmax(160px, 1fr);
   align-items: center;
-  justify-content: space-between;
   height: 56px;
   padding: 0 20px;
   border-bottom: 1px solid var(--color-border-primary);
@@ -81,7 +81,6 @@ textarea:focus-visible {
 }
 
 .brand,
-.icon-button,
 .ghost-button,
 .rail-button {
   display: inline-flex;
@@ -96,37 +95,79 @@ textarea:focus-visible {
   font-weight: 700;
 }
 
-.top-status {
+.top-brand-zone {
   display: flex;
   align-items: center;
-  gap: 14px;
+  min-width: 0;
+}
+
+.top-primary-nav {
+  display: inline-flex;
+  align-items: center;
+  align-self: stretch;
+  gap: 18px;
+}
+
+.top-nav-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 100%;
+  border: 0;
+  padding: 0 2px;
+  color: var(--color-text-secondary);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.top-nav-button::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: transparent;
+  content: "";
+}
+
+.top-nav-button:hover,
+.top-nav-button.is-active {
+  color: var(--color-text-primary);
+}
+
+.top-nav-button.is-active::after {
+  background: var(--color-accent-primary);
+}
+
+.top-utility-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
   color: var(--color-text-secondary);
   font-size: 13px;
 }
 
-.top-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.top-action-button {
+.top-icon-button {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
   border: 1px solid var(--color-border-primary);
   border-radius: 6px;
-  padding: 6px 9px;
   color: var(--color-text-secondary);
   background: var(--color-bg-primary);
 }
 
-.top-action-button:hover {
+.top-icon-button:hover {
   color: var(--color-text-primary);
   background: var(--color-bg-secondary);
 }
 
-.icon-button,
 .rail-button {
   justify-content: center;
   width: 34px;
@@ -144,14 +185,22 @@ textarea:focus-visible {
 }
 
 @media (max-width: 860px) {
-  .top-status span {
-    display: none;
+  .top-bar {
+    grid-template-columns: auto 1fr auto;
+    padding: 0 12px;
   }
 
-  .top-action-button {
+  .top-primary-nav {
+    justify-self: center;
+    gap: 10px;
+  }
+
+  .top-nav-button {
     width: 34px;
-    height: 34px;
     justify-content: center;
-    padding: 0;
+  }
+
+  .top-nav-button span {
+    display: none;
   }
 }

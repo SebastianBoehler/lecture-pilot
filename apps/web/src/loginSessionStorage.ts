@@ -17,7 +17,7 @@ export function useStoredLoginSession() {
 
 function readStoredLoginSession() {
   try {
-    const value = window.sessionStorage.getItem(loginSessionKey);
+    const value = window.sessionStorage.getItem(loginSessionKey) ?? window.localStorage.getItem(loginSessionKey);
     return value ? (JSON.parse(value) as LoginSession) : null;
   } catch {
     return null;
@@ -26,9 +26,15 @@ function readStoredLoginSession() {
 
 function writeStoredLoginSession(session: LoginSession | null) {
   try {
-    if (session) window.sessionStorage.setItem(loginSessionKey, JSON.stringify(session));
-    else window.sessionStorage.removeItem(loginSessionKey);
+    if (session) {
+      const payload = JSON.stringify(session);
+      window.sessionStorage.setItem(loginSessionKey, payload);
+      window.localStorage.setItem(loginSessionKey, payload);
+    } else {
+      window.sessionStorage.removeItem(loginSessionKey);
+      window.localStorage.removeItem(loginSessionKey);
+    }
   } catch {
-    // Session storage is an enhancement; login still works for the current render.
+    // Storage is an enhancement; login still works for the current render.
   }
 }

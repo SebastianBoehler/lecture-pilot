@@ -1,4 +1,5 @@
 import { useState, type CSSProperties } from "react";
+import { RefreshCw } from "lucide-react";
 
 import { getLectureAnalytics } from "./analyticsApi";
 import type {
@@ -20,34 +21,46 @@ const demoPerformanceCourse: UniversityCourse = {
 export function ProfessorCoursePerformance({
   lectures,
   session,
-  onBack,
 }: {
   lectures: Lecture[];
   session: LoginSession;
-  onBack: () => void;
 }) {
   const course = session.courses.find((item) => item.id === demoPerformanceCourse.id) ?? demoPerformanceCourse;
   const [selectedLecture, setSelectedLecture] = useState(lectures[2] ?? lectures[0]);
   const [analytics, setAnalytics] = useState<LectureAnalyticsSummary | null>(null);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   async function refreshAnalytics(lecture = selectedLecture) {
     setAnalyticsError(null);
     setSelectedLecture(lecture);
+    setLoading(true);
     try {
       setAnalytics(await getLectureAnalytics(course.id, lecture.id, session));
     } catch (error) {
       setAnalyticsError(error instanceof Error ? error.message : "Lecture analytics loading failed.");
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
     <main className="professor-screen">
-      <section className="dashboard-header">
-        <button className="ghost-button" type="button" onClick={onBack}>Back</button>
-        <p className="section-label">Professor workspace</p>
-        <h1>Course performance</h1>
-        <p>Anonymous quiz and quality-gate aggregates for published tutor workspaces.</p>
+      <section className="professor-page-header">
+        <div>
+          <h1>Course performance</h1>
+          <p>Anonymous quiz and quality-gate aggregates for published tutor workspaces.</p>
+        </div>
+        <button
+          aria-label="Refresh analytics"
+          className="refresh-button"
+          disabled={loading}
+          type="button"
+          onClick={() => void refreshAnalytics()}
+        >
+          <RefreshCw className={loading ? "is-spinning" : ""} size={15} />
+          <span>{loading ? "Refreshing" : "Refresh"}</span>
+        </button>
       </section>
       <section className="course-panel" aria-labelledby="course-performance-title">
         <div className="panel-heading">
@@ -72,12 +85,9 @@ export function ProfessorCoursePerformance({
           <section className="flow-card analytics-card" aria-live="polite">
             <header className="analytics-page-heading">
               <div>
-                <p className="section-label">Lecture {selectedLecture.number}</p>
+                <p>Lecture {selectedLecture.number}</p>
                 <h2>{selectedLecture.title}</h2>
               </div>
-              <button type="button" onClick={() => void refreshAnalytics()}>
-                Refresh analytics
-              </button>
             </header>
             {analyticsError ? <p className="form-error">{analyticsError}</p> : null}
             {analytics ? <AnalyticsSummary analytics={analytics} /> : (

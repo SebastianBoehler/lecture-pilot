@@ -14,7 +14,8 @@ describe("LecturePilot app shell", () => {
     expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/term/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /course workspaces/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/course workspace/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^lecturepilot$/i })).toBeInTheDocument();
+    expect(screen.queryByText(/^course workspace$/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/openrouter glm/i)).not.toBeInTheDocument();
   });
 
