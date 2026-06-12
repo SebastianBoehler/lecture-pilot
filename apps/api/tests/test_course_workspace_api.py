@@ -47,6 +47,29 @@ def test_dynamic_course_workspace_uses_uploaded_source(tmp_path: Path) -> None:
     assert draft.json()["course_id"] == "demo-ml-course"
     assert draft.json()["lecture_id"] == "lecture-07"
     assert draft.json()["source_kind"] == "generated"
+    assert "/canvas-drafts/" in draft.json()["workspace_path"]
+
+    student = client.get(
+        "/courses/demo-ml-course/lectures/lecture-07/canvas?user_id=student01",
+        headers=student_headers("student01"),
+    )
+    assert student.status_code == 404
+
+    publish = client.post(
+        "/admin/courses/demo-ml-course/lectures/lecture-07/canvas/publish",
+        headers=professor_headers(),
+    )
+    assert publish.status_code == 200
+    assert publish.json()["published"] is True
+    assert publish.json()["version"] == 1
+    assert publish.json()["published_at"]
+
+    status = client.get(
+        "/courses/demo-ml-course/lectures/lecture-07/canvas/publication",
+        headers=student_headers("student01"),
+    )
+    assert status.status_code == 200
+    assert status.json()["published"] is True
 
     student = client.get(
         "/courses/demo-ml-course/lectures/lecture-07/canvas?user_id=student01",

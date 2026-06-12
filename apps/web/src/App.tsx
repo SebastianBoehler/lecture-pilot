@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { getLectureCanvas, sendAgentTurnStream } from "./api";
+import { getDraftLectureCanvas, getLectureCanvas, publishLectureCanvas, sendAgentTurnStream } from "./api";
 import {
   appendLiveToolTag,
   applyCanvasSection,
@@ -12,7 +12,6 @@ import { initialMessagesForAttendance, localDemoSession, localProfessorSession }
 import { canManageCourses } from "./authz";
 import { CourseManagementAccessRequired } from "./CourseManagementAccessRequired";
 import { Dashboard } from "./Dashboard";
-import { useDemoTutorWorkspace } from "./demoTutorWorkspace";
 import { LessonWorkspace } from "./LessonWorkspace";
 import { LoginView } from "./LoginView";
 import { useStoredLoginSession } from "./loginSessionStorage";
@@ -20,6 +19,7 @@ import { ProfileView } from "./ProfileView";
 import { ProfessorCourseBuilder } from "./ProfessorCourseBuilder";
 import { ProfessorCoursePerformance } from "./ProfessorCoursePerformance";
 import { lectures } from "./sampleData";
+import { usePublishedLectures } from "./usePublishedLectures";
 import type {
   Attendance,
   CanvasDocument,
@@ -54,7 +54,7 @@ function App() {
     initialMessagesForAttendance(lectures[2].attendance),
   );
   const [lastTutorModel, setLastTutorModel] = useState<string | null>(null);
-  const [demoTutorPublished, publishDemoTutor, unpublishDemoTutor] = useDemoTutorWorkspace();
+  const [publishedLectureIds, setPublishedLectureIds] = usePublishedLectures("martius-ml", lectures, session);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -133,6 +133,7 @@ function App() {
     lecture: Lecture,
     backView: "dashboard" | "professor" = "dashboard",
     userId = effectiveUserId(session),
+    previewDraft = false,
   ) {
     setSelectedCourseId(courseId);
     setSelectedLecture(lecture);
@@ -150,7 +151,10 @@ function App() {
     setLastTutorModel(null);
 
     try {
-      const document = await getLectureCanvas(courseId, lecture.id, userId, session ?? localDemoSession);
+      const activeSession = session ?? localDemoSession;
+      const document = previewDraft && session
+        ? await getDraftLectureCanvas(courseId, lecture.id, session)
+        : await getLectureCanvas(courseId, lecture.id, userId, activeSession);
       setCanvasDocument(document);
       setFocusedSectionId(document.sections[0]?.id ?? "bayesian-decision-theory-the-aim");
     } catch (error) {
@@ -218,7 +222,7 @@ function App() {
       ) : view === "dashboard" ? (
         <Dashboard
           lectures={availableLectures}
-          tutorWorkspacePublished={demoTutorPublished}
+          publishedLectureIds={publishedLectureIds}
           session={session}
           onOpen={(lecture) => {
             void handleOpenLecture("martius-ml", lecture);
@@ -231,12 +235,15 @@ function App() {
         <ProfessorCourseBuilder
           session={courseManagerSession}
           onBack={() => setView(professorBackView)}
-          onPublishWorkspace={publishDemoTutor}
-          onResetWorkspace={unpublishDemoTutor}
-          onPreviewWorkspace={(courseId, lecture) => {
-            void handleOpenLecture(courseId, lecture, "professor", "professor-preview");
+          onPublishWorkspace={async (courseId, lectureId) => {
+            const result = await publishLectureCanvas(courseId, lectureId, courseManagerSession);
+            setPublishedLectureIds((current) => Array.from(new Set([...current, lectureId])));
+            return result;
           }}
-          workspacePublished={demoTutorPublished}
+          onPreviewWorkspace={(courseId, lecture) => {
+            void handleOpenLecture(courseId, lecture, "professor", "professor-preview", true);
+          }}
+          publishedLectureIds={publishedLectureIds}
         />
       ) : view === "performance" && courseManagerSession ? (
         <ProfessorCoursePerformance

@@ -14,10 +14,7 @@ def test_agent_turn_materializes_infographic_asset(monkeypatch, tmp_path: Path) 
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
     app = create_app()
-    app.state.canvas_workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=_write_course_source(tmp_path),
-    )
+    app.state.canvas_workspace = _published_workspace(tmp_path)
     app.state.canvas_workspace.image_generator = _FakeImageGenerator()
     app.state.agent_harness = _InfographicHarness()
     client = TestClient(app)
@@ -172,3 +169,18 @@ P(C\mid X) = \frac{{P(X\mid C)P(C)}}{{P(X)}}
             encoding="utf-8",
         )
     return material_root
+
+
+def _published_workspace(tmp_path: Path) -> CanvasWorkspace:
+    workspace = CanvasWorkspace(
+        workspace_root=tmp_path / "workspaces",
+        material_root=_write_course_source(tmp_path),
+    )
+    workspace.write_course_canvas(
+        workspace.source_document(
+            course_id="martius-ml",
+            lecture_id="lecture-03",
+            workspace_path=str(tmp_path / "published" / "index.md"),
+        )
+    )
+    return workspace

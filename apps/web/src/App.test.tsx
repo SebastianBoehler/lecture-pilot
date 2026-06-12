@@ -3,7 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import App from "./App";
-import { DEMO_TUTOR_WORKSPACE_STORAGE_KEY } from "./demoTutorWorkspace";
 import { mockLoginAndTutorFetch, mockLoginFetch, soccerCanvasSection } from "./testFixtures";
 
 describe("LecturePilot app shell", () => {
@@ -54,7 +53,7 @@ describe("LecturePilot app shell", () => {
 
   it("opens the profile view and logs out", async () => {
     const user = userEvent.setup();
-    vi.stubGlobal("fetch", mockLoginFetch());
+    vi.stubGlobal("fetch", mockLoginFetch({ published: true }));
     render(<App />);
 
     await logIn(user);
@@ -86,16 +85,22 @@ describe("LecturePilot app shell", () => {
     expect(screen.getByRole("heading", { name: /course workspaces/i })).toBeInTheDocument();
     expect(screen.getByText(/no tutor workspace yet/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /open lecture 03/i })).not.toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/canvas/publication"),
+      expect.objectContaining({
+        headers: expect.objectContaining({ "X-User-Id": "local-demo" }),
+      }),
+    );
   });
 
   it("opens a focused lesson workspace without showing the course dashboard", async () => {
     const user = userEvent.setup();
-    vi.stubGlobal("fetch", mockLoginFetch());
+    vi.stubGlobal("fetch", mockLoginFetch({ published: true }));
     renderPublishedApp();
 
     await logIn(user);
-    await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
+    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
 
     expect(
       screen.getByRole("heading", { name: /^bayesian decision theory$/i, level: 1 }),
@@ -107,11 +112,11 @@ describe("LecturePilot app shell", () => {
 
   it("switches the focused workspace rail between tutor, outline, and notes", async () => {
     const user = userEvent.setup();
-    vi.stubGlobal("fetch", mockLoginFetch());
+    vi.stubGlobal("fetch", mockLoginFetch({ published: true }));
     renderPublishedApp();
 
     await logIn(user);
-    await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
+    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
     await user.click(screen.getByLabelText(/open tutor chat/i));
 
     expect(screen.getByPlaceholderText(/ask about this lecture/i)).toBeInTheDocument();
@@ -140,11 +145,11 @@ describe("LecturePilot app shell", () => {
 
   it("renders professor course canvas blocks instead of old demo artifacts", async () => {
     const user = userEvent.setup();
-    vi.stubGlobal("fetch", mockLoginFetch());
+    vi.stubGlobal("fetch", mockLoginFetch({ published: true }));
     renderPublishedApp();
 
     await logIn(user);
-    await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
+    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
 
     expect(screen.queryByRole("heading", { name: /course source packet/i })).not.toBeInTheDocument();
     expect(
@@ -172,11 +177,11 @@ describe("LecturePilot app shell", () => {
 
   it("renders imported lecture sections in the lesson canvas", async () => {
     const user = userEvent.setup();
-    vi.stubGlobal("fetch", mockLoginFetch());
+    vi.stubGlobal("fetch", mockLoginFetch({ published: true }));
     renderPublishedApp();
 
     await logIn(user);
-    await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
+    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
 
     expect(screen.getByRole("region", { name: /bayes rule for classification/i })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: /naive bayes spam filter/i })).toBeInTheDocument();
@@ -199,7 +204,7 @@ describe("LecturePilot app shell", () => {
     renderPublishedApp();
 
     await user.click(screen.getByRole("button", { name: /preview local demo/i }));
-    await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
+    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
     await user.click(screen.getByLabelText(/open tutor chat/i));
     expect(screen.getByText(/model after first turn/i)).toBeInTheDocument();
 
@@ -259,10 +264,10 @@ describe("LecturePilot app shell", () => {
     renderPublishedApp();
 
     await logIn(user);
-    const lectureRow = screen.getByRole("heading", { name: /bayesian decision theory/i }).closest("article");
+    const lectureRow = (await screen.findByRole("heading", { name: /bayesian decision theory/i })).closest("article");
     expect(lectureRow).not.toBeNull();
     await user.click(within(lectureRow as HTMLElement).getByRole("button", { name: "absent" }));
-    await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
+    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
     await user.click(screen.getByLabelText(/open tutor chat/i));
     await user.type(
       screen.getByPlaceholderText(/ask about this lecture/i),
@@ -295,4 +300,4 @@ async function logIn(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: /connect to tue api/i }));
 }
 
-function renderPublishedApp() { window.localStorage.setItem(DEMO_TUTOR_WORKSPACE_STORAGE_KEY, "true"); render(<App />); }
+function renderPublishedApp() { render(<App />); }

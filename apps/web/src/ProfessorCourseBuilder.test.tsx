@@ -135,6 +135,14 @@ function professorFetchMock() {
     if (url.includes("/source-bundle")) return json(sourceBundle());
     if (url.includes("/materials")) return json({ path: "uploads/supplement.md", kind: "markdown", size_bytes: 12 });
     if (url.includes("/analytics")) return json(analyticsPayload());
+    if (url.includes("/canvas/publication")) return json({ published: false, course_id: "martius-ml", lecture_id: "lecture-03" });
+    if (url.includes("/canvas/publish")) return json({
+      course_id: "demo-ml-course",
+      lecture_id: "lecture-03",
+      published: true,
+      version: 1,
+      published_at: "2026-06-12T10:00:00Z",
+    });
     if (url.includes("/canvas/draft")) return json(canvasPayload());
     if (url.includes("/canvas")) return json(canvasPayload());
     if (url.includes("/media/youtube/search")) return json({ items: [youtubeCandidate()] });

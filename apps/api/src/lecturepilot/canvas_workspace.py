@@ -186,6 +186,8 @@ class CanvasWorkspace:
             workspace_path=str(canvas_dir / "index.md"),
         ):
             return base_document
+        if self._has_course_uploads(course_id):
+            raise CanvasWorkspaceError("Canvas has not been published.")
         return self.source_document(
             course_id=course_id,
             lecture_id=lecture_id,
@@ -225,6 +227,38 @@ class CanvasWorkspace:
 
     def write_course_canvas(self, document: CanvasDocument) -> CanvasDocument:
         return self.course_canvas_store.write(document)
+
+    def read_course_canvas_draft(self, *, course_id: str, lecture_id: str) -> CanvasDocument:
+        document = self.course_canvas_store.read_draft(course_id=course_id, lecture_id=lecture_id)
+        if document is None:
+            raise CanvasWorkspaceError("No canvas draft exists for this lecture.")
+        document = apply_course_media(document, self.material_root)
+        return apply_course_media(document, self.course_media_root(course_id))
+
+    def write_course_canvas_draft(self, document: CanvasDocument) -> CanvasDocument:
+        return self.course_canvas_store.write_draft(document)
+
+    def publish_course_canvas_draft(
+        self,
+        *,
+        course_id: str,
+        lecture_id: str,
+        published_by: str,
+    ) -> dict:
+        try:
+            return self.course_canvas_store.publish_draft(
+                course_id=course_id,
+                lecture_id=lecture_id,
+                published_by=published_by,
+            )
+        except FileNotFoundError as exc:
+            raise CanvasWorkspaceError(str(exc)) from exc
+
+    def course_canvas_publication(self, *, course_id: str, lecture_id: str) -> dict | None:
+        return self.course_canvas_store.publication(course_id=course_id, lecture_id=lecture_id)
+
+    def has_published_course_canvas(self, *, course_id: str, lecture_id: str) -> bool:
+        return (self.course_canvas_store.path(course_id, lecture_id) / "index.md").exists()
 
     def _read_student_sections(
         self,
@@ -297,3 +331,7 @@ class CanvasWorkspace:
             if source_path.exists():
                 return source_path
         raise CanvasWorkspaceError(f"No LaTeX source found for {course_id}/{lecture_id}.")
+
+    def _has_course_uploads(self, course_id: str) -> bool:
+        uploads_dir = self.layout.course_uploads_dir(course_id)
+        return uploads_dir.exists() and any(path.is_file() for path in uploads_dir.rglob("*"))

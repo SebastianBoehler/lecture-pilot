@@ -25,6 +25,11 @@ def register_analytics_routes(app: FastAPI, *, course_tenant_id: str) -> None:
             learner_user_id=answer.user_id,
             course_tenant_id=course_tenant_id,
         )
+        if not app.state.canvas_workspace.has_published_course_canvas(
+            course_id=course_id,
+            lecture_id=lecture_id,
+        ):
+            raise HTTPException(status_code=404, detail="Canvas has not been published.")
         try:
             document = app.state.canvas_workspace.read_document(
                 course_id=course_id,

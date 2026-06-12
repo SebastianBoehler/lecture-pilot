@@ -3,7 +3,7 @@ import {
   clearCourseYoutubeMedia,
   createCourseWorkspace,
   draftLectureCanvas,
-  getLectureCanvas,
+  getDraftLectureCanvas,
   getSourceBundle,
   includeYoutubeMedia,
   searchYoutubeMedia,
@@ -20,22 +20,20 @@ import {
 import { defaultFlow, isCourseSetupReady, readSavedFlow, writeSavedFlow } from "./professorBuilderState";
 import { lectureFromWorkspace, requireWorkspace } from "./professorWorkspaceView";
 import { uploadDestination } from "./professorUpload";
-import type { CanvasDocument, LoginSession, SourceBundleManifest, YoutubeVideoCandidate } from "./types";
+import type { CanvasDocument, CanvasPublicationResult, LoginSession, SourceBundleManifest, YoutubeVideoCandidate } from "./types";
 import type { CourseSetup } from "./professorBuilderState";
 export function ProfessorCourseBuilder({
   session,
   onBack,
   onPublishWorkspace,
-  onResetWorkspace,
   onPreviewWorkspace,
-  workspacePublished,
+  publishedLectureIds,
 }: {
   session: LoginSession;
   onBack: () => void;
-  onPublishWorkspace: () => void;
-  onResetWorkspace: () => void;
+  onPublishWorkspace: (courseId: string, lectureId: string) => Promise<CanvasPublicationResult>;
   onPreviewWorkspace: (courseId: string, lecture: ReturnType<typeof lectureFromWorkspace>) => void;
-  workspacePublished: boolean;
+  publishedLectureIds: string[];
 }) {
   const [savedFlow] = useState(readSavedFlow);
   const [setup, setSetup] = useState(savedFlow.setup);
@@ -58,6 +56,7 @@ export function ProfessorCourseBuilder({
     setup.courseTitle,
     setup.target === "single-lecture" ? setup.lectureTitle : "machine learning lecture",
   ].filter(Boolean).join(" ");
+  const workspacePublished = Boolean(workspace && publishedLectureIds.includes(workspace.lectureId));
   useEffect(() => {
     let cancelled = false;
     async function restoreGeneratedState() {
@@ -68,10 +67,9 @@ export function ProfessorCourseBuilder({
         }
         if ((savedFlow.bundleReady || savedFlow.canvasReady) && savedFlow.workspace) {
           try {
-            const restoredCanvas = await getLectureCanvas(
+            const restoredCanvas = await getDraftLectureCanvas(
               savedFlow.workspace.courseId,
               savedFlow.workspace.lectureId,
-              "professor-preview",
               session,
             );
             if (!cancelled) setCanvas(restoredCanvas);
@@ -127,7 +125,6 @@ export function ProfessorCourseBuilder({
     setCanvas(null);
     setVideos([]);
     setSelectedVideos(new Set());
-    onResetWorkspace();
     writeSavedFlow(defaultFlow);
     await run(async () => {
       if (activeWorkspace) await clearCourseYoutubeMedia(activeWorkspace.courseId, session);
@@ -268,10 +265,9 @@ export function ProfessorCourseBuilder({
                 session,
               });
             }
-            setCanvas(await getLectureCanvas(
+            setCanvas(await getDraftLectureCanvas(
               activeWorkspace.courseId,
               activeWorkspace.lectureId,
-              "professor-preview",
               session,
             ));
             return `Included ${selected.length} approved video${selected.length === 1 ? "" : "s"} in the canvas.`;
@@ -285,10 +281,12 @@ export function ProfessorCourseBuilder({
         <section className="flow-card wide">
           <StepHeader number="05" title="Publish tutor workspace" done={workspacePublished} />
           <p className="drawer-note">Student dashboards show the AI tutor only after this course workspace is published.</p>
-          <button disabled={!canvas || !workspace} type="button" onClick={() => {
-            onPublishWorkspace();
-            setNotice("Tutor workspace published. Refresh the student dashboard to show AI tutor available.");
-          }}>
+          <button disabled={!canvas || !workspace} type="button" onClick={() => run(async () => {
+            const activeWorkspace = requireWorkspace(workspace);
+            const published = await onPublishWorkspace(activeWorkspace.courseId, activeWorkspace.lectureId);
+            const when = published.published_at ? ` at ${new Date(published.published_at).toLocaleString()}` : "";
+            return `Tutor workspace published as version ${published.version ?? 1}${when}.`;
+          })}>
             Publish tutor workspace
           </button>
         </section>

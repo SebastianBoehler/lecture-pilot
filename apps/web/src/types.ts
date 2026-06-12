@@ -61,6 +61,17 @@ export type CanvasDocument = {
   sections: CanvasSection[];
 };
 
+export type CanvasPublicationResult = {
+  course_id: string;
+  lecture_id: string;
+  published: boolean;
+  version?: number | null;
+  published_at?: string | null;
+  published_by?: string | null;
+  source_draft_path?: string | null;
+  published_path?: string | null;
+};
+
 export type SourceBundleEntry = {
   path: string;
   kind: string;

@@ -131,6 +131,17 @@ class CourseWorkspaceResult(BaseModel):
     active_lecture_id: str
 
 
+class CanvasPublicationResult(BaseModel):
+    course_id: str = Field(min_length=1)
+    lecture_id: str = Field(min_length=1)
+    published: bool
+    version: int | None = Field(default=None, ge=1)
+    published_at: str | None = Field(default=None, max_length=80)
+    published_by: str | None = Field(default=None, max_length=120)
+    source_draft_path: str | None = Field(default=None, max_length=700)
+    published_path: str | None = Field(default=None, max_length=700)
+
+
 class YoutubeDuration(BaseModel):
     iso8601: str | None = None
     seconds: int | None = Field(default=None, ge=0)

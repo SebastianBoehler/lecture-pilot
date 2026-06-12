@@ -21,19 +21,19 @@ const demoTutorCourse: UniversityCourse = {
 
 export function Dashboard({
   lectures,
-  tutorWorkspacePublished,
+  publishedLectureIds,
   session,
   onOpen,
   onSetAttendance,
 }: {
   lectures: Lecture[];
-  tutorWorkspacePublished: boolean;
+  publishedLectureIds: string[];
   session: LoginSession | null;
   onOpen: (lecture: Lecture) => void;
   onSetAttendance: (lectureId: string, attendance: Attendance) => void;
 }) {
   const studentLabel = session?.email ?? session?.username ?? "student";
-  const courseGroups = buildCourseGroups(session, lectures, tutorWorkspacePublished);
+  const courseGroups = buildCourseGroups(session, lectures, publishedLectureIds);
 
   return (
     <main className="dashboard">
@@ -103,15 +103,15 @@ export function Dashboard({
 function buildCourseGroups(
   session: LoginSession | null,
   lectures: Lecture[],
-  tutorWorkspacePublished: boolean,
+  publishedLectureIds: string[],
 ): CourseWorkspaceGroup[] {
   const enrolledCourses = session?.courses ?? [];
   const courseGroups = enrolledCourses.length
-    ? enrolledCourses.map((course) => buildEnrolledCourseGroup(course, lectures, tutorWorkspacePublished))
-    : [buildDemoCourseGroup(lectures, tutorWorkspacePublished)];
+    ? enrolledCourses.map((course) => buildEnrolledCourseGroup(course, lectures, publishedLectureIds))
+    : [buildDemoCourseGroup(lectures, publishedLectureIds)];
 
   if (enrolledCourses.length && !enrolledCourses.some(isDemoTutorCourse)) {
-    courseGroups.push(buildDemoCourseGroup(lectures, tutorWorkspacePublished));
+    courseGroups.push(buildDemoCourseGroup(lectures, publishedLectureIds));
   }
 
   return courseGroups;
@@ -120,9 +120,10 @@ function buildCourseGroups(
 function buildEnrolledCourseGroup(
   course: UniversityCourse,
   lectures: Lecture[],
-  tutorWorkspacePublished: boolean,
+  publishedLectureIds: string[],
 ): CourseWorkspaceGroup {
-  const tutorAvailable = tutorWorkspacePublished && isDemoTutorCourse(course);
+  const publishedLectures = publishedCourseLectures(lectures, publishedLectureIds);
+  const tutorAvailable = publishedLectures.length > 0 && isDemoTutorCourse(course);
   return {
     course,
     status: tutorAvailable ? "matched" : "unmatched",
@@ -130,20 +131,26 @@ function buildEnrolledCourseGroup(
     helperText: tutorAvailable ? "Matched from your Alma course list." : null,
     emptyText: "No matched LecturePilot workspace for this course yet.",
     tutorAvailable,
-    courseLectures: tutorAvailable ? lectures : [],
+    courseLectures: tutorAvailable ? publishedLectures : [],
   };
 }
 
-function buildDemoCourseGroup(lectures: Lecture[], tutorWorkspacePublished: boolean): CourseWorkspaceGroup {
+function buildDemoCourseGroup(lectures: Lecture[], publishedLectureIds: string[]): CourseWorkspaceGroup {
+  const publishedLectures = publishedCourseLectures(lectures, publishedLectureIds);
   return {
     course: demoTutorCourse,
     status: "demo",
     statusLabel: "Demo workspace",
     helperText: "Preview workspace for recordings; not part of your current Alma enrollment.",
     emptyText: "No tutor workspace yet. Publish the demo workspace to enable lecture entry.",
-    tutorAvailable: tutorWorkspacePublished,
-    courseLectures: tutorWorkspacePublished ? lectures : [],
+    tutorAvailable: publishedLectures.length > 0,
+    courseLectures: publishedLectures,
   };
+}
+
+function publishedCourseLectures(lectures: Lecture[], publishedLectureIds: string[]) {
+  const published = new Set(publishedLectureIds);
+  return lectures.filter((lecture) => published.has(lecture.id));
 }
 
 function isDemoTutorCourse(course: UniversityCourse) {

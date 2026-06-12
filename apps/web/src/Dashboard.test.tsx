@@ -74,7 +74,7 @@ function renderDashboard(session: LoginSession, tutorWorkspacePublished: boolean
   render(
     <Dashboard
       lectures={lectures}
-      tutorWorkspacePublished={tutorWorkspacePublished}
+      publishedLectureIds={tutorWorkspacePublished ? ["lecture-03"] : []}
       session={session}
       onOpen={vi.fn()}
       onSetAttendance={vi.fn()}

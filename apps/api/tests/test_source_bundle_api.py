@@ -45,7 +45,7 @@ def test_source_bundle_endpoint_lists_professor_materials(tmp_path: Path) -> Non
 
 
 def test_professor_uploads_course_materials_into_source_bundle(tmp_path: Path) -> None:
-    client, material_root = _client(tmp_path)
+    client, _ = _client(tmp_path)
 
     for path, content in (
         ("Lecture03-eng.tex", _latex_source()),
@@ -129,6 +129,13 @@ def test_uploaded_latex_can_seed_a_canvas_document(tmp_path: Path) -> None:
         files={"file": ("Lecture03-eng.tex", _latex_source())},
         headers=_professor_headers(),
     )
+    workspace = client.app.state.canvas_workspace
+    source = workspace.source_document(
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        workspace_path="published/index.md",
+    )
+    workspace.write_course_canvas(source)
 
     response = client.get(
         "/courses/martius-ml/lectures/lecture-03/canvas?user_id=student01",
@@ -150,11 +157,13 @@ def test_uploaded_latex_can_seed_a_canvas_document(tmp_path: Path) -> None:
     ]
 
 
-def test_professor_canvas_draft_uses_planner_and_seeds_students(tmp_path: Path) -> None:
+def test_professor_canvas_draft_stays_private_until_publish(tmp_path: Path) -> None:
     client, material_root = _client(tmp_path)
     client.app.state.course_planner = _FakeCoursePlanner()
-    canvas_dir = client.app.state.canvas_workspace.course_canvas_store.path("martius-ml", "lecture-03")
-    stale = canvas_dir / "sections" / "99-stale.md"
+    store = client.app.state.canvas_workspace.course_canvas_store
+    draft_dir = store.draft_path("martius-ml", "lecture-03")
+    canvas_dir = store.path("martius-ml", "lecture-03")
+    stale = draft_dir / "sections" / "99-stale.md"
     _write(stale)
     client.post(
         "/admin/courses/martius-ml/materials",
@@ -170,8 +179,25 @@ def test_professor_canvas_draft_uses_planner_and_seeds_students(tmp_path: Path) 
 
     assert draft.status_code == 200
     assert draft.json()["source_kind"] == "generated"
-    assert (canvas_dir / "index.md").exists()
+    assert (draft_dir / "index.md").exists()
+    assert not (canvas_dir / "index.md").exists()
     assert not stale.exists()
+
+    student = client.get(
+        "/courses/martius-ml/lectures/lecture-03/canvas?user_id=student01",
+        headers=student_headers("student01"),
+    )
+    assert student.status_code == 404
+
+    publish = client.post(
+        "/admin/courses/martius-ml/lectures/lecture-03/canvas/publish",
+        headers=_professor_headers(),
+    )
+
+    assert publish.status_code == 200
+    assert publish.json()["published"] is True
+    assert publish.json()["published_by"] == "prof01"
+    assert (canvas_dir / "index.md").exists()
 
     student = client.get(
         "/courses/martius-ml/lectures/lecture-03/canvas?user_id=student01",

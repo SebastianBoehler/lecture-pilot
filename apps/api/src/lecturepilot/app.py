@@ -12,18 +12,17 @@ from lecturepilot.admin_media_routes import register_admin_media_routes
 from lecturepilot.api_auth import (
     request_context,
     require_course_manager,
-    require_learner_workspace_access,
 )
 from lecturepilot.agent_routes import register_agent_routes
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspace, CanvasWorkspaceError
 from lecturepilot.canvas_workspace_config import SEEDED_COURSE_ID
+from lecturepilot.course_canvas_routes import register_course_canvas_routes
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner
 from lecturepilot.course_workspace import resolve_course_workspace
 from lecturepilot.harness import LecturePilotHarness
 from lecturepilot.image_generation_registry import image_generator_from_env
 from lecturepilot.learner_state import LearnerStateStore
-from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import (
     CourseMaterialUploadResult,
     CourseMaterialUploadType,
@@ -35,10 +34,9 @@ from lecturepilot.models import (
     TuebingenLoginResult,
 )
 from lecturepilot.observability import observability_from_env
-from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.sample_data import COURSE, LECTURES, unlocked_lectures
 from lecturepilot.source_bundle import scan_source_bundle
-from lecturepilot.source_bundle_canvas import SourceBundleCanvasError, import_source_bundle_canvas
+from lecturepilot.source_bundle_canvas import import_source_bundle_canvas
 from lecturepilot.tenancy import TenantContext
 from lecturepilot.tuebingen_adapter import (
     TuebingenCourseAdapter,
@@ -86,6 +84,17 @@ def create_app() -> FastAPI:
     )
     register_agent_routes(app, course=COURSE, course_tenant_id=COURSE_TENANT_ID)
     register_analytics_routes(app, course_tenant_id=COURSE_TENANT_ID)
+    register_course_canvas_routes(
+        app,
+        course_tenant_id=COURSE_TENANT_ID,
+        lectures=LECTURES,
+        seeded_course_id=SEEDED_COURSE_ID,
+        source_document=lambda course_id, lecture_id: _course_builder_source_document(
+            app,
+            course_id,
+            lecture_id,
+        ),
+    )
 
     @app.get("/courses")
     def courses() -> list[dict]:
@@ -176,53 +185,6 @@ def create_app() -> FastAPI:
             size_bytes=len(payload),
             storage_path=str(target),
         )
-
-    @app.post(
-        "/admin/courses/{course_id}/lectures/{lecture_id}/canvas/draft",
-        response_model=CanvasDocument,
-    )
-    async def draft_course_canvas(
-        course_id: str,
-        lecture_id: str,
-        context: TenantContext = Depends(request_context),
-    ) -> CanvasDocument:
-        if course_id == SEEDED_COURSE_ID and lecture_id not in {lecture.id for lecture in LECTURES}:
-            raise HTTPException(status_code=404, detail="Lecture not found.")
-        try:
-            require_course_manager(context, course_tenant_id=COURSE_TENANT_ID)
-            source = _course_builder_source_document(app, course_id, lecture_id)
-            document = await app.state.course_planner.plan_canvas(source)
-            return app.state.canvas_workspace.write_course_canvas(document)
-        except CanvasWorkspaceError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-        except SourceBundleCanvasError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        except ProviderConfigurationError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-        except ModelExecutionError as exc:
-            raise HTTPException(status_code=502, detail=str(exc)) from exc
-
-    @app.get("/courses/{course_id}/lectures/{lecture_id}/canvas")
-    def lecture_canvas(
-        course_id: str,
-        lecture_id: str,
-        user_id: str,
-        context: TenantContext = Depends(request_context),
-    ) -> dict:
-        require_learner_workspace_access(
-            context,
-            learner_user_id=user_id,
-            course_tenant_id=COURSE_TENANT_ID,
-        )
-        try:
-            document = app.state.canvas_workspace.read_document(
-                course_id=course_id,
-                lecture_id=lecture_id,
-                user_id=user_id,
-            )
-        except CanvasWorkspaceError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-        return document.model_dump()
 
     @app.get("/course-assets/{course_id}/{lecture_id}/{asset_path:path}")
     def course_asset(

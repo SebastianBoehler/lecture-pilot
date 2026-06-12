@@ -154,7 +154,15 @@ Bayesian decision theory connects evidence, posterior probabilities, and decisio
 """,
         encoding="utf-8",
     )
-    return CanvasWorkspace(
+    workspace = CanvasWorkspace(
         workspace_root=tmp_path / "workspaces",
         material_root=material_root,
     )
+    workspace.write_course_canvas(
+        workspace.source_document(
+            course_id="martius-ml",
+            lecture_id="lecture-03",
+            workspace_path=str(tmp_path / "published" / "index.md"),
+        )
+    )
+    return workspace

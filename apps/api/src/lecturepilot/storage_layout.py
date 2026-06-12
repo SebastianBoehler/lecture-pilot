@@ -92,6 +92,9 @@ class StorageLayout:
     def course_canvas_dir(self, course_id: str, lecture_id: str) -> Path:
         return self.course_root(course_id) / "canvas" / "lectures" / safe_id(lecture_id)
 
+    def course_canvas_draft_dir(self, course_id: str, lecture_id: str) -> Path:
+        return self.course_root(course_id) / "canvas-drafts" / "lectures" / safe_id(lecture_id) / "latest"
+
 
 def safe_id(value: str) -> str:
     safe = re.sub(r"[^a-zA-Z0-9_-]+", "-", value).strip("-")

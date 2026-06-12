@@ -1,11 +1,17 @@
 import { vi } from "vitest";
 
-export function mockLoginFetch() {
+export function mockLoginFetch({ published = false }: { published?: boolean } = {}) {
   return vi.fn(async (url: string, _init?: RequestInit) => {
     if (url.endsWith("/auth/login")) {
       return {
         ok: true,
         json: async () => loginPayload(),
+      };
+    }
+    if (url.includes("/canvas/publication")) {
+      return {
+        ok: true,
+        json: async () => publicationPayload(url, published),
       };
     }
     return {
@@ -17,14 +23,23 @@ export function mockLoginFetch() {
 
 export function mockLoginAndTutorFetch({
   tutorResponse,
+  published = true,
 }: {
   tutorResponse?: Record<string, unknown>;
+  published?: boolean;
 } = {}) {
   return vi.fn(async (url: string, _init?: RequestInit) => {
     if (url.endsWith("/auth/login")) {
       return {
         ok: true,
         json: async () => loginPayload(),
+      };
+    }
+
+    if (url.includes("/canvas/publication")) {
+      return {
+        ok: true,
+        json: async () => publicationPayload(url, published),
       };
     }
 
@@ -73,6 +88,18 @@ export function soccerCanvasSection() {
         items: ["Prior player fit", "Likelihood of report", "Decision risk of signing"],
       },
     ],
+  };
+}
+
+function publicationPayload(url: string, published: boolean) {
+  const lectureId = url.match(/lectures\/([^/]+)\/canvas\/publication/)?.[1] ?? "lecture-03";
+  const isPublished = published && lectureId === "lecture-03";
+  return {
+    course_id: "martius-ml",
+    lecture_id: lectureId,
+    published: isPublished,
+    version: isPublished ? 1 : null,
+    published_at: isPublished ? "2026-06-12T10:00:00Z" : null,
   };
 }
 

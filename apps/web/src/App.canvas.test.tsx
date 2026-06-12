@@ -1,16 +1,11 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
-import { DEMO_TUTOR_WORKSPACE_STORAGE_KEY } from "./demoTutorWorkspace";
 import { mockLoginAndTutorFetch, mockLoginFetch } from "./testFixtures";
 
 describe("LecturePilot canvas interactions", () => {
-  beforeEach(() => {
-    window.localStorage.setItem(DEMO_TUTOR_WORKSPACE_STORAGE_KEY, "true");
-  });
-
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
@@ -47,7 +42,7 @@ describe("LecturePilot canvas interactions", () => {
     render(<App />);
 
     await logIn(user);
-    await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
+    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
     await user.click(screen.getByLabelText(/open tutor chat/i));
     await user.type(screen.getByPlaceholderText(/ask about this lecture/i), "Show me posterior.");
     await user.click(screen.getByRole("button", { name: /send message/i }));
@@ -64,7 +59,7 @@ describe("LecturePilot canvas interactions", () => {
     render(<App />);
 
     await logIn(user);
-    await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
+    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
     const correct = screen.getByRole("button", { name: /B Expected risk/i });
     await user.click(correct);
 
@@ -97,7 +92,7 @@ describe("LecturePilot canvas interactions", () => {
     render(<App />);
 
     await logIn(user);
-    await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
+    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
     const componentAnswer = screen.getByRole("button", { name: /A The loss-sensitive threshold/i });
     await user.click(componentAnswer);
 
@@ -108,11 +103,11 @@ describe("LecturePilot canvas interactions", () => {
 
   it("pulses an outline jump target and clears it after five seconds", async () => {
     const user = userEvent.setup();
-    vi.stubGlobal("fetch", mockLoginFetch());
+    vi.stubGlobal("fetch", mockLoginFetch({ published: true }));
     render(<App />);
 
     await logIn(user);
-    await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
+    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
     await user.click(screen.getByLabelText(/open document outline/i));
 
     const outline = screen.getByRole("navigation", { name: /lesson document outline/i });
@@ -136,11 +131,11 @@ describe("LecturePilot canvas interactions", () => {
 
   it("shows a collapsible workspace file explorer", async () => {
     const user = userEvent.setup();
-    vi.stubGlobal("fetch", mockLoginFetch());
+    vi.stubGlobal("fetch", mockLoginFetch({ published: true }));
     render(<App />);
 
     await logIn(user);
-    await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
+    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
 
     const bayesSection = screen.getByRole("region", {
       name: /bayes formula and conditional probability/i,
@@ -173,11 +168,11 @@ describe("LecturePilot canvas interactions", () => {
 
   it("opens inline source markers as traced source previews", async () => {
     const user = userEvent.setup();
-    vi.stubGlobal("fetch", mockLoginFetch());
+    vi.stubGlobal("fetch", mockLoginFetch({ published: true }));
     render(<App />);
 
     await logIn(user);
-    await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
+    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
 
     const bayesSection = screen.getByRole("region", {
       name: /bayes formula and conditional probability/i,
@@ -202,11 +197,11 @@ describe("LecturePilot canvas interactions", () => {
 
   it("groups consecutive formulas into a compact derivation block", async () => {
     const user = userEvent.setup();
-    vi.stubGlobal("fetch", mockLoginFetch());
+    vi.stubGlobal("fetch", mockLoginFetch({ published: true }));
     render(<App />);
 
     await logIn(user);
-    await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
+    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
 
     const lossesSection = screen.getByRole("region", {
       name: /losses, risks, and reject decisions/i,
@@ -221,11 +216,11 @@ describe("LecturePilot canvas interactions", () => {
 
   it("renders approved YouTube videos as inline canvas artifacts", async () => {
     const user = userEvent.setup();
-    vi.stubGlobal("fetch", mockLoginFetch());
+    vi.stubGlobal("fetch", mockLoginFetch({ published: true }));
     render(<App />);
 
     await logIn(user);
-    await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
+    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
 
     const videoSection = screen.getByRole("region", { name: /professor selected videos/i });
     const frame = within(videoSection).getByTitle(/bayesian decision theory walkthrough/i);
@@ -240,11 +235,11 @@ describe("LecturePilot canvas interactions", () => {
 
   it("opens source assets inside the workspace drawer instead of navigating away", async () => {
     const user = userEvent.setup();
-    vi.stubGlobal("fetch", mockLoginFetch());
+    vi.stubGlobal("fetch", mockLoginFetch({ published: true }));
     render(<App />);
 
     await logIn(user);
-    await user.click(screen.getByRole("button", { name: /open lecture 03/i }));
+    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
 
     const decisionSection = screen.getByRole("region", { name: /decision making under uncertainty/i });
     await user.click(within(decisionSection).getByRole("button", { name: /Ch3\/spam-DALL-E\.jpg/i }));

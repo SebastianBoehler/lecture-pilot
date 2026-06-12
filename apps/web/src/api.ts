@@ -1,5 +1,6 @@
 import type {
   Attendance,
+  CanvasPublicationResult,
   CanvasDocument,
   CanvasSection,
   CourseWorkspaceResult,
@@ -191,6 +192,46 @@ export async function draftLectureCanvas(
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Canvas planner failed."));
   return payload as CanvasDocument;
+}
+
+export async function getDraftLectureCanvas(
+  courseId: string,
+  lectureId: string,
+  session: LoginSession,
+): Promise<CanvasDocument> {
+  const response = await fetch(apiUrl(`/admin/courses/${courseId}/lectures/${lectureId}/canvas/draft`), {
+    headers: courseManagerHeaders(session),
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "Canvas draft loading failed."));
+  return payload as CanvasDocument;
+}
+
+export async function publishLectureCanvas(
+  courseId: string,
+  lectureId: string,
+  session: LoginSession,
+): Promise<CanvasPublicationResult> {
+  const response = await fetch(apiUrl(`/admin/courses/${courseId}/lectures/${lectureId}/canvas/publish`), {
+    method: "POST",
+    headers: courseManagerHeaders(session),
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "Canvas publish failed."));
+  return payload as CanvasPublicationResult;
+}
+
+export async function getCanvasPublication(
+  courseId: string,
+  lectureId: string,
+  session: LoginSession,
+): Promise<CanvasPublicationResult> {
+  const response = await fetch(apiUrl(`/courses/${courseId}/lectures/${lectureId}/canvas/publication`), {
+    headers: authHeaders(session),
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "Canvas publication status failed."));
+  return payload as CanvasPublicationResult;
 }
 
 export async function createCourseWorkspace(
