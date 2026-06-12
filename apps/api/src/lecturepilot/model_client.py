@@ -7,6 +7,8 @@ from typing import Protocol
 from lecturepilot.agent_tool_executor import AgentToolExecutor
 from lecturepilot.agent_tool_loop import complete_tool_turn
 from lecturepilot.agent_tool_schemas import AgentToolProfile, tutor_tool_profile_for_message
+from lecturepilot.agent_response_schema import lecturepilot_response_format
+from lecturepilot.learning_gates import gate_rubric_context
 from lecturepilot.model_commands import canvas_context
 from lecturepilot.model_payload import agent_result_from_content
 from lecturepilot.models import (
@@ -66,7 +68,12 @@ class LiteLLMModelClient:
                     messages=_messages(turn),
                     tool_profile=tool_profile or tutor_tool_profile_for_message(turn.message),
                 )
-            response = await acompletion(model=settings.model, messages=_messages(turn), temperature=0.3)
+            response = await acompletion(
+                model=settings.model,
+                messages=_messages(turn),
+                temperature=0.3,
+                response_format=lecturepilot_response_format(),
+            )
         except Exception as exc:
             raise ModelExecutionError(
                 "Model request failed. Check the provider key and model configuration."
@@ -137,6 +144,7 @@ def _messages(turn: AgentTurnInput) -> list[dict[str, str]]:
                 "Current section: "
                 f"{turn.canvas_state.focused_section_id or 'bayesian-decision-theory-the-aim'}\n"
                 f"{_user_memory_context(turn)}\n"
+                f"{gate_rubric_context(turn.lecture_id)}\n"
                 f"{canvas_context(turn)}\n"
                 f"Student message: {turn.message}"
             ),

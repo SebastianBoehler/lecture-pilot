@@ -63,7 +63,7 @@ export function mockLoginAndTutorFetch({
             next_prompt: "State how posterior, likelihood, and risk connect.",
           },
           artifacts: [],
-          model: "gemini/gemini-2.5-flash-lite",
+          model: "gemini/gemini-3.1-flash-lite",
           created_at: "2026-06-05T20:00:00Z",
         },
     };

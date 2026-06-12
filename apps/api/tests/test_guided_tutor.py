@@ -169,6 +169,8 @@ def test_model_prompt_includes_canvas_targets() -> None:
 
     user_prompt = messages[1]["content"]
     assert "Canvas title: Bayesian Decision Theory" in user_prompt
+    assert "Active quality gate: bayes-decision-check" in user_prompt
+    assert "posterior from evidence" in user_prompt
     assert "section_id=bayes-formula" in user_prompt
     assert "span_id=bayes-formula-list" in user_prompt
     assert "Posterior" in user_prompt

@@ -191,7 +191,7 @@ def _print_table(rows: list[dict]) -> None:
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Benchmark provider gate behavior outside CI.")
-    parser.add_argument("--model", action="append", help="Model slug, e.g. gemini/gemini-2.5-flash")
+    parser.add_argument("--model", action="append", help="Model slug, e.g. gemini/gemini-3.5-flash")
     parser.add_argument("--json", action="store_true", help="Print machine-readable JSON.")
     return parser.parse_args()
 

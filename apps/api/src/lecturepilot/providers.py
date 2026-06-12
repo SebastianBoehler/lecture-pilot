@@ -23,7 +23,7 @@ _DEFAULT_CAPABILITIES = {
     ProviderCapability.STRUCTURED_JSON,
 }
 
-DEFAULT_MODEL = "gemini/gemini-2.5-flash-lite"
+DEFAULT_MODEL = "gemini/gemini-3.1-flash-lite"
 
 
 @dataclass(frozen=True)

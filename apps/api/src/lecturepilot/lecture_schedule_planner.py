@@ -7,6 +7,7 @@ from typing import Protocol
 
 from pydantic import ValidationError
 
+from lecturepilot.agent_response_schema import lecture_schedule_response_format
 from lecturepilot.course_canvas_json import parse_model_json
 from lecturepilot.lecture_schedule import propose_lecture_schedule
 from lecturepilot.model_client import ModelExecutionError
@@ -37,7 +38,7 @@ class LiteLLMScheduleClient:
                 messages=messages,
                 max_tokens=8000,
                 temperature=0.1,
-                response_format={"type": "json_object"},
+                response_format=lecture_schedule_response_format(),
             )
         except Exception as exc:
             raise ModelExecutionError("Lecture schedule model request failed.") from exc
@@ -96,7 +97,8 @@ def _schedule_messages(
                 "number, title, date, and material_path. Prefer concise real lecture topic "
                 "titles over housekeeping frames such as plan, recap, feedback, note, or "
                 "course thread. If a requested lecture count is absent, infer the count from "
-                "the materials. Use weekly dates starting from the provided first lecture date."
+                "the materials. Use weekly dates starting from the provided first lecture date. "
+                "Set material_path to null when no single source file belongs to the lecture."
             ),
         },
         {

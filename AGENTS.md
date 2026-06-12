@@ -273,7 +273,7 @@ Provider/model behavior checks are benchmarks, not CI gates. Use them to compare
 role-following, structured output, and quality-gate reliability across models:
 
 ```bash
-python scripts/benchmark_gate_models.py --model gemini/gemini-2.5-flash-lite
+python scripts/benchmark_gate_models.py --model gemini/gemini-3.1-flash-lite
 ```
 
 File-size guard:

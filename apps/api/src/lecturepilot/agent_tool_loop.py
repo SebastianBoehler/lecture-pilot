@@ -5,6 +5,7 @@ from collections.abc import Callable
 from typing import Any
 
 from lecturepilot.agent_tool_executor import AgentToolExecutor
+from lecturepilot.agent_response_schema import lecturepilot_response_format
 from lecturepilot.agent_tool_schemas import AgentToolProfile, agent_tool_names, agent_tool_schemas
 from lecturepilot.model_payload import agent_result_from_content
 from lecturepilot.models import AgentTurnInput, AgentTurnResult, ProviderSettings
@@ -114,6 +115,7 @@ async def _final_json_response(
             },
         ],
         temperature=0.3,
+        response_format=lecturepilot_response_format(),
     )
     return agent_result_from_content(_message_content(response.choices[0].message), turn, settings.model)
 

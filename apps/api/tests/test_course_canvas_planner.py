@@ -1,8 +1,36 @@
 from __future__ import annotations
 
+import json
+import sys
+from types import SimpleNamespace
+
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.course_canvas_planner import CourseCanvasPlanner
+from lecturepilot.course_canvas_planner import CourseCanvasPlanner, LiteLLMCoursePlanClient
 from lecturepilot.providers import ProviderRegistry
+
+
+async def test_litellm_course_plan_client_requests_canvas_schema(monkeypatch) -> None:
+    calls = []
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+
+    async def fake_completion(**kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps({"title": "T", "sections": []})))]
+        )
+
+    monkeypatch.setitem(sys.modules, "litellm", SimpleNamespace(acompletion=fake_completion))
+
+    payload = await LiteLLMCoursePlanClient().complete_plan(
+        settings=ProviderRegistry.from_env("gemini/test-model").require_ready([]),
+        messages=[{"role": "user", "content": "Draft"}],
+    )
+
+    assert payload["title"] == "T"
+    assert calls[0]["response_format"]["type"] == "json_schema"
+    schema = calls[0]["response_format"]["json_schema"]["schema"]
+    assert calls[0]["response_format"]["json_schema"]["strict"] is True
+    assert schema["required"] == ["title", "sections"]
 
 
 async def test_course_planner_restyles_source_evidence(monkeypatch) -> None:

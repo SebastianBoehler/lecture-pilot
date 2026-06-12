@@ -152,7 +152,7 @@ Run the API and web app in two terminals:
 ```bash
 source .venv/bin/activate
 export GEMINI_API_KEY=...
-export LECTUREPILOT_MODEL=gemini/gemini-2.5-flash-lite
+export LECTUREPILOT_MODEL=gemini/gemini-3.1-flash-lite
 uvicorn lecturepilot.app:app --app-dir apps/api/src --reload
 ```
 
@@ -175,7 +175,7 @@ Copy `.env.example` to `.env` and set one provider key.
 
 ```bash
 GEMINI_API_KEY=...
-LECTUREPILOT_MODEL=gemini/gemini-2.5-flash-lite
+LECTUREPILOT_MODEL=gemini/gemini-3.1-flash-lite
 LECTUREPILOT_IMAGE_PROVIDER=auto
 GEMINI_IMAGE_MODEL=gemini-3.1-flash-image
 ```
@@ -233,8 +233,8 @@ contract, run:
 
 ```bash
 python scripts/benchmark_gate_models.py \
-  --model gemini/gemini-2.5-flash-lite \
-  --model gemini/gemini-2.5-flash
+  --model gemini/gemini-3.1-flash-lite \
+  --model gemini/gemini-3.5-flash
 ```
 
 ## License

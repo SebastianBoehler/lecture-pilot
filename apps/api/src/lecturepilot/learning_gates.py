@@ -54,6 +54,20 @@ def gate_spec_for_lecture(lecture_id: str) -> GateSpec:
     return _GATE_SPECS.get(lecture_id, _DEFAULT_SPEC)
 
 
+def gate_rubric_context(lecture_id: str) -> str:
+    spec = gate_spec_for_lecture(lecture_id)
+    labels = "\n".join(f"- {rule.label}" for rule in spec.rules)
+    return (
+        f"Active quality gate: {spec.gate_id} ({spec.title})\n"
+        "Required evidence groups for a pass:\n"
+        f"{labels}\n"
+        "Mark passed only when the student's answer covers all groups. "
+        "When all groups are covered, return passed without asking for bonus examples. "
+        "If exactly one or two groups are missing, return needs_evidence and ask for the first "
+        "missing group only."
+    )
+
+
 _LECTURE_01_SPEC = GateSpec(
     lecture_id="lecture-01",
     gate_id="lecture-learning-outcome-check",

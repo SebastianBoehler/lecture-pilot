@@ -72,11 +72,14 @@ def _section_messages(source_document: CanvasDocument, section: CanvasSection) -
             "role": "system",
             "content": (
                 "Rewrite this extracted lecture section into a clean markdown learning "
-                "canvas section. Return JSON only with id, title, source_ref, and blocks. "
+                "canvas section. Return JSON only with title and a sections array containing "
+                "exactly one object with id, title, source_ref, and blocks. "
                 "Use 4 to 7 blocks with self-study paragraphs, examples, and steps. "
                 "Blocks may be paragraph, list, callout, math, asset, video, "
                 "table, checkpoint, or quiz. Quiz blocks use text as the question and "
                 "items as possible answers plus answer_index for the correct option. "
+                "Every block must include id, type, text, items, asset_path, caption, "
+                "and answer_index; use null or [] for fields that do not apply. "
                 "Do not preserve raw slide ids; create a stable learning topic id. Preserve "
                 "key formulas and source-backed assets. Add a worked example or infographic "
                 "brief when it helps learning. Explain why each key idea matters before "

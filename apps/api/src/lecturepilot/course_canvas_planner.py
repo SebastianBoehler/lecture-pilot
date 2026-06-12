@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from typing import Protocol
 
+from lecturepilot.agent_response_schema import course_canvas_response_format
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_text_normalizer import clean_canvas_items, clean_canvas_text
 from lecturepilot.course_canvas_enrichment import enrich_learning_document
@@ -34,7 +35,7 @@ class LiteLLMCoursePlanClient:
                 messages=messages,
                 max_tokens=18000,
                 temperature=0.2,
-                response_format={"type": "json_object"},
+                response_format=course_canvas_response_format(),
             )
         except Exception as exc:
             raise ModelExecutionError("Course planner model request failed.") from exc
@@ -96,8 +97,8 @@ def _planner_messages(source_document: CanvasDocument) -> list[dict[str, str]]:
                 "include id, title, source_ref, and blocks. Blocks may be paragraph, list, "
                 "callout, math, asset, video, table, checkpoint, or quiz. Use only 2 "
                 "checkpoint or quiz blocks for the full lecture, not after every section. "
-                "Quiz blocks use text as the question, items as answers, and answer_index "
-                "for the correct option. Asset and video blocks may only use asset_path values "
+                "Every block must include id, type, text, items, asset_path, caption, and answer_index; use null or [] where not relevant. "
+                "Quiz blocks use text as the question, items as answers, and answer_index for the correct option. Asset and video blocks may only use asset_path values "
                 "listed in the evidence. Do not invent unsupported topics. Cite source "
                 "files and frames in every source_ref. Never return a short overview."
             ),

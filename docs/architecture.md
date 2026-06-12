@@ -115,7 +115,7 @@ AgentTurnInput -> AgentTurnResult
 
 `ProviderRegistry` validates that the selected model has a configured key and
 the capabilities required by the turn. The current default is
-`gemini/gemini-2.5-flash-lite`, and the selected model can be changed with
+`gemini/gemini-3.1-flash-lite`, and the selected model can be changed with
 `LECTUREPILOT_MODEL`.
 
 ## Future ADK Runtime

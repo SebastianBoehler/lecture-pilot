@@ -1,8 +1,35 @@
+import json
+import sys
 from datetime import date
+from types import SimpleNamespace
 
-from lecturepilot.lecture_schedule_planner import LectureSchedulePlanner
+from lecturepilot.lecture_schedule_planner import LectureSchedulePlanner, LiteLLMScheduleClient
 from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
 from lecturepilot.source_bundle import SourceBundleFile
+
+
+async def test_litellm_schedule_client_requests_schedule_schema(monkeypatch) -> None:
+    calls = []
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+
+    async def fake_completion(**kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps({"lectures": []})))]
+        )
+
+    monkeypatch.setitem(sys.modules, "litellm", SimpleNamespace(acompletion=fake_completion))
+
+    payload = await LiteLLMScheduleClient().complete_schedule(
+        settings=ProviderRegistry.from_env("gemini/test-model").require_ready([]),
+        messages=[{"role": "user", "content": "Schedule"}],
+    )
+
+    assert payload == {"lectures": []}
+    assert calls[0]["response_format"]["type"] == "json_schema"
+    schema = calls[0]["response_format"]["json_schema"]["schema"]
+    assert calls[0]["response_format"]["json_schema"]["strict"] is True
+    assert schema["required"] == ["lectures"]
 
 
 async def test_schedule_planner_sends_topic_outline_to_model(tmp_path, monkeypatch) -> None:
