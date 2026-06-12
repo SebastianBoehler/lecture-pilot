@@ -102,29 +102,13 @@ assets, learner workspaces, or `.lecturepilot/` contents.
 The 300-line file guideline applies to code and authored repository docs, not
 to gitignored uploaded course sources or professor material.
 
-Gitignored private roots include:
+Gitignored private roots include `local-course-materials/`, `course-materials/`,
+`lecture-materials/`, `prof-course-files/`, `content/private/`,
+`content/courses/`, `data/courses/`, `workspaces/`, and `.lecturepilot/`.
 
-```txt
-local-course-materials/
-course-materials/
-lecture-materials/
-prof-course-files/
-content/private/
-content/courses/
-data/courses/
-workspaces/
-.lecturepilot/
-```
-
-For a local demo course, keep the private source slice in a repo-local ignored
-folder such as:
-
-```txt
-local-course-materials/<course-slug>/
-```
-
-For Overleaf-backed courses, sync the full professor checkout into that folder
-and exclude only source-control metadata:
+For local demos, keep the private source slice in
+`local-course-materials/<course-slug>/`. For Overleaf-backed courses, sync the
+full professor checkout there and exclude only source-control metadata:
 
 ```bash
 rsync -a --exclude '.git/' "$OVERLEAF_CHECKOUT/" local-course-materials/<course-slug>/
@@ -141,23 +125,10 @@ The professor/admin staging endpoint accepts the file types listed in
 unsupported suffixes, oversized payloads, and non-professor roles.
 
 The current local implementation still writes learner overlays into the older
-workspace path:
-
-```txt
-.lecturepilot/workspaces/
-  students/<sha256-user-prefix>/
-    courses/<course-id>/
-      lectures/<lecture-id>/
-        canvas/
-          index.md
-          sections/*.md
-          student/*.md
-        canvas.json
-```
-
-The target structure is the `users/<user-key>/courses/...` image above. Keep new
-work moving toward that split instead of adding more behavior to the legacy
-`workspaces/students` path.
+`.lecturepilot/workspaces/students/<sha256-user-prefix>/courses/<course-id>/`
+path. The target structure is the `users/<user-key>/courses/...` image above.
+Keep new work moving toward that split instead of adding more behavior to the
+legacy `workspaces/students` path.
 
 The Markdown files under `canvas/` are the editable source of truth. Treat
 `canvas.json` as a compiled API cache/artifact, not as the primary authoring
@@ -245,22 +216,47 @@ Important web modules: `App.tsx`, `Dashboard.tsx`, `LessonWorkspace.tsx`,
 - Production work should preserve the path toward signed URLs, quotas, audit
   logs, retention, deletion, and object storage.
 
-## Code Style
+## Engineering Standards
 
-- Match the existing architecture and naming.
-- Keep files under 300 lines. If a file approaches that, split by ownership
-  before adding more behavior.
-- Keep changes surgical. Do not refactor unrelated code while fixing a specific
-  behavior.
-- Use TypeScript types and Pydantic models for structured data.
-- Use parsers/typed helpers for course and canvas data. Avoid ad hoc string
-  surgery when a structured module already exists.
-- Add focused tests for behavior changes.
+- Prefer test-driven changes: write or update the failing regression test first
+  when behavior is specified, then implement the smallest fix that passes it.
+- Keep files under 300 lines. Split by ownership before adding more behavior to
+  large files. This rule applies to code and authored repo docs, not ignored
+  course material.
+- Keep diffs surgical. Do not refactor unrelated code, reformat files, or
+  preserve rejected experiments unless the current task needs it.
+- Remove dead code, stale compatibility paths, fake fallbacks, mock behavior,
+  and duplicate implementations once the real path exists.
+- Use structured contracts at boundaries: Pydantic models and schemas in the
+  API, TypeScript types in the UI, and explicit Markdown/component formats for
+  canvas files.
+- Prefer provider/framework-native features over prompt-only conventions. For
+  example, use provider `response_format`/schema support when the backend relies
+  on structured model output.
+- Check current official docs or local source before changing provider,
+  framework, auth, storage, or model API behavior.
+- Keep agent tools real. Chat-visible tool calls must map to backend actions or
+  constrained filesystem writes, not to simulated UI tags.
+- Do not add configurability, mock data, or fallback flows unless the user asked
+  for them. Fail clearly when required credentials or services are missing.
 
-## Testing Instructions
+## Development Workflow
 
-Run the narrowest meaningful check first, then the broader suite before
-finishing.
+- Start by reading the existing module and tests that own the behavior.
+- For a bug: reproduce narrowly, add a regression test, fix, then rerun the
+  narrow test and the relevant broader suite.
+- For UI behavior: verify in the browser at `http://127.0.0.1:5173`, exercise
+  the changed workflow, and check for console errors.
+- For model behavior: use deterministic unit tests for parser/tool contracts and
+  use benchmarks for provider quality. Benchmarks inform decisions but should
+  not become flaky CI gates.
+- For security/privacy: verify auth headers, role checks, path validation, and
+  logout or unauthenticated access in the real API/browser path.
+- Before finishing, summarize what was verified and what was not.
+
+## Verification Commands
+
+Run the narrowest meaningful check first, then broaden:
 
 ```bash
 pytest apps/api/tests -q
@@ -269,8 +265,7 @@ npm run build --workspace apps/web
 git diff --check
 ```
 
-Provider/model behavior checks are benchmarks, not CI gates. Use them to compare
-role-following, structured output, and quality-gate reliability across models:
+Provider benchmark:
 
 ```bash
 python scripts/benchmark_gate_models.py --model gemini/gemini-3.1-flash-lite
@@ -282,27 +277,17 @@ File-size guard:
 find apps/api/src apps/api/tests apps/web/src -type f \( -name '*.py' -o -name '*.ts' -o -name '*.tsx' -o -name '*.css' \) -print0 | xargs -0 wc -l | awk '$2 != "total" && $1 > 300 { print }'
 ```
 
-For rendered UI changes, verify the running app in a browser at
-`http://127.0.0.1:5173`, exercise the changed interaction, and check the
-console for relevant warnings/errors.
-
-## CI
-
-CI lives in `.github/workflows/ci.yml` and runs:
-
-- `pytest apps/api/tests`
-- `npm run test --workspace apps/web`
-- `npm run build --workspace apps/web`
-
-Keep local verification aligned with CI unless deliberately changing CI.
+CI lives in `.github/workflows/ci.yml` and runs API tests, web tests, and the
+web build. Keep local verification aligned with CI unless deliberately changing
+CI.
 
 ## Contribution Notes
 
-- Use conventional commit prefixes such as `feat:`, `fix:`, `docs:`,
-  `test:`, and `chore:`.
-- Group commits by logical change when multiple unrelated edits exist.
-- Include tests or explain exactly why a change is not testable yet.
+- Use conventional commit prefixes such as `feat:`, `fix:`, `docs:`, `test:`,
+  and `chore:`.
+- Group commits by logical change when unrelated edits exist in the worktree.
+- Include tests or state exactly why a change is docs-only or not testable.
 - Update `README.md`, `docs/`, and this file when changing setup, workspace
-  layout, security policy, or module ownership.
+  layout, security policy, module ownership, or development workflow.
 - If instructions conflict, the nearest `AGENTS.md` wins. Explicit user
   instructions in chat override repository guidance.
