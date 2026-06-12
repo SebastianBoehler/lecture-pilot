@@ -27,7 +27,7 @@ describe("LecturePilot app shell", () => {
 
     await logIn(user);
 
-    expect(await screen.findByText(/connected as student01/i)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /welcome, student01@uni-tuebingen\.de/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /course workspaces/i })).toBeInTheDocument();
     const probabilisticCourse = screen.getByRole("heading", {
       name: /probabilistic machine learning/i,
@@ -78,7 +78,6 @@ describe("LecturePilot app shell", () => {
 
     await user.click(screen.getByRole("button", { name: /preview local demo/i }));
 
-    expect(screen.getByText(/connected as local-demo/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /welcome, local-demo/i, level: 1 })).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: /grundlagen des maschinellen lernens/i, level: 1 }),

@@ -46,7 +46,6 @@ export function Dashboard({
       <section className="course-panel" aria-labelledby="course-workspaces">
         <div className="panel-heading">
           <h2 id="course-workspaces">Course workspaces</h2>
-          <span>{session ? `Connected as ${session.username}` : "Only past dates are shown"}</span>
         </div>
         <div className="course-workspace-list">
           {courseGroups.map(({ course, status, statusLabel, helperText, emptyText, tutorAvailable, courseLectures }) => (
