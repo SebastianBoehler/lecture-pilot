@@ -32,10 +32,8 @@ describe("Professor course builder", () => {
     expect(screen.getByRole("button", { name: /search youtube/i })).toBeDisabled();
     await user.type(screen.getByLabelText(/course name/i), "Demo ML Course");
     await user.click(screen.getByRole("button", { name: /full course/i }));
-    expect(screen.getByLabelText(/number of lectures/i)).toHaveValue(14);
-    await user.clear(screen.getByLabelText(/number of lectures/i));
-    expect(screen.getByRole("button", { name: /create course workspace/i })).toBeDisabled();
-    await user.type(screen.getByLabelText(/number of lectures/i), "12");
+    expect(screen.getByLabelText(/expected lectures/i)).toHaveValue(null);
+    expect(screen.getByRole("button", { name: /create course workspace/i })).toBeEnabled();
     await user.click(screen.getByRole("button", { name: /specific lecture/i }));
     await user.clear(screen.getByLabelText(/lecture title/i));
     await user.type(screen.getByLabelText(/lecture title/i), "Bayesian Decision Theory");
@@ -109,6 +107,38 @@ describe("Professor course builder", () => {
     );
   });
 
+  it("proposes and applies a dated full-course lecture schedule from materials", async () => {
+    const user = userEvent.setup();
+    const fetchMock = professorFetchMock();
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /preview professor account/i }));
+    await user.click(screen.getByRole("button", { name: /full course/i }));
+    expect(screen.getByLabelText(/expected lectures/i)).toHaveValue(null);
+    await user.click(screen.getByRole("button", { name: /create course workspace/i }));
+    await user.click(await screen.findByRole("button", { name: /scan source bundle/i }));
+
+    expect(await screen.findByText(/2 lectures inferred from the source bundle/i)).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Lecture 01")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("2026-05-13")).toBeInTheDocument();
+
+    await user.clear(screen.getByDisplayValue("Lecture 01"));
+    await user.type(screen.getAllByLabelText(/^title$/i)[0], "Course overview");
+    await user.click(screen.getByRole("button", { name: /apply lecture schedule/i }));
+
+    expect(await screen.findByText(/lecture schedule applied with 2 dated lectures/i)).toBeInTheDocument();
+    const scheduleCall = fetchMock.mock.calls.find((call) => {
+      const body = JSON.parse(String(call[1]?.body ?? "{}"));
+      return Array.isArray(body.lectures) && body.lectures.length === 2;
+    });
+    expect(scheduleCall).toBeDefined();
+    expect(JSON.parse(String(scheduleCall?.[1]?.body)).lectures[0]).toMatchObject({
+      date: "2026-05-06",
+      title: "Course overview",
+    });
+  });
+
   it("hides the course builder from student accounts", async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -123,6 +153,7 @@ describe("Professor course builder", () => {
 function professorFetchMock() {
   return vi.fn(async (url: string, init?: RequestInit) => {
     if (url.endsWith("/admin/course-workspaces")) return json(courseWorkspacePayload(init));
+    if (url.includes("/lecture-schedule")) return json(lectureSchedulePayload());
     if (url.includes("/source-bundle")) return json(sourceBundle());
     if (url.includes("/materials")) return json({ path: "uploads/supplement.md", kind: "markdown", size_bytes: 12 });
     if (url.includes("/analytics")) return json(analyticsPayload());
@@ -156,6 +187,17 @@ function sourceBundle() {
       { path: "videos/demo.mp4", kind: "video", size_bytes: 3000 },
     ],
     counts_by_kind: { latex: 1, pdf: 1, video: 1 },
+  };
+}
+
+function lectureSchedulePayload() {
+  return {
+    course_id: "demo-ml-course",
+    source_paths: ["Lecture01-eng.tex", "Lecture02-eng.tex"],
+    lectures: [
+      { number: "01", title: "Lecture 01", date: "2026-05-06", material_path: "Lecture01-eng.tex" },
+      { number: "02", title: "Lecture 02", date: "2026-05-13", material_path: "Lecture02-eng.tex" },
+    ],
   };
 }
 
@@ -211,6 +253,25 @@ function analyticsPayload() {
 
 function courseWorkspacePayload(init?: RequestInit) {
   const body = JSON.parse(String(init?.body ?? "{}"));
+  const lectures = body.lectures?.length ? body.lectures.map((lecture: {
+    date: string;
+    material_path?: string;
+    number: string;
+    title: string;
+  }) => ({
+    id: `lecture-${lecture.number}`,
+    course_id: "demo-ml-course",
+    title: lecture.title,
+    date: lecture.date,
+    material_path: lecture.material_path,
+  })) : [
+    {
+      id: "lecture-03",
+      course_id: "demo-ml-course",
+      title: body.lecture_title,
+      date: "2026-06-11",
+    },
+  ];
   return {
     course: {
       id: "demo-ml-course",
@@ -218,15 +279,8 @@ function courseWorkspacePayload(init?: RequestInit) {
       professor: "professor-demo",
       term: "Sommer 2026",
     },
-    lectures: [
-      {
-        id: "lecture-03",
-        course_id: "demo-ml-course",
-        title: body.lecture_title,
-        date: "2026-06-11",
-      },
-    ],
-    active_lecture_id: "lecture-03",
+    lectures,
+    active_lecture_id: lectures[0].id,
   };
 }
 

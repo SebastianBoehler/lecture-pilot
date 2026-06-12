@@ -31,6 +31,17 @@ def resolve_course_workspace(
 
 
 def _lectures_for_setup(setup: CourseWorkspaceSetupInput, course_id: str) -> list[Lecture]:
+    if setup.lectures:
+        return [
+            Lecture(
+                id=_lecture_id(number=item.number, title=item.title),
+                course_id=course_id,
+                title=item.title.strip(),
+                date=item.date,
+                material_path=item.material_path,
+            )
+            for item in setup.lectures
+        ]
     if setup.target == "full-course":
         count = setup.lecture_count or 1
         return [

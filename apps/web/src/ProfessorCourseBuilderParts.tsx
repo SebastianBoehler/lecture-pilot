@@ -29,7 +29,7 @@ export function CourseSetupStep({
         <button className={setup.target === "single-lecture" ? "is-active" : ""} type="button" onClick={() => onSetupChange({ ...setup, target: "single-lecture" })}>
           Specific lecture
         </button>
-        <button className={setup.target === "full-course" ? "is-active" : ""} type="button" onClick={() => onSetupChange({ ...setup, target: "full-course" })}>
+        <button className={setup.target === "full-course" ? "is-active" : ""} type="button" onClick={() => onSetupChange({ ...setup, target: "full-course", lectureCount: "" })}>
           Full course
         </button>
       </div>
@@ -45,10 +45,26 @@ export function CourseSetupStep({
           </label>
         </div>
       ) : (
-        <label>
-          Number of lectures
-          <input min="1" type="number" value={setup.lectureCount} onChange={(event) => onSetupChange({ ...setup, lectureCount: event.target.value })} />
-        </label>
+        <div className="flow-grid">
+          <label>
+            Expected lectures (optional)
+            <input
+              min="1"
+              placeholder="Infer from materials"
+              type="number"
+              value={setup.lectureCount}
+              onChange={(event) => onSetupChange({ ...setup, lectureCount: event.target.value })}
+            />
+          </label>
+          <label>
+            First lecture date
+            <input
+              placeholder="YYYY-MM-DD"
+              value={setup.firstLectureDate}
+              onChange={(event) => onSetupChange({ ...setup, firstLectureDate: event.target.value })}
+            />
+          </label>
+        </div>
       )}
       <button disabled={!isReady} type="button" onClick={onCreate}>Create course workspace</button>
     </section>

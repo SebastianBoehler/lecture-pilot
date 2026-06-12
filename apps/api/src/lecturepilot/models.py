@@ -122,6 +122,7 @@ class CourseWorkspaceSetupInput(BaseModel):
     lecture_title: str | None = Field(default=None, max_length=200)
     lecture_number: str | None = Field(default=None, max_length=20)
     lecture_count: int | None = Field(default=None, ge=1, le=80)
+    lectures: list["LectureScheduleItem"] = Field(default_factory=list, max_length=80)
     target: Literal["single-lecture", "full-course"] = "single-lecture"
 
 
@@ -129,6 +130,19 @@ class CourseWorkspaceResult(BaseModel):
     course: Course
     lectures: list[Lecture]
     active_lecture_id: str
+
+
+class LectureScheduleItem(BaseModel):
+    number: str = Field(min_length=1, max_length=20)
+    title: str = Field(min_length=1, max_length=200)
+    date: date
+    material_path: str | None = Field(default=None, max_length=500)
+
+
+class LectureScheduleProposal(BaseModel):
+    course_id: str = Field(min_length=1)
+    lectures: list[LectureScheduleItem]
+    source_paths: list[str] = Field(default_factory=list)
 
 
 class CanvasPublicationResult(BaseModel):

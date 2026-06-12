@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from datetime import date
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,18 +23,22 @@ from lecturepilot.course_canvas_planner import CourseCanvasPlanner
 from lecturepilot.course_workspace import resolve_course_workspace
 from lecturepilot.harness import LecturePilotHarness
 from lecturepilot.image_generation_registry import image_generator_from_env
+from lecturepilot.lecture_schedule_planner import LectureSchedulePlanner
 from lecturepilot.learner_state import LearnerStateStore
+from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import (
     CourseMaterialUploadResult,
     CourseMaterialUploadType,
     CourseWorkspaceResult,
     CourseWorkspaceSetupInput,
+    LectureScheduleProposal,
     SourceBundleEntry,
     SourceBundleManifest,
     TuebingenLoginInput,
     TuebingenLoginResult,
 )
 from lecturepilot.observability import observability_from_env
+from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.sample_data import COURSE, LECTURES, unlocked_lectures
 from lecturepilot.source_bundle import scan_source_bundle
 from lecturepilot.source_bundle_canvas import import_source_bundle_canvas
@@ -56,6 +61,7 @@ def create_app() -> FastAPI:
     app.state.tuebingen_adapter = TuebingenCourseAdapter()
     app.state.agent_harness = LecturePilotHarness()
     app.state.course_planner = CourseCanvasPlanner()
+    app.state.lecture_schedule_planner = LectureSchedulePlanner()
     app.state.canvas_workspace = CanvasWorkspace()
     app.state.learner_state = LearnerStateStore(app.state.canvas_workspace.layout)
     app.state.user_memory_store = UserMemoryStore(app.state.canvas_workspace.layout)
@@ -156,6 +162,35 @@ def create_app() -> FastAPI:
             counts_by_kind=dict(sorted(counts.items())),
             supported_uploads=uploads,
         )
+
+    @app.get("/admin/courses/{course_id}/lecture-schedule", response_model=LectureScheduleProposal)
+    async def lecture_schedule(
+        course_id: str,
+        first_lecture_date: str | None = None,
+        count: int | None = None,
+        context: TenantContext = Depends(request_context),
+    ) -> LectureScheduleProposal:
+        require_course_manager(context, course_tenant_id=COURSE_TENANT_ID)
+        roots = app.state.canvas_workspace.source_bundle_roots(
+            course_id,
+            include_seeded_materials=course_id == SEEDED_COURSE_ID,
+        )
+        try:
+            start_date = date.fromisoformat(first_lecture_date) if first_lecture_date else None
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Invalid first lecture date.") from exc
+        try:
+            return await app.state.lecture_schedule_planner.propose_schedule(
+                course_id=course_id,
+                files=_scan_source_bundles(roots),
+                roots=list(roots),
+                first_lecture_date=start_date,
+                requested_count=count,
+            )
+        except ProviderConfigurationError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except ModelExecutionError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     @app.post("/admin/courses/{course_id}/materials", response_model=CourseMaterialUploadResult)
     async def upload_course_material(

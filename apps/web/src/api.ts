@@ -3,13 +3,9 @@ import type {
   CanvasPublicationResult,
   CanvasDocument,
   CanvasSection,
-  CourseWorkspaceResult,
   LoginSession,
-  SourceBundleManifest,
-  YoutubeVideoCandidate,
 } from "./types";
 import { authHeaders, courseManagerHeaders } from "./authz";
-import type { CourseSetup } from "./professorBuilderState";
 
 export type CanvasCommand = {
   type: "focus_section" | "highlight_span" | "open_artifact" | "append_section" | "update_section";
@@ -234,95 +230,7 @@ export async function getCanvasPublication(
   return payload as CanvasPublicationResult;
 }
 
-export async function createCourseWorkspace(
-  setup: CourseSetup,
-  session: LoginSession,
-): Promise<CourseWorkspaceResult> {
-  const response = await fetch(apiUrl("/admin/course-workspaces"), {
-    method: "POST",
-    headers: { ...courseManagerHeaders(session), "Content-Type": "application/json" },
-    body: JSON.stringify({
-      course_title: setup.courseTitle,
-      lecture_title: setup.lectureTitle,
-      lecture_number: setup.lectureNumber,
-      lecture_count: Number(setup.lectureCount) || null,
-      target: setup.target,
-    }),
-  });
-  const payload = await response.json();
-  if (!response.ok) throw new Error(readApiError(payload, "Course workspace creation failed."));
-  return payload as CourseWorkspaceResult;
-}
-
-export async function getSourceBundle(courseId: string, session: LoginSession): Promise<SourceBundleManifest> {
-  const response = await fetch(apiUrl(`/courses/${courseId}/source-bundle`), {
-    headers: courseManagerHeaders(session),
-  });
-  const payload = await response.json();
-  if (!response.ok) throw new Error(readApiError(payload, "Source scan failed."));
-  return payload as SourceBundleManifest;
-}
-
-export async function uploadCourseMaterial(input: {
-  courseId: string;
-  path: string;
-  file: File;
-  session: LoginSession;
-}) {
-  const body = new FormData();
-  body.append("path", input.path);
-  body.append("file", input.file);
-  const response = await fetch(apiUrl(`/admin/courses/${input.courseId}/materials`), {
-    method: "POST",
-    headers: courseManagerHeaders(input.session),
-    body,
-  });
-  const payload = await response.json();
-  if (!response.ok) throw new Error(readApiError(payload, "Material upload failed."));
-  return payload as { path: string; kind: string; size_bytes: number };
-}
-
-export async function searchYoutubeMedia(courseId: string, query: string, session: LoginSession) {
-  const params = new URLSearchParams({ q: query, max_results: "5" });
-  const response = await fetch(apiUrl(`/admin/courses/${courseId}/media/youtube/search?${params}`), {
-    headers: courseManagerHeaders(session),
-  });
-  const payload = await response.json();
-  if (!response.ok) throw new Error(readApiError(payload, "YouTube search failed."));
-  return payload as { items: YoutubeVideoCandidate[] };
-}
-
-export async function includeYoutubeMedia(input: {
-  courseId: string;
-  lectureId: string;
-  sectionId: string | null;
-  video: YoutubeVideoCandidate;
-  session: LoginSession;
-}) {
-  const response = await fetch(
-    apiUrl(`/admin/courses/${input.courseId}/lectures/${input.lectureId}/media/youtube`),
-    {
-      method: "POST",
-      headers: { ...courseManagerHeaders(input.session), "Content-Type": "application/json" },
-      body: JSON.stringify({ section_id: input.sectionId, video: input.video }),
-    },
-  );
-  const payload = await response.json();
-  if (!response.ok) throw new Error(readApiError(payload, "YouTube include failed."));
-  return payload as { block_id: string };
-}
-
-export async function clearCourseYoutubeMedia(courseId: string, session: LoginSession) {
-  const response = await fetch(apiUrl(`/admin/courses/${courseId}/media/youtube`), {
-    method: "DELETE",
-    headers: courseManagerHeaders(session),
-  });
-  const payload = await response.json();
-  if (!response.ok) throw new Error(readApiError(payload, "Course media reset failed."));
-  return payload as { deleted: number };
-}
-
-function readApiError(payload: unknown, fallback: string) {
+export function readApiError(payload: unknown, fallback: string) {
   return typeof (payload as { detail?: unknown }).detail === "string"
     ? String((payload as { detail: string }).detail)
     : fallback;

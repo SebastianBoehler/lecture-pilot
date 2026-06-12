@@ -6,6 +6,7 @@ from auth_helpers import professor_headers, student_headers
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.models import LectureScheduleItem, LectureScheduleProposal
 
 
 def test_professor_creates_stable_course_workspace_ids(tmp_path: Path) -> None:
@@ -23,6 +24,87 @@ def test_professor_creates_stable_course_workspace_ids(tmp_path: Path) -> None:
     assert second["lectures"][0]["course_id"] == "robotics-seminar"
     assert seeded["course"]["id"] == "martius-ml"
     assert seeded["lectures"][0]["course_id"] == "martius-ml"
+
+
+def test_full_course_workspace_accepts_dated_lecture_schedule(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+
+    response = client.post(
+        "/admin/course-workspaces",
+        json={
+            "course_title": "Demo ML Course",
+            "target": "full-course",
+            "lectures": [
+                {
+                    "number": "01",
+                    "title": "Course Setup",
+                    "date": "2026-05-06",
+                    "material_path": "Lecture01.tex",
+                },
+                {
+                    "number": "02",
+                    "title": "Bayesian Decision Theory",
+                    "date": "2026-05-13",
+                    "material_path": "Lecture02.tex",
+                },
+            ],
+        },
+        headers=professor_headers("prof-demo"),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["active_lecture_id"] == "lecture-01"
+    assert [lecture["date"] for lecture in payload["lectures"]] == ["2026-05-06", "2026-05-13"]
+    assert payload["lectures"][1]["material_path"] == "Lecture02.tex"
+
+
+def test_professor_can_infer_full_course_schedule_from_bundle(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    planner = _FakeLectureSchedulePlanner()
+    client.app.state.lecture_schedule_planner = planner
+    _create_workspace(client, "Demo ML Course", "01", "Course Setup")
+    for path, content in [
+        ("uploads/Lecture01-eng.tex", br"\begin{frame}{Course Setup}Intro\end{frame}"),
+        ("uploads/Lecture02_old.tex", br"\begin{frame}{Old Version}Ignore\end{frame}"),
+        ("uploads/Lecture02-eng.tex", br"\begin{frame}{Bayes Classifier}Bayes\end{frame}"),
+    ]:
+        response = client.post(
+            "/admin/courses/demo-ml-course/materials",
+            data={"path": path},
+            files={"file": (Path(path).name, content)},
+            headers=professor_headers(),
+        )
+        assert response.status_code == 200
+
+    response = client.get(
+        "/admin/courses/demo-ml-course/lecture-schedule"
+        "?first_lecture_date=2026-05-06",
+        headers=professor_headers(),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [lecture["number"] for lecture in payload["lectures"]] == ["01", "02"]
+    assert [lecture["date"] for lecture in payload["lectures"]] == ["2026-05-06", "2026-05-13"]
+    assert payload["lectures"][1]["title"] == "Agentic Bayes and Validation"
+    assert payload["lectures"][1]["material_path"] == "uploads/Lecture02-eng.tex"
+    assert planner.last_requested_count is None
+    assert planner.last_first_lecture_date == "2026-05-06"
+    assert "uploads/Lecture01-eng.tex" in planner.last_paths
+
+
+def test_schedule_inference_rejects_invalid_start_date(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    _create_workspace(client, "Demo ML Course", "01", "Course Setup")
+
+    response = client.get(
+        "/admin/courses/demo-ml-course/lecture-schedule?first_lecture_date=tomorrow",
+        headers=professor_headers(),
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Invalid first lecture date."
 
 
 def test_dynamic_course_workspace_uses_uploaded_source(tmp_path: Path) -> None:
@@ -199,6 +281,36 @@ class _FakeCoursePlanner:
                     )
                 ],
             }
+        )
+
+
+class _FakeLectureSchedulePlanner:
+    def __init__(self) -> None:
+        self.last_first_lecture_date = None
+        self.last_paths: list[str] = []
+        self.last_requested_count = None
+
+    async def propose_schedule(self, *, course_id, files, roots, first_lecture_date, requested_count):
+        self.last_first_lecture_date = first_lecture_date.isoformat()
+        self.last_paths = [item.path for item in files]
+        self.last_requested_count = requested_count
+        return LectureScheduleProposal(
+            course_id=course_id,
+            source_paths=["uploads/Lecture01-eng.tex", "uploads/Lecture02-eng.tex"],
+            lectures=[
+                LectureScheduleItem(
+                    number="01",
+                    title="Agentic Course Setup",
+                    date="2026-05-06",
+                    material_path="uploads/Lecture01-eng.tex",
+                ),
+                LectureScheduleItem(
+                    number="02",
+                    title="Agentic Bayes and Validation",
+                    date="2026-05-13",
+                    material_path="uploads/Lecture02-eng.tex",
+                ),
+            ],
         )
 
 

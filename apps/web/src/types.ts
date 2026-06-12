@@ -84,6 +84,19 @@ export type SourceBundleManifest = {
   counts_by_kind: Record<string, number>;
 };
 
+export type LectureScheduleItem = {
+  number: string;
+  title: string;
+  date: string;
+  material_path?: string | null;
+};
+
+export type LectureScheduleProposal = {
+  course_id: string;
+  lectures: LectureScheduleItem[];
+  source_paths: string[];
+};
+
 export type CourseWorkspaceResult = {
   course: UniversityCourse;
   lectures: Lecture[];

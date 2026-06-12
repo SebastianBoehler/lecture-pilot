@@ -185,6 +185,43 @@
   gap: 8px;
 }
 
+.lecture-schedule {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid var(--color-border-primary);
+  padding-top: 14px;
+}
+
+.lecture-schedule header {
+  display: grid;
+  gap: 3px;
+}
+
+.lecture-schedule header span,
+.lecture-schedule-row small {
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+}
+
+.lecture-schedule-list {
+  display: grid;
+  gap: 8px;
+}
+
+.lecture-schedule-row {
+  display: grid;
+  grid-template-columns: 74px minmax(180px, 1fr) 150px minmax(140px, 0.55fr);
+  gap: 8px;
+  align-items: end;
+}
+
+.lecture-schedule-row small {
+  overflow: hidden;
+  padding-bottom: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .scope-toggle {
   display: inline-flex;
   gap: 4px;
@@ -240,7 +277,8 @@
     grid-template-columns: 1fr;
   }
 
-  .flow-grid {
+  .flow-grid,
+  .lecture-schedule-row {
     grid-template-columns: 1fr;
   }
 }
