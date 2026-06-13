@@ -16,6 +16,16 @@ It combines a normal web app, a typed learner workspace, and a constrained agent
 harness. The first target integration is University of Tübingen via
 [`tue-api-wrapper`](https://github.com/SebastianBoehler/tue-api-wrapper).
 
+## Preview
+
+<p align="center">
+  <img
+    alt="LecturePilot lesson canvas showing a Bayesian Decision Theory lecture with source-backed content and workspace tools"
+    src="docs/assets/lecturepilot-lesson-ui.jpg"
+    width="900"
+  />
+</p>
+
 ## What It Builds Toward
 
 - Login through university credentials.
