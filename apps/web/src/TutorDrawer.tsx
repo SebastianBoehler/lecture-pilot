@@ -63,6 +63,7 @@ export function TutorDrawer({
         <div className="message-list" aria-live="polite" ref={messageListRef}>
           {messages.map((message) => (
             <div className={`chat-turn ${message.role}`} key={message.id}>
+              {message.role === "agent" ? <ToolTags tags={message.toolTags} /> : null}
               <div
                 aria-busy={message.isPending ? "true" : undefined}
                 className={[
@@ -75,7 +76,7 @@ export function TutorDrawer({
                   <MathText highlightedText={null} mode="block" text={message.content} />
                 </div>
               </div>
-              <ToolTags tags={message.toolTags} />
+              {message.role === "user" ? <ToolTags tags={message.toolTags} /> : null}
             </div>
           ))}
         </div>
