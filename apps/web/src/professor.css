@@ -45,13 +45,28 @@
 }
 
 .flow-stepper li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   min-width: 0;
   color: var(--color-text-tertiary);
   font-size: 13px;
   font-weight: 700;
+}
+
+.flow-stepper button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.flow-stepper button:hover {
+  color: var(--color-accent-primary);
 }
 
 .flow-stepper span {
@@ -67,7 +82,7 @@
   font-size: 12px;
 }
 
-.flow-stepper .is-current {
+.flow-stepper .is-active {
   color: var(--color-accent-primary);
 }
 
@@ -75,7 +90,8 @@
   color: var(--color-text-primary);
 }
 
-.flow-stepper .is-ready span {
+.flow-stepper .is-ready span,
+.flow-stepper .is-active span {
   border-color: color-mix(in srgb, var(--color-accent-primary) 50%, var(--color-border-primary));
   background: var(--color-bg-secondary);
 }
@@ -89,14 +105,8 @@
   display: grid;
   align-content: start;
   gap: 14px;
-  border-top: 1px solid var(--color-border-primary);
-  padding: 24px 0;
+  padding: 0;
   background: transparent;
-}
-
-.flow-card:first-child {
-  border-top: 0;
-  padding-top: 0;
 }
 
 .flow-grid {

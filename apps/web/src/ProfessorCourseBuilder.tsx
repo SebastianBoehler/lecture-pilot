@@ -1,14 +1,11 @@
 import { useEffect, useState } from "react";
 import { draftLectureCanvas, getDraftLectureCanvas } from "./api";
+import { builderSteps, initialBuilderStep, ProfessorBuilderStepper, type BuilderStep } from "./ProfessorBuilderStepper";
 import { ProfessorCanvasDraftStep } from "./ProfessorCanvasDraftStep";
-import {
-  CourseSetupStep,
-  hasCanvasVideo,
-  StepHeader,
-  toggleSelected,
-  VideoCandidates,
-} from "./ProfessorCourseBuilderParts";
+import { CourseSetupStep, hasCanvasVideo, toggleSelected } from "./ProfessorCourseBuilderParts";
 import { ProfessorMaterialStep } from "./ProfessorMaterialStep";
+import { ProfessorPublishStep } from "./ProfessorPublishStep";
+import { ProfessorReviewStep } from "./ProfessorReviewStep";
 import {
   createCourseWorkspace,
   getSourceBundle,
@@ -17,7 +14,7 @@ import {
   searchYoutubeMedia,
   uploadCourseMaterial,
 } from "./professorApi";
-import { defaultFlow, isCourseSetupReady, readSavedFlow, writeSavedFlow } from "./professorBuilderState";
+import { isCourseSetupReady, readSavedFlow, writeSavedFlow } from "./professorBuilderState";
 import { lectureFromWorkspace, requireWorkspace } from "./professorWorkspaceView";
 import { uploadDestination } from "./professorUpload";
 import type {
@@ -44,6 +41,11 @@ export function ProfessorCourseBuilder({
   const [setup, setSetup] = useState(savedFlow.setup);
   const [workspace, setWorkspace] = useState(savedFlow.workspace);
   const [courseReady, setCourseReady] = useState(savedFlow.courseReady && Boolean(savedFlow.workspace));
+  const [activeStep, setActiveStep] = useState<BuilderStep>(() => initialBuilderStep({
+    bundleReady: savedFlow.bundleReady,
+    canvasReady: savedFlow.canvasReady,
+    courseReady: savedFlow.courseReady && Boolean(savedFlow.workspace),
+  }));
   const [bundle, setBundle] = useState<SourceBundleManifest | null>(null);
   const [lectureSchedule, setLectureSchedule] = useState<LectureScheduleItem[]>(savedFlow.lectureSchedule);
   const [uploadPath, setUploadPath] = useState(savedFlow.uploadPath);
@@ -66,6 +68,13 @@ export function ProfessorCourseBuilder({
   const previewHref = canvas && workspace
     ? previewWorkspaceUrl(workspace.courseId, lectureFromWorkspace(workspace, setup, lectureSchedule))
     : null;
+  const steps = builderSteps({
+    bundleReady: Boolean(bundle),
+    canvasReady: Boolean(canvas),
+    courseReady,
+    videoReviewReady,
+    workspacePublished,
+  });
   useEffect(() => {
     let cancelled = false;
     async function restoreGeneratedState() {
@@ -133,6 +142,7 @@ export function ProfessorCourseBuilder({
     setCanvas(null);
     setVideos([]);
     setSelectedVideos(new Set());
+    setActiveStep("define");
   }
   return (
     <main className="professor-screen">
@@ -143,138 +153,129 @@ export function ProfessorCourseBuilder({
         </div>
         <p className="professor-session">Signed in as {session.username}</p>
       </section>
-      <ol className="flow-stepper" aria-label="Course builder progress">
-        <li className={courseReady ? "is-ready" : "is-current"}><span>01</span>Define</li>
-        <li className={bundle ? "is-ready" : courseReady ? "is-current" : ""}><span>02</span>Upload</li>
-        <li className={canvas ? "is-ready" : bundle ? "is-current" : ""}><span>03</span>Generate</li>
-        <li className={videoReviewReady ? "is-ready" : canvas ? "is-current" : ""}><span>04</span>Review</li>
-        <li className={workspacePublished ? "is-ready" : videoReviewReady ? "is-current" : ""}><span>05</span>Publish</li>
-      </ol>
+      <ProfessorBuilderStepper activeStep={activeStep} steps={steps} onStepChange={setActiveStep} />
       <div className="professor-flow">
-        <CourseSetupStep
-          courseReady={courseReady}
-          isReady={setupReady}
-          onCreate={() => run(async () => {
-            const created = await createCourseWorkspace(setup, session, scheduleForSetup(setup, lectureSchedule));
-            setWorkspace({
-              courseId: created.course.id,
-              lectureId: created.active_lecture_id,
-            });
-            setCourseReady(true);
-            return `Course workspace ${created.course.id}/${created.active_lecture_id} ready.`;
-          })}
-          onSetupChange={updateSetup}
-          setup={setup}
-        />
-        <ProfessorMaterialStep
-          bundle={bundle}
-          courseReady={courseReady}
-          lectureSchedule={lectureSchedule}
-          materialScope={materialScope}
-          setup={setup}
-          uploadFiles={uploadFiles}
-          uploadPath={uploadPath}
-          workspaceReady={Boolean(workspace)}
-          setUploadPath={setUploadPath}
-          onUploadFilesChange={setUploadFiles}
-          onScheduleChange={setLectureSchedule}
-          onUpload={() => run(async () => {
-            const activeWorkspace = requireWorkspace(workspace);
-            const uploaded = [];
-            for (const file of uploadFiles) {
-              uploaded.push(await uploadCourseMaterial({
-                courseId: activeWorkspace.courseId,
-                path: uploadDestination(uploadPath, file, uploadFiles.length),
-                file,
-                session,
-              }));
-            }
-            await updateBundleAndSchedule(activeWorkspace.courseId);
-            if (uploaded.length === 1) return `Uploaded ${uploaded[0].path} as ${uploaded[0].kind}.`;
-            return `Uploaded ${uploaded.length} materials into the source bundle.`;
-          })}
-          onScan={() => run(async () => {
-            const activeWorkspace = requireWorkspace(workspace);
-            await updateBundleAndSchedule(activeWorkspace.courseId);
-            return "Source bundle scanned.";
-          })}
-          onApplySchedule={() => run(async () => {
-            const created = await createCourseWorkspace(setup, session, lectureSchedule);
-            setWorkspace({ courseId: created.course.id, lectureId: created.active_lecture_id });
-            return `Lecture schedule applied with ${created.lectures.length} dated lectures.`;
-          })}
-        />
-        <ProfessorCanvasDraftStep
-          canvas={canvas}
-          canGenerate={Boolean(bundle && workspace)}
-          previewHref={previewHref}
-          onGenerate={() => run(async () => {
-            const activeWorkspace = requireWorkspace(workspace);
-            setCanvas(await draftLectureCanvas(activeWorkspace.courseId, activeWorkspace.lectureId, session));
-            return "Course-builder agent generated a source-grounded canvas draft.";
-          })}
-        />
-        <section className="flow-card wide">
-          <StepHeader number="04" title="Review YouTube candidates" done={videoReviewReady} />
-          <p className="drawer-note">
-            Search candidates as soon as the course scope is known. Selected videos can be attached after a canvas draft exists.
-          </p>
-          <label>
-            Search query
-            <input value={query} onChange={(event) => setQuery(event.target.value)} />
-          </label>
-          <button disabled={!setupReady || !workspace} type="button" onClick={() => run(async () => {
-            const searchQuery = query.trim() || defaultYoutubeQuery;
-            if (!query.trim()) setQuery(searchQuery);
-            const activeWorkspace = requireWorkspace(workspace);
-            const response = await searchYoutubeMedia(activeWorkspace.courseId, searchQuery, session);
-            setVideos(response.items);
-            return `Found ${response.items.length} YouTube candidates.`;
-          })}>
-            Search YouTube
-          </button>
-          <VideoCandidates
-            videos={videos}
-            selectedVideos={selectedVideos}
-            onToggle={(videoId) => setSelectedVideos(toggleSelected(selectedVideos, videoId))}
+        {activeStep === "define" ? (
+          <CourseSetupStep
+            courseReady={courseReady}
+            isReady={setupReady}
+            onCreate={() => run(async () => {
+              const schedule = setup.target === "full-course" ? lectureSchedule : [];
+              const created = await createCourseWorkspace(setup, session, schedule);
+              setWorkspace({ courseId: created.course.id, lectureId: created.active_lecture_id });
+              setCourseReady(true);
+              setActiveStep("upload");
+              return `Course workspace ${created.course.id}/${created.active_lecture_id} ready.`;
+            })}
+            onSetupChange={updateSetup}
+            setup={setup}
           />
-          <button disabled={!selectedVideos.size || !canvas || !workspace} type="button" onClick={() => run(async () => {
-            const activeWorkspace = requireWorkspace(workspace);
-            const selected = videos.filter((video) => selectedVideos.has(video.video_id));
-            for (const video of selected) {
-              await includeYoutubeMedia({
-                courseId: activeWorkspace.courseId,
-                lectureId: activeWorkspace.lectureId,
-                sectionId: canvas?.sections[1]?.id ?? null,
-                video,
-                session,
-              });
-            }
-            setCanvas(await getDraftLectureCanvas(
-              activeWorkspace.courseId,
-              activeWorkspace.lectureId,
-              session,
-            ));
-            return `Included ${selected.length} approved video${selected.length === 1 ? "" : "s"} in the canvas.`;
-          })}>
-            Include selected videos
-          </button>
-          {!canvas && selectedVideos.size ? (
-            <p className="drawer-note">Generate a canvas draft before attaching the selected videos.</p>
-          ) : null}
-        </section>
-        <section className="flow-card wide">
-          <StepHeader number="05" title="Publish tutor workspace" done={workspacePublished} />
-          <p className="drawer-note">Student dashboards show the AI tutor only after this course workspace is published.</p>
-          <button disabled={!canvas || !workspace} type="button" onClick={() => run(async () => {
-            const activeWorkspace = requireWorkspace(workspace);
-            const published = await onPublishWorkspace(activeWorkspace.courseId, activeWorkspace.lectureId);
-            const when = published.published_at ? ` at ${new Date(published.published_at).toLocaleString()}` : "";
-            return `Tutor workspace published as version ${published.version ?? 1}${when}.`;
-          })}>
-            Publish tutor workspace
-          </button>
-        </section>
+        ) : null}
+        {activeStep === "upload" ? (
+          <ProfessorMaterialStep
+            bundle={bundle}
+            courseReady={courseReady}
+            lectureSchedule={lectureSchedule}
+            materialScope={materialScope}
+            setup={setup}
+            uploadFiles={uploadFiles}
+            uploadPath={uploadPath}
+            workspaceReady={Boolean(workspace)}
+            setUploadPath={setUploadPath}
+            onUploadFilesChange={setUploadFiles}
+            onScheduleChange={setLectureSchedule}
+            onUpload={() => run(async () => {
+              const activeWorkspace = requireWorkspace(workspace);
+              const uploaded = [];
+              for (const file of uploadFiles) {
+                uploaded.push(await uploadCourseMaterial({
+                  courseId: activeWorkspace.courseId,
+                  path: uploadDestination(uploadPath, file, uploadFiles.length),
+                  file,
+                  session,
+                }));
+              }
+              await updateBundleAndSchedule(activeWorkspace.courseId);
+              if (setup.target !== "full-course") setActiveStep("generate");
+              if (uploaded.length === 1) return `Uploaded ${uploaded[0].path} as ${uploaded[0].kind}.`;
+              return `Uploaded ${uploaded.length} materials into the source bundle.`;
+            })}
+            onScan={() => run(async () => {
+              const activeWorkspace = requireWorkspace(workspace);
+              await updateBundleAndSchedule(activeWorkspace.courseId);
+              if (setup.target !== "full-course") setActiveStep("generate");
+              return "Source bundle scanned.";
+            })}
+            onApplySchedule={() => run(async () => {
+              const created = await createCourseWorkspace(setup, session, lectureSchedule);
+              setWorkspace({ courseId: created.course.id, lectureId: created.active_lecture_id });
+              setActiveStep("generate");
+              return `Lecture schedule applied with ${created.lectures.length} dated lectures.`;
+            })}
+          />
+        ) : null}
+        {activeStep === "generate" ? (
+          <ProfessorCanvasDraftStep
+            canvas={canvas}
+            canGenerate={Boolean(bundle && workspace)}
+            previewHref={previewHref}
+            onGenerate={() => run(async () => {
+              const activeWorkspace = requireWorkspace(workspace);
+              setCanvas(await draftLectureCanvas(activeWorkspace.courseId, activeWorkspace.lectureId, session));
+              setActiveStep("review");
+              return "Course-builder agent generated a source-grounded canvas draft.";
+            })}
+          />
+        ) : null}
+        {activeStep === "review" ? (
+          <ProfessorReviewStep
+            canInclude={Boolean(selectedVideos.size && canvas && workspace)}
+            canSearch={Boolean(setupReady && workspace)}
+            hasCanvas={Boolean(canvas)}
+            onInclude={() => run(async () => {
+              const activeWorkspace = requireWorkspace(workspace);
+              const selected = videos.filter((video) => selectedVideos.has(video.video_id));
+              for (const video of selected) {
+                await includeYoutubeMedia({
+                  courseId: activeWorkspace.courseId,
+                  lectureId: activeWorkspace.lectureId,
+                  sectionId: canvas?.sections[1]?.id ?? null,
+                  video,
+                  session,
+                });
+              }
+              setCanvas(await getDraftLectureCanvas(activeWorkspace.courseId, activeWorkspace.lectureId, session));
+              setActiveStep("publish");
+              return `Included ${selected.length} approved video${selected.length === 1 ? "" : "s"} in the canvas.`;
+            })}
+            onQueryChange={setQuery}
+            onSearch={() => run(async () => {
+              const searchQuery = query.trim() || defaultYoutubeQuery;
+              if (!query.trim()) setQuery(searchQuery);
+              const activeWorkspace = requireWorkspace(workspace);
+              const response = await searchYoutubeMedia(activeWorkspace.courseId, searchQuery, session);
+              setVideos(response.items);
+              return `Found ${response.items.length} YouTube candidates.`;
+            })}
+            onToggleVideo={(videoId) => setSelectedVideos(toggleSelected(selectedVideos, videoId))}
+            query={query}
+            ready={videoReviewReady}
+            selectedVideos={selectedVideos}
+            videos={videos}
+          />
+        ) : null}
+        {activeStep === "publish" ? (
+          <ProfessorPublishStep
+            canPublish={Boolean(canvas && workspace)}
+            onPublish={() => run(async () => {
+              const activeWorkspace = requireWorkspace(workspace);
+              const published = await onPublishWorkspace(activeWorkspace.courseId, activeWorkspace.lectureId);
+              const when = published.published_at ? ` at ${new Date(published.published_at).toLocaleString()}` : "";
+              return `Tutor workspace published as version ${published.version ?? 1}${when}.`;
+            })}
+            ready={workspacePublished}
+          />
+        ) : null}
       </div>
       {notice ? <p className="form-success">{notice}</p> : null}
       {error ? <p className="form-error">{error}</p> : null}
@@ -293,8 +294,4 @@ export function ProfessorCourseBuilder({
     });
     setLectureSchedule(proposal.lectures);
   }
-}
-
-function scheduleForSetup(setup: CourseSetup, schedule: LectureScheduleItem[]) {
-  return setup.target === "full-course" ? schedule : [];
 }
