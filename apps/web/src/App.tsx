@@ -97,20 +97,32 @@ function App() {
     }
     setLastTutorModel(result.model);
 
+    let nextFocusSectionId: string | null = null;
+    let nextHighlightBlockId: string | null = null;
+    let nextHighlightText: string | null = null;
+    let generatedSectionId: string | null = null;
     for (const command of result.canvas_commands) {
       const section = command.section;
       if ((command.type === "append_section" || command.type === "update_section") && section) {
         setCanvasDocument((current) => applyCanvasSection(current, section));
+        generatedSectionId = command.section_id ?? section.id;
       }
       if (command.type === "focus_section" && command.section_id) {
-        setFocusedSectionId(command.section_id);
-        setNavigationVersion((current) => current + 1);
+        nextFocusSectionId = command.section_id;
       }
       if (command.type === "highlight_span" && command.span_id) {
-        setHighlightedBlockId(command.span_id);
-        setHighlightedText(command.highlight_text ?? null);
-        setNavigationVersion((current) => current + 1);
+        nextHighlightBlockId = command.span_id;
+        nextHighlightText = command.highlight_text ?? null;
       }
+    }
+    const navigationTargetId = nextFocusSectionId ?? generatedSectionId;
+    if (navigationTargetId) {
+      setFocusedSectionId(navigationTargetId);
+    }
+    setHighlightedBlockId(nextHighlightBlockId);
+    setHighlightedText(nextHighlightText);
+    if (navigationTargetId || nextHighlightBlockId) {
+      setNavigationVersion((current) => current + 1);
     }
 
     setMessages((current) => completePendingTutorMessage(current, pendingMessageId, result));
@@ -200,6 +212,10 @@ function App() {
           setPanelMode(null);
         }}
         onLogout={handleLogout}
+        onOpenDashboard={() => {
+          setView(session ? "dashboard" : "login");
+          setPanelMode(null);
+        }}
         onOpenPerformance={() => {
           if (courseManagerSession) {
             setView("performance");

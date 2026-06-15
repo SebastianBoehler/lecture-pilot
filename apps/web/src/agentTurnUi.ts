@@ -20,11 +20,13 @@ export function pendingTutorMessage(id: string): ChatMessage {
     role: "agent",
     content: "Working through the lecture canvas...",
     isPending: true,
-    toolTags: ["read request"],
   };
 }
 
 export function appendLiveToolTag(messages: ChatMessage[], messageId: string, tag: string) {
+  if (!isVisibleToolActivity(tag)) {
+    return messages;
+  }
   return messages.map((message) => {
     if (message.id !== messageId) return message;
     return {
@@ -72,4 +74,18 @@ export function toolTagsFromResult(result: AgentTurnResult): string[] {
     ? [`gate: ${result.quality_gate.status.replace("_", " ")}`]
     : [];
   return [...commandTags, ...gateTags];
+}
+
+const hiddenActivityTags = new Set([
+  "call tutor model",
+  "load learner memory",
+  "prepare canvas update",
+  "read canvas",
+  "save attendance",
+  "save quality gate",
+  "write canvas update",
+]);
+
+function isVisibleToolActivity(tag: string) {
+  return !hiddenActivityTags.has(tag);
 }
