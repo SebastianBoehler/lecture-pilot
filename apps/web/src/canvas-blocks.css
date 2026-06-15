@@ -3,15 +3,14 @@
 }
 
 .canvas-block.is-highlighted {
-  border-left: 3px solid var(--color-accent-primary);
-  padding: 10px 14px;
-  background: var(--color-highlight-bg);
+  border-radius: 8px;
+  animation: block-target-fade 1.8s ease-out forwards;
 }
 
 .phrase-highlight {
   border-radius: 3px;
   padding: 0 2px;
-  background: var(--color-highlight-border);
+  background: color-mix(in srgb, var(--color-highlight-border) 42%, transparent);
   color: inherit;
   animation: phrase-target-fade 1.8s ease-out forwards;
 }
@@ -23,7 +22,20 @@
   }
 
   100% {
+    background: color-mix(in srgb, var(--color-highlight-border) 42%, transparent);
+  }
+}
+
+@keyframes block-target-fade {
+  0%,
+  22% {
+    background: var(--color-highlight-bg);
+    box-shadow: inset 3px 0 0 var(--color-accent-primary);
+  }
+
+  100% {
     background: transparent;
+    box-shadow: none;
   }
 }
 
@@ -151,8 +163,7 @@
 }
 
 .canvas-asset.is-highlighted {
-  border-left: 1px solid var(--color-accent-primary);
-  background: var(--color-highlight-bg);
+  animation: block-target-fade 1.8s ease-out forwards;
 }
 
 .canvas-asset img {

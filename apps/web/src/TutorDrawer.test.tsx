@@ -40,10 +40,12 @@ it("renders assistant tool tags between the triggering user turn and assistant a
   expect(toolCalls.closest(".chat-message")).toBeNull();
   expect((userBubble as HTMLElement).compareDocumentPosition(toolCalls) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(toolCalls.compareDocumentPosition(agentBubble as HTMLElement) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(within(toolCalls).queryByText("focus: old-section")).not.toBeInTheDocument();
-  expect(within(toolCalls).getByText("+1 earlier")).toBeInTheDocument();
+  const history = within(toolCalls).getByText("+1 earlier").closest("details");
+  expect(history).not.toBeNull();
+  expect(history).not.toHaveAttribute("open");
+  expect(within(history as HTMLElement).getByText("focus: old-section")).toBeInTheDocument();
   expect(within(toolCalls).getByText("highlight: losses-and-risks-p-1")).toBeInTheDocument();
-  expect(within(toolCalls).getByText(/phrase: loss function/)).toBeInTheDocument();
+  expect(within(toolCalls).getByText(/phrase: loss function/).closest(".tool-tag")).toHaveClass("tool-tag-detail");
   expect(within(toolCalls).getByText("gate: needs evidence")).toBeInTheDocument();
 
   const composer = screen.getByPlaceholderText("Ask about this lecture...");

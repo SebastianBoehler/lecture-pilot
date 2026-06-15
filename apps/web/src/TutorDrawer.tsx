@@ -114,17 +114,32 @@ function ToolTags({ tags }: { tags?: string[] }) {
     return null;
   }
   const visibleTags = tags.slice(-3);
-  const hiddenCount = tags.length - visibleTags.length;
+  const hiddenTags = tags.slice(0, -3);
   return (
     <div className="tool-tags" aria-label="Tool calls">
-      {hiddenCount > 0 ? <span className="tool-tag tool-tag-muted">+{hiddenCount} earlier</span> : null}
+      {hiddenTags.length > 0 ? (
+        <details className="tool-history">
+          <summary>+{hiddenTags.length} earlier</summary>
+          <div className="tool-history-list">
+            {hiddenTags.map((tag, index) => (
+              <span className={toolTagClassName(tag)} key={`${tag}-${index}`}>
+                <MathText highlightedText={null} text={tag} />
+              </span>
+            ))}
+          </div>
+        </details>
+      ) : null}
       {visibleTags.map((tag, index) => (
-        <span className="tool-tag" key={`${tag}-${index}`}>
+        <span className={toolTagClassName(tag)} key={`${tag}-${index}`}>
           <MathText highlightedText={null} text={tag} />
         </span>
       ))}
     </div>
   );
+}
+
+function toolTagClassName(tag: string) {
+  return ["tool-tag", tag.startsWith("phrase:") ? "tool-tag-detail" : ""].filter(Boolean).join(" ");
 }
 
 function tutorStatus(model: string | null) {
