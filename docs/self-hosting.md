@@ -13,6 +13,15 @@ S3-compatible object storage
 ```
 
 Redis or a queue can be added when ingestion jobs become long-running.
+The starter Compose file now includes a Postgres container as the persistence
+checkpoint, but the application still needs migrations and DB-backed auth,
+courses, memberships, and enrollments before production rollout.
+
+## Postgres
+
+The Compose stack uses the lightweight `postgres:16-alpine` image with a named
+volume. For staging or production, override `LECTUREPILOT_POSTGRES_PASSWORD`
+and back up the `lecturepilot-postgres` volume.
 
 ## File Limits
 
@@ -38,4 +47,3 @@ keys or university credentials.
 Store official source material as versioned, read-only course seed files.
 Learner annotations, progress, summaries, and generated artifacts live in a
 private overlay.
-

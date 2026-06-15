@@ -116,7 +116,9 @@ AgentTurnInput -> AgentTurnResult
 `ProviderRegistry` validates that the selected model has a configured key and
 the capabilities required by the turn. The current default is
 `gemini/gemini-3.1-flash-lite`, and the selected model can be changed with
-`LECTUREPILOT_MODEL`.
+`LECTUREPILOT_MODEL`. A tutor turn may also include a `model` override from a
+browser-stored user preference; provider keys remain server-side, and the
+backend still validates the selected provider before execution.
 
 ## Future ADK Runtime
 

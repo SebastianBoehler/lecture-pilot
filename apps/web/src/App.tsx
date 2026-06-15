@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { getDraftLectureCanvas, getLectureCanvas, publishLectureCanvas, sendAgentTurnStream } from "./api";
 import {
@@ -12,6 +12,7 @@ import { initialMessagesForAttendance, localDemoSession, localProfessorSession }
 import { canManageCourses } from "./authz";
 import { CourseManagementAccessRequired } from "./CourseManagementAccessRequired";
 import { Dashboard } from "./Dashboard";
+import { draftPreviewUrl } from "./draftPreviewUrl";
 import { LessonWorkspace } from "./LessonWorkspace";
 import { LoginView } from "./LoginView";
 import { useStoredLoginSession } from "./loginSessionStorage";
@@ -19,7 +20,10 @@ import { ProfileView } from "./ProfileView";
 import { ProfessorCourseBuilder } from "./ProfessorCourseBuilder";
 import { ProfessorCoursePerformance } from "./ProfessorCoursePerformance";
 import { lectures } from "./sampleData";
+import { requestedTutorModel } from "./tutorModels";
+import { useInitialDraftPreview } from "./useInitialDraftPreview";
 import { usePublishedLectures } from "./usePublishedLectures";
+import { useTutorModelPreference } from "./useTutorModelPreference";
 import type {
   Attendance,
   CanvasDocument,
@@ -51,35 +55,12 @@ function App() {
     initialMessagesForAttendance(lectures[2].attendance),
   );
   const [lastTutorModel, setLastTutorModel] = useState<string | null>(null);
+  const [tutorModelPreference, setTutorModelPreference] = useTutorModelPreference();
   const [publishedLectureIds, setPublishedLectureIds] = usePublishedLectures("martius-ml", lectures, session);
-  const initialDraftPreviewHandled = useRef(false);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
-
-  useEffect(() => {
-    if (initialDraftPreviewHandled.current) return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("preview") !== "draft") return;
-    if (!session) return;
-    initialDraftPreviewHandled.current = true;
-    if (!canManageCourses(session)) {
-      setView("dashboard");
-      setCanvasError("Draft preview requires a course-management account.");
-      return;
-    }
-    const courseId = params.get("courseId") ?? "martius-ml";
-    const lectureId = params.get("lectureId") ?? "lecture-03";
-    const lecture = availableLectures.find((item) => item.id === lectureId) ?? {
-      id: lectureId,
-      number: params.get("lectureNumber") ?? lectureId.replace("lecture-", ""),
-      title: params.get("lectureTitle") ?? "Draft lecture",
-      date: "Draft",
-      attendance: "unknown" as Attendance,
-    };
-    void handleOpenLecture(courseId, lecture, "professor", "professor-preview", true);
-  }, [availableLectures, session]);
 
   async function handleTutorMessage(message: string) {
     const timestamp = Date.now();
@@ -92,6 +73,7 @@ function App() {
 
     let result;
     try {
+      const requestedModel = requestedTutorModel(tutorModelPreference);
       result = await sendAgentTurnStream(
         {
           user_id: lessonUserId,
@@ -99,6 +81,7 @@ function App() {
           lecture_id: selectedLecture.id,
           attendance: selectedLecture.attendance,
           message,
+          ...(requestedModel ? { model: requestedModel } : {}),
           canvas_state: { focused_section_id: focusedSectionId },
         },
         session ?? localDemoSession,
@@ -149,13 +132,13 @@ function App() {
     setLastTutorModel(null);
   }
 
-  async function handleOpenLecture(
+  const handleOpenLecture = useCallback(async (
     courseId: string,
     lecture: Lecture,
     backView: "dashboard" | "professor" = "dashboard",
     userId = effectiveUserId(session),
     previewDraft = false,
-  ) {
+  ) => {
     setSelectedCourseId(courseId);
     setSelectedLecture(lecture);
     setLessonUserId(userId);
@@ -181,7 +164,19 @@ function App() {
     } catch (error) {
       setCanvasError(error instanceof Error ? error.message : "Canvas loading failed.");
     }
-  }
+  }, [session]);
+
+  useInitialDraftPreview({
+    availableLectures,
+    session,
+    onBlocked: () => {
+      setView("dashboard");
+      setCanvasError("Draft preview requires a course-management account.");
+    },
+    onOpenLecture: (courseId, lecture, backView, userId, previewDraft) => {
+      void handleOpenLecture(courseId, lecture, backView, userId, previewDraft);
+    },
+  });
 
   function handleSetAttendance(lectureId: string, attendance: Attendance) {
     setAvailableLectures((current) =>
@@ -190,17 +185,6 @@ function App() {
     if (selectedLecture.id === lectureId) {
       setSelectedLecture((current) => ({ ...current, attendance }));
     }
-  }
-
-  function draftPreviewUrl(courseId: string, lecture: Lecture) {
-    const params = new URLSearchParams({
-      preview: "draft",
-      courseId,
-      lectureId: lecture.id,
-      lectureNumber: lecture.number,
-      lectureTitle: lecture.title,
-    });
-    return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
   }
 
   const courseManagerSession = canManageCourses(session) ? session : null;
@@ -261,7 +245,12 @@ function App() {
           onSetAttendance={handleSetAttendance}
         />
       ) : view === "profile" && session ? (
-        <ProfileView session={session} onBack={() => setView("dashboard")} />
+        <ProfileView
+          modelPreference={tutorModelPreference}
+          session={session}
+          onBack={() => setView("dashboard")}
+          onModelPreferenceChange={setTutorModelPreference}
+        />
       ) : view === "professor" && courseManagerSession ? (
         <ProfessorCourseBuilder
           session={courseManagerSession}
@@ -299,7 +288,7 @@ function App() {
           lecture={selectedLecture}
           messages={messages}
           session={session ?? localDemoSession}
-          tutorModel={lastTutorModel}
+          tutorModel={lastTutorModel ?? requestedTutorModel(tutorModelPreference)}
           navigationVersion={navigationVersion}
           panelMode={panelMode}
           userId={lessonUserId}

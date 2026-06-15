@@ -6,6 +6,7 @@ export type DocumentAnchorId = string;
 
 export type Attendance = "unknown" | "present" | "absent";
 export type TenantRole = "tenant_admin" | "professor" | "tutor" | "student";
+export type CourseAccessPolicy = "public" | "platform_authenticated" | "tuebingen_enrolled";
 
 export type Lecture = {
   id: string;
@@ -116,6 +117,7 @@ export type YoutubeVideoCandidate = {
 };
 
 export type UniversityCourse = {
+  access_policy?: CourseAccessPolicy;
   id: string;
   title: string;
   professor: string;

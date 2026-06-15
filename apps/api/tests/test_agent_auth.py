@@ -20,6 +20,22 @@ def test_agent_turn_requires_configured_provider(monkeypatch) -> None:
     assert "GEMINI_API_KEY" in response.json()["detail"]
 
 
+def test_agent_turn_uses_requested_provider_configuration(monkeypatch) -> None:
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    client = TestClient(create_app())
+    payload = _turn_payload("u1")
+    payload["model"] = "openrouter/openai/gpt-oss-120b:nitro"
+
+    response = client.post(
+        "/agent/turn",
+        headers=student_headers("u1"),
+        json=payload,
+    )
+
+    assert response.status_code == 503
+    assert "OPENROUTER_API_KEY" in response.json()["detail"]
+
+
 def test_agent_turn_requires_authenticated_headers() -> None:
     client = TestClient(create_app())
 

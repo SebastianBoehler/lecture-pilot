@@ -124,6 +124,7 @@ function courseWorkspacePayload(init?: RequestInit) {
   ];
   return {
     course: {
+      access_policy: body.access_policy ?? "tuebingen_enrolled",
       id: "demo-ml-course",
       title: body.course_title,
       professor: "professor-demo",

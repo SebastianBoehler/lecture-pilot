@@ -5,10 +5,21 @@ services:
       dockerfile: apps/api/Dockerfile
     env_file:
       - ../.env
+    environment:
+      DATABASE_URL: postgresql://lecturepilot:${LECTUREPILOT_POSTGRES_PASSWORD:-lecturepilot-dev}@db:5432/lecturepilot
     ports:
       - "8000:8000"
     volumes:
       - lecturepilot-workspaces:/app/storage/workspaces
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: lecturepilot
+      POSTGRES_USER: lecturepilot
+      POSTGRES_PASSWORD: ${LECTUREPILOT_POSTGRES_PASSWORD:-lecturepilot-dev}
+    volumes:
+      - lecturepilot-postgres:/var/lib/postgresql/data
 
   web:
     build:
@@ -20,5 +31,5 @@ services:
       - api
 
 volumes:
+  lecturepilot-postgres:
   lecturepilot-workspaces:
-

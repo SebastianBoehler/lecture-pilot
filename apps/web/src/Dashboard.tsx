@@ -13,6 +13,7 @@ type CourseWorkspaceGroup = {
 };
 
 const demoTutorCourse: UniversityCourse = {
+  access_policy: "public",
   id: "martius-ml",
   title: "Grundlagen des Maschinellen Lernens",
   professor: "Prof. Georg Martius",
@@ -109,7 +110,9 @@ function buildCourseGroups(
     : [buildDemoCourseGroup(lectures, publishedLectureIds)];
 
   if (enrolledCourses.length && !enrolledCourses.some(isDemoTutorCourse)) {
-    courseGroups.push(buildDemoCourseGroup(lectures, publishedLectureIds));
+    if (isDiscoverableTutorCourse(demoTutorCourse)) {
+      courseGroups.push(buildDemoCourseGroup(lectures, publishedLectureIds));
+    }
   }
 
   return courseGroups;
@@ -125,7 +128,7 @@ function buildEnrolledCourseGroup(
   return {
     course,
     status: tutorAvailable ? "matched" : "unmatched",
-    statusLabel: tutorAvailable ? "AI tutor available" : "No tutor workspace yet",
+    statusLabel: tutorAvailable ? workspaceStatusLabel(course) : "No tutor workspace yet",
     helperText: null,
     emptyText: "No matched LecturePilot workspace for this course yet.",
     tutorAvailable,
@@ -138,8 +141,8 @@ function buildDemoCourseGroup(lectures: Lecture[], publishedLectureIds: string[]
   return {
     course: demoTutorCourse,
     status: "demo",
-    statusLabel: "Demo workspace",
-    helperText: "Preview workspace for recordings; not part of your current Alma enrollment.",
+    statusLabel: workspaceStatusLabel(demoTutorCourse),
+    helperText: "Open course workspace; not part of your current Alma enrollment.",
     emptyText: "No tutor workspace yet. Publish the demo workspace to enable lecture entry.",
     tutorAvailable: publishedLectures.length > 0,
     courseLectures: publishedLectures,
@@ -153,6 +156,15 @@ function publishedCourseLectures(lectures: Lecture[], publishedLectureIds: strin
 
 function isDemoTutorCourse(course: UniversityCourse) {
   return course.id === demoTutorCourse.id || normalizeCourseTitle(course.title) === normalizeCourseTitle(demoTutorCourse.title);
+}
+
+function isDiscoverableTutorCourse(course: UniversityCourse) {
+  return course.access_policy === "public" || course.access_policy === "platform_authenticated";
+}
+
+function workspaceStatusLabel(course: UniversityCourse) {
+  if (course.access_policy === "public") return "Public workspace";
+  return "AI tutor available";
 }
 
 function normalizeCourseTitle(title: string) {

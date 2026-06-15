@@ -15,6 +15,7 @@ import {
   uploadCourseMaterial,
 } from "./professorApi";
 import { isCourseSetupReady, readSavedFlow, writeSavedFlow } from "./professorBuilderState";
+import { useProfessorWorkflowRun } from "./professorWorkflowRun";
 import { lectureFromWorkspace, requireWorkspace } from "./professorWorkspaceView";
 import { uploadDestination } from "./professorUpload";
 import type {
@@ -54,8 +55,7 @@ export function ProfessorCourseBuilder({
   const [query, setQuery] = useState(savedFlow.query);
   const [videos, setVideos] = useState<YoutubeVideoCandidate[]>([]);
   const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
-  const [notice, setNotice] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { error, notice, pendingAction, run, setError } = useProfessorWorkflowRun();
   const [restored, setRestored] = useState(!savedFlow.bundleReady && !savedFlow.canvasReady);
   const videoReviewReady = selectedVideos.size > 0 || hasCanvasVideo(canvas);
   const setupReady = isCourseSetupReady(setup);
@@ -123,16 +123,6 @@ export function ProfessorCourseBuilder({
       query,
     });
   }, [bundle, canvas, courseReady, lectureSchedule, query, restored, setup, uploadPath, workspace]);
-  async function run(action: () => Promise<string | void>) {
-    setError(null);
-    setNotice(null);
-    try {
-      const message = await action();
-      if (message) setNotice(message);
-    } catch (runError) {
-      setError(runError instanceof Error ? runError.message : "Professor workflow step failed.");
-    }
-  }
   function updateSetup(nextSetup: CourseSetup) {
     setSetup(nextSetup);
     setWorkspace(null);
@@ -158,8 +148,9 @@ export function ProfessorCourseBuilder({
         {activeStep === "define" ? (
           <CourseSetupStep
             courseReady={courseReady}
+            isCreating={pendingAction === "create"}
             isReady={setupReady}
-            onCreate={() => run(async () => {
+            onCreate={() => run("create", async () => {
               const schedule = setup.target === "full-course" ? lectureSchedule : [];
               const created = await createCourseWorkspace(setup, session, schedule);
               setWorkspace({ courseId: created.course.id, lectureId: created.active_lecture_id });
@@ -177,6 +168,7 @@ export function ProfessorCourseBuilder({
             courseReady={courseReady}
             lectureSchedule={lectureSchedule}
             materialScope={materialScope}
+            pendingAction={pendingAction}
             setup={setup}
             uploadFiles={uploadFiles}
             uploadPath={uploadPath}
@@ -184,7 +176,7 @@ export function ProfessorCourseBuilder({
             setUploadPath={setUploadPath}
             onUploadFilesChange={setUploadFiles}
             onScheduleChange={setLectureSchedule}
-            onUpload={() => run(async () => {
+            onUpload={() => run("upload", async () => {
               const activeWorkspace = requireWorkspace(workspace);
               const uploaded = [];
               for (const file of uploadFiles) {
@@ -200,13 +192,13 @@ export function ProfessorCourseBuilder({
               if (uploaded.length === 1) return `Uploaded ${uploaded[0].path} as ${uploaded[0].kind}.`;
               return `Uploaded ${uploaded.length} materials into the source bundle.`;
             })}
-            onScan={() => run(async () => {
+            onScan={() => run("scan", async () => {
               const activeWorkspace = requireWorkspace(workspace);
               await updateBundleAndSchedule(activeWorkspace.courseId);
               if (setup.target !== "full-course") setActiveStep("generate");
               return "Source bundle scanned.";
             })}
-            onApplySchedule={() => run(async () => {
+            onApplySchedule={() => run("apply-schedule", async () => {
               const created = await createCourseWorkspace(setup, session, lectureSchedule);
               setWorkspace({ courseId: created.course.id, lectureId: created.active_lecture_id });
               setActiveStep("generate");
@@ -218,8 +210,9 @@ export function ProfessorCourseBuilder({
           <ProfessorCanvasDraftStep
             canvas={canvas}
             canGenerate={Boolean(bundle && workspace)}
+            isGenerating={pendingAction === "generate"}
             previewHref={previewHref}
-            onGenerate={() => run(async () => {
+            onGenerate={() => run("generate", async () => {
               const activeWorkspace = requireWorkspace(workspace);
               setCanvas(await draftLectureCanvas(activeWorkspace.courseId, activeWorkspace.lectureId, session));
               setActiveStep("review");
@@ -232,7 +225,8 @@ export function ProfessorCourseBuilder({
             canInclude={Boolean(selectedVideos.size && canvas && workspace)}
             canSearch={Boolean(setupReady && workspace)}
             hasCanvas={Boolean(canvas)}
-            onInclude={() => run(async () => {
+            pendingAction={pendingAction}
+            onInclude={() => run("include-videos", async () => {
               const activeWorkspace = requireWorkspace(workspace);
               const selected = videos.filter((video) => selectedVideos.has(video.video_id));
               for (const video of selected) {
@@ -249,7 +243,7 @@ export function ProfessorCourseBuilder({
               return `Included ${selected.length} approved video${selected.length === 1 ? "" : "s"} in the canvas.`;
             })}
             onQueryChange={setQuery}
-            onSearch={() => run(async () => {
+            onSearch={() => run("search", async () => {
               const searchQuery = query.trim() || defaultYoutubeQuery;
               if (!query.trim()) setQuery(searchQuery);
               const activeWorkspace = requireWorkspace(workspace);
@@ -267,7 +261,8 @@ export function ProfessorCourseBuilder({
         {activeStep === "publish" ? (
           <ProfessorPublishStep
             canPublish={Boolean(canvas && workspace)}
-            onPublish={() => run(async () => {
+            isPublishing={pendingAction === "publish"}
+            onPublish={() => run("publish", async () => {
               const activeWorkspace = requireWorkspace(workspace);
               const published = await onPublishWorkspace(activeWorkspace.courseId, activeWorkspace.lectureId);
               const when = published.published_at ? ` at ${new Date(published.published_at).toLocaleString()}` : "";

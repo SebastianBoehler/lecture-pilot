@@ -1,4 +1,5 @@
-import { StepHeader, VideoCandidates } from "./ProfessorCourseBuilderParts";
+import { PendingStatus, StepHeader, VideoCandidates } from "./ProfessorCourseBuilderParts";
+import type { BuilderAction } from "./professorWorkflowRun";
 import type { YoutubeVideoCandidate } from "./types";
 
 export function ProfessorReviewStep({
@@ -9,6 +10,7 @@ export function ProfessorReviewStep({
   onQueryChange,
   onSearch,
   onToggleVideo,
+  pendingAction,
   query,
   ready,
   selectedVideos,
@@ -17,6 +19,7 @@ export function ProfessorReviewStep({
   canInclude: boolean;
   canSearch: boolean;
   hasCanvas: boolean;
+  pendingAction: BuilderAction | null;
   onInclude: () => void;
   onQueryChange: (query: string) => void;
   onSearch: () => void;
@@ -26,6 +29,9 @@ export function ProfessorReviewStep({
   selectedVideos: Set<string>;
   videos: YoutubeVideoCandidate[];
 }) {
+  const isBusy = pendingAction !== null;
+  const isIncluding = pendingAction === "include-videos";
+  const isSearching = pendingAction === "search";
   return (
     <section className="flow-card wide">
       <StepHeader number="04" title="Review YouTube candidates" done={ready} />
@@ -34,15 +40,17 @@ export function ProfessorReviewStep({
       </p>
       <label>
         Search query
-        <input value={query} onChange={(event) => onQueryChange(event.target.value)} />
+        <input disabled={isBusy} value={query} onChange={(event) => onQueryChange(event.target.value)} />
       </label>
-      <button disabled={!canSearch} type="button" onClick={onSearch}>
-        Search YouTube
+      <button disabled={!canSearch || isBusy} type="button" onClick={onSearch}>
+        {isSearching ? "Searching YouTube..." : "Search YouTube"}
       </button>
+      {isSearching ? <PendingStatus label="Searching YouTube candidates..." /> : null}
       <VideoCandidates videos={videos} selectedVideos={selectedVideos} onToggle={onToggleVideo} />
-      <button disabled={!canInclude} type="button" onClick={onInclude}>
-        Include selected videos
+      <button disabled={!canInclude || isBusy} type="button" onClick={onInclude}>
+        {isIncluding ? "Including selected videos..." : "Include selected videos"}
       </button>
+      {isIncluding ? <PendingStatus label="Attaching selected videos to the canvas draft..." /> : null}
       {!hasCanvas && selectedVideos.size ? (
         <p className="drawer-note">Generate a canvas draft before attaching the selected videos.</p>
       ) : null}

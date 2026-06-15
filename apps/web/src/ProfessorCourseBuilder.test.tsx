@@ -97,7 +97,7 @@ describe("Professor course builder", () => {
     expect(previewLink).toHaveAttribute("href", expect.stringContaining("courseId=demo-ml-course"));
     expect(await screen.findByText(/2 sections ready for review/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^lecturepilot$/i }));
-    expect(screen.getByText(/ai tutor available/i)).toBeInTheDocument();
+    expect(screen.getByText(/public workspace/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^course builder$/i }));
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/admin/courses/demo-ml-course/materials"),
@@ -148,6 +148,41 @@ describe("Professor course builder", () => {
       date: "2026-05-06",
       title: "Course overview",
     });
+  });
+
+  it("shows a loading state while generating the canvas draft", async () => {
+    const user = userEvent.setup();
+    const baseFetch = professorFetchMock();
+    const draftRequest: { resolve?: () => void } = {};
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (url.includes("/canvas/draft") && init?.method === "POST") {
+        return new Promise<Response>((resolve) => {
+          draftRequest.resolve = () => {
+            void Promise.resolve(baseFetch(url, init)).then((response) => resolve(response as Response));
+          };
+        });
+      }
+      return baseFetch(url, init);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /preview professor account/i }));
+    await user.click(screen.getByRole("button", { name: /create course workspace/i }));
+    await user.upload(
+      await screen.findByLabelText(/upload course material/i),
+      new File(["# extra note"], "supplement.md", { type: "text/markdown" }),
+    );
+    await user.click(screen.getByRole("button", { name: /^upload material$/i }));
+    await screen.findByRole("heading", { name: /generate canvas draft/i });
+
+    await user.click(screen.getByRole("button", { name: /generate draft canvas/i }));
+
+    expect(screen.getByRole("button", { name: /generating draft canvas/i })).toBeDisabled();
+    expect(screen.getByRole("status")).toHaveTextContent(/generating a source-grounded canvas draft/i);
+
+    draftRequest.resolve?.();
+    expect(await screen.findByText(/course-builder agent generated/i)).toBeInTheDocument();
   });
 
   it("hides the course builder from student accounts", async () => {

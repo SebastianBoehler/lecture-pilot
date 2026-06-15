@@ -36,6 +36,28 @@ async def test_harness_uses_model_client_for_agent_turn(monkeypatch) -> None:
     assert result.model == DEFAULT_MODEL
 
 
+async def test_harness_accepts_turn_model_override(monkeypatch) -> None:
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    harness = LecturePilotHarness(
+        provider_registry=ProviderRegistry.from_env(model=DEFAULT_MODEL),
+        model_client=_FakeModelClient(),
+    )
+
+    result = await harness.run_turn(
+        AgentTurnInput(
+            user_id="u1",
+            course_id="martius-ml",
+            lecture_id="lecture-03",
+            attendance=AttendanceStatus.PRESENT,
+            message="what is your name?",
+            model="openrouter/openai/gpt-oss-120b:nitro",
+            canvas_state=CanvasState(focused_section_id="bayes-formula"),
+        )
+    )
+
+    assert result.model == "openrouter/openai/gpt-oss-120b:nitro"
+
+
 class _FakeModelClient:
     async def complete_turn(
         self,

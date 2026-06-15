@@ -2,11 +2,13 @@ import type { LectureScheduleItem } from "./types";
 
 export function ProfessorLectureSchedule({
   disabled,
+  isApplying,
   onApply,
   onChange,
   schedule,
 }: {
   disabled: boolean;
+  isApplying: boolean;
   onApply: () => void;
   onChange: (schedule: LectureScheduleItem[]) => void;
   schedule: LectureScheduleItem[];
@@ -48,7 +50,7 @@ export function ProfessorLectureSchedule({
         ))}
       </div>
       <button disabled={disabled} type="button" onClick={onApply}>
-        Apply lecture schedule
+        {isApplying ? "Applying lecture schedule..." : "Apply lecture schedule"}
       </button>
     </section>
   );

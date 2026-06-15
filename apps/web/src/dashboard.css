@@ -195,6 +195,49 @@
   font-size: 18px;
 }
 
+.profile-settings {
+  border-top: 1px solid var(--color-border-primary);
+}
+
+.profile-settings h2 {
+  margin: 0;
+  padding: 18px 20px 0;
+  font-size: 18px;
+}
+
+.profile-settings p {
+  margin: 0;
+  padding: 0 20px 18px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.profile-setting-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 320px);
+  gap: 16px;
+  align-items: center;
+  padding: 14px 20px 10px;
+}
+
+.profile-setting-row span {
+  display: grid;
+  gap: 3px;
+}
+
+.profile-setting-row small {
+  color: var(--color-text-secondary);
+}
+
+.profile-setting-row select {
+  width: 100%;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+}
+
 .lecture-number {
   color: var(--color-text-secondary);
   font-variant-numeric: tabular-nums;
@@ -237,6 +280,10 @@
   }
 
   .profile-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-setting-row {
     grid-template-columns: 1fr;
   }
 

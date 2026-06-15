@@ -19,6 +19,7 @@ export async function createCourseWorkspace(
     method: "POST",
     headers: { ...courseManagerHeaders(session), "Content-Type": "application/json" },
     body: JSON.stringify({
+      access_policy: setup.accessPolicy,
       course_title: setup.courseTitle,
       lecture_title: setup.lectureTitle,
       lecture_number: setup.lectureNumber,

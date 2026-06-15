@@ -17,6 +17,7 @@ def test_professor_creates_stable_course_workspace_ids(tmp_path: Path) -> None:
     seeded = _create_workspace(client, "Grundlagen des Maschinellen Lernens", "03", "Bayesian Decision Theory")
 
     assert first["course"]["id"] == "demo-ml-course"
+    assert first["course"]["access_policy"] == "tuebingen_enrolled"
     assert first["active_lecture_id"] == "lecture-03"
     assert first["lectures"][0]["course_id"] == "demo-ml-course"
     assert second["course"]["id"] == "robotics-seminar"
@@ -24,6 +25,24 @@ def test_professor_creates_stable_course_workspace_ids(tmp_path: Path) -> None:
     assert second["lectures"][0]["course_id"] == "robotics-seminar"
     assert seeded["course"]["id"] == "martius-ml"
     assert seeded["lectures"][0]["course_id"] == "martius-ml"
+
+
+def test_professor_sets_public_course_workspace_visibility(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+
+    response = client.post(
+        "/admin/course-workspaces",
+        json={
+            "access_policy": "public",
+            "course_title": "Public ML Course",
+            "lecture_number": "01",
+            "lecture_title": "Open Lecture",
+        },
+        headers=professor_headers("prof-demo"),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["course"]["access_policy"] == "public"
 
 
 def test_full_course_workspace_accepts_dated_lecture_schedule(tmp_path: Path) -> None:

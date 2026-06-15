@@ -28,6 +28,12 @@ class ProviderCapability(StrEnum):
     LONG_CONTEXT = "long_context"
 
 
+class CourseAccessPolicy(StrEnum):
+    PUBLIC = "public"
+    PLATFORM_AUTHENTICATED = "platform_authenticated"
+    TUEBINGEN_ENROLLED = "tuebingen_enrolled"
+
+
 class TenantRole(StrEnum):
     TENANT_ADMIN = "tenant_admin"
     PROFESSOR = "professor"
@@ -59,6 +65,7 @@ class Course(BaseModel):
     title: str
     professor: str
     term: str
+    access_policy: CourseAccessPolicy = CourseAccessPolicy.TUEBINGEN_ENROLLED
 
 
 class TuebingenLoginInput(BaseModel):
@@ -124,6 +131,7 @@ class CourseWorkspaceSetupInput(BaseModel):
     lecture_count: int | None = Field(default=None, ge=1, le=80)
     lectures: list["LectureScheduleItem"] = Field(default_factory=list, max_length=80)
     target: Literal["single-lecture", "full-course"] = "single-lecture"
+    access_policy: CourseAccessPolicy = CourseAccessPolicy.TUEBINGEN_ENROLLED
 
 
 class CourseWorkspaceResult(BaseModel):
@@ -213,6 +221,7 @@ class AgentTurnInput(BaseModel):
     lecture_id: str = Field(min_length=1)
     attendance: AttendanceStatus
     message: str = Field(min_length=1, max_length=4000)
+    model: str | None = Field(default=None, min_length=3, max_length=200)
     canvas_state: CanvasState = Field(default_factory=CanvasState)
     canvas_context: CanvasDocument | None = None
     user_memory: UserMemoryContext = Field(default_factory=UserMemoryContext)

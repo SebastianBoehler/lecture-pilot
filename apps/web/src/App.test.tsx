@@ -64,11 +64,40 @@ describe("LecturePilot app shell", () => {
     expect(screen.getByRole("heading", { name: /profile/i })).toBeInTheDocument();
     expect(screen.getByText("student01")).toBeInTheDocument();
     expect(screen.getByText(/student01@uni-tuebingen\.de/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/tutor model preference/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /log out/i }));
 
     expect(screen.getByRole("heading", { name: /sign in with uni tübingen/i })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /course workspaces/i })).not.toBeInTheDocument();
+  });
+
+  it("stores tutor model preference and sends it with tutor turns", async () => {
+    const user = userEvent.setup();
+    const fetchMock = mockLoginAndTutorFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    renderPublishedApp();
+
+    await logIn(user);
+    await user.click(screen.getByRole("button", { name: /open profile/i }));
+    await user.selectOptions(
+      screen.getByLabelText(/tutor model preference/i),
+      "openrouter/openai/gpt-oss-120b:nitro",
+    );
+    expect(window.localStorage.getItem("lecturepilot.tutorModelPreference"))
+      .toBe("openrouter/openai/gpt-oss-120b:nitro");
+
+    await user.click(screen.getByRole("button", { name: /dashboard/i }));
+    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
+    await user.click(screen.getByLabelText(/open tutor chat/i));
+    await user.type(screen.getByPlaceholderText(/ask about this lecture/i), "Test fast model.");
+    await user.click(screen.getByRole("button", { name: /send message/i }));
+
+    await screen.findByText(/Bayes answer from the tutor/i);
+    const agentCall = fetchMock.mock.calls.find(([url]) => String(url).includes("/agent/turn"));
+    expect(JSON.parse(String(agentCall?.[1]?.body))).toMatchObject({
+      model: "openrouter/openai/gpt-oss-120b:nitro",
+    });
   });
 
   it("opens a local demo workspace without submitting credentials", async () => {

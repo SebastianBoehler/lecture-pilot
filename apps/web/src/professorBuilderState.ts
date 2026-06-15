@@ -1,8 +1,10 @@
 import type { LectureScheduleItem } from "./types";
+import type { CourseAccessPolicy } from "./types";
 
 export type BuilderTarget = "single-lecture" | "full-course";
 
 export type CourseSetup = {
+  accessPolicy: CourseAccessPolicy;
   courseTitle: string;
   lectureTitle: string;
   lectureNumber: string;
@@ -28,6 +30,7 @@ export type SavedProfessorFlow = {
 };
 
 export const defaultCourseSetup: CourseSetup = {
+  accessPolicy: "tuebingen_enrolled",
   courseTitle: "Grundlagen des Maschinellen Lernens",
   lectureTitle: "Bayesian Decision Theory",
   lectureNumber: "03",

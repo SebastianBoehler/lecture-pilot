@@ -33,6 +33,7 @@ export const localDemoSession: LoginSession = {
   roles: ["student"],
   courses: [
     {
+      access_policy: "public",
       id: "martius-ml",
       title: "Grundlagen des Maschinellen Lernens",
       professor: "Prof. Georg Martius",

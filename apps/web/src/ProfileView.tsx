@@ -1,11 +1,16 @@
 import type { LoginSession } from "./types";
+import { TUTOR_MODEL_OPTIONS, type TutorModelPreference } from "./tutorModels";
 
 export function ProfileView({
+  modelPreference,
   session,
   onBack,
+  onModelPreferenceChange,
 }: {
+  modelPreference: TutorModelPreference;
   session: LoginSession;
   onBack: () => void;
+  onModelPreferenceChange: (preference: TutorModelPreference) => void;
 }) {
   return (
     <main className="profile-screen">
@@ -38,6 +43,30 @@ export function ProfileView({
             <dd>{session.courses.length}</dd>
           </div>
         </dl>
+
+        <section className="profile-settings" aria-labelledby="profile-settings-heading">
+          <h2 id="profile-settings-heading">Settings</h2>
+          <label className="profile-setting-row">
+            <span>
+              <strong>Tutor model</strong>
+              <small>Saved in this browser for tutor turns.</small>
+            </span>
+            <select
+              aria-label="Tutor model preference"
+              value={modelPreference}
+              onChange={(event) =>
+                onModelPreferenceChange(event.target.value as TutorModelPreference)
+              }
+            >
+              {TUTOR_MODEL_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p>{TUTOR_MODEL_OPTIONS.find((option) => option.value === modelPreference)?.detail}</p>
+        </section>
 
         <section className="profile-courses" aria-labelledby="profile-courses-heading">
           <h2 id="profile-courses-heading">Loaded Courses</h2>

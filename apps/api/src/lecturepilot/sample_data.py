@@ -7,6 +7,7 @@ from lecturepilot.policies import is_lecture_unlocked
 
 
 COURSE = Course(
+    access_policy="public",
     id="martius-ml",
     title="Grundlagen des Maschinellen Lernens",
     professor="Prof. Georg Martius",

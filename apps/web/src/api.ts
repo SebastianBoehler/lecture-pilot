@@ -34,6 +34,7 @@ export type AgentTurnInput = {
   lecture_id: string;
   attendance: Attendance;
   message: string;
+  model?: string | null;
   canvas_state: {
     focused_section_id: string;
   };

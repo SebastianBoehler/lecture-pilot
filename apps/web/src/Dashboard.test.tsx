@@ -47,7 +47,7 @@ describe("Dashboard course workspace matching", () => {
 
     expect(within(nlpCourse).getByText("No tutor workspace yet")).toBeInTheDocument();
     expect(within(nlpCourse).queryByRole("button", { name: /open lecture/i })).not.toBeInTheDocument();
-    expect(within(demoCourse).getByText("Demo workspace")).toBeInTheDocument();
+    expect(within(demoCourse).getByText("Public workspace")).toBeInTheDocument();
     expect(within(demoCourse).getByText(/not part of your current alma enrollment/i)).toBeInTheDocument();
     expect(within(demoCourse).getByRole("button", { name: /open lecture 03/i })).toBeInTheDocument();
   });
@@ -64,7 +64,7 @@ describe("Dashboard course workspace matching", () => {
     renderDashboard(realSession, false);
 
     const demoCourse = workspaceArticle("Grundlagen des Maschinellen Lernens");
-    expect(within(demoCourse).getByText("Demo workspace")).toBeInTheDocument();
+    expect(within(demoCourse).getByText("Public workspace")).toBeInTheDocument();
     expect(within(demoCourse).getByText(/no tutor workspace yet/i)).toBeInTheDocument();
     expect(within(demoCourse).queryByRole("button", { name: /open lecture 03/i })).not.toBeInTheDocument();
   });

@@ -17,6 +17,7 @@ def resolve_course_workspace(
 ) -> CourseWorkspaceResult:
     course_id = _course_id(setup.course_title)
     course = Course(
+        access_policy=setup.access_policy,
         id=course_id,
         title=setup.course_title.strip(),
         professor=professor,

@@ -5,14 +5,25 @@ export function StepHeader({ number, title, done }: { number: string; title: str
   return <header className="step-header"><span>{number}</span><h2>{title}</h2><strong>{done ? "Ready" : "Pending"}</strong></header>;
 }
 
+export function PendingStatus({ label }: { label: string }) {
+  return (
+    <p className="flow-status" role="status">
+      <span aria-hidden="true" />
+      {label}
+    </p>
+  );
+}
+
 export function CourseSetupStep({
   courseReady,
+  isCreating,
   isReady,
   onCreate,
   onSetupChange,
   setup,
 }: {
   courseReady: boolean;
+  isCreating: boolean;
   isReady: boolean;
   onCreate: () => void;
   onSetupChange: (setup: CourseSetup) => void;
@@ -24,6 +35,17 @@ export function CourseSetupStep({
       <label>
         Course name
         <input value={setup.courseTitle} onChange={(event) => onSetupChange({ ...setup, courseTitle: event.target.value })} />
+      </label>
+      <label>
+        Course visibility
+        <select
+          value={setup.accessPolicy}
+          onChange={(event) => onSetupChange({ ...setup, accessPolicy: event.target.value as CourseSetup["accessPolicy"] })}
+        >
+          <option value="tuebingen_enrolled">Uni Tuebingen enrolled students</option>
+          <option value="platform_authenticated">Signed-in platform users</option>
+          <option value="public">Public course</option>
+        </select>
       </label>
       <div className="scope-toggle" role="group" aria-label="Canvas generation scope">
         <button className={setup.target === "single-lecture" ? "is-active" : ""} type="button" onClick={() => onSetupChange({ ...setup, target: "single-lecture" })}>
@@ -45,7 +67,7 @@ export function CourseSetupStep({
           </label>
         </div>
       ) : (
-        <div className="flow-grid">
+        <div className="flow-grid course-scope-grid">
           <label>
             Expected lectures (optional)
             <input
@@ -66,7 +88,10 @@ export function CourseSetupStep({
           </label>
         </div>
       )}
-      <button disabled={!isReady} type="button" onClick={onCreate}>Create course workspace</button>
+      <button disabled={!isReady || isCreating} type="button" onClick={onCreate}>
+        {isCreating ? "Creating workspace..." : "Create course workspace"}
+      </button>
+      {isCreating ? <PendingStatus label="Creating course workspace..." /> : null}
     </section>
   );
 }

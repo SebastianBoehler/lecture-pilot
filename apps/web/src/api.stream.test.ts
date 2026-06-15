@@ -33,6 +33,7 @@ it("emits tutor activity tags while reading the streamed agent turn", async () =
   expect(fetchMock).toHaveBeenCalledWith(
     expect.stringContaining("/agent/turn/stream"),
     expect.objectContaining({
+      body: expect.stringContaining('"model":"openrouter/openai/gpt-oss-120b:nitro"'),
       headers: expect.objectContaining({
         "X-User-Id": "student01",
         "X-User-Role": "student",
@@ -49,6 +50,7 @@ function streamInput() {
     lecture_id: "lecture-03",
     attendance: "present" as const,
     message: "Check my answer.",
+    model: "openrouter/openai/gpt-oss-120b:nitro",
     canvas_state: { focused_section_id: "bayes-formula" },
   };
 }
