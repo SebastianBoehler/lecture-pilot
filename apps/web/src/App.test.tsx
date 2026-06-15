@@ -29,6 +29,8 @@ describe("LecturePilot app shell", () => {
 
     expect(await screen.findByRole("heading", { name: /welcome, student01@uni-tuebingen\.de/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /course workspaces/i })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: /student workspace navigation/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /workspaces/i })).toHaveClass("is-active");
     const probabilisticCourse = screen.getByRole("heading", {
       name: /probabilistic machine learning/i,
     }).closest("article");
@@ -38,7 +40,7 @@ describe("LecturePilot app shell", () => {
     expect(probabilisticCourse).not.toBeNull();
     expect(martiusCourse).not.toBeNull();
     expect(within(probabilisticCourse as HTMLElement).getByText(/no tutor workspace yet/i)).toBeInTheDocument();
-    expect(within(martiusCourse as HTMLElement).getByText(/no tutor workspace yet/i)).toBeInTheDocument();
+    expect(within(martiusCourse as HTMLElement).getByText(/publish the demo workspace/i)).toBeInTheDocument();
     expect(screen.queryByText(/matched from your alma course list/i)).not.toBeInTheDocument();
     expect(within(martiusCourse as HTMLElement).queryByRole("button", { name: /open lecture 03/i })).not.toBeInTheDocument();
     expect(screen.queryByText("very-secret-password")).not.toBeInTheDocument();
@@ -65,6 +67,10 @@ describe("LecturePilot app shell", () => {
     expect(screen.getByText("student01")).toBeInTheDocument();
     expect(screen.getByText(/student01@uni-tuebingen\.de/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/tutor model preference/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /workspaces/i }));
+    expect(screen.getByRole("heading", { name: /course workspaces/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /open profile/i }));
 
     await user.click(screen.getByRole("button", { name: /log out/i }));
 
@@ -306,8 +312,9 @@ describe("LecturePilot app shell", () => {
     await user.click(screen.getByRole("button", { name: /send message/i }));
 
     expect(await screen.findByRole("heading", { name: /soccer scouting example/i })).toBeInTheDocument();
-    expect(screen.queryByText("canvas: student-soccer-bayes-example")).not.toBeInTheDocument();
-    expect(screen.getByText("+1 earlier")).toBeInTheDocument();
+    const history = screen.getByText("+1 earlier").closest("details");
+    expect(history).not.toBeNull();
+    expect(within(history as HTMLElement).getByText("canvas: student-soccer-bayes-example")).toBeInTheDocument();
     expect(screen.getByText("focus: student-soccer-bayes-example")).toBeInTheDocument();
     expect(screen.getByText("highlight: student-soccer-bayes-example-p-1")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: /soccer scouting example/i })).toHaveAttribute(
