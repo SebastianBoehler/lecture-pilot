@@ -1,12 +1,11 @@
 import type { Attendance, Lecture, LoginSession, UniversityCourse } from "./types";
 
-type CourseWorkspaceStatus = "matched" | "demo" | "unmatched";
+type CourseWorkspaceStatus = "matched" | "unmatched";
 
 type CourseWorkspaceGroup = {
   course: UniversityCourse;
   status: CourseWorkspaceStatus;
   statusLabel: string;
-  helperText: string | null;
   emptyText: string;
   tutorAvailable: boolean;
   courseLectures: Lecture[];
@@ -48,7 +47,7 @@ export function Dashboard({
           <h2 id="course-workspaces">Course workspaces</h2>
         </div>
         <div className="course-workspace-list">
-          {courseGroups.map(({ course, status, statusLabel, helperText, emptyText, tutorAvailable, courseLectures }) => (
+          {courseGroups.map(({ course, status, statusLabel, emptyText, tutorAvailable, courseLectures }) => (
             <article className={`course-workspace is-${status}`} key={`${status}-${course.id}`}>
               <div className="course-row">
                 <div>
@@ -57,7 +56,6 @@ export function Dashboard({
                 </div>
                 <span className={`workspace-status is-${status}`}>{statusLabel}</span>
               </div>
-              {helperText ? <p className="workspace-helper">{helperText}</p> : null}
               {tutorAvailable ? (
                 <div className="lecture-list" aria-label={`Available lectures for ${course.title}`}>
                   {courseLectures.map((lecture) => (
@@ -128,8 +126,7 @@ function buildEnrolledCourseGroup(
   return {
     course,
     status: tutorAvailable ? "matched" : "unmatched",
-    statusLabel: tutorAvailable ? workspaceStatusLabel(course) : "No tutor workspace yet",
-    helperText: null,
+    statusLabel: tutorAvailable ? workspaceStatusLabel() : "No tutor workspace yet",
     emptyText: "No matched LecturePilot workspace for this course yet.",
     tutorAvailable,
     courseLectures: tutorAvailable ? publishedLectures : [],
@@ -138,13 +135,13 @@ function buildEnrolledCourseGroup(
 
 function buildDemoCourseGroup(lectures: Lecture[], publishedLectureIds: string[]): CourseWorkspaceGroup {
   const publishedLectures = publishedCourseLectures(lectures, publishedLectureIds);
+  const tutorAvailable = publishedLectures.length > 0;
   return {
     course: demoTutorCourse,
-    status: "demo",
-    statusLabel: workspaceStatusLabel(demoTutorCourse),
-    helperText: "Open course workspace; not part of your current Alma enrollment.",
+    status: tutorAvailable ? "matched" : "unmatched",
+    statusLabel: tutorAvailable ? workspaceStatusLabel() : "No tutor workspace yet",
     emptyText: "No tutor workspace yet. Publish the demo workspace to enable lecture entry.",
-    tutorAvailable: publishedLectures.length > 0,
+    tutorAvailable,
     courseLectures: publishedLectures,
   };
 }
@@ -162,8 +159,7 @@ function isDiscoverableTutorCourse(course: UniversityCourse) {
   return course.access_policy === "public" || course.access_policy === "platform_authenticated";
 }
 
-function workspaceStatusLabel(course: UniversityCourse) {
-  if (course.access_policy === "public") return "Public workspace";
+function workspaceStatusLabel() {
   return "AI tutor available";
 }
 
