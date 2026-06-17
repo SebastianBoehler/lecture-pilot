@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from auth_helpers import professor_headers, student_headers
 from lecturepilot.app import create_app
+from lecturepilot.analytics import AnalyticsStore
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.models import AgentTurnResult, AttendanceStatus, QualityGateDecision, QualityGateStatus
@@ -68,7 +69,7 @@ def test_students_cannot_read_professor_analytics(tmp_path: Path) -> None:
     assert response.status_code == 403
 
 
-def test_demo_course_returns_seeded_analytics_when_empty(tmp_path: Path) -> None:
+def test_demo_course_analytics_are_blank_when_empty(tmp_path: Path) -> None:
     client = _client(tmp_path)
 
     summary = client.get(
@@ -78,13 +79,14 @@ def test_demo_course_returns_seeded_analytics_when_empty(tmp_path: Path) -> None
 
     assert summary.status_code == 200
     payload = summary.json()
-    assert payload["total_events"] > 0
-    assert payload["quizzes"][0]["component_id"] == "lecture-04-retrieval"
-    assert payload["gates"][0]["gate_id"] == "lecture-04-evidence-gate"
+    assert payload["total_events"] == 0
+    assert payload["quizzes"] == []
+    assert payload["gates"] == []
 
 
-def test_demo_course_seeds_missing_quiz_detail_for_partial_logs(tmp_path: Path) -> None:
+def test_demo_course_partial_logs_are_not_filled_with_seed_data(tmp_path: Path) -> None:
     client = _client(tmp_path)
+    client.app.state.analytics_store = AnalyticsStore(client.app.state.canvas_workspace.layout)
     client.app.state.analytics_store.record_quality_gate(
         course_id="martius-ml",
         lecture_id="lecture-01",
@@ -104,8 +106,8 @@ def test_demo_course_seeds_missing_quiz_detail_for_partial_logs(tmp_path: Path) 
 
     assert summary.status_code == 200
     payload = summary.json()
-    assert payload["quizzes"][0]["component_id"] == "lecture-01-retrieval"
-    assert payload["gates"][0]["gate_id"] == "lecture-01-evidence-gate"
+    assert payload["quizzes"] == []
+    assert payload["gates"][0]["gate_id"] == "lecture-learning-outcome-check"
 
 
 def test_quality_gate_turns_are_recorded_in_analytics(tmp_path: Path) -> None:

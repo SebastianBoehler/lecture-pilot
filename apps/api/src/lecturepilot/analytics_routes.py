@@ -6,7 +6,6 @@ from lecturepilot.analytics import AnalyticsStore, LectureAnalyticsSummary, Quiz
 from lecturepilot.api_auth import request_context, require_course_manager, require_learner_workspace_access
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
-from lecturepilot.demo_analytics import demo_lecture_analytics
 from lecturepilot.tenancy import TenantContext
 
 
@@ -61,10 +60,7 @@ def register_analytics_routes(app: FastAPI, *, course_tenant_id: str) -> None:
         context: TenantContext = Depends(request_context),
     ) -> LectureAnalyticsSummary:
         require_course_manager(context, course_tenant_id=course_tenant_id)
-        summary = _analytics_store(app).summary(course_id=course_id, lecture_id=lecture_id)
-        if summary.total_events and summary.quizzes and summary.gates:
-            return summary
-        return demo_lecture_analytics(course_id, lecture_id) or summary
+        return _analytics_store(app).summary(course_id=course_id, lecture_id=lecture_id)
 
 
 def _quiz_block(document: CanvasDocument, block_id: str) -> CanvasBlock:
