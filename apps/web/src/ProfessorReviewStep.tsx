@@ -5,8 +5,9 @@ import type { YoutubeVideoCandidate } from "./types";
 export function ProfessorReviewStep({
   canInclude,
   canSearch,
-  hasCanvas,
+  canContinue,
   onInclude,
+  onContinue,
   onQueryChange,
   onSearch,
   onToggleVideo,
@@ -18,9 +19,10 @@ export function ProfessorReviewStep({
 }: {
   canInclude: boolean;
   canSearch: boolean;
-  hasCanvas: boolean;
+  canContinue: boolean;
   pendingAction: BuilderAction | null;
   onInclude: () => void;
+  onContinue: () => void;
   onQueryChange: (query: string) => void;
   onSearch: () => void;
   onToggleVideo: (videoId: string) => void;
@@ -34,9 +36,10 @@ export function ProfessorReviewStep({
   const isSearching = pendingAction === "search";
   return (
     <section className="flow-card wide">
-      <StepHeader number="04" title="Review YouTube candidates" done={ready} />
+      <StepHeader number="03" title="Review YouTube candidates" done={ready} />
       <p className="drawer-note">
-        Search candidates as soon as the course scope is known. Selected videos can be attached after a canvas draft exists.
+        Search candidates before canvas generation. Selected videos are saved to the course media workspace and
+        included in the draft.
       </p>
       <label>
         Search query
@@ -50,10 +53,10 @@ export function ProfessorReviewStep({
       <button disabled={!canInclude || isBusy} type="button" onClick={onInclude}>
         {isIncluding ? "Including selected videos..." : "Include selected videos"}
       </button>
-      {isIncluding ? <PendingStatus label="Attaching selected videos to the canvas draft..." /> : null}
-      {!hasCanvas && selectedVideos.size ? (
-        <p className="drawer-note">Generate a canvas draft before attaching the selected videos.</p>
-      ) : null}
+      <button disabled={!canContinue || isBusy} type="button" onClick={onContinue}>
+        Continue to canvas draft
+      </button>
+      {isIncluding ? <PendingStatus label="Saving selected videos for the canvas draft..." /> : null}
     </section>
   );
 }

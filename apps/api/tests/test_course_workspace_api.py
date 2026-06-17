@@ -78,6 +78,40 @@ def test_full_course_workspace_accepts_dated_lecture_schedule(tmp_path: Path) ->
     assert payload["lectures"][1]["material_path"] == "Lecture02.tex"
 
 
+def test_created_course_workspace_persists_lecture_schedule(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    response = client.post(
+        "/admin/course-workspaces",
+        json={
+            "course_title": "Demo ML Course",
+            "target": "full-course",
+            "lectures": [
+                {
+                    "number": "01",
+                    "title": "Course Setup",
+                    "date": "2026-05-06",
+                    "material_path": "Lecture01.tex",
+                },
+                {
+                    "number": "02",
+                    "title": "Bayesian Decision Theory",
+                    "date": "2026-05-13",
+                    "material_path": "Lecture02.tex",
+                },
+            ],
+        },
+        headers=professor_headers("prof-demo"),
+    )
+    assert response.status_code == 200
+
+    lectures = client.get("/courses/demo-ml-course/lectures", headers=student_headers("student01"))
+
+    assert lectures.status_code == 200
+    payload = lectures.json()
+    assert [item["lecture"]["id"] for item in payload] == ["lecture-01", "lecture-02"]
+    assert payload[1]["lecture"]["material_path"] == "Lecture02.tex"
+
+
 def test_professor_can_infer_full_course_schedule_from_bundle(tmp_path: Path) -> None:
     client = _client(tmp_path)
     planner = _FakeLectureSchedulePlanner()
@@ -183,6 +217,55 @@ def test_dynamic_course_workspace_uses_uploaded_source(tmp_path: Path) -> None:
     assert student.json()["sections"][0]["title"] == "Planner summary"
 
 
+def test_full_course_draft_uses_matching_lecture_source(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    planner = _RecordingCoursePlanner()
+    client.app.state.course_planner = planner
+    response = client.post(
+        "/admin/course-workspaces",
+        json={
+            "course_title": "Demo ML Course",
+            "target": "full-course",
+            "lectures": [
+                {
+                    "number": "01",
+                    "title": "Course Setup",
+                    "date": "2026-05-06",
+                    "material_path": "Lecture01-eng.tex",
+                },
+                {
+                    "number": "02",
+                    "title": "Generalization",
+                    "date": "2026-05-13",
+                    "material_path": "Lecture02-eng.tex",
+                },
+            ],
+        },
+        headers=professor_headers(),
+    )
+    assert response.status_code == 200
+    for path, title in [
+        ("Lecture01-eng.tex", "Course Setup"),
+        ("Lecture02-eng.tex", "Generalization"),
+    ]:
+        upload = client.post(
+            "/admin/courses/demo-ml-course/materials",
+            data={"path": path},
+            files={"file": (Path(path).name, f"\\begin{{frame}}{{{title}}}{title}\\end{{frame}}".encode())},
+            headers=professor_headers(),
+        )
+        assert upload.status_code == 200
+
+    draft = client.post(
+        "/admin/courses/demo-ml-course/lectures/lecture-02/canvas/draft",
+        headers=professor_headers(),
+    )
+
+    assert draft.status_code == 200
+    assert planner.seen_source_refs == ["Lecture02-eng.tex"]
+    assert draft.json()["source_ref"] == "planned Lecture02-eng.tex"
+
+
 def test_course_canvas_draft_can_use_markdown_text_and_pdf_without_latex(tmp_path: Path) -> None:
     client = _client(tmp_path)
     client.app.state.course_planner = _FakeMixedSourcePlanner()
@@ -279,12 +362,12 @@ class _FakeCoursePlanner:
     async def plan_canvas(self, source_document):
         assert source_document.course_id == "demo-ml-course"
         assert source_document.lecture_id == "lecture-07"
-        assert source_document.source_ref == "uploads/Lecture07.tex"
-        assert source_document.source_kind == "markdown"
+        assert source_document.source_ref == "Lecture07.tex"
+        assert source_document.source_kind == "latex"
         return source_document.model_copy(
             update={
                 "source_kind": "generated",
-                "source_ref": "course planner from uploads/Lecture07.tex",
+                "source_ref": "course planner from Lecture07.tex",
                 "sections": [
                     CanvasSection(
                         id="planner-summary",
@@ -299,6 +382,20 @@ class _FakeCoursePlanner:
                         ],
                     )
                 ],
+            }
+        )
+
+
+class _RecordingCoursePlanner:
+    def __init__(self) -> None:
+        self.seen_source_refs: list[str] = []
+
+    async def plan_canvas(self, source_document):
+        self.seen_source_refs.append(source_document.source_ref)
+        return source_document.model_copy(
+            update={
+                "source_kind": "generated",
+                "source_ref": f"planned {source_document.source_ref}",
             }
         )
 

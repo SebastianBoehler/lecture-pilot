@@ -3,9 +3,30 @@ import sys
 from datetime import date
 from types import SimpleNamespace
 
+from lecturepilot.lecture_schedule import propose_lecture_schedule
 from lecturepilot.lecture_schedule_planner import LectureSchedulePlanner, LiteLLMScheduleClient
 from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
 from lecturepilot.source_bundle import SourceBundleFile
+
+
+def test_schedule_infers_all_detected_lectures_before_requested_count(tmp_path) -> None:
+    first = tmp_path / "Lecture01-eng.tex"
+    second = tmp_path / "Lecture02-eng.tex"
+    first.write_text(r"\section{Introduction}", encoding="utf-8")
+    second.write_text(r"\section{Bayes}", encoding="utf-8")
+
+    proposal = propose_lecture_schedule(
+        course_id="martius-ml",
+        files=[
+            SourceBundleFile(path=first.name, kind="latex", size_bytes=first.stat().st_size),
+            SourceBundleFile(path=second.name, kind="latex", size_bytes=second.stat().st_size),
+        ],
+        roots=[tmp_path],
+        first_lecture_date=date(2026, 5, 6),
+        requested_count=1,
+    )
+
+    assert [lecture.number for lecture in proposal.lectures] == ["01", "02"]
 
 
 async def test_litellm_schedule_client_requests_schedule_schema(monkeypatch) -> None:
@@ -88,6 +109,33 @@ async def test_schedule_planner_repairs_non_object_model_response(tmp_path, monk
     assert "Do not return a bare array" in client.last_messages[-1]["content"]
 
 
+async def test_schedule_planner_keeps_source_detected_lectures_when_model_omits_rows(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    first = tmp_path / "Lecture01-eng.tex"
+    second = tmp_path / "Lecture02-eng.tex"
+    first.write_text(r"\section{Intro}", encoding="utf-8")
+    second.write_text(r"\section{Generalization}", encoding="utf-8")
+    planner = LectureSchedulePlanner(
+        provider_registry=ProviderRegistry.from_env("gemini/test-model"),
+        model_client=_PartialScheduleClient(),
+    )
+
+    proposal = await planner.propose_schedule(
+        course_id="martius-ml",
+        files=[
+            SourceBundleFile(path=first.name, kind="latex", size_bytes=first.stat().st_size),
+            SourceBundleFile(path=second.name, kind="latex", size_bytes=second.stat().st_size),
+        ],
+        roots=[tmp_path],
+        first_lecture_date=date(2026, 5, 6),
+        requested_count=None,
+    )
+
+    assert [lecture.number for lecture in proposal.lectures] == ["01", "02"]
+    assert proposal.lectures[0].title == "Model title"
+    assert proposal.lectures[1].material_path == "Lecture02-eng.tex"
+
+
 class _FakeScheduleClient:
     def __init__(self) -> None:
         self.last_messages = []
@@ -124,6 +172,20 @@ class _RepairingScheduleClient:
                     "title": "Introduction",
                     "date": "2026-05-06",
                     "material_path": "Lecture01.tex",
+                }
+            ]
+        }
+
+
+class _PartialScheduleClient:
+    async def complete_schedule(self, *, settings, messages):
+        return {
+            "lectures": [
+                {
+                    "number": "01",
+                    "title": "Model title",
+                    "date": "2026-05-06",
+                    "material_path": "Lecture01-eng.tex",
                 }
             ]
         }

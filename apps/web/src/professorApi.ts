@@ -1,5 +1,6 @@
 import { apiUrl, readApiError } from "./api";
 import { courseManagerHeaders } from "./authz";
+import { normalizeCourseWorkspaceResult } from "./lectureMapping";
 import type { CourseSetup } from "./professorBuilderState";
 import type {
   CourseWorkspaceResult,
@@ -30,7 +31,7 @@ export async function createCourseWorkspace(
   });
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Course workspace creation failed."));
-  return payload as CourseWorkspaceResult;
+  return normalizeCourseWorkspaceResult(payload);
 }
 
 export async function proposeLectureSchedule(input: {
@@ -92,19 +93,14 @@ export async function searchYoutubeMedia(courseId: string, query: string, sessio
 
 export async function includeYoutubeMedia(input: {
   courseId: string;
-  lectureId: string;
-  sectionId: string | null;
   video: YoutubeVideoCandidate;
   session: LoginSession;
 }) {
-  const response = await fetch(
-    apiUrl(`/admin/courses/${input.courseId}/lectures/${input.lectureId}/media/youtube`),
-    {
-      method: "POST",
-      headers: { ...courseManagerHeaders(input.session), "Content-Type": "application/json" },
-      body: JSON.stringify({ section_id: input.sectionId, video: input.video }),
-    },
-  );
+  const response = await fetch(apiUrl(`/admin/courses/${input.courseId}/media/youtube`), {
+    method: "POST",
+    headers: { ...courseManagerHeaders(input.session), "Content-Type": "application/json" },
+    body: JSON.stringify({ section_id: null, video: input.video }),
+  });
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "YouTube include failed."));
   return payload as { block_id: string };

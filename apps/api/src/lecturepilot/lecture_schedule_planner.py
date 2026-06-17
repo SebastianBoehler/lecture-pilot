@@ -71,7 +71,14 @@ class LectureSchedulePlanner:
         for _ in range(2):
             try:
                 payload = await self.model_client.complete_schedule(settings=settings, messages=messages)
-                return _read_proposal(payload, course_id, files)
+                return _complete_source_schedule(
+                    _read_proposal(payload, course_id, files),
+                    course_id=course_id,
+                    files=files,
+                    roots=roots,
+                    first_lecture_date=first_lecture_date,
+                    requested_count=requested_count,
+                )
             except ProviderConfigurationError as exc:
                 last_error = exc
                 messages = [*messages, _repair_message(str(exc))]
@@ -141,7 +148,10 @@ def _source_evidence(
         "Deterministic file candidates, for reference only:",
     ]
     for lecture in seed.lectures:
-        lines.append(f"- {lecture.number}: path={lecture.material_path}; rough_title={lecture.title}; date={lecture.date}")
+        lines.append(
+            f"- {lecture.number}: path={lecture.material_path}; "
+            f"rough_title={lecture.title}; date={lecture.date}"
+        )
     lines.append("\nSource bundle files and excerpts:")
     for item in sorted(files, key=_file_priority)[:MAX_EVIDENCE_FILES]:
         lines.append(_file_evidence(item, roots))
@@ -217,7 +227,7 @@ def _read_proposal(payload: dict, course_id: str, files: list[SourceBundleFile])
         try:
             lectures.append(
                 LectureScheduleItem(
-                    number=str(raw.get("number") or f"{index:02d}"),
+                    number=_schedule_number(str(raw.get("number") or f"{index:02d}")),
                     title=str(raw.get("title") or f"Lecture {index:02d}"),
                     date=raw.get("date"),
                     material_path=material_path,
@@ -232,3 +242,40 @@ def _read_proposal(payload: dict, course_id: str, files: list[SourceBundleFile])
         lectures=lectures,
         source_paths=[lecture.material_path for lecture in lectures if lecture.material_path],
     )
+
+
+def _complete_source_schedule(
+    proposal: LectureScheduleProposal,
+    *,
+    course_id: str,
+    files: list[SourceBundleFile],
+    roots: list[Path],
+    first_lecture_date: date | None,
+    requested_count: int | None,
+) -> LectureScheduleProposal:
+    deterministic = propose_lecture_schedule(
+        course_id=course_id,
+        files=files,
+        roots=roots,
+        first_lecture_date=first_lecture_date,
+        requested_count=requested_count,
+    )
+    if len(proposal.lectures) >= len(deterministic.lectures):
+        return proposal
+    by_number = {_lecture_key(lecture.number): lecture for lecture in proposal.lectures}
+    merged = [by_number.get(_lecture_key(lecture.number), lecture) for lecture in deterministic.lectures]
+    return LectureScheduleProposal(
+        course_id=course_id,
+        lectures=merged,
+        source_paths=[lecture.material_path for lecture in merged if lecture.material_path],
+    )
+
+
+def _lecture_key(number: str) -> str:
+    digits = re.sub(r"\D+", "", number)
+    return str(int(digits)) if digits else number.strip().casefold()
+
+
+def _schedule_number(number: str) -> str:
+    digits = re.sub(r"\D+", "", number)
+    return f"{int(digits):02d}" if digits else number.strip()

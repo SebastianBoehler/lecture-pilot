@@ -8,6 +8,8 @@ from pathlib import Path
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.models import YoutubeSelectionInput, YoutubeSelectionResult, YoutubeVideoCandidate
 
+COURSE_MEDIA_POOL_ID = "__course__"
+
 
 def add_youtube_selection(
     *,
@@ -39,6 +41,46 @@ def add_youtube_selection(
         block_id=block_id,
         video=selection.video,
         storage_path=str(path),
+    )
+
+
+def add_course_youtube_selection(
+    *,
+    material_root: Path,
+    course_id: str,
+    selection: YoutubeSelectionInput,
+    approved_by: str,
+) -> YoutubeSelectionResult:
+    return add_youtube_selection(
+        material_root=material_root,
+        course_id=course_id,
+        lecture_id=COURSE_MEDIA_POOL_ID,
+        selection=selection.model_copy(update={"section_id": None}),
+        approved_by=approved_by,
+    )
+
+
+def course_media_evidence(document: CanvasDocument, material_root: Path) -> CanvasDocument:
+    videos = list_course_media(
+        material_root=material_root,
+        course_id=document.course_id,
+        lecture_id=COURSE_MEDIA_POOL_ID,
+    )
+    blocks = [_evidence_video_block(YoutubeVideoCandidate.model_validate(entry["video"])) for entry in videos]
+    if not blocks:
+        return document
+    return document.model_copy(
+        update={
+            "sections": [
+                *document.sections,
+                CanvasSection(
+                    id="professor-approved-video-evidence",
+                    title="Professor approved video candidates",
+                    source_ref="course media workspace",
+                    blocks=blocks,
+                ),
+            ]
+        }
     )
 
 
@@ -116,6 +158,22 @@ def _video_block(video: YoutubeVideoCandidate, *, block_id: str) -> CanvasBlock:
         id=block_id,
         type="video",
         text=detail,
+        asset_url=video.url,
+        caption=video.title,
+    )
+
+
+def _evidence_video_block(video: YoutubeVideoCandidate) -> CanvasBlock:
+    detail = f"{video.channel_title}"
+    if video.duration.display:
+        detail = f"{detail} · {video.duration.display}"
+    if video.reason:
+        detail = f"{detail} · {video.reason}"
+    return CanvasBlock(
+        id=f"course-video-{_safe_id(video.video_id)}",
+        type="video",
+        text=detail,
+        asset_path=video.url,
         asset_url=video.url,
         caption=video.title,
     )

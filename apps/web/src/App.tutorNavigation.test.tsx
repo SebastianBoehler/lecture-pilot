@@ -41,6 +41,7 @@ describe("Tutor canvas navigation", () => {
             section_id: "student-soccer-bayes-example",
             section: soccerCanvasSection(),
           },
+          { type: "highlight_span", section_id: "bayes-formula", span_id: "bayes-formula-list" },
           { type: "focus_section", section_id: "student-soccer-bayes-example" },
         ],
         quality_gate: gate(),

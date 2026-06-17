@@ -236,16 +236,25 @@ class AgentToolExecutor:
         return {"memory": "updated"}
 
     def _generate_image(self, args: dict[str, Any]) -> dict[str, Any]:
-        return generate_workspace_image(
+        section_id = safe_id(required_str(args, "section_id", "student-generated-image"))
+        image = generate_workspace_image(
             image_generator=self.image_generator,
             layout=self.canvas_workspace.layout,
             user_id=self.user_id,
             course_id=self.course_id,
             lecture_id=self.lecture_id,
             prompt=required_str(args, "prompt"),
-            section_id=required_str(args, "section_id", "student-generated-image"),
+            section_id=section_id,
             filename=str(args.get("filename") or "") or None,
         )
+        section_path = f"/lecture/canvas/student/{section_id}.md"
+        caption = image["caption"].replace("[", "(").replace("]", ")")
+        content = (
+            "# Generated infographic\n\n"
+            f"![{caption}]({image['asset_url']})\n"
+        )
+        written = self._write(section_path, content)
+        return {**image, "section_id": written.get("section_id") or section_id}
 
     def _validate_canvas_write(self, resolved: ToolPath, previous: str | None) -> None:
         if not resolved.logical.startswith("/lecture/canvas/"):

@@ -57,6 +57,9 @@ def _with_tool_instruction(messages: list[dict[str, str]], tool_profile: AgentTo
         "When write creates canvas Markdown, use the returned path and section_id for focus/highlight. "
         "Do not duplicate a successful write/edit/generate_image as an append_section or update_section "
         "in the final JSON; the filesystem tool output is the source of truth. "
+        "If the student asks for an infographic, diagram, image, plot, chart, graph, or visual, "
+        "call generate_image before your final answer. Do not claim visual content was added unless "
+        "generate_image returned ok=true. "
         "Use focus/highlight tools to navigate attention. "
         "After tool use, return only the final LecturePilot JSON."
     )

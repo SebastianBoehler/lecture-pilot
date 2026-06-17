@@ -71,13 +71,23 @@ export function LoginView({
               value={password}
             />
           </label>
-          <button disabled={isSubmitting || !username.trim() || !password} type="submit">
+          <button
+            className="login-submit-button"
+            disabled={isSubmitting || !username.trim() || !password}
+            type="submit"
+          >
+            {isSubmitting ? <span className="login-spinner" aria-hidden="true" /> : null}
             {isSubmitting ? "Connecting" : "Connect to TUE API"}
           </button>
-          <button className="secondary-button" type="button" onClick={onOpenDemo}>
+          {isSubmitting ? (
+            <p className="login-status" role="status">
+              Contacting the local API and loading your Alma courses. This can take a moment.
+            </p>
+          ) : null}
+          <button className="secondary-button" disabled={isSubmitting} type="button" onClick={onOpenDemo}>
             Preview local demo
           </button>
-          <button className="secondary-button" type="button" onClick={onOpenProfessorDemo}>
+          <button className="secondary-button" disabled={isSubmitting} type="button" onClick={onOpenProfessorDemo}>
             Preview professor account
           </button>
           {error ? <p className="form-error">{error}</p> : null}

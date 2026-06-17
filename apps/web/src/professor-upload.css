@@ -1,0 +1,63 @@
+.material-drop-zone {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  border: 1px dashed color-mix(in srgb, var(--color-accent-primary) 42%, var(--color-border-primary));
+  border-radius: 10px;
+  padding: 24px 18px;
+  background: color-mix(in srgb, var(--color-bg-secondary) 76%, transparent);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  text-align: center;
+}
+
+.material-drop-zone.is-drag-over {
+  border-color: var(--color-accent-primary);
+  background: color-mix(in srgb, var(--color-accent-primary) 10%, var(--color-bg-primary));
+}
+
+.material-drop-zone.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.material-drop-title {
+  color: var(--color-text-primary);
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.material-drop-copy,
+.material-selection-summary {
+  color: var(--color-text-tertiary);
+  font-size: 13px;
+}
+
+.material-drop-button {
+  border: 1px solid var(--color-border-primary);
+  border-radius: 6px;
+  padding: 7px 12px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.material-drop-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.material-selection-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
+
+.material-selection-summary span {
+  color: var(--color-text-secondary);
+}

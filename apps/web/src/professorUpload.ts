@@ -1,10 +1,9 @@
-type FileWithRelativePath = File & { webkitRelativePath?: string };
+import { fileRelativePath } from "./materialDrop";
 
 export function uploadDestination(basePath: string, file: File, fileCount: number) {
   const target = basePath.trim().replace(/^\/+|\/+$/g, "");
   if (fileCount === 1 && /\.[^/]+$/.test(target)) {
     return target;
   }
-  const relativePath = (file as FileWithRelativePath).webkitRelativePath || file.name;
-  return [target || "uploads", relativePath].join("/");
+  return [target || "uploads", fileRelativePath(file)].join("/");
 }

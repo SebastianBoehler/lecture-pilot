@@ -8,7 +8,7 @@ from lecturepilot.canvas_workspace import CanvasWorkspace
 from auth_helpers import professor_headers, student_headers
 
 
-def test_source_bundle_endpoint_lists_professor_materials(tmp_path: Path) -> None:
+def test_source_bundle_endpoint_lists_only_uploaded_materials(tmp_path: Path) -> None:
     material_root = tmp_path / "course"
     _write(material_root / "Lecture03-eng.tex")
     _write(material_root / "images" / "Ch3" / "diagram.pdf")
@@ -27,18 +27,8 @@ def test_source_bundle_endpoint_lists_professor_materials(tmp_path: Path) -> Non
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["counts_by_kind"] == {
-        "latex": 1,
-        "notebook": 1,
-        "pdf": 1,
-        "video": 1,
-    }
-    assert [item["path"] for item in payload["files"]] == [
-        "Lecture03-eng.tex",
-        "code/notebook.ipynb",
-        "images/Ch3/diagram.pdf",
-        "videos/demo.mp4",
-    ]
+    assert payload["counts_by_kind"] == {}
+    assert payload["files"] == []
     upload_types = {item["suffix"]: item for item in payload["supported_uploads"]}
     assert upload_types[".tex"]["kind"] == "latex"
     assert upload_types[".mp4"]["max_bytes"] == 500 * 1024 * 1024

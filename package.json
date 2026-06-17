@@ -9,8 +9,8 @@
     "build": "npm run build --workspace apps/web",
     "test": "npm run test --workspace apps/web",
     "test:api": "pytest apps/api/tests",
+    "dev:demo": "scripts/dev-demo.sh",
     "dev:web": "npm run dev --workspace apps/web",
     "dev:api": "uvicorn lecturepilot.app:app --app-dir apps/api/src --reload"
   }
 }
-

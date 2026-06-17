@@ -34,15 +34,11 @@ describe("LecturePilot app shell", () => {
     const probabilisticCourse = screen.getByRole("heading", {
       name: /probabilistic machine learning/i,
     }).closest("article");
-    const martiusCourse = screen.getByRole("heading", {
-      name: /grundlagen des maschinellen lernens/i,
-    }).closest("article");
     expect(probabilisticCourse).not.toBeNull();
-    expect(martiusCourse).not.toBeNull();
     expect(within(probabilisticCourse as HTMLElement).getByText(/no tutor workspace yet/i)).toBeInTheDocument();
-    expect(within(martiusCourse as HTMLElement).getByText(/publish the demo workspace/i)).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /grundlagen des maschinellen lernens/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/matched from your alma course list/i)).not.toBeInTheDocument();
-    expect(within(martiusCourse as HTMLElement).queryByRole("button", { name: /open lecture 03/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /open lecture 03/i })).not.toBeInTheDocument();
     expect(screen.queryByText("very-secret-password")).not.toBeInTheDocument();
     const request = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
     expect(request).toEqual({

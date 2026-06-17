@@ -11,20 +11,20 @@ export function builderSteps({
   bundleReady,
   canvasReady,
   courseReady,
-  videoReviewReady,
+  mediaReady,
   workspacePublished,
 }: {
   bundleReady: boolean;
   canvasReady: boolean;
   courseReady: boolean;
-  videoReviewReady: boolean;
+  mediaReady: boolean;
   workspacePublished: boolean;
 }): StepState[] {
   return [
     { id: "define", label: "Define", number: "01", ready: courseReady },
     { id: "upload", label: "Upload", number: "02", ready: bundleReady },
-    { id: "generate", label: "Generate", number: "03", ready: canvasReady },
-    { id: "review", label: "Review", number: "04", ready: videoReviewReady },
+    { id: "review", label: "Media", number: "03", ready: mediaReady },
+    { id: "generate", label: "Generate", number: "04", ready: canvasReady },
     { id: "publish", label: "Publish", number: "05", ready: workspacePublished },
   ];
 }
@@ -38,8 +38,8 @@ export function initialBuilderStep({
   canvasReady: boolean;
   courseReady: boolean;
 }): BuilderStep {
-  if (canvasReady) return "review";
-  if (bundleReady) return "generate";
+  if (canvasReady) return "publish";
+  if (bundleReady) return "review";
   if (courseReady) return "upload";
   return "define";
 }

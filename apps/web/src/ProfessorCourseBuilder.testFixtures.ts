@@ -2,6 +2,8 @@ import { vi } from "vitest";
 
 export function professorFetchMock() {
   return vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.endsWith("/courses")) return json([workspaceCourse()]);
+    if (url.match(/\/courses\/[^/]+\/lectures$/)) return json(lectureListPayload());
     if (url.endsWith("/admin/course-workspaces")) return json(courseWorkspacePayload(init));
     if (url.includes("/lecture-schedule")) return json(lectureSchedulePayload());
     if (url.includes("/source-bundle")) return json(sourceBundle());
@@ -22,6 +24,35 @@ export function professorFetchMock() {
     if (url.includes("/media/youtube")) return json({ block_id: "youtube-j4yxsEQqPMI" });
     throw new Error(`Unexpected fetch: ${url} ${init?.method ?? "GET"}`);
   });
+}
+
+function workspaceCourse() {
+  return {
+    access_policy: "public",
+    id: "demo-ml-course",
+    title: "Demo ML Course",
+    professor: "professor-demo",
+    term: "Sommer 2026",
+  };
+}
+
+function lectureListPayload() {
+  const workspace = courseWorkspacePayload({
+    body: JSON.stringify({
+      lectures: lectureSchedulePayload().lectures,
+    }),
+  });
+  return workspace.lectures.map((lecture: {
+    course_id: string;
+    date: string;
+    id: string;
+    material_path?: string;
+    title: string;
+  }) => ({
+    lecture,
+    unlocked: true,
+    attendance: "unknown",
+  }));
 }
 
 function json(payload: unknown) {

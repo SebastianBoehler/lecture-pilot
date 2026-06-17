@@ -4,7 +4,12 @@ from fastapi.testclient import TestClient
 
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
-from lecturepilot.course_media import add_youtube_selection, apply_course_media
+from lecturepilot.course_media import (
+    add_course_youtube_selection,
+    add_youtube_selection,
+    apply_course_media,
+    course_media_evidence,
+)
 from lecturepilot.models import YoutubeSearchResponse, YoutubeSelectionInput, YoutubeVideoCandidate
 
 
@@ -30,15 +35,19 @@ def test_professor_can_search_and_include_youtube_video(tmp_path) -> None:
     candidate = search.json()["items"][0]
 
     include = client.post(
-        "/admin/courses/martius-ml/lectures/lecture-03/media/youtube",
+        "/admin/courses/martius-ml/media/youtube",
         headers=HEADERS,
-        json={"section_id": "bayes-formula", "video": candidate},
+        json={"video": candidate},
     )
 
     assert include.status_code == 200
     payload = include.json()
     assert payload["block_id"] == "youtube-abc123abc12"
-    assert (tmp_path / "canvas" / "media" / "martius-ml-lecture-03.json").exists()
+    assert (tmp_path / "canvas" / "media" / "martius-ml-__course__.json").exists()
+
+    listed = client.get("/admin/courses/martius-ml/media/youtube", headers=HEADERS)
+    assert listed.status_code == 200
+    assert listed.json()[0]["video"]["url"] == "https://www.youtube.com/watch?v=abc123abc12"
 
 
 def test_students_cannot_manage_youtube_course_media(tmp_path) -> None:
@@ -60,10 +69,9 @@ def test_professor_can_clear_course_youtube_media(tmp_path) -> None:
     app = create_app()
     app.state.canvas_workspace = SimpleNamespace(material_root=tmp_path)
     client = TestClient(app)
-    add_youtube_selection(
+    add_course_youtube_selection(
         material_root=tmp_path,
         course_id="martius-ml",
-        lecture_id="lecture-03",
         selection=YoutubeSelectionInput(section_id="bayes-formula", video=_candidate()),
         approved_by="professor-1",
     )
@@ -72,7 +80,7 @@ def test_professor_can_clear_course_youtube_media(tmp_path) -> None:
 
     assert response.status_code == 200
     assert response.json() == {"deleted": 1}
-    assert not (tmp_path / "canvas" / "media" / "martius-ml-lecture-03.json").exists()
+    assert not (tmp_path / "canvas" / "media" / "martius-ml-__course__.json").exists()
 
 
 def test_approved_youtube_selection_merges_into_canvas_section(tmp_path) -> None:
@@ -99,6 +107,32 @@ def test_approved_youtube_selection_merges_into_canvas_section(tmp_path) -> None
 
     assert merged.sections[0].blocks[0].type == "video"
     assert merged.sections[0].blocks[0].asset_url == "https://www.youtube.com/watch?v=abc123abc12"
+
+
+def test_course_youtube_selection_becomes_planner_evidence(tmp_path) -> None:
+    add_course_youtube_selection(
+        material_root=tmp_path,
+        course_id="martius-ml",
+        selection=YoutubeSelectionInput(video=_candidate()),
+        approved_by="professor-1",
+    )
+    document = CanvasDocument(
+        id="martius-ml-lecture-03",
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        title="Bayesian Decision Theory",
+        source_kind="latex",
+        source_ref="Lecture03-eng.tex",
+        workspace_path="canvas/index.md",
+        sections=[CanvasSection(id="bayes-formula", title="Bayes formula")],
+    )
+
+    with_media = course_media_evidence(document, tmp_path)
+
+    evidence = with_media.sections[-1]
+    assert evidence.id == "professor-approved-video-evidence"
+    assert evidence.blocks[0].type == "video"
+    assert evidence.blocks[0].asset_path == "https://www.youtube.com/watch?v=abc123abc12"
 
 
 class _FakeYoutubeDiscovery:

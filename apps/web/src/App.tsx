@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { getDraftLectureCanvas, getLectureCanvas, publishLectureCanvas, sendAgentTurnStream } from "./api";
+import {
+  getCourses,
+  getCourseLectures,
+  getDraftLectureCanvas,
+  getLectureCanvas,
+  publishLectureCanvas,
+  sendAgentTurnStream,
+} from "./api";
 import {
   appendLiveToolTag,
   applyCanvasSection,
@@ -12,6 +19,7 @@ import { initialMessagesForAttendance, localDemoSession, localProfessorSession }
 import { canManageCourses } from "./authz";
 import { CourseManagementAccessRequired } from "./CourseManagementAccessRequired";
 import { Dashboard } from "./Dashboard";
+import { readDemoWorkspaceCourse, writeDemoWorkspaceCourse } from "./demoWorkspaceAccess";
 import { draftPreviewUrl } from "./draftPreviewUrl";
 import { LessonWorkspace } from "./LessonWorkspace";
 import { LoginView } from "./LoginView";
@@ -32,6 +40,7 @@ import type {
   Lecture,
   LoginSession,
   Theme,
+  UniversityCourse,
   View,
 } from "./types";
 
@@ -40,6 +49,8 @@ function App() {
   const [session, setSession] = useStoredLoginSession();
   const [view, setView] = useState<View>(session ? "dashboard" : "login");
   const [availableLectures, setAvailableLectures] = useState(lectures);
+  const [workspaceCourse, setWorkspaceCourse] = useState<UniversityCourse>(localDemoSession.courses[0]);
+  const [workspaceCourseId, setWorkspaceCourseId] = useState("martius-ml");
   const [selectedCourseId, setSelectedCourseId] = useState("martius-ml");
   const [selectedLecture, setSelectedLecture] = useState(lectures[2]);
   const [lessonUserId, setLessonUserId] = useState(effectiveUserId(session));
@@ -56,11 +67,45 @@ function App() {
   );
   const [lastTutorModel, setLastTutorModel] = useState<string | null>(null);
   const [tutorModelPreference, setTutorModelPreference] = useTutorModelPreference();
-  const [publishedLectureIds, setPublishedLectureIds] = usePublishedLectures("martius-ml", lectures, session);
+  const [publishedLectureIds, setPublishedLectureIds] = usePublishedLectures(
+    workspaceCourseId,
+    availableLectures,
+    session,
+  );
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+
+  useEffect(() => {
+    if (!session) return;
+    void loadWorkspaceCourse(session, workspaceCourseId);
+  }, [session]);
+
+  async function loadWorkspaceCourse(activeSession: LoginSession, preferredCourseId = workspaceCourseId) {
+    try {
+      const courses = await getCourses(activeSession);
+      const demoCourse = readDemoWorkspaceCourse();
+      const preferredCourse = courses.find((course) => course.id === preferredCourseId);
+      const storedCourses = [...courses].reverse();
+      const candidates = [demoCourse, preferredCourse, ...storedCourses].filter(
+        (course, index, list): course is UniversityCourse =>
+          Boolean(course) && list.findIndex((item) => item?.id === course?.id) === index,
+      );
+      for (const course of candidates) {
+        const nextLectures = await getCourseLectures(course.id, activeSession);
+        if (!nextLectures.length) continue;
+        setWorkspaceCourse(course);
+        setWorkspaceCourseId(course.id);
+        setSelectedCourseId(course.id);
+        setAvailableLectures(nextLectures);
+        setSelectedLecture((current) => nextLectures.find((lecture) => lecture.id === current.id) ?? nextLectures[0]);
+        return;
+      }
+    } catch {
+      setAvailableLectures(lectures);
+    }
+  }
 
   async function handleTutorMessage(message: string) {
     const timestamp = Date.now();
@@ -99,6 +144,7 @@ function App() {
 
     let nextFocusSectionId: string | null = null;
     let nextHighlightBlockId: string | null = null;
+    let nextHighlightSectionId: string | null = null;
     let nextHighlightText: string | null = null;
     let generatedSectionId: string | null = null;
     for (const command of result.canvas_commands) {
@@ -112,10 +158,15 @@ function App() {
       }
       if (command.type === "highlight_span" && command.span_id) {
         nextHighlightBlockId = command.span_id;
+        nextHighlightSectionId = command.section_id ?? null;
         nextHighlightText = command.highlight_text ?? null;
       }
     }
     const navigationTargetId = nextFocusSectionId ?? generatedSectionId;
+    if (navigationTargetId && nextHighlightSectionId && nextHighlightSectionId !== navigationTargetId) {
+      nextHighlightBlockId = null;
+      nextHighlightText = null;
+    }
     if (navigationTargetId) {
       setFocusedSectionId(navigationTargetId);
     }
@@ -139,7 +190,6 @@ function App() {
     setCanvasDocument(null);
     setCanvasError(null);
     setMessages(initialMessagesForAttendance(lectures[2].attendance));
-    setSelectedCourseId("martius-ml");
     setLessonUserId("local-demo");
     setLastTutorModel(null);
   }
@@ -240,14 +290,17 @@ function App() {
           onLogin={(nextSession) => {
             setSession(nextSession);
             setView("dashboard");
+            void loadWorkspaceCourse(nextSession);
           }}
           onOpenDemo={() => {
             setSession(localDemoSession);
             setView("dashboard");
+            void loadWorkspaceCourse(localDemoSession);
           }}
           onOpenProfessorDemo={() => {
             setSession(localProfessorSession);
             setView("professor");
+            void loadWorkspaceCourse(localProfessorSession);
           }}
         />
       ) : view === "dashboard" ? (
@@ -255,8 +308,9 @@ function App() {
           lectures={availableLectures}
           publishedLectureIds={publishedLectureIds}
           session={session}
+          workspaceCourse={workspaceCourse}
           onOpen={(lecture) => {
-            void handleOpenLecture("martius-ml", lecture);
+            void handleOpenLecture(workspaceCourseId, lecture);
           }}
           onSetAttendance={handleSetAttendance}
         />
@@ -274,6 +328,14 @@ function App() {
             const result = await publishLectureCanvas(courseId, lectureId, courseManagerSession);
             setPublishedLectureIds((current) => Array.from(new Set([...current, lectureId])));
             return result;
+          }}
+          onWorkspaceLecturesChange={(course, nextLectures) => {
+            if (!nextLectures.length) return;
+            writeDemoWorkspaceCourse(course);
+            setWorkspaceCourse(course);
+            setWorkspaceCourseId(course.id);
+            setSelectedCourseId(course.id);
+            setAvailableLectures(nextLectures);
           }}
           previewWorkspaceUrl={draftPreviewUrl}
           publishedLectureIds={publishedLectureIds}

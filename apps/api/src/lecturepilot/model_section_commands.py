@@ -39,6 +39,9 @@ def _read_generated_blocks(raw_blocks: object, section_id: str) -> list[CanvasBl
 
 
 def _read_generated_block(raw_block: dict, section_id: str, index: int) -> CanvasBlock:
+    coerced = _coerced_quiz_block(raw_block, section_id, index)
+    if coerced is not None:
+        return coerced
     block_type = raw_block.get("type")
     if block_type not in _GENERATED_BLOCK_TYPES:
         block_type = "paragraph"
@@ -126,3 +129,71 @@ def _component_version(value: object) -> int | None:
     if isinstance(value, str) and value.isdigit() and int(value) >= 1:
         return int(value)
     return None
+
+
+def _coerced_quiz_block(raw_block: dict, section_id: str, index: int) -> CanvasBlock | None:
+    text = str(raw_block.get("text") or "")
+    if "items:" not in text and "type=quiz" not in text and "--- quiz" not in text:
+        return None
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    question = _field(lines, "text")
+    items = _schema_items(lines)
+    if not question or len(items) < 2:
+        return None
+    answer_index = next((item_index for item_index, (_, correct) in enumerate(items) if correct), None)
+    return CanvasBlock(
+        id=safe_generated_id(str(raw_block.get("id") or f"{section_id}-quiz-{index}")),
+        type="quiz",
+        text=trim_generated_text(question, 1200),
+        items=[trim_generated_text(item, 240) for item, _ in items],
+        answer_index=answer_index,
+    )
+
+
+def _schema_items(lines: list[str]) -> list[tuple[str, bool]]:
+    items: list[tuple[str, bool]] = []
+    in_items = False
+    current_text = ""
+    current_correct = False
+    for line in lines:
+        if line == "items:":
+            in_items = True
+            continue
+        if not in_items:
+            continue
+        if line.startswith(("id=", "- id:")):
+            if current_text:
+                items.append((current_text, current_correct))
+            current_text = ""
+            current_correct = False
+        elif line.startswith(("text=", "text:")):
+            current_text = _field_value(line)
+        elif line.startswith(("correct=", "correct:")):
+            current_correct = _field_value(line).lower() == "true"
+        elif not _is_schema_line(line):
+            if current_text:
+                items.append((current_text, current_correct))
+            current_text = line
+            current_correct = False
+    if current_text:
+        items.append((current_text, current_correct))
+    return items
+
+
+def _field(lines: list[str], key: str) -> str:
+    for line in lines:
+        if line.startswith((f"{key}=", f"{key}:")):
+            return _field_value(line)
+    return ""
+
+
+def _field_value(line: str) -> str:
+    _, separator, value = line.partition("=")
+    if not separator:
+        _, _, value = line.partition(":")
+    return value.strip().strip('"').strip("'")
+
+
+def _is_schema_line(line: str) -> bool:
+    key = line.partition("=")[0].partition(":")[0].strip()
+    return key in {"id", "section_id", "span_id", "title", "type", "text", "correct"} or line.startswith("---")

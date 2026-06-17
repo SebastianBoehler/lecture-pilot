@@ -20,7 +20,7 @@ def propose_lecture_schedule(
 ) -> LectureScheduleProposal:
     selected = _select_lecture_files(files)
     numbers = sorted(selected)
-    if requested_count:
+    if not numbers and requested_count:
         numbers = list(range(1, requested_count + 1))
     start_date = first_lecture_date or date.today()
     lectures = [

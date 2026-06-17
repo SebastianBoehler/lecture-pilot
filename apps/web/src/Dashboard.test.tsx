@@ -39,20 +39,28 @@ const matchedSession: LoginSession = {
 };
 
 describe("Dashboard course workspace matching", () => {
-  it("keeps real enrolled courses separate from the published demo workspace", () => {
+  it("keeps real enrolled courses separate from a non-enrolled workspace by default", () => {
     renderDashboard(realSession, true);
 
     const nlpCourse = workspaceArticle("INFO4193 Natural Language Processing");
-    const demoCourse = workspaceArticle("Grundlagen des Maschinellen Lernens");
 
     expect(within(nlpCourse).getByText("No tutor workspace yet")).toBeInTheDocument();
     expect(within(nlpCourse).queryByRole("button", { name: /open lecture/i })).not.toBeInTheDocument();
-    expect(within(demoCourse).getByText("AI tutor available")).toBeInTheDocument();
-    expect(within(demoCourse).queryByText(/not part of your current alma enrollment/i)).not.toBeInTheDocument();
-    expect(within(demoCourse).getByRole("button", { name: /open lecture 03/i })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Grundlagen des Maschinellen Lernens" })).not.toBeInTheDocument();
   });
 
-  it("does not duplicate the demo course when the student is enrolled in the matched course", () => {
+  it("shows the created workspace to a non-enrolled account only with the local demo bridge", () => {
+    window.localStorage.setItem("lecturepilot.demo.workspaceCourse", JSON.stringify(workspaceCourse));
+    renderDashboard(realSession, true);
+
+    const workspaceArticleElement = workspaceArticle("Grundlagen des Maschinellen Lernens");
+
+    expect(within(workspaceArticleElement).getByText("AI tutor available")).toBeInTheDocument();
+    expect(within(workspaceArticleElement).queryByText(/not part of your current alma enrollment/i)).not.toBeInTheDocument();
+    expect(within(workspaceArticleElement).getByRole("button", { name: /open lecture 03/i })).toBeInTheDocument();
+  });
+
+  it("does not duplicate the workspace course when the student is enrolled in the matched course", () => {
     renderDashboard(matchedSession, true);
 
     expect(screen.getAllByRole("heading", { name: "Grundlagen des Maschinellen Lernens" })).toHaveLength(1);
@@ -60,15 +68,21 @@ describe("Dashboard course workspace matching", () => {
     expect(screen.queryByText(/not part of your current alma enrollment/i)).not.toBeInTheDocument();
   });
 
-  it("shows an unpublished demo workspace without enabling lecture entry", () => {
+  it("hides the discoverable workspace until it is published", () => {
+    window.localStorage.setItem("lecturepilot.demo.workspaceCourse", JSON.stringify(workspaceCourse));
     renderDashboard(realSession, false);
 
-    const demoCourse = workspaceArticle("Grundlagen des Maschinellen Lernens");
-    expect(within(demoCourse).getByText("No tutor workspace yet")).toBeInTheDocument();
-    expect(within(demoCourse).getByText(/publish the demo workspace/i)).toBeInTheDocument();
-    expect(within(demoCourse).queryByRole("button", { name: /open lecture 03/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Grundlagen des Maschinellen Lernens" })).not.toBeInTheDocument();
   });
 });
+
+const workspaceCourse = {
+  access_policy: "tuebingen_enrolled" as const,
+  id: "martius-ml",
+  title: "Grundlagen des Maschinellen Lernens",
+  professor: "Prof. Georg Martius",
+  term: "Sommer 2026",
+};
 
 function renderDashboard(session: LoginSession, tutorWorkspacePublished: boolean) {
   render(
@@ -76,6 +90,7 @@ function renderDashboard(session: LoginSession, tutorWorkspacePublished: boolean
       lectures={lectures}
       publishedLectureIds={tutorWorkspacePublished ? ["lecture-03"] : []}
       session={session}
+      workspaceCourse={workspaceCourse}
       onOpen={vi.fn()}
       onSetAttendance={vi.fn()}
     />,

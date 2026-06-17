@@ -6,7 +6,7 @@ from auth_helpers import professor_headers, student_headers
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.models import AgentTurnResult, QualityGateDecision, QualityGateStatus
+from lecturepilot.models import AgentTurnResult, AttendanceStatus, QualityGateDecision, QualityGateStatus
 
 
 def test_quiz_answers_are_recorded_as_aggregate_lecture_analytics(tmp_path: Path) -> None:
@@ -66,6 +66,46 @@ def test_students_cannot_read_professor_analytics(tmp_path: Path) -> None:
     )
 
     assert response.status_code == 403
+
+
+def test_demo_course_returns_seeded_analytics_when_empty(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+
+    summary = client.get(
+        "/admin/courses/martius-ml/lectures/lecture-04/analytics",
+        headers=professor_headers(),
+    )
+
+    assert summary.status_code == 200
+    payload = summary.json()
+    assert payload["total_events"] > 0
+    assert payload["quizzes"][0]["component_id"] == "lecture-04-retrieval"
+    assert payload["gates"][0]["gate_id"] == "lecture-04-evidence-gate"
+
+
+def test_demo_course_seeds_missing_quiz_detail_for_partial_logs(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    client.app.state.analytics_store.record_quality_gate(
+        course_id="martius-ml",
+        lecture_id="lecture-01",
+        user_id="student-a",
+        attendance=AttendanceStatus.PRESENT,
+        decision=QualityGateDecision(
+            gate_id="lecture-learning-outcome-check",
+            status=QualityGateStatus.NEEDS_EVIDENCE,
+            reason="Partial local demo log.",
+        ),
+    )
+
+    summary = client.get(
+        "/admin/courses/martius-ml/lectures/lecture-01/analytics",
+        headers=professor_headers(),
+    )
+
+    assert summary.status_code == 200
+    payload = summary.json()
+    assert payload["quizzes"][0]["component_id"] == "lecture-01-retrieval"
+    assert payload["gates"][0]["gate_id"] == "lecture-01-evidence-gate"
 
 
 def test_quality_gate_turns_are_recorded_in_analytics(tmp_path: Path) -> None:

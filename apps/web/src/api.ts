@@ -3,9 +3,12 @@ import type {
   CanvasPublicationResult,
   CanvasDocument,
   CanvasSection,
+  Lecture,
   LoginSession,
+  UniversityCourse,
 } from "./types";
 import { authHeaders, courseManagerHeaders } from "./authz";
+import { normalizeLectureList } from "./lectureMapping";
 
 export type CanvasCommand = {
   type: "focus_section" | "highlight_span" | "open_artifact" | "append_section" | "update_section";
@@ -60,16 +63,20 @@ export function apiUrl(path: string): string {
 }
 
 export async function loginWithTuebingen(input: TuebingenLoginInput): Promise<LoginSession> {
-  const response = await fetch(`${apiBaseUrl}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${apiBaseUrl}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+  } catch {
+    throw new Error(`Cannot reach the local LecturePilot API at ${apiBaseUrl}. Is the backend running?`);
+  }
 
-  const payload = await response.json();
+  const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    const detail = typeof payload.detail === "string" ? payload.detail : "Login failed.";
-    throw new Error(detail);
+    throw new Error(readApiError(payload, "Login failed."));
   }
 
   return payload as LoginSession;
@@ -229,6 +236,24 @@ export async function getCanvasPublication(
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Canvas publication status failed."));
   return payload as CanvasPublicationResult;
+}
+
+export async function getCourseLectures(courseId: string, session: LoginSession): Promise<Lecture[]> {
+  const response = await fetch(apiUrl(`/courses/${courseId}/lectures`), {
+    headers: authHeaders(session),
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "Course lecture loading failed."));
+  return normalizeLectureList(payload);
+}
+
+export async function getCourses(session: LoginSession): Promise<UniversityCourse[]> {
+  const response = await fetch(apiUrl("/courses"), {
+    headers: authHeaders(session),
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "Course loading failed."));
+  return payload as UniversityCourse[];
 }
 
 export function readApiError(payload: unknown, fallback: string) {

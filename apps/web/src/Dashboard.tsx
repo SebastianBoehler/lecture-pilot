@@ -1,4 +1,5 @@
 import type { Attendance, Lecture, LoginSession, UniversityCourse } from "./types";
+import { readDemoWorkspaceCourse } from "./demoWorkspaceAccess";
 
 type CourseWorkspaceStatus = "matched" | "unmatched";
 
@@ -11,29 +12,23 @@ type CourseWorkspaceGroup = {
   courseLectures: Lecture[];
 };
 
-const demoTutorCourse: UniversityCourse = {
-  access_policy: "public",
-  id: "martius-ml",
-  title: "Grundlagen des Maschinellen Lernens",
-  professor: "Prof. Georg Martius",
-  term: "Sommer 2026",
-};
-
 export function Dashboard({
   lectures,
   publishedLectureIds,
   session,
+  workspaceCourse,
   onOpen,
   onSetAttendance,
 }: {
   lectures: Lecture[];
   publishedLectureIds: string[];
   session: LoginSession | null;
+  workspaceCourse: UniversityCourse;
   onOpen: (lecture: Lecture) => void;
   onSetAttendance: (lectureId: string, attendance: Attendance) => void;
 }) {
   const studentLabel = session?.email ?? session?.username ?? "student";
-  const courseGroups = buildCourseGroups(session, lectures, publishedLectureIds);
+  const courseGroups = buildCourseGroups(session, workspaceCourse, lectures, publishedLectureIds);
 
   return (
     <main className="dashboard">
@@ -99,17 +94,18 @@ export function Dashboard({
 
 function buildCourseGroups(
   session: LoginSession | null,
+  workspaceCourse: UniversityCourse,
   lectures: Lecture[],
   publishedLectureIds: string[],
 ): CourseWorkspaceGroup[] {
   const enrolledCourses = session?.courses ?? [];
   const courseGroups = enrolledCourses.length
-    ? enrolledCourses.map((course) => buildEnrolledCourseGroup(course, lectures, publishedLectureIds))
-    : [buildDemoCourseGroup(lectures, publishedLectureIds)];
+    ? enrolledCourses.map((course) => buildEnrolledCourseGroup(course, workspaceCourse, lectures, publishedLectureIds))
+    : [buildDiscoverableCourseGroup(workspaceCourse, lectures, publishedLectureIds)];
 
-  if (enrolledCourses.length && !enrolledCourses.some(isDemoTutorCourse)) {
-    if (isDiscoverableTutorCourse(demoTutorCourse)) {
-      courseGroups.push(buildDemoCourseGroup(lectures, publishedLectureIds));
+  if (enrolledCourses.length && !enrolledCourses.some((course) => isWorkspaceCourse(course, workspaceCourse))) {
+    if (hasDemoWorkspaceAccess(workspaceCourse) && publishedLectureIds.length > 0) {
+      courseGroups.push(buildDiscoverableCourseGroup(workspaceCourse, lectures, publishedLectureIds));
     }
   }
 
@@ -118,11 +114,12 @@ function buildCourseGroups(
 
 function buildEnrolledCourseGroup(
   course: UniversityCourse,
+  workspaceCourse: UniversityCourse,
   lectures: Lecture[],
   publishedLectureIds: string[],
 ): CourseWorkspaceGroup {
   const publishedLectures = publishedCourseLectures(lectures, publishedLectureIds);
-  const tutorAvailable = publishedLectures.length > 0 && isDemoTutorCourse(course);
+  const tutorAvailable = publishedLectures.length > 0 && isWorkspaceCourse(course, workspaceCourse);
   return {
     course,
     status: tutorAvailable ? "matched" : "unmatched",
@@ -133,14 +130,18 @@ function buildEnrolledCourseGroup(
   };
 }
 
-function buildDemoCourseGroup(lectures: Lecture[], publishedLectureIds: string[]): CourseWorkspaceGroup {
+function buildDiscoverableCourseGroup(
+  workspaceCourse: UniversityCourse,
+  lectures: Lecture[],
+  publishedLectureIds: string[],
+): CourseWorkspaceGroup {
   const publishedLectures = publishedCourseLectures(lectures, publishedLectureIds);
   const tutorAvailable = publishedLectures.length > 0;
   return {
-    course: demoTutorCourse,
+    course: workspaceCourse,
     status: tutorAvailable ? "matched" : "unmatched",
     statusLabel: tutorAvailable ? workspaceStatusLabel() : "No tutor workspace yet",
-    emptyText: "No tutor workspace yet. Publish the demo workspace to enable lecture entry.",
+    emptyText: "No tutor workspace yet. Publish the course workspace to enable lecture entry.",
     tutorAvailable,
     courseLectures: publishedLectures,
   };
@@ -151,12 +152,12 @@ function publishedCourseLectures(lectures: Lecture[], publishedLectureIds: strin
   return lectures.filter((lecture) => published.has(lecture.id));
 }
 
-function isDemoTutorCourse(course: UniversityCourse) {
-  return course.id === demoTutorCourse.id || normalizeCourseTitle(course.title) === normalizeCourseTitle(demoTutorCourse.title);
+function isWorkspaceCourse(course: UniversityCourse, workspaceCourse: UniversityCourse) {
+  return course.id === workspaceCourse.id || normalizeCourseTitle(course.title) === normalizeCourseTitle(workspaceCourse.title);
 }
 
-function isDiscoverableTutorCourse(course: UniversityCourse) {
-  return course.access_policy === "public" || course.access_policy === "platform_authenticated";
+function hasDemoWorkspaceAccess(workspaceCourse: UniversityCourse) {
+  return readDemoWorkspaceCourse()?.id === workspaceCourse.id;
 }
 
 function workspaceStatusLabel() {

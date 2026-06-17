@@ -42,9 +42,9 @@ export function CourseSetupStep({
           value={setup.accessPolicy}
           onChange={(event) => onSetupChange({ ...setup, accessPolicy: event.target.value as CourseSetup["accessPolicy"] })}
         >
-          <option value="tuebingen_enrolled">Uni Tuebingen enrolled students</option>
-          <option value="platform_authenticated">Signed-in platform users</option>
-          <option value="public">Public course</option>
+          <option value="tuebingen_enrolled">Course students only</option>
+          <option value="platform_authenticated">University-wide login</option>
+          <option value="public">Public on the platform</option>
         </select>
       </label>
       <div className="scope-toggle" role="group" aria-label="Canvas generation scope">
@@ -97,6 +97,7 @@ export function CourseSetupStep({
 }
 
 export function BundleSummary({ bundle }: { bundle: SourceBundleManifest }) {
+  if (!bundle.files.length) return <p>No materials indexed yet.</p>;
   return <p>{bundle.files.length} files indexed · {Object.entries(bundle.counts_by_kind).map(([kind, count]) => `${count} ${kind}`).join(", ")}</p>;
 }
 
@@ -109,14 +110,19 @@ export function VideoCandidates({ videos, selectedVideos, onToggle }: {
   return (
     <div className="video-candidate-list">
       {videos.map((video) => (
-        <label className="video-candidate" key={video.video_id}>
-          <input
-            checked={selectedVideos.has(video.video_id)}
-            onChange={() => onToggle(video.video_id)}
-            type="checkbox"
-          />
-          <span><strong>{video.title}</strong>{video.channel_title} · {video.duration.display ?? "duration unknown"}</span>
-        </label>
+        <div className="video-candidate" key={video.video_id}>
+          <label className="video-candidate-choice">
+            <input
+              checked={selectedVideos.has(video.video_id)}
+              onChange={() => onToggle(video.video_id)}
+              type="checkbox"
+            />
+            <span><strong>{video.title}</strong>{video.channel_title} · {video.duration.display ?? "duration unknown"}</span>
+          </label>
+          <a className="video-preview-link" href={video.url} rel="noreferrer" target="_blank">
+            Open
+          </a>
+        </div>
       ))}
     </div>
   );

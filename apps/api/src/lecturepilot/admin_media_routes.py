@@ -3,7 +3,13 @@ from __future__ import annotations
 from fastapi import Depends, FastAPI, HTTPException, Query
 
 from lecturepilot.api_auth import request_context, require_course_manager
-from lecturepilot.course_media import add_youtube_selection, clear_course_media, list_course_media
+from lecturepilot.course_media import (
+    COURSE_MEDIA_POOL_ID,
+    add_course_youtube_selection,
+    add_youtube_selection,
+    clear_course_media,
+    list_course_media,
+)
 from lecturepilot.models import (
     Course,
     Lecture,
@@ -60,6 +66,26 @@ def register_admin_media_routes(
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.post(
+        "/admin/courses/{course_id}/media/youtube",
+        response_model=YoutubeSelectionResult,
+    )
+    def include_course_youtube_media(
+        course_id: str,
+        selection: YoutubeSelectionInput,
+        context: TenantContext = Depends(request_context),
+    ) -> YoutubeSelectionResult:
+        require_course_manager(context, course_tenant_id=course_tenant_id)
+        try:
+            return add_course_youtube_selection(
+                material_root=_course_media_root(app, course_id),
+                course_id=course_id,
+                selection=selection,
+                approved_by=context.user_id,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.get("/admin/courses/{course_id}/lectures/{lecture_id}/media/youtube")
     def list_youtube_media(
         course_id: str,
@@ -72,6 +98,18 @@ def register_admin_media_routes(
             material_root=_course_media_root(app, course_id),
             course_id=course_id,
             lecture_id=lecture_id,
+        )
+
+    @app.get("/admin/courses/{course_id}/media/youtube")
+    def list_course_youtube_media(
+        course_id: str,
+        context: TenantContext = Depends(request_context),
+    ) -> list[dict]:
+        require_course_manager(context, course_tenant_id=course_tenant_id)
+        return list_course_media(
+            material_root=_course_media_root(app, course_id),
+            course_id=course_id,
+            lecture_id=COURSE_MEDIA_POOL_ID,
         )
 
     @app.delete("/admin/courses/{course_id}/media/youtube")

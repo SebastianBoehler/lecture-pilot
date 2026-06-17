@@ -147,6 +147,43 @@ def test_generated_component_blocks_keep_file_backed_metadata() -> None:
     assert block.answer_index == 0
 
 
+def test_generated_section_coerces_loose_quiz_text_to_quiz_block() -> None:
+    turn = _turn("append a posterior quiz")
+
+    commands = read_canvas_commands(
+        {
+            "message": "Added.",
+            "canvas_commands": [
+                {
+                    "type": "append_section",
+                    "section": {
+                        "id": "posterior-choice-quiz",
+                        "title": "Posterior Choice Quiz",
+                        "blocks": [
+                            {
+                                "type": "paragraph",
+                                "text": (
+                                    "--- quiz\n"
+                                    "text=Select the higher posterior probability.\n"
+                                    "items:\n"
+                                    "Posterior = 0.8\n"
+                                    "Posterior = 0.2\n"
+                                ),
+                            }
+                        ],
+                    },
+                }
+            ],
+        },
+        turn,
+    )
+
+    block = commands[0].section.blocks[0]
+    assert block.type == "quiz"
+    assert block.text == "Select the higher posterior probability."
+    assert block.items == ["Posterior = 0.8", "Posterior = 0.2"]
+
+
 def _turn(message: str) -> AgentTurnInput:
     return AgentTurnInput(
         user_id="student01",

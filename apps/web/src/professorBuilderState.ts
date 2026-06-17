@@ -35,7 +35,7 @@ export const defaultCourseSetup: CourseSetup = {
   lectureTitle: "Bayesian Decision Theory",
   lectureNumber: "03",
   lectureCount: "",
-  firstLectureDate: new Date().toISOString().slice(0, 10),
+  firstLectureDate: pastDateIso(28),
   target: "single-lecture",
 };
 
@@ -79,4 +79,10 @@ export function writeSavedFlow(flow: SavedProfessorFlow) {
     window.sessionStorage.setItem(flowStorageKey, JSON.stringify(flow));
   } catch {
   }
+}
+
+function pastDateIso(days: number) {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+  return date.toISOString().slice(0, 10);
 }

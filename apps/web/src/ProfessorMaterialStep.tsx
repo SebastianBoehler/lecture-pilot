@@ -1,3 +1,6 @@
+import { useId, useState } from "react";
+
+import { fileRelativePath, materialFilesFromDrop } from "./materialDrop";
 import { BundleSummary, PendingStatus, StepHeader } from "./ProfessorCourseBuilderParts";
 import { ProfessorLectureSchedule } from "./ProfessorLectureSchedule";
 import type { BuilderAction } from "./professorWorkflowRun";
@@ -27,8 +30,8 @@ export function ProfessorMaterialStep({
   lectureSchedule: LectureScheduleItem[];
   materialScope: string;
   onApplySchedule: () => void;
-  onScheduleChange: (schedule: LectureScheduleItem[]) => void;
   onScan: () => void;
+  onScheduleChange: (schedule: LectureScheduleItem[]) => void;
   onUpload: () => void;
   onUploadFilesChange: (files: File[]) => void;
   setUploadPath: (path: string) => void;
@@ -37,35 +40,63 @@ export function ProfessorMaterialStep({
   uploadPath: string;
   workspaceReady: boolean;
 }) {
+  const inputId = useId();
+  const [isDragOver, setIsDragOver] = useState(false);
   const isBusy = pendingAction !== null;
   const isUploading = pendingAction === "upload";
-  const isScanning = pendingAction === "scan";
+  const disabled = !courseReady || !workspaceReady || isBusy;
+  const fileLabel = uploadFiles.length
+    ? `${uploadFiles.length} selected`
+    : "No files selected";
   return (
     <section className="flow-card">
-      <StepHeader number="02" title="Upload and scan materials" done={Boolean(bundle)} />
-      <p className="drawer-note">Upload {materialScope} for {setup.courseTitle}.</p>
+      <StepHeader number="02" title="Upload materials" done={Boolean(bundle?.files.length)} />
       <label>
-        Store uploaded files under
+        Workspace folder
         <input value={uploadPath} onChange={(event) => setUploadPath(event.target.value)} />
       </label>
-      <input
-        aria-label="Upload course material"
-        disabled={!courseReady || !workspaceReady || isBusy}
-        multiple
-        onChange={(event) => onUploadFilesChange(Array.from(event.target.files ?? []))}
-        type="file"
-        {...{ directory: "", webkitdirectory: "" }}
-      />
+      <label
+        className={`material-drop-zone${isDragOver ? " is-drag-over" : ""}${disabled ? " is-disabled" : ""}`}
+        htmlFor={inputId}
+        onDragOver={(event) => {
+          event.preventDefault();
+          if (!disabled) setIsDragOver(true);
+        }}
+        onDragLeave={() => setIsDragOver(false)}
+        onDrop={(event) => {
+          event.preventDefault();
+          setIsDragOver(false);
+          if (!disabled) void materialFilesFromDrop(event.dataTransfer).then(onUploadFilesChange);
+        }}
+      >
+        <span className="material-drop-title">Drop course folder here</span>
+        <span className="material-drop-copy">or choose a folder or files</span>
+        <span className="material-drop-button">Choose materials</span>
+        <input
+          id={inputId}
+          aria-label="Upload course material"
+          className="material-drop-input"
+          disabled={disabled}
+          multiple
+          onChange={(event) => onUploadFilesChange(Array.from(event.target.files ?? []))}
+          type="file"
+          {...{ directory: "", webkitdirectory: "" }}
+        />
+      </label>
+      <p className="material-selection-summary">
+        {fileLabel}
+        {uploadFiles[0] ? <span>{fileRelativePath(uploadFiles[0])}</span> : null}
+      </p>
       <div className="flow-actions">
-        <button disabled={!courseReady || !workspaceReady || !uploadFiles.length || isBusy} type="button" onClick={onUpload}>
-          {isUploading ? "Uploading material..." : "Upload material"}
+        <button disabled={disabled || !uploadFiles.length} type="button" onClick={onUpload}>
+          {isUploading ? "Uploading materials..." : `Upload selected ${materialScope}`}
         </button>
-        <button disabled={!courseReady || !workspaceReady || isBusy} type="button" onClick={onScan}>
-          {isScanning ? "Scanning source bundle..." : "Scan source bundle"}
+        <button disabled={disabled} type="button" onClick={onScan}>
+          {pendingAction === "scan" ? "Scanning uploaded bundle..." : "Scan uploaded bundle"}
         </button>
       </div>
+      {pendingAction === "scan" ? <PendingStatus label="Refreshing uploaded source bundle..." /> : null}
       {isUploading ? <PendingStatus label="Uploading material and refreshing source bundle..." /> : null}
-      {isScanning ? <PendingStatus label="Scanning source bundle and checking lecture schedule..." /> : null}
       {bundle ? <BundleSummary bundle={bundle} /> : null}
       <ProfessorLectureSchedule
         disabled={!lectureSchedule.length || isBusy}

@@ -24,17 +24,20 @@ import type {
   LectureScheduleItem,
   LoginSession,
   SourceBundleManifest,
+  UniversityCourse,
   YoutubeVideoCandidate,
 } from "./types";
 import type { CourseSetup } from "./professorBuilderState";
 export function ProfessorCourseBuilder({
   session,
   onPublishWorkspace,
+  onWorkspaceLecturesChange,
   previewWorkspaceUrl,
   publishedLectureIds,
 }: {
   session: LoginSession;
   onPublishWorkspace: (courseId: string, lectureId: string) => Promise<CanvasPublicationResult>;
+  onWorkspaceLecturesChange: (course: UniversityCourse, lectures: ReturnType<typeof lectureFromWorkspace>[]) => void;
   previewWorkspaceUrl: (courseId: string, lecture: ReturnType<typeof lectureFromWorkspace>) => string;
   publishedLectureIds: string[];
 }) {
@@ -52,29 +55,35 @@ export function ProfessorCourseBuilder({
   const [uploadPath, setUploadPath] = useState(savedFlow.uploadPath);
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [canvas, setCanvas] = useState<CanvasDocument | null>(null);
+  const [generatedLectureIds, setGeneratedLectureIds] = useState<string[]>([]);
   const [query, setQuery] = useState(savedFlow.query);
   const [videos, setVideos] = useState<YoutubeVideoCandidate[]>([]);
   const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
+  const [mediaIncluded, setMediaIncluded] = useState(false);
   const { error, notice, pendingAction, run, setError } = useProfessorWorkflowRun();
   const [restored, setRestored] = useState(!savedFlow.bundleReady && !savedFlow.canvasReady);
-  const videoReviewReady = selectedVideos.size > 0 || hasCanvasVideo(canvas);
+  const mediaReady = mediaIncluded || selectedVideos.size > 0 || hasCanvasVideo(canvas);
   const setupReady = isCourseSetupReady(setup);
+  const bundleReady = Boolean(bundle?.files.length);
+  const scheduledLectureIds = lectureSchedule.map((lecture) => lectureIdFromNumber(lecture.number));
+  const fullCourseLectureIds = setup.target === "full-course" && scheduledLectureIds.length
+    ? scheduledLectureIds
+    : workspace ? [workspace.lectureId] : [];
+  const fullCoursePublishedCount = fullCourseLectureIds.filter((lectureId) => publishedLectureIds.includes(lectureId)).length;
   const materialScope = setup.target === "full-course" ? "all course materials" : "materials for this lecture";
   const defaultYoutubeQuery = [
     setup.courseTitle,
     setup.target === "single-lecture" ? setup.lectureTitle : "machine learning lecture",
   ].filter(Boolean).join(" ");
-  const workspacePublished = Boolean(workspace && publishedLectureIds.includes(workspace.lectureId));
+  const workspacePublished = Boolean(
+    workspace && (setup.target === "full-course"
+      ? fullCourseLectureIds.length > 0 && fullCoursePublishedCount === fullCourseLectureIds.length
+      : publishedLectureIds.includes(workspace.lectureId)),
+  );
   const previewHref = canvas && workspace
     ? previewWorkspaceUrl(workspace.courseId, lectureFromWorkspace(workspace, setup, lectureSchedule))
     : null;
-  const steps = builderSteps({
-    bundleReady: Boolean(bundle),
-    canvasReady: Boolean(canvas),
-    courseReady,
-    videoReviewReady,
-    workspacePublished,
-  });
+  const steps = builderSteps({ bundleReady, canvasReady: !!canvas, courseReady, mediaReady, workspacePublished });
   useEffect(() => {
     let cancelled = false;
     async function restoreGeneratedState() {
@@ -117,7 +126,7 @@ export function ProfessorCourseBuilder({
       workspace,
       courseReady,
       uploadPath,
-      bundleReady: Boolean(bundle),
+      bundleReady,
       canvasReady: Boolean(canvas),
       lectureSchedule,
       query,
@@ -130,8 +139,10 @@ export function ProfessorCourseBuilder({
     setBundle(null);
     setLectureSchedule([]);
     setCanvas(null);
+    setGeneratedLectureIds([]);
     setVideos([]);
     setSelectedVideos(new Set());
+    setMediaIncluded(false);
     setActiveStep("define");
   }
   return (
@@ -154,6 +165,8 @@ export function ProfessorCourseBuilder({
               const schedule = setup.target === "full-course" ? lectureSchedule : [];
               const created = await createCourseWorkspace(setup, session, schedule);
               setWorkspace({ courseId: created.course.id, lectureId: created.active_lecture_id });
+              onWorkspaceLecturesChange(created.course, created.lectures);
+              setGeneratedLectureIds([]);
               setCourseReady(true);
               setActiveStep("upload");
               return `Course workspace ${created.course.id}/${created.active_lecture_id} ready.`;
@@ -188,20 +201,23 @@ export function ProfessorCourseBuilder({
                 }));
               }
               await updateBundleAndSchedule(activeWorkspace.courseId);
-              if (setup.target !== "full-course") setActiveStep("generate");
+              if (setup.target !== "full-course") setActiveStep("review");
               if (uploaded.length === 1) return `Uploaded ${uploaded[0].path} as ${uploaded[0].kind}.`;
               return `Uploaded ${uploaded.length} materials into the source bundle.`;
             })}
             onScan={() => run("scan", async () => {
               const activeWorkspace = requireWorkspace(workspace);
               await updateBundleAndSchedule(activeWorkspace.courseId);
-              if (setup.target !== "full-course") setActiveStep("generate");
-              return "Source bundle scanned.";
+              if (setup.target !== "full-course") setActiveStep("review");
+              return "Uploaded source bundle scanned.";
             })}
             onApplySchedule={() => run("apply-schedule", async () => {
               const created = await createCourseWorkspace(setup, session, lectureSchedule);
               setWorkspace({ courseId: created.course.id, lectureId: created.active_lecture_id });
-              setActiveStep("generate");
+              onWorkspaceLecturesChange(created.course, created.lectures);
+              setGeneratedLectureIds([]);
+              setCanvas(null);
+              setActiveStep("review");
               return `Lecture schedule applied with ${created.lectures.length} dated lectures.`;
             })}
           />
@@ -209,38 +225,53 @@ export function ProfessorCourseBuilder({
         {activeStep === "generate" ? (
           <ProfessorCanvasDraftStep
             canvas={canvas}
-            canGenerate={Boolean(bundle && workspace)}
+            canGenerate={Boolean(bundleReady && workspace)}
+            generatedCount={generatedLectureIds.length}
+            isFullCourse={setup.target === "full-course"}
             isGenerating={pendingAction === "generate"}
             previewHref={previewHref}
+            totalCount={fullCourseLectureIds.length}
             onGenerate={() => run("generate", async () => {
               const activeWorkspace = requireWorkspace(workspace);
-              setCanvas(await draftLectureCanvas(activeWorkspace.courseId, activeWorkspace.lectureId, session));
-              setActiveStep("review");
-              return "Course-builder agent generated a source-grounded canvas draft.";
+              const lectureIds = setup.target === "full-course" && fullCourseLectureIds.length
+                ? fullCourseLectureIds
+                : [activeWorkspace.lectureId];
+              let firstCanvas: CanvasDocument | null = null;
+              for (const lectureId of lectureIds) {
+                const nextCanvas = await draftLectureCanvas(activeWorkspace.courseId, lectureId, session);
+                firstCanvas = firstCanvas ?? nextCanvas;
+              }
+              setCanvas(firstCanvas);
+              setGeneratedLectureIds(lectureIds);
+              setActiveStep("publish");
+              if (lectureIds.length === 1) return "Course-builder agent generated a source-grounded canvas draft.";
+              return `Course-builder agent generated ${lectureIds.length} source-grounded lecture canvases.`;
             })}
           />
         ) : null}
         {activeStep === "review" ? (
           <ProfessorReviewStep
-            canInclude={Boolean(selectedVideos.size && canvas && workspace)}
+            canContinue={Boolean(bundleReady && workspace)}
+            canInclude={Boolean(selectedVideos.size && bundleReady && workspace)}
             canSearch={Boolean(setupReady && workspace)}
-            hasCanvas={Boolean(canvas)}
             pendingAction={pendingAction}
+            onContinue={() => setActiveStep("generate")}
             onInclude={() => run("include-videos", async () => {
               const activeWorkspace = requireWorkspace(workspace);
               const selected = videos.filter((video) => selectedVideos.has(video.video_id));
               for (const video of selected) {
                 await includeYoutubeMedia({
                   courseId: activeWorkspace.courseId,
-                  lectureId: activeWorkspace.lectureId,
-                  sectionId: canvas?.sections[1]?.id ?? null,
                   video,
                   session,
                 });
               }
-              setCanvas(await getDraftLectureCanvas(activeWorkspace.courseId, activeWorkspace.lectureId, session));
-              setActiveStep("publish");
-              return `Included ${selected.length} approved video${selected.length === 1 ? "" : "s"} in the canvas.`;
+              setSelectedVideos(new Set());
+              setMediaIncluded(true);
+              if (canvas) setCanvas(null);
+              setGeneratedLectureIds([]);
+              setActiveStep("generate");
+              return `Saved ${selected.length} approved video${selected.length === 1 ? "" : "s"} for draft generation.`;
             })}
             onQueryChange={setQuery}
             onSearch={() => run("search", async () => {
@@ -253,7 +284,7 @@ export function ProfessorCourseBuilder({
             })}
             onToggleVideo={(videoId) => setSelectedVideos(toggleSelected(selectedVideos, videoId))}
             query={query}
-            ready={videoReviewReady}
+            ready={mediaReady}
             selectedVideos={selectedVideos}
             videos={videos}
           />
@@ -261,14 +292,31 @@ export function ProfessorCourseBuilder({
         {activeStep === "publish" ? (
           <ProfessorPublishStep
             canPublish={Boolean(canvas && workspace)}
+            isFullCourse={setup.target === "full-course"}
             isPublishing={pendingAction === "publish"}
             onPublish={() => run("publish", async () => {
               const activeWorkspace = requireWorkspace(workspace);
-              const published = await onPublishWorkspace(activeWorkspace.courseId, activeWorkspace.lectureId);
-              const when = published.published_at ? ` at ${new Date(published.published_at).toLocaleString()}` : "";
-              return `Tutor workspace published as version ${published.version ?? 1}${when}.`;
+              const lectureIds = setup.target === "full-course"
+                ? (generatedLectureIds.length ? generatedLectureIds : fullCourseLectureIds)
+                : [activeWorkspace.lectureId];
+              const published = [];
+              for (const lectureId of lectureIds) {
+                try {
+                  published.push(await onPublishWorkspace(activeWorkspace.courseId, lectureId));
+                } catch (error) {
+                  if (setup.target !== "full-course") throw error;
+                  await draftLectureCanvas(activeWorkspace.courseId, lectureId, session);
+                  published.push(await onPublishWorkspace(activeWorkspace.courseId, lectureId));
+                }
+              }
+              const lastPublished = published[published.length - 1];
+              const when = lastPublished?.published_at ? ` at ${new Date(lastPublished.published_at).toLocaleString()}` : "";
+              if (published.length === 1) return `Tutor workspace published as version ${lastPublished.version ?? 1}${when}.`;
+              return `${published.length} tutor workspaces published for students${when}.`;
             })}
+            publishedCount={fullCoursePublishedCount}
             ready={workspacePublished}
+            totalCount={fullCourseLectureIds.length}
           />
         ) : null}
       </div>
@@ -289,4 +337,9 @@ export function ProfessorCourseBuilder({
     });
     setLectureSchedule(proposal.lectures);
   }
+}
+
+function lectureIdFromNumber(number: string) {
+  const parsed = Number(number);
+  return Number.isFinite(parsed) ? `lecture-${parsed.toString().padStart(2, "0")}` : `lecture-${number}`;
 }

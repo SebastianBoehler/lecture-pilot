@@ -11,6 +11,7 @@ from lecturepilot.api_auth import (
 )
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
+from lecturepilot.course_media import apply_course_media, course_media_evidence
 from lecturepilot.models import CanvasPublicationResult, Lecture
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.providers import ProviderConfigurationError
@@ -26,8 +27,6 @@ def register_course_canvas_routes(
     seeded_course_id: str,
     source_document: Callable[[str, str], CanvasDocument],
 ) -> None:
-    lecture_ids = {lecture.id for lecture in lectures}
-
     @app.post(
         "/admin/courses/{course_id}/lectures/{lecture_id}/canvas/draft",
         response_model=CanvasDocument,
@@ -37,10 +36,12 @@ def register_course_canvas_routes(
         lecture_id: str,
         context: TenantContext = Depends(request_context),
     ) -> CanvasDocument:
-        _assert_seeded_lecture(course_id, lecture_id, seeded_course_id, lecture_ids)
         try:
             require_course_manager(context, course_tenant_id=course_tenant_id)
-            document = await app.state.course_planner.plan_canvas(source_document(course_id, lecture_id))
+            source = source_document(course_id, lecture_id)
+            source = course_media_evidence(source, app.state.canvas_workspace.course_media_root(course_id))
+            document = await app.state.course_planner.plan_canvas(source)
+            document = apply_course_media(document, app.state.canvas_workspace.course_media_root(course_id))
             return app.state.canvas_workspace.write_course_canvas_draft(document)
         except CanvasWorkspaceError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -137,16 +138,6 @@ def register_course_canvas_routes(
         except CanvasWorkspaceError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         return document.model_dump()
-
-
-def _assert_seeded_lecture(
-    course_id: str,
-    lecture_id: str,
-    seeded_course_id: str,
-    lecture_ids: set[str],
-) -> None:
-    if course_id == seeded_course_id and lecture_id not in lecture_ids:
-        raise HTTPException(status_code=404, detail="Lecture not found.")
 
 
 def _publication_result(
