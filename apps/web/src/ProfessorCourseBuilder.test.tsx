@@ -167,7 +167,7 @@ describe("Professor course builder", () => {
       title: "Course overview",
     });
     await user.click(screen.getByRole("button", { name: /^course performance$/i }));
-    expect(await screen.findByText("2 lectures")).toBeInTheDocument();
+    expect(await screen.findByText(/no published course workspace yet/i)).toBeInTheDocument();
   });
 
   it("shows a loading state while generating the canvas draft", async () => {

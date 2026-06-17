@@ -192,18 +192,25 @@ export function ProfessorCourseBuilder({
             onUpload={() => run("upload", async () => {
               const activeWorkspace = requireWorkspace(workspace);
               const uploaded = [];
+              let skipped = 0;
               for (const file of uploadFiles) {
-                uploaded.push(await uploadCourseMaterial({
-                  courseId: activeWorkspace.courseId,
-                  path: uploadDestination(uploadPath, file, uploadFiles.length),
-                  file,
-                  session,
-                }));
+                try {
+                  uploaded.push(await uploadCourseMaterial({
+                    courseId: activeWorkspace.courseId,
+                    path: uploadDestination(uploadPath, file, uploadFiles.length),
+                    file,
+                    session,
+                  }));
+                } catch (error) {
+                  if (!isSkippableUploadError(error)) throw error;
+                  skipped += 1;
+                }
               }
               await updateBundleAndSchedule(activeWorkspace.courseId);
               if (setup.target !== "full-course") setActiveStep("review");
               if (uploaded.length === 1) return `Uploaded ${uploaded[0].path} as ${uploaded[0].kind}.`;
-              return `Uploaded ${uploaded.length} materials into the source bundle.`;
+              const skippedText = skipped ? ` Skipped ${skipped} unsupported files.` : "";
+              return `Uploaded ${uploaded.length} materials into the source bundle.${skippedText}`;
             })}
             onScan={() => run("scan", async () => {
               const activeWorkspace = requireWorkspace(workspace);
@@ -342,4 +349,9 @@ export function ProfessorCourseBuilder({
 function lectureIdFromNumber(number: string) {
   const parsed = Number(number);
   return Number.isFinite(parsed) ? `lecture-${parsed.toString().padStart(2, "0")}` : `lecture-${number}`;
+}
+
+function isSkippableUploadError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return /File type .* is not writable|Hidden workspace paths are not allowed|files are limited to/i.test(message);
 }

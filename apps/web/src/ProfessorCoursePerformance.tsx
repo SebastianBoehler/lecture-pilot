@@ -20,21 +20,44 @@ const demoPerformanceCourse: UniversityCourse = {
   term: "Sommer 2026",
 };
 
-export function ProfessorCoursePerformance({ lectures, session }: { lectures: Lecture[]; session: LoginSession }) {
+export function ProfessorCoursePerformance({
+  lectures,
+  publishedLectureIds,
+  session,
+}: {
+  lectures: Lecture[];
+  publishedLectureIds: string[];
+  session: LoginSession;
+}) {
   const course = session.courses.find((item) => item.id === demoPerformanceCourse.id) ?? demoPerformanceCourse;
-  const [selectedLecture, setSelectedLecture] = useState(lectures[2] ?? lectures[0]);
+  const published = new Set(publishedLectureIds);
+  const visibleLectures = lectures.filter((lecture) => published.has(lecture.id));
+  const [selectedLecture, setSelectedLecture] = useState<Lecture | null>(visibleLectures[2] ?? visibleLectures[0] ?? null);
   const [analytics, setAnalytics] = useState<LectureAnalyticsSummary | null>(null);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const selectedSnapshot = lectureSnapshot(selectedLecture, analytics);
 
   useEffect(() => {
+    if (!selectedLecture) return;
     void refreshAnalytics(selectedLecture);
     // Run once for the initially selected lecture.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!visibleLectures.length) {
+      setSelectedLecture(null);
+      setAnalytics(null);
+      return;
+    }
+    if (!selectedLecture || !visibleLectures.some((lecture) => lecture.id === selectedLecture.id)) {
+      setSelectedLecture(visibleLectures[0]);
+      setAnalytics(null);
+    }
+  }, [selectedLecture, visibleLectures]);
+
   async function refreshAnalytics(lecture = selectedLecture) {
+    if (!lecture) return;
     setAnalyticsError(null);
     setSelectedLecture(lecture);
     setLoading(true);
@@ -57,7 +80,7 @@ export function ProfessorCoursePerformance({ lectures, session }: { lectures: Le
         <button
           aria-label="Refresh analytics"
           className="refresh-button"
-          disabled={loading}
+          disabled={loading || !selectedLecture}
           type="button"
           onClick={() => void refreshAnalytics()}
         >
@@ -66,6 +89,15 @@ export function ProfessorCoursePerformance({ lectures, session }: { lectures: Le
         </button>
       </section>
 
+      {!selectedLecture ? (
+        <section className="performance-console is-empty">
+          <div className="analytics-empty-state">
+            <strong>No published course workspace yet</strong>
+            <p>Create and publish a tutor workspace before course analytics appear here.</p>
+          </div>
+        </section>
+      ) : (
+
       <section className="performance-console" aria-labelledby="course-performance-title">
         <header className="performance-course-header">
           <div>
@@ -73,8 +105,8 @@ export function ProfessorCoursePerformance({ lectures, session }: { lectures: Le
             <p>{course.professor} · {course.term}</p>
           </div>
           <div className="performance-course-meta" aria-label="Course analytics status">
-            <span>{lectures.length} lectures</span>
-            <span>{selectedSnapshot.events} events loaded</span>
+            <span>{visibleLectures.length} published lectures</span>
+            <span>{lectureSnapshot(selectedLecture, analytics).events} events loaded</span>
           </div>
         </header>
 
@@ -82,10 +114,10 @@ export function ProfessorCoursePerformance({ lectures, session }: { lectures: Le
           <nav className="performance-lecture-rail" aria-label="Performance lecture list">
             <div className="performance-rail-heading">
               <span>Course lectures</span>
-              <small>Dummy analytics seed until students produce real events</small>
+              <small>Published tutor workspaces only</small>
             </div>
             <div className="performance-lecture-scroll">
-              {lectures.map((lecture) => (
+              {visibleLectures.map((lecture) => (
                 <LectureRow
                   active={lecture.id === selectedLecture.id}
                   key={lecture.id}
@@ -106,12 +138,13 @@ export function ProfessorCoursePerformance({ lectures, session }: { lectures: Le
               {loading ? <span className="analytics-loading">Loading analytics</span> : null}
             </header>
             {analyticsError ? <p className="form-error">{analyticsError}</p> : null}
-            <PerformanceOverview snapshot={selectedSnapshot} />
+            <PerformanceOverview snapshot={lectureSnapshot(selectedLecture, analytics)} />
             {analytics ? <AnalyticsChart analytics={analytics} /> : null}
             {analytics ? <AnalyticsSummary analytics={analytics} /> : <AnalyticsEmptyState />}
           </section>
         </div>
       </section>
+      )}
     </main>
   );
 }

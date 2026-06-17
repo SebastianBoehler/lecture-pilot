@@ -343,6 +343,7 @@ function App() {
       ) : view === "performance" && courseManagerSession ? (
         <ProfessorCoursePerformance
           lectures={availableLectures}
+          publishedLectureIds={publishedLectureIds}
           session={courseManagerSession}
         />
       ) : view === "performance" ? (

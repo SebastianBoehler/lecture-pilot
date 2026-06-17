@@ -27,15 +27,12 @@ export function lectureSnapshot(lecture: Lecture, analytics: LectureAnalyticsSum
       status: statusFor(attempts ? correct / attempts : 0.5, checks ? passed / checks : 0.5),
     };
   }
-  const seed = Number.parseInt(lecture.number, 10) || 1;
-  const quiz = 0.48 + (seed % 5) * 0.07;
-  const gate = 0.55 + (seed % 4) * 0.06;
   return {
-    events: 28 + seed * 5,
-    gateRate: percent(gate),
-    learners: 8 + seed,
-    quizRate: percent(quiz),
-    status: statusFor(quiz, gate),
+    events: 0,
+    gateRate: "n/a",
+    learners: 0,
+    quizRate: "n/a",
+    status: "watch",
   };
 }
 
