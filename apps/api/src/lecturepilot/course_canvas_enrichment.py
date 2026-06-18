@@ -17,8 +17,7 @@ def enrich_learning_document(document: CanvasDocument) -> CanvasDocument:
 
 
 def _enrich_section(section: CanvasSection, index: int, total: int) -> CanvasSection:
-    wants_checkpoint = index == max(1, total // 2)
-    wants_quiz = index == total
+    wants_checkpoint, wants_quiz = _assessment_targets(index, total)
     blocks = _complete_teaching_blocks(section)
     ids = {block.id for block in blocks}
     if wants_checkpoint and not any(block.type == "checkpoint" for block in blocks):
@@ -49,14 +48,22 @@ def _enrich_section(section: CanvasSection, index: int, total: int) -> CanvasSec
     return section.model_copy(update={"blocks": blocks})
 
 
+def _assessment_targets(index: int, total: int) -> tuple[bool, bool]:
+    checkpoint_index = max(1, min(total, (total + 1) // 3))
+    practice_quiz_index = max(checkpoint_index + 1, min(total, (2 * total + 2) // 3))
+    wants_checkpoint = index == checkpoint_index
+    wants_quiz = index in {practice_quiz_index, total}
+    return wants_checkpoint, wants_quiz
+
+
 def _complete_teaching_blocks(section: CanvasSection) -> list[CanvasBlock]:
-    blocks = _teaching_blocks(section.blocks)
+    blocks = list(section.blocks)
     ids = {block.id for block in blocks}
-    while len(blocks) < MIN_TEACHING_BLOCKS:
+    while len(_teaching_blocks(blocks)) < MIN_TEACHING_BLOCKS:
         block = _support_block(section, len(blocks) + 1, ids)
         blocks.append(block)
         ids.add(block.id)
-    if _detail_chars(blocks) < MIN_DETAIL_CHARS:
+    if _detail_chars(_teaching_blocks(blocks)) < MIN_DETAIL_CHARS:
         blocks.append(_support_block(section, len(blocks) + 1, ids))
     return blocks
 

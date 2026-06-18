@@ -7,6 +7,8 @@ from lecturepilot.providers import ProviderConfigurationError
 MIN_PLANNED_SECTIONS = 5
 MAX_PLANNED_SECTIONS = 8
 MIN_DETAIL_CHARS = 600
+MIN_PRACTICE_SECTIONS = 3
+MIN_QUIZ_BLOCKS = 2
 
 
 def validate_planned_document(document: CanvasDocument, source_document: CanvasDocument) -> None:
@@ -32,10 +34,14 @@ def validate_planned_document(document: CanvasDocument, source_document: CanvasD
     if missing_refs := [section.title for section in document.sections if not section.source_ref]:
         names = ", ".join(missing_refs[:3])
         raise ProviderConfigurationError(f"Canvas sections need source references: {names}.")
-    if practice_count(document) < 2:
-        raise ProviderConfigurationError("Planned canvas needs one checkpoint and one final retrieval quiz.")
-    if quiz_count(document) < 1:
-        raise ProviderConfigurationError("Planned canvas needs one final retrieval quiz.")
+    if practice_count(document) < MIN_PRACTICE_SECTIONS:
+        raise ProviderConfigurationError(
+            f"Planned canvas needs assessment blocks in at least {MIN_PRACTICE_SECTIONS} sections."
+        )
+    if quiz_count(document) < MIN_QUIZ_BLOCKS:
+        raise ProviderConfigurationError(f"Planned canvas needs at least {MIN_QUIZ_BLOCKS} retrieval quizzes.")
+    if not any(block.type == "quiz" for block in document.sections[-1].blocks):
+        raise ProviderConfigurationError("Planned canvas needs a final-section retrieval quiz.")
     mirrored = section_ids(document) & section_ids(source_document)
     if len(mirrored) > max(3, section_count // 2):
         raise ProviderConfigurationError("Course planner mirrored too many extracted slide section ids.")
