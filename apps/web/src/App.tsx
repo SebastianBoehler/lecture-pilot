@@ -23,6 +23,7 @@ import { readDemoWorkspaceCourse, writeDemoWorkspaceCourse } from "./demoWorkspa
 import { draftPreviewUrl } from "./draftPreviewUrl";
 import { LessonWorkspace } from "./LessonWorkspace";
 import { LoginView } from "./LoginView";
+import { clearSavedFlow } from "./professorBuilderState";
 import { useStoredLoginSession } from "./loginSessionStorage";
 import { ProfileView } from "./ProfileView";
 import { ProfessorCourseBuilder } from "./ProfessorCourseBuilder";
@@ -181,6 +182,7 @@ function App() {
 
   function handleLogout() {
     setSession(null);
+    clearSavedFlow();
     setView("login");
     setPanelMode(null);
     setFocusedSectionId("bayesian-decision-theory-the-aim");

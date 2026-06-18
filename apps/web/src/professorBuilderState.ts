@@ -81,6 +81,13 @@ export function writeSavedFlow(flow: SavedProfessorFlow) {
   }
 }
 
+export function clearSavedFlow() {
+  try {
+    window.sessionStorage.removeItem(flowStorageKey);
+  } catch {
+  }
+}
+
 function pastDateIso(days: number) {
   const date = new Date();
   date.setDate(date.getDate() - days);
