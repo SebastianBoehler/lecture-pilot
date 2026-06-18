@@ -47,7 +47,8 @@ async def test_course_planner_restyles_source_evidence(monkeypatch) -> None:
     assert document.title == "Bayes as a decision workflow"
     section = document.sections[0]
     assert section.title == "Evidence, update, decision"
-    assert [block.type for block in section.blocks] == [
+    assert section.blocks[0].asset_path.startswith("generated-slides/")
+    assert [block.type for block in section.blocks[1:]] == [
         "paragraph",
         "math",
         "asset",
@@ -55,9 +56,9 @@ async def test_course_planner_restyles_source_evidence(monkeypatch) -> None:
         "list",
         "callout",
     ]
-    assert section.blocks[2].asset_path == "Ch3/venn.pdf"
-    assert section.blocks[2].asset_url == "/course-assets/martius-ml/lecture-03/Ch3/venn.pdf"
-    assert section.blocks[3].asset_path == "videos/bayes-risk.mp4"
+    assert section.blocks[3].asset_path == "Ch3/venn.pdf"
+    assert section.blocks[3].asset_url == "/course-assets/martius-ml/lecture-03/Ch3/venn.pdf"
+    assert section.blocks[4].asset_path == "videos/bayes-risk.mp4"
     assessment_sections = [
         item.id
         for item in document.sections
@@ -80,9 +81,13 @@ async def test_course_planner_restyles_source_evidence(monkeypatch) -> None:
 class _FakePlanClient:
     async def complete_plan(self, *, settings, messages):
         assert settings.model == "gemini/test-model"
+        system_prompt = messages[0]["content"]
+        assert "original slide" in system_prompt.lower()
+        assert "pdf page" in system_prompt.lower()
         evidence = messages[1]["content"]
         assert "Slide dump" in evidence
         assert "asset_path=Ch3/venn.pdf" in evidence
+        assert "original slide id=original-slide-001" in evidence
         assert "video id=frame-1-video" in evidence
         base_section = {
             "id": "bayes-decision-workflow",
@@ -244,6 +249,20 @@ def _source_document() -> CanvasDocument:
                     asset_path="Ch3/venn.pdf",
                     asset_url="/course-assets/martius-ml/lecture-03/Ch3/venn.pdf",
                     caption="Venn diagram",
+                ),
+                CanvasBlock(
+                    id="original-slide-001",
+                    type="asset",
+                    asset_path="generated-slides/lecture-03/Lecture03-eng/slide-001.png",
+                    asset_url="/course-assets/martius-ml/lecture-03/generated-slides/lecture-03/Lecture03-eng/slide-001.png",
+                    caption="Original slide 1 from Lecture03-eng.pdf",
+                ),
+                CanvasBlock(
+                    id="original-slide-002",
+                    type="asset",
+                    asset_path="generated-slides/lecture-03/Lecture03-eng/slide-002.png",
+                    asset_url="/course-assets/martius-ml/lecture-03/generated-slides/lecture-03/Lecture03-eng/slide-002.png",
+                    caption="Original slide 2 from Lecture03-eng.pdf",
                 ),
                 CanvasBlock(
                     id="frame-1-video",

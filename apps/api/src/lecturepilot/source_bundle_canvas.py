@@ -6,6 +6,7 @@ from pathlib import Path
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.latex_canvas_importer import CANVAS_IMPORT_VERSION, import_latex_canvas
 from lecturepilot.latex_canvas_text import BROWSER_ASSET_SUFFIXES, slug
+from lecturepilot.pdf_slide_assets import PdfSlideAssetError, render_pdf_slide_blocks
 from lecturepilot.source_bundle import scan_source_bundle
 
 
@@ -115,6 +116,12 @@ def _pdf_section(path: Path, source_ref: str, source_root: Path, course_id: str,
             caption=caption,
         )
     )
+    try:
+        blocks.extend(
+            render_pdf_slide_blocks(pdf_path=path, source_root=source_root, course_id=course_id, lecture_id=lecture_id, source_ref=source_ref)
+        )
+    except PdfSlideAssetError as exc:
+        raise SourceBundleCanvasError(str(exc)) from exc
     return CanvasSection(
         id=section_id,
         title=path.stem.replace("-", " ").replace("_", " ").title()[:200],
