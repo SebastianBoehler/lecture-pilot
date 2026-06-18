@@ -208,6 +208,39 @@ def test_refreshes_stale_markdown_canvas_and_keeps_student_overlay(tmp_path: Pat
     assert any(section.id == "student-transfer-example" for section in refreshed.sections)
 
 
+def test_stale_canvas_refresh_tolerates_concurrent_section_cleanup(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    material_root = write_course_source(tmp_path)
+    workspace = CanvasWorkspace(workspace_root=tmp_path / "workspaces", material_root=material_root)
+    document = workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="alice")
+    canvas_dir = Path(document.workspace_path).parent
+    manifest_path = canvas_dir / "index.md"
+    manifest_path.write_text(
+        manifest_path.read_text(encoding="utf-8").replace(
+            f"import_version: {CANVAS_IMPORT_VERSION}", "import_version: 1"
+        ),
+        encoding="utf-8",
+    )
+    original_unlink = Path.unlink
+    removed = False
+
+    def remove_first_matching_section(path: Path, missing_ok: bool = False) -> None:
+        nonlocal removed
+        if path.name == "04-naive-bayes-classifiers.md" and not removed:
+            original_unlink(path)
+            removed = True
+        original_unlink(path, missing_ok=missing_ok)
+
+    monkeypatch.setattr(Path, "unlink", remove_first_matching_section)
+
+    refreshed = workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="alice")
+
+    assert refreshed.import_version == CANVAS_IMPORT_VERSION
+    assert removed is True
+
+
 def test_refreshes_user_canvas_when_course_base_changes(tmp_path: Path) -> None:
     material_root = write_course_source(tmp_path)
     workspace = CanvasWorkspace(

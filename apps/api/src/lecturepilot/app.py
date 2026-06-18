@@ -150,7 +150,10 @@ def create_app() -> FastAPI:
             professor=context.user_id,
             term=COURSE.term,
         )
-        write_course_workspace(app.state.canvas_workspace.course_media_root(workspace.course.id), workspace)
+        workspace = write_course_workspace(
+            app.state.canvas_workspace.course_media_root(workspace.course.id),
+            workspace,
+        )
         return workspace
 
     @app.get("/courses/{course_id}/source-bundle", response_model=SourceBundleManifest)

@@ -7,6 +7,7 @@ from lecturepilot.agent_response_schema import course_canvas_response_format
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_text_normalizer import clean_canvas_items, clean_canvas_text
 from lecturepilot.course_canvas_enrichment import enrich_learning_document
+from lecturepilot.course_canvas_ids import avoid_mirrored_section_ids
 from lecturepilot.course_canvas_json import parse_model_json
 from lecturepilot.course_canvas_section_planner import plan_sections_individually
 from lecturepilot.course_canvas_validation import required_section_ids, validate_planned_document
@@ -16,8 +17,6 @@ from lecturepilot.models import ProviderCapability, ProviderSettings
 from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
 
 MAX_SOURCE_EVIDENCE_SECTIONS = 80
-
-
 class CoursePlanModelClient(Protocol):
     async def complete_plan(self, *, settings: ProviderSettings, messages: list[dict[str, str]]) -> dict:
         """Return one source-grounded course canvas plan."""
@@ -53,7 +52,8 @@ class CourseCanvasPlanner:
         for _ in range(2):
             try:
                 payload = await self.model_client.complete_plan(settings=settings, messages=messages)
-                document = enrich_learning_document(_planned_document(payload, source_document))
+                document = avoid_mirrored_section_ids(_planned_document(payload, source_document), source_document)
+                document = enrich_learning_document(document)
                 document = interleave_original_slides(document, source_document)
                 validate_planned_document(document, source_document)
                 return document
@@ -66,6 +66,7 @@ class CourseCanvasPlanner:
                 settings=settings,
                 source_document=source_document,
             )
+            sectionwise = avoid_mirrored_section_ids(sectionwise, source_document)
             sectionwise = enrich_learning_document(sectionwise)
             sectionwise = interleave_original_slides(sectionwise, source_document)
             validate_planned_document(sectionwise, source_document)

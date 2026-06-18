@@ -31,6 +31,30 @@ def resolve_course_workspace(
     )
 
 
+def merge_course_workspace(
+    existing: CourseWorkspaceResult | None,
+    incoming: CourseWorkspaceResult,
+) -> CourseWorkspaceResult:
+    if existing is None or existing.course.id != incoming.course.id:
+        return incoming
+    incoming_by_id = {lecture.id: lecture for lecture in incoming.lectures}
+    merged = [
+        _merge_lecture(lecture, incoming_by_id.get(lecture.id))
+        for lecture in existing.lectures
+    ]
+    existing_ids = {lecture.id for lecture in existing.lectures}
+    merged.extend(lecture for lecture in incoming.lectures if lecture.id not in existing_ids)
+    return incoming.model_copy(update={"lectures": merged})
+
+
+def _merge_lecture(existing: Lecture, incoming: Lecture | None) -> Lecture:
+    if incoming is None:
+        return existing
+    if existing.material_path and not incoming.material_path:
+        return existing
+    return incoming
+
+
 def _lectures_for_setup(setup: CourseWorkspaceSetupInput, course_id: str) -> list[Lecture]:
     if setup.lectures:
         return [
