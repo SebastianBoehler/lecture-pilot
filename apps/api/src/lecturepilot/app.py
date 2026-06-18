@@ -15,13 +15,14 @@ from lecturepilot.api_auth import (
     require_course_manager,
 )
 from lecturepilot.agent_routes import register_agent_routes
-from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspace, CanvasWorkspaceError
 from lecturepilot.canvas_workspace_config import SEEDED_COURSE_ID
+from lecturepilot.course_builder_source import course_builder_source_document, scan_source_bundles
 from lecturepilot.course_canvas_routes import register_course_canvas_routes
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner
 from lecturepilot.course_schedule_store import list_course_workspaces, read_course_workspace, write_course_workspace
 from lecturepilot.course_workspace import resolve_course_workspace
+from lecturepilot.exam_readiness_routes import register_exam_readiness_routes
 from lecturepilot.harness import LecturePilotHarness
 from lecturepilot.image_generation_registry import image_generator_from_env
 from lecturepilot.lecture_schedule_planner import LectureSchedulePlanner
@@ -41,8 +42,6 @@ from lecturepilot.models import (
 from lecturepilot.observability import observability_from_env
 from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.sample_data import COURSE, LECTURES, unlocked_lectures
-from lecturepilot.source_bundle import scan_source_bundle
-from lecturepilot.source_bundle_canvas import SourceBundleCanvasError, import_source_bundle_canvas
 from lecturepilot.tenancy import TenantContext
 from lecturepilot.tuebingen_adapter import (
     TuebingenCourseAdapter,
@@ -96,12 +95,13 @@ def create_app() -> FastAPI:
         course_tenant_id=COURSE_TENANT_ID,
         lectures=LECTURES,
         seeded_course_id=SEEDED_COURSE_ID,
-        source_document=lambda course_id, lecture_id: _course_builder_source_document(
+        source_document=lambda course_id, lecture_id: course_builder_source_document(
             app,
             course_id,
             lecture_id,
         ),
     )
+    register_exam_readiness_routes(app, course_tenant_id=COURSE_TENANT_ID, lectures=LECTURES)
 
     @app.get("/courses")
     def courses() -> list[dict]:
@@ -162,7 +162,7 @@ def create_app() -> FastAPI:
         context: TenantContext = Depends(request_context),
     ) -> SourceBundleManifest:
         require_course_manager(context, course_tenant_id=COURSE_TENANT_ID)
-        files = _scan_source_bundles(
+        files = scan_source_bundles(
             app.state.canvas_workspace.source_bundle_roots(course_id, include_seeded_materials=False)
         )
         counts = Counter(item.kind for item in files)
@@ -198,7 +198,7 @@ def create_app() -> FastAPI:
         try:
             return await app.state.lecture_schedule_planner.propose_schedule(
                 course_id=course_id,
-                files=_scan_source_bundles(roots),
+                files=scan_source_bundles(roots),
                 roots=list(roots),
                 first_lecture_date=start_date,
                 requested_count=count,
@@ -280,34 +280,5 @@ def create_app() -> FastAPI:
         return FileResponse(path)
 
     return app
-
-
-def _scan_source_bundles(roots) -> list:
-    files_by_path = {}
-    for root in roots:
-        for item in scan_source_bundle(root):
-            files_by_path.setdefault(item.path, item)
-    return list(files_by_path.values())
-
-
-def _course_builder_source_document(app: FastAPI, course_id: str, lecture_id: str) -> CanvasDocument:
-    workspace = app.state.canvas_workspace
-    workspace_path = f"course-planner/{lecture_id}/source.json"
-    uploads_dir = workspace.layout.course_uploads_dir(course_id)
-    if uploads_dir.exists() and any(path.is_file() for path in uploads_dir.rglob("*")):
-        try:
-            return workspace.source_document(
-                course_id=course_id,
-                lecture_id=lecture_id,
-                workspace_path=workspace_path,
-            )
-        except CanvasWorkspaceError:
-            return import_source_bundle_canvas(
-                source_root=uploads_dir,
-                course_id=course_id,
-                lecture_id=lecture_id,
-                workspace_path=workspace_path,
-            )
-    raise SourceBundleCanvasError("Upload course materials before generating a canvas draft.")
 
 app = create_app()
