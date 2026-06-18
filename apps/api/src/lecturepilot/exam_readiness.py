@@ -5,10 +5,13 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.course_content_filter import is_learning_section
 from lecturepilot.models import Lecture
 
 MAX_EXAM_QUESTIONS = 10
 PASSING_SCORE = 0.7
+MIN_OPEN_ENDED_QUESTIONS = 3
+MAX_MULTIPLE_CHOICE_QUESTIONS = 6
 
 
 class ExamReadinessCoverage(BaseModel):
@@ -47,7 +50,7 @@ def build_exam_readiness_check(
 ) -> ExamReadinessCheck:
     lecture_titles = {lecture.id: lecture.title for lecture in lectures}
     by_lecture = [_questions_for_document(document, lecture_titles.get(document.lecture_id, document.title)) for document in documents]
-    questions = _round_robin([questions for questions in by_lecture if questions], MAX_EXAM_QUESTIONS)
+    questions = _mixed_questions(by_lecture, MAX_EXAM_QUESTIONS)
     coverage = [
         ExamReadinessCoverage(
             lecture_id=document.lecture_id,
@@ -68,6 +71,8 @@ def _questions_for_document(document: CanvasDocument, lecture_title: str) -> lis
     multiple_choice = []
     open_ended = []
     for section in document.sections:
+        if not is_learning_section(section):
+            continue
         for block in section.blocks:
             if question := _quiz_question(document, lecture_title, section, block):
                 multiple_choice.append(question)
@@ -155,6 +160,36 @@ def _round_robin(question_groups: list[list[ExamReadinessQuestion]], limit: int)
             break
         index += 1
     return selected
+
+
+def _mixed_questions(question_groups: list[list[ExamReadinessQuestion]], limit: int) -> list[ExamReadinessQuestion]:
+    multiple_choice_groups = [
+        [question for question in questions if question.kind == "multiple_choice"]
+        for questions in question_groups
+    ]
+    open_ended_groups = [
+        [question for question in questions if question.kind == "open_ended"]
+        for questions in question_groups
+    ]
+    open_target = min(MIN_OPEN_ENDED_QUESTIONS, _question_count(open_ended_groups), limit)
+    mc_target = min(MAX_MULTIPLE_CHOICE_QUESTIONS, _question_count(multiple_choice_groups), limit - open_target)
+    selected = [
+        *_round_robin([group for group in multiple_choice_groups if group], mc_target),
+        *_round_robin([group for group in open_ended_groups if group], open_target),
+    ]
+    remaining = limit - len(selected)
+    if remaining <= 0:
+        return selected[:limit]
+    selected_ids = {question.id for question in selected}
+    leftovers = [
+        [question for question in questions if question.id not in selected_ids]
+        for questions in question_groups
+    ]
+    return [*selected, *_round_robin([group for group in leftovers if group], remaining)][:limit]
+
+
+def _question_count(groups: list[list[ExamReadinessQuestion]]) -> int:
+    return sum(len(group) for group in groups)
 
 
 def _trim(value: str, limit: int) -> str:

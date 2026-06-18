@@ -49,6 +49,7 @@ def read_document_source(canvas_dir: Path) -> CanvasDocument:
         source_ref=_required(manifest, "source_ref"),
         workspace_path=str(canvas_dir / "index.md"),
         sections=sections,
+        warnings=_string_list(manifest.get("warnings")),
     )
 
 
@@ -73,6 +74,7 @@ def _write_manifest(document: CanvasDocument, path: Path) -> None:
         "title": document.title,
         "source_kind": document.source_kind,
         "source_ref": document.source_ref,
+        "warnings": document.warnings,
     }
     path.write_text(_frontmatter(frontmatter) + "\n", encoding="utf-8")
 
@@ -116,7 +118,7 @@ def _read_section(path: Path, manifest: dict[str, str]) -> CanvasSection:
     )
 
 
-def _read_frontmatter(text: str) -> tuple[dict[str, str], str]:
+def _read_frontmatter(text: str) -> tuple[dict[str, object], str]:
     if not text.startswith("---\n"):
         return {}, text
     end = text.find("\n---", 4)
@@ -125,7 +127,7 @@ def _read_frontmatter(text: str) -> tuple[dict[str, str], str]:
     return _parse_frontmatter(text[4:end]), text[end + 4 :].strip()
 
 
-def _parse_frontmatter(raw: str) -> dict[str, str]:
+def _parse_frontmatter(raw: str) -> dict[str, object]:
     result = {}
     for line in raw.splitlines():
         if not line.strip():
@@ -135,9 +137,9 @@ def _parse_frontmatter(raw: str) -> dict[str, str]:
     return result
 
 
-def _parse_value(value: str) -> str:
-    if value.startswith('"'):
-        return str(json.loads(value))
+def _parse_value(value: str) -> object:
+    if value.startswith(('"', "[", "{")):
+        return json.loads(value)
     return value
 
 
@@ -148,11 +150,17 @@ def _frontmatter(values: dict[str, object]) -> str:
     return "\n".join([*lines, "---\n"])
 
 
-def _required(values: dict[str, str], key: str) -> str:
+def _required(values: dict[str, object], key: str) -> str:
     value = values.get(key)
     if value in (None, ""):
         raise CanvasMarkdownError(f"Canvas Markdown is missing {key}.")
-    return value
+    return str(value)
+
+
+def _string_list(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [str(item)[:500] for item in value if str(item).strip()]
 
 
 def _find_section_path(path: Path, section_id: str) -> Path | None:

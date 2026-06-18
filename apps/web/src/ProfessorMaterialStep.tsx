@@ -1,6 +1,7 @@
 import { useId, useState } from "react";
 
-import { fileRelativePath, materialFilesFromDrop } from "./materialDrop";
+import { materialFilesFromDrop } from "./materialDrop";
+import { materialSelectionSummary } from "./materialSelectionSummary";
 import { BundleSummary, PendingStatus, StepHeader } from "./ProfessorCourseBuilderParts";
 import { ProfessorLectureSchedule } from "./ProfessorLectureSchedule";
 import type { BuilderAction } from "./professorWorkflowRun";
@@ -45,9 +46,7 @@ export function ProfessorMaterialStep({
   const isBusy = pendingAction !== null;
   const isUploading = pendingAction === "upload";
   const disabled = !courseReady || !workspaceReady || isBusy;
-  const fileLabel = uploadFiles.length
-    ? `${uploadFiles.length} selected`
-    : "No files selected";
+  const fileLabel = materialSelectionSummary(uploadFiles);
   return (
     <section className="flow-card">
       <StepHeader number="02" title="Upload materials" done={Boolean(bundle?.files.length)} />
@@ -85,7 +84,6 @@ export function ProfessorMaterialStep({
       </label>
       <p className="material-selection-summary">
         {fileLabel}
-        {uploadFiles[0] ? <span>{fileRelativePath(uploadFiles[0])}</span> : null}
       </p>
       <div className="flow-actions">
         <button className="primary-action" disabled={disabled || !uploadFiles.length} type="button" onClick={onUpload}>

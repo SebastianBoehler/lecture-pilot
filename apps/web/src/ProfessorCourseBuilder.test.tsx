@@ -80,6 +80,8 @@ describe("Professor course builder", () => {
 
     await user.click(screen.getByRole("button", { name: /generate draft canvas/i }));
     expect(await screen.findByText(/course-builder agent generated/i)).toBeInTheDocument();
+    expect(screen.getByText(/review needed/i)).toBeInTheDocument();
+    expect(screen.getByText(/planner model finished with reason/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /publish tutor workspace/i })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /04 generate/i }));
     expect(await screen.findByText(/2 sections ready for review/i)).toBeInTheDocument();
@@ -206,6 +208,8 @@ describe("Professor course builder", () => {
 
     expect(screen.getByRole("button", { name: /generating draft canvas/i })).toBeDisabled();
     expect(screen.getByRole("status")).toHaveTextContent(/generating a source-grounded canvas draft/i);
+    expect(screen.getByLabelText(/lecture generation progress/i)).toHaveTextContent(/Lecture 03/);
+    expect(screen.getByLabelText(/lecture generation progress/i)).toHaveTextContent(/generating/i);
 
     draftRequest.resolve?.();
     expect(await screen.findByText(/course-builder agent generated/i)).toBeInTheDocument();

@@ -49,3 +49,4 @@ class CanvasDocument(BaseModel):
     source_ref: str = Field(min_length=1, max_length=500)
     workspace_path: str = Field(min_length=1, max_length=500)
     sections: list[CanvasSection] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list, max_length=20)

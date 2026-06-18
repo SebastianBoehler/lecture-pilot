@@ -17,6 +17,7 @@ from lecturepilot.latex_canvas_text import (
     strip_comments,
 )
 from lecturepilot.latex_canvas_study_sections import read_study_sections
+from lecturepilot.latex_slide_assets import append_matching_pdf_slides
 
 
 @dataclass(frozen=True)
@@ -44,6 +45,14 @@ def import_latex_canvas(
 ) -> CanvasDocument:
     source = strip_comments(source_path.read_text(encoding="utf-8", errors="replace"))
     frames = _read_frames(source)
+    sections = _read_grouped_sections(frames, material_root, course_id, lecture_id)
+    sections = append_matching_pdf_slides(
+        sections=sections,
+        source_path=source_path,
+        material_root=material_root,
+        course_id=course_id,
+        lecture_id=lecture_id,
+    )
     return CanvasDocument(
         id=f"{course_id}-{lecture_id}",
         import_version=CANVAS_IMPORT_VERSION,
@@ -53,8 +62,9 @@ def import_latex_canvas(
         source_kind="latex",
         source_ref=source_path.name,
         workspace_path=workspace_path,
-        sections=_read_grouped_sections(frames, material_root, course_id, lecture_id),
+        sections=sections,
     )
+
 
 
 def _read_grouped_sections(

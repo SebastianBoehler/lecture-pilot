@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { draftLectureCanvas, getDraftLectureCanvas } from "./api";
 import { builderSteps, initialBuilderStep, ProfessorBuilderStepper, type BuilderStep } from "./ProfessorBuilderStepper";
 import { ProfessorCanvasDraftStep } from "./ProfessorCanvasDraftStep";
-import { generateLectureCanvasDrafts } from "./professorCanvasGeneration";
+import { ProfessorGenerationWarnings } from "./ProfessorGenerationWarnings";
+import { generateLectureCanvasDrafts, type CanvasGenerationProgress } from "./professorCanvasGeneration";
 import { CourseSetupStep, hasCanvasVideo, toggleSelected } from "./ProfessorCourseBuilderParts";
 import { ProfessorMaterialStep } from "./ProfessorMaterialStep";
 import { ProfessorPublishStep } from "./ProfessorPublishStep";
@@ -58,6 +59,8 @@ export function ProfessorCourseBuilder({
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [canvas, setCanvas] = useState<CanvasDocument | null>(null);
   const [generatedLectureIds, setGeneratedLectureIds] = useState<string[]>([]);
+  const [generationProgress, setGenerationProgress] = useState<CanvasGenerationProgress[]>([]);
+  const [generationWarnings, setGenerationWarnings] = useState<string[]>([]);
   const [query, setQuery] = useState(savedFlow.query);
   const [videos, setVideos] = useState<YoutubeVideoCandidate[]>([]);
   const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
@@ -66,6 +69,7 @@ export function ProfessorCourseBuilder({
   const [scheduleApplied, setScheduleApplied] = useState(setup.target !== "full-course");
   const { error, notice, pendingAction, run, setError } = useProfessorWorkflowRun();
   const [restored, setRestored] = useState(!savedFlow.bundleReady && !savedFlow.canvasReady);
+  const [isRestoring, setIsRestoring] = useState(false);
   const setupReady = isCourseSetupReady(setup);
   const bundleReady = Boolean(bundle?.files.length);
   const mediaReady = mediaIncluded || selectedVideos.size > 0 || hasCanvasVideo(canvas);
@@ -108,32 +112,8 @@ export function ProfessorCourseBuilder({
   useEffect(() => {
     let cancelled = false;
     async function restoreGeneratedState() {
-      try {
-        if (savedFlow.bundleReady && savedFlow.workspace) {
-          const restoredBundle = await getSourceBundle(savedFlow.workspace.courseId, session);
-          if (!cancelled) setBundle(restoredBundle);
-        }
-        if ((savedFlow.bundleReady || savedFlow.canvasReady) && savedFlow.workspace) {
-          try {
-            const restoredCanvas = await getDraftLectureCanvas(
-              savedFlow.workspace.courseId,
-              savedFlow.workspace.lectureId,
-              session,
-            );
-            if (!cancelled) setCanvas(restoredCanvas);
-          } catch (canvasError) {
-            if (savedFlow.canvasReady && !cancelled) {
-              setError(canvasError instanceof Error ? canvasError.message : "Could not restore professor preview.");
-            }
-          }
-        }
-      } catch (restoreError) {
-        if (!cancelled) {
-          setError(restoreError instanceof Error ? restoreError.message : "Could not restore professor preview.");
-        }
-      } finally {
-        if (!cancelled) setRestored(true);
-      }
+      await restoreFromBackend(savedFlow.workspace, { quietDraftMiss: !savedFlow.canvasReady, skipWhenMissing: true });
+      if (!cancelled) setRestored(true);
     }
     if (!restored) void restoreGeneratedState();
     return () => {
@@ -161,6 +141,8 @@ export function ProfessorCourseBuilder({
     setLectureSchedule([]);
     setCanvas(null);
     setGeneratedLectureIds([]);
+    setGenerationProgress([]);
+    setGenerationWarnings([]);
     setVideos([]);
     setSelectedVideos(new Set());
     setMediaIncluded(false);
@@ -175,7 +157,19 @@ export function ProfessorCourseBuilder({
           <h1>Course builder</h1>
           <p>Define the course scope, upload material, draft the canvas, approve media, then publish for students.</p>
         </div>
-        <p className="professor-session">Signed in as {session.username}</p>
+        <div className="professor-header-actions">
+          <button
+            className="refresh-button"
+            disabled={!workspace || isRestoring}
+            type="button"
+            onClick={() => {
+              void restoreFromBackend(workspace, { quietDraftMiss: true });
+            }}
+          >
+            {isRestoring ? "Refreshing..." : "Refresh workspace state"}
+          </button>
+          <p className="professor-session">Signed in as {session.username}</p>
+        </div>
       </section>
       <ProfessorBuilderStepper activeStep={activeStep} steps={steps} onStepChange={setActiveStep} />
       <div className="professor-flow">
@@ -190,6 +184,8 @@ export function ProfessorCourseBuilder({
               setWorkspace({ courseId: created.course.id, lectureId: created.active_lecture_id });
               onWorkspaceLecturesChange(created.course, created.lectures);
               setGeneratedLectureIds([]);
+              setGenerationProgress([]);
+              setGenerationWarnings([]);
               setScheduleApplied(setup.target !== "full-course");
               setCourseReady(true);
               setActiveStep("upload");
@@ -235,6 +231,8 @@ export function ProfessorCourseBuilder({
               await updateBundleAndSchedule(activeWorkspace.courseId);
               setCanvas(null);
               setGeneratedLectureIds([]);
+              setGenerationProgress([]);
+              setGenerationWarnings([]);
               setMediaIncluded(false);
               setMediaReviewed(false);
               setSelectedVideos(new Set());
@@ -249,6 +247,8 @@ export function ProfessorCourseBuilder({
               await updateBundleAndSchedule(activeWorkspace.courseId);
               setCanvas(null);
               setGeneratedLectureIds([]);
+              setGenerationProgress([]);
+              setGenerationWarnings([]);
               setMediaIncluded(false);
               setMediaReviewed(false);
               setSelectedVideos(new Set());
@@ -262,6 +262,8 @@ export function ProfessorCourseBuilder({
               onWorkspaceLecturesChange(created.course, created.lectures);
               setGeneratedLectureIds([]);
               setCanvas(null);
+              setGenerationProgress([]);
+              setGenerationWarnings([]);
               setMediaReviewed(false);
               setScheduleApplied(true);
               setActiveStep("review");
@@ -273,23 +275,33 @@ export function ProfessorCourseBuilder({
           <ProfessorCanvasDraftStep
             canvas={canvas}
             canGenerate={Boolean(bundleReady && reviewReady && workspace)}
+            generationProgress={generationProgress}
             generatedCount={generatedLectureIds.length}
             isFullCourse={setup.target === "full-course"}
             isGenerating={pendingAction === "generate"}
             previewHref={previewHref}
             totalCount={fullCourseLectureIds.length}
+            warnings={generationWarnings}
             onGenerate={() => run("generate", async () => {
               const activeWorkspace = requireWorkspace(workspace);
               const lectureIds = setup.target === "full-course" && fullCourseLectureIds.length
                 ? fullCourseLectureIds
                 : [activeWorkspace.lectureId];
+              setGenerationProgress(lectureIds.map((lectureId) => ({ lectureId, status: "pending" })));
+              setGenerationWarnings([]);
               const canvases = await generateLectureCanvasDrafts({
                 lectureIds,
                 draft: (lectureId) => draftLectureCanvas(activeWorkspace.courseId, lectureId, session),
+                onProgress: (progress) => {
+                  setGenerationProgress((current) => current.map((item) => (
+                    item.lectureId === progress.lectureId ? { ...item, ...progress } : item
+                  )));
+                },
               });
               const firstCanvas = canvases[0] ?? null;
               setCanvas(firstCanvas);
               setGeneratedLectureIds(lectureIds);
+              setGenerationWarnings(Array.from(new Set(canvases.flatMap((item) => item.warnings ?? []))));
               setActiveStep("publish");
               if (lectureIds.length === 1) return "Course-builder agent generated a source-grounded canvas draft.";
               return `Course-builder agent generated ${lectureIds.length} source-grounded lecture canvases.`;
@@ -321,6 +333,8 @@ export function ProfessorCourseBuilder({
               setMediaReviewed(true);
               if (canvas) setCanvas(null);
               setGeneratedLectureIds([]);
+              setGenerationProgress([]);
+              setGenerationWarnings([]);
               setActiveStep("generate");
               return `Saved ${selected.length} approved video${selected.length === 1 ? "" : "s"} for draft generation.`;
             })}
@@ -372,6 +386,7 @@ export function ProfessorCourseBuilder({
           />
         ) : null}
       </div>
+      <ProfessorGenerationWarnings warnings={generationWarnings} />
       {notice ? <p className="form-success">{notice}</p> : null}
       {error ? <p className="form-error">{error}</p> : null}
     </main>
@@ -388,6 +403,37 @@ export function ProfessorCourseBuilder({
       session,
     });
     setLectureSchedule(proposal.lectures);
+  }
+
+  async function restoreFromBackend(
+    targetWorkspace: { courseId: string; lectureId: string } | null,
+    options: { quietDraftMiss?: boolean; skipWhenMissing?: boolean } = {},
+  ) {
+    if (!targetWorkspace) {
+      if (!options.skipWhenMissing) setError("Create a course workspace before refreshing state.");
+      return;
+    }
+    setIsRestoring(true);
+    try {
+      const restoredBundle = await getSourceBundle(targetWorkspace.courseId, session);
+      setBundle(restoredBundle);
+      try {
+        const restoredCanvas = await getDraftLectureCanvas(targetWorkspace.courseId, targetWorkspace.lectureId, session);
+        setCanvas(restoredCanvas);
+        setGenerationWarnings(restoredCanvas.warnings ?? []);
+        setActiveStep("publish");
+      } catch (canvasError) {
+        if (!options.quietDraftMiss) {
+          setError(canvasError instanceof Error ? canvasError.message : "Could not restore professor preview.");
+        }
+      }
+    } catch (restoreError) {
+      if (!options.skipWhenMissing) {
+        setError(restoreError instanceof Error ? restoreError.message : "Could not refresh workspace state.");
+      }
+    } finally {
+      setIsRestoring(false);
+    }
   }
 }
 

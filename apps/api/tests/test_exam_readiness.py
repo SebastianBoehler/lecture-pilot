@@ -38,6 +38,7 @@ def test_exam_readiness_uses_published_course_canvases(tmp_path: Path) -> None:
     quiz = next(question for question in payload["questions"] if question["kind"] == "multiple_choice")
     assert quiz["answer_index"] == 1
     assert quiz["lecture_title"] == "Bayesian Decision Theory"
+    assert len([question for question in payload["questions"] if question["kind"] == "open_ended"]) >= 1
 
 
 def test_exam_readiness_requires_published_canvases(tmp_path: Path) -> None:
@@ -57,6 +58,36 @@ def test_exam_readiness_requires_published_canvases(tmp_path: Path) -> None:
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Publish at least one lecture canvas before running the exam readiness check."
+
+
+def test_exam_readiness_filters_admin_sections_and_limits_mc_dominance(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    client.post(
+        "/admin/course-workspaces",
+        json={
+            "course_title": "Demo ML Course",
+            "target": "full-course",
+            "lectures": [
+                {"number": "01", "title": "Intro", "date": "2026-05-06"},
+                {"number": "02", "title": "Risk", "date": "2026-05-13"},
+                {"number": "03", "title": "Bayes", "date": "2026-05-20"},
+                {"number": "04", "title": "Classification", "date": "2026-05-27"},
+            ],
+        },
+        headers=professor_headers(),
+    )
+    workspace: CanvasWorkspace = client.app.state.canvas_workspace
+    for index in range(1, 5):
+        workspace.write_course_canvas(_document(f"lecture-{index:02d}", f"Lecture {index}", with_quiz=True))
+
+    response = client.get("/courses/demo-ml-course/exam-readiness", headers=student_headers())
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert not any("Admin Details" in question["section_title"] for question in payload["questions"])
+    kinds = [question["kind"] for question in payload["questions"]]
+    assert kinds.count("multiple_choice") <= 6
+    assert kinds.count("open_ended") >= 3
 
 
 def _client(tmp_path: Path) -> TestClient:
@@ -101,6 +132,20 @@ def _document(lecture_id: str, title: str, *, with_quiz: bool) -> CanvasDocument
         source_ref=f"{lecture_id}.tex",
         workspace_path="course/canvas/index.md",
         sections=[
+            CanvasSection(
+                id=f"{lecture_id}-admin",
+                title="Please consult the German Lecture Slides for the Admin Details",
+                source_ref=f"{lecture_id}.tex frames 1-2",
+                blocks=[
+                    CanvasBlock(
+                        id=f"{lecture_id}-admin-quiz",
+                        type="quiz",
+                        text="Which deadline is listed in the admin slide?",
+                        items=["Week 1", "Week 2", "Week 3"],
+                        answer_index=0,
+                    )
+                ],
+            ),
             CanvasSection(
                 id=f"{lecture_id}-section",
                 title=title,

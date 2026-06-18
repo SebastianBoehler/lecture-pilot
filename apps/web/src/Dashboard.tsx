@@ -53,41 +53,43 @@ export function Dashboard({
                 <span className={`workspace-status is-${status}`}>{statusLabel}</span>
               </div>
               {tutorAvailable ? (
-                <div className="lecture-list" aria-label={`Available lectures for ${course.title}`}>
-                  {courseLectures.map((lecture) => (
-                    <article className="lecture-row" key={lecture.id}>
-                      <div className="lecture-number">{lecture.number}</div>
-                      <div>
-                        <h3>{lecture.title}</h3>
-                        <p>
-                          {lecture.date} · attendance {lecture.attendance}
-                        </p>
-                        <div className="attendance-control" aria-label={`Attendance for ${lecture.title}`}>
-                          {(["present", "absent", "unknown"] as const).map((status) => (
-                            <button
-                              aria-pressed={lecture.attendance === status}
-                              className={lecture.attendance === status ? "is-active" : undefined}
-                              key={status}
-                              onClick={() => onSetAttendance(lecture.id, status)}
-                              type="button"
-                            >
-                              {status}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <button type="button" onClick={() => onOpen(lecture)}>
-                        Open lecture {lecture.number}
-                      </button>
-                    </article>
-                  ))}
+                <>
                   <ExamReadinessPanel
                     course={course}
                     lectures={courseLectures}
                     session={session}
                     onOpenLecture={onOpen}
                   />
-                </div>
+                  <div className="lecture-list" aria-label={`Available lectures for ${course.title}`}>
+                    {courseLectures.map((lecture) => (
+                      <article className="lecture-row" key={lecture.id}>
+                        <div className="lecture-number">{lecture.number}</div>
+                        <div>
+                          <h3>{lecture.title}</h3>
+                          <p>
+                            {lecture.date} · attendance {lecture.attendance}
+                          </p>
+                          <div className="attendance-control" aria-label={`Attendance for ${lecture.title}`}>
+                            {(["present", "absent", "unknown"] as const).map((status) => (
+                              <button
+                                aria-pressed={lecture.attendance === status}
+                                className={lecture.attendance === status ? "is-active" : undefined}
+                                key={status}
+                                onClick={() => onSetAttendance(lecture.id, status)}
+                                type="button"
+                              >
+                                {status}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => onOpen(lecture)}>
+                          Open lecture {lecture.number}
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                </>
               ) : (
                 <p className="workspace-empty">{emptyText}</p>
               )}
