@@ -88,7 +88,7 @@ export function ProfessorMaterialStep({
         {uploadFiles[0] ? <span>{fileRelativePath(uploadFiles[0])}</span> : null}
       </p>
       <div className="flow-actions">
-        <button disabled={disabled || !uploadFiles.length} type="button" onClick={onUpload}>
+        <button className="primary-action" disabled={disabled || !uploadFiles.length} type="button" onClick={onUpload}>
           {isUploading ? "Uploading materials..." : `Upload selected ${materialScope}`}
         </button>
         <button disabled={disabled} type="button" onClick={onScan}>

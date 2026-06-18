@@ -88,7 +88,7 @@ export function CourseSetupStep({
           </label>
         </div>
       )}
-      <button disabled={!isReady || isCreating} type="button" onClick={onCreate}>
+      <button className="primary-action" disabled={!isReady || isCreating} type="button" onClick={onCreate}>
         {isCreating ? "Creating workspace..." : "Create course workspace"}
       </button>
       {isCreating ? <PendingStatus label="Creating course workspace..." /> : null}
