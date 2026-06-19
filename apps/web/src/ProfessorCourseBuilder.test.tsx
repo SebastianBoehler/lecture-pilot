@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -175,6 +175,50 @@ describe("Professor course builder", () => {
     });
     await user.click(screen.getByRole("button", { name: /^course performance$/i }));
     expect(await screen.findByText(/no published course workspace yet/i)).toBeInTheDocument();
+  });
+
+  it("restores full-course publish targets after a builder refresh", async () => {
+    const user = userEvent.setup();
+    const fetchMock = professorFetchMock();
+    window.sessionStorage.setItem("lecturepilot.professor-builder.current", JSON.stringify({
+      setup: {
+        accessPolicy: "tuebingen_enrolled",
+        courseTitle: "Demo ML Course",
+        lectureTitle: "Bayesian Decision Theory",
+        lectureNumber: "03",
+        lectureCount: "",
+        firstLectureDate: "2026-05-06",
+        target: "full-course",
+      },
+      workspace: { courseId: "demo-ml-course", lectureId: "lecture-01" },
+      courseReady: true,
+      uploadPath: "uploads",
+      bundleReady: true,
+      canvasReady: true,
+      lectureSchedule: [],
+      query: "machine learning lecture",
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /preview professor account/i }));
+
+    expect(await screen.findByText(/0 of 2 lecture workspaces published/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /publish all tutor workspaces/i }));
+
+    expect(await screen.findByText(/2 tutor workspaces published/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/published lecture workspaces/i)).toHaveTextContent("Lecture 01");
+    expect(screen.getByLabelText(/published lecture workspaces/i)).toHaveTextContent("Lecture 02");
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/admin/courses/demo-ml-course/lectures/lecture-01/canvas/publish"),
+        expect.objectContaining({ method: "POST" }),
+      );
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/admin/courses/demo-ml-course/lectures/lecture-02/canvas/publish"),
+        expect.objectContaining({ method: "POST" }),
+      );
+    });
   });
 
   it("shows a loading state while generating the canvas draft", async () => {
