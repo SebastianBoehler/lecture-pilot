@@ -22,6 +22,7 @@ from lecturepilot.course_canvas_store import CourseCanvasStore
 from lecturepilot.course_media import apply_course_media
 from lecturepilot.generated_infographics import materialize_infographic_sections
 from lecturepilot.latex_canvas_importer import CANVAS_IMPORT_VERSION, import_latex_canvas
+from lecturepilot.lecture_source_selection import lecture_source_candidates
 from lecturepilot.storage_layout import DEFAULT_TENANT_ID, StorageLayout, safe_id
 
 
@@ -322,16 +323,13 @@ class CanvasWorkspace:
     def _source_path(self, course_id: str, lecture_id: str) -> Path:
         source_name = lecture_source_name(lecture_id)
         uploads_dir = self.layout.course_uploads_dir(course_id)
-        source_names = [source_name] if source_name else []
         uploaded_sources = sorted(uploads_dir.rglob("*.tex")) if uploads_dir.exists() else []
-        if source_name:
-            source_names.extend(
-                str(path.relative_to(uploads_dir))
-                for path in uploaded_sources
-                if path.name == source_name
-            )
-        source_names.extend(str(path.relative_to(uploads_dir)) for path in uploaded_sources)
-        candidates = [uploads_dir / name for name in dict.fromkeys(source_names)]
+        candidates = lecture_source_candidates(
+            lecture_id=lecture_id,
+            uploads_dir=uploads_dir,
+            uploaded_sources=uploaded_sources,
+            configured_source=source_name,
+        )
         if source_name and course_id == SEEDED_COURSE_ID:
             candidates.append(self.material_root / source_name)
         for source_path in candidates:
