@@ -6,6 +6,8 @@ from lecturepilot.analytics import AnalyticsStore, LectureAnalyticsSummary, Quiz
 from lecturepilot.api_auth import request_context, require_course_manager, require_learner_workspace_access
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
+from lecturepilot.readiness_analytics import CourseReadinessSummary, course_readiness_summary
+from lecturepilot.readiness_progress import ReadinessProgressStore
 from lecturepilot.tenancy import TenantContext
 
 
@@ -61,6 +63,20 @@ def register_analytics_routes(app: FastAPI, *, course_tenant_id: str) -> None:
     ) -> LectureAnalyticsSummary:
         require_course_manager(context, course_tenant_id=course_tenant_id)
         return _analytics_store(app).summary(course_id=course_id, lecture_id=lecture_id)
+
+    @app.get(
+        "/admin/courses/{course_id}/exam-readiness/summary",
+        response_model=CourseReadinessSummary,
+    )
+    def readiness_summary(
+        course_id: str,
+        context: TenantContext = Depends(request_context),
+    ) -> CourseReadinessSummary:
+        require_course_manager(context, course_tenant_id=course_tenant_id)
+        return course_readiness_summary(
+            course_id=course_id,
+            store=ReadinessProgressStore(app.state.canvas_workspace.layout),
+        )
 
 
 def _quiz_block(document: CanvasDocument, block_id: str) -> CanvasBlock:

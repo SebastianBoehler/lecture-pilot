@@ -83,7 +83,13 @@ describe("Dashboard course workspace matching", () => {
 
   it("runs the exam readiness check from published course lectures", async () => {
     const user = userEvent.setup();
-    const fetchMock = vi.fn(async () => json(examReadinessPayload()));
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/exam-readiness/attempts") && init?.method === "POST") {
+        return json(examReadinessAttemptPayload());
+      }
+      return json(examReadinessPayload());
+    });
     vi.stubGlobal("fetch", fetchMock);
     const onOpen = renderDashboard(matchedSession, true);
 
@@ -95,11 +101,20 @@ describe("Dashboard course workspace matching", () => {
     await user.click(screen.getByRole("button", { name: /check readiness/i }));
 
     expect(await screen.findByText(/keep reviewing/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/expected risk combines posterior probabilities/i).length).toBeGreaterThan(1);
+    expect(screen.getByText(/rubric review needed/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /review lecture 03/i }));
     expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: "lecture-03" }));
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/courses/martius-ml/exam-readiness"),
       expect.objectContaining({ headers: expect.any(Object) }),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/courses/martius-ml/exam-readiness/attempts"),
+      expect.objectContaining({
+        body: expect.stringContaining("Bayes and compare risks"),
+        method: "POST",
+      }),
     );
   });
 });
@@ -163,6 +178,73 @@ function examReadinessPayload() {
         options: [],
         answer_index: null,
         rubric: ["Bayes formula turns evidence into a posterior distribution."],
+      },
+    ],
+  };
+}
+
+function examReadinessAttemptPayload() {
+  return {
+    attempt_id: "attempt-20260701T120000Z0000",
+    created_at: "2026-07-01T12:00:00+00:00",
+    course_id: "martius-ml",
+    passing_score: 0.7,
+    score: 0,
+    guidance_level: "scaffolded",
+    results: [
+      {
+        question_id: "lecture-03:losses-and-risks-quiz",
+        kind: "multiple_choice",
+        lecture_id: "lecture-03",
+        section_id: "losses-and-risks",
+        answer_kind: "multiple_choice",
+        correct: false,
+        selected_index: 0,
+        correct_index: 1,
+        status: "incorrect",
+      },
+      {
+        question_id: "lecture-03:bayes-formula:open",
+        kind: "open_ended",
+        lecture_id: "lecture-03",
+        section_id: "bayes-formula",
+        answer_kind: "open_ended",
+        correct: null,
+        status: "needs_rubric_review",
+      },
+    ],
+    tasks: [
+      {
+        id: "lecture-03-losses-and-risks-quiz-review",
+        question_id: "lecture-03:losses-and-risks-quiz",
+        kind: "review_wrong_mc",
+        status: "open",
+        guidance_level: "scaffolded",
+        lecture_id: "lecture-03",
+        lecture_title: "Bayesian Decision Theory",
+        section_id: "losses-and-risks",
+        section_title: "Losses and risks",
+        prompt: "Which quantity should be minimized when mistakes have different costs?",
+        source_ref: "Lecture03-eng.tex frames 8-9",
+        rubric: ["Expected risk combines posterior probabilities with loss values."],
+        expected_evidence: "Expected risk combines posterior probabilities with loss values.",
+        next_action: "Review Losses and risks, then answer a follow-up without seeing the options.",
+      },
+      {
+        id: "lecture-03-bayes-formula-open-review",
+        question_id: "lecture-03:bayes-formula:open",
+        kind: "review_open_answer",
+        status: "open",
+        guidance_level: "scaffolded",
+        lecture_id: "lecture-03",
+        lecture_title: "Bayesian Decision Theory",
+        section_id: "bayes-formula",
+        section_title: "Bayes formula",
+        prompt: "Explain Bayes formula as you would in an exam answer.",
+        source_ref: "Lecture03-eng.tex frames 5-6",
+        rubric: ["Bayes formula turns evidence into a posterior distribution."],
+        expected_evidence: "Bayes formula turns evidence into a posterior distribution.",
+        next_action: "Compare your answer with the rubric for Bayes formula and revise the weak point.",
       },
     ],
   };

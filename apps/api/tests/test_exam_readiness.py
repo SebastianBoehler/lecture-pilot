@@ -90,6 +90,91 @@ def test_exam_readiness_filters_admin_sections_and_limits_mc_dominance(tmp_path:
     assert kinds.count("open_ended") >= 3
 
 
+def test_exam_readiness_attempt_is_persisted_in_learner_progress(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    client.post(
+        "/admin/course-workspaces",
+        json={
+            "course_title": "Demo ML Course",
+            "target": "single-lecture",
+            "lecture_number": "03",
+            "lecture_title": "Bayesian Decision Theory",
+        },
+        headers=professor_headers(),
+    )
+    workspace: CanvasWorkspace = client.app.state.canvas_workspace
+    workspace.write_course_canvas(_document("lecture-03", "Bayesian Decision Theory", with_quiz=True))
+
+    response = client.post(
+        "/courses/demo-ml-course/exam-readiness/attempts",
+        headers=student_headers("student-a"),
+        json={
+            "answers": [
+                {"question_id": "lecture-03:lecture-03-quiz", "selected_index": 0},
+                {"question_id": "lecture-03:lecture-03-section:open", "text": "Bayes compares evidence."},
+            ]
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["attempt_id"].startswith("attempt-")
+    assert payload["score"] == 0
+    assert payload["guidance_level"] == "scaffolded"
+    assert payload["tasks"][0]["source_ref"] == "lecture-03.tex"
+    progress_path = workspace.layout.user_course_root("student-a", "demo-ml-course") / "progress.json"
+    assert progress_path.exists()
+    assert not (workspace.layout.course_root("demo-ml-course") / "progress.json").exists()
+    progress = progress_path.read_text(encoding="utf-8")
+    assert "student-a" not in progress
+    assert "Bayes compares evidence" not in progress
+    assert "first_try" in progress
+
+
+def test_exam_readiness_attempt_requires_authentication(tmp_path: Path) -> None:
+    response = _client(tmp_path).post(
+        "/courses/demo-ml-course/exam-readiness/attempts",
+        json={"answers": [{"question_id": "lecture-03:lecture-03-quiz", "selected_index": 0}]},
+    )
+
+    assert response.status_code == 401
+
+
+def test_exam_readiness_attempts_are_user_isolated(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    client.post(
+        "/admin/course-workspaces",
+        json={
+            "course_title": "Demo ML Course",
+            "target": "single-lecture",
+            "lecture_number": "03",
+            "lecture_title": "Bayesian Decision Theory",
+        },
+        headers=professor_headers(),
+    )
+    workspace: CanvasWorkspace = client.app.state.canvas_workspace
+    workspace.write_course_canvas(_document("lecture-03", "Bayesian Decision Theory", with_quiz=True))
+
+    for user_id in ("student-a", "student-b"):
+        response = client.post(
+            "/courses/demo-ml-course/exam-readiness/attempts",
+            headers=student_headers(user_id),
+            json={
+                "answers": [
+                    {"question_id": "lecture-03:lecture-03-quiz", "selected_index": 1},
+                    {"question_id": "lecture-03:lecture-03-section:open", "text": "Expected risk uses costs."},
+                ]
+            },
+        )
+        assert response.status_code == 200
+
+    first = workspace.layout.user_course_root("student-a", "demo-ml-course") / "progress.json"
+    second = workspace.layout.user_course_root("student-b", "demo-ml-course") / "progress.json"
+    assert first.exists()
+    assert second.exists()
+    assert first != second
+
+
 def _client(tmp_path: Path) -> TestClient:
     app = create_app()
     app.state.canvas_workspace = CanvasWorkspace(
