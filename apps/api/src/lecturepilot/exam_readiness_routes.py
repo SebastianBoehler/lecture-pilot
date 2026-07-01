@@ -6,7 +6,13 @@ from lecturepilot.api_auth import request_context, require_learner_workspace_acc
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.course_schedule_store import read_course_workspace
 from lecturepilot.exam_readiness import ExamReadinessCheck, build_exam_readiness_check
+from lecturepilot.exam_revision_plan import (
+    ExamReadinessAttemptInput,
+    ExamReadinessAttemptResult,
+    build_exam_revision_plan,
+)
 from lecturepilot.models import Lecture
+from lecturepilot.readiness_progress import ReadinessProgressStore
 from lecturepilot.tenancy import TenantContext
 
 
@@ -26,40 +32,30 @@ def register_exam_readiness_routes(
             learner_user_id=context.user_id,
             course_tenant_id=course_tenant_id,
         )
-        course_lectures = _course_lectures(app, course_id, lectures)
-        documents = []
-        for lecture in course_lectures:
-            if not app.state.canvas_workspace.has_published_course_canvas(
-                course_id=course_id,
-                lecture_id=lecture.id,
-            ):
-                continue
-            try:
-                document = app.state.canvas_workspace.course_canvas_store.read(
-                    course_id=course_id,
-                    lecture_id=lecture.id,
-                    workspace_path=f"exam-readiness/{lecture.id}/index.md",
-                )
-            except CanvasWorkspaceError:
-                continue
-            if document is not None:
-                documents.append(document)
-        if not documents:
-            raise HTTPException(
-                status_code=404,
-                detail="Publish at least one lecture canvas before running the exam readiness check.",
-            )
-        check = build_exam_readiness_check(
-            course_id=course_id,
-            documents=documents,
-            lectures=course_lectures,
+        return _readiness_check(app, course_id, lectures)
+
+    @app.post("/courses/{course_id}/exam-readiness/attempts", response_model=ExamReadinessAttemptResult)
+    def record_exam_readiness_attempt(
+        course_id: str,
+        attempt: ExamReadinessAttemptInput,
+        context: TenantContext = Depends(request_context),
+    ) -> ExamReadinessAttemptResult:
+        require_learner_workspace_access(
+            context,
+            learner_user_id=context.user_id,
+            course_tenant_id=course_tenant_id,
         )
-        if not check.questions:
-            raise HTTPException(
-                status_code=422,
-                detail="Published canvases do not contain enough quiz or section content for an exam readiness check.",
+        check = _readiness_check(app, course_id, lectures)
+        store = _progress_store(app)
+        try:
+            result = build_exam_revision_plan(
+                check=check,
+                answers=attempt.answers,
+                previous_attempts=store.attempt_count(user_id=context.user_id, course_id=course_id),
             )
-        return check
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return store.record_attempt(user_id=context.user_id, course_id=course_id, result=result)
 
 
 def _course_lectures(app: FastAPI, course_id: str, seeded_lectures: list[Lecture]) -> list[Lecture]:
@@ -70,3 +66,44 @@ def _course_lectures(app: FastAPI, course_id: str, seeded_lectures: list[Lecture
     if matching:
         return matching
     raise HTTPException(status_code=404, detail="Course not found.")
+
+
+def _readiness_check(app: FastAPI, course_id: str, lectures: list[Lecture]) -> ExamReadinessCheck:
+    course_lectures = _course_lectures(app, course_id, lectures)
+    documents = []
+    for lecture in course_lectures:
+        if not app.state.canvas_workspace.has_published_course_canvas(
+            course_id=course_id,
+            lecture_id=lecture.id,
+        ):
+            continue
+        try:
+            document = app.state.canvas_workspace.course_canvas_store.read(
+                course_id=course_id,
+                lecture_id=lecture.id,
+                workspace_path=f"exam-readiness/{lecture.id}/index.md",
+            )
+        except CanvasWorkspaceError:
+            continue
+        if document is not None:
+            documents.append(document)
+    if not documents:
+        raise HTTPException(
+            status_code=404,
+            detail="Publish at least one lecture canvas before running the exam readiness check.",
+        )
+    check = build_exam_readiness_check(
+        course_id=course_id,
+        documents=documents,
+        lectures=course_lectures,
+    )
+    if not check.questions:
+        raise HTTPException(
+            status_code=422,
+            detail="Published canvases do not contain enough quiz or section content for an exam readiness check.",
+        )
+    return check
+
+
+def _progress_store(app: FastAPI) -> ReadinessProgressStore:
+    return ReadinessProgressStore(app.state.canvas_workspace.layout)

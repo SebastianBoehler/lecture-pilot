@@ -102,6 +102,54 @@ export type ExamReadinessCheck = {
   questions: ExamReadinessQuestion[];
 };
 
+export type ExamReadinessAnswer = {
+  question_id: string;
+  selected_index?: number | null;
+  text?: string | null;
+};
+
+export type ExamReadinessQuestionResult = {
+  question_id: string;
+  kind: "multiple_choice" | "open_ended";
+  lecture_id: string;
+  section_id: string;
+  answer_kind: "multiple_choice" | "open_ended";
+  correct: boolean | null;
+  selected_index?: number | null;
+  correct_index?: number | null;
+  status: "correct" | "incorrect" | "needs_rubric_review";
+};
+
+export type ExamReadinessGuidanceLevel = "challenge" | "standard" | "scaffolded";
+
+export type ExamRevisionTask = {
+  id: string;
+  question_id: string;
+  kind: "review_wrong_mc" | "review_open_answer";
+  status: "open" | "completed";
+  guidance_level: ExamReadinessGuidanceLevel;
+  lecture_id: string;
+  lecture_title: string;
+  section_id: string;
+  section_title: string;
+  prompt: string;
+  source_ref?: string | null;
+  rubric: string[];
+  expected_evidence: string;
+  next_action: string;
+};
+
+export type ExamReadinessAttemptResult = {
+  attempt_id?: string | null;
+  created_at?: string | null;
+  course_id: string;
+  passing_score: number;
+  score: number | null;
+  guidance_level: ExamReadinessGuidanceLevel;
+  results: ExamReadinessQuestionResult[];
+  tasks: ExamRevisionTask[];
+};
+
 export type SourceBundleEntry = {
   path: string;
   kind: string;

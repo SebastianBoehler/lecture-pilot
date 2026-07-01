@@ -3,6 +3,8 @@ import type {
   CanvasPublicationResult,
   CanvasDocument,
   CanvasSection,
+  ExamReadinessAnswer,
+  ExamReadinessAttemptResult,
   ExamReadinessCheck,
   Lecture,
   LoginSession,
@@ -246,6 +248,21 @@ export async function getExamReadinessCheck(courseId: string, session: LoginSess
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Exam readiness check loading failed."));
   return payload as ExamReadinessCheck;
+}
+
+export async function submitExamReadinessAttempt(
+  courseId: string,
+  answers: ExamReadinessAnswer[],
+  session: LoginSession,
+): Promise<ExamReadinessAttemptResult> {
+  const response = await fetch(apiUrl(`/courses/${courseId}/exam-readiness/attempts`), {
+    method: "POST",
+    headers: { ...authHeaders(session), "Content-Type": "application/json" },
+    body: JSON.stringify({ answers }),
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "Exam readiness submission failed."));
+  return payload as ExamReadinessAttemptResult;
 }
 
 export async function getCourseLectures(courseId: string, session: LoginSession): Promise<Lecture[]> {
