@@ -58,7 +58,13 @@ async def test_course_planner_restyles_source_evidence(monkeypatch) -> None:
     assert section.blocks[2].asset_path == "Ch3/venn.pdf"
     assert section.blocks[2].asset_url == "/course-assets/martius-ml/lecture-03/Ch3/venn.pdf"
     assert section.blocks[3].asset_path == "videos/bayes-risk.mp4"
-    middle_checkpoint = next(block for block in document.sections[3].blocks if block.type == "checkpoint")
+    assessment_sections = [
+        item.id
+        for item in document.sections
+        if any(block.type in {"checkpoint", "quiz"} for block in item.blocks)
+    ]
+    assert assessment_sections == ["text-preprocessing-pipeline", "learning-topic-6", "learning-topic-8"]
+    middle_checkpoint = next(block for block in document.sections[2].blocks if block.type == "checkpoint")
     assert middle_checkpoint.caption == "Quality gate"
     final_quiz = next(block for block in document.sections[-1].blocks if block.type == "quiz")
     assert final_quiz.answer_index == 0
