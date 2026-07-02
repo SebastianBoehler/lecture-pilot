@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { draftLectureCanvas, getDraftLectureCanvas } from "./api";
 import { builderSteps, initialBuilderStep, ProfessorBuilderStepper, type BuilderStep } from "./ProfessorBuilderStepper";
 import { ProfessorCanvasDraftStep } from "./ProfessorCanvasDraftStep";
+import { generateLectureCanvasDrafts } from "./professorCanvasGeneration";
 import { CourseSetupStep, hasCanvasVideo, toggleSelected } from "./ProfessorCourseBuilderParts";
 import { ProfessorMaterialStep } from "./ProfessorMaterialStep";
 import { ProfessorPublishStep } from "./ProfessorPublishStep";
@@ -243,11 +244,11 @@ export function ProfessorCourseBuilder({
               const lectureIds = setup.target === "full-course" && fullCourseLectureIds.length
                 ? fullCourseLectureIds
                 : [activeWorkspace.lectureId];
-              let firstCanvas: CanvasDocument | null = null;
-              for (const lectureId of lectureIds) {
-                const nextCanvas = await draftLectureCanvas(activeWorkspace.courseId, lectureId, session);
-                firstCanvas = firstCanvas ?? nextCanvas;
-              }
+              const canvases = await generateLectureCanvasDrafts({
+                lectureIds,
+                draft: (lectureId) => draftLectureCanvas(activeWorkspace.courseId, lectureId, session),
+              });
+              const firstCanvas = canvases[0] ?? null;
               setCanvas(firstCanvas);
               setGeneratedLectureIds(lectureIds);
               setActiveStep("publish");
