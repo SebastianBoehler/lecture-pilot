@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { draftLectureCanvas, getDraftLectureCanvas } from "./api";
+import { draftLectureCanvas, getCourseLectures, getDraftLectureCanvas } from "./api";
 import { builderSteps, initialBuilderStep, ProfessorBuilderStepper, type BuilderStep } from "./ProfessorBuilderStepper";
 import { ProfessorCanvasDraftStep } from "./ProfessorCanvasDraftStep";
 import { ProfessorGenerationWarnings } from "./ProfessorGenerationWarnings";
@@ -417,6 +417,10 @@ export function ProfessorCourseBuilder({
     try {
       const restoredBundle = await getSourceBundle(targetWorkspace.courseId, session);
       setBundle(restoredBundle);
+      if (setup.target === "full-course" && !lectureSchedule.length) {
+        const restoredLectures = await getCourseLectures(targetWorkspace.courseId, session);
+        setLectureSchedule(restoredLectures.map(scheduleItemFromLecture));
+      }
       try {
         const restoredCanvas = await getDraftLectureCanvas(targetWorkspace.courseId, targetWorkspace.lectureId, session);
         setCanvas(restoredCanvas);
@@ -445,4 +449,13 @@ function lectureIdFromNumber(number: string) {
 function isSkippableUploadError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
   return /File type .* is not writable|Hidden workspace paths are not allowed|files are limited to/i.test(message);
+}
+
+function scheduleItemFromLecture(lecture: ReturnType<typeof lectureFromWorkspace>): LectureScheduleItem {
+  return {
+    date: lecture.date,
+    material_path: lecture.materialPath,
+    number: lecture.number,
+    title: lecture.title,
+  };
 }
