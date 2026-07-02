@@ -1,7 +1,17 @@
 import { useState } from "react";
 
-import { getExamReadinessCheck } from "./api";
-import type { ExamReadinessCheck, ExamReadinessQuestion, Lecture, LoginSession, UniversityCourse } from "./types";
+import { getExamReadinessCheck, submitExamReadinessAttempt } from "./api";
+import { ExamReadinessResult } from "./ExamReadinessResult";
+import type {
+  ExamReadinessAnswer,
+  ExamReadinessAttemptResult,
+  ExamReadinessCheck,
+  ExamReadinessQuestion,
+  ExamReadinessQuestionResult,
+  Lecture,
+  LoginSession,
+  UniversityCourse,
+} from "./types";
 
 type AnswerMap = Record<string, number | string>;
 
@@ -18,10 +28,10 @@ export function ExamReadinessPanel({
 }) {
   const [check, setCheck] = useState<ExamReadinessCheck | null>(null);
   const [answers, setAnswers] = useState<AnswerMap>({});
-  const [submitted, setSubmitted] = useState(false);
+  const [attemptResult, setAttemptResult] = useState<ExamReadinessAttemptResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const result = check && submitted ? gradeCheck(check, answers) : null;
 
   async function startCheck() {
     if (!session) {
@@ -30,7 +40,7 @@ export function ExamReadinessPanel({
     }
     setLoading(true);
     setError(null);
-    setSubmitted(false);
+    setAttemptResult(null);
     setAnswers({});
     try {
       setCheck(await getExamReadinessCheck(course.id, session));
@@ -38,6 +48,19 @@ export function ExamReadinessPanel({
       setError(caught instanceof Error ? caught.message : "Exam readiness check loading failed.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function submitCheck() {
+    if (!check || !session) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      setAttemptResult(await submitExamReadinessAttempt(course.id, answersForCheck(check, answers), session));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Exam readiness submission failed.");
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -64,25 +87,20 @@ export function ExamReadinessPanel({
               index={index}
               key={question.id}
               question={question}
-              submitted={submitted}
+              result={attemptResult?.results.find((item) => item.question_id === question.id)}
               onAnswer={(answer) => setAnswers((current) => ({ ...current, [question.id]: answer }))}
             />
           ))}
           <button
             className="exam-submit"
-            disabled={!canSubmit(check, answers)}
+            disabled={!canSubmit(check, answers) || submitting || Boolean(attemptResult)}
             type="button"
-            onClick={() => setSubmitted(true)}
+            onClick={submitCheck}
           >
-            Check readiness
+            {submitting ? "Checking..." : "Check readiness"}
           </button>
-          {result ? (
-            <ReadinessResult
-              check={check}
-              lectures={lectures}
-              result={result}
-              onOpenLecture={onOpenLecture}
-            />
+          {attemptResult ? (
+            <ExamReadinessResult lectures={lectures} result={attemptResult} onOpenLecture={onOpenLecture} />
           ) : null}
         </div>
       ) : null}
@@ -95,15 +113,16 @@ function QuestionField({
   index,
   onAnswer,
   question,
-  submitted,
+  result,
 }: {
   answer: number | string | undefined;
   index: number;
   onAnswer: (answer: number | string) => void;
   question: ExamReadinessQuestion;
-  submitted: boolean;
+  result?: ExamReadinessQuestionResult;
 }) {
-  const correct = question.kind === "multiple_choice" && submitted && answer === question.answer_index;
+  const submitted = Boolean(result);
+  const correct = question.kind === "multiple_choice" && result?.status === "correct";
   return (
     <fieldset className={`exam-question${correct ? " is-correct" : ""}`}>
       <legend>
@@ -135,6 +154,7 @@ function QuestionField({
         />
       )}
       {submitted ? <Rubric question={question} /> : null}
+      {result?.status === "needs_rubric_review" ? <p className="exam-review-status">Rubric review needed.</p> : null}
     </fieldset>
   );
 }
@@ -150,39 +170,6 @@ function Rubric({ question }: { question: ExamReadinessQuestion }) {
   );
 }
 
-function ReadinessResult({
-  check,
-  lectures,
-  onOpenLecture,
-  result,
-}: {
-  check: ExamReadinessCheck;
-  lectures: Lecture[];
-  onOpenLecture: (lecture: Lecture) => void;
-  result: ReturnType<typeof gradeCheck>;
-}) {
-  const ready = result.score !== null && result.score >= check.passing_score;
-  const weakLectureIds = result.weakLectureIds.length ? result.weakLectureIds : check.coverage.map((item) => item.lecture_id);
-  return (
-    <section className={`exam-result${ready ? " is-ready" : ""}`}>
-      <strong>{ready ? "Prüfungs-ready" : "Keep reviewing"}</strong>
-      <span>{result.score === null ? "Open-ended review mode" : `${Math.round(result.score * 100)}% scored MC`}</span>
-      <p>{ready ? "MC answers are above the readiness threshold." : "Review weak topics, then rerun the check."}</p>
-      <div className="exam-revision-list">
-        {weakLectureIds.map((lectureId) => {
-          const lecture = lectures.find((item) => item.id === lectureId);
-          if (!lecture) return null;
-          return (
-            <button key={lecture.id} type="button" onClick={() => onOpenLecture(lecture)}>
-              Review lecture {lecture.number}: {lecture.title}
-            </button>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
 function canSubmit(check: ExamReadinessCheck, answers: AnswerMap) {
   return check.questions.every((question) => {
     const answer = answers[question.id];
@@ -190,11 +177,12 @@ function canSubmit(check: ExamReadinessCheck, answers: AnswerMap) {
   });
 }
 
-function gradeCheck(check: ExamReadinessCheck, answers: AnswerMap) {
-  const scored = check.questions.filter((question) => question.kind === "multiple_choice");
-  const wrong = scored.filter((question) => answers[question.id] !== question.answer_index);
-  return {
-    score: scored.length ? (scored.length - wrong.length) / scored.length : null,
-    weakLectureIds: Array.from(new Set(wrong.map((question) => question.lecture_id))),
-  };
+function answersForCheck(check: ExamReadinessCheck, answers: AnswerMap): ExamReadinessAnswer[] {
+  return check.questions.map((question) => {
+    const answer = answers[question.id];
+    if (question.kind === "multiple_choice") {
+      return { question_id: question.id, selected_index: Number(answer) };
+    }
+    return { question_id: question.id, text: String(answer ?? "").trim() };
+  });
 }

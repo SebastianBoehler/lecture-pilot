@@ -80,16 +80,13 @@ Professor-approved learning documents belong to
 generated notes, and generated images belong under the user's course/lecture
 workspace.
 
-The agent uses a small set of low-level typed tools over this image, using
-Pi-style Unix names where they fit. Tool availability is profile-scoped:
-default tutor gets `pwd`, `ls`, `read`, `write`, `edit`, `focus`,
-`highlight`, `generate_image`, `record_gate`, and `remember`; evidence-heavy
-tutor turns add `find` and `grep`; course-builder/admin agents use `pwd`,
-`ls`, `find`, `grep`, `read`, `write`, `edit`, and `generate_image` without
-learner gate or memory tools. Product-level actions such as `append_section`
-and `update_section` are conveniences over those file tools: they should
-compile to writes in `canvas/student/*.md`, `canvas/components/*.yaml`, and
-`canvas/student-assets/`.
+The agent uses a small set of low-level typed tools over this image. Default
+tutor gets `pwd`, `ls`, `read`, `write`, `edit`, `focus`, `highlight`,
+`generate_image`, `record_gate`, `record_readiness_attempt`, and `remember`.
+Evidence-heavy turns add `find` and `grep`; course-builder/admin agents use
+file and image tools without learner gate or memory tools. Product actions such
+as `append_section` and `update_section` compile to writes in
+`canvas/student/*.md`, `canvas/components/*.yaml`, and `canvas/student-assets/`.
 
 The agent may navigate this image only through typed tools. It should not freely
 read host paths, mutate official source files, duplicate large course assets
@@ -179,6 +176,13 @@ Important web modules: `App.tsx`, `Dashboard.tsx`, `LessonWorkspace.tsx`,
 - Attendance changes agent behavior; it must not fork the workspace schema.
 - The tutor should lead the session, ask targeted checks, and only pass quality
   gates after meaningful evidence from the student.
+- Exam-readiness turns use `record_readiness_attempt` and may see only the
+  selected task, source excerpt, rubric, and learner course progress summary.
+- Readiness feedback comes after an attempt, stays concise and source-backed,
+  never keyword auto-passes, and uses less guidance for stronger learners.
+- Readiness analytics use task ids, attempt index, correctness, status, and
+  source ids; do not treat raw time as primary or expose learner text in
+  professor aggregates.
 - Canvas commands may focus sections, highlight specific blocks or phrases, and
   append/update learner-specific Markdown sections.
 - Infographic requests may call the backend image-generation tool. Provider
