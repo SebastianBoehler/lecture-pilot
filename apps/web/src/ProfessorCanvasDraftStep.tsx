@@ -27,8 +27,8 @@ export function ProfessorCanvasDraftStep({
     : "Generating a source-grounded canvas draft...";
   return (
     <section className="flow-card">
-      <StepHeader number="03" title="Generate canvas draft" done={Boolean(canvas)} />
-      <button disabled={!canGenerate || isGenerating} type="button" onClick={onGenerate}>
+      <StepHeader number="04" title="Generate canvas draft" done={Boolean(canvas)} />
+      <button className="primary-action" disabled={!canGenerate || isGenerating} type="button" onClick={onGenerate}>
         {isGenerating ? busyLabel : actionLabel}
       </button>
       {isGenerating ? <PendingStatus label={statusLabel} /> : null}

@@ -53,7 +53,7 @@ export function ProfessorReviewStep({
       <button disabled={!canInclude || isBusy} type="button" onClick={onInclude}>
         {isIncluding ? "Including selected videos..." : "Include selected videos"}
       </button>
-      <button disabled={!canContinue || isBusy} type="button" onClick={onContinue}>
+      <button className="primary-action" disabled={!canContinue || isBusy} type="button" onClick={onContinue}>
         Continue to canvas draft
       </button>
       {isIncluding ? <PendingStatus label="Saving selected videos for the canvas draft..." /> : null}

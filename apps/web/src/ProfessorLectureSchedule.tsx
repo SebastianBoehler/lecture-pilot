@@ -49,7 +49,7 @@ export function ProfessorLectureSchedule({
           </div>
         ))}
       </div>
-      <button disabled={disabled} type="button" onClick={onApply}>
+      <button className="primary-action" disabled={disabled} type="button" onClick={onApply}>
         {isApplying ? "Applying lecture schedule..." : "Apply lecture schedule"}
       </button>
     </section>

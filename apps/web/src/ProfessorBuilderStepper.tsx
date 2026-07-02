@@ -1,6 +1,7 @@
 export type BuilderStep = "define" | "upload" | "generate" | "review" | "publish";
 
 type StepState = {
+  available: boolean;
   id: BuilderStep;
   label: string;
   number: string;
@@ -11,21 +12,23 @@ export function builderSteps({
   bundleReady,
   canvasReady,
   courseReady,
-  mediaReady,
+  reviewAvailable,
+  reviewReady,
   workspacePublished,
 }: {
   bundleReady: boolean;
   canvasReady: boolean;
   courseReady: boolean;
-  mediaReady: boolean;
+  reviewAvailable: boolean;
+  reviewReady: boolean;
   workspacePublished: boolean;
 }): StepState[] {
   return [
-    { id: "define", label: "Define", number: "01", ready: courseReady },
-    { id: "upload", label: "Upload", number: "02", ready: bundleReady },
-    { id: "review", label: "Media", number: "03", ready: mediaReady },
-    { id: "generate", label: "Generate", number: "04", ready: canvasReady },
-    { id: "publish", label: "Publish", number: "05", ready: workspacePublished },
+    { available: true, id: "define", label: "Define", number: "01", ready: courseReady },
+    { available: courseReady, id: "upload", label: "Upload", number: "02", ready: bundleReady },
+    { available: reviewAvailable, id: "review", label: "Media", number: "03", ready: reviewReady },
+    { available: reviewReady || canvasReady, id: "generate", label: "Generate", number: "04", ready: canvasReady },
+    { available: canvasReady, id: "publish", label: "Publish", number: "05", ready: workspacePublished },
   ];
 }
 
@@ -56,10 +59,16 @@ export function ProfessorBuilderStepper({
   return (
     <ol className="flow-stepper" aria-label="Course builder progress">
       {steps.map((step) => (
-        <li className={`${step.ready ? "is-ready" : ""} ${activeStep === step.id ? "is-active" : ""}`} key={step.id}>
+        <li
+          className={`${step.ready ? "is-ready" : ""} ${activeStep === step.id ? "is-active" : ""} ${
+            step.available ? "" : "is-locked"
+          }`}
+          key={step.id}
+        >
           <button
             aria-current={activeStep === step.id ? "step" : undefined}
             aria-label={`${step.number} ${step.label}`}
+            disabled={!step.available}
             type="button"
             onClick={() => onStepChange(step.id)}
           >

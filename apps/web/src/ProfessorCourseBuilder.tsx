@@ -16,6 +16,7 @@ import {
   uploadCourseMaterial,
 } from "./professorApi";
 import { isCourseSetupReady, readSavedFlow, writeSavedFlow } from "./professorBuilderState";
+import { publishLectureRows } from "./professorPublishRows";
 import { useProfessorWorkflowRun } from "./professorWorkflowRun";
 import { lectureFromWorkspace, requireWorkspace } from "./professorWorkspaceView";
 import { uploadDestination } from "./professorUpload";
@@ -61,11 +62,15 @@ export function ProfessorCourseBuilder({
   const [videos, setVideos] = useState<YoutubeVideoCandidate[]>([]);
   const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
   const [mediaIncluded, setMediaIncluded] = useState(false);
+  const [mediaReviewed, setMediaReviewed] = useState(false);
+  const [scheduleApplied, setScheduleApplied] = useState(setup.target !== "full-course");
   const { error, notice, pendingAction, run, setError } = useProfessorWorkflowRun();
   const [restored, setRestored] = useState(!savedFlow.bundleReady && !savedFlow.canvasReady);
-  const mediaReady = mediaIncluded || selectedVideos.size > 0 || hasCanvasVideo(canvas);
   const setupReady = isCourseSetupReady(setup);
   const bundleReady = Boolean(bundle?.files.length);
+  const mediaReady = mediaIncluded || selectedVideos.size > 0 || hasCanvasVideo(canvas);
+  const reviewReady = mediaReady || mediaReviewed;
+  const reviewAvailable = bundleReady && (setup.target !== "full-course" || scheduleApplied);
   const scheduledLectureIds = lectureSchedule.map((lecture) => lectureIdFromNumber(lecture.number));
   const fullCourseLectureIds = setup.target === "full-course" && scheduledLectureIds.length
     ? scheduledLectureIds
@@ -84,7 +89,22 @@ export function ProfessorCourseBuilder({
   const previewHref = canvas && workspace
     ? previewWorkspaceUrl(workspace.courseId, lectureFromWorkspace(workspace, setup, lectureSchedule))
     : null;
-  const steps = builderSteps({ bundleReady, canvasReady: !!canvas, courseReady, mediaReady, workspacePublished });
+  const publishLectures = workspace ? publishLectureRows({
+    courseId: workspace.courseId,
+    lectureSchedule,
+    previewWorkspaceUrl,
+    publishedLectureIds,
+    setup,
+    workspaceLecture: lectureFromWorkspace(workspace, setup, lectureSchedule),
+  }) : [];
+  const steps = builderSteps({
+    bundleReady,
+    canvasReady: !!canvas,
+    courseReady,
+    reviewAvailable,
+    reviewReady,
+    workspacePublished,
+  });
   useEffect(() => {
     let cancelled = false;
     async function restoreGeneratedState() {
@@ -144,6 +164,8 @@ export function ProfessorCourseBuilder({
     setVideos([]);
     setSelectedVideos(new Set());
     setMediaIncluded(false);
+    setMediaReviewed(false);
+    setScheduleApplied(nextSetup.target !== "full-course");
     setActiveStep("define");
   }
   return (
@@ -168,9 +190,12 @@ export function ProfessorCourseBuilder({
               setWorkspace({ courseId: created.course.id, lectureId: created.active_lecture_id });
               onWorkspaceLecturesChange(created.course, created.lectures);
               setGeneratedLectureIds([]);
+              setScheduleApplied(setup.target !== "full-course");
               setCourseReady(true);
               setActiveStep("upload");
-              return `Course workspace ${created.course.id}/${created.active_lecture_id} ready.`;
+              return setup.target === "full-course"
+                ? `Course workspace ${created.course.id} ready. Upload materials to infer the lecture schedule.`
+                : `Course workspace ${created.course.id}/${created.active_lecture_id} ready.`;
             })}
             onSetupChange={updateSetup}
             setup={setup}
@@ -208,6 +233,12 @@ export function ProfessorCourseBuilder({
                 }
               }
               await updateBundleAndSchedule(activeWorkspace.courseId);
+              setCanvas(null);
+              setGeneratedLectureIds([]);
+              setMediaIncluded(false);
+              setMediaReviewed(false);
+              setSelectedVideos(new Set());
+              if (setup.target === "full-course") setScheduleApplied(false);
               if (setup.target !== "full-course") setActiveStep("review");
               if (uploaded.length === 1) return `Uploaded ${uploaded[0].path} as ${uploaded[0].kind}.`;
               const skippedText = skipped ? ` Skipped ${skipped} unsupported files.` : "";
@@ -216,6 +247,12 @@ export function ProfessorCourseBuilder({
             onScan={() => run("scan", async () => {
               const activeWorkspace = requireWorkspace(workspace);
               await updateBundleAndSchedule(activeWorkspace.courseId);
+              setCanvas(null);
+              setGeneratedLectureIds([]);
+              setMediaIncluded(false);
+              setMediaReviewed(false);
+              setSelectedVideos(new Set());
+              if (setup.target === "full-course") setScheduleApplied(false);
               if (setup.target !== "full-course") setActiveStep("review");
               return "Uploaded source bundle scanned.";
             })}
@@ -225,6 +262,8 @@ export function ProfessorCourseBuilder({
               onWorkspaceLecturesChange(created.course, created.lectures);
               setGeneratedLectureIds([]);
               setCanvas(null);
+              setMediaReviewed(false);
+              setScheduleApplied(true);
               setActiveStep("review");
               return `Lecture schedule applied with ${created.lectures.length} dated lectures.`;
             })}
@@ -233,7 +272,7 @@ export function ProfessorCourseBuilder({
         {activeStep === "generate" ? (
           <ProfessorCanvasDraftStep
             canvas={canvas}
-            canGenerate={Boolean(bundleReady && workspace)}
+            canGenerate={Boolean(bundleReady && reviewReady && workspace)}
             generatedCount={generatedLectureIds.length}
             isFullCourse={setup.target === "full-course"}
             isGenerating={pendingAction === "generate"}
@@ -263,7 +302,10 @@ export function ProfessorCourseBuilder({
             canInclude={Boolean(selectedVideos.size && bundleReady && workspace)}
             canSearch={Boolean(setupReady && workspace)}
             pendingAction={pendingAction}
-            onContinue={() => setActiveStep("generate")}
+            onContinue={() => {
+              setMediaReviewed(true);
+              setActiveStep("generate");
+            }}
             onInclude={() => run("include-videos", async () => {
               const activeWorkspace = requireWorkspace(workspace);
               const selected = videos.filter((video) => selectedVideos.has(video.video_id));
@@ -276,6 +318,7 @@ export function ProfessorCourseBuilder({
               }
               setSelectedVideos(new Set());
               setMediaIncluded(true);
+              setMediaReviewed(true);
               if (canvas) setCanvas(null);
               setGeneratedLectureIds([]);
               setActiveStep("generate");
@@ -323,6 +366,7 @@ export function ProfessorCourseBuilder({
               return `${published.length} tutor workspaces published for students${when}.`;
             })}
             publishedCount={fullCoursePublishedCount}
+            lectures={publishLectures}
             ready={workspacePublished}
             totalCount={fullCourseLectureIds.length}
           />
