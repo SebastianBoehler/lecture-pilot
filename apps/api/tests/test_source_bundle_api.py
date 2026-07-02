@@ -147,6 +147,29 @@ def test_uploaded_latex_can_seed_a_canvas_document(tmp_path: Path) -> None:
     ]
 
 
+def test_nested_uploaded_latex_matches_requested_lecture_before_sorted_fallback(tmp_path: Path) -> None:
+    client, _ = _client(tmp_path)
+    for path, title in (
+        ("uploads/course/Lecture01-eng.tex", "Wrong Overview"),
+        ("uploads/course/Lecture03-eng.tex", "Correct Bayes"),
+    ):
+        client.post(
+            "/admin/courses/martius-ml/materials",
+            data={"path": path},
+            files={"file": (Path(path).name, _latex_source_with_title(title))},
+            headers=_professor_headers(),
+        )
+
+    source = client.app.state.canvas_workspace.source_document(
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        workspace_path="published/index.md",
+    )
+
+    assert source.source_ref == "Lecture03-eng.tex"
+    assert source.sections[0].title == "Correct Bayes"
+
+
 def test_professor_canvas_draft_stays_private_until_publish(tmp_path: Path) -> None:
     client, material_root = _client(tmp_path)
     client.app.state.course_planner = _FakeCoursePlanner()
@@ -232,6 +255,15 @@ P(C\mid X)=\frac{P(X\mid C)P(C)}{P(X)}
 Expected risk changes the decision threshold.
 \end{frame}
 """
+
+
+def _latex_source_with_title(title: str) -> bytes:
+    return rf"""
+\title{{Uploaded Lecture}}
+\begin{{frame}}{{{title}}}
+Bayes turns evidence into a posterior decision.
+\end{{frame}}
+""".encode()
 
 
 def _write(path: Path) -> None:

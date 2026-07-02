@@ -305,7 +305,7 @@ class CanvasWorkspace:
         sections_dir = canvas_dir / "sections"
         if sections_dir.exists():
             for path in sections_dir.glob("*.md"):
-                path.unlink()
+                path.unlink(missing_ok=True)
         write_document_source(document.model_copy(update={"sections": base_sections}), canvas_dir)
         if student_sections:
             write_student_sections(canvas_dir, student_sections)
@@ -323,7 +323,14 @@ class CanvasWorkspace:
         source_name = lecture_source_name(lecture_id)
         uploads_dir = self.layout.course_uploads_dir(course_id)
         source_names = [source_name] if source_name else []
-        source_names.extend(str(path.relative_to(uploads_dir)) for path in sorted(uploads_dir.rglob("*.tex")))
+        uploaded_sources = sorted(uploads_dir.rglob("*.tex")) if uploads_dir.exists() else []
+        if source_name:
+            source_names.extend(
+                str(path.relative_to(uploads_dir))
+                for path in uploaded_sources
+                if path.name == source_name
+            )
+        source_names.extend(str(path.relative_to(uploads_dir)) for path in uploaded_sources)
         candidates = [uploads_dir / name for name in dict.fromkeys(source_names)]
         if source_name and course_id == SEEDED_COURSE_ID:
             candidates.append(self.material_root / source_name)
