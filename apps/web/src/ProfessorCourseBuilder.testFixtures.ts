@@ -91,6 +91,7 @@ function canvasPayload() {
     source_kind: "latex",
     source_ref: "Lecture03-eng.tex",
     workspace_path: ".lecturepilot/workspaces/professor-preview/index.md",
+    warnings: ["Planner model finished with reason 'error'. Review this draft before publishing."],
     sections: [
       { id: "aim", title: "Decision making", blocks: [] },
       { id: "bayes-formula", title: "Bayes formula", blocks: [] },

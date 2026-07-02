@@ -60,6 +60,7 @@ export type CanvasDocument = {
   source_ref: string;
   workspace_path: string;
   sections: CanvasSection[];
+  warnings?: string[];
 };
 
 export type CanvasPublicationResult = {

@@ -88,6 +88,36 @@ This frame introduces conditional probability with a Venn diagram.
     assert paragraph_index < asset_index
 
 
+def test_latex_import_adds_original_slides_from_matching_pdf(tmp_path: Path) -> None:
+    material_root = tmp_path / "course"
+    source_path = material_root / "Lecture01-eng.tex"
+    source_path.parent.mkdir(parents=True)
+    source_path.write_text(
+        r"""
+\title{Lecture 1}
+\begin{frame}{Learning topic}
+Machine learning systems improve from data and evidence.
+\end{frame}
+""",
+        encoding="utf-8",
+    )
+    _write_pdf(material_root / "Lecture01-eng.pdf")
+
+    document = import_latex_canvas(
+        source_path=source_path,
+        material_root=material_root,
+        course_id="martius-ml",
+        lecture_id="lecture-01",
+        workspace_path="canvas/index.md",
+    )
+
+    slide_section = next(section for section in document.sections if section.id == "original-slide-assets")
+    slide = slide_section.blocks[0]
+    assert slide.asset_path == "generated-slides/lecture-01/Lecture01-eng/slide-001.png"
+    assert slide.caption == "Original slide 1 from Lecture01-eng.pdf"
+    assert (material_root / slide.asset_path).read_bytes().startswith(b"\x89PNG")
+
+
 def test_lecture_three_naive_bayes_frames_become_separate_canvas_sections(tmp_path: Path) -> None:
     material_root = tmp_path / "course"
     image_dir = material_root / "images" / "Ch3"

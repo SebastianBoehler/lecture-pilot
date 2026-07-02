@@ -15,9 +15,11 @@ async def test_litellm_course_plan_client_requests_canvas_schema(monkeypatch) ->
 
     async def fake_completion(**kwargs):
         calls.append(kwargs)
-        return SimpleNamespace(
-            choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps({"title": "T", "sections": []})))]
+        choice = SimpleNamespace(
+            finish_reason="error",
+            message=SimpleNamespace(content=json.dumps({"title": "T", "sections": []})),
         )
+        return SimpleNamespace(choices=[choice])
 
     monkeypatch.setitem(sys.modules, "litellm", SimpleNamespace(acompletion=fake_completion))
 
@@ -27,6 +29,7 @@ async def test_litellm_course_plan_client_requests_canvas_schema(monkeypatch) ->
     )
 
     assert payload["title"] == "T"
+    assert payload.warnings == ["Planner model finished with reason 'error'. Review this draft before publishing."]
     assert calls[0]["response_format"]["type"] == "json_schema"
     schema = calls[0]["response_format"]["json_schema"]["schema"]
     assert calls[0]["response_format"]["json_schema"]["strict"] is True
