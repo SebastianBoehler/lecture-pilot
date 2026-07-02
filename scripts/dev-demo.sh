@@ -72,7 +72,7 @@ if lsof -nP -iTCP:"$api_port" -sTCP:LISTEN >/dev/null 2>&1; then
   exit 1
 fi
 source .venv/bin/activate
-uvicorn lecturepilot.app:app --app-dir apps/api/src --reload --host 127.0.0.1 --port "$api_port" &
+uvicorn lecturepilot.app:app --app-dir apps/api/src --reload --reload-dir apps/api/src --host 127.0.0.1 --port "$api_port" &
 api_pid="$!"
 
 for _ in {1..80}; do
