@@ -10,6 +10,7 @@ from lecturepilot.course_canvas_enrichment import enrich_learning_document
 from lecturepilot.course_canvas_json import parse_model_json
 from lecturepilot.course_canvas_section_planner import plan_sections_individually
 from lecturepilot.course_canvas_validation import required_section_ids, validate_planned_document
+from lecturepilot.course_slide_interleaving import interleave_original_slides
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import ProviderCapability, ProviderSettings
 from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
@@ -41,24 +42,19 @@ class LiteLLMCoursePlanClient:
             raise ModelExecutionError("Course planner model request failed.") from exc
         return parse_model_json(response.choices[0].message.content)
 class CourseCanvasPlanner:
-    def __init__(
-        self,
-        provider_registry: ProviderRegistry | None = None,
-        model_client: CoursePlanModelClient | None = None,
-    ) -> None:
+    def __init__(self, provider_registry: ProviderRegistry | None = None, model_client: CoursePlanModelClient | None = None) -> None:
         self.provider_registry = provider_registry or ProviderRegistry.from_env()
         self.model_client = model_client or LiteLLMCoursePlanClient()
 
     async def plan_canvas(self, source_document: CanvasDocument) -> CanvasDocument:
-        settings = self.provider_registry.require_ready(
-            [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
-        )
+        settings = self.provider_registry.require_ready([ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON])
         messages = _planner_messages(source_document)
         last_error: ProviderConfigurationError | None = None
         for _ in range(2):
             try:
                 payload = await self.model_client.complete_plan(settings=settings, messages=messages)
                 document = enrich_learning_document(_planned_document(payload, source_document))
+                document = interleave_original_slides(document, source_document)
                 validate_planned_document(document, source_document)
                 return document
             except ProviderConfigurationError as exc:
@@ -71,6 +67,7 @@ class CourseCanvasPlanner:
                 source_document=source_document,
             )
             sectionwise = enrich_learning_document(sectionwise)
+            sectionwise = interleave_original_slides(sectionwise, source_document)
             validate_planned_document(sectionwise, source_document)
             return sectionwise
         raise last_error or ProviderConfigurationError("Course planner returned no usable draft.")
@@ -87,18 +84,18 @@ def _planner_messages(source_document: CanvasDocument) -> list[dict[str, str]]:
                 "teaching blocks per section, key formulas, grouped lists, worked examples, "
                 "callouts, infographic briefs, and existing source assets or videos when they help learning. "
                 "Collapse long formula runs into a named derivation with only the essential equations. "
-                "Make paragraphs self-study friendly: explain the reason, mechanism, and "
-                "consequence in 2 to 4 sentences, then add examples or steps where useful. Use light "
-                "Markdown emphasis such as **posterior** or `p(x | C)`, but keep block structure explicit. "
+                "Make paragraphs self-study friendly: explain reason, mechanism, and consequence in "
+                "2 to 4 sentences, then add examples or steps. Use light Markdown emphasis such as **posterior** or `p(x | C)`. "
                 "Leave room for professor-approved YouTube videos instead of inventing "
-                "video links. Return one structured draft with title and sections. Each section must "
+                "video links. When original slide image assets are listed, use one as "
+                "the recognition anchor for each section and cite the matching PDF page or frame in source_ref. "
+                "Return one structured draft with title and sections. Each section must "
                 "include id, title, source_ref, and blocks. Blocks may be paragraph, list, "
                 "callout, math, asset, video, table, checkpoint, or quiz. Use "
                 "3 to 5 checkpoint or quiz blocks across the lecture. Place them after key "
                 "concepts, worked examples, or skill transitions; include at least two quiz "
                 "blocks and a final retrieval quiz in the last section. "
-                "Every block must include id, type, text, items, asset_path, caption, and answer_index; use null or [] where not relevant. "
-                "Quiz blocks use text as the question, items as answers, and answer_index for the correct option. Asset and video blocks may only use asset_path values "
+                "Every block must include id, type, text, items, asset_path, caption, and answer_index; use null or [] where not relevant. Quiz blocks use text as the question, items as answers, and answer_index for the correct option. Asset and video blocks may only use asset_path values "
                 "listed in the evidence. Do not invent unsupported topics. Cite source "
                 "files and frames in every source_ref. Never return a short overview."
             ),
@@ -143,6 +140,8 @@ def _source_evidence(document: CanvasDocument) -> str:
 
 
 def _block_evidence(block: CanvasBlock) -> str:
+    if block.type == "asset" and block.asset_path and block.asset_path.startswith("generated-slides/"):
+        return f"- original slide id={block.id}; asset_path={block.asset_path}; caption={block.caption or ''}"
     if block.type == "asset":
         return f"- asset id={block.id}; asset_path={block.asset_path}; caption={block.caption or ''}"
     if block.type == "video":

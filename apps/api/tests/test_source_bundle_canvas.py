@@ -34,7 +34,11 @@ def test_source_bundle_canvas_imports_markdown_text_pdf_and_assets(tmp_path: Pat
     assert "Decision" in section_titles
     assert any("posterior risk" in block.text for section in document.sections for block in section.blocks if block.text)
     assets = [block for section in document.sections for block in section.blocks if block.type == "asset"]
-    assert {asset.asset_path for asset in assets} == {"images/diagram.png", "slides/decision.pdf"}
+    assert {asset.asset_path for asset in assets} == {
+        "generated-slides/lecture-01/decision/slide-001.png",
+        "images/diagram.png",
+        "slides/decision.pdf",
+    }
     assert next(asset.caption for asset in assets if asset.asset_path == "images/diagram.png").startswith(
         "Risk boundary diagram"
     )
@@ -42,6 +46,33 @@ def test_source_bundle_canvas_imports_markdown_text_pdf_and_assets(tmp_path: Pat
     videos = [block for section in document.sections for block in section.blocks if block.type == "video"]
     assert [(video.asset_path, video.caption) for video in videos] == [
         ("videos/walkthrough.mp4", "Professor walkthrough - bayes, risk")
+    ]
+
+
+def test_pdf_source_bundle_adds_original_slide_assets(tmp_path: Path) -> None:
+    root = tmp_path / "bundle"
+    _write_pdf(
+        root / "lecture-01.pdf",
+        "Bayes rule updates prior beliefs after observing evidence.",
+        "Decision risk compares posterior beliefs with action costs.",
+    )
+
+    document = import_source_bundle_canvas(
+        source_root=root,
+        course_id="demo-course",
+        lecture_id="lecture-01",
+        workspace_path="planner/source.json",
+    )
+
+    slide_blocks = [
+        block
+        for section in document.sections
+        for block in section.blocks
+        if block.asset_path and block.asset_path.startswith("generated-slides/")
+    ]
+    assert [block.caption for block in slide_blocks] == [
+        "Original slide 1 from lecture-01.pdf",
+        "Original slide 2 from lecture-01.pdf",
     ]
 
 
@@ -53,12 +84,13 @@ def _write(path: Path, content: str, *, binary: bool = False) -> None:
         path.write_text(content, encoding="utf-8")
 
 
-def _write_pdf(path: Path, text: str) -> None:
+def _write_pdf(path: Path, *texts: str) -> None:
     import fitz
 
     path.parent.mkdir(parents=True, exist_ok=True)
     document = fitz.open()
-    page = document.new_page(width=320, height=160)
-    page.insert_text((24, 72), text)
+    for text in texts:
+        page = document.new_page(width=320, height=160)
+        page.insert_text((24, 72), text)
     document.save(path)
     document.close()
