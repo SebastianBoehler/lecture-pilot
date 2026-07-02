@@ -1,5 +1,6 @@
 import type { Attendance, Lecture, LoginSession, UniversityCourse } from "./types";
 import { readDemoWorkspaceCourse } from "./demoWorkspaceAccess";
+import { ExamReadinessPanel } from "./ExamReadinessPanel";
 
 type CourseWorkspaceStatus = "matched" | "unmatched";
 
@@ -80,6 +81,12 @@ export function Dashboard({
                       </button>
                     </article>
                   ))}
+                  <ExamReadinessPanel
+                    course={course}
+                    lectures={courseLectures}
+                    session={session}
+                    onOpenLecture={onOpen}
+                  />
                 </div>
               ) : (
                 <p className="workspace-empty">{emptyText}</p>

@@ -3,6 +3,7 @@ import type {
   CanvasPublicationResult,
   CanvasDocument,
   CanvasSection,
+  ExamReadinessCheck,
   Lecture,
   LoginSession,
   UniversityCourse,
@@ -236,6 +237,15 @@ export async function getCanvasPublication(
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Canvas publication status failed."));
   return payload as CanvasPublicationResult;
+}
+
+export async function getExamReadinessCheck(courseId: string, session: LoginSession): Promise<ExamReadinessCheck> {
+  const response = await fetch(apiUrl(`/courses/${courseId}/exam-readiness`), {
+    headers: authHeaders(session),
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "Exam readiness check loading failed."));
+  return payload as ExamReadinessCheck;
 }
 
 export async function getCourseLectures(courseId: string, session: LoginSession): Promise<Lecture[]> {

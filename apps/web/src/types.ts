@@ -73,6 +73,34 @@ export type CanvasPublicationResult = {
   published_path?: string | null;
 };
 
+export type ExamReadinessQuestion = {
+  id: string;
+  kind: "multiple_choice" | "open_ended";
+  lecture_id: string;
+  lecture_title: string;
+  section_id: string;
+  section_title: string;
+  prompt: string;
+  options: string[];
+  answer_index?: number | null;
+  rubric: string[];
+  source_ref?: string | null;
+};
+
+export type ExamReadinessCoverage = {
+  lecture_id: string;
+  lecture_title: string;
+  question_count: number;
+};
+
+export type ExamReadinessCheck = {
+  course_id: string;
+  passing_score: number;
+  published_lecture_count: number;
+  coverage: ExamReadinessCoverage[];
+  questions: ExamReadinessQuestion[];
+};
+
 export type SourceBundleEntry = {
   path: string;
   kind: string;
