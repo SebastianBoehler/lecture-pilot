@@ -176,10 +176,10 @@ Important web modules: `App.tsx`, `Dashboard.tsx`, `LessonWorkspace.tsx`,
 - Attendance changes agent behavior; it must not fork the workspace schema.
 - The tutor should lead the session, ask targeted checks, and only pass quality
   gates after meaningful evidence from the student.
-- Exam-readiness turns use `record_readiness_attempt` and may see only the
-  selected task, source excerpt, rubric, and learner course progress summary.
-- Readiness feedback comes after an attempt, stays concise and source-backed,
-  never keyword auto-passes, and uses less guidance for stronger learners.
+- Exam-readiness turns use `record_readiness_attempt` and typed scaffold policy
+  over the selected task, source excerpt, rubric, and course progress summary.
+- Readiness feedback comes after an attempt, stays source-backed, never keyword
+  auto-passes, and uses less guidance for stronger learners.
 - Readiness analytics use task ids, attempt index, correctness, status, and
   source ids; do not treat raw time as primary or expose learner text in
   professor aggregates.

@@ -20,6 +20,8 @@ def test_revision_plan_marks_wrong_mc_and_keeps_open_answers_for_review() -> Non
     assert plan.tasks[0].lecture_id == "lecture-03"
     assert plan.tasks[0].source_ref == "Lecture03-eng.tex frames 5-6"
     assert plan.tasks[0].expected_evidence == "Name evidence as the normalizer."
+    assert plan.tasks[0].scaffold_policy is not None
+    assert plan.tasks[0].scaffold_policy.profile == "worked_example"
     assert plan.tasks[1].rubric == ["Compare posterior-weighted losses.", "Name one failure mode."]
     assert plan.results[1].status == "needs_rubric_review"
 
@@ -53,6 +55,23 @@ def test_missing_answers_are_rejected() -> None:
 def test_answer_requires_selection_or_text() -> None:
     with pytest.raises(ValidationError):
         ExamReadinessAnswer(question_id="lecture-03:q1")
+
+
+def test_revision_task_backfills_scaffold_policy_for_stored_payloads() -> None:
+    plan = build_exam_revision_plan(
+        check=_check(),
+        answers=[
+            ExamReadinessAnswer(question_id="lecture-03:q1", selected_index=0),
+            ExamReadinessAnswer(question_id="lecture-04:q2", text="Risk combines costs and probabilities."),
+        ],
+    )
+    payload = plan.tasks[0].model_dump(mode="json")
+    payload.pop("scaffold_policy")
+
+    task = type(plan.tasks[0]).model_validate(payload)
+
+    assert task.scaffold_policy is not None
+    assert task.scaffold_policy.profile == "worked_example"
 
 
 def _check() -> ExamReadinessCheck:

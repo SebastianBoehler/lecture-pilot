@@ -122,6 +122,15 @@ export type ExamReadinessQuestionResult = {
 
 export type ExamReadinessGuidanceLevel = "challenge" | "standard" | "scaffolded";
 
+export type TutorScaffoldPolicy = {
+  trigger: "readiness_task" | "conceptual" | "procedural" | "error";
+  learner_stage: "novice" | "early_intermediate" | "late_intermediate";
+  profile: "worked_example" | "faded_example" | "self_explanation" | "transfer";
+  process_label: "shallow_lookup" | "scaffolded_reasoning" | "self_explanation" | "transfer_attempt";
+  tutor_move: string;
+  forbidden: string;
+};
+
 export type ExamRevisionTask = {
   id: string;
   question_id: string;
@@ -137,6 +146,7 @@ export type ExamRevisionTask = {
   rubric: string[];
   expected_evidence: string;
   next_action: string;
+  scaffold_policy: TutorScaffoldPolicy;
 };
 
 export type ExamReadinessAttemptResult = {

@@ -7,6 +7,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, SecretStr
 
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
+from lecturepilot.scaffold_policy import TutorScaffoldPolicy
 
 
 class AttendanceStatus(StrEnum):
@@ -215,6 +216,13 @@ class UserMemoryContext(BaseModel):
     preferences: dict[str, Any] = Field(default_factory=dict)
 
 
+class AgentReadinessTask(BaseModel):
+    id: str = Field(min_length=1, max_length=220)
+    source_ref: str | None = Field(default=None, max_length=500)
+    expected_evidence: str = Field(min_length=1, max_length=1000)
+    scaffold_policy: TutorScaffoldPolicy
+
+
 class AgentTurnInput(BaseModel):
     user_id: str = Field(min_length=1)
     course_id: str = Field(min_length=1)
@@ -225,6 +233,7 @@ class AgentTurnInput(BaseModel):
     canvas_state: CanvasState = Field(default_factory=CanvasState)
     canvas_context: CanvasDocument | None = None
     user_memory: UserMemoryContext = Field(default_factory=UserMemoryContext)
+    readiness_task: AgentReadinessTask | None = None
 
 
 class CanvasCommand(BaseModel):

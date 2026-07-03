@@ -146,6 +146,7 @@ def _messages(turn: AgentTurnInput) -> list[dict[str, str]]:
                 "Current section: "
                 f"{turn.canvas_state.focused_section_id or 'bayesian-decision-theory-the-aim'}\n"
                 f"{_user_memory_context(turn)}\n"
+                f"{_readiness_scaffold_context(turn)}\n"
                 f"{gate_rubric_context(turn.lecture_id)}\n"
                 f"{canvas_context(turn)}\n"
                 f"Student message: {turn.message}"
@@ -163,4 +164,25 @@ def _user_memory_context(turn: AgentTurnInput) -> str:
         f"- global notes: {notes}\n"
         "Use this only to adapt examples, pace, and explanation style. "
         "Do not treat memory as course evidence."
+    )
+
+
+def _readiness_scaffold_context(turn: AgentTurnInput) -> str:
+    task = turn.readiness_task
+    if task is None:
+        return "Active readiness scaffold policy: none."
+    policy = task.scaffold_policy
+    if policy is None:
+        return "Active readiness scaffold policy: none."
+    return (
+        "Active readiness scaffold policy:\n"
+        f"- task_id: {task.id}\n"
+        f"- trigger: {policy.trigger}\n"
+        f"- learner_stage: {policy.learner_stage}\n"
+        f"- profile: {policy.profile}\n"
+        f"- process_label: {policy.process_label}\n"
+        f"- source_ref: {task.source_ref or 'canvas section'}\n"
+        f"- expected_evidence: {task.expected_evidence}\n"
+        f"- tutor_move: {policy.tutor_move}\n"
+        f"- forbidden: {policy.forbidden}"
     )

@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 from lecturepilot.exam_readiness import ExamReadinessCheck, ExamReadinessQuestion
+from lecturepilot.scaffold_policy import TutorScaffoldPolicy, scaffold_policy_for_revision_task
 from lecturepilot.storage_layout import safe_id
 
 GuidanceLevel = Literal["challenge", "standard", "scaffolded"]
@@ -59,6 +60,16 @@ class ExamRevisionTask(BaseModel):
     rubric: list[str] = Field(default_factory=list)
     expected_evidence: str
     next_action: str
+    scaffold_policy: TutorScaffoldPolicy | None = None
+
+    @model_validator(mode="after")
+    def default_scaffold_policy(self) -> "ExamRevisionTask":
+        if self.scaffold_policy is None:
+            self.scaffold_policy = scaffold_policy_for_revision_task(
+                guidance_level=self.guidance_level,
+                task_kind=self.kind,
+            )
+        return self
 
 
 class ExamReadinessAttemptResult(BaseModel):
@@ -185,6 +196,10 @@ def _revision_task(
         rubric=question.rubric,
         expected_evidence=_expected_evidence(question),
         next_action=_next_action(kind, question),
+        scaffold_policy=scaffold_policy_for_revision_task(
+            guidance_level=guidance_level,
+            task_kind=kind,
+        ),
     )
 
 
