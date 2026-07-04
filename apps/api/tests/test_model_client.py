@@ -8,7 +8,7 @@ import pytest
 
 from lecturepilot.model_client import LiteLLMModelClient
 from lecturepilot.models import AgentTurnInput, AttendanceStatus, CanvasState, ProviderSettings
-from lecturepilot.providers import DEFAULT_MODEL
+from lecturepilot.providers import DEFAULT_MODEL, ProviderConfigurationError
 
 
 async def test_model_client_requests_structured_json(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -70,3 +70,28 @@ async def test_model_client_requests_structured_json(monkeypatch: pytest.MonkeyP
     schema = calls[0]["response_format"]["json_schema"]["schema"]
     assert calls[0]["response_format"]["json_schema"]["strict"] is True
     assert schema["required"] == ["message", "canvas_commands", "quality_gate"]
+
+
+async def test_model_client_preserves_payload_contract_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_completion(**kwargs):
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="not json"))])
+
+    monkeypatch.setitem(sys.modules, "litellm", SimpleNamespace(acompletion=fake_completion))
+
+    with pytest.raises(ProviderConfigurationError, match="valid LecturePilot JSON"):
+        await LiteLLMModelClient().complete_turn(
+            settings=ProviderSettings(
+                provider="gemini",
+                model=DEFAULT_MODEL,
+                api_key_env="GEMINI_API_KEY",
+                capabilities=set(),
+            ),
+            turn=AgentTurnInput(
+                user_id="u1",
+                course_id="martius-ml",
+                lecture_id="lecture-03",
+                attendance=AttendanceStatus.PRESENT,
+                message="Explain Bayes.",
+                canvas_state=CanvasState(focused_section_id="bayes-formula"),
+            ),
+        )

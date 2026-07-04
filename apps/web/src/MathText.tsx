@@ -7,21 +7,9 @@ import remarkMath from "remark-math";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 
-type MathTextMode = "inline" | "block";
+import { katexOptions } from "./courseLatexMacros";
 
-const katexOptions = {
-  macros: {
-    "\\D": "\\mathcal{D}",
-    "\\H": "\\mathcal{H}",
-    "\\L": "\\mathcal{L}",
-    "\\N": "\\mathbb{N}",
-    "\\nicefrac": "\\frac{#1}{#2}",
-    "\\x": "\\mathbf{x}",
-  },
-  strict: "ignore" as const,
-  throwOnError: false,
-  trust: false,
-};
+type MathTextMode = "inline" | "block";
 
 export function MathText({
   highlightedText,
@@ -47,6 +35,9 @@ export function MathText({
 }
 
 export function DisplayMath({ expression }: { expression: string }) {
+  if (hasDelimitedMath(expression)) {
+    return <MathText highlightedText={null} mode="block" text={expression} />;
+  }
   return (
     <div
       dangerouslySetInnerHTML={{ __html: renderMath(expression, true) }}
@@ -261,6 +252,10 @@ function renderMath(expression: string, displayMode: boolean) {
 
 function normalizeMathExpression(expression: string) {
   return expression.replaceAll("...", "\\dots");
+}
+
+function hasDelimitedMath(expression: string) {
+  return /\$\$[\s\S]+?\$\$|\$[^$\n]+\$|\\{1,2}\[[\s\S]+?\\{1,2}\]|\\{1,2}\([^)]*\\{1,2}\)/.test(expression);
 }
 
 type MarkdownNode = {

@@ -74,6 +74,8 @@ class LiteLLMModelClient:
                 temperature=0.3,
                 response_format=lecturepilot_response_format(),
             )
+        except ProviderConfigurationError:
+            raise
         except Exception as exc:
             raise ModelExecutionError(
                 "Model request failed. Check the provider key and model configuration."

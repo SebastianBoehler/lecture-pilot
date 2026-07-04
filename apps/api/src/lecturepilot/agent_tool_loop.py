@@ -10,6 +10,7 @@ from lecturepilot.agent_tool_schemas import AgentToolProfile, agent_tool_names, 
 from lecturepilot.model_payload import agent_result_from_content
 from lecturepilot.models import AgentTurnInput, AgentTurnResult, ProviderSettings
 from lecturepilot.observability import Observability
+from lecturepilot.providers import ProviderConfigurationError
 
 
 async def complete_tool_turn(
@@ -38,7 +39,11 @@ async def complete_tool_turn(
         if not tool_calls:
             content = _message_content(response_message)
             if content:
-                return agent_result_from_content(content, turn, settings.model)
+                try:
+                    return agent_result_from_content(content, turn, settings.model)
+                except ProviderConfigurationError:
+                    messages.append(_assistant_content_message(content))
+                    return await _final_json_response(acompletion, settings, messages, turn)
             return await _final_json_response(acompletion, settings, messages, turn)
         messages.append(_assistant_tool_message(response_message, tool_calls))
         for call in tool_calls[:6]:
@@ -140,6 +145,10 @@ def _assistant_tool_message(message: Any, tool_calls: list[Any]) -> dict[str, An
         return message
     calls = [call.model_dump() if hasattr(call, "model_dump") else _tool_call_dict(call) for call in tool_calls]
     return {"role": "assistant", "content": _message_content(message), "tool_calls": calls}
+
+
+def _assistant_content_message(content: str) -> dict[str, str]:
+    return {"role": "assistant", "content": content}
 
 
 def _tool_call_dict(call: Any) -> dict[str, Any]:

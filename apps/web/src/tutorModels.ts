@@ -1,5 +1,5 @@
 export type TutorModelId =
-  | "gemini/gemini-3.1-flash-lite"
+  | "openrouter/google/gemini-3.1-flash-lite"
   | "openrouter/openai/gpt-oss-120b:nitro";
 
 export type TutorModelPreference = "server-default" | TutorModelId;
@@ -17,9 +17,9 @@ export const TUTOR_MODEL_OPTIONS: {
     detail: "Uses the backend LECTUREPILOT_MODEL setting.",
   },
   {
-    value: "gemini/gemini-3.1-flash-lite",
-    label: "Gemini Flash Lite",
-    detail: "Balanced default tutor model.",
+    value: "openrouter/google/gemini-3.1-flash-lite",
+    label: "OpenRouter Gemini Flash Lite",
+    detail: "Stable Gemini route through the OpenRouter provider.",
   },
   {
     value: "openrouter/openai/gpt-oss-120b:nitro",
