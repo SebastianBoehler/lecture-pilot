@@ -29,6 +29,30 @@ def test_schedule_infers_all_detected_lectures_before_requested_count(tmp_path) 
     assert [lecture.number for lecture in proposal.lectures] == ["01", "02"]
 
 
+def test_schedule_prefers_topic_section_over_housekeeping_frames(tmp_path) -> None:
+    source = tmp_path / "Lecture03-eng.tex"
+    source.write_text(
+        r"""
+        \begin{frame}{Note}Housekeeping\end{frame}
+        \begin{frame}{Course Thread}Admin\end{frame}
+        \section{Bayesian Decision Theory}
+        \begin{frame}{Bayes Rule}
+        Posterior probabilities combine prior, likelihood and evidence.
+        \end{frame}
+        """,
+        encoding="utf-8",
+    )
+
+    proposal = propose_lecture_schedule(
+        course_id="martius-ml",
+        files=[SourceBundleFile(path=source.name, kind="latex", size_bytes=source.stat().st_size)],
+        roots=[tmp_path],
+        first_lecture_date=date(2026, 5, 6),
+    )
+
+    assert proposal.lectures[0].title == "Bayesian Decision Theory"
+
+
 async def test_litellm_schedule_client_requests_schedule_schema(monkeypatch) -> None:
     calls = []
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")

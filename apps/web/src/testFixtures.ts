@@ -93,13 +93,12 @@ export function soccerCanvasSection() {
 
 function publicationPayload(url: string, published: boolean) {
   const lectureId = url.match(/lectures\/([^/]+)\/canvas\/publication/)?.[1] ?? "lecture-03";
-  const isPublished = published && lectureId === "lecture-03";
   return {
     course_id: "martius-ml",
     lecture_id: lectureId,
-    published: isPublished,
-    version: isPublished ? 1 : null,
-    published_at: isPublished ? "2026-06-12T10:00:00Z" : null,
+    published,
+    version: published ? 1 : null,
+    published_at: published ? "2026-06-12T10:00:00Z" : null,
   };
 }
 

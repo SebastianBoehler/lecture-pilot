@@ -33,7 +33,6 @@ def lecture_source_name(lecture_id: str) -> str | None:
 
 
 _LECTURE_SOURCES = {
-    "lecture-01": "Lecture01-eng.tex",
-    "lecture-02": "Lecture02-eng.tex",
-    "lecture-03": "Lecture03-eng.tex",
+    f"lecture-{index:02d}": f"Lecture{index:02d}-eng.tex"
+    for index in range(1, 81)
 }

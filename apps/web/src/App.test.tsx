@@ -117,7 +117,7 @@ describe("LecturePilot app shell", () => {
     expect(screen.getByRole("heading", { name: /course workspaces/i })).toBeInTheDocument();
     expect(screen.getByText(/no tutor workspace yet/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /open lecture 03/i })).not.toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("/canvas/publication"))).toHaveLength(3);
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/canvas/publication"),
       expect.objectContaining({

@@ -1,5 +1,6 @@
 import type { Attendance, Lecture, LoginSession, UniversityCourse } from "./types";
 import { readDemoWorkspaceCourse } from "./demoWorkspaceAccess";
+import { hasDevelopmentWorkspaceAccess } from "./devWorkspaceAccess";
 import { ExamReadinessPanel } from "./ExamReadinessPanel";
 
 type CourseWorkspaceStatus = "matched" | "unmatched";
@@ -113,7 +114,7 @@ function buildCourseGroups(
     : [buildDiscoverableCourseGroup(workspaceCourse, lectures, publishedLectureIds)];
 
   if (enrolledCourses.length && !enrolledCourses.some((course) => isWorkspaceCourse(course, workspaceCourse))) {
-    if (hasDemoWorkspaceAccess(workspaceCourse) && publishedLectureIds.length > 0) {
+    if (hasWorkspaceAccess(workspaceCourse) && publishedLectureIds.length > 0) {
       courseGroups.push(buildDiscoverableCourseGroup(workspaceCourse, lectures, publishedLectureIds));
     }
   }
@@ -167,6 +168,10 @@ function isWorkspaceCourse(course: UniversityCourse, workspaceCourse: University
 
 function hasDemoWorkspaceAccess(workspaceCourse: UniversityCourse) {
   return readDemoWorkspaceCourse()?.id === workspaceCourse.id;
+}
+
+function hasWorkspaceAccess(workspaceCourse: UniversityCourse) {
+  return hasDemoWorkspaceAccess(workspaceCourse) || hasDevelopmentWorkspaceAccess(workspaceCourse);
 }
 
 function workspaceStatusLabel() {

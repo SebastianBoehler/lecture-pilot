@@ -20,6 +20,7 @@ import { canManageCourses } from "./authz";
 import { CourseManagementAccessRequired } from "./CourseManagementAccessRequired";
 import { Dashboard } from "./Dashboard";
 import { readDemoWorkspaceCourse, writeDemoWorkspaceCourse } from "./demoWorkspaceAccess";
+import { developmentWorkspaceCourse } from "./devWorkspaceAccess";
 import { draftPreviewUrl } from "./draftPreviewUrl";
 import { LessonWorkspace } from "./LessonWorkspace";
 import { LoginView } from "./LoginView";
@@ -87,9 +88,10 @@ function App() {
     try {
       const courses = await getCourses(activeSession);
       const demoCourse = readDemoWorkspaceCourse();
+      const devCourse = developmentWorkspaceCourse();
       const preferredCourse = courses.find((course) => course.id === preferredCourseId);
       const storedCourses = [...courses].reverse();
-      const candidates = [demoCourse, preferredCourse, ...storedCourses].filter(
+      const candidates = [demoCourse, preferredCourse, devCourse, ...storedCourses].filter(
         (course, index, list): course is UniversityCourse =>
           Boolean(course) && list.findIndex((item) => item?.id === course?.id) === index,
       );

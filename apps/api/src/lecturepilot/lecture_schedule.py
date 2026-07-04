@@ -82,6 +82,7 @@ def _extract_title(path: Path) -> str | None:
         if heading:
             return _clean_title(heading.group(1))
     for pattern in (
+        r"\\section\{([^{}]+)\}",
         r"\\begin\{frame\}\{([^{}]+)\}",
         r"\\frametitle\{([^{}]+)\}",
         r"\\title\{([^{}]+)\}",
@@ -99,4 +100,11 @@ def _clean_title(value: str) -> str:
 
 def _is_admin_title(title: str) -> bool:
     lowered = title.casefold()
-    return any(marker in lowered for marker in ("feedback", "admin", "consult", "outline"))
+    if lowered in {"course thread", "feedback", "note", "plan", "requirements"}:
+        return True
+    if lowered.startswith(("plan for", "recap and plan")):
+        return True
+    return any(
+        marker in lowered
+        for marker in ("admin", "before we start", "consult", "evaluation", "klausur", "lehrevaluation", "outline", "rückmeldung")
+    )

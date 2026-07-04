@@ -45,17 +45,19 @@ describe("Dashboard course workspace matching", () => {
     window.localStorage.clear();
   });
 
-  it("keeps real enrolled courses separate from a non-enrolled workspace by default", () => {
+  it("keeps real enrolled courses separate and exposes the local development workspace", () => {
     renderDashboard(realSession, true);
 
     const nlpCourse = workspaceArticle("INFO4193 Natural Language Processing");
+    const workspaceArticleElement = workspaceArticle("Grundlagen des Maschinellen Lernens");
 
     expect(within(nlpCourse).getByText("No tutor workspace yet")).toBeInTheDocument();
     expect(within(nlpCourse).queryByRole("button", { name: /open lecture/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Grundlagen des Maschinellen Lernens" })).not.toBeInTheDocument();
+    expect(within(workspaceArticleElement).getByText("AI tutor available")).toBeInTheDocument();
+    expect(within(workspaceArticleElement).getByRole("button", { name: /open lecture 03/i })).toBeInTheDocument();
   });
 
-  it("shows the created workspace to a non-enrolled account only with the local demo bridge", () => {
+  it("honors the local demo bridge for non-enrolled accounts", () => {
     window.localStorage.setItem("lecturepilot.demo.workspaceCourse", JSON.stringify(workspaceCourse));
     renderDashboard(realSession, true);
 

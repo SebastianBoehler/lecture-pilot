@@ -22,6 +22,7 @@ from lecturepilot.course_canvas_routes import register_course_canvas_routes
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner
 from lecturepilot.course_schedule_store import list_course_workspaces, read_course_workspace, write_course_workspace
 from lecturepilot.course_workspace import resolve_course_workspace
+from lecturepilot.dev_seeded_course import discovered_seeded_lecture_views
 from lecturepilot.exam_readiness_routes import register_exam_readiness_routes
 from lecturepilot.harness import LecturePilotHarness
 from lecturepilot.image_generation_registry import image_generator_from_env
@@ -135,6 +136,11 @@ def create_app() -> FastAPI:
                 }
                 for lecture in workspace.lectures
             ]
+        if discovered_lectures := discovered_seeded_lecture_views(
+            course_id,
+            app.state.canvas_workspace.material_root,
+        ):
+            return [item.model_dump(mode="json") for item in discovered_lectures]
         if course_id != COURSE.id:
             raise HTTPException(status_code=404, detail="Course not found.")
         return [item.model_dump(mode="json") for item in unlocked_lectures()]
