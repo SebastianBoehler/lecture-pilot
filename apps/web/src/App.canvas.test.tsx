@@ -152,12 +152,16 @@ describe("LecturePilot canvas interactions", () => {
     expect(within(filePanel).queryByText(/section references/i)).not.toBeInTheDocument();
 
     const tree = within(filePanel).getByRole("tree", { name: /workspace file tree/i });
-    expect(within(tree).getByRole("button", { name: /collapse \.lecturepilot/i })).toBeInTheDocument();
-    expect(within(tree).getByRole("button", { name: /collapse local-course-materials/i })).toBeInTheDocument();
-    expect(within(tree).getByRole("button", { name: /open index\.md/i })).toBeInTheDocument();
+    expect(within(tree).getByRole("button", { name: /collapse course source material/i })).toBeInTheDocument();
+    expect(within(tree).getByRole("button", { name: /collapse published course canvas/i })).toBeInTheDocument();
+    expect(within(tree).getByRole("button", { name: /collapse learner course files/i })).toBeInTheDocument();
+    expect(within(tree).getByRole("button", { name: /collapse learner memory/i })).toBeInTheDocument();
+    expect(within(tree).getAllByRole("button", { name: /open index\.md/i }).length).toBeGreaterThan(1);
     expect(within(tree).getByRole("button", { name: /open Lecture03-eng\.tex/i })).toBeInTheDocument();
     expect(within(tree).getByRole("button", { name: /open Venn_C-X_1\.pdf/i })).toBeInTheDocument();
     expect(within(tree).getByRole("button", { name: /open spam-DALL-E\.jpg/i })).toBeInTheDocument();
+    expect(within(tree).getByRole("button", { name: /open global\.md/i })).toBeInTheDocument();
+    expect(within(tree).getByRole("button", { name: /open preferences\.json/i })).toBeInTheDocument();
 
     await user.click(within(tree).getByRole("button", { name: /collapse sections/i }));
     expect(within(tree).queryByRole("button", { name: /open 02-bayes-formula\.md/i })).not.toBeInTheDocument();

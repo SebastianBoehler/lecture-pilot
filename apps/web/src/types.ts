@@ -230,7 +230,7 @@ export type ChatMessage = {
 
 export type WorkspaceResource = {
   id: string;
-  kind: "canvas" | "source" | "asset" | "video";
+  kind: "canvas" | "source" | "asset" | "video" | "memory";
   label: string;
   path: string;
   displayPath?: string | null;

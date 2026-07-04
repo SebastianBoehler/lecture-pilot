@@ -153,6 +153,28 @@
   padding-left: calc(28px + var(--tree-depth, 0) * 14px);
 }
 
+.workspace-tree-row.is-folder.is-course,
+.workspace-tree-row.is-folder.is-learner,
+.workspace-tree-row.is-folder.is-memory {
+  border-left: 3px solid var(--workspace-tree-accent, var(--color-border-primary));
+  padding-left: calc(6px + var(--tree-depth, 0) * 14px);
+  color: var(--color-text-primary);
+  background: color-mix(in srgb, var(--workspace-tree-accent) 8%, transparent);
+  font-weight: 750;
+}
+
+.workspace-tree-row.is-folder.is-course {
+  --workspace-tree-accent: #2563eb;
+}
+
+.workspace-tree-row.is-folder.is-learner {
+  --workspace-tree-accent: #16a34a;
+}
+
+.workspace-tree-row.is-folder.is-memory {
+  --workspace-tree-accent: #d97706;
+}
+
 .workspace-tree-row span {
   min-width: 0;
   overflow: hidden;

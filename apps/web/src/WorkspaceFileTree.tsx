@@ -76,7 +76,7 @@ function TreeNode({
         <button
           aria-expanded={isExpanded}
           aria-label={`${isExpanded ? "Collapse" : "Expand"} ${node.name}`}
-          className="workspace-tree-row is-folder"
+          className={folderClassName(node)}
           style={depthStyle(depth)}
           type="button"
           onClick={() => onToggle(node.id)}
@@ -136,6 +136,14 @@ function isSameResource(left: WorkspaceResource | null, right: WorkspaceResource
         left.id === right.id ||
         (left.url && right.url && left.url === right.url)),
   );
+}
+
+function folderClassName(node: WorkspaceTreeNode) {
+  return [
+    "workspace-tree-row",
+    "is-folder",
+    node.tone ? `is-${node.tone}` : "",
+  ].filter(Boolean).join(" ");
 }
 
 function fileIcon(resource: WorkspaceResource | undefined, name: string) {

@@ -70,6 +70,7 @@ function WorkspacePreview({ selectedResource }: { selectedResource: WorkspaceRes
 }
 
 function previewLabel(kind: WorkspaceResource["kind"]) {
+  if (kind === "memory") return "Memory file";
   if (kind === "source") return "Source file";
   if (kind === "video") return "Video preview";
   if (kind === "asset") return "Asset preview";
