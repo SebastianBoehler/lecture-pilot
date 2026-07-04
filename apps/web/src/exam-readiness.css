@@ -1,8 +1,8 @@
 .exam-readiness {
   display: grid;
   gap: 14px;
-  margin: 14px 0;
-  padding: 14px 0;
+  margin: 0;
+  padding: 16px 20px;
   border-top: 1px solid var(--color-border-primary);
   border-bottom: 1px solid var(--color-border-primary);
 }
@@ -12,6 +12,13 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+}
+
+.exam-readiness-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .exam-readiness h4,
@@ -53,9 +60,32 @@
   background: var(--color-accent-primary);
 }
 
+.exam-readiness .exam-collapse-toggle {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  place-items: center;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-primary);
+  border-color: var(--color-border-primary);
+}
+
+.exam-collapse-toggle svg {
+  transition: transform 140ms ease;
+}
+
+.exam-collapse-toggle.is-expanded svg {
+  transform: rotate(180deg);
+}
+
 .exam-readiness button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+.exam-readiness-collapsible[hidden] {
+  display: none;
 }
 
 .exam-readiness-body {
@@ -182,8 +212,13 @@
 
 @media (max-width: 700px) {
   .exam-readiness > header,
+  .exam-readiness-actions,
   .exam-question legend,
   .exam-task-group > header {
     display: grid;
+  }
+
+  .exam-readiness-actions {
+    grid-template-columns: 36px minmax(0, 1fr);
   }
 }

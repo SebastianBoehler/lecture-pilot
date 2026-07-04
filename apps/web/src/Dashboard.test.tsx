@@ -95,9 +95,19 @@ describe("Dashboard course workspace matching", () => {
     vi.stubGlobal("fetch", fetchMock);
     const onOpen = renderDashboard(matchedSession, true);
 
+    const expandToggle = screen.getByRole("button", { name: /expand exam readiness check/i });
+    expect(expandToggle).toHaveAttribute("aria-expanded", "false");
+    await user.click(expandToggle);
+    expect(screen.getByRole("button", { name: /collapse exam readiness check/i }))
+      .toHaveAttribute("aria-expanded", "true");
     await user.click(screen.getByRole("button", { name: /start check/i }));
 
-    expect(await screen.findByText(/which quantity should be minimized/i)).toBeInTheDocument();
+    const quizPrompt = await screen.findByText(/which quantity should be minimized/i);
+    expect(quizPrompt).toBeVisible();
+    await user.click(screen.getByRole("button", { name: /collapse exam readiness check/i }));
+    expect(quizPrompt).not.toBeVisible();
+    await user.click(screen.getByRole("button", { name: /expand exam readiness check/i }));
+    expect(quizPrompt).toBeVisible();
     await user.click(screen.getByLabelText(/posterior probability alone/i));
     await user.type(screen.getByPlaceholderText(/write a concise exam-style answer/i), "Use Bayes and compare risks.");
     await user.click(screen.getByRole("button", { name: /check readiness/i }));

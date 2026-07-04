@@ -1,3 +1,4 @@
+import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 
 import { getExamReadinessCheck, submitExamReadinessAttempt } from "./api";
@@ -29,11 +30,14 @@ export function ExamReadinessPanel({
   const [check, setCheck] = useState<ExamReadinessCheck | null>(null);
   const [answers, setAnswers] = useState<AnswerMap>({});
   const [attemptResult, setAttemptResult] = useState<ExamReadinessAttemptResult | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const bodyId = `exam-readiness-${course.id}`;
 
   async function startCheck() {
+    setExpanded(true);
     if (!session) {
       setError("Sign in before starting the exam readiness check.");
       return;
@@ -65,45 +69,63 @@ export function ExamReadinessPanel({
   }
 
   return (
-    <section className="exam-readiness" aria-label={`Prüfungs-ready check for ${course.title}`}>
+    <section
+      className={`exam-readiness${expanded ? " is-expanded" : ""}`}
+      aria-label={`Prüfungs-ready check for ${course.title}`}
+    >
       <header>
         <div>
           <h4>Prüfungs-ready check</h4>
-          <p>Mixed questions across published lectures, with weak-topic revision links after submission.</p>
+          <p>10-question mixed sample across published lectures, with weak-topic revision links after submission.</p>
         </div>
-        <button disabled={loading} type="button" onClick={startCheck}>
-          {loading ? "Loading check..." : check ? "Restart check" : "Start check"}
-        </button>
-      </header>
-      {error ? <p className="form-error">{error}</p> : null}
-      {check ? (
-        <div className="exam-readiness-body">
-          <p className="exam-readiness-meta">
-            {check.questions.length} questions from {check.published_lecture_count} published lectures
-          </p>
-          {check.questions.map((question, index) => (
-            <QuestionField
-              answer={answers[question.id]}
-              index={index}
-              key={question.id}
-              question={question}
-              result={attemptResult?.results.find((item) => item.question_id === question.id)}
-              onAnswer={(answer) => setAnswers((current) => ({ ...current, [question.id]: answer }))}
-            />
-          ))}
+        <div className="exam-readiness-actions">
           <button
-            className="exam-submit"
-            disabled={!canSubmit(check, answers) || submitting || Boolean(attemptResult)}
+            aria-controls={bodyId}
+            aria-expanded={expanded}
+            aria-label={expanded ? "Collapse exam readiness check" : "Expand exam readiness check"}
+            className={`exam-collapse-toggle${expanded ? " is-expanded" : ""}`}
+            title={expanded ? "Collapse check" : "Expand check"}
             type="button"
-            onClick={submitCheck}
+            onClick={() => setExpanded((current) => !current)}
           >
-            {submitting ? "Checking..." : "Check readiness"}
+            <ChevronDown size={17} />
           </button>
-          {attemptResult ? (
-            <ExamReadinessResult lectures={lectures} result={attemptResult} onOpenLecture={onOpenLecture} />
-          ) : null}
+          <button disabled={loading} type="button" onClick={startCheck}>
+            {loading ? "Loading check..." : check ? "Restart check" : "Start check"}
+          </button>
         </div>
-      ) : null}
+      </header>
+      <div className="exam-readiness-collapsible" hidden={!expanded} id={bodyId}>
+        {error ? <p className="form-error">{error}</p> : null}
+        {check ? (
+          <div className="exam-readiness-body">
+            <p className="exam-readiness-meta">
+              {check.questions.length} sampled questions from {check.published_lecture_count} published lectures
+            </p>
+            {check.questions.map((question, index) => (
+              <QuestionField
+                answer={answers[question.id]}
+                index={index}
+                key={question.id}
+                question={question}
+                result={attemptResult?.results.find((item) => item.question_id === question.id)}
+                onAnswer={(answer) => setAnswers((current) => ({ ...current, [question.id]: answer }))}
+              />
+            ))}
+            <button
+              className="exam-submit"
+              disabled={!canSubmit(check, answers) || submitting || Boolean(attemptResult)}
+              type="button"
+              onClick={submitCheck}
+            >
+              {submitting ? "Checking..." : "Check readiness"}
+            </button>
+            {attemptResult ? (
+              <ExamReadinessResult lectures={lectures} result={attemptResult} onOpenLecture={onOpenLecture} />
+            ) : null}
+          </div>
+        ) : null}
+      </div>
     </section>
   );
 }
