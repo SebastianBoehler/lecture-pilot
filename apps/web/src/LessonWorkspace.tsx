@@ -79,9 +79,21 @@ export function LessonWorkspace({
   }
 
   function openWorkspaceResource(resource: WorkspaceResource) {
-    setSelectedResource(resource);
+    selectWorkspaceResource(resource);
     if (panelMode !== "files") {
       onTogglePanel("files");
+    }
+  }
+
+  function selectWorkspaceResource(resource: WorkspaceResource) {
+    setSelectedResource(resource);
+    if (!resource.sectionId) return;
+    const targetId = resource.blockId ?? resource.sectionId;
+    setActiveAnchorId(targetId);
+    setOutlinePulse((current) => ({ id: targetId, version: (current?.version ?? 0) + 1 }));
+    const target = document.getElementById(targetId);
+    if (typeof target?.scrollIntoView === "function") {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }
 
@@ -188,7 +200,7 @@ export function LessonWorkspace({
         <WorkspaceFilesPanel
           canvasDocument={canvasDocument}
           selectedResource={selectedResource}
-          onSelectResource={setSelectedResource}
+          onSelectResource={selectWorkspaceResource}
         />
       ) : null}
     </main>

@@ -21,7 +21,7 @@ export function sectionSourceReferences(
     if (references.some((reference) => reference.resource.path === path)) continue;
     references.push({
       number: references.length + 1,
-      resource: assetSourceResource(asset, references.length + 1),
+      resource: assetSourceResource(asset, section, references.length + 1),
     });
   }
 
@@ -43,6 +43,7 @@ function lectureSourceResource(canvasDocument: CanvasDocument, section: CanvasSe
     kind: "source",
     label: path,
     path,
+    sectionId: section.id,
     detail: displaySourceDetail(section.source_ref ?? section.title, path),
   };
 }
@@ -59,12 +60,14 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function assetSourceResource(asset: CanvasBlock, number: number): WorkspaceResource {
+function assetSourceResource(asset: CanvasBlock, section: CanvasSection, number: number): WorkspaceResource {
   return {
     id: `asset-${number}-${asset.id}`,
     kind: asset.type === "video" ? "video" : "asset",
     label: asset.asset_path ?? asset.caption ?? asset.id,
     path: asset.asset_path ?? asset.caption ?? asset.id,
+    sectionId: section.id,
+    blockId: asset.id,
     detail: asset.caption ?? null,
     url: asset.asset_url,
   };

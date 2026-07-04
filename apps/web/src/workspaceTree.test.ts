@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { CanvasDocument } from "./types";
+import type { CanvasDocument, WorkspaceResource } from "./types";
 import { buildWorkspaceTree } from "./workspaceTree";
 
 describe("workspace tree", () => {
@@ -30,6 +30,14 @@ describe("workspace tree", () => {
       ".lecturepilot/users/<account>/memories/preferences.json",
       ".lecturepilot/users/<account>/courses/martius-ml/memories/course.md",
     ]));
+    expect(resourceFor(tree, "sections/01-official-topic.md")).toMatchObject({
+      sectionId: "official-topic",
+    });
+    expect(resourceFor(tree, "sections/01-official-topic.md")).not.toHaveProperty("blockId");
+    expect(resourceFor(tree, "canvas/student-assets/student-diagram.png")).toMatchObject({
+      sectionId: "student-note",
+      blockId: "student-image",
+    });
   });
 });
 
@@ -42,6 +50,18 @@ function pathsFor(node: ReturnType<typeof buildWorkspaceTree>[number]): string[]
     node.resource?.displayPath ?? node.resource?.path ?? "",
     ...node.children.flatMap(pathsFor),
   ].filter(Boolean);
+}
+
+function resourceFor(nodes: ReturnType<typeof buildWorkspaceTree>, path: string): WorkspaceResource | undefined {
+  const resources = nodes.flatMap((node) => collectResources(node));
+  return resources.find((resource) => resource.displayPath?.endsWith(path) || resource.path.endsWith(path));
+}
+
+function collectResources(node: ReturnType<typeof buildWorkspaceTree>[number]): WorkspaceResource[] {
+  return [
+    ...(node.resource ? [node.resource] : []),
+    ...node.children.flatMap(collectResources),
+  ];
 }
 
 function documentWithStudentSection(): CanvasDocument {

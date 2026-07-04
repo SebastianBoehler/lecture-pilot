@@ -167,7 +167,18 @@ describe("LecturePilot canvas interactions", () => {
     expect(within(tree).queryByRole("button", { name: /open 02-bayes-formula\.md/i })).not.toBeInTheDocument();
 
     await user.click(within(tree).getByRole("button", { name: /expand sections/i }));
-    expect(within(tree).getByRole("button", { name: /open 02-bayes-formula\.md/i })).toBeInTheDocument();
+    await user.click(within(tree).getByRole("button", { name: /open 02-bayes-formula\.md/i }));
+    expect(bayesSection).toHaveAttribute("aria-current", "true");
+
+    await user.click(within(tree).getByRole("button", { name: /open Venn_C-X_1\.pdf/i }));
+    expect(within(tree).getByRole("button", { name: /open Venn_C-X_1\.pdf/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(bayesSection).not.toHaveAttribute("aria-current");
+    expect(bayesSection).not.toHaveClass("is-outline-pulsed");
+    expect(within(bayesSection).getByRole("img", { name: /Ch3\/Venn_C-X_1\.pdf/i }).closest("figure"))
+      .toHaveClass("is-outline-pulsed");
   });
 
   it("opens inline source markers as traced source previews", async () => {

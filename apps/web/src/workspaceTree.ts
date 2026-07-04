@@ -55,6 +55,7 @@ function addCanvasSections(
       kind: "canvas",
       label: fileName,
       path: `${canvasDir}/${folder}/${fileName}`,
+      sectionId: section.id,
       displayPath: `${canvasDir}/${folder}/${fileName}`,
       detail: section.title,
     });
@@ -77,7 +78,7 @@ function addCourseAssets(
   learnerRoots: WorkspaceTreeNode[],
   canvasDocument: CanvasDocument,
 ) {
-  for (const { asset, learnerOwned } of uniqueAssets(canvasDocument)) {
+  for (const { asset, learnerOwned, sectionId } of uniqueAssets(canvasDocument)) {
     const isVideo = asset.type === "video";
     const path = asset.asset_path ?? asset.caption ?? asset.id;
     const courseDisplayPath = isVideo
@@ -95,6 +96,8 @@ function addCourseAssets(
       kind: isVideo ? "video" : "asset",
       label: path.split("/").at(-1) ?? path,
       path,
+      sectionId,
+      blockId: asset.id,
       displayPath,
       detail: asset.caption ?? null,
       url: asset.asset_url,
@@ -131,6 +134,8 @@ function addLearnerFiles(
           kind: "canvas",
           label: block.component_ref,
           path: block.component_ref,
+          sectionId: section.id,
+          blockId: block.id,
           displayPath: `${learnerDir}/canvas/components/${block.component_ref}`,
           detail: block.caption ?? section.title,
         });
@@ -202,8 +207,12 @@ function canvasResource(canvasDocument: CanvasDocument, displayPath: string): Wo
   };
 }
 
-function uniqueAssets(canvasDocument: CanvasDocument): { asset: CanvasBlock; learnerOwned: boolean }[] {
-  const byPath = new Map<string, { asset: CanvasBlock; learnerOwned: boolean }>();
+function uniqueAssets(canvasDocument: CanvasDocument): {
+  asset: CanvasBlock;
+  learnerOwned: boolean;
+  sectionId: string;
+}[] {
+  const byPath = new Map<string, { asset: CanvasBlock; learnerOwned: boolean; sectionId: string }>();
   for (const section of canvasDocument.sections) {
     for (const block of section.blocks) {
       const key = block.asset_path ?? block.asset_url;
@@ -211,6 +220,7 @@ function uniqueAssets(canvasDocument: CanvasDocument): { asset: CanvasBlock; lea
         byPath.set(key, {
           asset: block,
           learnerOwned: isStudentSection(section) || isLearnerAsset(block),
+          sectionId: section.id,
         });
       }
     }
