@@ -16,19 +16,11 @@ export async function createCourseWorkspace(
   session: LoginSession,
   lectures: LectureScheduleItem[] = [],
 ): Promise<CourseWorkspaceResult> {
-  const response = await fetch(apiUrl("/admin/course-workspaces"), {
+  const response = await professorFetch("/admin/course-workspaces", session, {
     method: "POST",
-    headers: { ...courseManagerHeaders(session), "Content-Type": "application/json" },
-    body: JSON.stringify({
-      access_policy: setup.accessPolicy,
-      course_title: setup.courseTitle,
-      lecture_title: setup.lectureTitle,
-      lecture_number: setup.lectureNumber,
-      lecture_count: Number(setup.lectureCount) || null,
-      lectures,
-      target: setup.target,
-    }),
-  });
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(courseWorkspaceBody(setup, lectures)),
+  }, "Cannot reach the local LecturePilot API while creating the course workspace.");
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Course workspace creation failed."));
   return normalizeCourseWorkspaceResult(payload);
@@ -104,4 +96,27 @@ export async function includeYoutubeMedia(input: {
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "YouTube include failed."));
   return payload as { block_id: string };
+}
+
+async function professorFetch(path: string, session: LoginSession, init: RequestInit, networkMessage: string) {
+  try {
+    return await fetch(apiUrl(path), {
+      ...init,
+      headers: { ...courseManagerHeaders(session), ...init.headers },
+    });
+  } catch {
+    throw new Error(`${networkMessage} Is the backend running at ${apiUrl("")}?`);
+  }
+}
+
+function courseWorkspaceBody(setup: CourseSetup, lectures: LectureScheduleItem[]) {
+  return {
+    access_policy: setup.accessPolicy,
+    course_title: setup.courseTitle,
+    lecture_title: setup.lectureTitle || null,
+    lecture_number: setup.lectureNumber || null,
+    lecture_count: Number(setup.lectureCount) || null,
+    lectures,
+    target: setup.target,
+  };
 }

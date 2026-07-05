@@ -42,6 +42,7 @@ from lecturepilot.models import (
 )
 from lecturepilot.observability import observability_from_env
 from lecturepilot.providers import ProviderConfigurationError
+from lecturepilot.runtime_env import load_project_env
 from lecturepilot.sample_data import COURSE, LECTURES, unlocked_lectures
 from lecturepilot.tenancy import TenantContext
 from lecturepilot.tuebingen_adapter import (
@@ -55,6 +56,7 @@ from lecturepilot.youtube_discovery import YoutubeDiscovery
 
 
 COURSE_TENANT_ID = "tenant-tuebingen"
+load_project_env()
 
 
 def create_app() -> FastAPI:

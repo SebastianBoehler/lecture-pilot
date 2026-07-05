@@ -32,18 +32,17 @@ describe("Professor course builder", () => {
     expect(screen.getByRole("heading", { name: /define course and lecture scope/i })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /upload materials/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /live course analytics/i })).not.toBeInTheDocument();
-    expect(screen.getByLabelText(/course name/i)).toHaveValue("Grundlagen des Maschinellen Lernens");
-    expect(screen.getByLabelText(/lecture number/i)).toHaveValue("03");
-    expect(screen.getByLabelText(/lecture title/i)).toHaveValue("Bayesian Decision Theory");
+    expect(screen.getByLabelText(/course name/i)).toHaveValue("");
+    expect(screen.queryByLabelText(/lecture number/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /full course/i })).toHaveClass("is-active");
 
-    await user.clear(screen.getByLabelText(/course name/i));
     expect(screen.getByRole("button", { name: /create course workspace/i })).toBeDisabled();
     expect(screen.queryByRole("button", { name: /search youtube/i })).not.toBeInTheDocument();
     await user.type(screen.getByLabelText(/course name/i), "Demo ML Course");
-    await user.click(screen.getByRole("button", { name: /full course/i }));
     expect(screen.getByLabelText(/expected lectures/i)).toHaveValue(null);
     expect(screen.getByRole("button", { name: /create course workspace/i })).toBeEnabled();
     await user.click(screen.getByRole("button", { name: /specific lecture/i }));
+    await user.type(screen.getByLabelText(/lecture number/i), "03");
     await user.clear(screen.getByLabelText(/lecture title/i));
     await user.type(screen.getByLabelText(/lecture title/i), "Bayesian Decision Theory");
     expect(screen.getByRole("button", { name: /create course workspace/i })).toBeEnabled();
@@ -163,8 +162,10 @@ describe("Professor course builder", () => {
     render(<App />);
 
     await user.click(screen.getByRole("button", { name: /preview professor account/i }));
-    await user.click(screen.getByRole("button", { name: /full course/i }));
+    expect(screen.getByLabelText(/course name/i)).toHaveValue("");
+    expect(screen.getByRole("button", { name: /full course/i })).toHaveClass("is-active");
     expect(screen.getByLabelText(/expected lectures/i)).toHaveValue(null);
+    await user.type(screen.getByLabelText(/course name/i), "Demo ML Course");
     await user.click(screen.getByRole("button", { name: /create course workspace/i }));
     await user.upload(
       await screen.findByLabelText(/upload course material/i),
@@ -259,6 +260,10 @@ describe("Professor course builder", () => {
     render(<App />);
 
     await user.click(screen.getByRole("button", { name: /preview professor account/i }));
+    await user.type(screen.getByLabelText(/course name/i), "Demo ML Course");
+    await user.click(screen.getByRole("button", { name: /specific lecture/i }));
+    await user.type(screen.getByLabelText(/lecture number/i), "03");
+    await user.type(screen.getByLabelText(/lecture title/i), "Bayesian Decision Theory");
     await user.click(screen.getByRole("button", { name: /create course workspace/i }));
     await user.upload(
       await screen.findByLabelText(/upload course material/i),

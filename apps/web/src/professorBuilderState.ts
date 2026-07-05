@@ -31,12 +31,12 @@ export type SavedProfessorFlow = {
 
 export const defaultCourseSetup: CourseSetup = {
   accessPolicy: "tuebingen_enrolled",
-  courseTitle: "Grundlagen des Maschinellen Lernens",
-  lectureTitle: "Bayesian Decision Theory",
-  lectureNumber: "03",
+  courseTitle: "",
+  lectureTitle: "",
+  lectureNumber: "",
   lectureCount: "",
-  firstLectureDate: pastDateIso(28),
-  target: "single-lecture",
+  firstLectureDate: "",
+  target: "full-course",
 };
 
 export const defaultFlow: SavedProfessorFlow = {
@@ -47,7 +47,7 @@ export const defaultFlow: SavedProfessorFlow = {
   bundleReady: false,
   canvasReady: false,
   lectureSchedule: [],
-  query: "Bayesian decision theory machine learning Tübingen",
+  query: "",
 };
 
 const flowStorageKey = "lecturepilot.professor-builder.current";
@@ -64,6 +64,7 @@ export function readSavedFlow(): SavedProfessorFlow {
     const saved = window.sessionStorage.getItem(flowStorageKey);
     if (!saved) return defaultFlow;
     const parsed = JSON.parse(saved) as Partial<SavedProfessorFlow>;
+    if (isUntouchedLegacyDemoFlow(parsed)) return defaultFlow;
     return {
       ...defaultFlow,
       ...parsed,
@@ -88,8 +89,20 @@ export function clearSavedFlow() {
   }
 }
 
-function pastDateIso(days: number) {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  return date.toISOString().slice(0, 10);
+function isUntouchedLegacyDemoFlow(flow: Partial<SavedProfessorFlow>) {
+  const setup = flow.setup;
+  const hasLegacyDemoValue =
+    setup?.courseTitle === "Grundlagen des Maschinellen Lernens" ||
+    setup?.lectureNumber === "03" ||
+    setup?.lectureTitle === "Bayesian Decision Theory" ||
+    setup?.firstLectureDate === "2026-06-07" ||
+    flow.query === "Bayesian decision theory machine learning Tübingen";
+  return Boolean(
+    !flow.workspace &&
+    !flow.courseReady &&
+    !flow.bundleReady &&
+    !flow.canvasReady &&
+    !flow.lectureSchedule?.length &&
+    hasLegacyDemoValue,
+  );
 }
