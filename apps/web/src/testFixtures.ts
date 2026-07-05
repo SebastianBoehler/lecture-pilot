@@ -70,27 +70,6 @@ export function mockLoginAndTutorFetch({
   });
 }
 
-export function soccerCanvasSection() {
-  return {
-    id: "student-soccer-bayes-example",
-    title: "Soccer scouting example",
-    source_ref: "student workspace",
-    blocks: [
-      {
-        id: "student-soccer-bayes-example-p-1",
-        type: "paragraph",
-        text: "A scouting report is evidence that updates the posterior belief about a player fit.",
-        items: [],
-      },
-      {
-        id: "student-soccer-bayes-example-list",
-        type: "list",
-        items: ["Prior player fit", "Likelihood of report", "Decision risk of signing"],
-      },
-    ],
-  };
-}
-
 function publicationPayload(url: string, published: boolean) {
   const lectureId = url.match(/lectures\/([^/]+)\/canvas\/publication/)?.[1] ?? "lecture-03";
   return {

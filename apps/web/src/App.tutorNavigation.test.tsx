@@ -3,7 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
-import { mockLoginAndTutorFetch, soccerCanvasSection } from "./testFixtures";
+import { openLecture03FromDashboard, soccerCanvasSection } from "./testLessonActions";
+import { mockLoginAndTutorFetch } from "./testFixtures";
 
 describe("Tutor canvas navigation", () => {
   afterEach(() => {
@@ -67,7 +68,7 @@ describe("Tutor canvas navigation", () => {
     render(<App />);
 
     await logIn(user);
-    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
+    await openLecture03FromDashboard(user);
     await user.click(screen.getByLabelText(/open tutor chat/i));
     await sendTutorMessage(user, "Show me the Bayes formula.");
     expect(await screen.findByText(/focus moved/i)).toBeInTheDocument();

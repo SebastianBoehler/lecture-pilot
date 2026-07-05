@@ -1,4 +1,4 @@
-import { ChevronDown } from "lucide-react";
+import { X } from "lucide-react";
 import { useState } from "react";
 
 import { getExamReadinessCheck, submitExamReadinessAttempt } from "./api";
@@ -30,14 +30,13 @@ export function ExamReadinessPanel({
   const [check, setCheck] = useState<ExamReadinessCheck | null>(null);
   const [answers, setAnswers] = useState<AnswerMap>({});
   const [attemptResult, setAttemptResult] = useState<ExamReadinessAttemptResult | null>(null);
-  const [expanded, setExpanded] = useState(false);
+  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const bodyId = `exam-readiness-${course.id}`;
+  const titleId = `exam-readiness-title-${course.id}`;
 
   async function startCheck() {
-    setExpanded(true);
     if (!session) {
       setError("Sign in before starting the exam readiness check.");
       return;
@@ -55,6 +54,13 @@ export function ExamReadinessPanel({
     }
   }
 
+  function openCheck() {
+    setOpen(true);
+    if (!check && !loading) {
+      void startCheck();
+    }
+  }
+
   async function submitCheck() {
     if (!check || !session) return;
     setSubmitting(true);
@@ -69,63 +75,73 @@ export function ExamReadinessPanel({
   }
 
   return (
-    <section
-      className={`exam-readiness${expanded ? " is-expanded" : ""}`}
-      aria-label={`Prüfungs-ready check for ${course.title}`}
-    >
+    <section className="exam-readiness" aria-label={`Prüfungs-ready check for ${course.title}`}>
       <header>
         <div>
           <h4>Prüfungs-ready check</h4>
           <p>10-question mixed sample across published lectures, with weak-topic revision links after submission.</p>
         </div>
         <div className="exam-readiness-actions">
-          <button
-            aria-controls={bodyId}
-            aria-expanded={expanded}
-            aria-label={expanded ? "Collapse exam readiness check" : "Expand exam readiness check"}
-            className={`exam-collapse-toggle${expanded ? " is-expanded" : ""}`}
-            title={expanded ? "Collapse check" : "Expand check"}
-            type="button"
-            onClick={() => setExpanded((current) => !current)}
-          >
-            <ChevronDown size={17} />
-          </button>
-          <button disabled={loading} type="button" onClick={startCheck}>
-            {loading ? "Loading check..." : check ? "Restart check" : "Start check"}
+          <button disabled={loading} type="button" onClick={openCheck}>
+            {loading ? "Preparing check..." : check ? "Open check" : "Start exam check"}
           </button>
         </div>
       </header>
-      <div className="exam-readiness-collapsible" hidden={!expanded} id={bodyId}>
-        {error ? <p className="form-error">{error}</p> : null}
-        {check ? (
-          <div className="exam-readiness-body">
-            <p className="exam-readiness-meta">
-              {check.questions.length} sampled questions from {check.published_lecture_count} published lectures
-            </p>
-            {check.questions.map((question, index) => (
-              <QuestionField
-                answer={answers[question.id]}
-                index={index}
-                key={question.id}
-                question={question}
-                result={attemptResult?.results.find((item) => item.question_id === question.id)}
-                onAnswer={(answer) => setAnswers((current) => ({ ...current, [question.id]: answer }))}
-              />
-            ))}
-            <button
-              className="exam-submit"
-              disabled={!canSubmit(check, answers) || submitting || Boolean(attemptResult)}
-              type="button"
-              onClick={submitCheck}
-            >
-              {submitting ? "Checking..." : "Check readiness"}
-            </button>
-            {attemptResult ? (
-              <ExamReadinessResult lectures={lectures} result={attemptResult} onOpenLecture={onOpenLecture} />
+      {open ? (
+        <div className="exam-modal-backdrop">
+          <section
+            aria-labelledby={titleId}
+            aria-modal="true"
+            className="exam-modal"
+            role="dialog"
+          >
+            <header className="exam-modal-header">
+              <div>
+                <h2 id={titleId}>Prüfungs-ready check</h2>
+                <p>Mixed exam practice across the published lectures in {course.title}.</p>
+              </div>
+              <div className="exam-modal-actions">
+                <button disabled={loading} type="button" onClick={startCheck}>
+                  {loading ? "Loading..." : "Restart sample"}
+                </button>
+                <button aria-label="Close exam readiness check" type="button" onClick={() => setOpen(false)}>
+                  <X size={17} />
+                </button>
+              </div>
+            </header>
+            {error ? <p className="form-error">{error}</p> : null}
+            {loading && !check ? <p className="drawer-note">Preparing your mixed lecture check...</p> : null}
+            {check ? (
+              <div className="exam-readiness-body">
+                <p className="exam-readiness-meta">
+                  {check.questions.length} sampled questions from {check.published_lecture_count} published lectures
+                </p>
+                {check.questions.map((question, index) => (
+                  <QuestionField
+                    answer={answers[question.id]}
+                    index={index}
+                    key={question.id}
+                    question={question}
+                    result={attemptResult?.results.find((item) => item.question_id === question.id)}
+                    onAnswer={(answer) => setAnswers((current) => ({ ...current, [question.id]: answer }))}
+                  />
+                ))}
+                <button
+                  className="exam-submit"
+                  disabled={!canSubmit(check, answers) || submitting || Boolean(attemptResult)}
+                  type="button"
+                  onClick={submitCheck}
+                >
+                  {submitting ? "Checking..." : "Check readiness"}
+                </button>
+                {attemptResult ? (
+                  <ExamReadinessResult lectures={lectures} result={attemptResult} onOpenLecture={onOpenLecture} />
+                ) : null}
+              </div>
             ) : null}
-          </div>
-        ) : null}
-      </div>
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -1,6 +1,7 @@
 import { vi } from "vitest";
 
 export function professorFetchMock() {
+  const publishedLectures = new Set<string>();
   return vi.fn(async (url: string, init?: RequestInit) => {
     if (url.endsWith("/courses")) return json([workspaceCourse()]);
     if (url.match(/\/courses\/[^/]+\/lectures$/)) return json(lectureListPayload());
@@ -9,14 +10,8 @@ export function professorFetchMock() {
     if (url.includes("/source-bundle")) return json(sourceBundle());
     if (url.includes("/materials")) return json({ path: "uploads/supplement.md", kind: "markdown", size_bytes: 12 });
     if (url.includes("/analytics")) return json(analyticsPayload());
-    if (url.includes("/canvas/publication")) return json({ published: false, course_id: "martius-ml", lecture_id: "lecture-03" });
-    if (url.includes("/canvas/publish")) return json({
-      course_id: "demo-ml-course",
-      lecture_id: "lecture-03",
-      published: true,
-      version: 1,
-      published_at: "2026-06-12T10:00:00Z",
-    });
+    if (url.includes("/canvas/publication")) return json(publicationPayload(url, publishedLectures));
+    if (url.includes("/canvas/publish")) return json(publishPayload(url, publishedLectures));
     if (url.includes("/canvas/draft")) return json(canvasPayload());
     if (url.includes("/canvas")) return json(canvasPayload());
     if (url.includes("/media/youtube/search")) return json({ items: [youtubeCandidate()] });
@@ -24,6 +19,37 @@ export function professorFetchMock() {
     if (url.includes("/media/youtube")) return json({ block_id: "youtube-j4yxsEQqPMI" });
     throw new Error(`Unexpected fetch: ${url} ${init?.method ?? "GET"}`);
   });
+}
+
+function courseAndLectureFromUrl(url: string) {
+  return {
+    courseId: url.match(/courses\/([^/]+)/)?.[1] ?? "demo-ml-course",
+    lectureId: url.match(/lectures\/([^/]+)\/canvas/)?.[1] ?? "lecture-03",
+  };
+}
+
+function publicationPayload(url: string, publishedLectures: Set<string>) {
+  const { courseId, lectureId } = courseAndLectureFromUrl(url);
+  const published = publishedLectures.has(`${courseId}:${lectureId}`);
+  return {
+    course_id: courseId,
+    lecture_id: lectureId,
+    published,
+    version: published ? 1 : null,
+    published_at: published ? "2026-06-12T10:00:00Z" : null,
+  };
+}
+
+function publishPayload(url: string, publishedLectures: Set<string>) {
+  const { courseId, lectureId } = courseAndLectureFromUrl(url);
+  publishedLectures.add(`${courseId}:${lectureId}`);
+  return {
+    course_id: courseId,
+    lecture_id: lectureId,
+    published: true,
+    version: 1,
+    published_at: "2026-06-12T10:00:00Z",
+  };
 }
 
 function workspaceCourse() {

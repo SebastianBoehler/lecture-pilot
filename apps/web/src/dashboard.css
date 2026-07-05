@@ -82,6 +82,14 @@
   border-bottom: 1px solid var(--color-border-primary);
 }
 
+.course-row-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .course-workspace {
   border-bottom: 1px solid var(--color-border-primary);
 }
@@ -103,9 +111,10 @@
   border-bottom: 0;
 }
 
+.course-workspace-body[hidden] { display: none; }
+
 .lecture-row h3,
 .course-row h3,
-.drawer h2,
 .drawer h2 {
   margin: 0;
 }
@@ -135,6 +144,18 @@
   border-color: var(--color-accent-primary);
   color: var(--color-accent-primary);
 }
+
+.course-toggle,
+.lecture-list-toggle {
+  border: 1px solid var(--color-border-primary);
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  font-weight: 700;
+}
+
+.lecture-list-toggle { margin: 0 20px 14px; }
 
 .workspace-empty {
   margin: 0;

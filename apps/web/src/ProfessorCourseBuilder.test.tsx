@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -15,6 +15,13 @@ describe("Professor course builder", () => {
   it("walks through course upload, canvas, and YouTube approval as a professor account", async () => {
     const user = userEvent.setup();
     const fetchMock = professorFetchMock();
+    window.localStorage.setItem("lecturepilot.demo.workspaceCourse", JSON.stringify({
+      access_policy: "public",
+      id: "martius-ml",
+      title: "Grundlagen des Maschinellen Lernens",
+      professor: "Prof. Georg Martius",
+      term: "Sommer 2026",
+    }));
     vi.stubGlobal("fetch", fetchMock);
     render(<App />);
 
@@ -50,6 +57,13 @@ describe("Professor course builder", () => {
     expect(screen.getByRole("heading", { name: /upload materials/i })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /define course and lecture scope/i })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /03 media/i })).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: /^lecturepilot$/i }));
+    expect(await screen.findByRole("heading", { name: /grundlagen des maschinellen lernens/i })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /demo ml course/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/no matched lecturepilot workspace/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^course builder$/i }));
+    expect(await screen.findByRole("heading", { name: /upload materials/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /02 upload/i }));
     expect(screen.getByText(/drop course folder here/i)).toBeInTheDocument();
@@ -93,6 +107,11 @@ describe("Professor course builder", () => {
     expect(screen.queryByRole("heading", { name: /live course analytics/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^course performance$/i }));
     expect(await screen.findByRole("heading", { name: /course performance/i })).toBeInTheDocument();
+    const courseScope = screen.getByRole("navigation", { name: /performance course scope/i });
+    expect(within(courseScope).getByRole("button", { name: /demo ml course/i })).toHaveAttribute("aria-pressed", "true");
+    await user.click(within(courseScope).getByRole("button", { name: /grundlagen des maschinellen lernens/i }));
+    expect(await screen.findByText(/no published course workspace yet/i)).toBeInTheDocument();
+    await user.click(within(courseScope).getByRole("button", { name: /demo ml course/i }));
     await user.click(screen.getByRole("button", { name: /refresh analytics/i }));
     expect(await screen.findByText("Events")).toBeInTheDocument();
     expect(screen.getAllByText("Quiz success").length).toBeGreaterThan(0);
@@ -107,6 +126,7 @@ describe("Professor course builder", () => {
     expect(previewLink).toHaveAttribute("href", expect.stringContaining("courseId=demo-ml-course"));
     expect(await screen.findByText(/2 sections ready for review/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^lecturepilot$/i }));
+    expect(await screen.findByRole("heading", { name: /demo ml course/i })).toBeInTheDocument();
     expect(screen.getByText(/ai tutor available/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^course builder$/i }));
     expect(fetchMock).toHaveBeenCalledWith(

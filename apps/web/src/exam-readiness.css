@@ -60,7 +60,64 @@
   background: var(--color-accent-primary);
 }
 
-.exam-readiness .exam-collapse-toggle {
+.exam-readiness button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.exam-modal-backdrop {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  display: grid;
+  align-items: start;
+  justify-items: center;
+  overflow: auto;
+  padding: 40px 20px;
+  background: color-mix(in srgb, #000000 48%, transparent);
+}
+
+.exam-modal {
+  display: grid;
+  gap: 16px;
+  width: min(960px, 100%);
+  max-height: calc(100vh - 80px);
+  overflow: auto;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  padding: 18px;
+  background: var(--color-bg-primary);
+  box-shadow: 0 24px 80px color-mix(in srgb, #000000 28%, transparent);
+}
+
+.exam-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.exam-modal-header h2,
+.exam-modal-header p {
+  margin: 0;
+}
+
+.exam-modal-header h2 {
+  font-size: 22px;
+}
+
+.exam-modal-header p {
+  margin-top: 4px;
+  color: var(--color-text-secondary);
+}
+
+.exam-modal-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.exam-modal-actions button:last-child {
   display: grid;
   width: 36px;
   height: 36px;
@@ -68,24 +125,6 @@
   place-items: center;
   color: var(--color-text-secondary);
   background: var(--color-bg-primary);
-  border-color: var(--color-border-primary);
-}
-
-.exam-collapse-toggle svg {
-  transition: transform 140ms ease;
-}
-
-.exam-collapse-toggle.is-expanded svg {
-  transform: rotate(180deg);
-}
-
-.exam-readiness button:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-.exam-readiness-collapsible[hidden] {
-  display: none;
 }
 
 .exam-readiness-body {
@@ -213,12 +252,14 @@
 @media (max-width: 700px) {
   .exam-readiness > header,
   .exam-readiness-actions,
+  .exam-modal-header,
+  .exam-modal-actions,
   .exam-question legend,
   .exam-task-group > header {
     display: grid;
   }
 
   .exam-readiness-actions {
-    grid-template-columns: 36px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 }

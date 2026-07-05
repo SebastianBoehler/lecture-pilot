@@ -333,13 +333,15 @@ function App() {
             setPublishedLectureIds((current) => Array.from(new Set([...current, lectureId])));
             return result;
           }}
-          onWorkspaceLecturesChange={(course, nextLectures) => {
+          onWorkspacePublished={(course, nextLectures) => {
             if (!nextLectures.length) return;
             writeDemoWorkspaceCourse(course);
             setWorkspaceCourse(course);
             setWorkspaceCourseId(course.id);
             setSelectedCourseId(course.id);
             setAvailableLectures(nextLectures);
+            setSelectedLecture((current) => nextLectures.find((lecture) => lecture.id === current.id) ?? nextLectures[0]);
+            setPublishedLectureIds(nextLectures.map((lecture) => lecture.id));
           }}
           previewWorkspaceUrl={draftPreviewUrl}
           publishedLectureIds={publishedLectureIds}
@@ -349,6 +351,7 @@ function App() {
           lectures={availableLectures}
           publishedLectureIds={publishedLectureIds}
           session={courseManagerSession}
+          workspaceCourse={workspaceCourse}
         />
       ) : view === "performance" ? (
         <CourseManagementAccessRequired

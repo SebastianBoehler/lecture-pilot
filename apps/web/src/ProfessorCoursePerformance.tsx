@@ -1,9 +1,11 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { AlertTriangle, BarChart3, CheckCircle2, RefreshCw, Users } from "lucide-react";
 
 import { getLectureAnalytics } from "./analyticsApi";
 import { AnalyticsChart } from "./PerformanceCharts";
+import { PerformanceLectureRow } from "./PerformanceLectureRow";
 import { lectureSnapshot, percent, splitBars } from "./performanceMetrics";
+import { performanceCourseOptions, ProfessorCourseTabs } from "./ProfessorCourseTabs";
 import type {
   AnalyticsGateMetric,
   AnalyticsQuizMetric,
@@ -13,36 +15,43 @@ import type {
   UniversityCourse,
 } from "./types";
 
-const demoPerformanceCourse: UniversityCourse = {
-  id: "martius-ml",
-  title: "Grundlagen des Maschinellen Lernens",
-  professor: "Prof. Georg Martius",
-  term: "Sommer 2026",
-};
-
 export function ProfessorCoursePerformance({
   lectures,
   publishedLectureIds,
   session,
+  workspaceCourse,
 }: {
   lectures: Lecture[];
   publishedLectureIds: string[];
   session: LoginSession;
+  workspaceCourse: UniversityCourse;
 }) {
-  const course = session.courses.find((item) => item.id === demoPerformanceCourse.id) ?? demoPerformanceCourse;
-  const published = new Set(publishedLectureIds);
-  const visibleLectures = lectures.filter((lecture) => published.has(lecture.id));
-  const [selectedLecture, setSelectedLecture] = useState<Lecture | null>(visibleLectures[2] ?? visibleLectures[0] ?? null);
+  const courseOptions = useMemo(
+    () => performanceCourseOptions(session.courses, workspaceCourse),
+    [session.courses, workspaceCourse],
+  );
+  const [selectedCourseId, setSelectedCourseId] = useState(workspaceCourse.id);
+  const course = courseOptions.find((item) => item.id === selectedCourseId) ?? workspaceCourse;
+  const workspaceSelected = isWorkspaceCourse(course, workspaceCourse);
+  const visibleLectures = useMemo(() => {
+    if (!workspaceSelected) return [];
+    const published = new Set(publishedLectureIds);
+    return lectures.filter((lecture) => published.has(lecture.id));
+  }, [lectures, publishedLectureIds, workspaceSelected]);
+  const [selectedLecture, setSelectedLecture] = useState<Lecture | null>(null);
   const [analytics, setAnalytics] = useState<LectureAnalyticsSummary | null>(null);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!selectedLecture) return;
-    void refreshAnalytics(selectedLecture);
-    // Run once for the initially selected lecture.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    setSelectedCourseId(workspaceCourse.id);
+  }, [workspaceCourse.id]);
+
+  useEffect(() => {
+    setSelectedLecture(null);
+    setAnalytics(null);
+    setAnalyticsError(null);
+  }, [selectedCourseId]);
 
   useEffect(() => {
     if (!visibleLectures.length) {
@@ -50,14 +59,13 @@ export function ProfessorCoursePerformance({
       setAnalytics(null);
       return;
     }
-    if (!selectedLecture || !visibleLectures.some((lecture) => lecture.id === selectedLecture.id)) {
-      setSelectedLecture(visibleLectures[0]);
-      setAnalytics(null);
+    if (!selectedLecture) {
+      void refreshAnalytics(visibleLectures[2] ?? visibleLectures[0]);
     }
   }, [selectedLecture, visibleLectures]);
 
   async function refreshAnalytics(lecture = selectedLecture) {
-    if (!lecture) return;
+    if (!lecture || !workspaceSelected) return;
     setAnalyticsError(null);
     setSelectedLecture(lecture);
     setLoading(true);
@@ -89,6 +97,14 @@ export function ProfessorCoursePerformance({
         </button>
       </section>
 
+      <ProfessorCourseTabs
+        courses={courseOptions}
+        publishedLectureCount={visibleLectures.length}
+        selectedCourseId={selectedCourseId}
+        workspaceCourseId={workspaceCourse.id}
+        onSelect={setSelectedCourseId}
+      />
+
       {!selectedLecture ? (
         <section className="performance-console is-empty">
           <div className="analytics-empty-state">
@@ -118,7 +134,7 @@ export function ProfessorCoursePerformance({
             </div>
             <div className="performance-lecture-scroll">
               {visibleLectures.map((lecture) => (
-                <LectureRow
+                <PerformanceLectureRow
                   active={lecture.id === selectedLecture.id}
                   key={lecture.id}
                   lecture={lecture}
@@ -149,31 +165,12 @@ export function ProfessorCoursePerformance({
   );
 }
 
-function LectureRow({
-  active,
-  lecture,
-  onSelect,
-}: {
-  active: boolean;
-  lecture: Lecture;
-  onSelect: () => void;
-}) {
-  const snapshot = lectureSnapshot(lecture, null);
-  return (
-    <button className={active ? "is-active" : undefined} type="button" onClick={onSelect}>
-      <span className="lecture-index">{lecture.number}</span>
-      <span className="lecture-row-body">
-        <strong>{lecture.title}</strong>
-        <small>{lecture.date}</small>
-        <span className="lecture-row-metrics">
-          <span>{snapshot.learners} learners</span>
-          <span>{snapshot.quizRate} quiz</span>
-          <span>{snapshot.gateRate} gates</span>
-        </span>
-      </span>
-      <span className={`lecture-status is-${snapshot.status}`} />
-    </button>
-  );
+function isWorkspaceCourse(course: UniversityCourse, workspaceCourse: UniversityCourse) {
+  return course.id === workspaceCourse.id || normalizeCourseTitle(course.title) === normalizeCourseTitle(workspaceCourse.title);
+}
+
+function normalizeCourseTitle(title: string) {
+  return title.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
 function PerformanceOverview({ snapshot }: { snapshot: ReturnType<typeof lectureSnapshot> }) {

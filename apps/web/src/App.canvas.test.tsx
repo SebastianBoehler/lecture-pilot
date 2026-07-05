@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
+import { openLecture03FromDashboard } from "./testLessonActions";
 import { mockLoginAndTutorFetch, mockLoginFetch } from "./testFixtures";
 
 describe("LecturePilot canvas interactions", () => {
@@ -42,7 +43,7 @@ describe("LecturePilot canvas interactions", () => {
     render(<App />);
 
     await logIn(user);
-    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
+    await openLecture03FromDashboard(user);
     await user.click(screen.getByLabelText(/open tutor chat/i));
     await user.type(screen.getByPlaceholderText(/ask about this lecture/i), "Show me posterior.");
     await user.click(screen.getByRole("button", { name: /send message/i }));
@@ -59,7 +60,7 @@ describe("LecturePilot canvas interactions", () => {
     render(<App />);
 
     await logIn(user);
-    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
+    await openLecture03FromDashboard(user);
     const correct = screen.getByRole("button", { name: /B Expected risk/i });
     await user.click(correct);
 
@@ -92,7 +93,7 @@ describe("LecturePilot canvas interactions", () => {
     render(<App />);
 
     await logIn(user);
-    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
+    await openLecture03FromDashboard(user);
     const componentAnswer = screen.getByRole("button", { name: /A The loss-sensitive threshold/i });
     await user.click(componentAnswer);
 
@@ -107,7 +108,7 @@ describe("LecturePilot canvas interactions", () => {
     render(<App />);
 
     await logIn(user);
-    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
+    await openLecture03FromDashboard(user);
     await user.click(screen.getByLabelText(/open document outline/i));
 
     const outline = screen.getByRole("navigation", { name: /lesson document outline/i });
@@ -135,7 +136,7 @@ describe("LecturePilot canvas interactions", () => {
     render(<App />);
 
     await logIn(user);
-    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
+    await openLecture03FromDashboard(user);
 
     const bayesSection = screen.getByRole("region", {
       name: /bayes formula and conditional probability/i,
@@ -187,7 +188,7 @@ describe("LecturePilot canvas interactions", () => {
     render(<App />);
 
     await logIn(user);
-    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
+    await openLecture03FromDashboard(user);
 
     const bayesSection = screen.getByRole("region", {
       name: /bayes formula and conditional probability/i,
@@ -216,7 +217,7 @@ describe("LecturePilot canvas interactions", () => {
     render(<App />);
 
     await logIn(user);
-    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
+    await openLecture03FromDashboard(user);
 
     const lossesSection = screen.getByRole("region", {
       name: /losses, risks, and reject decisions/i,
@@ -235,7 +236,7 @@ describe("LecturePilot canvas interactions", () => {
     render(<App />);
 
     await logIn(user);
-    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
+    await openLecture03FromDashboard(user);
 
     const videoSection = screen.getByRole("region", { name: /professor selected videos/i });
     const frame = within(videoSection).getByTitle(/bayesian decision theory walkthrough/i);
@@ -254,7 +255,7 @@ describe("LecturePilot canvas interactions", () => {
     render(<App />);
 
     await logIn(user);
-    await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
+    await openLecture03FromDashboard(user);
 
     const decisionSection = screen.getByRole("region", { name: /decision making under uncertainty/i });
     await user.click(within(decisionSection).getByRole("button", { name: /Ch3\/spam-DALL-E\.jpg/i }));

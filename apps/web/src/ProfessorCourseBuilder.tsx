@@ -17,6 +17,12 @@ import {
   uploadCourseMaterial,
 } from "./professorApi";
 import { isCourseSetupReady, readSavedFlow, writeSavedFlow } from "./professorBuilderState";
+import {
+  activationLectures,
+  courseFromSetup,
+  lectureIdFromNumber,
+  scheduleItemFromLecture,
+} from "./professorWorkspaceActivation";
 import { publishLectureRows } from "./professorPublishRows";
 import { useProfessorWorkflowRun } from "./professorWorkflowRun";
 import { lectureFromWorkspace, requireWorkspace } from "./professorWorkspaceView";
@@ -34,19 +40,21 @@ import type { CourseSetup } from "./professorBuilderState";
 export function ProfessorCourseBuilder({
   session,
   onPublishWorkspace,
-  onWorkspaceLecturesChange,
+  onWorkspacePublished,
   previewWorkspaceUrl,
   publishedLectureIds,
 }: {
   session: LoginSession;
   onPublishWorkspace: (courseId: string, lectureId: string) => Promise<CanvasPublicationResult>;
-  onWorkspaceLecturesChange: (course: UniversityCourse, lectures: ReturnType<typeof lectureFromWorkspace>[]) => void;
+  onWorkspacePublished: (course: UniversityCourse, lectures: ReturnType<typeof lectureFromWorkspace>[]) => void;
   previewWorkspaceUrl: (courseId: string, lecture: ReturnType<typeof lectureFromWorkspace>) => string;
   publishedLectureIds: string[];
 }) {
   const [savedFlow] = useState(readSavedFlow);
   const [setup, setSetup] = useState(savedFlow.setup);
   const [workspace, setWorkspace] = useState(savedFlow.workspace);
+  const [workspaceCourse, setWorkspaceCourse] = useState<UniversityCourse | null>(null);
+  const [workspaceLectures, setWorkspaceLectures] = useState<ReturnType<typeof lectureFromWorkspace>[]>([]);
   const [courseReady, setCourseReady] = useState(savedFlow.courseReady && Boolean(savedFlow.workspace));
   const [activeStep, setActiveStep] = useState<BuilderStep>(() => initialBuilderStep({
     bundleReady: savedFlow.bundleReady,
@@ -136,6 +144,8 @@ export function ProfessorCourseBuilder({
   function updateSetup(nextSetup: CourseSetup) {
     setSetup(nextSetup);
     setWorkspace(null);
+    setWorkspaceCourse(null);
+    setWorkspaceLectures([]);
     setCourseReady(false);
     setBundle(null);
     setLectureSchedule([]);
@@ -182,7 +192,8 @@ export function ProfessorCourseBuilder({
               const schedule = setup.target === "full-course" ? lectureSchedule : [];
               const created = await createCourseWorkspace(setup, session, schedule);
               setWorkspace({ courseId: created.course.id, lectureId: created.active_lecture_id });
-              onWorkspaceLecturesChange(created.course, created.lectures);
+              setWorkspaceCourse(created.course);
+              setWorkspaceLectures(created.lectures);
               setGeneratedLectureIds([]);
               setGenerationProgress([]);
               setGenerationWarnings([]);
@@ -259,7 +270,8 @@ export function ProfessorCourseBuilder({
             onApplySchedule={() => run("apply-schedule", async () => {
               const created = await createCourseWorkspace(setup, session, lectureSchedule);
               setWorkspace({ courseId: created.course.id, lectureId: created.active_lecture_id });
-              onWorkspaceLecturesChange(created.course, created.lectures);
+              setWorkspaceCourse(created.course);
+              setWorkspaceLectures(created.lectures);
               setGeneratedLectureIds([]);
               setCanvas(null);
               setGenerationProgress([]);
@@ -374,6 +386,12 @@ export function ProfessorCourseBuilder({
                   published.push(await onPublishWorkspace(activeWorkspace.courseId, lectureId));
                 }
               }
+              onWorkspacePublished(
+                workspaceCourse ?? courseFromSetup(activeWorkspace.courseId, setup, session),
+                workspaceLectures.length
+                  ? workspaceLectures
+                  : activationLectures(activeWorkspace, setup, lectureSchedule),
+              );
               const lastPublished = published[published.length - 1];
               const when = lastPublished?.published_at ? ` at ${new Date(lastPublished.published_at).toLocaleString()}` : "";
               if (published.length === 1) return `Tutor workspace published as version ${lastPublished.version ?? 1}${when}.`;
@@ -417,8 +435,10 @@ export function ProfessorCourseBuilder({
     try {
       const restoredBundle = await getSourceBundle(targetWorkspace.courseId, session);
       setBundle(restoredBundle);
+      const restoredLectures = await getCourseLectures(targetWorkspace.courseId, session);
+      setWorkspaceLectures(restoredLectures);
+      setWorkspaceCourse((current) => current ?? courseFromSetup(targetWorkspace.courseId, setup, session));
       if (setup.target === "full-course" && !lectureSchedule.length) {
-        const restoredLectures = await getCourseLectures(targetWorkspace.courseId, session);
         setLectureSchedule(restoredLectures.map(scheduleItemFromLecture));
       }
       try {
@@ -441,21 +461,7 @@ export function ProfessorCourseBuilder({
   }
 }
 
-function lectureIdFromNumber(number: string) {
-  const parsed = Number(number);
-  return Number.isFinite(parsed) ? `lecture-${parsed.toString().padStart(2, "0")}` : `lecture-${number}`;
-}
-
 function isSkippableUploadError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
   return /File type .* is not writable|Hidden workspace paths are not allowed|files are limited to/i.test(message);
-}
-
-function scheduleItemFromLecture(lecture: ReturnType<typeof lectureFromWorkspace>): LectureScheduleItem {
-  return {
-    date: lecture.date,
-    material_path: lecture.materialPath,
-    number: lecture.number,
-    title: lecture.title,
-  };
 }

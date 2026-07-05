@@ -1,7 +1,11 @@
+import { useState } from "react";
+
 import type { Attendance, Lecture, LoginSession, UniversityCourse } from "./types";
 import { readDemoWorkspaceCourse } from "./demoWorkspaceAccess";
 import { hasDevelopmentWorkspaceAccess } from "./devWorkspaceAccess";
 import { ExamReadinessPanel } from "./ExamReadinessPanel";
+
+const LECTURE_PREVIEW_COUNT = 2;
 
 type CourseWorkspaceStatus = "matched" | "unmatched";
 
@@ -31,6 +35,8 @@ export function Dashboard({
 }) {
   const studentLabel = session?.email ?? session?.username ?? "student";
   const courseGroups = buildCourseGroups(session, workspaceCourse, lectures, publishedLectureIds);
+  const [openCourses, setOpenCourses] = useState<Record<string, boolean>>({});
+  const [expandedLectureLists, setExpandedLectureLists] = useState<Record<string, boolean>>({});
 
   return (
     <main className="dashboard">
@@ -44,58 +50,94 @@ export function Dashboard({
           <h2 id="course-workspaces">Course workspaces</h2>
         </div>
         <div className="course-workspace-list">
-          {courseGroups.map(({ course, status, statusLabel, emptyText, tutorAvailable, courseLectures }) => (
-            <article className={`course-workspace is-${status}`} key={`${status}-${course.id}`}>
-              <div className="course-row">
-                <div>
-                  <h3>{course.title}</h3>
-                  <p>{course.professor}</p>
-                </div>
-                <span className={`workspace-status is-${status}`}>{statusLabel}</span>
-              </div>
-              {tutorAvailable ? (
-                <>
-                  <ExamReadinessPanel
-                    course={course}
-                    lectures={courseLectures}
-                    session={session}
-                    onOpenLecture={onOpen}
-                  />
-                  <div className="lecture-list" aria-label={`Available lectures for ${course.title}`}>
-                    {courseLectures.map((lecture) => (
-                      <article className="lecture-row" key={lecture.id}>
-                        <div className="lecture-number">{lecture.number}</div>
-                        <div>
-                          <h3>{lecture.title}</h3>
-                          <p>
-                            {lecture.date} · attendance {lecture.attendance}
-                          </p>
-                          <div className="attendance-control" aria-label={`Attendance for ${lecture.title}`}>
-                            {(["present", "absent", "unknown"] as const).map((status) => (
-                              <button
-                                aria-pressed={lecture.attendance === status}
-                                className={lecture.attendance === status ? "is-active" : undefined}
-                                key={status}
-                                onClick={() => onSetAttendance(lecture.id, status)}
-                                type="button"
-                              >
-                                {status}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        <button type="button" onClick={() => onOpen(lecture)}>
-                          Open lecture {lecture.number}
-                        </button>
-                      </article>
-                    ))}
+          {courseGroups.map((group) => {
+            const { course, status, statusLabel, emptyText, tutorAvailable, courseLectures } = group;
+            const courseOpen = openCourses[course.id] ?? tutorAvailable;
+            const allLecturesShown = expandedLectureLists[course.id] ?? false;
+            const visibleLectures = allLecturesShown
+              ? courseLectures
+              : courseLectures.slice(0, LECTURE_PREVIEW_COUNT);
+            const bodyId = `course-workspace-${course.id}`;
+            return (
+              <article className={`course-workspace is-${status}`} key={`${status}-${course.id}`}>
+                <div className="course-row">
+                  <div>
+                    <h3>{course.title}</h3>
+                    <p>{course.professor}</p>
                   </div>
-                </>
-              ) : (
-                <p className="workspace-empty">{emptyText}</p>
-              )}
-            </article>
-          ))}
+                  <div className="course-row-actions">
+                    <span className={`workspace-status is-${status}`}>{statusLabel}</span>
+                    {tutorAvailable ? (
+                      <button
+                        aria-controls={bodyId}
+                        aria-expanded={courseOpen}
+                        className="course-toggle"
+                        type="button"
+                        onClick={() => setOpenCourses((current) => ({ ...current, [course.id]: !courseOpen }))}
+                      >
+                        {courseOpen ? "Hide lectures" : `Show ${courseLectures.length} lectures`}
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+                {tutorAvailable ? (
+                  <div className="course-workspace-body" hidden={!courseOpen} id={bodyId}>
+                    <div className="lecture-list" aria-label={`Available lectures for ${course.title}`}>
+                      {visibleLectures.map((lecture) => (
+                        <article className="lecture-row" key={lecture.id}>
+                          <div className="lecture-number">{lecture.number}</div>
+                          <div>
+                            <h3>{lecture.title}</h3>
+                            <p>
+                              {lecture.date} · attendance {lecture.attendance}
+                            </p>
+                            <div className="attendance-control" aria-label={`Attendance for ${lecture.title}`}>
+                              {(["present", "absent", "unknown"] as const).map((status) => (
+                                <button
+                                  aria-pressed={lecture.attendance === status}
+                                  className={lecture.attendance === status ? "is-active" : undefined}
+                                  key={status}
+                                  onClick={() => onSetAttendance(lecture.id, status)}
+                                  type="button"
+                                >
+                                  {status}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <button type="button" onClick={() => onOpen(lecture)}>
+                            Open lecture {lecture.number}
+                          </button>
+                        </article>
+                      ))}
+                    </div>
+                    {courseLectures.length > LECTURE_PREVIEW_COUNT ? (
+                      <button
+                        className="lecture-list-toggle"
+                        type="button"
+                        onClick={() => setExpandedLectureLists((current) => ({
+                          ...current,
+                          [course.id]: !allLecturesShown,
+                        }))}
+                      >
+                        {allLecturesShown
+                          ? `Show first ${LECTURE_PREVIEW_COUNT} lectures`
+                          : `Show all ${courseLectures.length} lectures`}
+                      </button>
+                    ) : null}
+                    <ExamReadinessPanel
+                      course={course}
+                      lectures={courseLectures}
+                      session={session}
+                      onOpenLecture={onOpen}
+                    />
+                  </div>
+                ) : (
+                  <p className="workspace-empty">{emptyText}</p>
+                )}
+              </article>
+            );
+          })}
         </div>
       </section>
     </main>

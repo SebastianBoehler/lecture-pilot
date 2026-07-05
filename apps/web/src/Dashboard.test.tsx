@@ -76,6 +76,21 @@ describe("Dashboard course workspace matching", () => {
     expect(screen.queryByText(/not part of your current alma enrollment/i)).not.toBeInTheDocument();
   });
 
+  it("keeps long course lecture lists compact until expanded", async () => {
+    const user = userEvent.setup();
+    renderDashboard(matchedSession, true, lectures.map((lecture) => lecture.id));
+
+    const workspaceArticleElement = workspaceArticle("Grundlagen des Maschinellen Lernens");
+    expect(within(workspaceArticleElement).getByRole("button", { name: /open lecture 01/i })).toBeInTheDocument();
+    expect(within(workspaceArticleElement).getByRole("button", { name: /open lecture 02/i })).toBeInTheDocument();
+    expect(within(workspaceArticleElement).queryByRole("button", { name: /open lecture 03/i })).not.toBeInTheDocument();
+
+    await user.click(within(workspaceArticleElement).getByRole("button", { name: /show all/i }));
+
+    expect(within(workspaceArticleElement).getByRole("button", { name: /open lecture 03/i })).toBeInTheDocument();
+    expect(within(workspaceArticleElement).getByRole("button", { name: /show first 2 lectures/i })).toBeInTheDocument();
+  });
+
   it("hides the discoverable workspace until it is published", () => {
     window.localStorage.setItem("lecturepilot.demo.workspaceCourse", JSON.stringify(workspaceCourse));
     renderDashboard(realSession, false);
@@ -95,27 +110,29 @@ describe("Dashboard course workspace matching", () => {
     vi.stubGlobal("fetch", fetchMock);
     const onOpen = renderDashboard(matchedSession, true);
 
-    const expandToggle = screen.getByRole("button", { name: /expand exam readiness check/i });
-    expect(expandToggle).toHaveAttribute("aria-expanded", "false");
-    await user.click(expandToggle);
-    expect(screen.getByRole("button", { name: /collapse exam readiness check/i }))
-      .toHaveAttribute("aria-expanded", "true");
-    await user.click(screen.getByRole("button", { name: /start check/i }));
+    expect(screen.queryByRole("dialog", { name: /prüfungs-ready check/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /start exam check/i }));
 
-    const quizPrompt = await screen.findByText(/which quantity should be minimized/i);
+    const dialog = await screen.findByRole("dialog", { name: /prüfungs-ready check/i });
+    const quizPrompt = await within(dialog).findByText(/which quantity should be minimized/i);
     expect(quizPrompt).toBeVisible();
-    await user.click(screen.getByRole("button", { name: /collapse exam readiness check/i }));
-    expect(quizPrompt).not.toBeVisible();
-    await user.click(screen.getByRole("button", { name: /expand exam readiness check/i }));
-    expect(quizPrompt).toBeVisible();
-    await user.click(screen.getByLabelText(/posterior probability alone/i));
-    await user.type(screen.getByPlaceholderText(/write a concise exam-style answer/i), "Use Bayes and compare risks.");
-    await user.click(screen.getByRole("button", { name: /check readiness/i }));
+    await user.click(within(dialog).getByRole("button", { name: /close exam readiness check/i }));
+    expect(screen.queryByRole("dialog", { name: /prüfungs-ready check/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /open check/i }));
 
-    expect(await screen.findByText(/keep reviewing/i)).toBeInTheDocument();
+    const reopenedDialog = await screen.findByRole("dialog", { name: /prüfungs-ready check/i });
+    expect(within(reopenedDialog).getByText(/which quantity should be minimized/i)).toBeVisible();
+    await user.click(within(reopenedDialog).getByLabelText(/posterior probability alone/i));
+    await user.type(
+      within(reopenedDialog).getByPlaceholderText(/write a concise exam-style answer/i),
+      "Use Bayes and compare risks.",
+    );
+    await user.click(within(reopenedDialog).getByRole("button", { name: /check readiness/i }));
+
+    expect(await within(reopenedDialog).findByText(/keep reviewing/i)).toBeInTheDocument();
     expect(screen.getAllByText(/expected risk combines posterior probabilities/i).length).toBeGreaterThan(1);
-    expect(screen.getByText(/rubric review needed/i)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /review lecture 03/i }));
+    expect(within(reopenedDialog).getByText(/rubric review needed/i)).toBeInTheDocument();
+    await user.click(within(reopenedDialog).getByRole("button", { name: /review lecture 03/i }));
     expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: "lecture-03" }));
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/courses/martius-ml/exam-readiness"),
@@ -139,12 +156,16 @@ const workspaceCourse = {
   term: "Sommer 2026",
 };
 
-function renderDashboard(session: LoginSession, tutorWorkspacePublished: boolean) {
+function renderDashboard(
+  session: LoginSession,
+  tutorWorkspacePublished: boolean,
+  publishedLectureIds = tutorWorkspacePublished ? ["lecture-03"] : [],
+) {
   const onOpen = vi.fn();
   render(
     <Dashboard
       lectures={lectures}
-      publishedLectureIds={tutorWorkspacePublished ? ["lecture-03"] : []}
+      publishedLectureIds={publishedLectureIds}
       session={session}
       workspaceCourse={workspaceCourse}
       onOpen={onOpen}
