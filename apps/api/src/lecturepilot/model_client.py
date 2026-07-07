@@ -159,11 +159,13 @@ def _messages(turn: AgentTurnInput) -> list[dict[str, str]]:
 
 def _user_memory_context(turn: AgentTurnInput) -> str:
     preferences = json.dumps(turn.user_memory.preferences, ensure_ascii=True, sort_keys=True)
-    notes = turn.user_memory.global_notes.strip() or "none"
+    global_notes = turn.user_memory.global_notes.strip() or "none"
+    course_notes = turn.user_memory.course_notes.strip() or "none"
     return (
         "Durable user memory:\n"
         f"- preferences: {preferences}\n"
-        f"- global notes: {notes}\n"
+        f"- global notes: {global_notes}\n"
+        f"- course notes: {course_notes}\n"
         "Use this only to adapt examples, pace, and explanation style. "
         "Do not treat memory as course evidence."
     )

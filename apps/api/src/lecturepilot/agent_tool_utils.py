@@ -4,7 +4,7 @@ from pathlib import Path, PurePosixPath
 from dataclasses import dataclass
 from typing import Any
 
-_TEXT_SUFFIXES = {".md", ".txt", ".json", ".yaml", ".yml", ".tex", ".csv", ".py"}
+_TEXT_SUFFIXES = {".md", ".txt", ".json", ".jsonl", ".yaml", ".yml", ".tex", ".csv", ".py"}
 
 
 class AgentToolArgumentError(RuntimeError):
@@ -34,7 +34,12 @@ def normalize_logical_path(path: str) -> str:
 
 
 def relative_write_path(logical: str) -> str:
-    return logical.removeprefix("/lecture/canvas/").removeprefix("/user/memories/")
+    return (
+        logical
+        .removeprefix("/lecture/canvas/")
+        .removeprefix("/user/memories/")
+        .removeprefix("/user/course/memories/")
+    )
 
 
 def required_str(args: dict[str, Any], name: str, default: str | None = None) -> str:

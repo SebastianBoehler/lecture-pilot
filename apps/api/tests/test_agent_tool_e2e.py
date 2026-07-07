@@ -55,6 +55,12 @@ def test_streamed_tool_turn_persists_canvas_memory_and_gate(tmp_path, monkeypatc
     lecture_root = layout.user_lecture_root("student01", "martius-ml", "lecture-03")
     assert "soccer analogies" in (user_root / "memories" / "global.md").read_text(encoding="utf-8")
     assert json.loads((user_root / "memories" / "preferences.json").read_text())["analogy"] == "soccer"
+    assert '"scope": "global"' in (user_root / "memories" / "memory-trace.jsonl").read_text(encoding="utf-8")
+    course_memory = user_root / "courses" / "martius-ml" / "memories" / "course.md"
+    course_trace = user_root / "courses" / "martius-ml" / "memories" / "memory-trace.jsonl"
+    assert "Bayes risk comparisons need worked examples" in course_memory.read_text(encoding="utf-8")
+    assert '"scope": "course"' in course_trace.read_text(encoding="utf-8")
+    assert '"lecture_id": "lecture-03"' in course_trace.read_text(encoding="utf-8")
     assert "tool-loop-gate" in (lecture_root / "gates.json").read_text(encoding="utf-8")
 
     canvas_response = client.get(
@@ -94,6 +100,7 @@ class _ToolLoopHarness:
         if self.calls == 2:
             self.seen_memory_preferences = dict(turn.user_memory.preferences)
             assert "soccer analogies" in turn.user_memory.global_notes
+            assert "Bayes risk comparisons need worked examples" in turn.user_memory.course_notes
             return AgentTurnResult(message="Loaded durable soccer preference.", model=DEFAULT_MODEL)
         return await complete_tool_turn(
             acompletion=_ToolCallingModel(),
@@ -158,6 +165,13 @@ def _tool_calls() -> list[dict[str, Any]]:
                 "note": "student prefers soccer analogies",
                 "preference_key": "analogy",
                 "preference_value": "soccer",
+            },
+        ),
+        _tool_call(
+            "remember",
+            {
+                "note": "Bayes risk comparisons need worked examples",
+                "scope": "course",
             },
         ),
         _tool_call(

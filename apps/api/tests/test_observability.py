@@ -202,8 +202,11 @@ class _UserMemoryStore:
     def __init__(self, layout: object) -> None:
         self.layout = layout
 
-    def read_context(self, user_id: str) -> UserMemoryContext:
-        return UserMemoryContext(global_notes="Prefers concrete examples.")
+    def read_context(self, user_id: str, course_id: str | None = None) -> UserMemoryContext:
+        return UserMemoryContext(
+            global_notes="Prefers concrete examples.",
+            course_notes="Needs Bayes risk practice." if course_id else "",
+        )
 
 
 class _LearnerState:

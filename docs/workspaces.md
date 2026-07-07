@@ -26,6 +26,7 @@ and per-lecture learner overlays.
     memories/
       global.md
       preferences.json
+      memory-trace.jsonl
     courses/<course-id>/lectures/<lecture-id>/
       attendance.json
       gates.json
@@ -36,6 +37,9 @@ and per-lecture learner overlays.
         student/*.md
         student-assets/*
       canvas.json
+    courses/<course-id>/memories/
+      course.md
+      memory-trace.jsonl
 
   cache/
     pdf-previews/
@@ -104,7 +108,19 @@ memory:
 profile.json
 memories/global.md
 memories/preferences.json
+memories/memory-trace.jsonl
 ```
+
+Course-specific memory lives beside the learner's course state:
+
+```txt
+courses/<course-id>/memories/course.md
+courses/<course-id>/memories/memory-trace.jsonl
+```
+
+`memory-trace.jsonl` is append-only provenance for memory writes. Entries record
+the memory scope, active course, lecture, tool name, note, and optional
+preference change so tutor personalization is inspectable rather than hidden.
 
 Lecture-specific state lives below the user/course/lecture intersection:
 

@@ -58,10 +58,10 @@ storage instead of local folders.
 .lecturepilot/
   users/<user-key>/
     profile.json
-    memories/{global.md,preferences.json}
+    memories/{global.md,preferences.json,memory-trace.jsonl}
     courses/<course-id>/
       progress.json
-      memories/course.md
+      memories/{course.md,memory-trace.jsonl}
       lectures/<lecture-id>/
         {attendance.json,gates.json,tutor-state.json}
         canvas/{student/*.md,components/*.yaml,student-assets/*}
@@ -79,6 +79,10 @@ Professor-approved learning documents belong to
 `users/<user-key>/memories`. Lecture-specific attendance, gates, progress,
 generated notes, and generated images belong under the user's course/lecture
 workspace.
+
+Global memory records cross-course teaching preferences. Course memory records
+course-specific tutoring observations. `memory-trace.jsonl` stores append-only
+provenance for memory writes, including the course, lecture, tool, and note.
 
 The agent uses a small set of low-level typed tools over this image. Default
 tutor gets `pwd`, `ls`, `read`, `write`, `edit`, `focus`, `highlight`,
@@ -192,8 +196,9 @@ Important web modules: `App.tsx`, `Dashboard.tsx`, `LessonWorkspace.tsx`,
 - Generated learner content belongs in `canvas/student/*.md`, not in official
   source sections.
 - Durable personalization belongs in user memory files, not in prompt-only
-  state. Use structured JSON for enforceable preferences and Markdown for rich
-  tutor memory.
+  state. Use structured JSON for enforceable cross-course preferences,
+  Markdown for rich tutor memory, course memory for course-specific teaching
+  observations, and `memory-trace.jsonl` for provenance.
 
 ## UI And Canvas Rules
 

@@ -27,8 +27,10 @@ describe("workspace tree", () => {
     ]));
     expect(pathsFor(tree[3])).toEqual(expect.arrayContaining([
       ".lecturepilot/users/<account>/memories/global.md",
+      ".lecturepilot/users/<account>/memories/memory-trace.jsonl",
       ".lecturepilot/users/<account>/memories/preferences.json",
       ".lecturepilot/users/<account>/courses/martius-ml/memories/course.md",
+      ".lecturepilot/users/<account>/courses/martius-ml/memories/memory-trace.jsonl",
     ]));
     expect(resourceFor(tree, "sections/01-official-topic.md")).toMatchObject({
       sectionId: "official-topic",

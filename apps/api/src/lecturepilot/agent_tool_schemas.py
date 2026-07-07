@@ -102,7 +102,7 @@ def _all_tool_schemas() -> list[dict]:
             "write",
             "Create or overwrite a permitted learner file. Canvas Markdown under /lecture/canvas/student is append-ordered and returns the actual path plus section_id.",
             {
-                "path": _string("Writable file path under /lecture/canvas/student, /lecture/canvas/components, /lecture/canvas/student-assets, or /user/memories."),
+                "path": _string("Writable file path under /lecture/canvas/student, /lecture/canvas/components, /lecture/canvas/student-assets, /user/memories, or /user/course/memories."),
                 "content": _string("Complete file content."),
             },
             ["path", "content"],
@@ -148,9 +148,14 @@ def _all_tool_schemas() -> list[dict]:
         ),
         _tool(
             "remember",
-            "Write a durable cross-course learner memory note.",
+            "Write durable learner memory. Use global for cross-course preferences and course for course-specific tutoring notes.",
             {
                 "note": _string("Preference or teaching-memory note to append."),
+                "scope": {
+                    "type": "string",
+                    "enum": ["global", "course"],
+                    "description": "Memory scope. Defaults to global when omitted.",
+                },
                 "preference_key": _string("Optional structured preference key."),
                 "preference_value": _string("Optional structured preference value."),
             },

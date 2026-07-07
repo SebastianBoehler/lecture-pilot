@@ -31,6 +31,9 @@ class StorageLayout:
     def user_course_root(self, user_id: str, course_id: str) -> Path:
         return self.user_root(user_id) / "courses" / safe_id(course_id)
 
+    def user_course_memories_dir(self, user_id: str, course_id: str) -> Path:
+        return self.user_course_root(user_id, course_id) / "memories"
+
     def user_lecture_root(self, user_id: str, course_id: str, lecture_id: str) -> Path:
         return self.user_course_root(user_id, course_id) / "lectures" / safe_id(lecture_id)
 

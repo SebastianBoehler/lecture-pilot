@@ -149,15 +149,27 @@ function addLearnerMemory(roots: WorkspaceTreeNode[], canvasDocument: CanvasDocu
   addMemoryFile(roots, "memories/global.md", `${userRoot}/memories/global.md`, "Global tutor notes");
   addMemoryFile(
     roots,
+    "memories/memory-trace.jsonl",
+    `${userRoot}/memories/memory-trace.jsonl`,
+    "Trace-backed global memory writes",
+  );
+  addMemoryFile(
+    roots,
     "memories/preferences.json",
     `${userRoot}/memories/preferences.json`,
     "Structured preferences",
   );
   addMemoryFile(
     roots,
-    `courses/${canvasDocument.course_id}/course.md`,
+    `courses/${canvasDocument.course_id}/memories/course.md`,
     `${userRoot}/courses/${canvasDocument.course_id}/memories/course.md`,
     "Course-specific tutor memory",
+  );
+  addMemoryFile(
+    roots,
+    `courses/${canvasDocument.course_id}/memories/memory-trace.jsonl`,
+    `${userRoot}/courses/${canvasDocument.course_id}/memories/memory-trace.jsonl`,
+    "Trace-backed course memory writes",
   );
 }
 

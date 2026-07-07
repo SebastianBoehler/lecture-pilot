@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 from typing import Any
@@ -14,22 +13,22 @@ from lecturepilot.agent_tool_utils import (
     file_entry,
     int_arg,
     is_text_file,
-    normalize_logical_path,
     relative_write_path,
     required_str,
 )
+from lecturepilot.agent_tool_workspace import logical_for_path, resolve_path, root_map
 from lecturepilot.canvas_markdown import CanvasMarkdownError, read_document_source
 from lecturepilot.canvas_signatures import is_student_section
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.models import CanvasCommand, QualityGateDecision
 from lecturepilot.storage_layout import safe_id
+from lecturepilot.user_memory import UserMemoryStore
 from lecturepilot.workspace import WorkspacePolicy, WorkspacePolicyError
 
-_WRITE_PREFIXES = (
-    "/lecture/canvas/student/", "/lecture/canvas/components/", "/lecture/canvas/student-assets/", "/user/memories/",
-)
 class AgentToolError(RuntimeError):
     pass
+
+
 class AgentToolExecutor:
     def __init__(
         self,
@@ -220,20 +219,19 @@ class AgentToolExecutor:
         return {"span_id": self.highlight_command.span_id, "highlight_text": self.highlight_command.highlight_text}
 
     def _remember(self, args: dict[str, Any]) -> dict[str, Any]:
-        memories = self.canvas_workspace.layout.user_memories_dir(self.user_id)
-        memories.mkdir(parents=True, exist_ok=True)
-        note = required_str(args, "note").strip()
-        if note:
-            global_path = memories / "global.md"
-            current = global_path.read_text(encoding="utf-8") if global_path.exists() else ""
-            global_path.write_text((current.rstrip() + f"\n- {note}\n").lstrip(), encoding="utf-8")
-        key = str(args.get("preference_key") or "").strip()
-        if key:
-            pref_path = memories / "preferences.json"
-            prefs = json.loads(pref_path.read_text(encoding="utf-8") or "{}") if pref_path.exists() else {}
-            prefs[key] = str(args.get("preference_value") or "")
-            pref_path.write_text(json.dumps(prefs, indent=2), encoding="utf-8")
-        return {"memory": "updated"}
+        key = str(args.get("preference_key") or "").strip() or None
+        try:
+            return UserMemoryStore(self.canvas_workspace.layout).remember(
+                user_id=self.user_id,
+                course_id=self.course_id,
+                lecture_id=self.lecture_id,
+                note=required_str(args, "note"),
+                scope=str(args.get("scope") or "global"),
+                preference_key=key,
+                preference_value=str(args.get("preference_value") or "") if key else None,
+            )
+        except ValueError as exc:
+            raise AgentToolError(str(exc)) from exc
 
     def _generate_image(self, args: dict[str, Any]) -> dict[str, Any]:
         section_id = safe_id(required_str(args, "section_id", "student-generated-image"))
@@ -270,39 +268,16 @@ class AgentToolExecutor:
         self.canvas_changed = True
 
     def _resolve(self, logical_path: str, *, for_write: bool = False) -> ToolPath:
-        normalized = normalize_logical_path(logical_path)
-        if for_write and not any(normalized.startswith(prefix) for prefix in _WRITE_PREFIXES):
-            raise AgentToolError("This path is read-only for the tutor agent.")
-        for prefix, root in self._root_map().items():
-            if normalized == prefix or normalized.startswith(f"{prefix}/"):
-                relative = normalized.removeprefix(prefix).lstrip("/")
-                target = (root / relative).resolve()
-                try:
-                    target.relative_to(root.resolve())
-                except ValueError as exc:
-                    raise AgentToolError("Resolved path escapes the workspace root.") from exc
-                return ToolPath(normalized, target)
-        raise AgentToolError(f"Path is outside the agent workspace: {logical_path}")
+        try:
+            return resolve_path(logical_path, self._root_map(), for_write=for_write)
+        except ValueError as exc:
+            raise AgentToolError(str(exc)) from exc
 
-    def _root_map(self) -> dict[str, Path]:
-        layout = self.canvas_workspace.layout
-        return {
-            "/lecture/canvas": layout.user_canvas_dir(self.user_id, self.course_id, self.lecture_id),
-            "/user/memories": layout.user_memories_dir(self.user_id),
-            "/user/profile.json": layout.user_root(self.user_id) / "profile.json",
-            "/course/canvas": layout.course_canvas_dir(self.course_id, self.lecture_id),
-            "/course/source/uploads": layout.course_uploads_dir(self.course_id),
-            "/course/materials": self.canvas_workspace.material_root,
-        }
+    def _root_map(self):
+        return root_map(self.canvas_workspace, self.user_id, self.course_id, self.lecture_id)
 
     def _roots(self) -> list[str]:
         return sorted(self._root_map())
 
     def _logical_for(self, path: Path) -> str:
-        resolved = path.resolve()
-        for prefix, root in sorted(self._root_map().items(), key=lambda item: len(str(item[1])), reverse=True):
-            try:
-                return f"{prefix}/{resolved.relative_to(root.resolve())}".rstrip("/")
-            except ValueError:
-                continue
-        return "/"
+        return logical_for_path(path, self._root_map())

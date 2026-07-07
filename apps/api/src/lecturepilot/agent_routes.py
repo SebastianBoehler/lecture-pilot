@@ -104,7 +104,7 @@ async def _complete_agent_turn_inner(
                     user_id=turn.user_id,
                 )
             with observability.tool_span("read_user_memory"):
-                memory = _user_memory_store(app).read_context(turn.user_id)
+                memory = _user_memory_store(app).read_context(turn.user_id, turn.course_id)
             activity("save attendance")
             with observability.tool_span("write_attendance", attendance=turn.attendance.value):
                 _learner_state_store(app).write_attendance(

@@ -213,6 +213,7 @@ class CanvasState(BaseModel):
 
 class UserMemoryContext(BaseModel):
     global_notes: str = Field(default="", max_length=4000)
+    course_notes: str = Field(default="", max_length=4000)
     preferences: dict[str, Any] = Field(default_factory=dict)
 
 

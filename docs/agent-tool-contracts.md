@@ -25,12 +25,13 @@ The course-builder profile intentionally has no learner-state tools such as
 | `/course/source/uploads` | professor-uploaded source bundle |
 | `/course/materials` | configured private course material root |
 | `/user/memories` | cross-course learner memory and preferences |
+| `/user/course/memories` | course-specific learner memory for the active course |
 | `/user/profile.json` | learner profile file |
 
 Tutor writes are allowed only below `/lecture/canvas/student/`,
 `/lecture/canvas/components/`, `/lecture/canvas/student-assets/`, and
-`/user/memories/`. Source material and published course canvases are read-only
-from tutor turns.
+`/user/memories/` or `/user/course/memories/`. Source material and published
+course canvases are read-only from tutor turns.
 
 ## Tool Semantics
 
@@ -46,7 +47,7 @@ from tutor turns.
 | `focus` | `section_id` | Queues a canvas focus command for the frontend. |
 | `highlight` | `span_id`, `highlight_text` | Queues a canvas highlight command for an existing block or phrase. |
 | `record_gate` | `gate_id`, `status`, `reason` | Persists the learning-gate decision for the lecture. |
-| `remember` | `note` | Appends durable learner memory and optional structured preference. |
+| `remember` | `note`, optional `scope` | Appends durable learner memory and a trace record. `scope=global` writes cross-course memory; `scope=course` writes active-course memory. |
 | `generate_image` | `prompt`, `section_id` | Stores a raster infographic asset in the learner workspace. |
 
 Every tool response is structured as `{ "ok": true, ... }` or
