@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 
 import { canManageCourses } from "./authz";
-import type { Attendance, Lecture, LoginSession, View } from "./types";
+import type { Attendance, Lecture, LoginSession } from "./types";
 
 export function useInitialDraftPreview({
   availableLectures,

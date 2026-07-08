@@ -1,0 +1,15 @@
+node_modules
+dist
+coverage
+.venv
+.ruff_cache
+.lecturepilot
+local-course-materials
+course-materials
+lecture-materials
+prof-course-files
+content/private
+content/courses
+data/courses
+workspaces
+tmp

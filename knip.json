@@ -1,0 +1,12 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "include": ["files", "dependencies", "unlisted"],
+  "ignoreBinaries": ["pytest", "python", "scripts/dev-demo.sh", "uvicorn"],
+  "workspaces": {
+    "apps/web": {
+      "entry": ["src/main.tsx", "src/**/*.test.{ts,tsx}"],
+      "project": ["src/**/*.{ts,tsx}", "vite.config.ts"],
+      "ignoreDependencies": ["@types/node"]
+    }
+  }
+}

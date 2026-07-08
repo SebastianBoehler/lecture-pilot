@@ -29,7 +29,7 @@ export type SavedProfessorFlow = {
   query: string;
 };
 
-export const defaultCourseSetup: CourseSetup = {
+const defaultCourseSetup: CourseSetup = {
   accessPolicy: "tuebingen_enrolled",
   courseTitle: "",
   lectureTitle: "",
@@ -39,7 +39,7 @@ export const defaultCourseSetup: CourseSetup = {
   target: "full-course",
 };
 
-export const defaultFlow: SavedProfessorFlow = {
+const defaultFlow: SavedProfessorFlow = {
   setup: defaultCourseSetup,
   workspace: null,
   courseReady: false,

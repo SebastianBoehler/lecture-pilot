@@ -268,10 +268,18 @@ Important web modules: `App.tsx`, `Dashboard.tsx`, `LessonWorkspace.tsx`,
 Run the narrowest meaningful check first, then broaden:
 
 ```bash
+npm run quality
 pytest apps/api/tests -q
 npm run test --workspace apps/web
 npm run build --workspace apps/web
 git diff --check
+```
+
+Additional local hygiene checks:
+
+```bash
+npm run format:check        # known baseline may need one-time formatting cleanup
+npm run dead-code:exports   # advisory exported-symbol cleanup report
 ```
 
 Provider benchmark:

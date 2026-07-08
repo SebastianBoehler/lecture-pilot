@@ -132,10 +132,6 @@ function outlineInterestBlocks(blocks: CanvasBlock[]) {
   return result.slice(0, 3);
 }
 
-function isOutlineInterest(block: CanvasBlock) {
-  return ["asset", "callout", "checkpoint", "component", "list", "quiz", "table", "video"].includes(block.type);
-}
-
 function outlineKind(block: CanvasBlock) {
   if (block.type === "asset") {
     return "figure";

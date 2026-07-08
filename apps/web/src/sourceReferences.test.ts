@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 
 import { sectionSourceReferences } from "./sourceReferences";
-import type { CanvasDocument, CanvasSection } from "./types";
+import type { CanvasDocument } from "./types";
 
 it("shows the underlying lecture file for generated course-planner canvases", () => {
   const references = sectionSourceReferences(generatedCanvas(), {

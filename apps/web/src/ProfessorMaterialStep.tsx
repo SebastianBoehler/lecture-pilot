@@ -5,7 +5,6 @@ import { materialSelectionSummary } from "./materialSelectionSummary";
 import { BundleSummary, PendingStatus, StepHeader } from "./ProfessorCourseBuilderParts";
 import { ProfessorLectureSchedule } from "./ProfessorLectureSchedule";
 import type { BuilderAction } from "./professorWorkflowRun";
-import type { CourseSetup } from "./professorBuilderState";
 import type { LectureScheduleItem, SourceBundleManifest } from "./types";
 
 export function ProfessorMaterialStep({
@@ -20,7 +19,6 @@ export function ProfessorMaterialStep({
   onUploadFilesChange,
   pendingAction,
   setUploadPath,
-  setup,
   uploadFiles,
   uploadPath,
   workspaceReady,
@@ -36,7 +34,6 @@ export function ProfessorMaterialStep({
   onUpload: () => void;
   onUploadFilesChange: (files: File[]) => void;
   setUploadPath: (path: string) => void;
-  setup: CourseSetup;
   uploadFiles: File[];
   uploadPath: string;
   workspaceReady: boolean;

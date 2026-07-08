@@ -9,8 +9,29 @@
     "build": "npm run build --workspace apps/web",
     "test": "npm run test --workspace apps/web",
     "test:api": "pytest apps/api/tests",
+    "lint": "npm run lint:web && npm run lint:api",
+    "lint:web": "eslint apps/web/src",
+    "lint:api": "python -m ruff check apps/api/src apps/api/tests",
+    "format": "npm run format:web && npm run format:api",
+    "format:check": "npm run format:web:check && npm run format:api:check",
+    "format:web": "prettier --write \"apps/web/src/**/*.{ts,tsx,css}\" \"*.{json,md}\" \"docs/**/*.md\"",
+    "format:web:check": "prettier --check \"apps/web/src/**/*.{ts,tsx,css}\" \"*.{json,md}\" \"docs/**/*.md\"",
+    "format:api": "python -m ruff format apps/api/src apps/api/tests",
+    "format:api:check": "python -m ruff format --check apps/api/src apps/api/tests",
+    "dead-code": "knip --no-config-hints",
+    "dead-code:exports": "knip --exports --no-config-hints --no-exit-code",
+    "quality": "npm run lint && npm run dead-code",
     "dev:demo": "scripts/dev-demo.sh",
     "dev:web": "npm run dev --workspace apps/web",
     "dev:api": "uvicorn lecturepilot.app:app --app-dir apps/api/src --reload"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "knip": "^6.25.0",
+    "prettier": "^3.9.4",
+    "typescript-eslint": "^8.63.0"
   }
 }
