@@ -77,7 +77,7 @@ export function useProfessorCourseBuilder({
   const [suggestedVideoGroups, setSuggestedVideoGroups] = useState<YoutubeCandidateGroup[]>([]);
   const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
   const [autoSuggestedSearchKey, setAutoSuggestedSearchKey] = useState<string | null>(null);
-  const [autoSuggesting, setAutoSuggesting] = useState(false);
+  const [, setAutoSuggesting] = useState(false);
   const [mediaLectureId, setMediaLectureId] = useState(savedFlow.workspace?.lectureId ?? "");
   const [mediaIncluded, setMediaIncluded] = useState(false);
   const [mediaReviewed, setMediaReviewed] = useState(false);
@@ -256,16 +256,25 @@ export function useProfessorCourseBuilder({
   }
 
   async function searchSuggestedVideos(courseId: string) {
+    const responses = await Promise.all(
+      suggestedQueries.map(async (searchQuery) => {
+        try {
+          const response = await withTimeout(searchYoutubeMedia(courseId, searchQuery, session, 3), 6000);
+          return { query: searchQuery, videos: response.items };
+        } catch {
+          return { query: searchQuery, videos: [] };
+        }
+      }),
+    );
     const groups: YoutubeCandidateGroup[] = [];
     const seenVideoIds = new Set<string>();
-    for (const searchQuery of suggestedQueries) {
-      const response = await searchYoutubeMedia(courseId, searchQuery, session, 3);
-      const groupVideos = response.items.filter((video) => {
+    for (const response of responses) {
+      const groupVideos = response.videos.filter((video) => {
         if (seenVideoIds.has(video.video_id)) return false;
         seenVideoIds.add(video.video_id);
         return true;
       });
-      groups.push({ query: searchQuery, videos: groupVideos });
+      groups.push({ query: response.query, videos: groupVideos });
     }
     setSuggestedVideoGroups(groups);
     return flattenVideoGroups(groups).length;
@@ -430,8 +439,9 @@ export function useProfessorCourseBuilder({
     canInclude: Boolean(selectedVideos.size && bundleReady && workspace && mediaLectureId),
     canSearch: Boolean(setupReady && workspace),
     canSuggest: Boolean(suggestedQueries.length && setupReady && workspace),
-    pendingAction: autoSuggesting ? "suggest-videos" : pendingAction,
+    pendingAction,
     onContinue: () => {
+      setAutoSuggesting(false);
       setMediaReviewed(true);
       setActiveStep("generate");
     },
@@ -540,4 +550,18 @@ export function useProfessorCourseBuilder({
 function isSkippableUploadError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
   return /File type .* is not writable|Hidden workspace paths are not allowed|files are limited to/i.test(message);
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error("Timed out.")), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 }
