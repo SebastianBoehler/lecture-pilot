@@ -24,6 +24,7 @@ from lecturepilot.generated_infographics import materialize_infographic_sections
 from lecturepilot.latex_canvas_importer import CANVAS_IMPORT_VERSION, import_latex_canvas
 from lecturepilot.lecture_source_selection import lecture_source_candidates
 from lecturepilot.storage_layout import DEFAULT_TENANT_ID, StorageLayout, safe_id
+from lecturepilot.student_asset_refs import resolve_student_asset_refs
 
 
 class CanvasWorkspaceError(RuntimeError):
@@ -76,6 +77,14 @@ class CanvasWorkspace:
 
         document = apply_course_media(read_document_source(canvas_dir), self.material_root)
         document = apply_course_media(document, self.course_media_root(course_id))
+        document = resolve_student_asset_refs(
+            document,
+            canvas_dir=canvas_dir,
+            course_id=course_id,
+            lecture_id=lecture_id,
+            layout=self.layout,
+            user_id=user_id,
+        )
         self._write_compiled_document(document, course_id, lecture_id, user_id)
         return document
 

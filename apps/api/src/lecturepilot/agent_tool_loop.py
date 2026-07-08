@@ -38,6 +38,12 @@ async def complete_tool_turn(
         tool_calls = _tool_calls(response_message)
         if not tool_calls:
             content = _message_content(response_message)
+            pending_edit = tool_executor.pending_canvas_edit_instruction()
+            if pending_edit:
+                if content:
+                    messages.append(_assistant_content_message(content))
+                messages.append({"role": "user", "content": pending_edit})
+                continue
             if content:
                 try:
                     return agent_result_from_content(content, turn, settings.model)
@@ -64,7 +70,10 @@ def _with_tool_instruction(messages: list[dict[str, str]], tool_profile: AgentTo
         "in the final JSON; the filesystem tool output is the source of truth. "
         "If the student asks for an infographic, diagram, image, plot, chart, graph, or visual, "
         "call generate_image before your final answer. Do not claim visual content was added unless "
-        "generate_image returned ok=true. "
+        "generate_image returned ok=true. If generate_image returns needs_canvas_edit=true, read the "
+        "target section if needed, then use edit, not write, to insert the returned markdown directly "
+        "after the sentence or bullet it explains before you answer. If you write Markdown that references the generated image, use the returned markdown "
+        "or asset_url, not the logical path. "
         "Use focus/highlight tools to navigate attention. "
         "After tool use, return only the final LecturePilot JSON."
     )

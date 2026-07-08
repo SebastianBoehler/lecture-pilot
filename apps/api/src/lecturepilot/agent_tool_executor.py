@@ -6,7 +6,8 @@ from typing import Any
 
 from lecturepilot.agent_canvas_write import prepare_student_canvas_write
 from lecturepilot.agent_highlight import highlight_command_for
-from lecturepilot.agent_image_tool import AgentImageToolError, generate_workspace_image
+from lecturepilot.agent_image_placement import AgentImagePlacement, dedupe_markdown_image_refs
+from lecturepilot.agent_image_tool import AgentImageToolError
 from lecturepilot.agent_tool_utils import (
     AgentToolArgumentError,
     ToolPath,
@@ -50,6 +51,7 @@ class AgentToolExecutor:
         self.gate: QualityGateDecision | None = None
         self.canvas_changed = False
         self.latest_written_section_id: str | None = None
+        self.image_placement: AgentImagePlacement | None = None
 
     def execute(self, name: str, args: dict[str, Any]) -> dict[str, Any]:
         try:
@@ -189,11 +191,16 @@ class AgentToolExecutor:
         path, content, section_id = prepare_student_canvas_write(resolved.logical, resolved.path, content)
         if path != resolved.path:
             resolved = ToolPath(self._logical_for(path), path)
+        error = self._pending_image_write_error(resolved.logical, content)
+        if error:
+            raise AgentToolError(error)
+        content = dedupe_markdown_image_refs(content)
         self.policy.validate_write(relative_write_path(resolved.logical), len(content.encode("utf-8")))
         previous = resolved.path.read_text(encoding="utf-8") if resolved.path.exists() else None
         resolved.path.parent.mkdir(parents=True, exist_ok=True)
         resolved.path.write_text(content, encoding="utf-8")
         self._validate_canvas_write(resolved, previous)
+        self._clear_pending_image_insert(content)
         self.latest_written_section_id = section_id or self.latest_written_section_id
         return {"path": resolved.logical, "bytes": len(content.encode("utf-8")), "section_id": section_id}
 
@@ -205,9 +212,11 @@ class AgentToolExecutor:
         if old_text not in current:
             raise AgentToolError("old_text was not found exactly once.")
         updated = current.replace(old_text, new_text, 1)
+        updated = dedupe_markdown_image_refs(updated)
         self.policy.validate_write(relative_write_path(resolved.logical), len(updated.encode("utf-8")))
         resolved.path.write_text(updated, encoding="utf-8")
         self._validate_canvas_write(resolved, current)
+        self._clear_pending_image_insert(updated)
         return {"path": resolved.logical, "replacements": 1}
 
     def _highlight(self, span_id: str, highlight_text: str) -> dict[str, Any]:
@@ -234,25 +243,10 @@ class AgentToolExecutor:
             raise AgentToolError(str(exc)) from exc
 
     def _generate_image(self, args: dict[str, Any]) -> dict[str, Any]:
-        section_id = safe_id(required_str(args, "section_id", "student-generated-image"))
-        image = generate_workspace_image(
-            image_generator=self.image_generator,
-            layout=self.canvas_workspace.layout,
-            user_id=self.user_id,
-            course_id=self.course_id,
-            lecture_id=self.lecture_id,
-            prompt=required_str(args, "prompt"),
-            section_id=section_id,
-            filename=str(args.get("filename") or "") or None,
-        )
-        section_path = f"/lecture/canvas/student/{section_id}.md"
-        caption = image["caption"].replace("[", "(").replace("]", ")")
-        content = (
-            "# Generated infographic\n\n"
-            f"![{caption}]({image['asset_url']})\n"
-        )
-        written = self._write(section_path, content)
-        return {**image, "section_id": written.get("section_id") or section_id}
+        return self._image_placement().generate(args, image_generator=self.image_generator, write=self._write)
+
+    def pending_canvas_edit_instruction(self) -> str | None:
+        return self.image_placement.pending_instruction() if self.image_placement else None
 
     def _validate_canvas_write(self, resolved: ToolPath, previous: str | None) -> None:
         if not resolved.logical.startswith("/lecture/canvas/"):
@@ -281,3 +275,21 @@ class AgentToolExecutor:
 
     def _logical_for(self, path: Path) -> str:
         return logical_for_path(path, self._root_map())
+
+    def _clear_pending_image_insert(self, content: str) -> None:
+        if self.image_placement:
+            self.image_placement.mark_inserted(content)
+
+    def _pending_image_write_error(self, logical_path: str, content: str) -> str | None:
+        return self.image_placement.write_rejection(logical_path, content) if self.image_placement else None
+
+    def _image_placement(self) -> AgentImagePlacement:
+        if self.image_placement is None:
+            self.image_placement = AgentImagePlacement(
+                layout=self.canvas_workspace.layout,
+                user_id=self.user_id,
+                course_id=self.course_id,
+                lecture_id=self.lecture_id,
+                logical_for=self._logical_for,
+            )
+        return self.image_placement

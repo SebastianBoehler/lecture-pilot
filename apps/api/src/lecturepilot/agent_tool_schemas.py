@@ -163,10 +163,10 @@ def _all_tool_schemas() -> list[dict]:
         ),
         _tool(
             "generate_image",
-            "Generate a raster infographic asset in the learner canvas workspace.",
+            "Generate a raster infographic asset in the learner canvas workspace. Existing target sections still need an edit placement step.",
             {
                 "prompt": _string("Image prompt grounded in the lecture material."),
-                "section_id": _string("Section the infographic supports."),
+                "section_id": _string("Existing learner section id the infographic supports, or a new id only when the visual should become its own section."),
                 "filename": _string("Optional safe filename without extension."),
             },
             ["prompt"],

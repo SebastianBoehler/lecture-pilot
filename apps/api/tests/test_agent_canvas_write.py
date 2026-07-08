@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from canvas_workspace_fixtures import write_course_source
 from lecturepilot.agent_canvas_write import normalize_student_canvas_markdown
+from lecturepilot.agent_tool_executor import AgentToolExecutor
+from lecturepilot.canvas_workspace import CanvasWorkspace
 
 
 def test_student_canvas_write_normalizes_model_quiz_lines() -> None:
@@ -116,3 +119,43 @@ def test_student_canvas_write_normalizes_loose_quiz_blocks() -> None:
     assert "- Posterior = 0.8" in markdown
     assert "- Posterior = 0.2" in markdown
     assert "--- quiz" not in markdown
+
+
+def test_ordered_student_path_does_not_leak_into_section_id(tmp_path) -> None:
+    workspace = CanvasWorkspace(
+        workspace_root=tmp_path / "workspaces",
+        material_root=write_course_source(tmp_path),
+    )
+    workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="u1")
+    executor = AgentToolExecutor(
+        canvas_workspace=workspace,
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        user_id="u1",
+    )
+    first = executor.execute(
+        "write",
+        {
+            "path": "/lecture/canvas/student/prior-explanation.md",
+            "content": "# Prior Explanation\n\nA prior is the baseline belief before evidence.",
+        },
+    )
+
+    assert first["ok"] is True
+    assert first["path"] == "/lecture/canvas/student/90-prior-explanation.md"
+    assert first["section_id"] == "prior-explanation-md"
+
+    second = executor.execute(
+        "write",
+        {
+            "path": first["path"],
+            "content": "# Prior Explanation\n\nUpdated with a sharper example.",
+        },
+    )
+
+    assert second["ok"] is True
+    assert second["section_id"] == "prior-explanation-md"
+    document = workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="u1")
+    section = document.sections[-1]
+    assert section.id == "prior-explanation-md"
+    assert section.title == "Prior Explanation"

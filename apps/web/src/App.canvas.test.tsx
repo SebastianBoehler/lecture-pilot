@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
-import { openLecture03FromDashboard } from "./testLessonActions";
+import { openLecture03FromDashboard, soccerCanvasSection } from "./testLessonActions";
 import { mockLoginAndTutorFetch, mockLoginFetch } from "./testFixtures";
 
 describe("LecturePilot canvas interactions", () => {
@@ -84,6 +84,37 @@ describe("LecturePilot canvas interactions", () => {
       });
     });
     expect(correct).toHaveClass("is-correct");
+  });
+
+  it("marks learner-generated canvas sections subtly", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      mockLoginAndTutorFetch({
+        tutorResponse: {
+          message: "I added a transfer example.",
+          canvas_commands: [{
+            type: "append_section",
+            section_id: "student-soccer-bayes-example",
+            section: soccerCanvasSection(),
+          }],
+          quality_gate: null,
+          artifacts: [],
+          model: "gemini/gemini-3.1-flash-lite",
+          created_at: "2026-06-05T20:00:00Z",
+        },
+      }),
+    );
+    render(<App />);
+
+    await logIn(user);
+    await openLecture03FromDashboard(user);
+    await user.click(screen.getByLabelText(/open tutor chat/i));
+    await user.type(screen.getByPlaceholderText(/ask about this lecture/i), "Add a soccer example.");
+    await user.click(screen.getByRole("button", { name: /send message/i }));
+
+    const section = await screen.findByRole("region", { name: /soccer scouting example/i });
+    expect(section).toHaveClass("is-learner-generated");
   });
 
   it("renders prefab component quizzes inside the canvas", async () => {

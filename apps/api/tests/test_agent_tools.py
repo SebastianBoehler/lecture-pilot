@@ -123,7 +123,7 @@ async def test_tool_loop_executes_grep_before_final_answer(tmp_path) -> None:
     calls: list[dict[str, Any]] = []
 
     async def fake_completion(**kwargs):
-        calls.append(kwargs)
+        calls.append(_snapshot_call(kwargs))
         if len(calls) == 1:
             return _response(
                 tool_calls=[
@@ -191,7 +191,7 @@ async def test_tool_loop_recovers_from_empty_post_tool_message(tmp_path) -> None
     calls: list[dict[str, Any]] = []
 
     async def fake_completion(**kwargs):
-        calls.append(kwargs)
+        calls.append(_snapshot_call(kwargs))
         if len(calls) == 1:
             return _response(
                 tool_calls=[
@@ -285,6 +285,10 @@ class _ToolWritingHarness:
 
 def _workspace(tmp_path) -> CanvasWorkspace:
     return CanvasWorkspace(workspace_root=tmp_path / "workspaces", material_root=write_course_source(tmp_path))
+
+
+def _snapshot_call(kwargs: dict[str, Any]) -> dict[str, Any]:
+    return {**kwargs, "messages": [dict(message) for message in kwargs.get("messages", [])]}
 
 
 def _response(content: str | None = None, tool_calls: list[dict] | None = None):

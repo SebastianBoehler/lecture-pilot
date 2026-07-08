@@ -2,6 +2,7 @@ import { useEffect } from "react";
 
 import { CanvasBlocks } from "./CanvasBlocks";
 import { SectionSources } from "./SectionSources";
+import { isLearnerGeneratedSection } from "./canvasSectionOrigin";
 import type {
   CanvasDocument,
   CanvasSection,
@@ -107,6 +108,7 @@ function renderSection({
   const className = [
     "canvas-section",
     isFocused ? "is-focused" : "",
+    isLearnerGeneratedSection(section) ? "is-learner-generated" : "",
     isFocused ? pulseClass(true, navigationVersion) : "",
     pulseClass(outlinePulseId === section.id, outlinePulseVersion),
   ]

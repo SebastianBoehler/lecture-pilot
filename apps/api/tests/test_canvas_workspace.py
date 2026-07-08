@@ -116,6 +116,39 @@ def test_student_canvas_sections_are_isolated(tmp_path: Path) -> None:
     assert "A student-specific transfer example." in student_section.read_text(encoding="utf-8")
 
 
+def test_student_asset_logical_paths_resolve_to_workspace_assets(tmp_path: Path) -> None:
+    material_root = write_course_source(tmp_path)
+    workspace = CanvasWorkspace(
+        workspace_root=tmp_path / "workspaces",
+        material_root=material_root,
+    )
+    document = workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="alice")
+    canvas_dir = Path(document.workspace_path).parent
+    (canvas_dir / "student-assets").mkdir()
+    (canvas_dir / "student-assets" / "regression_visual.jpg").write_bytes(b"jpg")
+    student_dir = canvas_dir / "student"
+    student_dir.mkdir()
+    (student_dir / "90-student-regression-visual.md").write_text(
+        """---
+id: "student-regression-visual"
+title: "Regression visual"
+source_ref: "student workspace"
+---
+<!-- block id="student-regression-visual-asset" type="asset" -->
+![Regression Concept](/lecture/canvas/student-assets/regression_visual.jpg)
+""",
+        encoding="utf-8",
+    )
+
+    updated = workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="alice")
+
+    section = next(item for item in updated.sections if item.id == "student-regression-visual")
+    asset = section.blocks[0]
+    assert asset.asset_path == "student-assets/regression_visual.jpg"
+    assert asset.asset_url.startswith("/workspace-assets/martius-ml/lecture-03/")
+    assert asset.asset_url.endswith("/student-assets/regression_visual.jpg")
+
+
 def test_migrates_existing_compiled_student_sections_to_overlay(tmp_path: Path) -> None:
     material_root = write_course_source(tmp_path)
     workspace = CanvasWorkspace(

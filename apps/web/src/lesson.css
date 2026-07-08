@@ -50,6 +50,12 @@
   scroll-margin-block: 80px;
 }
 
+.canvas-section.is-learner-generated {
+  border-left-color: color-mix(in srgb, var(--color-accent-primary) 42%, var(--color-border-primary));
+  border-left-width: 3px;
+  background: color-mix(in srgb, var(--color-accent-primary) 4%, transparent);
+}
+
 .is-outline-pulsed {
   outline: 2px solid transparent;
   outline-offset: 3px;

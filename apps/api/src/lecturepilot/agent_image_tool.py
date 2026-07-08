@@ -42,11 +42,14 @@ def generate_workspace_image(
     asset_dir.mkdir(parents=True, exist_ok=True)
     (asset_dir / output_name).write_bytes(generated.content)
     student_key = layout.user_key(user_id)
+    asset_url = (
+        f"/workspace-assets/{safe_id(course_id)}/{safe_id(lecture_id)}/"
+        f"{student_key}/student-assets/{output_name}"
+    )
+    markdown_caption = generated.caption.replace("[", "(").replace("]", ")")
     return {
         "path": f"/lecture/canvas/student-assets/{output_name}",
-        "asset_url": (
-            f"/workspace-assets/{safe_id(course_id)}/{safe_id(lecture_id)}/"
-            f"{student_key}/student-assets/{output_name}"
-        ),
+        "asset_url": asset_url,
         "caption": generated.caption,
+        "markdown": f"![{markdown_caption}]({asset_url})",
     }

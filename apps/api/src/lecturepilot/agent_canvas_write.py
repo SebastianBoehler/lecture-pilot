@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import PurePosixPath
 from pathlib import Path
 
@@ -21,7 +22,7 @@ def normalize_student_canvas_markdown(logical_path: str, content: str) -> str:
     if not logical_path.endswith(".md") or content.lstrip().startswith("---\n"):
         return content
     content = _normalize_model_block_lines(content)
-    section_id = safe_id(PurePosixPath(logical_path).name)
+    section_id = _section_id_from_logical_path(logical_path)
     title = _title_from_markdown(content) or _title_from_id(section_id)
     body = _body_without_first_title(content).strip()
     return (
@@ -41,7 +42,7 @@ def student_canvas_section_id(logical_path: str, content: str) -> str | None:
         key, _, value = line.partition(":")
         if key.strip() == "id":
             return str(json.loads(value.strip()))
-    return safe_id(PurePosixPath(logical_path).name)
+    return _section_id_from_logical_path(logical_path)
 
 
 def append_ordered_student_path(path: Path, section_id: str | None) -> Path:
@@ -51,6 +52,10 @@ def append_ordered_student_path(path: Path, section_id: str | None) -> Path:
     if existing is not None:
         return existing
     return path.with_name(f"{_next_order_prefix(path.parent):02d}-{path.name}")
+
+
+def find_student_canvas_section_path(directory: Path, section_id: str | None) -> Path | None:
+    return _path_for_section_id(directory, section_id)
 
 
 def is_student_markdown_path(logical_path: str) -> bool:
@@ -262,6 +267,12 @@ def _body_without_first_title(content: str) -> str:
 
 def _title_from_id(section_id: str) -> str:
     return section_id.replace("-", " ").removesuffix(" md").title()
+
+
+def _section_id_from_logical_path(logical_path: str) -> str:
+    filename = PurePosixPath(logical_path).name
+    filename = re.sub(r"^\d+-", "", filename)
+    return safe_id(filename)
 
 
 def _path_for_section_id(directory: Path, section_id: str | None) -> Path | None:
