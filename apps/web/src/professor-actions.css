@@ -1,0 +1,4 @@
+.delete-course-button {
+  border-color: color-mix(in srgb, var(--color-danger) 50%, var(--color-border-primary));
+  color: var(--color-danger);
+}

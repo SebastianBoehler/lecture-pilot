@@ -20,6 +20,7 @@ from lecturepilot.canvas_workspace_config import SEEDED_COURSE_ID
 from lecturepilot.course_builder_source import course_builder_source_document, scan_source_bundles
 from lecturepilot.course_canvas_routes import register_course_canvas_routes
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner
+from lecturepilot.course_deletion import register_course_deletion_routes
 from lecturepilot.course_schedule_store import list_course_workspaces, read_course_workspace, write_course_workspace
 from lecturepilot.course_workspace import resolve_course_workspace
 from lecturepilot.dev_seeded_course import discovered_seeded_lecture_views
@@ -104,6 +105,7 @@ def create_app() -> FastAPI:
             lecture_id,
         ),
     )
+    register_course_deletion_routes(app, course_tenant_id=COURSE_TENANT_ID)
     register_exam_readiness_routes(app, course_tenant_id=COURSE_TENANT_ID, lectures=LECTURES)
 
     @app.get("/courses")

@@ -26,6 +26,16 @@ export async function createCourseWorkspace(
   return normalizeCourseWorkspaceResult(payload);
 }
 
+export async function deleteCourseWorkspace(courseId: string, session: LoginSession) {
+  const response = await fetch(apiUrl(`/admin/courses/${courseId}`), {
+    method: "DELETE",
+    headers: courseManagerHeaders(session),
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(readApiError(payload, "Course deletion failed."));
+  return payload as { course_id: string; deleted: boolean; deleted_path: string };
+}
+
 export async function proposeLectureSchedule(input: {
   courseId: string;
   count?: number | null;

@@ -19,7 +19,7 @@ import { initialMessagesForAttendance, localDemoSession, localProfessorSession }
 import { canManageCourses } from "./authz";
 import { CourseManagementAccessRequired } from "./CourseManagementAccessRequired";
 import { Dashboard } from "./Dashboard";
-import { readDemoWorkspaceCourse, writeDemoWorkspaceCourse } from "./demoWorkspaceAccess";
+import { clearDemoWorkspaceCourse, readDemoWorkspaceCourse, writeDemoWorkspaceCourse } from "./demoWorkspaceAccess";
 import { developmentWorkspaceCourse } from "./devWorkspaceAccess";
 import { draftPreviewUrl } from "./draftPreviewUrl";
 import { resetLearnerWorkspace } from "./learnerWorkspaceApi";
@@ -255,6 +255,14 @@ function App() {
     }
   }
 
+  function handleWorkspaceDeleted(courseId: string) {
+    clearDemoWorkspaceCourse(courseId);
+    setPublishedLectureIds([]);
+    if (workspaceCourseId === courseId || selectedCourseId === courseId) {
+      void loadWorkspaceCourse(session ?? localDemoSession, localDemoSession.courses[0].id);
+    }
+  }
+
   async function handleResetWorkspace(options: WorkspaceResetSelection) {
     const activeSession = session ?? localDemoSession;
     await resetLearnerWorkspace(
@@ -367,6 +375,7 @@ function App() {
             setSelectedLecture((current) => nextLectures.find((lecture) => lecture.id === current.id) ?? nextLectures[0]);
             setPublishedLectureIds(nextLectures.map((lecture) => lecture.id));
           }}
+          onWorkspaceDeleted={handleWorkspaceDeleted}
           previewWorkspaceUrl={draftPreviewUrl}
           publishedLectureIds={publishedLectureIds}
         />

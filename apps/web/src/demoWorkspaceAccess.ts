@@ -17,3 +17,15 @@ export function writeDemoWorkspaceCourse(course: UniversityCourse) {
   } catch {
   }
 }
+
+export function clearDemoWorkspaceCourse(courseId?: string) {
+  try {
+    if (!courseId) {
+      window.localStorage.removeItem(demoWorkspaceKey);
+      return;
+    }
+    const saved = readDemoWorkspaceCourse();
+    if (saved?.id === courseId) window.localStorage.removeItem(demoWorkspaceKey);
+  } catch {
+  }
+}

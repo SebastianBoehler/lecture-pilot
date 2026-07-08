@@ -10,13 +10,14 @@ import { ProfessorPublishStep } from "./ProfessorPublishStep";
 import { ProfessorReviewStep } from "./ProfessorReviewStep";
 import {
   createCourseWorkspace,
+  deleteCourseWorkspace,
   getSourceBundle,
   includeYoutubeMedia,
   proposeLectureSchedule,
   searchYoutubeMedia,
   uploadCourseMaterial,
 } from "./professorApi";
-import { isCourseSetupReady, readSavedFlow, writeSavedFlow } from "./professorBuilderState";
+import { defaultFlow, isCourseSetupReady, readSavedFlow, writeSavedFlow } from "./professorBuilderState";
 import {
   activationLectures,
   courseFromSetup,
@@ -48,10 +49,12 @@ export function ProfessorCourseBuilder({
   onWorkspacePublished,
   previewWorkspaceUrl,
   publishedLectureIds,
+  onWorkspaceDeleted,
 }: {
   session: LoginSession;
   onPublishWorkspace: (courseId: string, lectureId: string) => Promise<CanvasPublicationResult>;
   onWorkspacePublished: (course: UniversityCourse, lectures: ReturnType<typeof lectureFromWorkspace>[]) => void;
+  onWorkspaceDeleted: (courseId: string) => void;
   previewWorkspaceUrl: (courseId: string, lecture: ReturnType<typeof lectureFromWorkspace>) => string;
   publishedLectureIds: string[];
 }) {
@@ -205,6 +208,16 @@ export function ProfessorCourseBuilder({
             }}
           >
             {isRestoring ? "Refreshing..." : "Refresh workspace state"}
+          </button>
+          <button
+            className="refresh-button delete-course-button"
+            disabled={!workspace || pendingAction === "delete-course"}
+            type="button"
+            onClick={() => {
+              void handleDeleteCourse();
+            }}
+          >
+            {pendingAction === "delete-course" ? "Deleting..." : "Delete course"}
           </button>
           <p className="professor-session">Signed in as {session.username}</p>
         </div>
@@ -481,6 +494,21 @@ export function ProfessorCourseBuilder({
       session,
     });
     setLectureSchedule(proposal.lectures);
+  }
+
+  async function handleDeleteCourse() {
+    const activeWorkspace = workspace;
+    if (!activeWorkspace) return;
+    if (!window.confirm("Delete this course workspace and take it down for students?")) return;
+    await run("delete-course", async () => {
+      await deleteCourseWorkspace(activeWorkspace.courseId, session);
+      updateSetup(defaultFlow.setup);
+      setUploadPath(defaultFlow.uploadPath);
+      setUploadFiles([]);
+      setQuery(defaultFlow.query);
+      onWorkspaceDeleted(activeWorkspace.courseId);
+      return `Course workspace ${activeWorkspace.courseId} deleted.`;
+    });
   }
 
   async function restoreFromBackend(

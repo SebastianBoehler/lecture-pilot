@@ -2,9 +2,15 @@ import { vi } from "vitest";
 
 export function professorFetchMock() {
   const publishedLectures = new Set<string>();
+  const deletedCourses = new Set<string>();
   return vi.fn(async (url: string, init?: RequestInit) => {
-    if (url.endsWith("/courses")) return json([workspaceCourse()]);
+    if (url.endsWith("/courses")) return json(deletedCourses.has("demo-ml-course") ? [] : [workspaceCourse()]);
     if (url.match(/\/courses\/[^/]+\/lectures$/)) return json(lectureListPayload());
+    if (url.match(/\/admin\/courses\/[^/]+$/) && init?.method === "DELETE") {
+      const courseId = url.match(/admin\/courses\/([^/]+)$/)?.[1] ?? "demo-ml-course";
+      deletedCourses.add(courseId);
+      return json({ course_id: courseId, deleted: true, deleted_path: `.lecturepilot/courses/${courseId}` });
+    }
     if (url.endsWith("/admin/course-workspaces")) return json(courseWorkspacePayload(init));
     if (url.includes("/lecture-schedule")) return json(lectureSchedulePayload());
     if (url.includes("/source-bundle")) return json(sourceBundle());

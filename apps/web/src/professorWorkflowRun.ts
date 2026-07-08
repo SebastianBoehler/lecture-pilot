@@ -3,6 +3,7 @@ import { useState } from "react";
 export type BuilderAction =
   | "apply-schedule"
   | "create"
+  | "delete-course"
   | "generate"
   | "include-videos"
   | "publish"
