@@ -88,6 +88,7 @@ function loginPayload() {
     term: "Sommer 2026",
     tenant_id: "tenant-tuebingen",
     roles: ["student"],
+    access_token: "signed-test-token",
     courses: [
       {
         id: "alma-ml4202-probabilistic-machine-learning",

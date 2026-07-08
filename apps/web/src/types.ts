@@ -223,6 +223,7 @@ export type LoginSession = {
   term: string;
   tenant_id?: string;
   roles?: TenantRole[];
+  access_token?: string | null;
   courses: UniversityCourse[];
 };
 

@@ -1,8 +1,68 @@
 from fastapi.testclient import TestClient
 
 from lecturepilot.app import create_app
+from lecturepilot.models import TenantRole
 from lecturepilot.providers import DEFAULT_MODEL
+from lecturepilot.session_auth import sign_session
+from lecturepilot.tenancy import TenantContext
 from auth_helpers import student_headers
+
+
+def test_production_auth_accepts_signed_session_token(monkeypatch) -> None:
+    monkeypatch.setenv("LECTUREPILOT_AUTH_MODE", "session")
+    monkeypatch.setenv("LECTUREPILOT_SESSION_SECRET", "test-session-secret")
+    client = TestClient(create_app())
+    token = sign_session(
+        TenantContext(
+            tenant_id="tenant-tuebingen",
+            user_id="student01",
+            roles=frozenset({TenantRole.STUDENT}),
+        )
+    )
+
+    response = client.get(
+        "/courses/martius-ml/lectures/lecture-03/canvas/publication",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+
+
+def test_production_auth_rejects_forged_role_headers(monkeypatch) -> None:
+    monkeypatch.setenv("LECTUREPILOT_AUTH_MODE", "session")
+    monkeypatch.setenv("LECTUREPILOT_SESSION_SECRET", "test-session-secret")
+    client = TestClient(create_app())
+
+    response = client.post(
+        "/agent/turn",
+        headers={
+            "X-Tenant-Id": "tenant-tuebingen",
+            "X-User-Id": "student01",
+            "X-User-Role": "professor",
+        },
+        json=_turn_payload("student01"),
+    )
+
+    assert response.status_code == 401
+    assert "Bearer session token" in response.json()["detail"]
+
+
+def test_production_auth_protects_course_listing(monkeypatch) -> None:
+    monkeypatch.setenv("LECTUREPILOT_AUTH_MODE", "session")
+    monkeypatch.setenv("LECTUREPILOT_SESSION_SECRET", "test-session-secret")
+    client = TestClient(create_app())
+
+    response = client.get(
+        "/courses",
+        headers={
+            "X-Tenant-Id": "tenant-tuebingen",
+            "X-User-Id": "student01",
+            "X-User-Role": "student",
+        },
+    )
+
+    assert response.status_code == 401
+    assert "Bearer session token" in response.json()["detail"]
 
 
 def test_agent_turn_requires_configured_provider(monkeypatch) -> None:

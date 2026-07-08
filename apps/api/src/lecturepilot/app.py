@@ -10,10 +10,7 @@ from fastapi.responses import FileResponse
 from lecturepilot.analytics import AnalyticsStore
 from lecturepilot.analytics_routes import register_analytics_routes
 from lecturepilot.admin_media_routes import register_admin_media_routes
-from lecturepilot.api_auth import (
-    request_context,
-    require_course_manager,
-)
+from lecturepilot.api_auth import request_context, require_course_manager, require_same_tenant
 from lecturepilot.agent_routes import register_agent_routes
 from lecturepilot.canvas_workspace import CanvasWorkspace, CanvasWorkspaceError
 from lecturepilot.canvas_workspace_config import SEEDED_COURSE_ID
@@ -45,12 +42,9 @@ from lecturepilot.observability import observability_from_env
 from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.runtime_env import load_project_env
 from lecturepilot.sample_data import COURSE, LECTURES, unlocked_lectures
+from lecturepilot.session_auth import SessionAuthError, with_access_token
 from lecturepilot.tenancy import TenantContext
-from lecturepilot.tuebingen_adapter import (
-    TuebingenCourseAdapter,
-    TuebingenIntegrationUnavailable,
-    TuebingenLoginError,
-)
+from lecturepilot.tuebingen_adapter import TuebingenCourseAdapter, TuebingenIntegrationUnavailable, TuebingenLoginError
 from lecturepilot.user_memory import UserMemoryStore
 from lecturepilot.workspace import WorkspacePolicy, WorkspacePolicyError
 from lecturepilot.youtube_discovery import YoutubeDiscovery
@@ -109,7 +103,8 @@ def create_app() -> FastAPI:
     register_exam_readiness_routes(app, course_tenant_id=COURSE_TENANT_ID, lectures=LECTURES)
 
     @app.get("/courses")
-    def courses() -> list[dict]:
+    def courses(context: TenantContext = Depends(request_context)) -> list[dict]:
+        require_same_tenant(context, course_tenant_id=COURSE_TENANT_ID)
         stored = list_course_workspaces(app.state.canvas_workspace.workspace_root, COURSE_TENANT_ID)
         courses_by_id = {COURSE.id: COURSE}
         courses_by_id.update({workspace.course.id: workspace.course for workspace in stored})
@@ -118,18 +113,26 @@ def create_app() -> FastAPI:
     @app.post("/auth/login", response_model=TuebingenLoginResult)
     def login(input_data: TuebingenLoginInput) -> TuebingenLoginResult:
         try:
-            return app.state.tuebingen_adapter.login(
-                username=input_data.username,
-                password=input_data.password.get_secret_value(),
-                term=input_data.term,
+            return with_access_token(
+                app.state.tuebingen_adapter.login(
+                    username=input_data.username,
+                    password=input_data.password.get_secret_value(),
+                    term=input_data.term,
+                )
             )
         except TuebingenIntegrationUnavailable as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         except TuebingenLoginError as exc:
             raise HTTPException(status_code=401, detail=str(exc)) from exc
+        except SessionAuthError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     @app.get("/courses/{course_id}/lectures")
-    def lectures(course_id: str) -> list[dict]:
+    def lectures(
+        course_id: str,
+        context: TenantContext = Depends(request_context),
+    ) -> list[dict]:
+        require_same_tenant(context, course_tenant_id=COURSE_TENANT_ID)
         workspace = read_course_workspace(app.state.canvas_workspace.course_media_root(course_id), course_id)
         if workspace:
             return [

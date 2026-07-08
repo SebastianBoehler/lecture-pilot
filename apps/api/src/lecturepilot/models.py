@@ -81,6 +81,7 @@ class TuebingenLoginResult(BaseModel):
     term: str
     tenant_id: str = "tenant-tuebingen"
     roles: list[TenantRole] = Field(default_factory=lambda: [TenantRole.STUDENT])
+    access_token: str | None = None
     courses: list[Course]
 
 

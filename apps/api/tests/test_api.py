@@ -39,7 +39,11 @@ def test_tuebingen_login_returns_courses_without_echoing_password() -> None:
 
     assert response.status_code == 200
     assert "very-secret-password" not in response.text
-    assert response.json() == {
+    payload = response.json()
+    access_token = payload.pop("access_token")
+    assert isinstance(access_token, str)
+    assert access_token.count(".") == 1
+    assert payload == {
         "username": "student01",
         "email": None,
         "term": "Sommer 2026",
