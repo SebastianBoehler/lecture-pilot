@@ -11,6 +11,15 @@ import type {
   YoutubeVideoCandidate,
 } from "./types";
 
+export async function listCourseWorkspaces(session: LoginSession): Promise<CourseWorkspaceResult[]> {
+  const response = await fetch(apiUrl("/admin/courses"), {
+    headers: courseManagerHeaders(session),
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(readApiError(payload, "Course workspace loading failed."));
+  return Array.isArray(payload) ? payload.map(normalizeCourseWorkspaceResult) : [];
+}
+
 export async function createCourseWorkspace(
   setup: CourseSetup,
   session: LoginSession,

@@ -6,6 +6,8 @@ from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from lecturepilot.api_auth import request_context, require_course_manager
+from lecturepilot.course_schedule_store import list_course_workspaces
+from lecturepilot.models import CourseWorkspaceResult
 from lecturepilot.storage_layout import StorageLayout, StorageLayoutError, safe_id
 from lecturepilot.tenancy import TenantContext
 
@@ -29,6 +31,11 @@ def delete_course_workspace(*, layout: StorageLayout, course_id: str) -> CourseD
 
 
 def register_course_deletion_routes(app: FastAPI, *, course_tenant_id: str) -> None:
+    @app.get("/admin/courses", response_model=list[CourseWorkspaceResult])
+    def created_courses(context: TenantContext = Depends(request_context)) -> list[CourseWorkspaceResult]:
+        require_course_manager(context, course_tenant_id=course_tenant_id)
+        return list_course_workspaces(app.state.canvas_workspace.workspace_root, course_tenant_id)
+
     @app.delete("/admin/courses/{course_id}", response_model=CourseDeletionResult)
     def delete_course(
         course_id: str,

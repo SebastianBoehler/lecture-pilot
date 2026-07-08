@@ -7,6 +7,28 @@ from lecturepilot.app import create_app
 from lecturepilot.canvas_workspace import CanvasWorkspace
 
 
+def test_professor_lists_created_course_workspaces(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    empty = client.get("/admin/courses", headers=professor_headers())
+    _create_workspace(client)
+
+    response = client.get("/admin/courses", headers=professor_headers())
+
+    assert empty.status_code == 200
+    assert empty.json() == []
+    assert response.status_code == 200
+    assert response.json()[0]["course"]["id"] == "demo-ml-course"
+    assert response.json()[0]["lectures"][0]["id"] == "lecture-03"
+
+
+def test_student_cannot_list_created_course_workspaces(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+
+    response = client.get("/admin/courses", headers=student_headers("student01"))
+
+    assert response.status_code == 403
+
+
 def test_professor_deletes_created_course_workspace(tmp_path: Path) -> None:
     client = _client(tmp_path)
     _create_workspace(client)

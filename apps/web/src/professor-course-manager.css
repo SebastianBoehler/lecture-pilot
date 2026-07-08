@@ -1,0 +1,50 @@
+.course-manager-panel {
+  display: grid;
+  gap: 14px;
+  margin: 0 0 24px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--color-bg-primary);
+}
+
+.course-manager-header,
+.created-course-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.course-manager-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.course-manager-header p,
+.created-course-row p,
+.created-course-row span,
+.empty-course-manager {
+  margin: 4px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.created-course-list {
+  display: grid;
+  gap: 8px;
+}
+
+.created-course-row {
+  border-top: 1px solid var(--color-border-primary);
+  padding-top: 10px;
+}
+
+.created-course-row strong {
+  display: block;
+}
+
+.created-course-row span {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}

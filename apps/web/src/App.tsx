@@ -29,6 +29,7 @@ import { clearSavedFlow } from "./professorBuilderState";
 import { useStoredLoginSession } from "./loginSessionStorage";
 import { ProfileView } from "./ProfileView";
 import { ProfessorCourseBuilder } from "./ProfessorCourseBuilder";
+import { ProfessorCourseManagement } from "./ProfessorCourseManagement";
 import { ProfessorCoursePerformance } from "./ProfessorCoursePerformance";
 import { lectures } from "./sampleData";
 import { requestedTutorModel } from "./tutorModels";
@@ -308,6 +309,12 @@ function App() {
             setPanelMode(null);
           }
         }}
+        onOpenCourseManagement={() => {
+          if (courseManagerSession) {
+            setView("course-management");
+            setPanelMode(null);
+          }
+        }}
         onOpenProfile={() => {
           setView("profile");
           setPanelMode(null);
@@ -375,9 +382,13 @@ function App() {
             setSelectedLecture((current) => nextLectures.find((lecture) => lecture.id === current.id) ?? nextLectures[0]);
             setPublishedLectureIds(nextLectures.map((lecture) => lecture.id));
           }}
-          onWorkspaceDeleted={handleWorkspaceDeleted}
           previewWorkspaceUrl={draftPreviewUrl}
           publishedLectureIds={publishedLectureIds}
+        />
+      ) : view === "course-management" && courseManagerSession ? (
+        <ProfessorCourseManagement
+          session={courseManagerSession}
+          onWorkspaceDeleted={handleWorkspaceDeleted}
         />
       ) : view === "performance" && courseManagerSession ? (
         <ProfessorCoursePerformance
@@ -389,6 +400,11 @@ function App() {
       ) : view === "performance" ? (
         <CourseManagementAccessRequired
           label="Course performance"
+          onBack={() => setView(session ? "dashboard" : "login")}
+        />
+      ) : view === "course-management" ? (
+        <CourseManagementAccessRequired
+          label="Course management"
           onBack={() => setView(session ? "dashboard" : "login")}
         />
       ) : view === "professor" ? (

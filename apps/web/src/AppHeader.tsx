@@ -1,4 +1,4 @@
-import { ChartNoAxesColumn, FilePlus2, Home, LogOut, Moon, Sun, UserRound } from "lucide-react";
+import { ChartNoAxesColumn, FilePlus2, FolderOpen, Home, LogOut, Moon, Sun, UserRound } from "lucide-react";
 
 import { canManageCourses } from "./authz";
 import type { LoginSession, Theme, View } from "./types";
@@ -10,6 +10,7 @@ export function AppHeader({
   onBrand,
   onLogout,
   onOpenDashboard,
+  onOpenCourseManagement,
   onOpenPerformance,
   onOpenProfile,
   onOpenProfessor,
@@ -21,6 +22,7 @@ export function AppHeader({
   onBrand: () => void;
   onLogout: () => void;
   onOpenDashboard: () => void;
+  onOpenCourseManagement: () => void;
   onOpenPerformance: () => void;
   onOpenProfile: () => void;
   onOpenProfessor: () => void;
@@ -44,6 +46,14 @@ export function AppHeader({
           >
             <ChartNoAxesColumn size={16} />
             <span>Course performance</span>
+          </button>
+          <button
+            className={`top-nav-button ${activeView === "course-management" ? "is-active" : ""}`}
+            type="button"
+            onClick={onOpenCourseManagement}
+          >
+            <FolderOpen size={16} />
+            <span>Manage courses</span>
           </button>
           <button
             className={`top-nav-button ${activeView === "professor" ? "is-active" : ""}`}

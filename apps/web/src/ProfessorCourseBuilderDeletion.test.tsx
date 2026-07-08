@@ -12,7 +12,7 @@ describe("Professor course deletion", () => {
     vi.unstubAllGlobals();
   });
 
-  it("deletes an active course workspace from professor view", async () => {
+  it("deletes a created course from the professor course list", async () => {
     const user = userEvent.setup();
     const fetchMock = professorFetchMock();
     window.localStorage.setItem("lecturepilot.demo.workspaceCourse", JSON.stringify({
@@ -27,16 +27,17 @@ describe("Professor course deletion", () => {
     render(<App />);
 
     await user.click(screen.getByRole("button", { name: /preview professor account/i }));
-    expect(screen.getByRole("button", { name: /delete course/i })).toBeDisabled();
-    await user.type(screen.getByLabelText(/course name/i), "Demo ML Course");
-    await user.click(screen.getByRole("button", { name: /create course workspace/i }));
-    expect(await screen.findByText(/course workspace demo-ml-course ready/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /course builder/i })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /created courses/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /manage courses/i }));
+    expect(await screen.findByRole("heading", { name: /created courses/i })).toBeInTheDocument();
+    const deleteButton = await screen.findByRole("button", { name: /delete demo ml course/i });
+    expect(deleteButton).toBeEnabled();
 
-    await user.click(screen.getByRole("button", { name: /delete course/i }));
+    await user.click(deleteButton);
 
     expect(await screen.findByText(/course workspace demo-ml-course deleted/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/course name/i)).toHaveValue("");
-    expect(screen.getByRole("button", { name: /create course workspace/i })).toBeDisabled();
+    expect(screen.getByText(/no created course workspaces yet/i)).toBeInTheDocument();
     expect(window.localStorage.getItem("lecturepilot.demo.workspaceCourse")).toBeNull();
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/admin/courses/demo-ml-course"),

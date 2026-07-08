@@ -4,10 +4,14 @@ export function professorFetchMock() {
   const publishedLectures = new Set<string>();
   const deletedCourses = new Set<string>();
   return vi.fn(async (url: string, init?: RequestInit) => {
-    if (url.endsWith("/courses")) return json(deletedCourses.has("demo-ml-course") ? [] : [workspaceCourse()]);
-    if (url.match(/\/courses\/[^/]+\/lectures$/)) return json(lectureListPayload());
-    if (url.match(/\/admin\/courses\/[^/]+$/) && init?.method === "DELETE") {
-      const courseId = url.match(/admin\/courses\/([^/]+)$/)?.[1] ?? "demo-ml-course";
+    const path = new URL(url, "http://localhost").pathname;
+    if (path === "/admin/courses") {
+      return json(deletedCourses.has("demo-ml-course") ? [] : [courseWorkspacePayload()]);
+    }
+    if (path === "/courses") return json(deletedCourses.has("demo-ml-course") ? [] : [workspaceCourse()]);
+    if (path.match(/^\/courses\/[^/]+\/lectures$/)) return json(lectureListPayload());
+    if (path.match(/^\/admin\/courses\/[^/]+$/) && init?.method === "DELETE") {
+      const courseId = path.match(/admin\/courses\/([^/]+)$/)?.[1] ?? "demo-ml-course";
       deletedCourses.add(courseId);
       return json({ course_id: courseId, deleted: true, deleted_path: `.lecturepilot/courses/${courseId}` });
     }
@@ -167,6 +171,7 @@ function analyticsPayload() {
 
 function courseWorkspacePayload(init?: RequestInit) {
   const body = JSON.parse(String(init?.body ?? "{}"));
+  const title = body.course_title ?? "Demo ML Course";
   const lectures = body.lectures?.length ? body.lectures.map((lecture: {
     date: string;
     material_path?: string;
@@ -182,7 +187,7 @@ function courseWorkspacePayload(init?: RequestInit) {
     {
       id: "lecture-03",
       course_id: "demo-ml-course",
-      title: body.lecture_title,
+      title: body.lecture_title ?? "Bayesian Decision Theory",
       date: "2026-06-11",
     },
   ];
@@ -190,7 +195,7 @@ function courseWorkspacePayload(init?: RequestInit) {
     course: {
       access_policy: body.access_policy ?? "tuebingen_enrolled",
       id: "demo-ml-course",
-      title: body.course_title,
+      title,
       professor: "professor-demo",
       term: "Sommer 2026",
     },
