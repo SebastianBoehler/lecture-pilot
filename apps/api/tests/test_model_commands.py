@@ -1,6 +1,6 @@
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.model_commands import read_canvas_commands
-from lecturepilot.models import AgentTurnInput, AttendanceStatus, CanvasState
+from lecturepilot.models import AgentTurnInput, AttendanceStatus, CanvasSectionPlacement, CanvasState
 
 
 def test_missing_generated_section_command_does_not_create_fake_section() -> None:
@@ -95,6 +95,57 @@ def test_model_appended_section_is_not_augmented_with_synthetic_blocks() -> None
 
     assert commands[0].section is not None
     assert [block.type for block in commands[0].section.blocks] == ["paragraph"]
+
+
+def test_model_appended_section_keeps_valid_placement() -> None:
+    turn = _turn("append a supervised learning example")
+
+    commands = read_canvas_commands(
+        {
+            "message": "Added.",
+            "canvas_commands": [
+                {
+                    "type": "append_section",
+                    "placement": {"mode": "before_section", "section_id": "supervised-learning"},
+                    "section": {
+                        "id": "student-supervised-example",
+                        "title": "Supervised example",
+                        "blocks": [{"type": "paragraph", "text": "A labeled-data example."}],
+                    },
+                }
+            ],
+        },
+        turn,
+    )
+
+    assert commands[0].placement == CanvasSectionPlacement(
+        mode="before_section",
+        section_id="supervised-learning",
+    )
+
+
+def test_model_appended_section_defaults_invalid_placement_to_current_focus() -> None:
+    turn = _turn("append a supervised learning example")
+
+    commands = read_canvas_commands(
+        {
+            "message": "Added.",
+            "canvas_commands": [
+                {
+                    "type": "append_section",
+                    "placement": {"mode": "after_section", "section_id": "missing-section"},
+                    "section": {
+                        "id": "student-supervised-example",
+                        "title": "Supervised example",
+                        "blocks": [{"type": "paragraph", "text": "A labeled-data example."}],
+                    },
+                }
+            ],
+        },
+        turn,
+    )
+
+    assert commands[0].placement == CanvasSectionPlacement(section_id="supervised-learning")
 
 
 def test_generated_component_blocks_keep_file_backed_metadata() -> None:

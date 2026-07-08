@@ -104,6 +104,7 @@ def _canvas_command_schema() -> dict[str, Any]:
             "highlight_text": _nullable_string("Short phrase from the highlighted block."),
             "artifact_id": _nullable_string("Artifact id for open_artifact commands."),
             "section": _nullable(_section_schema()),
+            "placement": _nullable(_placement_schema()),
         },
         "required": [
             "type",
@@ -112,7 +113,20 @@ def _canvas_command_schema() -> dict[str, Any]:
             "highlight_text",
             "artifact_id",
             "section",
+            "placement",
         ],
+    }
+
+
+def _placement_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "mode": {"type": "string", "enum": ["after_section", "before_section"]},
+            "section_id": {"type": "string"},
+        },
+        "required": ["mode", "section_id"],
     }
 
 

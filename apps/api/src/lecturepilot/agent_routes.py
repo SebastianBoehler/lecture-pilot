@@ -141,6 +141,11 @@ async def _complete_agent_turn_inner(
 
     if tool_executor is not None and tool_executor.canvas_changed:
         result = _without_generated_section_commands(result)
+    placements = {
+        command.section.id: command.placement
+        for command in result.canvas_commands
+        if command.section and command.placement
+    }
     sections = [command.section for command in result.canvas_commands if command.section]
     if sections:
         try:
@@ -167,6 +172,7 @@ async def _complete_agent_turn_inner(
                 lecture_id=turn.lecture_id,
                 user_id=turn.user_id,
                 sections=sections,
+                placements=placements,
             )
     if tool_executor is not None:
         result = _merge_tool_outputs(result, tool_executor)

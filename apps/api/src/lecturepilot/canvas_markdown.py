@@ -8,9 +8,13 @@ from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSectio
 from lecturepilot.canvas_component_blocks import write_component_sources
 from lecturepilot.canvas_markdown_blocks import block_to_markdown, read_blocks
 
+_PLACEMENT_FILE = "placement.json"
+
 
 class CanvasMarkdownError(RuntimeError):
     pass
+
+
 def write_document_source(document: CanvasDocument, canvas_dir: Path) -> None:
     canvas_dir.mkdir(parents=True, exist_ok=True)
     (canvas_dir / "sections").mkdir(exist_ok=True)
@@ -20,7 +24,11 @@ def write_document_source(document: CanvasDocument, canvas_dir: Path) -> None:
         write_section_source(section, section_path, canvas_dir=canvas_dir)
 
 
-def write_student_sections(canvas_dir: Path, sections: list[CanvasSection]) -> None:
+def write_student_sections(
+    canvas_dir: Path,
+    sections: list[CanvasSection],
+    placements: dict[str, object] | None = None,
+) -> None:
     student_dir = canvas_dir / "student"
     student_dir.mkdir(parents=True, exist_ok=True)
     for section in sections:
@@ -29,15 +37,20 @@ def write_student_sections(canvas_dir: Path, sections: list[CanvasSection]) -> N
             section.id,
         )
         write_section_source(section, path, canvas_dir=canvas_dir)
+    if placements is not None:
+        _write_section_placements(canvas_dir, placements)
+
+
+def read_student_section_placements(canvas_dir: Path) -> dict[str, dict[str, str]]:
+    return _read_section_placements(canvas_dir)
 
 
 def read_document_source(canvas_dir: Path) -> CanvasDocument:
     manifest = _read_frontmatter((canvas_dir / "index.md").read_text(encoding="utf-8"))[0]
-    sections = _merged_sections(
-        [
-            *_read_section_dir(canvas_dir / "sections", manifest),
-            *_read_section_dir(canvas_dir / "student", manifest),
-        ]
+    sections = _placed_sections(
+        _read_section_dir(canvas_dir / "sections", manifest),
+        _read_section_dir(canvas_dir / "student", manifest),
+        _read_section_placements(canvas_dir),
     )
     return CanvasDocument(
         id=_required(manifest, "id"),
@@ -116,6 +129,85 @@ def _read_section(path: Path, manifest: dict[str, str]) -> CanvasSection:
             components_dir=path.parent.parent / "components",
         ),
     )
+
+
+def _read_section_placements(canvas_dir: Path) -> dict[str, dict[str, str]]:
+    path = canvas_dir / _PLACEMENT_FILE
+    if not path.exists():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    return {
+        str(section_id): {"mode": str(value["mode"]), "section_id": str(value["section_id"])}
+        for section_id, value in payload.items()
+        if isinstance(value, dict)
+        and value.get("mode") in {"after_section", "before_section"}
+        and isinstance(value.get("section_id"), str)
+    }
+
+
+def _write_section_placements(canvas_dir: Path, placements: dict[str, object]) -> None:
+    existing = _read_section_placements(canvas_dir)
+    for section_id, placement in placements.items():
+        value = _placement_value(placement)
+        if value is None:
+            existing.pop(section_id, None)
+        else:
+            existing[section_id] = value
+    path = canvas_dir / _PLACEMENT_FILE
+    if not existing:
+        path.unlink(missing_ok=True)
+        return
+    path.write_text(json.dumps(existing, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _placement_value(placement: object) -> dict[str, str] | None:
+    mode = getattr(placement, "mode", None)
+    section_id = getattr(placement, "section_id", None)
+    if isinstance(placement, dict):
+        mode = placement.get("mode")
+        section_id = placement.get("section_id")
+    if mode not in {"after_section", "before_section"} or not isinstance(section_id, str):
+        return None
+    return {"mode": str(mode), "section_id": section_id}
+
+
+def _placed_sections(
+    base_sections: list[CanvasSection],
+    student_sections: list[CanvasSection],
+    placements: dict[str, dict[str, str]],
+) -> list[CanvasSection]:
+    result = _merged_sections(base_sections)
+    unplaced: list[CanvasSection] = []
+    for section in _merged_sections(student_sections):
+        placement = placements.get(section.id)
+        insert_at = _placement_index(result, placement, placements) if placement else None
+        if insert_at is None:
+            unplaced.append(section)
+        else:
+            result.insert(insert_at, section)
+    return _merged_sections([*result, *unplaced])
+
+
+def _placement_index(
+    sections: list[CanvasSection],
+    placement: dict[str, str],
+    placements: dict[str, dict[str, str]],
+) -> int | None:
+    for index, section in enumerate(sections):
+        if section.id != placement["section_id"]:
+            continue
+        if placement["mode"] == "before_section":
+            return index
+        insert_at = index + 1
+        while insert_at < len(sections) and placements.get(sections[insert_at].id) == placement:
+            insert_at += 1
+        return insert_at
+    return None
 
 
 def _read_frontmatter(text: str) -> tuple[dict[str, object], str]:

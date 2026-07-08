@@ -7,6 +7,7 @@ from lecturepilot.canvas_models import CanvasDocument, CanvasSection
 from lecturepilot.canvas_asset_store import CanvasAssetError, CanvasAssetStore
 from lecturepilot.canvas_markdown import (
     read_document_source,
+    read_student_section_placements,
     write_document_source,
     write_student_sections,
 )
@@ -59,6 +60,7 @@ class CanvasWorkspace:
         canvas_dir = self._canvas_dir(course_id, lecture_id, user_id)
         manifest_path = canvas_dir / "index.md"
         if not manifest_path.exists() or self._is_stale_canvas_manifest(manifest_path):
+            student_placements = read_student_section_placements(canvas_dir)
             student_sections = self._read_student_sections(
                 course_id=course_id,
                 lecture_id=lecture_id,
@@ -74,7 +76,7 @@ class CanvasWorkspace:
                 document = document.model_copy(
                     update={"sections": merge_sections([*document.sections, *student_sections])}
                 )
-            self._write_initial_source(document, canvas_dir)
+            self._write_initial_source(document, canvas_dir, student_placements=student_placements)
 
         document = apply_course_media(normalize_learning_support(read_document_source(canvas_dir)), self.material_root)
         document = apply_course_media(document, self.course_media_root(course_id))
@@ -96,9 +98,10 @@ class CanvasWorkspace:
         lecture_id: str,
         user_id: str,
         sections: list[CanvasSection],
+        placements: dict[str, object] | None = None,
     ) -> CanvasDocument:
         document = self.read_document(course_id=course_id, lecture_id=lecture_id, user_id=user_id)
-        write_student_sections(Path(document.workspace_path).parent, sections)
+        write_student_sections(Path(document.workspace_path).parent, sections, placements=placements)
         document = read_document_source(Path(document.workspace_path).parent)
         self._write_compiled_document(document, course_id, lecture_id, user_id)
         return document
@@ -310,7 +313,13 @@ class CanvasWorkspace:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(document.model_dump(), indent=2), encoding="utf-8")
 
-    def _write_initial_source(self, document: CanvasDocument, canvas_dir: Path) -> None:
+    def _write_initial_source(
+        self,
+        document: CanvasDocument,
+        canvas_dir: Path,
+        *,
+        student_placements: dict[str, object] | None = None,
+    ) -> None:
         base_sections = [section for section in document.sections if not is_student_section(section)]
         student_sections = [section for section in document.sections if is_student_section(section)]
         sections_dir = canvas_dir / "sections"
@@ -319,7 +328,7 @@ class CanvasWorkspace:
                 path.unlink(missing_ok=True)
         write_document_source(document.model_copy(update={"sections": base_sections}), canvas_dir)
         if student_sections:
-            write_student_sections(canvas_dir, student_sections)
+            write_student_sections(canvas_dir, student_sections, placements=student_placements)
 
     def _lecture_workspace_dir(self, course_id: str, lecture_id: str, user_id: str) -> Path:
         return self.layout.user_lecture_root(user_id, course_id, lecture_id)

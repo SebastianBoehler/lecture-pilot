@@ -50,6 +50,11 @@ export type CanvasSection = {
   blocks: CanvasBlock[];
 };
 
+export type CanvasSectionPlacement = {
+  mode: "after_section" | "before_section";
+  section_id: string;
+};
+
 export type CanvasDocument = {
   id: string;
   import_version?: number;

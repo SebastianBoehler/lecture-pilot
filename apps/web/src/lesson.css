@@ -18,8 +18,73 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   margin-bottom: 14px;
   color: var(--color-text-secondary);
+}
+
+.lesson-toolbar-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.workspace-reset-menu {
+  position: relative;
+}
+
+.workspace-reset-menu summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  list-style: none;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-primary);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.workspace-reset-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.workspace-reset-menu summary[aria-disabled="true"] {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.workspace-reset-form {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 8px);
+  left: 0;
+  display: grid;
+  gap: 10px;
+  width: min(260px, calc(100vw - 48px));
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--color-bg-primary);
+  box-shadow: 0 16px 36px color-mix(in srgb, var(--color-text-primary) 14%, transparent);
+}
+
+.workspace-reset-form label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+}
+
+.form-status {
+  margin: 0;
+  color: var(--color-accent-primary);
+  font-size: 14px;
 }
 
 .canvas {

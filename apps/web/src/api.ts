@@ -3,6 +3,7 @@ import type {
   CanvasPublicationResult,
   CanvasDocument,
   CanvasSection,
+  CanvasSectionPlacement,
   ExamReadinessAnswer,
   ExamReadinessAttemptResult,
   ExamReadinessCheck,
@@ -21,6 +22,7 @@ export type CanvasCommand = {
   highlight_text?: string | null;
   artifact_id?: string | null;
   section?: CanvasSection | null;
+  placement?: CanvasSectionPlacement | null;
 };
 
 export type AgentTurnResult = {

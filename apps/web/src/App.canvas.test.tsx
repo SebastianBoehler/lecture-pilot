@@ -97,6 +97,7 @@ describe("LecturePilot canvas interactions", () => {
             type: "append_section",
             section_id: "student-soccer-bayes-example",
             section: soccerCanvasSection(),
+            placement: { mode: "after_section", section_id: "bayes-formula" },
           }],
           quality_gate: null,
           artifacts: [],
@@ -115,6 +116,33 @@ describe("LecturePilot canvas interactions", () => {
 
     const section = await screen.findByRole("region", { name: /soccer scouting example/i });
     expect(section).toHaveClass("is-learner-generated");
+    const sectionIds = Array.from(document.querySelectorAll(".canvas-section")).map((item) => item.id);
+    expect(sectionIds[sectionIds.indexOf("bayes-formula") + 1]).toBe("student-soccer-bayes-example");
+  });
+
+  it("resets selected learner workspace scopes from the lecture toolbar", async () => {
+    const user = userEvent.setup();
+    const fetchMock = mockLoginFetch({ published: true });
+    vi.stubGlobal("confirm", vi.fn(() => true));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+
+    await logIn(user);
+    await openLecture03FromDashboard(user);
+    await user.click(screen.getByText(/^Reset$/));
+    await user.click(screen.getByRole("button", { name: /reset workspace/i }));
+
+    await waitFor(() => {
+      const resetCall = fetchMock.mock.calls.find(([url]) => String(url).includes("/learner-workspace/reset"));
+      expect(resetCall).toBeDefined();
+      expect(JSON.parse(String(resetCall?.[1]?.body))).toMatchObject({
+        user_id: "student01",
+        reset_canvas: true,
+        reset_course_memory: true,
+        reset_progress: false,
+      });
+    });
+    expect(await screen.findByText(/workspace reset/i)).toBeInTheDocument();
   });
 
   it("renders prefab component quizzes inside the canvas", async () => {

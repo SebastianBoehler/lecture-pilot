@@ -5,7 +5,13 @@ import re
 from lecturepilot.model_section_commands import (
     read_generated_section,
 )
-from lecturepilot.models import AgentTurnInput, CanvasCommand, QualityGateDecision, QualityGateStatus
+from lecturepilot.models import (
+    AgentTurnInput,
+    CanvasCommand,
+    CanvasSectionPlacement,
+    QualityGateDecision,
+    QualityGateStatus,
+)
 
 _SAFE_ID_RE = re.compile(r"[a-z0-9][a-z0-9-]{0,119}")
 
@@ -56,7 +62,8 @@ def _read_command(raw_command: dict, turn: AgentTurnInput) -> CanvasCommand:
     if command_type in {"append_section", "update_section"}:
         section = read_generated_section(raw_command)
         if section is not None:
-            return CanvasCommand(type=command_type, section_id=section.id, section=section)
+            placement = _read_placement(raw_command, turn, default_to_focus=command_type == "append_section")
+            return CanvasCommand(type=command_type, section_id=section.id, section=section, placement=placement)
     return CanvasCommand(type="focus_section", section_id=_read_section_id(raw_command.get("section_id"), turn))
 
 
@@ -81,6 +88,29 @@ def _read_section_id(requested: object, turn: AgentTurnInput) -> str:
         if not allowed or requested in allowed:
             return requested
     return _default_section_id(turn)
+
+
+def _read_placement(
+    raw_command: dict,
+    turn: AgentTurnInput,
+    *,
+    default_to_focus: bool,
+) -> CanvasSectionPlacement | None:
+    raw_placement = raw_command.get("placement")
+    mode = "after_section"
+    requested = None
+    if isinstance(raw_placement, dict):
+        requested = raw_placement.get("section_id")
+        if raw_placement.get("mode") in {"after_section", "before_section"}:
+            mode = str(raw_placement["mode"])
+    if requested is None:
+        requested = raw_command.get("anchor_section_id")
+    if requested is None and default_to_focus:
+        requested = turn.canvas_state.focused_section_id
+    section_id = _read_section_id(requested, turn)
+    if section_id == _default_section_id(turn) and requested != section_id and not default_to_focus:
+        return None
+    return CanvasSectionPlacement(mode=mode, section_id=section_id)
 
 
 def _default_section_id(turn: AgentTurnInput) -> str:

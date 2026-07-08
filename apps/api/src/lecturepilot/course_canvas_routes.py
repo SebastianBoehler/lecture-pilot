@@ -12,6 +12,11 @@ from lecturepilot.api_auth import (
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.course_media import apply_course_media, course_media_evidence
+from lecturepilot.learner_workspace_reset import (
+    LearnerWorkspaceResetInput,
+    LearnerWorkspaceResetResult,
+    reset_learner_workspace,
+)
 from lecturepilot.models import CanvasPublicationResult, Lecture
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.providers import ProviderConfigurationError
@@ -138,6 +143,26 @@ def register_course_canvas_routes(
         except CanvasWorkspaceError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         return document.model_dump()
+
+    @app.post(
+        "/courses/{course_id}/learner-workspace/reset",
+        response_model=LearnerWorkspaceResetResult,
+    )
+    def reset_course_learner_workspace(
+        course_id: str,
+        request: LearnerWorkspaceResetInput,
+        context: TenantContext = Depends(request_context),
+    ) -> LearnerWorkspaceResetResult:
+        require_learner_workspace_access(
+            context,
+            learner_user_id=request.user_id,
+            course_tenant_id=course_tenant_id,
+        )
+        return reset_learner_workspace(
+            layout=app.state.canvas_workspace.layout,
+            course_id=course_id,
+            request=request,
+        )
 
 
 def _publication_result(

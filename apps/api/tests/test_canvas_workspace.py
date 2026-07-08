@@ -5,6 +5,7 @@ import pytest
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace, CanvasWorkspaceError
 from lecturepilot.latex_canvas_importer import CANVAS_IMPORT_VERSION
+from lecturepilot.models import CanvasSectionPlacement
 from canvas_workspace_fixtures import course_canvas, write_course_source
 
 
@@ -114,6 +115,56 @@ def test_student_canvas_sections_are_isolated(tmp_path: Path) -> None:
     student_section = alice_canvas_dir / "student" / "90-student-soccer-bayes-example.md"
     assert student_section.exists()
     assert "A student-specific transfer example." in student_section.read_text(encoding="utf-8")
+
+
+def test_student_canvas_sections_keep_persisted_placement(tmp_path: Path) -> None:
+    material_root = write_course_source(tmp_path)
+    workspace = CanvasWorkspace(
+        workspace_root=tmp_path / "workspaces",
+        material_root=material_root,
+    )
+    section = CanvasSection(
+        id="student-posterior-example",
+        title="Posterior example",
+        blocks=[
+            CanvasBlock(
+                id="student-posterior-example-p-1",
+                type="paragraph",
+                text="A placed student-specific example.",
+            )
+        ],
+    )
+    second_section = CanvasSection(
+        id="student-risk-example",
+        title="Risk example",
+        blocks=[
+            CanvasBlock(
+                id="student-risk-example-p-1",
+                type="paragraph",
+                text="A second placed student-specific example.",
+            )
+        ],
+    )
+
+    document = workspace.apply_sections(
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        user_id="alice",
+        sections=[section, second_section],
+        placements={
+            section.id: CanvasSectionPlacement(section_id="bayes-formula"),
+            second_section.id: CanvasSectionPlacement(section_id="bayes-formula"),
+        },
+    )
+    reloaded = workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="alice")
+
+    assert _next_section_id(document, "bayes-formula") == section.id
+    assert _next_section_id(document, section.id) == second_section.id
+    assert _next_section_id(reloaded, "bayes-formula") == section.id
+    assert _next_section_id(reloaded, section.id) == second_section.id
+    assert "student-posterior-example" in (
+        Path(document.workspace_path).parent / "placement.json"
+    ).read_text(encoding="utf-8")
 
 
 def test_student_asset_logical_paths_resolve_to_workspace_assets(tmp_path: Path) -> None:
@@ -318,3 +369,9 @@ def test_asset_paths_stay_inside_browser_image_allowlist(tmp_path: Path, asset_p
             lecture_id="lecture-03",
             asset_path=asset_path,
         )
+
+
+def _next_section_id(document: CanvasDocument, section_id: str) -> str | None:
+    ids = [section.id for section in document.sections]
+    index = ids.index(section_id)
+    return ids[index + 1] if index + 1 < len(ids) else None

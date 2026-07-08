@@ -107,6 +107,7 @@ def test_agent_turn_focuses_bayes_section(monkeypatch) -> None:
         "highlight_text": None,
         "artifact_id": None,
         "section": None,
+        "placement": None,
     }
     assert "real model" in payload["message"].lower()
 

@@ -6,6 +6,7 @@ import { NotesPanel, OutlinePanel } from "./LessonSidePanels";
 import { recordQuizAnswer } from "./analyticsApi";
 import { TutorDrawer } from "./TutorDrawer";
 import { WorkspaceFilesPanel } from "./WorkspaceFilesPanel";
+import { WorkspaceResetControl, type WorkspaceResetSelection } from "./WorkspaceResetControl";
 import type {
   CanvasDocument,
   CanvasBlock,
@@ -35,6 +36,7 @@ export function LessonWorkspace({
   onBack,
   onSendMessage,
   onTogglePanel,
+  onResetWorkspace,
 }: {
   lecture: Lecture;
   courseId: string;
@@ -53,6 +55,7 @@ export function LessonWorkspace({
   onBack: () => void;
   onSendMessage: (message: string) => Promise<void>;
   onTogglePanel: (mode: LessonPanelMode) => void;
+  onResetWorkspace: (options: WorkspaceResetSelection) => Promise<void>;
 }) {
   const layoutClass = panelMode ? "lesson-layout panel-open" : "lesson-layout";
   const [activeAnchorId, setActiveAnchorId] = useState<DocumentAnchorId | null>(null);
@@ -117,10 +120,13 @@ export function LessonWorkspace({
     <main className={layoutClass}>
       <section className="lesson-main">
         <div className="lesson-toolbar">
-          <button className="ghost-button" type="button" onClick={onBack}>
-            <ChevronLeft size={17} />
-            {backLabel}
-          </button>
+          <div className="lesson-toolbar-actions">
+            <button className="ghost-button" type="button" onClick={onBack}>
+              <ChevronLeft size={17} />
+              {backLabel}
+            </button>
+            <WorkspaceResetControl disabled={!canvasDocument} onReset={onResetWorkspace} />
+          </div>
           <span>{lecture.date}</span>
         </div>
         {canvasError ? <p className="form-error">{canvasError}</p> : null}

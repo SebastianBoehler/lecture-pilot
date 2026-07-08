@@ -211,6 +211,11 @@ class CanvasState(BaseModel):
     active_artifact_id: str | None = None
 
 
+class CanvasSectionPlacement(BaseModel):
+    mode: Literal["after_section", "before_section"] = "after_section"
+    section_id: str = Field(min_length=1, max_length=120)
+
+
 class UserMemoryContext(BaseModel):
     global_notes: str = Field(default="", max_length=4000)
     course_notes: str = Field(default="", max_length=4000)
@@ -250,6 +255,7 @@ class CanvasCommand(BaseModel):
     highlight_text: str | None = Field(default=None, max_length=160)
     artifact_id: str | None = None
     section: CanvasSection | None = None
+    placement: CanvasSectionPlacement | None = None
 
 
 class ArtifactCommand(BaseModel):

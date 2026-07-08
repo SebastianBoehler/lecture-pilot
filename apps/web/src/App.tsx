@@ -22,6 +22,7 @@ import { Dashboard } from "./Dashboard";
 import { readDemoWorkspaceCourse, writeDemoWorkspaceCourse } from "./demoWorkspaceAccess";
 import { developmentWorkspaceCourse } from "./devWorkspaceAccess";
 import { draftPreviewUrl } from "./draftPreviewUrl";
+import { resetLearnerWorkspace } from "./learnerWorkspaceApi";
 import { LessonWorkspace } from "./LessonWorkspace";
 import { LoginView } from "./LoginView";
 import { clearSavedFlow } from "./professorBuilderState";
@@ -34,6 +35,7 @@ import { requestedTutorModel } from "./tutorModels";
 import { useInitialDraftPreview } from "./useInitialDraftPreview";
 import { usePublishedLectures } from "./usePublishedLectures";
 import { useTutorModelPreference } from "./useTutorModelPreference";
+import type { WorkspaceResetSelection } from "./WorkspaceResetControl";
 import type {
   Attendance,
   CanvasDocument,
@@ -153,7 +155,7 @@ function App() {
     for (const command of result.canvas_commands) {
       const section = command.section;
       if ((command.type === "append_section" || command.type === "update_section") && section) {
-        setCanvasDocument((current) => applyCanvasSection(current, section));
+        setCanvasDocument((current) => applyCanvasSection(current, section, command.placement));
         generatedSectionId = command.section_id ?? section.id;
       }
       if (command.type === "focus_section" && command.section_id) {
@@ -251,6 +253,28 @@ function App() {
     if (selectedLecture.id === lectureId) {
       setSelectedLecture((current) => ({ ...current, attendance }));
     }
+  }
+
+  async function handleResetWorkspace(options: WorkspaceResetSelection) {
+    const activeSession = session ?? localDemoSession;
+    await resetLearnerWorkspace(
+      selectedCourseId,
+      { user_id: lessonUserId, ...options },
+      activeSession,
+    );
+    if (options.reset_progress) {
+      setAvailableLectures((current) => current.map((lecture) => ({ ...lecture, attendance: "unknown" })));
+      setSelectedLecture((current) => ({ ...current, attendance: "unknown" }));
+    }
+    const document = await getLectureCanvas(selectedCourseId, selectedLecture.id, lessonUserId, activeSession);
+    setCanvasDocument(document);
+    setCanvasError(null);
+    setFocusedSectionId(document.sections[0]?.id ?? "bayesian-decision-theory-the-aim");
+    setHighlightedBlockId(null);
+    setHighlightedText(null);
+    setMessages(initialMessagesForAttendance(options.reset_progress ? "unknown" : selectedLecture.attendance));
+    setLastTutorModel(null);
+    setNavigationVersion((current) => current + 1);
   }
 
   const courseManagerSession = canManageCourses(session) ? session : null;
@@ -384,6 +408,7 @@ function App() {
             setPanelMode(null);
           }}
           onSendMessage={handleTutorMessage}
+          onResetWorkspace={handleResetWorkspace}
           onTogglePanel={(mode) => {
             setPanelMode((current) => (current === mode ? null : mode));
           }}

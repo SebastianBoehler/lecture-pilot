@@ -1,16 +1,30 @@
 import type { AgentTurnResult } from "./api";
-import type { CanvasDocument, CanvasSection, ChatMessage } from "./types";
+import type { CanvasDocument, CanvasSection, CanvasSectionPlacement, ChatMessage } from "./types";
 
-export function applyCanvasSection(document: CanvasDocument | null, section: CanvasSection) {
+export function applyCanvasSection(
+  document: CanvasDocument | null,
+  section: CanvasSection,
+  placement?: CanvasSectionPlacement | null,
+) {
   if (!document) {
     return document;
   }
   const sectionIndex = document.sections.findIndex((candidate) => candidate.id === section.id);
-  if (sectionIndex === -1) {
-    return { ...document, sections: [...document.sections, section] };
+  if (sectionIndex !== -1 && !placement) {
+    const sections = [...document.sections];
+    sections[sectionIndex] = section;
+    return { ...document, sections };
   }
-  const sections = [...document.sections];
-  sections[sectionIndex] = section;
+  const sections = document.sections.filter((candidate) => candidate.id !== section.id);
+  if (!placement) {
+    return { ...document, sections: [...sections, section] };
+  }
+  const anchorIndex = sections.findIndex((candidate) => candidate.id === placement.section_id);
+  if (anchorIndex === -1) {
+    return { ...document, sections: [...sections, section] };
+  }
+  const insertIndex = placement.mode === "before_section" ? anchorIndex : anchorIndex + 1;
+  sections.splice(insertIndex, 0, section);
   return { ...document, sections };
 }
 

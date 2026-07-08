@@ -8,6 +8,7 @@ from lecturepilot.models import (
     AgentTurnResult,
     AttendanceStatus,
     CanvasCommand,
+    CanvasSectionPlacement,
     QualityGateDecision,
     QualityGateStatus,
 )
@@ -35,7 +36,12 @@ def run_local_preview_turn(turn: AgentTurnInput) -> AgentTurnResult:
                 "and focused it. Use it to explain posterior, risk, and the final decision."
             ),
             canvas_commands=[
-                CanvasCommand(type="append_section", section_id=section.id, section=section),
+                CanvasCommand(
+                    type="append_section",
+                    section_id=section.id,
+                    section=section,
+                    placement=CanvasSectionPlacement(section_id="bayes-formula"),
+                ),
                 CanvasCommand(type="focus_section", section_id=section.id),
                 CanvasCommand(
                     type="highlight_span",
