@@ -10,6 +10,7 @@ from lecturepilot.canvas_markdown import (
     write_document_source,
     write_student_sections,
 )
+from lecturepilot.canvas_learning_support import normalize_learning_support
 from lecturepilot.canvas_sections import merge_sections
 from lecturepilot.canvas_signatures import official_canvas_signature, is_student_section
 from lecturepilot.canvas_workspace_config import (
@@ -75,7 +76,7 @@ class CanvasWorkspace:
                 )
             self._write_initial_source(document, canvas_dir)
 
-        document = apply_course_media(read_document_source(canvas_dir), self.material_root)
+        document = apply_course_media(normalize_learning_support(read_document_source(canvas_dir)), self.material_root)
         document = apply_course_media(document, self.course_media_root(course_id))
         document = resolve_student_asset_refs(
             document,
@@ -242,7 +243,7 @@ class CanvasWorkspace:
         document = self.course_canvas_store.read_draft(course_id=course_id, lecture_id=lecture_id)
         if document is None:
             raise CanvasWorkspaceError("No canvas draft exists for this lecture.")
-        document = apply_course_media(document, self.material_root)
+        document = apply_course_media(normalize_learning_support(document), self.material_root)
         return apply_course_media(document, self.course_media_root(course_id))
 
     def write_course_canvas_draft(self, document: CanvasDocument) -> CanvasDocument:

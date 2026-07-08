@@ -6,6 +6,7 @@ import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 
+from lecturepilot.canvas_learning_support import normalize_learning_support
 from lecturepilot.canvas_markdown import read_document_source, write_document_source
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.storage_layout import StorageLayout
@@ -26,31 +27,37 @@ class CourseCanvasStore:
         canvas_dir = self._read_path(course_id, lecture_id)
         if canvas_dir is None:
             return None
-        return read_document_source(canvas_dir).model_copy(update={"workspace_path": workspace_path})
+        return normalize_learning_support(read_document_source(canvas_dir)).model_copy(
+            update={"workspace_path": workspace_path}
+        )
 
     def write(self, document: CanvasDocument) -> CanvasDocument:
         canvas_dir = self.path(document.course_id, document.lecture_id)
         _clear_sections(canvas_dir)
         write_document_source(
-            document.model_copy(update={"workspace_path": str(canvas_dir / "index.md")}),
+            normalize_learning_support(document).model_copy(
+                update={"workspace_path": str(canvas_dir / "index.md")}
+            ),
             canvas_dir,
         )
-        return read_document_source(canvas_dir)
+        return normalize_learning_support(read_document_source(canvas_dir))
 
     def read_draft(self, *, course_id: str, lecture_id: str) -> CanvasDocument | None:
         draft_dir = self.draft_path(course_id, lecture_id)
         if not (draft_dir / "index.md").exists():
             return None
-        return read_document_source(draft_dir)
+        return normalize_learning_support(read_document_source(draft_dir))
 
     def write_draft(self, document: CanvasDocument) -> CanvasDocument:
         draft_dir = self.draft_path(document.course_id, document.lecture_id)
         _replace_canvas_dir(draft_dir)
         write_document_source(
-            document.model_copy(update={"workspace_path": str(draft_dir / "index.md")}),
+            normalize_learning_support(document).model_copy(
+                update={"workspace_path": str(draft_dir / "index.md")}
+            ),
             draft_dir,
         )
-        return read_document_source(draft_dir)
+        return normalize_learning_support(read_document_source(draft_dir))
 
     def publish_draft(self, *, course_id: str, lecture_id: str, published_by: str) -> dict:
         draft_dir = self.draft_path(course_id, lecture_id)
@@ -61,7 +68,7 @@ class CourseCanvasStore:
         version = int(previous.get("version", 0)) + 1 if previous else 1
         _replace_canvas_dir(published_dir)
         shutil.copytree(draft_dir, published_dir, dirs_exist_ok=True)
-        document = read_document_source(published_dir)
+        document = normalize_learning_support(read_document_source(published_dir))
         write_document_source(
             document.model_copy(update={"workspace_path": str(published_dir / "index.md")}),
             published_dir,

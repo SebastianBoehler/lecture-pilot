@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.canvas_learning_support import support_check_prompt, support_study_items, support_why_text
 
 
 MIN_TEACHING_BLOCKS = 4
@@ -75,30 +76,18 @@ def _support_block(section: CanvasSection, index: int, ids: set[str]) -> CanvasB
         return CanvasBlock(
             id=block_id,
             type="paragraph",
-            text=(
-                f"**Why this matters.** {section.title} turns the source material into a decision step. "
-                f"The key cue is {anchor}. Use it to identify the quantity being estimated, state what "
-                "evidence changes it, and connect the result to the decision the learner must make."
-            ),
+            text=support_why_text(section.title, anchor),
         )
     if index % 3 == 2:
         return CanvasBlock(
             id=block_id,
             type="list",
-            items=[
-                "Name the source variable or formula before interpreting it.",
-                "Explain which part comes from evidence and which part is a modeling choice.",
-                "Check how the conclusion would change under a different cost or observation.",
-            ],
+            items=support_study_items(),
         )
     return CanvasBlock(
         id=block_id,
         type="callout",
-        text=(
-            f"Learning checkpoint: use {anchor} to rephrase the section without slide wording. "
-            "A good answer should include the mechanism, a concrete example, and one limitation or "
-            "failure mode."
-        ),
+        text=support_check_prompt(section.title),
     )
 
 

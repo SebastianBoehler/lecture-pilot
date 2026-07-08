@@ -50,6 +50,21 @@ def test_enrichment_completes_thin_sections_before_validation() -> None:
     assert [section.id for section in assessment_sections] == ["topic-2", "topic-4", "topic-5"]
     assert len(quizzes) == 2
     assert enriched.sections[-1].blocks[-1].type == "quiz"
+    callouts = [
+        block.text
+        for section in enriched.sections
+        for block in section.blocks
+        if block.type == "callout"
+    ]
+    assert all("Learning checkpoint: use" not in text for text in callouts if text)
+    assert all("rephrase the section" not in text for text in callouts if text)
+    assert any(text and text.startswith("Check yourself:") for text in callouts)
+    all_text = "\n".join(
+        block.text or "\n".join(block.items)
+        for section in enriched.sections
+        for block in section.blocks
+    )
+    assert "turns the source material into a decision step" not in all_text
 
 
 def test_enrichment_preserves_model_authored_quizzes() -> None:
