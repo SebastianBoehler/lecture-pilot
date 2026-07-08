@@ -86,7 +86,7 @@ def create_app() -> FastAPI:
         lectures=LECTURES,
         course_tenant_id=COURSE_TENANT_ID,
     )
-    register_agent_routes(app, course=COURSE, course_tenant_id=COURSE_TENANT_ID)
+    register_agent_routes(app, course_tenant_id=COURSE_TENANT_ID)
     register_analytics_routes(app, course_tenant_id=COURSE_TENANT_ID)
     register_course_canvas_routes(
         app,

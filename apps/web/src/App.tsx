@@ -16,23 +16,14 @@ import {
 } from "./agentTurnUi";
 import { AppFooter } from "./AppFooter";
 import { AppHeader } from "./AppHeader";
+import { AppRoutes } from "./AppRoutes";
 import { initialMessagesForAttendance, localDemoSession, localProfessorSession } from "./appDefaults";
 import { canManageCourses } from "./authz";
-import { CourseManagementAccessRequired } from "./CourseManagementAccessRequired";
-import { Dashboard } from "./Dashboard";
 import { clearDemoWorkspaceCourse, readDemoWorkspaceCourse, writeDemoWorkspaceCourse } from "./demoWorkspaceAccess";
 import { developmentWorkspaceCourse } from "./devWorkspaceAccess";
-import { draftPreviewUrl } from "./draftPreviewUrl";
 import { resetLearnerWorkspace } from "./learnerWorkspaceApi";
-import { LessonWorkspace } from "./LessonWorkspace";
-import { LoginView } from "./LoginView";
-import { InfoPage } from "./InfoPage";
 import { clearSavedFlow } from "./professorBuilderState";
 import { useStoredLoginSession } from "./loginSessionStorage";
-import { ProfileView } from "./ProfileView";
-import { ProfessorCourseBuilder } from "./ProfessorCourseBuilder";
-import { ProfessorCourseManagement } from "./ProfessorCourseManagement";
-import { ProfessorCoursePerformance } from "./ProfessorCoursePerformance";
 import { lectures } from "./sampleData";
 import { requestedTutorModel } from "./tutorModels";
 import { useInitialDraftPreview } from "./useInitialDraftPreview";
@@ -290,6 +281,11 @@ function App() {
 
   const courseManagerSession = canManageCourses(session) ? session : null;
 
+  function changeView(nextView: View) {
+    setView(nextView);
+    setPanelMode(null);
+  }
+
   return (
     <div className="app-shell">
       <AppHeader
@@ -330,122 +326,72 @@ function App() {
         onToggleTheme={() => setTheme(theme === "light" ? "dark" : "light")}
       />
 
-      {view === "login" ? (
-        <LoginView
-          onLogin={(nextSession) => {
-            setSession(nextSession);
-            setView("dashboard");
-            void loadWorkspaceCourse(nextSession);
-          }}
-          onOpenDemo={() => {
-            setSession(localDemoSession);
-            setView("dashboard");
-            void loadWorkspaceCourse(localDemoSession);
-          }}
-          onOpenProfessorDemo={() => {
-            setSession(localProfessorSession);
-            setView("professor");
-            void loadWorkspaceCourse(localProfessorSession);
-          }}
-        />
-      ) : view === "dashboard" ? (
-        <Dashboard
-          lectures={availableLectures}
-          publishedLectureIds={publishedLectureIds}
-          session={session}
-          workspaceCourse={workspaceCourse}
-          onOpen={(lecture) => {
-            void handleOpenLecture(workspaceCourseId, lecture);
-          }}
-          onSetAttendance={handleSetAttendance}
-        />
-      ) : view === "profile" && session ? (
-        <ProfileView
-          modelPreference={tutorModelPreference}
-          session={session}
-          onBack={() => setView("dashboard")}
-          onModelPreferenceChange={setTutorModelPreference}
-        />
-      ) : view === "professor" && courseManagerSession ? (
-        <ProfessorCourseBuilder
-          session={courseManagerSession}
-          onPublishWorkspace={async (courseId, lectureId) => {
-            const result = await publishLectureCanvas(courseId, lectureId, courseManagerSession);
-            setPublishedLectureIds((current) => Array.from(new Set([...current, lectureId])));
-            return result;
-          }}
-          onWorkspacePublished={(course, nextLectures) => {
-            if (!nextLectures.length) return;
-            writeDemoWorkspaceCourse(course);
-            setWorkspaceCourse(course);
-            setWorkspaceCourseId(course.id);
-            setSelectedCourseId(course.id);
-            setAvailableLectures(nextLectures);
-            setSelectedLecture((current) => nextLectures.find((lecture) => lecture.id === current.id) ?? nextLectures[0]);
-            setPublishedLectureIds(nextLectures.map((lecture) => lecture.id));
-          }}
-          previewWorkspaceUrl={draftPreviewUrl}
-          publishedLectureIds={publishedLectureIds}
-        />
-      ) : view === "course-management" && courseManagerSession ? (
-        <ProfessorCourseManagement
-          session={courseManagerSession}
-          onWorkspaceDeleted={handleWorkspaceDeleted}
-        />
-      ) : view === "performance" && courseManagerSession ? (
-        <ProfessorCoursePerformance
-          lectures={availableLectures}
-          publishedLectureIds={publishedLectureIds}
-          session={courseManagerSession}
-          workspaceCourse={workspaceCourse}
-        />
-      ) : view === "performance" ? (
-        <CourseManagementAccessRequired
-          label="Course performance"
-          onBack={() => setView(session ? "dashboard" : "login")}
-        />
-      ) : view === "course-management" ? (
-        <CourseManagementAccessRequired
-          label="Course management"
-          onBack={() => setView(session ? "dashboard" : "login")}
-        />
-      ) : view === "professor" ? (
-        <CourseManagementAccessRequired
-          label="Course management"
-          onBack={() => setView(session ? "dashboard" : "login")}
-        />
-      ) : view === "how-it-works" || view === "privacy" ? (
-        <InfoPage
-          kind={view}
-          onBack={() => setView(session ? "dashboard" : "login")}
-        />
-      ) : (
-        <LessonWorkspace
-          canvasDocument={canvasDocument}
-          canvasError={canvasError}
-          courseId={selectedCourseId}
-          focusedSectionId={focusedSectionId}
-          highlightedBlockId={highlightedBlockId}
-          highlightedText={highlightedText}
-          lecture={selectedLecture}
-          messages={messages}
-          session={session ?? localDemoSession}
-          tutorModel={lastTutorModel ?? requestedTutorModel(tutorModelPreference)}
-          navigationVersion={navigationVersion}
-          panelMode={panelMode}
-          userId={lessonUserId}
-          backLabel={lessonBackView === "professor" ? "Course builder" : "Dashboard"}
-          onBack={() => {
-            setView(lessonBackView);
-            setPanelMode(null);
-          }}
-          onSendMessage={handleTutorMessage}
-          onResetWorkspace={handleResetWorkspace}
-          onTogglePanel={(mode) => {
-            setPanelMode((current) => (current === mode ? null : mode));
-          }}
-        />
-      )}
+      <AppRoutes
+        availableLectures={availableLectures}
+        canvasDocument={canvasDocument}
+        canvasError={canvasError}
+        courseManagerSession={courseManagerSession}
+        focusedSectionId={focusedSectionId}
+        highlightedBlockId={highlightedBlockId}
+        highlightedText={highlightedText}
+        lastTutorModel={lastTutorModel}
+        lessonBackView={lessonBackView}
+        lessonUserId={lessonUserId}
+        messages={messages}
+        navigationVersion={navigationVersion}
+        panelMode={panelMode}
+        publishedLectureIds={publishedLectureIds}
+        selectedCourseId={selectedCourseId}
+        selectedLecture={selectedLecture}
+        session={session}
+        tutorModelPreference={tutorModelPreference}
+        view={view}
+        workspaceCourse={workspaceCourse}
+        workspaceCourseId={workspaceCourseId}
+        onLogin={(nextSession) => {
+          setSession(nextSession);
+          changeView("dashboard");
+          void loadWorkspaceCourse(nextSession);
+        }}
+        onOpenDemo={() => {
+          setSession(localDemoSession);
+          changeView("dashboard");
+          void loadWorkspaceCourse(localDemoSession);
+        }}
+        onOpenProfessorDemo={() => {
+          setSession(localProfessorSession);
+          changeView("professor");
+          void loadWorkspaceCourse(localProfessorSession);
+        }}
+        onOpenLecture={(courseId, lecture) => {
+          void handleOpenLecture(courseId, lecture);
+        }}
+        onSetAttendance={handleSetAttendance}
+        onModelPreferenceChange={setTutorModelPreference}
+        onPublishWorkspace={async (courseId, lectureId) => {
+          if (!courseManagerSession) throw new Error("Course management requires a professor account.");
+          const result = await publishLectureCanvas(courseId, lectureId, courseManagerSession);
+          setPublishedLectureIds((current) => Array.from(new Set([...current, lectureId])));
+          return result;
+        }}
+        onWorkspacePublished={(course, nextLectures) => {
+          if (!nextLectures.length) return;
+          writeDemoWorkspaceCourse(course);
+          setWorkspaceCourse(course);
+          setWorkspaceCourseId(course.id);
+          setSelectedCourseId(course.id);
+          setAvailableLectures(nextLectures);
+          setSelectedLecture((current) => nextLectures.find((lecture) => lecture.id === current.id) ?? nextLectures[0]);
+          setPublishedLectureIds(nextLectures.map((lecture) => lecture.id));
+        }}
+        onWorkspaceDeleted={handleWorkspaceDeleted}
+        onViewChange={changeView}
+        onSendMessage={handleTutorMessage}
+        onResetWorkspace={handleResetWorkspace}
+        onTogglePanel={(mode) => {
+          setPanelMode((current) => (current === mode ? null : mode));
+        }}
+      />
       {view !== "lesson" ? (
         <AppFooter
           onOpenHowItWorks={() => setView("how-it-works")}
