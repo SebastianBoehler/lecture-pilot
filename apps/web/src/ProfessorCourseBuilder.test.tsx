@@ -75,9 +75,12 @@ describe("Professor course builder", () => {
     await user.click(screen.getByRole("button", { name: /upload selected materials for this lecture/i }));
     expect(await screen.findByText(/uploaded uploads\/supplement\.md/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /review youtube candidates/i })).toBeInTheDocument();
+    expect(screen.getByText(/selected videos attach to lecture 03/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /04 generate/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /search youtube/i })).toBeEnabled();
-    await user.click(screen.getByRole("button", { name: /search youtube/i }));
+    expect(screen.getByRole("button", { name: /find suggested videos/i })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: /find suggested videos/i }));
+    expect(await screen.findByText(/found 1 suggested youtube candidates from 3 searches/i)).toBeInTheDocument();
     const candidate = await screen.findByLabelText(/bayesian decision theory/i);
     expect(screen.getByRole("link", { name: /^open$/i })).toHaveAttribute(
       "href",
@@ -88,7 +91,7 @@ describe("Professor course builder", () => {
     expect(screen.getByRole("button", { name: /include selected videos/i })).toBeEnabled();
 
     await user.click(screen.getByRole("button", { name: /include selected videos/i }));
-    expect(await screen.findByText(/saved 1 approved video/i)).toBeInTheDocument();
+    expect(await screen.findByText(/saved 1 approved video for lecture 03/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /generate canvas draft/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /generate draft canvas/i }));
@@ -146,13 +149,12 @@ describe("Professor course builder", () => {
       }),
     );
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/admin/courses/demo-ml-course/media/youtube"),
+      expect.stringContaining("/admin/courses/demo-ml-course/lectures/lecture-03/media/youtube"),
       expect.objectContaining({ method: "POST" }),
     );
-    expect(fetchMock).not.toHaveBeenCalledWith(
-      expect.stringContaining("/lectures/lecture-03/media/youtube"),
-      expect.anything(),
-    );
+    expect(fetchMock.mock.calls.some(([url, init]) => (
+      String(url).endsWith("/admin/courses/demo-ml-course/media/youtube") && init?.method === "POST"
+    ))).toBe(false);
   });
 
   it("proposes and applies a dated full-course lecture schedule from materials", async () => {
@@ -184,6 +186,7 @@ describe("Professor course builder", () => {
     await user.click(screen.getByRole("button", { name: /apply lecture schedule/i }));
 
     expect(await screen.findByText(/lecture schedule applied with 2 dated lectures/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/attach selected videos to/i)).toHaveValue("lecture-01");
     const scheduleCall = fetchMock.mock.calls.find((call) => {
       if (typeof call[1]?.body !== "string") return false;
       const body = JSON.parse(call[1].body);

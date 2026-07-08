@@ -73,8 +73,13 @@ export async function uploadCourseMaterial(input: {
   return payload as { path: string; kind: string; size_bytes: number };
 }
 
-export async function searchYoutubeMedia(courseId: string, query: string, session: LoginSession) {
-  const params = new URLSearchParams({ q: query, max_results: "5" });
+export async function searchYoutubeMedia(
+  courseId: string,
+  query: string,
+  session: LoginSession,
+  maxResults = 5,
+) {
+  const params = new URLSearchParams({ q: query, max_results: String(maxResults) });
   const response = await fetch(apiUrl(`/admin/courses/${courseId}/media/youtube/search?${params}`), {
     headers: courseManagerHeaders(session),
   });
@@ -85,10 +90,11 @@ export async function searchYoutubeMedia(courseId: string, query: string, sessio
 
 export async function includeYoutubeMedia(input: {
   courseId: string;
+  lectureId: string;
   video: YoutubeVideoCandidate;
   session: LoginSession;
 }) {
-  const response = await fetch(apiUrl(`/admin/courses/${input.courseId}/media/youtube`), {
+  const response = await fetch(apiUrl(`/admin/courses/${input.courseId}/lectures/${input.lectureId}/media/youtube`), {
     method: "POST",
     headers: { ...courseManagerHeaders(input.session), "Content-Type": "application/json" },
     body: JSON.stringify({ section_id: null, video: input.video }),

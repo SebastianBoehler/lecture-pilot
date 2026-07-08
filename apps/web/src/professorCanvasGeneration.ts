@@ -1,6 +1,6 @@
 import type { CanvasDocument } from "./types";
 
-const CANVAS_DRAFT_CONCURRENCY = 3;
+const CANVAS_DRAFT_CONCURRENCY = 5;
 
 export type CanvasGenerationStatus = "pending" | "generating" | "ready" | "error";
 

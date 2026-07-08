@@ -27,6 +27,11 @@ import { publishLectureRows } from "./professorPublishRows";
 import { useProfessorWorkflowRun } from "./professorWorkflowRun";
 import { lectureFromWorkspace, requireWorkspace } from "./professorWorkspaceView";
 import { uploadDestination } from "./professorUpload";
+import {
+  flattenVideoGroups,
+  type YoutubeCandidateGroup,
+  youtubeSuggestionQueries,
+} from "./professorYoutubeSuggestions";
 import type {
   CanvasDocument,
   CanvasPublicationResult,
@@ -71,7 +76,9 @@ export function ProfessorCourseBuilder({
   const [generationWarnings, setGenerationWarnings] = useState<string[]>([]);
   const [query, setQuery] = useState(savedFlow.query);
   const [videos, setVideos] = useState<YoutubeVideoCandidate[]>([]);
+  const [suggestedVideoGroups, setSuggestedVideoGroups] = useState<YoutubeCandidateGroup[]>([]);
   const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
+  const [mediaLectureId, setMediaLectureId] = useState(savedFlow.workspace?.lectureId ?? "");
   const [mediaIncluded, setMediaIncluded] = useState(false);
   const [mediaReviewed, setMediaReviewed] = useState(false);
   const [scheduleApplied, setScheduleApplied] = useState(setup.target !== "full-course");
@@ -84,6 +91,12 @@ export function ProfessorCourseBuilder({
   const reviewReady = mediaReady || mediaReviewed;
   const reviewAvailable = bundleReady && (setup.target !== "full-course" || scheduleApplied);
   const scheduledLectureIds = lectureSchedule.map((lecture) => lectureIdFromNumber(lecture.number));
+  const mediaTargetLectures = workspace
+    ? setup.target === "full-course"
+      ? workspaceLectures.length ? workspaceLectures : activationLectures(workspace, setup, lectureSchedule)
+      : [lectureFromWorkspace(workspace, setup, lectureSchedule)]
+    : [];
+  const mediaTargetLectureKey = mediaTargetLectures.map((lecture) => lecture.id).join("|");
   const fullCourseLectureIds = setup.target === "full-course" && scheduledLectureIds.length
     ? scheduledLectureIds
     : workspace ? [workspace.lectureId] : [];
@@ -93,6 +106,11 @@ export function ProfessorCourseBuilder({
     setup.courseTitle,
     setup.target === "single-lecture" ? setup.lectureTitle : "machine learning lecture",
   ].filter(Boolean).join(" ");
+  const suggestedQueries = youtubeSuggestionQueries(setup, lectureSchedule);
+  const availableVideos = flattenVideoGroups([
+    ...suggestedVideoGroups,
+    { query: query.trim() || defaultYoutubeQuery, videos },
+  ]);
   const workspacePublished = Boolean(
     workspace && (setup.target === "full-course"
       ? fullCourseLectureIds.length > 0 && fullCoursePublishedCount === fullCourseLectureIds.length
@@ -129,6 +147,14 @@ export function ProfessorCourseBuilder({
     };
   }, [restored, savedFlow]);
   useEffect(() => {
+    if (!mediaTargetLectureKey) {
+      if (mediaLectureId) setMediaLectureId("");
+      return;
+    }
+    const ids = mediaTargetLectureKey.split("|");
+    if (!ids.includes(mediaLectureId)) setMediaLectureId(ids[0]);
+  }, [mediaLectureId, mediaTargetLectureKey]);
+  useEffect(() => {
     if (!restored) return;
     writeSavedFlow({
       setup,
@@ -154,7 +180,9 @@ export function ProfessorCourseBuilder({
     setGenerationProgress([]);
     setGenerationWarnings([]);
     setVideos([]);
+    setSuggestedVideoGroups([]);
     setSelectedVideos(new Set());
+    setMediaLectureId("");
     setMediaIncluded(false);
     setMediaReviewed(false);
     setScheduleApplied(nextSetup.target !== "full-course");
@@ -192,6 +220,7 @@ export function ProfessorCourseBuilder({
               const schedule = setup.target === "full-course" ? lectureSchedule : [];
               const created = await createCourseWorkspace(setup, session, schedule);
               setWorkspace({ courseId: created.course.id, lectureId: created.active_lecture_id });
+              setMediaLectureId(created.active_lecture_id);
               setWorkspaceCourse(created.course);
               setWorkspaceLectures(created.lectures);
               setGeneratedLectureIds([]);
@@ -247,6 +276,7 @@ export function ProfessorCourseBuilder({
               setMediaIncluded(false);
               setMediaReviewed(false);
               setSelectedVideos(new Set());
+              setSuggestedVideoGroups([]);
               if (setup.target === "full-course") setScheduleApplied(false);
               if (setup.target !== "full-course") setActiveStep("review");
               if (uploaded.length === 1) return `Uploaded ${uploaded[0].path} as ${uploaded[0].kind}.`;
@@ -263,6 +293,7 @@ export function ProfessorCourseBuilder({
               setMediaIncluded(false);
               setMediaReviewed(false);
               setSelectedVideos(new Set());
+              setSuggestedVideoGroups([]);
               if (setup.target === "full-course") setScheduleApplied(false);
               if (setup.target !== "full-course") setActiveStep("review");
               return "Uploaded source bundle scanned.";
@@ -270,6 +301,7 @@ export function ProfessorCourseBuilder({
             onApplySchedule={() => run("apply-schedule", async () => {
               const created = await createCourseWorkspace(setup, session, lectureSchedule);
               setWorkspace({ courseId: created.course.id, lectureId: created.active_lecture_id });
+              setMediaLectureId(created.active_lecture_id);
               setWorkspaceCourse(created.course);
               setWorkspaceLectures(created.lectures);
               setGeneratedLectureIds([]);
@@ -277,6 +309,8 @@ export function ProfessorCourseBuilder({
               setGenerationProgress([]);
               setGenerationWarnings([]);
               setMediaReviewed(false);
+              setSelectedVideos(new Set());
+              setSuggestedVideoGroups([]);
               setScheduleApplied(true);
               setActiveStep("review");
               return `Lecture schedule applied with ${created.lectures.length} dated lectures.`;
@@ -323,8 +357,9 @@ export function ProfessorCourseBuilder({
         {activeStep === "review" ? (
           <ProfessorReviewStep
             canContinue={Boolean(bundleReady && workspace)}
-            canInclude={Boolean(selectedVideos.size && bundleReady && workspace)}
+            canInclude={Boolean(selectedVideos.size && bundleReady && workspace && mediaLectureId)}
             canSearch={Boolean(setupReady && workspace)}
+            canSuggest={Boolean(suggestedQueries.length && setupReady && workspace)}
             pendingAction={pendingAction}
             onContinue={() => {
               setMediaReviewed(true);
@@ -332,14 +367,16 @@ export function ProfessorCourseBuilder({
             }}
             onInclude={() => run("include-videos", async () => {
               const activeWorkspace = requireWorkspace(workspace);
-              const selected = videos.filter((video) => selectedVideos.has(video.video_id));
+              const selected = availableVideos.filter((video) => selectedVideos.has(video.video_id));
               for (const video of selected) {
                 await includeYoutubeMedia({
                   courseId: activeWorkspace.courseId,
+                  lectureId: mediaLectureId || activeWorkspace.lectureId,
                   video,
                   session,
                 });
               }
+              const target = mediaTargetLectures.find((lecture) => lecture.id === (mediaLectureId || activeWorkspace.lectureId));
               setSelectedVideos(new Set());
               setMediaIncluded(true);
               setMediaReviewed(true);
@@ -348,7 +385,8 @@ export function ProfessorCourseBuilder({
               setGenerationProgress([]);
               setGenerationWarnings([]);
               setActiveStep("generate");
-              return `Saved ${selected.length} approved video${selected.length === 1 ? "" : "s"} for draft generation.`;
+              const targetLabel = target ? ` for lecture ${target.number}` : "";
+              return `Saved ${selected.length} approved video${selected.length === 1 ? "" : "s"}${targetLabel}.`;
             })}
             onQueryChange={setQuery}
             onSearch={() => run("search", async () => {
@@ -359,10 +397,32 @@ export function ProfessorCourseBuilder({
               setVideos(response.items);
               return `Found ${response.items.length} YouTube candidates.`;
             })}
+            onSuggest={() => run("suggest-videos", async () => {
+              const activeWorkspace = requireWorkspace(workspace);
+              const groups: YoutubeCandidateGroup[] = [];
+              const seenVideoIds = new Set<string>();
+              for (const searchQuery of suggestedQueries) {
+                const response = await searchYoutubeMedia(activeWorkspace.courseId, searchQuery, session, 3);
+                const groupVideos = response.items.filter((video) => {
+                  if (seenVideoIds.has(video.video_id)) return false;
+                  seenVideoIds.add(video.video_id);
+                  return true;
+                });
+                groups.push({ query: searchQuery, videos: groupVideos });
+              }
+              setSuggestedVideoGroups(groups);
+              const count = flattenVideoGroups(groups).length;
+              return `Found ${count} suggested YouTube candidates from ${groups.length} searches.`;
+            })}
+            onTargetLectureChange={setMediaLectureId}
             onToggleVideo={(videoId) => setSelectedVideos(toggleSelected(selectedVideos, videoId))}
             query={query}
             ready={mediaReady}
             selectedVideos={selectedVideos}
+            suggestedGroups={suggestedVideoGroups}
+            suggestedQueries={suggestedQueries}
+            targetLectureId={mediaLectureId}
+            targetLectures={mediaTargetLectures}
             videos={videos}
           />
         ) : null}

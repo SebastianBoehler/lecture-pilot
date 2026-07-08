@@ -1,5 +1,6 @@
 import type { CanvasDocument, SourceBundleManifest, YoutubeVideoCandidate } from "./types";
 import type { CourseSetup } from "./professorBuilderState";
+import type { YoutubeCandidateGroup } from "./professorYoutubeSuggestions";
 
 export function StepHeader({ number, title, done }: { number: string; title: string; done: boolean }) {
   return <header className="step-header"><span>{number}</span><h2>{title}</h2><strong>{done ? "Ready" : "Pending"}</strong></header>;
@@ -101,12 +102,40 @@ export function BundleSummary({ bundle }: { bundle: SourceBundleManifest }) {
   return <p>{bundle.files.length} files indexed · {Object.entries(bundle.counts_by_kind).map(([kind, count]) => `${count} ${kind}`).join(", ")}</p>;
 }
 
-export function VideoCandidates({ videos, selectedVideos, onToggle }: {
+export function VideoCandidateGroups({
+  groups,
+  onToggle,
+  selectedVideos,
+}: {
+  groups: YoutubeCandidateGroup[];
+  onToggle: (videoId: string) => void;
+  selectedVideos: Set<string>;
+}) {
+  if (!groups.length) return null;
+  return (
+    <div className="video-candidate-groups">
+      {groups.map((group) => (
+        <section className="video-candidate-group" key={group.query}>
+          <h3>{group.query}</h3>
+          <VideoCandidates
+            emptyLabel="No strong candidates for this query."
+            videos={group.videos}
+            selectedVideos={selectedVideos}
+            onToggle={onToggle}
+          />
+        </section>
+      ))}
+    </div>
+  );
+}
+
+export function VideoCandidates({ emptyLabel = "No candidates searched yet.", videos, selectedVideos, onToggle }: {
+  emptyLabel?: string;
   videos: YoutubeVideoCandidate[];
   selectedVideos: Set<string>;
   onToggle: (videoId: string) => void;
 }) {
-  if (!videos.length) return <p className="drawer-note">No candidates searched yet.</p>;
+  if (!videos.length) return <p className="drawer-note">{emptyLabel}</p>;
   return (
     <div className="video-candidate-list">
       {videos.map((video) => (

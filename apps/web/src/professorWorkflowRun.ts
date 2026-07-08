@@ -8,6 +8,7 @@ export type BuilderAction =
   | "publish"
   | "scan"
   | "search"
+  | "suggest-videos"
   | "upload";
 
 export function useProfessorWorkflowRun() {
