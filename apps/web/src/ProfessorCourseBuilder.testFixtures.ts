@@ -211,6 +211,7 @@ function youtubeCandidate() {
     channel_title: "ML Tuebingen",
     description: "Bayes rule and risk.",
     url: "https://www.youtube.com/watch?v=j4yxsEQqPMI",
+    thumbnail_url: "https://i.ytimg.com/vi/j4yxsEQqPMI/hqdefault.jpg",
     duration: { display: "12:15", seconds: 735 },
     score: 9,
     reason: "Matches lecture terms.",

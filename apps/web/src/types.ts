@@ -1,5 +1,6 @@
 export type Theme = "light" | "dark";
-export type View = "login" | "dashboard" | "lesson" | "profile" | "professor" | "performance" | "course-management";
+export type InfoPageKind = "how-it-works" | "privacy";
+export type View = "login" | "dashboard" | "lesson" | "profile" | "professor" | "performance" | "course-management" | InfoPageKind;
 export type LessonPanelMode = "chat" | "outline" | "notes" | "files";
 export type CanvasSectionId = string;
 export type DocumentAnchorId = string;

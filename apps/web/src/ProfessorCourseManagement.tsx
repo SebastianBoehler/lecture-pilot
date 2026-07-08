@@ -28,7 +28,6 @@ export function ProfessorCourseManagement({
           <h1>Manage courses</h1>
           <p>Review created course workspaces and take down broken or outdated demo courses.</p>
         </div>
-        <p className="professor-session">Signed in as {session.username}</p>
       </section>
       <ProfessorCourseManager
         deletingCourseId={deletingCourseId}

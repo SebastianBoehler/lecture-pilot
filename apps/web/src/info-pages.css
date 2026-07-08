@@ -1,0 +1,87 @@
+.app-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 20px 32px;
+  color: var(--color-text-tertiary);
+  font-size: 13px;
+}
+
+.app-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.app-footer button {
+  border: 0;
+  padding: 0;
+  color: var(--color-text-secondary);
+  background: transparent;
+  font-weight: 650;
+}
+
+.app-footer button:hover {
+  color: var(--color-text-primary);
+}
+
+.info-page {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 52px 20px 72px;
+}
+
+.info-back {
+  margin-bottom: 28px;
+}
+
+.info-hero {
+  max-width: 760px;
+  margin-bottom: 34px;
+}
+
+.info-hero h1 {
+  margin: 0 0 10px;
+  font-size: clamp(34px, 5vw, 54px);
+  line-height: 1.04;
+}
+
+.info-hero p:last-child {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 18px;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.info-section {
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  padding: 18px;
+  background: var(--color-bg-secondary);
+}
+
+.info-section h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+.info-section ul {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 700px) {
+  .app-footer {
+    flex-direction: column;
+  }
+}

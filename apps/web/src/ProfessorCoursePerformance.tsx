@@ -26,13 +26,14 @@ export function ProfessorCoursePerformance({
   session: LoginSession;
   workspaceCourse: UniversityCourse;
 }) {
+  const hasPublishedWorkspace = publishedLectureIds.length > 0;
   const courseOptions = useMemo(
-    () => performanceCourseOptions(session.courses, workspaceCourse),
-    [session.courses, workspaceCourse],
+    () => performanceCourseOptions([], workspaceCourse, hasPublishedWorkspace),
+    [hasPublishedWorkspace, workspaceCourse],
   );
   const [selectedCourseId, setSelectedCourseId] = useState(workspaceCourse.id);
-  const course = courseOptions.find((item) => item.id === selectedCourseId) ?? workspaceCourse;
-  const workspaceSelected = isWorkspaceCourse(course, workspaceCourse);
+  const course = courseOptions.find((item) => item.id === selectedCourseId) ?? courseOptions[0] ?? null;
+  const workspaceSelected = Boolean(course && isWorkspaceCourse(course, workspaceCourse));
   const visibleLectures = useMemo(() => {
     if (!workspaceSelected) return [];
     const published = new Set(publishedLectureIds);
@@ -65,7 +66,7 @@ export function ProfessorCoursePerformance({
   }, [selectedLecture, visibleLectures]);
 
   async function refreshAnalytics(lecture = selectedLecture) {
-    if (!lecture || !workspaceSelected) return;
+    if (!lecture || !course || !workspaceSelected) return;
     setAnalyticsError(null);
     setSelectedLecture(lecture);
     setLoading(true);
@@ -97,15 +98,17 @@ export function ProfessorCoursePerformance({
         </button>
       </section>
 
-      <ProfessorCourseTabs
-        courses={courseOptions}
-        publishedLectureCount={visibleLectures.length}
-        selectedCourseId={selectedCourseId}
-        workspaceCourseId={workspaceCourse.id}
-        onSelect={setSelectedCourseId}
-      />
+      {courseOptions.length ? (
+        <ProfessorCourseTabs
+          courses={courseOptions}
+          publishedLectureCount={visibleLectures.length}
+          selectedCourseId={selectedCourseId}
+          workspaceCourseId={workspaceCourse.id}
+          onSelect={setSelectedCourseId}
+        />
+      ) : null}
 
-      {!selectedLecture ? (
+      {!selectedLecture || !course ? (
         <section className="performance-console is-empty">
           <div className="analytics-empty-state">
             <strong>No published course workspace yet</strong>

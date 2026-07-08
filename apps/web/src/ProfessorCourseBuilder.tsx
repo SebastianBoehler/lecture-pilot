@@ -78,6 +78,8 @@ export function ProfessorCourseBuilder({
   const [videos, setVideos] = useState<YoutubeVideoCandidate[]>([]);
   const [suggestedVideoGroups, setSuggestedVideoGroups] = useState<YoutubeCandidateGroup[]>([]);
   const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
+  const [autoSuggestedSearchKey, setAutoSuggestedSearchKey] = useState<string | null>(null);
+  const [autoSuggesting, setAutoSuggesting] = useState(false);
   const [mediaLectureId, setMediaLectureId] = useState(savedFlow.workspace?.lectureId ?? "");
   const [mediaIncluded, setMediaIncluded] = useState(false);
   const [mediaReviewed, setMediaReviewed] = useState(false);
@@ -107,6 +109,13 @@ export function ProfessorCourseBuilder({
     setup.target === "single-lecture" ? setup.lectureTitle : "machine learning lecture",
   ].filter(Boolean).join(" ");
   const suggestedQueries = youtubeSuggestionQueries(setup, lectureSchedule);
+  const suggestedSearchKey = workspace && suggestedQueries.length
+    ? [
+      workspace.courseId,
+      bundle?.files.map((file) => `${file.path}:${file.size_bytes}`).join(",") ?? "no-bundle",
+      suggestedQueries.join("|"),
+    ].join("::")
+    : "";
   const availableVideos = flattenVideoGroups([
     ...suggestedVideoGroups,
     { query: query.trim() || defaultYoutubeQuery, videos },
@@ -167,6 +176,42 @@ export function ProfessorCourseBuilder({
       query,
     });
   }, [bundle, canvas, courseReady, lectureSchedule, query, restored, setup, uploadPath, workspace]);
+  useEffect(() => {
+    if (
+      activeStep !== "review"
+      || !workspace
+      || !setupReady
+      || !suggestedQueries.length
+      || !suggestedSearchKey
+      || pendingAction !== null
+      || autoSuggestedSearchKey === suggestedSearchKey
+    ) {
+      return;
+    }
+    let cancelled = false;
+    setAutoSuggestedSearchKey(suggestedSearchKey);
+    setAutoSuggesting(true);
+    setError(null);
+    void searchSuggestedVideos(workspace.courseId)
+      .catch((autoError) => {
+        if (!cancelled) setError(autoError instanceof Error ? autoError.message : "YouTube suggestions failed.");
+      })
+      .finally(() => {
+        if (!cancelled) setAutoSuggesting(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeStep,
+    autoSuggestedSearchKey,
+    pendingAction,
+    setError,
+    setupReady,
+    suggestedQueries.length,
+    suggestedSearchKey,
+    workspace,
+  ]);
   function updateSetup(nextSetup: CourseSetup) {
     setSetup(nextSetup);
     setWorkspace(null);
@@ -181,6 +226,8 @@ export function ProfessorCourseBuilder({
     setGenerationWarnings([]);
     setVideos([]);
     setSuggestedVideoGroups([]);
+    setAutoSuggestedSearchKey(null);
+    setAutoSuggesting(false);
     setSelectedVideos(new Set());
     setMediaLectureId("");
     setMediaIncluded(false);
@@ -206,7 +253,6 @@ export function ProfessorCourseBuilder({
           >
             {isRestoring ? "Refreshing..." : "Refresh workspace state"}
           </button>
-          <p className="professor-session">Signed in as {session.username}</p>
         </div>
       </section>
       <ProfessorBuilderStepper activeStep={activeStep} steps={steps} onStepChange={setActiveStep} />
@@ -277,6 +323,7 @@ export function ProfessorCourseBuilder({
               setMediaReviewed(false);
               setSelectedVideos(new Set());
               setSuggestedVideoGroups([]);
+              setAutoSuggestedSearchKey(null);
               if (setup.target === "full-course") setScheduleApplied(false);
               if (setup.target !== "full-course") setActiveStep("review");
               if (uploaded.length === 1) return `Uploaded ${uploaded[0].path} as ${uploaded[0].kind}.`;
@@ -294,6 +341,7 @@ export function ProfessorCourseBuilder({
               setMediaReviewed(false);
               setSelectedVideos(new Set());
               setSuggestedVideoGroups([]);
+              setAutoSuggestedSearchKey(null);
               if (setup.target === "full-course") setScheduleApplied(false);
               if (setup.target !== "full-course") setActiveStep("review");
               return "Uploaded source bundle scanned.";
@@ -311,6 +359,7 @@ export function ProfessorCourseBuilder({
               setMediaReviewed(false);
               setSelectedVideos(new Set());
               setSuggestedVideoGroups([]);
+              setAutoSuggestedSearchKey(null);
               setScheduleApplied(true);
               setActiveStep("review");
               return `Lecture schedule applied with ${created.lectures.length} dated lectures.`;
@@ -360,7 +409,7 @@ export function ProfessorCourseBuilder({
             canInclude={Boolean(selectedVideos.size && bundleReady && workspace && mediaLectureId)}
             canSearch={Boolean(setupReady && workspace)}
             canSuggest={Boolean(suggestedQueries.length && setupReady && workspace)}
-            pendingAction={pendingAction}
+            pendingAction={autoSuggesting ? "suggest-videos" : pendingAction}
             onContinue={() => {
               setMediaReviewed(true);
               setActiveStep("generate");
@@ -399,20 +448,9 @@ export function ProfessorCourseBuilder({
             })}
             onSuggest={() => run("suggest-videos", async () => {
               const activeWorkspace = requireWorkspace(workspace);
-              const groups: YoutubeCandidateGroup[] = [];
-              const seenVideoIds = new Set<string>();
-              for (const searchQuery of suggestedQueries) {
-                const response = await searchYoutubeMedia(activeWorkspace.courseId, searchQuery, session, 3);
-                const groupVideos = response.items.filter((video) => {
-                  if (seenVideoIds.has(video.video_id)) return false;
-                  seenVideoIds.add(video.video_id);
-                  return true;
-                });
-                groups.push({ query: searchQuery, videos: groupVideos });
-              }
-              setSuggestedVideoGroups(groups);
-              const count = flattenVideoGroups(groups).length;
-              return `Found ${count} suggested YouTube candidates from ${groups.length} searches.`;
+              const count = await searchSuggestedVideos(activeWorkspace.courseId);
+              setAutoSuggestedSearchKey(suggestedSearchKey || null);
+              return `Found ${count} suggested YouTube candidates from ${suggestedQueries.length} searches.`;
             })}
             onTargetLectureChange={setMediaLectureId}
             onToggleVideo={(videoId) => setSelectedVideos(toggleSelected(selectedVideos, videoId))}
@@ -481,6 +519,22 @@ export function ProfessorCourseBuilder({
       session,
     });
     setLectureSchedule(proposal.lectures);
+  }
+
+  async function searchSuggestedVideos(courseId: string) {
+    const groups: YoutubeCandidateGroup[] = [];
+    const seenVideoIds = new Set<string>();
+    for (const searchQuery of suggestedQueries) {
+      const response = await searchYoutubeMedia(courseId, searchQuery, session, 3);
+      const groupVideos = response.items.filter((video) => {
+        if (seenVideoIds.has(video.video_id)) return false;
+        seenVideoIds.add(video.video_id);
+        return true;
+      });
+      groups.push({ query: searchQuery, videos: groupVideos });
+    }
+    setSuggestedVideoGroups(groups);
+    return flattenVideoGroups(groups).length;
   }
 
   async function restoreFromBackend(

@@ -43,12 +43,8 @@ export function LoginView({
     <main className="login-screen">
       <section className="login-panel" aria-labelledby="login-heading">
         <div className="login-copy">
-          <p className="section-label">TUE API wrapper</p>
           <h1 id="login-heading">Sign in with Uni Tübingen</h1>
-          <p>
-            Credentials are sent to the local LecturePilot API and used for the Alma timetable
-            lookup.
-          </p>
+          <p>Open your course workspace, catch up on lectures, and get ready for focused learning.</p>
         </div>
 
         <form className="login-form" onSubmit={submitLogin}>
@@ -77,11 +73,11 @@ export function LoginView({
             type="submit"
           >
             {isSubmitting ? <span className="login-spinner" aria-hidden="true" /> : null}
-            {isSubmitting ? "Connecting" : "Connect to TUE API"}
+            {isSubmitting ? "Signing in" : "Continue with Uni Tübingen"}
           </button>
           {isSubmitting ? (
             <p className="login-status" role="status">
-              Contacting the local API and loading your Alma courses. This can take a moment.
+              Loading your course workspace. This can take a moment.
             </p>
           ) : null}
           <button className="secondary-button" disabled={isSubmitting} type="button" onClick={onOpenDemo}>

@@ -138,21 +138,35 @@ export function VideoCandidates({ emptyLabel = "No candidates searched yet.", vi
   if (!videos.length) return <p className="drawer-note">{emptyLabel}</p>;
   return (
     <div className="video-candidate-list">
-      {videos.map((video) => (
-        <div className="video-candidate" key={video.video_id}>
-          <label className="video-candidate-choice">
-            <input
-              checked={selectedVideos.has(video.video_id)}
-              onChange={() => onToggle(video.video_id)}
-              type="checkbox"
-            />
-            <span><strong>{video.title}</strong>{video.channel_title} · {video.duration.display ?? "duration unknown"}</span>
-          </label>
-          <a className="video-preview-link" href={video.url} rel="noreferrer" target="_blank">
-            Open
-          </a>
-        </div>
-      ))}
+      {videos.map((video) => {
+        const selected = selectedVideos.has(video.video_id);
+        return (
+          <div className={`video-candidate${selected ? " is-selected" : ""}`} key={video.video_id}>
+            <label className="video-candidate-choice">
+              <input
+                checked={selected}
+                onChange={() => onToggle(video.video_id)}
+                type="checkbox"
+              />
+              <span className="video-candidate-thumbnail">
+                {video.thumbnail_url ? (
+                  <img alt={`Thumbnail for ${video.title}`} loading="lazy" referrerPolicy="no-referrer" src={video.thumbnail_url} />
+                ) : (
+                  <span>No thumbnail</span>
+                )}
+              </span>
+              <span className="video-candidate-copy">
+                <strong>{video.title}</strong>
+                <span>{video.channel_title} · {video.duration.display ?? "duration unknown"}</span>
+                <small>{video.reason}</small>
+              </span>
+            </label>
+            <a className="video-preview-link" href={video.url} rel="noreferrer" target="_blank">
+              Open
+            </a>
+          </div>
+        );
+      })}
     </div>
   );
 }

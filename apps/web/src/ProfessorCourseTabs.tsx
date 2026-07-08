@@ -40,9 +40,13 @@ export function ProfessorCourseTabs({
   );
 }
 
-export function performanceCourseOptions(courses: UniversityCourse[], workspaceCourse: UniversityCourse) {
+export function performanceCourseOptions(
+  courses: UniversityCourse[],
+  workspaceCourse: UniversityCourse,
+  includeWorkspaceCourse = true,
+) {
   const options = new Map<string, UniversityCourse>();
-  options.set(workspaceCourse.id, workspaceCourse);
+  if (includeWorkspaceCourse) options.set(workspaceCourse.id, workspaceCourse);
   for (const course of courses) {
     if (!options.has(course.id)) options.set(course.id, course);
   }

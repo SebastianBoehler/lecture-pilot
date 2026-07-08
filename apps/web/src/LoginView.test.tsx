@@ -23,10 +23,10 @@ describe("LoginView", () => {
 
     await user.type(screen.getByLabelText(/zdv username/i), "student01");
     await user.type(screen.getByLabelText(/^password$/i), "secret");
-    await user.click(screen.getByRole("button", { name: /connect to tue api/i }));
+    await user.click(screen.getByRole("button", { name: /continue with uni tübingen/i }));
 
-    expect(screen.getByRole("button", { name: /connecting/i })).toBeDisabled();
-    expect(screen.getByRole("status")).toHaveTextContent(/loading your alma courses/i);
+    expect(screen.getByRole("button", { name: /signing in/i })).toBeDisabled();
+    expect(screen.getByRole("status")).toHaveTextContent(/loading your course workspace/i);
     expect(screen.getByRole("button", { name: /preview local demo/i })).toBeDisabled();
   });
 });

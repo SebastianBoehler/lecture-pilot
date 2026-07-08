@@ -39,6 +39,10 @@ describe("Professor course deletion", () => {
     expect(await screen.findByText(/course workspace demo-ml-course deleted/i)).toBeInTheDocument();
     expect(screen.getByText(/no created course workspaces yet/i)).toBeInTheDocument();
     expect(window.localStorage.getItem("lecturepilot.demo.workspaceCourse")).toBeNull();
+    await user.click(screen.getByRole("button", { name: /course performance/i }));
+    expect(screen.queryByRole("button", { name: /grundlagen des maschinellen lernens/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/0 published lectures/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/no published course workspace yet/i)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/admin/courses/demo-ml-course"),
       expect.objectContaining({ method: "DELETE" }),

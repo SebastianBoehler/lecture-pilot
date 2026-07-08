@@ -28,7 +28,7 @@ describe("Professor course builder", () => {
     await user.click(screen.getByRole("button", { name: /preview professor account/i }));
     expect(screen.queryByRole("heading", { name: /professor sign up/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /create professor account/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/signed in as professor-demo/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /open profile/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /define course and lecture scope/i })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /upload materials/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /live course analytics/i })).not.toBeInTheDocument();
@@ -78,10 +78,12 @@ describe("Professor course builder", () => {
     expect(screen.getByText(/selected videos attach to lecture 03/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /04 generate/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /search youtube/i })).toBeEnabled();
-    expect(screen.getByRole("button", { name: /find suggested videos/i })).toBeEnabled();
-    await user.click(screen.getByRole("button", { name: /find suggested videos/i }));
-    expect(await screen.findByText(/found 1 suggested youtube candidates from 3 searches/i)).toBeInTheDocument();
     const candidate = await screen.findByLabelText(/bayesian decision theory/i);
+    expect(screen.getByRole("button", { name: /refresh suggested videos/i })).toBeEnabled();
+    expect(screen.getByRole("img", { name: /thumbnail for bayesian decision theory/i })).toHaveAttribute(
+      "src",
+      "https://i.ytimg.com/vi/j4yxsEQqPMI/hqdefault.jpg",
+    );
     expect(screen.getByRole("link", { name: /^open$/i })).toHaveAttribute(
       "href",
       "https://www.youtube.com/watch?v=j4yxsEQqPMI",
@@ -111,9 +113,7 @@ describe("Professor course builder", () => {
     expect(await screen.findByRole("heading", { name: /course performance/i })).toBeInTheDocument();
     const courseScope = screen.getByRole("navigation", { name: /performance course scope/i });
     expect(within(courseScope).getByRole("button", { name: /demo ml course/i })).toHaveAttribute("aria-pressed", "true");
-    await user.click(within(courseScope).getByRole("button", { name: /grundlagen des maschinellen lernens/i }));
-    expect(await screen.findByText(/no published course workspace yet/i)).toBeInTheDocument();
-    await user.click(within(courseScope).getByRole("button", { name: /demo ml course/i }));
+    expect(within(courseScope).queryByRole("button", { name: /grundlagen des maschinellen lernens/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /refresh analytics/i }));
     expect(await screen.findByText("Events")).toBeInTheDocument();
     expect(screen.getAllByText("Quiz success").length).toBeGreaterThan(0);

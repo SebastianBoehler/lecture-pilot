@@ -14,6 +14,7 @@ import {
   completePendingTutorMessage,
   pendingTutorMessage,
 } from "./agentTurnUi";
+import { AppFooter } from "./AppFooter";
 import { AppHeader } from "./AppHeader";
 import { initialMessagesForAttendance, localDemoSession, localProfessorSession } from "./appDefaults";
 import { canManageCourses } from "./authz";
@@ -25,6 +26,7 @@ import { draftPreviewUrl } from "./draftPreviewUrl";
 import { resetLearnerWorkspace } from "./learnerWorkspaceApi";
 import { LessonWorkspace } from "./LessonWorkspace";
 import { LoginView } from "./LoginView";
+import { InfoPage } from "./InfoPage";
 import { clearSavedFlow } from "./professorBuilderState";
 import { useStoredLoginSession } from "./loginSessionStorage";
 import { ProfileView } from "./ProfileView";
@@ -412,6 +414,11 @@ function App() {
           label="Course management"
           onBack={() => setView(session ? "dashboard" : "login")}
         />
+      ) : view === "how-it-works" || view === "privacy" ? (
+        <InfoPage
+          kind={view}
+          onBack={() => setView(session ? "dashboard" : "login")}
+        />
       ) : (
         <LessonWorkspace
           canvasDocument={canvasDocument}
@@ -439,6 +446,12 @@ function App() {
           }}
         />
       )}
+      {view !== "lesson" ? (
+        <AppFooter
+          onOpenHowItWorks={() => setView("how-it-works")}
+          onOpenPrivacy={() => setView("privacy")}
+        />
+      ) : null}
     </div>
   );
 }

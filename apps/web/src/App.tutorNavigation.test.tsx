@@ -85,7 +85,7 @@ describe("Tutor canvas navigation", () => {
 async function logIn(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/zdv username/i), "student01");
   await user.type(screen.getByLabelText(/^password$/i), "very-secret-password");
-  await user.click(screen.getByRole("button", { name: /connect to tue api/i }));
+  await user.click(screen.getByRole("button", { name: /continue with uni tübingen/i }));
 }
 
 async function sendTutorMessage(user: ReturnType<typeof userEvent.setup>, message: string) {

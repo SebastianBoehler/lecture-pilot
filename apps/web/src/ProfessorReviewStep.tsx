@@ -86,7 +86,7 @@ export function ProfessorReviewStep({
           {suggestedQueries.map((suggestion) => <span key={suggestion}>{suggestion}</span>)}
         </div>
         <button disabled={!canSuggest || isBusy} type="button" onClick={onSuggest}>
-          {isSuggesting ? "Finding suggestions..." : "Find suggested videos"}
+          {isSuggesting ? "Finding suggestions..." : suggestedGroups.length ? "Refresh suggested videos" : "Find suggested videos"}
         </button>
       </section>
       {isSuggesting ? <PendingStatus label="Searching suggested YouTube candidates..." /> : null}

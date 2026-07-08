@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 export type BuilderAction =
   | "apply-schedule"
@@ -17,7 +17,7 @@ export function useProfessorWorkflowRun() {
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function run(actionId: BuilderAction, action: () => Promise<string | void>) {
+  const run = useCallback(async (actionId: BuilderAction, action: () => Promise<string | void>) => {
     setPendingAction(actionId);
     setError(null);
     setNotice(null);
@@ -29,7 +29,7 @@ export function useProfessorWorkflowRun() {
     } finally {
       setPendingAction(null);
     }
-  }
+  }, []);
 
   return { error, notice, pendingAction, run, setError };
 }

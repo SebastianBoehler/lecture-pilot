@@ -10,7 +10,7 @@ import {
 } from "./testFixtures";
 
 describe("LecturePilot app shell", () => {
-  it("starts with a TUE API wrapper login form", () => {
+  it("starts with the university login form", () => {
     render(<App />);
 
     expect(screen.getByRole("heading", { name: /sign in with uni tübingen/i })).toBeInTheDocument();
@@ -128,6 +128,21 @@ describe("LecturePilot app shell", () => {
         headers: expect.objectContaining({ "X-User-Id": "local-demo" }),
       }),
     );
+  });
+
+  it("opens plain-language project information from the footer", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /how it works/i }));
+
+    expect(screen.getByRole("heading", { name: /how lecturepilot works/i })).toBeInTheDocument();
+    expect(screen.getByText(/official course material is separate from personal learner notes/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /datenschutz/i }));
+
+    expect(screen.getByRole("heading", { name: /what data is processed/i })).toBeInTheDocument();
+    expect(screen.getByText(/provider keys and routing are handled by the backend/i)).toBeInTheDocument();
   });
 
   it("opens a focused lesson workspace without showing the course dashboard", async () => {
@@ -272,7 +287,7 @@ describe("LecturePilot app shell", () => {
 async function logIn(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/zdv username/i), "student01");
   await user.type(screen.getByLabelText(/^password$/i), "very-secret-password");
-  await user.click(screen.getByRole("button", { name: /connect to tue api/i }));
+  await user.click(screen.getByRole("button", { name: /continue with uni tübingen/i }));
 }
 
 function renderPublishedApp() { render(<App />); }

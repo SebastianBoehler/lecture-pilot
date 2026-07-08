@@ -12,6 +12,10 @@
   --color-highlight-bg: #fff8c5;
   --color-highlight-border: #e3b34c;
   --color-danger: #cf222e;
+  --control-height: 36px;
+  --control-height-compact: 30px;
+  --control-radius: 6px;
+  --control-padding-x: 12px;
   color: var(--color-text-primary);
   background: var(--color-bg-primary);
   font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
