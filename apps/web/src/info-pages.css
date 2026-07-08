@@ -80,6 +80,33 @@
   color: var(--color-text-secondary);
 }
 
+.info-notice {
+  display: grid;
+  gap: 22px;
+  max-width: 820px;
+}
+
+.info-notice-section {
+  border-top: 1px solid var(--color-border-primary);
+  padding-top: 20px;
+}
+
+.info-notice-section h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+}
+
+.info-notice-section p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.info-notice-section p + p {
+  margin-top: 10px;
+}
+
 @media (max-width: 700px) {
   .app-footer {
     flex-direction: column;

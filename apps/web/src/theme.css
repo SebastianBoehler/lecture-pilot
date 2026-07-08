@@ -70,7 +70,13 @@ textarea:focus-visible {
 
 .app-shell {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: var(--color-bg-primary);
+}
+
+.app-shell > main {
+  flex: 1 0 auto;
 }
 
 .top-bar {

@@ -53,6 +53,8 @@ describe("LecturePilot app shell", () => {
       expect.stringContaining("/auth/login"),
       expect.objectContaining({ method: "POST" }),
     );
+    expect(window.sessionStorage.getItem("lecturepilot.loginSession")).toContain("signed-test-token");
+    expect(window.localStorage.getItem("lecturepilot.loginSession")).not.toContain("signed-test-token");
   });
 
   it("opens the profile view and logs out", async () => {
@@ -101,6 +103,9 @@ describe("LecturePilot app shell", () => {
 
     await screen.findByText(/Bayes answer from the tutor/i);
     const agentCall = fetchMock.mock.calls.find(([url]) => String(url).includes("/agent/turn"));
+    expect(agentCall?.[1]?.headers).toMatchObject({
+      Authorization: "Bearer signed-test-token",
+    });
     expect(JSON.parse(String(agentCall?.[1]?.body))).toMatchObject({
       model: "openrouter/openai/gpt-oss-120b:nitro",
     });
@@ -137,12 +142,13 @@ describe("LecturePilot app shell", () => {
     await user.click(screen.getByRole("button", { name: /how it works/i }));
 
     expect(screen.getByRole("heading", { name: /how lecturepilot works/i })).toBeInTheDocument();
-    expect(screen.getByText(/official course material is separate from personal learner notes/i)).toBeInTheDocument();
+    expect(screen.getByText(/think of each course as a small file system/i)).toBeInTheDocument();
+    expect(screen.getByText(/the tutor uses attendance, quiz attempts, quality gates/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /datenschutz/i }));
 
-    expect(screen.getByRole("heading", { name: /what data is processed/i })).toBeInTheDocument();
-    expect(screen.getByText(/provider keys and routing are handled by the backend/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /privacy notice/i })).toBeInTheDocument();
+    expect(screen.getByText(/provider keys and model routing stay on the backend/i)).toBeInTheDocument();
   });
 
   it("opens a focused lesson workspace without showing the course dashboard", async () => {
