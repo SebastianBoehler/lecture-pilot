@@ -8,6 +8,7 @@ import type {
   CanvasSection,
   DocumentAnchorId,
   Lecture,
+  LoginSession,
   WorkspaceResource,
   CanvasBlock,
 } from "./types";
@@ -24,6 +25,7 @@ export function LessonCanvas({
   outlinePulseVersion,
   onOpenResource,
   onSubmitQuizAnswer,
+  session,
 }: {
   canvasDocument: CanvasDocument;
   lecture: Lecture;
@@ -36,6 +38,7 @@ export function LessonCanvas({
   outlinePulseVersion: number;
   onOpenResource: (resource: WorkspaceResource) => void;
   onSubmitQuizAnswer: (block: CanvasBlock, answer: string, optionIndex: number) => void;
+  session: LoginSession;
 }) {
   useEffect(() => {
     const section = document.getElementById(focusedSectionId);
@@ -60,8 +63,8 @@ export function LessonCanvas({
       <p className="section-label">Lecture {lecture.number}</p>
       <h1>{canvasDocument.title}</h1>
       <p className="lead">
-        A study document for probabilities, Bayes' rule, Naive Bayes classification, and
-        risk-aware decisions.
+        A study document for probabilities, Bayes' rule, Naive Bayes classification, and risk-aware
+        decisions.
       </p>
 
       {canvasDocument.sections.map((section) =>
@@ -75,6 +78,7 @@ export function LessonCanvas({
           outlinePulseVersion,
           onOpenResource,
           onSubmitQuizAnswer,
+          session,
           navigationVersion,
         }),
       )}
@@ -92,6 +96,7 @@ function renderSection({
   outlinePulseVersion,
   onOpenResource,
   onSubmitQuizAnswer,
+  session,
   navigationVersion,
 }: {
   canvasDocument: CanvasDocument;
@@ -103,6 +108,7 @@ function renderSection({
   outlinePulseVersion: number;
   onOpenResource: (resource: WorkspaceResource) => void;
   onSubmitQuizAnswer: (block: CanvasBlock, answer: string, optionIndex: number) => void;
+  session: LoginSession;
   navigationVersion: number;
 }) {
   const className = [
@@ -131,6 +137,7 @@ function renderSection({
         highlightedText={highlightedText}
         outlinePulseId={outlinePulseId}
         outlinePulseVersion={outlinePulseVersion}
+        session={session}
         onOpenResource={onOpenResource}
         onSubmitQuizAnswer={onSubmitQuizAnswer}
       />

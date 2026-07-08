@@ -11,13 +11,14 @@ from lecturepilot.api_auth import (
 )
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
+from lecturepilot.course_access import require_course_id_access, require_lecture_id_access
 from lecturepilot.course_media import apply_course_media, course_media_evidence
 from lecturepilot.learner_workspace_reset import (
     LearnerWorkspaceResetInput,
     LearnerWorkspaceResetResult,
     reset_learner_workspace,
 )
-from lecturepilot.models import CanvasPublicationResult, Lecture
+from lecturepilot.models import CanvasPublicationResult, Course, Lecture
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.source_bundle_canvas import SourceBundleCanvasError
@@ -29,7 +30,7 @@ def register_course_canvas_routes(
     *,
     course_tenant_id: str,
     lectures: list[Lecture],
-    seeded_course_id: str,
+    seeded_course: Course,
     source_document: Callable[[str, str], CanvasDocument],
 ) -> None:
     @app.post(
@@ -44,9 +45,13 @@ def register_course_canvas_routes(
         try:
             require_course_manager(context, course_tenant_id=course_tenant_id)
             source = source_document(course_id, lecture_id)
-            source = course_media_evidence(source, app.state.canvas_workspace.course_media_root(course_id))
+            source = course_media_evidence(
+                source, app.state.canvas_workspace.course_media_root(course_id)
+            )
             document = await app.state.course_planner.plan_canvas(source)
-            document = apply_course_media(document, app.state.canvas_workspace.course_media_root(course_id))
+            document = apply_course_media(
+                document, app.state.canvas_workspace.course_media_root(course_id)
+            )
             return app.state.canvas_workspace.write_course_canvas_draft(document)
         except CanvasWorkspaceError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -104,8 +109,19 @@ def register_course_canvas_routes(
         lecture_id: str,
         context: TenantContext = Depends(request_context),
     ) -> CanvasPublicationResult:
+        require_lecture_id_access(
+            app,
+            context,
+            course_id=course_id,
+            lecture_id=lecture_id,
+            course_tenant_id=course_tenant_id,
+            seeded_course=seeded_course,
+            seeded_lectures=lectures,
+        )
         if context.tenant_id != course_tenant_id:
-            raise HTTPException(status_code=403, detail="Resource does not belong to the active tenant.")
+            raise HTTPException(
+                status_code=403, detail="Resource does not belong to the active tenant."
+            )
         metadata = app.state.canvas_workspace.course_canvas_publication(
             course_id=course_id,
             lecture_id=lecture_id,
@@ -128,6 +144,15 @@ def register_course_canvas_routes(
             context,
             learner_user_id=user_id,
             course_tenant_id=course_tenant_id,
+        )
+        require_lecture_id_access(
+            app,
+            context,
+            course_id=course_id,
+            lecture_id=lecture_id,
+            course_tenant_id=course_tenant_id,
+            seeded_course=seeded_course,
+            seeded_lectures=lectures,
         )
         if not app.state.canvas_workspace.has_published_course_canvas(
             course_id=course_id,
@@ -157,6 +182,13 @@ def register_course_canvas_routes(
             context,
             learner_user_id=request.user_id,
             course_tenant_id=course_tenant_id,
+        )
+        require_course_id_access(
+            app,
+            context,
+            course_id=course_id,
+            course_tenant_id=course_tenant_id,
+            seeded_course=seeded_course,
         )
         return reset_learner_workspace(
             layout=app.state.canvas_workspace.layout,

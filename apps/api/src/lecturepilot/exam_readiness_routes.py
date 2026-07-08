@@ -4,14 +4,19 @@ from fastapi import Depends, FastAPI, HTTPException
 
 from lecturepilot.api_auth import request_context, require_learner_workspace_access
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
-from lecturepilot.course_schedule_store import read_course_workspace
+from lecturepilot.course_access import (
+    can_review_course,
+    require_course_id_access,
+    resolve_course_lectures,
+)
 from lecturepilot.exam_readiness import ExamReadinessCheck, build_exam_readiness_check
 from lecturepilot.exam_revision_plan import (
     ExamReadinessAttemptInput,
     ExamReadinessAttemptResult,
     build_exam_revision_plan,
 )
-from lecturepilot.models import Lecture
+from lecturepilot.models import Course, Lecture
+from lecturepilot.policies import is_lecture_unlocked
 from lecturepilot.readiness_progress import ReadinessProgressStore
 from lecturepilot.tenancy import TenantContext
 
@@ -20,6 +25,7 @@ def register_exam_readiness_routes(
     app: FastAPI,
     *,
     course_tenant_id: str,
+    seeded_course: Course,
     lectures: list[Lecture],
 ) -> None:
     @app.get("/courses/{course_id}/exam-readiness", response_model=ExamReadinessCheck)
@@ -32,9 +38,18 @@ def register_exam_readiness_routes(
             learner_user_id=context.user_id,
             course_tenant_id=course_tenant_id,
         )
-        return _readiness_check(app, course_id, lectures)
+        require_course_id_access(
+            app,
+            context,
+            course_id=course_id,
+            course_tenant_id=course_tenant_id,
+            seeded_course=seeded_course,
+        )
+        return _readiness_check(app, course_id, seeded_course, lectures, context)
 
-    @app.post("/courses/{course_id}/exam-readiness/attempts", response_model=ExamReadinessAttemptResult)
+    @app.post(
+        "/courses/{course_id}/exam-readiness/attempts", response_model=ExamReadinessAttemptResult
+    )
     def record_exam_readiness_attempt(
         course_id: str,
         attempt: ExamReadinessAttemptInput,
@@ -45,7 +60,14 @@ def register_exam_readiness_routes(
             learner_user_id=context.user_id,
             course_tenant_id=course_tenant_id,
         )
-        check = _readiness_check(app, course_id, lectures)
+        require_course_id_access(
+            app,
+            context,
+            course_id=course_id,
+            course_tenant_id=course_tenant_id,
+            seeded_course=seeded_course,
+        )
+        check = _readiness_check(app, course_id, seeded_course, lectures, context)
         store = _progress_store(app)
         try:
             result = build_exam_revision_plan(
@@ -58,18 +80,21 @@ def register_exam_readiness_routes(
         return store.record_attempt(user_id=context.user_id, course_id=course_id, result=result)
 
 
-def _course_lectures(app: FastAPI, course_id: str, seeded_lectures: list[Lecture]) -> list[Lecture]:
-    workspace = read_course_workspace(app.state.canvas_workspace.course_media_root(course_id), course_id)
-    if workspace:
-        return workspace.lectures
-    matching = [lecture for lecture in seeded_lectures if lecture.course_id == course_id]
-    if matching:
-        return matching
-    raise HTTPException(status_code=404, detail="Course not found.")
-
-
-def _readiness_check(app: FastAPI, course_id: str, lectures: list[Lecture]) -> ExamReadinessCheck:
-    course_lectures = _course_lectures(app, course_id, lectures)
+def _readiness_check(
+    app: FastAPI,
+    course_id: str,
+    seeded_course: Course,
+    lectures: list[Lecture],
+    context: TenantContext,
+) -> ExamReadinessCheck:
+    _, course_lectures = resolve_course_lectures(
+        app,
+        course_id=course_id,
+        seeded_course=seeded_course,
+        seeded_lectures=lectures,
+    )
+    if not can_review_course(context):
+        course_lectures = [lecture for lecture in course_lectures if is_lecture_unlocked(lecture)]
     documents = []
     for lecture in course_lectures:
         if not app.state.canvas_workspace.has_published_course_canvas(

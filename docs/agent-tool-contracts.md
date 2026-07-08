@@ -23,7 +23,6 @@ The course-builder profile intentionally has no learner-state tools such as
 | `/lecture/canvas` | learner-owned lecture canvas overlay |
 | `/course/canvas` | professor-approved published canvas |
 | `/course/source/uploads` | professor-uploaded source bundle |
-| `/course/materials` | configured private course material root |
 | `/user/memories` | cross-course learner memory and preferences |
 | `/user/course/memories` | course-specific learner memory for the active course |
 | `/user/profile.json` | learner profile file |

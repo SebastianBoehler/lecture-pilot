@@ -20,8 +20,8 @@ def test_agent_turn_stream_emits_activity_and_result(monkeypatch) -> None:
         headers=student_headers("u1"),
         json={
             "user_id": "u1",
-            "course_id": "c1",
-            "lecture_id": "l1",
+            "course_id": "martius-ml",
+            "lecture_id": "lecture-01",
             "attendance": "absent",
             "message": "Can you explain Bayes formula?",
             "canvas_state": {"focused_section_id": "bayesian-decision-theory-the-aim"},
@@ -31,7 +31,12 @@ def test_agent_turn_stream_emits_activity_and_result(monkeypatch) -> None:
     assert response.status_code == 200
     events = [json.loads(line) for line in response.text.splitlines()]
     activity_tags = [event["tag"] for event in events if event["type"] == "activity"]
-    assert activity_tags == ["read canvas", "load learner memory", "call tutor model"]
+    assert activity_tags == [
+        "read canvas",
+        "load learner memory",
+        "save attendance",
+        "call tutor model",
+    ]
     assert events[-1]["type"] == "result"
     assert events[-1]["result"]["message"] == "A streamed model answer."
 

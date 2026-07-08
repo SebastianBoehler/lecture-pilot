@@ -24,7 +24,8 @@ def test_health_endpoint() -> None:
     assert response.json()["status"] == "ok"
 
 
-def test_tuebingen_login_returns_courses_without_echoing_password() -> None:
+def test_tuebingen_login_returns_courses_without_echoing_password(monkeypatch) -> None:
+    monkeypatch.delenv("LECTUREPILOT_DEMO_INCLUDE_CREATED_COURSES", raising=False)
     app = create_app()
     app.state.tuebingen_adapter = _FakeTuebingenAdapter()
     client = TestClient(app)
@@ -50,10 +51,10 @@ def test_tuebingen_login_returns_courses_without_echoing_password() -> None:
         "tenant_id": "tenant-tuebingen",
         "roles": ["student"],
         "courses": [
-                {
-                    "access_policy": "tuebingen_enrolled",
-                    "id": "alma-machine-learning",
-                    "title": "Machine Learning",
+            {
+                "access_policy": "tuebingen_enrolled",
+                "id": "alma-machine-learning",
+                "title": "Machine Learning",
                 "professor": "Department of Computer Science",
                 "term": "Sommer 2026",
             }
@@ -93,8 +94,8 @@ def test_agent_turn_focuses_bayes_section(monkeypatch) -> None:
         headers=student_headers("u1"),
         json={
             "user_id": "u1",
-            "course_id": "c1",
-            "lecture_id": "l1",
+            "course_id": "martius-ml",
+            "lecture_id": "lecture-01",
             "attendance": "absent",
             "message": "Can you explain Bayes formula?",
             "canvas_state": {"focused_section_id": "bayesian-decision-theory-the-aim"},
@@ -131,8 +132,8 @@ def test_agent_turn_focuses_learning_goals(monkeypatch) -> None:
         headers=student_headers("u1"),
         json={
             "user_id": "u1",
-            "course_id": "c1",
-            "lecture_id": "l1",
+            "course_id": "martius-ml",
+            "lecture_id": "lecture-01",
             "attendance": "absent",
             "message": "Explain Bayes formula from the lecture.",
             "canvas_state": {"focused_section_id": "bayesian-decision-theory-the-aim"},
@@ -160,8 +161,8 @@ def test_agent_turn_focuses_skill_check(monkeypatch) -> None:
         headers=student_headers("u1"),
         json={
             "user_id": "u1",
-            "course_id": "c1",
-            "lecture_id": "l1",
+            "course_id": "martius-ml",
+            "lecture_id": "lecture-01",
             "attendance": "present",
             "message": "Test whether I understood the Bayes decision rule.",
             "canvas_state": {"focused_section_id": "bayes-formula"},
@@ -186,8 +187,8 @@ def test_agent_turn_reports_model_execution_error(monkeypatch) -> None:
         headers=student_headers("u1"),
         json={
             "user_id": "u1",
-            "course_id": "c1",
-            "lecture_id": "l1",
+            "course_id": "martius-ml",
+            "lecture_id": "lecture-01",
             "attendance": "present",
             "message": "hello",
             "canvas_state": {"focused_section_id": "bayes-formula"},

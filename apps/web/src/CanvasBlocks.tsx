@@ -1,13 +1,18 @@
-import { apiUrl } from "./api";
-import { assetPreviewUrl } from "./assetMedia";
 import { CheckpointBlock, QuizBlock, TableBlock } from "./CanvasLearningBlocks";
 import { ComponentBlock } from "./CanvasInteractiveComponents";
+import { renderAssetBlock, renderVideoBlock } from "./CanvasMediaBlocks";
 import { DisplayMath, MathText } from "./MathText";
 import { SourceMarker } from "./SourceMarker";
 import { findKeySourceBlockId, shouldShowSourceMarker } from "./canvasBlockSourceRules";
 import { blockSourceReference, sectionSourceReferences } from "./sourceReferences";
-import type { CanvasBlock, CanvasDocument, CanvasSection, DocumentAnchorId, WorkspaceResource } from "./types";
-import { youtubeEmbedUrl } from "./youtubeEmbedUrl";
+import type {
+  CanvasBlock,
+  CanvasDocument,
+  CanvasSection,
+  DocumentAnchorId,
+  LoginSession,
+  WorkspaceResource,
+} from "./types";
 
 type CanvasBlocksProps = {
   canvasDocument: CanvasDocument;
@@ -16,6 +21,7 @@ type CanvasBlocksProps = {
   highlightedText: string | null;
   outlinePulseId: DocumentAnchorId | null;
   outlinePulseVersion: number;
+  session: LoginSession;
   onOpenResource: (resource: WorkspaceResource) => void;
   onSubmitQuizAnswer: (block: CanvasBlock, answer: string, optionIndex: number) => void;
 };
@@ -25,6 +31,7 @@ type RenderBlockOptions = {
   highlightedText: string | null;
   outlinePulseId: DocumentAnchorId | null;
   outlinePulseVersion: number;
+  session: LoginSession;
   onOpenResource: (resource: WorkspaceResource) => void;
   onSubmitQuizAnswer: (block: CanvasBlock, answer: string, optionIndex: number) => void;
   sourceLabel: string;
@@ -39,6 +46,7 @@ export function CanvasBlocks({
   highlightedText,
   outlinePulseId,
   outlinePulseVersion,
+  session,
   onOpenResource,
   onSubmitQuizAnswer,
 }: CanvasBlocksProps) {
@@ -47,6 +55,7 @@ export function CanvasBlocks({
     highlightedText,
     outlinePulseId,
     outlinePulseVersion,
+    session,
     onOpenResource,
     onSubmitQuizAnswer,
     sourceLabel: section.title,
@@ -116,6 +125,7 @@ function renderBlockWithOptions(block: CanvasBlock, options: RenderBlockOptions)
     isPulsed: options.outlinePulseId === block.id,
     highlightedText: options.highlightedText,
     outlinePulseVersion: options.outlinePulseVersion,
+    session: options.session,
     onOpenResource: options.onOpenResource,
     onSubmitQuizAnswer: options.onSubmitQuizAnswer,
     showSourceMarker: shouldShowSourceMarker(block, options.keySourceBlockId),
@@ -136,6 +146,7 @@ function renderBlock(
     sourceLabel,
     sourceReference,
     onSubmitQuizAnswer,
+    session,
   }: {
     isHighlighted: boolean;
     isPulsed: boolean;
@@ -143,6 +154,7 @@ function renderBlock(
     outlinePulseVersion: number;
     onOpenResource: (resource: WorkspaceResource) => void;
     onSubmitQuizAnswer: (block: CanvasBlock, answer: string, optionIndex: number) => void;
+    session: LoginSession;
     showSourceMarker: boolean;
     sourceLabel: string;
     sourceReference: ReturnType<typeof sectionSourceReferences>[number];
@@ -151,7 +163,9 @@ function renderBlock(
   const canHighlightBlock = block.type !== "quiz";
   const className = [
     "canvas-block",
-    canHighlightBlock && isHighlighted && (!highlightedText?.trim() || block.type === "math") ? "is-highlighted" : "",
+    canHighlightBlock && isHighlighted && (!highlightedText?.trim() || block.type === "math")
+      ? "is-highlighted"
+      : "",
     pulseClass(isPulsed, outlinePulseVersion),
   ]
     .filter(Boolean)
@@ -174,48 +188,11 @@ function renderBlock(
   }
 
   if (block.type === "asset" && block.asset_url) {
-    const url = apiUrl(block.asset_url);
-    const caption = block.caption ?? "Course figure";
-    return (
-      <figure className={`${className} canvas-asset`} id={block.id} key={block.id}>
-        <img alt={caption} src={assetPreviewUrl(url, block.asset_path ?? block.asset_url)} />
-        <figcaption>
-          {block.caption}
-          {sourceMarker}
-        </figcaption>
-      </figure>
-    );
+    return renderAssetBlock(block, { className, session, sourceMarker });
   }
 
   if (block.type === "video" && block.asset_url) {
-    const embedUrl = youtubeEmbedUrl(block.asset_url);
-    const nativeVideo = /\.(mp4|webm|mov)(?:$|\?)/i.test(block.asset_url);
-    const title = block.caption ?? "YouTube video";
-    return (
-      <figure className={`${className} canvas-video`} id={block.id} key={block.id}>
-        <div className="canvas-video-frame">
-          {embedUrl ? (
-            <iframe
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              src={embedUrl}
-              title={title}
-            />
-          ) : nativeVideo ? (
-            <video controls src={block.asset_url} title={title} />
-          ) : (
-            <a href={block.asset_url} rel="noreferrer" target="_blank">
-              Open video
-            </a>
-          )}
-        </div>
-        <figcaption>
-          <strong>{title}</strong>
-          {block.text ? <span>{block.text}</span> : null}
-          {sourceMarker}
-        </figcaption>
-      </figure>
-    );
+    return renderVideoBlock(block, { className, session, sourceMarker });
   }
 
   if (block.type === "callout") {

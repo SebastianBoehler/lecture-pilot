@@ -24,6 +24,7 @@ export function authHeaders(
     };
   }
   return {
+    "X-Course-Ids": (session.courses ?? []).map((course) => course.id).join(","),
     "X-Tenant-Id": session.tenant_id ?? "tenant-tuebingen",
     "X-User-Id": session.username,
     "X-User-Role": role,

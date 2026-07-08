@@ -18,6 +18,7 @@ from lecturepilot.tenancy import (
 
 def request_context(
     authorization: str | None = Header(default=None, alias="Authorization"),
+    x_course_ids: str | None = Header(default=None, alias="X-Course-Ids"),
     x_user_id: str | None = Header(default=None, alias="X-User-Id"),
     x_tenant_id: str | None = Header(default=None, alias="X-Tenant-Id"),
     x_user_role: TenantRole | None = Header(default=None, alias="X-User-Role"),
@@ -43,6 +44,7 @@ def request_context(
         tenant_id=x_tenant_id.strip(),
         user_id=x_user_id.strip(),
         roles=frozenset({x_user_role}),
+        course_ids=_parse_course_ids(x_course_ids),
     )
 
 
@@ -55,7 +57,9 @@ def require_course_manager(context: TenantContext, *, course_tenant_id: str) -> 
 
 def require_same_tenant(context: TenantContext, *, course_tenant_id: str) -> None:
     if context.tenant_id != course_tenant_id:
-        raise HTTPException(status_code=403, detail="Resource does not belong to the active tenant.")
+        raise HTTPException(
+            status_code=403, detail="Resource does not belong to the active tenant."
+        )
 
 
 def require_learner_workspace_access(
@@ -72,3 +76,10 @@ def require_learner_workspace_access(
         )
     except TenantAccessError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+
+def _parse_course_ids(header: str | None) -> frozenset[str]:
+    if not header:
+        return frozenset()
+    course_ids = [course_id.strip() for course_id in header.split(",")]
+    return frozenset(course_id for course_id in course_ids if course_id)

@@ -14,7 +14,9 @@ WRITE_PREFIXES = (
 )
 
 
-def root_map(canvas_workspace: CanvasWorkspace, user_id: str, course_id: str, lecture_id: str) -> dict[str, Path]:
+def root_map(
+    canvas_workspace: CanvasWorkspace, user_id: str, course_id: str, lecture_id: str
+) -> dict[str, Path]:
     layout = canvas_workspace.layout
     return {
         "/lecture/canvas": layout.user_canvas_dir(user_id, course_id, lecture_id),
@@ -23,7 +25,6 @@ def root_map(canvas_workspace: CanvasWorkspace, user_id: str, course_id: str, le
         "/user/profile.json": layout.user_root(user_id) / "profile.json",
         "/course/canvas": layout.course_canvas_dir(course_id, lecture_id),
         "/course/source/uploads": layout.course_uploads_dir(course_id),
-        "/course/materials": canvas_workspace.material_root,
     }
 
 

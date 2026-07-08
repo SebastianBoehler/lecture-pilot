@@ -1,17 +1,19 @@
 import { useMemo } from "react";
 
-import { apiUrl } from "./api";
 import { assetPreviewUrl } from "./assetMedia";
+import { AuthenticatedImage } from "./AuthenticatedAsset";
 import { WorkspaceFileTree } from "./WorkspaceFileTree";
-import type { CanvasDocument, WorkspaceResource } from "./types";
+import type { CanvasDocument, LoginSession, WorkspaceResource } from "./types";
 import { buildWorkspaceTree } from "./workspaceTree";
 
 export function WorkspaceFilesPanel({
   canvasDocument,
+  session,
   selectedResource,
   onSelectResource,
 }: {
   canvasDocument: CanvasDocument | null;
+  session: LoginSession;
   selectedResource: WorkspaceResource | null;
   onSelectResource: (resource: WorkspaceResource) => void;
 }) {
@@ -31,7 +33,7 @@ export function WorkspaceFilesPanel({
               selectedResource={selectedResource}
               onSelectResource={onSelectResource}
             />
-            <WorkspacePreview selectedResource={selectedResource} />
+            <WorkspacePreview selectedResource={selectedResource} session={session} />
           </>
         ) : (
           <p className="drawer-note">Canvas loading...</p>
@@ -41,7 +43,13 @@ export function WorkspaceFilesPanel({
   );
 }
 
-function WorkspacePreview({ selectedResource }: { selectedResource: WorkspaceResource | null }) {
+function WorkspacePreview({
+  selectedResource,
+  session,
+}: {
+  selectedResource: WorkspaceResource | null;
+  session: LoginSession;
+}) {
   if (!selectedResource) return <p className="drawer-note">Select a file to preview it here.</p>;
   return (
     <section className="workspace-preview" aria-label="Selected file preview">
@@ -57,9 +65,10 @@ function WorkspacePreview({ selectedResource }: { selectedResource: WorkspaceRes
         selectedResource.kind === "video" ? (
           <VideoPreview label={selectedResource.label} url={selectedResource.url} />
         ) : (
-          <img
+          <AuthenticatedImage
             alt={selectedResource.label}
-            src={assetPreviewUrl(apiUrl(selectedResource.url), selectedResource.path)}
+            session={session}
+            src={assetPreviewUrl(selectedResource.url, selectedResource.path)}
           />
         )
       ) : (

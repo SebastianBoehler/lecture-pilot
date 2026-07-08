@@ -1,3 +1,4 @@
+from datetime import date
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -7,7 +8,16 @@ from lecturepilot.app import create_app
 from lecturepilot.analytics import AnalyticsStore
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.models import AgentTurnResult, AttendanceStatus, QualityGateDecision, QualityGateStatus
+from lecturepilot.course_schedule_store import write_course_workspace
+from lecturepilot.models import (
+    AgentTurnResult,
+    AttendanceStatus,
+    Course,
+    CourseWorkspaceResult,
+    Lecture,
+    QualityGateDecision,
+    QualityGateStatus,
+)
 
 
 def test_quiz_answers_are_recorded_as_aggregate_lecture_analytics(tmp_path: Path) -> None:
@@ -147,6 +157,26 @@ def _client(tmp_path: Path) -> TestClient:
         workspace_root=tmp_path / "workspaces",
         material_root=tmp_path / "materials",
     )
+    write_course_workspace(
+        app.state.canvas_workspace.course_media_root("demo-course"),
+        CourseWorkspaceResult(
+            course=Course(
+                id="demo-course",
+                title="Demo Course",
+                professor="Prof. Demo",
+                term="Sommer 2026",
+            ),
+            lectures=[
+                Lecture(
+                    id="lecture-01",
+                    course_id="demo-course",
+                    title="Risk lecture",
+                    date=date(2026, 6, 1),
+                )
+            ],
+            active_lecture_id="lecture-01",
+        ),
+    )
     app.state.canvas_workspace.write_course_canvas(_canvas_document(tmp_path))
     return TestClient(app)
 
@@ -173,7 +203,11 @@ def _canvas_document(tmp_path: Path) -> CanvasDocument:
                         component_type="single_choice_quiz",
                         caption="Risk threshold check",
                         text="Which action minimizes expected risk?",
-                        items=["Use the largest class prior.", "Use posterior-weighted loss.", "Ignore costs."],
+                        items=[
+                            "Use the largest class prior.",
+                            "Use posterior-weighted loss.",
+                            "Ignore costs.",
+                        ],
                         option_ids=["prior-only", "posterior-loss", "ignore-cost"],
                         answer_index=1,
                     )

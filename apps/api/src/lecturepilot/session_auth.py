@@ -13,6 +13,10 @@ from lecturepilot.models import TenantRole, TuebingenLoginResult
 from lecturepilot.tenancy import TenantContext
 
 
+_LOCAL_ENVS = frozenset({"development", "local", "test"})
+_DEV_AUTH_MODES = frozenset({"dev", "dev-headers"})
+
+
 class SessionAuthError(PermissionError):
     """Raised when an auth token is missing, malformed, expired, or invalid."""
 
@@ -25,14 +29,18 @@ class SessionAuthSettings:
 
     @classmethod
     def from_env(cls) -> "SessionAuthSettings":
-        env = os.getenv("LECTUREPILOT_ENV", "development").strip().lower()
-        mode = os.getenv("LECTUREPILOT_AUTH_MODE", "dev" if env != "production" else "session")
-        mode = mode.strip().lower()
+        env = os.getenv("LECTUREPILOT_ENV", "").strip().lower()
+        default_mode = "dev" if env in _LOCAL_ENVS else "session"
+        mode = os.getenv("LECTUREPILOT_AUTH_MODE", default_mode).strip().lower()
         if mode not in {"dev", "dev-headers", "session"}:
             raise SessionAuthError("LECTUREPILOT_AUTH_MODE must be dev, dev-headers, or session.")
+        if mode in _DEV_AUTH_MODES and env not in _LOCAL_ENVS:
+            raise SessionAuthError(
+                "Dev header auth requires LECTUREPILOT_ENV=development, local, or test."
+            )
         secret = os.getenv("LECTUREPILOT_SESSION_SECRET")
         if not secret:
-            if env == "production" or mode == "session":
+            if mode == "session":
                 raise SessionAuthError("LECTUREPILOT_SESSION_SECRET is required for session auth.")
             secret = "lecturepilot-local-dev-session-secret"
         try:
@@ -52,6 +60,7 @@ def sign_session(context: TenantContext, *, settings: SessionAuthSettings | None
     settings = settings or SessionAuthSettings.from_env()
     expires_at = datetime.now(UTC) + timedelta(minutes=settings.ttl_minutes)
     payload = {
+        "course_ids": sorted(context.course_ids),
         "exp": int(expires_at.timestamp()),
         "roles": sorted(role.value for role in context.roles),
         "tenant_id": context.tenant_id,
@@ -67,6 +76,7 @@ def with_access_token(result: TuebingenLoginResult) -> TuebingenLoginResult:
         tenant_id=result.tenant_id,
         user_id=result.username,
         roles=frozenset(result.roles),
+        course_ids=frozenset(course.id for course in result.courses),
     )
     return result.model_copy(update={"access_token": sign_session(context)})
 
@@ -80,7 +90,9 @@ def context_from_bearer_token(header: str | None) -> TenantContext:
     return verify_session_token(token)
 
 
-def verify_session_token(token: str, *, settings: SessionAuthSettings | None = None) -> TenantContext:
+def verify_session_token(
+    token: str, *, settings: SessionAuthSettings | None = None
+) -> TenantContext:
     settings = settings or SessionAuthSettings.from_env()
     body, separator, signature = token.partition(".")
     if not separator or not body or not signature:
@@ -94,6 +106,9 @@ def verify_session_token(token: str, *, settings: SessionAuthSettings | None = N
         roles = frozenset(TenantRole(role) for role in payload["roles"])
         tenant_id = str(payload["tenant_id"]).strip()
         user_id = str(payload["user_id"]).strip()
+        course_ids = frozenset(
+            str(course_id).strip() for course_id in payload.get("course_ids", [])
+        )
     except (
         binascii.Error,
         KeyError,
@@ -107,7 +122,12 @@ def verify_session_token(token: str, *, settings: SessionAuthSettings | None = N
         raise SessionAuthError("Session token has expired.")
     if not tenant_id or not user_id or not roles:
         raise SessionAuthError("Session token is incomplete.")
-    return TenantContext(tenant_id=tenant_id, user_id=user_id, roles=roles)
+    return TenantContext(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        roles=roles,
+        course_ids=frozenset(course_id for course_id in course_ids if course_id),
+    )
 
 
 def _signature(body: str, secret: str) -> str:

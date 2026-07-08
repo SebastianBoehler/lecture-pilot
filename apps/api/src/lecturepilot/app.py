@@ -5,21 +5,31 @@ from datetime import date
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
 
 from lecturepilot.analytics import AnalyticsStore
 from lecturepilot.analytics_routes import register_analytics_routes
 from lecturepilot.admin_media_routes import register_admin_media_routes
 from lecturepilot.api_auth import request_context, require_course_manager, require_same_tenant
+from lecturepilot.asset_routes import register_asset_routes
 from lecturepilot.agent_routes import register_agent_routes
-from lecturepilot.canvas_workspace import CanvasWorkspace, CanvasWorkspaceError
-from lecturepilot.canvas_workspace_config import SEEDED_COURSE_ID
+from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_builder_source import course_builder_source_document, scan_source_bundles
 from lecturepilot.course_canvas_routes import register_course_canvas_routes
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner
 from lecturepilot.course_deletion import register_course_deletion_routes
-from lecturepilot.course_schedule_store import list_course_workspaces, read_course_workspace, write_course_workspace
+from lecturepilot.course_access import (
+    filter_accessible_courses,
+    lecture_views_for_context,
+    require_course_access,
+    resolve_course,
+)
+from lecturepilot.course_schedule_store import (
+    list_course_workspaces,
+    read_course_workspace,
+    write_course_workspace,
+)
 from lecturepilot.course_workspace import resolve_course_workspace
+from lecturepilot.demo_course_access import include_created_courses_for_demo
 from lecturepilot.dev_seeded_course import discovered_seeded_lecture_views
 from lecturepilot.exam_readiness_routes import register_exam_readiness_routes
 from lecturepilot.harness import LecturePilotHarness
@@ -41,10 +51,14 @@ from lecturepilot.models import (
 from lecturepilot.observability import observability_from_env
 from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.runtime_env import load_project_env
-from lecturepilot.sample_data import COURSE, LECTURES, unlocked_lectures
+from lecturepilot.sample_data import COURSE, LECTURES
 from lecturepilot.session_auth import SessionAuthError, with_access_token
 from lecturepilot.tenancy import TenantContext
-from lecturepilot.tuebingen_adapter import TuebingenCourseAdapter, TuebingenIntegrationUnavailable, TuebingenLoginError
+from lecturepilot.tuebingen_adapter import (
+    TuebingenCourseAdapter,
+    TuebingenIntegrationUnavailable,
+    TuebingenLoginError,
+)
 from lecturepilot.user_memory import UserMemoryStore
 from lecturepilot.workspace import WorkspacePolicy, WorkspacePolicyError
 from lecturepilot.youtube_discovery import YoutubeDiscovery
@@ -86,13 +100,18 @@ def create_app() -> FastAPI:
         lectures=LECTURES,
         course_tenant_id=COURSE_TENANT_ID,
     )
-    register_agent_routes(app, course_tenant_id=COURSE_TENANT_ID)
-    register_analytics_routes(app, course_tenant_id=COURSE_TENANT_ID)
+    seeded_route_args = {
+        "course_tenant_id": COURSE_TENANT_ID,
+        "seeded_course": COURSE,
+        "seeded_lectures": LECTURES,
+    }
+    register_agent_routes(app, **seeded_route_args)
+    register_analytics_routes(app, **seeded_route_args)
     register_course_canvas_routes(
         app,
         course_tenant_id=COURSE_TENANT_ID,
         lectures=LECTURES,
-        seeded_course_id=SEEDED_COURSE_ID,
+        seeded_course=COURSE,
         source_document=lambda course_id, lecture_id: course_builder_source_document(
             app,
             course_id,
@@ -100,7 +119,13 @@ def create_app() -> FastAPI:
         ),
     )
     register_course_deletion_routes(app, course_tenant_id=COURSE_TENANT_ID)
-    register_exam_readiness_routes(app, course_tenant_id=COURSE_TENANT_ID, lectures=LECTURES)
+    register_exam_readiness_routes(
+        app,
+        course_tenant_id=COURSE_TENANT_ID,
+        seeded_course=COURSE,
+        lectures=LECTURES,
+    )
+    register_asset_routes(app, **seeded_route_args)
 
     @app.get("/courses")
     def courses(context: TenantContext = Depends(request_context)) -> list[dict]:
@@ -108,18 +133,25 @@ def create_app() -> FastAPI:
         stored = list_course_workspaces(app.state.canvas_workspace.workspace_root, COURSE_TENANT_ID)
         courses_by_id = {COURSE.id: COURSE}
         courses_by_id.update({workspace.course.id: workspace.course for workspace in stored})
-        return [course.model_dump() for course in courses_by_id.values()]
+        accessible = filter_accessible_courses(
+            context, list(courses_by_id.values()), course_tenant_id=COURSE_TENANT_ID
+        )
+        return [course.model_dump() for course in accessible]
 
     @app.post("/auth/login", response_model=TuebingenLoginResult)
     def login(input_data: TuebingenLoginInput) -> TuebingenLoginResult:
         try:
-            return with_access_token(
-                app.state.tuebingen_adapter.login(
-                    username=input_data.username,
-                    password=input_data.password.get_secret_value(),
-                    term=input_data.term,
-                )
+            result = app.state.tuebingen_adapter.login(
+                username=input_data.username,
+                password=input_data.password.get_secret_value(),
+                term=input_data.term,
             )
+            result = include_created_courses_for_demo(
+                result,
+                tenant_id=COURSE_TENANT_ID,
+                workspace_root=app.state.canvas_workspace.workspace_root,
+            )
+            return with_access_token(result)
         except TuebingenIntegrationUnavailable as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         except TuebingenLoginError as exc:
@@ -132,25 +164,30 @@ def create_app() -> FastAPI:
         course_id: str,
         context: TenantContext = Depends(request_context),
     ) -> list[dict]:
-        require_same_tenant(context, course_tenant_id=COURSE_TENANT_ID)
-        workspace = read_course_workspace(app.state.canvas_workspace.course_media_root(course_id), course_id)
+        course = resolve_course(app, course_id=course_id, seeded_course=COURSE)
+        require_course_access(context, course=course, course_tenant_id=COURSE_TENANT_ID)
+        workspace = read_course_workspace(
+            app.state.canvas_workspace.course_media_root(course_id), course_id
+        )
         if workspace:
             return [
-                {
-                    "lecture": lecture.model_dump(mode="json"),
-                    "unlocked": True,
-                    "attendance": "unknown",
-                }
-                for lecture in workspace.lectures
+                item.model_dump(mode="json")
+                for item in lecture_views_for_context(context, workspace.lectures)
             ]
         if discovered_lectures := discovered_seeded_lecture_views(
             course_id,
             app.state.canvas_workspace.material_root,
         ):
-            return [item.model_dump(mode="json") for item in discovered_lectures]
+            lectures = [item.lecture for item in discovered_lectures]
+            return [
+                item.model_dump(mode="json")
+                for item in lecture_views_for_context(context, lectures)
+            ]
         if course_id != COURSE.id:
             raise HTTPException(status_code=404, detail="Course not found.")
-        return [item.model_dump(mode="json") for item in unlocked_lectures()]
+        return [
+            item.model_dump(mode="json") for item in lecture_views_for_context(context, LECTURES)
+        ]
 
     @app.post("/admin/course-workspaces", response_model=CourseWorkspaceResult)
     def create_course_workspace(
@@ -176,7 +213,9 @@ def create_app() -> FastAPI:
     ) -> SourceBundleManifest:
         require_course_manager(context, course_tenant_id=COURSE_TENANT_ID)
         files = scan_source_bundles(
-            app.state.canvas_workspace.source_bundle_roots(course_id, include_seeded_materials=False)
+            app.state.canvas_workspace.source_bundle_roots(
+                course_id, include_seeded_materials=False
+            )
         )
         counts = Counter(item.kind for item in files)
         uploads = [
@@ -250,48 +289,7 @@ def create_app() -> FastAPI:
             storage_path=str(target),
         )
 
-    @app.get("/course-assets/{course_id}/{lecture_id}/{asset_path:path}")
-    def course_asset(
-        course_id: str,
-        lecture_id: str,
-        asset_path: str,
-        preview: str | None = None,
-    ) -> FileResponse:
-        try:
-            if preview == "png":
-                path = app.state.canvas_workspace.asset_preview_path(
-                    course_id=course_id,
-                    lecture_id=lecture_id,
-                    asset_path=asset_path,
-                )
-            else:
-                path = app.state.canvas_workspace.asset_path(
-                    course_id=course_id,
-                    lecture_id=lecture_id,
-                    asset_path=asset_path,
-                )
-        except CanvasWorkspaceError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-        return FileResponse(path)
-
-    @app.get("/workspace-assets/{course_id}/{lecture_id}/{student_key}/{asset_path:path}")
-    def workspace_asset(
-        course_id: str,
-        lecture_id: str,
-        student_key: str,
-        asset_path: str,
-    ) -> FileResponse:
-        try:
-            path = app.state.canvas_workspace.workspace_asset_path(
-                course_id=course_id,
-                lecture_id=lecture_id,
-                student_key=student_key,
-                asset_path=asset_path,
-            )
-        except CanvasWorkspaceError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-        return FileResponse(path)
-
     return app
+
 
 app = create_app()

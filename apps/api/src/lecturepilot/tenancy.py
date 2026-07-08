@@ -23,6 +23,7 @@ class TenantContext:
     tenant_id: str
     user_id: str
     roles: frozenset[TenantRole]
+    course_ids: frozenset[str] = frozenset()
 
     @classmethod
     def from_profile(cls, profile: UserProfile, *, tenant_id: str) -> "TenantContext":

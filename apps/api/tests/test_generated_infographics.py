@@ -40,9 +40,15 @@ def test_agent_turn_materializes_infographic_asset(monkeypatch, tmp_path: Path) 
     assert asset["asset_url"].startswith("/workspace-assets/martius-ml/lecture-03/")
     assert asset["caption"] == "Generated with fake-image-model as a teaching infographic"
 
-    asset_response = client.get(asset["asset_url"])
+    unauthenticated_asset_response = client.get(asset["asset_url"])
+    assert unauthenticated_asset_response.status_code == 401
+
+    asset_response = client.get(asset["asset_url"], headers=student_headers("student01"))
     assert asset_response.status_code == 200
     assert asset_response.content == b"fake-png"
+
+    denied_asset_response = client.get(asset["asset_url"], headers=student_headers("student02"))
+    assert denied_asset_response.status_code == 403
 
     reloaded = client.get(
         "/courses/martius-ml/lectures/lecture-03/canvas",
@@ -95,9 +101,12 @@ def test_workspace_asset_route_rejects_invalid_student_key(tmp_path: Path) -> No
     )
     client = TestClient(app)
 
-    response = client.get("/workspace-assets/martius-ml/lecture-03/not-a-hash/student-assets/x.svg")
+    response = client.get(
+        "/workspace-assets/martius-ml/lecture-03/not-a-hash/student-assets/x.svg",
+        headers=student_headers("student01"),
+    )
 
-    assert response.status_code == 404
+    assert response.status_code == 403
 
 
 class _InfographicHarness:

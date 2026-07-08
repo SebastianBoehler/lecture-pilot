@@ -59,9 +59,10 @@ export function LessonWorkspace({
 }) {
   const layoutClass = panelMode ? "lesson-layout panel-open" : "lesson-layout";
   const [activeAnchorId, setActiveAnchorId] = useState<DocumentAnchorId | null>(null);
-  const [outlinePulse, setOutlinePulse] = useState<{ id: DocumentAnchorId; version: number } | null>(
-    null,
-  );
+  const [outlinePulse, setOutlinePulse] = useState<{
+    id: DocumentAnchorId;
+    version: number;
+  } | null>(null);
   const [selectedResource, setSelectedResource] = useState<WorkspaceResource | null>(null);
 
   useEffect(() => {
@@ -130,7 +131,9 @@ export function LessonWorkspace({
           <span>{lecture.date}</span>
         </div>
         {canvasError ? <p className="form-error">{canvasError}</p> : null}
-        {!canvasDocument && !canvasError ? <p className="drawer-note">Loading lecture canvas...</p> : null}
+        {!canvasDocument && !canvasError ? (
+          <p className="drawer-note">Loading lecture canvas...</p>
+        ) : null}
         {canvasDocument ? (
           <LessonCanvas
             canvasDocument={canvasDocument}
@@ -142,6 +145,7 @@ export function LessonWorkspace({
             navigationVersion={navigationVersion}
             outlinePulseId={outlinePulse?.id ?? null}
             outlinePulseVersion={outlinePulse?.version ?? 0}
+            session={session}
             onOpenResource={openWorkspaceResource}
             onSubmitQuizAnswer={submitQuizAnswer}
           />
@@ -188,11 +192,7 @@ export function LessonWorkspace({
       </aside>
 
       {panelMode === "chat" ? (
-        <TutorDrawer
-          messages={messages}
-          model={tutorModel}
-          onSendMessage={onSendMessage}
-        />
+        <TutorDrawer messages={messages} model={tutorModel} onSendMessage={onSendMessage} />
       ) : null}
       {panelMode === "outline" ? (
         <OutlinePanel
@@ -205,6 +205,7 @@ export function LessonWorkspace({
       {panelMode === "files" ? (
         <WorkspaceFilesPanel
           canvasDocument={canvasDocument}
+          session={session}
           selectedResource={selectedResource}
           onSelectResource={selectWorkspaceResource}
         />
@@ -220,5 +221,7 @@ function quizAnswerMessage(block: CanvasBlock, answer: string, optionIndex: numb
   return [
     `Retrieval quiz answer for "${title}": ${letter}. ${answer}`,
     prompt ? `Question: ${prompt}` : "",
-  ].filter(Boolean).join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }

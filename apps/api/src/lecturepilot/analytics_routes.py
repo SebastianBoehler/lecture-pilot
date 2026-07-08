@@ -2,16 +2,33 @@ from __future__ import annotations
 
 from fastapi import Depends, FastAPI, HTTPException
 
-from lecturepilot.analytics import AnalyticsStore, LectureAnalyticsSummary, QuizAnswerInput, QuizAnswerResult
-from lecturepilot.api_auth import request_context, require_course_manager, require_learner_workspace_access
+from lecturepilot.analytics import (
+    AnalyticsStore,
+    LectureAnalyticsSummary,
+    QuizAnswerInput,
+    QuizAnswerResult,
+)
+from lecturepilot.api_auth import (
+    request_context,
+    require_course_manager,
+    require_learner_workspace_access,
+)
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
+from lecturepilot.course_access import require_lecture_id_access
+from lecturepilot.models import Course, Lecture
 from lecturepilot.readiness_analytics import CourseReadinessSummary, course_readiness_summary
 from lecturepilot.readiness_progress import ReadinessProgressStore
 from lecturepilot.tenancy import TenantContext
 
 
-def register_analytics_routes(app: FastAPI, *, course_tenant_id: str) -> None:
+def register_analytics_routes(
+    app: FastAPI,
+    *,
+    course_tenant_id: str,
+    seeded_course: Course,
+    seeded_lectures: list[Lecture],
+) -> None:
     @app.post(
         "/courses/{course_id}/lectures/{lecture_id}/analytics/quiz-answer",
         response_model=QuizAnswerResult,
@@ -26,6 +43,15 @@ def register_analytics_routes(app: FastAPI, *, course_tenant_id: str) -> None:
             context,
             learner_user_id=answer.user_id,
             course_tenant_id=course_tenant_id,
+        )
+        require_lecture_id_access(
+            app,
+            context,
+            course_id=course_id,
+            lecture_id=lecture_id,
+            course_tenant_id=course_tenant_id,
+            seeded_course=seeded_course,
+            seeded_lectures=seeded_lectures,
         )
         if not app.state.canvas_workspace.has_published_course_canvas(
             course_id=course_id,

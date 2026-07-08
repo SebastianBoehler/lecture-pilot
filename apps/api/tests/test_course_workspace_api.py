@@ -6,7 +6,7 @@ from auth_helpers import professor_headers, student_headers
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.models import LectureScheduleItem, LectureScheduleProposal
+from lecturepilot.models import Course, LectureScheduleItem, LectureScheduleProposal, TuebingenLoginResult
 
 
 def test_professor_creates_stable_course_workspace_ids(tmp_path: Path) -> None:
@@ -110,6 +110,33 @@ def test_created_course_workspace_persists_lecture_schedule(tmp_path: Path) -> N
     payload = lectures.json()
     assert [item["lecture"]["id"] for item in payload] == ["lecture-01", "lecture-02"]
     assert payload[1]["lecture"]["material_path"] == "Lecture02.tex"
+
+
+def test_demo_flag_appends_created_course_to_live_login(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("LECTUREPILOT_DEMO_INCLUDE_CREATED_COURSES", raising=False)
+    client = _client(tmp_path)
+    client.app.state.tuebingen_adapter = _FakeLoginAdapter()
+    _create_workspace(client, "Grundlagen des Maschinellen Lernens", "01", "Introduction")
+
+    response = client.post(
+        "/auth/login",
+        json={"username": "student01", "password": "secret", "term": "Sommer 2026"},
+    )
+
+    assert response.status_code == 200
+    assert _course_titles(response.json()) == ["INFO4193 Natural Language Processing"]
+
+    monkeypatch.setenv("LECTUREPILOT_DEMO_INCLUDE_CREATED_COURSES", "true")
+    response = client.post(
+        "/auth/login",
+        json={"username": "student01", "password": "secret", "term": "Sommer 2026"},
+    )
+
+    assert response.status_code == 200
+    assert _course_titles(response.json()) == [
+        "INFO4193 Natural Language Processing",
+        "Grundlagen des Maschinellen Lernens",
+    ]
 
 
 def test_professor_can_infer_full_course_schedule_from_bundle(tmp_path: Path) -> None:
@@ -298,10 +325,16 @@ def test_course_canvas_draft_can_use_markdown_text_and_pdf_without_latex(tmp_pat
     assert draft.json()["source_kind"] == "generated"
     assert draft.json()["source_ref"] == "course planner from notes/overview.md, notes/risk.txt, slides/risk.pdf"
 
-    asset = client.get("/course-assets/mixed-source-course/lecture-01/figures/risk.png")
+    asset = client.get(
+        "/course-assets/mixed-source-course/lecture-01/figures/risk.png",
+        headers=student_headers(),
+    )
     assert asset.status_code == 200
     assert asset.content.startswith(b"\x89PNG")
-    video = client.get("/course-assets/mixed-source-course/lecture-01/videos/decision.mp4")
+    video = client.get(
+        "/course-assets/mixed-source-course/lecture-01/videos/decision.mp4",
+        headers=student_headers(),
+    )
     assert video.status_code == 200
     assert video.content.startswith(b"\x00\x00\x00\x18ftyp")
 
@@ -428,6 +461,27 @@ class _FakeLectureSchedulePlanner:
                 ),
             ],
         )
+
+
+class _FakeLoginAdapter:
+    def login(self, *, username: str, password: str, term: str) -> TuebingenLoginResult:
+        return TuebingenLoginResult(
+            username=username,
+            email=f"{username}@uni-tuebingen.de",
+            term=term,
+            courses=[
+                Course(
+                    id="info4193",
+                    title="INFO4193 Natural Language Processing",
+                    professor="Fachbereich Informatik",
+                    term=term,
+                )
+            ],
+        )
+
+
+def _course_titles(payload: dict) -> list[str]:
+    return [course["title"] for course in payload["courses"]]
 
 
 class _FakeMixedSourcePlanner:
