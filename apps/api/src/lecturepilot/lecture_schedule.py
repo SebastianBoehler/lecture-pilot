@@ -4,6 +4,7 @@ import re
 from datetime import date, timedelta
 from pathlib import Path
 
+from lecturepilot.lecture_date_extraction import anchored_weekly_date, extract_source_date
 from lecturepilot.models import LectureScheduleItem, LectureScheduleProposal
 from lecturepilot.source_bundle import SourceBundleFile
 
@@ -22,12 +23,15 @@ def propose_lecture_schedule(
     numbers = sorted(selected)
     if not numbers and requested_count:
         numbers = list(range(1, requested_count + 1))
-    start_date = first_lecture_date or date.today()
+    explicit_dates = _source_dates(numbers, selected, roots)
+    default_start_date = first_lecture_date or date.today()
     lectures = [
         LectureScheduleItem(
             number=f"{number:02d}",
             title=_lecture_title(number, selected.get(number), roots),
-            date=start_date + timedelta(days=7 * index),
+            date=explicit_dates.get(index)
+            or anchored_weekly_date(index=index, explicit_dates=explicit_dates, first_lecture_date=first_lecture_date)
+            or default_start_date + timedelta(days=7 * index),
             material_path=selected.get(number).path if number in selected else None,
         )
         for index, number in enumerate(numbers or [1])
@@ -46,6 +50,16 @@ def _select_lecture_files(files: list[SourceBundleFile]) -> dict[int, SourceBund
         if match:
             grouped.setdefault(int(match.group(1)), []).append(item)
     return {number: sorted(items, key=_source_priority)[0] for number, items in grouped.items()}
+
+
+def _source_dates(numbers: list[int], selected: dict[int, SourceBundleFile], roots: list[Path]) -> dict[int, date]:
+    dates = {}
+    for index, number in enumerate(numbers):
+        source = selected.get(number)
+        source_path = _resolve_source(source.path, roots) if source else None
+        if source_path and (value := extract_source_date(source_path)):
+            dates[index] = value
+    return dates
 
 
 def _source_priority(item: SourceBundleFile) -> tuple[int, int, str]:

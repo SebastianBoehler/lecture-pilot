@@ -9,6 +9,7 @@ from pydantic import ValidationError
 
 from lecturepilot.agent_response_schema import lecture_schedule_response_format
 from lecturepilot.course_canvas_json import parse_model_json
+from lecturepilot.lecture_date_extraction import extract_source_date
 from lecturepilot.lecture_schedule import propose_lecture_schedule
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import LectureScheduleItem, LectureScheduleProposal, ProviderCapability, ProviderSettings
@@ -104,7 +105,8 @@ def _schedule_messages(
                 "number, title, date, and material_path. Prefer concise real lecture topic "
                 "titles over housekeeping frames such as plan, recap, feedback, note, or "
                 "course thread. If a requested lecture count is absent, infer the count from "
-                "the materials. Use weekly dates starting from the provided first lecture date. "
+                "the materials. Prefer explicit date cues from current-semester source files. "
+                "When dates are missing, use weekly dates starting from the provided first lecture date. "
                 "Set material_path to null when no single source file belongs to the lecture."
             ),
         },
@@ -160,14 +162,16 @@ def _source_evidence(
 
 def _file_evidence(item: SourceBundleFile, roots: list[Path]) -> str:
     base = f"- path={item.path}; kind={item.kind}; size={item.size_bytes}"
-    if item.kind not in {"latex", "markdown", "text", "json"}:
-        return base
     path = _resolve_source(item.path, roots)
     if not path:
         return base
+    date_cue = extract_source_date(path)
+    if item.kind not in {"latex", "markdown", "text", "json"}:
+        return f"{base}\n  date cue: {date_cue.isoformat() if date_cue else 'none detected'}"
     text = path.read_text(encoding="utf-8", errors="ignore")
     return (
         f"{base}\n"
+        f"  date cue: {date_cue.isoformat() if date_cue else 'none detected'}\n"
         f"  outline: {_outline(text, item.kind)}\n"
         f"  excerpt: {_compact_excerpt(text[:MAX_EXCERPT_CHARS])}"
     )

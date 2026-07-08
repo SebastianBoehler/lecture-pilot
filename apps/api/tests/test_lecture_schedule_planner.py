@@ -53,6 +53,60 @@ def test_schedule_prefers_topic_section_over_housekeeping_frames(tmp_path) -> No
     assert proposal.lectures[0].title == "Bayesian Decision Theory"
 
 
+def test_schedule_uses_explicit_slide_dates(tmp_path) -> None:
+    first = tmp_path / "Lecture01-eng.tex"
+    second = tmp_path / "Lecture02-eng.tex"
+    first.write_text(
+        r"""
+        \date{May 6, 2026}
+        \section{Introduction}
+        """,
+        encoding="utf-8",
+    )
+    second.write_text(
+        r"""
+        \date{13.05.2026}
+        \section{Generalization}
+        """,
+        encoding="utf-8",
+    )
+
+    proposal = propose_lecture_schedule(
+        course_id="martius-ml",
+        files=[
+            SourceBundleFile(path=first.name, kind="latex", size_bytes=first.stat().st_size),
+            SourceBundleFile(path=second.name, kind="latex", size_bytes=second.stat().st_size),
+        ],
+        roots=[tmp_path],
+    )
+
+    assert [lecture.date.isoformat() for lecture in proposal.lectures] == ["2026-05-06", "2026-05-13"]
+
+
+def test_schedule_anchors_missing_dates_from_detected_slide_date(tmp_path) -> None:
+    first = tmp_path / "Lecture01-eng.tex"
+    second = tmp_path / "Lecture02-eng.tex"
+    first.write_text(r"\section{Introduction}", encoding="utf-8")
+    second.write_text(
+        r"""
+        \date{2026-05-13}
+        \section{Generalization}
+        """,
+        encoding="utf-8",
+    )
+
+    proposal = propose_lecture_schedule(
+        course_id="martius-ml",
+        files=[
+            SourceBundleFile(path=first.name, kind="latex", size_bytes=first.stat().st_size),
+            SourceBundleFile(path=second.name, kind="latex", size_bytes=second.stat().st_size),
+        ],
+        roots=[tmp_path],
+    )
+
+    assert [lecture.date.isoformat() for lecture in proposal.lectures] == ["2026-05-06", "2026-05-13"]
+
+
 async def test_litellm_schedule_client_requests_schedule_schema(monkeypatch) -> None:
     calls = []
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
@@ -82,6 +136,7 @@ async def test_schedule_planner_sends_topic_outline_to_model(tmp_path, monkeypat
     source = tmp_path / "Lecture03-eng.tex"
     source.write_text(
         r"""
+        \date{May 20, 2026}
         \begin{frame}{Plan}Housekeeping\end{frame}
         \section{Bayesian Decision Theory}
         \begin{frame}{Bayes Rule}
@@ -106,6 +161,7 @@ async def test_schedule_planner_sends_topic_outline_to_model(tmp_path, monkeypat
     )
 
     assert proposal.lectures[0].title == "Bayesian Decision Theory"
+    assert "date cue: 2026-05-20" in client.last_messages[1]["content"]
     assert "Bayesian Decision Theory" in client.last_messages[1]["content"]
     assert "Losses, Risks and Discriminant Functions" in client.last_messages[1]["content"]
 
