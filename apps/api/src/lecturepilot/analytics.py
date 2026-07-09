@@ -10,6 +10,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from lecturepilot.canvas_models import CanvasBlock
+from lecturepilot.learning_map import LearningMap
 from lecturepilot.models import AttendanceStatus, QualityGateDecision
 from lecturepilot.storage_layout import StorageLayout, safe_id
 
@@ -64,6 +65,7 @@ class LectureAnalyticsSummary(BaseModel):
     course_id: str
     lecture_id: str
     total_events: int
+    learning_map: LearningMap | None = None
     quizzes: list[AnalyticsQuizMetric]
     gates: list[AnalyticsGateMetric]
 
@@ -208,7 +210,9 @@ def _quiz_metric(component_id: str, events: list[dict]) -> AnalyticsQuizMetric:
         title=str(latest.get("title") or component_id),
         question=str(latest.get("question") or ""),
         total_attempts=len(events),
-        unique_learners=len({str(event.get("user_key")) for event in events if event.get("user_key")}),
+        unique_learners=len(
+            {str(event.get("user_key")) for event in events if event.get("user_key")}
+        ),
         correct_attempts=correct_attempts,
         correct_rate=round(correct_attempts / len(events), 4) if events else None,
         latest_activity=str(latest.get("created_at") or "") or None,
@@ -229,7 +233,9 @@ def _option_metrics(events: list[dict], latest: dict) -> list[AnalyticsOptionMet
         metrics.append(
             AnalyticsOptionMetric(
                 option_index=index,
-                option_id=option.get("option_id") if isinstance(option.get("option_id"), str) else None,
+                option_id=option.get("option_id")
+                if isinstance(option.get("option_id"), str)
+                else None,
                 text=str(option.get("text") or ""),
                 selections=selections.get(index, 0),
                 correct=index == correct_index,
@@ -251,7 +257,9 @@ def _gate_metric(gate_id: str, events: list[dict]) -> AnalyticsGateMetric:
     return AnalyticsGateMetric(
         gate_id=gate_id,
         total_events=len(events),
-        unique_learners=len({str(event.get("user_key")) for event in events if event.get("user_key")}),
+        unique_learners=len(
+            {str(event.get("user_key")) for event in events if event.get("user_key")}
+        ),
         latest_activity=str(latest.get("created_at") or "") or None,
         status_counts=_count_values(events, "status"),
         attendance_split=_count_values(events, "attendance"),

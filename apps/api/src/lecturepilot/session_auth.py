@@ -15,6 +15,7 @@ from lecturepilot.tenancy import TenantContext
 
 _LOCAL_ENVS = frozenset({"development", "local", "test"})
 _DEV_AUTH_MODES = frozenset({"dev", "dev-headers"})
+SESSION_COOKIE_NAME = "lecturepilot_session"
 
 
 class SessionAuthError(PermissionError):
@@ -26,6 +27,8 @@ class SessionAuthSettings:
     mode: str
     secret: str
     ttl_minutes: int
+    cookie_secure: bool
+    cookie_samesite: str
 
     @classmethod
     def from_env(cls) -> "SessionAuthSettings":
@@ -49,7 +52,13 @@ class SessionAuthSettings:
             raise SessionAuthError("LECTUREPILOT_SESSION_TTL_MINUTES must be an integer.") from exc
         if ttl < 1:
             raise SessionAuthError("LECTUREPILOT_SESSION_TTL_MINUTES must be positive.")
-        return cls(mode=mode, secret=secret, ttl_minutes=ttl)
+        return cls(
+            mode=mode,
+            secret=secret,
+            ttl_minutes=ttl,
+            cookie_secure=_bool_env("LECTUREPILOT_SESSION_COOKIE_SECURE", env == "production"),
+            cookie_samesite=os.getenv("LECTUREPILOT_SESSION_COOKIE_SAMESITE", "lax").lower(),
+        )
 
     @property
     def allow_dev_headers(self) -> bool:
@@ -72,13 +81,21 @@ def sign_session(context: TenantContext, *, settings: SessionAuthSettings | None
 
 
 def with_access_token(result: TuebingenLoginResult) -> TuebingenLoginResult:
+    return result.model_copy(update={"access_token": session_token_for_login(result)})
+
+
+def without_access_token(result: TuebingenLoginResult) -> TuebingenLoginResult:
+    return result.model_copy(update={"access_token": None})
+
+
+def session_token_for_login(result: TuebingenLoginResult) -> str:
     context = TenantContext(
         tenant_id=result.tenant_id,
         user_id=result.username,
         roles=frozenset(result.roles),
         course_ids=frozenset(course.id for course in result.courses),
     )
-    return result.model_copy(update={"access_token": sign_session(context)})
+    return sign_session(context)
 
 
 def context_from_bearer_token(header: str | None) -> TenantContext:
@@ -88,6 +105,12 @@ def context_from_bearer_token(header: str | None) -> TenantContext:
     if scheme.lower() != "bearer" or not token:
         raise SessionAuthError("Bearer session token is required.")
     return verify_session_token(token)
+
+
+def context_from_session_cookie(cookie: str | None) -> TenantContext:
+    if not cookie:
+        raise SessionAuthError("Session cookie is required.")
+    return verify_session_token(cookie)
 
 
 def verify_session_token(
@@ -141,3 +164,10 @@ def _b64(payload: bytes) -> str:
 
 def _pad(payload: str) -> bytes:
     return (payload + "=" * (-len(payload) % 4)).encode("ascii")
+
+
+def _bool_env(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}

@@ -1,19 +1,21 @@
 # LecturePilot Security Review
 
-Date: 2026-07-08
+Date: 2026-07-09
 
 ## Executive Summary
 
-Follow-up changes addressed the critical and high findings in this report:
-deployment auth now fails closed outside explicit local/test environments,
-Compose forces session auth with a required secret, course/workspace asset routes
-require auth, course enrollment is enforced, dynamic lecture dates are gated, and
-the tutor no longer exposes the global material root. Medium/low hardening items
-remain before broad production distribution.
+Follow-up changes addressed the critical and high findings in this report.
+Deployment auth fails closed outside explicit local/test environments, Compose
+forces session auth with a required secret, course/workspace asset routes require
+auth, course enrollment is enforced, dynamic lecture dates are gated, and the
+tutor no longer exposes the global material root. Additional hardening now adds
+request body limits, security headers, production docs disabling, dependency
+locks, API rate limits, and HTTPOnly cookie login sessions.
 
 Positive controls observed: centralized route auth dependencies, path-aware
 upload validation, constrained learner write roots, React markdown without raw
-HTML plugins, KaTeX `trust: false`, and production-mode session auth tests.
+HTML plugins, KaTeX `trust: false`, production-mode session auth tests, locked
+install paths, and app-level throttling for login/chat/paid endpoints.
 
 Scope: FastAPI backend, React/Vite frontend, Docker/Compose deployment files,
 auth/assets/path-policy tests, tracked secret scan, and a second read-only
@@ -37,20 +39,6 @@ professor/admin routes.
 session mode, rejecting dev-header auth outside local/test envs, and forcing
 production session auth in `deploy/compose.yml`.
 
-**Evidence:** `SessionAuthSettings.from_env()` defaults `LECTUREPILOT_ENV` to
-`development`, then defaults auth mode to `dev` unless env is exactly
-`production` (`session_auth.py:28-37`). In dev mode, `request_context()` accepts
-caller-controlled `X-User-Id`, `X-Tenant-Id`, and `X-User-Role` headers
-(`api_auth.py:19-45`). `deploy/compose.yml:6-13` and `.env.example:1-41` do not
-set `LECTUREPILOT_ENV`, `LECTUREPILOT_AUTH_MODE`, or
-`LECTUREPILOT_SESSION_SECRET`. I checked the local `.env` only for key
-presence, without printing values; those keys were not present.
-
-**Fix:** Set `LECTUREPILOT_ENV=production`, `LECTUREPILOT_AUTH_MODE=session`,
-and a strong `LECTUREPILOT_SESSION_SECRET` in deployment examples. Add a startup
-guard that rejects `dev` / dev-header auth unless explicitly marked local-only.
-Until then, do not expose the API outside localhost or a trusted VPN.
-
 ### C-2. Course And Learner Asset Routes Are Public
 
 **Rule:** FASTAPI-FILES-001, FASTAPI-AUTHZ-001
@@ -68,18 +56,6 @@ ownership check.
 course assets, and enforcing learner ownership or teaching role for workspace
 assets. The frontend now renders protected media through authenticated blob
 fetches rather than raw bearer-less `<img>` / `<video>` requests.
-
-**Evidence:** `/course-assets/{course_id}/{lecture_id}/{asset_path:path}` and
-`/workspace-assets/{course_id}/{lecture_id}/{student_key}/{asset_path:path}` do
-not depend on `request_context`; both resolve a path and return `FileResponse`
-directly (`app.py:253-293`). Workspace URLs include deterministic unsalted
-`sha256(user_id)[:24]` keys (`storage_layout.py:22-23`). Existing tests fetch
-generated assets without auth (`test_generated_infographics.py:43-45`).
-
-**Fix:** Require auth on both routes. Course assets need tenant, course,
-enrollment, lecture-unlock, and publication checks. Workspace assets need
-learner ownership or teaching-role checks. Prefer short-lived signed URLs or
-object-storage ACLs in production.
 
 ## High Findings
 
@@ -186,9 +162,11 @@ before checking `len(payload)` (`app.py:224-244`). The policy permits PDFs up to
 100 MB and videos up to 500 MB (`workspace.py:42-55`). No reverse-proxy body
 limit is visible in `deploy/compose.yml`.
 
-**Fix:** Enforce body limits at the proxy/load balancer and stream uploads to a
-bounded temporary file while counting bytes. Reject as soon as the limit is
-crossed.
+**Status:** Mitigated with `RequestBodyLimitMiddleware` and
+`LECTUREPILOT_MAX_REQUEST_BYTES` defaulting to a generous 600 MiB cap. Compose
+sets the same default. Accepted uploads still read into memory after the request
+passes the cap, so streaming upload storage remains a future improvement rather
+than a release blocker for the current test deployment.
 
 ### M-3. Video URL Fallbacks Lack A Shared URL Allowlist
 
@@ -228,8 +206,13 @@ defense-in-depth unless an external proxy provides headers.
 container uses default nginx without checked-in CSP, frame, nosniff, or
 referrer-policy headers (`apps/web/Dockerfile:11-13`).
 
-**Fix:** Disable or protect docs/openapi in production and add security headers
-at the edge or app layer. Verify headers against a real deployed response.
+**Status:** Fixed in repo. `SecurityHeadersMiddleware` now adds CSP, nosniff,
+frame-deny, no-referrer, and permissions-policy headers. HSTS is available via
+`LECTUREPILOT_HSTS_ENABLED=true` but intentionally opt-in to avoid accidental
+local/domain lockout. `LECTUREPILOT_ENV=production` disables FastAPI docs,
+OpenAPI, and ReDoc. The web nginx config also sets CSP and related browser
+headers for static assets. A real deployed-header check is still required after
+deployment.
 
 ## Low Findings And Verification Gaps
 
@@ -240,26 +223,32 @@ at the edge or app layer. Verify headers against a real deployed response.
 **Location:** `.github/workflows/ci.yml:39`, `apps/web/Dockerfile:6`,
 `apps/api/pyproject.toml:7`, `apps/api/Dockerfile:9`
 
-**Evidence:** There is no root package manager lockfile. CI and web Docker use
+**Evidence before fix:** There is no root package manager lockfile. CI and web Docker use
 `npm install` (`.github/workflows/ci.yml:39-40`; `apps/web/Dockerfile:6-9`).
 Python deployment dependencies use broad lower bounds (`pyproject.toml:7-33`)
 and `pip install -e` (`apps/api/Dockerfile:9`).
 
-**Fix:** Commit a web lockfile, use `npm ci`, add API constraints/locking, and
-run dependency advisory scans.
+**Status:** Fixed for current repo builds. `package-lock.json` is committed, CI
+and the web Docker image use `npm ci`, direct API dependencies are pinned, and
+`apps/api/requirements.lock` constrains API installs. `npm audit --omit=dev`
+reported 0 production vulnerabilities.
 
-### L-2. Login Rate Limiting Is Not Visible
+### L-2. Login, Chat, And Paid Endpoint Rate Limiting Is Not Visible
 
 **Rule:** FASTAPI-AUTH-001
 
 **Location:** `apps/api/src/lecturepilot/app.py:113`
 
-**Evidence:** `/auth/login` forwards username/password to the Tuebingen adapter
+**Evidence before fix:** `/auth/login` forwards username/password to the Tuebingen adapter
 and returns 401/503, but no app-level rate limiting is visible
 (`app.py:113-128`).
 
-**Fix:** Add per-IP/per-username throttling at the edge or API and document the
-control in deployment notes.
+**Status:** Fixed for single-process/self-hosted test deployment. `RateLimitMiddleware`
+now applies fixed-window limits to `/auth/login`, `/agent/turn`,
+`/agent/turn/stream`, course canvas draft generation, lecture scheduling,
+exam-readiness attempts, and YouTube media search. Defaults are intentionally
+generous and configurable through `LECTUREPILOT_RATE_LIMIT_*`. A distributed
+limiter should replace this if the API is scaled across workers or nodes.
 
 ### L-3. Session Tokens Are JavaScript-Readable
 
@@ -268,12 +257,14 @@ control in deployment notes.
 **Location:** `apps/web/src/loginSessionStorage.ts:31`,
 `apps/api/src/lecturepilot/session_auth.py:39`
 
-**Evidence:** The frontend stores bearer access tokens in `sessionStorage`
+**Evidence before fix:** The frontend stores bearer access tokens in `sessionStorage`
 (`loginSessionStorage.ts:31-35`). Default token lifetime is 480 minutes
 (`session_auth.py:39`).
 
-**Fix:** Keep this only with strict XSS controls and a shorter TTL. For
-production, consider HTTPOnly secure SameSite cookies plus CSRF protection.
+**Status:** Fixed for real login. `/auth/login` now sets an HTTPOnly SameSite
+session cookie and returns no browser-readable access token. Frontend fetches
+include credentials and persist only tokenless session metadata. Bearer/dev
+headers remain only for explicit local/demo flows and tests.
 
 ## Verification Performed
 
@@ -283,18 +274,25 @@ npm run test --workspace apps/web
 npm run build --workspace apps/web
 npm run lint:api
 npm run lint:web
+npm ci --ignore-scripts --dry-run
+npm audit --omit=dev
+python -m pip install --dry-run -c apps/api/requirements.lock -e "apps/api[test,agent]"
+npx prettier --check <touched web/config files>
+python -m ruff format --check <touched api files>
 git diff --check
 ```
 
-Result: API `228 passed`; web `72 passed`; web build passed; API lint passed;
-web lint had 6 existing hook-dependency warnings; diff whitespace passed.
+Result: API `234 passed`; web `72 passed`; web build passed; API lint passed;
+web lint had 6 existing hook-dependency warnings; npm production audit reported
+0 vulnerabilities; npm lockfile dry-run passed with local Node 23.11.0 engine
+warnings; pip lock dry-run passed; formatting and diff whitespace passed.
 
-No full dynamic penetration test, dependency advisory scan, or deployed-header
-check was performed.
+No full dynamic penetration test or deployed-header check was performed.
 
 ## Release Recommendation
 
-The critical/high release blockers from this review are fixed. Before broad
-production distribution, finish the medium/low hardening items and check a real
-deployment with production headers, secrets, rate limits, dependency locks, and
-asset URLs.
+The critical/high release blockers from this review are fixed. For student and
+first-lecture testing, the remaining security work is production hardening:
+sanitized/isolated handling for risky uploaded formats, a shared URL allowlist
+for every media/link sink, a deployed-header/cookie verification pass, and a
+distributed rate limiter before multi-node scaling.

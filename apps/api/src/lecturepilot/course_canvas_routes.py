@@ -18,6 +18,7 @@ from lecturepilot.learner_workspace_reset import (
     LearnerWorkspaceResetResult,
     reset_learner_workspace,
 )
+from lecturepilot.learning_map import LearningMap, write_learning_map
 from lecturepilot.models import CanvasPublicationResult, Course, Lecture
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.providers import ProviderConfigurationError
@@ -168,6 +169,39 @@ def register_course_canvas_routes(
         except CanvasWorkspaceError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         return document.model_dump()
+
+    @app.get(
+        "/courses/{course_id}/lectures/{lecture_id}/learning-map",
+        response_model=LearningMap,
+    )
+    def lecture_learning_map(
+        course_id: str,
+        lecture_id: str,
+        context: TenantContext = Depends(request_context),
+    ) -> LearningMap:
+        require_lecture_id_access(
+            app,
+            context,
+            course_id=course_id,
+            lecture_id=lecture_id,
+            course_tenant_id=course_tenant_id,
+            seeded_course=seeded_course,
+            seeded_lectures=lectures,
+        )
+        if not app.state.canvas_workspace.has_published_course_canvas(
+            course_id=course_id,
+            lecture_id=lecture_id,
+        ):
+            raise HTTPException(status_code=404, detail="Canvas has not been published.")
+        canvas_dir = app.state.canvas_workspace.course_canvas_store.path(course_id, lecture_id)
+        document = app.state.canvas_workspace.course_canvas_store.read(
+            course_id=course_id,
+            lecture_id=lecture_id,
+            workspace_path=str(canvas_dir / "index.md"),
+        )
+        if document is None:
+            raise HTTPException(status_code=404, detail="Canvas has not been published.")
+        return write_learning_map(document, canvas_dir)
 
     @app.post(
         "/courses/{course_id}/learner-workspace/reset",

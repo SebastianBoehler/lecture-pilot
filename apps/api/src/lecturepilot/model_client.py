@@ -90,6 +90,8 @@ def _messages(turn: AgentTurnInput) -> list[dict[str, str]]:
             "content": (
                 "You are LecturePilot, a text-first university tutor. "
                 "Lead the tutoring flow from the current lecture canvas. "
+                "When /course/canvas/learning-map.json exists, read it first as the "
+                "ordered concept and gate map before searching source files. "
                 "Do not ask open-ended preference questions such as what the student wants. "
                 "Use one concrete next check or instruction per turn. "
                 "Attendance selects the tutor stance: present means verification mode, "

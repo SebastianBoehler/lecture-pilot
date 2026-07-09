@@ -16,6 +16,7 @@ from lecturepilot.api_auth import (
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.course_access import require_lecture_id_access
+from lecturepilot.learning_map import LearningMap, write_learning_map
 from lecturepilot.models import Course, Lecture
 from lecturepilot.readiness_analytics import CourseReadinessSummary, course_readiness_summary
 from lecturepilot.readiness_progress import ReadinessProgressStore
@@ -88,7 +89,10 @@ def register_analytics_routes(
         context: TenantContext = Depends(request_context),
     ) -> LectureAnalyticsSummary:
         require_course_manager(context, course_tenant_id=course_tenant_id)
-        return _analytics_store(app).summary(course_id=course_id, lecture_id=lecture_id)
+        summary = _analytics_store(app).summary(course_id=course_id, lecture_id=lecture_id)
+        return summary.model_copy(
+            update={"learning_map": _learning_map(app, course_id, lecture_id)}
+        )
 
     @app.get(
         "/admin/courses/{course_id}/exam-readiness/summary",
@@ -123,3 +127,18 @@ def _analytics_store(app: FastAPI) -> AnalyticsStore:
         store = AnalyticsStore(layout)
         app.state.analytics_store = store
     return store
+
+
+def _learning_map(app: FastAPI, course_id: str, lecture_id: str) -> LearningMap | None:
+    if not app.state.canvas_workspace.has_published_course_canvas(
+        course_id=course_id,
+        lecture_id=lecture_id,
+    ):
+        return None
+    canvas_dir = app.state.canvas_workspace.course_canvas_store.path(course_id, lecture_id)
+    document = app.state.canvas_workspace.course_canvas_store.read(
+        course_id=course_id,
+        lecture_id=lecture_id,
+        workspace_path=str(canvas_dir / "index.md"),
+    )
+    return write_learning_map(document, canvas_dir) if document else None

@@ -12,6 +12,8 @@ from lecturepilot.admin_media_routes import register_admin_media_routes
 from lecturepilot.api_auth import request_context, require_course_manager, require_same_tenant
 from lecturepilot.asset_routes import register_asset_routes
 from lecturepilot.agent_routes import register_agent_routes
+from lecturepilot.auth_routes import register_auth_routes
+from lecturepilot.body_limits import RequestBodyLimitMiddleware
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_builder_source import course_builder_source_document, scan_source_bundles
 from lecturepilot.course_canvas_routes import register_course_canvas_routes
@@ -29,7 +31,6 @@ from lecturepilot.course_schedule_store import (
     write_course_workspace,
 )
 from lecturepilot.course_workspace import resolve_course_workspace
-from lecturepilot.demo_course_access import include_created_courses_for_demo
 from lecturepilot.dev_seeded_course import discovered_seeded_lecture_views
 from lecturepilot.exam_readiness_routes import register_exam_readiness_routes
 from lecturepilot.harness import LecturePilotHarness
@@ -45,20 +46,15 @@ from lecturepilot.models import (
     LectureScheduleProposal,
     SourceBundleEntry,
     SourceBundleManifest,
-    TuebingenLoginInput,
-    TuebingenLoginResult,
 )
 from lecturepilot.observability import observability_from_env
 from lecturepilot.providers import ProviderConfigurationError
+from lecturepilot.rate_limit import RateLimitMiddleware
 from lecturepilot.runtime_env import load_project_env
 from lecturepilot.sample_data import COURSE, LECTURES
-from lecturepilot.session_auth import SessionAuthError, with_access_token
+from lecturepilot.security_headers import SecurityHeadersMiddleware, production_fastapi_kwargs
 from lecturepilot.tenancy import TenantContext
-from lecturepilot.tuebingen_adapter import (
-    TuebingenCourseAdapter,
-    TuebingenIntegrationUnavailable,
-    TuebingenLoginError,
-)
+from lecturepilot.tuebingen_adapter import TuebingenCourseAdapter
 from lecturepilot.user_memory import UserMemoryStore
 from lecturepilot.workspace import WorkspacePolicy, WorkspacePolicyError
 from lecturepilot.youtube_discovery import YoutubeDiscovery
@@ -69,7 +65,7 @@ load_project_env()
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="LecturePilot API", version="0.1.0")
+    app = FastAPI(title="LecturePilot API", version="0.1.0", **production_fastapi_kwargs())
     app.state.tuebingen_adapter = TuebingenCourseAdapter()
     app.state.agent_harness = LecturePilotHarness()
     app.state.course_planner = CourseCanvasPlanner()
@@ -89,11 +85,15 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(RequestBodyLimitMiddleware)
+    app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware)
 
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
+    register_auth_routes(app, course_tenant_id=COURSE_TENANT_ID)
     register_admin_media_routes(
         app,
         course=COURSE,
@@ -137,27 +137,6 @@ def create_app() -> FastAPI:
             context, list(courses_by_id.values()), course_tenant_id=COURSE_TENANT_ID
         )
         return [course.model_dump() for course in accessible]
-
-    @app.post("/auth/login", response_model=TuebingenLoginResult)
-    def login(input_data: TuebingenLoginInput) -> TuebingenLoginResult:
-        try:
-            result = app.state.tuebingen_adapter.login(
-                username=input_data.username,
-                password=input_data.password.get_secret_value(),
-                term=input_data.term,
-            )
-            result = include_created_courses_for_demo(
-                result,
-                tenant_id=COURSE_TENANT_ID,
-                workspace_root=app.state.canvas_workspace.workspace_root,
-            )
-            return with_access_token(result)
-        except TuebingenIntegrationUnavailable as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-        except TuebingenLoginError as exc:
-            raise HTTPException(status_code=401, detail=str(exc)) from exc
-        except SessionAuthError as exc:
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     @app.get("/courses/{course_id}/lectures")
     def lectures(

@@ -21,7 +21,7 @@ jobs:
       - name: Install API test dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e "apps/api[test,agent]"
+          pip install -c apps/api/requirements.lock -e "apps/api[test,agent]"
       - name: Run API lint
         run: python -m ruff check apps/api/src apps/api/tests
       - name: Run API test suite
@@ -37,7 +37,7 @@ jobs:
         with:
           node-version: "22"
       - name: Install UI dependencies
-        run: npm install
+        run: npm ci
       - name: Run UI lint
         run: npm run lint:web
       - name: Run UI dead-code scan

@@ -9,6 +9,7 @@ from pathlib import Path
 from lecturepilot.canvas_learning_support import normalize_learning_support
 from lecturepilot.canvas_markdown import read_document_source, write_document_source
 from lecturepilot.canvas_models import CanvasDocument
+from lecturepilot.learning_map import write_learning_map
 from lecturepilot.storage_layout import StorageLayout
 
 
@@ -40,13 +41,17 @@ class CourseCanvasStore:
             ),
             canvas_dir,
         )
-        return normalize_learning_support(read_document_source(canvas_dir))
+        document = normalize_learning_support(read_document_source(canvas_dir))
+        write_learning_map(document, canvas_dir)
+        return document
 
     def read_draft(self, *, course_id: str, lecture_id: str) -> CanvasDocument | None:
         draft_dir = self.draft_path(course_id, lecture_id)
         if not (draft_dir / "index.md").exists():
             return None
-        return normalize_learning_support(read_document_source(draft_dir))
+        document = normalize_learning_support(read_document_source(draft_dir))
+        write_learning_map(document, draft_dir)
+        return document
 
     def write_draft(self, document: CanvasDocument) -> CanvasDocument:
         draft_dir = self.draft_path(document.course_id, document.lecture_id)
@@ -73,6 +78,7 @@ class CourseCanvasStore:
             document.model_copy(update={"workspace_path": str(published_dir / "index.md")}),
             published_dir,
         )
+        write_learning_map(document, published_dir)
         metadata = {
             "schema_version": 1,
             "course_id": course_id,
@@ -83,7 +89,9 @@ class CourseCanvasStore:
             "source_draft_path": str(draft_dir / "index.md"),
             "published_path": str(published_dir / "index.md"),
         }
-        _publication_path(published_dir).write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+        _publication_path(published_dir).write_text(
+            json.dumps(metadata, indent=2), encoding="utf-8"
+        )
         return metadata
 
     def publication(self, *, course_id: str, lecture_id: str) -> dict | None:

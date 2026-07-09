@@ -4,7 +4,7 @@ from lecturepilot.app import create_app
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.models import TenantRole
 from lecturepilot.providers import DEFAULT_MODEL
-from lecturepilot.session_auth import sign_session
+from lecturepilot.session_auth import SESSION_COOKIE_NAME, sign_session
 from lecturepilot.tenancy import TenantContext
 from auth_helpers import student_headers
 
@@ -68,6 +68,40 @@ def test_production_auth_accepts_signed_session_token(monkeypatch, tmp_path) -> 
     assert response.status_code == 200
 
 
+def test_production_auth_accepts_session_cookie(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("LECTUREPILOT_ENV", "production")
+    monkeypatch.setenv("LECTUREPILOT_AUTH_MODE", "session")
+    monkeypatch.setenv("LECTUREPILOT_SESSION_SECRET", "test-session-secret")
+    client = _client(tmp_path)
+    token = sign_session(
+        TenantContext(
+            tenant_id="tenant-tuebingen",
+            user_id="student01",
+            roles=frozenset({TenantRole.STUDENT}),
+            course_ids=frozenset({"martius-ml"}),
+        )
+    )
+
+    client.cookies.set(SESSION_COOKIE_NAME, token)
+    response = client.get("/courses/martius-ml/lectures/lecture-03/canvas/publication")
+
+    assert response.status_code == 200
+
+
+def test_local_dev_headers_ignore_stale_session_cookie(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("LECTUREPILOT_ENV", "development")
+    monkeypatch.setenv("LECTUREPILOT_AUTH_MODE", "dev")
+    client = _client(tmp_path)
+    client.cookies.set(SESSION_COOKIE_NAME, "stale-cookie")
+
+    response = client.get(
+        "/courses/martius-ml/lectures/lecture-03/canvas/publication",
+        headers=student_headers("student01"),
+    )
+
+    assert response.status_code == 200
+
+
 def test_production_auth_rejects_forged_role_headers(monkeypatch) -> None:
     monkeypatch.setenv("LECTUREPILOT_ENV", "production")
     monkeypatch.setenv("LECTUREPILOT_AUTH_MODE", "session")
@@ -85,7 +119,7 @@ def test_production_auth_rejects_forged_role_headers(monkeypatch) -> None:
     )
 
     assert response.status_code == 401
-    assert "Bearer session token" in response.json()["detail"]
+    assert "Session cookie or bearer token" in response.json()["detail"]
 
 
 def test_production_auth_protects_course_listing(monkeypatch) -> None:
@@ -104,7 +138,7 @@ def test_production_auth_protects_course_listing(monkeypatch) -> None:
     )
 
     assert response.status_code == 401
-    assert "Bearer session token" in response.json()["detail"]
+    assert "Session cookie or bearer token" in response.json()["detail"]
 
 
 def test_agent_turn_requires_configured_provider(monkeypatch, tmp_path) -> None:

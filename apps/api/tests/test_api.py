@@ -11,6 +11,7 @@ from lecturepilot.models import (
     TuebingenLoginResult,
 )
 from lecturepilot.providers import DEFAULT_MODEL
+from lecturepilot.session_auth import SESSION_COOKIE_NAME
 from lecturepilot.tuebingen_adapter import TuebingenIntegrationUnavailable
 from auth_helpers import student_headers
 
@@ -40,10 +41,10 @@ def test_tuebingen_login_returns_courses_without_echoing_password(monkeypatch) -
 
     assert response.status_code == 200
     assert "very-secret-password" not in response.text
+    assert "httponly" in response.headers["set-cookie"].lower()
+    assert SESSION_COOKIE_NAME in response.cookies
     payload = response.json()
-    access_token = payload.pop("access_token")
-    assert isinstance(access_token, str)
-    assert access_token.count(".") == 1
+    assert payload.pop("access_token") is None
     assert payload == {
         "username": "student01",
         "email": None,

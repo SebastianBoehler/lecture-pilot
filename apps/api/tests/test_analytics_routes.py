@@ -66,6 +66,10 @@ def test_quiz_answers_are_recorded_as_aggregate_lecture_analytics(tmp_path: Path
     assert quiz["attendance_split"] == {"absent": 1, "present": 1}
     assert [option["selections"] for option in quiz["options"]] == [1, 1, 0]
     assert quiz["options"][1]["correct"] is True
+    assert payload["learning_map"]["nodes"][0]["id"] == "risk"
+    assert payload["learning_map"]["nodes"][0]["quiz_ids"] == ["risk-check"]
+    assert payload["learning_map"]["nodes"][0]["gate_ids"] == ["risk-evidence-check"]
+    assert payload["learning_map"]["gates"][0]["title"] == "Risk evidence gate"
 
 
 def test_students_cannot_read_professor_analytics(tmp_path: Path) -> None:
@@ -90,6 +94,7 @@ def test_demo_course_analytics_are_blank_when_empty(tmp_path: Path) -> None:
     assert summary.status_code == 200
     payload = summary.json()
     assert payload["total_events"] == 0
+    assert payload["learning_map"] is None
     assert payload["quizzes"] == []
     assert payload["gates"] == []
 
@@ -210,7 +215,13 @@ def _canvas_document(tmp_path: Path) -> CanvasDocument:
                         ],
                         option_ids=["prior-only", "posterior-loss", "ignore-cost"],
                         answer_index=1,
-                    )
+                    ),
+                    CanvasBlock(
+                        id="risk-evidence-check",
+                        type="checkpoint",
+                        caption="Risk evidence gate",
+                        text="Explain how posterior and loss determine the action.",
+                    ),
                 ],
             )
         ],
