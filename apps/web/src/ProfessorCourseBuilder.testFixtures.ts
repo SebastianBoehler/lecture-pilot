@@ -8,19 +8,26 @@ export function professorFetchMock() {
     if (path === "/admin/courses") {
       return json(deletedCourses.has("demo-ml-course") ? [] : [courseWorkspacePayload()]);
     }
-    if (path === "/courses") return json(deletedCourses.has("demo-ml-course") ? [] : [workspaceCourse()]);
+    if (path === "/courses")
+      return json(deletedCourses.has("demo-ml-course") ? [] : [workspaceCourse()]);
     if (path.match(/^\/courses\/[^/]+\/lectures$/)) return json(lectureListPayload());
     if (path.match(/^\/admin\/courses\/[^/]+$/) && init?.method === "DELETE") {
       const courseId = path.match(/admin\/courses\/([^/]+)$/)?.[1] ?? "demo-ml-course";
       deletedCourses.add(courseId);
-      return json({ course_id: courseId, deleted: true, deleted_path: `.lecturepilot/courses/${courseId}` });
+      return json({
+        course_id: courseId,
+        deleted: true,
+        deleted_path: `.lecturepilot/courses/${courseId}`,
+      });
     }
     if (url.endsWith("/admin/course-workspaces")) return json(courseWorkspacePayload(init));
     if (url.includes("/lecture-schedule")) return json(lectureSchedulePayload());
     if (url.includes("/source-bundle")) return json(sourceBundle());
-    if (url.includes("/materials")) return json({ path: "uploads/supplement.md", kind: "markdown", size_bytes: 12 });
+    if (url.includes("/materials"))
+      return json({ path: "uploads/supplement.md", kind: "markdown", size_bytes: 12 });
     if (url.includes("/analytics")) return json(analyticsPayload());
-    if (url.includes("/canvas/publication")) return json(publicationPayload(url, publishedLectures));
+    if (url.includes("/canvas/publication"))
+      return json(publicationPayload(url, publishedLectures));
     if (url.includes("/canvas/publish")) return json(publishPayload(url, publishedLectures));
     if (url.includes("/canvas/draft")) return json(canvasPayload());
     if (url.includes("/canvas")) return json(canvasPayload());
@@ -78,17 +85,19 @@ function lectureListPayload() {
       lectures: lectureSchedulePayload().lectures,
     }),
   });
-  return workspace.lectures.map((lecture: {
-    course_id: string;
-    date: string;
-    id: string;
-    material_path?: string;
-    title: string;
-  }) => ({
-    lecture,
-    unlocked: true,
-    attendance: "unknown",
-  }));
+  return workspace.lectures.map(
+    (lecture: {
+      course_id: string;
+      date: string;
+      id: string;
+      material_path?: string;
+      title: string;
+    }) => ({
+      lecture,
+      unlocked: true,
+      attendance: "unknown",
+    }),
+  );
 }
 
 function json(payload: unknown) {
@@ -152,8 +161,20 @@ function analyticsPayload() {
         correct_rate: 0.5,
         attendance_split: { absent: 1, present: 1 },
         options: [
-          { option_index: 0, option_id: "prior-only", text: "Use the largest class prior.", selections: 1, correct: false },
-          { option_index: 1, option_id: "posterior-loss", text: "Use posterior-weighted loss.", selections: 1, correct: true },
+          {
+            option_index: 0,
+            option_id: "prior-only",
+            text: "Use the largest class prior.",
+            selections: 1,
+            correct: false,
+          },
+          {
+            option_index: 1,
+            option_id: "posterior-loss",
+            text: "Use posterior-weighted loss.",
+            selections: 1,
+            correct: true,
+          },
         ],
       },
     ],
@@ -166,31 +187,68 @@ function analyticsPayload() {
         attendance_split: { present: 1 },
       },
     ],
+    learning_map: {
+      course_id: "demo-ml-course",
+      lecture_id: "lecture-03",
+      title: "Bayesian Decision Theory",
+      nodes: [
+        {
+          id: "aim",
+          title: "Decision making",
+          lecture_id: "lecture-03",
+          section_id: "aim",
+          source_ref: "Lecture03-eng.tex#aim",
+          prerequisites: [],
+          gate_ids: ["risk-gate"],
+          quiz_ids: [],
+        },
+        {
+          id: "bayes-formula",
+          title: "Bayes formula",
+          lecture_id: "lecture-03",
+          section_id: "bayes-formula",
+          source_ref: "Lecture03-eng.tex#bayes",
+          prerequisites: ["aim"],
+          gate_ids: [],
+          quiz_ids: ["risk-check"],
+        },
+      ],
+      gates: [
+        {
+          id: "risk-gate",
+          concept_id: "aim",
+          title: "Risk evidence gate",
+          prompt: "Explain expected risk.",
+          evidence_required: "Connect posterior and loss.",
+          section_id: "aim",
+          source_ref: "Lecture03-eng.tex#aim",
+        },
+      ],
+    },
   };
 }
 
 function courseWorkspacePayload(init?: RequestInit) {
   const body = JSON.parse(String(init?.body ?? "{}"));
   const title = body.course_title ?? "Demo ML Course";
-  const lectures = body.lectures?.length ? body.lectures.map((lecture: {
-    date: string;
-    material_path?: string;
-    number: string;
-    title: string;
-  }) => ({
-    id: `lecture-${lecture.number}`,
-    course_id: "demo-ml-course",
-    title: lecture.title,
-    date: lecture.date,
-    material_path: lecture.material_path,
-  })) : [
-    {
-      id: "lecture-03",
-      course_id: "demo-ml-course",
-      title: body.lecture_title ?? "Bayesian Decision Theory",
-      date: "2026-06-11",
-    },
-  ];
+  const lectures = body.lectures?.length
+    ? body.lectures.map(
+        (lecture: { date: string; material_path?: string; number: string; title: string }) => ({
+          id: `lecture-${lecture.number}`,
+          course_id: "demo-ml-course",
+          title: lecture.title,
+          date: lecture.date,
+          material_path: lecture.material_path,
+        }),
+      )
+    : [
+        {
+          id: "lecture-03",
+          course_id: "demo-ml-course",
+          title: body.lecture_title ?? "Bayesian Decision Theory",
+          date: "2026-06-11",
+        },
+      ];
   return {
     course: {
       access_policy: body.access_policy ?? "tuebingen_enrolled",

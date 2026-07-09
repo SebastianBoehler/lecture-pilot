@@ -17,15 +17,26 @@ import {
 import { AppFooter } from "./AppFooter";
 import { AppHeader } from "./AppHeader";
 import { AppRoutes } from "./AppRoutes";
-import { initialMessagesForAttendance, localDemoSession, localProfessorSession } from "./appDefaults";
+import {
+  initialMessagesForAttendance,
+  localDemoSession,
+  localProfessorSession,
+} from "./appDefaults";
 import { canManageCourses } from "./authz";
-import { clearDemoWorkspaceCourse, readDemoWorkspaceCourse, writeDemoWorkspaceCourse } from "./demoWorkspaceAccess";
+import {
+  clearDemoWorkspaceCourse,
+  readDemoWorkspaceCourse,
+  writeDemoWorkspaceCourse,
+} from "./demoWorkspaceAccess";
 import { developmentWorkspaceCourse } from "./devWorkspaceAccess";
+import { I18nProvider, type Locale } from "./i18n";
 import { resetLearnerWorkspace } from "./learnerWorkspaceApi";
+import { readLocalePreference, writeLocalePreference } from "./localePreference";
 import { clearSavedFlow } from "./professorBuilderState";
 import { useStoredLoginSession } from "./loginSessionStorage";
 import { lectures } from "./sampleData";
 import { requestedTutorModel } from "./tutorModels";
+import { logoutSession } from "./sessionApi";
 import { useInitialDraftPreview } from "./useInitialDraftPreview";
 import { usePublishedLectures } from "./usePublishedLectures";
 import { useTutorModelPreference } from "./useTutorModelPreference";
@@ -44,10 +55,13 @@ import type {
 
 function App() {
   const [theme, setTheme] = useState<Theme>("light");
+  const [locale, setLocale] = useState<Locale>(() => readLocalePreference());
   const [session, setSession] = useStoredLoginSession();
   const [view, setView] = useState<View>(session ? "dashboard" : "login");
   const [availableLectures, setAvailableLectures] = useState(lectures);
-  const [workspaceCourse, setWorkspaceCourse] = useState<UniversityCourse>(localDemoSession.courses[0]);
+  const [workspaceCourse, setWorkspaceCourse] = useState<UniversityCourse>(
+    localDemoSession.courses[0],
+  );
   const [workspaceCourseId, setWorkspaceCourseId] = useState("martius-ml");
   const [selectedCourseId, setSelectedCourseId] = useState("martius-ml");
   const [selectedLecture, setSelectedLecture] = useState(lectures[2]);
@@ -64,6 +78,7 @@ function App() {
     initialMessagesForAttendance(lectures[2].attendance),
   );
   const [lastTutorModel, setLastTutorModel] = useState<string | null>(null);
+  const [passedGateIds, setPassedGateIds] = useState<string[]>([]);
   const [tutorModelPreference, setTutorModelPreference] = useTutorModelPreference();
   const [publishedLectureIds, setPublishedLectureIds] = usePublishedLectures(
     workspaceCourseId,
@@ -76,11 +91,19 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
+    document.documentElement.lang = locale;
+    writeLocalePreference(locale);
+  }, [locale]);
+
+  useEffect(() => {
     if (!session) return;
     void loadWorkspaceCourse(session, workspaceCourseId);
   }, [session]);
 
-  async function loadWorkspaceCourse(activeSession: LoginSession, preferredCourseId = workspaceCourseId) {
+  async function loadWorkspaceCourse(
+    activeSession: LoginSession,
+    preferredCourseId = workspaceCourseId,
+  ) {
     try {
       const courses = await getCourses(activeSession);
       const demoCourse = readDemoWorkspaceCourse();
@@ -98,7 +121,9 @@ function App() {
         setWorkspaceCourseId(course.id);
         setSelectedCourseId(course.id);
         setAvailableLectures(nextLectures);
-        setSelectedLecture((current) => nextLectures.find((lecture) => lecture.id === current.id) ?? nextLectures[0]);
+        setSelectedLecture(
+          (current) => nextLectures.find((lecture) => lecture.id === current.id) ?? nextLectures[0],
+        );
         return;
       }
     } catch {
@@ -162,7 +187,11 @@ function App() {
       }
     }
     const navigationTargetId = nextFocusSectionId ?? generatedSectionId;
-    if (navigationTargetId && nextHighlightSectionId && nextHighlightSectionId !== navigationTargetId) {
+    if (
+      navigationTargetId &&
+      nextHighlightSectionId &&
+      nextHighlightSectionId !== navigationTargetId
+    ) {
       nextHighlightBlockId = null;
       nextHighlightText = null;
     }
@@ -176,9 +205,17 @@ function App() {
     }
 
     setMessages((current) => completePendingTutorMessage(current, pendingMessageId, result));
+    const passedGateId =
+      result.quality_gate?.status === "passed" ? result.quality_gate.gate_id : null;
+    if (passedGateId) {
+      setPassedGateIds((current) =>
+        current.includes(passedGateId) ? current : [...current, passedGateId],
+      );
+    }
   }
 
   function handleLogout() {
+    void logoutSession();
     setSession(null);
     clearSavedFlow();
     setView("login");
@@ -192,41 +229,47 @@ function App() {
     setMessages(initialMessagesForAttendance(lectures[2].attendance));
     setLessonUserId("local-demo");
     setLastTutorModel(null);
+    setPassedGateIds([]);
   }
 
-  const handleOpenLecture = useCallback(async (
-    courseId: string,
-    lecture: Lecture,
-    backView: "dashboard" | "professor" = "dashboard",
-    userId = effectiveUserId(session),
-    previewDraft = false,
-  ) => {
-    setSelectedCourseId(courseId);
-    setSelectedLecture(lecture);
-    setLessonUserId(userId);
-    setLessonBackView(backView);
-    setView("lesson");
-    setPanelMode(null);
-    setCanvasDocument(null);
-    setCanvasError(null);
-    setFocusedSectionId("bayesian-decision-theory-the-aim");
-    setHighlightedBlockId(null);
-    setHighlightedText(null);
-    setNavigationVersion((current) => current + 1);
-    setMessages(initialMessagesForAttendance(lecture.attendance));
-    setLastTutorModel(null);
+  const handleOpenLecture = useCallback(
+    async (
+      courseId: string,
+      lecture: Lecture,
+      backView: "dashboard" | "professor" = "dashboard",
+      userId = effectiveUserId(session),
+      previewDraft = false,
+    ) => {
+      setSelectedCourseId(courseId);
+      setSelectedLecture(lecture);
+      setLessonUserId(userId);
+      setLessonBackView(backView);
+      setView("lesson");
+      setPanelMode(null);
+      setCanvasDocument(null);
+      setCanvasError(null);
+      setFocusedSectionId("bayesian-decision-theory-the-aim");
+      setHighlightedBlockId(null);
+      setHighlightedText(null);
+      setNavigationVersion((current) => current + 1);
+      setMessages(initialMessagesForAttendance(lecture.attendance));
+      setLastTutorModel(null);
+      setPassedGateIds([]);
 
-    try {
-      const activeSession = session ?? localDemoSession;
-      const document = previewDraft && session
-        ? await getDraftLectureCanvas(courseId, lecture.id, session)
-        : await getLectureCanvas(courseId, lecture.id, userId, activeSession);
-      setCanvasDocument(document);
-      setFocusedSectionId(document.sections[0]?.id ?? "bayesian-decision-theory-the-aim");
-    } catch (error) {
-      setCanvasError(error instanceof Error ? error.message : "Canvas loading failed.");
-    }
-  }, [session]);
+      try {
+        const activeSession = session ?? localDemoSession;
+        const document =
+          previewDraft && session
+            ? await getDraftLectureCanvas(courseId, lecture.id, session)
+            : await getLectureCanvas(courseId, lecture.id, userId, activeSession);
+        setCanvasDocument(document);
+        setFocusedSectionId(document.sections[0]?.id ?? "bayesian-decision-theory-the-aim");
+      } catch (error) {
+        setCanvasError(error instanceof Error ? error.message : "Canvas loading failed.");
+      }
+    },
+    [session],
+  );
 
   useInitialDraftPreview({
     availableLectures,
@@ -265,16 +308,25 @@ function App() {
       activeSession,
     );
     if (options.reset_progress) {
-      setAvailableLectures((current) => current.map((lecture) => ({ ...lecture, attendance: "unknown" })));
+      setAvailableLectures((current) =>
+        current.map((lecture) => ({ ...lecture, attendance: "unknown" })),
+      );
       setSelectedLecture((current) => ({ ...current, attendance: "unknown" }));
     }
-    const document = await getLectureCanvas(selectedCourseId, selectedLecture.id, lessonUserId, activeSession);
+    const document = await getLectureCanvas(
+      selectedCourseId,
+      selectedLecture.id,
+      lessonUserId,
+      activeSession,
+    );
     setCanvasDocument(document);
     setCanvasError(null);
     setFocusedSectionId(document.sections[0]?.id ?? "bayesian-decision-theory-the-aim");
     setHighlightedBlockId(null);
     setHighlightedText(null);
-    setMessages(initialMessagesForAttendance(options.reset_progress ? "unknown" : selectedLecture.attendance));
+    setMessages(
+      initialMessagesForAttendance(options.reset_progress ? "unknown" : selectedLecture.attendance),
+    );
     setLastTutorModel(null);
     setNavigationVersion((current) => current + 1);
   }
@@ -287,118 +339,125 @@ function App() {
   }
 
   return (
-    <div className="app-shell">
-      <AppHeader
-        activeView={view}
-        session={session}
-        theme={theme}
-        onBrand={() => {
-          setView(session ? "dashboard" : "login");
-          setPanelMode(null);
-        }}
-        onLogout={handleLogout}
-        onOpenDashboard={() => {
-          setView(session ? "dashboard" : "login");
-          setPanelMode(null);
-        }}
-        onOpenPerformance={() => {
-          if (courseManagerSession) {
-            setView("performance");
+    <I18nProvider locale={locale} setLocale={setLocale}>
+      <div className="app-shell">
+        <AppHeader
+          activeView={view}
+          session={session}
+          theme={theme}
+          onBrand={() => {
+            setView(session ? "dashboard" : "login");
             setPanelMode(null);
-          }
-        }}
-        onOpenCourseManagement={() => {
-          if (courseManagerSession) {
-            setView("course-management");
+          }}
+          onLogout={handleLogout}
+          onOpenDashboard={() => {
+            setView(session ? "dashboard" : "login");
             setPanelMode(null);
-          }
-        }}
-        onOpenProfile={() => {
-          setView("profile");
-          setPanelMode(null);
-        }}
-        onOpenProfessor={() => {
-          if (courseManagerSession) {
-            setView("professor");
+          }}
+          onOpenPerformance={() => {
+            if (courseManagerSession) {
+              setView("performance");
+              setPanelMode(null);
+            }
+          }}
+          onOpenCourseManagement={() => {
+            if (courseManagerSession) {
+              setView("course-management");
+              setPanelMode(null);
+            }
+          }}
+          onOpenProfile={() => {
+            setView("profile");
             setPanelMode(null);
-          }
-        }}
-        onToggleTheme={() => setTheme(theme === "light" ? "dark" : "light")}
-      />
-
-      <AppRoutes
-        availableLectures={availableLectures}
-        canvasDocument={canvasDocument}
-        canvasError={canvasError}
-        courseManagerSession={courseManagerSession}
-        focusedSectionId={focusedSectionId}
-        highlightedBlockId={highlightedBlockId}
-        highlightedText={highlightedText}
-        lastTutorModel={lastTutorModel}
-        lessonBackView={lessonBackView}
-        lessonUserId={lessonUserId}
-        messages={messages}
-        navigationVersion={navigationVersion}
-        panelMode={panelMode}
-        publishedLectureIds={publishedLectureIds}
-        selectedCourseId={selectedCourseId}
-        selectedLecture={selectedLecture}
-        session={session}
-        tutorModelPreference={tutorModelPreference}
-        view={view}
-        workspaceCourse={workspaceCourse}
-        workspaceCourseId={workspaceCourseId}
-        onLogin={(nextSession) => {
-          setSession(nextSession);
-          changeView("dashboard");
-          void loadWorkspaceCourse(nextSession);
-        }}
-        onOpenDemo={() => {
-          setSession(localDemoSession);
-          changeView("dashboard");
-          void loadWorkspaceCourse(localDemoSession);
-        }}
-        onOpenProfessorDemo={() => {
-          setSession(localProfessorSession);
-          changeView("professor");
-          void loadWorkspaceCourse(localProfessorSession);
-        }}
-        onOpenLecture={(courseId, lecture) => {
-          void handleOpenLecture(courseId, lecture);
-        }}
-        onSetAttendance={handleSetAttendance}
-        onModelPreferenceChange={setTutorModelPreference}
-        onPublishWorkspace={async (courseId, lectureId) => {
-          if (!courseManagerSession) throw new Error("Course management requires a professor account.");
-          const result = await publishLectureCanvas(courseId, lectureId, courseManagerSession);
-          setPublishedLectureIds((current) => Array.from(new Set([...current, lectureId])));
-          return result;
-        }}
-        onWorkspacePublished={(course, nextLectures) => {
-          if (!nextLectures.length) return;
-          writeDemoWorkspaceCourse(course);
-          setWorkspaceCourse(course);
-          setWorkspaceCourseId(course.id);
-          setSelectedCourseId(course.id);
-          setAvailableLectures(nextLectures);
-          setSelectedLecture((current) => nextLectures.find((lecture) => lecture.id === current.id) ?? nextLectures[0]);
-          setPublishedLectureIds(nextLectures.map((lecture) => lecture.id));
-        }}
-        onWorkspaceDeleted={handleWorkspaceDeleted}
-        onViewChange={changeView}
-        onSendMessage={handleTutorMessage}
-        onResetWorkspace={handleResetWorkspace}
-        onTogglePanel={(mode) => {
-          setPanelMode((current) => (current === mode ? null : mode));
-        }}
-      />
-      {view !== "lesson" ? (
-        <AppFooter
-          onOpenHowItWorks={() => setView("how-it-works")}
-          onOpenPrivacy={() => setView("privacy")}
+          }}
+          onOpenProfessor={() => {
+            if (courseManagerSession) {
+              setView("professor");
+              setPanelMode(null);
+            }
+          }}
+          onToggleTheme={() => setTheme(theme === "light" ? "dark" : "light")}
         />
-      ) : null}
-    </div>
+
+        <AppRoutes
+          availableLectures={availableLectures}
+          canvasDocument={canvasDocument}
+          canvasError={canvasError}
+          courseManagerSession={courseManagerSession}
+          focusedSectionId={focusedSectionId}
+          highlightedBlockId={highlightedBlockId}
+          highlightedText={highlightedText}
+          lastTutorModel={lastTutorModel}
+          lessonBackView={lessonBackView}
+          lessonUserId={lessonUserId}
+          messages={messages}
+          navigationVersion={navigationVersion}
+          panelMode={panelMode}
+          passedGateIds={passedGateIds}
+          publishedLectureIds={publishedLectureIds}
+          selectedCourseId={selectedCourseId}
+          selectedLecture={selectedLecture}
+          session={session}
+          tutorModelPreference={tutorModelPreference}
+          view={view}
+          workspaceCourse={workspaceCourse}
+          workspaceCourseId={workspaceCourseId}
+          onLogin={(nextSession) => {
+            setSession(nextSession);
+            changeView("dashboard");
+            void loadWorkspaceCourse(nextSession);
+          }}
+          onOpenDemo={() => {
+            setSession(localDemoSession);
+            changeView("dashboard");
+            void loadWorkspaceCourse(localDemoSession);
+          }}
+          onOpenProfessorDemo={() => {
+            setSession(localProfessorSession);
+            changeView("professor");
+            void loadWorkspaceCourse(localProfessorSession);
+          }}
+          onOpenLecture={(courseId, lecture) => {
+            void handleOpenLecture(courseId, lecture);
+          }}
+          onSetAttendance={handleSetAttendance}
+          onModelPreferenceChange={setTutorModelPreference}
+          onPublishWorkspace={async (courseId, lectureId) => {
+            if (!courseManagerSession)
+              throw new Error("Course management requires a professor account.");
+            const result = await publishLectureCanvas(courseId, lectureId, courseManagerSession);
+            setPublishedLectureIds((current) => Array.from(new Set([...current, lectureId])));
+            return result;
+          }}
+          onWorkspacePublished={(course, nextLectures) => {
+            if (!nextLectures.length) return;
+            writeDemoWorkspaceCourse(course);
+            setWorkspaceCourse(course);
+            setWorkspaceCourseId(course.id);
+            setSelectedCourseId(course.id);
+            setAvailableLectures(nextLectures);
+            setSelectedLecture(
+              (current) =>
+                nextLectures.find((lecture) => lecture.id === current.id) ?? nextLectures[0],
+            );
+            setPublishedLectureIds(nextLectures.map((lecture) => lecture.id));
+          }}
+          onWorkspaceDeleted={handleWorkspaceDeleted}
+          onViewChange={changeView}
+          onSendMessage={handleTutorMessage}
+          onResetWorkspace={handleResetWorkspace}
+          onTogglePanel={(mode) => {
+            setPanelMode((current) => (current === mode ? null : mode));
+          }}
+        />
+        {view !== "lesson" ? (
+          <AppFooter
+            onOpenHowItWorks={() => setView("how-it-works")}
+            onOpenPrivacy={() => setView("privacy")}
+          />
+        ) : null}
+      </div>
+    </I18nProvider>
   );
 }
 

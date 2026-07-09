@@ -1,9 +1,10 @@
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Dashboard } from "./Dashboard";
 import { lectures } from "./sampleData";
+import { renderWithI18n } from "./test/renderWithI18n";
 import type { LoginSession } from "./types";
 
 const realSession: LoginSession = {
@@ -52,50 +53,82 @@ describe("Dashboard course workspace matching", () => {
     const workspaceArticleElement = workspaceArticle("Grundlagen des Maschinellen Lernens");
 
     expect(within(nlpCourse).getByText("No tutor workspace yet")).toBeInTheDocument();
-    expect(within(nlpCourse).queryByRole("button", { name: /open lecture/i })).not.toBeInTheDocument();
+    expect(
+      within(nlpCourse).queryByRole("button", { name: /open lecture/i }),
+    ).not.toBeInTheDocument();
     expect(within(workspaceArticleElement).getByText("AI tutor available")).toBeInTheDocument();
-    expect(within(workspaceArticleElement).getByRole("button", { name: /open lecture 03/i })).toBeInTheDocument();
+    expect(
+      within(workspaceArticleElement).getByRole("button", { name: /open lecture 03/i }),
+    ).toBeInTheDocument();
   });
 
   it("honors the local demo bridge for non-enrolled accounts", () => {
-    window.localStorage.setItem("lecturepilot.demo.workspaceCourse", JSON.stringify(workspaceCourse));
+    window.localStorage.setItem(
+      "lecturepilot.demo.workspaceCourse",
+      JSON.stringify(workspaceCourse),
+    );
     renderDashboard(realSession, true);
 
     const workspaceArticleElement = workspaceArticle("Grundlagen des Maschinellen Lernens");
 
     expect(within(workspaceArticleElement).getByText("AI tutor available")).toBeInTheDocument();
-    expect(within(workspaceArticleElement).queryByText(/not part of your current alma enrollment/i)).not.toBeInTheDocument();
-    expect(within(workspaceArticleElement).getByRole("button", { name: /open lecture 03/i })).toBeInTheDocument();
+    expect(
+      within(workspaceArticleElement).queryByText(/not part of your current alma enrollment/i),
+    ).not.toBeInTheDocument();
+    expect(
+      within(workspaceArticleElement).getByRole("button", { name: /open lecture 03/i }),
+    ).toBeInTheDocument();
   });
 
   it("does not duplicate the workspace course when the student is enrolled in the matched course", () => {
     renderDashboard(matchedSession, true);
 
-    expect(screen.getAllByRole("heading", { name: "Grundlagen des Maschinellen Lernens" })).toHaveLength(1);
+    expect(
+      screen.getAllByRole("heading", { name: "Grundlagen des Maschinellen Lernens" }),
+    ).toHaveLength(1);
     expect(screen.getByText("AI tutor available")).toBeInTheDocument();
     expect(screen.queryByText(/not part of your current alma enrollment/i)).not.toBeInTheDocument();
   });
 
   it("keeps long course lecture lists compact until expanded", async () => {
     const user = userEvent.setup();
-    renderDashboard(matchedSession, true, lectures.map((lecture) => lecture.id));
+    renderDashboard(
+      matchedSession,
+      true,
+      lectures.map((lecture) => lecture.id),
+    );
 
     const workspaceArticleElement = workspaceArticle("Grundlagen des Maschinellen Lernens");
-    expect(within(workspaceArticleElement).getByRole("button", { name: /open lecture 01/i })).toBeInTheDocument();
-    expect(within(workspaceArticleElement).getByRole("button", { name: /open lecture 02/i })).toBeInTheDocument();
-    expect(within(workspaceArticleElement).queryByRole("button", { name: /open lecture 03/i })).not.toBeInTheDocument();
+    expect(
+      within(workspaceArticleElement).getByRole("button", { name: /open lecture 01/i }),
+    ).toBeInTheDocument();
+    expect(
+      within(workspaceArticleElement).getByRole("button", { name: /open lecture 02/i }),
+    ).toBeInTheDocument();
+    expect(
+      within(workspaceArticleElement).queryByRole("button", { name: /open lecture 03/i }),
+    ).not.toBeInTheDocument();
 
     await user.click(within(workspaceArticleElement).getByRole("button", { name: /show all/i }));
 
-    expect(within(workspaceArticleElement).getByRole("button", { name: /open lecture 03/i })).toBeInTheDocument();
-    expect(within(workspaceArticleElement).getByRole("button", { name: /show first 2 lectures/i })).toBeInTheDocument();
+    expect(
+      within(workspaceArticleElement).getByRole("button", { name: /open lecture 03/i }),
+    ).toBeInTheDocument();
+    expect(
+      within(workspaceArticleElement).getByRole("button", { name: /show first 2 lectures/i }),
+    ).toBeInTheDocument();
   });
 
   it("hides the discoverable workspace until it is published", () => {
-    window.localStorage.setItem("lecturepilot.demo.workspaceCourse", JSON.stringify(workspaceCourse));
+    window.localStorage.setItem(
+      "lecturepilot.demo.workspaceCourse",
+      JSON.stringify(workspaceCourse),
+    );
     renderDashboard(realSession, false);
 
-    expect(screen.queryByRole("heading", { name: "Grundlagen des Maschinellen Lernens" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Grundlagen des Maschinellen Lernens" }),
+    ).not.toBeInTheDocument();
   });
 
   it("runs the exam readiness check from published course lectures", async () => {
@@ -130,7 +163,9 @@ describe("Dashboard course workspace matching", () => {
     await user.click(within(reopenedDialog).getByRole("button", { name: /check readiness/i }));
 
     expect(await within(reopenedDialog).findByText(/keep reviewing/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/expected risk combines posterior probabilities/i).length).toBeGreaterThan(1);
+    expect(
+      screen.getAllByText(/expected risk combines posterior probabilities/i).length,
+    ).toBeGreaterThan(1);
     expect(within(reopenedDialog).getByText(/rubric review needed/i)).toBeInTheDocument();
     await user.click(within(reopenedDialog).getByRole("button", { name: /review lecture 03/i }));
     expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: "lecture-03" }));
@@ -162,7 +197,7 @@ function renderDashboard(
   publishedLectureIds = tutorWorkspacePublished ? ["lecture-03"] : [],
 ) {
   const onOpen = vi.fn();
-  render(
+  renderWithI18n(
     <Dashboard
       lectures={lectures}
       publishedLectureIds={publishedLectureIds}
@@ -186,7 +221,9 @@ function examReadinessPayload() {
     course_id: "martius-ml",
     passing_score: 0.7,
     published_lecture_count: 1,
-    coverage: [{ lecture_id: "lecture-03", lecture_title: "Bayesian Decision Theory", question_count: 2 }],
+    coverage: [
+      { lecture_id: "lecture-03", lecture_title: "Bayesian Decision Theory", question_count: 2 },
+    ],
     questions: [
       {
         id: "lecture-03:losses-and-risks-quiz",
@@ -277,7 +314,8 @@ function examReadinessAttemptPayload() {
         source_ref: "Lecture03-eng.tex frames 5-6",
         rubric: ["Bayes formula turns evidence into a posterior distribution."],
         expected_evidence: "Bayes formula turns evidence into a posterior distribution.",
-        next_action: "Compare your answer with the rubric for Bayes formula and revise the weak point.",
+        next_action:
+          "Compare your answer with the rubric for Bayes formula and revise the weak point.",
       },
     ],
   };

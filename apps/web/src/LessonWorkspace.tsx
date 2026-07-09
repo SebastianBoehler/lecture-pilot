@@ -1,7 +1,16 @@
-import { ChevronLeft, FileText, FolderTree, MessageSquare, TableOfContents } from "lucide-react";
+import {
+  ChevronLeft,
+  FileText,
+  FolderTree,
+  GitBranch,
+  MessageSquare,
+  TableOfContents,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { useI18n } from "./i18n";
 import { LessonCanvas } from "./LessonCanvas";
+import { LearningPathPanel } from "./LearningPathPanel";
 import { NotesPanel, OutlinePanel } from "./LessonSidePanels";
 import { recordQuizAnswer } from "./analyticsApi";
 import { TutorDrawer } from "./TutorDrawer";
@@ -31,6 +40,7 @@ export function LessonWorkspace({
   messages,
   navigationVersion,
   panelMode,
+  passedGateIds,
   tutorModel,
   backLabel = "Dashboard",
   onBack,
@@ -50,6 +60,7 @@ export function LessonWorkspace({
   messages: ChatMessage[];
   navigationVersion: number;
   panelMode: LessonPanelMode | null;
+  passedGateIds: string[];
   tutorModel: string | null;
   backLabel?: string;
   onBack: () => void;
@@ -57,6 +68,7 @@ export function LessonWorkspace({
   onTogglePanel: (mode: LessonPanelMode) => void;
   onResetWorkspace: (options: WorkspaceResetSelection) => Promise<void>;
 }) {
+  const { t } = useI18n();
   const layoutClass = panelMode ? "lesson-layout panel-open" : "lesson-layout";
   const [activeAnchorId, setActiveAnchorId] = useState<DocumentAnchorId | null>(null);
   const [outlinePulse, setOutlinePulse] = useState<{
@@ -132,7 +144,7 @@ export function LessonWorkspace({
         </div>
         {canvasError ? <p className="form-error">{canvasError}</p> : null}
         {!canvasDocument && !canvasError ? (
-          <p className="drawer-note">Loading lecture canvas...</p>
+          <p className="drawer-note">{t("lesson.loadingCanvas")}</p>
         ) : null}
         {canvasDocument ? (
           <LessonCanvas
@@ -152,11 +164,11 @@ export function LessonWorkspace({
         ) : null}
       </section>
 
-      <aside className="rail" aria-label="Lesson controls">
+      <aside className="rail" aria-label={t("lesson.controls")}>
         <button
           className={panelMode === "chat" ? "rail-button is-active" : "rail-button"}
           type="button"
-          aria-label={panelMode === "chat" ? "Close tutor chat" : "Open tutor chat"}
+          aria-label={panelMode === "chat" ? t("lesson.closeChat") : t("lesson.openChat")}
           aria-pressed={panelMode === "chat"}
           onClick={() => onTogglePanel("chat")}
         >
@@ -165,16 +177,25 @@ export function LessonWorkspace({
         <button
           className={panelMode === "outline" ? "rail-button is-active" : "rail-button"}
           type="button"
-          aria-label="Open document outline"
+          aria-label={t("lesson.openOutline")}
           aria-pressed={panelMode === "outline"}
           onClick={() => onTogglePanel("outline")}
         >
           <TableOfContents size={18} />
         </button>
         <button
+          className={panelMode === "path" ? "rail-button is-active" : "rail-button"}
+          type="button"
+          aria-label={t("lesson.openPath")}
+          aria-pressed={panelMode === "path"}
+          onClick={() => onTogglePanel("path")}
+        >
+          <GitBranch size={18} />
+        </button>
+        <button
           className={panelMode === "notes" ? "rail-button is-active" : "rail-button"}
           type="button"
-          aria-label="Open lecture notes panel"
+          aria-label={t("lesson.openNotes")}
           aria-pressed={panelMode === "notes"}
           onClick={() => onTogglePanel("notes")}
         >
@@ -183,7 +204,7 @@ export function LessonWorkspace({
         <button
           className={panelMode === "files" ? "rail-button is-active" : "rail-button"}
           type="button"
-          aria-label="Open file workspace"
+          aria-label={t("lesson.openFiles")}
           aria-pressed={panelMode === "files"}
           onClick={() => onTogglePanel("files")}
         >
@@ -198,6 +219,17 @@ export function LessonWorkspace({
         <OutlinePanel
           activeAnchorId={activeAnchorId}
           canvasDocument={canvasDocument}
+          onJumpAnchor={jumpToAnchor}
+        />
+      ) : null}
+      {panelMode === "path" ? (
+        <LearningPathPanel
+          activeAnchorId={activeAnchorId}
+          courseId={courseId}
+          focusedSectionId={focusedSectionId}
+          lecture={lecture}
+          passedGateIds={passedGateIds}
+          session={session}
           onJumpAnchor={jumpToAnchor}
         />
       ) : null}

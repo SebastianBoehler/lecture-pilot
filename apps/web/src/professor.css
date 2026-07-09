@@ -1,5 +1,5 @@
 .professor-screen {
-  width: min(1040px, calc(100% - 32px));
+  width: min(1440px, calc(100% - 32px));
   margin: 0 auto;
   padding: 32px 0 56px;
 }

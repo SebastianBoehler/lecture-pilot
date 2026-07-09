@@ -1,3 +1,5 @@
+import { useI18n } from "./i18n";
+
 export function AppFooter({
   onOpenHowItWorks,
   onOpenPrivacy,
@@ -5,12 +7,17 @@ export function AppFooter({
   onOpenHowItWorks: () => void;
   onOpenPrivacy: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <footer className="app-footer">
       <span>LecturePilot pilot</span>
-      <nav aria-label="Project information">
-        <button type="button" onClick={onOpenHowItWorks}>How it works</button>
-        <button type="button" onClick={onOpenPrivacy}>Datenschutz</button>
+      <nav aria-label={t("footer.info")}>
+        <button type="button" onClick={onOpenHowItWorks}>
+          {t("footer.howItWorks")}
+        </button>
+        <button type="button" onClick={onOpenPrivacy}>
+          {t("footer.privacy")}
+        </button>
       </nav>
     </footer>
   );

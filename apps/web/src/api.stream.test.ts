@@ -8,18 +8,25 @@ afterEach(() => {
 
 it("emits tutor activity tags while reading the streamed agent turn", async () => {
   const encoder = new TextEncoder();
-  const fetchMock = vi.fn(async () =>
-    new Response(
-      new ReadableStream({
-        start(controller) {
-          controller.enqueue(encoder.encode(`${JSON.stringify({ type: "activity", tag: "call tutor model" })}\n`));
-          controller.enqueue(encoder.encode(`${JSON.stringify({ type: "activity", tag: "save quality gate" })}\n`));
-          controller.enqueue(encoder.encode(`${JSON.stringify({ type: "result", result: streamResult() })}\n`));
-          controller.close();
-        },
-      }),
-      { status: 200 },
-    ),
+  const fetchMock = vi.fn(
+    async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(
+              encoder.encode(`${JSON.stringify({ type: "activity", tag: "call tutor model" })}\n`),
+            );
+            controller.enqueue(
+              encoder.encode(`${JSON.stringify({ type: "activity", tag: "save quality gate" })}\n`),
+            );
+            controller.enqueue(
+              encoder.encode(`${JSON.stringify({ type: "result", result: streamResult() })}\n`),
+            );
+            controller.close();
+          },
+        }),
+        { status: 200 },
+      ),
   );
   vi.stubGlobal("fetch", fetchMock);
 
@@ -30,17 +37,15 @@ it("emits tutor activity tags while reading the streamed agent turn", async () =
 
   expect(activityTags).toEqual(["call tutor model", "save quality gate"]);
   expect(result.message).toBe("Streamed tutor answer.");
-  expect(fetchMock).toHaveBeenCalledWith(
-    expect.stringContaining("/agent/turn/stream"),
-    expect.objectContaining({
-      body: expect.stringContaining('"model":"openrouter/openai/gpt-oss-120b:nitro"'),
-      headers: expect.objectContaining({
-        "X-User-Id": "student01",
-        "X-User-Role": "student",
-      }),
-      method: "POST",
-    }),
+  const [url, request] = fetchMock.mock.calls[0];
+  expect(url).toEqual(expect.stringContaining("/agent/turn/stream"));
+  expect(request?.body).toEqual(
+    expect.stringContaining('"model":"openrouter/openai/gpt-oss-120b:nitro"'),
   );
+  expect(request?.credentials).toBe("include");
+  expect(request?.method).toBe("POST");
+  expect(new Headers(request?.headers).get("x-user-id")).toBe("student01");
+  expect(new Headers(request?.headers).get("x-user-role")).toBe("student");
 });
 
 function streamInput() {

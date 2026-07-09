@@ -2,6 +2,7 @@ import { RotateCcw } from "lucide-react";
 import type { FormEvent } from "react";
 import { useState } from "react";
 
+import { useI18n } from "./i18n";
 import type { LearnerWorkspaceResetOptions } from "./learnerWorkspaceApi";
 
 export type WorkspaceResetSelection = Omit<LearnerWorkspaceResetOptions, "user_id">;
@@ -13,6 +14,7 @@ export function WorkspaceResetControl({
   disabled?: boolean;
   onReset: (options: WorkspaceResetSelection) => Promise<void>;
 }) {
+  const { t } = useI18n();
   const [resetCanvas, setResetCanvas] = useState(true);
   const [resetCourseMemory, setResetCourseMemory] = useState(true);
   const [resetProgress, setResetProgress] = useState(false);
@@ -25,10 +27,10 @@ export function WorkspaceResetControl({
     setError(null);
     setStatus(null);
     if (!resetCanvas && !resetCourseMemory && !resetProgress) {
-      setError("Select at least one scope.");
+      setError(t("reset.selectScope"));
       return;
     }
-    if (!window.confirm("Reset selected learner workspace data?")) {
+    if (!window.confirm(t("reset.confirm"))) {
       return;
     }
     setBusy(true);
@@ -38,9 +40,9 @@ export function WorkspaceResetControl({
         reset_course_memory: resetCourseMemory,
         reset_progress: resetProgress,
       });
-      setStatus("Workspace reset.");
+      setStatus(t("reset.done"));
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Workspace reset failed.");
+      setError(nextError instanceof Error ? nextError.message : t("reset.failed"));
     } finally {
       setBusy(false);
     }
@@ -50,7 +52,7 @@ export function WorkspaceResetControl({
     <details className="workspace-reset-menu">
       <summary aria-disabled={disabled}>
         <RotateCcw size={15} />
-        Reset
+        {t("reset.title")}
       </summary>
       <form className="workspace-reset-form" onSubmit={handleSubmit}>
         <label>
@@ -60,7 +62,7 @@ export function WorkspaceResetControl({
             type="checkbox"
             onChange={(event) => setResetCanvas(event.target.checked)}
           />
-          Generated canvas
+          {t("reset.generatedCanvas")}
         </label>
         <label>
           <input
@@ -69,7 +71,7 @@ export function WorkspaceResetControl({
             type="checkbox"
             onChange={(event) => setResetCourseMemory(event.target.checked)}
           />
-          Course memory
+          {t("reset.courseMemory")}
         </label>
         <label>
           <input
@@ -78,10 +80,10 @@ export function WorkspaceResetControl({
             type="checkbox"
             onChange={(event) => setResetProgress(event.target.checked)}
           />
-          Progress
+          {t("reset.progress")}
         </label>
         <button className="primary-button" disabled={disabled || busy} type="submit">
-          {busy ? "Resetting..." : "Reset workspace"}
+          {busy ? t("reset.submitting") : t("reset.submit")}
         </button>
         {error ? <p className="form-error">{error}</p> : null}
         {status ? <p className="form-status">{status}</p> : null}

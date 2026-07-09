@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
 import { apiUrl } from "./api";
-import { authHeaders } from "./authz";
+import { authRequestInit } from "./authz";
 import type { LoginSession } from "./types";
 
 type AssetState = {
@@ -56,6 +56,7 @@ function useAuthenticatedAssetUrl(src: string, session: LoginSession): AssetStat
   const resolvedUrl = useMemo(() => apiUrl(src), [src]);
   const authKey = [
     session.access_token ?? "",
+    session.auth_transport ?? "",
     session.tenant_id ?? "",
     session.username,
     (session.roles ?? []).join(","),
@@ -76,7 +77,7 @@ function useAuthenticatedAssetUrl(src: string, session: LoginSession): AssetStat
     let active = true;
     let objectUrl: string | null = null;
     setAsset({ url: null, error: null, loading: true });
-    void fetch(resolvedUrl, { headers: authHeaders(session) })
+    void fetch(resolvedUrl, authRequestInit(session))
       .then(async (response) => {
         if (!response.ok) throw new Error("Asset could not be loaded.");
         objectUrl = URL.createObjectURL(await response.blob());

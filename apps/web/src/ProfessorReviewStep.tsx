@@ -1,4 +1,10 @@
-import { PendingStatus, StepHeader, VideoCandidateGroups, VideoCandidates } from "./ProfessorCourseBuilderParts";
+import { useI18n } from "./i18n";
+import {
+  PendingStatus,
+  StepHeader,
+  VideoCandidateGroups,
+  VideoCandidates,
+} from "./ProfessorCourseBuilderParts";
 import type { BuilderAction } from "./professorWorkflowRun";
 import type { Lecture, YoutubeVideoCandidate } from "./types";
 import type { YoutubeCandidateGroup } from "./professorYoutubeSuggestions";
@@ -46,20 +52,18 @@ export function ProfessorReviewStep({
   targetLectures: Lecture[];
   videos: YoutubeVideoCandidate[];
 }) {
+  const { t } = useI18n();
   const isBusy = pendingAction !== null;
   const isIncluding = pendingAction === "include-videos";
   const isSearching = pendingAction === "search";
   const isSuggesting = pendingAction === "suggest-videos";
   return (
     <section className="flow-card wide">
-      <StepHeader number="03" title="Review YouTube candidates" done={ready} />
-      <p className="drawer-note">
-        Search candidates before canvas generation. Selected videos are saved to the selected lecture workspace and
-        included only in that lecture draft.
-      </p>
+      <StepHeader number="03" title={t("builder.review.title")} done={ready} />
+      <p className="drawer-note">{t("builder.review.help")}</p>
       {targetLectures.length > 1 ? (
         <label>
-          Attach selected videos to
+          {t("builder.review.attachTo")}
           <select
             disabled={isBusy}
             value={targetLectureId}
@@ -74,39 +78,69 @@ export function ProfessorReviewStep({
         </label>
       ) : targetLectures[0] ? (
         <p className="drawer-note">
-          Selected videos attach to lecture {targetLectures[0].number}: {targetLectures[0].title}.
+          {t("builder.review.attachSingle", {
+            number: targetLectures[0].number,
+            title: targetLectures[0].title,
+          })}
         </p>
       ) : null}
-      <section className="youtube-suggestion-plan" aria-label="Suggested YouTube searches">
+      <section
+        className="youtube-suggestion-plan"
+        aria-label={t("builder.review.suggestedSearches")}
+      >
         <div>
-          <strong>Suggested searches</strong>
-          <p>Run a few course-aware searches, then approve only the videos that fit the lecture material.</p>
+          <strong>{t("builder.review.suggestedSearches")}</strong>
+          <p>{t("builder.review.suggestedHelp")}</p>
         </div>
         <div className="youtube-query-list">
-          {suggestedQueries.map((suggestion) => <span key={suggestion}>{suggestion}</span>)}
+          {suggestedQueries.map((suggestion) => (
+            <span key={suggestion}>{suggestion}</span>
+          ))}
         </div>
         <button disabled={!canSuggest || isBusy} type="button" onClick={onSuggest}>
-          {isSuggesting ? "Finding suggestions..." : suggestedGroups.length ? "Refresh suggested videos" : "Find suggested videos"}
+          {isSuggesting
+            ? t("builder.review.finding")
+            : suggestedGroups.length
+              ? t("builder.review.refresh")
+              : t("builder.review.find")}
         </button>
       </section>
-      {isSuggesting ? <PendingStatus label="Searching suggested YouTube candidates..." /> : null}
-      <VideoCandidateGroups groups={suggestedGroups} selectedVideos={selectedVideos} onToggle={onToggleVideo} />
+      {isSuggesting ? <PendingStatus label={t("builder.review.searchingSuggested")} /> : null}
+      <VideoCandidateGroups
+        groups={suggestedGroups}
+        selectedVideos={selectedVideos}
+        onToggle={onToggleVideo}
+      />
       <label>
-        Search query
-        <input disabled={isBusy} value={query} onChange={(event) => onQueryChange(event.target.value)} />
+        {t("builder.review.searchQuery")}
+        <input
+          disabled={isBusy}
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+        />
       </label>
       <button disabled={!canSearch || isBusy} type="button" onClick={onSearch}>
-        {isSearching ? "Searching YouTube..." : "Search YouTube"}
+        {isSearching ? t("builder.review.searchingYoutube") : t("builder.review.searchYoutube")}
       </button>
-      {isSearching ? <PendingStatus label="Searching YouTube candidates..." /> : null}
-      <VideoCandidates emptyLabel={suggestedGroups.length ? "No custom search run yet." : undefined} videos={videos} selectedVideos={selectedVideos} onToggle={onToggleVideo} />
+      {isSearching ? <PendingStatus label={t("builder.review.searchingYoutube")} /> : null}
+      <VideoCandidates
+        emptyLabel={suggestedGroups.length ? t("builder.review.noCustomSearch") : undefined}
+        videos={videos}
+        selectedVideos={selectedVideos}
+        onToggle={onToggleVideo}
+      />
       <button disabled={!canInclude || isBusy} type="button" onClick={onInclude}>
-        {isIncluding ? "Including selected videos..." : "Include selected videos"}
+        {isIncluding ? t("builder.review.including") : t("builder.review.include")}
       </button>
-      <button className="primary-action" disabled={!canContinue || isBusy} type="button" onClick={onContinue}>
-        Continue to canvas draft
+      <button
+        className="primary-action"
+        disabled={!canContinue || isBusy}
+        type="button"
+        onClick={onContinue}
+      >
+        {t("builder.review.continue")}
       </button>
-      {isIncluding ? <PendingStatus label="Saving selected videos for the canvas draft..." /> : null}
+      {isIncluding ? <PendingStatus label={t("builder.review.saving")} /> : null}
     </section>
   );
 }

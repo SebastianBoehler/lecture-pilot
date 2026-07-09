@@ -1,3 +1,4 @@
+import { useI18n } from "./i18n";
 import type { UniversityCourse } from "./types";
 
 export function ProfessorCourseTabs({
@@ -13,11 +14,12 @@ export function ProfessorCourseTabs({
   workspaceCourseId: string;
   onSelect: (courseId: string) => void;
 }) {
+  const { t } = useI18n();
   return (
-    <nav className="performance-course-tabs" aria-label="Performance course scope">
+    <nav className="performance-course-tabs" aria-label={t("professor.tabs.scopeAria")}>
       <div>
-        <span>Course scope</span>
-        <small>Switch between professor courses and published tutor workspaces.</small>
+        <span>{t("professor.tabs.scope")}</span>
+        <small>{t("professor.tabs.scopeHelp")}</small>
       </div>
       <div className="performance-course-tab-list">
         {courses.map((course) => {
@@ -31,7 +33,11 @@ export function ProfessorCourseTabs({
               onClick={() => onSelect(course.id)}
             >
               <strong>{course.title}</strong>
-              <small>{workspaceActive ? `${publishedLectureCount} published lectures` : "No workspace yet"}</small>
+              <small>
+                {workspaceActive
+                  ? t("professor.publishedLectures", { count: publishedLectureCount })
+                  : t("professor.tabs.noWorkspace")}
+              </small>
             </button>
           );
         })}

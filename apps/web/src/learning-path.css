@@ -1,0 +1,85 @@
+.student-path-tree {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.student-path-node {
+  display: grid;
+  gap: 8px;
+  border-left: 2px solid var(--color-border-primary);
+  padding-left: 10px;
+}
+
+.student-path-node.is-current,
+.student-path-node.is-active {
+  border-left-color: var(--color-accent-primary);
+}
+
+.student-path-node-button {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  padding: 10px;
+  color: var(--color-text-primary);
+  text-align: left;
+  background: var(--color-bg-secondary);
+}
+
+.student-path-node-button:hover,
+.student-path-node-button[aria-pressed="true"] {
+  border-color: var(--color-accent-primary);
+  background: var(--color-bg-primary);
+}
+
+.student-path-node-button > svg {
+  margin-top: 2px;
+  color: var(--color-text-tertiary);
+}
+
+.student-path-node.is-done .student-path-node-button > svg,
+.student-path-node.is-current .student-path-node-button > svg {
+  color: var(--color-accent-primary);
+}
+
+.student-path-node-button > span,
+.student-path-checks {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.student-path-step,
+.student-path-node-button small {
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.student-path-node-button strong,
+.student-path-check strong {
+  overflow-wrap: anywhere;
+}
+
+.student-path-checks {
+  padding-left: 32px;
+}
+
+.student-path-check {
+  display: inline-grid;
+  grid-template-columns: 16px auto minmax(0, 1fr);
+  gap: 5px;
+  align-items: center;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.student-path-check.is-passed {
+  color: var(--color-accent-primary);
+}

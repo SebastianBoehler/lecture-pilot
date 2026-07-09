@@ -23,11 +23,26 @@ export function authHeaders(
       Authorization: `Bearer ${session.access_token}`,
     };
   }
+  if (session.auth_transport === "cookie") {
+    return {};
+  }
   return {
     "X-Course-Ids": (session.courses ?? []).map((course) => course.id).join(","),
     "X-Tenant-Id": session.tenant_id ?? "tenant-tuebingen",
     "X-User-Id": session.username,
     "X-User-Role": role,
+  };
+}
+
+export function authRequestInit(session: LoginSession, init: RequestInit = {}): RequestInit {
+  const headers = new Headers(authHeaders(session));
+  new Headers(init.headers).forEach((value, key) => {
+    headers.set(key, value);
+  });
+  return {
+    ...init,
+    credentials: "include",
+    headers,
   };
 }
 

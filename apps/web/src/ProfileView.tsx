@@ -1,3 +1,4 @@
+import { useI18n } from "./i18n";
 import type { LoginSession } from "./types";
 import { TUTOR_MODEL_OPTIONS, type TutorModelPreference } from "./tutorModels";
 
@@ -12,47 +13,48 @@ export function ProfileView({
   onBack: () => void;
   onModelPreferenceChange: (preference: TutorModelPreference) => void;
 }) {
+  const { t } = useI18n();
   return (
     <main className="profile-screen">
       <section className="profile-panel" aria-labelledby="profile-heading">
         <div className="panel-heading">
           <div>
-            <p className="section-label">Account</p>
-            <h1 id="profile-heading">Profile</h1>
+            <p className="section-label">{t("profile.account")}</p>
+            <h1 id="profile-heading">{t("profile.title")}</h1>
           </div>
           <button className="ghost-button" type="button" onClick={onBack}>
-            Dashboard
+            {t("lesson.back.dashboard")}
           </button>
         </div>
 
         <dl className="profile-fields">
           <div>
-            <dt>Username</dt>
+            <dt>{t("profile.username")}</dt>
             <dd>{session.username}</dd>
           </div>
           <div>
-            <dt>Email</dt>
-            <dd>{session.email || "Not loaded"}</dd>
+            <dt>{t("profile.email")}</dt>
+            <dd>{session.email || t("profile.notLoaded")}</dd>
           </div>
           <div>
-            <dt>Term</dt>
+            <dt>{t("profile.term")}</dt>
             <dd>{session.term}</dd>
           </div>
           <div>
-            <dt>Courses</dt>
+            <dt>{t("profile.courses")}</dt>
             <dd>{session.courses.length}</dd>
           </div>
         </dl>
 
         <section className="profile-settings" aria-labelledby="profile-settings-heading">
-          <h2 id="profile-settings-heading">Settings</h2>
+          <h2 id="profile-settings-heading">{t("profile.settings")}</h2>
           <label className="profile-setting-row">
             <span>
-              <strong>Tutor model</strong>
-              <small>Saved in this browser for tutor turns.</small>
+              <strong>{t("profile.tutorModel")}</strong>
+              <small>{t("profile.tutorModelHelp")}</small>
             </span>
             <select
-              aria-label="Tutor model preference"
+              aria-label={t("profile.tutorModelPreference")}
               value={modelPreference}
               onChange={(event) =>
                 onModelPreferenceChange(event.target.value as TutorModelPreference)
@@ -69,7 +71,7 @@ export function ProfileView({
         </section>
 
         <section className="profile-courses" aria-labelledby="profile-courses-heading">
-          <h2 id="profile-courses-heading">Loaded Courses</h2>
+          <h2 id="profile-courses-heading">{t("profile.loadedCourses")}</h2>
           <div className="course-list">
             {session.courses.map((course) => (
               <article className="course-row" key={course.id}>

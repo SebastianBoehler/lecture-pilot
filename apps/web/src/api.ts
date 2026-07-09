@@ -12,7 +12,7 @@ import type {
   LoginSession,
   UniversityCourse,
 } from "./types";
-import { authHeaders, courseManagerHeaders } from "./authz";
+import { authRequestInit } from "./authz";
 import { normalizeLectureList } from "./lectureMapping";
 
 export type CanvasCommand = {
@@ -55,11 +55,6 @@ type AgentTurnStreamEvent =
   | { type: "result"; result: AgentTurnResult }
   | { type: "error"; message: string };
 
-type TuebingenLoginInput = {
-  username: string;
-  password: string;
-};
-
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 
 export function apiUrl(path: string): string {
@@ -69,32 +64,18 @@ export function apiUrl(path: string): string {
   return `${apiBaseUrl}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
-export async function loginWithTuebingen(input: TuebingenLoginInput): Promise<LoginSession> {
-  let response: Response;
-  try {
-    response = await fetch(`${apiBaseUrl}/auth/login`, {
+export async function sendAgentTurn(
+  input: AgentTurnInput,
+  session: LoginSession,
+): Promise<AgentTurnResult> {
+  const response = await fetch(
+    `${apiBaseUrl}/agent/turn`,
+    authRequestInit(session, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
-    });
-  } catch {
-    throw new Error(`Cannot reach the local LecturePilot API at ${apiBaseUrl}. Is the backend running?`);
-  }
-
-  const payload = await response.json().catch(() => null);
-  if (!response.ok) {
-    throw new Error(readApiError(payload, "Login failed."));
-  }
-
-  return payload as LoginSession;
-}
-
-export async function sendAgentTurn(input: AgentTurnInput, session: LoginSession): Promise<AgentTurnResult> {
-  const response = await fetch(`${apiBaseUrl}/agent/turn`, {
-    method: "POST",
-    headers: { ...authHeaders(session), "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
+    }),
+  );
 
   const payload = await response.json();
   if (!response.ok) {
@@ -110,11 +91,14 @@ export async function sendAgentTurnStream(
   session: LoginSession,
   { onActivity }: { onActivity?: (tag: string) => void } = {},
 ): Promise<AgentTurnResult> {
-  const response = await fetch(`${apiBaseUrl}/agent/turn/stream`, {
-    method: "POST",
-    headers: { ...authHeaders(session), "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
+  const response = await fetch(
+    `${apiBaseUrl}/agent/turn/stream`,
+    authRequestInit(session, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    }),
+  );
 
   if (!response.ok) {
     const payload = await response.json().catch(() => null);
@@ -180,7 +164,7 @@ export async function getLectureCanvas(
   const searchParams = new URLSearchParams({ user_id: userId });
   const response = await fetch(
     apiUrl(`/courses/${courseId}/lectures/${lectureId}/canvas?${searchParams}`),
-    { headers: authHeaders(session) },
+    authRequestInit(session),
   );
   const payload = await response.json();
   if (!response.ok) {
@@ -196,10 +180,12 @@ export async function draftLectureCanvas(
   lectureId: string,
   session: LoginSession,
 ): Promise<CanvasDocument> {
-  const response = await fetch(apiUrl(`/admin/courses/${courseId}/lectures/${lectureId}/canvas/draft`), {
-    method: "POST",
-    headers: courseManagerHeaders(session),
-  });
+  const response = await fetch(
+    apiUrl(`/admin/courses/${courseId}/lectures/${lectureId}/canvas/draft`),
+    authRequestInit(session, {
+      method: "POST",
+    }),
+  );
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Canvas planner failed."));
   return payload as CanvasDocument;
@@ -210,9 +196,10 @@ export async function getDraftLectureCanvas(
   lectureId: string,
   session: LoginSession,
 ): Promise<CanvasDocument> {
-  const response = await fetch(apiUrl(`/admin/courses/${courseId}/lectures/${lectureId}/canvas/draft`), {
-    headers: courseManagerHeaders(session),
-  });
+  const response = await fetch(
+    apiUrl(`/admin/courses/${courseId}/lectures/${lectureId}/canvas/draft`),
+    authRequestInit(session),
+  );
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Canvas draft loading failed."));
   return payload as CanvasDocument;
@@ -223,10 +210,12 @@ export async function publishLectureCanvas(
   lectureId: string,
   session: LoginSession,
 ): Promise<CanvasPublicationResult> {
-  const response = await fetch(apiUrl(`/admin/courses/${courseId}/lectures/${lectureId}/canvas/publish`), {
-    method: "POST",
-    headers: courseManagerHeaders(session),
-  });
+  const response = await fetch(
+    apiUrl(`/admin/courses/${courseId}/lectures/${lectureId}/canvas/publish`),
+    authRequestInit(session, {
+      method: "POST",
+    }),
+  );
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Canvas publish failed."));
   return payload as CanvasPublicationResult;
@@ -237,17 +226,23 @@ export async function getCanvasPublication(
   lectureId: string,
   session: LoginSession,
 ): Promise<CanvasPublicationResult> {
-  const response = await fetch(apiUrl(`/courses/${courseId}/lectures/${lectureId}/canvas/publication`), {
-    headers: authHeaders(session),
-  });
+  const response = await fetch(
+    apiUrl(`/courses/${courseId}/lectures/${lectureId}/canvas/publication`),
+    {
+      ...authRequestInit(session),
+    },
+  );
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Canvas publication status failed."));
   return payload as CanvasPublicationResult;
 }
 
-export async function getExamReadinessCheck(courseId: string, session: LoginSession): Promise<ExamReadinessCheck> {
+export async function getExamReadinessCheck(
+  courseId: string,
+  session: LoginSession,
+): Promise<ExamReadinessCheck> {
   const response = await fetch(apiUrl(`/courses/${courseId}/exam-readiness`), {
-    headers: authHeaders(session),
+    ...authRequestInit(session),
   });
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Exam readiness check loading failed."));
@@ -259,19 +254,25 @@ export async function submitExamReadinessAttempt(
   answers: ExamReadinessAnswer[],
   session: LoginSession,
 ): Promise<ExamReadinessAttemptResult> {
-  const response = await fetch(apiUrl(`/courses/${courseId}/exam-readiness/attempts`), {
-    method: "POST",
-    headers: { ...authHeaders(session), "Content-Type": "application/json" },
-    body: JSON.stringify({ answers }),
-  });
+  const response = await fetch(
+    apiUrl(`/courses/${courseId}/exam-readiness/attempts`),
+    authRequestInit(session, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ answers }),
+    }),
+  );
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Exam readiness submission failed."));
   return payload as ExamReadinessAttemptResult;
 }
 
-export async function getCourseLectures(courseId: string, session: LoginSession): Promise<Lecture[]> {
+export async function getCourseLectures(
+  courseId: string,
+  session: LoginSession,
+): Promise<Lecture[]> {
   const response = await fetch(apiUrl(`/courses/${courseId}/lectures`), {
-    headers: authHeaders(session),
+    ...authRequestInit(session),
   });
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Course lecture loading failed."));
@@ -280,7 +281,7 @@ export async function getCourseLectures(courseId: string, session: LoginSession)
 
 export async function getCourses(session: LoginSession): Promise<UniversityCourse[]> {
   const response = await fetch(apiUrl("/courses"), {
-    headers: authHeaders(session),
+    ...authRequestInit(session),
   });
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Course loading failed."));

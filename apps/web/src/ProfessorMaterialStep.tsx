@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
 
+import { useI18n } from "./i18n";
 import { materialFilesFromDrop } from "./materialDrop";
 import { materialSelectionSummary } from "./materialSelectionSummary";
 import { BundleSummary, PendingStatus, StepHeader } from "./ProfessorCourseBuilderParts";
@@ -38,17 +39,26 @@ export function ProfessorMaterialStep({
   uploadPath: string;
   workspaceReady: boolean;
 }) {
+  const { t } = useI18n();
   const inputId = useId();
   const [isDragOver, setIsDragOver] = useState(false);
   const isBusy = pendingAction !== null;
   const isUploading = pendingAction === "upload";
   const disabled = !courseReady || !workspaceReady || isBusy;
-  const fileLabel = materialSelectionSummary(uploadFiles);
+  const fileLabel = materialSelectionSummary(uploadFiles, {
+    folderSummary: (folder, count) => t("builder.upload.folderSummary", { count, folder }),
+    noFilesSelected: t("builder.upload.noFilesSelected"),
+    selectedSummary: (count) => t("builder.upload.selectedSummary", { count }),
+  });
   return (
     <section className="flow-card">
-      <StepHeader number="02" title="Upload materials" done={Boolean(bundle?.files.length)} />
+      <StepHeader
+        number="02"
+        title={t("builder.upload.title")}
+        done={Boolean(bundle?.files.length)}
+      />
       <label>
-        Workspace folder
+        {t("builder.upload.folder")}
         <input value={uploadPath} onChange={(event) => setUploadPath(event.target.value)} />
       </label>
       <label
@@ -65,12 +75,12 @@ export function ProfessorMaterialStep({
           if (!disabled) void materialFilesFromDrop(event.dataTransfer).then(onUploadFilesChange);
         }}
       >
-        <span className="material-drop-title">Drop course folder here</span>
-        <span className="material-drop-copy">or choose a folder or files</span>
-        <span className="material-drop-button">Choose materials</span>
+        <span className="material-drop-title">{t("builder.upload.dropTitle")}</span>
+        <span className="material-drop-copy">{t("builder.upload.dropCopy")}</span>
+        <span className="material-drop-button">{t("builder.upload.choose")}</span>
         <input
           id={inputId}
-          aria-label="Upload course material"
+          aria-label={t("builder.upload.aria")}
           className="material-drop-input"
           disabled={disabled}
           multiple
@@ -79,19 +89,24 @@ export function ProfessorMaterialStep({
           {...{ directory: "", webkitdirectory: "" }}
         />
       </label>
-      <p className="material-selection-summary">
-        {fileLabel}
-      </p>
+      <p className="material-selection-summary">{fileLabel}</p>
       <div className="flow-actions">
-        <button className="primary-action" disabled={disabled || !uploadFiles.length} type="button" onClick={onUpload}>
-          {isUploading ? "Uploading materials..." : `Upload selected ${materialScope}`}
+        <button
+          className="primary-action"
+          disabled={disabled || !uploadFiles.length}
+          type="button"
+          onClick={onUpload}
+        >
+          {isUploading
+            ? t("builder.upload.uploading")
+            : t("builder.upload.uploadSelected", { scope: materialScope })}
         </button>
         <button disabled={disabled} type="button" onClick={onScan}>
-          {pendingAction === "scan" ? "Scanning uploaded bundle..." : "Scan uploaded bundle"}
+          {pendingAction === "scan" ? t("builder.upload.scanning") : t("builder.upload.scan")}
         </button>
       </div>
-      {pendingAction === "scan" ? <PendingStatus label="Refreshing uploaded source bundle..." /> : null}
-      {isUploading ? <PendingStatus label="Uploading material and refreshing source bundle..." /> : null}
+      {pendingAction === "scan" ? <PendingStatus label={t("builder.upload.refreshing")} /> : null}
+      {isUploading ? <PendingStatus label={t("builder.upload.uploadingStatus")} /> : null}
       {bundle ? <BundleSummary bundle={bundle} /> : null}
       <ProfessorLectureSchedule
         disabled={!lectureSchedule.length || isBusy}

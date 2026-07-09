@@ -1,3 +1,4 @@
+import { useI18n } from "./i18n";
 import type { CourseWorkspaceResult } from "./types";
 
 type ProfessorCourseManagerProps = {
@@ -15,15 +16,16 @@ export function ProfessorCourseManager({
   onRefresh,
   workspaces,
 }: ProfessorCourseManagerProps) {
+  const { t } = useI18n();
   return (
     <section className="course-manager-panel" aria-labelledby="created-courses-heading">
       <div className="course-manager-header">
         <div>
-          <h2 id="created-courses-heading">Created courses</h2>
-          <p>Manage published or draft course workspaces independently from the creation flow.</p>
+          <h2 id="created-courses-heading">{t("professor.createdCourses")}</h2>
+          <p>{t("professor.createdCoursesHelp")}</p>
         </div>
         <button className="refresh-button" disabled={isLoading} type="button" onClick={onRefresh}>
-          {isLoading ? "Refreshing..." : "Refresh"}
+          {isLoading ? t("professor.refreshing") : t("professor.refresh")}
         </button>
       </div>
       {workspaces.length ? (
@@ -34,21 +36,23 @@ export function ProfessorCourseManager({
                 <strong>{workspace.course.title}</strong>
                 <span>{workspace.course.id}</span>
               </div>
-              <p>{workspace.lectures.length} lecture{workspace.lectures.length === 1 ? "" : "s"}</p>
+              <p>{t("professor.publishedLectures", { count: workspace.lectures.length })}</p>
               <button
                 className="refresh-button delete-course-button"
                 disabled={deletingCourseId === workspace.course.id}
                 type="button"
-                aria-label={`Delete ${workspace.course.title}`}
+                aria-label={t("professor.deleteCourse", { course: workspace.course.title })}
                 onClick={() => onDeleteCourse(workspace.course.id)}
               >
-                {deletingCourseId === workspace.course.id ? "Deleting..." : "Delete"}
+                {deletingCourseId === workspace.course.id
+                  ? t("professor.deleting")
+                  : t("professor.delete")}
               </button>
             </article>
           ))}
         </div>
       ) : (
-        <p className="empty-course-manager">No created course workspaces yet.</p>
+        <p className="empty-course-manager">{t("professor.noCreatedCourses")}</p>
       )}
     </section>
   );

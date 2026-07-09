@@ -1,4 +1,3 @@
-.performance-page { width: min(1440px, calc(100% - 32px)); }
 .refresh-button {
   display: inline-flex;
   align-items: center;
@@ -118,7 +117,9 @@
   padding-right: 2px;
   scrollbar-width: none;
 }
-.performance-lecture-scroll::-webkit-scrollbar { display: none; }
+.performance-lecture-scroll::-webkit-scrollbar {
+  display: none;
+}
 .performance-lecture-rail button {
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr) 10px;
@@ -179,8 +180,12 @@
   margin-top: 12px;
   background: #22c55e;
 }
-.lecture-status.is-watch { background: #f59e0b; }
-.lecture-status.is-needs-attention { background: #ef4444; }
+.lecture-status.is-watch {
+  background: #f59e0b;
+}
+.lecture-status.is-needs-attention {
+  background: #ef4444;
+}
 .analytics-board {
   display: grid;
   gap: 16px;
@@ -280,9 +285,17 @@
   border-radius: inherit;
   background: #64748b;
 }
-.metric-row.is-correct .metric-fill { background: #16a34a; }
-.metric-row.is-wrong .metric-fill { background: #ef4444; }
-@keyframes spin { to { transform: rotate(360deg); } }
+.metric-row.is-correct .metric-fill {
+  background: #16a34a;
+}
+.metric-row.is-wrong .metric-fill {
+  background: #ef4444;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 @media (max-width: 960px) {
   .performance-overview,
   .performance-workbench,

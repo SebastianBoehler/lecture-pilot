@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 
-import { loginWithTuebingen } from "./api";
+import { useI18n } from "./i18n";
+import { loginWithTuebingen } from "./sessionApi";
 import type { LoginSession } from "./types";
 
 export function LoginView({
@@ -12,6 +13,7 @@ export function LoginView({
   onOpenDemo: () => void;
   onOpenProfessorDemo: () => void;
 }) {
+  const { t } = useI18n();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +34,7 @@ export function LoginView({
       });
       onLogin(session);
     } catch (loginError) {
-      setError(loginError instanceof Error ? loginError.message : "Login failed.");
+      setError(loginError instanceof Error ? loginError.message : t("login.failed"));
     } finally {
       setPassword("");
       setIsSubmitting(false);
@@ -43,13 +45,13 @@ export function LoginView({
     <main className="login-screen">
       <section className="login-panel" aria-labelledby="login-heading">
         <div className="login-copy">
-          <h1 id="login-heading">Sign in with Uni Tübingen</h1>
-          <p>Open your course workspace, catch up on lectures, and get ready for focused learning.</p>
+          <h1 id="login-heading">{t("login.title")}</h1>
+          <p>{t("login.subtitle")}</p>
         </div>
 
         <form className="login-form" onSubmit={submitLogin}>
           <label>
-            ZDV username
+            {t("login.username")}
             <input
               autoComplete="username"
               name="username"
@@ -58,7 +60,7 @@ export function LoginView({
             />
           </label>
           <label>
-            Password
+            {t("login.password")}
             <input
               autoComplete="current-password"
               name="password"
@@ -73,18 +75,28 @@ export function LoginView({
             type="submit"
           >
             {isSubmitting ? <span className="login-spinner" aria-hidden="true" /> : null}
-            {isSubmitting ? "Signing in" : "Continue with Uni Tübingen"}
+            {isSubmitting ? t("login.submitting") : t("login.submit")}
           </button>
           {isSubmitting ? (
             <p className="login-status" role="status">
-              Loading your course workspace. This can take a moment.
+              {t("login.status")}
             </p>
           ) : null}
-          <button className="secondary-button" disabled={isSubmitting} type="button" onClick={onOpenDemo}>
-            Preview local demo
+          <button
+            className="secondary-button"
+            disabled={isSubmitting}
+            type="button"
+            onClick={onOpenDemo}
+          >
+            {t("login.demo")}
           </button>
-          <button className="secondary-button" disabled={isSubmitting} type="button" onClick={onOpenProfessorDemo}>
-            Preview professor account
+          <button
+            className="secondary-button"
+            disabled={isSubmitting}
+            type="button"
+            onClick={onOpenProfessorDemo}
+          >
+            {t("login.professorDemo")}
           </button>
           {error ? <p className="form-error">{error}</p> : null}
         </form>

@@ -1,12 +1,14 @@
 import type { Attendance, ChatMessage, LoginSession } from "./types";
 
 export function initialMessagesForAttendance(attendance: Attendance): ChatMessage[] {
-  return [{
-    id: "agent-welcome",
-    role: "agent",
-    content: initialMessage(attendance),
-    toolTags: [`mode: ${modeLabel(attendance)}`],
-  }];
+  return [
+    {
+      id: "agent-welcome",
+      role: "agent",
+      content: initialMessage(attendance),
+      toolTags: [`mode: ${modeLabel(attendance)}`],
+    },
+  ];
 }
 
 function initialMessage(attendance: Attendance) {
@@ -31,6 +33,7 @@ export const localDemoSession: LoginSession = {
   term: "Sommer 2026",
   tenant_id: "tenant-tuebingen",
   roles: ["student"],
+  auth_transport: "dev_headers",
   courses: [
     {
       access_policy: "public",

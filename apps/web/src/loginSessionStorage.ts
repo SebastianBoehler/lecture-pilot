@@ -17,8 +17,6 @@ export function useStoredLoginSession() {
 
 function readStoredLoginSession() {
   try {
-    const sessionValue = window.sessionStorage.getItem(loginSessionKey);
-    if (sessionValue) return JSON.parse(sessionValue) as LoginSession;
     const storedValue = window.localStorage.getItem(loginSessionKey);
     return storedValue ? (JSON.parse(storedValue) as LoginSession) : null;
   } catch {
@@ -28,12 +26,10 @@ function readStoredLoginSession() {
 
 function writeStoredLoginSession(session: LoginSession | null) {
   try {
+    window.sessionStorage.removeItem(loginSessionKey);
     if (session) {
-      const payload = JSON.stringify(session);
-      window.sessionStorage.setItem(loginSessionKey, payload);
       window.localStorage.setItem(loginSessionKey, JSON.stringify(withoutAccessToken(session)));
     } else {
-      window.sessionStorage.removeItem(loginSessionKey);
       window.localStorage.removeItem(loginSessionKey);
     }
   } catch {

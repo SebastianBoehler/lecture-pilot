@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { useI18n } from "./i18n";
 import type { Attendance, Lecture, LoginSession, UniversityCourse } from "./types";
 import { readDemoWorkspaceCourse } from "./demoWorkspaceAccess";
 import { hasDevelopmentWorkspaceAccess } from "./devWorkspaceAccess";
@@ -33,25 +34,32 @@ export function Dashboard({
   onOpen: (lecture: Lecture) => void;
   onSetAttendance: (lectureId: string, attendance: Attendance) => void;
 }) {
+  const { t } = useI18n();
   const studentLabel = session?.email ?? session?.username ?? "student";
-  const courseGroups = buildCourseGroups(session, workspaceCourse, lectures, publishedLectureIds);
+  const courseGroups = buildCourseGroups(session, workspaceCourse, lectures, publishedLectureIds, {
+    aiTutorAvailable: t("dashboard.aiTutorAvailable"),
+    noMatchedTutor: t("dashboard.noMatchedTutor"),
+    noTutor: t("dashboard.noTutor"),
+    publishToEnable: t("dashboard.publishToEnable"),
+  });
   const [openCourses, setOpenCourses] = useState<Record<string, boolean>>({});
   const [expandedLectureLists, setExpandedLectureLists] = useState<Record<string, boolean>>({});
 
   return (
     <main className="dashboard">
       <section className="dashboard-header">
-        <h1>Welcome, {studentLabel}</h1>
-        <p>Choose an AI tutor workspace or continue with a past lecture.</p>
+        <h1>{t("dashboard.welcome", { student: studentLabel })}</h1>
+        <p>{t("dashboard.subtitle")}</p>
       </section>
 
       <section className="course-panel" aria-labelledby="course-workspaces">
         <div className="panel-heading">
-          <h2 id="course-workspaces">Course workspaces</h2>
+          <h2 id="course-workspaces">{t("dashboard.courseWorkspaces")}</h2>
         </div>
         <div className="course-workspace-list">
           {courseGroups.map((group) => {
-            const { course, status, statusLabel, emptyText, tutorAvailable, courseLectures } = group;
+            const { course, status, statusLabel, emptyText, tutorAvailable, courseLectures } =
+              group;
             const courseOpen = openCourses[course.id] ?? tutorAvailable;
             const allLecturesShown = expandedLectureLists[course.id] ?? false;
             const visibleLectures = allLecturesShown
@@ -73,40 +81,57 @@ export function Dashboard({
                         aria-expanded={courseOpen}
                         className="course-toggle"
                         type="button"
-                        onClick={() => setOpenCourses((current) => ({ ...current, [course.id]: !courseOpen }))}
+                        onClick={() =>
+                          setOpenCourses((current) => ({ ...current, [course.id]: !courseOpen }))
+                        }
                       >
-                        {courseOpen ? "Hide lectures" : `Show ${courseLectures.length} lectures`}
+                        {courseOpen
+                          ? t("dashboard.hideLectures")
+                          : t("dashboard.showLectures", { count: courseLectures.length })}
                       </button>
                     ) : null}
                   </div>
                 </div>
                 {tutorAvailable ? (
                   <div className="course-workspace-body" hidden={!courseOpen} id={bodyId}>
-                    <div className="lecture-list" aria-label={`Available lectures for ${course.title}`}>
+                    <div
+                      className="lecture-list"
+                      aria-label={t("dashboard.availableLectures", { course: course.title })}
+                    >
                       {visibleLectures.map((lecture) => (
                         <article className="lecture-row" key={lecture.id}>
                           <div className="lecture-number">{lecture.number}</div>
                           <div>
                             <h3>{lecture.title}</h3>
                             <p>
-                              {lecture.date} · attendance {lecture.attendance}
+                              {lecture.date} ·{" "}
+                              {t("dashboard.attendance", {
+                                status: attendanceLabel(lecture.attendance, t),
+                              })}
                             </p>
-                            <div className="attendance-control" aria-label={`Attendance for ${lecture.title}`}>
+                            <div
+                              className="attendance-control"
+                              aria-label={t("dashboard.attendanceFor", {
+                                lecture: lecture.title,
+                              })}
+                            >
                               {(["present", "absent", "unknown"] as const).map((status) => (
                                 <button
                                   aria-pressed={lecture.attendance === status}
-                                  className={lecture.attendance === status ? "is-active" : undefined}
+                                  className={
+                                    lecture.attendance === status ? "is-active" : undefined
+                                  }
                                   key={status}
                                   onClick={() => onSetAttendance(lecture.id, status)}
                                   type="button"
                                 >
-                                  {status}
+                                  {attendanceLabel(status, t)}
                                 </button>
                               ))}
                             </div>
                           </div>
                           <button type="button" onClick={() => onOpen(lecture)}>
-                            Open lecture {lecture.number}
+                            {t("dashboard.openLecture", { number: lecture.number })}
                           </button>
                         </article>
                       ))}
@@ -115,14 +140,16 @@ export function Dashboard({
                       <button
                         className="lecture-list-toggle"
                         type="button"
-                        onClick={() => setExpandedLectureLists((current) => ({
-                          ...current,
-                          [course.id]: !allLecturesShown,
-                        }))}
+                        onClick={() =>
+                          setExpandedLectureLists((current) => ({
+                            ...current,
+                            [course.id]: !allLecturesShown,
+                          }))
+                        }
                       >
                         {allLecturesShown
-                          ? `Show first ${LECTURE_PREVIEW_COUNT} lectures`
-                          : `Show all ${courseLectures.length} lectures`}
+                          ? t("dashboard.showFirstLectures", { count: LECTURE_PREVIEW_COUNT })
+                          : t("dashboard.showAllLectures", { count: courseLectures.length })}
                       </button>
                     ) : null}
                     <ExamReadinessPanel
@@ -149,15 +176,28 @@ function buildCourseGroups(
   workspaceCourse: UniversityCourse,
   lectures: Lecture[],
   publishedLectureIds: string[],
+  labels: {
+    aiTutorAvailable: string;
+    noMatchedTutor: string;
+    noTutor: string;
+    publishToEnable: string;
+  },
 ): CourseWorkspaceGroup[] {
   const enrolledCourses = session?.courses ?? [];
   const courseGroups = enrolledCourses.length
-    ? enrolledCourses.map((course) => buildEnrolledCourseGroup(course, workspaceCourse, lectures, publishedLectureIds))
-    : [buildDiscoverableCourseGroup(workspaceCourse, lectures, publishedLectureIds)];
+    ? enrolledCourses.map((course) =>
+        buildEnrolledCourseGroup(course, workspaceCourse, lectures, publishedLectureIds, labels),
+      )
+    : [buildDiscoverableCourseGroup(workspaceCourse, lectures, publishedLectureIds, labels)];
 
-  if (enrolledCourses.length && !enrolledCourses.some((course) => isWorkspaceCourse(course, workspaceCourse))) {
+  if (
+    enrolledCourses.length &&
+    !enrolledCourses.some((course) => isWorkspaceCourse(course, workspaceCourse))
+  ) {
     if (hasWorkspaceAccess(workspaceCourse) && publishedLectureIds.length > 0) {
-      courseGroups.push(buildDiscoverableCourseGroup(workspaceCourse, lectures, publishedLectureIds));
+      courseGroups.push(
+        buildDiscoverableCourseGroup(workspaceCourse, lectures, publishedLectureIds, labels),
+      );
     }
   }
 
@@ -169,14 +209,19 @@ function buildEnrolledCourseGroup(
   workspaceCourse: UniversityCourse,
   lectures: Lecture[],
   publishedLectureIds: string[],
+  labels: {
+    aiTutorAvailable: string;
+    noMatchedTutor: string;
+    noTutor: string;
+  },
 ): CourseWorkspaceGroup {
   const publishedLectures = publishedCourseLectures(lectures, publishedLectureIds);
   const tutorAvailable = publishedLectures.length > 0 && isWorkspaceCourse(course, workspaceCourse);
   return {
     course,
     status: tutorAvailable ? "matched" : "unmatched",
-    statusLabel: tutorAvailable ? workspaceStatusLabel() : "No tutor workspace yet",
-    emptyText: "No matched LecturePilot workspace for this course yet.",
+    statusLabel: tutorAvailable ? labels.aiTutorAvailable : labels.noTutor,
+    emptyText: labels.noMatchedTutor,
     tutorAvailable,
     courseLectures: tutorAvailable ? publishedLectures : [],
   };
@@ -186,14 +231,19 @@ function buildDiscoverableCourseGroup(
   workspaceCourse: UniversityCourse,
   lectures: Lecture[],
   publishedLectureIds: string[],
+  labels: {
+    aiTutorAvailable: string;
+    noTutor: string;
+    publishToEnable: string;
+  },
 ): CourseWorkspaceGroup {
   const publishedLectures = publishedCourseLectures(lectures, publishedLectureIds);
   const tutorAvailable = publishedLectures.length > 0;
   return {
     course: workspaceCourse,
     status: tutorAvailable ? "matched" : "unmatched",
-    statusLabel: tutorAvailable ? workspaceStatusLabel() : "No tutor workspace yet",
-    emptyText: "No tutor workspace yet. Publish the course workspace to enable lecture entry.",
+    statusLabel: tutorAvailable ? labels.aiTutorAvailable : labels.noTutor,
+    emptyText: labels.publishToEnable,
     tutorAvailable,
     courseLectures: publishedLectures,
   };
@@ -205,7 +255,10 @@ function publishedCourseLectures(lectures: Lecture[], publishedLectureIds: strin
 }
 
 function isWorkspaceCourse(course: UniversityCourse, workspaceCourse: UniversityCourse) {
-  return course.id === workspaceCourse.id || normalizeCourseTitle(course.title) === normalizeCourseTitle(workspaceCourse.title);
+  return (
+    course.id === workspaceCourse.id ||
+    normalizeCourseTitle(course.title) === normalizeCourseTitle(workspaceCourse.title)
+  );
 }
 
 function hasDemoWorkspaceAccess(workspaceCourse: UniversityCourse) {
@@ -216,8 +269,13 @@ function hasWorkspaceAccess(workspaceCourse: UniversityCourse) {
   return hasDemoWorkspaceAccess(workspaceCourse) || hasDevelopmentWorkspaceAccess(workspaceCourse);
 }
 
-function workspaceStatusLabel() {
-  return "AI tutor available";
+function attendanceLabel(
+  status: Attendance,
+  t: (key: "attendance.present" | "attendance.absent" | "attendance.unknown") => string,
+) {
+  if (status === "present") return t("attendance.present");
+  if (status === "absent") return t("attendance.absent");
+  return t("attendance.unknown");
 }
 
 function normalizeCourseTitle(title: string) {

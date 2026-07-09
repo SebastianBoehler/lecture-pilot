@@ -1,8 +1,9 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { LoginView } from "./LoginView";
+import { renderWithI18n } from "./test/renderWithI18n";
 
 describe("LoginView", () => {
   afterEach(() => {
@@ -11,14 +12,13 @@ describe("LoginView", () => {
 
   it("shows an active loading state during slow live login", async () => {
     const user = userEvent.setup();
-    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => undefined)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise(() => undefined)),
+    );
 
-    render(
-      <LoginView
-        onLogin={vi.fn()}
-        onOpenDemo={vi.fn()}
-        onOpenProfessorDemo={vi.fn()}
-      />,
+    renderWithI18n(
+      <LoginView onLogin={vi.fn()} onOpenDemo={vi.fn()} onOpenProfessorDemo={vi.fn()} />,
     );
 
     await user.type(screen.getByLabelText(/zdv username/i), "student01");

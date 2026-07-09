@@ -1,3 +1,4 @@
+import { useI18n } from "./i18n";
 import { PendingStatus, StepHeader } from "./ProfessorCourseBuilderParts";
 import { ProfessorGenerationWarnings } from "./ProfessorGenerationWarnings";
 import type { CanvasGenerationProgress } from "./professorCanvasGeneration";
@@ -26,29 +27,39 @@ export function ProfessorCanvasDraftStep({
   totalCount: number;
   warnings: string[];
 }) {
-  const actionLabel = isFullCourse ? "Generate all lecture canvases" : "Generate draft canvas";
-  const busyLabel = isFullCourse ? "Generating lecture canvases..." : "Generating draft canvas...";
+  const { t } = useI18n();
+  const actionLabel = isFullCourse ? t("builder.generate.all") : t("builder.generate.single");
+  const busyLabel = isFullCourse ? t("builder.generate.busyAll") : t("builder.generate.busySingle");
   const statusLabel = isFullCourse
-    ? `Generating source-grounded canvases for ${totalCount} lectures...`
-    : "Generating a source-grounded canvas draft...";
+    ? t("builder.generate.statusAll", { count: totalCount })
+    : t("builder.generate.statusSingle");
   return (
     <section className="flow-card">
-      <StepHeader number="04" title="Generate canvas draft" done={Boolean(canvas)} />
-      <button className="primary-action" disabled={!canGenerate || isGenerating} type="button" onClick={onGenerate}>
+      <StepHeader number="04" title={t("builder.generate.title")} done={Boolean(canvas)} />
+      <button
+        className="primary-action"
+        disabled={!canGenerate || isGenerating}
+        type="button"
+        onClick={onGenerate}
+      >
         {isGenerating ? busyLabel : actionLabel}
       </button>
       {isGenerating ? <PendingStatus label={statusLabel} /> : null}
       {generationProgress.length ? <GenerationProgressList progress={generationProgress} /> : null}
       <ProfessorGenerationWarnings warnings={warnings} />
-      {canvas && isFullCourse ? <p>{generatedCount} lecture canvases ready for publication.</p> : null}
-      {canvas && !isFullCourse ? <p>{canvas.sections.length} sections ready for review.</p> : null}
+      {canvas && isFullCourse ? (
+        <p>{t("builder.generate.fullReady", { count: generatedCount })}</p>
+      ) : null}
+      {canvas && !isFullCourse ? (
+        <p>{t("builder.generate.singleReady", { count: canvas.sections.length })}</p>
+      ) : null}
       {previewHref ? (
         <a className="button-link" href={previewHref} rel="noreferrer" target="_blank">
-          Preview course workspace
+          {t("builder.generate.preview")}
         </a>
       ) : (
         <button disabled type="button">
-          Preview course workspace
+          {t("builder.generate.preview")}
         </button>
       )}
     </section>
@@ -56,8 +67,9 @@ export function ProfessorCanvasDraftStep({
 }
 
 function GenerationProgressList({ progress }: { progress: CanvasGenerationProgress[] }) {
+  const { t } = useI18n();
   return (
-    <div className="generation-progress" aria-label="Lecture generation progress">
+    <div className="generation-progress" aria-label={t("builder.generate.progress")}>
       {progress.map((item) => (
         <div className={`generation-progress-row is-${item.status}`} key={item.lectureId}>
           <span>{item.lectureId.replace("lecture-", "Lecture ")}</span>

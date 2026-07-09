@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { useI18n } from "./i18n";
 import { ProfessorCourseManager } from "./ProfessorCourseManager";
 import { deleteCourseWorkspace, listCourseWorkspaces } from "./professorApi";
 import { useProfessorWorkflowRun } from "./professorWorkflowRun";
@@ -12,6 +13,7 @@ export function ProfessorCourseManagement({
   session: LoginSession;
   onWorkspaceDeleted: (courseId: string) => void;
 }) {
+  const { t } = useI18n();
   const [workspaces, setWorkspaces] = useState<CourseWorkspaceResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null);
@@ -25,8 +27,8 @@ export function ProfessorCourseManagement({
     <main className="professor-screen">
       <section className="professor-page-header">
         <div>
-          <h1>Manage courses</h1>
-          <p>Review created course workspaces and take down broken or outdated demo courses.</p>
+          <h1>{t("professor.manage.title")}</h1>
+          <p>{t("professor.manage.subtitle")}</p>
         </div>
       </section>
       <ProfessorCourseManager
@@ -50,20 +52,22 @@ export function ProfessorCourseManagement({
     try {
       setWorkspaces(await listCourseWorkspaces(session));
     } catch (refreshError) {
-      setError(refreshError instanceof Error ? refreshError.message : "Could not load created courses.");
+      setError(
+        refreshError instanceof Error ? refreshError.message : t("professor.loadCoursesFailed"),
+      );
     } finally {
       setIsLoading(false);
     }
   }
 
   async function handleDeleteCourse(courseId: string) {
-    if (!window.confirm(`Delete course workspace ${courseId} and take it down for students?`)) return;
+    if (!window.confirm(t("professor.deleteConfirm", { courseId }))) return;
     setDeletingCourseId(courseId);
     await run("delete-course", async () => {
       await deleteCourseWorkspace(courseId, session);
       setWorkspaces((current) => current.filter((item) => item.course.id !== courseId));
       onWorkspaceDeleted(courseId);
-      return `Course workspace ${courseId} deleted.`;
+      return t("professor.deletedNotice", { courseId });
     });
     setDeletingCourseId(null);
   }

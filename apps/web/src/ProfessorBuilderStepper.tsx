@@ -1,3 +1,5 @@
+import { useI18n } from "./i18n";
+
 export type BuilderStep = "define" | "upload" | "generate" | "review" | "publish";
 
 type StepState = {
@@ -56,8 +58,9 @@ export function ProfessorBuilderStepper({
   steps: StepState[];
   onStepChange: (step: BuilderStep) => void;
 }) {
+  const { t } = useI18n();
   return (
-    <ol className="flow-stepper" aria-label="Course builder progress">
+    <ol className="flow-stepper" aria-label={t("builder.progress")}>
       {steps.map((step) => (
         <li
           className={`${step.ready ? "is-ready" : ""} ${activeStep === step.id ? "is-active" : ""} ${
@@ -67,16 +70,34 @@ export function ProfessorBuilderStepper({
         >
           <button
             aria-current={activeStep === step.id ? "step" : undefined}
-            aria-label={`${step.number} ${step.label}`}
+            aria-label={`${step.number} ${builderStepLabel(step.id, t)}`}
             disabled={!step.available}
             type="button"
             onClick={() => onStepChange(step.id)}
           >
             <span>{step.number}</span>
-            {step.label}
+            {builderStepLabel(step.id, t)}
           </button>
         </li>
       ))}
     </ol>
   );
+}
+
+function builderStepLabel(
+  step: BuilderStep,
+  t: (
+    key:
+      | "builder.step.define"
+      | "builder.step.upload"
+      | "builder.step.review"
+      | "builder.step.generate"
+      | "builder.step.publish",
+  ) => string,
+) {
+  if (step === "define") return t("builder.step.define");
+  if (step === "upload") return t("builder.step.upload");
+  if (step === "review") return t("builder.step.review");
+  if (step === "generate") return t("builder.step.generate");
+  return t("builder.step.publish");
 }

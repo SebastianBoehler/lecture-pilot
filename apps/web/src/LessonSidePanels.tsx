@@ -1,3 +1,4 @@
+import { useI18n } from "./i18n";
 import type { CanvasBlock, CanvasDocument, DocumentAnchorId, Lecture } from "./types";
 
 export function OutlinePanel({
@@ -9,11 +10,12 @@ export function OutlinePanel({
   canvasDocument: CanvasDocument | null;
   onJumpAnchor: (anchorId: DocumentAnchorId) => void;
 }) {
+  const { t } = useI18n();
   return (
-    <aside className="drawer" aria-label="Document outline panel">
+    <aside className="drawer" aria-label={t("outline.panel")}>
       <div className="drawer-section">
-        <h2>Document outline</h2>
-        <nav className="outline-tree" aria-label="Lesson document outline">
+        <h2>{t("outline.title")}</h2>
+        <nav className="outline-tree" aria-label={t("outline.nav")}>
           {canvasDocument ? (
             canvasDocument.sections.map((section, index) => {
               const interestBlocks = outlineInterestBlocks(section.blocks);
@@ -26,20 +28,23 @@ export function OutlinePanel({
                     activeAnchorId,
                     onJumpAnchor,
                     index,
+                    mainPointLabel: t("outline.mainPoint"),
                     variant: "section",
                   })}
                   {interestBlocks.length ? (
                     <div
-                      aria-label={`${section.title} related items`}
+                      aria-label={t("outline.relatedItems", { section: section.title })}
                       className="outline-children"
                       role="group"
                     >
                       {interestBlocks.map((block) =>
                         renderOutlineNode({
                           id: block.id,
-                          title: blockTitle(block),
+                          title: blockTitle(block, t),
                           kind: outlineKind(block),
+                          kindLabel: outlineKindLabel(block, t),
                           activeAnchorId,
+                          mainPointLabel: t("outline.mainPoint"),
                           onJumpAnchor,
                           variant: "child",
                         }),
@@ -50,7 +55,7 @@ export function OutlinePanel({
               );
             })
           ) : (
-            <p className="drawer-note">Canvas loading...</p>
+            <p className="drawer-note">{t("outline.loading")}</p>
           )}
         </nav>
       </div>
@@ -62,7 +67,9 @@ function renderOutlineNode({
   id,
   title,
   kind,
+  kindLabel,
   activeAnchorId,
+  mainPointLabel,
   onJumpAnchor,
   index,
   variant,
@@ -70,7 +77,9 @@ function renderOutlineNode({
   id: string;
   title: string;
   kind: string;
+  kindLabel?: string;
   activeAnchorId: DocumentAnchorId | null;
+  mainPointLabel: string;
   onJumpAnchor: (anchorId: DocumentAnchorId) => void;
   index?: number;
   variant: "section" | "child";
@@ -92,23 +101,26 @@ function renderOutlineNode({
         <span className={`outline-marker ${kind}`} aria-hidden="true" />
       )}
       <span className="outline-copy">
-        {variant === "section" ? <span className="outline-kind">Main point</span> : null}
+        {variant === "section" ? <span className="outline-kind">{mainPointLabel}</span> : null}
         <span className="outline-title">{title}</span>
-        {variant === "child" ? <span className="outline-kind">{kind}</span> : null}
+        {variant === "child" ? <span className="outline-kind">{kindLabel ?? kind}</span> : null}
       </span>
     </button>
   );
 }
 
-function blockTitle(block: CanvasBlock) {
+function blockTitle(
+  block: CanvasBlock,
+  t: (key: "outline.kind.keyPoint" | "outline.listTitle") => string,
+) {
   if (block.caption) {
     return block.caption;
   }
-  if (block.type === "list") {
-    return "Key ideas";
-  }
   if (block.text) {
     return outlineTextExcerpt(block.text);
+  }
+  if (block.type === "list") {
+    return t("outline.listTitle");
   }
   return block.type;
 }
@@ -154,6 +166,27 @@ function outlineKind(block: CanvasBlock) {
   return block.type;
 }
 
+function outlineKindLabel(
+  block: CanvasBlock,
+  t: (
+    key:
+      | "outline.kind.figure"
+      | "outline.kind.video"
+      | "outline.kind.keyPoint"
+      | "outline.kind.gate"
+      | "outline.kind.quiz"
+      | "outline.kind.interactive",
+  ) => string,
+) {
+  if (block.type === "asset") return t("outline.kind.figure");
+  if (block.type === "video") return t("outline.kind.video");
+  if (block.type === "list") return t("outline.kind.keyPoint");
+  if (block.type === "checkpoint") return t("outline.kind.gate");
+  if (block.type === "quiz") return t("outline.kind.quiz");
+  if (block.type === "component") return t("outline.kind.interactive");
+  return block.type;
+}
+
 function outlineTextExcerpt(text: string) {
   const cleaned = text
     .replace(/\$[^$]+\$/g, "Formula")
@@ -165,21 +198,22 @@ function outlineTextExcerpt(text: string) {
 }
 
 export function NotesPanel({ lecture }: { lecture: Lecture }) {
+  const { t } = useI18n();
   return (
-    <aside className="drawer" aria-label="Lecture notes panel">
+    <aside className="drawer" aria-label={t("notes.panel")}>
       <div className="drawer-section">
-        <h2>Source notes</h2>
+        <h2>{t("notes.title")}</h2>
         <div className="source-list">
           <article>
-            <span>Official LaTeX source</span>
+            <span>{t("notes.officialSource")}</span>
             <strong>{lecture.materialPath ?? "courses/martius-ml/lectures/03/source.tex"}</strong>
           </article>
           <article>
-            <span>Timeline gate</span>
-            <strong>{lecture.date} · already unlocked</strong>
+            <span>{t("notes.timelineGate")}</span>
+            <strong>{t("notes.unlocked", { date: lecture.date })}</strong>
           </article>
           <article>
-            <span>Attendance context</span>
+            <span>{t("notes.attendanceContext")}</span>
             <strong>{lecture.attendance}</strong>
           </article>
         </div>

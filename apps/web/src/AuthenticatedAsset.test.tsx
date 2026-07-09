@@ -20,7 +20,10 @@ describe("AuthenticatedImage", () => {
   });
 
   it("fetches LecturePilot assets with session auth and renders a blob URL", async () => {
-    const fetchMock = vi.fn(async () => new Response(new Blob(["png"], { type: "image/png" })));
+    const fetchMock = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        new Response(new Blob(["png"], { type: "image/png" })),
+    );
     vi.stubGlobal("fetch", fetchMock);
     vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:lecturepilot-asset");
     vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
@@ -37,7 +40,10 @@ describe("AuthenticatedImage", () => {
     expect(image).toHaveAttribute("src", "blob:lecturepilot-asset");
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8000/course-assets/demo-course/lecture-01/figures/risk.png",
-      { headers: { Authorization: "Bearer signed-token" } },
+      expect.objectContaining({ credentials: "include" }),
+    );
+    expect(new Headers(fetchMock.mock.calls[0][1]?.headers).get("authorization")).toBe(
+      "Bearer signed-token",
     );
   });
 

@@ -37,6 +37,7 @@ type AppRoutesProps = {
   messages: ChatMessage[];
   navigationVersion: number;
   panelMode: LessonPanelMode | null;
+  passedGateIds: string[];
   publishedLectureIds: string[];
   selectedCourseId: string;
   selectedLecture: Lecture;
@@ -154,7 +155,9 @@ export function AppRoutes(props: AppRoutesProps) {
     );
   }
   if (view === "how-it-works" || view === "privacy") {
-    return <InfoPage kind={view} onBack={() => props.onViewChange(session ? "dashboard" : "login")} />;
+    return (
+      <InfoPage kind={view} onBack={() => props.onViewChange(session ? "dashboard" : "login")} />
+    );
   }
   return (
     <LessonWorkspace
@@ -170,6 +173,7 @@ export function AppRoutes(props: AppRoutesProps) {
       tutorModel={lastTutorModel ?? requestedTutorModel(tutorModelPreference)}
       navigationVersion={navigationVersion}
       panelMode={panelMode}
+      passedGateIds={props.passedGateIds}
       userId={lessonUserId}
       backLabel={lessonBackView === "professor" ? "Course builder" : "Dashboard"}
       onBack={() => props.onViewChange(lessonBackView)}

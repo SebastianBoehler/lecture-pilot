@@ -15,23 +15,32 @@ describe("Professor course builder", () => {
   it("walks through course upload, canvas, and YouTube approval as a professor account", async () => {
     const user = userEvent.setup();
     const fetchMock = professorFetchMock();
-    window.localStorage.setItem("lecturepilot.demo.workspaceCourse", JSON.stringify({
-      access_policy: "public",
-      id: "martius-ml",
-      title: "Grundlagen des Maschinellen Lernens",
-      professor: "Prof. Georg Martius",
-      term: "Sommer 2026",
-    }));
+    window.localStorage.setItem(
+      "lecturepilot.demo.workspaceCourse",
+      JSON.stringify({
+        access_policy: "public",
+        id: "martius-ml",
+        title: "Grundlagen des Maschinellen Lernens",
+        professor: "Prof. Georg Martius",
+        term: "Sommer 2026",
+      }),
+    );
     vi.stubGlobal("fetch", fetchMock);
     render(<App />);
 
     await user.click(screen.getByRole("button", { name: /preview professor account/i }));
     expect(screen.queryByRole("heading", { name: /professor sign up/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /create professor account/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /create professor account/i }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /open profile/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /define course and lecture scope/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /define course and lecture scope/i }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /upload materials/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: /live course analytics/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /live course analytics/i }),
+    ).not.toBeInTheDocument();
     expect(screen.getByLabelText(/course name/i)).toHaveValue("");
     expect(screen.queryByLabelText(/lecture number/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /full course/i })).toHaveClass("is-active");
@@ -46,19 +55,27 @@ describe("Professor course builder", () => {
     await user.clear(screen.getByLabelText(/lecture title/i));
     await user.type(screen.getByLabelText(/lecture title/i), "Bayesian Decision Theory");
     expect(screen.getByRole("button", { name: /create course workspace/i })).toBeEnabled();
-    expect(screen.getByRole("button", { name: /create course workspace/i })).toHaveClass("primary-action");
+    expect(screen.getByRole("button", { name: /create course workspace/i })).toHaveClass(
+      "primary-action",
+    );
     expect(screen.queryByLabelText(/upload course material/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /03 media/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /04 generate/i })).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: /create course workspace/i }));
-    expect(await screen.findByText(/course workspace demo-ml-course\/lecture-03 ready/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/course workspace demo-ml-course\/lecture-03 ready/i),
+    ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /upload materials/i })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: /define course and lecture scope/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /define course and lecture scope/i }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /03 media/i })).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: /^lecturepilot$/i }));
-    expect(await screen.findByRole("heading", { name: /grundlagen des maschinellen lernens/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /grundlagen des maschinellen lernens/i }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /demo ml course/i })).not.toBeInTheDocument();
     expect(screen.getByText(/no matched lecturepilot workspace/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^course builder$/i }));
@@ -71,8 +88,12 @@ describe("Professor course builder", () => {
       screen.getByLabelText(/upload course material/i),
       new File(["# extra note"], "supplement.md", { type: "text/markdown" }),
     );
-    expect(screen.getByRole("button", { name: /upload selected materials for this lecture/i })).toHaveClass("primary-action");
-    await user.click(screen.getByRole("button", { name: /upload selected materials for this lecture/i }));
+    expect(
+      screen.getByRole("button", { name: /upload selected materials for this lecture/i }),
+    ).toHaveClass("primary-action");
+    await user.click(
+      screen.getByRole("button", { name: /upload selected materials for this lecture/i }),
+    );
     expect(await screen.findByText(/uploaded uploads\/supplement\.md/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /review youtube candidates/i })).toBeInTheDocument();
     expect(screen.getByText(/selected videos attach to lecture 03/i)).toBeInTheDocument();
@@ -80,10 +101,9 @@ describe("Professor course builder", () => {
     expect(screen.getByRole("button", { name: /search youtube/i })).toBeEnabled();
     const candidate = await screen.findByLabelText(/bayesian decision theory/i);
     expect(screen.getByRole("button", { name: /refresh suggested videos/i })).toBeEnabled();
-    expect(screen.getByRole("img", { name: /thumbnail for bayesian decision theory/i })).toHaveAttribute(
-      "src",
-      "https://i.ytimg.com/vi/j4yxsEQqPMI/hqdefault.jpg",
-    );
+    expect(
+      screen.getByRole("img", { name: /thumbnail for bayesian decision theory/i }),
+    ).toHaveAttribute("src", "https://i.ytimg.com/vi/j4yxsEQqPMI/hqdefault.jpg");
     expect(screen.getByRole("link", { name: /^open$/i })).toHaveAttribute(
       "href",
       "https://www.youtube.com/watch?v=j4yxsEQqPMI",
@@ -107,13 +127,23 @@ describe("Professor course builder", () => {
     await user.click(screen.getByRole("button", { name: /publish tutor workspace/i }));
     expect(await screen.findByText(/tutor workspace published/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/published lecture workspaces/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /preview/i })).toHaveAttribute("href", expect.stringContaining("lectureId=lecture-03"));
-    expect(screen.queryByRole("heading", { name: /live course analytics/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /preview/i })).toHaveAttribute(
+      "href",
+      expect.stringContaining("lectureId=lecture-03"),
+    );
+    expect(
+      screen.queryByRole("heading", { name: /live course analytics/i }),
+    ).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^course performance$/i }));
     expect(await screen.findByRole("heading", { name: /course performance/i })).toBeInTheDocument();
     const courseScope = screen.getByRole("navigation", { name: /performance course scope/i });
-    expect(within(courseScope).getByRole("button", { name: /demo ml course/i })).toHaveAttribute("aria-pressed", "true");
-    expect(within(courseScope).queryByRole("button", { name: /grundlagen des maschinellen lernens/i })).not.toBeInTheDocument();
+    expect(within(courseScope).getByRole("button", { name: /demo ml course/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(
+      within(courseScope).queryByRole("button", { name: /grundlagen des maschinellen lernens/i }),
+    ).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /refresh analytics/i }));
     expect(await screen.findByText("Events")).toBeInTheDocument();
     expect(screen.getAllByText("Quiz success").length).toBeGreaterThan(0);
@@ -139,22 +169,23 @@ describe("Professor course builder", () => {
       expect.stringContaining("/admin/courses/demo-ml-course/lectures/lecture-03/canvas/draft"),
       expect.objectContaining({ method: "POST" }),
     );
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/admin/courses/demo-ml-course/media/youtube/search"),
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          "X-User-Id": "professor-demo",
-          "X-User-Role": "professor",
-        }),
-      }),
+    const youtubeSearchCall = fetchMock.mock.calls.find(([url]) =>
+      String(url).includes("/admin/courses/demo-ml-course/media/youtube/search"),
     );
+    const youtubeSearchHeaders = new Headers(youtubeSearchCall?.[1]?.headers);
+    expect(youtubeSearchHeaders.get("x-user-id")).toBe("professor-demo");
+    expect(youtubeSearchHeaders.get("x-user-role")).toBe("professor");
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/admin/courses/demo-ml-course/lectures/lecture-03/media/youtube"),
       expect.objectContaining({ method: "POST" }),
     );
-    expect(fetchMock.mock.calls.some(([url, init]) => (
-      String(url).endsWith("/admin/courses/demo-ml-course/media/youtube") && init?.method === "POST"
-    ))).toBe(false);
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) =>
+          String(url).endsWith("/admin/courses/demo-ml-course/media/youtube") &&
+          init?.method === "POST",
+      ),
+    ).toBe(false);
   });
 
   it("proposes and applies a dated full-course lecture schedule from materials", async () => {
@@ -175,17 +206,23 @@ describe("Professor course builder", () => {
     );
     await user.click(screen.getByRole("button", { name: /upload selected all course materials/i }));
 
-    expect(await screen.findByText(/2 lectures inferred from the source bundle/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/2 lectures inferred from the source bundle/i),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /03 media/i })).toBeDisabled();
     expect(screen.getByDisplayValue("Lecture 01")).toBeInTheDocument();
     expect(screen.getByDisplayValue("2026-05-13")).toBeInTheDocument();
 
     await user.clear(screen.getByDisplayValue("Lecture 01"));
     await user.type(screen.getAllByLabelText(/^title$/i)[0], "Course overview");
-    expect(screen.getByRole("button", { name: /apply lecture schedule/i })).toHaveClass("primary-action");
+    expect(screen.getByRole("button", { name: /apply lecture schedule/i })).toHaveClass(
+      "primary-action",
+    );
     await user.click(screen.getByRole("button", { name: /apply lecture schedule/i }));
 
-    expect(await screen.findByText(/lecture schedule applied with 2 dated lectures/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/lecture schedule applied with 2 dated lectures/i),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText(/attach selected videos to/i)).toHaveValue("lecture-01");
     const scheduleCall = fetchMock.mock.calls.find((call) => {
       if (typeof call[1]?.body !== "string") return false;
@@ -204,24 +241,27 @@ describe("Professor course builder", () => {
   it("restores full-course publish targets after a builder refresh", async () => {
     const user = userEvent.setup();
     const fetchMock = professorFetchMock();
-    window.sessionStorage.setItem("lecturepilot.professor-builder.current", JSON.stringify({
-      setup: {
-        accessPolicy: "tuebingen_enrolled",
-        courseTitle: "Demo ML Course",
-        lectureTitle: "Bayesian Decision Theory",
-        lectureNumber: "03",
-        lectureCount: "",
-        firstLectureDate: "2026-05-06",
-        target: "full-course",
-      },
-      workspace: { courseId: "demo-ml-course", lectureId: "lecture-01" },
-      courseReady: true,
-      uploadPath: "uploads",
-      bundleReady: true,
-      canvasReady: true,
-      lectureSchedule: [],
-      query: "machine learning lecture",
-    }));
+    window.sessionStorage.setItem(
+      "lecturepilot.professor-builder.current",
+      JSON.stringify({
+        setup: {
+          accessPolicy: "tuebingen_enrolled",
+          courseTitle: "Demo ML Course",
+          lectureTitle: "Bayesian Decision Theory",
+          lectureNumber: "03",
+          lectureCount: "",
+          firstLectureDate: "2026-05-06",
+          target: "full-course",
+        },
+        workspace: { courseId: "demo-ml-course", lectureId: "lecture-01" },
+        courseReady: true,
+        uploadPath: "uploads",
+        bundleReady: true,
+        canvasReady: true,
+        lectureSchedule: [],
+        query: "machine learning lecture",
+      }),
+    );
     vi.stubGlobal("fetch", fetchMock);
     render(<App />);
 
@@ -253,7 +293,9 @@ describe("Professor course builder", () => {
       if (url.includes("/canvas/draft") && init?.method === "POST") {
         return new Promise<Response>((resolve) => {
           draftRequest.resolve = () => {
-            void Promise.resolve(baseFetch(url, init)).then((response) => resolve(response as Response));
+            void Promise.resolve(baseFetch(url, init)).then((response) =>
+              resolve(response as Response),
+            );
           };
         });
       }
@@ -272,14 +314,18 @@ describe("Professor course builder", () => {
       await screen.findByLabelText(/upload course material/i),
       new File(["# extra note"], "supplement.md", { type: "text/markdown" }),
     );
-    await user.click(screen.getByRole("button", { name: /upload selected materials for this lecture/i }));
+    await user.click(
+      screen.getByRole("button", { name: /upload selected materials for this lecture/i }),
+    );
     await screen.findByRole("heading", { name: /review youtube candidates/i });
     await user.click(screen.getByRole("button", { name: /continue to canvas draft/i }));
 
     await user.click(screen.getByRole("button", { name: /generate draft canvas/i }));
 
     expect(screen.getByRole("button", { name: /generating draft canvas/i })).toBeDisabled();
-    expect(screen.getByRole("status")).toHaveTextContent(/generating a source-grounded canvas draft/i);
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /generating a source-grounded canvas draft/i,
+    );
     expect(screen.getByLabelText(/lecture generation progress/i)).toHaveTextContent(/Lecture 03/);
     expect(screen.getByLabelText(/lecture generation progress/i)).toHaveTextContent(/generating/i);
 

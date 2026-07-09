@@ -1,5 +1,5 @@
 import { apiUrl, readApiError } from "./api";
-import { courseManagerHeaders } from "./authz";
+import { authRequestInit } from "./authz";
 import { normalizeCourseWorkspaceResult } from "./lectureMapping";
 import type { CourseSetup } from "./professorBuilderState";
 import type {
@@ -11,10 +11,10 @@ import type {
   YoutubeVideoCandidate,
 } from "./types";
 
-export async function listCourseWorkspaces(session: LoginSession): Promise<CourseWorkspaceResult[]> {
-  const response = await fetch(apiUrl("/admin/courses"), {
-    headers: courseManagerHeaders(session),
-  });
+export async function listCourseWorkspaces(
+  session: LoginSession,
+): Promise<CourseWorkspaceResult[]> {
+  const response = await fetch(apiUrl("/admin/courses"), authRequestInit(session));
   const payload = await response.json().catch(() => null);
   if (!response.ok) throw new Error(readApiError(payload, "Course workspace loading failed."));
   return Array.isArray(payload) ? payload.map(normalizeCourseWorkspaceResult) : [];
@@ -25,11 +25,16 @@ export async function createCourseWorkspace(
   session: LoginSession,
   lectures: LectureScheduleItem[] = [],
 ): Promise<CourseWorkspaceResult> {
-  const response = await professorFetch("/admin/course-workspaces", session, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(courseWorkspaceBody(setup, lectures)),
-  }, "Cannot reach the local LecturePilot API while creating the course workspace.");
+  const response = await professorFetch(
+    "/admin/course-workspaces",
+    session,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(courseWorkspaceBody(setup, lectures)),
+    },
+    "Cannot reach the local LecturePilot API while creating the course workspace.",
+  );
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Course workspace creation failed."));
   return normalizeCourseWorkspaceResult(payload);
@@ -37,8 +42,7 @@ export async function createCourseWorkspace(
 
 export async function deleteCourseWorkspace(courseId: string, session: LoginSession) {
   const response = await fetch(apiUrl(`/admin/courses/${courseId}`), {
-    method: "DELETE",
-    headers: courseManagerHeaders(session),
+    ...authRequestInit(session, { method: "DELETE" }),
   });
   const payload = await response.json().catch(() => null);
   if (!response.ok) throw new Error(readApiError(payload, "Course deletion failed."));
@@ -57,17 +61,21 @@ export async function proposeLectureSchedule(input: {
   const query = params.toString();
   const response = await fetch(
     apiUrl(`/admin/courses/${input.courseId}/lecture-schedule${query ? `?${query}` : ""}`),
-    { headers: courseManagerHeaders(input.session) },
+    authRequestInit(input.session),
   );
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Lecture schedule proposal failed."));
   return payload as LectureScheduleProposal;
 }
 
-export async function getSourceBundle(courseId: string, session: LoginSession): Promise<SourceBundleManifest> {
-  const response = await fetch(apiUrl(`/courses/${courseId}/source-bundle`), {
-    headers: courseManagerHeaders(session),
-  });
+export async function getSourceBundle(
+  courseId: string,
+  session: LoginSession,
+): Promise<SourceBundleManifest> {
+  const response = await fetch(
+    apiUrl(`/courses/${courseId}/source-bundle`),
+    authRequestInit(session),
+  );
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Source scan failed."));
   return payload as SourceBundleManifest;
@@ -83,9 +91,7 @@ export async function uploadCourseMaterial(input: {
   body.append("path", input.path);
   body.append("file", input.file);
   const response = await fetch(apiUrl(`/admin/courses/${input.courseId}/materials`), {
-    method: "POST",
-    headers: courseManagerHeaders(input.session),
-    body,
+    ...authRequestInit(input.session, { method: "POST", body }),
   });
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Material upload failed."));
@@ -99,9 +105,10 @@ export async function searchYoutubeMedia(
   maxResults = 5,
 ) {
   const params = new URLSearchParams({ q: query, max_results: String(maxResults) });
-  const response = await fetch(apiUrl(`/admin/courses/${courseId}/media/youtube/search?${params}`), {
-    headers: courseManagerHeaders(session),
-  });
+  const response = await fetch(
+    apiUrl(`/admin/courses/${courseId}/media/youtube/search?${params}`),
+    authRequestInit(session),
+  );
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "YouTube search failed."));
   return payload as { items: YoutubeVideoCandidate[] };
@@ -113,22 +120,27 @@ export async function includeYoutubeMedia(input: {
   video: YoutubeVideoCandidate;
   session: LoginSession;
 }) {
-  const response = await fetch(apiUrl(`/admin/courses/${input.courseId}/lectures/${input.lectureId}/media/youtube`), {
-    method: "POST",
-    headers: { ...courseManagerHeaders(input.session), "Content-Type": "application/json" },
-    body: JSON.stringify({ section_id: null, video: input.video }),
-  });
+  const response = await fetch(
+    apiUrl(`/admin/courses/${input.courseId}/lectures/${input.lectureId}/media/youtube`),
+    authRequestInit(input.session, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ section_id: null, video: input.video }),
+    }),
+  );
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "YouTube include failed."));
   return payload as { block_id: string };
 }
 
-async function professorFetch(path: string, session: LoginSession, init: RequestInit, networkMessage: string) {
+async function professorFetch(
+  path: string,
+  session: LoginSession,
+  init: RequestInit,
+  networkMessage: string,
+) {
   try {
-    return await fetch(apiUrl(path), {
-      ...init,
-      headers: { ...courseManagerHeaders(session), ...init.headers },
-    });
+    return await fetch(apiUrl(path), authRequestInit(session, init));
   } catch {
     throw new Error(`${networkMessage} Is the backend running at ${apiUrl("")}?`);
   }

@@ -1,4 +1,4 @@
-import { authHeaders } from "./authz";
+import { authRequestInit } from "./authz";
 import { apiUrl, readApiError } from "./api";
 import type { LoginSession } from "./types";
 
@@ -19,11 +19,14 @@ export async function resetLearnerWorkspace(
   options: LearnerWorkspaceResetOptions,
   session: LoginSession,
 ): Promise<LearnerWorkspaceResetResult> {
-  const response = await fetch(apiUrl(`/courses/${courseId}/learner-workspace/reset`), {
-    method: "POST",
-    headers: { ...authHeaders(session), "Content-Type": "application/json" },
-    body: JSON.stringify(options),
-  });
+  const response = await fetch(
+    apiUrl(`/courses/${courseId}/learner-workspace/reset`),
+    authRequestInit(session, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(options),
+    }),
+  );
   const payload = await response.json().catch(() => null);
   if (!response.ok) throw new Error(readApiError(payload, "Workspace reset failed."));
   return payload as LearnerWorkspaceResetResult;

@@ -1,16 +1,31 @@
 import { fileRelativePath } from "./materialDrop";
 
-export function materialSelectionSummary(files: File[]) {
-  if (!files.length) return "No files selected";
+type MaterialSelectionLabels = {
+  folderSummary: (folder: string, count: number) => string;
+  noFilesSelected: string;
+  selectedSummary: (count: number) => string;
+};
+
+const defaultLabels: MaterialSelectionLabels = {
+  folderSummary: (folder, count) => `Folder: ${folder} · ${count} files`,
+  noFilesSelected: "No files selected",
+  selectedSummary: (count) => `${count} selected`,
+};
+
+export function materialSelectionSummary(
+  files: File[],
+  labels: MaterialSelectionLabels = defaultLabels,
+) {
+  if (!files.length) return labels.noFilesSelected;
   const roots = new Set(files.map((file) => fileRelativePath(file).split("/")[0]).filter(Boolean));
   const kinds = kindCounts(files);
   const kindText = Object.entries(kinds)
     .map(([kind, count]) => `${count} ${kind}`)
     .join(" · ");
   if (roots.size === 1 && files.length > 1) {
-    return `Folder: ${Array.from(roots)[0]} · ${files.length} files${kindText ? ` · ${kindText}` : ""}`;
+    return `${labels.folderSummary(Array.from(roots)[0], files.length)}${kindText ? ` · ${kindText}` : ""}`;
   }
-  return `${files.length} selected${kindText ? ` · ${kindText}` : ""}`;
+  return `${labels.selectedSummary(files.length)}${kindText ? ` · ${kindText}` : ""}`;
 }
 
 function kindCounts(files: File[]) {

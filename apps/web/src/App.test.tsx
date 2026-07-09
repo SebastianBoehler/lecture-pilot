@@ -4,10 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import App from "./App";
 import { openLecture03FromDashboard } from "./testLessonActions";
-import {
-  mockLoginAndTutorFetch,
-  mockLoginFetch,
-} from "./testFixtures";
+import { mockLoginAndTutorFetch, mockLoginFetch } from "./testFixtures";
 
 describe("LecturePilot app shell", () => {
   it("starts with the university login form", () => {
@@ -31,16 +28,26 @@ describe("LecturePilot app shell", () => {
 
     await logIn(user);
 
-    expect(await screen.findByRole("heading", { name: /welcome, student01@uni-tuebingen\.de/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /welcome, student01@uni-tuebingen\.de/i }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /course workspaces/i })).toBeInTheDocument();
-    expect(screen.getByRole("navigation", { name: /student workspace navigation/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("navigation", { name: /student workspace navigation/i }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /workspaces/i })).toHaveClass("is-active");
-    const probabilisticCourse = screen.getByRole("heading", {
-      name: /probabilistic machine learning/i,
-    }).closest("article");
+    const probabilisticCourse = screen
+      .getByRole("heading", {
+        name: /probabilistic machine learning/i,
+      })
+      .closest("article");
     expect(probabilisticCourse).not.toBeNull();
-    expect(within(probabilisticCourse as HTMLElement).getByText(/no tutor workspace yet/i)).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: /grundlagen des maschinellen lernens/i })).not.toBeInTheDocument();
+    expect(
+      within(probabilisticCourse as HTMLElement).getByText(/no tutor workspace yet/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /grundlagen des maschinellen lernens/i }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/matched from your alma course list/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /open lecture 03/i })).not.toBeInTheDocument();
     expect(screen.queryByText("very-secret-password")).not.toBeInTheDocument();
@@ -51,10 +58,12 @@ describe("LecturePilot app shell", () => {
     });
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/auth/login"),
-      expect.objectContaining({ method: "POST" }),
+      expect.objectContaining({ credentials: "include", method: "POST" }),
     );
-    expect(window.sessionStorage.getItem("lecturepilot.loginSession")).toContain("signed-test-token");
-    expect(window.localStorage.getItem("lecturepilot.loginSession")).not.toContain("signed-test-token");
+    expect(window.sessionStorage.getItem("lecturepilot.loginSession")).toBeNull();
+    expect(window.localStorage.getItem("lecturepilot.loginSession")).not.toContain(
+      "signed-test-token",
+    );
   });
 
   it("opens the profile view and logs out", async () => {
@@ -92,8 +101,9 @@ describe("LecturePilot app shell", () => {
       screen.getByLabelText(/tutor model preference/i),
       "openrouter/openai/gpt-oss-120b:nitro",
     );
-    expect(window.localStorage.getItem("lecturepilot.tutorModelPreference"))
-      .toBe("openrouter/openai/gpt-oss-120b:nitro");
+    expect(window.localStorage.getItem("lecturepilot.tutorModelPreference")).toBe(
+      "openrouter/openai/gpt-oss-120b:nitro",
+    );
 
     await user.click(screen.getByRole("button", { name: /dashboard/i }));
     await openLecture03FromDashboard(user);
@@ -103,9 +113,8 @@ describe("LecturePilot app shell", () => {
 
     await screen.findByText(/Bayes answer from the tutor/i);
     const agentCall = fetchMock.mock.calls.find(([url]) => String(url).includes("/agent/turn"));
-    expect(agentCall?.[1]?.headers).toMatchObject({
-      Authorization: "Bearer signed-test-token",
-    });
+    expect(agentCall?.[1]?.credentials).toBe("include");
+    expect(new Headers(agentCall?.[1]?.headers).has("authorization")).toBe(false);
     expect(JSON.parse(String(agentCall?.[1]?.body))).toMatchObject({
       model: "openrouter/openai/gpt-oss-120b:nitro",
     });
@@ -119,20 +128,22 @@ describe("LecturePilot app shell", () => {
 
     await user.click(screen.getByRole("button", { name: /preview local demo/i }));
 
-    expect(screen.getByRole("heading", { name: /welcome, local-demo/i, level: 1 })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /welcome, local-demo/i, level: 1 }),
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: /grundlagen des maschinellen lernens/i, level: 1 }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /course workspaces/i })).toBeInTheDocument();
     expect(screen.getByText(/no tutor workspace yet/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /open lecture 03/i })).not.toBeInTheDocument();
-    expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("/canvas/publication"))).toHaveLength(3);
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/canvas/publication"),
-      expect.objectContaining({
-        headers: expect.objectContaining({ "X-User-Id": "local-demo" }),
-      }),
+    expect(
+      fetchMock.mock.calls.filter(([url]) => String(url).includes("/canvas/publication")),
+    ).toHaveLength(3);
+    const publicationCall = fetchMock.mock.calls.find(([url]) =>
+      String(url).includes("/canvas/publication"),
     );
+    expect(new Headers(publicationCall?.[1]?.headers).get("x-user-id")).toBe("local-demo");
   });
 
   it("opens plain-language project information from the footer", async () => {
@@ -143,12 +154,16 @@ describe("LecturePilot app shell", () => {
 
     expect(screen.getByRole("heading", { name: /how lecturepilot works/i })).toBeInTheDocument();
     expect(screen.getByText(/think of each course as a small file system/i)).toBeInTheDocument();
-    expect(screen.getByText(/the tutor uses attendance, quiz attempts, quality gates/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/the tutor uses attendance, quiz attempts, quality gates/i),
+    ).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /datenschutz/i }));
+    await user.click(screen.getByRole("button", { name: /privacy/i }));
 
     expect(screen.getByRole("heading", { name: /privacy notice/i })).toBeInTheDocument();
-    expect(screen.getByText(/provider keys and model routing stay on the backend/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/provider keys and model routing stay on the backend/i),
+    ).toBeInTheDocument();
   });
 
   it("opens a focused lesson workspace without showing the course dashboard", async () => {
@@ -185,10 +200,14 @@ describe("LecturePilot app shell", () => {
     expect(
       within(outline).getByRole("button", { name: /bayes formula and conditional probability/i }),
     ).toBeInTheDocument();
-    expect(within(outline).getByRole("button", { name: /ch3\/spam-dall-e.jpg/i })).toBeInTheDocument();
+    expect(
+      within(outline).getByRole("button", { name: /ch3\/spam-dall-e.jpg/i }),
+    ).toBeInTheDocument();
     expect(within(outline).queryByRole("button", { name: /^formula$/i })).not.toBeInTheDocument();
     expect(
-      within(outline).getByRole("group", { name: /decision making under uncertainty related items/i }),
+      within(outline).getByRole("group", {
+        name: /decision making under uncertainty related items/i,
+      }),
     ).toBeInTheDocument();
     expect(screen.queryByPlaceholderText(/ask about this lecture/i)).not.toBeInTheDocument();
 
@@ -208,7 +227,9 @@ describe("LecturePilot app shell", () => {
     await logIn(user);
     await openLecture03FromDashboard(user);
 
-    expect(screen.queryByRole("heading", { name: /course source packet/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /course source packet/i }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /bayes formula and conditional probability/i }),
     ).toBeInTheDocument();
@@ -220,16 +241,17 @@ describe("LecturePilot app shell", () => {
     await user.click(screen.getByLabelText(/open document outline/i));
     const outline = screen.getByRole("navigation", { name: /lesson document outline/i });
 
-    expect(within(outline).queryByRole("button", { name: /course source packet/i })).not.toBeInTheDocument();
+    expect(
+      within(outline).queryByRole("button", { name: /course source packet/i }),
+    ).not.toBeInTheDocument();
 
     await user.click(
       within(outline).getByRole("button", { name: /bayes formula and conditional probability/i }),
     );
 
-    expect(screen.getByRole("region", { name: /bayes formula and conditional probability/i })).toHaveAttribute(
-      "aria-current",
-      "true",
-    );
+    expect(
+      screen.getByRole("region", { name: /bayes formula and conditional probability/i }),
+    ).toHaveAttribute("aria-current", "true");
   });
 
   it("renders imported lecture sections in the lesson canvas", async () => {
@@ -240,9 +262,13 @@ describe("LecturePilot app shell", () => {
     await logIn(user);
     await openLecture03FromDashboard(user);
 
-    expect(screen.getByRole("region", { name: /bayes rule for classification/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: /bayes rule for classification/i }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("region", { name: /naive bayes spam filter/i })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: /losses, risks, and reject decisions/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: /losses, risks, and reject decisions/i }),
+    ).toBeInTheDocument();
   });
 
   it("toggles dark mode with a document theme attribute", async () => {
@@ -276,10 +302,9 @@ describe("LecturePilot app shell", () => {
     expect(screen.getByText(/model: gemini\/gemini-3\.1-flash-lite/i)).toBeInTheDocument();
     expect(screen.getByText("focus: bayes-formula")).toBeInTheDocument();
     expect(screen.getAllByText("gate: needs evidence").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByRole("region", { name: /bayes formula and conditional probability/i })).toHaveAttribute(
-      "aria-current",
-      "true",
-    );
+    expect(
+      screen.getByRole("region", { name: /bayes formula and conditional probability/i }),
+    ).toHaveAttribute("aria-current", "true");
     const agentRequest = JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body));
     expect(agentRequest.user_id).toBe("local-demo");
     expect(fetchMock).toHaveBeenCalledWith(
@@ -287,7 +312,6 @@ describe("LecturePilot app shell", () => {
       expect.objectContaining({ method: "POST" }),
     );
   });
-
 });
 
 async function logIn(user: ReturnType<typeof userEvent.setup>) {
@@ -296,4 +320,6 @@ async function logIn(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: /continue with uni tübingen/i }));
 }
 
-function renderPublishedApp() { render(<App />); }
+function renderPublishedApp() {
+  render(<App />);
+}

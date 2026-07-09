@@ -1,7 +1,17 @@
+import type { LearningMap } from "./learningMapTypes";
+
 export type Theme = "light" | "dark";
 export type InfoPageKind = "how-it-works" | "privacy";
-export type View = "login" | "dashboard" | "lesson" | "profile" | "professor" | "performance" | "course-management" | InfoPageKind;
-export type LessonPanelMode = "chat" | "outline" | "notes" | "files";
+export type View =
+  | "login"
+  | "dashboard"
+  | "lesson"
+  | "profile"
+  | "professor"
+  | "performance"
+  | "course-management"
+  | InfoPageKind;
+export type LessonPanelMode = "chat" | "outline" | "path" | "notes" | "files";
 export type CanvasSectionId = string;
 export type DocumentAnchorId = string;
 
@@ -132,7 +142,8 @@ export type TutorScaffoldPolicy = {
   trigger: "readiness_task" | "conceptual" | "procedural" | "error";
   learner_stage: "novice" | "early_intermediate" | "late_intermediate";
   profile: "worked_example" | "faded_example" | "self_explanation" | "transfer";
-  process_label: "shallow_lookup" | "scaffolded_reasoning" | "self_explanation" | "transfer_attempt";
+  process_label:
+    "shallow_lookup" | "scaffolded_reasoning" | "self_explanation" | "transfer_attempt";
   tutor_move: string;
   forbidden: string;
 };
@@ -224,6 +235,7 @@ export type LoginSession = {
   tenant_id?: string;
   roles?: TenantRole[];
   access_token?: string | null;
+  auth_transport?: "bearer" | "cookie" | "dev_headers";
   courses: UniversityCourse[];
 };
 
@@ -282,6 +294,7 @@ export type LectureAnalyticsSummary = {
   course_id: string;
   lecture_id: string;
   total_events: number;
+  learning_map?: LearningMap | null;
   quizzes: AnalyticsQuizMetric[];
   gates: AnalyticsGateMetric[];
 };

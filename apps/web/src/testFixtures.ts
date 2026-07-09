@@ -1,5 +1,7 @@
 import { vi } from "vitest";
 
+import { learningMapPayload } from "./testLearningMapFixture";
+
 export function mockLoginFetch({ published = false }: { published?: boolean } = {}) {
   return vi.fn(async (url: string, _init?: RequestInit) => {
     if (url.endsWith("/auth/login")) {
@@ -12,6 +14,12 @@ export function mockLoginFetch({ published = false }: { published?: boolean } = 
       return {
         ok: true,
         json: async () => publicationPayload(url, published),
+      };
+    }
+    if (url.includes("/learning-map")) {
+      return {
+        ok: true,
+        json: async () => learningMapPayload(),
       };
     }
     return {
@@ -40,6 +48,13 @@ export function mockLoginAndTutorFetch({
       return {
         ok: true,
         json: async () => publicationPayload(url, published),
+      };
+    }
+
+    if (url.includes("/learning-map")) {
+      return {
+        ok: true,
+        json: async () => learningMapPayload(),
       };
     }
 

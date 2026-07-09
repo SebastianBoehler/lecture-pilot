@@ -12,7 +12,9 @@
 @import "./performance.css";
 @import "./performance-course-tabs.css";
 @import "./performance-charts.css";
+@import "./professor-learning-map-tree.css";
 @import "./lesson.css";
+@import "./learning-path.css";
 @import "./chat.css";
 @import "./outline.css";
 @import "./canvas-blocks.css";
