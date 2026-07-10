@@ -25,35 +25,39 @@ export function ProfessorLectureSchedule({
       <div className="lecture-schedule-list">
         {schedule.map((lecture, index) => (
           <div className="lecture-schedule-row" key={`${lecture.number}-${index}`}>
-            <label>
-              {t("builder.schedule.number")}
-              <input
-                value={lecture.number}
-                onChange={(event) =>
-                  onChange(updateSchedule(schedule, index, "number", event.target.value))
-                }
-              />
-            </label>
-            <label>
-              {t("builder.schedule.lectureTitle")}
-              <input
-                value={lecture.title}
-                onChange={(event) =>
-                  onChange(updateSchedule(schedule, index, "title", event.target.value))
-                }
-              />
-            </label>
-            <label>
-              {t("builder.schedule.date")}
-              <input
-                placeholder="YYYY-MM-DD"
-                value={lecture.date}
-                onChange={(event) =>
-                  onChange(updateSchedule(schedule, index, "date", event.target.value))
-                }
-              />
-            </label>
-            <small>{lecture.material_path ?? t("builder.schedule.noMatch")}</small>
+            <div className="lecture-schedule-fields">
+              <label>
+                {t("builder.schedule.number")}
+                <input
+                  value={lecture.number}
+                  onChange={(event) =>
+                    onChange(updateSchedule(schedule, index, "number", event.target.value))
+                  }
+                />
+              </label>
+              <label>
+                {t("builder.schedule.lectureTitle")}
+                <input
+                  value={lecture.title}
+                  onChange={(event) =>
+                    onChange(updateSchedule(schedule, index, "title", event.target.value))
+                  }
+                />
+              </label>
+              <label>
+                {t("builder.schedule.date")}
+                <input
+                  placeholder="YYYY-MM-DD"
+                  value={lecture.date}
+                  onChange={(event) =>
+                    onChange(updateSchedule(schedule, index, "date", event.target.value))
+                  }
+                />
+              </label>
+            </div>
+            <small className="lecture-schedule-source" title={lecture.material_path ?? undefined}>
+              {lecture.material_path ?? t("builder.schedule.noMatch")}
+            </small>
           </div>
         ))}
       </div>

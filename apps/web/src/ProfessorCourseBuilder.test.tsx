@@ -209,6 +209,7 @@ describe("Professor course builder", () => {
     expect(screen.getByRole("button", { name: /03 media/i })).toBeDisabled();
     expect(screen.getByDisplayValue("Lecture 01")).toBeInTheDocument();
     expect(screen.getByDisplayValue("2026-05-13")).toBeInTheDocument();
+    expect(screen.getByText("Lecture01-eng.tex")).toHaveAttribute("title", "Lecture01-eng.tex");
 
     await user.clear(screen.getByDisplayValue("Lecture 01"));
     await user.type(screen.getAllByLabelText(/^title$/i)[0], "Course overview");

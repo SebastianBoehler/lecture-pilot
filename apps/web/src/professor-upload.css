@@ -61,3 +61,39 @@
 .material-selection-summary span {
   color: var(--color-text-secondary);
 }
+
+.bundle-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 16px;
+  border-top: 1px solid var(--color-border-primary);
+  padding-top: 14px;
+}
+
+.bundle-summary strong {
+  grid-row: span 2;
+  color: var(--color-text-primary);
+}
+
+.bundle-summary span,
+.bundle-summary small {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.bundle-summary small {
+  grid-column: 2;
+  color: var(--color-text-tertiary);
+}
+
+@media (max-width: 620px) {
+  .bundle-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .bundle-summary strong,
+  .bundle-summary small {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}

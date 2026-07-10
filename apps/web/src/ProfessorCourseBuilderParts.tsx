@@ -148,14 +148,55 @@ export function CourseSetupStep({
 export function BundleSummary({ bundle }: { bundle: SourceBundleManifest }) {
   const { t } = useI18n();
   if (!bundle.files.length) return <p>{t("builder.upload.noMaterials")}</p>;
+  const breakdown = bundleBreakdown(bundle, {
+    images: t("builder.upload.images"),
+    notebooks: t("builder.upload.notebooks"),
+    textFiles: t("builder.upload.textFiles"),
+    videos: t("builder.upload.videos"),
+  });
   return (
-    <p>
-      {t("builder.upload.filesIndexed", { count: bundle.files.length })} ·{" "}
-      {Object.entries(bundle.counts_by_kind)
-        .map(([kind, count]) => `${count} ${kind}`)
-        .join(", ")}
-    </p>
+    <section className="bundle-summary" aria-live="polite">
+      <strong>{t("builder.upload.filesIndexed", { count: bundle.files.length })}</strong>
+      {breakdown.sources.length ? (
+        <span>
+          {t("builder.upload.sources")} · {breakdown.sources.join(" · ")}
+        </span>
+      ) : null}
+      {breakdown.media.length ? (
+        <span>
+          {t("builder.upload.media")} · {breakdown.media.join(" · ")}
+        </span>
+      ) : null}
+      {breakdown.other ? <small>{t("builder.upload.other", { count: breakdown.other })}</small> : null}
+    </section>
   );
+}
+
+function bundleBreakdown(
+  bundle: SourceBundleManifest,
+  labels: { images: string; notebooks: string; textFiles: string; videos: string },
+) {
+  const counts = bundle.counts_by_kind;
+  const sources = [
+    materialCount(counts, "pdf", "PDF"),
+    materialCount(counts, "latex", "LaTeX"),
+    materialCount(counts, "markdown", "Markdown"),
+    materialCount(counts, "notebook", labels.notebooks),
+    materialCount(counts, "text", labels.textFiles),
+  ].filter(Boolean);
+  const media = [
+    materialCount(counts, "image", labels.images),
+    materialCount(counts, "video", labels.videos),
+  ].filter(Boolean);
+  const represented = ["pdf", "latex", "markdown", "notebook", "text", "image", "video"]
+    .map((kind) => counts[kind] ?? 0)
+    .reduce((total, count) => total + count, 0);
+  return { media, other: Math.max(0, bundle.files.length - represented), sources };
+}
+
+function materialCount(counts: Record<string, number>, kind: string, label: string) {
+  const count = counts[kind] ?? 0;
+  return count ? `${count} ${label}` : null;
 }
 
 export function VideoCandidateGroups({

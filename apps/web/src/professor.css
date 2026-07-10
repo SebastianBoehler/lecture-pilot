@@ -224,7 +224,7 @@
 }
 
 .lecture-schedule header span,
-.lecture-schedule-row small {
+.lecture-schedule-source {
   color: var(--color-text-tertiary);
   font-size: 12px;
 }
@@ -236,14 +236,22 @@
 
 .lecture-schedule-row {
   display: grid;
-  grid-template-columns: 74px minmax(180px, 1fr) 150px minmax(140px, 0.55fr);
+  gap: 5px;
+  border-bottom: 1px solid var(--color-border-primary);
+  padding: 4px 0 10px;
+}
+
+.lecture-schedule-fields {
+  display: grid;
+  grid-template-columns: 74px minmax(180px, 1fr) minmax(150px, 0.55fr);
   gap: 8px;
   align-items: end;
 }
 
-.lecture-schedule-row small {
+.lecture-schedule-source {
+  display: block;
+  min-width: 0;
   overflow: hidden;
-  padding-bottom: 9px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -281,7 +289,7 @@
   }
 
   .flow-grid,
-  .lecture-schedule-row {
+  .lecture-schedule-fields {
     grid-template-columns: 1fr;
   }
 }
