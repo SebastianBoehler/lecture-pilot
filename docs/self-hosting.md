@@ -26,17 +26,46 @@ Set at least:
 - the university-wrapper configuration needed by `tue-api-wrapper`
 - an explicit server model allowlist
 
+Start from the checked-in template, keep the resulting file outside source control, and restrict its
+permissions before adding real values:
+
+```bash
+cp .env.example .env
+chmod 600 .env
+python3 -c 'import secrets; print(secrets.token_urlsafe(32))'
+```
+
+Use the generated URL-safe value for `LECTUREPILOT_POSTGRES_PASSWORD`. Set
+`LECTUREPILOT_MODEL`, include it in `LECTUREPILOT_ALLOWED_MODELS`, and add the matching provider key.
+The preflight reports missing setting names but never prints their values:
+
+```bash
+source .venv/bin/activate
+python -m lecturepilot.production_preflight --env-file .env
+```
+
 Production forces database session auth, schema verification, trusted Host and Origin lists, HSTS,
-bounded material processing, quotas, and the persisted `/app/storage` root. Provider and university
-credentials stay server-side. Professor passwords are stored as Argon2id hashes, and production web
-builds omit both development demo-login buttons.
+`Secure`/`HttpOnly`/`SameSite=Lax` session cookies, bounded material processing, quotas, and the
+persisted `/app/storage` root. Production startup rejects insecure cookie overrides, missing or
+non-HTTPS origins, wildcard hosts, and non-PostgreSQL databases. Provider and university credentials
+stay server-side. Professor passwords are stored as Argon2id hashes, and production web builds omit
+both development demo-login buttons.
+
+Plain-HTTP local development deliberately leaves the `Secure` cookie flag off because browsers would
+otherwise reject the session. The production Compose path has no such override: Caddy obtains and
+renews certificates, redirects HTTP to HTTPS, and adds HSTS before traffic reaches the internal web
+or API services.
 
 Validate without starting the live stack:
 
 ```bash
-docker compose -f deploy/compose.yml config
-docker compose -f deploy/compose.yml build
+docker compose --env-file .env -f deploy/compose.yml config --quiet
+docker compose --env-file .env -f deploy/compose.yml build
 ```
+
+`docker compose up` runs the same preflight as a one-shot service before database migration and API
+startup. Missing or unsafe configuration therefore stops the deployment instead of degrading to
+development behavior.
 
 The API image runs as UID 10001 with a read-only root, dropped capabilities, a temporary `/tmp`, and
 CPU/memory/process limits. Gateway, web, and database use patched derived images recorded in

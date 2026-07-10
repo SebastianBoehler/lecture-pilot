@@ -35,6 +35,7 @@ from lecturepilot.security_headers import (
     allowed_hosts,
     production_fastapi_kwargs,
 )
+from lecturepilot.session_auth import SessionAuthSettings
 from lecturepilot.session_store import SessionStore
 from lecturepilot.tuebingen_adapter import TuebingenCourseAdapter
 from lecturepilot.user_memory import UserMemoryStore
@@ -47,6 +48,7 @@ load_project_env()
 
 
 def create_app() -> FastAPI:
+    SessionAuthSettings.from_env()
     app = FastAPI(title="LecturePilot API", version="0.1.0", **production_fastapi_kwargs())
     app.state.database = Database()
     app.state.session_store = SessionStore(app.state.database)
@@ -68,8 +70,17 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=list(allowed_origins()),
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "HEAD", "OPTIONS", "POST", "DELETE"],
+        allow_headers=[
+            "Accept",
+            "Authorization",
+            "Content-Type",
+            "X-Course-Ids",
+            "X-CSRF-Token",
+            "X-Tenant-Id",
+            "X-User-Id",
+            "X-User-Role",
+        ],
     )
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts())
     app.add_middleware(RequestBodyLimitMiddleware)

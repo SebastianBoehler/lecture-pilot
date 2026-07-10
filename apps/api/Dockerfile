@@ -18,4 +18,4 @@ RUN useradd --create-home --uid 10001 lecturepilot \
 USER 10001:10001
 
 EXPOSE 8000
-CMD ["uvicorn", "lecturepilot.app:app", "--app-dir", "apps/api/src", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=172.16.0.0/12"]
+CMD ["uvicorn", "lecturepilot.app:app", "--app-dir", "apps/api/src", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=172.16.0.0/12", "--limit-concurrency=100", "--backlog=512", "--timeout-keep-alive=5", "--no-server-header"]

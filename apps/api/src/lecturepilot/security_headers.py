@@ -28,7 +28,7 @@ class SecurityHeadersMiddleware:
                 _setdefault(
                     headers, "Permissions-Policy", "camera=(), microphone=(), geolocation=()"
                 )
-                if _hsts_enabled():
+                if hsts_enabled():
                     _setdefault(headers, "Strict-Transport-Security", "max-age=31536000")
             await send(message)
 
@@ -44,8 +44,13 @@ def production_fastapi_kwargs() -> dict[str, str | None]:
 def allowed_hosts() -> list[str]:
     configured = os.getenv("LECTUREPILOT_ALLOWED_HOSTS", "").strip()
     if configured:
-        return [host.strip() for host in configured.split(",") if host.strip()]
-    if os.getenv("LECTUREPILOT_ENV", "").strip().lower() == "production":
+        hosts = [host.strip() for host in configured.split(",") if host.strip()]
+        if _is_production() and any(not _is_exact_hostname(host) for host in hosts):
+            raise RuntimeError(
+                "LECTUREPILOT_ALLOWED_HOSTS must contain exact hostnames in production."
+            )
+        return hosts
+    if _is_production():
         raise RuntimeError("LECTUREPILOT_ALLOWED_HOSTS is required in production.")
     return ["localhost", "127.0.0.1", "testserver"]
 
@@ -55,5 +60,18 @@ def _setdefault(headers: MutableHeaders, name: str, value: str) -> None:
         headers[name] = value
 
 
-def _hsts_enabled() -> bool:
-    return os.getenv("LECTUREPILOT_HSTS_ENABLED", "").strip().lower() in {"1", "true", "yes", "on"}
+def hsts_enabled() -> bool:
+    configured = os.getenv("LECTUREPILOT_HSTS_ENABLED")
+    if configured is None or not configured.strip():
+        return _is_production()
+    return configured.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _is_exact_hostname(host: str) -> bool:
+    return bool(host) and not any(
+        marker in host for marker in ("*", "://", "/", "\\", "?", "#", "@", " ")
+    )
+
+
+def _is_production() -> bool:
+    return os.getenv("LECTUREPILOT_ENV", "").strip().lower() == "production"

@@ -9,7 +9,7 @@ from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.identity_repository import IdentityRepository
 from lecturepilot.university_models import UniversityLoginResult
 from lecturepilot.providers import DEFAULT_MODEL
-from lecturepilot.session_auth import SESSION_COOKIE_NAME
+from lecturepilot.session_auth import SESSION_COOKIE_NAME, SessionAuthError
 from auth_helpers import student_headers
 
 
@@ -36,19 +36,10 @@ def test_production_env_rejects_dev_header_auth(monkeypatch) -> None:
     monkeypatch.setenv("LECTUREPILOT_ENV", "production")
     monkeypatch.setenv("LECTUREPILOT_AUTH_MODE", "dev")
     monkeypatch.setenv("LECTUREPILOT_ALLOWED_HOSTS", "testserver")
-    client = TestClient(create_app())
-
-    response = client.get(
-        "/courses",
-        headers={
-            "X-Tenant-Id": "tenant-tuebingen",
-            "X-User-Id": "student01",
-            "X-User-Role": "student",
-        },
-    )
-
-    assert response.status_code == 500
-    assert "Dev header auth requires" in response.json()["detail"]
+    monkeypatch.setenv("LECTUREPILOT_ALLOWED_ORIGINS", "https://testserver")
+    monkeypatch.setenv("LECTUREPILOT_SESSION_COOKIE_SECURE", "true")
+    with pytest.raises(SessionAuthError, match="Dev header auth requires"):
+        create_app()
 
 
 def test_production_auth_accepts_opaque_session_token(monkeypatch, tmp_path) -> None:
@@ -99,6 +90,8 @@ def test_production_auth_rejects_forged_role_headers(monkeypatch) -> None:
     monkeypatch.setenv("LECTUREPILOT_ENV", "production")
     monkeypatch.setenv("LECTUREPILOT_AUTH_MODE", "session")
     monkeypatch.setenv("LECTUREPILOT_ALLOWED_HOSTS", "testserver")
+    monkeypatch.setenv("LECTUREPILOT_ALLOWED_ORIGINS", "https://testserver")
+    monkeypatch.setenv("LECTUREPILOT_SESSION_COOKIE_SECURE", "true")
     client = TestClient(create_app())
 
     response = client.post(
@@ -120,6 +113,8 @@ def test_production_auth_protects_course_listing(monkeypatch) -> None:
     monkeypatch.setenv("LECTUREPILOT_ENV", "production")
     monkeypatch.setenv("LECTUREPILOT_AUTH_MODE", "session")
     monkeypatch.setenv("LECTUREPILOT_ALLOWED_HOSTS", "testserver")
+    monkeypatch.setenv("LECTUREPILOT_ALLOWED_ORIGINS", "https://testserver")
+    monkeypatch.setenv("LECTUREPILOT_SESSION_COOKIE_SECURE", "true")
     client = TestClient(create_app())
 
     response = client.get(
@@ -210,6 +205,7 @@ def _session_client(monkeypatch, tmp_path) -> tuple[TestClient, str, str]:
     monkeypatch.setenv("LECTUREPILOT_AUTH_MODE", "session")
     monkeypatch.setenv("LECTUREPILOT_ALLOWED_HOSTS", "lecturepilot.test")
     monkeypatch.setenv("LECTUREPILOT_ALLOWED_ORIGINS", "https://lecturepilot.test")
+    monkeypatch.setenv("LECTUREPILOT_SESSION_COOKIE_SECURE", "true")
     app = create_app()
     app.state.canvas_workspace = CanvasWorkspace(
         workspace_root=tmp_path / "workspaces",

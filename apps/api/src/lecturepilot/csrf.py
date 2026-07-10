@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from urllib.parse import urlsplit
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -50,8 +51,28 @@ class CsrfProtectionMiddleware(BaseHTTPMiddleware):
 def allowed_origins() -> tuple[str, ...]:
     configured = os.getenv("LECTUREPILOT_ALLOWED_ORIGINS", "").strip()
     if not configured:
+        if _is_production():
+            raise RuntimeError("LECTUREPILOT_ALLOWED_ORIGINS is required in production.")
         return DEFAULT_LOCAL_ORIGINS
-    return tuple(origin.strip().rstrip("/") for origin in configured.split(",") if origin.strip())
+    origins = tuple(
+        origin.strip().rstrip("/") for origin in configured.split(",") if origin.strip()
+    )
+    return tuple(_validated_origin(origin, production=_is_production()) for origin in origins)
+
+
+def _validated_origin(origin: str, *, production: bool) -> str:
+    parsed = urlsplit(origin)
+    if origin == "*" or parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise RuntimeError("Allowed origins must be exact HTTP or HTTPS origins.")
+    if parsed.username or parsed.password or parsed.path or parsed.query or parsed.fragment:
+        raise RuntimeError("Allowed origins must not contain credentials, paths, or fragments.")
+    if production and parsed.scheme != "https":
+        raise RuntimeError("Production allowed origins must use HTTPS.")
+    return origin
+
+
+def _is_production() -> bool:
+    return os.getenv("LECTUREPILOT_ENV", "").strip().lower() == "production"
 
 
 def _needs_check(request: Request) -> bool:

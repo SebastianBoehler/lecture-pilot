@@ -29,6 +29,8 @@ class DatabaseSettings:
         required = environment == "production"
         if required and not url:
             raise DatabaseConfigurationError("DATABASE_URL is required in production.")
+        if required and url and not _is_postgresql_url(url):
+            raise DatabaseConfigurationError("Production DATABASE_URL must use PostgreSQL.")
         return cls(url=_psycopg_url(url) if url else None, required=required)
 
 
@@ -96,3 +98,7 @@ def _psycopg_url(url: str) -> str:
     if url.startswith("postgres://"):
         return url.replace("postgres://", "postgresql+psycopg://", 1)
     return url
+
+
+def _is_postgresql_url(url: str) -> bool:
+    return url.startswith(("postgresql://", "postgres://", "postgresql+psycopg://"))
