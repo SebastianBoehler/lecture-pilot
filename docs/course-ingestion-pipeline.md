@@ -109,23 +109,31 @@ fails clearly instead of silently feeding the whole course to the model.
 it does not yet mean that every accepted binary format receives equivalent
 semantic extraction.
 
-| Kind                        | Current deterministic handling                                            |
-| --------------------------- | ------------------------------------------------------------------------- |
-| LaTeX, Markdown, text       | Text and structure imported locally                                       |
-| PDF                         | Text extracted and pages rendered locally, up to 20 pages per draft       |
-| Images, SVG, videos         | Preserved as source-backed media; optional JSON sidecars provide captions |
-| CSV, JSON, Python, notebook | Safely uploaded and indexed; semantic canvas extraction is still pending  |
+| Kind                  | Current deterministic handling                                            |
+| --------------------- | ------------------------------------------------------------------------- |
+| LaTeX, Markdown, text | Text and structure imported locally                                       |
+| PDF                   | Text extracted and pages rendered locally, up to 20 pages per draft       |
+| Python, notebook      | Markdown and code imported locally as ordered, fenced Canvas content      |
+| Images, SVG, videos   | Preserved as source-backed media; optional JSON sidecars provide captions |
+| CSV, JSON             | Safely uploaded and indexed; semantic canvas extraction is still pending  |
 
 Current per-file limits are 2–10 MiB for textual formats, 20 MiB for images and
 notebooks, 100 MiB for PDFs, and 500 MiB for videos. The total request ceiling
 defaults to 600 MiB. These are safety defaults, not evidence that every maximum
 has passed a production load test.
 
-The next resource-efficient adapters should parse CSV/JSON/Python/notebooks
-locally, probe video metadata with `ffprobe`, and make audio transcription an
-explicit opt-in job with duration and cost quotas. They should not add a new
-provider credential: use the configured OpenAI-compatible provider only where
-local extraction cannot recover semantics.
+Notebook import never executes code. It imports at most 120 cells and 60,000
+characters, preserves Markdown/code order, derives the code-fence language from
+notebook metadata, and ignores execution counts, cell outputs, and inline image
+payloads or remote image fetches. Standalone Python files use the same inert
+fenced-code representation. This keeps the path deterministic, safe, and free
+of model or sandbox costs.
+
+The next resource-efficient adapters should parse CSV/JSON locally, probe video
+metadata with `ffprobe`, and make audio transcription an explicit opt-in job
+with duration and cost quotas. They should not add a new provider credential:
+use the configured OpenAI-compatible provider only where local extraction
+cannot recover semantics.
 
 ## LLM Canvas Planner
 

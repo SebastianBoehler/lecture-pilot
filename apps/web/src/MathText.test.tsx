@@ -71,7 +71,11 @@ describe("MathText", () => {
   });
 
   it("renders course emphasis macros inside display math", () => {
-    render(<DisplayMath expression={String.raw`h(x)=y \quad \text{ for \imp{new} } x,y \text{ pairs.}`} />);
+    render(
+      <DisplayMath
+        expression={String.raw`h(x)=y \quad \text{ for \imp{new} } x,y \text{ pairs.}`}
+      />,
+    );
 
     expect(document.body.textContent).toContain("new");
     expect(document.querySelector(".katex-error")).toBeNull();
@@ -106,6 +110,21 @@ describe("MathText", () => {
     expect(screen.getByRole("table")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Course page" })).toHaveAttribute("href", "https://example.com");
     expect(document.querySelector(".katex")).not.toBeNull();
+  });
+
+  it("renders notebook code cells as inert fenced code", () => {
+    const { container } = render(
+      <MathText
+        highlightedText={null}
+        mode="block"
+        text={"```python\ndef step(theta, gradient):\n    return theta - gradient\n```"}
+      />,
+    );
+
+    const code = container.querySelector("pre code.language-python");
+    expect(code).not.toBeNull();
+    expect(code?.textContent).toContain("return theta - gradient");
+    expect(container.querySelector("script")).toBeNull();
   });
 
   it("highlights a useful prefix when the model returns a truncated phrase", () => {

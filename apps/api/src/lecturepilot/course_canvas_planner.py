@@ -217,7 +217,7 @@ def _safe_id(value: str) -> str:
 
 
 def _trim(value: str, limit: int) -> str:
-    cleaned = " ".join(value.split())
+    cleaned = value.strip() if value.lstrip().startswith(("```", "~~~")) else " ".join(value.split())
     if len(cleaned) <= limit:
         return cleaned
     return cleaned[: limit - 3].rstrip() + "..."

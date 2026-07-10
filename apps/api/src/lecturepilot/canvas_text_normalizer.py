@@ -13,6 +13,8 @@ def clean_canvas_text(value: Any) -> str:
     if isinstance(value, list):
         return "\n".join(item for item in clean_canvas_items(value) if item)
     text = str(value).strip()
+    if _is_fenced_code(text):
+        return text
     parsed = _parse_structured_text(text)
     if parsed is not None:
         return clean_canvas_text(parsed)
@@ -47,6 +49,15 @@ def _strip_markdown_artifacts(text: str) -> str:
     text = re.sub(r"\\n(?=\s|[*-])", "\n", text)
     lines = [_strip_line(line) for line in text.splitlines()]
     return "\n".join(line for line in lines if line).strip()
+
+
+def _is_fenced_code(text: str) -> bool:
+    return bool(
+        re.fullmatch(
+            r"(?P<fence>`{3,}|~{3,})[^\n]*\n[\s\S]*\n(?P=fence)",
+            text,
+        )
+    )
 
 
 def _strip_line(line: str) -> str:

@@ -85,6 +85,8 @@ def _section_messages(source_document: CanvasDocument, section: CanvasSection) -
                 "key formulas and source-backed assets. Add a worked example or infographic "
                 "brief when it helps learning. Explain why each key idea matters before "
                 "asking for retrieval. Use light Markdown for key terms and notation. "
+                "Preserve relevant fenced code in paragraph text with its language and "
+                "indentation; never execute it. "
                 "Do not invent unsupported topics."
             ),
         },
@@ -111,7 +113,7 @@ def _section_evidence(source_document: CanvasDocument, section: CanvasSection) -
             lines.append("- list: " + "; ".join(block.items[:24]))
         else:
             lines.append(f"- {block.type}: {block.text or ''}")
-    return _trim("\n".join(lines), 12000)
+    return _trim_layout("\n".join(lines), 12000)
 
 
 def _read_section_payload(
@@ -270,7 +272,14 @@ def _safe_id(value: str) -> str:
 
 
 def _trim(value: str, limit: int) -> str:
-    cleaned = " ".join(value.split())
+    cleaned = value.strip() if value.lstrip().startswith(("```", "~~~")) else " ".join(value.split())
+    if len(cleaned) <= limit:
+        return cleaned
+    return cleaned[: limit - 3].rstrip() + "..."
+
+
+def _trim_layout(value: str, limit: int) -> str:
+    cleaned = value.strip()
     if len(cleaned) <= limit:
         return cleaned
     return cleaned[: limit - 3].rstrip() + "..."

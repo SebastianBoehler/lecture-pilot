@@ -22,6 +22,8 @@ def planner_messages(source_document: CanvasDocument) -> list[dict[str, str]]:
                 "Collapse long formula runs into a named derivation with only the essential equations. "
                 "Make paragraphs self-study friendly: explain reason, mechanism, and consequence in "
                 "2 to 4 sentences, then add examples or steps. Use light Markdown emphasis such as **posterior** or `p(x | C)`. "
+                "When evidence contains relevant fenced code, preserve it inside a paragraph block "
+                "with its language fence and indentation; never execute it. "
                 "Leave room for professor-approved YouTube videos instead of inventing "
                 "video links. When original slide image assets are listed, use one as "
                 "the recognition anchor for each section and cite the matching PDF page or frame in source_ref. "
@@ -69,7 +71,7 @@ def source_evidence(document: CanvasDocument) -> str:
         lines.append(f"\nSECTION {section.id}: {section.title} ({section.source_ref or 'source unknown'})")
         for block in section.blocks:
             lines.append(_block_evidence(block))
-    return _trim("\n".join(lines), 50000)
+    return _trim_layout("\n".join(lines), 50000)
 
 
 def _block_evidence(block: CanvasBlock) -> str:
@@ -84,11 +86,20 @@ def _block_evidence(block: CanvasBlock) -> str:
     if block.type == "list":
         items = "; ".join(_trim(item, 180) for item in block.items[:18])
         return f"- list id={block.id}: {items}"
+    if (block.text or "").lstrip().startswith(("```", "~~~")):
+        return f"- code id={block.id}:\n{_trim_layout(block.text or '', 4000)}"
     return f"- {block.type} id={block.id}: {_trim(block.text or '', 900)}"
 
 
 def _trim(value: str, limit: int) -> str:
     cleaned = " ".join(value.split())
+    if len(cleaned) <= limit:
+        return cleaned
+    return cleaned[: limit - 3].rstrip() + "..."
+
+
+def _trim_layout(value: str, limit: int) -> str:
+    cleaned = value.strip()
     if len(cleaned) <= limit:
         return cleaned
     return cleaned[: limit - 3].rstrip() + "..."

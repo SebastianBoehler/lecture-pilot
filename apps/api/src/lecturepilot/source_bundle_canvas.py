@@ -8,6 +8,11 @@ from lecturepilot.latex_canvas_text import BROWSER_ASSET_SUFFIXES, slug
 from lecturepilot.pdf_slide_assets import PdfSlideAssetError, render_pdf_slide_blocks
 from lecturepilot.source_bundle import SourceBundleFile, scan_source_bundle
 from lecturepilot.source_bundle_media import asset_section, media_caption, video_section
+from lecturepilot.source_code_canvas import (
+    SourceCodeCanvasError,
+    code_section,
+    notebook_section,
+)
 
 
 MAX_TEXT_CHARS_PER_FILE = 12000
@@ -60,13 +65,31 @@ def import_source_bundle_canvas(
             ):
                 sections.append(section)
                 source_refs.append(file.path)
+        elif file.kind == "notebook":
+            try:
+                section = notebook_section(path, file.path)
+            except SourceCodeCanvasError as exc:
+                raise SourceBundleCanvasError(str(exc)) from exc
+            if section:
+                sections.append(section)
+                source_refs.append(file.path)
+        elif file.kind == "code":
+            try:
+                section = code_section(path, file.path)
+            except SourceCodeCanvasError as exc:
+                raise SourceBundleCanvasError(str(exc)) from exc
+            if section:
+                sections.append(section)
+                source_refs.append(file.path)
         elif file.kind in {"image", "svg"} and path.suffix.lower() in BROWSER_ASSET_SUFFIXES:
             sections.append(asset_section(file.path, source_root, course_id, lecture_id))
         elif file.kind == "video" and path.suffix.lower() in VIDEO_SUFFIXES:
             sections.append(video_section(file.path, source_root, course_id, lecture_id))
 
     if not any(_has_text(section) for section in sections):
-        raise SourceBundleCanvasError("No readable .tex, .md, .txt, or .pdf source material found.")
+        raise SourceBundleCanvasError(
+            "No readable LaTeX, Markdown, text, PDF, notebook, or code source material found."
+        )
     return CanvasDocument(
         id=f"{course_id}-{lecture_id}",
         import_version=CANVAS_IMPORT_VERSION,
