@@ -38,6 +38,7 @@ from lecturepilot.models import (
     LectureScheduleProposal,
     SourceBundleEntry,
     SourceBundleManifest,
+    TenantRole,
 )
 from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.secure_upload import store_course_upload
@@ -57,8 +58,15 @@ def register_course_routes(
     def courses(context: TenantContext = Depends(request_context)) -> list[dict]:
         require_same_tenant(context, course_tenant_id=course_tenant_id)
         if context.auth_mode == "session":
-            accessible = CourseRepository(app.state.database).list_accessible(
-                user_id=UUID(context.user_id), tenant_id=course_tenant_id
+            repository = CourseRepository(app.state.database)
+            accessible = (
+                repository.list_accessible(
+                    user_id=UUID(context.user_id), tenant_id=course_tenant_id
+                )
+                if TenantRole.STUDENT in context.roles
+                else repository.list_owned(
+                    user_id=UUID(context.user_id), tenant_id=course_tenant_id
+                )
             )
             return [course.model_dump() for course in accessible]
         stored = list_course_workspaces(app.state.canvas_workspace.workspace_root, course_tenant_id)

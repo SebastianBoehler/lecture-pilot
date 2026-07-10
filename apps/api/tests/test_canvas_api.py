@@ -68,8 +68,7 @@ def test_agent_appended_canvas_section_persists_for_same_student(tmp_path: Path)
     assert _next_section_id(same_student.json(), "bayesian-decision-theory-the-aim") == "student-soccer-bayes-example"
     assert other_student.status_code == 200
     assert _next_section_id(other_student.json(), "bayesian-decision-theory-the-aim") == "student-soccer-bayes-example"
-    assert professor_view.status_code == 200
-    assert "student-soccer-bayes-example" not in _section_ids(professor_view.json())
+    assert professor_view.status_code == 403
     lecture_root = app.state.canvas_workspace.layout.user_lecture_root(
         "student01",
         "martius-ml",

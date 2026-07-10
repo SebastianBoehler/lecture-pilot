@@ -46,3 +46,20 @@ def test_login_rate_limit_rejects_excess_requests(monkeypatch) -> None:
     assert second.status_code == 429
     assert second.headers["x-content-type-options"] == "nosniff"
     assert second.headers["retry-after"]
+
+
+def test_professor_login_uses_the_login_rate_limit(monkeypatch) -> None:
+    monkeypatch.setenv("LECTUREPILOT_RATE_LIMIT_LOGIN_PER_MINUTE", "1")
+    client = TestClient(create_app())
+
+    first = client.post(
+        "/auth/professor/login",
+        json={"email": "professor@example.edu", "password": "invalid password value"},
+    )
+    second = client.post(
+        "/auth/professor/login",
+        json={"email": "professor@example.edu", "password": "invalid password value"},
+    )
+
+    assert first.status_code != 429
+    assert second.status_code == 429

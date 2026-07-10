@@ -50,7 +50,7 @@ def test_future_dynamic_lecture_is_locked_for_enrolled_student(tmp_path: Path) -
     assert lectures.status_code == 200
     assert lectures.json() == []
     assert canvas.status_code == 403
-    assert professor_canvas.status_code == 200
+    assert professor_canvas.status_code == 403
 
 
 def _client(tmp_path: Path) -> TestClient:

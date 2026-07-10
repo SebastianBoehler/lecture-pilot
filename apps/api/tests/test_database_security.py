@@ -20,7 +20,7 @@ from lecturepilot.external_course_sync import sync_external_courses
 from security_db_helpers import FakeUniversityAdapter, candidate, login, mutation_headers
 
 
-def test_professor_approval_is_database_backed_and_revokes_old_sessions(
+def test_university_student_cannot_request_professor_access(
     tmp_path: Path,
 ) -> None:
     app = _app(tmp_path, {})
@@ -28,44 +28,11 @@ def test_professor_approval_is_database_backed_and_revokes_old_sessions(
     student = login(student_client, "professor-a")
 
     missing_csrf = student_client.post("/professor-requests")
-    wrong_origin = student_client.post(
-        "/professor-requests",
-        headers={
-            "Origin": "https://evil.example",
-            "X-CSRF-Token": student["csrf_token"],
-        },
-    )
     requested = student_client.post("/professor-requests", headers=mutation_headers(student))
 
     assert missing_csrf.status_code == 403
-    assert wrong_origin.status_code == 403
-    assert requested.status_code == 200
-    assert requested.json()["status"] == "pending"
-
-    admin_client = TestClient(app, base_url="http://localhost:8000")
-    login(admin_client, "platform-admin")
-    with app.state.database.session() as session:
-        admin_identity = session.scalar(
-            select(ExternalIdentityRecord).where(ExternalIdentityRecord.subject == "platform-admin")
-        )
-        admin_membership = session.get(
-            TenantMembershipRecord,
-            (admin_identity.user_id, "tenant-tuebingen"),
-        )
-        admin_membership.platform_admin = True
-    admin = login(admin_client, "platform-admin")
-    pending = admin_client.get("/platform/professor-requests")
-    approved = admin_client.post(
-        f"/platform/professor-requests/{pending.json()[0]['id']}/approve",
-        headers=mutation_headers(admin),
-    )
-
-    assert pending.status_code == 200
-    assert approved.status_code == 200
-    assert student_client.get("/me").status_code == 401
-    renewed = login(student_client, "professor-a")
-    assert set(renewed["roles"]) == {"student", "professor"}
-    assert renewed["professor_status"] == "approved"
+    assert requested.status_code == 403
+    assert requested.json()["detail"] == "Use a professor account to request professor access."
 
 
 def test_course_owner_and_alma_ilias_enrollment_are_object_scoped(tmp_path: Path) -> None:
@@ -133,7 +100,7 @@ def test_course_owner_and_alma_ilias_enrollment_are_object_scoped(tmp_path: Path
     assert [course["id"] for course in alma_enrolled["courses"]] == [course_id]
     assert [course["id"] for course in renamed_enrolled["courses"]] == [course_id]
     assert wrong["courses"] == []
-    assert set(unrelated["roles"]) == {"student", "professor"}
+    assert unrelated["roles"] == ["professor"]
 
 
 def test_opaque_session_tokens_are_hashed_at_rest(tmp_path: Path) -> None:
@@ -266,13 +233,31 @@ def _app(tmp_path: Path, courses_by_user: dict) -> object:
 
 
 def _approve(app, client: TestClient, username: str) -> dict:
-    session = login(client, username)
-    request = client.post("/professor-requests", headers=mutation_headers(session))
-    assert request.status_code == 200
+    email = f"{username}@example.edu"
+    registered = client.post(
+        "/auth/professor/register",
+        json={
+            "display_name": username,
+            "email": email,
+            "password": "test professor password",
+        },
+    )
+    assert registered.status_code == 201
     with app.state.database.session() as database_session:
+        user_id = database_session.scalar(
+            select(ExternalIdentityRecord.user_id).where(
+                ExternalIdentityRecord.provider == "local_professor",
+                ExternalIdentityRecord.subject == email,
+            )
+        )
         membership = database_session.get(
             TenantMembershipRecord,
-            (UUID(request.json()["user_id"]), "tenant-tuebingen"),
+            (user_id, "tenant-tuebingen"),
         )
         membership.professor_status = "approved"
-    return login(client, username)
+    response = client.post(
+        "/auth/professor/login",
+        json={"email": email, "password": "test professor password"},
+    )
+    assert response.status_code == 200
+    return response.json()

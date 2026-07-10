@@ -51,6 +51,7 @@ def test_tuebingen_login_returns_courses_without_echoing_password(monkeypatch) -
         "email": None,
         "term": "Sommer 2026",
         "tenant_id": "tenant-tuebingen",
+        "account_type": "student",
         "roles": ["student"],
         "professor_status": "not_requested",
         "courses": [],

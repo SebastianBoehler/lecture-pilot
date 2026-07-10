@@ -18,6 +18,10 @@ anyio==4.14.1
     #   openai
     #   starlette
     #   watchfiles
+argon2-cffi==25.1.0
+    # via pwdlib
+argon2-cffi-bindings==25.1.0
+    # via argon2-cffi
 attrs==26.1.0
     # via
     #   aiohttp
@@ -30,6 +34,8 @@ certifi==2026.6.17
     #   httpcore
     #   httpx
     #   requests
+cffi==2.1.0
+    # via argon2-cffi-bindings
 charset-normalizer==3.4.9
     # via requests
 click==8.4.2
@@ -37,8 +43,14 @@ click==8.4.2
     #   huggingface-hub
     #   litellm
     #   uvicorn
+defusedxml==0.7.1
+    # via tue-api-wrapper
 distro==1.9.0
     # via openai
+dnspython==2.8.0
+    # via email-validator
+email-validator==2.3.0
+    # via lecturepilot-api (apps/api/pyproject.toml)
 fastapi==0.135.1
     # via
     #   lecturepilot-api (apps/api/pyproject.toml)
@@ -74,6 +86,7 @@ huggingface-hub==1.22.0
 idna==3.18
     # via
     #   anyio
+    #   email-validator
     #   httpx
     #   requests
     #   yarl
@@ -107,7 +120,7 @@ packaging==26.2
     # via
     #   huggingface-hub
     #   pytest
-pillow==11.3.0
+pillow==12.3.0
     # via tue-api-wrapper
 pluggy==1.6.0
     # via pytest
@@ -119,6 +132,10 @@ psycopg==3.3.4
     # via lecturepilot-api (apps/api/pyproject.toml)
 psycopg-binary==3.3.4
     # via psycopg
+pwdlib==0.3.0
+    # via lecturepilot-api (apps/api/pyproject.toml)
+pycparser==3.0
+    # via cffi
 pydantic==2.12.5
     # via
     #   lecturepilot-api (apps/api/pyproject.toml)
@@ -193,7 +210,7 @@ tqdm==4.68.4
     # via
     #   huggingface-hub
     #   openai
-tue-api-wrapper==0.2.1
+tue-api-wrapper==0.2.3
     # via lecturepilot-api (apps/api/pyproject.toml)
 typing-extensions==4.16.0
     # via

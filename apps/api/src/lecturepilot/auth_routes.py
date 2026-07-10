@@ -4,12 +4,13 @@ from fastapi import Depends, FastAPI, HTTPException, Request, Response
 
 from lecturepilot.account_models import (
     AccountResponse,
+    LoginResult,
     TuebingenLoginInput,
-    TuebingenLoginResult,
 )
+from lecturepilot.account_responses import account_response, login_result
 from lecturepilot.api_auth import request_context
 from lecturepilot.database import DatabaseConfigurationError
-from lecturepilot.identity_repository import AccountView, IdentityRepository
+from lecturepilot.identity_repository import IdentityRepository
 from lecturepilot.session_auth import SESSION_COOKIE_NAME, SessionAuthSettings
 from lecturepilot.session_cookie import attach_session_cookie, clear_session_cookie
 from lecturepilot.tenancy import TenantContext
@@ -17,8 +18,8 @@ from lecturepilot.tuebingen_adapter import TuebingenIntegrationUnavailable, Tueb
 
 
 def register_auth_routes(app: FastAPI, *, course_tenant_id: str) -> None:
-    @app.post("/auth/login", response_model=TuebingenLoginResult)
-    def login(input_data: TuebingenLoginInput, response: Response) -> TuebingenLoginResult:
+    @app.post("/auth/login", response_model=LoginResult)
+    def login(input_data: TuebingenLoginInput, response: Response) -> LoginResult:
         try:
             identity = app.state.tuebingen_adapter.login(
                 username=input_data.username,
@@ -33,7 +34,7 @@ def register_auth_routes(app: FastAPI, *, course_tenant_id: str) -> None:
                 ttl_minutes=SessionAuthSettings.from_env().ttl_minutes,
             )
             attach_session_cookie(response, issued.token)
-            return _login_result(account, term=identity.term, csrf_token=issued.csrf_token)
+            return login_result(account, term=identity.term, csrf_token=issued.csrf_token)
         except TuebingenIntegrationUnavailable as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         except TuebingenLoginError as exc:
@@ -51,35 +52,10 @@ def register_auth_routes(app: FastAPI, *, course_tenant_id: str) -> None:
         principal = getattr(request.state, "session_principal", None)
         if principal is None:
             raise HTTPException(status_code=401, detail="Database session is required.")
-        return _account_response(principal.account)
+        return account_response(principal.account)
 
     @app.post("/auth/logout")
     def logout(request: Request, response: Response) -> dict[str, bool]:
         app.state.session_store.revoke(request.cookies.get(SESSION_COOKIE_NAME))
         clear_session_cookie(response)
         return {"logged_out": True}
-
-
-def _login_result(account: AccountView, *, term: str, csrf_token: str) -> TuebingenLoginResult:
-    return TuebingenLoginResult(
-        username=account.username,
-        email=account.email,
-        term=term,
-        tenant_id=account.tenant_id,
-        roles=sorted(account.roles, key=lambda role: role.value),
-        professor_status=account.professor_status,
-        csrf_token=csrf_token,
-        courses=list(account.courses),
-    )
-
-
-def _account_response(account: AccountView) -> AccountResponse:
-    return AccountResponse(
-        user_id=account.user_id,
-        username=account.username,
-        email=account.email,
-        tenant_id=account.tenant_id,
-        roles=sorted(account.roles, key=lambda role: role.value),
-        professor_status=account.professor_status,
-        courses=list(account.courses),
-    )

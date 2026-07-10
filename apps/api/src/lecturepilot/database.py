@@ -67,7 +67,13 @@ class Database:
                 raise DatabaseConfigurationError("Database is not configured.")
             return
         tables = set(inspect(self.engine).get_table_names())
-        required = {"users", "sessions", "courses", "alembic_version"}
+        required = {
+            "users",
+            "local_credentials",
+            "sessions",
+            "courses",
+            "alembic_version",
+        }
         missing = sorted(required - tables)
         if missing:
             raise DatabaseConfigurationError(

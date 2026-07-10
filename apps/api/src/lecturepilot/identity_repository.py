@@ -21,12 +21,16 @@ from lecturepilot.models import Course, CourseAccessPolicy, TenantRole
 from lecturepilot.university_models import UniversityLoginResult
 
 
+LOCAL_PROFESSOR_PROVIDER = "local_professor"
+
+
 @dataclass(frozen=True)
 class AccountView:
     user_id: UUID
     username: str
     email: str | None
     tenant_id: str
+    account_type: str
     roles: frozenset[TenantRole]
     professor_status: str
     courses: tuple[Course, ...]
@@ -70,12 +74,7 @@ class IdentityRepository:
             user = session.get(UserRecord, user_id)
             if user is None or not user.enabled:
                 return None
-            external = session.scalar(
-                select(ExternalIdentityRecord).where(
-                    ExternalIdentityRecord.user_id == user.id,
-                    ExternalIdentityRecord.provider == "tuebingen",
-                )
-            )
+            external = _preferred_identity(session, user.id)
             membership = session.get(TenantMembershipRecord, (user.id, tenant_id))
             if external is None or membership is None:
                 return None
@@ -135,11 +134,27 @@ def _account_view(
     external: ExternalIdentityRecord,
     membership: TenantMembershipRecord,
 ) -> AccountView:
-    roles = {TenantRole.STUDENT}
+    local_professor = external.provider == LOCAL_PROFESSOR_PROVIDER
+    roles: set[TenantRole] = set()
+    if not local_professor:
+        roles.add(TenantRole.STUDENT)
     if membership.professor_status == "approved":
         roles.add(TenantRole.PROFESSOR)
     if membership.platform_admin:
         roles.add(TenantRole.TENANT_ADMIN)
+    access_conditions = [CourseRecord.owner_user_id == user.id]
+    if not local_professor:
+        access_conditions.extend(
+            [
+                CourseEnrollmentRecord.id.is_not(None),
+                CourseRecord.access_policy.in_(
+                    [
+                        CourseAccessPolicy.PUBLIC.value,
+                        CourseAccessPolicy.PLATFORM_AUTHENTICATED.value,
+                    ]
+                ),
+            ]
+        )
     courses = session.scalars(
         select(CourseRecord)
         .outerjoin(
@@ -151,27 +166,35 @@ def _account_view(
         .where(
             CourseRecord.archived_at.is_(None),
             CourseRecord.tenant_id == membership.tenant_id,
-            or_(
-                CourseRecord.owner_user_id == user.id,
-                CourseEnrollmentRecord.id.is_not(None),
-                CourseRecord.access_policy.in_(
-                    [
-                        CourseAccessPolicy.PUBLIC.value,
-                        CourseAccessPolicy.PLATFORM_AUTHENTICATED.value,
-                    ]
-                ),
-            ),
+            or_(*access_conditions),
         )
         .distinct()
     ).all()
     return AccountView(
         user_id=user.id,
-        username=external.subject,
+        username=user.display_name or external.subject,
         email=external.email,
         tenant_id=membership.tenant_id,
+        account_type="professor" if local_professor else "student",
         roles=frozenset(roles),
         professor_status=membership.professor_status,
         courses=tuple(_course_view(course) for course in courses),
+    )
+
+
+def _preferred_identity(session: Session, user_id: UUID) -> ExternalIdentityRecord | None:
+    identities = session.scalars(
+        select(ExternalIdentityRecord)
+        .where(ExternalIdentityRecord.user_id == user_id)
+        .order_by(ExternalIdentityRecord.created_at)
+    ).all()
+    return next(
+        (
+            identity
+            for identity in identities
+            if identity.provider == LOCAL_PROFESSOR_PROVIDER
+        ),
+        identities[0] if identities else None,
     )
 
 

@@ -117,6 +117,8 @@ def require_learner_workspace_access(
     course_tenant_id: str,
 ) -> None:
     require_same_tenant(context, course_tenant_id=course_tenant_id)
+    if TenantRole.STUDENT not in context.roles:
+        raise HTTPException(status_code=403, detail="Student workspace access is required.")
     if context.user_id != learner_user_id:
         raise HTTPException(
             status_code=403,

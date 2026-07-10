@@ -12,7 +12,13 @@ from lecturepilot.session_store import SessionStoreError
 
 
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE"})
-EXEMPT_PATHS = frozenset({"/auth/login"})
+EXEMPT_PATHS = frozenset(
+    {
+        "/auth/login",
+        "/auth/professor/login",
+        "/auth/professor/register",
+    }
+)
 DEFAULT_LOCAL_ORIGINS = (
     "http://localhost:5173",
     "http://127.0.0.1:5173",

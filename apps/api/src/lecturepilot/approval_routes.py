@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 
 from lecturepilot.account_models import AccountDisabledResponse, ProfessorRequestResponse
 from lecturepilot.api_auth import request_context, require_platform_admin
@@ -13,8 +13,15 @@ from lecturepilot.tenancy import TenantContext
 def register_approval_routes(app: FastAPI) -> None:
     @app.post("/professor-requests", response_model=ProfessorRequestResponse)
     def request_professor(
+        request: Request,
         context: TenantContext = Depends(request_context),
     ) -> ProfessorRequestResponse:
+        principal = getattr(request.state, "session_principal", None)
+        if principal is None or principal.account.account_type != "professor":
+            raise HTTPException(
+                status_code=403,
+                detail="Use a professor account to request professor access.",
+            )
         try:
             return ApprovalRepository(app.state.database).request_professor(
                 user_id=_user_id(context), tenant_id=context.tenant_id

@@ -14,6 +14,7 @@ from lecturepilot.db_models import (
     TenantMembershipRecord,
     UserRecord,
 )
+from lecturepilot.identity_repository import LOCAL_PROFESSOR_PROVIDER
 from lecturepilot.session_store import SessionStore
 
 
@@ -133,18 +134,22 @@ class ApprovalRepository:
 
 
 def _request_view(session, request: ProfessorRequestRecord) -> ProfessorRequestResponse:
-    identity = session.scalar(
+    identities = session.scalars(
         select(ExternalIdentityRecord).where(
             ExternalIdentityRecord.user_id == request.user_id,
-            ExternalIdentityRecord.provider == "tuebingen",
         )
+    ).all()
+    identity = next(
+        (item for item in identities if item.provider == LOCAL_PROFESSOR_PROVIDER),
+        identities[0] if identities else None,
     )
     if identity is None:
         raise ApprovalError("Professor request identity is missing.")
+    user = session.get(UserRecord, request.user_id)
     return ProfessorRequestResponse(
         id=request.id,
         user_id=request.user_id,
-        username=identity.subject,
+        username=(user.display_name if user else None) or identity.subject,
         email=identity.email,
         status=request.status,
         requested_at=request.requested_at,
