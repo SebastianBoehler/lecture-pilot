@@ -1,21 +1,22 @@
 # LecturePilot pre-deployment security review
 
 Date: 2026-07-10<br>
-Reviewed baseline: `main` at `01608fe`, plus the local remediation worktree<br>
+Reviewed baseline: `main` at `5aab9c9`, plus the local professor-auth remediation worktree<br>
 Verdict: **Do not deploy live yet**
 
 ## Executive summary
 
 The original application-level high findings are remediated locally. LecturePilot now has
-database-backed identity, approval, roles, course ownership, enrollments, opaque revocable sessions,
-CSRF protection, self-only learner workspaces, aggregate-only professor analytics, symlink-safe
+database-backed student and professor identity, approval, roles, course ownership, enrollments,
+opaque revocable sessions, CSRF protection, self-only learner workspaces, aggregate-only professor
+analytics, symlink-safe
 agent/file capabilities, guarded uploads and parsers, durable quotas, and a same-origin hardened
 container stack.
 
-One high-severity dependency blocker remains: the latest published `tue-api-wrapper==0.2.1`
-requires `Pillow<12`, while the audited Pillow fixes require 12.2 or newer. Forcing an unsupported
-override was deliberately rejected. Real professor Alma behavior, live TLS/VM isolation, restore,
-and the legal retention/privacy policy are also unverified. No VM access or deployment occurred.
+The published `tue-api-wrapper==0.2.3` now requires Pillow 12.3, and the regenerated Python lock
+passes `pip-audit`; the previous high dependency blocker is closed. Representative cross-account
+Alma/ILIAS identifiers, live TLS/VM isolation, restore, and the legal retention/privacy policy remain
+unverified. No VM access or deployment occurred.
 
 No minimum analytics cohort is imposed. Course owners receive only aggregate values that actually
 exist, or an explicit no-data result. Platform course search, join requests, tutor invitations, and
@@ -57,8 +58,13 @@ professor requests, sessions, courses, external refs, enrollments, audit events,
 Sessions are random opaque values; only hashes are stored. Approval and disablement revoke existing
 sessions. Production fails when the database is absent or behind the current migration.
 
+Students authenticate only through the university adapter. Professors register separately with a
+normalized email and user-selected password stored as an Argon2id hash. Registration atomically
+creates a pending approval request and grants no role. Production builds render neither demo login.
+
 Evidence: `database.py:21-83`, `session_store.py:34-103`, `identity_repository.py:23-184`,
-`approval_routes.py:13-87`, and migrations `20260710_0001`/`0002`.
+`professor_identity_repository.py`, `professor_auth_routes.py`, `approval_routes.py`, and migrations
+`20260710_0001` through `0003`.
 
 ### H-2 — Cross-course and learner access: remediated locally
 
@@ -149,45 +155,42 @@ Evidence: `audit.py`, route modules, `docs/security-operations.md`.
 
 ## Remaining live-release blockers
 
-1. **Pillow dependency (high):** `pip-audit` reports seven findings and Trivy reports three high
-   findings for Pillow 11.3. `tue-api-wrapper==0.2.1` declares `pillow>=10.4,<12`; the fixes require
-   Pillow 12.2+. Release requires an updated compatible wrapper constraint and a fresh login/parser
-   regression run.
-2. **Real university fixtures:** professor credentials were not available. Verify whether professor
-   login yields identity only or teaching/student memberships, and confirm stable Alma/ILIAS IDs
-   across two real accounts. This observation must never grant the professor role.
-3. **Disposable staging:** verify public TLS, redirects, trusted Host, Origin/CSRF rejection, secure
+1. **Real university fixtures:** confirm stable Alma/ILIAS IDs across representative student accounts
+   and both supported enrollment paths. University data must never grant the professor role.
+2. **Disposable staging:** verify public TLS, redirects, trusted Host, Origin/CSRF rejection, secure
    cookies, public ports, non-root runtime, approval, matching, isolation, quotas, and backup/restore.
-4. **Privacy operations:** approve controller/contact, legal basis, provider/subprocessor inventory,
+3. **Privacy operations:** approve controller/contact, legal basis, provider/subprocessor inventory,
    retention periods, learner export/deletion, backup expiry, and incident-notification ownership.
 
 ## Verification evidence
 
 Passed locally:
 
-- API: 265 tests.
-- Web: 76 tests; TypeScript/Vite production build.
+- API: 269 tests.
+- Web: 80 tests; TypeScript/Vite production build.
 - Quality: ESLint, Ruff, and Knip; existing React hook warnings remain non-failing.
 - PostgreSQL: Alembic drift check and downgrade/upgrade; production schema verification.
 - Security: CSRF/object authorization, Alma+ILIAS matching, symlink/hard-link/Unicode confinement,
   upload validation, quotas, pre-attempt answer withholding, and bounded Linux worker.
-- Dependencies: npm production audit reports zero vulnerabilities. Python direct findings were
-  upgraded; only the Pillow/upstream-wrapper blocker remains.
+- Dependencies: npm production audit and the regenerated Python lock audit report zero known
+  vulnerabilities. `tue-api-wrapper==0.2.3` resolves to Pillow 12.3 and `defusedxml`.
 - Secrets: Trivy repository secret scan found no secret.
 - Containers: gateway, web, API, and database images build; API is UID 10001; production JS contains
-  no localhost API URL; Caddy config validates. Gateway, web, and database images have zero fixed
-  high/critical findings. API Debian packages are clean; its three Trivy highs are Pillow.
-- Browser: local professor course creation, guarded upload/index, schedule inference, media search,
-  generated draft, publication, separate-student dashboard/canvas, quiz, and tutor request passed
-  with zero final-page console errors. The run caught and fixed discovered-lecture authorization,
-  oversized provider metadata, and draft-preview course-scope regressions.
+  no localhost API URL; Caddy config validates. Current images have zero fixed high/critical
+  findings.
+- Browser: local professor registration reaches a pending profile without student/professor
+  navigation or demo-course requests in a production build. Earlier course creation, guarded
+  upload/index, schedule inference, media search, generated draft, publication, separate-student
+  dashboard/canvas, quiz, and tutor request passed with zero final-page console errors. The run
+  caught and fixed discovered-lecture authorization, oversized provider metadata, and draft-preview
+  course-scope regressions.
 
-Not performed: real professor login, real cross-account identifier comparison, disposable hosted
-staging, live VM/SSH, TLS/browser verification, restore rehearsal, provider data-retention review,
-or legal/privacy approval.
+Not performed: real cross-account university identifier comparison, disposable hosted staging, live
+VM/SSH, TLS/browser verification, restore rehearsal, provider data-retention review, or legal/privacy
+approval.
 
 ## Deployment decision
 
-Do not deploy to the live VM. Resolve the Pillow/wrapper blocker, complete the real university
-fixture check, approve privacy/retention operations, and pass disposable staging. The current work is
-a locally verified remediation implementation, not a production authorization.
+Do not deploy to the live VM. Complete the real university identifier check, approve
+privacy/retention operations, and pass disposable staging. The current work is a locally verified
+remediation implementation, not a production authorization.

@@ -45,12 +45,16 @@ This repository is intentionally small but runnable:
 - Strict lecture unlock policy.
 - Typed workspace file policy.
 - Provider capability checks with Gemini Flash-Lite as the default text model.
-- Credential-free local demo that opens the course shell while tutor turns use
-  the configured provider model.
+- Development-only credential-free demo that opens the course shell while
+  tutor turns use the configured provider model. Production builds do not
+  render demo access.
 - React/Vite frontend with dashboard and focused lesson workspace.
-- TUE API login form backed by the local FastAPI API and `tue-api-wrapper`.
-- Postgres-backed users, professor approval, opaque sessions, course ownership,
-  Alma/ILIAS enrollment evidence, audit events, and durable quotas.
+- TUE API student login backed by the local FastAPI API and `tue-api-wrapper`.
+- Separate email/password professor accounts that remain pending until a
+  platform administrator approves them.
+- Postgres-backed users, Argon2id professor credentials, opaque sessions,
+  course ownership, Alma/ILIAS enrollment evidence, audit events, and durable
+  quotas.
 - Capability-scoped, symlink-safe learner and course-builder workspaces.
 - Light and dark mode.
 - Backend and frontend tests.
@@ -155,9 +159,9 @@ Live Uni Tübingen login also needs the wrapper package in the API environment:
 pip install -e "apps/api[tuebingen]"
 ```
 
-Do not use the current published wrapper extra for a live release until its
-`Pillow<12` constraint is updated and the security audit is clean. Local wrapper
-integration remains useful for redacted development checks.
+Published wrapper support is pinned to `tue-api-wrapper==0.2.3`, which requires
+the audited Pillow 12.3 security baseline. Local wrapper integration remains
+useful for redacted development checks.
 
 When developing both repos locally, use the editable wrapper checkout instead:
 
@@ -188,9 +192,10 @@ uvicorn lecturepilot.app:app --app-dir apps/api/src --reload
 npm run dev --workspace apps/web
 ```
 
-Open `http://127.0.0.1:5173`, use **Preview local demo**, select lecture 03,
-click the speech-bubble button on the right rail, and ask for a Bayes concept
-check or a personalized example such as `Explain this with a soccer example`.
+Open `http://127.0.0.1:5173`. In a development build, use **Preview local
+demo**, select lecture 03, click the speech-bubble button on the right rail,
+and ask for a Bayes concept check or a personalized example such as `Explain
+this with a soccer example`.
 The tutor calls the configured provider through the backend harness, marks the
 quality gate as pending or passed, and focuses the relevant canvas block.
 

@@ -28,7 +28,8 @@ Set at least:
 
 Production forces database session auth, schema verification, trusted Host and Origin lists, HSTS,
 bounded material processing, quotas, and the persisted `/app/storage` root. Provider and university
-credentials stay server-side.
+credentials stay server-side. Professor passwords are stored as Argon2id hashes, and production web
+builds omit both development demo-login buttons.
 
 Validate without starting the live stack:
 
@@ -57,6 +58,7 @@ bounded worker processes with page, pixel, CPU, memory, file, and timeout limits
 ## Current release blockers
 
 Do not host publicly until all blockers in `security_best_practices_report.md` are closed. In
-particular, the latest published `tue-api-wrapper` currently requires vulnerable `Pillow<12`; real
-professor Alma behavior, disposable TLS staging, backup restore, retention, deletion, privacy notice,
-and provider/subprocessor review remain unverified or incomplete.
+particular, student Alma/ILIAS identifier matching across representative accounts, disposable TLS
+staging, backup restore, retention, deletion, privacy notice, and provider/subprocessor review remain
+unverified or incomplete. The pinned `tue-api-wrapper==0.2.3` and Pillow 12.3 dependency set passes
+the current Python audit.

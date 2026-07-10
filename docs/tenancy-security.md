@@ -8,8 +8,8 @@ authentication.
 
 | Principal              | Authority                                                                         |
 | ---------------------- | --------------------------------------------------------------------------------- |
-| Public                 | Health check and university login only                                            |
-| Authenticated user     | Own account, own professor request, visible course list                           |
+| Public                 | Health check, student university login, and professor signup/login                 |
+| Pending professor      | Own account and approval state; no learner or course-authoring capability          |
 | Enrolled student       | Own unlocked lectures, canvas, assets, tutor turns, quiz events, readiness, reset |
 | Approved professor     | May create a course; gains no tenant-wide content access                          |
 | Course owner           | Manages only the course whose `owner_user_id` matches the session user            |
@@ -18,12 +18,18 @@ authentication.
 Tutor and co-instructor delegation is not implemented. Platform course search and join requests are
 also deferred.
 
+Student identities come only from the university adapter. Professor identities use a separate
+LecturePilot email/password account. Passwords are stored only as Argon2id hashes. Registration
+creates a pending request atomically and grants no role; platform-admin approval revokes existing
+sessions, and the professor must sign in again before course-authoring tools become available.
+Production web builds do not render either development demo login.
+
 ## Route inventory
 
 | Class                       | Routes                                                                                                | Required object check                                                      |
 | --------------------------- | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Public                      | `GET /health`, `POST /auth/login`                                                                     | None; login credentials are never persisted                                |
-| Self-service                | `GET /me`, `POST /auth/logout`, `POST /professor-requests`                                            | Current opaque session                                                     |
+| Public                      | `GET /health`, `POST /auth/login`, `POST /auth/professor/register`, `POST /auth/professor/login`       | Rate-limited; submitted credentials are never logged or returned           |
+| Self-service                | `GET /me`, `POST /auth/logout`, `POST /professor-requests`                                            | Current opaque session; professor requests require a professor account     |
 | Platform administration     | `/platform/professor-requests*`, `POST /platform/users/{id}/disable`                                  | `platform_admin`; no course-content capability                             |
 | Course discovery            | `GET /courses`, `GET /courses/{course}/lectures`                                                      | Database visibility or enrollment; lecture unlock server-side              |
 | Learner-only                | `POST /agent/turn*`, canvas, learning map, quiz answer, readiness, learner reset, workspace assets    | Current session user plus active course enrollment; no learner ID accepted |

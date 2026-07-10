@@ -33,7 +33,7 @@ Source findings: `security_best_practices_report.md`
       different systems.
 - [x] Use Alma `unitId` and ILIAS course `ref_id`/`goto.php/crs/<id>` as the stable identifiers
       exposed by the current wrapper records. Keep a real cross-account fixture check in the staging
-      gate because production professor credential behavior remains unverified.
+      gate because representative student values across both enrollment systems remain unverified.
 - [x] Do not impose a minimum analytics cohort size. Return aggregate data when events exist and an
       explicit no-data result when none exist; never expose learner-level records.
 - [x] Defer co-instructor and tutor invitations. The course creator is the only manager in this
@@ -107,33 +107,36 @@ Gate 1:
 
 - [x] Refactor `TuebingenCourseAdapter` to return authenticated identity and upstream assignments as
       data only. Never accept a role from Alma and never persist the submitted password.
-- [ ] When a professor account is available, run one local, redacted integration check to learn
-      whether Alma returns teaching courses, student-style timetable courses, or identity only. This
-      observation may improve candidate discovery but must not grant the professor role.
-- [x] On login, upsert `users` and `external_identities`, refresh enrollment evidence, and load roles
-      from the database. A new account starts as a student with professor state `not_requested`.
+- [x] Keep the university login student-only. Upsert `users` and `external_identities`, refresh that
+      student's enrollment evidence, and load roles from the database without inferring professor
+      status from Alma or ILIAS.
+- [x] Add separate professor registration and login with normalized email, a user-selected password,
+      and an Argon2id hash in `local_credentials`. The raw password is never persisted or returned.
+- [x] Create the professor identity, tenant membership, pending professor request, credential, and
+      audit event atomically. A pending or rejected professor has no student or professor role.
 - [x] Replace the signed claim cookie with a random opaque session identifier. Store only its hash in
       `sessions`; rotate on login/privilege change, enforce expiry, and support immediate revocation.
 - [x] Make `request_context` load the current enabled user, membership, and session from the database.
       Remove roles and course IDs as self-contained cookie authority.
-- [x] Add `GET /me`, `POST /professor-requests`, and a pending/approved/rejected account status DTO.
+- [x] Add `GET /me`, professor signup/login, and a pending/approved/rejected account status DTO.
 - [x] Add platform-admin endpoints to list and approve/reject requests and disable accounts. Approval
       grants professor eligibility only; it does not create or assign courses.
 - [x] Add a one-time operator CLI to bootstrap the first platform admin by exact external identity.
       Every bootstrap and approval action writes an audit event.
-- [x] Update the UI with request, pending, rejected, and approved states. Keep professor demo identity
-      strictly local/test-only.
+- [x] Update the UI with separate student/professor entry paths and pending, rejected, and approved
+      states. Remove both demo buttons and demo-course state from production builds.
 
 Gate 2:
 
-- [ ] Student credentials, a professor credential fixture, and a disabled-account fixture produce
-      database-derived roles only.
-- [x] The real professor-login response shape is documented without credentials or personal data, or
-      explicitly marked unverified if no professor account is available during this phase.
+- [x] Student and local-professor fixtures produce database-derived roles only; approval revokes the
+      pending session, and a fresh professor login receives the approved role.
+- [x] Professor registration/login responses contain account display data and approval status but no
+      credential or password hash.
 - [ ] Logout, password-independent session revocation, privilege change, fixation rotation, expiry,
       and concurrent-session tests pass.
-- [x] Logs, responses, browser storage, and cookies contain neither university passwords nor role and
-      enrollment authority readable by JavaScript.
+- [x] Logs, responses, browser storage, and cookies contain no university or professor password and
+      no JavaScript-readable session token. Browser role/course metadata is display state only and
+      never backend authority.
 
 ## Phase 3 — Professor-owned course creation and login-time upstream matching
 
@@ -262,17 +265,16 @@ Gate 7:
 
 Final gate:
 
-- [ ] API tests, web tests, quality, production build, dependency scans, secret scan, container scan,
+- [x] API tests, web tests, quality, production build, dependency scans, secret scan, container scan,
       route matrix, agent confinement suite, and `git diff --check` pass.
 - [ ] Live staging verifies TLS, cookies, CSRF, headers, Host/Origin rejection, public ports, non-root
       runtime, enrollment sync, professor approval, course matching, isolation, and backup restore.
 - [ ] `security_best_practices_report.md` is re-reviewed and every public-hosting blocker is closed or
       explicitly accepted by the user before any VM deployment.
 
-Current blockers are the published `tue-api-wrapper==0.2.1` constraint on vulnerable `Pillow<12`,
-the unavailable real professor/cross-account university fixtures, disposable hosted staging and
-restore verification, and approval of retention, deletion, privacy, and provider/subprocessor
-operations. These are intentionally not marked complete or silently accepted.
+Current blockers are representative cross-account student Alma/ILIAS identifiers, disposable
+hosted staging and restore verification, and approval of retention, deletion, privacy, and
+provider/subprocessor operations. These are intentionally not marked complete or silently accepted.
 
 ## Planned implementation checkpoints
 
