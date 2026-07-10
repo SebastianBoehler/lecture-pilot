@@ -15,7 +15,7 @@ export function ProfileView({
   onSessionChange,
 }: {
   session: LoginSession;
-  onBack: () => void;
+  onBack?: () => void;
   onSessionChange: (session: LoginSession) => void;
 }) {
   const { t } = useI18n();
@@ -66,9 +66,11 @@ export function ProfileView({
             <p className="section-label">{t("profile.account")}</p>
             <h1 id="profile-heading">{t("profile.title")}</h1>
           </div>
-          <button className="ghost-button" type="button" onClick={onBack}>
-            {t("lesson.back.dashboard")}
-          </button>
+          {onBack ? (
+            <button className="ghost-button" type="button" onClick={onBack}>
+              {t("lesson.back.dashboard")}
+            </button>
+          ) : null}
         </div>
 
         <dl className="profile-fields">
@@ -90,7 +92,7 @@ export function ProfileView({
           </div>
         </dl>
 
-        {session.auth_transport === "cookie" ? (
+        {session.auth_transport === "cookie" && session.account_type === "professor" ? (
           <section className="profile-settings" aria-labelledby="professor-access-heading">
             <h2 id="professor-access-heading">Professor access</h2>
             <p>Status: {session.professor_status ?? "not_requested"}</p>

@@ -11,7 +11,7 @@ export function usePublishedLectures(
   const [publishedLectureIds, setPublishedLectureIds] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!session) {
+    if (!session || !courseId || lectures.length === 0) {
       setPublishedLectureIds([]);
       return;
     }

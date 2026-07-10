@@ -31,9 +31,63 @@
   color: var(--color-text-secondary);
 }
 
+.login-auth-panel {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+}
+
+.login-role-tabs,
+.professor-auth-modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 7px;
+  padding: 3px;
+  background: var(--color-bg-secondary);
+}
+
+.login-role-tabs button,
+.professor-auth-modes button {
+  border: 0;
+  border-radius: 5px;
+  padding: 8px 10px;
+  color: var(--color-text-secondary);
+  background: transparent;
+  font-weight: 700;
+}
+
+.login-role-tabs button.is-active,
+.professor-auth-modes button.is-active {
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+
 .login-form {
   display: grid;
   gap: 14px;
+}
+
+.professor-auth-heading {
+  display: grid;
+  gap: 4px;
+}
+
+.professor-auth-heading span,
+.login-help {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.login-demo-actions {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--color-border-primary);
+  padding-top: 14px;
 }
 
 .login-form label {
@@ -85,6 +139,17 @@
   color: var(--color-text-primary);
   background: var(--color-bg-secondary);
   border-color: var(--color-border-primary);
+}
+
+.login-form .professor-auth-modes button {
+  border: 0;
+  color: var(--color-text-secondary);
+  background: transparent;
+}
+
+.login-form .professor-auth-modes button.is-active {
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
 }
 
 .login-form button:disabled {

@@ -106,7 +106,11 @@ export function AppRoutes(props: AppRoutesProps) {
     return (
       <ProfileView
         session={session}
-        onBack={() => props.onViewChange("dashboard")}
+        onBack={
+          session.account_type === "professor" && !courseManagerSession
+            ? undefined
+            : () => props.onViewChange(courseManagerSession ? "professor" : "dashboard")
+        }
         onSessionChange={props.onSessionChange}
       />
     );

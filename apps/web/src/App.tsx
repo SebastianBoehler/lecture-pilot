@@ -55,13 +55,19 @@ function App() {
   const [theme, setTheme] = useState<Theme>("light");
   const [locale, setLocale] = useState<Locale>(() => readLocalePreference());
   const [session, setSession] = useStoredLoginSession();
-  const [view, setView] = useState<View>(session ? "dashboard" : "login");
-  const [availableLectures, setAvailableLectures] = useState(lectures);
+  const [view, setView] = useState<View>(() => landingView(session));
+  const [availableLectures, setAvailableLectures] = useState(() =>
+    import.meta.env.DEV ? lectures : [],
+  );
   const [workspaceCourse, setWorkspaceCourse] = useState<UniversityCourse>(
     localDemoSession.courses[0],
   );
-  const [workspaceCourseId, setWorkspaceCourseId] = useState("martius-ml");
-  const [selectedCourseId, setSelectedCourseId] = useState("martius-ml");
+  const [workspaceCourseId, setWorkspaceCourseId] = useState(() =>
+    import.meta.env.DEV ? "martius-ml" : "",
+  );
+  const [selectedCourseId, setSelectedCourseId] = useState(() =>
+    import.meta.env.DEV ? "martius-ml" : "",
+  );
   const [selectedLecture, setSelectedLecture] = useState(lectures[2]);
   const [lessonBackView, setLessonBackView] = useState<"dashboard" | "professor">("dashboard");
   const [panelMode, setPanelMode] = useState<LessonPanelMode | null>(null);
@@ -123,7 +129,7 @@ function App() {
         return;
       }
     } catch {
-      setAvailableLectures(lectures);
+      setAvailableLectures(import.meta.env.DEV ? lectures : []);
     }
   }
 
@@ -286,7 +292,10 @@ function App() {
     clearDemoWorkspaceCourse(courseId);
     setPublishedLectureIds([]);
     if (workspaceCourseId === courseId || selectedCourseId === courseId) {
-      void loadWorkspaceCourse(session ?? localDemoSession, localDemoSession.courses[0].id);
+      void loadWorkspaceCourse(
+        session ?? localDemoSession,
+        import.meta.env.DEV ? localDemoSession.courses[0].id : "",
+      );
     }
   }
 
@@ -327,7 +336,7 @@ function App() {
           session={session}
           theme={theme}
           onBrand={() => {
-            setView(session ? "dashboard" : "login");
+            setView(landingView(session));
             setPanelMode(null);
           }}
           onLogout={handleLogout}
@@ -383,7 +392,7 @@ function App() {
           workspaceCourseId={workspaceCourseId}
           onLogin={(nextSession) => {
             setSession(nextSession);
-            changeView("dashboard");
+            changeView(landingView(nextSession));
             void loadWorkspaceCourse(nextSession);
           }}
           onSessionChange={setSession}
@@ -441,3 +450,11 @@ function App() {
 }
 
 export default App;
+
+function landingView(session: LoginSession | null): View {
+  if (!session) return "login";
+  if ((session.account_type ?? "student") === "professor") {
+    return canManageCourses(session) ? "professor" : "profile";
+  }
+  return "dashboard";
+}

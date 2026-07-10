@@ -10,7 +10,7 @@ import {
   UserRound,
 } from "lucide-react";
 
-import { canManageCourses } from "./authz";
+import { canManageCourses, isStudentAccount } from "./authz";
 import { useI18n } from "./i18n";
 import type { LoginSession, Theme, View } from "./types";
 
@@ -78,7 +78,7 @@ export function AppHeader({
             <span>{t("nav.courseBuilder")}</span>
           </button>
         </nav>
-      ) : session ? (
+      ) : isStudentAccount(session) ? (
         <nav className="top-primary-nav" aria-label={t("nav.student")}>
           <button
             className={`top-nav-button ${activeView === "dashboard" ? "is-active" : ""}`}

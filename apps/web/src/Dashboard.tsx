@@ -188,7 +188,9 @@ function buildCourseGroups(
     ? enrolledCourses.map((course) =>
         buildEnrolledCourseGroup(course, workspaceCourse, lectures, publishedLectureIds, labels),
       )
-    : [buildDiscoverableCourseGroup(workspaceCourse, lectures, publishedLectureIds, labels)];
+    : hasWorkspaceAccess(workspaceCourse)
+      ? [buildDiscoverableCourseGroup(workspaceCourse, lectures, publishedLectureIds, labels)]
+      : [];
 
   if (
     enrolledCourses.length &&

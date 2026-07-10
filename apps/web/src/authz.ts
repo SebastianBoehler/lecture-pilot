@@ -1,9 +1,13 @@
 import type { LoginSession, TenantRole } from "./types";
 
-const courseManagementRoles = new Set<TenantRole>(["tenant_admin", "professor"]);
+const courseManagementRoles = new Set<TenantRole>(["professor"]);
 
 export function canManageCourses(session: LoginSession | null) {
   return Boolean(courseManagerRole(session));
+}
+
+export function isStudentAccount(session: LoginSession | null) {
+  return Boolean(session && (session.account_type ?? "student") === "student");
 }
 
 export function courseManagerHeaders(session: LoginSession): Record<string, string> {

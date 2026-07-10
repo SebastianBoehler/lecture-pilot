@@ -228,6 +228,7 @@ export type LoginSession = {
   email?: string | null;
   term: string;
   tenant_id?: string;
+  account_type?: "student" | "professor";
   roles?: TenantRole[];
   access_token?: string | null;
   auth_transport?: "bearer" | "cookie" | "dev_headers";

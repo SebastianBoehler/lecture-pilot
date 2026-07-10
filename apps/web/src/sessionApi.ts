@@ -7,10 +7,33 @@ type TuebingenLoginInput = {
   password: string;
 };
 
+type ProfessorLoginInput = {
+  email: string;
+  password: string;
+};
+
+type ProfessorRegistrationInput = ProfessorLoginInput & {
+  display_name: string;
+};
+
 export async function loginWithTuebingen(input: TuebingenLoginInput): Promise<LoginSession> {
+  return createSession("/auth/login", input);
+}
+
+export async function loginProfessor(input: ProfessorLoginInput): Promise<LoginSession> {
+  return createSession("/auth/professor/login", input);
+}
+
+export async function registerProfessor(
+  input: ProfessorRegistrationInput,
+): Promise<LoginSession> {
+  return createSession("/auth/professor/register", input);
+}
+
+async function createSession(path: string, input: object): Promise<LoginSession> {
   let response: Response;
   try {
-    response = await fetch(apiUrl("/auth/login"), {
+    response = await fetch(apiUrl(path), {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },

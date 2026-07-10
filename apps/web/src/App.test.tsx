@@ -10,7 +10,7 @@ describe("LecturePilot app shell", () => {
   it("starts with the university login form", () => {
     render(<App />);
 
-    expect(screen.getByRole("heading", { name: /sign in with uni tübingen/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /welcome to lecturepilot/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/zdv username/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/term/i)).not.toBeInTheDocument();
@@ -66,6 +66,53 @@ describe("LecturePilot app shell", () => {
     );
   });
 
+  it("lands a newly registered professor on pending approval without student navigation", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) => {
+        if (String(input).endsWith("/auth/professor/register")) {
+          return Promise.resolve(
+            jsonResponse(
+              {
+                username: "Professor Ada Lovelace",
+                email: "ada@example.edu",
+                term: "Sommer 2026",
+                tenant_id: "tenant-tuebingen",
+                account_type: "professor",
+                roles: [],
+                professor_status: "pending",
+                csrf_token: "csrf-token-with-at-least-thirty-two-characters",
+                courses: [],
+              },
+              201,
+            ),
+          );
+        }
+        return Promise.resolve(jsonResponse([]));
+      }),
+    );
+    render(<App />);
+
+    await user.click(screen.getByRole("tab", { name: /professor/i }));
+    await user.click(screen.getByRole("button", { name: /create account/i }));
+    await user.type(screen.getByLabelText(/full name/i), "Professor Ada Lovelace");
+    await user.type(screen.getByLabelText(/^email$/i), "ada@example.edu");
+    await user.type(screen.getByLabelText(/^password$/i), "correct horse battery staple");
+    await user.type(screen.getByLabelText(/confirm password/i), "correct horse battery staple");
+    await user.click(screen.getByRole("button", { name: /create professor account/i }));
+
+    expect(await screen.findByRole("heading", { name: /profile/i })).toBeInTheDocument();
+    expect(screen.getByText(/status: pending/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("navigation", { name: /student workspace navigation/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("navigation", { name: /professor workspace navigation/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^dashboard$/i })).not.toBeInTheDocument();
+  });
+
   it("opens the profile view and logs out", async () => {
     const user = userEvent.setup();
     vi.stubGlobal("fetch", mockLoginFetch({ published: true }));
@@ -84,7 +131,7 @@ describe("LecturePilot app shell", () => {
 
     await user.click(screen.getByRole("button", { name: /log out/i }));
 
-    expect(screen.getByRole("heading", { name: /sign in with uni tübingen/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /welcome to lecturepilot/i })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /course workspaces/i })).not.toBeInTheDocument();
   });
 
@@ -309,4 +356,11 @@ async function logIn(user: ReturnType<typeof userEvent.setup>) {
 
 function renderPublishedApp() {
   render(<App />);
+}
+
+function jsonResponse(payload: unknown, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
 }
