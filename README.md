@@ -49,7 +49,9 @@ This repository is intentionally small but runnable:
   the configured provider model.
 - React/Vite frontend with dashboard and focused lesson workspace.
 - TUE API login form backed by the local FastAPI API and `tue-api-wrapper`.
-- Tenant/profile policy foundation for professors, tutors, and students.
+- Postgres-backed users, professor approval, opaque sessions, course ownership,
+  Alma/ILIAS enrollment evidence, audit events, and durable quotas.
+- Capability-scoped, symlink-safe learner and course-builder workspaces.
 - Light and dark mode.
 - Backend and frontend tests.
 - CI, Dockerfiles, and Compose starter.
@@ -114,6 +116,10 @@ See [docs/agent-tool-contracts.md](docs/agent-tool-contracts.md) for the
 profile-scoped tutor tool contracts and UI activity tags.
 See [docs/tenancy-security.md](docs/tenancy-security.md) for the tenant,
 profile, and secure course-material upload contract.
+See [docs/security-operations.md](docs/security-operations.md) for backup,
+restore, incident, and remaining retention requirements.
+See [security_best_practices_report.md](security_best_practices_report.md) for
+the current pre-deployment decision and open blockers.
 
 ## Local Development
 
@@ -133,15 +139,25 @@ Backend:
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e "apps/api[test,agent]"
+export DATABASE_URL=postgresql://lecturepilot:lecturepilot-test@127.0.0.1:55432/lecturepilot_test
+alembic -c apps/api/alembic.ini upgrade head
 pytest apps/api/tests
 uvicorn lecturepilot.app:app --app-dir apps/api/src --reload
 ```
+
+The full API suite requires a migrated PostgreSQL test database. CI provisions
+Postgres 16 automatically; local development may use any disposable Postgres
+instance at the exported URL.
 
 Live Uni Tübingen login also needs the wrapper package in the API environment:
 
 ```bash
 pip install -e "apps/api[tuebingen]"
 ```
+
+Do not use the current published wrapper extra for a live release until its
+`Pillow<12` constraint is updated and the security audit is clean. Local wrapper
+integration remains useful for redacted development checks.
 
 When developing both repos locally, use the editable wrapper checkout instead:
 

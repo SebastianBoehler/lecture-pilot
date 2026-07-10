@@ -1,298 +1,193 @@
-# LecturePilot Security Review
+# LecturePilot pre-deployment security review
 
-Date: 2026-07-09
+Date: 2026-07-10<br>
+Reviewed baseline: `main` at `01608fe`, plus the local remediation worktree<br>
+Verdict: **Do not deploy live yet**
 
-## Executive Summary
+## Executive summary
 
-Follow-up changes addressed the critical and high findings in this report.
-Deployment auth fails closed outside explicit local/test environments, Compose
-forces session auth with a required secret, course/workspace asset routes require
-auth, course enrollment is enforced, dynamic lecture dates are gated, and the
-tutor no longer exposes the global material root. Additional hardening now adds
-request body limits, security headers, production docs disabling, dependency
-locks, API rate limits, and HTTPOnly cookie login sessions.
+The original application-level high findings are remediated locally. LecturePilot now has
+database-backed identity, approval, roles, course ownership, enrollments, opaque revocable sessions,
+CSRF protection, self-only learner workspaces, aggregate-only professor analytics, symlink-safe
+agent/file capabilities, guarded uploads and parsers, durable quotas, and a same-origin hardened
+container stack.
 
-Positive controls observed: centralized route auth dependencies, path-aware
-upload validation, constrained learner write roots, React markdown without raw
-HTML plugins, KaTeX `trust: false`, production-mode session auth tests, locked
-install paths, and app-level throttling for login/chat/paid endpoints.
+One high-severity dependency blocker remains: the latest published `tue-api-wrapper==0.2.1`
+requires `Pillow<12`, while the audited Pillow fixes require 12.2 or newer. Forcing an unsupported
+override was deliberately rejected. Real professor Alma behavior, live TLS/VM isolation, restore,
+and the legal retention/privacy policy are also unverified. No VM access or deployment occurred.
 
-Scope: FastAPI backend, React/Vite frontend, Docker/Compose deployment files,
-auth/assets/path-policy tests, tracked secret scan, and a second read-only
-code-review pass.
+No minimum analytics cohort is imposed. Course owners receive only aggregate values that actually
+exist, or an explicit no-data result. Platform course search, join requests, tutor invitations, and
+co-instructor delegation are not implemented.
 
-## Critical Findings
+## Confirmed authorization model
 
-### C-1. Deployment Defaults Can Leave Forged Header Auth Enabled
+| Capability                                                      | Holder                  |
+| --------------------------------------------------------------- | ----------------------- |
+| Approve/reject professor requests and disable accounts          | Platform administrator  |
+| Create a course                                                 | Approved professor      |
+| Manage source, schedule, publication, media, analytics, archive | Exact course owner      |
+| Learn from published and unlocked course material               | Active enrolled student |
+| Canvas, tutor, memory, generated files, readiness, reset        | That learner only       |
 
-**Rule:** FASTAPI-AUTH-001
+Platform administrators do not gain course-content access. Professor status grants course creation,
+not access to all courses. Details and the route inventory are in `docs/tenancy-security.md`.
 
-**Location:** `apps/api/src/lecturepilot/session_auth.py:28`,
-`apps/api/src/lecturepilot/api_auth.py:19`, `deploy/compose.yml:6`,
-`.env.example:1`
+## University course matching
 
-**Impact:** If the checked-in Compose flow is exposed without extra production
-env, a network user can forge `X-User-Role: professor` and call
-professor/admin routes.
+LecturePilot does not attempt to enumerate Alma or ILIAS. A professor creates a platform course with
+title and term. Student login returns only that student's memberships.
 
-**Status:** Fixed in follow-up changes by making env-less auth default to
-session mode, rejecting dev-header auth outside local/test envs, and forcing
-production session auth in `deploy/compose.yml`.
+- Alma `unitId` and ILIAS course/ref IDs are required as stable upstream identifiers.
+- An existing `(tenant, source, external ID, term)` link is reused.
+- A new link requires exactly one normalized exact title plus exact term match.
+- Zero or multiple platform matches grant no enrollment.
+- After binding, the stable upstream ID remains authoritative across title changes.
 
-### C-2. Course And Learner Asset Routes Are Public
+Evidence: `external_course_sync.py:21-193`, `tuebingen_adapter.py:23-140`, and
+`test_database_security.py`.
 
-**Rule:** FASTAPI-FILES-001, FASTAPI-AUTHZ-001
+## Finding status
 
-**Location:** `apps/api/src/lecturepilot/app.py:253`,
-`apps/api/src/lecturepilot/app.py:277`,
-`apps/api/src/lecturepilot/storage_layout.py:22`
+### H-1 — Identity, sessions, and professor roles: remediated locally
 
-**Impact:** Anyone with a URL can fetch professor course media or learner-owned
-generated assets without a session, tenant check, enrollment check, or learner
-ownership check.
+SQLAlchemy/Postgres/Alembic models now store users, external identities, tenant memberships,
+professor requests, sessions, courses, external refs, enrollments, audit events, and quotas.
+Sessions are random opaque values; only hashes are stored. Approval and disablement revoke existing
+sessions. Production fails when the database is absent or behind the current migration.
 
-**Status:** Fixed in follow-up changes by moving asset routes into
-`asset_routes.py`, adding `request_context`, enforcing same-tenant checks for
-course assets, and enforcing learner ownership or teaching role for workspace
-assets. The frontend now renders protected media through authenticated blob
-fetches rather than raw bearer-less `<img>` / `<video>` requests.
+Evidence: `database.py:21-83`, `session_store.py:34-103`, `identity_repository.py:23-184`,
+`approval_routes.py:13-87`, and migrations `20260710_0001`/`0002`.
 
-## High Findings
+### H-2 — Cross-course and learner access: remediated locally
 
-### H-1. Same-Tenant Access Is Treated As Course Enrollment
+Course authority comes from `courses.owner_user_id`. Every learner route derives the learner from
+the session; learner IDs were removed from agent, quiz, canvas, and reset inputs. Workspace assets
+are self-only. Professor analytics expose aggregate records without learner keys, text, chats,
+canvases, or readiness attempts.
 
-**Rule:** FASTAPI-AUTHZ-001
+Evidence: `api_auth.py:85-121`, `course_routes.py:49-265`, `analytics_routes.py`,
+`course_canvas_routes.py`, and `test_database_security.py`.
 
-**Location:** `apps/api/src/lecturepilot/app.py:105`,
-`apps/api/src/lecturepilot/course_canvas_routes.py:120`,
-`apps/api/src/lecturepilot/tenancy.py:54`
+### H-3 — CSRF: remediated locally
 
-**Impact:** Any valid student in the tenant can discover and access published
-course workspaces if they know or can list the course id, even if they are not
-enrolled.
+Cookie-authenticated mutations require the session-bound token, an allowed exact Origin, and Fetch
+Metadata validation. The frontend adds the header centrally. Missing token, wrong Origin, and valid
+same-origin cases have regression tests.
 
-**Evidence before fix:** `/courses` returns all tenant courses after only
-`require_same_tenant()` (`app.py:105-111`). Stored workspace lectures are
-returned as `unlocked: True` for every lecture (`app.py:138-145`). Canvas access
-uses `require_learner_workspace_access()`, which checks same tenant and
-self/teaching-role visibility but not enrollment (`course_canvas_routes.py:120-145`;
-`tenancy.py:54-64`). `docs/tenancy-security.md:94-99` still lists enrollment
-tables as required before production.
+Evidence: `csrf.py:24-59`, `session_store.py`, `apps/web/src/authz.ts`, and
+`test_database_security.py`.
 
-**Status:** Fixed with signed/dev `course_ids` in `TenantContext` plus shared
-`course_access` checks across course listing, lectures, canvas, readiness,
-analytics, agent, and asset routes.
+### H-4 — Symlink/path escape: remediated locally
 
-### H-2. Lecture Date Unlock Is Not Enforced On Published Dynamic Courses
+`WorkspaceFS` performs logical-root resolution, Unicode normalization, hidden/traversal rejection,
+descriptor-relative no-follow opens, and hard-link rejection. Agent tools, source scanning, uploads,
+and asset serving use the same boundary. The learner agent retains recursive navigation and writes
+within only its declared writable roots.
 
-**Rule:** FASTAPI-AUTHZ-001
+Evidence: `workspace_fs.py:17-179`, `workspace_capability.py`, `safe_course_files.py`,
+`test_workspace_fs_security.py`, and `test_agent_tool_roots_security.py`.
 
-**Location:** `apps/api/src/lecturepilot/app.py:138`,
-`apps/api/src/lecturepilot/course_canvas_routes.py:132`
+### H-5 — Multipart denial of service: remediated locally
 
-**Impact:** Future lecture material can be exposed early if it is published or
-if a student guesses a lecture id.
+`python-multipart` is pinned to 0.0.32. Request body limits remain enabled, and accepted uploads are
+streamed to quarantine rather than read wholly into memory.
 
-**Evidence before fix:** For stored workspaces, `/courses/{course_id}/lectures` returns
-every lecture with `unlocked: True` (`app.py:138-145`). The canvas route checks
-publication state before reading the document, but not `lecture.date <= today`
-(`course_canvas_routes.py:132-145`).
+Evidence: `apps/api/pyproject.toml`, `requirements.lock`, `secure_upload.py:22-134`.
 
-**Status:** Fixed by resolving lectures through server-side schedule data and
-denying future lectures to non-review roles across learner course/lecture routes.
+### H-6 — Model authority and cost abuse: remediated locally
 
-### H-3. Tutor Read Roots Can Expose The Whole Material Root
+The browser cannot choose a model. The server validates an allowlist. Postgres atomically enforces
+daily turns, reserved tokens, image counts, and concurrent turns across workers and restarts.
 
-**Rule:** FASTAPI-AUTHZ-001
+Evidence: `providers.py`, `usage_quota.py:38-181`, `agent_turn_orchestration.py`, and
+`test_usage_quota.py`.
 
-**Location:** `apps/api/src/lecturepilot/agent_tool_workspace.py:17`,
-`apps/api/src/lecturepilot/agent_tool_schemas.py:8`,
-`apps/api/src/lecturepilot/canvas_workspace_config.py:15`
+### H-7 — Deployment path and persistence: implemented, not live-verified
 
-**Impact:** If the configured material root contains multiple courses or future
-lectures, a student prompt can induce the tutor to search/read unrelated private
-material and summarize it.
+The web build uses same-origin `/api`; Caddy provides HTTPS and redirects; only 80/443 are published.
+API, web, and database stay internal. The API runs as UID 10001 with a read-only root, dropped
+capabilities, resource limits, and a persisted `/app/storage` volume. Migrations complete before API
+startup. Gateway, web, and database images were rebuilt on patched runtimes.
 
-**Evidence before fix:** The agent root map exposes `/course/materials` as
-`canvas_workspace.material_root` (`agent_tool_workspace.py:17-27`). The default
-tutor profile includes `read`, and evidence mode adds `find` and `grep`
-(`agent_tool_schemas.py:8-34`). The material root can be any configured
-`LECTUREPILOT_COURSE_MATERIAL_ROOT` (`canvas_workspace_config.py:15-18`).
+Evidence: `deploy/compose.yml`, `deploy/Caddyfile`, `deploy/Caddy.Dockerfile`,
+`deploy/Postgres.Dockerfile`, and both application Dockerfiles.
 
-**Status:** Fixed by removing global `/course/materials` from learner tutor roots
-and updating the tool-contract docs and security regression coverage.
+### M-1 — Unsafe uploads and parsing: remediated locally
 
-## Medium Findings
+Uploads use per-type byte limits, MIME/signature checks, quarantine, atomic no-overwrite promotion,
+and active SVG rejection. PDF preview, slide rendering, and extraction run in a bounded process pool
+with page/pixel/time/CPU/memory/file limits. Production-style worker tests passed on macOS and Linux.
 
-### M-1. Risky Upload Formats Are Served Same-Origin Without Production Controls
+Evidence: `secure_upload.py`, `bounded_processing.py:16-69`, `pdf_preview.py`,
+`pdf_slide_assets.py`, `pdf_extract.py`, and `test_secure_upload.py`.
 
-**Rule:** FASTAPI-UPLOAD-001, FASTAPI-FILES-001
+### M-2 — Readiness answers before attempt: remediated locally
 
-**Location:** `apps/api/src/lecturepilot/workspace.py:36`,
-`apps/api/src/lecturepilot/latex_canvas_text.py:173`,
-`apps/api/src/lecturepilot/app.py:275`
+The public check DTO excludes answer indices and rubrics. Submission reconstructs the canonical
+server-side check before scoring. Browser and API tests confirm the answer is absent before submit.
 
-**Impact:** Malicious or compromised professor material can become active
-same-origin content when opened directly, especially SVG. Malware scanning and
-content-disarm are also absent.
+Evidence: `exam_readiness.py:46-76`, `exam_readiness_routes.py`, and readiness tests.
 
-**Evidence:** Professor uploads allow SVG, PDFs, videos, Python, and notebooks
-(`workspace.py:36-55`). Browser asset suffixes include `.svg` and `.pdf`
-(`latex_canvas_text.py:173`), and matching assets are served inline by
-`FileResponse` (`app.py:253-275`). `docs/tenancy-security.md:58-63` already
-calls out SVG/video MIME handling, sanitization or attachment serving, and
-signed URLs.
+### M-3 — Hostile source instructions: reduced
 
-**Fix:** Serve risky uploads as attachments or from an isolated asset origin,
-rasterize/sanitize SVG and PDF previews before inline rendering, and add MIME
-sniffing plus malware scanning before publication.
+Prompts label source, canvas, tool output, and memory as untrusted. Durable memory and paid image
+actions require an explicit current learner request. Typed tools and capabilities still enforce the
+real boundary if a model follows hostile content.
 
-### M-2. Large Uploads Are Read Fully Into Memory Before Size Enforcement
+Evidence: `model_client.py`, `agent_side_effect_tools.py`, and agent tool tests.
 
-**Rule:** FASTAPI-LIMITS-001
+### M-4/L-1 — Privacy, audit, and response leakage: partially remediated
 
-**Location:** `apps/api/src/lecturepilot/app.py:224`,
-`apps/api/src/lecturepilot/workspace.py:42`
+Audit records cover login, account changes, course lifecycle, upstream binding, uploads,
+publication, aggregate analytics, and reset. Public DTOs omit host storage paths and unnecessary
+publisher identity. Course deletion is a soft archive. Automated physical deletion, learner data
+export/deletion, approved retention periods, legal notice, and subprocessor inventory remain open.
 
-**Impact:** A professor account, or anyone in dev-header mode, can force large
-request bodies into API memory.
+Evidence: `audit.py`, route modules, `docs/security-operations.md`.
 
-**Evidence:** `upload_course_material()` calls `payload = await file.read()`
-before checking `len(payload)` (`app.py:224-244`). The policy permits PDFs up to
-100 MB and videos up to 500 MB (`workspace.py:42-55`). No reverse-proxy body
-limit is visible in `deploy/compose.yml`.
+## Remaining live-release blockers
 
-**Status:** Mitigated with `RequestBodyLimitMiddleware` and
-`LECTUREPILOT_MAX_REQUEST_BYTES` defaulting to a generous 600 MiB cap. Compose
-sets the same default. Accepted uploads still read into memory after the request
-passes the cap, so streaming upload storage remains a future improvement rather
-than a release blocker for the current test deployment.
+1. **Pillow dependency (high):** `pip-audit` reports seven findings and Trivy reports three high
+   findings for Pillow 11.3. `tue-api-wrapper==0.2.1` declares `pillow>=10.4,<12`; the fixes require
+   Pillow 12.2+. Release requires an updated compatible wrapper constraint and a fresh login/parser
+   regression run.
+2. **Real university fixtures:** professor credentials were not available. Verify whether professor
+   login yields identity only or teaching/student memberships, and confirm stable Alma/ILIAS IDs
+   across two real accounts. This observation must never grant the professor role.
+3. **Disposable staging:** verify public TLS, redirects, trusted Host, Origin/CSRF rejection, secure
+   cookies, public ports, non-root runtime, approval, matching, isolation, quotas, and backup/restore.
+4. **Privacy operations:** approve controller/contact, legal basis, provider/subprocessor inventory,
+   retention periods, learner export/deletion, backup expiry, and incident-notification ownership.
 
-### M-3. Video URL Fallbacks Lack A Shared URL Allowlist
+## Verification evidence
 
-**Rule:** REACT-URL-001
+Passed locally:
 
-**Location:** `apps/web/src/CanvasBlocks.tsx:190`,
-`apps/web/src/WorkspaceFilesPanel.tsx:80`,
-`apps/api/src/lecturepilot/canvas_models.py:24`
+- API: 265 tests.
+- Web: 76 tests; TypeScript/Vite production build.
+- Quality: ESLint, Ruff, and Knip; existing React hook warnings remain non-failing.
+- PostgreSQL: Alembic drift check and downgrade/upgrade; production schema verification.
+- Security: CSRF/object authorization, Alma+ILIAS matching, symlink/hard-link/Unicode confinement,
+  upload validation, quotas, pre-attempt answer withholding, and bounded Linux worker.
+- Dependencies: npm production audit reports zero vulnerabilities. Python direct findings were
+  upgraded; only the Pillow/upstream-wrapper blocker remains.
+- Secrets: Trivy repository secret scan found no secret.
+- Containers: gateway, web, API, and database images build; API is UID 10001; production JS contains
+  no localhost API URL; Caddy config validates. Gateway, web, and database images have zero fixed
+  high/critical findings. API Debian packages are clean; its three Trivy highs are Pillow.
+- Browser: local professor course creation, guarded upload/index, schedule inference, media search,
+  generated draft, publication, separate-student dashboard/canvas, quiz, and tutor request passed
+  with zero final-page console errors. The run caught and fixed discovered-lecture authorization,
+  oversized provider metadata, and draft-preview course-scope regressions.
 
-**Impact:** A bad stored media URL can become a clickable unsafe navigation
-sink.
+Not performed: real professor login, real cross-account identifier comparison, disposable hosted
+staging, live VM/SSH, TLS/browser verification, restore rehearsal, provider data-retention review,
+or legal/privacy approval.
 
-**Evidence:** `CanvasBlock.asset_url` is only a bounded string
-(`canvas_models.py:24-25`). Non-YouTube, non-native video fallbacks render
-`<a href={block.asset_url}>` and `<a href={url}>` without the `safeHref()` check
-used by `MathText.SafeLink` (`CanvasBlocks.tsx:190-207`;
-`WorkspaceFilesPanel.tsx:80-85`). Current generated model sections do not allow
-arbitrary video blocks, but authored/imported canvas paths can still carry
-external media URLs.
+## Deployment decision
 
-**Fix:** Centralize a URL sanitizer/allowlist for all `href`, `src`, iframe, and
-video contexts. Allow only same-origin relative URLs plus explicit YouTube HTTPS
-origins for video links.
-
-### M-4. Security Headers And OpenAPI Exposure Are Not Controlled In Repo
-
-**Rule:** FASTAPI-HEADERS-001, FASTAPI-OPENAPI-001, REACT-HEADERS-001
-
-**Location:** `apps/api/src/lecturepilot/app.py:58`,
-`apps/api/src/lecturepilot/app.py:71`, `apps/web/Dockerfile:11`
-
-**Impact:** Public deployments expose API surface details and lack browser
-defense-in-depth unless an external proxy provides headers.
-
-**Evidence:** The API constructs `FastAPI(...)` with default docs/openapi URLs
-(`app.py:58`). The only visible middleware is CORS (`app.py:71-77`). The web
-container uses default nginx without checked-in CSP, frame, nosniff, or
-referrer-policy headers (`apps/web/Dockerfile:11-13`).
-
-**Status:** Fixed in repo. `SecurityHeadersMiddleware` now adds CSP, nosniff,
-frame-deny, no-referrer, and permissions-policy headers. HSTS is available via
-`LECTUREPILOT_HSTS_ENABLED=true` but intentionally opt-in to avoid accidental
-local/domain lockout. `LECTUREPILOT_ENV=production` disables FastAPI docs,
-OpenAPI, and ReDoc. The web nginx config also sets CSP and related browser
-headers for static assets. A real deployed-header check is still required after
-deployment.
-
-## Low Findings And Verification Gaps
-
-### L-1. Dependency Builds Are Not Reproducible
-
-**Rule:** REACT-SUPPLY-001, FASTAPI-SUPPLY-001
-
-**Location:** `.github/workflows/ci.yml:39`, `apps/web/Dockerfile:6`,
-`apps/api/pyproject.toml:7`, `apps/api/Dockerfile:9`
-
-**Evidence before fix:** There is no root package manager lockfile. CI and web Docker use
-`npm install` (`.github/workflows/ci.yml:39-40`; `apps/web/Dockerfile:6-9`).
-Python deployment dependencies use broad lower bounds (`pyproject.toml:7-33`)
-and `pip install -e` (`apps/api/Dockerfile:9`).
-
-**Status:** Fixed for current repo builds. `package-lock.json` is committed, CI
-and the web Docker image use `npm ci`, direct API dependencies are pinned, and
-`apps/api/requirements.lock` constrains API installs. `npm audit --omit=dev`
-reported 0 production vulnerabilities.
-
-### L-2. Login, Chat, And Paid Endpoint Rate Limiting Is Not Visible
-
-**Rule:** FASTAPI-AUTH-001
-
-**Location:** `apps/api/src/lecturepilot/app.py:113`
-
-**Evidence before fix:** `/auth/login` forwards username/password to the Tuebingen adapter
-and returns 401/503, but no app-level rate limiting is visible
-(`app.py:113-128`).
-
-**Status:** Fixed for single-process/self-hosted test deployment. `RateLimitMiddleware`
-now applies fixed-window limits to `/auth/login`, `/agent/turn`,
-`/agent/turn/stream`, course canvas draft generation, lecture scheduling,
-exam-readiness attempts, and YouTube media search. Defaults are intentionally
-generous and configurable through `LECTUREPILOT_RATE_LIMIT_*`. A distributed
-limiter should replace this if the API is scaled across workers or nodes.
-
-### L-3. Session Tokens Are JavaScript-Readable
-
-**Rule:** REACT-AUTH-001
-
-**Location:** `apps/web/src/loginSessionStorage.ts:31`,
-`apps/api/src/lecturepilot/session_auth.py:39`
-
-**Evidence before fix:** The frontend stores bearer access tokens in `sessionStorage`
-(`loginSessionStorage.ts:31-35`). Default token lifetime is 480 minutes
-(`session_auth.py:39`).
-
-**Status:** Fixed for real login. `/auth/login` now sets an HTTPOnly SameSite
-session cookie and returns no browser-readable access token. Frontend fetches
-include credentials and persist only tokenless session metadata. Bearer/dev
-headers remain only for explicit local/demo flows and tests.
-
-## Verification Performed
-
-```bash
-pytest apps/api/tests -q
-npm run test --workspace apps/web
-npm run build --workspace apps/web
-npm run lint:api
-npm run lint:web
-npm ci --ignore-scripts --dry-run
-npm audit --omit=dev
-python -m pip install --dry-run -c apps/api/requirements.lock -e "apps/api[test,agent]"
-npx prettier --check <touched web/config files>
-python -m ruff format --check <touched api files>
-git diff --check
-```
-
-Result: API `234 passed`; web `72 passed`; web build passed; API lint passed;
-web lint had 6 existing hook-dependency warnings; npm production audit reported
-0 vulnerabilities; npm lockfile dry-run passed with local Node 23.11.0 engine
-warnings; pip lock dry-run passed; formatting and diff whitespace passed.
-
-No full dynamic penetration test or deployed-header check was performed.
-
-## Release Recommendation
-
-The critical/high release blockers from this review are fixed. For student and
-first-lecture testing, the remaining security work is production hardening:
-sanitized/isolated handling for risky uploaded formats, a shared URL allowlist
-for every media/link sink, a deployed-header/cookie verification pass, and a
-distributed rate limiter before multi-node scaling.
+Do not deploy to the live VM. Resolve the Pillow/wrapper blocker, complete the real university
+fixture check, approve privacy/retention operations, and pass disposable staging. The current work is
+a locally verified remediation implementation, not a production authorization.

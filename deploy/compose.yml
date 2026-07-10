@@ -1,43 +1,114 @@
 services:
+  gateway:
+    build:
+      context: ..
+      dockerfile: deploy/Caddy.Dockerfile
+    environment:
+      LECTUREPILOT_DOMAIN: ${LECTUREPILOT_DOMAIN:?Set the public HTTPS hostname}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - lecturepilot-caddy-data:/data
+      - lecturepilot-caddy-config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_started
+    restart: unless-stopped
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: [no-new-privileges:true]
+
   api:
     build:
       context: ..
       dockerfile: apps/api/Dockerfile
     env_file:
       - ../.env
-    environment:
-      DATABASE_URL: postgresql://lecturepilot:${LECTUREPILOT_POSTGRES_PASSWORD:-lecturepilot-dev}@db:5432/lecturepilot
+    environment: &api-environment
+      DATABASE_URL: postgresql://lecturepilot:${LECTUREPILOT_POSTGRES_PASSWORD:?Set a strong database password}@db:5432/lecturepilot
       LECTUREPILOT_ENV: production
       LECTUREPILOT_AUTH_MODE: session
-      LECTUREPILOT_SESSION_SECRET: ${LECTUREPILOT_SESSION_SECRET:?Set LECTUREPILOT_SESSION_SECRET before deployment}
+      LECTUREPILOT_ALLOWED_ORIGINS: https://${LECTUREPILOT_DOMAIN:?Set the public HTTPS hostname}
+      LECTUREPILOT_ALLOWED_HOSTS: ${LECTUREPILOT_DOMAIN:?Set the public HTTPS hostname}
+      LECTUREPILOT_HSTS_ENABLED: "true"
+      LECTUREPILOT_WORKSPACE_ROOT: /app/storage
       LECTUREPILOT_MAX_REQUEST_BYTES: ${LECTUREPILOT_MAX_REQUEST_BYTES:-629145600}
       LECTUREPILOT_RATE_LIMIT_ENABLED: ${LECTUREPILOT_RATE_LIMIT_ENABLED:-true}
-      LECTUREPILOT_RATE_LIMIT_LOGIN_PER_MINUTE: ${LECTUREPILOT_RATE_LIMIT_LOGIN_PER_MINUTE:-30}
-      LECTUREPILOT_RATE_LIMIT_CHAT_PER_MINUTE: ${LECTUREPILOT_RATE_LIMIT_CHAT_PER_MINUTE:-120}
-      LECTUREPILOT_RATE_LIMIT_PAID_PER_MINUTE: ${LECTUREPILOT_RATE_LIMIT_PAID_PER_MINUTE:-60}
-    ports:
-      - "8000:8000"
+    expose: ["8000"]
     volumes:
-      - lecturepilot-workspaces:/app/storage/workspaces
+      - lecturepilot-storage:/app/storage
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 256
+    mem_limit: 2g
+    cpus: 2
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    command: [alembic, -c, apps/api/alembic.ini, upgrade, head]
+    environment: *api-environment
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
 
   db:
-    image: postgres:16-alpine
+    build:
+      context: ..
+      dockerfile: deploy/Postgres.Dockerfile
     environment:
       POSTGRES_DB: lecturepilot
       POSTGRES_USER: lecturepilot
-      POSTGRES_PASSWORD: ${LECTUREPILOT_POSTGRES_PASSWORD:-lecturepilot-dev}
+      POSTGRES_PASSWORD: ${LECTUREPILOT_POSTGRES_PASSWORD:?Set a strong database password}
+    expose: ["5432"]
     volumes:
       - lecturepilot-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U lecturepilot -d lecturepilot]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
 
   web:
     build:
       context: ..
       dockerfile: apps/web/Dockerfile
-    ports:
-      - "8080:80"
-    depends_on:
-      - api
+    expose: ["80"]
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:size=32m
+      - /var/run:size=4m
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, SETGID, SETUID, NET_BIND_SERVICE]
+    security_opt: [no-new-privileges:true]
 
 volumes:
+  lecturepilot-caddy-config:
+  lecturepilot-caddy-data:
   lecturepilot-postgres:
-  lecturepilot-workspaces:
+  lecturepilot-storage:

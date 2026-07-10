@@ -35,6 +35,7 @@
     "typescript-eslint": "^8.63.0"
   },
   "optionalDependencies": {
+    "@rollup/rollup-linux-arm64-gnu": "^4.61.1",
     "@rollup/rollup-linux-x64-gnu": "^4.61.1"
   }
 }

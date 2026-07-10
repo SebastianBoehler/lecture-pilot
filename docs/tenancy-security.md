@@ -1,100 +1,65 @@
-# Tenancy And Profile Security
+# Tenancy and authorization matrix
 
-LecturePilot needs two profile surfaces:
+LecturePilot derives tenant, user, role, and course authority from the current database session.
+Browser-supplied user IDs are never authority. Production disables OpenAPI and development-header
+authentication.
 
-- Professor and tutor profiles for tenant-owned course management, material
-  uploads, lecture publishing, and progress review.
-- Student profiles for Uni Tübingen login, enrolled-course access, attendance,
-  tutor sessions, and private progress storage.
+## Principals
 
-This follows the same broad role split as
-[`martius-lab/ai-tutor`](https://github.com/martius-lab/ai-tutor), where tutors
-and admins have elevated review roles, but LecturePilot should make tenant
-membership explicit because it will host multiple courses and potentially
-multiple university groups.
+| Principal              | Authority                                                                         |
+| ---------------------- | --------------------------------------------------------------------------------- |
+| Public                 | Health check and university login only                                            |
+| Authenticated user     | Own account, own professor request, visible course list                           |
+| Enrolled student       | Own unlocked lectures, canvas, assets, tutor turns, quiz events, readiness, reset |
+| Approved professor     | May create a course; gains no tenant-wide content access                          |
+| Course owner           | Manages only the course whose `owner_user_id` matches the session user            |
+| Platform administrator | Approves/disables accounts; gains no course or learner-content access             |
 
-## Roles
+Tutor and co-instructor delegation is not implemented. Platform course search and join requests are
+also deferred.
 
-```txt
-tenant_admin   manages tenant settings, professors, and offboarding
-professor      creates courses, uploads official material, publishes lectures
-tutor          reviews student progress and submitted conversations
-student        learns inside enrolled courses and owns private progress
-```
+## Route inventory
 
-Roles are tenant-local. A professor in one tenant must not receive professor
-permissions in another tenant unless that second membership exists.
+| Class                       | Routes                                                                                                | Required object check                                                      |
+| --------------------------- | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Public                      | `GET /health`, `POST /auth/login`                                                                     | None; login credentials are never persisted                                |
+| Self-service                | `GET /me`, `POST /auth/logout`, `POST /professor-requests`                                            | Current opaque session                                                     |
+| Platform administration     | `/platform/professor-requests*`, `POST /platform/users/{id}/disable`                                  | `platform_admin`; no course-content capability                             |
+| Course discovery            | `GET /courses`, `GET /courses/{course}/lectures`                                                      | Database visibility or enrollment; lecture unlock server-side              |
+| Learner-only                | `POST /agent/turn*`, canvas, learning map, quiz answer, readiness, learner reset, workspace assets    | Current session user plus active course enrollment; no learner ID accepted |
+| Course-owner administration | Course creation, source bundle, schedule, upload, draft, publish, media, aggregate analytics, archive | Approved professor for creation; exact `courses.owner_user_id` thereafter  |
+| Published course assets     | `GET /course-assets/{course}/{lecture}/{path}`                                                        | Course access, publication/unlock policy, confined path                    |
 
-## Security Rules
+The learner-only class includes:
 
-- Derive tenant context from the authenticated session, not from editable
-  request headers, query parameters, or frontend state.
-- Deny by default. Every course, progress, upload, and file-read operation must
-  pass an explicit tenant and role policy check.
-- Scope all resource lookups by tenant and resource id. Do not fetch by resource
-  id alone.
-- Use opaque public ids for persistent tenants, courses, lectures, files, and
-  users. Avoid sequential ids for externally reachable resources.
-- Prefix cache keys and object-storage paths with a hashed tenant prefix so
-  tenant names are not exposed through storage keys.
-- Keep official course source material read-only after publication. Store
-  learner notes, generated artifacts, progress, and quiz results in a private
-  per-learner overlay.
-- Record audit events for login, tenant selection, course creation, material
-  upload, publication, progress review, and administrative changes.
+- `GET /courses/{course}/lectures/{lecture}/canvas`
+- `GET /courses/{course}/lectures/{lecture}/learning-map`
+- `GET /workspace-assets/{course}/{lecture}/{student_key}/{path}`; the URL key must resolve to the
+  current learner and cannot select another learner
+- `POST /courses/{course}/learner-workspace/reset`
+- `POST /courses/{course}/lectures/{lecture}/analytics/quiz-answer`
+- `GET /courses/{course}/exam-readiness`
+- `POST /courses/{course}/exam-readiness/attempts`
 
-## Professor Material Uploads
+The course-owner class includes every `/admin/courses/{course}/*` route plus course deletion. It
+returns aggregate analytics only and never accepts or returns learner identifiers.
 
-Uploads must be treated as untrusted input even when they come from professors:
+## University matching
 
-1. Require a professor or tenant_admin role in the course tenant.
-2. Validate path, extension, and size before storage.
-3. Generate storage keys server-side under the tenant prefix.
-4. Store files outside the web app container and serve through authorization
-   checks or short-lived signed URLs.
-5. Run MIME sniffing, antivirus, and content-disarm hooks before publication.
-6. Serve risky formats as attachments unless they are converted or sanitized.
+LecturePilot cannot enumerate an Alma or ILIAS catalog. A professor creates a platform course using
+title and term. On student login, only that student's own upstream memberships are considered.
 
-The current code implements the first policy layer for typed uploads:
-TeX, Markdown/text, CSV/JSON, PDFs, images including SVG/GIF, videos, Python
-source files, and notebooks. Code and notebooks are course source artifacts;
-they must be reviewed and displayed as inert files unless a separate sandboxed
-execution path is built. SVG and video files require careful MIME handling,
-sanitization or attachment serving, and signed URLs in production.
+1. Discard upstream memberships without a stable Alma `unitId` or ILIAS course/ref ID.
+2. Reuse an existing `(tenant, source, external_course_id, term)` binding when present.
+3. Otherwise compare normalized exact title and exact term with active platform courses.
+4. Bind and enroll only when exactly one course matches. Zero or multiple matches grant nothing.
+5. After binding, the stable upstream ID remains authoritative even if the displayed title changes.
 
-## Student Access
+## Denial rules
 
-Student access starts from Uni Tübingen login and then maps the authenticated
-identity to tenant membership plus enrolled courses. The frontend may display
-available courses, but the backend must still enforce:
-
-```txt
-same tenant
-course enrollment or teaching role
-lecture.date <= today
-material belongs to course
-private progress belongs to learner, professor, tutor, or tenant_admin
-```
-
-The agent never receives a raw tenant id from the browser as authority. It gets
-material ids only after the backend has resolved tenant membership, course
-access, lecture unlock status, and file policy.
-
-## Implementation Status
-
-Implemented now:
-
-- `TenantRole`, `TenantMembership`, and `UserProfile` models.
-- `TenantContext` derived from profile membership.
-- Professor/tenant_admin course-management and upload gates.
-- Tutor/professor/tenant_admin progress-review gate.
-- Hashed tenant prefixes for storage and cache keys.
-- Separate course-material upload policy.
-
-Still required before production:
-
-- Persistent tenants, profiles, course ownership, and enrollment tables.
-- Session/JWT validation and tenant context dependency on protected routers.
-- Professor course-management UI and API routes.
-- Object storage with signed URL generation and malware scanning.
-- Tenant-specific quotas, audit logs, offboarding, and retention controls.
+- An unrelated professor, tutor, or platform administrator cannot read or mutate another course.
+- No professor or administrator can access a learner canvas, chat, memory, files, readiness history,
+  reset, or agent turn.
+- Public and pre-attempt DTOs omit storage paths, staff identity, readiness answers, and rubrics.
+- Every cookie-authenticated mutation requires the session CSRF token, an allowed Origin, and valid
+  Fetch Metadata.
