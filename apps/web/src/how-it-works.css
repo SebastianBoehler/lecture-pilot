@@ -1,0 +1,239 @@
+.info-page.is-how-it-works {
+  max-width: 860px;
+  padding-bottom: 100px;
+}
+
+.how-article {
+  max-width: 740px;
+  margin: 0 auto;
+}
+
+.how-hero {
+  padding: 12px 0 52px;
+}
+
+.how-hero h1 {
+  margin: 0 0 20px;
+  font-size: clamp(38px, 6vw, 56px);
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+}
+
+.how-hero p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 20px;
+  line-height: 1.6;
+}
+
+.how-article > section {
+  border-top: 1px solid var(--color-border-primary);
+  padding: 48px 0;
+}
+
+.how-article h2 {
+  margin: 0 0 18px;
+  font-size: clamp(27px, 4vw, 36px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.how-article section > p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 17px;
+  line-height: 1.75;
+}
+
+.how-article section > p + p {
+  margin-top: 18px;
+}
+
+.how-article strong {
+  color: var(--color-text-primary);
+}
+
+.workspace-figure {
+  overflow: hidden;
+  margin: 30px 0 0;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 9px;
+  background: var(--color-bg-secondary);
+}
+
+.workspace-figure-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 48px;
+  border-bottom: 1px solid var(--color-border-primary);
+  padding: 0 16px;
+  background: var(--color-bg-primary);
+}
+
+.workspace-figure-bar > span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-border-primary);
+}
+
+.workspace-figure-bar strong {
+  overflow: hidden;
+  margin-left: 5px;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-tree {
+  display: grid;
+  gap: 3px;
+  padding: 22px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+}
+
+.workspace-layer {
+  display: grid;
+  gap: 3px;
+  margin: 4px 0 7px;
+  border-left: 3px solid var(--color-accent-primary);
+  padding: 10px 12px;
+  background: var(--color-bg-primary);
+}
+
+.workspace-layer.is-learner {
+  margin-top: 18px;
+  border-color: var(--color-highlight-border);
+}
+
+.workspace-layer > span:last-child,
+.workspace-tree-branch small {
+  color: var(--color-text-tertiary);
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  font-size: 12px;
+}
+
+.workspace-tree-path {
+  color: var(--color-text-primary);
+  font-weight: 750;
+}
+
+.workspace-tree-branch {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.7fr) minmax(0, 1fr);
+  gap: 12px;
+  padding: 4px 14px;
+  color: var(--color-text-secondary);
+}
+
+.workspace-figure figcaption {
+  border-top: 1px solid var(--color-border-primary);
+  padding: 13px 18px;
+  color: var(--color-text-tertiary);
+  background: var(--color-bg-primary);
+  font-size: 12px;
+}
+
+.how-tools {
+  margin-top: 30px;
+  padding: 0;
+  border-top: 1px solid var(--color-border-primary);
+  border-bottom: 1px solid var(--color-border-primary);
+  list-style: none;
+}
+
+.how-tools > li {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 10px;
+  padding: 15px 0;
+}
+
+.how-tools > li + li {
+  border-top: 1px solid var(--color-border-primary);
+}
+
+.how-tools svg {
+  margin-top: 2px;
+  color: var(--color-accent-primary);
+}
+
+.how-tools p,
+.how-turn p {
+  margin: 0;
+}
+
+.how-tools strong,
+.how-tools span,
+.how-turn strong,
+.how-turn p span {
+  display: block;
+}
+
+.how-tools span,
+.how-turn p span {
+  margin-top: 3px;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.how-turn {
+  margin: 30px 0 0;
+  padding: 0;
+  border-top: 1px solid var(--color-border-primary);
+  list-style: none;
+}
+
+.how-turn li {
+  display: grid;
+  grid-template-columns: 46px 1fr;
+  gap: 14px;
+  border-bottom: 1px solid var(--color-border-primary);
+  padding: 17px 0;
+}
+
+.how-step-number {
+  color: var(--color-accent-primary);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.how-article section > .how-conclusion {
+  margin-top: 34px;
+  color: var(--color-text-primary);
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.55;
+}
+
+@media (max-width: 600px) {
+  .how-hero {
+    padding-bottom: 42px;
+  }
+  .how-hero p {
+    font-size: 18px;
+  }
+  .how-article > section {
+    padding: 40px 0;
+  }
+  .how-article section > p {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .workspace-tree {
+    padding: 16px 12px;
+  }
+  .workspace-tree-branch {
+    grid-template-columns: 1fr;
+    gap: 1px;
+  }
+}

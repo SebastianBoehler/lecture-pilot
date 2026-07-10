@@ -190,11 +190,14 @@ describe("LecturePilot app shell", () => {
 
     await user.click(screen.getByRole("button", { name: /how it works/i }));
 
-    expect(screen.getByRole("heading", { name: /how lecturepilot works/i })).toBeInTheDocument();
-    expect(screen.getByText(/think of each course as a small file system/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/the tutor uses attendance, quiz attempts, quality gates/i),
+      screen.getByRole("heading", { name: /how lecturepilot actually works/i }),
     ).toBeInTheDocument();
+    expect(screen.getByText("agent harness")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /each student gets a private layer on top/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/shared course truth, separate learner work/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /privacy/i }));
 
