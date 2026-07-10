@@ -120,10 +120,13 @@ describe("Professor course builder", () => {
     expect(await screen.findByText(/course-builder agent generated/i)).toBeInTheDocument();
     expect(screen.getByText(/review needed/i)).toBeInTheDocument();
     expect(screen.getByText(/planner model finished with reason/i)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /publish tutor workspace/i })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /04 generate/i }));
     expect(await screen.findByText(/2 sections ready for review/i)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /05 publish/i }));
+    const draftPreview = screen.getByRole("link", { name: /preview course workspace/i });
+    expect(draftPreview).toHaveAttribute("href", expect.stringContaining("preview=draft"));
+    expect(draftPreview).toHaveAttribute("href", expect.stringContaining("lectureId=lecture-03"));
+    expect(screen.getByRole("button", { name: /05 publish/i })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: /continue to publishing/i }));
+    expect(screen.getByRole("heading", { name: /publish tutor workspace/i })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /publish tutor workspace/i }));
     expect(await screen.findByText(/tutor workspace published/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/published lecture workspaces/i)).toBeInTheDocument();
@@ -267,6 +270,9 @@ describe("Professor course builder", () => {
 
     await user.click(screen.getByRole("button", { name: /preview professor account/i }));
 
+    expect(await screen.findByText(/2 lecture canvases ready to review/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /05 publish/i })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: /continue to publishing/i }));
     expect(await screen.findByText(/0 of 2 lecture workspaces published/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /publish all tutor workspaces/i }));
 

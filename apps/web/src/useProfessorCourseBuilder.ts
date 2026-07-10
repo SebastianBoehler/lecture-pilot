@@ -70,6 +70,7 @@ export function useProfessorCourseBuilder({
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [canvas, setCanvas] = useState<CanvasDocument | null>(null);
   const [generatedLectureIds, setGeneratedLectureIds] = useState<string[]>([]);
+  const [draftReviewed, setDraftReviewed] = useState(false);
   const [generationProgress, setGenerationProgress] = useState<CanvasGenerationProgress[]>([]);
   const [generationWarnings, setGenerationWarnings] = useState<string[]>([]);
   const [query, setQuery] = useState(savedFlow.query);
@@ -139,6 +140,7 @@ export function useProfessorCourseBuilder({
     bundleReady,
     canvasReady: !!canvas,
     courseReady,
+    draftReviewed,
     reviewAvailable,
     reviewReady,
     workspacePublished,
@@ -231,6 +233,7 @@ export function useProfessorCourseBuilder({
   function resetGeneratedState() {
     setCanvas(null);
     setGeneratedLectureIds([]);
+    setDraftReviewed(false);
     setGenerationProgress([]);
     setGenerationWarnings([]);
     setVideos([]);
@@ -301,8 +304,12 @@ export function useProfessorCourseBuilder({
       try {
         const restoredCanvas = await getDraftLectureCanvas(targetWorkspace.courseId, targetWorkspace.lectureId, session);
         setCanvas(restoredCanvas);
+        setGeneratedLectureIds(
+          setup.target === "full-course" ? restoredLectures.map((lecture) => lecture.id) : [targetWorkspace.lectureId],
+        );
         setGenerationWarnings(restoredCanvas.warnings ?? []);
-        setActiveStep("publish");
+        setDraftReviewed(false);
+        setActiveStep("generate");
       } catch (canvasError) {
         if (!options.quietDraftMiss) {
           setError(canvasError instanceof Error ? canvasError.message : "Could not restore professor preview.");
@@ -406,14 +413,28 @@ export function useProfessorCourseBuilder({
     generatedCount: generatedLectureIds.length,
     isFullCourse: setup.target === "full-course",
     isGenerating: pendingAction === "generate",
-    previewHref,
+    onContinueToPublish: () => {
+      setDraftReviewed(true);
+      setActiveStep("publish");
+    },
+    previewLectures: setup.target === "full-course"
+      ? publishLectures
+        .filter((lecture) => generatedLectureIds.includes(lecture.id))
+        .map(({ id, label, previewHref: href }) => ({ id, label, previewHref: href }))
+      : workspace && previewHref
+        ? [{
+          id: workspace.lectureId,
+          label: `${lectureFromWorkspace(workspace, setup, lectureSchedule).number} · ${lectureFromWorkspace(workspace, setup, lectureSchedule).title}`,
+          previewHref,
+        }]
+        : [],
     totalCount: fullCourseLectureIds.length,
-    warnings: generationWarnings,
     onGenerate: () => run("generate", async () => {
       const activeWorkspace = requireWorkspace(workspace);
       const lectureIds = setup.target === "full-course" && fullCourseLectureIds.length
         ? fullCourseLectureIds
         : [activeWorkspace.lectureId];
+      setDraftReviewed(false);
       setGenerationProgress(lectureIds.map((lectureId) => ({ lectureId, status: "pending" })));
       setGenerationWarnings([]);
       const canvases = await generateLectureCanvasDrafts({
@@ -428,7 +449,6 @@ export function useProfessorCourseBuilder({
       setCanvas(canvases[0] ?? null);
       setGeneratedLectureIds(lectureIds);
       setGenerationWarnings(Array.from(new Set(canvases.flatMap((item) => item.warnings ?? []))));
-      setActiveStep("publish");
       if (lectureIds.length === 1) return "Course-builder agent generated a source-grounded canvas draft.";
       return `Course-builder agent generated ${lectureIds.length} source-grounded lecture canvases.`;
     }),

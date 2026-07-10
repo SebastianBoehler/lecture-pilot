@@ -131,6 +131,7 @@ export function AppRoutes(props: AppRoutesProps) {
   if (view === "course-management" && courseManagerSession) {
     return (
       <ProfessorCourseManagement
+        onCreateCourse={() => props.onViewChange("professor")}
         session={courseManagerSession}
         onWorkspaceDeleted={props.onWorkspaceDeleted}
       />

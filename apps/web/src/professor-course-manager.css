@@ -16,6 +16,25 @@
   gap: 16px;
 }
 
+.course-manager-header {
+  flex-wrap: wrap;
+}
+
+.course-manager-header > div {
+  flex: 1 1 360px;
+}
+
+.course-manager-header .primary-action {
+  margin-left: auto;
+  border-color: var(--color-accent-primary);
+  color: #ffffff;
+  background: var(--color-accent-primary);
+}
+
+.course-manager-header .primary-action:hover {
+  background: var(--color-accent-hover);
+}
+
 .course-manager-header h2 {
   margin: 0;
   font-size: 18px;
@@ -36,15 +55,41 @@
 }
 
 .created-course-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(200px, 0.7fr) auto;
+  align-items: center;
   border-top: 1px solid var(--color-border-primary);
-  padding-top: 10px;
+  padding: 14px 0 0;
 }
 
-.created-course-row strong {
+.created-course-title strong,
+.created-course-meta strong {
   display: block;
 }
 
-.created-course-row span {
+.created-course-title span,
+.created-course-meta span,
+.created-course-meta small {
   display: block;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.created-course-meta strong {
+  color: var(--color-text-primary);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.created-course-meta small {
+  margin-top: 4px;
+  color: var(--color-text-tertiary);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+@media (max-width: 720px) {
+  .created-course-row {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
 }

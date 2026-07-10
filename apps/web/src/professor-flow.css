@@ -87,6 +87,37 @@
   padding-left: 18px;
 }
 
+.draft-review {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid var(--color-border-primary);
+  padding-top: 16px;
+}
+
+.draft-review header {
+  display: grid;
+  gap: 3px;
+}
+
+.draft-review header span {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.draft-review-list {
+  display: grid;
+  gap: 8px;
+}
+
+.draft-review-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--color-border-primary);
+  padding-top: 10px;
+}
+
 .published-lecture-list {
   display: grid;
   gap: 8px;

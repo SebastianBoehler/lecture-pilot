@@ -4,6 +4,7 @@ import type { CourseWorkspaceResult } from "./types";
 type ProfessorCourseManagerProps = {
   deletingCourseId: string | null;
   isLoading: boolean;
+  onCreateCourse: () => void;
   onDeleteCourse: (courseId: string) => void;
   onRefresh: () => void;
   workspaces: CourseWorkspaceResult[];
@@ -12,6 +13,7 @@ type ProfessorCourseManagerProps = {
 export function ProfessorCourseManager({
   deletingCourseId,
   isLoading,
+  onCreateCourse,
   onDeleteCourse,
   onRefresh,
   workspaces,
@@ -27,16 +29,23 @@ export function ProfessorCourseManager({
         <button className="refresh-button" disabled={isLoading} type="button" onClick={onRefresh}>
           {isLoading ? t("professor.refreshing") : t("professor.refresh")}
         </button>
+        <button className="refresh-button primary-action" type="button" onClick={onCreateCourse}>
+          {t("professor.createCourse")}
+        </button>
       </div>
       {workspaces.length ? (
         <div className="created-course-list">
           {workspaces.map((workspace) => (
             <article className="created-course-row" key={workspace.course.id}>
-              <div>
+              <div className="created-course-title">
                 <strong>{workspace.course.title}</strong>
-                <span>{workspace.course.id}</span>
+                <span>{workspace.course.professor} · {workspace.course.term}</span>
               </div>
-              <p>{t("professor.publishedLectures", { count: workspace.lectures.length })}</p>
+              <div className="created-course-meta">
+                <strong>{t("professor.courseWorkspace")}</strong>
+                <span>{t("professor.configuredLectures", { count: workspace.lectures.length })}</span>
+                <small>{workspace.course.id}</small>
+              </div>
               <button
                 className="refresh-button delete-course-button"
                 disabled={deletingCourseId === workspace.course.id}

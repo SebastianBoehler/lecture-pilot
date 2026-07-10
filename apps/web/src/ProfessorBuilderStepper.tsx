@@ -14,6 +14,7 @@ export function builderSteps({
   bundleReady,
   canvasReady,
   courseReady,
+  draftReviewed,
   reviewAvailable,
   reviewReady,
   workspacePublished,
@@ -21,6 +22,7 @@ export function builderSteps({
   bundleReady: boolean;
   canvasReady: boolean;
   courseReady: boolean;
+  draftReviewed: boolean;
   reviewAvailable: boolean;
   reviewReady: boolean;
   workspacePublished: boolean;
@@ -30,7 +32,13 @@ export function builderSteps({
     { available: courseReady, id: "upload", label: "Upload", number: "02", ready: bundleReady },
     { available: reviewAvailable, id: "review", label: "Media", number: "03", ready: reviewReady },
     { available: reviewReady || canvasReady, id: "generate", label: "Generate", number: "04", ready: canvasReady },
-    { available: canvasReady, id: "publish", label: "Publish", number: "05", ready: workspacePublished },
+    {
+      available: canvasReady && (draftReviewed || workspacePublished),
+      id: "publish",
+      label: "Publish",
+      number: "05",
+      ready: workspacePublished,
+    },
   ];
 }
 
@@ -43,7 +51,7 @@ export function initialBuilderStep({
   canvasReady: boolean;
   courseReady: boolean;
 }): BuilderStep {
-  if (canvasReady) return "publish";
+  if (canvasReady) return "generate";
   if (bundleReady) return "review";
   if (courseReady) return "upload";
   return "define";

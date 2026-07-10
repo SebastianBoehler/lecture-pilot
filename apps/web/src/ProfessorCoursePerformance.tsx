@@ -67,7 +67,7 @@ export function ProfessorCoursePerformance({
       return;
     }
     if (!selectedLecture) {
-      void refreshAnalytics(visibleLectures[2] ?? visibleLectures[0]);
+      void refreshAnalytics(visibleLectures[0]);
     }
   }, [selectedLecture, visibleLectures]);
 
@@ -155,6 +155,9 @@ export function ProfessorCoursePerformance({
                     key={lecture.id}
                     lecture={lecture}
                     onSelect={() => void refreshAnalytics(lecture)}
+                    snapshot={
+                      lecture.id === selectedLecture.id ? lectureSnapshot(lecture, analytics) : null
+                    }
                   />
                 ))}
               </div>
@@ -173,9 +176,15 @@ export function ProfessorCoursePerformance({
               </header>
               {analyticsError ? <p className="form-error">{analyticsError}</p> : null}
               <PerformanceOverview snapshot={lectureSnapshot(selectedLecture, analytics)} />
-              {analytics ? <ProfessorLearningMapTree analytics={analytics} /> : null}
-              {analytics ? <AnalyticsChart analytics={analytics} /> : null}
-              {analytics ? <AnalyticsSummary analytics={analytics} /> : <AnalyticsEmptyState />}
+              {analytics?.total_events ? (
+                <>
+                  <ProfessorLearningMapTree analytics={analytics} />
+                  <AnalyticsChart analytics={analytics} />
+                  <AnalyticsSummary analytics={analytics} />
+                </>
+              ) : (
+                <AnalyticsEmptyState />
+              )}
             </section>
           </div>
         </section>

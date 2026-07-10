@@ -7,9 +7,11 @@ import { useProfessorWorkflowRun } from "./professorWorkflowRun";
 import type { CourseWorkspaceResult, LoginSession } from "./types";
 
 export function ProfessorCourseManagement({
+  onCreateCourse,
   session,
   onWorkspaceDeleted,
 }: {
+  onCreateCourse: () => void;
   session: LoginSession;
   onWorkspaceDeleted: (courseId: string) => void;
 }) {
@@ -34,6 +36,7 @@ export function ProfessorCourseManagement({
       <ProfessorCourseManager
         deletingCourseId={deletingCourseId}
         isLoading={isLoading}
+        onCreateCourse={onCreateCourse}
         onDeleteCourse={(courseId) => {
           void handleDeleteCourse(courseId);
         }}

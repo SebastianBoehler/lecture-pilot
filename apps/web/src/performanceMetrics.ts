@@ -5,7 +5,7 @@ export type LectureSnapshot = {
   gateRate: string;
   learners: number;
   quizRate: string;
-  status: "healthy" | "watch" | "needs-attention";
+  status: "healthy" | "watch" | "needs-attention" | "no-data";
 };
 
 export function lectureSnapshot(lecture: Lecture, analytics: LectureAnalyticsSummary | null): LectureSnapshot {
@@ -32,7 +32,7 @@ export function lectureSnapshot(lecture: Lecture, analytics: LectureAnalyticsSum
     gateRate: "n/a",
     learners: 0,
     quizRate: "n/a",
-    status: "watch",
+    status: "no-data",
   };
 }
 
