@@ -60,7 +60,7 @@ export function ProfessorAuthForm({
     displayName.trim().length >= 2 && password.length >= 15 && passwordConfirmation.length > 0;
 
   return (
-    <form className="login-form" onSubmit={submit}>
+    <form autoComplete="on" className="login-form" method="post" onSubmit={submit}>
       <div className="professor-auth-heading">
         <strong>{t("login.professor.title")}</strong>
         <span>{t("login.professor.subtitle")}</span>
@@ -86,8 +86,9 @@ export function ProfessorAuthForm({
           {t("login.professor.name")}
           <input
             autoComplete="name"
+            id="name"
             maxLength={200}
-            name="display_name"
+            name="name"
             onChange={(event) => setDisplayName(event.target.value)}
             required
             value={displayName}
@@ -97,11 +98,14 @@ export function ProfessorAuthForm({
       <label>
         {t("login.professor.email")}
         <input
-          autoComplete="email"
+          autoCapitalize="none"
+          autoComplete="username"
+          id="email"
           inputMode="email"
           name="email"
           onChange={(event) => setEmail(event.target.value)}
           required
+          spellCheck={false}
           type="email"
           value={email}
         />
@@ -109,7 +113,9 @@ export function ProfessorAuthForm({
       <label>
         {t("login.password")}
         <input
+          aria-describedby={registration ? "professor-password-help" : undefined}
           autoComplete={registration ? "new-password" : "current-password"}
+          id={registration ? "new-password" : "current-password"}
           maxLength={128}
           minLength={registration ? 15 : 1}
           name="password"
@@ -125,6 +131,8 @@ export function ProfessorAuthForm({
             {t("login.professor.confirmPassword")}
             <input
               autoComplete="new-password"
+              aria-describedby="professor-password-help"
+              id="new-password-confirmation"
               maxLength={128}
               minLength={15}
               name="password_confirmation"
@@ -134,7 +142,9 @@ export function ProfessorAuthForm({
               value={passwordConfirmation}
             />
           </label>
-          <p className="login-help">{t("login.professor.passwordHelp")}</p>
+          <p className="login-help" id="professor-password-help">
+            {t("login.professor.passwordHelp")}
+          </p>
         </>
       ) : null}
       <button

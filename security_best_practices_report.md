@@ -167,7 +167,7 @@ Evidence: `audit.py`, route modules, `docs/security-operations.md`.
 Passed locally:
 
 - API: 269 tests.
-- Web: 80 tests; TypeScript/Vite production build.
+- Web: 81 tests; TypeScript/Vite production build.
 - Quality: ESLint, Ruff, and Knip; existing React hook warnings remain non-failing.
 - PostgreSQL: Alembic drift check and downgrade/upgrade; production schema verification.
 - Security: CSRF/object authorization, Alma+ILIAS matching, symlink/hard-link/Unicode confinement,

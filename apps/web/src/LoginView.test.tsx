@@ -46,6 +46,53 @@ describe("LoginView", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("exposes stable browser autofill and password-manager field semantics", async () => {
+    const user = userEvent.setup();
+
+    renderWithI18n(
+      <LoginView
+        onLogin={vi.fn()}
+        onOpenDemo={vi.fn()}
+        onOpenProfessorDemo={vi.fn()}
+        showDemoAccess={false}
+      />,
+    );
+
+    const studentUsername = screen.getByLabelText(/zdv username/i);
+    const studentPassword = screen.getByLabelText(/^password$/i);
+    expect(studentUsername).toHaveAttribute("id", "username");
+    expect(studentUsername).toHaveAttribute("name", "username");
+    expect(studentUsername).toHaveAttribute("autocomplete", "username");
+    expect(studentUsername).toHaveAttribute("autocapitalize", "none");
+    expect(studentUsername).toHaveAttribute("spellcheck", "false");
+    expect(studentPassword).toHaveAttribute("id", "current-password");
+    expect(studentPassword).toHaveAttribute("name", "password");
+    expect(studentPassword).toHaveAttribute("autocomplete", "current-password");
+    expect(studentPassword.closest("form")).toHaveAttribute("method", "post");
+
+    await user.click(screen.getByRole("tab", { name: /professor/i }));
+    const professorEmail = screen.getByLabelText(/^email$/i);
+    const professorPassword = screen.getByLabelText(/^password$/i);
+    expect(professorEmail).toHaveAttribute("id", "email");
+    expect(professorEmail).toHaveAttribute("name", "email");
+    expect(professorEmail).toHaveAttribute("type", "email");
+    expect(professorEmail).toHaveAttribute("autocomplete", "username");
+    expect(professorPassword).toHaveAttribute("id", "current-password");
+    expect(professorPassword).toHaveAttribute("autocomplete", "current-password");
+
+    await user.click(screen.getByRole("button", { name: /create account/i }));
+    expect(screen.getByLabelText(/full name/i)).toHaveAttribute("autocomplete", "name");
+    expect(screen.getByLabelText(/^password$/i)).toHaveAttribute("id", "new-password");
+    expect(screen.getByLabelText(/^password$/i)).toHaveAttribute(
+      "autocomplete",
+      "new-password",
+    );
+    expect(screen.getByLabelText(/confirm password/i)).toHaveAttribute(
+      "autocomplete",
+      "new-password",
+    );
+  });
+
   it("registers a separate pending professor account", async () => {
     const user = userEvent.setup();
     const onLogin = vi.fn();

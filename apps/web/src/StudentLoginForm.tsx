@@ -42,15 +42,18 @@ export function StudentLoginForm({
   }
 
   return (
-    <form className="login-form" onSubmit={submitLogin}>
+    <form autoComplete="on" className="login-form" method="post" onSubmit={submitLogin}>
       <label>
         {t("login.username")}
         <input
+          autoCapitalize="none"
           autoComplete="username"
+          id="username"
           maxLength={120}
           name="username"
           onChange={(event) => setUsername(event.target.value)}
           required
+          spellCheck={false}
           value={username}
         />
       </label>
@@ -58,6 +61,7 @@ export function StudentLoginForm({
         {t("login.password")}
         <input
           autoComplete="current-password"
+          id="current-password"
           maxLength={500}
           name="password"
           onChange={(event) => setPassword(event.target.value)}
