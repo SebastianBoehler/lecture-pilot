@@ -31,7 +31,7 @@ def test_canvas_endpoint_loads_private_course_source_for_student(tmp_path: Path)
     assert payload["title"] == "Bayesian Decision Theory"
     assert payload["source_ref"] == "Lecture03-eng.tex"
     assert payload["sections"][0]["id"] == "bayesian-decision-theory-the-aim"
-    assert "student01" not in payload["workspace_path"]
+    assert "workspace_path" not in payload
 
 
 def test_agent_appended_canvas_section_persists_for_same_student(tmp_path: Path) -> None:
@@ -44,7 +44,6 @@ def test_agent_appended_canvas_section_persists_for_same_student(tmp_path: Path)
         "/agent/turn",
         headers=student_headers("student01"),
         json={
-            "user_id": "student01",
             "course_id": "martius-ml",
             "lecture_id": "lecture-03",
             "attendance": "absent",
@@ -67,7 +66,8 @@ def test_agent_appended_canvas_section_persists_for_same_student(tmp_path: Path)
 
     assert response.status_code == 200
     assert _next_section_id(same_student.json(), "bayesian-decision-theory-the-aim") == "student-soccer-bayes-example"
-    assert other_student.status_code == 403
+    assert other_student.status_code == 200
+    assert _next_section_id(other_student.json(), "bayesian-decision-theory-the-aim") == "student-soccer-bayes-example"
     assert professor_view.status_code == 200
     assert "student-soccer-bayes-example" not in _section_ids(professor_view.json())
     lecture_root = app.state.canvas_workspace.layout.user_lecture_root(
@@ -97,7 +97,6 @@ def test_learner_workspace_reset_clears_selected_scopes(tmp_path: Path) -> None:
         "/agent/turn",
         headers=student_headers("student01"),
         json={
-            "user_id": "student01",
             "course_id": "martius-ml",
             "lecture_id": "lecture-03",
             "attendance": "absent",
@@ -114,7 +113,6 @@ def test_learner_workspace_reset_clears_selected_scopes(tmp_path: Path) -> None:
         "/courses/martius-ml/learner-workspace/reset",
         headers=student_headers("student01"),
         json={
-            "user_id": "student01",
             "reset_canvas": True,
             "reset_course_memory": True,
             "reset_progress": False,
@@ -136,7 +134,6 @@ def test_learner_workspace_reset_clears_selected_scopes(tmp_path: Path) -> None:
         "/courses/martius-ml/learner-workspace/reset",
         headers=student_headers("student01"),
         json={
-            "user_id": "student01",
             "reset_canvas": False,
             "reset_course_memory": False,
             "reset_progress": True,

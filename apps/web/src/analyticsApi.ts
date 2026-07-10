@@ -5,7 +5,6 @@ import type { Attendance, LectureAnalyticsSummary, LoginSession } from "./types"
 export async function recordQuizAnswer(input: {
   courseId: string;
   lectureId: string;
-  userId: string;
   attendance: Attendance;
   blockId: string;
   optionIndex: number;
@@ -17,7 +16,6 @@ export async function recordQuizAnswer(input: {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        user_id: input.userId,
         attendance: input.attendance,
         block_id: input.blockId,
         option_index: input.optionIndex,

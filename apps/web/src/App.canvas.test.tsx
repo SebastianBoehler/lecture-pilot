@@ -77,11 +77,11 @@ describe("LecturePilot canvas interactions", () => {
       const analyticsCall = fetchMock.mock.calls.find(([url]) => String(url).includes("/analytics/quiz-answer"));
       expect(analyticsCall).toBeDefined();
       expect(JSON.parse(String(analyticsCall?.[1]?.body))).toMatchObject({
-        user_id: "student01",
         attendance: "absent",
         block_id: "losses-and-risks-quiz",
         option_index: 1,
       });
+      expect(JSON.parse(String(analyticsCall?.[1]?.body))).not.toHaveProperty("user_id");
     });
     expect(correct).toHaveClass("is-correct");
   });
@@ -136,11 +136,11 @@ describe("LecturePilot canvas interactions", () => {
       const resetCall = fetchMock.mock.calls.find(([url]) => String(url).includes("/learner-workspace/reset"));
       expect(resetCall).toBeDefined();
       expect(JSON.parse(String(resetCall?.[1]?.body))).toMatchObject({
-        user_id: "student01",
         reset_canvas: true,
         reset_course_memory: true,
         reset_progress: false,
       });
+      expect(JSON.parse(String(resetCall?.[1]?.body))).not.toHaveProperty("user_id");
     });
     expect(await screen.findByText(/workspace reset/i)).toBeInTheDocument();
   });

@@ -5,7 +5,8 @@ import re
 from pathlib import Path
 
 from lecturepilot.course_schedule_store import list_course_workspaces
-from lecturepilot.models import Course, TuebingenLoginResult
+from lecturepilot.account_models import TuebingenLoginResult
+from lecturepilot.models import Course
 
 DEMO_CREATED_COURSES_FLAG = "LECTUREPILOT_DEMO_INCLUDE_CREATED_COURSES"
 
@@ -18,7 +19,9 @@ def include_created_courses_for_demo(
 ) -> TuebingenLoginResult:
     if not _enabled():
         return result
-    created_courses = [workspace.course for workspace in list_course_workspaces(workspace_root, tenant_id)]
+    created_courses = [
+        workspace.course for workspace in list_course_workspaces(workspace_root, tenant_id)
+    ]
     merged_courses = _merge_courses(result.courses, created_courses)
     if len(merged_courses) == len(result.courses):
         return result

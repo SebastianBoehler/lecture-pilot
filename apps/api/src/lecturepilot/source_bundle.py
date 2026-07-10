@@ -3,6 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from lecturepilot.workspace_capability import CapabilityRoot, WorkspaceCapability
+from lecturepilot.workspace_fs import WorkspaceFS
+
 
 @dataclass(frozen=True)
 class SourceBundleFile:
@@ -12,10 +15,14 @@ class SourceBundleFile:
 
 
 def scan_source_bundle(root: Path) -> list[SourceBundleFile]:
+    if not root.exists():
+        return []
+    workspace = WorkspaceFS(
+        WorkspaceCapability((CapabilityRoot("/source", root, writable=False),))
+    )
     files = []
-    for path in sorted(
-        item for item in root.rglob("*") if item.is_file() and not item.is_symlink()
-    ):
+    for item in sorted(workspace.files("/source"), key=lambda item: item.logical):
+        path = item.path
         if _is_hidden(path.relative_to(root)) or ".lecturepilot-previews" in path.parts:
             continue
         kind = SOURCE_SUFFIXES.get(path.suffix.lower())

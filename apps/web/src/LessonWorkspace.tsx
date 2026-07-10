@@ -30,7 +30,6 @@ import type {
 export function LessonWorkspace({
   lecture,
   courseId,
-  userId,
   session,
   canvasDocument,
   canvasError,
@@ -50,7 +49,6 @@ export function LessonWorkspace({
 }: {
   lecture: Lecture;
   courseId: string;
-  userId: string;
   session: LoginSession;
   canvasDocument: CanvasDocument | null;
   canvasError: string | null;
@@ -120,7 +118,6 @@ export function LessonWorkspace({
     void recordQuizAnswer({
       courseId,
       lectureId: lecture.id,
-      userId,
       attendance: lecture.attendance,
       blockId: block.id,
       optionIndex,

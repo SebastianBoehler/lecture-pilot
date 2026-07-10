@@ -9,7 +9,12 @@ from lecturepilot.course_access import (
     require_course_id_access,
     resolve_course_lectures,
 )
-from lecturepilot.exam_readiness import ExamReadinessCheck, build_exam_readiness_check
+from lecturepilot.exam_readiness import (
+    ExamReadinessCheck,
+    ExamReadinessPublicCheck,
+    build_exam_readiness_check,
+    public_exam_readiness_check,
+)
 from lecturepilot.exam_revision_plan import (
     ExamReadinessAttemptInput,
     ExamReadinessAttemptResult,
@@ -28,11 +33,11 @@ def register_exam_readiness_routes(
     seeded_course: Course,
     lectures: list[Lecture],
 ) -> None:
-    @app.get("/courses/{course_id}/exam-readiness", response_model=ExamReadinessCheck)
+    @app.get("/courses/{course_id}/exam-readiness", response_model=ExamReadinessPublicCheck)
     def exam_readiness_check(
         course_id: str,
         context: TenantContext = Depends(request_context),
-    ) -> ExamReadinessCheck:
+    ) -> ExamReadinessPublicCheck:
         require_learner_workspace_access(
             context,
             learner_user_id=context.user_id,
@@ -45,7 +50,8 @@ def register_exam_readiness_routes(
             course_tenant_id=course_tenant_id,
             seeded_course=seeded_course,
         )
-        return _readiness_check(app, course_id, seeded_course, lectures, context)
+        check = _readiness_check(app, course_id, seeded_course, lectures, context)
+        return public_exam_readiness_check(check)
 
     @app.post(
         "/courses/{course_id}/exam-readiness/attempts", response_model=ExamReadinessAttemptResult

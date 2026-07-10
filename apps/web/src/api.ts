@@ -38,12 +38,10 @@ export type AgentTurnResult = {
 };
 
 export type AgentTurnInput = {
-  user_id: string;
   course_id: string;
   lecture_id: string;
   attendance: Attendance;
   message: string;
-  model?: string | null;
   canvas_state: {
     focused_section_id: string;
   };
@@ -55,7 +53,8 @@ type AgentTurnStreamEvent =
   | { type: "result"; result: AgentTurnResult }
   | { type: "error"; message: string };
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
+const apiBaseUrl =
+  import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? "/api" : "http://127.0.0.1:8000");
 
 export function apiUrl(path: string): string {
   if (path.startsWith("http://") || path.startsWith("https://")) {
@@ -158,12 +157,10 @@ function readAgentTurnStreamLine(line: string, onActivity?: (tag: string) => voi
 export async function getLectureCanvas(
   courseId: string,
   lectureId: string,
-  userId: string,
   session: LoginSession,
 ): Promise<CanvasDocument> {
-  const searchParams = new URLSearchParams({ user_id: userId });
   const response = await fetch(
-    apiUrl(`/courses/${courseId}/lectures/${lectureId}/canvas?${searchParams}`),
+    apiUrl(`/courses/${courseId}/lectures/${lectureId}/canvas`),
     authRequestInit(session),
   );
   const payload = await response.json();

@@ -167,7 +167,9 @@ export function BundleSummary({ bundle }: { bundle: SourceBundleManifest }) {
           {t("builder.upload.media")} · {breakdown.media.join(" · ")}
         </span>
       ) : null}
-      {breakdown.other ? <small>{t("builder.upload.other", { count: breakdown.other })}</small> : null}
+      {breakdown.other ? (
+        <small>{t("builder.upload.other", { count: breakdown.other })}</small>
+      ) : null}
     </section>
   );
 }

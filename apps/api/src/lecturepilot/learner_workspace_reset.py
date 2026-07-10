@@ -3,13 +3,14 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict
 
 from lecturepilot.storage_layout import StorageLayout, safe_id
 
 
 class LearnerWorkspaceResetInput(BaseModel):
-    user_id: str = Field(min_length=1, max_length=120)
+    model_config = ConfigDict(extra="forbid")
+
     reset_canvas: bool = True
     reset_course_memory: bool = True
     reset_progress: bool = False
@@ -28,16 +29,17 @@ def reset_learner_workspace(
     *,
     layout: StorageLayout,
     course_id: str,
+    user_id: str,
     request: LearnerWorkspaceResetInput,
 ) -> LearnerWorkspaceResetResult:
     deleted_paths = 0
-    for course_root in _course_roots(layout, request.user_id, course_id):
+    for course_root in _course_roots(layout, user_id, course_id):
         deleted_paths += _reset_course_root(course_root, request)
     if request.reset_course_memory:
-        deleted_paths += _delete_path(layout.user_course_memories_dir(request.user_id, course_id))
+        deleted_paths += _delete_path(layout.user_course_memories_dir(user_id, course_id))
     return LearnerWorkspaceResetResult(
         course_id=course_id,
-        user_id=request.user_id,
+        user_id=user_id,
         reset_canvas=request.reset_canvas,
         reset_course_memory=request.reset_course_memory,
         reset_progress=request.reset_progress,

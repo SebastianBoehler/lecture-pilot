@@ -35,11 +35,9 @@ import { readLocalePreference, writeLocalePreference } from "./localePreference"
 import { clearSavedFlow } from "./professorBuilderState";
 import { useStoredLoginSession } from "./loginSessionStorage";
 import { lectures } from "./sampleData";
-import { requestedTutorModel } from "./tutorModels";
 import { logoutSession } from "./sessionApi";
-import { useInitialDraftPreview } from "./useInitialDraftPreview";
+import { isDraftPreviewRequest, useInitialDraftPreview } from "./useInitialDraftPreview";
 import { usePublishedLectures } from "./usePublishedLectures";
-import { useTutorModelPreference } from "./useTutorModelPreference";
 import type { WorkspaceResetSelection } from "./WorkspaceResetControl";
 import type {
   Attendance,
@@ -65,7 +63,6 @@ function App() {
   const [workspaceCourseId, setWorkspaceCourseId] = useState("martius-ml");
   const [selectedCourseId, setSelectedCourseId] = useState("martius-ml");
   const [selectedLecture, setSelectedLecture] = useState(lectures[2]);
-  const [lessonUserId, setLessonUserId] = useState(effectiveUserId(session));
   const [lessonBackView, setLessonBackView] = useState<"dashboard" | "professor">("dashboard");
   const [panelMode, setPanelMode] = useState<LessonPanelMode | null>(null);
   const [canvasDocument, setCanvasDocument] = useState<CanvasDocument | null>(null);
@@ -79,7 +76,6 @@ function App() {
   );
   const [lastTutorModel, setLastTutorModel] = useState<string | null>(null);
   const [passedGateIds, setPassedGateIds] = useState<string[]>([]);
-  const [tutorModelPreference, setTutorModelPreference] = useTutorModelPreference();
   const [publishedLectureIds, setPublishedLectureIds] = usePublishedLectures(
     workspaceCourseId,
     availableLectures,
@@ -96,7 +92,7 @@ function App() {
   }, [locale]);
 
   useEffect(() => {
-    if (!session) return;
+    if (!session || isDraftPreviewRequest()) return;
     void loadWorkspaceCourse(session, workspaceCourseId);
   }, [session]);
 
@@ -142,15 +138,12 @@ function App() {
 
     let result;
     try {
-      const requestedModel = requestedTutorModel(tutorModelPreference);
       result = await sendAgentTurnStream(
         {
-          user_id: lessonUserId,
           course_id: selectedCourseId,
           lecture_id: selectedLecture.id,
           attendance: selectedLecture.attendance,
           message,
-          ...(requestedModel ? { model: requestedModel } : {}),
           canvas_state: { focused_section_id: focusedSectionId },
         },
         session ?? localDemoSession,
@@ -215,7 +208,7 @@ function App() {
   }
 
   function handleLogout() {
-    void logoutSession();
+    if (session) void logoutSession(session);
     setSession(null);
     clearSavedFlow();
     setView("login");
@@ -227,7 +220,6 @@ function App() {
     setCanvasDocument(null);
     setCanvasError(null);
     setMessages(initialMessagesForAttendance(lectures[2].attendance));
-    setLessonUserId("local-demo");
     setLastTutorModel(null);
     setPassedGateIds([]);
   }
@@ -237,12 +229,10 @@ function App() {
       courseId: string,
       lecture: Lecture,
       backView: "dashboard" | "professor" = "dashboard",
-      userId = effectiveUserId(session),
       previewDraft = false,
     ) => {
       setSelectedCourseId(courseId);
       setSelectedLecture(lecture);
-      setLessonUserId(userId);
       setLessonBackView(backView);
       setView("lesson");
       setPanelMode(null);
@@ -261,7 +251,7 @@ function App() {
         const document =
           previewDraft && session
             ? await getDraftLectureCanvas(courseId, lecture.id, session)
-            : await getLectureCanvas(courseId, lecture.id, userId, activeSession);
+            : await getLectureCanvas(courseId, lecture.id, activeSession);
         setCanvasDocument(document);
         setFocusedSectionId(document.sections[0]?.id ?? "bayesian-decision-theory-the-aim");
       } catch (error) {
@@ -278,8 +268,8 @@ function App() {
       setView("dashboard");
       setCanvasError("Draft preview requires a course-management account.");
     },
-    onOpenLecture: (courseId, lecture, backView, userId, previewDraft) => {
-      void handleOpenLecture(courseId, lecture, backView, userId, previewDraft);
+    onOpenLecture: (courseId, lecture, backView, previewDraft) => {
+      void handleOpenLecture(courseId, lecture, backView, previewDraft);
     },
   });
 
@@ -302,23 +292,14 @@ function App() {
 
   async function handleResetWorkspace(options: WorkspaceResetSelection) {
     const activeSession = session ?? localDemoSession;
-    await resetLearnerWorkspace(
-      selectedCourseId,
-      { user_id: lessonUserId, ...options },
-      activeSession,
-    );
+    await resetLearnerWorkspace(selectedCourseId, options, activeSession);
     if (options.reset_progress) {
       setAvailableLectures((current) =>
         current.map((lecture) => ({ ...lecture, attendance: "unknown" })),
       );
       setSelectedLecture((current) => ({ ...current, attendance: "unknown" }));
     }
-    const document = await getLectureCanvas(
-      selectedCourseId,
-      selectedLecture.id,
-      lessonUserId,
-      activeSession,
-    );
+    const document = await getLectureCanvas(selectedCourseId, selectedLecture.id, activeSession);
     setCanvasDocument(document);
     setCanvasError(null);
     setFocusedSectionId(document.sections[0]?.id ?? "bayesian-decision-theory-the-aim");
@@ -389,7 +370,6 @@ function App() {
           highlightedText={highlightedText}
           lastTutorModel={lastTutorModel}
           lessonBackView={lessonBackView}
-          lessonUserId={lessonUserId}
           messages={messages}
           navigationVersion={navigationVersion}
           panelMode={panelMode}
@@ -398,7 +378,6 @@ function App() {
           selectedCourseId={selectedCourseId}
           selectedLecture={selectedLecture}
           session={session}
-          tutorModelPreference={tutorModelPreference}
           view={view}
           workspaceCourse={workspaceCourse}
           workspaceCourseId={workspaceCourseId}
@@ -407,6 +386,7 @@ function App() {
             changeView("dashboard");
             void loadWorkspaceCourse(nextSession);
           }}
+          onSessionChange={setSession}
           onOpenDemo={() => {
             setSession(localDemoSession);
             changeView("dashboard");
@@ -421,7 +401,6 @@ function App() {
             void handleOpenLecture(courseId, lecture);
           }}
           onSetAttendance={handleSetAttendance}
-          onModelPreferenceChange={setTutorModelPreference}
           onPublishWorkspace={async (courseId, lectureId) => {
             if (!courseManagerSession)
               throw new Error("Course management requires a professor account.");
@@ -459,10 +438,6 @@ function App() {
       </div>
     </I18nProvider>
   );
-}
-
-function effectiveUserId(session: LoginSession | null) {
-  return session?.username ?? "unknown-user";
 }
 
 export default App;

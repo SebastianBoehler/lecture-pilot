@@ -7,12 +7,11 @@ from lecturepilot.models import (
     AgentTurnInput,
     AgentTurnResult,
     CanvasCommand,
-    Course,
-    TuebingenLoginResult,
 )
 from lecturepilot.providers import DEFAULT_MODEL
 from lecturepilot.session_auth import SESSION_COOKIE_NAME
 from lecturepilot.tuebingen_adapter import TuebingenIntegrationUnavailable
+from lecturepilot.university_models import ExternalCourseCandidate, UniversityLoginResult
 from auth_helpers import student_headers
 
 
@@ -45,21 +44,16 @@ def test_tuebingen_login_returns_courses_without_echoing_password(monkeypatch) -
     assert SESSION_COOKIE_NAME in response.cookies
     payload = response.json()
     assert payload.pop("access_token") is None
+    csrf_token = payload.pop("csrf_token")
+    assert len(csrf_token) >= 32
     assert payload == {
         "username": "student01",
         "email": None,
         "term": "Sommer 2026",
         "tenant_id": "tenant-tuebingen",
         "roles": ["student"],
-        "courses": [
-            {
-                "access_policy": "tuebingen_enrolled",
-                "id": "alma-machine-learning",
-                "title": "Machine Learning",
-                "professor": "Department of Computer Science",
-                "term": "Sommer 2026",
-            }
-        ],
+        "professor_status": "not_requested",
+        "courses": [],
     }
 
 
@@ -94,7 +88,6 @@ def test_agent_turn_focuses_bayes_section(monkeypatch) -> None:
         "/agent/turn",
         headers=student_headers("u1"),
         json={
-            "user_id": "u1",
             "course_id": "martius-ml",
             "lecture_id": "lecture-01",
             "attendance": "absent",
@@ -132,7 +125,6 @@ def test_agent_turn_focuses_learning_goals(monkeypatch) -> None:
         "/agent/turn",
         headers=student_headers("u1"),
         json={
-            "user_id": "u1",
             "course_id": "martius-ml",
             "lecture_id": "lecture-01",
             "attendance": "absent",
@@ -161,7 +153,6 @@ def test_agent_turn_focuses_skill_check(monkeypatch) -> None:
         "/agent/turn",
         headers=student_headers("u1"),
         json={
-            "user_id": "u1",
             "course_id": "martius-ml",
             "lecture_id": "lecture-01",
             "attendance": "present",
@@ -187,7 +178,6 @@ def test_agent_turn_reports_model_execution_error(monkeypatch) -> None:
         "/agent/turn",
         headers=student_headers("u1"),
         json={
-            "user_id": "u1",
             "course_id": "martius-ml",
             "lecture_id": "lecture-01",
             "attendance": "present",
@@ -212,7 +202,6 @@ def test_agent_turn_enriches_harness_with_canvas_context(monkeypatch) -> None:
         "/agent/turn",
         headers=student_headers("u1"),
         json={
-            "user_id": "u1",
             "course_id": "martius-ml",
             "lecture_id": "lecture-03",
             "attendance": "present",
@@ -226,24 +215,26 @@ def test_agent_turn_enriches_harness_with_canvas_context(monkeypatch) -> None:
 
 
 class _FakeTuebingenAdapter:
-    def login(self, *, username: str, password: str, term: str) -> TuebingenLoginResult:
+    def login(self, *, username: str, password: str, term: str) -> UniversityLoginResult:
         assert password == "very-secret-password"
-        return TuebingenLoginResult(
+        return UniversityLoginResult(
             username=username,
             term=term,
             courses=[
-                Course(
-                    id="alma-machine-learning",
+                ExternalCourseCandidate(
+                    source="alma",
+                    external_course_id="unit:42",
                     title="Machine Learning",
-                    professor="Department of Computer Science",
+                    organization="Department of Computer Science",
                     term=term,
                 )
             ],
+            sources_checked={"alma"},
         )
 
 
 class _UnavailableTuebingenAdapter:
-    def login(self, *, username: str, password: str, term: str) -> TuebingenLoginResult:
+    def login(self, *, username: str, password: str, term: str) -> UniversityLoginResult:
         raise TuebingenIntegrationUnavailable("tue-api-wrapper is not installed.")
 
 

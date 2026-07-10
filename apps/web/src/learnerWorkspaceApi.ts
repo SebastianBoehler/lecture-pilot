@@ -3,7 +3,6 @@ import { apiUrl, readApiError } from "./api";
 import type { LoginSession } from "./types";
 
 export type LearnerWorkspaceResetOptions = {
-  user_id: string;
   reset_canvas: boolean;
   reset_course_memory: boolean;
   reset_progress: boolean;

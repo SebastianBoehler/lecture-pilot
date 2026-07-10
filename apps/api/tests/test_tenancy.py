@@ -53,7 +53,7 @@ def test_professor_can_manage_course_and_upload_material_in_own_tenant() -> None
     assert_can_upload_course_material(context, course_tenant_id="tenant-tuebingen")
 
 
-def test_tenant_admin_can_manage_course_upload_and_review_progress() -> None:
+def test_tenant_admin_can_manage_platform_but_not_review_learner_progress() -> None:
     context = TenantContext(
         tenant_id="tenant-tuebingen",
         user_id="user-admin-1",
@@ -62,11 +62,12 @@ def test_tenant_admin_can_manage_course_upload_and_review_progress() -> None:
 
     assert_can_manage_course(context, course_tenant_id="tenant-tuebingen")
     assert_can_upload_course_material(context, course_tenant_id="tenant-tuebingen")
-    assert_can_view_progress(
-        context,
-        learner_user_id="user-student-1",
-        progress_tenant_id="tenant-tuebingen",
-    )
+    with pytest.raises(TenantAccessError):
+        assert_can_view_progress(
+            context,
+            learner_user_id="user-student-1",
+            progress_tenant_id="tenant-tuebingen",
+        )
 
 
 def test_student_cannot_manage_course_or_upload_material() -> None:
@@ -93,7 +94,7 @@ def test_cross_tenant_access_is_denied_even_for_professor() -> None:
         assert_can_manage_course(context, course_tenant_id="tenant-other")
 
 
-def test_progress_access_allows_self_or_teaching_roles_only() -> None:
+def test_progress_access_allows_self_only() -> None:
     student = TenantContext(
         tenant_id="tenant-tuebingen",
         user_id="user-student-1",
@@ -110,11 +111,12 @@ def test_progress_access_allows_self_or_teaching_roles_only() -> None:
         learner_user_id="user-student-1",
         progress_tenant_id="tenant-tuebingen",
     )
-    assert_can_view_progress(
-        tutor,
-        learner_user_id="user-student-1",
-        progress_tenant_id="tenant-tuebingen",
-    )
+    with pytest.raises(TenantAccessError):
+        assert_can_view_progress(
+            tutor,
+            learner_user_id="user-student-1",
+            progress_tenant_id="tenant-tuebingen",
+        )
 
     with pytest.raises(TenantAccessError):
         assert_can_view_progress(

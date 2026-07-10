@@ -191,20 +191,8 @@ function QuestionField({
           onChange={(event) => onAnswer(event.target.value)}
         />
       )}
-      {submitted ? <Rubric question={question} /> : null}
       {result?.status === "needs_rubric_review" ? <p className="exam-review-status">Rubric review needed.</p> : null}
     </fieldset>
-  );
-}
-
-function Rubric({ question }: { question: ExamReadinessQuestion }) {
-  if (!question.rubric.length) return null;
-  return (
-    <ul className="exam-rubric">
-      {question.rubric.map((item) => (
-        <li key={item}>{item}</li>
-      ))}
-    </ul>
   );
 }
 

@@ -6,7 +6,7 @@ from fastapi.responses import StreamingResponse
 from lecturepilot.agent_authorization import authorize_agent_turn
 from lecturepilot.agent_turn_orchestration import agent_turn_events, complete_agent_turn
 from lecturepilot.api_auth import request_context
-from lecturepilot.models import AgentTurnInput, AgentTurnResult, Course, Lecture
+from lecturepilot.models import AgentTurnRequest, AgentTurnResult, Course, Lecture
 from lecturepilot.tenancy import TenantContext
 
 
@@ -19,9 +19,10 @@ def register_agent_routes(
 ) -> None:
     @app.post("/agent/turn", response_model=AgentTurnResult)
     async def agent_turn(
-        turn: AgentTurnInput,
+        input_data: AgentTurnRequest,
         context: TenantContext = Depends(request_context),
     ) -> AgentTurnResult:
+        turn = input_data.for_user(context.user_id)
         authorize_agent_turn(
             app,
             context,
@@ -34,9 +35,10 @@ def register_agent_routes(
 
     @app.post("/agent/turn/stream")
     async def agent_turn_stream(
-        turn: AgentTurnInput,
+        input_data: AgentTurnRequest,
         context: TenantContext = Depends(request_context),
     ) -> StreamingResponse:
+        turn = input_data.for_user(context.user_id)
         authorize_agent_turn(
             app,
             context,

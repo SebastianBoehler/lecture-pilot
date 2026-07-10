@@ -27,7 +27,6 @@ def test_quiz_answers_are_recorded_as_aggregate_lecture_analytics(tmp_path: Path
         "/courses/demo-course/lectures/lecture-01/analytics/quiz-answer",
         headers=student_headers("student-a"),
         json={
-            "user_id": "student-a",
             "attendance": "present",
             "block_id": "risk-check",
             "option_index": 1,
@@ -40,7 +39,6 @@ def test_quiz_answers_are_recorded_as_aggregate_lecture_analytics(tmp_path: Path
         "/courses/demo-course/lectures/lecture-01/analytics/quiz-answer",
         headers=student_headers("student-b"),
         json={
-            "user_id": "student-b",
             "attendance": "absent",
             "block_id": "risk-check",
             "option_index": 0,
@@ -133,7 +131,6 @@ def test_quality_gate_turns_are_recorded_in_analytics(tmp_path: Path) -> None:
         "/agent/turn",
         headers=student_headers("student-a"),
         json={
-            "user_id": "student-a",
             "course_id": "demo-course",
             "lecture_id": "lecture-01",
             "attendance": "present",

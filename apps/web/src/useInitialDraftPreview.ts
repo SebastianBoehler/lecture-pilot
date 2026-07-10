@@ -16,7 +16,6 @@ export function useInitialDraftPreview({
     courseId: string,
     lecture: Lecture,
     backView: "dashboard" | "professor",
-    userId: string,
     previewDraft: boolean,
   ) => void;
 }) {
@@ -25,7 +24,7 @@ export function useInitialDraftPreview({
   useEffect(() => {
     if (handled.current) return;
     const params = new URLSearchParams(window.location.search);
-    if (params.get("preview") !== "draft") return;
+    if (!isDraftPreviewRequest(params)) return;
     if (!session) return;
     handled.current = true;
     if (!canManageCourses(session)) {
@@ -41,6 +40,12 @@ export function useInitialDraftPreview({
       date: "Draft",
       attendance: "unknown" as Attendance,
     };
-    onOpenLecture(courseId, lecture, "professor", "professor-preview", true);
+    onOpenLecture(courseId, lecture, "professor", true);
   }, [availableLectures, onBlocked, onOpenLecture, session]);
+}
+
+export function isDraftPreviewRequest(
+  params = new URLSearchParams(window.location.search),
+) {
+  return params.get("preview") === "draft";
 }

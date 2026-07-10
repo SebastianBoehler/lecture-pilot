@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 
 from lecturepilot.analytics import (
     AnalyticsStore,
@@ -13,6 +13,7 @@ from lecturepilot.api_auth import (
     require_course_manager,
     require_learner_workspace_access,
 )
+from lecturepilot.audit import record_audit_event
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.course_access import require_lecture_id_access
@@ -42,7 +43,7 @@ def register_analytics_routes(
     ) -> QuizAnswerResult:
         require_learner_workspace_access(
             context,
-            learner_user_id=answer.user_id,
+            learner_user_id=context.user_id,
             course_tenant_id=course_tenant_id,
         )
         require_lecture_id_access(
@@ -63,7 +64,7 @@ def register_analytics_routes(
             document = app.state.canvas_workspace.read_document(
                 course_id=course_id,
                 lecture_id=lecture_id,
-                user_id=answer.user_id,
+                user_id=context.user_id,
             )
         except CanvasWorkspaceError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -73,7 +74,7 @@ def register_analytics_routes(
         return _analytics_store(app).record_quiz_answer(
             course_id=course_id,
             lecture_id=lecture_id,
-            user_id=answer.user_id,
+            user_id=context.user_id,
             attendance=answer.attendance,
             block=block,
             option_index=answer.option_index,
@@ -86,10 +87,23 @@ def register_analytics_routes(
     def lecture_analytics(
         course_id: str,
         lecture_id: str,
+        request: Request,
         context: TenantContext = Depends(request_context),
     ) -> LectureAnalyticsSummary:
-        require_course_manager(context, course_tenant_id=course_tenant_id)
+        require_course_manager(
+            context,
+            course_tenant_id=course_tenant_id,
+            request=request,
+            course_id=course_id,
+        )
         summary = _analytics_store(app).summary(course_id=course_id, lecture_id=lecture_id)
+        record_audit_event(
+            app.state.database,
+            context,
+            event_type="analytics.aggregate_viewed",
+            target_type="lecture",
+            target_id=f"{course_id}:{lecture_id}",
+        )
         return summary.model_copy(
             update={"learning_map": _learning_map(app, course_id, lecture_id)}
         )
@@ -100,13 +114,27 @@ def register_analytics_routes(
     )
     def readiness_summary(
         course_id: str,
+        request: Request,
         context: TenantContext = Depends(request_context),
     ) -> CourseReadinessSummary:
-        require_course_manager(context, course_tenant_id=course_tenant_id)
-        return course_readiness_summary(
+        require_course_manager(
+            context,
+            course_tenant_id=course_tenant_id,
+            request=request,
+            course_id=course_id,
+        )
+        summary = course_readiness_summary(
             course_id=course_id,
             store=ReadinessProgressStore(app.state.canvas_workspace.layout),
         )
+        record_audit_event(
+            app.state.database,
+            context,
+            event_type="readiness.aggregate_viewed",
+            target_type="course",
+            target_id=course_id,
+        )
+        return summary
 
 
 def _quiz_block(document: CanvasDocument, block_id: str) -> CanvasBlock:

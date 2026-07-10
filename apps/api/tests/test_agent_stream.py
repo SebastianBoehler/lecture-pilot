@@ -25,7 +25,6 @@ def test_agent_turn_stream_emits_activity_and_result(monkeypatch, tmp_path) -> N
         "/agent/turn/stream",
         headers=student_headers("u1"),
         json={
-            "user_id": "u1",
             "course_id": "martius-ml",
             "lecture_id": "lecture-01",
             "attendance": "absent",

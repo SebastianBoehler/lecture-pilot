@@ -81,7 +81,6 @@ def test_agent_turn_records_workflow_spans(monkeypatch) -> None:
         "/agent/turn",
         headers=student_headers("u1"),
         json={
-            "user_id": "u1",
             "course_id": "martius-ml",
             "lecture_id": "lecture-03",
             "attendance": "absent",

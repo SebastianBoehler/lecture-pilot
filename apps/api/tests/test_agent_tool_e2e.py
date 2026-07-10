@@ -28,11 +28,13 @@ def test_streamed_tool_turn_persists_canvas_memory_and_gate(tmp_path, monkeypatc
         "/agent/turn/stream",
         headers=student_headers("student01"),
         json={
-            "user_id": "student01",
             "course_id": "martius-ml",
             "lecture_id": "lecture-03",
             "attendance": "absent",
-            "message": "I connect posterior evidence with risk-sensitive decisions.",
+            "message": (
+                "Please remember that I prefer soccer analogies. "
+                "I connect posterior evidence with risk-sensitive decisions."
+            ),
             "canvas_state": {"focused_section_id": "bayesian-decision-theory-the-aim"},
         },
     )
@@ -66,7 +68,6 @@ def test_streamed_tool_turn_persists_canvas_memory_and_gate(tmp_path, monkeypatc
     canvas_response = client.get(
         "/courses/martius-ml/lectures/lecture-03/canvas",
         headers=student_headers("student01"),
-        params={"user_id": "student01"},
     )
     assert canvas_response.status_code == 200, canvas_response.json()
     canvas = canvas_response.json()
@@ -77,7 +78,6 @@ def test_streamed_tool_turn_persists_canvas_memory_and_gate(tmp_path, monkeypatc
         "/agent/turn",
         headers=student_headers("student01"),
         json={
-            "user_id": "student01",
             "course_id": "martius-ml",
             "lecture_id": "lecture-03",
             "attendance": "present",

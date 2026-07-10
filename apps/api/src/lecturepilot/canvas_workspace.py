@@ -27,6 +27,8 @@ from lecturepilot.latex_canvas_importer import CANVAS_IMPORT_VERSION, import_lat
 from lecturepilot.lecture_source_selection import lecture_source_candidates
 from lecturepilot.storage_layout import DEFAULT_TENANT_ID, StorageLayout, safe_id
 from lecturepilot.student_asset_refs import resolve_student_asset_refs
+from lecturepilot.safe_course_files import safe_files, safe_path
+from lecturepilot.workspace_fs import WorkspaceFSError
 
 
 class CanvasWorkspaceError(RuntimeError):
@@ -342,7 +344,10 @@ class CanvasWorkspace:
     def _source_path(self, course_id: str, lecture_id: str) -> Path:
         source_name = lecture_source_name(lecture_id)
         uploads_dir = self.layout.course_uploads_dir(course_id)
-        uploaded_sources = sorted(uploads_dir.rglob("*.tex")) if uploads_dir.exists() else []
+        try:
+            uploaded_sources = safe_files(uploads_dir, suffix=".tex")
+        except WorkspaceFSError as exc:
+            raise CanvasWorkspaceError("Course source contains an unsafe symbolic link.") from exc
         candidates = lecture_source_candidates(
             lecture_id=lecture_id,
             uploads_dir=uploads_dir,
@@ -352,10 +357,14 @@ class CanvasWorkspace:
         if source_name and course_id == SEEDED_COURSE_ID:
             candidates.append(self.material_root / source_name)
         for source_path in candidates:
-            if source_path.exists():
-                return source_path
+            for root in (uploads_dir, self.material_root):
+                if candidate := safe_path(root, source_path):
+                    return candidate
         raise CanvasWorkspaceError(f"No LaTeX source found for {course_id}/{lecture_id}.")
 
     def _has_course_uploads(self, course_id: str) -> bool:
         uploads_dir = self.layout.course_uploads_dir(course_id)
-        return uploads_dir.exists() and any(path.is_file() for path in uploads_dir.rglob("*"))
+        try:
+            return bool(safe_files(uploads_dir))
+        except WorkspaceFSError as exc:
+            raise CanvasWorkspaceError("Course source contains an unsafe symbolic link.") from exc

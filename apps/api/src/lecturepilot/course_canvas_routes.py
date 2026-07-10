@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 
 from lecturepilot.api_auth import (
     request_context,
     require_course_manager,
     require_learner_workspace_access,
 )
+from lecturepilot.audit import record_audit_event
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.course_access import require_course_id_access, require_lecture_id_access
@@ -37,14 +38,16 @@ def register_course_canvas_routes(
     @app.post(
         "/admin/courses/{course_id}/lectures/{lecture_id}/canvas/draft",
         response_model=CanvasDocument,
+        response_model_exclude={"workspace_path"},
     )
     async def draft_course_canvas(
         course_id: str,
         lecture_id: str,
+        request: Request,
         context: TenantContext = Depends(request_context),
     ) -> CanvasDocument:
         try:
-            require_course_manager(context, course_tenant_id=course_tenant_id)
+            _require_owner(request, context, course_id, course_tenant_id)
             source = source_document(course_id, lecture_id)
             source = course_media_evidence(
                 source, app.state.canvas_workspace.course_media_root(course_id)
@@ -66,14 +69,16 @@ def register_course_canvas_routes(
     @app.get(
         "/admin/courses/{course_id}/lectures/{lecture_id}/canvas/draft",
         response_model=CanvasDocument,
+        response_model_exclude={"workspace_path"},
     )
     def preview_course_canvas_draft(
         course_id: str,
         lecture_id: str,
+        request: Request,
         context: TenantContext = Depends(request_context),
     ) -> CanvasDocument:
         try:
-            require_course_manager(context, course_tenant_id=course_tenant_id)
+            _require_owner(request, context, course_id, course_tenant_id)
             return app.state.canvas_workspace.read_course_canvas_draft(
                 course_id=course_id,
                 lecture_id=lecture_id,
@@ -88,14 +93,22 @@ def register_course_canvas_routes(
     def publish_course_canvas_draft(
         course_id: str,
         lecture_id: str,
+        request: Request,
         context: TenantContext = Depends(request_context),
     ) -> CanvasPublicationResult:
         try:
-            require_course_manager(context, course_tenant_id=course_tenant_id)
+            _require_owner(request, context, course_id, course_tenant_id)
             metadata = app.state.canvas_workspace.publish_course_canvas_draft(
                 course_id=course_id,
                 lecture_id=lecture_id,
                 published_by=context.user_id,
+            )
+            record_audit_event(
+                app.state.database,
+                context,
+                event_type="course.canvas_published",
+                target_type="lecture",
+                target_id=f"{course_id}:{lecture_id}",
             )
             return _publication_result(course_id, lecture_id, metadata)
         except CanvasWorkspaceError as exc:
@@ -138,12 +151,11 @@ def register_course_canvas_routes(
     def lecture_canvas(
         course_id: str,
         lecture_id: str,
-        user_id: str,
         context: TenantContext = Depends(request_context),
     ) -> dict:
         require_learner_workspace_access(
             context,
-            learner_user_id=user_id,
+            learner_user_id=context.user_id,
             course_tenant_id=course_tenant_id,
         )
         require_lecture_id_access(
@@ -164,11 +176,11 @@ def register_course_canvas_routes(
             document = app.state.canvas_workspace.read_document(
                 course_id=course_id,
                 lecture_id=lecture_id,
-                user_id=user_id,
+                user_id=context.user_id,
             )
         except CanvasWorkspaceError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
-        return document.model_dump()
+        return document.model_dump(exclude={"workspace_path"})
 
     @app.get(
         "/courses/{course_id}/lectures/{lecture_id}/learning-map",
@@ -214,7 +226,7 @@ def register_course_canvas_routes(
     ) -> LearnerWorkspaceResetResult:
         require_learner_workspace_access(
             context,
-            learner_user_id=request.user_id,
+            learner_user_id=context.user_id,
             course_tenant_id=course_tenant_id,
         )
         require_course_id_access(
@@ -224,11 +236,25 @@ def register_course_canvas_routes(
             course_tenant_id=course_tenant_id,
             seeded_course=seeded_course,
         )
-        return reset_learner_workspace(
+        result = reset_learner_workspace(
             layout=app.state.canvas_workspace.layout,
             course_id=course_id,
+            user_id=context.user_id,
             request=request,
         )
+        record_audit_event(
+            app.state.database,
+            context,
+            event_type="learner.workspace_reset",
+            target_type="course",
+            target_id=course_id,
+            details={
+                "reset_canvas": request.reset_canvas,
+                "reset_course_memory": request.reset_course_memory,
+                "reset_progress": request.reset_progress,
+            },
+        )
+        return result
 
 
 def _publication_result(
@@ -242,7 +268,18 @@ def _publication_result(
         published=metadata is not None,
         version=metadata.get("version") if metadata else None,
         published_at=metadata.get("published_at") if metadata else None,
-        published_by=metadata.get("published_by") if metadata else None,
-        source_draft_path=metadata.get("source_draft_path") if metadata else None,
-        published_path=metadata.get("published_path") if metadata else None,
+    )
+
+
+def _require_owner(
+    request: Request,
+    context: TenantContext,
+    course_id: str,
+    tenant_id: str,
+) -> None:
+    require_course_manager(
+        context,
+        course_tenant_id=tenant_id,
+        request=request,
+        course_id=course_id,
     )

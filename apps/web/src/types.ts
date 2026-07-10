@@ -74,7 +74,7 @@ export type CanvasDocument = {
   title: string;
   source_kind: "latex" | "markdown" | "generated";
   source_ref: string;
-  workspace_path: string;
+  workspace_path?: string;
   sections: CanvasSection[];
   warnings?: string[];
 };
@@ -85,9 +85,6 @@ export type CanvasPublicationResult = {
   published: boolean;
   version?: number | null;
   published_at?: string | null;
-  published_by?: string | null;
-  source_draft_path?: string | null;
-  published_path?: string | null;
 };
 
 export type ExamReadinessQuestion = {
@@ -99,8 +96,6 @@ export type ExamReadinessQuestion = {
   section_title: string;
   prompt: string;
   options: string[];
-  answer_index?: number | null;
-  rubric: string[];
   source_ref?: string | null;
 };
 
@@ -236,6 +231,8 @@ export type LoginSession = {
   roles?: TenantRole[];
   access_token?: string | null;
   auth_transport?: "bearer" | "cookie" | "dev_headers";
+  csrf_token?: string | null;
+  professor_status?: "not_requested" | "pending" | "approved" | "rejected";
   courses: UniversityCourse[];
 };
 

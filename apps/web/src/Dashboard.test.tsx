@@ -149,6 +149,9 @@ describe("Dashboard course workspace matching", () => {
     const dialog = await screen.findByRole("dialog", { name: /prüfungs-ready check/i });
     const quizPrompt = await within(dialog).findByText(/which quantity should be minimized/i);
     expect(quizPrompt).toBeVisible();
+    expect(
+      screen.queryByText(/expected risk combines posterior probabilities/i),
+    ).not.toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: /close exam readiness check/i }));
     expect(screen.queryByRole("dialog", { name: /prüfungs-ready check/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /open check/i }));
@@ -163,9 +166,7 @@ describe("Dashboard course workspace matching", () => {
     await user.click(within(reopenedDialog).getByRole("button", { name: /check readiness/i }));
 
     expect(await within(reopenedDialog).findByText(/keep reviewing/i)).toBeInTheDocument();
-    expect(
-      screen.getAllByText(/expected risk combines posterior probabilities/i).length,
-    ).toBeGreaterThan(1);
+    expect(screen.getAllByText(/expected risk combines posterior probabilities/i)).toHaveLength(1);
     expect(within(reopenedDialog).getByText(/rubric review needed/i)).toBeInTheDocument();
     await user.click(within(reopenedDialog).getByRole("button", { name: /review lecture 03/i }));
     expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: "lecture-03" }));
@@ -234,8 +235,6 @@ function examReadinessPayload() {
         section_title: "Losses and risks",
         prompt: "Which quantity should be minimized when mistakes have different costs?",
         options: ["Posterior probability alone", "Expected risk", "Raw evidence count"],
-        answer_index: 1,
-        rubric: ["Expected risk combines posterior probabilities with loss values."],
       },
       {
         id: "lecture-03:bayes-formula:open",
@@ -246,8 +245,6 @@ function examReadinessPayload() {
         section_title: "Bayes formula",
         prompt: "Explain Bayes formula as you would in an exam answer.",
         options: [],
-        answer_index: null,
-        rubric: ["Bayes formula turns evidence into a posterior distribution."],
       },
     ],
   };

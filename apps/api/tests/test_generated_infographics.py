@@ -23,7 +23,6 @@ def test_agent_turn_materializes_infographic_asset(monkeypatch, tmp_path: Path) 
         "/agent/turn",
         headers=student_headers("student01"),
         json={
-            "user_id": "student01",
             "course_id": "martius-ml",
             "lecture_id": "lecture-03",
             "attendance": "absent",
@@ -52,7 +51,6 @@ def test_agent_turn_materializes_infographic_asset(monkeypatch, tmp_path: Path) 
 
     reloaded = client.get(
         "/courses/martius-ml/lectures/lecture-03/canvas",
-        params={"user_id": "student01"},
         headers=student_headers("student01"),
     ).json()
     student_section = next(item for item in reloaded["sections"] if item["id"] == section["id"])
@@ -60,7 +58,6 @@ def test_agent_turn_materializes_infographic_asset(monkeypatch, tmp_path: Path) 
 
     other_student = client.get(
         "/courses/martius-ml/lectures/lecture-03/canvas",
-        params={"user_id": "student02"},
         headers=student_headers("student02"),
     ).json()
     assert all(item["id"] != section["id"] for item in other_student["sections"])
@@ -80,7 +77,6 @@ def test_agent_turn_requires_image_provider_for_infographics(monkeypatch, tmp_pa
         "/agent/turn",
         headers=student_headers("student01"),
         json={
-            "user_id": "student01",
             "course_id": "martius-ml",
             "lecture_id": "lecture-03",
             "attendance": "absent",

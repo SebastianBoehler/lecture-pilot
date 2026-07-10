@@ -1,6 +1,9 @@
 from pathlib import Path
 
+import pytest
+
 from lecturepilot.source_bundle import scan_source_bundle
+from lecturepilot.workspace_fs import WorkspaceFSError
 
 
 def test_source_bundle_scans_professor_material_types(tmp_path: Path) -> None:
@@ -30,14 +33,15 @@ def test_source_bundle_scans_professor_material_types(tmp_path: Path) -> None:
     ]
 
 
-def test_source_bundle_does_not_follow_symlinked_files(tmp_path: Path) -> None:
+def test_source_bundle_rejects_symlinked_files(tmp_path: Path) -> None:
     root = tmp_path / "course"
     outside = tmp_path / "private.md"
     _write(outside)
     root.mkdir()
     (root / "linked.md").symlink_to(outside)
 
-    assert scan_source_bundle(root) == []
+    with pytest.raises(WorkspaceFSError, match="Symbolic links"):
+        scan_source_bundle(root)
 
 
 def _write(path: Path) -> None:

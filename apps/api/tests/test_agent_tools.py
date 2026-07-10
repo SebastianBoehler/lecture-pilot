@@ -81,7 +81,7 @@ def test_unix_named_tools_search_read_and_write_canvas(tmp_path) -> None:
     assert highlighted["span_id"] != "plain-threshold-note-md-paragraph-1"
 
     denied = executor.execute("write", {"path": "/course/materials/x.md", "content": "no"})
-    assert denied == {"ok": False, "error": "This path is read-only for the tutor agent."}
+    assert denied == {"ok": False, "error": "Path is outside the workspace capability."}
 
 
 def test_agent_route_merges_low_level_canvas_write(tmp_path, monkeypatch) -> None:
@@ -95,7 +95,6 @@ def test_agent_route_merges_low_level_canvas_write(tmp_path, monkeypatch) -> Non
         "/agent/turn",
         headers=student_headers("u1"),
         json={
-            "user_id": "u1",
             "course_id": "martius-ml",
             "lecture_id": "lecture-03",
             "attendance": "absent",

@@ -14,11 +14,11 @@ def resolve_course_workspace(
     *,
     professor: str,
     term: str,
+    course: Course | None = None,
 ) -> CourseWorkspaceResult:
-    course_id = _course_id(setup.course_title)
-    course = Course(
+    course = course or Course(
         access_policy=setup.access_policy,
-        id=course_id,
+        id=_course_id(setup.course_title),
         title=setup.course_title.strip(),
         professor=professor,
         term=term,
@@ -39,8 +39,7 @@ def merge_course_workspace(
         return incoming
     incoming_by_id = {lecture.id: lecture for lecture in incoming.lectures}
     merged = [
-        _merge_lecture(lecture, incoming_by_id.get(lecture.id))
-        for lecture in existing.lectures
+        _merge_lecture(lecture, incoming_by_id.get(lecture.id)) for lecture in existing.lectures
     ]
     existing_ids = {lecture.id for lecture in existing.lectures}
     merged.extend(lecture for lecture in incoming.lectures if lecture.id not in existing_ids)

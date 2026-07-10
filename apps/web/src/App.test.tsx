@@ -77,7 +77,6 @@ describe("LecturePilot app shell", () => {
     expect(screen.getByRole("heading", { name: /profile/i })).toBeInTheDocument();
     expect(screen.getByText("student01")).toBeInTheDocument();
     expect(screen.getByText(/student01@uni-tuebingen\.de/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/tutor model preference/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /workspaces/i }));
     expect(screen.getByRole("heading", { name: /course workspaces/i })).toBeInTheDocument();
 
@@ -89,23 +88,13 @@ describe("LecturePilot app shell", () => {
     expect(screen.queryByRole("heading", { name: /course workspaces/i })).not.toBeInTheDocument();
   });
 
-  it("stores tutor model preference and sends it with tutor turns", async () => {
+  it("keeps tutor model authority on the server", async () => {
     const user = userEvent.setup();
     const fetchMock = mockLoginAndTutorFetch();
     vi.stubGlobal("fetch", fetchMock);
     renderPublishedApp();
 
     await logIn(user);
-    await user.click(screen.getByRole("button", { name: /open profile/i }));
-    await user.selectOptions(
-      screen.getByLabelText(/tutor model preference/i),
-      "openrouter/openai/gpt-oss-120b:nitro",
-    );
-    expect(window.localStorage.getItem("lecturepilot.tutorModelPreference")).toBe(
-      "openrouter/openai/gpt-oss-120b:nitro",
-    );
-
-    await user.click(screen.getByRole("button", { name: /dashboard/i }));
     await openLecture03FromDashboard(user);
     await user.click(screen.getByLabelText(/open tutor chat/i));
     await user.type(screen.getByPlaceholderText(/ask about this lecture/i), "Test fast model.");
@@ -115,9 +104,7 @@ describe("LecturePilot app shell", () => {
     const agentCall = fetchMock.mock.calls.find(([url]) => String(url).includes("/agent/turn"));
     expect(agentCall?.[1]?.credentials).toBe("include");
     expect(new Headers(agentCall?.[1]?.headers).has("authorization")).toBe(false);
-    expect(JSON.parse(String(agentCall?.[1]?.body))).toMatchObject({
-      model: "openrouter/openai/gpt-oss-120b:nitro",
-    });
+    expect(JSON.parse(String(agentCall?.[1]?.body))).not.toHaveProperty("model");
   });
 
   it("opens a local demo workspace without submitting credentials", async () => {
@@ -306,7 +293,7 @@ describe("LecturePilot app shell", () => {
       screen.getByRole("region", { name: /bayes formula and conditional probability/i }),
     ).toHaveAttribute("aria-current", "true");
     const agentRequest = JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body));
-    expect(agentRequest.user_id).toBe("local-demo");
+    expect(agentRequest).not.toHaveProperty("user_id");
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/agent/turn"),
       expect.objectContaining({ method: "POST" }),

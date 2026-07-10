@@ -6,7 +6,8 @@ from auth_helpers import professor_headers, student_headers
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.models import Course, LectureScheduleItem, LectureScheduleProposal, TuebingenLoginResult
+from lecturepilot.models import LectureScheduleItem, LectureScheduleProposal
+from lecturepilot.university_models import ExternalCourseCandidate, UniversityLoginResult
 
 
 def test_professor_creates_stable_course_workspace_ids(tmp_path: Path) -> None:
@@ -112,7 +113,7 @@ def test_created_course_workspace_persists_lecture_schedule(tmp_path: Path) -> N
     assert payload[1]["lecture"]["material_path"] == "Lecture02.tex"
 
 
-def test_demo_flag_appends_created_course_to_live_login(tmp_path: Path, monkeypatch) -> None:
+def test_live_login_does_not_grant_courses_from_demo_flag(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.delenv("LECTUREPILOT_DEMO_INCLUDE_CREATED_COURSES", raising=False)
     client = _client(tmp_path)
     client.app.state.tuebingen_adapter = _FakeLoginAdapter()
@@ -124,7 +125,7 @@ def test_demo_flag_appends_created_course_to_live_login(tmp_path: Path, monkeypa
     )
 
     assert response.status_code == 200
-    assert _course_titles(response.json()) == ["INFO4193 Natural Language Processing"]
+    assert _course_titles(response.json()) == []
 
     monkeypatch.setenv("LECTUREPILOT_DEMO_INCLUDE_CREATED_COURSES", "true")
     response = client.post(
@@ -133,10 +134,7 @@ def test_demo_flag_appends_created_course_to_live_login(tmp_path: Path, monkeypa
     )
 
     assert response.status_code == 200
-    assert _course_titles(response.json()) == [
-        "INFO4193 Natural Language Processing",
-        "Grundlagen des Maschinellen Lernens",
-    ]
+    assert _course_titles(response.json()) == []
 
 
 def test_professor_can_infer_full_course_schedule_from_bundle(tmp_path: Path) -> None:
@@ -212,7 +210,7 @@ def test_dynamic_course_workspace_uses_uploaded_source(tmp_path: Path) -> None:
     assert draft.json()["course_id"] == "demo-ml-course"
     assert draft.json()["lecture_id"] == "lecture-07"
     assert draft.json()["source_kind"] == "generated"
-    assert "/canvas-drafts/" in draft.json()["workspace_path"]
+    assert "workspace_path" not in draft.json()
 
     student = client.get(
         "/courses/demo-ml-course/lectures/lecture-07/canvas?user_id=student01",
@@ -311,7 +309,7 @@ def test_course_canvas_draft_can_use_markdown_text_and_pdf_without_latex(tmp_pat
         ("notes/overview.md", b"# Evidence Update\n\nBayes combines prior belief with likelihood evidence."),
         ("notes/risk.txt", b"Risk-sensitive classification changes decisions when errors have different costs."),
         ("slides/risk.pdf", _pdf_source("PDF slide text explains posterior risk and reject decisions.")),
-        ("figures/risk.png", b"\x89PNG\r\n"),
+        ("figures/risk.png", b"\x89PNG\r\n\x1a\n"),
         ("figures/risk.png.json", b'{"title":"Risk regions","description":"Posterior and loss threshold graphic"}'),
         ("videos/decision.mp4", b"\x00\x00\x00\x18ftypmp42"),
         ("videos/decision.json", b'{"title":"Decision walkthrough","description":"Professor-provided media"}'),
@@ -473,19 +471,21 @@ class _FakeLectureSchedulePlanner:
 
 
 class _FakeLoginAdapter:
-    def login(self, *, username: str, password: str, term: str) -> TuebingenLoginResult:
-        return TuebingenLoginResult(
+    def login(self, *, username: str, password: str, term: str) -> UniversityLoginResult:
+        return UniversityLoginResult(
             username=username,
             email=f"{username}@uni-tuebingen.de",
             term=term,
             courses=[
-                Course(
-                    id="info4193",
+                ExternalCourseCandidate(
+                    source="alma",
+                    external_course_id="unit:4193",
                     title="INFO4193 Natural Language Processing",
-                    professor="Fachbereich Informatik",
+                    organization="Fachbereich Informatik",
                     term=term,
                 )
             ],
+            sources_checked={"alma"},
         )
 
 

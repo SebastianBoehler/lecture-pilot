@@ -6,13 +6,8 @@ from fastapi.responses import FileResponse
 from lecturepilot.api_auth import request_context, require_same_tenant
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.course_access import require_lecture_id_access
-from lecturepilot.models import Course, Lecture, TenantRole
+from lecturepilot.models import Course, Lecture
 from lecturepilot.tenancy import TenantContext
-
-
-_WORKSPACE_REVIEW_ROLES = frozenset(
-    {TenantRole.TENANT_ADMIN, TenantRole.PROFESSOR, TenantRole.TUTOR}
-)
 
 
 def register_asset_routes(
@@ -94,8 +89,6 @@ def _require_workspace_asset_access(
     student_key: str,
 ) -> None:
     if app.state.canvas_workspace.layout.user_key(context.user_id) == student_key:
-        return
-    if not context.roles.isdisjoint(_WORKSPACE_REVIEW_ROLES):
         return
     raise HTTPException(
         status_code=403,

@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from lecturepilot.canvas_models import CanvasBlock
 from lecturepilot.learning_map import LearningMap
@@ -16,7 +16,8 @@ from lecturepilot.storage_layout import StorageLayout, safe_id
 
 
 class QuizAnswerInput(BaseModel):
-    user_id: str = Field(min_length=1, max_length=120)
+    model_config = ConfigDict(extra="forbid")
+
     attendance: AttendanceStatus
     block_id: str = Field(min_length=1, max_length=160)
     option_index: int = Field(ge=0, le=25)

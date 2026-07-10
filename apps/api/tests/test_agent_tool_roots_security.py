@@ -24,5 +24,5 @@ def test_tutor_roots_do_not_expose_global_material_root(tmp_path: Path) -> None:
     assert "/course/materials" not in roots["roots"]
     assert denied == {
         "ok": False,
-        "error": "Path is outside the agent workspace: /course/materials/future-lecture.md",
+        "error": "Path is outside the workspace capability.",
     }
