@@ -16,9 +16,10 @@ clone/copy professor source bundle
 ## Source Bundle
 
 Course source files may be large and are not subject to the repository code-file
-line limit. The codebase stays modular; uploaded lecture sources, PDFs, images,
-videos, code notebooks, and generated previews live in gitignored
-course-material roots.
+line limit. The codebase stays modular; uploaded professor files live under
+`source/uploads/`, while rendered pages and other derived artifacts live under
+`source/normalized/`. Derived files must never be rediscovered as professor
+sources.
 
 For Overleaf-backed courses, seed the course root from the full professor
 checkout and exclude only Git metadata:
@@ -32,18 +33,21 @@ The seed should preserve the professor's folder structure, including `images/`,
 then decides which files become cited canvas sources, optional artifacts, or
 admin-only context.
 
-Each upload should produce a manifest:
+Uploads update a canonical `source/source-index.json` manifest:
 
 ```json
 {
   "course_id": "martius-ml",
-  "lecture_id": "lecture-03",
-  "sources": [
-    { "path": "sources/Lecture03-eng.tex", "kind": "latex" },
-    { "path": "sources/slides.pdf", "kind": "pdf" },
-    { "path": "images/Ch3/Venn_C-X_1.pdf", "kind": "pdf" },
-    { "path": "videos/MontyPythonSpam.mp4", "kind": "video" },
-    { "path": "code/bayesian-decision/ROC_AUC_demo.ipynb", "kind": "notebook" }
+  "schema_version": 1,
+  "files": [
+    {
+      "path": "Lecture03/slides.pdf",
+      "kind": "pdf",
+      "size_bytes": 4820132,
+      "sha256": "...",
+      "modified_ns": 1783670400000000000,
+      "status": "indexed"
+    }
   ]
 }
 ```
@@ -57,9 +61,9 @@ The current API exposes the scanned bundle at:
 GET /courses/{course_id}/source-bundle
 ```
 
-This returns relative paths, file kinds, byte sizes, counts by kind, and the
-course-material upload types accepted by backend policy. It is intended as the
-read-only input for a professor/admin course creation view.
+This returns indexed relative paths, file kinds, byte sizes, counts by kind,
+and the course-material upload types accepted by backend policy. Refreshes
+reuse hashes when size and modification time are unchanged.
 
 Professor/admin uploads are staged through:
 
@@ -78,17 +82,55 @@ path=Lecture03-eng.tex
 file=@Lecture03-eng.tex
 ```
 
-The route is intentionally narrow: it checks the tenant role, rejects unsafe
-paths and unsupported file types, writes into the configured course-material
-root, and then the source-bundle scanner and canvas importer can pick the file
-up. Production auth should replace the demo headers with backend session
-context before this becomes user-facing.
+The route checks the tenant role, rejects unsafe paths and unsupported file
+types, streams the body in 1 MiB chunks, enforces the per-type size limit, and
+atomically replaces the target. It computes SHA-256 during that same pass, so
+indexing does not need to read a newly uploaded large video twice. A rejected
+upload leaves no partial target behind. Production auth should replace the demo
+headers with backend session context before this becomes user-facing.
+
+## Lecture Ownership
+
+Folder structure is evidence, not decoration. After a professor applies the
+lecture schedule, draft generation selects only the files assigned to that
+lecture. An exact `material_path` wins; a unique parent such as
+`Lecture 02/` contributes its descendants; explicit lecture numbers in paths
+are also matched. Course-wide files such as `syllabus.md` are shared. This
+keeps same-named files such as `Lecture 01/slides.tex` and
+`Lecture 02/slides.tex` isolated while retaining their full paths in source
+references.
+
+If no indexed source can be assigned to the requested lecture, generation
+fails clearly instead of silently feeding the whole course to the model.
+
+## Current Format Boundary
+
+“Schema-free” currently means the professor may preserve folders and filenames;
+it does not yet mean that every accepted binary format receives equivalent
+semantic extraction.
+
+| Kind                        | Current deterministic handling                                            |
+| --------------------------- | ------------------------------------------------------------------------- |
+| LaTeX, Markdown, text       | Text and structure imported locally                                       |
+| PDF                         | Text extracted and pages rendered locally, up to 20 pages per draft       |
+| Images, SVG, videos         | Preserved as source-backed media; optional JSON sidecars provide captions |
+| CSV, JSON, Python, notebook | Safely uploaded and indexed; semantic canvas extraction is still pending  |
+
+Current per-file limits are 2–10 MiB for textual formats, 20 MiB for images and
+notebooks, 100 MiB for PDFs, and 500 MiB for videos. The total request ceiling
+defaults to 600 MiB. These are safety defaults, not evidence that every maximum
+has passed a production load test.
+
+The next resource-efficient adapters should parse CSV/JSON/Python/notebooks
+locally, probe video metadata with `ffprobe`, and make audio transcription an
+explicit opt-in job with duration and cost quotas. They should not add a new
+provider credential: use the configured OpenAI-compatible provider only where
+local extraction cannot recover semantics.
 
 ## LLM Canvas Planner
 
-The planner should use a long-context model such as Gemini with the full source
-bundle or a structured source digest. It outputs a draft canvas, not final
-published material.
+The planner receives the selected lecture evidence or a structured digest, not
+the full course bundle. It outputs a draft canvas, not final published material.
 
 Expected planner output:
 
@@ -105,7 +147,11 @@ Expected planner output:
         { "type": "math", "source_refs": ["Lecture03-eng.tex#frame=7"] },
         { "type": "asset", "source_refs": ["images/Ch3/Venn_C-X_1.pdf"] },
         { "type": "checkpoint", "text": "Explain posterior, likelihood, and evidence." },
-        { "type": "quiz", "text": "Which term normalizes Bayes' rule?", "items": ["Prior", "Evidence"] }
+        {
+          "type": "quiz",
+          "text": "Which term normalizes Bayes' rule?",
+          "items": ["Prior", "Evidence"]
+        }
       ]
     }
   ]
@@ -178,3 +224,44 @@ uploaded -> indexed -> draft_canvas -> needs_review -> approved -> published
 Students only see `published` lectures whose lecture date has already passed.
 Drafts, rejected candidates, and unapproved generated artifacts stay in the
 admin workspace.
+
+## Future Platform Admin Governance
+
+The ingestion and cost-control roadmap should add a distinct platform-admin
+account above professor accounts. This is not part of the first ingestion
+milestone, but the authorization model should leave room for an admin to:
+
+- approve, suspend, and audit professor accounts;
+- review course-level and professor-level API, storage, and processing usage;
+- set institution, professor, and course quotas or budget ceilings;
+- review provider usage, retries, cache hits, and estimated cost over time;
+- inspect failed or unusually expensive ingestion jobs without seeing learner
+  or course content by default; and
+- manage institution-wide retention, deletion, and allowed-format policy.
+
+Professor approval and budget enforcement must remain backend-authoritative.
+Browser-supplied roles, tenant ids, quota values, or approval state are never
+accepted as authority.
+
+### Privacy-Restricted MLflow Operations View
+
+The backend already has optional MLflow observability around agent turns, model
+calls, tool spans, canvas writes, and quality-gate decisions. It is disabled by
+default, and `LECTUREPILOT_TRACE_CONTENT=metadata` is the production-safe
+starting point. The platform-admin dashboard can build an aggregate operations
+view from this data instead of introducing another telemetry provider.
+
+The dashboard should allowlist only operational fields such as span type, tool
+name, success state, normalized error code, latency, model/provider, retry and
+cache counts, and pseudonymous institution/course/professor keys. It must not
+store or display prompts, completions, learner text, tool arguments or results,
+source excerpts or filenames, raw user identifiers, emails, IP addresses,
+authentication data, or unrestricted exception messages. Before production,
+the current raw tool error output should become a finite error category.
+
+Prefer a backend-owned aggregate dashboard over exposing MLflow directly. A
+deep link to an individual trace should be available only to explicitly
+authorized operators, use an opaque trace id, remain behind the same protected
+network and access controls, and be audited. `redacted` or `full` tracing must
+never power the normal admin dashboard; full content is restricted to an
+explicit, time-limited private debugging session with short retention.

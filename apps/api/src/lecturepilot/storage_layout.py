@@ -92,6 +92,12 @@ class StorageLayout:
     def course_uploads_dir(self, course_id: str) -> Path:
         return self.course_source_root(course_id) / "uploads"
 
+    def course_normalized_dir(self, course_id: str) -> Path:
+        return self.course_source_root(course_id) / "normalized"
+
+    def course_source_index_path(self, course_id: str) -> Path:
+        return self.course_source_root(course_id) / "source-index.json"
+
     def course_canvas_dir(self, course_id: str, lecture_id: str) -> Path:
         return self.course_root(course_id) / "canvas" / "lectures" / safe_id(lecture_id)
 

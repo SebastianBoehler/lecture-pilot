@@ -13,6 +13,7 @@ def append_matching_pdf_slides(
     material_root: Path,
     course_id: str,
     lecture_id: str,
+    derived_root: Path | None = None,
 ) -> list[CanvasSection]:
     pdf_path = source_path.with_suffix(".pdf")
     if not pdf_path.exists():
@@ -21,6 +22,7 @@ def append_matching_pdf_slides(
         slides = render_pdf_slide_blocks(
             pdf_path=pdf_path,
             source_root=material_root,
+            output_root=derived_root,
             course_id=course_id,
             lecture_id=lecture_id,
             source_ref=pdf_path.name,

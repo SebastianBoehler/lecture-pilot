@@ -42,6 +42,7 @@ def import_latex_canvas(
     course_id: str,
     lecture_id: str,
     workspace_path: str,
+    derived_root: Path | None = None,
 ) -> CanvasDocument:
     source = strip_comments(source_path.read_text(encoding="utf-8", errors="replace"))
     frames = _read_frames(source)
@@ -52,6 +53,7 @@ def import_latex_canvas(
         material_root=material_root,
         course_id=course_id,
         lecture_id=lecture_id,
+        derived_root=derived_root,
     )
     return CanvasDocument(
         id=f"{course_id}-{lecture_id}",

@@ -13,7 +13,9 @@ class SourceBundleFile:
 
 def scan_source_bundle(root: Path) -> list[SourceBundleFile]:
     files = []
-    for path in sorted(item for item in root.rglob("*") if item.is_file()):
+    for path in sorted(
+        item for item in root.rglob("*") if item.is_file() and not item.is_symlink()
+    ):
         if _is_hidden(path.relative_to(root)) or ".lecturepilot-previews" in path.parts:
             continue
         kind = SOURCE_SUFFIXES.get(path.suffix.lower())
@@ -52,4 +54,7 @@ SOURCE_SUFFIXES = {
 
 
 def _is_hidden(path: Path) -> bool:
-    return path.parts[:1] == ("canvas",) or any(part.startswith(".") for part in path.parts)
+    derived_roots = {"canvas", "generated-slides", "normalized"}
+    return bool(path.parts[:1] and path.parts[0] in derived_roots) or any(
+        part.startswith(".") for part in path.parts
+    )

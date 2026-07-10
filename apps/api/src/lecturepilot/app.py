@@ -15,7 +15,7 @@ from lecturepilot.agent_routes import register_agent_routes
 from lecturepilot.auth_routes import register_auth_routes
 from lecturepilot.body_limits import RequestBodyLimitMiddleware
 from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.course_builder_source import course_builder_source_document, scan_source_bundles
+from lecturepilot.course_builder_source import course_builder_source_document
 from lecturepilot.course_canvas_routes import register_course_canvas_routes
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner
 from lecturepilot.course_deletion import register_course_deletion_routes
@@ -30,6 +30,7 @@ from lecturepilot.course_schedule_store import (
     read_course_workspace,
     write_course_workspace,
 )
+from lecturepilot.course_material_upload import store_course_material
 from lecturepilot.course_workspace import resolve_course_workspace
 from lecturepilot.dev_seeded_course import discovered_seeded_lecture_views
 from lecturepilot.exam_readiness_routes import register_exam_readiness_routes
@@ -53,6 +54,7 @@ from lecturepilot.rate_limit import RateLimitMiddleware
 from lecturepilot.runtime_env import load_project_env
 from lecturepilot.sample_data import COURSE, LECTURES
 from lecturepilot.security_headers import SecurityHeadersMiddleware, production_fastapi_kwargs
+from lecturepilot.source_index import indexed_course_files
 from lecturepilot.tenancy import TenantContext
 from lecturepilot.tuebingen_adapter import TuebingenCourseAdapter
 from lecturepilot.user_memory import UserMemoryStore
@@ -191,10 +193,9 @@ def create_app() -> FastAPI:
         context: TenantContext = Depends(request_context),
     ) -> SourceBundleManifest:
         require_course_manager(context, course_tenant_id=COURSE_TENANT_ID)
-        files = scan_source_bundles(
-            app.state.canvas_workspace.source_bundle_roots(
-                course_id, include_seeded_materials=False
-            )
+        files = indexed_course_files(
+            layout=app.state.canvas_workspace.layout,
+            course_id=course_id,
         )
         counts = Counter(item.kind for item in files)
         uploads = [
@@ -229,7 +230,10 @@ def create_app() -> FastAPI:
         try:
             return await app.state.lecture_schedule_planner.propose_schedule(
                 course_id=course_id,
-                files=scan_source_bundles(roots),
+                files=indexed_course_files(
+                    layout=app.state.canvas_workspace.layout,
+                    course_id=course_id,
+                ),
                 roots=list(roots),
                 first_lecture_date=start_date,
                 requested_count=count,
@@ -248,23 +252,36 @@ def create_app() -> FastAPI:
     ) -> CourseMaterialUploadResult:
         try:
             require_course_manager(context, course_tenant_id=COURSE_TENANT_ID)
-            payload = await file.read()
             checked = WorkspacePolicy().validate_course_material_upload(
                 tenant_id=context.tenant_id,
                 path=path,
-                size_bytes=len(payload),
+                size_bytes=0,
+            )
+            target = app.state.canvas_workspace.course_upload_path(
+                course_id=course_id,
+                path=path,
+            )
+            stored = await store_course_material(
+                upload=file,
+                target=target,
+                max_bytes=checked.max_bytes,
+            )
+            relative_path = target.relative_to(
+                app.state.canvas_workspace.layout.course_uploads_dir(course_id)
+            ).as_posix()
+            indexed_course_files(
+                layout=app.state.canvas_workspace.layout,
+                course_id=course_id,
+                known_hashes={relative_path: stored.sha256},
             )
         except WorkspacePolicyError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-        target = app.state.canvas_workspace.course_upload_path(course_id=course_id, path=path)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(payload)
         return CourseMaterialUploadResult(
             course_id=course_id,
             path=path,
             kind=checked.kind,
-            size_bytes=len(payload),
+            size_bytes=stored.size_bytes,
             storage_path=str(target),
         )
 

@@ -278,7 +278,16 @@ def test_full_course_draft_uses_matching_lecture_source(tmp_path: Path) -> None:
         upload = client.post(
             "/admin/courses/demo-ml-course/materials",
             data={"path": path},
-            files={"file": (Path(path).name, f"\\begin{{frame}}{{{title}}}{title}\\end{{frame}}".encode())},
+            files={
+                "file": (
+                    Path(path).name,
+                    (
+                        f"\\begin{{frame}}{{{title}}}"
+                        f"This lecture introduces {title} with enough source evidence."
+                        "\\end{frame}"
+                    ).encode(),
+                )
+            },
             headers=professor_headers(),
         )
         assert upload.status_code == 200
@@ -395,7 +404,7 @@ class _FakeCoursePlanner:
     async def plan_canvas(self, source_document):
         assert source_document.course_id == "demo-ml-course"
         assert source_document.lecture_id == "lecture-07"
-        assert source_document.source_ref == "Lecture07.tex"
+        assert source_document.source_ref == "uploads/Lecture07.tex"
         assert source_document.source_kind == "latex"
         return source_document.model_copy(
             update={

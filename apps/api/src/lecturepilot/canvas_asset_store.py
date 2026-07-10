@@ -25,6 +25,7 @@ class CanvasAssetStore:
     def course_asset_path(self, *, course_id: str, lecture_id: str, asset_path: str) -> Path:
         _assert_safe_asset_path(asset_path, "course material root", COURSE_MEDIA_SUFFIXES)
         candidates = [
+            self.layout.course_normalized_dir(course_id) / asset_path,
             self.layout.course_uploads_dir(course_id) / asset_path,
             self.layout.course_uploads_dir(course_id) / "images" / asset_path,
             self.material_root / "images" / asset_path,

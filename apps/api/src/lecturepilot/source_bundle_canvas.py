@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.latex_canvas_importer import CANVAS_IMPORT_VERSION, import_latex_canvas
 from lecturepilot.latex_canvas_text import BROWSER_ASSET_SUFFIXES, slug
 from lecturepilot.pdf_slide_assets import PdfSlideAssetError, render_pdf_slide_blocks
-from lecturepilot.source_bundle import scan_source_bundle
+from lecturepilot.source_bundle import SourceBundleFile, scan_source_bundle
+from lecturepilot.source_bundle_media import asset_section, media_caption, video_section
 
 
 MAX_TEXT_CHARS_PER_FILE = 12000
@@ -25,8 +25,11 @@ def import_source_bundle_canvas(
     course_id: str,
     lecture_id: str,
     workspace_path: str,
+    files: list[SourceBundleFile] | None = None,
+    derived_root: Path | None = None,
 ) -> CanvasDocument:
-    files = scan_source_bundle(source_root)
+    files = files if files is not None else scan_source_bundle(source_root)
+    derived_root = derived_root or source_root
     sections: list[CanvasSection] = []
     source_refs: list[str] = []
     for file in files:
@@ -34,10 +37,11 @@ def import_source_bundle_canvas(
         if file.kind == "latex":
             latex = import_latex_canvas(
                 source_path=path,
-                material_root=source_root,
+                material_root=path.parent,
                 course_id=course_id,
                 lecture_id=lecture_id,
                 workspace_path=workspace_path,
+                derived_root=derived_root,
             )
             sections.extend(_scoped_latex_sections(latex.sections, file.path))
             source_refs.append(file.path)
@@ -46,13 +50,20 @@ def import_source_bundle_canvas(
                 sections.append(section)
                 source_refs.append(file.path)
         elif file.kind == "pdf":
-            if section := _pdf_section(path, file.path, source_root, course_id, lecture_id):
+            if section := _pdf_section(
+                path,
+                file.path,
+                source_root,
+                derived_root,
+                course_id,
+                lecture_id,
+            ):
                 sections.append(section)
                 source_refs.append(file.path)
         elif file.kind in {"image", "svg"} and path.suffix.lower() in BROWSER_ASSET_SUFFIXES:
-            sections.append(_asset_section(file.path, source_root, course_id, lecture_id))
+            sections.append(asset_section(file.path, source_root, course_id, lecture_id))
         elif file.kind == "video" and path.suffix.lower() in VIDEO_SUFFIXES:
-            sections.append(_video_section(file.path, source_root, course_id, lecture_id))
+            sections.append(video_section(file.path, source_root, course_id, lecture_id))
 
     if not any(_has_text(section) for section in sections):
         raise SourceBundleCanvasError("No readable .tex, .md, .txt, or .pdf source material found.")
@@ -62,11 +73,16 @@ def import_source_bundle_canvas(
         course_id=course_id,
         lecture_id=lecture_id,
         title=_title_from_sections(sections),
-        source_kind="markdown",
+        source_kind=_source_kind(source_refs),
         source_ref=", ".join(source_refs[:8]) or "source bundle",
         workspace_path=workspace_path,
         sections=_dedupe_sections(sections),
     )
+
+
+def _source_kind(source_refs: list[str]) -> str:
+    only_latex = source_refs and all(Path(path).suffix.lower() == ".tex" for path in source_refs)
+    return "latex" if only_latex else "markdown"
 
 
 def _scoped_latex_sections(sections: list[CanvasSection], path: str) -> list[CanvasSection]:
@@ -102,10 +118,17 @@ def _text_section(path: Path, source_ref: str, *, kind: str) -> CanvasSection | 
     )
 
 
-def _pdf_section(path: Path, source_ref: str, source_root: Path, course_id: str, lecture_id: str) -> CanvasSection | None:
+def _pdf_section(
+    path: Path,
+    source_ref: str,
+    source_root: Path,
+    derived_root: Path,
+    course_id: str,
+    lecture_id: str,
+) -> CanvasSection | None:
     text = _pdf_text(path)
     section_id = slug(source_ref)
-    caption = _media_caption(source_root, source_ref)
+    caption = media_caption(source_root, source_ref)
     blocks = _text_blocks(source_ref, text)
     blocks.append(
         CanvasBlock(
@@ -118,7 +141,14 @@ def _pdf_section(path: Path, source_ref: str, source_root: Path, course_id: str,
     )
     try:
         blocks.extend(
-            render_pdf_slide_blocks(pdf_path=path, source_root=source_root, course_id=course_id, lecture_id=lecture_id, source_ref=source_ref)
+            render_pdf_slide_blocks(
+                pdf_path=path,
+                source_root=source_root,
+                output_root=derived_root,
+                course_id=course_id,
+                lecture_id=lecture_id,
+                source_ref=source_ref,
+            )
         )
     except PdfSlideAssetError as exc:
         raise SourceBundleCanvasError(str(exc)) from exc
@@ -128,83 +158,6 @@ def _pdf_section(path: Path, source_ref: str, source_root: Path, course_id: str,
         source_ref=f"{source_ref} pages 1-{min(MAX_PDF_PAGES, _pdf_page_count(path))}",
         blocks=blocks,
     )
-
-
-def _asset_section(path: str, source_root: Path, course_id: str, lecture_id: str) -> CanvasSection:
-    section_id = slug(f"asset {path}")
-    caption = _media_caption(source_root, path)
-    return CanvasSection(
-        id=section_id,
-        title=_media_title(path, caption),
-        source_ref=path,
-        blocks=[
-            CanvasBlock(
-                id=f"{section_id}-asset-1",
-                type="asset",
-                asset_path=path,
-                asset_url=f"/course-assets/{course_id}/{lecture_id}/{path}",
-                caption=caption,
-            )
-        ],
-    )
-
-
-def _video_section(path: str, source_root: Path, course_id: str, lecture_id: str) -> CanvasSection:
-    section_id = slug(f"video {path}")
-    caption = _media_caption(source_root, path)
-    return CanvasSection(
-        id=section_id,
-        title=_media_title(path, caption),
-        source_ref=path,
-        blocks=[
-            CanvasBlock(
-                id=f"{section_id}-video-1",
-                type="video",
-                asset_path=path,
-                asset_url=f"/course-assets/{course_id}/{lecture_id}/{path}",
-                caption=caption,
-            )
-        ],
-    )
-
-
-def _media_caption(source_root: Path, path: str) -> str:
-    metadata = _metadata(source_root / path)
-    if metadata:
-        title = _metadata_value(metadata, "title", "caption", "alt") or _filename_title(path)
-        details = _metadata_value(metadata, "description", "summary")
-        tags = metadata.get("tags")
-        tag_text = ", ".join(str(tag).strip() for tag in tags[:8] if str(tag).strip()) if isinstance(tags, list) else ""
-        return " - ".join(part for part in [title, details, tag_text] if part)[:500]
-    return _filename_title(path)[:500]
-
-
-def _metadata(path: Path) -> dict | None:
-    for candidate in (path.with_suffix(path.suffix + ".json"), path.with_suffix(".json")):
-        if candidate.exists() and candidate.stat().st_size <= 32_000:
-            try:
-                payload = json.loads(candidate.read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError, UnicodeDecodeError):
-                continue
-            if isinstance(payload, dict):
-                return payload
-    return None
-
-
-def _metadata_value(metadata: dict, *keys: str) -> str:
-    for key in keys:
-        value = metadata.get(key)
-        if isinstance(value, str) and value.strip():
-            return value.strip()
-    return ""
-
-
-def _media_title(path: str, caption: str) -> str:
-    return (caption.split(" - ", 1)[0] or _filename_title(path))[:200]
-
-
-def _filename_title(path: str) -> str:
-    return Path(path).stem.replace("-", " ").replace("_", " ").title()
 
 
 def _text_blocks(source_ref: str, text: str) -> list[CanvasBlock]:
@@ -252,12 +205,18 @@ def _pdf_text(path: Path) -> str:
         import fitz
     except ImportError as exc:
         raise SourceBundleCanvasError("PyMuPDF is required to read PDF source material.") from exc
-    document = fitz.open(path)
     try:
-        pages = [document.load_page(index).get_text("text") for index in range(min(len(document), MAX_PDF_PAGES))]
-        return "\n\n".join(pages)
-    finally:
-        document.close()
+        document = fitz.open(path)
+        try:
+            pages = [
+                document.load_page(index).get_text("text")
+                for index in range(min(len(document), MAX_PDF_PAGES))
+            ]
+            return "\n\n".join(pages)
+        finally:
+            document.close()
+    except Exception as exc:
+        raise SourceBundleCanvasError(f"Could not read PDF source {path.name}.") from exc
 
 
 def _pdf_page_count(path: Path) -> int:
@@ -265,11 +224,14 @@ def _pdf_page_count(path: Path) -> int:
         import fitz
     except ImportError as exc:
         raise SourceBundleCanvasError("PyMuPDF is required to read PDF source material.") from exc
-    document = fitz.open(path)
     try:
-        return len(document)
-    finally:
-        document.close()
+        document = fitz.open(path)
+        try:
+            return len(document)
+        finally:
+            document.close()
+    except Exception as exc:
+        raise SourceBundleCanvasError(f"Could not read PDF source {path.name}.") from exc
 
 
 def _has_text(section: CanvasSection) -> bool:
