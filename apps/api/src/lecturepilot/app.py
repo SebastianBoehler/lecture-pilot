@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-from collections import Counter
-from datetime import date
-
-from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from lecturepilot.analytics import AnalyticsStore
 from lecturepilot.analytics_routes import register_analytics_routes
 from lecturepilot.admin_media_routes import register_admin_media_routes
-from lecturepilot.api_auth import request_context, require_course_manager, require_same_tenant
+from lecturepilot.approval_routes import register_approval_routes
 from lecturepilot.asset_routes import register_asset_routes
 from lecturepilot.agent_routes import register_agent_routes
 from lecturepilot.auth_routes import register_auth_routes
@@ -19,46 +17,27 @@ from lecturepilot.course_builder_source import course_builder_source_document
 from lecturepilot.course_canvas_routes import register_course_canvas_routes
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner
 from lecturepilot.course_deletion import register_course_deletion_routes
-from lecturepilot.course_access import (
-    filter_accessible_courses,
-    lecture_views_for_context,
-    require_course_access,
-    resolve_course,
-)
-from lecturepilot.course_schedule_store import (
-    list_course_workspaces,
-    read_course_workspace,
-    write_course_workspace,
-)
-from lecturepilot.course_material_upload import store_course_material
-from lecturepilot.course_workspace import resolve_course_workspace
-from lecturepilot.dev_seeded_course import discovered_seeded_lecture_views
+from lecturepilot.course_routes import register_course_routes
+from lecturepilot.csrf import CsrfProtectionMiddleware, allowed_origins
+from lecturepilot.database import Database
 from lecturepilot.exam_readiness_routes import register_exam_readiness_routes
 from lecturepilot.harness import LecturePilotHarness
 from lecturepilot.image_generation_registry import image_generator_from_env
 from lecturepilot.lecture_schedule_planner import LectureSchedulePlanner
 from lecturepilot.learner_state import LearnerStateStore
-from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.models import (
-    CourseMaterialUploadResult,
-    CourseMaterialUploadType,
-    CourseWorkspaceResult,
-    CourseWorkspaceSetupInput,
-    LectureScheduleProposal,
-    SourceBundleEntry,
-    SourceBundleManifest,
-)
 from lecturepilot.observability import observability_from_env
-from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.rate_limit import RateLimitMiddleware
 from lecturepilot.runtime_env import load_project_env
 from lecturepilot.sample_data import COURSE, LECTURES
-from lecturepilot.security_headers import SecurityHeadersMiddleware, production_fastapi_kwargs
-from lecturepilot.source_index import indexed_course_files
-from lecturepilot.tenancy import TenantContext
+from lecturepilot.security_headers import (
+    SecurityHeadersMiddleware,
+    allowed_hosts,
+    production_fastapi_kwargs,
+)
+from lecturepilot.session_store import SessionStore
 from lecturepilot.tuebingen_adapter import TuebingenCourseAdapter
 from lecturepilot.user_memory import UserMemoryStore
-from lecturepilot.workspace import WorkspacePolicy, WorkspacePolicyError
+from lecturepilot.usage_quota import UsageQuota
 from lecturepilot.youtube_discovery import YoutubeDiscovery
 
 
@@ -68,6 +47,10 @@ load_project_env()
 
 def create_app() -> FastAPI:
     app = FastAPI(title="LecturePilot API", version="0.1.0", **production_fastapi_kwargs())
+    app.state.database = Database()
+    app.state.session_store = SessionStore(app.state.database)
+    app.state.usage_quota = UsageQuota(app.state.database)
+    app.state.course_tenant_id = COURSE_TENANT_ID
     app.state.tuebingen_adapter = TuebingenCourseAdapter()
     app.state.agent_harness = LecturePilotHarness()
     app.state.course_planner = CourseCanvasPlanner()
@@ -82,13 +65,15 @@ def create_app() -> FastAPI:
     app.state.observability = observability_from_env()
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+        allow_origins=list(allowed_origins()),
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts())
     app.add_middleware(RequestBodyLimitMiddleware)
     app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(CsrfProtectionMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
 
     @app.get("/health")
@@ -96,6 +81,7 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     register_auth_routes(app, course_tenant_id=COURSE_TENANT_ID)
+    register_approval_routes(app)
     register_admin_media_routes(
         app,
         course=COURSE,
@@ -128,162 +114,12 @@ def create_app() -> FastAPI:
         lectures=LECTURES,
     )
     register_asset_routes(app, **seeded_route_args)
-
-    @app.get("/courses")
-    def courses(context: TenantContext = Depends(request_context)) -> list[dict]:
-        require_same_tenant(context, course_tenant_id=COURSE_TENANT_ID)
-        stored = list_course_workspaces(app.state.canvas_workspace.workspace_root, COURSE_TENANT_ID)
-        courses_by_id = {COURSE.id: COURSE}
-        courses_by_id.update({workspace.course.id: workspace.course for workspace in stored})
-        accessible = filter_accessible_courses(
-            context, list(courses_by_id.values()), course_tenant_id=COURSE_TENANT_ID
-        )
-        return [course.model_dump() for course in accessible]
-
-    @app.get("/courses/{course_id}/lectures")
-    def lectures(
-        course_id: str,
-        context: TenantContext = Depends(request_context),
-    ) -> list[dict]:
-        course = resolve_course(app, course_id=course_id, seeded_course=COURSE)
-        require_course_access(context, course=course, course_tenant_id=COURSE_TENANT_ID)
-        workspace = read_course_workspace(
-            app.state.canvas_workspace.course_media_root(course_id), course_id
-        )
-        if workspace:
-            return [
-                item.model_dump(mode="json")
-                for item in lecture_views_for_context(context, workspace.lectures)
-            ]
-        if discovered_lectures := discovered_seeded_lecture_views(
-            course_id,
-            app.state.canvas_workspace.material_root,
-        ):
-            lectures = [item.lecture for item in discovered_lectures]
-            return [
-                item.model_dump(mode="json")
-                for item in lecture_views_for_context(context, lectures)
-            ]
-        if course_id != COURSE.id:
-            raise HTTPException(status_code=404, detail="Course not found.")
-        return [
-            item.model_dump(mode="json") for item in lecture_views_for_context(context, LECTURES)
-        ]
-
-    @app.post("/admin/course-workspaces", response_model=CourseWorkspaceResult)
-    def create_course_workspace(
-        setup: CourseWorkspaceSetupInput,
-        context: TenantContext = Depends(request_context),
-    ) -> CourseWorkspaceResult:
-        require_course_manager(context, course_tenant_id=COURSE_TENANT_ID)
-        workspace = resolve_course_workspace(
-            setup,
-            professor=context.user_id,
-            term=COURSE.term,
-        )
-        workspace = write_course_workspace(
-            app.state.canvas_workspace.course_media_root(workspace.course.id),
-            workspace,
-        )
-        return workspace
-
-    @app.get("/courses/{course_id}/source-bundle", response_model=SourceBundleManifest)
-    def source_bundle(
-        course_id: str,
-        context: TenantContext = Depends(request_context),
-    ) -> SourceBundleManifest:
-        require_course_manager(context, course_tenant_id=COURSE_TENANT_ID)
-        files = indexed_course_files(
-            layout=app.state.canvas_workspace.layout,
-            course_id=course_id,
-        )
-        counts = Counter(item.kind for item in files)
-        uploads = [
-            CourseMaterialUploadType(suffix=suffix, kind=kind, max_bytes=max_bytes)
-            for suffix, (kind, max_bytes) in sorted(
-                WorkspacePolicy.allowed_course_material_uploads.items()
-            )
-        ]
-        return SourceBundleManifest(
-            course_id=course_id,
-            files=[SourceBundleEntry(**item.__dict__) for item in files],
-            counts_by_kind=dict(sorted(counts.items())),
-            supported_uploads=uploads,
-        )
-
-    @app.get("/admin/courses/{course_id}/lecture-schedule", response_model=LectureScheduleProposal)
-    async def lecture_schedule(
-        course_id: str,
-        first_lecture_date: str | None = None,
-        count: int | None = None,
-        context: TenantContext = Depends(request_context),
-    ) -> LectureScheduleProposal:
-        require_course_manager(context, course_tenant_id=COURSE_TENANT_ID)
-        roots = app.state.canvas_workspace.source_bundle_roots(
-            course_id,
-            include_seeded_materials=False,
-        )
-        try:
-            start_date = date.fromisoformat(first_lecture_date) if first_lecture_date else None
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail="Invalid first lecture date.") from exc
-        try:
-            return await app.state.lecture_schedule_planner.propose_schedule(
-                course_id=course_id,
-                files=indexed_course_files(
-                    layout=app.state.canvas_workspace.layout,
-                    course_id=course_id,
-                ),
-                roots=list(roots),
-                first_lecture_date=start_date,
-                requested_count=count,
-            )
-        except ProviderConfigurationError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-        except ModelExecutionError as exc:
-            raise HTTPException(status_code=502, detail=str(exc)) from exc
-
-    @app.post("/admin/courses/{course_id}/materials", response_model=CourseMaterialUploadResult)
-    async def upload_course_material(
-        course_id: str,
-        path: str = Form(..., min_length=1, max_length=500),
-        file: UploadFile = File(...),
-        context: TenantContext = Depends(request_context),
-    ) -> CourseMaterialUploadResult:
-        try:
-            require_course_manager(context, course_tenant_id=COURSE_TENANT_ID)
-            checked = WorkspacePolicy().validate_course_material_upload(
-                tenant_id=context.tenant_id,
-                path=path,
-                size_bytes=0,
-            )
-            target = app.state.canvas_workspace.course_upload_path(
-                course_id=course_id,
-                path=path,
-            )
-            stored = await store_course_material(
-                upload=file,
-                target=target,
-                max_bytes=checked.max_bytes,
-            )
-            relative_path = target.relative_to(
-                app.state.canvas_workspace.layout.course_uploads_dir(course_id)
-            ).as_posix()
-            indexed_course_files(
-                layout=app.state.canvas_workspace.layout,
-                course_id=course_id,
-                known_hashes={relative_path: stored.sha256},
-            )
-        except WorkspacePolicyError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-        return CourseMaterialUploadResult(
-            course_id=course_id,
-            path=path,
-            kind=checked.kind,
-            size_bytes=stored.size_bytes,
-            storage_path=str(target),
-        )
+    register_course_routes(
+        app,
+        course_tenant_id=COURSE_TENANT_ID,
+        seeded_course=COURSE,
+        seeded_lectures=LECTURES,
+    )
 
     return app
 

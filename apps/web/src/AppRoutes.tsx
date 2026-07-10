@@ -9,7 +9,6 @@ import { ProfileView } from "./ProfileView";
 import { ProfessorCourseBuilder } from "./ProfessorCourseBuilder";
 import { ProfessorCourseManagement } from "./ProfessorCourseManagement";
 import { ProfessorCoursePerformance } from "./ProfessorCoursePerformance";
-import { requestedTutorModel, type TutorModelPreference } from "./tutorModels";
 import type { WorkspaceResetSelection } from "./WorkspaceResetControl";
 import type {
   Attendance,
@@ -33,7 +32,6 @@ type AppRoutesProps = {
   highlightedText: string | null;
   lastTutorModel: string | null;
   lessonBackView: "dashboard" | "professor";
-  lessonUserId: string;
   messages: ChatMessage[];
   navigationVersion: number;
   panelMode: LessonPanelMode | null;
@@ -42,12 +40,11 @@ type AppRoutesProps = {
   selectedCourseId: string;
   selectedLecture: Lecture;
   session: LoginSession | null;
-  tutorModelPreference: TutorModelPreference;
   view: View;
   workspaceCourse: UniversityCourse;
   workspaceCourseId: string;
   onLogin: (session: LoginSession) => void;
-  onModelPreferenceChange: (model: TutorModelPreference) => void;
+  onSessionChange: (session: LoginSession) => void;
   onOpenDemo: () => void;
   onOpenLecture: (courseId: string, lecture: Lecture) => void;
   onOpenProfessorDemo: () => void;
@@ -72,7 +69,6 @@ export function AppRoutes(props: AppRoutesProps) {
     highlightedText,
     lastTutorModel,
     lessonBackView,
-    lessonUserId,
     messages,
     navigationVersion,
     panelMode,
@@ -80,7 +76,6 @@ export function AppRoutes(props: AppRoutesProps) {
     selectedCourseId,
     selectedLecture,
     session,
-    tutorModelPreference,
     view,
     workspaceCourse,
     workspaceCourseId,
@@ -110,10 +105,9 @@ export function AppRoutes(props: AppRoutesProps) {
   if (view === "profile" && session) {
     return (
       <ProfileView
-        modelPreference={tutorModelPreference}
         session={session}
         onBack={() => props.onViewChange("dashboard")}
-        onModelPreferenceChange={props.onModelPreferenceChange}
+        onSessionChange={props.onSessionChange}
       />
     );
   }
@@ -171,11 +165,10 @@ export function AppRoutes(props: AppRoutesProps) {
       lecture={selectedLecture}
       messages={messages}
       session={session ?? localDemoSession}
-      tutorModel={lastTutorModel ?? requestedTutorModel(tutorModelPreference)}
+      tutorModel={lastTutorModel}
       navigationVersion={navigationVersion}
       panelMode={panelMode}
       passedGateIds={props.passedGateIds}
-      userId={lessonUserId}
       backLabel={lessonBackView === "professor" ? "Course builder" : "Dashboard"}
       onBack={() => props.onViewChange(lessonBackView)}
       onSendMessage={props.onSendMessage}

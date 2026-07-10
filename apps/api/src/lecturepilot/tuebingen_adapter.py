@@ -2,8 +2,13 @@ from __future__ import annotations
 
 import re
 from typing import Any
+from urllib.parse import parse_qs, urlparse
 
-from lecturepilot.models import Course, TuebingenLoginResult
+from lecturepilot.university_models import (
+    ExternalCourseCandidate,
+    ExternalCourseSource,
+    UniversityLoginResult,
+)
 
 
 class TuebingenIntegrationUnavailable(RuntimeError):
@@ -11,11 +16,11 @@ class TuebingenIntegrationUnavailable(RuntimeError):
 
 
 class TuebingenLoginError(RuntimeError):
-    """Raised when Uni login or Alma timetable lookup fails."""
+    """Raised when university authentication or course lookup fails."""
 
 
 class TuebingenCourseAdapter:
-    def login(self, *, username: str, password: str, term: str) -> TuebingenLoginResult:
+    def login(self, *, username: str, password: str, term: str) -> UniversityLoginResult:
         try:
             from tue_api_wrapper.sdk import TuebingenAuthenticatedClient
         except ImportError as exc:
@@ -25,63 +30,120 @@ class TuebingenCourseAdapter:
             ) from exc
 
         client = TuebingenAuthenticatedClient.login(username=username, password=password)
+        courses: list[ExternalCourseCandidate] = []
+        checked: set[ExternalCourseSource] = set()
+        warnings: list[str] = []
         try:
-            assignments = client.alma.timetable_course_assignments(term, limit=40)
-            courses = _courses_from_assignments(assignments, term=term)
-        except Exception as exc:
-            raise TuebingenLoginError(
-                "TUE API login failed or Alma did not return the timetable courses."
-            ) from exc
+            try:
+                assignments = client.alma.timetable_course_assignments(term, limit=80)
+                courses.extend(_alma_courses(assignments, term=term))
+                checked.add(ExternalCourseSource.ALMA)
+            except Exception:
+                warnings.append("Alma course enrollment data was unavailable for this login.")
+            try:
+                memberships = client.ilias.memberships()
+                courses.extend(_ilias_courses(memberships, term=term))
+                checked.add(ExternalCourseSource.ILIAS)
+            except Exception:
+                warnings.append("ILIAS course membership data was unavailable for this login.")
         finally:
             client.close()
 
-        return TuebingenLoginResult(
-            username=username,
+        if not checked:
+            raise TuebingenLoginError(
+                "University login failed or neither Alma nor ILIAS returned course data."
+            )
+        return UniversityLoginResult(
+            username=username.strip(),
             email=_email_from_username(username),
             term=term,
-            courses=courses,
+            courses=_dedupe_courses(courses),
+            sources_checked=checked,
+            warnings=warnings,
         )
 
 
-def _courses_from_assignments(assignments: Any, *, term: str) -> list[Course]:
-    raw_courses = getattr(assignments, "courses", ())
-    return [
-        Course(
-            id=_course_id(raw_course, index),
-            title=_course_title(raw_course),
-            professor=_course_professor(raw_course),
-            term=term,
+def _alma_courses(assignments: Any, *, term: str) -> list[ExternalCourseCandidate]:
+    courses: list[ExternalCourseCandidate] = []
+    for raw in getattr(assignments, "courses", ()):
+        detail = getattr(raw, "detail", None)
+        display_url = _read(raw, "detail_url") or _read(detail, "permalink")
+        external_id = _alma_course_id(display_url)
+        title = _read(raw, "title") or _read(raw, "summary")
+        if not external_id or not title:
+            continue
+        courses.append(
+            ExternalCourseCandidate(
+                source=ExternalCourseSource.ALMA,
+                external_course_id=external_id,
+                term=term,
+                number=_read(raw, "number"),
+                title=title,
+                organization=_read(raw, "organization"),
+                display_url=display_url,
+            )
         )
-        for index, raw_course in enumerate(raw_courses)
-    ]
+    return courses
 
 
-def _course_id(raw_course: Any, index: int) -> str:
-    number = _read(raw_course, "number")
-    title = _read(raw_course, "title") or _read(raw_course, "summary") or f"course-{index + 1}"
-    slug_source = f"{number or ''} {title}".strip()
-    slug = re.sub(r"[^a-z0-9]+", "-", slug_source.casefold()).strip("-")
-    return f"alma-{slug or index + 1}"
+def _ilias_courses(memberships: Any, *, term: str) -> list[ExternalCourseCandidate]:
+    courses: list[ExternalCourseCandidate] = []
+    for raw in memberships or ():
+        display_url = _read(raw, "url")
+        external_id = _ilias_course_id(display_url, _read(raw, "info_url"))
+        title = _read(raw, "title")
+        kind = (_read(raw, "kind") or "").casefold()
+        if not external_id or not title or (kind and kind not in {"kurs", "course"}):
+            continue
+        courses.append(
+            ExternalCourseCandidate(
+                source=ExternalCourseSource.ILIAS,
+                external_course_id=external_id,
+                term=term,
+                title=title,
+                display_url=display_url,
+            )
+        )
+    return courses
 
 
-def _course_title(raw_course: Any) -> str:
-    title = _read(raw_course, "title") or _read(raw_course, "summary")
-    number = _read(raw_course, "number")
-    if title and number and not title.startswith(number):
-        return f"{number} {title}"
-    return title or number or "Untitled Alma course"
+def _alma_course_id(*urls: str | None) -> str | None:
+    for url in urls:
+        if not url:
+            continue
+        query = parse_qs(urlparse(url).query)
+        unit_id = next(iter(query.get("unitId", ())), "").strip()
+        if unit_id.isdigit():
+            return f"unit:{unit_id}"
+    return None
 
 
-def _course_professor(raw_course: Any) -> str:
-    return _read(raw_course, "organization") or _read(raw_course, "event_type") or "Unknown"
+def _ilias_course_id(*urls: str | None) -> str | None:
+    for url in urls:
+        if not url:
+            continue
+        match = re.search(r"/goto\.php/crs/(\d+)(?:/|$|[?#])", url)
+        if match:
+            return f"crs:{match.group(1)}"
+        ref_id = next(iter(parse_qs(urlparse(url).query).get("ref_id", ())), "").strip()
+        if ref_id.isdigit() and ("course" in url.casefold() or "type=crs" in url.casefold()):
+            return f"crs:{ref_id}"
+    return None
 
 
-def _read(raw_course: Any, field: str) -> str | None:
-    if isinstance(raw_course, dict):
-        value = raw_course.get(field)
-    else:
-        value = getattr(raw_course, field, None)
-    return str(value).strip() if value not in (None, "") else None
+def _dedupe_courses(courses: list[ExternalCourseCandidate]) -> list[ExternalCourseCandidate]:
+    deduped: dict[tuple[str, str, str], ExternalCourseCandidate] = {}
+    for course in courses:
+        key = (course.source.value, course.external_course_id, course.term)
+        deduped.setdefault(key, course)
+    return list(deduped.values())
+
+
+def _read(value: Any, field: str) -> str | None:
+    if value is None:
+        return None
+    raw = value.get(field) if isinstance(value, dict) else getattr(value, field, None)
+    return str(raw).strip() if raw not in (None, "") else None
 
 
 def _email_from_username(username: str) -> str | None:

@@ -1,4 +1,5 @@
 import { apiUrl, readApiError } from "./api";
+import { authRequestInit } from "./authz";
 import type { LoginSession } from "./types";
 
 type TuebingenLoginInput = {
@@ -29,9 +30,8 @@ export async function loginWithTuebingen(input: TuebingenLoginInput): Promise<Lo
   return { ...(payload as LoginSession), access_token: null, auth_transport: "cookie" };
 }
 
-export async function logoutSession(): Promise<void> {
+export async function logoutSession(session: LoginSession): Promise<void> {
   await fetch(apiUrl("/auth/logout"), {
-    method: "POST",
-    credentials: "include",
+    ...authRequestInit(session, { method: "POST" }),
   }).catch(() => undefined);
 }

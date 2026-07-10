@@ -12,6 +12,22 @@ jobs:
   api-test-suite:
     name: API test suite
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: lecturepilot_test
+          POSTGRES_USER: lecturepilot
+          POSTGRES_PASSWORD: lecturepilot-test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U lecturepilot -d lecturepilot_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://lecturepilot:lecturepilot-test@127.0.0.1:5432/lecturepilot_test
     steps:
       - uses: actions/checkout@v6
       - name: Set up Python
@@ -24,6 +40,12 @@ jobs:
           pip install -c apps/api/requirements.lock -e "apps/api[test,agent]"
       - name: Run API lint
         run: python -m ruff check apps/api/src apps/api/tests
+      - name: Verify database migrations
+        run: |
+          alembic -c apps/api/alembic.ini upgrade head
+          alembic -c apps/api/alembic.ini check
+          alembic -c apps/api/alembic.ini downgrade base
+          alembic -c apps/api/alembic.ini upgrade head
       - name: Run API test suite
         run: pytest apps/api/tests
 

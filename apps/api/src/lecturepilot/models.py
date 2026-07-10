@@ -4,7 +4,7 @@ from datetime import UTC, date, datetime
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, SecretStr
+from pydantic import BaseModel, ConfigDict, Field
 
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
 from lecturepilot.scaffold_policy import TutorScaffoldPolicy
@@ -69,22 +69,6 @@ class Course(BaseModel):
     access_policy: CourseAccessPolicy = CourseAccessPolicy.TUEBINGEN_ENROLLED
 
 
-class TuebingenLoginInput(BaseModel):
-    username: str = Field(min_length=1, max_length=120)
-    password: SecretStr = Field(min_length=1, max_length=500)
-    term: str = Field(default="Sommer 2026", min_length=1, max_length=80)
-
-
-class TuebingenLoginResult(BaseModel):
-    username: str
-    email: str | None = None
-    term: str
-    tenant_id: str = "tenant-tuebingen"
-    roles: list[TenantRole] = Field(default_factory=lambda: [TenantRole.STUDENT])
-    access_token: str | None = None
-    courses: list[Course]
-
-
 class Lecture(BaseModel):
     id: str
     course_id: str
@@ -123,11 +107,12 @@ class CourseMaterialUploadResult(BaseModel):
     path: str = Field(min_length=1, max_length=500)
     kind: str = Field(min_length=1, max_length=80)
     size_bytes: int = Field(ge=0)
-    storage_path: str = Field(min_length=1, max_length=700)
 
 
 class CourseWorkspaceSetupInput(BaseModel):
+    course_id: str | None = Field(default=None, max_length=120)
     course_title: str = Field(min_length=1, max_length=200)
+    term: str | None = Field(default=None, max_length=80)
     lecture_title: str | None = Field(default=None, max_length=200)
     lecture_number: str | None = Field(default=None, max_length=20)
     lecture_count: int | None = Field(default=None, ge=1, le=80)
@@ -161,9 +146,6 @@ class CanvasPublicationResult(BaseModel):
     published: bool
     version: int | None = Field(default=None, ge=1)
     published_at: str | None = Field(default=None, max_length=80)
-    published_by: str | None = Field(default=None, max_length=120)
-    source_draft_path: str | None = Field(default=None, max_length=700)
-    published_path: str | None = Field(default=None, max_length=700)
 
 
 class YoutubeDuration(BaseModel):
@@ -204,7 +186,6 @@ class YoutubeSelectionResult(BaseModel):
     section_id: str | None = None
     block_id: str = Field(min_length=1)
     video: YoutubeVideoCandidate
-    storage_path: str = Field(min_length=1, max_length=700)
 
 
 class CanvasState(BaseModel):
@@ -241,6 +222,22 @@ class AgentTurnInput(BaseModel):
     canvas_context: CanvasDocument | None = None
     user_memory: UserMemoryContext = Field(default_factory=UserMemoryContext)
     readiness_task: AgentReadinessTask | None = None
+
+
+class AgentTurnRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    course_id: str = Field(min_length=1)
+    lecture_id: str = Field(min_length=1)
+    attendance: AttendanceStatus
+    message: str = Field(min_length=1, max_length=4000)
+    canvas_state: CanvasState = Field(default_factory=CanvasState)
+    canvas_context: CanvasDocument | None = None
+    user_memory: UserMemoryContext = Field(default_factory=UserMemoryContext)
+    readiness_task: AgentReadinessTask | None = None
+
+    def for_user(self, user_id: str) -> AgentTurnInput:
+        return AgentTurnInput(user_id=user_id, model=None, **self.model_dump())
 
 
 class CanvasCommand(BaseModel):

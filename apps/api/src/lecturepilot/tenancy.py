@@ -13,9 +13,6 @@ class TenantAccessError(PermissionError):
 
 _CACHE_PART_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,120}$")
 _COURSE_MANAGEMENT_ROLES = frozenset({TenantRole.TENANT_ADMIN, TenantRole.PROFESSOR})
-_PROGRESS_REVIEW_ROLES = frozenset(
-    {TenantRole.TENANT_ADMIN, TenantRole.PROFESSOR, TenantRole.TUTOR}
-)
 
 
 @dataclass(frozen=True)
@@ -24,6 +21,7 @@ class TenantContext:
     user_id: str
     roles: frozenset[TenantRole]
     course_ids: frozenset[str] = frozenset()
+    auth_mode: str = "session"
 
     @classmethod
     def from_profile(cls, profile: UserProfile, *, tenant_id: str) -> "TenantContext":
@@ -61,8 +59,7 @@ def assert_can_view_progress(
     assert_same_tenant(context, resource_tenant_id=progress_tenant_id)
     if context.user_id == learner_user_id:
         return
-    if context.roles.isdisjoint(_PROGRESS_REVIEW_ROLES):
-        raise TenantAccessError("Progress review requires a teaching or tenant_admin role.")
+    raise TenantAccessError("Learner progress belongs only to the active learner.")
 
 
 def tenant_storage_prefix(tenant_id: str) -> str:

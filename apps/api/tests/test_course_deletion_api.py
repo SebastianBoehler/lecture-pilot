@@ -41,7 +41,7 @@ def test_professor_deletes_created_course_workspace(tmp_path: Path) -> None:
     lectures = client.get("/courses/demo-ml-course/lectures", headers=student_headers("student01"))
 
     assert response.status_code == 200
-    assert response.json()["deleted"] is True
+    assert response.json()["archived"] is True
     assert not course_root.exists()
     assert "demo-ml-course" not in {course["id"] for course in courses.json()}
     assert lectures.status_code == 404

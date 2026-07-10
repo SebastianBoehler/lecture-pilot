@@ -39,6 +39,14 @@ export function authRequestInit(session: LoginSession, init: RequestInit = {}): 
   new Headers(init.headers).forEach((value, key) => {
     headers.set(key, value);
   });
+  const method = (init.method ?? "GET").toUpperCase();
+  if (
+    session.auth_transport === "cookie" &&
+    !["GET", "HEAD", "OPTIONS", "TRACE"].includes(method) &&
+    session.csrf_token
+  ) {
+    headers.set("X-CSRF-Token", session.csrf_token);
+  }
   return {
     ...init,
     credentials: "include",

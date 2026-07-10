@@ -24,6 +24,7 @@ export async function createCourseWorkspace(
   setup: CourseSetup,
   session: LoginSession,
   lectures: LectureScheduleItem[] = [],
+  courseId?: string,
 ): Promise<CourseWorkspaceResult> {
   const response = await professorFetch(
     "/admin/course-workspaces",
@@ -31,7 +32,7 @@ export async function createCourseWorkspace(
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(courseWorkspaceBody(setup, lectures)),
+      body: JSON.stringify(courseWorkspaceBody(setup, lectures, courseId, session.term)),
     },
     "Cannot reach the local LecturePilot API while creating the course workspace.",
   );
@@ -146,8 +147,15 @@ async function professorFetch(
   }
 }
 
-function courseWorkspaceBody(setup: CourseSetup, lectures: LectureScheduleItem[]) {
+function courseWorkspaceBody(
+  setup: CourseSetup,
+  lectures: LectureScheduleItem[],
+  courseId?: string,
+  term?: string,
+) {
   return {
+    course_id: courseId ?? null,
+    term: term ?? null,
     access_policy: setup.accessPolicy,
     course_title: setup.courseTitle,
     lecture_title: setup.lectureTitle || null,
