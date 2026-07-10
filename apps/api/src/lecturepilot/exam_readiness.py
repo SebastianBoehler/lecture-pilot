@@ -42,6 +42,41 @@ class ExamReadinessCheck(BaseModel):
     questions: list[ExamReadinessQuestion]
 
 
+class ExamReadinessPublicQuestion(BaseModel):
+    id: str
+    kind: Literal["multiple_choice", "open_ended"]
+    lecture_id: str
+    lecture_title: str
+    section_id: str
+    section_title: str
+    prompt: str
+    options: list[str] = Field(default_factory=list)
+    source_ref: str | None = None
+
+
+class ExamReadinessPublicCheck(BaseModel):
+    course_id: str
+    passing_score: float = PASSING_SCORE
+    published_lecture_count: int
+    coverage: list[ExamReadinessCoverage]
+    questions: list[ExamReadinessPublicQuestion]
+
+
+def public_exam_readiness_check(check: ExamReadinessCheck) -> ExamReadinessPublicCheck:
+    return ExamReadinessPublicCheck(
+        course_id=check.course_id,
+        passing_score=check.passing_score,
+        published_lecture_count=check.published_lecture_count,
+        coverage=check.coverage,
+        questions=[
+            ExamReadinessPublicQuestion.model_validate(
+                question.model_dump(exclude={"answer_index", "rubric"})
+            )
+            for question in check.questions
+        ],
+    )
+
+
 def build_exam_readiness_check(
     *,
     course_id: str,

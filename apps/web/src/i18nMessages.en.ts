@@ -57,7 +57,6 @@ export const enMessages = {
   "profile.settings": "Settings",
   "profile.tutorModel": "Tutor model",
   "profile.tutorModelHelp": "Saved in this browser for tutor turns.",
-  "profile.tutorModelPreference": "Tutor model preference",
   "profile.loadedCourses": "Loaded Courses",
   "lesson.controls": "Lesson controls",
   "lesson.back.dashboard": "Dashboard",

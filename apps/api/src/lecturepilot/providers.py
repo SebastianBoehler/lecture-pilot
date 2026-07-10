@@ -42,6 +42,8 @@ class ProviderRegistry:
         return self.model.split("/", 1)[0].lower()
 
     def require_ready(self, required: list[ProviderCapability]) -> ProviderSettings:
+        if self.model not in allowed_models():
+            raise ProviderConfigurationError("Requested model is not allowed by the server.")
         key_env = _PROVIDER_KEYS.get(self.provider)
         if not key_env:
             raise ProviderConfigurationError(f"Unsupported provider prefix: {self.provider}")
@@ -57,3 +59,10 @@ class ProviderRegistry:
             api_key_env=key_env,
             capabilities=set(_DEFAULT_CAPABILITIES),
         )
+
+
+def allowed_models() -> frozenset[str]:
+    configured = os.getenv("LECTUREPILOT_ALLOWED_MODELS", "").strip()
+    if configured:
+        return frozenset(model.strip() for model in configured.split(",") if model.strip())
+    return frozenset({os.getenv("LECTUREPILOT_MODEL") or DEFAULT_MODEL})

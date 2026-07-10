@@ -394,7 +394,13 @@ export function useProfessorCourseBuilder({
       return "Uploaded source bundle scanned.";
     }),
     onApplySchedule: () => run("apply-schedule", async () => {
-      const created = await createCourseWorkspace(setup, session, lectureSchedule);
+      const activeWorkspace = requireWorkspace(workspace);
+      const created = await createCourseWorkspace(
+        setup,
+        session,
+        lectureSchedule,
+        activeWorkspace.courseId,
+      );
       setWorkspace({ courseId: created.course.id, lectureId: created.active_lecture_id });
       setMediaLectureId(created.active_lecture_id);
       setWorkspaceCourse(created.course);

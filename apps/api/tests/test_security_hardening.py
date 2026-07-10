@@ -17,6 +17,7 @@ def test_security_headers_are_applied() -> None:
 
 def test_openapi_and_docs_are_disabled_in_production(monkeypatch) -> None:
     monkeypatch.setenv("LECTUREPILOT_ENV", "production")
+    monkeypatch.setenv("LECTUREPILOT_ALLOWED_HOSTS", "testserver")
     client = TestClient(create_app())
 
     assert client.get("/docs").status_code == 404

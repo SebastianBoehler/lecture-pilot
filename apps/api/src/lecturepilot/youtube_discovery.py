@@ -127,9 +127,9 @@ def _candidate_from_item(item: dict[str, Any], *, query: str) -> YoutubeVideoCan
     view_count = _optional_int(statistics.get("viewCount"))
     candidate = YoutubeVideoCandidate(
         video_id=_item_id(item),
-        title=str(snippet.get("title") or "Untitled YouTube video").strip(),
-        channel_title=str(snippet.get("channelTitle") or "Unknown channel").strip(),
-        description=str(snippet.get("description") or ""),
+        title=_limited_text(snippet.get("title"), 200) or "Untitled YouTube video",
+        channel_title=_limited_text(snippet.get("channelTitle"), 200) or "Unknown channel",
+        description=_limited_text(snippet.get("description"), 4000),
         url=f"https://www.youtube.com/watch?v={_item_id(item)}",
         thumbnail_url=_thumbnail_url(snippet.get("thumbnails") or {}),
         published_at=str(snippet.get("publishedAt") or "") or None,
@@ -202,9 +202,13 @@ def _format_seconds(seconds: int | None) -> str | None:
 def _thumbnail_url(thumbnails: dict[str, Any]) -> str | None:
     for key in ("maxres", "standard", "high", "medium", "default"):
         url = (thumbnails.get(key) or {}).get("url")
-        if isinstance(url, str) and url:
-            return url
+        if isinstance(url, str) and 0 < len(url) <= 500:
+            return url.strip()
     return None
+
+
+def _limited_text(value: object, max_length: int) -> str:
+    return str(value or "").strip()[:max_length]
 
 
 def _optional_int(value: object) -> int | None:

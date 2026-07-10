@@ -41,6 +41,15 @@ def production_fastapi_kwargs() -> dict[str, str | None]:
     return {"docs_url": None, "redoc_url": None, "openapi_url": None}
 
 
+def allowed_hosts() -> list[str]:
+    configured = os.getenv("LECTUREPILOT_ALLOWED_HOSTS", "").strip()
+    if configured:
+        return [host.strip() for host in configured.split(",") if host.strip()]
+    if os.getenv("LECTUREPILOT_ENV", "").strip().lower() == "production":
+        raise RuntimeError("LECTUREPILOT_ALLOWED_HOSTS is required in production.")
+    return ["localhost", "127.0.0.1", "testserver"]
+
+
 def _setdefault(headers: MutableHeaders, name: str, value: str) -> None:
     if name not in headers:
         headers[name] = value

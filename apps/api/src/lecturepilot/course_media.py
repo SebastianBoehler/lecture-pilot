@@ -40,7 +40,6 @@ def add_youtube_selection(
         section_id=selection.section_id,
         block_id=block_id,
         video=selection.video,
-        storage_path=str(path),
     )
 
 

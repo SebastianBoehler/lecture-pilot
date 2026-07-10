@@ -41,7 +41,7 @@ def test_professor_uploads_course_materials_into_source_bundle(tmp_path: Path) -
         ("Lecture03-eng.tex", _latex_source()),
         ("notes/overview.md", b"# Notes\n"),
         ("slides/lecture.pdf", b"%PDF-1.4\n"),
-        ("images/plot.png", b"\x89PNG\r\n"),
+        ("images/plot.png", b"\x89PNG\r\n\x1a\n"),
         ("videos/demo.mp4", b"\x00\x00\x00\x18ftypmp42"),
     ):
         response = client.post(
@@ -57,7 +57,7 @@ def test_professor_uploads_course_materials_into_source_bundle(tmp_path: Path) -
             path=path,
         )
         assert upload_path.exists()
-        assert response.json()["storage_path"] == str(upload_path)
+        assert "storage_path" not in response.json()
 
     payload = client.get("/courses/martius-ml/source-bundle", headers=professor_headers()).json()
     assert payload["counts_by_kind"] == {
@@ -209,7 +209,7 @@ def test_professor_canvas_draft_stays_private_until_publish(tmp_path: Path) -> N
 
     assert publish.status_code == 200
     assert publish.json()["published"] is True
-    assert publish.json()["published_by"] == "prof01"
+    assert "published_by" not in publish.json()
     assert (canvas_dir / "index.md").exists()
 
     student = client.get(

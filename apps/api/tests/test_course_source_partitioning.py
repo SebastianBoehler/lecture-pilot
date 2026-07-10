@@ -4,7 +4,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from auth_helpers import professor_headers
+from auth_helpers import professor_headers, student_headers
 from lecturepilot.app import create_app
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_builder_source import course_builder_source_document
@@ -74,19 +74,36 @@ def test_rendered_pdf_slides_are_not_reindexed_as_professor_sources(tmp_path: Pa
     assert [item.path for item in scan_source_bundle(uploads)] == [path]
 
 
-def test_corrupt_pdf_returns_a_clear_client_error(tmp_path: Path) -> None:
+def test_corrupt_pdf_is_rejected_before_it_reaches_the_source_index(tmp_path: Path) -> None:
     client = _client(tmp_path)
     path = "Lecture 1/corrupt.pdf"
     _create_full_course(client, (path,))
-    _upload(client, path, b"not a PDF")
-
     response = client.post(
-        "/admin/courses/partitioned-course/lectures/lecture-01/canvas/draft",
+        "/admin/courses/partitioned-course/materials",
+        data={"path": path},
+        files={"file": (Path(path).name, b"not a PDF", "application/pdf")},
         headers=professor_headers(),
     )
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "Could not read PDF source corrupt.pdf."
+    assert response.json()["detail"] == "File contents do not match the requested file type."
+
+
+def test_discovered_seeded_lecture_uses_the_same_authorization_catalog(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    material_root = client.app.state.canvas_workspace.material_root
+    for number in range(1, 5):
+        path = material_root / f"Lecture{number:02d}-eng.tex"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(_latex(f"Lecture {number}", f"LECTURE-{number}"))
+
+    response = client.get(
+        "/courses/martius-ml/lectures/lecture-04/canvas/publication",
+        headers=student_headers("student01"),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["published"] is False
 
 
 def _client(tmp_path: Path) -> TestClient:

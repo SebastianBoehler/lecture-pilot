@@ -36,7 +36,8 @@ def test_exam_readiness_uses_published_course_canvases(tmp_path: Path) -> None:
     assert any(question["kind"] == "multiple_choice" for question in payload["questions"])
     assert any(question["kind"] == "open_ended" for question in payload["questions"])
     quiz = next(question for question in payload["questions"] if question["kind"] == "multiple_choice")
-    assert quiz["answer_index"] == 1
+    assert "answer_index" not in quiz
+    assert "rubric" not in quiz
     assert quiz["lecture_title"] == "Bayesian Decision Theory"
     assert len([question for question in payload["questions"] if question["kind"] == "open_ended"]) >= 1
 

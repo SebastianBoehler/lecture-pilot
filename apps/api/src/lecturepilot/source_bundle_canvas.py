@@ -3,8 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.bounded_processing import BoundedProcessingError
 from lecturepilot.latex_canvas_importer import CANVAS_IMPORT_VERSION, import_latex_canvas
 from lecturepilot.latex_canvas_text import BROWSER_ASSET_SUFFIXES, slug
+from lecturepilot.pdf_extract import pdf_page_count, read_pdf_text
 from lecturepilot.pdf_slide_assets import PdfSlideAssetError, render_pdf_slide_blocks
 from lecturepilot.source_bundle import SourceBundleFile, scan_source_bundle
 from lecturepilot.source_bundle_media import asset_section, media_caption, video_section
@@ -225,36 +227,20 @@ def _heading(text: str) -> str | None:
 
 def _pdf_text(path: Path) -> str:
     try:
-        import fitz
-    except ImportError as exc:
-        raise SourceBundleCanvasError("PyMuPDF is required to read PDF source material.") from exc
-    try:
-        document = fitz.open(path)
-        try:
-            pages = [
-                document.load_page(index).get_text("text")
-                for index in range(min(len(document), MAX_PDF_PAGES))
-            ]
-            return "\n\n".join(pages)
-        finally:
-            document.close()
-    except Exception as exc:
-        raise SourceBundleCanvasError(f"Could not read PDF source {path.name}.") from exc
+        return read_pdf_text(
+            str(path),
+            max_pages=MAX_PDF_PAGES,
+            max_chars=MAX_TEXT_CHARS_PER_FILE,
+        )
+    except (BoundedProcessingError, ImportError) as exc:
+        raise SourceBundleCanvasError("PDF text extraction failed safely.") from exc
 
 
 def _pdf_page_count(path: Path) -> int:
     try:
-        import fitz
-    except ImportError as exc:
-        raise SourceBundleCanvasError("PyMuPDF is required to read PDF source material.") from exc
-    try:
-        document = fitz.open(path)
-        try:
-            return len(document)
-        finally:
-            document.close()
-    except Exception as exc:
-        raise SourceBundleCanvasError(f"Could not read PDF source {path.name}.") from exc
+        return pdf_page_count(str(path))
+    except (BoundedProcessingError, ImportError) as exc:
+        raise SourceBundleCanvasError("PDF page inspection failed safely.") from exc
 
 
 def _has_text(section: CanvasSection) -> bool:

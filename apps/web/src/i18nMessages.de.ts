@@ -61,7 +61,6 @@ export const deMessages: Record<MessageKey, string> = {
   "profile.settings": "Einstellungen",
   "profile.tutorModel": "Tutor-Modell",
   "profile.tutorModelHelp": "Für Tutor-Anfragen in diesem Browser gespeichert.",
-  "profile.tutorModelPreference": "Tutor-Modell auswählen",
   "profile.loadedCourses": "Geladene Kurse",
   "lesson.controls": "Lernsteuerung",
   "lesson.back.dashboard": "Dashboard",

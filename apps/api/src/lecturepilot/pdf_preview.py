@@ -3,6 +3,11 @@ from __future__ import annotations
 from hashlib import sha256
 from pathlib import Path
 
+from lecturepilot.bounded_processing import BoundedProcessingError, run_bounded
+
+
+MAX_PREVIEW_PIXELS = 20_000_000
+
 
 class PdfPreviewError(RuntimeError):
     """Raised when a PDF asset preview cannot be rendered."""
@@ -17,19 +22,30 @@ def render_pdf_preview(source_path: Path, preview_root: Path) -> Path:
         return preview_path
 
     try:
+        run_bounded(_render_preview, str(source_path), str(preview_path))
+    except BoundedProcessingError as exc:
+        raise PdfPreviewError(str(exc)) from exc
+    except Exception as exc:
+        raise PdfPreviewError("Could not render PDF preview.") from exc
+    return preview_path
+
+
+def _render_preview(source_path: str, preview_path: str) -> None:
+    try:
         import fitz
     except ImportError as exc:
         raise PdfPreviewError("PyMuPDF is required to render PDF previews.") from exc
-
+    document = fitz.open(source_path)
     try:
-        document = fitz.open(source_path)
+        if len(document) < 1:
+            raise PdfPreviewError("PDF has no pages.")
         page = document.load_page(0)
         pixmap = page.get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False)
+        if pixmap.width * pixmap.height > MAX_PREVIEW_PIXELS:
+            raise PdfPreviewError("PDF preview exceeds the pixel limit.")
         pixmap.save(preview_path)
+    finally:
         document.close()
-    except Exception as exc:
-        raise PdfPreviewError(f"Could not render PDF preview: {source_path}") from exc
-    return preview_path
 
 
 def _preview_key(path: Path) -> str:

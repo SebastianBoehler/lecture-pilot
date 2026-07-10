@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 
 from lecturepilot.api_auth import request_context, require_course_manager
 from lecturepilot.course_media import (
@@ -30,14 +30,17 @@ def register_admin_media_routes(
 ) -> None:
     lecture_ids = {lecture.id for lecture in lectures}
 
-    @app.get("/admin/courses/{course_id}/media/youtube/search", response_model=YoutubeSearchResponse)
+    @app.get(
+        "/admin/courses/{course_id}/media/youtube/search", response_model=YoutubeSearchResponse
+    )
     def search_youtube_media(
         course_id: str,
+        request: Request,
         q: str = Query(..., min_length=1, max_length=300),
         max_results: int = Query(default=5, ge=1, le=10),
         context: TenantContext = Depends(request_context),
     ) -> YoutubeSearchResponse:
-        require_course_manager(context, course_tenant_id=course_tenant_id)
+        _require_owner(request, context, course_id, course_tenant_id)
         try:
             return app.state.youtube_discovery.search(q, max_results=max_results)
         except YoutubeDiscoveryError as exc:
@@ -51,10 +54,11 @@ def register_admin_media_routes(
         course_id: str,
         lecture_id: str,
         selection: YoutubeSelectionInput,
+        request: Request,
         context: TenantContext = Depends(request_context),
     ) -> YoutubeSelectionResult:
         _assert_seeded_lecture(course_id, lecture_id, course, lecture_ids)
-        require_course_manager(context, course_tenant_id=course_tenant_id)
+        _require_owner(request, context, course_id, course_tenant_id)
         try:
             return add_youtube_selection(
                 material_root=_course_media_root(app, course_id),
@@ -73,9 +77,10 @@ def register_admin_media_routes(
     def include_course_youtube_media(
         course_id: str,
         selection: YoutubeSelectionInput,
+        request: Request,
         context: TenantContext = Depends(request_context),
     ) -> YoutubeSelectionResult:
-        require_course_manager(context, course_tenant_id=course_tenant_id)
+        _require_owner(request, context, course_id, course_tenant_id)
         try:
             return add_course_youtube_selection(
                 material_root=_course_media_root(app, course_id),
@@ -90,10 +95,11 @@ def register_admin_media_routes(
     def list_youtube_media(
         course_id: str,
         lecture_id: str,
+        request: Request,
         context: TenantContext = Depends(request_context),
     ) -> list[dict]:
         _assert_seeded_lecture(course_id, lecture_id, course, lecture_ids)
-        require_course_manager(context, course_tenant_id=course_tenant_id)
+        _require_owner(request, context, course_id, course_tenant_id)
         return list_course_media(
             material_root=_course_media_root(app, course_id),
             course_id=course_id,
@@ -103,9 +109,10 @@ def register_admin_media_routes(
     @app.get("/admin/courses/{course_id}/media/youtube")
     def list_course_youtube_media(
         course_id: str,
+        request: Request,
         context: TenantContext = Depends(request_context),
     ) -> list[dict]:
-        require_course_manager(context, course_tenant_id=course_tenant_id)
+        _require_owner(request, context, course_id, course_tenant_id)
         return list_course_media(
             material_root=_course_media_root(app, course_id),
             course_id=course_id,
@@ -115,9 +122,10 @@ def register_admin_media_routes(
     @app.delete("/admin/courses/{course_id}/media/youtube")
     def clear_youtube_media(
         course_id: str,
+        request: Request,
         context: TenantContext = Depends(request_context),
     ) -> dict[str, int]:
-        require_course_manager(context, course_tenant_id=course_tenant_id)
+        _require_owner(request, context, course_id, course_tenant_id)
         return {
             "deleted": clear_course_media(
                 material_root=_course_media_root(app, course_id),
@@ -134,6 +142,20 @@ def _assert_seeded_lecture(
 ) -> None:
     if course_id == course.id and lecture_id not in lecture_ids:
         raise HTTPException(status_code=404, detail="Lecture not found.")
+
+
+def _require_owner(
+    request: Request,
+    context: TenantContext,
+    course_id: str,
+    tenant_id: str,
+) -> None:
+    require_course_manager(
+        context,
+        course_tenant_id=tenant_id,
+        request=request,
+        course_id=course_id,
+    )
 
 
 def _course_media_root(app: FastAPI, course_id: str):

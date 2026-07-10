@@ -22,6 +22,22 @@ def test_youtube_discovery_filters_shorts_and_too_short_videos() -> None:
     assert "ddddddddddd" not in [item.video_id for item in response.items]
 
 
+def test_youtube_discovery_bounds_untrusted_provider_metadata() -> None:
+    def fetch_json(path: str, _params: dict[str, str | int]) -> dict:
+        if path == "search":
+            return {"items": [{"id": {"videoId": "eeeeeeeeeee"}}]}
+        item = _video("eeeeeeeeeee", "T" * 300, "PT10M", 1)
+        item["snippet"]["channelTitle"] = "C" * 300
+        item["snippet"]["description"] = "D" * 5000
+        return {"items": [item]}
+
+    response = YoutubeDiscovery(api_key="test", fetch_json=fetch_json).search("bounded metadata")
+
+    assert len(response.items[0].title) == 200
+    assert len(response.items[0].channel_title) == 200
+    assert len(response.items[0].description) == 4000
+
+
 def _fake_fetch_json(path: str, _params: dict[str, str | int]) -> dict:
     if path == "search":
         return {
