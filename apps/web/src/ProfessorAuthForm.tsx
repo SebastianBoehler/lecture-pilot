@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 
 import { useI18n } from "./i18n";
+import { useRememberedLoginIdentifier } from "./loginPreferences";
 import { loginProfessor, registerProfessor } from "./sessionApi";
 import type { LoginSession } from "./types";
 
@@ -14,7 +15,13 @@ export function ProfessorAuthForm({
   const { t } = useI18n();
   const [mode, setMode] = useState<ProfessorAuthMode>("login");
   const [displayName, setDisplayName] = useState("");
-  const [email, setEmail] = useState("");
+  const {
+    identifier: email,
+    persistRememberedIdentifier,
+    remember: rememberEmail,
+    setIdentifier: setEmail,
+    setRemember: setRememberEmail,
+  } = useRememberedLoginIdentifier("professor");
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +52,7 @@ export function ProfessorAuthForm({
               password,
             })
           : await loginProfessor({ email: email.trim(), password });
+      if (mode === "login") persistRememberedIdentifier();
       onLogin(session);
     } catch (authError) {
       setError(authError instanceof Error ? authError.message : t("login.professor.failed"));
@@ -102,6 +110,7 @@ export function ProfessorAuthForm({
           autoComplete="username"
           id="email"
           inputMode="email"
+          maxLength={254}
           name="email"
           onChange={(event) => setEmail(event.target.value)}
           required
@@ -125,6 +134,23 @@ export function ProfessorAuthForm({
           value={password}
         />
       </label>
+      {!registration ? (
+        <div className="login-remember">
+          <label className="login-checkbox">
+            <input
+              aria-describedby="professor-remember-help"
+              checked={rememberEmail}
+              name="remember_email"
+              onChange={(event) => setRememberEmail(event.target.checked)}
+              type="checkbox"
+            />
+            <span>{t("login.professor.rememberEmail")}</span>
+          </label>
+          <p className="login-help" id="professor-remember-help">
+            {t("login.rememberHelp")}
+          </p>
+        </div>
+      ) : null}
       {registration ? (
         <>
           <label>

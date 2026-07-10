@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -91,6 +91,112 @@ describe("LoginView", () => {
       "autocomplete",
       "new-password",
     );
+  });
+
+  it("remembers only an opted-in student username after a successful login", async () => {
+    const user = userEvent.setup();
+    const onLogin = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            username: "student01",
+            term: "Sommer 2026",
+            tenant_id: "tenant-tuebingen",
+            account_type: "university",
+            roles: ["student"],
+            csrf_token: "csrf-token-with-at-least-thirty-two-characters",
+            courses: [],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+
+    renderWithI18n(
+      <LoginView
+        onLogin={onLogin}
+        onOpenDemo={vi.fn()}
+        onOpenProfessorDemo={vi.fn()}
+        showDemoAccess={false}
+      />,
+    );
+
+    expect(screen.getByRole("checkbox", { name: /remember username/i })).toBeChecked();
+    await user.type(screen.getByLabelText(/zdv username/i), "student01");
+    await user.type(screen.getByLabelText(/^password$/i), "student-secret");
+    await user.click(screen.getByRole("button", { name: /continue with uni tübingen/i }));
+
+    await waitFor(() => expect(onLogin).toHaveBeenCalledOnce());
+    expect(window.localStorage.getItem("lecturepilot.rememberedStudentUsername")).toBe(
+      "student01",
+    );
+    expect([...Array(window.localStorage.length).keys()]
+      .map((index) => window.localStorage.getItem(window.localStorage.key(index) ?? ""))
+      .join(" "))
+      .not.toContain("student-secret");
+  });
+
+  it("prefills and clears a previously remembered student username", async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem("lecturepilot.rememberedStudentUsername", "student01");
+
+    renderWithI18n(
+      <LoginView
+        onLogin={vi.fn()}
+        onOpenDemo={vi.fn()}
+        onOpenProfessorDemo={vi.fn()}
+        showDemoAccess={false}
+      />,
+    );
+
+    expect(screen.getByLabelText(/zdv username/i)).toHaveValue("student01");
+    const remember = screen.getByRole("checkbox", { name: /remember username/i });
+    expect(remember).toBeChecked();
+
+    await user.click(remember);
+
+    expect(window.localStorage.getItem("lecturepilot.rememberedStudentUsername")).toBeNull();
+    expect(window.localStorage.getItem("lecturepilot.rememberStudentUsernameEnabled")).toBe(
+      "false",
+    );
+
+    await user.click(screen.getByRole("tab", { name: /professor/i }));
+    await user.click(screen.getByRole("tab", { name: /student/i }));
+    expect(screen.getByRole("checkbox", { name: /remember username/i })).not.toBeChecked();
+    expect(screen.getByLabelText(/zdv username/i)).toHaveValue("");
+  });
+
+  it("restores the last account type and remembered professor email", async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem("lecturepilot.loginAudience", "professor");
+    window.localStorage.setItem(
+      "lecturepilot.rememberedProfessorEmail",
+      "professor@example.edu",
+    );
+
+    renderWithI18n(
+      <LoginView
+        onLogin={vi.fn()}
+        onOpenDemo={vi.fn()}
+        onOpenProfessorDemo={vi.fn()}
+        showDemoAccess={false}
+      />,
+    );
+
+    expect(screen.getByRole("tab", { name: /professor/i })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByLabelText(/^email$/i)).toHaveValue("professor@example.edu");
+    expect(screen.getByRole("checkbox", { name: /remember email/i })).toBeChecked();
+
+    await user.click(screen.getByRole("tab", { name: /student/i }));
+    expect(window.localStorage.getItem("lecturepilot.loginAudience")).toBe("student");
+    await user.click(screen.getByRole("tab", { name: /professor/i }));
+    await user.click(screen.getByRole("button", { name: /create account/i }));
+    expect(screen.queryByRole("checkbox", { name: /remember email/i })).not.toBeInTheDocument();
   });
 
   it("registers a separate pending professor account", async () => {

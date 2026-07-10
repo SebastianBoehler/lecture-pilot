@@ -1,11 +1,14 @@
 import { useState } from "react";
 
 import { useI18n } from "./i18n";
+import {
+  readStoredLoginAudience,
+  writeStoredLoginAudience,
+  type LoginAudience,
+} from "./loginPreferences";
 import { ProfessorAuthForm } from "./ProfessorAuthForm";
 import { StudentLoginForm } from "./StudentLoginForm";
 import type { LoginSession } from "./types";
-
-type LoginAudience = "student" | "professor";
 
 export function LoginView({
   onLogin,
@@ -19,7 +22,12 @@ export function LoginView({
   showDemoAccess?: boolean;
 }) {
   const { t } = useI18n();
-  const [audience, setAudience] = useState<LoginAudience>("student");
+  const [audience, setAudience] = useState<LoginAudience>(readStoredLoginAudience);
+
+  function selectAudience(nextAudience: LoginAudience) {
+    setAudience(nextAudience);
+    writeStoredLoginAudience(nextAudience);
+  }
 
   return (
     <main className="login-screen">
@@ -35,7 +43,7 @@ export function LoginView({
               className={audience === "student" ? "is-active" : ""}
               role="tab"
               type="button"
-              onClick={() => setAudience("student")}
+              onClick={() => selectAudience("student")}
             >
               {t("login.studentTab")}
             </button>
@@ -44,7 +52,7 @@ export function LoginView({
               className={audience === "professor" ? "is-active" : ""}
               role="tab"
               type="button"
-              onClick={() => setAudience("professor")}
+              onClick={() => selectAudience("professor")}
             >
               {t("login.professorTab")}
             </button>

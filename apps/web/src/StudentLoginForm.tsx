@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 
 import { useI18n } from "./i18n";
+import { useRememberedLoginIdentifier } from "./loginPreferences";
 import { loginWithTuebingen } from "./sessionApi";
 import type { LoginSession } from "./types";
 
@@ -16,7 +17,13 @@ export function StudentLoginForm({
   showDemoAccess: boolean;
 }) {
   const { t } = useI18n();
-  const [username, setUsername] = useState("");
+  const {
+    identifier: username,
+    persistRememberedIdentifier,
+    remember: rememberUsername,
+    setIdentifier: setUsername,
+    setRemember: setRememberUsername,
+  } = useRememberedLoginIdentifier("student");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,12 +34,12 @@ export function StudentLoginForm({
     setError(null);
     setIsSubmitting(true);
     try {
-      onLogin(
-        await loginWithTuebingen({
-          username: username.trim(),
-          password,
-        }),
-      );
+      const session = await loginWithTuebingen({
+        username: username.trim(),
+        password,
+      });
+      persistRememberedIdentifier();
+      onLogin(session);
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : t("login.failed"));
     } finally {
@@ -70,6 +77,21 @@ export function StudentLoginForm({
           value={password}
         />
       </label>
+      <div className="login-remember">
+        <label className="login-checkbox">
+          <input
+            aria-describedby="student-remember-help"
+            checked={rememberUsername}
+            name="remember_username"
+            onChange={(event) => setRememberUsername(event.target.checked)}
+            type="checkbox"
+          />
+          <span>{t("login.rememberUsername")}</span>
+        </label>
+        <p className="login-help" id="student-remember-help">
+          {t("login.rememberHelp")}
+        </p>
+      </div>
       <button
         className="login-submit-button"
         disabled={isSubmitting || !username.trim() || !password}

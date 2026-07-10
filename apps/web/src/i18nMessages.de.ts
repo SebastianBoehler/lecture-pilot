@@ -30,6 +30,9 @@ export const deMessages: Record<MessageKey, string> = {
   "login.submit": "Mit Uni Tübingen fortfahren",
   "login.submitting": "Anmeldung läuft",
   "login.status": "Dein Kursarbeitsbereich wird geladen. Das kann einen Moment dauern.",
+  "login.rememberUsername": "Benutzername auf diesem Gerät merken",
+  "login.rememberHelp":
+    "Nur diese Kennung wird in diesem Browser gespeichert, niemals dein Passwort.",
   "login.demo": "Lokale Demo ansehen",
   "login.professorDemo": "Professorenkonto ansehen",
   "login.failed": "Anmeldung fehlgeschlagen.",
@@ -41,6 +44,7 @@ export const deMessages: Record<MessageKey, string> = {
   "login.professor.create": "Konto erstellen",
   "login.professor.name": "Vollständiger Name",
   "login.professor.email": "E-Mail",
+  "login.professor.rememberEmail": "E-Mail auf diesem Gerät merken",
   "login.professor.confirmPassword": "Passwort bestätigen",
   "login.professor.passwordHelp": "Verwende mindestens 15 Zeichen. Passphrasen werden unterstützt.",
   "login.professor.signInSubmit": "Als Professor anmelden",

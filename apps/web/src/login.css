@@ -107,6 +107,32 @@
   background: var(--color-bg-primary);
 }
 
+.login-remember {
+  display: grid;
+  gap: 4px;
+}
+
+.login-form label.login-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.login-form .login-checkbox input {
+  flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
+  margin: 1px 0 0;
+  padding: 0;
+  accent-color: var(--color-accent-primary);
+}
+
+.login-remember .login-help {
+  padding-left: 25px;
+}
+
 .login-form button {
   display: inline-flex;
   align-items: center;
