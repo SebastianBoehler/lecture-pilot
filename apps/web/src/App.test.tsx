@@ -184,6 +184,10 @@ describe("LecturePilot app shell", () => {
     const user = userEvent.setup();
     render(<App />);
 
+    const footer = screen.getByRole("contentinfo");
+    expect(footer).toHaveTextContent("Built with ♥ in Tübingen");
+    expect(within(footer).getByRole("img", { name: "love" })).toBeInTheDocument();
+
     await user.click(screen.getByRole("button", { name: /how it works/i }));
 
     expect(screen.getByRole("heading", { name: /how lecturepilot works/i })).toBeInTheDocument();
