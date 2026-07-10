@@ -15,9 +15,9 @@ export function StepHeader({
   const { t } = useI18n();
   return (
     <header className="step-header">
-      <span>{number}</span>
       <h2>{title}</h2>
       <strong>{done ? t("builder.status.ready") : t("builder.status.pending")}</strong>
+      <span>{number}</span>
     </header>
   );
 }

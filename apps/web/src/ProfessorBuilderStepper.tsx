@@ -2,7 +2,7 @@ import { useI18n } from "./i18n";
 
 export type BuilderStep = "define" | "upload" | "generate" | "review" | "publish";
 
-type StepState = {
+export type StepState = {
   available: boolean;
   id: BuilderStep;
   label: string;
@@ -68,31 +68,33 @@ export function ProfessorBuilderStepper({
 }) {
   const { t } = useI18n();
   return (
-    <ol className="flow-stepper" aria-label={t("builder.progress")}>
-      {steps.map((step) => (
-        <li
-          className={`${step.ready ? "is-ready" : ""} ${activeStep === step.id ? "is-active" : ""} ${
-            step.available ? "" : "is-locked"
-          }`}
-          key={step.id}
-        >
-          <button
-            aria-current={activeStep === step.id ? "step" : undefined}
-            aria-label={`${step.number} ${builderStepLabel(step.id, t)}`}
-            disabled={!step.available}
-            type="button"
-            onClick={() => onStepChange(step.id)}
+    <nav className="builder-journey" aria-label={t("builder.progress")}>
+      <ol>
+        {steps.map((step) => (
+          <li
+            className={`${step.ready ? "is-ready" : ""} ${activeStep === step.id ? "is-active" : ""} ${
+              step.available ? "" : "is-locked"
+            }`}
+            key={step.id}
           >
-            <span>{step.number}</span>
-            {builderStepLabel(step.id, t)}
-          </button>
-        </li>
-      ))}
-    </ol>
+            <button
+              aria-current={activeStep === step.id ? "step" : undefined}
+              aria-label={`${step.number} ${builderStepLabel(step.id, t)}`}
+              disabled={!step.available}
+              type="button"
+              onClick={() => onStepChange(step.id)}
+            >
+              <span>{step.number}</span>
+              <strong>{builderStepLabel(step.id, t)}</strong>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </nav>
   );
 }
 
-function builderStepLabel(
+export function builderStepLabel(
   step: BuilderStep,
   t: (
     key:

@@ -1,5 +1,9 @@
 import { useI18n } from "./i18n";
-import { ProfessorBuilderStepper } from "./ProfessorBuilderStepper";
+import {
+  builderStepLabel,
+  type BuilderStep,
+  ProfessorBuilderStepper,
+} from "./ProfessorBuilderStepper";
 import { ProfessorCanvasDraftStep } from "./ProfessorCanvasDraftStep";
 import { CourseSetupStep } from "./ProfessorCourseBuilderParts";
 import { ProfessorGenerationWarnings } from "./ProfessorGenerationWarnings";
@@ -17,10 +21,10 @@ export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
 
   return (
     <main className="professor-screen">
-      <section className="professor-page-header">
+      <section className="builder-masthead">
         <div>
-          <h1>{t("professor.builder.title")}</h1>
-          <p>{t("professor.builder.subtitle")}</p>
+          <h1>{builderStepLabel(builder.activeStep, t)}</h1>
+          <p>{builderStageDescription(builder.activeStep, t)}</p>
         </div>
         <div className="professor-header-actions">
           <button
@@ -33,25 +37,37 @@ export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
           </button>
         </div>
       </section>
-      <ProfessorBuilderStepper
-        activeStep={builder.activeStep}
-        steps={builder.steps}
-        onStepChange={builder.setActiveStep}
-      />
-      <div className="professor-flow">
-        {builder.activeStep === "define" ? <CourseSetupStep {...builder.defineStep} /> : null}
-        {builder.activeStep === "upload" ? <ProfessorMaterialStep {...builder.uploadStep} /> : null}
-        {builder.activeStep === "review" ? <ProfessorReviewStep {...builder.mediaStep} /> : null}
-        {builder.activeStep === "generate" ? (
-          <ProfessorCanvasDraftStep {...builder.generateStep} />
-        ) : null}
-        {builder.activeStep === "publish" ? (
-          <ProfessorPublishStep {...builder.publishStep} />
-        ) : null}
+      <div className="builder-layout">
+        <ProfessorBuilderStepper
+          activeStep={builder.activeStep}
+          steps={builder.steps}
+          onStepChange={builder.setActiveStep}
+        />
+        <div className="builder-workspace">
+          <div className="professor-flow">
+            {builder.activeStep === "define" ? <CourseSetupStep {...builder.defineStep} /> : null}
+            {builder.activeStep === "upload" ? <ProfessorMaterialStep {...builder.uploadStep} /> : null}
+            {builder.activeStep === "review" ? <ProfessorReviewStep {...builder.mediaStep} /> : null}
+            {builder.activeStep === "generate" ? (
+              <ProfessorCanvasDraftStep {...builder.generateStep} />
+            ) : null}
+            {builder.activeStep === "publish" ? (
+              <ProfessorPublishStep {...builder.publishStep} />
+            ) : null}
+          </div>
+          <ProfessorGenerationWarnings warnings={builder.generationWarnings} />
+          {builder.notice ? <p className="form-success">{builder.notice}</p> : null}
+          {builder.error ? <p className="form-error">{builder.error}</p> : null}
+        </div>
       </div>
-      <ProfessorGenerationWarnings warnings={builder.generationWarnings} />
-      {builder.notice ? <p className="form-success">{builder.notice}</p> : null}
-      {builder.error ? <p className="form-error">{builder.error}</p> : null}
     </main>
   );
+}
+
+function builderStageDescription(step: BuilderStep, t: ReturnType<typeof useI18n>["t"]) {
+  if (step === "define") return t("builder.stage.define");
+  if (step === "upload") return t("builder.stage.upload");
+  if (step === "review") return t("builder.stage.review");
+  if (step === "generate") return t("builder.stage.generate");
+  return t("builder.stage.publish");
 }

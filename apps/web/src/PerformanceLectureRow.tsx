@@ -14,27 +14,17 @@ export function PerformanceLectureRow({
   snapshot: LectureSnapshot | null;
 }) {
   const { t } = useI18n();
-  const noData = snapshot?.status === "no-data";
   return (
     <button className={active ? "is-active" : undefined} type="button" onClick={onSelect}>
       <span className="lecture-index">{lecture.number}</span>
       <span className="lecture-row-body">
         <strong>{lecture.title}</strong>
         <small>{lecture.date}</small>
-        {!snapshot || noData ? (
-          <small className="lecture-no-data">
-            {snapshot ? t("analytics.status.noData") : t("analytics.status.unloaded")}
-          </small>
-        ) : (
-          <span className="lecture-row-metrics">
-            <span>{snapshot.learners} learners</span>
-            <span>{snapshot.quizRate} quiz</span>
-            <span>{snapshot.gateRate} gates</span>
+        {active && snapshot ? (
+          <span className={`lecture-status is-${snapshot.status}`}>
+            {statusLabel(snapshot.status, t)}
           </span>
-        )}
-      </span>
-      <span className={`lecture-status is-${snapshot?.status ?? "unloaded"}`}>
-        {snapshot ? statusLabel(snapshot.status, t) : t("analytics.status.unloaded")}
+        ) : null}
       </span>
     </button>
   );

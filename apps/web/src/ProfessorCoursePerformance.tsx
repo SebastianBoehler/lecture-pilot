@@ -106,7 +106,7 @@ export function ProfessorCoursePerformance({
         </button>
       </section>
 
-      {courseOptions.length ? (
+      {courseOptions.length > 1 ? (
         <ProfessorCourseTabs
           courses={courseOptions}
           publishedLectureCount={visibleLectures.length}
@@ -178,9 +178,9 @@ export function ProfessorCoursePerformance({
               <PerformanceOverview snapshot={lectureSnapshot(selectedLecture, analytics)} />
               {analytics?.total_events ? (
                 <>
-                  <ProfessorLearningMapTree analytics={analytics} />
                   <AnalyticsChart analytics={analytics} />
                   <AnalyticsSummary analytics={analytics} />
+                  <ProfessorLearningMapTree analytics={analytics} />
                 </>
               ) : (
                 <AnalyticsEmptyState />

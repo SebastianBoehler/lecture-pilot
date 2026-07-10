@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -139,14 +139,8 @@ describe("Professor course builder", () => {
     ).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^course performance$/i }));
     expect(await screen.findByRole("heading", { name: /course performance/i })).toBeInTheDocument();
-    const courseScope = screen.getByRole("navigation", { name: /performance course scope/i });
-    expect(within(courseScope).getByRole("button", { name: /demo ml course/i })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    expect(
-      within(courseScope).queryByRole("button", { name: /grundlagen des maschinellen lernens/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: /performance course scope/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /demo ml course/i })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /refresh analytics/i }));
     expect(await screen.findByText("Events")).toBeInTheDocument();
     expect(screen.getAllByText("Quiz success").length).toBeGreaterThan(0);
