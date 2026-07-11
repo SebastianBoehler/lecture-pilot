@@ -48,8 +48,8 @@ Production forces database session auth, schema verification, trusted Host and O
 `Secure`/`HttpOnly`/`SameSite=Lax` session cookies, bounded material processing, quotas, and the
 persisted `/app/storage` root. Production startup rejects insecure cookie overrides, missing or
 non-HTTPS origins, wildcard hosts, and non-PostgreSQL databases. Provider and university credentials
-stay server-side. Professor passwords are stored as Argon2id hashes, and production web builds omit
-both development demo-login buttons.
+stay server-side. Alma is the only account login path, and production web builds omit both
+development demo-login buttons.
 
 Plain-HTTP local development deliberately leaves the `Secure` cookie flag off because browsers would
 otherwise reject the session. The production Compose path has no such override: Caddy obtains and
@@ -89,5 +89,5 @@ bounded worker processes with page, pixel, CPU, memory, file, and timeout limits
 Do not host publicly until all blockers in `security_best_practices_report.md` are closed. In
 particular, student Alma/ILIAS identifier matching across representative accounts, disposable TLS
 staging, backup restore, retention, deletion, privacy notice, and provider/subprocessor review remain
-unverified or incomplete. The pinned `tue-api-wrapper==0.2.3` and Pillow 12.3 dependency set passes
+unverified or incomplete. The pinned `tue-api-wrapper==0.3.0` and Pillow 12.3 dependency set passes
 the current Python audit.

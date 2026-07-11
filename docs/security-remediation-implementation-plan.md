@@ -7,7 +7,9 @@ Source findings: `security_best_practices_report.md`
 
 ## Agreed product and security decisions
 
-- Alma authenticates the university identity; it does not grant LecturePilot roles.
+- Alma authenticates the university identity and supplies the active account role. A non-student
+  role creates a professor candidate, but only platform approval grants the LecturePilot professor
+  role.
 - The first successful university login creates or updates a database-backed user.
 - A platform administrator approves a user as a professor once. The administrator does not assign
   each professor-created course.
@@ -105,33 +107,33 @@ Gate 1:
 
 ## Phase 2 — Database-backed login, sessions, and professor approval
 
-- [x] Refactor `TuebingenCourseAdapter` to return authenticated identity and upstream assignments as
-      data only. Never accept a role from Alma and never persist the submitted password.
-- [x] Keep the university login student-only. Upsert `users` and `external_identities`, refresh that
-      student's enrollment evidence, and load roles from the database without inferring professor
-      status from Alma or ILIAS.
-- [x] Add separate professor registration and login with normalized email, a user-selected password,
-      and an Argon2id hash in `local_credentials`. The raw password is never persisted or returned.
-- [x] Create the professor identity, tenant membership, pending professor request, credential, and
-      audit event atomically. A pending or rejected professor has no student or professor role.
+- [x] Refactor `TuebingenCourseAdapter` to return authenticated identity, the server-reported Alma
+      role profile, and upstream assignments as data only. Never accept a browser-selected role or
+      persist the submitted password.
+- [x] Use one university login for students and professor candidates. The active `student` Alma role
+      remains a student; another active role creates a pending professor request with no teaching
+      permission. Persist the raw role for audit and administrator review.
+- [x] Remove the separate local professor credential flow. Alma is the only login path, and the
+      submitted university password is never persisted or returned.
+- [x] Create the university identity, tenant membership, pending professor request, and audit event
+      atomically. A pending or rejected professor has no student or professor role.
 - [x] Replace the signed claim cookie with a random opaque session identifier. Store only its hash in
       `sessions`; rotate on login/privilege change, enforce expiry, and support immediate revocation.
 - [x] Make `request_context` load the current enabled user, membership, and session from the database.
       Remove roles and course IDs as self-contained cookie authority.
-- [x] Add `GET /me`, professor signup/login, and a pending/approved/rejected account status DTO.
+- [x] Add `GET /me` and a pending/approved/rejected account status DTO.
 - [x] Add platform-admin endpoints to list and approve/reject requests and disable accounts. Approval
       grants professor eligibility only; it does not create or assign courses.
 - [x] Add a one-time operator CLI to bootstrap the first platform admin by exact external identity.
       Every bootstrap and approval action writes an audit event.
-- [x] Update the UI with separate student/professor entry paths and pending, rejected, and approved
-      states. Remove both demo buttons and demo-course state from production builds.
+- [x] Update the UI with one university entry path and pending, rejected, and approved states. Remove
+      demo access from production builds.
 
 Gate 2:
 
-- [x] Student and local-professor fixtures produce database-derived roles only; approval revokes the
+- [x] Student and Alma-professor fixtures produce database-derived roles only; approval revokes the
       pending session, and a fresh professor login receives the approved role.
-- [x] Professor registration/login responses contain account display data and approval status but no
-      credential or password hash.
+- [x] University login responses contain account display data and approval status but no credential.
 - [ ] Logout, password-independent session revocation, privilege change, fixation rotation, expiry,
       and concurrent-session tests pass.
 - [x] Logs, responses, browser storage, and cookies contain no university or professor password and

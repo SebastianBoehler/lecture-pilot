@@ -49,10 +49,11 @@ This repository is intentionally small but runnable:
   tutor turns use the configured provider model. Production builds do not
   render demo access.
 - React/Vite frontend with dashboard and focused lesson workspace.
-- TUE API student login backed by the local FastAPI API and `tue-api-wrapper`.
-- Separate email/password professor accounts that remain pending until a
-  platform administrator approves them.
-- Postgres-backed users, Argon2id professor credentials, opaque sessions,
+- Unified TUE API login for students and professor candidates, with the active
+  Alma role verified by the backend.
+- Professor candidates remain pending until a platform administrator approves
+  them; browser-selected roles are never accepted.
+- Postgres-backed users, opaque sessions,
   course ownership, Alma/ILIAS enrollment evidence, audit events, and durable
   quotas.
 - Capability-scoped, symlink-safe learner and course-builder workspaces.
@@ -159,7 +160,7 @@ Live Uni Tübingen login also needs the wrapper package in the API environment:
 pip install -e "apps/api[tuebingen]"
 ```
 
-Published wrapper support is pinned to `tue-api-wrapper==0.2.3`, which requires
+Published wrapper support is pinned to `tue-api-wrapper==0.3.0`, which requires
 the audited Pillow 12.3 security baseline. Local wrapper integration remains
 useful for redacted development checks.
 
