@@ -1,7 +1,7 @@
 # LecturePilot pre-deployment security review
 
-Date: 2026-07-10<br>
-Reviewed baseline: `main` at `5aab9c9`, plus the local professor-auth remediation worktree<br>
+Date: 2026-07-11<br>
+Reviewed baseline: `main` at `386a700`, plus the local release-polish worktree<br>
 Verdict: **Do not deploy live yet**
 
 ## Executive summary
@@ -13,7 +13,7 @@ analytics, symlink-safe
 agent/file capabilities, guarded uploads and parsers, durable quotas, and a same-origin hardened
 container stack.
 
-The published `tue-api-wrapper==0.2.3` now requires Pillow 12.3, and the regenerated Python lock
+The published `tue-api-wrapper==0.3.0` requires Pillow 12.3, and the regenerated Python lock
 passes `pip-audit`; the previous high dependency blocker is closed. Representative cross-account
 Alma/ILIAS identifiers, live TLS/VM isolation, restore, and the legal retention/privacy policy remain
 unverified. No VM access or deployment occurred.
@@ -58,9 +58,11 @@ professor requests, sessions, courses, external refs, enrollments, audit events,
 Sessions are random opaque values; only hashes are stored. Approval and disablement revoke existing
 sessions. Production fails when the database is absent or behind the current migration.
 
-Students authenticate only through the university adapter. Professors register separately with a
-normalized email and user-selected password stored as an Argon2id hash. Registration atomically
-creates a pending approval request and grants no role. Production builds render neither demo login.
+Students and professor candidates authenticate through the same university adapter. An active Alma
+`student` role remains a student; any other active role creates a pending professor request and
+grants no role until a platform administrator approves it. The raw Alma role remains visible for
+review, and approval revokes the pending session so the professor must sign in again. Production
+builds render neither demo login.
 
 Evidence: `database.py:21-83`, `session_store.py:34-103`, `identity_repository.py:23-184`,
 `professor_identity_repository.py`, `professor_auth_routes.py`, `approval_routes.py`, and migrations
@@ -166,28 +168,30 @@ Evidence: `audit.py`, route modules, `docs/security-operations.md`.
 
 Passed locally:
 
-- API: 269 tests.
-- Web: 81 tests; TypeScript/Vite production build.
+- API: 285 tests.
+- Web: 86 tests; TypeScript/Vite production build. Heavy lesson, professor, and article views are
+  lazy-loaded; the eager entry bundle is 285.60 kB minified / 87.44 kB gzip.
 - Quality: ESLint, Ruff, and Knip; existing React hook warnings remain non-failing.
 - PostgreSQL: Alembic drift check and downgrade/upgrade; production schema verification.
 - Security: CSRF/object authorization, Alma+ILIAS matching, symlink/hard-link/Unicode confinement,
   upload validation, quotas, pre-attempt answer withholding, and bounded Linux worker.
-- Dependencies: npm production audit and the regenerated Python lock audit report zero known
-  vulnerabilities. `tue-api-wrapper==0.2.3` resolves to Pillow 12.3 and `defusedxml`.
+- Dependencies: npm production audit and a fresh Python lock audit report zero known
+  vulnerabilities. `tue-api-wrapper==0.3.0` resolves to Pillow 12.3 and `defusedxml`.
 - Secrets: Trivy repository secret scan found no secret.
 - Containers: gateway, web, API, and database images build; API is UID 10001; production JS contains
   no localhost API URL; Caddy config validates. Current images have zero fixed high/critical
   findings.
-- Browser: local professor registration reaches a pending profile without student/professor
-  navigation or demo-course requests in a production build. Earlier course creation, guarded
+- Browser: the unified Alma professor fixture reaches a pending profile without professor
+  privileges; approval revokes the pending session and a fresh login unlocks owned-course creation.
+  Earlier course creation, guarded
   upload/index, schedule inference, media search, generated draft, publication, separate-student
   dashboard/canvas, quiz, and tutor request passed with zero final-page console errors. The run
   caught and fixed discovered-lecture authorization, oversized provider metadata, and draft-preview
   course-scope regressions.
 
-Not performed: real cross-account university identifier comparison, disposable hosted staging, live
-VM/SSH, TLS/browser verification, restore rehearsal, provider data-retention review, or legal/privacy
-approval.
+Not performed: a login with real professor Alma credentials, real cross-account university
+identifier comparison, disposable hosted staging, live VM/SSH, TLS/browser verification, restore
+rehearsal, provider data-retention review, or legal/privacy approval.
 
 ## Deployment decision
 
