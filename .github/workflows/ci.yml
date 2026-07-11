@@ -37,7 +37,7 @@ jobs:
       - name: Install API test dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -c apps/api/requirements.lock -e "apps/api[test,agent]"
+          pip install -c apps/api/requirements.lock -e "apps/api[test,agent,tuebingen]"
       - name: Run API lint
         run: python -m ruff check apps/api/src apps/api/tests
       - name: Verify database migrations
