@@ -1,14 +1,6 @@
-import { useState } from "react";
-
 import { useI18n } from "./i18n";
-import {
-  readStoredLoginAudience,
-  writeStoredLoginAudience,
-  type LoginAudience,
-} from "./loginPreferences";
-import { ProfessorAuthForm } from "./ProfessorAuthForm";
-import { StudentLoginForm } from "./StudentLoginForm";
 import type { LoginSession } from "./types";
+import { UniversityLoginForm } from "./UniversityLoginForm";
 
 export function LoginView({
   onLogin,
@@ -22,12 +14,6 @@ export function LoginView({
   showDemoAccess?: boolean;
 }) {
   const { t } = useI18n();
-  const [audience, setAudience] = useState<LoginAudience>(readStoredLoginAudience);
-
-  function selectAudience(nextAudience: LoginAudience) {
-    setAudience(nextAudience);
-    writeStoredLoginAudience(nextAudience);
-  }
 
   return (
     <main className="login-screen">
@@ -37,36 +23,12 @@ export function LoginView({
           <p>{t("login.subtitle")}</p>
         </div>
         <div className="login-auth-panel">
-          <div className="login-role-tabs" role="tablist" aria-label={t("login.accountType")}>
-            <button
-              aria-selected={audience === "student"}
-              className={audience === "student" ? "is-active" : ""}
-              role="tab"
-              type="button"
-              onClick={() => selectAudience("student")}
-            >
-              {t("login.studentTab")}
-            </button>
-            <button
-              aria-selected={audience === "professor"}
-              className={audience === "professor" ? "is-active" : ""}
-              role="tab"
-              type="button"
-              onClick={() => selectAudience("professor")}
-            >
-              {t("login.professorTab")}
-            </button>
-          </div>
-          {audience === "student" ? (
-            <StudentLoginForm
-              onLogin={onLogin}
-              onOpenDemo={onOpenDemo}
-              onOpenProfessorDemo={onOpenProfessorDemo}
-              showDemoAccess={showDemoAccess}
-            />
-          ) : (
-            <ProfessorAuthForm onLogin={onLogin} />
-          )}
+          <UniversityLoginForm
+            onLogin={onLogin}
+            onOpenDemo={onOpenDemo}
+            onOpenProfessorDemo={onOpenProfessorDemo}
+            showDemoAccess={showDemoAccess}
+          />
         </div>
       </section>
     </main>

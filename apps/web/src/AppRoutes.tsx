@@ -9,6 +9,7 @@ import { ProfileView } from "./ProfileView";
 import { ProfessorCourseBuilder } from "./ProfessorCourseBuilder";
 import { ProfessorCourseManagement } from "./ProfessorCourseManagement";
 import { ProfessorCoursePerformance } from "./ProfessorCoursePerformance";
+import { useLearnerProfile } from "./useLearnerProfile";
 import type { WorkspaceResetSelection } from "./WorkspaceResetControl";
 import type {
   Attendance,
@@ -80,6 +81,12 @@ export function AppRoutes(props: AppRoutesProps) {
     workspaceCourse,
     workspaceCourseId,
   } = props;
+  const learnerProfileEnabled = Boolean(
+    session &&
+      (session.account_type ?? "student") === "student" &&
+      !session.roles?.includes("tenant_admin"),
+  );
+  const learnerProfileState = useLearnerProfile(session, learnerProfileEnabled);
 
   if (view === "login") {
     return (
@@ -95,6 +102,7 @@ export function AppRoutes(props: AppRoutesProps) {
       <Dashboard
         lectures={availableLectures}
         publishedLectureIds={publishedLectureIds}
+        learnerProfileState={learnerProfileState}
         session={session}
         workspaceCourse={workspaceCourse}
         onOpen={(lecture) => props.onOpenLecture(workspaceCourseId, lecture)}
@@ -105,6 +113,7 @@ export function AppRoutes(props: AppRoutesProps) {
   if (view === "profile" && session) {
     return (
       <ProfileView
+        learnerProfileState={learnerProfileState}
         session={session}
         onBack={
           session.account_type === "professor" && !courseManagerSession

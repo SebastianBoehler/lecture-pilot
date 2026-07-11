@@ -37,7 +37,6 @@
   gap: 18px;
 }
 
-.login-role-tabs,
 .professor-auth-modes {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -48,7 +47,6 @@
   background: var(--color-bg-secondary);
 }
 
-.login-role-tabs button,
 .professor-auth-modes button {
   border: 0;
   border-radius: 5px;
@@ -58,7 +56,6 @@
   font-weight: 700;
 }
 
-.login-role-tabs button.is-active,
 .professor-auth-modes button.is-active {
   color: var(--color-text-primary);
   background: var(--color-bg-primary);

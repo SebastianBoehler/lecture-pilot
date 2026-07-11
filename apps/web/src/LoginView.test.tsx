@@ -44,11 +44,11 @@ describe("LoginView", () => {
     expect(
       screen.queryByRole("button", { name: /preview professor account/i }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByText(/separate lecturepilot professor/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^email$/i)).not.toBeInTheDocument();
   });
 
-  it("exposes stable browser autofill and password-manager field semantics", async () => {
-    const user = userEvent.setup();
-
+  it("exposes stable browser autofill and password-manager field semantics", () => {
     renderWithI18n(
       <LoginView
         onLogin={vi.fn()}
@@ -65,32 +65,10 @@ describe("LoginView", () => {
     expect(studentUsername).toHaveAttribute("autocomplete", "username");
     expect(studentUsername).toHaveAttribute("autocapitalize", "none");
     expect(studentUsername).toHaveAttribute("spellcheck", "false");
-    expect(studentPassword).toHaveAttribute("id", "current-password");
+    expect(studentPassword).toHaveAttribute("id", "university-current-password");
     expect(studentPassword).toHaveAttribute("name", "password");
     expect(studentPassword).toHaveAttribute("autocomplete", "current-password");
     expect(studentPassword.closest("form")).toHaveAttribute("method", "post");
-
-    await user.click(screen.getByRole("tab", { name: /professor/i }));
-    const professorEmail = screen.getByLabelText(/^email$/i);
-    const professorPassword = screen.getByLabelText(/^password$/i);
-    expect(professorEmail).toHaveAttribute("id", "email");
-    expect(professorEmail).toHaveAttribute("name", "email");
-    expect(professorEmail).toHaveAttribute("type", "email");
-    expect(professorEmail).toHaveAttribute("autocomplete", "username");
-    expect(professorPassword).toHaveAttribute("id", "current-password");
-    expect(professorPassword).toHaveAttribute("autocomplete", "current-password");
-
-    await user.click(screen.getByRole("button", { name: /create account/i }));
-    expect(screen.getByLabelText(/full name/i)).toHaveAttribute("autocomplete", "name");
-    expect(screen.getByLabelText(/^password$/i)).toHaveAttribute("id", "new-password");
-    expect(screen.getByLabelText(/^password$/i)).toHaveAttribute(
-      "autocomplete",
-      "new-password",
-    );
-    expect(screen.getByLabelText(/confirm password/i)).toHaveAttribute(
-      "autocomplete",
-      "new-password",
-    );
   });
 
   it("remembers only an opted-in student username after a successful login", async () => {
@@ -104,7 +82,7 @@ describe("LoginView", () => {
             username: "student01",
             term: "Sommer 2026",
             tenant_id: "tenant-tuebingen",
-            account_type: "university",
+            account_type: "student",
             roles: ["student"],
             csrf_token: "csrf-token-with-at-least-thirty-two-characters",
             courses: [],
@@ -162,94 +140,7 @@ describe("LoginView", () => {
       "false",
     );
 
-    await user.click(screen.getByRole("tab", { name: /professor/i }));
-    await user.click(screen.getByRole("tab", { name: /student/i }));
     expect(screen.getByRole("checkbox", { name: /remember username/i })).not.toBeChecked();
-    expect(screen.getByLabelText(/zdv username/i)).toHaveValue("");
   });
 
-  it("restores the last account type and remembered professor email", async () => {
-    const user = userEvent.setup();
-    window.localStorage.setItem("lecturepilot.loginAudience", "professor");
-    window.localStorage.setItem(
-      "lecturepilot.rememberedProfessorEmail",
-      "professor@example.edu",
-    );
-
-    renderWithI18n(
-      <LoginView
-        onLogin={vi.fn()}
-        onOpenDemo={vi.fn()}
-        onOpenProfessorDemo={vi.fn()}
-        showDemoAccess={false}
-      />,
-    );
-
-    expect(screen.getByRole("tab", { name: /professor/i })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-    expect(screen.getByLabelText(/^email$/i)).toHaveValue("professor@example.edu");
-    expect(screen.getByRole("checkbox", { name: /remember email/i })).toBeChecked();
-
-    await user.click(screen.getByRole("tab", { name: /student/i }));
-    expect(window.localStorage.getItem("lecturepilot.loginAudience")).toBe("student");
-    await user.click(screen.getByRole("tab", { name: /professor/i }));
-    await user.click(screen.getByRole("button", { name: /create account/i }));
-    expect(screen.queryByRole("checkbox", { name: /remember email/i })).not.toBeInTheDocument();
-  });
-
-  it("registers a separate pending professor account", async () => {
-    const user = userEvent.setup();
-    const onLogin = vi.fn();
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          username: "Professor Ada Lovelace",
-          email: "ada@example.edu",
-          term: "Sommer 2026",
-          tenant_id: "tenant-tuebingen",
-          account_type: "professor",
-          roles: [],
-          professor_status: "pending",
-          csrf_token: "csrf-token-with-at-least-thirty-two-characters",
-          courses: [],
-        }),
-        { status: 201, headers: { "Content-Type": "application/json" } },
-      ),
-    );
-    vi.stubGlobal("fetch", fetchMock);
-
-    renderWithI18n(
-      <LoginView
-        onLogin={onLogin}
-        onOpenDemo={vi.fn()}
-        onOpenProfessorDemo={vi.fn()}
-        showDemoAccess={false}
-      />,
-    );
-
-    await user.click(screen.getByRole("tab", { name: /professor/i }));
-    await user.click(screen.getByRole("button", { name: /create account/i }));
-    await user.type(screen.getByLabelText(/full name/i), "Professor Ada Lovelace");
-    await user.type(screen.getByLabelText(/^email$/i), "ada@example.edu");
-    await user.type(screen.getByLabelText(/^password$/i), "correct horse battery staple");
-    await user.type(screen.getByLabelText(/confirm password/i), "correct horse battery staple");
-    await user.click(screen.getByRole("button", { name: /create professor account/i }));
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringMatching(/\/auth\/professor\/register$/),
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({
-          display_name: "Professor Ada Lovelace",
-          email: "ada@example.edu",
-          password: "correct horse battery staple",
-        }),
-      }),
-    );
-    expect(onLogin).toHaveBeenCalledWith(
-      expect.objectContaining({ account_type: "professor", professor_status: "pending" }),
-    );
-  });
 });

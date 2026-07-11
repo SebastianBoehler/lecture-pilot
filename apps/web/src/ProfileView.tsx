@@ -7,16 +7,20 @@ import {
   type ProfessorRequest,
 } from "./accountApi";
 import { useI18n } from "./i18n";
+import { LearnerProfileControls } from "./LearnerProfileControls";
 import type { LoginSession } from "./types";
+import type { LearnerProfileState } from "./useLearnerProfile";
 
 export function ProfileView({
   session,
   onBack,
   onSessionChange,
+  learnerProfileState,
 }: {
   session: LoginSession;
   onBack?: () => void;
   onSessionChange: (session: LoginSession) => void;
+  learnerProfileState?: LearnerProfileState;
 }) {
   const { t } = useI18n();
   const [requests, setRequests] = useState<ProfessorRequest[]>([]);
@@ -82,6 +86,12 @@ export function ProfileView({
             <dt>{t("profile.email")}</dt>
             <dd>{session.email || t("profile.notLoaded")}</dd>
           </div>
+          {session.university_role ? (
+            <div>
+              <dt>{t("profile.universityRole")}</dt>
+              <dd>{session.university_role}</dd>
+            </div>
+          ) : null}
           <div>
             <dt>{t("profile.term")}</dt>
             <dd>{session.term}</dd>
@@ -114,6 +124,9 @@ export function ProfileView({
                   <div>
                     <strong>{request.username}</strong>
                     <small>{request.email ?? "No email returned"}</small>
+                    {request.university_role ? (
+                      <small>Alma role: {request.university_role}</small>
+                    ) : null}
                   </div>
                   <div>
                     <button
@@ -139,6 +152,10 @@ export function ProfileView({
           </section>
         ) : null}
         {accountError ? <p className="form-error">{accountError}</p> : null}
+
+        {learnerProfileState ? (
+          <LearnerProfileControls session={session} state={learnerProfileState} />
+        ) : null}
 
         <section className="profile-courses" aria-labelledby="profile-courses-heading">
           <h2 id="profile-courses-heading">{t("profile.loadedCourses")}</h2>

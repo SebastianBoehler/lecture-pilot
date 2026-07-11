@@ -229,12 +229,37 @@ export type LoginSession = {
   term: string;
   tenant_id?: string;
   account_type?: "student" | "professor";
+  university_role?: string | null;
   roles?: TenantRole[];
   access_token?: string | null;
   auth_transport?: "bearer" | "cookie" | "dev_headers";
   csrf_token?: string | null;
   professor_status?: "not_requested" | "pending" | "approved" | "rejected";
   courses: UniversityCourse[];
+};
+
+export type LearningGoal = "keep_up" | "understand_deeply" | "exam_preparation";
+
+export type LearnerFile = {
+  path: string;
+  size_bytes: number;
+  content?: string | null;
+};
+
+export type LearnerCourseProfile = {
+  course_id: string;
+  memory: string;
+  passed_lecture_ids: string[];
+  files: LearnerFile[];
+};
+
+export type LearnerProfile = {
+  onboarding_completed: boolean;
+  learning_goal?: LearningGoal | null;
+  preferences: Record<string, unknown>;
+  global_notes: string;
+  global_files: LearnerFile[];
+  courses: LearnerCourseProfile[];
 };
 
 export type ChatMessage = {

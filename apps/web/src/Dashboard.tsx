@@ -1,29 +1,21 @@
 import { useState } from "react";
 
+import { buildCourseGroups, publishedCourseLectures } from "./dashboardCourses";
 import { useI18n } from "./i18n";
 import type { Attendance, Lecture, LoginSession, UniversityCourse } from "./types";
-import { readDemoWorkspaceCourse } from "./demoWorkspaceAccess";
-import { hasDevelopmentWorkspaceAccess } from "./devWorkspaceAccess";
 import { ExamReadinessPanel } from "./ExamReadinessPanel";
+import { LearnerOnboarding } from "./LearnerOnboarding";
+import { NextStudyRecommendation, recommendLecture } from "./NextStudyRecommendation";
+import type { LearnerProfileState } from "./useLearnerProfile";
 
 const LECTURE_PREVIEW_COUNT = 2;
-
-type CourseWorkspaceStatus = "matched" | "unmatched";
-
-type CourseWorkspaceGroup = {
-  course: UniversityCourse;
-  status: CourseWorkspaceStatus;
-  statusLabel: string;
-  emptyText: string;
-  tutorAvailable: boolean;
-  courseLectures: Lecture[];
-};
 
 export function Dashboard({
   lectures,
   publishedLectureIds,
   session,
   workspaceCourse,
+  learnerProfileState,
   onOpen,
   onSetAttendance,
 }: {
@@ -31,6 +23,7 @@ export function Dashboard({
   publishedLectureIds: string[];
   session: LoginSession | null;
   workspaceCourse: UniversityCourse;
+  learnerProfileState?: LearnerProfileState;
   onOpen: (lecture: Lecture) => void;
   onSetAttendance: (lectureId: string, attendance: Attendance) => void;
 }) {
@@ -44,6 +37,14 @@ export function Dashboard({
   });
   const [openCourses, setOpenCourses] = useState<Record<string, boolean>>({});
   const [expandedLectureLists, setExpandedLectureLists] = useState<Record<string, boolean>>({});
+  const workspaceLectures = publishedCourseLectures(lectures, publishedLectureIds);
+  const courseProfile = learnerProfileState?.profile?.courses?.find(
+    (course) => course.course_id === workspaceCourse.id,
+  );
+  const recommendation = recommendLecture(
+    workspaceLectures,
+    courseProfile?.passed_lecture_ids ?? [],
+  );
 
   return (
     <main className="dashboard">
@@ -51,6 +52,12 @@ export function Dashboard({
         <h1>{t("dashboard.welcome", { student: studentLabel })}</h1>
         <p>{t("dashboard.subtitle")}</p>
       </section>
+
+      <NextStudyRecommendation
+        lectures={workspaceLectures}
+        passedLectureIds={courseProfile?.passed_lecture_ids ?? []}
+        onOpen={onOpen}
+      />
 
       <section className="course-panel" aria-labelledby="course-workspaces">
         <div className="panel-heading">
@@ -167,108 +174,15 @@ export function Dashboard({
           })}
         </div>
       </section>
+      {learnerProfileState?.profile && !learnerProfileState.profile.onboarding_completed ? (
+        <LearnerOnboarding
+          lecture={recommendation?.lecture ?? null}
+          onComplete={learnerProfileState.saveCalibration}
+          onOpen={onOpen}
+        />
+      ) : null}
     </main>
   );
-}
-
-function buildCourseGroups(
-  session: LoginSession | null,
-  workspaceCourse: UniversityCourse,
-  lectures: Lecture[],
-  publishedLectureIds: string[],
-  labels: {
-    aiTutorAvailable: string;
-    noMatchedTutor: string;
-    noTutor: string;
-    publishToEnable: string;
-  },
-): CourseWorkspaceGroup[] {
-  const enrolledCourses = session?.courses ?? [];
-  const courseGroups = enrolledCourses.length
-    ? enrolledCourses.map((course) =>
-        buildEnrolledCourseGroup(course, workspaceCourse, lectures, publishedLectureIds, labels),
-      )
-    : hasWorkspaceAccess(workspaceCourse)
-      ? [buildDiscoverableCourseGroup(workspaceCourse, lectures, publishedLectureIds, labels)]
-      : [];
-
-  if (
-    enrolledCourses.length &&
-    !enrolledCourses.some((course) => isWorkspaceCourse(course, workspaceCourse))
-  ) {
-    if (hasWorkspaceAccess(workspaceCourse) && publishedLectureIds.length > 0) {
-      courseGroups.push(
-        buildDiscoverableCourseGroup(workspaceCourse, lectures, publishedLectureIds, labels),
-      );
-    }
-  }
-
-  return courseGroups;
-}
-
-function buildEnrolledCourseGroup(
-  course: UniversityCourse,
-  workspaceCourse: UniversityCourse,
-  lectures: Lecture[],
-  publishedLectureIds: string[],
-  labels: {
-    aiTutorAvailable: string;
-    noMatchedTutor: string;
-    noTutor: string;
-  },
-): CourseWorkspaceGroup {
-  const publishedLectures = publishedCourseLectures(lectures, publishedLectureIds);
-  const tutorAvailable = publishedLectures.length > 0 && isWorkspaceCourse(course, workspaceCourse);
-  return {
-    course,
-    status: tutorAvailable ? "matched" : "unmatched",
-    statusLabel: tutorAvailable ? labels.aiTutorAvailable : labels.noTutor,
-    emptyText: labels.noMatchedTutor,
-    tutorAvailable,
-    courseLectures: tutorAvailable ? publishedLectures : [],
-  };
-}
-
-function buildDiscoverableCourseGroup(
-  workspaceCourse: UniversityCourse,
-  lectures: Lecture[],
-  publishedLectureIds: string[],
-  labels: {
-    aiTutorAvailable: string;
-    noTutor: string;
-    publishToEnable: string;
-  },
-): CourseWorkspaceGroup {
-  const publishedLectures = publishedCourseLectures(lectures, publishedLectureIds);
-  const tutorAvailable = publishedLectures.length > 0;
-  return {
-    course: workspaceCourse,
-    status: tutorAvailable ? "matched" : "unmatched",
-    statusLabel: tutorAvailable ? labels.aiTutorAvailable : labels.noTutor,
-    emptyText: labels.publishToEnable,
-    tutorAvailable,
-    courseLectures: publishedLectures,
-  };
-}
-
-function publishedCourseLectures(lectures: Lecture[], publishedLectureIds: string[]) {
-  const published = new Set(publishedLectureIds);
-  return lectures.filter((lecture) => published.has(lecture.id));
-}
-
-function isWorkspaceCourse(course: UniversityCourse, workspaceCourse: UniversityCourse) {
-  return (
-    course.id === workspaceCourse.id ||
-    normalizeCourseTitle(course.title) === normalizeCourseTitle(workspaceCourse.title)
-  );
-}
-
-function hasDemoWorkspaceAccess(workspaceCourse: UniversityCourse) {
-  return readDemoWorkspaceCourse()?.id === workspaceCourse.id;
-}
-
-function hasWorkspaceAccess(workspaceCourse: UniversityCourse) {
-  return hasDemoWorkspaceAccess(workspaceCourse) || hasDevelopmentWorkspaceAccess(workspaceCourse);
 }
 
 function attendanceLabel(
@@ -278,8 +192,4 @@ function attendanceLabel(
   if (status === "present") return t("attendance.present");
   if (status === "absent") return t("attendance.absent");
   return t("attendance.unknown");
-}
-
-function normalizeCourseTitle(title: string) {
-  return title.toLowerCase().replace(/\s+/g, " ").trim();
 }

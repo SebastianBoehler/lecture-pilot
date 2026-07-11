@@ -1,0 +1,122 @@
+.onboarding-backdrop {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  padding: 24px;
+  background: color-mix(in srgb, var(--color-bg-secondary) 78%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.onboarding-dialog {
+  width: min(620px, 100%);
+  padding: 30px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 10px;
+  background: var(--color-bg-primary);
+  box-shadow: 0 24px 80px rgb(0 0 0 / 18%);
+}
+
+.onboarding-dialog h1 {
+  max-width: 520px;
+  margin: 0;
+  font-size: clamp(28px, 5vw, 40px);
+  line-height: 1.08;
+}
+
+.onboarding-progress {
+  display: grid;
+  grid-template-columns: auto 96px;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 34px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.onboarding-progress > div {
+  height: 3px;
+  overflow: hidden;
+  background: var(--color-border-primary);
+}
+
+.onboarding-progress i {
+  display: block;
+  width: 50%;
+  height: 100%;
+  background: var(--color-accent-primary);
+  transition: width 180ms ease;
+}
+
+.onboarding-progress i.is-complete {
+  width: 100%;
+}
+
+.onboarding-copy {
+  max-width: 540px;
+  margin: 14px 0 24px;
+  color: var(--color-text-secondary);
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.onboarding-options {
+  display: grid;
+  gap: 9px;
+}
+
+.onboarding-options button {
+  display: grid;
+  gap: 4px;
+  padding: 15px 16px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 7px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  text-align: left;
+}
+
+.onboarding-options button:hover,
+.onboarding-options button.is-selected {
+  border-color: var(--color-accent-primary);
+  background: var(--color-bg-secondary);
+}
+
+.onboarding-options span {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.onboarding-primary {
+  border: 1px solid var(--color-accent-primary);
+  border-radius: var(--control-radius);
+  min-height: var(--control-height);
+  padding: 0 var(--control-padding-x);
+  color: #fff;
+  background: var(--color-accent-primary);
+  font-weight: 700;
+}
+
+.onboarding-evidence {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 28px;
+  padding-left: 20px;
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+}
+
+.onboarding-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+@media (max-width: 700px) {
+  .onboarding-dialog {
+    padding: 24px 20px;
+  }
+}

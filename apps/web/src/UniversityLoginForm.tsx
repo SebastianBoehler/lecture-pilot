@@ -5,7 +5,7 @@ import { useRememberedLoginIdentifier } from "./loginPreferences";
 import { loginWithTuebingen } from "./sessionApi";
 import type { LoginSession } from "./types";
 
-export function StudentLoginForm({
+export function UniversityLoginForm({
   onLogin,
   onOpenDemo,
   onOpenProfessorDemo,
@@ -23,7 +23,7 @@ export function StudentLoginForm({
     remember: rememberUsername,
     setIdentifier: setUsername,
     setRemember: setRememberUsername,
-  } = useRememberedLoginIdentifier("student");
+  } = useRememberedLoginIdentifier();
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,7 +68,7 @@ export function StudentLoginForm({
         {t("login.password")}
         <input
           autoComplete="current-password"
-          id="current-password"
+          id="university-current-password"
           maxLength={500}
           name="password"
           onChange={(event) => setPassword(event.target.value)}
@@ -80,7 +80,7 @@ export function StudentLoginForm({
       <div className="login-remember">
         <label className="login-checkbox">
           <input
-            aria-describedby="student-remember-help"
+            aria-describedby="university-remember-help"
             checked={rememberUsername}
             name="remember_username"
             onChange={(event) => setRememberUsername(event.target.checked)}
@@ -88,7 +88,7 @@ export function StudentLoginForm({
           />
           <span>{t("login.rememberUsername")}</span>
         </label>
-        <p className="login-help" id="student-remember-help">
+        <p className="login-help" id="university-remember-help">
           {t("login.rememberHelp")}
         </p>
       </div>

@@ -66,26 +66,27 @@ describe("LecturePilot app shell", () => {
     );
   });
 
-  it("lands a newly registered professor on pending approval without student navigation", async () => {
+  it("lands an Alma professor candidate on pending approval without student navigation", async () => {
     const user = userEvent.setup();
     vi.stubGlobal(
       "fetch",
       vi.fn((input: RequestInfo | URL) => {
-        if (String(input).endsWith("/auth/professor/register")) {
+        if (String(input).endsWith("/auth/login")) {
           return Promise.resolve(
             jsonResponse(
               {
-                username: "Professor Ada Lovelace",
-                email: "ada@example.edu",
+                username: "alma-professor",
+                email: "alma-professor@example.edu",
                 term: "Sommer 2026",
                 tenant_id: "tenant-tuebingen",
                 account_type: "professor",
+                university_role: "lecturer",
                 roles: [],
                 professor_status: "pending",
                 csrf_token: "csrf-token-with-at-least-thirty-two-characters",
                 courses: [],
               },
-              201,
+              200,
             ),
           );
         }
@@ -94,13 +95,9 @@ describe("LecturePilot app shell", () => {
     );
     render(<App />);
 
-    await user.click(screen.getByRole("tab", { name: /professor/i }));
-    await user.click(screen.getByRole("button", { name: /create account/i }));
-    await user.type(screen.getByLabelText(/full name/i), "Professor Ada Lovelace");
-    await user.type(screen.getByLabelText(/^email$/i), "ada@example.edu");
-    await user.type(screen.getByLabelText(/^password$/i), "correct horse battery staple");
-    await user.type(screen.getByLabelText(/confirm password/i), "correct horse battery staple");
-    await user.click(screen.getByRole("button", { name: /create professor account/i }));
+    await user.type(screen.getByLabelText(/zdv username/i), "alma-professor");
+    await user.type(screen.getByLabelText(/^password$/i), "university-password");
+    await user.click(screen.getByRole("button", { name: /continue with uni tübingen/i }));
 
     expect(await screen.findByRole("heading", { name: /profile/i })).toBeInTheDocument();
     expect(screen.getByText(/status: pending/i)).toBeInTheDocument();
