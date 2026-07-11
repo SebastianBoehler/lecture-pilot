@@ -233,21 +233,14 @@ def _app(tmp_path: Path, courses_by_user: dict) -> object:
 
 
 def _approve(app, client: TestClient, username: str) -> dict:
-    email = f"{username}@example.edu"
-    registered = client.post(
-        "/auth/professor/register",
-        json={
-            "display_name": username,
-            "email": email,
-            "password": "test professor password",
-        },
-    )
-    assert registered.status_code == 201
+    app.state.tuebingen_adapter.roles_by_user[username] = "lecturer"
+    pending = login(client, username)
+    assert pending["professor_status"] == "pending"
     with app.state.database.session() as database_session:
         user_id = database_session.scalar(
             select(ExternalIdentityRecord.user_id).where(
-                ExternalIdentityRecord.provider == "local_professor",
-                ExternalIdentityRecord.subject == email,
+                ExternalIdentityRecord.provider == "tuebingen",
+                ExternalIdentityRecord.subject == username,
             )
         )
         membership = database_session.get(
@@ -255,9 +248,4 @@ def _approve(app, client: TestClient, username: str) -> dict:
             (user_id, "tenant-tuebingen"),
         )
         membership.professor_status = "approved"
-    response = client.post(
-        "/auth/professor/login",
-        json={"email": email, "password": "test professor password"},
-    )
-    assert response.status_code == 200
-    return response.json()
+    return login(client, username)

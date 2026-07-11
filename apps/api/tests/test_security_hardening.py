@@ -55,21 +55,24 @@ def test_login_rate_limit_rejects_excess_requests(monkeypatch) -> None:
     assert second.headers["retry-after"]
 
 
-def test_professor_login_uses_the_login_rate_limit(monkeypatch) -> None:
-    monkeypatch.setenv("LECTUREPILOT_RATE_LIMIT_LOGIN_PER_MINUTE", "1")
+def test_separate_professor_password_endpoints_do_not_exist() -> None:
     client = TestClient(create_app())
 
-    first = client.post(
+    login = client.post(
         "/auth/professor/login",
-        json={"email": "professor@example.edu", "password": "invalid password value"},
+        json={"email": "professor@example.edu", "password": "not-used"},
     )
-    second = client.post(
-        "/auth/professor/login",
-        json={"email": "professor@example.edu", "password": "invalid password value"},
+    register = client.post(
+        "/auth/professor/register",
+        json={
+            "display_name": "Professor Example",
+            "email": "professor@example.edu",
+            "password": "not-used",
+        },
     )
 
-    assert first.status_code != 429
-    assert second.status_code == 429
+    assert login.status_code == 404
+    assert register.status_code == 404
 
 
 def test_production_rejects_an_insecure_session_cookie(monkeypatch) -> None:
@@ -86,6 +89,16 @@ def test_local_http_keeps_secure_cookie_disabled_by_default(monkeypatch) -> None
     monkeypatch.delenv("LECTUREPILOT_SESSION_COOKIE_SECURE", raising=False)
 
     assert SessionAuthSettings.from_env().cookie_secure is False
+
+
+def test_local_origins_include_vite_development_and_preview_ports(monkeypatch) -> None:
+    monkeypatch.setenv("LECTUREPILOT_ENV", "development")
+    monkeypatch.delenv("LECTUREPILOT_ALLOWED_ORIGINS", raising=False)
+
+    origins = allowed_origins()
+
+    assert "http://127.0.0.1:5173" in origins
+    assert "http://127.0.0.1:4173" in origins
 
 
 def test_production_requires_explicit_https_origins(monkeypatch) -> None:

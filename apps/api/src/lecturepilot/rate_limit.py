@@ -92,11 +92,7 @@ def _rules_from_env() -> dict[str, RateLimit]:
 def _rule_for(scope: Scope, rules: dict[str, RateLimit]) -> RateLimit | None:
     method = str(scope.get("method", "")).upper()
     path = str(scope.get("path", ""))
-    if method == "POST" and path in {
-        "/auth/login",
-        "/auth/professor/login",
-        "/auth/professor/register",
-    }:
+    if method == "POST" and path == "/auth/login":
         return rules["login"]
     if method == "POST" and path in {"/agent/turn", "/agent/turn/stream"}:
         return rules["chat"]

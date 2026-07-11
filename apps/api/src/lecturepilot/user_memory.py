@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from lecturepilot.models import UserMemoryContext
@@ -34,7 +35,9 @@ class UserMemoryStore:
 
         if not profile_path.exists():
             profile_path.write_text(
-                json.dumps({"schema_version": 1, "user_key": self.layout.user_key(user_id)}, indent=2),
+                json.dumps(
+                    {"schema_version": 1, "user_key": self.layout.user_key(user_id)}, indent=2
+                ),
                 encoding="utf-8",
             )
         if not preferences_path.exists():
@@ -85,8 +88,36 @@ class UserMemoryStore:
             prefs = _read_preferences(pref_path)
             prefs[preference_key] = preference_value or ""
             pref_path.write_text(json.dumps(prefs, indent=2), encoding="utf-8")
-        self._append_trace(memories, scope, course_id, lecture_id, note, preference_key, preference_value)
+        self._append_trace(
+            memories, scope, course_id, lecture_id, note, preference_key, preference_value
+        )
         return {"memory": "updated", "scope": scope}
+
+    def update_preferences(self, user_id: str, updates: dict[str, Any]) -> dict[str, Any]:
+        self.read_context(user_id)
+        path = self.layout.user_memories_dir(user_id) / "preferences.json"
+        preferences = _read_preferences(path)
+        preferences.update(updates)
+        path.write_text(json.dumps(preferences, indent=2, sort_keys=True), encoding="utf-8")
+        return preferences
+
+    def delete_preference(self, user_id: str, key: str) -> None:
+        self.read_context(user_id)
+        path = self.layout.user_memories_dir(user_id) / "preferences.json"
+        preferences = _read_preferences(path)
+        preferences.pop(key, None)
+        path.write_text(json.dumps(preferences, indent=2, sort_keys=True), encoding="utf-8")
+
+    def clear_notes(self, user_id: str, course_id: str | None = None) -> None:
+        self.read_context(user_id, course_id)
+        memories = (
+            self.layout.user_course_memories_dir(user_id, course_id)
+            if course_id
+            else self.layout.user_memories_dir(user_id)
+        )
+        note_path = memories / ("course.md" if course_id else "global.md")
+        note_path.write_text("", encoding="utf-8")
+        (memories / "memory-trace.jsonl").write_text("", encoding="utf-8")
 
     def _append_trace(
         self,
@@ -114,7 +145,7 @@ class UserMemoryStore:
         trace_path.write_text(f"{current}{json.dumps(trace, sort_keys=True)}\n", encoding="utf-8")
 
 
-def _read_preferences(path) -> dict[str, Any]:
+def _read_preferences(path: Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8") or "{}")
     except json.JSONDecodeError:

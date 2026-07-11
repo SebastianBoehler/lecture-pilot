@@ -16,11 +16,11 @@ SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE"})
 EXEMPT_PATHS = frozenset(
     {
         "/auth/login",
-        "/auth/professor/login",
-        "/auth/professor/register",
     }
 )
 DEFAULT_LOCAL_ORIGINS = (
+    "http://localhost:4173",
+    "http://127.0.0.1:4173",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:8000",

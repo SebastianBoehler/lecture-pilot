@@ -25,8 +25,8 @@ from lecturepilot.harness import LecturePilotHarness
 from lecturepilot.image_generation_registry import image_generator_from_env
 from lecturepilot.lecture_schedule_planner import LectureSchedulePlanner
 from lecturepilot.learner_state import LearnerStateStore
+from lecturepilot.learner_profile_routes import register_learner_profile_routes
 from lecturepilot.observability import observability_from_env
-from lecturepilot.professor_auth_routes import register_professor_auth_routes
 from lecturepilot.rate_limit import RateLimitMiddleware
 from lecturepilot.runtime_env import load_project_env
 from lecturepilot.sample_data import COURSE, LECTURES
@@ -93,12 +93,8 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     register_auth_routes(app, course_tenant_id=COURSE_TENANT_ID)
-    register_professor_auth_routes(
-        app,
-        course_tenant_id=COURSE_TENANT_ID,
-        default_term=COURSE.term,
-    )
     register_approval_routes(app)
+    register_learner_profile_routes(app, course_tenant_id=COURSE_TENANT_ID)
     register_admin_media_routes(
         app,
         course=COURSE,

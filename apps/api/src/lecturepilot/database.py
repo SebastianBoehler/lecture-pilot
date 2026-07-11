@@ -71,7 +71,6 @@ class Database:
         tables = set(inspect(self.engine).get_table_names())
         required = {
             "users",
-            "local_credentials",
             "sessions",
             "courses",
             "alembic_version",

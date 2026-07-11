@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from fastapi.testclient import TestClient
 
@@ -10,6 +10,7 @@ from lecturepilot.university_models import ExternalCourseCandidate, UniversityLo
 @dataclass
 class FakeUniversityAdapter:
     courses_by_user: dict[str, list[ExternalCourseCandidate]]
+    roles_by_user: dict[str, str] = field(default_factory=dict)
 
     def login(self, *, username: str, password: str, term: str) -> UniversityLoginResult:
         assert password
@@ -18,6 +19,8 @@ class FakeUniversityAdapter:
             username=username,
             email=f"{username}@example.edu",
             term=term,
+            alma_current_role=self.roles_by_user.get(username, "student"),
+            alma_available_roles=[self.roles_by_user.get(username, "student")],
             courses=courses,
             sources_checked={course.source for course in courses},
         )

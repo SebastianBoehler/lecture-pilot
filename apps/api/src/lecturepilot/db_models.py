@@ -49,19 +49,9 @@ class ExternalIdentityRecord(Base):
     provider: Mapped[str] = mapped_column(String(40), nullable=False)
     subject: Mapped[str] = mapped_column(String(200), nullable=False)
     email: Mapped[str | None] = mapped_column(String(320))
+    provider_claims: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     last_login_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
-
-
-class LocalCredentialRecord(Base):
-    __tablename__ = "local_credentials"
-
-    user_id: Mapped[UUID] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
-    )
-    password_hash: Mapped[str] = mapped_column(String(512), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
 class TenantMembershipRecord(Base):

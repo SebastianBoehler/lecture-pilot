@@ -29,11 +29,20 @@ class TuebingenCourseAdapter:
                 'Install the backend with the "tuebingen" extra before live Uni login.'
             ) from exc
 
-        client = TuebingenAuthenticatedClient.login(username=username, password=password)
+        try:
+            client = TuebingenAuthenticatedClient.login(username=username, password=password)
+        except Exception as exc:
+            raise TuebingenLoginError("University login failed.") from exc
         courses: list[ExternalCourseCandidate] = []
         checked: set[ExternalCourseSource] = set()
         warnings: list[str] = []
         try:
+            try:
+                profile = client.alma.profile()
+            except Exception as exc:
+                raise TuebingenLoginError(
+                    "Alma account role could not be verified for this login."
+                ) from exc
             try:
                 assignments = client.alma.timetable_course_assignments(term, limit=80)
                 courses.extend(_alma_courses(assignments, term=term))
@@ -49,14 +58,12 @@ class TuebingenCourseAdapter:
         finally:
             client.close()
 
-        if not checked:
-            raise TuebingenLoginError(
-                "University login failed or neither Alma nor ILIAS returned course data."
-            )
         return UniversityLoginResult(
             username=username.strip(),
             email=_email_from_username(username),
             term=term,
+            alma_current_role=profile.current_role,
+            alma_available_roles=list(profile.available_roles),
             courses=_dedupe_courses(courses),
             sources_checked=checked,
             warnings=warnings,
