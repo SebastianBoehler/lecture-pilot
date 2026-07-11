@@ -138,7 +138,9 @@ describe("Professor course builder", () => {
     await user.click(screen.getByRole("button", { name: /^course performance$/i }));
     expect(await screen.findByRole("heading", { name: /course performance/i })).toBeInTheDocument();
     expect(screen.queryByRole("navigation", { name: /performance course scope/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /demo ml course/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /demo ml course/i }),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /refresh analytics/i }));
     expect(await screen.findByText("Events")).toBeInTheDocument();
     expect(screen.getAllByText("Quiz success").length).toBeGreaterThan(0);
