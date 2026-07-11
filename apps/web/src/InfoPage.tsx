@@ -1,10 +1,12 @@
 import { HowItWorksArticle } from "./HowItWorksArticle";
+import { LearningScienceArticle } from "./LearningScienceArticle";
 import type { InfoPageKind } from "./types";
 
 export function InfoPage({ kind, onBack }: { kind: InfoPageKind; onBack: () => void }) {
   const content = kind === "privacy" ? PRIVACY_CONTENT : null;
+  const isArticle = kind === "how-it-works" || kind === "learning-science";
   return (
-    <main className={`info-page ${kind === "how-it-works" ? "is-how-it-works" : ""}`}>
+    <main className={`info-page ${isArticle ? "is-how-it-works" : ""}`}>
       <button className="ghost-button info-back" type="button" onClick={onBack}>
         Back
       </button>
@@ -25,6 +27,8 @@ export function InfoPage({ kind, onBack }: { kind: InfoPageKind; onBack: () => v
             ))}
           </article>
         </>
+      ) : kind === "learning-science" ? (
+        <LearningScienceArticle />
       ) : (
         <HowItWorksArticle />
       )}

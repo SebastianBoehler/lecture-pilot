@@ -441,6 +441,7 @@ function App() {
         {view !== "lesson" ? (
           <AppFooter
             onOpenHowItWorks={() => setView("how-it-works")}
+            onOpenLearningScience={() => setView("learning-science")}
             onOpenPrivacy={() => setView("privacy")}
           />
         ) : null}

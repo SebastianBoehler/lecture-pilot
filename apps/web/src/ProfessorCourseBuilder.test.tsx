@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
 import { professorFetchMock } from "./ProfessorCourseBuilder.testFixtures";
+import { openProfessorDemo } from "./testLessonActions";
 
 describe("Professor course builder", () => {
   afterEach(() => {
@@ -28,7 +29,7 @@ describe("Professor course builder", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: /preview professor account/i }));
+    await openProfessorDemo(user);
     expect(screen.queryByRole("heading", { name: /professor sign up/i })).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /create professor account/i }),
@@ -188,7 +189,7 @@ describe("Professor course builder", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: /preview professor account/i }));
+    await openProfessorDemo(user);
     expect(screen.getByLabelText(/course name/i)).toHaveValue("");
     expect(screen.getByRole("button", { name: /full course/i })).toHaveClass("is-active");
     expect(screen.getByLabelText(/expected lectures/i)).toHaveValue(null);
@@ -260,7 +261,7 @@ describe("Professor course builder", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: /preview professor account/i }));
+    await openProfessorDemo(user);
 
     expect(await screen.findByText(/2 lecture canvases ready to review/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /05 publish/i })).toBeDisabled();
@@ -302,7 +303,7 @@ describe("Professor course builder", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: /preview professor account/i }));
+    await openProfessorDemo(user);
     await user.type(screen.getByLabelText(/course name/i), "Demo ML Course");
     await user.click(screen.getByRole("button", { name: /specific lecture/i }));
     await user.type(screen.getByLabelText(/lecture number/i), "03");

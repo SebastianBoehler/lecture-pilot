@@ -13,6 +13,7 @@
 @import "./professor-media.css";
 @import "./info-pages.css";
 @import "./how-it-works.css";
+@import "./learning-science.css";
 @import "./performance.css";
 @import "./performance-lecture-rail.css";
 @import "./performance-course-tabs.css";
@@ -25,3 +26,13 @@
 @import "./canvas-blocks.css";
 @import "./canvas-learning-blocks.css";
 @import "./sources.css";
+
+.route-loading {
+  display: grid;
+  min-height: 40vh;
+  place-items: center;
+}
+
+.route-loading p {
+  color: var(--muted-text);
+}

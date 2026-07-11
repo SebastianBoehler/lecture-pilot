@@ -4,22 +4,12 @@ import { describe, expect, it, vi } from "vitest";
 
 import { LearnerOnboarding } from "./LearnerOnboarding";
 import { renderWithI18n } from "./test/renderWithI18n";
-import type { Lecture } from "./types";
-
-const lecture: Lecture = {
-  id: "lecture-01",
-  number: "01",
-  title: "Foundations",
-  date: "2026-04-01",
-  attendance: "unknown",
-};
 
 describe("LearnerOnboarding", () => {
-  it("collects a goal, explains evidence-driven calibration, and starts the next step", async () => {
+  it("collects a goal, explains calibration, and returns to the multi-course dashboard", async () => {
     const user = userEvent.setup();
     const onComplete = vi.fn().mockResolvedValue(undefined);
-    const onOpen = vi.fn();
-    renderWithI18n(<LearnerOnboarding lecture={lecture} onComplete={onComplete} onOpen={onOpen} />);
+    renderWithI18n(<LearnerOnboarding onComplete={onComplete} />);
 
     expect(screen.getByText(/step 1 of 2/i)).toBeInTheDocument();
     expect(screen.queryByText(/quick setup/i)).not.toBeInTheDocument();
@@ -30,9 +20,9 @@ describe("LearnerOnboarding", () => {
     expect(screen.queryByRole("button", { name: /continue/i })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /calibrates from your work/i })).toBeInTheDocument();
     expect(screen.getByText(/answers, quizzes, and checkpoints/i)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /start lecture 01/i }));
+    expect(screen.queryByRole("button", { name: /start lecture/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /go to dashboard/i }));
 
     expect(onComplete).toHaveBeenCalledWith("understand_deeply");
-    expect(onOpen).toHaveBeenCalledWith(lecture);
   });
 });

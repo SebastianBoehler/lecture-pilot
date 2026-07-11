@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
 import { professorFetchMock } from "./ProfessorCourseBuilder.testFixtures";
+import { openProfessorDemo } from "./testLessonActions";
 
 describe("Professor course builder defaults", () => {
   afterEach(() => {
@@ -35,7 +36,7 @@ describe("Professor course builder defaults", () => {
     vi.stubGlobal("fetch", professorFetchMock());
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: /preview professor account/i }));
+    await openProfessorDemo(user);
 
     expect(screen.getByLabelText(/course name/i)).toHaveValue("");
     expect(screen.queryByLabelText(/lecture title/i)).not.toBeInTheDocument();
@@ -66,7 +67,7 @@ describe("Professor course builder defaults", () => {
     vi.stubGlobal("fetch", professorFetchMock());
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: /preview professor account/i }));
+    await openProfessorDemo(user);
 
     expect(screen.getByLabelText(/course name/i)).toHaveValue("");
     expect(screen.getByLabelText(/first lecture date/i)).toHaveValue("");
@@ -81,7 +82,7 @@ describe("Professor course builder defaults", () => {
     }));
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: /preview professor account/i }));
+    await openProfessorDemo(user);
     await user.type(screen.getByLabelText(/course name/i), "Demo ML Course");
     await user.click(screen.getByRole("button", { name: /create course workspace/i }));
 

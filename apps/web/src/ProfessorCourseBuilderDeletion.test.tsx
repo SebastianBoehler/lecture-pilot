@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
 import { professorFetchMock } from "./ProfessorCourseBuilder.testFixtures";
+import { openProfessorDemo } from "./testLessonActions";
 
 describe("Professor course deletion", () => {
   afterEach(() => {
@@ -26,7 +27,7 @@ describe("Professor course deletion", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: /preview professor account/i }));
+    await openProfessorDemo(user);
     expect(screen.getByRole("heading", { name: /^define$/i })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /created courses/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /manage courses/i }));
@@ -45,7 +46,7 @@ describe("Professor course deletion", () => {
     await user.click(screen.getByRole("button", { name: /course performance/i }));
     expect(screen.queryByRole("button", { name: /grundlagen des maschinellen lernens/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/0 published lectures/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/no published course workspace yet/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no published course workspace yet/i)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/admin/courses/demo-ml-course"),
       expect.objectContaining({ method: "DELETE" }),

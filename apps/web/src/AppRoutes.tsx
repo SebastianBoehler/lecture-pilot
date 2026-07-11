@@ -1,14 +1,12 @@
+import { lazy, Suspense, type ReactNode } from "react";
+
 import { CourseManagementAccessRequired } from "./CourseManagementAccessRequired";
 import { Dashboard } from "./Dashboard";
 import { draftPreviewUrl } from "./draftPreviewUrl";
-import { LessonWorkspace } from "./LessonWorkspace";
 import { LoginView } from "./LoginView";
-import { InfoPage } from "./InfoPage";
 import { localDemoSession } from "./appDefaults";
 import { ProfileView } from "./ProfileView";
-import { ProfessorCourseBuilder } from "./ProfessorCourseBuilder";
-import { ProfessorCourseManagement } from "./ProfessorCourseManagement";
-import { ProfessorCoursePerformance } from "./ProfessorCoursePerformance";
+import { useI18n } from "./i18n";
 import { useLearnerProfile } from "./useLearnerProfile";
 import type { WorkspaceResetSelection } from "./WorkspaceResetControl";
 import type {
@@ -22,6 +20,24 @@ import type {
   UniversityCourse,
   View,
 } from "./types";
+
+const InfoPage = lazy(() => import("./InfoPage").then((module) => ({ default: module.InfoPage })));
+const LessonWorkspace = lazy(() =>
+  import("./LessonWorkspace").then((module) => ({ default: module.LessonWorkspace })),
+);
+const ProfessorCourseBuilder = lazy(() =>
+  import("./ProfessorCourseBuilder").then((module) => ({ default: module.ProfessorCourseBuilder })),
+);
+const ProfessorCourseManagement = lazy(() =>
+  import("./ProfessorCourseManagement").then((module) => ({
+    default: module.ProfessorCourseManagement,
+  })),
+);
+const ProfessorCoursePerformance = lazy(() =>
+  import("./ProfessorCoursePerformance").then((module) => ({
+    default: module.ProfessorCoursePerformance,
+  })),
+);
 
 type AppRoutesProps = {
   availableLectures: Lecture[];
@@ -83,8 +99,8 @@ export function AppRoutes(props: AppRoutesProps) {
   } = props;
   const learnerProfileEnabled = Boolean(
     session &&
-      (session.account_type ?? "student") === "student" &&
-      !session.roles?.includes("tenant_admin"),
+    (session.account_type ?? "student") === "student" &&
+    !session.roles?.includes("tenant_admin"),
   );
   const learnerProfileState = useLearnerProfile(session, learnerProfileEnabled);
 
@@ -125,33 +141,33 @@ export function AppRoutes(props: AppRoutesProps) {
     );
   }
   if (view === "professor" && courseManagerSession) {
-    return (
+    return deferred(
       <ProfessorCourseBuilder
         session={courseManagerSession}
         onPublishWorkspace={props.onPublishWorkspace}
         onWorkspacePublished={props.onWorkspacePublished}
         previewWorkspaceUrl={draftPreviewUrl}
         publishedLectureIds={publishedLectureIds}
-      />
+      />,
     );
   }
   if (view === "course-management" && courseManagerSession) {
-    return (
+    return deferred(
       <ProfessorCourseManagement
         onCreateCourse={() => props.onViewChange("professor")}
         session={courseManagerSession}
         onWorkspaceDeleted={props.onWorkspaceDeleted}
-      />
+      />,
     );
   }
   if (view === "performance" && courseManagerSession) {
-    return (
+    return deferred(
       <ProfessorCoursePerformance
         lectures={availableLectures}
         publishedLectureIds={publishedLectureIds}
         session={courseManagerSession}
         workspaceCourse={workspaceCourse}
-      />
+      />,
     );
   }
   if (view === "performance" || view === "course-management" || view === "professor") {
@@ -162,12 +178,12 @@ export function AppRoutes(props: AppRoutesProps) {
       />
     );
   }
-  if (view === "how-it-works" || view === "privacy") {
-    return (
-      <InfoPage kind={view} onBack={() => props.onViewChange(session ? "dashboard" : "login")} />
+  if (view === "how-it-works" || view === "learning-science" || view === "privacy") {
+    return deferred(
+      <InfoPage kind={view} onBack={() => props.onViewChange(session ? "dashboard" : "login")} />,
     );
   }
-  return (
+  return deferred(
     <LessonWorkspace
       canvasDocument={canvasDocument}
       canvasError={canvasError}
@@ -187,6 +203,19 @@ export function AppRoutes(props: AppRoutesProps) {
       onSendMessage={props.onSendMessage}
       onResetWorkspace={props.onResetWorkspace}
       onTogglePanel={props.onTogglePanel}
-    />
+    />,
+  );
+}
+
+function deferred(content: ReactNode) {
+  return <Suspense fallback={<ViewLoadingState />}>{content}</Suspense>;
+}
+
+function ViewLoadingState() {
+  const { t } = useI18n();
+  return (
+    <main className="route-loading" aria-busy="true">
+      <p role="status">{t("app.loadingView")}</p>
+    </main>
   );
 }

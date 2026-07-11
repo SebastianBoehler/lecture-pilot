@@ -1,4 +1,5 @@
 export const enMessages = {
+  "app.loadingView": "Loading view...",
   "app.language": "Language",
   "app.switchToGerman": "Switch interface to German",
   "app.switchToEnglish": "Switch interface to English",
@@ -16,6 +17,7 @@ export const enMessages = {
   "nav.accountControls": "Account controls",
   "footer.info": "Project information",
   "footer.howItWorks": "How it works",
+  "footer.learningScience": "Learn how to learn",
   "footer.privacy": "Privacy",
   "login.title": "Welcome to LecturePilot",
   "login.subtitle":
@@ -50,21 +52,28 @@ export const enMessages = {
   "dashboard.recommendation.title": "Next study step",
   "dashboard.recommendation.lecture": "Lecture {number}",
   "dashboard.recommendation.open": "Start recommended lecture {number}",
-  "dashboard.recommendation.missed": "You missed this lecture and have not passed its learning check yet.",
-  "dashboard.recommendation.diagnostic": "Start here so LecturePilot can detect what is already secure and what needs work.",
-  "dashboard.recommendation.continue": "This is the next unlocked lecture without a passed learning check.",
-  "dashboard.recommendation.review": "Your available learning checks are passed. Revisit the latest lecture for retrieval practice.",
+  "dashboard.recommendation.missed":
+    "You missed this lecture and have not passed its learning check yet.",
+  "dashboard.recommendation.diagnostic":
+    "Start here so LecturePilot can detect what is already secure and what needs work.",
+  "dashboard.recommendation.continue":
+    "This is the next unlocked lecture without a passed learning check.",
+  "dashboard.recommendation.review":
+    "Your available learning checks are passed. Revisit the latest lecture for retrieval practice.",
   "onboarding.step": "Step {current} of 2",
   "onboarding.goal.title": "What are you working toward?",
-  "onboarding.goal.help": "Choose the outcome LecturePilot should prioritize. You can change it later in your profile.",
+  "onboarding.goal.help":
+    "Choose the outcome LecturePilot should prioritize. You can change it later in your profile.",
   "onboarding.evidence.title": "LecturePilot calibrates from your work",
-  "onboarding.evidence.help": "The tutor does not ask you to choose a learning style. Support changes from your answers, quizzes, and checkpoints.",
+  "onboarding.evidence.help":
+    "The tutor does not ask you to choose a learning style. Support changes from your answers, quizzes, and checkpoints.",
   "onboarding.evidence.attempts": "Your first attempt comes before hints or worked examples.",
-  "onboarding.evidence.adaptation": "Scaffolding decreases as your demonstrated understanding grows.",
-  "onboarding.evidence.control": "Saved goals and tutor memory stay visible and removable in your profile.",
+  "onboarding.evidence.adaptation":
+    "Scaffolding decreases as your demonstrated understanding grows.",
+  "onboarding.evidence.control":
+    "Saved goals and tutor memory stay visible and removable in your profile.",
   "onboarding.back": "Back",
-  "onboarding.finish": "Finish setup",
-  "onboarding.startLecture": "Start lecture {number}",
+  "onboarding.goToDashboard": "Go to dashboard",
   "onboarding.saving": "Saving...",
   "onboarding.failed": "Setup could not be saved.",
   "learningGoal.keepUp": "Keep up with lectures",
@@ -90,9 +99,11 @@ export const enMessages = {
   "profile.loadedCourses": "Loaded Courses",
   "profile.learning.loading": "Loading your learning profile...",
   "profile.goal.title": "Learning goal",
-  "profile.goal.help": "This sets the outcome to prioritize. The tutor's level of support is derived from your demonstrated skill.",
+  "profile.goal.help":
+    "This sets the outcome to prioritize. The tutor's level of support is derived from your demonstrated skill.",
   "profile.memory.title": "Preferences and tutor memory",
-  "profile.memory.help": "These are the details LecturePilot can reuse. Remove anything you no longer want the tutor to remember.",
+  "profile.memory.help":
+    "These are the details LecturePilot can reuse. Remove anything you no longer want the tutor to remember.",
   "profile.memory.global": "Across courses",
   "profile.memory.course": "Course memory",
   "profile.memory.empty": "Nothing saved yet.",
@@ -102,7 +113,8 @@ export const enMessages = {
   "profile.preference.removeShort": "Remove",
   "profile.preference.empty": "No additional structured preferences are stored.",
   "profile.files.title": "Your course files",
-  "profile.files.help": "These files belong only to your learner workspace. Course staff cannot open them from analytics.",
+  "profile.files.help":
+    "These files belong only to your learner workspace. Course staff cannot open them from analytics.",
   "profile.files.count": "{count} files",
   "profile.files.empty": "No learner-specific files exist for this course yet.",
   "profile.files.noPreview": "This file is listed, but has no text preview.",
@@ -292,7 +304,8 @@ export const enMessages = {
   "builder.generate.progress": "Lecture generation progress",
   "builder.generate.regenerate": "Regenerate draft canvas",
   "builder.generate.review": "Review draft canvases",
-  "builder.generate.reviewHelp": "Preview the student experience before making this workspace available.",
+  "builder.generate.reviewHelp":
+    "Preview the student experience before making this workspace available.",
   "builder.generate.continueToPublish": "Continue to publishing",
   "builder.warnings.title": "Review needed",
   "builder.publish.title": "Publish tutor workspace",

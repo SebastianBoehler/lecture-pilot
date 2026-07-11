@@ -188,7 +188,7 @@ describe("LecturePilot app shell", () => {
     await user.click(screen.getByRole("button", { name: /how it works/i }));
 
     expect(
-      screen.getByRole("heading", { name: /how lecturepilot actually works/i }),
+      await screen.findByRole("heading", { name: /how lecturepilot actually works/i }),
     ).toBeInTheDocument();
     expect(screen.getByText("agent harness")).toBeInTheDocument();
     expect(
@@ -196,9 +196,22 @@ describe("LecturePilot app shell", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/shared course truth, separate learner work/i)).toBeInTheDocument();
 
+    await user.click(screen.getByRole("button", { name: /learn how to learn/i }));
+
+    expect(
+      await screen.findByRole("heading", { name: /^learning how to learn$/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/most of us arrive at university/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /sources and further reading/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/tübingen contributor/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/current tübingen project/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/broader evidence/i)).not.toBeInTheDocument();
+
     await user.click(screen.getByRole("button", { name: /privacy/i }));
 
-    expect(screen.getByRole("heading", { name: /privacy notice/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /privacy notice/i })).toBeInTheDocument();
     expect(
       screen.getByText(/provider keys and model routing stay on the backend/i),
     ).toBeInTheDocument();

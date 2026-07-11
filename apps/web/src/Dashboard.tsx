@@ -5,7 +5,7 @@ import { useI18n } from "./i18n";
 import type { Attendance, Lecture, LoginSession, UniversityCourse } from "./types";
 import { ExamReadinessPanel } from "./ExamReadinessPanel";
 import { LearnerOnboarding } from "./LearnerOnboarding";
-import { NextStudyRecommendation, recommendLecture } from "./NextStudyRecommendation";
+import { NextStudyRecommendation } from "./NextStudyRecommendation";
 import type { LearnerProfileState } from "./useLearnerProfile";
 
 const LECTURE_PREVIEW_COUNT = 2;
@@ -40,10 +40,6 @@ export function Dashboard({
   const workspaceLectures = publishedCourseLectures(lectures, publishedLectureIds);
   const courseProfile = learnerProfileState?.profile?.courses?.find(
     (course) => course.course_id === workspaceCourse.id,
-  );
-  const recommendation = recommendLecture(
-    workspaceLectures,
-    courseProfile?.passed_lecture_ids ?? [],
   );
 
   return (
@@ -175,11 +171,7 @@ export function Dashboard({
         </div>
       </section>
       {learnerProfileState?.profile && !learnerProfileState.profile.onboarding_completed ? (
-        <LearnerOnboarding
-          lecture={recommendation?.lecture ?? null}
-          onComplete={learnerProfileState.saveCalibration}
-          onOpen={onOpen}
-        />
+        <LearnerOnboarding onComplete={learnerProfileState.saveCalibration} />
       ) : null}
     </main>
   );

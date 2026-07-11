@@ -1,7 +1,7 @@
 import type { LearningMap } from "./learningMapTypes";
 
 export type Theme = "light" | "dark";
-export type InfoPageKind = "how-it-works" | "privacy";
+export type InfoPageKind = "how-it-works" | "learning-science" | "privacy";
 export type View =
   | "login"
   | "dashboard"

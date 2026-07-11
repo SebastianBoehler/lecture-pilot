@@ -1,18 +1,14 @@
 import { useState } from "react";
 
 import { useI18n } from "./i18n";
-import type { LearningGoal, Lecture } from "./types";
+import type { LearningGoal } from "./types";
 
 const goals: LearningGoal[] = ["keep_up", "understand_deeply", "exam_preparation"];
 
 export function LearnerOnboarding({
-  lecture,
   onComplete,
-  onOpen,
 }: {
-  lecture: Lecture | null;
   onComplete: (goal: LearningGoal) => Promise<void>;
-  onOpen: (lecture: Lecture) => void;
 }) {
   const { t } = useI18n();
   const [step, setStep] = useState<1 | 2>(1);
@@ -26,7 +22,6 @@ export function LearnerOnboarding({
     setError(null);
     try {
       await onComplete(goal);
-      if (lecture) onOpen(lecture);
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : t("onboarding.failed"));
     } finally {
@@ -96,11 +91,7 @@ export function LearnerOnboarding({
                 type="button"
                 onClick={() => void finish()}
               >
-                {pending
-                  ? t("onboarding.saving")
-                  : lecture
-                    ? t("onboarding.startLecture", { number: lecture.number })
-                    : t("onboarding.finish")}
+                {pending ? t("onboarding.saving") : t("onboarding.goToDashboard")}
               </button>
             </div>
           </>

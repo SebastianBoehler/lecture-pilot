@@ -1,6 +1,7 @@
 import type { MessageKey } from "./i18nMessages.en";
 
 export const deMessages: Record<MessageKey, string> = {
+  "app.loadingView": "Ansicht wird geladen...",
   "app.language": "Sprache",
   "app.switchToGerman": "Oberfläche auf Deutsch umstellen",
   "app.switchToEnglish": "Oberfläche auf Englisch umstellen",
@@ -18,6 +19,7 @@ export const deMessages: Record<MessageKey, string> = {
   "nav.accountControls": "Kontosteuerung",
   "footer.info": "Projektinformationen",
   "footer.howItWorks": "So funktioniert es",
+  "footer.learningScience": "Lernen lernen",
   "footer.privacy": "Datenschutz",
   "login.title": "Willkommen bei LecturePilot",
   "login.subtitle":
@@ -55,21 +57,29 @@ export const deMessages: Record<MessageKey, string> = {
   "dashboard.recommendation.title": "Nächster Lernschritt",
   "dashboard.recommendation.lecture": "Vorlesung {number}",
   "dashboard.recommendation.open": "Empfohlene Vorlesung {number} starten",
-  "dashboard.recommendation.missed": "Du hast diese Vorlesung verpasst und ihren Lerncheck noch nicht bestanden.",
-  "dashboard.recommendation.diagnostic": "Starte hier, damit LecturePilot erkennt, was bereits sitzt und woran du noch arbeiten solltest.",
-  "dashboard.recommendation.continue": "Dies ist die nächste freigeschaltete Vorlesung ohne bestandenen Lerncheck.",
-  "dashboard.recommendation.review": "Deine verfügbaren Lernchecks sind bestanden. Wiederhole die letzte Vorlesung mit aktivem Abruf.",
+  "dashboard.recommendation.missed":
+    "Du hast diese Vorlesung verpasst und ihren Lerncheck noch nicht bestanden.",
+  "dashboard.recommendation.diagnostic":
+    "Starte hier, damit LecturePilot erkennt, was bereits sitzt und woran du noch arbeiten solltest.",
+  "dashboard.recommendation.continue":
+    "Dies ist die nächste freigeschaltete Vorlesung ohne bestandenen Lerncheck.",
+  "dashboard.recommendation.review":
+    "Deine verfügbaren Lernchecks sind bestanden. Wiederhole die letzte Vorlesung mit aktivem Abruf.",
   "onboarding.step": "Schritt {current} von 2",
   "onboarding.goal.title": "Worauf arbeitest du hin?",
-  "onboarding.goal.help": "Wähle das Ziel, das LecturePilot priorisieren soll. Du kannst es später im Profil ändern.",
+  "onboarding.goal.help":
+    "Wähle das Ziel, das LecturePilot priorisieren soll. Du kannst es später im Profil ändern.",
   "onboarding.evidence.title": "LecturePilot kalibriert sich über deine Arbeit",
-  "onboarding.evidence.help": "Der Tutor lässt dich keinen Lernstil auswählen. Die Unterstützung passt sich anhand deiner Antworten, Quizze und Checkpoints an.",
-  "onboarding.evidence.attempts": "Dein eigener Versuch kommt vor Hinweisen oder Lösungsbeispielen.",
-  "onboarding.evidence.adaptation": "Die Hilfestellung nimmt ab, sobald dein gezeigtes Verständnis wächst.",
-  "onboarding.evidence.control": "Gespeicherte Ziele und Tutor-Erinnerungen bleiben im Profil sichtbar und löschbar.",
+  "onboarding.evidence.help":
+    "Der Tutor lässt dich keinen Lernstil auswählen. Die Unterstützung passt sich anhand deiner Antworten, Quizze und Checkpoints an.",
+  "onboarding.evidence.attempts":
+    "Dein eigener Versuch kommt vor Hinweisen oder Lösungsbeispielen.",
+  "onboarding.evidence.adaptation":
+    "Die Hilfestellung nimmt ab, sobald dein gezeigtes Verständnis wächst.",
+  "onboarding.evidence.control":
+    "Gespeicherte Ziele und Tutor-Erinnerungen bleiben im Profil sichtbar und löschbar.",
   "onboarding.back": "Zurück",
-  "onboarding.finish": "Einrichtung abschließen",
-  "onboarding.startLecture": "Vorlesung {number} starten",
+  "onboarding.goToDashboard": "Zum Dashboard",
   "onboarding.saving": "Wird gespeichert...",
   "onboarding.failed": "Die Einrichtung konnte nicht gespeichert werden.",
   "learningGoal.keepUp": "Mit den Vorlesungen Schritt halten",
@@ -95,9 +105,11 @@ export const deMessages: Record<MessageKey, string> = {
   "profile.loadedCourses": "Geladene Kurse",
   "profile.learning.loading": "Dein Lernprofil wird geladen...",
   "profile.goal.title": "Lernziel",
-  "profile.goal.help": "Dies legt das Ziel fest. Die Hilfestufe des Tutors wird aus deinem gezeigten Können abgeleitet.",
+  "profile.goal.help":
+    "Dies legt das Ziel fest. Die Hilfestufe des Tutors wird aus deinem gezeigten Können abgeleitet.",
   "profile.memory.title": "Präferenzen und Tutor-Erinnerungen",
-  "profile.memory.help": "Diese Angaben kann LecturePilot wiederverwenden. Entferne alles, was der Tutor nicht mehr erinnern soll.",
+  "profile.memory.help":
+    "Diese Angaben kann LecturePilot wiederverwenden. Entferne alles, was der Tutor nicht mehr erinnern soll.",
   "profile.memory.global": "Kursübergreifend",
   "profile.memory.course": "Kurserinnerung",
   "profile.memory.empty": "Noch nichts gespeichert.",
@@ -107,7 +119,8 @@ export const deMessages: Record<MessageKey, string> = {
   "profile.preference.removeShort": "Entfernen",
   "profile.preference.empty": "Keine weiteren strukturierten Präferenzen gespeichert.",
   "profile.files.title": "Deine Kursdateien",
-  "profile.files.help": "Diese Dateien gehören nur zu deinem Lernarbeitsbereich. Lehrende können sie nicht über Analysen öffnen.",
+  "profile.files.help":
+    "Diese Dateien gehören nur zu deinem Lernarbeitsbereich. Lehrende können sie nicht über Analysen öffnen.",
   "profile.files.count": "{count} Dateien",
   "profile.files.empty": "Für diesen Kurs gibt es noch keine persönlichen Lerndateien.",
   "profile.files.noPreview": "Die Datei wird aufgeführt, hat aber keine Textvorschau.",
@@ -203,7 +216,8 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.step.generate": "Generieren",
   "builder.step.publish": "Veröffentlichen",
   "builder.stage.define": "Lege Zugriff und Umfang fest, bevor du das erste Material hochlädst.",
-  "builder.stage.upload": "Füge die Originalmaterialien hinzu. Wir ordnen sie der richtigen Vorlesung zu.",
+  "builder.stage.upload":
+    "Füge die Originalmaterialien hinzu. Wir ordnen sie der richtigen Vorlesung zu.",
   "builder.stage.review": "Wähle nur Medien, die den Canvas gezielt ergänzen.",
   "builder.stage.generate": "Erstelle den Canvas-Entwurf und prüfe ihn in der Lernansicht.",
   "builder.stage.publish": "Gib geprüfte Vorlesungs-Arbeitsbereiche für deine Studierenden frei.",
@@ -299,7 +313,8 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.generate.progress": "Fortschritt der Vorlesungserzeugung",
   "builder.generate.regenerate": "Canvas-Entwurf erneut erzeugen",
   "builder.generate.review": "Canvas-Entwürfe prüfen",
-  "builder.generate.reviewHelp": "Prüfe die Lernansicht, bevor der Arbeitsbereich für Studierende verfügbar wird.",
+  "builder.generate.reviewHelp":
+    "Prüfe die Lernansicht, bevor der Arbeitsbereich für Studierende verfügbar wird.",
   "builder.generate.continueToPublish": "Weiter zur Veröffentlichung",
   "builder.warnings.title": "Prüfung erforderlich",
   "builder.publish.title": "Tutor-Arbeitsbereich veröffentlichen",
