@@ -1,4 +1,5 @@
 import { useI18n } from "./i18n";
+import { CourseNameField } from "./CourseNameField";
 import type { CourseSetup } from "./professorBuilderState";
 import type { YoutubeCandidateGroup } from "./professorYoutubeSuggestions";
 import type { CanvasDocument, SourceBundleManifest, YoutubeVideoCandidate } from "./types";
@@ -50,13 +51,10 @@ export function CourseSetupStep({
   return (
     <section className="flow-card wide">
       <StepHeader number="01" title={t("builder.define.title")} done={courseReady} />
-      <label>
-        {t("builder.define.courseName")}
-        <input
-          value={setup.courseTitle}
-          onChange={(event) => onSetupChange({ ...setup, courseTitle: event.target.value })}
-        />
-      </label>
+      <CourseNameField
+        value={setup.courseTitle}
+        onChange={(courseTitle) => onSetupChange({ ...setup, courseTitle })}
+      />
       <label>
         {t("builder.define.visibility")}
         <select

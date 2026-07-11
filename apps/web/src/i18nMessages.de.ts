@@ -225,6 +225,8 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.status.pending": "Ausstehend",
   "builder.define.title": "Kurs- und Vorlesungsumfang definieren",
   "builder.define.courseName": "Kursname",
+  "builder.define.courseNameHelp":
+    "Verwende den exakten Kurstitel aus Alma oder ILIAS. LecturePilot gleicht Kurstitel und Semester mit den Belegungen der Studierenden ab.",
   "builder.define.visibility": "Kurssichtbarkeit",
   "builder.define.visibility.enrolled": "Nur Kursteilnehmende",
   "builder.define.visibility.university": "Universitätsweiter Login",

@@ -1,0 +1,6 @@
+.course-name-match-note {
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  font-weight: 450;
+  line-height: 1.45;
+}

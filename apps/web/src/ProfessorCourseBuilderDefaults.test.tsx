@@ -39,6 +39,9 @@ describe("Professor course builder defaults", () => {
     await openProfessorDemo(user);
 
     expect(screen.getByLabelText(/course name/i)).toHaveValue("");
+    expect(screen.getByLabelText(/course name/i)).toHaveAccessibleDescription(
+      /exact course title from alma or ilias.*course title and term/i,
+    );
     expect(screen.queryByLabelText(/lecture title/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /full course/i })).toHaveClass("is-active");
     expect(screen.getByRole("button", { name: /create course workspace/i })).toBeDisabled();
