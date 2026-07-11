@@ -18,6 +18,7 @@ from lecturepilot.db_models import (
     UserRecord,
 )
 from lecturepilot.external_course_sync import sync_external_courses
+from lecturepilot.external_course_views import latest_external_courses
 from lecturepilot.identity_roles import (
     ALMA_AVAILABLE_ROLES_CLAIM,
     ALMA_CURRENT_ROLE_CLAIM,
@@ -25,7 +26,7 @@ from lecturepilot.identity_roles import (
     identity_account_type,
 )
 from lecturepilot.models import Course, CourseAccessPolicy, TenantRole
-from lecturepilot.university_models import UniversityLoginResult
+from lecturepilot.university_models import ExternalCourseCandidate, UniversityLoginResult
 
 
 @dataclass(frozen=True)
@@ -39,6 +40,7 @@ class AccountView:
     roles: frozenset[TenantRole]
     professor_status: str
     courses: tuple[Course, ...]
+    university_courses: tuple[ExternalCourseCandidate, ...]
 
     @property
     def course_ids(self) -> frozenset[str]:
@@ -190,6 +192,11 @@ def _account_view(
         roles=frozenset(roles),
         professor_status=membership.professor_status,
         courses=tuple(_course_view(course) for course in courses),
+        university_courses=latest_external_courses(
+            session,
+            user_id=user.id,
+            login_at=external.last_login_at,
+        ),
     )
 
 

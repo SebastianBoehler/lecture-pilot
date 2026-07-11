@@ -1,4 +1,5 @@
 import type { LearningMap } from "./learningMapTypes";
+import type { UniversityEnrollmentCourse } from "./universityCourseTypes";
 
 export type Theme = "light" | "dark";
 export type InfoPageKind = "how-it-works" | "learning-science" | "privacy";
@@ -236,6 +237,7 @@ export type LoginSession = {
   csrf_token?: string | null;
   professor_status?: "not_requested" | "pending" | "approved" | "rejected";
   courses: UniversityCourse[];
+  university_courses?: UniversityEnrollmentCourse[];
 };
 
 export type LearningGoal = "keep_up" | "understand_deeply" | "exam_preparation";

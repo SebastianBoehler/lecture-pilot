@@ -1,0 +1,16 @@
+.course-workspace.is-unmatched .course-row {
+  padding-block: 12px;
+  background: var(--color-bg-primary);
+}
+
+.course-workspace.is-unmatched .course-row h3 {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.workspace-status.is-unmatched {
+  padding: 4px 8px;
+  color: var(--color-text-tertiary);
+  font-weight: 600;
+}

@@ -56,7 +56,20 @@ def test_tuebingen_login_returns_courses_without_echoing_password(monkeypatch) -
         "roles": ["student"],
         "professor_status": "not_requested",
         "courses": [],
+        "university_courses": [
+            {
+                "source": "alma",
+                "external_course_id": "unit:42",
+                "term": "Sommer 2026",
+                "title": "Machine Learning",
+                "number": None,
+                "organization": "Department of Computer Science",
+                "instructor": None,
+                "display_url": None,
+            }
+        ],
     }
+    assert client.get("/me").json()["university_courses"] == payload["university_courses"]
 
 
 def test_tuebingen_login_reports_missing_wrapper_dependency() -> None:

@@ -38,6 +38,41 @@ const matchedSession: LoginSession = {
       term: "Sommer 2026",
     },
   ],
+  university_courses: [
+    {
+      source: "alma",
+      external_course_id: "unit:42",
+      title: "Grundlagen des Maschinellen Lernens",
+      organization: "Fachbereich Informatik",
+      term: "Sommer 2026",
+    },
+  ],
+};
+
+const observationSession: LoginSession = {
+  ...realSession,
+  courses: [],
+  university_courses: [
+    {
+      source: "alma",
+      external_course_id: "unit:101",
+      title: "INFO4193 Natural Language Processing",
+      organization: "Fachbereich Informatik",
+      term: "Sommer 2026",
+    },
+    {
+      source: "ilias",
+      external_course_id: "crs:202",
+      title: "INFO4193 Natural Language Processing",
+      term: "Sommer 2026",
+    },
+    {
+      source: "alma",
+      external_course_id: "unit:303",
+      title: "Introduction to Data Ethics",
+      term: "Sommer 2026",
+    },
+  ],
 };
 
 describe("Dashboard course workspace matching", () => {
@@ -52,7 +87,7 @@ describe("Dashboard course workspace matching", () => {
     const nlpCourse = workspaceArticle("INFO4193 Natural Language Processing");
     const workspaceArticleElement = workspaceArticle("Grundlagen des Maschinellen Lernens");
 
-    expect(within(nlpCourse).getByText("No tutor workspace yet")).toBeInTheDocument();
+    expect(within(nlpCourse).getByText("Not supported yet")).toBeInTheDocument();
     expect(
       within(nlpCourse).queryByRole("button", { name: /open lecture/i }),
     ).not.toBeInTheDocument();
@@ -88,6 +123,19 @@ describe("Dashboard course workspace matching", () => {
     ).toHaveLength(1);
     expect(screen.getByText("AI tutor available")).toBeInTheDocument();
     expect(screen.queryByText(/not part of your current alma enrollment/i)).not.toBeInTheDocument();
+  });
+
+  it("shows unmatched university enrollments once as minimal unsupported rows", () => {
+    renderDashboard(observationSession, false);
+
+    expect(
+      screen.getAllByRole("heading", { name: "INFO4193 Natural Language Processing" }),
+    ).toHaveLength(1);
+    const nlpCourse = workspaceArticle("INFO4193 Natural Language Processing");
+    expect(within(nlpCourse).getByText("Not supported yet")).toBeInTheDocument();
+    expect(within(nlpCourse).queryByText("Fachbereich Informatik")).not.toBeInTheDocument();
+    expect(within(nlpCourse).queryByRole("button")).not.toBeInTheDocument();
+    expect(within(nlpCourse).queryByText(/no matched lecturepilot/i)).not.toBeInTheDocument();
   });
 
   it("keeps long course lecture lists compact until expanded", async () => {

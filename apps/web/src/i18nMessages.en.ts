@@ -35,7 +35,7 @@ export const enMessages = {
   "dashboard.welcome": "Welcome, {student}",
   "dashboard.subtitle": "Choose an AI tutor workspace or continue with a past lecture.",
   "dashboard.courseWorkspaces": "Course workspaces",
-  "dashboard.noTutor": "No tutor workspace yet",
+  "dashboard.noTutor": "Not supported yet",
   "dashboard.noMatchedTutor": "No matched LecturePilot workspace for this course yet.",
   "dashboard.publishToEnable":
     "No tutor workspace yet. Publish the course workspace to enable lecture entry.",

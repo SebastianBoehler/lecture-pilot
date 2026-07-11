@@ -31,9 +31,7 @@ export function Dashboard({
   const studentLabel = session?.email ?? session?.username ?? "student";
   const courseGroups = buildCourseGroups(session, workspaceCourse, lectures, publishedLectureIds, {
     aiTutorAvailable: t("dashboard.aiTutorAvailable"),
-    noMatchedTutor: t("dashboard.noMatchedTutor"),
     noTutor: t("dashboard.noTutor"),
-    publishToEnable: t("dashboard.publishToEnable"),
   });
   const [openCourses, setOpenCourses] = useState<Record<string, boolean>>({});
   const [expandedLectureLists, setExpandedLectureLists] = useState<Record<string, boolean>>({});
@@ -61,8 +59,7 @@ export function Dashboard({
         </div>
         <div className="course-workspace-list">
           {courseGroups.map((group) => {
-            const { course, status, statusLabel, emptyText, tutorAvailable, courseLectures } =
-              group;
+            const { course, status, statusLabel, tutorAvailable, courseLectures } = group;
             const courseOpen = openCourses[course.id] ?? tutorAvailable;
             const allLecturesShown = expandedLectureLists[course.id] ?? false;
             const visibleLectures = allLecturesShown
@@ -74,7 +71,7 @@ export function Dashboard({
                 <div className="course-row">
                   <div>
                     <h3>{course.title}</h3>
-                    <p>{course.professor}</p>
+                    {tutorAvailable ? <p>{course.professor}</p> : null}
                   </div>
                   <div className="course-row-actions">
                     <span className={`workspace-status is-${status}`}>{statusLabel}</span>
@@ -162,9 +159,7 @@ export function Dashboard({
                       onOpenLecture={onOpen}
                     />
                   </div>
-                ) : (
-                  <p className="workspace-empty">{emptyText}</p>
-                )}
+                ) : null}
               </article>
             );
           })}

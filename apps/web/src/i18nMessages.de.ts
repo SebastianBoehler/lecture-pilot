@@ -39,7 +39,7 @@ export const deMessages: Record<MessageKey, string> = {
   "dashboard.subtitle":
     "Wähle einen KI-Tutor-Arbeitsbereich oder mache mit einer vergangenen Vorlesung weiter.",
   "dashboard.courseWorkspaces": "Kursarbeitsbereiche",
-  "dashboard.noTutor": "Noch kein Tutor-Arbeitsbereich",
+  "dashboard.noTutor": "Noch nicht unterstützt",
   "dashboard.noMatchedTutor":
     "Für diesen Kurs gibt es noch keinen passenden LecturePilot-Arbeitsbereich.",
   "dashboard.publishToEnable":

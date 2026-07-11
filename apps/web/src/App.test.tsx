@@ -43,7 +43,7 @@ describe("LecturePilot app shell", () => {
       .closest("article");
     expect(probabilisticCourse).not.toBeNull();
     expect(
-      within(probabilisticCourse as HTMLElement).getByText(/no tutor workspace yet/i),
+      within(probabilisticCourse as HTMLElement).getByText(/not supported yet/i),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: /grundlagen des maschinellen lernens/i }),
@@ -166,7 +166,7 @@ describe("LecturePilot app shell", () => {
       screen.queryByRole("heading", { name: /grundlagen des maschinellen lernens/i, level: 1 }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /course workspaces/i })).toBeInTheDocument();
-    expect(screen.getByText(/no tutor workspace yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/not supported yet/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /open lecture 03/i })).not.toBeInTheDocument();
     expect(
       fetchMock.mock.calls.filter(([url]) => String(url).includes("/canvas/publication")),
