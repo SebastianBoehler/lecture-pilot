@@ -8,7 +8,7 @@ from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Upload
 
 from lecturepilot.api_auth import (
     request_context,
-    require_approved_professor,
+    require_professor,
     require_course_manager,
     require_same_tenant,
 )
@@ -114,7 +114,7 @@ def register_course_routes(
         setup: CourseWorkspaceSetupInput,
         context: TenantContext = Depends(request_context),
     ) -> CourseWorkspaceResult:
-        require_approved_professor(context)
+        require_professor(context)
         database_course = None
         created_database_course = False
         if context.auth_mode == "session":

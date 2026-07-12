@@ -9,19 +9,18 @@ authentication.
 | Principal              | Authority                                                                         |
 | ---------------------- | --------------------------------------------------------------------------------- |
 | Public                 | Health check and university login                                                   |
-| Pending professor      | Own account and approval state; no learner or course-authoring capability          |
 | Enrolled student       | Own unlocked lectures, canvas, assets, tutor turns, quiz events, readiness, reset |
-| Approved professor     | May create a course; gains no tenant-wide content access                          |
+| Alma professor         | May create a course; gains no tenant-wide content access                          |
 | Course owner           | Manages only the course whose `owner_user_id` matches the session user            |
-| Platform administrator | Approves/disables accounts; gains no course or learner-content access             |
+| Platform administrator | May disable accounts; gains no course or learner-content access                   |
 
 Tutor and co-instructor delegation is not implemented. Platform course search and join requests are
 also deferred.
 
 University identities come only from the server-side adapter. The active Alma `student` role maps to
-a student account; any other active role creates a pending professor candidate and grants no
-professor permission until platform approval. Approval revokes existing sessions, and the professor
-must sign in again through Alma before course-authoring tools become available.
+a student account; any other active Alma role maps directly to a professor account. LecturePilot
+stores the active and available server-reported roles for audit, but never accepts a role from the
+browser.
 Production web builds do not render either development demo login.
 
 ## Route inventory
@@ -29,11 +28,11 @@ Production web builds do not render either development demo login.
 | Class                       | Routes                                                                                                | Required object check                                                      |
 | --------------------------- | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
 | Public                      | `GET /health`, `POST /auth/login`                                                   | Rate-limited; submitted credentials are never logged or returned           |
-| Self-service                | `GET /me`, `POST /auth/logout`, `POST /professor-requests`                                            | Current opaque session; professor requests require a professor account     |
-| Platform administration     | `/platform/professor-requests*`, `POST /platform/users/{id}/disable`                                  | `platform_admin`; no course-content capability                             |
+| Self-service                | `GET /me`, `POST /auth/logout`                                                                      | Current opaque session                                                      |
+| Platform administration     | `POST /platform/users/{id}/disable`                                                                 | `platform_admin`; no course-content capability                              |
 | Course discovery            | `GET /courses`, `GET /courses/{course}/lectures`                                                      | Database visibility or enrollment; lecture unlock server-side              |
 | Learner-only                | `POST /agent/turn*`, canvas, learning map, quiz answer, readiness, learner reset, workspace assets    | Current session user plus active course enrollment; no learner ID accepted |
-| Course-owner administration | Course creation, source bundle, schedule, upload, draft, publish, media, aggregate analytics, archive | Approved professor for creation; exact `courses.owner_user_id` thereafter  |
+| Course-owner administration | Course creation, source bundle, schedule, upload, draft, publish, media, aggregate analytics, archive | Verified non-student Alma role; exact `courses.owner_user_id` thereafter   |
 | Published course assets     | `GET /course-assets/{course}/{lecture}/{path}`                                                        | Course access, publication/unlock policy, confined path                    |
 
 The learner-only class includes:

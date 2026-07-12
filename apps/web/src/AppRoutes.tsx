@@ -61,7 +61,6 @@ type AppRoutesProps = {
   workspaceCourse: UniversityCourse;
   workspaceCourseId: string;
   onLogin: (session: LoginSession) => void;
-  onSessionChange: (session: LoginSession) => void;
   onOpenDemo: () => void;
   onOpenLecture: (courseId: string, lecture: Lecture) => void;
   onOpenProfessorDemo: () => void;
@@ -136,7 +135,6 @@ export function AppRoutes(props: AppRoutesProps) {
             ? undefined
             : () => props.onViewChange(courseManagerSession ? "professor" : "dashboard")
         }
-        onSessionChange={props.onSessionChange}
       />
     );
   }

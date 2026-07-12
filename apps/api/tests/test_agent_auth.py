@@ -216,7 +216,7 @@ def _session_client(monkeypatch, tmp_path) -> tuple[TestClient, str, str]:
             text(
                 "TRUNCATE usage_counters, audit_events, course_enrollments, "
                 "course_external_refs, courses, external_course_observations, sessions, "
-                "professor_requests, tenant_memberships, external_identities, users CASCADE"
+                "tenant_memberships, external_identities, users CASCADE"
             )
         )
     account = IdentityRepository(app.state.database).record_login(

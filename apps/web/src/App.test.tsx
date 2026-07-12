@@ -66,7 +66,7 @@ describe("LecturePilot app shell", () => {
     );
   });
 
-  it("lands an Alma professor candidate on pending approval without student navigation", async () => {
+  it("lands a non-student Alma account in the professor workspace", async () => {
     const user = userEvent.setup();
     vi.stubGlobal(
       "fetch",
@@ -81,8 +81,7 @@ describe("LecturePilot app shell", () => {
                 tenant_id: "tenant-tuebingen",
                 account_type: "professor",
                 university_role: "lecturer",
-                roles: [],
-                professor_status: "pending",
+                roles: ["professor"],
                 csrf_token: "csrf-token-with-at-least-thirty-two-characters",
                 courses: [],
               },
@@ -99,15 +98,15 @@ describe("LecturePilot app shell", () => {
     await user.type(screen.getByLabelText(/^password$/i), "university-password");
     await user.click(screen.getByRole("button", { name: /continue with uni tübingen/i }));
 
-    expect(await screen.findByRole("heading", { name: /profile/i })).toBeInTheDocument();
-    expect(screen.getByText(/status: pending/i)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("navigation", { name: /professor workspace navigation/i }),
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("navigation", { name: /student workspace navigation/i }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("navigation", { name: /professor workspace navigation/i }),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^dashboard$/i })).not.toBeInTheDocument();
+      await screen.findByRole("navigation", { name: /course builder progress/i }),
+    ).toBeInTheDocument();
   });
 
   it("opens the profile view and logs out", async () => {

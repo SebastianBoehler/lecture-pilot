@@ -18,7 +18,6 @@ def login_result(
         account_type=account.account_type,
         university_role=account.university_role,
         roles=sorted(account.roles, key=lambda role: role.value),
-        professor_status=account.professor_status,
         csrf_token=csrf_token,
         courses=list(account.courses),
         university_courses=list(account.university_courses),
@@ -34,7 +33,6 @@ def account_response(account: AccountView) -> AccountResponse:
         account_type=account.account_type,
         university_role=account.university_role,
         roles=sorted(account.roles, key=lambda role: role.value),
-        professor_status=account.professor_status,
         courses=list(account.courses),
         university_courses=list(account.university_courses),
     )

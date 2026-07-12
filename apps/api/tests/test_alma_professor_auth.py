@@ -7,17 +7,12 @@ from sqlalchemy import select
 
 from lecturepilot.app import create_app
 from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.db_models import (
-    AuditEventRecord,
-    ExternalIdentityRecord,
-    ProfessorRequestRecord,
-    TenantMembershipRecord,
-)
+from lecturepilot.db_models import AuditEventRecord, ExternalIdentityRecord
 from lecturepilot.university_models import UniversityLoginResult
 from security_db_helpers import mutation_headers
 
 
-def test_alma_nonstudent_role_creates_pending_professor_without_privileges(
+def test_alma_nonstudent_role_immediately_grants_professor_access_and_is_audited(
     tmp_path: Path,
 ) -> None:
     app = _app(
@@ -27,27 +22,25 @@ def test_alma_nonstudent_role_creates_pending_professor_without_privileges(
     )
     client = TestClient(app, base_url="http://localhost:8000")
 
-    response = _login(client, "alma-professor")
+    professor = _login(client, "alma-professor")
 
-    assert response["account_type"] == "professor"
-    assert response["university_role"] == "lecturer"
-    assert response["professor_status"] == "pending"
-    assert response["roles"] == []
-    denied = client.post(
+    assert professor["account_type"] == "professor"
+    assert professor["university_role"] == "lecturer"
+    assert professor["roles"] == ["professor"]
+    assert "professor_status" not in professor
+    created = client.post(
         "/admin/course-workspaces",
-        headers=mutation_headers(response),
-        json={"course_title": "Unapproved course", "target": "full-course"},
+        headers=mutation_headers(professor),
+        json={"course_title": "Secure Computing", "target": "full-course"},
     )
-    assert denied.status_code == 403
+    assert created.status_code == 200, created.json()
+
     with app.state.database.session() as session:
         identity = _identity(session, "alma-professor")
-        requests = session.scalars(
-            select(ProfessorRequestRecord).where(
-                ProfessorRequestRecord.user_id == identity.user_id,
-            )
-        ).all()
-        assert identity.provider_claims["alma_current_role"] == "lecturer"
-        assert identity.provider_claims["alma_available_roles"] == ["lecturer", "examiner"]
+        assert identity.provider_claims == {
+            "alma_current_role": "lecturer",
+            "alma_available_roles": ["lecturer", "examiner"],
+        }
         login_event = session.scalar(
             select(AuditEventRecord).where(
                 AuditEventRecord.actor_user_id == identity.user_id,
@@ -57,53 +50,6 @@ def test_alma_nonstudent_role_creates_pending_professor_without_privileges(
         assert login_event is not None
         assert login_event.details["alma_role"] == "lecturer"
         assert login_event.details["alma_available_roles"] == ["lecturer", "examiner"]
-        assert len(requests) == 1
-
-
-def test_admin_approval_unlocks_alma_professor_course_creation(tmp_path: Path) -> None:
-    app = _app(
-        tmp_path,
-        {"alma-professor": "lecturer", "platform-admin": "student"},
-        available_roles={"alma-professor": ["lecturer", "examiner"]},
-    )
-    professor_client = TestClient(app, base_url="http://localhost:8000")
-    pending_professor = _login(professor_client, "alma-professor")
-    admin_client = TestClient(app, base_url="http://localhost:8000")
-    _login(admin_client, "platform-admin")
-    with app.state.database.session() as session:
-        admin_identity = _identity(session, "platform-admin")
-        membership = session.get(
-            TenantMembershipRecord,
-            (admin_identity.user_id, "tenant-tuebingen"),
-        )
-        membership.platform_admin = True
-    admin = _login(admin_client, "platform-admin")
-
-    requests = admin_client.get("/platform/professor-requests")
-    assert requests.status_code == 200
-    assert requests.json()[0]["university_role"] == "lecturer"
-    assert requests.json()[0]["university_available_roles"] == ["lecturer", "examiner"]
-    approved = admin_client.post(
-        f"/platform/professor-requests/{requests.json()[0]['id']}/approve",
-        headers=mutation_headers(admin),
-    )
-    assert approved.status_code == 200
-    assert professor_client.get("/me").status_code == 401
-
-    professor = _login(professor_client, "alma-professor")
-    assert professor["roles"] == ["professor"]
-    created = professor_client.post(
-        "/admin/course-workspaces",
-        headers=mutation_headers(professor),
-        json={
-            "course_title": "Secure Computing",
-            "term": "Winter 2026",
-            "target": "full-course",
-            "access_policy": "tuebingen_enrolled",
-        },
-    )
-    assert created.status_code == 200, created.json()
-    assert pending_professor["roles"] == []
 
 
 def test_active_student_role_stays_student_even_with_other_available_roles(
@@ -114,41 +60,45 @@ def test_active_student_role_stays_student_even_with_other_available_roles(
         {"alma-student": "student"},
         available_roles={"alma-student": ["student", "lecturer"]},
     )
-    response = _login(TestClient(app, base_url="http://localhost:8000"), "alma-student")
+    client = TestClient(app, base_url="http://localhost:8000")
 
-    assert response["account_type"] == "student"
-    assert response["university_role"] == "student"
-    assert response["professor_status"] == "not_requested"
-    assert response["roles"] == ["student"]
+    student = _login(client, "alma-student")
+
+    assert student["account_type"] == "student"
+    assert student["university_role"] == "student"
+    assert student["roles"] == ["student"]
+    denied = client.post(
+        "/admin/course-workspaces",
+        headers=mutation_headers(student),
+        json={"course_title": "Unauthorized course", "target": "full-course"},
+    )
+    assert denied.status_code == 403
 
 
-def test_current_student_role_removes_previously_approved_professor_permission(
-    tmp_path: Path,
-) -> None:
+def test_current_student_role_removes_previous_professor_access(tmp_path: Path) -> None:
     roles = {"role-change": "lecturer"}
     app = _app(tmp_path, roles)
     client = TestClient(app, base_url="http://localhost:8000")
-    pending = _login(client, "role-change")
-    with app.state.database.session() as session:
-        identity = _identity(session, "role-change")
-        membership = session.get(
-            TenantMembershipRecord,
-            (identity.user_id, "tenant-tuebingen"),
-        )
-        membership.professor_status = "approved"
+    professor = _login(client, "role-change")
+    created = client.post(
+        "/admin/course-workspaces",
+        headers=mutation_headers(professor),
+        json={"course_title": "Formerly owned course", "target": "full-course"},
+    )
+    assert created.status_code == 200
 
     roles["role-change"] = "student"
-    downgraded = _login(client, "role-change")
+    student = _login(client, "role-change")
 
-    assert downgraded["account_type"] == "student"
-    assert downgraded["roles"] == ["student"]
+    assert student["account_type"] == "student"
+    assert student["roles"] == ["student"]
+    assert student["courses"] == []
     denied = client.post(
         "/admin/course-workspaces",
-        headers=mutation_headers(downgraded),
+        headers=mutation_headers(student),
         json={"course_title": "Downgraded course", "target": "full-course"},
     )
     assert denied.status_code == 403
-    assert pending["roles"] == []
 
 
 def _app(

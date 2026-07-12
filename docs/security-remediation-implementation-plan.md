@@ -13,7 +13,7 @@ Source findings: `security_best_practices_report.md`
 - The first successful university login creates or updates a database-backed user.
 - A platform administrator approves a user as a professor once. The administrator does not assign
   each professor-created course.
-- An approved professor creates a course and becomes its owner in the same database transaction.
+- A professor verified by Alma creates a course and becomes its owner in the same database transaction.
 - LecturePilot cannot enumerate the university-wide Alma or ILIAS course catalog. An approved
   professor creates a platform course using its title and term without selecting an upstream row.
 - On student login, the student's own Alma and ILIAS memberships are matched conservatively by
@@ -87,13 +87,13 @@ and keep each new module below the repository's 300-line soft limit.
       explicit migration command. Production startup must fail if the schema is missing or stale;
       the web process must not silently create tables.
 - [x] Create UUID-keyed tables: `users`, `external_identities`, `tenant_memberships`,
-      `professor_requests`, `sessions`, `courses`, `course_external_refs`, `course_enrollments`, and
+      `sessions`, `courses`, `course_external_refs`, `course_enrollments`, and
       `audit_events`.
 - [x] Store external usernames only in the protected identity table. Use internal UUIDs and
       pseudonymous storage keys elsewhere.
 - [x] Add unique constraints for external identity, enrollment, and
       `(tenant, source, external_course_id, term)` course links; make the non-null course owner a
-      foreign key to an approved professor.
+      foreign key to an Alma-verified professor.
 - [x] Add status/timestamp fields for approval, revocation, enrollment sync, soft course archival,
       and audit provenance.
 - [x] Add PostgreSQL to the API CI job and run migrations before tests. Do not use SQLite as proof of
@@ -105,29 +105,26 @@ Gate 1:
 - [ ] Concurrent duplicate identity, approval, course-link, and owner creation tests pass.
 - [x] The application fails closed when `DATABASE_URL` is absent in production.
 
-## Phase 2 — Database-backed login, sessions, and professor approval
+## Phase 2 — Database-backed login, sessions, and Alma role authority
 
 - [x] Refactor `TuebingenCourseAdapter` to return authenticated identity, the server-reported Alma
       role profile, and upstream assignments as data only. Never accept a browser-selected role or
       persist the submitted password.
-- [x] Use one university login for students and professor candidates. The active `student` Alma role
-      remains a student; another active role creates a pending professor request with no teaching
-      permission. Persist the raw role for audit and administrator review.
+- [x] Use one university login for students and professors. The active `student` Alma role remains a
+      student; any other active Alma role grants professor access. Persist the raw active and
+      available roles for audit.
 - [x] Remove the separate local professor credential flow. Alma is the only login path, and the
       submitted university password is never persisted or returned.
-- [x] Create the university identity, tenant membership, pending professor request, and audit event
-      atomically. A pending or rejected professor has no student or professor role.
+- [x] Create the university identity, tenant membership, and role audit event atomically.
 - [x] Replace the signed claim cookie with a random opaque session identifier. Store only its hash in
       `sessions`; rotate on login/privilege change, enforce expiry, and support immediate revocation.
 - [x] Make `request_context` load the current enabled user, membership, and session from the database.
       Remove roles and course IDs as self-contained cookie authority.
-- [x] Add `GET /me` and a pending/approved/rejected account status DTO.
-- [x] Add platform-admin endpoints to list and approve/reject requests and disable accounts. Approval
-      grants professor eligibility only; it does not create or assign courses.
+- [x] Add `GET /me` with the server-verified account type and Alma role.
+- [x] Keep a platform-admin endpoint to disable accounts without granting course or learner access.
 - [x] Add a one-time operator CLI to bootstrap the first platform admin by exact external identity.
       Every bootstrap and approval action writes an audit event.
-- [x] Update the UI with one university entry path and pending, rejected, and approved states. Remove
-      demo access from production builds.
+- [x] Update the UI with one university entry path and remove demo access from production builds.
 
 Gate 2:
 
@@ -161,14 +158,14 @@ Gate 3:
 - [x] Two identically named platform courses in one term are treated as ambiguous and do not grant
       enrollment; different terms and stable source IDs do not collide.
 - [x] Renaming a display title does not change ownership or student enrollment after stable binding.
-- [x] The creator can manage the new course; another approved professor cannot see or mutate it.
+- [x] The creator can manage the new course; another professor cannot see or mutate it.
 - [x] A student's enrolled courses are resolved from database links, not session claims or title
       slugs after the initial unique match.
 
 ## Phase 4 — Enforce course ownership and learner privacy everywhere
 
 - [x] Replace `require_course_manager` and tenant-wide teaching shortcuts with centralized
-      `require_platform_admin`, `require_approved_professor`, `require_course_capability`,
+      `require_platform_admin`, `require_professor`, `require_course_capability`,
       `require_enrollment`, and `require_self` dependencies.
 - [x] Scope every lookup by tenant and opaque resource ID before reading files or database records.
 - [x] Convert all admin routes in `app.py`, `course_canvas_routes.py`, `admin_media_routes.py`,

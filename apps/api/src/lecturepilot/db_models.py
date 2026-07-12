@@ -15,7 +15,6 @@ from sqlalchemy import (
     Integer,
     UniqueConstraint,
     Uuid,
-    text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -61,35 +60,9 @@ class TenantMembershipRecord(Base):
         ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
     tenant_id: Mapped[str] = mapped_column(String(120), primary_key=True)
-    professor_status: Mapped[str] = mapped_column(
-        String(24), nullable=False, default="not_requested"
-    )
     platform_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
-
-
-class ProfessorRequestRecord(Base):
-    __tablename__ = "professor_requests"
-    __table_args__ = (
-        Index(
-            "uq_pending_professor_request",
-            "user_id",
-            "tenant_id",
-            unique=True,
-            postgresql_where=text("status = 'pending'"),
-        ),
-    )
-
-    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[UUID] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
-    )
-    tenant_id: Mapped[str] = mapped_column(String(120), nullable=False)
-    status: Mapped[str] = mapped_column(String(24), nullable=False, default="pending")
-    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
-    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    reviewed_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
 
 
 class SessionRecord(Base):

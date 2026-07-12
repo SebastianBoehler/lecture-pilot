@@ -49,10 +49,10 @@ This repository is intentionally small but runnable:
   tutor turns use the configured provider model. Production builds do not
   render demo access.
 - React/Vite frontend with dashboard and focused lesson workspace.
-- Unified TUE API login for students and professor candidates, with the active
+- Unified TUE API login for students and professors, with the active
   Alma role verified by the backend.
-- Professor candidates remain pending until a platform administrator approves
-  them; browser-selected roles are never accepted.
+- The active Alma `student` role grants learner access; any other verified Alma
+  role grants professor access. Browser-selected roles are never accepted.
 - Postgres-backed users, opaque sessions,
   course ownership, Alma/ILIAS enrollment evidence, audit events, and durable
   quotas.

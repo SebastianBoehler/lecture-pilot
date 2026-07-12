@@ -14,25 +14,9 @@ from lecturepilot.db_models import (
     ExternalIdentityRecord,
     CourseRecord,
     SessionRecord,
-    TenantMembershipRecord,
 )
 from lecturepilot.external_course_sync import sync_external_courses
 from security_db_helpers import FakeUniversityAdapter, candidate, login, mutation_headers
-
-
-def test_university_student_cannot_request_professor_access(
-    tmp_path: Path,
-) -> None:
-    app = _app(tmp_path, {})
-    student_client = TestClient(app, base_url="http://localhost:8000")
-    student = login(student_client, "professor-a")
-
-    missing_csrf = student_client.post("/professor-requests")
-    requested = student_client.post("/professor-requests", headers=mutation_headers(student))
-
-    assert missing_csrf.status_code == 403
-    assert requested.status_code == 403
-    assert requested.json()["detail"] == "Use a professor account to request professor access."
 
 
 def test_course_owner_and_alma_ilias_enrollment_are_object_scoped(tmp_path: Path) -> None:
@@ -50,7 +34,7 @@ def test_course_owner_and_alma_ilias_enrollment_are_object_scoped(tmp_path: Path
         },
     )
     owner_client = TestClient(app, base_url="http://localhost:8000")
-    owner = _approve(app, owner_client, "owner")
+    owner = _professor_login(app, owner_client, "owner")
     created = owner_client.post(
         "/admin/course-workspaces",
         headers=mutation_headers(owner),
@@ -65,7 +49,7 @@ def test_course_owner_and_alma_ilias_enrollment_are_object_scoped(tmp_path: Path
     assert len(course_id) == 36
 
     unrelated_client = TestClient(app, base_url="http://localhost:8000")
-    unrelated = _approve(app, unrelated_client, "unrelated-professor")
+    unrelated = _professor_login(app, unrelated_client, "unrelated-professor")
     denied = unrelated_client.get(f"/courses/{course_id}/source-bundle")
     assert denied.status_code == 403
     denied_routes = [
@@ -122,7 +106,7 @@ def test_ambiguous_title_and_term_match_fails_closed(tmp_path: Path) -> None:
     app = _app(tmp_path, {"student": [upstream]})
     for username in ("owner-a", "owner-b"):
         owner_client = TestClient(app, base_url="http://localhost:8000")
-        owner = _approve(app, owner_client, username)
+        owner = _professor_login(app, owner_client, username)
         response = owner_client.post(
             "/admin/course-workspaces",
             headers=mutation_headers(owner),
@@ -155,7 +139,7 @@ def test_title_match_does_not_cross_terms(tmp_path: Path) -> None:
         },
     )
     owner_client = TestClient(app, base_url="http://localhost:8000")
-    owner = _approve(app, owner_client, "term-owner")
+    owner = _professor_login(app, owner_client, "term-owner")
     created = owner_client.post(
         "/admin/course-workspaces",
         headers=mutation_headers(owner),
@@ -232,20 +216,6 @@ def _app(tmp_path: Path, courses_by_user: dict) -> object:
     return app
 
 
-def _approve(app, client: TestClient, username: str) -> dict:
+def _professor_login(app, client: TestClient, username: str) -> dict:
     app.state.tuebingen_adapter.roles_by_user[username] = "lecturer"
-    pending = login(client, username)
-    assert pending["professor_status"] == "pending"
-    with app.state.database.session() as database_session:
-        user_id = database_session.scalar(
-            select(ExternalIdentityRecord.user_id).where(
-                ExternalIdentityRecord.provider == "tuebingen",
-                ExternalIdentityRecord.subject == username,
-            )
-        )
-        membership = database_session.get(
-            TenantMembershipRecord,
-            (user_id, "tenant-tuebingen"),
-        )
-        membership.professor_status = "approved"
     return login(client, username)

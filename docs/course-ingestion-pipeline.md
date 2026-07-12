@@ -248,7 +248,7 @@ milestone, but the authorization model should leave room for an admin to:
 - manage institution-wide retention, deletion, and allowed-format policy.
 
 Professor approval and budget enforcement must remain backend-authoritative.
-Browser-supplied roles, tenant ids, quota values, or approval state are never
+Browser-supplied roles, tenant ids, or quota values are never
 accepted as authority.
 
 ### Privacy-Restricted MLflow Operations View

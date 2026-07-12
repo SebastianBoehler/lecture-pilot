@@ -1,11 +1,3 @@
-import { useEffect, useState } from "react";
-
-import {
-  listProfessorRequests,
-  requestProfessorAccess,
-  reviewProfessorRequest,
-  type ProfessorRequest,
-} from "./accountApi";
 import { useI18n } from "./i18n";
 import { LearnerProfileControls } from "./LearnerProfileControls";
 import type { LoginSession } from "./types";
@@ -14,54 +6,13 @@ import type { LearnerProfileState } from "./useLearnerProfile";
 export function ProfileView({
   session,
   onBack,
-  onSessionChange,
   learnerProfileState,
 }: {
   session: LoginSession;
   onBack?: () => void;
-  onSessionChange: (session: LoginSession) => void;
   learnerProfileState?: LearnerProfileState;
 }) {
   const { t } = useI18n();
-  const [requests, setRequests] = useState<ProfessorRequest[]>([]);
-  const [accountError, setAccountError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-  const isPlatformAdmin = session.roles?.includes("tenant_admin") ?? false;
-
-  useEffect(() => {
-    if (!isPlatformAdmin) return;
-    void listProfessorRequests(session)
-      .then(setRequests)
-      .catch((error) =>
-        setAccountError(error instanceof Error ? error.message : "Request loading failed."),
-      );
-  }, [isPlatformAdmin, session]);
-
-  async function requestProfessor() {
-    setPending(true);
-    setAccountError(null);
-    try {
-      const request = await requestProfessorAccess(session);
-      onSessionChange({ ...session, professor_status: request.status });
-    } catch (error) {
-      setAccountError(error instanceof Error ? error.message : "Professor request failed.");
-    } finally {
-      setPending(false);
-    }
-  }
-
-  async function review(requestId: string, decision: "approve" | "reject") {
-    setPending(true);
-    setAccountError(null);
-    try {
-      await reviewProfessorRequest(requestId, decision, session);
-      setRequests(await listProfessorRequests(session));
-    } catch (error) {
-      setAccountError(error instanceof Error ? error.message : "Professor request review failed.");
-    } finally {
-      setPending(false);
-    }
-  }
   return (
     <main className="profile-screen">
       <section className="profile-panel" aria-labelledby="profile-heading">
@@ -101,62 +52,6 @@ export function ProfileView({
             <dd>{session.courses.length}</dd>
           </div>
         </dl>
-
-        {session.auth_transport === "cookie" && session.account_type === "professor" ? (
-          <section className="profile-settings" aria-labelledby="professor-access-heading">
-            <h2 id="professor-access-heading">Professor access</h2>
-            <p>Status: {session.professor_status ?? "not_requested"}</p>
-            {session.professor_status === "not_requested" ||
-            session.professor_status === "rejected" ? (
-              <button disabled={pending} type="button" onClick={() => void requestProfessor()}>
-                Request professor approval
-              </button>
-            ) : null}
-          </section>
-        ) : null}
-
-        {isPlatformAdmin ? (
-          <section className="profile-settings" aria-labelledby="platform-requests-heading">
-            <h2 id="platform-requests-heading">Pending professor requests</h2>
-            {requests.length ? (
-              requests.map((request) => (
-                <article className="course-row" key={request.id}>
-                  <div>
-                    <strong>{request.username}</strong>
-                    <small>{request.email ?? "No email returned"}</small>
-                    {request.university_role ? (
-                      <small>Alma role: {request.university_role}</small>
-                    ) : null}
-                    {request.university_available_roles.length ? (
-                      <small>
-                        Available Alma roles: {request.university_available_roles.join(", ")}
-                      </small>
-                    ) : null}
-                  </div>
-                  <div>
-                    <button
-                      disabled={pending}
-                      type="button"
-                      onClick={() => void review(request.id, "approve")}
-                    >
-                      Approve
-                    </button>
-                    <button
-                      disabled={pending}
-                      type="button"
-                      onClick={() => void review(request.id, "reject")}
-                    >
-                      Reject
-                    </button>
-                  </div>
-                </article>
-              ))
-            ) : (
-              <p>No pending requests.</p>
-            )}
-          </section>
-        ) : null}
-        {accountError ? <p className="form-error">{accountError}</p> : null}
 
         {learnerProfileState ? (
           <LearnerProfileControls session={session} state={learnerProfileState} />

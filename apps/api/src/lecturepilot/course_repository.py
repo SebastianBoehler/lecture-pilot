@@ -54,8 +54,8 @@ class CourseRepository:
         default_term: str,
     ) -> Course:
         membership = session.get(TenantMembershipRecord, (user_id, tenant_id))
-        if membership is None or membership.professor_status != "approved":
-            raise CourseRepositoryError("Approved professor access is required.")
+        if membership is None:
+            raise CourseRepositoryError("University membership is required.")
         term = setup.term or default_term
         course = CourseRecord(
             tenant_id=tenant_id,

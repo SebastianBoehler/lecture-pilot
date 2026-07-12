@@ -235,7 +235,6 @@ export type LoginSession = {
   access_token?: string | null;
   auth_transport?: "bearer" | "cookie" | "dev_headers";
   csrf_token?: string | null;
-  professor_status?: "not_requested" | "pending" | "approved" | "rejected";
   courses: UniversityCourse[];
   university_courses?: UniversityEnrollmentCourse[];
 };

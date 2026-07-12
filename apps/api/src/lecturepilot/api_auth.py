@@ -57,9 +57,9 @@ def require_platform_admin(context: TenantContext) -> None:
         raise HTTPException(status_code=403, detail="Platform administrator access is required.")
 
 
-def require_approved_professor(context: TenantContext) -> None:
+def require_professor(context: TenantContext) -> None:
     if TenantRole.PROFESSOR not in context.roles:
-        raise HTTPException(status_code=403, detail="Approved professor access is required.")
+        raise HTTPException(status_code=403, detail="Professor access is required.")
 
 
 def require_course_owner(
@@ -69,9 +69,9 @@ def require_course_owner(
     course_id: str,
     course_tenant_id: str,
 ) -> None:
+    require_professor(context)
     require_same_tenant(context, course_tenant_id=course_tenant_id)
     if context.auth_mode == "dev":
-        require_approved_professor(context)
         return
     repository = CourseRepository(request.app.state.database)
     if not repository.is_owner(
@@ -91,7 +91,7 @@ def require_course_manager(
 ) -> None:
     if context.auth_mode == "dev":
         require_same_tenant(context, course_tenant_id=course_tenant_id)
-        require_approved_professor(context)
+        require_professor(context)
         return
     if request is None or course_id is None:
         raise HTTPException(status_code=403, detail="Course ownership is required.")

@@ -54,7 +54,6 @@ def test_tuebingen_login_returns_courses_without_echoing_password(monkeypatch) -
         "account_type": "student",
         "university_role": None,
         "roles": ["student"],
-        "professor_status": "not_requested",
         "courses": [],
         "university_courses": [
             {

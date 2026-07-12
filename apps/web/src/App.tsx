@@ -395,7 +395,6 @@ function App() {
             changeView(landingView(nextSession));
             void loadWorkspaceCourse(nextSession);
           }}
-          onSessionChange={setSession}
           onOpenDemo={() => {
             setSession(localDemoSession);
             changeView("dashboard");

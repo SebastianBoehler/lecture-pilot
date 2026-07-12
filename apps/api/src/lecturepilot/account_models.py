@@ -1,16 +1,14 @@
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, SecretStr
 
 from lecturepilot.models import Course, TenantRole
-from lecturepilot.university_models import AlmaRole, ExternalCourseCandidate
+from lecturepilot.university_models import ExternalCourseCandidate
 
 
-ProfessorStatus = Literal["not_requested", "pending", "approved", "rejected"]
 AccountType = Literal["student", "professor"]
 
 
@@ -28,7 +26,6 @@ class LoginResult(BaseModel):
     account_type: AccountType = "student"
     university_role: str | None = Field(default=None, max_length=120)
     roles: list[TenantRole] = Field(default_factory=list)
-    professor_status: ProfessorStatus = "not_requested"
     csrf_token: str | None = Field(default=None, min_length=32, max_length=200)
     access_token: str | None = None
     courses: list[Course]
@@ -43,25 +40,12 @@ class AccountResponse(BaseModel):
     account_type: AccountType
     university_role: str | None = Field(default=None, max_length=120)
     roles: list[TenantRole]
-    professor_status: ProfessorStatus
     courses: list[Course]
     csrf_token: str | None = Field(default=None, min_length=32, max_length=200)
     university_courses: list[ExternalCourseCandidate] = Field(default_factory=list)
 
 
 TuebingenLoginResult = LoginResult
-
-
-class ProfessorRequestResponse(BaseModel):
-    id: UUID
-    user_id: UUID
-    username: str
-    email: str | None = None
-    university_role: str | None = Field(default=None, max_length=120)
-    university_available_roles: list[AlmaRole] = Field(default_factory=list, max_length=24)
-    status: ProfessorStatus
-    requested_at: datetime
-    reviewed_at: datetime | None = None
 
 
 class AccountDisabledResponse(BaseModel):

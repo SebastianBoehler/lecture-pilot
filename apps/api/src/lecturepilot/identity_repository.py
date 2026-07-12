@@ -13,7 +13,6 @@ from lecturepilot.db_models import (
     CourseEnrollmentRecord,
     CourseRecord,
     ExternalIdentityRecord,
-    ProfessorRequestRecord,
     TenantMembershipRecord,
     UserRecord,
 )
@@ -38,7 +37,6 @@ class AccountView:
     account_type: str
     university_role: str | None
     roles: frozenset[TenantRole]
-    professor_status: str
     courses: tuple[Course, ...]
     university_courses: tuple[ExternalCourseCandidate, ...]
 
@@ -55,8 +53,6 @@ class IdentityRepository:
         with self.database.session() as session:
             user, external = _upsert_identity(session, identity)
             membership = _membership(session, user.id, tenant_id)
-            if _is_professor_account(external) and membership.professor_status == "not_requested":
-                _create_professor_request(session, user.id, tenant_id, membership)
             sync_external_courses(
                 session,
                 user_id=user.id,
@@ -149,25 +145,25 @@ def _account_view(
 ) -> AccountView:
     professor_account = _is_professor_account(external)
     roles: set[TenantRole] = set()
-    if not professor_account:
-        roles.add(TenantRole.STUDENT)
-    if professor_account and membership.professor_status == "approved":
+    if professor_account:
         roles.add(TenantRole.PROFESSOR)
+    else:
+        roles.add(TenantRole.STUDENT)
     if membership.platform_admin:
         roles.add(TenantRole.TENANT_ADMIN)
-    access_conditions = [CourseRecord.owner_user_id == user.id]
-    if not professor_account:
-        access_conditions.extend(
-            [
-                CourseEnrollmentRecord.id.is_not(None),
-                CourseRecord.access_policy.in_(
-                    [
-                        CourseAccessPolicy.PUBLIC.value,
-                        CourseAccessPolicy.PLATFORM_AUTHENTICATED.value,
-                    ]
-                ),
-            ]
-        )
+    access_conditions = (
+        [CourseRecord.owner_user_id == user.id]
+        if professor_account
+        else [
+            CourseEnrollmentRecord.id.is_not(None),
+            CourseRecord.access_policy.in_(
+                [
+                    CourseAccessPolicy.PUBLIC.value,
+                    CourseAccessPolicy.PLATFORM_AUTHENTICATED.value,
+                ]
+            ),
+        ]
+    )
     courses = session.scalars(
         select(CourseRecord)
         .outerjoin(
@@ -191,7 +187,6 @@ def _account_view(
         account_type="professor" if professor_account else "student",
         university_role=alma_current_role(external.provider_claims),
         roles=frozenset(roles),
-        professor_status=membership.professor_status,
         courses=tuple(_course_view(course) for course in courses),
         university_courses=latest_external_courses(
             session,
@@ -227,24 +222,6 @@ def _is_professor_account(identity: ExternalIdentityRecord) -> bool:
         )
         == "professor"
     )
-
-
-def _create_professor_request(
-    session: Session,
-    user_id: UUID,
-    tenant_id: str,
-    membership: TenantMembershipRecord,
-) -> None:
-    now = datetime.now(UTC)
-    request = ProfessorRequestRecord(
-        user_id=user_id,
-        tenant_id=tenant_id,
-        status="pending",
-        requested_at=now,
-    )
-    session.add(request)
-    membership.professor_status = "pending"
-    membership.updated_at = now
 
 
 def _course_view(course: CourseRecord) -> Course:

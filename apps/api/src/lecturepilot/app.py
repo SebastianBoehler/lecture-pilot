@@ -4,10 +4,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from lecturepilot.account_admin_routes import register_account_admin_routes
+from lecturepilot.admin_media_routes import register_admin_media_routes
 from lecturepilot.analytics import AnalyticsStore
 from lecturepilot.analytics_routes import register_analytics_routes
-from lecturepilot.admin_media_routes import register_admin_media_routes
-from lecturepilot.approval_routes import register_approval_routes
 from lecturepilot.asset_routes import register_asset_routes
 from lecturepilot.agent_routes import register_agent_routes
 from lecturepilot.auth_routes import register_auth_routes
@@ -93,7 +93,7 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     register_auth_routes(app, course_tenant_id=COURSE_TENANT_ID)
-    register_approval_routes(app)
+    register_account_admin_routes(app)
     register_learner_profile_routes(app, course_tenant_id=COURSE_TENANT_ID)
     register_admin_media_routes(
         app,
