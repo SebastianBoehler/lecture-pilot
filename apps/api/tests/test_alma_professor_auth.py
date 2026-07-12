@@ -8,6 +8,7 @@ from sqlalchemy import select
 from lecturepilot.app import create_app
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.db_models import (
+    AuditEventRecord,
     ExternalIdentityRecord,
     ProfessorRequestRecord,
     TenantMembershipRecord,
@@ -19,7 +20,11 @@ from security_db_helpers import mutation_headers
 def test_alma_nonstudent_role_creates_pending_professor_without_privileges(
     tmp_path: Path,
 ) -> None:
-    app = _app(tmp_path, {"alma-professor": "lecturer"})
+    app = _app(
+        tmp_path,
+        {"alma-professor": "lecturer"},
+        available_roles={"alma-professor": ["lecturer", "examiner"]},
+    )
     client = TestClient(app, base_url="http://localhost:8000")
 
     response = _login(client, "alma-professor")
@@ -42,11 +47,25 @@ def test_alma_nonstudent_role_creates_pending_professor_without_privileges(
             )
         ).all()
         assert identity.provider_claims["alma_current_role"] == "lecturer"
+        assert identity.provider_claims["alma_available_roles"] == ["lecturer", "examiner"]
+        login_event = session.scalar(
+            select(AuditEventRecord).where(
+                AuditEventRecord.actor_user_id == identity.user_id,
+                AuditEventRecord.event_type == "auth.login",
+            )
+        )
+        assert login_event is not None
+        assert login_event.details["alma_role"] == "lecturer"
+        assert login_event.details["alma_available_roles"] == ["lecturer", "examiner"]
         assert len(requests) == 1
 
 
 def test_admin_approval_unlocks_alma_professor_course_creation(tmp_path: Path) -> None:
-    app = _app(tmp_path, {"alma-professor": "lecturer", "platform-admin": "student"})
+    app = _app(
+        tmp_path,
+        {"alma-professor": "lecturer", "platform-admin": "student"},
+        available_roles={"alma-professor": ["lecturer", "examiner"]},
+    )
     professor_client = TestClient(app, base_url="http://localhost:8000")
     pending_professor = _login(professor_client, "alma-professor")
     admin_client = TestClient(app, base_url="http://localhost:8000")
@@ -63,6 +82,7 @@ def test_admin_approval_unlocks_alma_professor_course_creation(tmp_path: Path) -
     requests = admin_client.get("/platform/professor-requests")
     assert requests.status_code == 200
     assert requests.json()[0]["university_role"] == "lecturer"
+    assert requests.json()[0]["university_available_roles"] == ["lecturer", "examiner"]
     approved = admin_client.post(
         f"/platform/professor-requests/{requests.json()[0]['id']}/approve",
         headers=mutation_headers(admin),

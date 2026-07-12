@@ -14,7 +14,7 @@ from lecturepilot.db_models import (
     TenantMembershipRecord,
     UserRecord,
 )
-from lecturepilot.identity_roles import alma_current_role
+from lecturepilot.identity_roles import alma_available_roles, alma_current_role
 from lecturepilot.session_store import SessionStore
 
 
@@ -149,6 +149,7 @@ def _request_view(session, request: ProfessorRequestRecord) -> ProfessorRequestR
         username=(user.display_name if user else None) or identity.subject,
         email=identity.email,
         university_role=alma_current_role(identity.provider_claims),
+        university_available_roles=alma_available_roles(identity.provider_claims),
         status=request.status,
         requested_at=request.requested_at,
         reviewed_at=request.reviewed_at,

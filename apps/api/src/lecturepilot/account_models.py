@@ -7,7 +7,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, SecretStr
 
 from lecturepilot.models import Course, TenantRole
-from lecturepilot.university_models import ExternalCourseCandidate
+from lecturepilot.university_models import AlmaRole, ExternalCourseCandidate
 
 
 ProfessorStatus = Literal["not_requested", "pending", "approved", "rejected"]
@@ -58,6 +58,7 @@ class ProfessorRequestResponse(BaseModel):
     username: str
     email: str | None = None
     university_role: str | None = Field(default=None, max_length=120)
+    university_available_roles: list[AlmaRole] = Field(default_factory=list, max_length=24)
     status: ProfessorStatus
     requested_at: datetime
     reviewed_at: datetime | None = None

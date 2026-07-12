@@ -127,6 +127,11 @@ export function ProfileView({
                     {request.university_role ? (
                       <small>Alma role: {request.university_role}</small>
                     ) : null}
+                    {request.university_available_roles.length ? (
+                      <small>
+                        Available Alma roles: {request.university_available_roles.join(", ")}
+                      </small>
+                    ) : null}
                   </div>
                   <div>
                     <button

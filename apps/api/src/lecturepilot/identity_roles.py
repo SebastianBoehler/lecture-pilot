@@ -29,5 +29,12 @@ def alma_current_role(provider_claims: Mapping[str, Any] | None) -> str | None:
     return value if isinstance(value, str) and value.strip() else None
 
 
+def alma_available_roles(provider_claims: Mapping[str, Any] | None) -> list[str]:
+    value = (provider_claims or {}).get(ALMA_AVAILABLE_ROLES_CLAIM)
+    if not isinstance(value, list):
+        return []
+    return [role for role in value if isinstance(role, str) and role.strip()]
+
+
 def _normalize(value: str) -> str:
     return " ".join(value.split()).casefold()

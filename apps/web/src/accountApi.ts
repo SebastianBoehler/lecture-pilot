@@ -8,6 +8,7 @@ export type ProfessorRequest = {
   username: string;
   email?: string | null;
   university_role?: string | null;
+  university_available_roles: string[];
   status: "not_requested" | "pending" | "approved" | "rejected";
   requested_at: string;
   reviewed_at?: string | null;

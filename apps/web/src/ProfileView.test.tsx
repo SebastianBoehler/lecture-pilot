@@ -40,6 +40,8 @@ describe("ProfileView professor approvals", () => {
                     user_id: "c4f0786e-aaca-4e59-bd93-6889205bc51b",
                     username: "Professor Ada Lovelace",
                     email: "ada@example.edu",
+                    university_role: "lecturer",
+                    university_available_roles: ["lecturer", "examiner"],
                     status: "pending",
                     requested_at: "2026-07-10T12:00:00Z",
                   },
@@ -62,6 +64,8 @@ describe("ProfileView professor approvals", () => {
 
     expect(await screen.findByText("Professor Ada Lovelace")).toBeInTheDocument();
     expect(screen.getByText("ada@example.edu")).toBeInTheDocument();
+    expect(screen.getByText("Alma role: lecturer")).toBeInTheDocument();
+    expect(screen.getByText("Available Alma roles: lecturer, examiner")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^approve$/i }));
 
     expect(await screen.findByText(/no pending requests/i)).toBeInTheDocument();

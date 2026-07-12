@@ -74,6 +74,7 @@ class IdentityRepository:
                     details={
                         "sources": sorted(source.value for source in identity.sources_checked),
                         "alma_role": identity.alma_current_role,
+                        "alma_available_roles": identity.alma_available_roles,
                     },
                 )
             )
