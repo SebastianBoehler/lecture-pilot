@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { draftLectureCanvas, getCourseLectures, getDraftLectureCanvas } from "./api";
 import { builderSteps, initialBuilderStep, type BuilderStep } from "./ProfessorBuilderStepper";
@@ -8,7 +8,9 @@ import {
   createCourseWorkspace,
   getSourceBundle,
   includeYoutubeMedia,
+  listYoutubeMedia,
   proposeLectureSchedule,
+  removeYoutubeMedia,
   searchYoutubeMedia,
   uploadCourseMaterial,
 } from "./professorApi";
@@ -84,6 +86,8 @@ export function useProfessorCourseBuilder({
   const [suggestedVideoGroups, setSuggestedVideoGroups] = useState<YoutubeCandidateGroup[]>([]);
   const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
   const [autoSuggestedSearchKey, setAutoSuggestedSearchKey] = useState<string | null>(null);
+  const suggestedSearchGeneration = useRef(0);
+  const mediaSelectionGeneration = useRef(0);
   const [, setAutoSuggesting] = useState(false);
   const [mediaLectureId, setMediaLectureId] = useState(savedFlow.workspace?.lectureId ?? "");
   const [mediaIncluded, setMediaIncluded] = useState(false);
@@ -115,18 +119,23 @@ export function useProfessorCourseBuilder({
       : [lectureFromWorkspace(workspace, setup, lectureSchedule)]
     : [];
   const mediaTargetLectureKey = mediaTargetLectures.map((lecture) => lecture.id).join("|");
+  const mediaTargetLecture =
+    mediaTargetLectures.find((lecture) => lecture.id === mediaLectureId) ?? mediaTargetLectures[0];
   const fullCourseLectureIds = setup.target === "full-course" && scheduledLectureIds.length
     ? scheduledLectureIds
     : workspace ? [workspace.lectureId] : [];
   const fullCoursePublishedCount = fullCourseLectureIds.filter((lectureId) => publishedLectureIds.includes(lectureId)).length;
-  const defaultYoutubeQuery = [
-    setup.courseTitle,
-    setup.target === "single-lecture" ? setup.lectureTitle : "machine learning lecture",
-  ].filter(Boolean).join(" ");
-  const suggestedQueries = youtubeSuggestionQueries(setup, lectureSchedule);
+  const suggestedQueries = youtubeSuggestionQueries(setup, mediaTargetLecture);
+  const defaultYoutubeQuery = suggestedQueries[0] ?? setup.courseTitle.trim();
+  const mediaCourseId = workspace?.courseId ?? "";
+  const mediaTargetLectureId = mediaTargetLecture?.id ?? "";
+  const mediaSearchScopeKey = mediaCourseId && mediaTargetLectureId
+    ? `${mediaCourseId}:${mediaTargetLectureId}`
+    : "";
   const suggestedSearchKey = workspace && suggestedQueries.length
     ? [
       workspace.courseId,
+      mediaTargetLecture?.id ?? "no-lecture",
       bundle?.files.map((file) => `${file.path}:${file.size_bytes}`).join(",") ?? "no-bundle",
       suggestedQueries.join("|"),
     ].join("::")
@@ -181,6 +190,38 @@ export function useProfessorCourseBuilder({
     const ids = mediaTargetLectureKey.split("|");
     if (!ids.includes(mediaLectureId)) setMediaLectureId(ids[0]);
   }, [mediaLectureId, mediaTargetLectureKey]);
+
+  useEffect(() => {
+    if (!mediaSearchScopeKey) return;
+    suggestedSearchGeneration.current += 1;
+    const selectionGeneration = ++mediaSelectionGeneration.current;
+    setQuery(defaultYoutubeQuery);
+    setVideos([]);
+    setSuggestedVideoGroups([]);
+    setSelectedVideos(new Set());
+    setMediaIncluded(false);
+    setAutoSuggestedSearchKey(null);
+    if (!mediaCourseId || !mediaTargetLectureId) return;
+    void listYoutubeMedia({
+      courseId: mediaCourseId,
+      lectureId: mediaTargetLectureId,
+      session,
+    })
+      .then((selections) => {
+        if (selectionGeneration !== mediaSelectionGeneration.current) return;
+        setSelectedVideos(new Set(selections.map((selection) => selection.video.video_id)));
+        setMediaIncluded(selections.length > 0);
+      })
+      .catch((selectionError) => {
+        if (selectionGeneration === mediaSelectionGeneration.current) {
+          setError(
+            selectionError instanceof Error
+              ? selectionError.message
+              : "YouTube selections failed to load.",
+          );
+        }
+      });
+  }, [defaultYoutubeQuery, mediaCourseId, mediaSearchScopeKey, mediaTargetLectureId, session, setError]);
 
   useEffect(() => {
     if (!restored) return;
@@ -253,6 +294,8 @@ export function useProfessorCourseBuilder({
     setGenerationWarnings([]);
     setVideos([]);
     setSuggestedVideoGroups([]);
+    suggestedSearchGeneration.current += 1;
+    mediaSelectionGeneration.current += 1;
     setAutoSuggestedSearchKey(null);
     setAutoSuggesting(false);
     setSelectedVideos(new Set());
@@ -274,6 +317,7 @@ export function useProfessorCourseBuilder({
   }
 
   async function searchSuggestedVideos(courseId: string) {
+    const generation = ++suggestedSearchGeneration.current;
     const responses = await Promise.all(
       suggestedQueries.map(async (searchQuery) => {
         try {
@@ -294,7 +338,7 @@ export function useProfessorCourseBuilder({
       });
       groups.push({ query: response.query, videos: groupVideos });
     }
-    setSuggestedVideoGroups(groups);
+    if (generation === suggestedSearchGeneration.current) setSuggestedVideoGroups(groups);
     return flattenVideoGroups(groups).length;
   }
 
@@ -476,7 +520,6 @@ export function useProfessorCourseBuilder({
 
   const mediaStep = {
     canContinue: Boolean(bundleReady && workspace),
-    canInclude: Boolean(selectedVideos.size && bundleReady && workspace && mediaLectureId),
     canSearch: Boolean(setupReady && workspace),
     canSuggest: Boolean(suggestedQueries.length && setupReady && workspace),
     pendingAction,
@@ -485,29 +528,6 @@ export function useProfessorCourseBuilder({
       setMediaReviewed(true);
       setActiveStep("generate");
     },
-    onInclude: () => run("include-videos", async () => {
-      const activeWorkspace = requireWorkspace(workspace);
-      const selected = availableVideos.filter((video) => selectedVideos.has(video.video_id));
-      for (const video of selected) {
-        await includeYoutubeMedia({
-          courseId: activeWorkspace.courseId,
-          lectureId: mediaLectureId || activeWorkspace.lectureId,
-          video,
-          session,
-        });
-      }
-      const target = mediaTargetLectures.find((lecture) => lecture.id === (mediaLectureId || activeWorkspace.lectureId));
-      setSelectedVideos(new Set());
-      setMediaIncluded(true);
-      setMediaReviewed(true);
-      if (canvas) setCanvas(null);
-      setGeneratedLectureIds([]);
-      setGenerationProgress([]);
-      setGenerationWarnings([]);
-      setActiveStep("generate");
-      const targetLabel = target ? ` for lecture ${target.number}` : "";
-      return `Saved ${selected.length} approved video${selected.length === 1 ? "" : "s"}${targetLabel}.`;
-    }),
     onQueryChange: setQuery,
     onSearch: () => run("search", async () => {
       const searchQuery = query.trim() || defaultYoutubeQuery;
@@ -524,7 +544,47 @@ export function useProfessorCourseBuilder({
       return `Found ${count} suggested YouTube candidates from ${suggestedQueries.length} searches.`;
     }),
     onTargetLectureChange: setMediaLectureId,
-    onToggleVideo: (videoId: string) => setSelectedVideos(toggleSelected(selectedVideos, videoId)),
+    onToggleVideo: (videoId: string) => {
+      const activeWorkspace = requireWorkspace(workspace);
+      const target = mediaTargetLecture ?? mediaTargetLectures[0];
+      const video = availableVideos.find((candidate) => candidate.video_id === videoId);
+      if (!target || !video) return;
+      const wasSelected = selectedVideos.has(videoId);
+      const nextSelected = toggleSelected(selectedVideos, videoId);
+      mediaSelectionGeneration.current += 1;
+      setSelectedVideos(nextSelected);
+      void run("include-videos", async () => {
+        try {
+          if (wasSelected) {
+            await removeYoutubeMedia({
+              courseId: activeWorkspace.courseId,
+              lectureId: target.id,
+              videoId,
+              session,
+            });
+          } else {
+            await includeYoutubeMedia({
+              courseId: activeWorkspace.courseId,
+              lectureId: target.id,
+              video,
+              session,
+            });
+          }
+        } catch (saveError) {
+          setSelectedVideos((current) => toggleSelected(current, videoId));
+          throw saveError;
+        }
+        setMediaIncluded(nextSelected.size > 0);
+        setMediaReviewed(true);
+        if (canvas) setCanvas(null);
+        setGeneratedLectureIds([]);
+        setGenerationProgress([]);
+        setGenerationWarnings([]);
+        return wasSelected
+          ? `Removed video from lecture ${target.number}.`
+          : `Saved 1 approved video for lecture ${target.number}.`;
+      });
+    },
     query,
     ready: mediaReady,
     selectedVideos,

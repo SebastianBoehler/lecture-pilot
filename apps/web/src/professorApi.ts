@@ -156,6 +156,38 @@ export async function includeYoutubeMedia(input: {
   return payload as { block_id: string };
 }
 
+export async function listYoutubeMedia(input: {
+  courseId: string;
+  lectureId: string;
+  session: LoginSession;
+}): Promise<{ video: YoutubeVideoCandidate }[]> {
+  const response = await fetch(
+    apiUrl(`/admin/courses/${input.courseId}/lectures/${input.lectureId}/media/youtube`),
+    authRequestInit(input.session),
+  );
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "YouTube selections failed to load."));
+  if (!Array.isArray(payload)) throw new Error("YouTube selections returned an invalid response.");
+  return payload as { video: YoutubeVideoCandidate }[];
+}
+
+export async function removeYoutubeMedia(input: {
+  courseId: string;
+  lectureId: string;
+  videoId: string;
+  session: LoginSession;
+}) {
+  const response = await fetch(
+    apiUrl(
+      `/admin/courses/${input.courseId}/lectures/${input.lectureId}/media/youtube/${encodeURIComponent(input.videoId)}`,
+    ),
+    authRequestInit(input.session, { method: "DELETE" }),
+  );
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "YouTube selection removal failed."));
+  return payload as { deleted: number };
+}
+
 async function professorFetch(
   path: string,
   session: LoginSession,

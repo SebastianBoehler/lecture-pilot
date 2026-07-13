@@ -10,11 +10,9 @@ import type { Lecture, YoutubeVideoCandidate } from "./types";
 import type { YoutubeCandidateGroup } from "./professorYoutubeSuggestions";
 
 export function ProfessorReviewStep({
-  canInclude,
   canSearch,
   canSuggest,
   canContinue,
-  onInclude,
   onContinue,
   onQueryChange,
   onSearch,
@@ -31,12 +29,10 @@ export function ProfessorReviewStep({
   suggestedQueries,
   videos,
 }: {
-  canInclude: boolean;
   canSearch: boolean;
   canSuggest: boolean;
   canContinue: boolean;
   pendingAction: BuilderAction | null;
-  onInclude: () => void;
   onContinue: () => void;
   onQueryChange: (query: string) => void;
   onSearch: () => void;
@@ -54,7 +50,7 @@ export function ProfessorReviewStep({
 }) {
   const { t } = useI18n();
   const isBusy = pendingAction !== null;
-  const isIncluding = pendingAction === "include-videos";
+  const isSavingSelection = pendingAction === "include-videos";
   const isSearching = pendingAction === "search";
   const isSuggesting = pendingAction === "suggest-videos";
   return (
@@ -129,9 +125,6 @@ export function ProfessorReviewStep({
         selectedVideos={selectedVideos}
         onToggle={onToggleVideo}
       />
-      <button disabled={!canInclude || isBusy} type="button" onClick={onInclude}>
-        {isIncluding ? t("builder.review.including") : t("builder.review.include")}
-      </button>
       <button
         className="primary-action"
         disabled={!canContinue || isBusy}
@@ -140,7 +133,7 @@ export function ProfessorReviewStep({
       >
         {t("builder.review.continue")}
       </button>
-      {isIncluding ? <PendingStatus label={t("builder.review.saving")} /> : null}
+      {isSavingSelection ? <PendingStatus label={t("builder.review.saving")} /> : null}
     </section>
   );
 }

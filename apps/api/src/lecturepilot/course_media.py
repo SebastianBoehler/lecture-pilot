@@ -104,6 +104,25 @@ def list_course_media(*, material_root: Path, course_id: str, lecture_id: str) -
     return _read_payload(path, course_id=course_id, lecture_id=lecture_id)["videos"]
 
 
+def remove_youtube_selection(
+    *, material_root: Path, course_id: str, lecture_id: str, video_id: str
+) -> int:
+    path = _media_path(material_root, course_id=course_id, lecture_id=lecture_id)
+    if not path.exists():
+        return 0
+    payload = _read_payload(path, course_id=course_id, lecture_id=lecture_id)
+    block_id = f"youtube-{_safe_id(video_id)}"
+    remaining = [entry for entry in payload["videos"] if entry.get("block_id") != block_id]
+    if len(remaining) == len(payload["videos"]):
+        return 0
+    if not remaining:
+        path.unlink()
+        return 1
+    payload["videos"] = remaining
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    return 1
+
+
 def clear_course_media(*, material_root: Path, course_id: str) -> int:
     media_dir = material_root / "canvas" / "media"
     if not media_dir.exists():

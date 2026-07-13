@@ -83,6 +83,32 @@ def test_professor_can_clear_course_youtube_media(tmp_path) -> None:
     assert not (tmp_path / "canvas" / "media" / "martius-ml-__course__.json").exists()
 
 
+def test_professor_can_remove_one_lecture_youtube_video(tmp_path) -> None:
+    app = create_app()
+    app.state.canvas_workspace = SimpleNamespace(material_root=tmp_path)
+    client = TestClient(app)
+    add_youtube_selection(
+        material_root=tmp_path,
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        selection=YoutubeSelectionInput(video=_candidate()),
+        approved_by="professor-1",
+    )
+
+    response = client.delete(
+        "/admin/courses/martius-ml/lectures/lecture-03/media/youtube/abc123abc12",
+        headers=HEADERS,
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"deleted": 1}
+    listed = client.get(
+        "/admin/courses/martius-ml/lectures/lecture-03/media/youtube",
+        headers=HEADERS,
+    )
+    assert listed.json() == []
+
+
 def test_approved_youtube_selection_merges_into_canvas_section(tmp_path) -> None:
     video = _candidate()
     add_youtube_selection(

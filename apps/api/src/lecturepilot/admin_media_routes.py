@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Path, Query, Request
 
 from lecturepilot.api_auth import request_context, require_course_manager
 from lecturepilot.course_media import (
@@ -9,6 +9,7 @@ from lecturepilot.course_media import (
     add_youtube_selection,
     clear_course_media,
     list_course_media,
+    remove_youtube_selection,
 )
 from lecturepilot.models import (
     Course,
@@ -118,6 +119,29 @@ def register_admin_media_routes(
             course_id=course_id,
             lecture_id=COURSE_MEDIA_POOL_ID,
         )
+
+    @app.delete(
+        "/admin/courses/{course_id}/lectures/{lecture_id}/media/youtube/{video_id}"
+    )
+    def remove_lecture_youtube_media(
+        course_id: str,
+        lecture_id: str,
+        request: Request,
+        video_id: str = Path(
+            ..., min_length=1, max_length=100, pattern=r"^[A-Za-z0-9_-]+$"
+        ),
+        context: TenantContext = Depends(request_context),
+    ) -> dict[str, int]:
+        _assert_seeded_lecture(course_id, lecture_id, course, lecture_ids)
+        _require_owner(request, context, course_id, course_tenant_id)
+        return {
+            "deleted": remove_youtube_selection(
+                material_root=_course_media_root(app, course_id),
+                course_id=course_id,
+                lecture_id=lecture_id,
+                video_id=video_id,
+            )
+        }
 
     @app.delete("/admin/courses/{course_id}/media/youtube")
     def clear_youtube_media(

@@ -3,6 +3,7 @@ import { vi } from "vitest";
 export function professorFetchMock() {
   const publishedLectures = new Set<string>();
   const deletedCourses = new Set<string>();
+  const selectedMedia = new Map<string, { video: ReturnType<typeof youtubeCandidate> }>();
   return vi.fn(async (url: string, init?: RequestInit) => {
     const path = new URL(url, "http://localhost").pathname;
     if (path === "/admin/courses") {
@@ -32,8 +33,24 @@ export function professorFetchMock() {
     if (url.includes("/canvas/draft")) return json(canvasPayload());
     if (url.includes("/canvas")) return json(canvasPayload());
     if (url.includes("/media/youtube/search")) return json({ items: [youtubeCandidate()] });
-    if (url.includes("/media/youtube") && init?.method === "DELETE") return json({ deleted: 1 });
-    if (url.includes("/media/youtube")) return json({ block_id: "youtube-j4yxsEQqPMI" });
+    const mediaMatch = path.match(/^\/admin\/courses\/[^/]+\/lectures\/([^/]+)\/media\/youtube(?:\/([^/]+))?$/);
+    if (mediaMatch) {
+      const [, lectureId, pathVideoId] = mediaMatch;
+      if (init?.method === "DELETE") {
+        const deleted = selectedMedia.delete(`${lectureId}:${pathVideoId}`) ? 1 : 0;
+        return json({ deleted });
+      }
+      if (init?.method === "POST") {
+        const body = JSON.parse(String(init.body));
+        selectedMedia.set(`${lectureId}:${body.video.video_id}`, { video: body.video });
+        return json({ block_id: `youtube-${body.video.video_id}` });
+      }
+      return json(
+        [...selectedMedia.entries()]
+          .filter(([key]) => key.startsWith(`${lectureId}:`))
+          .map(([, selection]) => selection),
+      );
+    }
     throw new Error(`Unexpected fetch: ${url} ${init?.method ?? "GET"}`);
   });
 }

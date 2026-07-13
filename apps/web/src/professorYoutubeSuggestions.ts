@@ -1,20 +1,19 @@
 import type { CourseSetup } from "./professorBuilderState";
-import type { LectureScheduleItem, YoutubeVideoCandidate } from "./types";
+import type { Lecture, YoutubeVideoCandidate } from "./types";
 
 export type YoutubeCandidateGroup = {
   query: string;
   videos: YoutubeVideoCandidate[];
 };
 
-export function youtubeSuggestionQueries(setup: CourseSetup, lectureSchedule: LectureScheduleItem[]) {
+export function youtubeSuggestionQueries(setup: CourseSetup, lecture?: Lecture) {
   const course = setup.courseTitle.trim();
-  const lectureFocus = setup.target === "single-lecture"
-    ? setup.lectureTitle.trim()
-    : lectureSchedule.slice(0, 3).map((lecture) => lecture.title.trim()).filter(Boolean).join(" ");
+  const lectureFocus = lecture?.title.trim() || setup.lectureTitle.trim();
+  if (!lectureFocus) return [];
   return uniqueQueries([
     [course, lectureFocus, "lecture"].filter(Boolean).join(" "),
-    [course, "Universität Tübingen", "machine learning"].filter(Boolean).join(" "),
-    [lectureFocus || course, "machine learning explained"].filter(Boolean).join(" "),
+    [lectureFocus, course, "explained"].filter(Boolean).join(" "),
+    [lectureFocus, "university lecture"].filter(Boolean).join(" "),
   ]).slice(0, 3);
 }
 

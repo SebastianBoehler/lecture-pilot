@@ -94,7 +94,7 @@ describe("Professor course builder", () => {
     await user.click(screen.getByRole("button", { name: /upload and process materials/i }));
     expect(await screen.findByText(/uploaded uploads\/supplement\.md/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /review youtube candidates/i })).toBeInTheDocument();
-    expect(screen.getByText(/selected videos attach to lecture 03/i)).toBeInTheDocument();
+    expect(screen.getByText(/videos are saved directly for lecture 03/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /04 generate/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /search youtube/i })).toBeEnabled();
     const candidate = await screen.findByLabelText(/bayesian decision theory/i);
@@ -108,10 +108,23 @@ describe("Professor course builder", () => {
     );
     expect(screen.getByRole("link", { name: /^open$/i })).toHaveAttribute("target", "_blank");
     await user.click(candidate);
-    expect(screen.getByRole("button", { name: /include selected videos/i })).toBeEnabled();
-
-    await user.click(screen.getByRole("button", { name: /include selected videos/i }));
     expect(await screen.findByText(/saved 1 approved video for lecture 03/i)).toBeInTheDocument();
+    expect(candidate).toBeChecked();
+    expect(screen.queryByRole("button", { name: /include selected videos/i })).not.toBeInTheDocument();
+
+    await user.click(candidate);
+    expect(await screen.findByText(/removed video from lecture 03/i)).toBeInTheDocument();
+    expect(candidate).not.toBeChecked();
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "/admin/courses/demo-ml-course/lectures/lecture-03/media/youtube/j4yxsEQqPMI",
+      ),
+      expect.objectContaining({ method: "DELETE" }),
+    );
+
+    await user.click(candidate);
+    expect(await screen.findByText(/saved 1 approved video for lecture 03/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /continue to canvas draft/i }));
     expect(screen.getByRole("heading", { name: /generate canvas draft/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /generate draft canvas/i }));
@@ -227,7 +240,7 @@ describe("Professor course builder", () => {
     expect(
       await screen.findByText(/lecture schedule applied with 1 dated lectures/i),
     ).toBeInTheDocument();
-    expect(screen.getByText(/selected videos attach to lecture 01/i)).toBeInTheDocument();
+    expect(screen.getByText(/videos are saved directly for lecture 01/i)).toBeInTheDocument();
     const scheduleCall = fetchMock.mock.calls.find((call) => {
       if (typeof call[1]?.body !== "string") return false;
       const body = JSON.parse(call[1].body);
