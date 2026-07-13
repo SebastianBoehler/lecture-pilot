@@ -1,0 +1,32 @@
+name: Publish product release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+
+jobs:
+  publish-release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - name: Validate version and product changelog
+        run: node scripts/changelog.mjs check "$GITHUB_REF_NAME"
+      - name: Render product release notes
+        run: node scripts/changelog.mjs release "$GITHUB_REF_NAME" release-notes.md
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME"
+          --verify-tag
+          --title "LecturePilot ${GITHUB_REF_NAME#v}"
+          --notes-file release-notes.md

@@ -128,6 +128,26 @@ restore, incident, and remaining retention requirements.
 See [security_best_practices_report.md](security_best_practices_report.md) for
 the current pre-deployment decision and open blockers.
 
+## Product Changelog And Releases
+
+LecturePilot keeps user-facing release notes in
+[`apps/web/src/productChangelog.json`](apps/web/src/productChangelog.json). The
+same bilingual source powers the in-app **What's new** page, the repository
+[`CHANGELOG.md`](CHANGELOG.md), and GitHub Release notes. Entries describe what
+changed for students and lecturers rather than repeating commit messages.
+
+For a release:
+
+1. Add the new version at the top of `productChangelog.json` and update the
+   root, web, and API package versions.
+2. Run `npm run changelog:render` and `npm run changelog:check`.
+3. Merge the version change after CI passes, then tag that exact commit as
+   `vX.Y.Z` and push the tag.
+
+The tag-triggered release workflow validates that all versions and notes agree,
+then publishes the matching bilingual GitHub Release. Mark a change with
+`"feedbackDriven": true` when it directly implements user feedback.
+
 ## Local Development
 
 Keep private professor/course files in `local-course-materials/`,

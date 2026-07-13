@@ -1,6 +1,6 @@
 {
   "name": "lecture-pilot",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "workspaces": [
     "apps/web"
@@ -21,6 +21,8 @@
     "dead-code": "knip --no-config-hints",
     "dead-code:exports": "knip --exports --no-config-hints --no-exit-code",
     "quality": "npm run lint && npm run dead-code",
+    "changelog:check": "node scripts/changelog.mjs check",
+    "changelog:render": "node scripts/changelog.mjs write",
     "dev:demo": "scripts/dev-demo.sh",
     "dev:web": "npm run dev --workspace apps/web",
     "dev:api": "uvicorn lecturepilot.app:app --app-dir apps/api/src --reload"
