@@ -25,8 +25,6 @@ export const deMessages: Record<MessageKey, string> = {
   "footer.privacy": "Datenschutz",
   "info.back": "Zurück",
   "changelog.title": "Neu in LecturePilot",
-  "changelog.intro":
-    "Ein produktbezogener Überblick über neue Funktionen und Verbesserungen. Technische Commits bleiben auf GitHub; hier steht, was sich für Studierende und Lehrende geändert hat.",
   "changelog.history": "LecturePilot-Versionsverlauf",
   "changelog.latest": "Aktuell",
   "changelog.feedbackDriven": "Aus Feedback",

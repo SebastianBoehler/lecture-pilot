@@ -10,6 +10,7 @@ describe("ChangelogPage", () => {
     renderWithI18n(<ChangelogPage onBack={() => undefined} />);
 
     expect(screen.getByRole("heading", { name: "What's new in LecturePilot" })).toBeInTheDocument();
+    expect(screen.queryByText(/product-level history/i)).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /v0\.2\.0 on GitHub/i })).toHaveAttribute(
       "href",
       "https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.2.0",

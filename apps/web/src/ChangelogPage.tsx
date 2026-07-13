@@ -17,7 +17,6 @@ export function ChangelogPage({ onBack }: { onBack: () => void }) {
       </button>
       <header className="changelog-header">
         <h1>{t("changelog.title")}</h1>
-        <p>{t("changelog.intro")}</p>
       </header>
       <div className="changelog-releases" aria-label={t("changelog.history")}>
         {productChangelog.releases.map((release, index) => (

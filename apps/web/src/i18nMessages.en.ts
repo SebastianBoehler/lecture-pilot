@@ -23,8 +23,6 @@ export const enMessages = {
   "footer.privacy": "Privacy",
   "info.back": "Back",
   "changelog.title": "What's new in LecturePilot",
-  "changelog.intro":
-    "A product-level history of new capabilities and improvements. Technical commits stay on GitHub; this page focuses on what changed for students and lecturers.",
   "changelog.history": "LecturePilot release history",
   "changelog.latest": "Latest",
   "changelog.feedbackDriven": "From feedback",
