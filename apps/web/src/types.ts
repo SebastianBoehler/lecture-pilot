@@ -10,6 +10,7 @@ export type View =
   | "profile"
   | "professor"
   | "performance"
+  | "usage"
   | "course-management"
   | InfoPageKind;
 export type LessonPanelMode = "chat" | "outline" | "path" | "notes" | "files";

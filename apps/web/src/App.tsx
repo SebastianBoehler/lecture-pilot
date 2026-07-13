@@ -353,6 +353,12 @@ function App() {
               setPanelMode(null);
             }
           }}
+          onOpenUsage={() => {
+            if (courseManagerSession) {
+              setView("usage");
+              setPanelMode(null);
+            }
+          }}
           onOpenCourseManagement={() => {
             if (courseManagerSession) {
               setView("course-management");

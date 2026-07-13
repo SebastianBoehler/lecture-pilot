@@ -13,6 +13,7 @@ from lecturepilot.lecture_date_extraction import extract_source_date
 from lecturepilot.lecture_schedule import propose_lecture_schedule
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_request_options import completion_options
+from lecturepilot.model_usage import ModelUsageRecorder, complete_with_usage
 from lecturepilot.models import LectureScheduleItem, LectureScheduleProposal, ProviderCapability, ProviderSettings
 from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
 from lecturepilot.source_bundle import SourceBundleFile
@@ -27,6 +28,9 @@ class LectureScheduleModelClient(Protocol):
 
 
 class LiteLLMScheduleClient:
+    def __init__(self, usage_recorder: ModelUsageRecorder | None = None) -> None:
+        self.usage_recorder = usage_recorder
+
     async def complete_schedule(self, *, settings: ProviderSettings, messages: list[dict[str, str]]) -> dict:
         try:
             from litellm import acompletion
@@ -35,7 +39,9 @@ class LiteLLMScheduleClient:
                 'litellm is not installed. Install the backend with the "agent" extra.'
             ) from exc
         try:
-            response = await acompletion(
+            response = await complete_with_usage(
+                self.usage_recorder,
+                acompletion,
                 model=settings.model,
                 messages=messages,
                 response_format=lecture_schedule_response_format(),

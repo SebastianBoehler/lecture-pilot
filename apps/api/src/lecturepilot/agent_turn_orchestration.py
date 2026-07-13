@@ -19,6 +19,7 @@ from lecturepilot.coaching_orchestration import persist_coaching_turn, prepare_c
 from lecturepilot.gate_policy import keep_canvas_actions_from_passing_gate
 from lecturepilot.image_generation import ImageGenerationError
 from lecturepilot.model_client import ModelExecutionError
+from lecturepilot.model_usage import model_usage_scope
 from lecturepilot.models import AgentTurnInput, AgentTurnResult
 from lecturepilot.observability import Observability
 from lecturepilot.providers import ProviderConfigurationError
@@ -41,8 +42,9 @@ async def complete_agent_turn(
     except (UsageQuotaExceeded, ValueError) as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from exc
     observability = app_observability(app)
+    usage = model_usage_scope(actor_user_id=turn.user_id, course_id=turn.course_id, workload="tutor")
     try:
-        with observability.agent_turn_span(turn) as span:
+        with usage, observability.agent_turn_span(turn) as span:
             result = await _complete_agent_turn_inner(
                 app,
                 turn=turn,

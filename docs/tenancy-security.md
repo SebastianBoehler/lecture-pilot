@@ -70,6 +70,8 @@ parallel, and only the current sync attempt may restore matched course access. T
 ## Denial rules
 
 - An unrelated professor, tutor, or platform administrator cannot read or mutate another course.
+- Professor usage summaries aggregate only provider metadata and counters for courses owned by
+  the active professor; they never expose learner text or another professor's course activity.
 - No professor or administrator can access a learner canvas, chat, memory, files, readiness history,
   reset, or agent turn.
 - Public and pre-attempt DTOs omit storage paths, staff identity, readiness answers, and rubrics.

@@ -2,6 +2,7 @@ import {
   ChartNoAxesColumn,
   FilePlus2,
   FolderOpen,
+  Gauge,
   Home,
   Languages,
   LogOut,
@@ -23,6 +24,7 @@ export function AppHeader({
   onOpenDashboard,
   onOpenCourseManagement,
   onOpenPerformance,
+  onOpenUsage,
   onOpenProfile,
   onOpenProfessor,
   onToggleTheme,
@@ -35,6 +37,7 @@ export function AppHeader({
   onOpenDashboard: () => void;
   onOpenCourseManagement: () => void;
   onOpenPerformance: () => void;
+  onOpenUsage: () => void;
   onOpenProfile: () => void;
   onOpenProfessor: () => void;
   onToggleTheme: () => void;
@@ -60,6 +63,14 @@ export function AppHeader({
           >
             <ChartNoAxesColumn size={16} />
             <span>{t("nav.performance")}</span>
+          </button>
+          <button
+            className={`top-nav-button ${activeView === "usage" ? "is-active" : ""}`}
+            type="button"
+            onClick={onOpenUsage}
+          >
+            <Gauge size={16} />
+            <span>{t("nav.usage")}</span>
           </button>
           <button
             className={`top-nav-button ${activeView === "course-management" ? "is-active" : ""}`}

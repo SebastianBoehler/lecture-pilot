@@ -1,0 +1,232 @@
+.usage-page {
+  display: grid;
+  align-content: start;
+  gap: 30px;
+}
+
+.usage-page .professor-page-header {
+  margin-bottom: 0;
+}
+
+.usage-actions,
+.usage-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.usage-range {
+  border: 1px solid var(--color-border-primary);
+  border-radius: 7px;
+  padding: 3px;
+}
+
+.usage-range button {
+  border: 0;
+  border-radius: 4px;
+  padding: 5px 9px;
+  color: var(--color-text-secondary);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.usage-range button:hover,
+.usage-range button.is-active {
+  color: var(--color-text-primary);
+  background: var(--color-bg-secondary);
+}
+
+.usage-overview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid var(--color-border-primary);
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.usage-overview > div {
+  display: grid;
+  gap: 12px;
+  min-height: 102px;
+  padding: 18px 20px;
+  border-right: 1px solid var(--color-border-primary);
+}
+
+.usage-overview > div:nth-child(4) {
+  border-right: 0;
+}
+
+.usage-overview span,
+.usage-table-row span,
+.usage-day,
+.usage-overview small,
+.usage-overview p,
+.usage-empty,
+.usage-limits p {
+  color: var(--color-text-secondary);
+}
+
+.usage-overview span {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.usage-overview strong {
+  align-self: end;
+  font-size: clamp(28px, 3vw, 38px);
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.usage-overview p,
+.usage-overview small {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 12px;
+}
+
+.usage-overview p {
+  padding-top: 12px;
+}
+
+.usage-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 40px;
+}
+
+.usage-section {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
+.usage-section h2,
+.usage-limits h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.usage-table {
+  border-top: 1px solid var(--color-border-primary);
+}
+
+.usage-table-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 18px;
+  align-items: baseline;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border-primary);
+  font-size: 13px;
+}
+
+.usage-table-row strong {
+  overflow-wrap: anywhere;
+}
+
+.usage-empty,
+.usage-loading {
+  margin: 0;
+}
+
+.usage-timeline {
+  display: grid;
+  gap: 9px;
+  border-top: 1px solid var(--color-border-primary);
+  padding-top: 14px;
+}
+
+.usage-day {
+  display: grid;
+  grid-template-columns: 90px minmax(80px, 1fr) 80px;
+  gap: 14px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.usage-day > div {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-bg-tertiary);
+}
+
+.usage-day > div span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-accent-primary);
+}
+
+.usage-day strong {
+  color: var(--color-text-primary);
+  text-align: right;
+}
+
+.usage-limits {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(0, 2fr);
+  gap: 30px;
+  padding-top: 22px;
+  border-top: 1px solid var(--color-border-primary);
+}
+
+.usage-limits p {
+  margin: 5px 0 0;
+  font-size: 13px;
+}
+
+.usage-limits dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  margin: 0;
+}
+
+.usage-limits dl div {
+  display: grid;
+  gap: 4px;
+}
+
+.usage-limits dt {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.usage-limits dd {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 750;
+}
+
+@media (max-width: 760px) {
+  .usage-header,
+  .usage-limits {
+    display: grid;
+  }
+
+  .usage-actions {
+    justify-content: space-between;
+  }
+
+  .usage-overview,
+  .usage-columns,
+  .usage-limits dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .usage-overview > div:nth-child(2) {
+    border-right: 0;
+  }
+
+  .usage-overview > div:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--color-border-primary);
+  }
+
+  .usage-columns,
+  .usage-limits {
+    grid-template-columns: 1fr;
+  }
+}

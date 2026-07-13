@@ -38,6 +38,9 @@ const ProfessorCoursePerformance = lazy(() =>
     default: module.ProfessorCoursePerformance,
   })),
 );
+const ProfessorUsage = lazy(() =>
+  import("./ProfessorUsage").then((module) => ({ default: module.ProfessorUsage })),
+);
 
 type AppRoutesProps = {
   availableLectures: Lecture[];
@@ -164,10 +167,24 @@ export function AppRoutes(props: AppRoutesProps) {
       />,
     );
   }
-  if (view === "performance" || view === "course-management" || view === "professor") {
+  if (view === "usage" && courseManagerSession) {
+    return deferred(<ProfessorUsage session={courseManagerSession} />);
+  }
+  if (
+    view === "performance" ||
+    view === "usage" ||
+    view === "course-management" ||
+    view === "professor"
+  ) {
     return (
       <CourseManagementAccessRequired
-        label={view === "performance" ? "Course performance" : "Course management"}
+        label={
+          view === "performance"
+            ? "Course performance"
+            : view === "usage"
+              ? "Usage"
+              : "Course management"
+        }
         onBack={() => props.onViewChange(session ? "dashboard" : "login")}
       />
     );

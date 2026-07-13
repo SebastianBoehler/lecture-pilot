@@ -235,6 +235,15 @@ admin workspace.
 
 ## Future Platform Admin Governance
 
+Professors already have a separate **Usage** view for their own courses. The
+backend records content-free provider events with the workload, model, input,
+output, cached, reasoning, and total token counts returned by the provider.
+The view also aggregates tutor turns and generated learner images. Recording
+starts with the deployment of this schema and does not estimate or backfill
+older requests. Course ownership is enforced before aggregation; prompts,
+responses, learner text, source excerpts, and filenames are never stored in
+the usage event.
+
 The ingestion and cost-control roadmap should add a distinct platform-admin
 account above professor accounts. This is not part of the first ingestion
 milestone, but the authorization model should leave room for an admin to:

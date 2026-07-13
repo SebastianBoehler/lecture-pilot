@@ -12,6 +12,7 @@ from lecturepilot.learning_gates import gate_rubric_context
 from lecturepilot.model_commands import canvas_context
 from lecturepilot.model_payload import agent_result_from_content
 from lecturepilot.model_request_options import completion_options
+from lecturepilot.model_usage import ModelUsageRecorder
 from lecturepilot.models import (
     AgentTurnInput,
     AgentTurnResult,
@@ -40,6 +41,9 @@ class ModelClient(Protocol):
 
 
 class LiteLLMModelClient:
+    def __init__(self, usage_recorder: ModelUsageRecorder | None = None) -> None:
+        self.usage_recorder = usage_recorder
+
     async def complete_turn(
         self,
         *,
@@ -57,10 +61,15 @@ class LiteLLMModelClient:
                 'litellm is not installed. Install the backend with the "agent" extra.'
             ) from exc
 
+        async def tracked_completion(**kwargs):
+            if self.usage_recorder is None:
+                return await acompletion(**kwargs)
+            return await self.usage_recorder.complete(acompletion, **kwargs)
+
         try:
             if tool_executor is not None:
                 return await complete_tool_turn(
-                    acompletion=acompletion,
+                    acompletion=tracked_completion,
                     settings=settings,
                     turn=turn,
                     tool_executor=tool_executor,
@@ -69,7 +78,7 @@ class LiteLLMModelClient:
                     messages=_messages(turn),
                     tool_profile=tool_profile or tutor_tool_profile_for_message(turn.message),
                 )
-            response = await acompletion(
+            response = await tracked_completion(
                 model=settings.model,
                 messages=_messages(turn),
                 response_format=lecturepilot_response_format(),

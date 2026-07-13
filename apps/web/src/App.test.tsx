@@ -181,6 +181,7 @@ describe("LecturePilot app shell", () => {
     expect(
       await screen.findByRole("navigation", { name: /professor workspace navigation/i }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^usage$/i })).toBeInTheDocument();
     expect(
       screen.queryByRole("navigation", { name: /student workspace navigation/i }),
     ).not.toBeInTheDocument();

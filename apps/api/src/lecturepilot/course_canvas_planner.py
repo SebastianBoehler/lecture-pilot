@@ -17,6 +17,7 @@ from lecturepilot.course_slide_interleaving import interleave_original_slides
 from lecturepilot.course_planner_warnings import planned_payload, with_payload_warnings
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_request_options import completion_options
+from lecturepilot.model_usage import ModelUsageRecorder, complete_with_usage
 from lecturepilot.models import ProviderCapability, ProviderSettings
 from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
 
@@ -24,6 +25,9 @@ class CoursePlanModelClient(Protocol):
     async def complete_plan(self, *, settings: ProviderSettings, messages: list[dict[str, str]]) -> dict:
         """Return one source-grounded course canvas plan."""
 class LiteLLMCoursePlanClient:
+    def __init__(self, usage_recorder: ModelUsageRecorder | None = None) -> None:
+        self.usage_recorder = usage_recorder
+
     async def complete_plan(self, *, settings: ProviderSettings, messages: list[dict[str, str]]) -> dict:
         try:
             from litellm import acompletion
@@ -33,7 +37,9 @@ class LiteLLMCoursePlanClient:
             ) from exc
 
         try:
-            response = await acompletion(
+            response = await complete_with_usage(
+                self.usage_recorder,
+                acompletion,
                 model=settings.model,
                 messages=messages,
                 response_format=course_canvas_response_format(),

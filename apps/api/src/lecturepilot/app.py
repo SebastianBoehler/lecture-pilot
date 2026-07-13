@@ -15,7 +15,7 @@ from lecturepilot.body_limits import RequestBodyLimitMiddleware
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_builder_source import course_builder_source_document
 from lecturepilot.course_canvas_routes import register_course_canvas_routes
-from lecturepilot.course_canvas_planner import CourseCanvasPlanner
+from lecturepilot.course_canvas_planner import CourseCanvasPlanner, LiteLLMCoursePlanClient
 from lecturepilot.course_deletion import register_course_deletion_routes
 from lecturepilot.course_routes import register_course_routes
 from lecturepilot.csrf import CsrfProtectionMiddleware, allowed_origins
@@ -23,10 +23,14 @@ from lecturepilot.database import Database
 from lecturepilot.exam_readiness_routes import register_exam_readiness_routes
 from lecturepilot.harness import LecturePilotHarness
 from lecturepilot.image_generation_registry import image_generator_from_env
-from lecturepilot.lecture_schedule_planner import LectureSchedulePlanner
+from lecturepilot.lecture_schedule_planner import LectureSchedulePlanner, LiteLLMScheduleClient
+from lecturepilot.model_client import LiteLLMModelClient
+from lecturepilot.model_usage import ModelUsageRecorder
 from lecturepilot.learner_state import LearnerStateStore
 from lecturepilot.learner_profile_routes import register_learner_profile_routes
 from lecturepilot.observability import observability_from_env
+from lecturepilot.professor_usage import ProfessorUsageRepository
+from lecturepilot.professor_usage_routes import register_professor_usage_routes
 from lecturepilot.rate_limit import RateLimitMiddleware
 from lecturepilot.runtime_env import load_project_env
 from lecturepilot.sample_data import COURSE, LECTURES
@@ -56,11 +60,19 @@ def create_app() -> FastAPI:
     app.state.session_store = SessionStore(app.state.database)
     app.state.usage_quota = UsageQuota(app.state.database)
     app.state.course_tenant_id = COURSE_TENANT_ID
+    app.state.model_usage = ModelUsageRecorder(app.state.database, tenant_id=COURSE_TENANT_ID)
+    app.state.professor_usage = ProfessorUsageRepository(app.state.database)
     app.state.tuebingen_adapter = TuebingenCourseAdapter()
     app.state.university_course_search = AlmaUniversityCourseSearch()
-    app.state.agent_harness = LecturePilotHarness()
-    app.state.course_planner = CourseCanvasPlanner()
-    app.state.lecture_schedule_planner = LectureSchedulePlanner()
+    app.state.agent_harness = LecturePilotHarness(
+        model_client=LiteLLMModelClient(app.state.model_usage)
+    )
+    app.state.course_planner = CourseCanvasPlanner(
+        model_client=LiteLLMCoursePlanClient(app.state.model_usage)
+    )
+    app.state.lecture_schedule_planner = LectureSchedulePlanner(
+        model_client=LiteLLMScheduleClient(app.state.model_usage)
+    )
     app.state.canvas_workspace = CanvasWorkspace()
     app.state.learner_state = LearnerStateStore(app.state.canvas_workspace.layout)
     app.state.user_memory_store = UserMemoryStore(app.state.canvas_workspace.layout)
@@ -112,6 +124,7 @@ def create_app() -> FastAPI:
     }
     register_agent_routes(app, **seeded_route_args)
     register_analytics_routes(app, **seeded_route_args)
+    register_professor_usage_routes(app, course_tenant_id=COURSE_TENANT_ID)
     register_course_canvas_routes(
         app,
         course_tenant_id=COURSE_TENANT_ID,

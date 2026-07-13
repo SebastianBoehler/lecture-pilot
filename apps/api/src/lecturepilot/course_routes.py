@@ -28,6 +28,7 @@ from lecturepilot.course_schedule_store import (
 from lecturepilot.course_workspace import resolve_course_workspace
 from lecturepilot.dev_seeded_course import discovered_seeded_lecture_views
 from lecturepilot.model_client import ModelExecutionError
+from lecturepilot.model_usage import model_usage_scope
 from lecturepilot.models import (
     Course,
     CourseMaterialUploadResult,
@@ -214,16 +215,21 @@ def register_course_routes(
         except ValueError as exc:
             raise HTTPException(status_code=400, detail="Invalid first lecture date.") from exc
         try:
-            return await app.state.lecture_schedule_planner.propose_schedule(
+            with model_usage_scope(
+                actor_user_id=context.user_id,
                 course_id=course_id,
-                files=indexed_course_files(
-                    layout=app.state.canvas_workspace.layout,
+                workload="course_schedule",
+            ):
+                return await app.state.lecture_schedule_planner.propose_schedule(
                     course_id=course_id,
-                ),
-                roots=list(roots),
-                first_lecture_date=start_date,
-                requested_count=count,
-            )
+                    files=indexed_course_files(
+                        layout=app.state.canvas_workspace.layout,
+                        course_id=course_id,
+                    ),
+                    roots=list(roots),
+                    first_lecture_date=start_date,
+                    requested_count=count,
+                )
         except ProviderConfigurationError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         except ModelExecutionError as exc:

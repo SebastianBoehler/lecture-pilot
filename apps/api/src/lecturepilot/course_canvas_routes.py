@@ -22,6 +22,7 @@ from lecturepilot.learner_workspace_reset import (
 from lecturepilot.learning_map import LearningMap, write_learning_map
 from lecturepilot.models import CanvasPublicationResult, Course, Lecture
 from lecturepilot.model_client import ModelExecutionError
+from lecturepilot.model_usage import model_usage_scope
 from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.source_bundle_canvas import SourceBundleCanvasError
 from lecturepilot.tenancy import TenantContext
@@ -52,7 +53,12 @@ def register_course_canvas_routes(
             source = course_media_evidence(
                 source, app.state.canvas_workspace.course_media_root(course_id)
             )
-            document = await app.state.course_planner.plan_canvas(source)
+            with model_usage_scope(
+                actor_user_id=context.user_id,
+                course_id=course_id,
+                workload="course_canvas",
+            ):
+                document = await app.state.course_planner.plan_canvas(source)
             document = apply_course_media(
                 document, app.state.canvas_workspace.course_media_root(course_id)
             )
