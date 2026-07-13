@@ -14,6 +14,8 @@ export type View =
   | "course-management"
   | InfoPageKind;
 export type LessonPanelMode = "chat" | "outline" | "path" | "notes" | "files";
+export type LearnerWorkspaceMode = "learner" | "professor-preview";
+export type LessonMode = LearnerWorkspaceMode | "draft";
 export type CanvasSectionId = string;
 export type DocumentAnchorId = string;
 
@@ -203,6 +205,7 @@ export type CourseWorkspaceResult = {
   course: UniversityCourse;
   lectures: Lecture[];
   active_lecture_id: string;
+  publishedLectureIds?: string[];
 };
 
 export type YoutubeVideoCandidate = {

@@ -215,7 +215,7 @@ export const enMessages = {
   "professor.refreshing": "Refreshing...",
   "professor.manage.title": "Manage courses",
   "professor.manage.subtitle":
-    "Review created course workspaces and take down broken or outdated demo courses.",
+    "Update course materials, preview published lectures, or remove a workspace.",
   "professor.performance.title": "Course performance",
   "professor.performance.subtitle":
     "Lecture-level learning signals from published tutor workspaces.",
@@ -233,7 +233,7 @@ export const enMessages = {
   "professor.loadingAnalytics": "Loading analytics",
   "professor.createdCourses": "Created courses",
   "professor.createdCoursesHelp":
-    "Review the scope of each configured course workspace before you continue building or remove it.",
+    "Open a published lecture as a student or continue maintaining its course workspace.",
   "professor.createCourse": "Create course",
   "professor.courseWorkspace": "Course workspace",
   "professor.configuredLectures": "{count} lectures configured",
@@ -245,6 +245,13 @@ export const enMessages = {
   "professor.loadCoursesFailed": "Could not load created courses.",
   "professor.deletedNotice": "Course workspace {courseId} deleted.",
   "professor.update": "Update",
+  "professor.preview.lectures": "Lectures",
+  "professor.preview.open": "Preview as student",
+  "professor.preview.unpublished": "Not published",
+  "professor.preview.bannerTitle": "Student preview",
+  "professor.preview.bannerHelp":
+    "Learning state created here is stored only in your private preview and never affects student data or course analytics.",
+  "professor.preview.back": "Back to course management",
   "courseUpdate.back": "Back to courses",
   "courseUpdate.pageTitle": "Update {course}",
   "courseUpdate.pageHelp":

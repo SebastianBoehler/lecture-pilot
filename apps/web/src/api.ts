@@ -9,10 +9,11 @@ import type {
   ExamReadinessCheck,
   ExamRevisionTask,
   Lecture,
+  LearnerWorkspaceMode,
   LoginSession,
   UniversityCourse,
 } from "./types";
-import { authRequestInit } from "./authz";
+import { authRequestInit, learnerRequestInit } from "./authz";
 import { normalizeLectureList } from "./lectureMapping";
 
 export type CanvasCommand = {
@@ -67,10 +68,11 @@ export function apiUrl(path: string): string {
 export async function sendAgentTurn(
   input: AgentTurnInput,
   session: LoginSession,
+  mode: LearnerWorkspaceMode = "learner",
 ): Promise<AgentTurnResult> {
   const response = await fetch(
     `${apiBaseUrl}/agent/turn`,
-    authRequestInit(session, {
+    learnerRequestInit(session, mode, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
@@ -89,11 +91,14 @@ export async function sendAgentTurn(
 export async function sendAgentTurnStream(
   input: AgentTurnInput,
   session: LoginSession,
-  { onActivity }: { onActivity?: (tag: string) => void } = {},
+  {
+    onActivity,
+    mode = "learner",
+  }: { onActivity?: (tag: string) => void; mode?: LearnerWorkspaceMode } = {},
 ): Promise<AgentTurnResult> {
   const response = await fetch(
     `${apiBaseUrl}/agent/turn/stream`,
-    authRequestInit(session, {
+    learnerRequestInit(session, mode, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
@@ -105,7 +110,7 @@ export async function sendAgentTurnStream(
     throw new Error(readApiError(payload, "Tutor stream failed."));
   }
   if (!response.body) {
-    return sendAgentTurn(input, session);
+    return sendAgentTurn(input, session, mode);
   }
 
   return readAgentTurnStream(response.body, onActivity);
@@ -159,10 +164,11 @@ export async function getLectureCanvas(
   courseId: string,
   lectureId: string,
   session: LoginSession,
+  mode: LearnerWorkspaceMode = "learner",
 ): Promise<CanvasDocument> {
   const response = await fetch(
     apiUrl(`/courses/${courseId}/lectures/${lectureId}/canvas`),
-    authRequestInit(session),
+    learnerRequestInit(session, mode),
   );
   const payload = await response.json();
   if (!response.ok) {

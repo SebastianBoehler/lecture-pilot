@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { useI18n } from "./i18n";
 import { LessonCanvas } from "./LessonCanvas";
 import { LearningPathPanel } from "./LearningPathPanel";
+import { ProfessorLearnerPreviewBanner } from "./ProfessorLearnerPreviewBanner";
 import { NotesPanel, OutlinePanel } from "./LessonSidePanels";
 import { recordQuizAnswer } from "./analyticsApi";
 import { TutorDrawer } from "./TutorDrawer";
@@ -23,6 +24,7 @@ import type {
   DocumentAnchorId,
   Lecture,
   LessonPanelMode,
+  LearnerWorkspaceMode,
   LoginSession,
   WorkspaceResource,
 } from "./types";
@@ -42,6 +44,8 @@ export function LessonWorkspace({
   passedGateIds,
   tutorModel,
   backLabel = "Dashboard",
+  previewMode = false,
+  workspaceMode = "learner",
   onBack,
   onSendMessage,
   onTogglePanel,
@@ -61,6 +65,8 @@ export function LessonWorkspace({
   passedGateIds: string[];
   tutorModel: string | null;
   backLabel?: string;
+  previewMode?: boolean;
+  workspaceMode?: LearnerWorkspaceMode;
   onBack: () => void;
   onSendMessage: (message: string) => Promise<void>;
   onTogglePanel: (mode: LessonPanelMode) => void;
@@ -122,6 +128,7 @@ export function LessonWorkspace({
       blockId: block.id,
       optionIndex,
       session,
+      mode: workspaceMode,
     }).catch(() => undefined);
     void onSendMessage(quizAnswerMessage(block, answer, optionIndex));
   }
@@ -129,12 +136,15 @@ export function LessonWorkspace({
   return (
     <main className={layoutClass}>
       <section className="lesson-main">
+        {previewMode ? <ProfessorLearnerPreviewBanner onBack={onBack} /> : null}
         <div className="lesson-toolbar">
           <div className="lesson-toolbar-actions">
-            <button className="ghost-button" type="button" onClick={onBack}>
-              <ChevronLeft size={17} />
-              {backLabel}
-            </button>
+            {!previewMode ? (
+              <button className="ghost-button" type="button" onClick={onBack}>
+                <ChevronLeft size={17} />
+                {backLabel}
+              </button>
+            ) : null}
             <WorkspaceResetControl disabled={!canvasDocument} onReset={onResetWorkspace} />
           </div>
           <span>{lecture.date}</span>

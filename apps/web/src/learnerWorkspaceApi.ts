@@ -1,6 +1,6 @@
-import { authRequestInit } from "./authz";
+import { learnerRequestInit } from "./authz";
 import { apiUrl, readApiError } from "./api";
-import type { LoginSession } from "./types";
+import type { LearnerWorkspaceMode, LoginSession } from "./types";
 
 export type LearnerWorkspaceResetOptions = {
   reset_canvas: boolean;
@@ -17,10 +17,11 @@ export async function resetLearnerWorkspace(
   courseId: string,
   options: LearnerWorkspaceResetOptions,
   session: LoginSession,
+  mode: LearnerWorkspaceMode = "learner",
 ): Promise<LearnerWorkspaceResetResult> {
   const response = await fetch(
     apiUrl(`/courses/${courseId}/learner-workspace/reset`),
-    authRequestInit(session, {
+    learnerRequestInit(session, mode, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(options),

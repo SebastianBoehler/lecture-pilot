@@ -15,6 +15,7 @@ import type {
   CanvasPublicationResult,
   ChatMessage,
   LessonPanelMode,
+  LessonMode,
   Lecture,
   LoginSession,
   UniversityCourse,
@@ -51,7 +52,8 @@ type AppRoutesProps = {
   highlightedBlockId: string | null;
   highlightedText: string | null;
   lastTutorModel: string | null;
-  lessonBackView: "dashboard" | "professor";
+  lessonBackView: "dashboard" | "professor" | "course-management";
+  lessonMode: LessonMode;
   messages: ChatMessage[];
   navigationVersion: number;
   panelMode: LessonPanelMode | null;
@@ -66,6 +68,7 @@ type AppRoutesProps = {
   onLogin: (session: LoginSession) => void;
   onOpenDemo: () => void;
   onOpenLecture: (courseId: string, lecture: Lecture) => void;
+  onPreviewLecture: (courseId: string, lecture: Lecture) => void;
   onOpenProfessorDemo: () => void;
   onPublishWorkspace: (courseId: string, lectureId: string) => Promise<CanvasPublicationResult>;
   onResetWorkspace: (options: WorkspaceResetSelection) => Promise<void>;
@@ -88,6 +91,7 @@ export function AppRoutes(props: AppRoutesProps) {
     highlightedText,
     lastTutorModel,
     lessonBackView,
+    lessonMode,
     messages,
     navigationVersion,
     panelMode,
@@ -152,6 +156,7 @@ export function AppRoutes(props: AppRoutesProps) {
     return deferred(
       <ProfessorCourseManagement
         onCreateCourse={() => props.onViewChange("professor")}
+        onPreviewLecture={props.onPreviewLecture}
         session={courseManagerSession}
         onWorkspaceDeleted={props.onWorkspaceDeleted}
       />,
@@ -209,7 +214,15 @@ export function AppRoutes(props: AppRoutesProps) {
       navigationVersion={navigationVersion}
       panelMode={panelMode}
       passedGateIds={props.passedGateIds}
-      backLabel={lessonBackView === "professor" ? "Course builder" : "Dashboard"}
+      previewMode={lessonMode === "professor-preview"}
+      workspaceMode={lessonMode === "professor-preview" ? "professor-preview" : "learner"}
+      backLabel={
+        lessonBackView === "professor"
+          ? "Course builder"
+          : lessonBackView === "course-management"
+            ? "Course management"
+            : "Dashboard"
+      }
       onBack={() => props.onViewChange(lessonBackView)}
       onSendMessage={props.onSendMessage}
       onResetWorkspace={props.onResetWorkspace}

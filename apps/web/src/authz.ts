@@ -1,4 +1,4 @@
-import type { LoginSession, TenantRole } from "./types";
+import type { LearnerWorkspaceMode, LoginSession, TenantRole } from "./types";
 
 const courseManagementRoles = new Set<TenantRole>(["professor"]);
 
@@ -56,6 +56,18 @@ export function authRequestInit(session: LoginSession, init: RequestInit = {}): 
     credentials: "include",
     headers,
   };
+}
+
+export function learnerRequestInit(
+  session: LoginSession,
+  mode: LearnerWorkspaceMode,
+  init: RequestInit = {},
+): RequestInit {
+  const headers = new Headers(init.headers);
+  if (mode === "professor-preview") {
+    headers.set("X-LecturePilot-Learner-Preview", "professor");
+  }
+  return authRequestInit(session, { ...init, headers });
 }
 
 function courseManagerRole(session: LoginSession | null) {

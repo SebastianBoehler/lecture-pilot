@@ -222,7 +222,7 @@ export const deMessages: Record<MessageKey, string> = {
   "professor.refreshing": "Aktualisierung läuft...",
   "professor.manage.title": "Kurse verwalten",
   "professor.manage.subtitle":
-    "Prüfe erstellte Kursarbeitsbereiche und entferne fehlerhafte oder veraltete Demokurse.",
+    "Aktualisiere Kursmaterialien, prüfe veröffentlichte Vorlesungen oder entferne einen Arbeitsbereich.",
   "professor.performance.title": "Kursleistung",
   "professor.performance.subtitle":
     "Lernsignale auf Vorlesungsebene aus veröffentlichten Tutor-Arbeitsbereichen.",
@@ -240,7 +240,7 @@ export const deMessages: Record<MessageKey, string> = {
   "professor.loadingAnalytics": "Analysen werden geladen",
   "professor.createdCourses": "Erstellte Kurse",
   "professor.createdCoursesHelp":
-    "Prüfe den Umfang jedes eingerichteten Kursarbeitsbereichs, bevor du weiterarbeitest oder ihn entfernst.",
+    "Öffne eine veröffentlichte Vorlesung als Studierende oder pflege ihren Kursarbeitsbereich weiter.",
   "professor.createCourse": "Kurs erstellen",
   "professor.courseWorkspace": "Kursarbeitsbereich",
   "professor.configuredLectures": "{count} Vorlesungen eingerichtet",
@@ -252,6 +252,13 @@ export const deMessages: Record<MessageKey, string> = {
   "professor.loadCoursesFailed": "Erstellte Kurse konnten nicht geladen werden.",
   "professor.deletedNotice": "Kursarbeitsbereich {courseId} gelöscht.",
   "professor.update": "Aktualisieren",
+  "professor.preview.lectures": "Vorlesungen",
+  "professor.preview.open": "Als Studierende ansehen",
+  "professor.preview.unpublished": "Nicht veröffentlicht",
+  "professor.preview.bannerTitle": "Studierendenansicht",
+  "professor.preview.bannerHelp":
+    "Lernstände, die du hier erzeugst, werden nur in deiner privaten Vorschau gespeichert und beeinflussen weder Studierendendaten noch Kursanalysen.",
+  "professor.preview.back": "Zurück zur Kursverwaltung",
   "courseUpdate.back": "Zurück zu den Kursen",
   "courseUpdate.pageTitle": "{course} aktualisieren",
   "courseUpdate.pageHelp":

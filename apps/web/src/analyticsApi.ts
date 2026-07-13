@@ -1,6 +1,11 @@
 import { apiUrl } from "./api";
-import { authRequestInit } from "./authz";
-import type { Attendance, LectureAnalyticsSummary, LoginSession } from "./types";
+import { authRequestInit, learnerRequestInit } from "./authz";
+import type {
+  Attendance,
+  LearnerWorkspaceMode,
+  LectureAnalyticsSummary,
+  LoginSession,
+} from "./types";
 
 export async function recordQuizAnswer(input: {
   courseId: string;
@@ -9,10 +14,11 @@ export async function recordQuizAnswer(input: {
   blockId: string;
   optionIndex: number;
   session: LoginSession;
+  mode?: LearnerWorkspaceMode;
 }) {
   const response = await analyticsFetch(
     apiUrl(`/courses/${input.courseId}/lectures/${input.lectureId}/analytics/quiz-answer`),
-    authRequestInit(input.session, {
+    learnerRequestInit(input.session, input.mode ?? "learner", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

@@ -45,6 +45,7 @@ import type {
   CanvasDocument,
   ChatMessage,
   LessonPanelMode,
+  LessonMode,
   Lecture,
   LoginSession,
   Theme,
@@ -70,7 +71,10 @@ function App() {
     import.meta.env.DEV ? "martius-ml" : "",
   );
   const [selectedLecture, setSelectedLecture] = useState(lectures[2]);
-  const [lessonBackView, setLessonBackView] = useState<"dashboard" | "professor">("dashboard");
+  const [lessonBackView, setLessonBackView] = useState<
+    "dashboard" | "professor" | "course-management"
+  >("dashboard");
+  const [lessonMode, setLessonMode] = useState<LessonMode>("learner");
   const [panelMode, setPanelMode] = useState<LessonPanelMode | null>(null);
   const [canvasDocument, setCanvasDocument] = useState<CanvasDocument | null>(null);
   const [canvasError, setCanvasError] = useState<string | null>(null);
@@ -160,6 +164,7 @@ function App() {
           onActivity: (tag) => {
             setMessages((current) => appendLiveToolTag(current, pendingMessageId, tag));
           },
+          mode: lessonMode === "professor-preview" ? "professor-preview" : "learner",
         },
       );
     } catch (error) {
@@ -237,12 +242,13 @@ function App() {
     async (
       courseId: string,
       lecture: Lecture,
-      backView: "dashboard" | "professor" = "dashboard",
-      previewDraft = false,
+      backView: "dashboard" | "professor" | "course-management" = "dashboard",
+      mode: LessonMode = "learner",
     ) => {
       setSelectedCourseId(courseId);
       setSelectedLecture(lecture);
       setLessonBackView(backView);
+      setLessonMode(mode);
       setView("lesson");
       setPanelMode(null);
       setCanvasDocument(null);
@@ -258,9 +264,14 @@ function App() {
       try {
         const activeSession = session ?? localDemoSession;
         const document =
-          previewDraft && session
+          mode === "draft" && session
             ? await getDraftLectureCanvas(courseId, lecture.id, session)
-            : await getLectureCanvas(courseId, lecture.id, activeSession);
+            : await getLectureCanvas(
+                courseId,
+                lecture.id,
+                activeSession,
+                mode === "professor-preview" ? "professor-preview" : "learner",
+              );
         setCanvasDocument(document);
         setFocusedSectionId(document.sections[0]?.id ?? "bayesian-decision-theory-the-aim");
       } catch (error) {
@@ -278,7 +289,7 @@ function App() {
       setCanvasError("Draft preview requires a course-management account.");
     },
     onOpenLecture: (courseId, lecture, backView, previewDraft) => {
-      void handleOpenLecture(courseId, lecture, backView, previewDraft);
+      void handleOpenLecture(courseId, lecture, backView, previewDraft ? "draft" : "learner");
     },
   });
 
@@ -304,14 +315,20 @@ function App() {
 
   async function handleResetWorkspace(options: WorkspaceResetSelection) {
     const activeSession = session ?? localDemoSession;
-    await resetLearnerWorkspace(selectedCourseId, options, activeSession);
+    const workspaceMode = lessonMode === "professor-preview" ? "professor-preview" : "learner";
+    await resetLearnerWorkspace(selectedCourseId, options, activeSession, workspaceMode);
     if (options.reset_progress) {
       setAvailableLectures((current) =>
         current.map((lecture) => ({ ...lecture, attendance: "unknown" })),
       );
       setSelectedLecture((current) => ({ ...current, attendance: "unknown" }));
     }
-    const document = await getLectureCanvas(selectedCourseId, selectedLecture.id, activeSession);
+    const document = await getLectureCanvas(
+      selectedCourseId,
+      selectedLecture.id,
+      activeSession,
+      workspaceMode,
+    );
     setCanvasDocument(document);
     setCanvasError(null);
     setFocusedSectionId(document.sections[0]?.id ?? "bayesian-decision-theory-the-aim");
@@ -388,6 +405,7 @@ function App() {
           highlightedText={highlightedText}
           lastTutorModel={lastTutorModel}
           lessonBackView={lessonBackView}
+          lessonMode={lessonMode}
           messages={messages}
           navigationVersion={navigationVersion}
           panelMode={panelMode}
@@ -418,6 +436,9 @@ function App() {
           }}
           onOpenLecture={(courseId, lecture) => {
             void handleOpenLecture(courseId, lecture);
+          }}
+          onPreviewLecture={(courseId, lecture) => {
+            void handleOpenLecture(courseId, lecture, "course-management", "professor-preview");
           }}
           onSetAttendance={handleSetAttendance}
           onPublishWorkspace={async (courseId, lectureId) => {

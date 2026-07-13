@@ -14,12 +14,14 @@ type ApiLectureView = {
 
 type ApiCourseWorkspaceResult = Omit<CourseWorkspaceResult, "lectures"> & {
   lectures: ApiLecture[];
+  published_lecture_ids?: string[];
 };
 
 export function normalizeCourseWorkspaceResult(payload: ApiCourseWorkspaceResult): CourseWorkspaceResult {
   return {
     ...payload,
     lectures: payload.lectures.map((lecture) => lectureFromApi(lecture)),
+    publishedLectureIds: payload.published_lecture_ids ?? payload.publishedLectureIds ?? [],
   };
 }
 

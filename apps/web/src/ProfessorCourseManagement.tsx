@@ -9,10 +9,15 @@ import type { CourseWorkspaceResult, LoginSession } from "./types";
 
 export function ProfessorCourseManagement({
   onCreateCourse,
+  onPreviewLecture = () => undefined,
   session,
   onWorkspaceDeleted,
 }: {
   onCreateCourse: () => void;
+  onPreviewLecture?: (
+    courseId: string,
+    lecture: CourseWorkspaceResult["lectures"][number],
+  ) => void;
   session: LoginSession;
   onWorkspaceDeleted: (courseId: string) => void;
 }) {
@@ -32,7 +37,10 @@ export function ProfessorCourseManagement({
       <ProfessorCourseUpdate
         session={session}
         workspace={updatingWorkspace}
-        onBack={() => setUpdatingWorkspace(null)}
+        onBack={() => {
+          setUpdatingWorkspace(null);
+          void refreshCourses();
+        }}
         onWorkspaceUpdated={(updated) => {
           setUpdatingWorkspace(updated);
           setWorkspaces((current) =>
@@ -61,6 +69,7 @@ export function ProfessorCourseManagement({
         onRefresh={() => {
           void refreshCourses();
         }}
+        onPreviewLecture={onPreviewLecture}
         onUpdateCourse={(courseId) => {
           setUpdatingWorkspace(workspaces.find((item) => item.course.id === courseId) ?? null);
         }}

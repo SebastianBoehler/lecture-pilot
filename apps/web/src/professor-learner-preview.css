@@ -1,0 +1,41 @@
+.professor-preview-banner {
+  position: sticky;
+  top: 68px;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  border: 1px solid color-mix(in srgb, var(--color-accent-primary) 45%, var(--color-border-primary));
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--color-accent-primary);
+  background: color-mix(in srgb, var(--color-accent-primary) 7%, var(--color-bg-primary));
+}
+
+.professor-preview-banner div {
+  display: grid;
+  gap: 2px;
+}
+
+.professor-preview-banner strong {
+  color: var(--color-text-primary);
+  font-size: 14px;
+}
+
+.professor-preview-banner span {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+@media (max-width: 720px) {
+  .professor-preview-banner {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .professor-preview-banner button {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
