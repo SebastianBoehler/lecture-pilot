@@ -6,6 +6,7 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict
 
 from lecturepilot.storage_layout import StorageLayout, safe_id
+from lecturepilot.professor_preview import is_professor_preview_user_id
 
 
 class LearnerWorkspaceResetInput(BaseModel):
@@ -37,6 +38,8 @@ def reset_learner_workspace(
         deleted_paths += _reset_course_root(course_root, request)
     if request.reset_course_memory:
         deleted_paths += _delete_path(layout.user_course_memories_dir(user_id, course_id))
+        if is_professor_preview_user_id(user_id):
+            deleted_paths += _delete_path(layout.user_memories_dir(user_id))
     return LearnerWorkspaceResetResult(
         course_id=course_id,
         user_id=user_id,

@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 
 from lecturepilot.canvas_workspace_config import SEEDED_COURSE_ID, lecture_source_name
+from lecturepilot.course_schedule_store import read_course_workspace
 from lecturepilot.latex_canvas_text import BROWSER_ASSET_SUFFIXES, is_allowed_canvas_asset
 from lecturepilot.pdf_preview import PdfPreviewError, render_pdf_preview
 from lecturepilot.storage_layout import StorageLayout
@@ -42,8 +43,12 @@ class CanvasAssetStore:
                 return candidate
         raise CanvasAssetError("Canvas asset was not found.")
 
-    def course_asset_preview_path(self, *, course_id: str, lecture_id: str, asset_path: str) -> Path:
-        source = self.course_asset_path(course_id=course_id, lecture_id=lecture_id, asset_path=asset_path)
+    def course_asset_preview_path(
+        self, *, course_id: str, lecture_id: str, asset_path: str
+    ) -> Path:
+        source = self.course_asset_path(
+            course_id=course_id, lecture_id=lecture_id, asset_path=asset_path
+        )
         if source.suffix.lower() != ".pdf":
             return source
         try:
@@ -64,6 +69,14 @@ class CanvasAssetStore:
         _assert_safe_asset_path(asset_path, "learner workspace", BROWSER_ASSET_SUFFIXES)
         candidates = [
             (self.layout.user_canvas_dir_by_key(student_key, course_id, lecture_id), asset_path),
+            (
+                self.layout.professor_preview_canvas_dir_by_key(
+                    student_key,
+                    course_id,
+                    lecture_id,
+                ),
+                asset_path,
+            ),
             (self.layout.legacy_canvas_dir_by_key(student_key, course_id, lecture_id), asset_path),
         ]
         for root, relative in candidates:
@@ -77,11 +90,24 @@ class CanvasAssetStore:
     def _source_path(self, course_id: str, lecture_id: str) -> Path:
         source_name = lecture_source_name(lecture_id)
         uploads_dir = self.layout.course_uploads_dir(course_id)
-        source_names = [source_name] if source_name else []
-        if uploads_dir.exists():
-            workspace = WorkspaceFS(
-                WorkspaceCapability((CapabilityRoot("/uploads", uploads_dir),))
+        workspace = read_course_workspace(self.layout.course_root(course_id), course_id)
+        scheduled_lecture = (
+            next(
+                (lecture for lecture in workspace.lectures if lecture.id == lecture_id),
+                None,
             )
+            if workspace
+            else None
+        )
+        source_names = (
+            [scheduled_lecture.material_path]
+            if scheduled_lecture and scheduled_lecture.material_path
+            else []
+        )
+        if source_name:
+            source_names.append(source_name)
+        if uploads_dir.exists():
+            workspace = WorkspaceFS(WorkspaceCapability((CapabilityRoot("/uploads", uploads_dir),)))
             source_names.extend(
                 item.logical.removeprefix("/uploads/")
                 for item in workspace.files("/uploads")

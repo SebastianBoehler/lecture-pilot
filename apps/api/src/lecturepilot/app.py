@@ -93,6 +93,7 @@ def create_app() -> FastAPI:
             "Content-Type",
             "X-Course-Ids",
             "X-CSRF-Token",
+            "X-LecturePilot-Learner-Preview",
             "X-Tenant-Id",
             "X-User-Id",
             "X-User-Role",

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 
-from lecturepilot.api_auth import request_context, require_learner_workspace_access
+from lecturepilot.api_auth import request_context
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.course_access import (
     can_review_course,
@@ -23,6 +23,7 @@ from lecturepilot.exam_revision_plan import (
 from lecturepilot.models import Course, Lecture
 from lecturepilot.policies import is_lecture_unlocked
 from lecturepilot.readiness_progress import ReadinessProgressStore
+from lecturepilot.professor_preview import resolve_learner_workspace_access
 from lecturepilot.tenancy import TenantContext
 
 
@@ -36,11 +37,13 @@ def register_exam_readiness_routes(
     @app.get("/courses/{course_id}/exam-readiness", response_model=ExamReadinessPublicCheck)
     def exam_readiness_check(
         course_id: str,
+        request: Request,
         context: TenantContext = Depends(request_context),
     ) -> ExamReadinessPublicCheck:
-        require_learner_workspace_access(
+        resolve_learner_workspace_access(
+            request,
             context,
-            learner_user_id=context.user_id,
+            course_id=course_id,
             course_tenant_id=course_tenant_id,
         )
         require_course_id_access(
@@ -59,11 +62,13 @@ def register_exam_readiness_routes(
     def record_exam_readiness_attempt(
         course_id: str,
         attempt: ExamReadinessAttemptInput,
+        request: Request,
         context: TenantContext = Depends(request_context),
     ) -> ExamReadinessAttemptResult:
-        require_learner_workspace_access(
+        access = resolve_learner_workspace_access(
+            request,
             context,
-            learner_user_id=context.user_id,
+            course_id=course_id,
             course_tenant_id=course_tenant_id,
         )
         require_course_id_access(
@@ -79,11 +84,11 @@ def register_exam_readiness_routes(
             result = build_exam_revision_plan(
                 check=check,
                 answers=attempt.answers,
-                previous_attempts=store.attempt_count(user_id=context.user_id, course_id=course_id),
+                previous_attempts=store.attempt_count(user_id=access.user_id, course_id=course_id),
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
-        return store.record_attempt(user_id=context.user_id, course_id=course_id, result=result)
+        return store.record_attempt(user_id=access.user_id, course_id=course_id, result=result)
 
 
 def _readiness_check(

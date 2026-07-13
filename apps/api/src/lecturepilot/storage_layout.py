@@ -4,6 +4,8 @@ import re
 from hashlib import sha256
 from pathlib import Path
 
+from lecturepilot.professor_preview import is_professor_preview_user_id
+
 
 DEFAULT_TENANT_ID = "tenant-tuebingen"
 
@@ -23,6 +25,8 @@ class StorageLayout:
         return sha256(user_id.encode("utf-8")).hexdigest()[:24]
 
     def user_root(self, user_id: str) -> Path:
+        if is_professor_preview_user_id(user_id):
+            return self.root / "previews" / "professors" / self.user_key(user_id)
         return self.root / "users" / self.user_key(user_id)
 
     def user_memories_dir(self, user_id: str) -> Path:
@@ -44,6 +48,21 @@ class StorageLayout:
         return (
             self.root
             / "users"
+            / user_key
+            / "courses"
+            / safe_id(course_id)
+            / "lectures"
+            / safe_id(lecture_id)
+            / "canvas"
+        )
+
+    def professor_preview_canvas_dir_by_key(
+        self, user_key: str, course_id: str, lecture_id: str
+    ) -> Path:
+        return (
+            self.root
+            / "previews"
+            / "professors"
             / user_key
             / "courses"
             / safe_id(course_id)

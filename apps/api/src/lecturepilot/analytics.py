@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from lecturepilot.canvas_models import CanvasBlock
 from lecturepilot.learning_map import LearningMap
 from lecturepilot.models import AttendanceStatus, QualityGateDecision
+from lecturepilot.professor_preview import is_professor_preview_user_id
 from lecturepilot.storage_layout import StorageLayout, safe_id
 
 
@@ -96,29 +97,30 @@ class AnalyticsStore:
         correct_index = block.answer_index if isinstance(block.answer_index, int) else None
         correct = option_index == correct_index if correct_index is not None else None
         component_id = block.component_id or block.id
-        self._append(
-            course_id,
-            lecture_id,
-            {
-                "type": "quiz_answer",
-                "course_id": course_id,
-                "lecture_id": lecture_id,
-                "user_key": self.layout.user_key(user_id),
-                "attendance": attendance.value,
-                "component_id": component_id,
-                "component_type": block.component_type or block.type,
-                "block_id": block.id,
-                "title": block.caption or "Retrieval check",
-                "question": block.text or "",
-                "option_index": option_index,
-                "option_id": option_id,
-                "option_text": option_text,
-                "correct_index": correct_index,
-                "correct": correct,
-                "options": _options_snapshot(block),
-                "created_at": _now(),
-            },
-        )
+        if not is_professor_preview_user_id(user_id):
+            self._append(
+                course_id,
+                lecture_id,
+                {
+                    "type": "quiz_answer",
+                    "course_id": course_id,
+                    "lecture_id": lecture_id,
+                    "user_key": self.layout.user_key(user_id),
+                    "attendance": attendance.value,
+                    "component_id": component_id,
+                    "component_type": block.component_type or block.type,
+                    "block_id": block.id,
+                    "title": block.caption or "Retrieval check",
+                    "question": block.text or "",
+                    "option_index": option_index,
+                    "option_id": option_id,
+                    "option_text": option_text,
+                    "correct_index": correct_index,
+                    "correct": correct,
+                    "options": _options_snapshot(block),
+                    "created_at": _now(),
+                },
+            )
         return QuizAnswerResult(
             block_id=block.id,
             component_id=component_id,
@@ -136,6 +138,8 @@ class AnalyticsStore:
         attendance: AttendanceStatus,
         decision: QualityGateDecision,
     ) -> None:
+        if is_professor_preview_user_id(user_id):
+            return
         self._append(
             course_id,
             lecture_id,

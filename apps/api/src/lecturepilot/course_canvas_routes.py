@@ -7,7 +7,6 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from lecturepilot.api_auth import (
     request_context,
     require_course_manager,
-    require_learner_workspace_access,
 )
 from lecturepilot.audit import record_audit_event
 from lecturepilot.canvas_models import CanvasDocument
@@ -24,6 +23,7 @@ from lecturepilot.models import CanvasPublicationResult, Course, Lecture
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_usage import model_usage_scope
 from lecturepilot.providers import ProviderConfigurationError
+from lecturepilot.professor_preview import resolve_learner_workspace_access
 from lecturepilot.source_bundle_canvas import SourceBundleCanvasError
 from lecturepilot.tenancy import TenantContext
 
@@ -157,11 +157,13 @@ def register_course_canvas_routes(
     def lecture_canvas(
         course_id: str,
         lecture_id: str,
+        request: Request,
         context: TenantContext = Depends(request_context),
     ) -> dict:
-        require_learner_workspace_access(
+        access = resolve_learner_workspace_access(
+            request,
             context,
-            learner_user_id=context.user_id,
+            course_id=course_id,
             course_tenant_id=course_tenant_id,
         )
         require_lecture_id_access(
@@ -182,7 +184,7 @@ def register_course_canvas_routes(
             document = app.state.canvas_workspace.read_document(
                 course_id=course_id,
                 lecture_id=lecture_id,
-                user_id=context.user_id,
+                user_id=access.user_id,
             )
         except CanvasWorkspaceError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -227,12 +229,14 @@ def register_course_canvas_routes(
     )
     def reset_course_learner_workspace(
         course_id: str,
-        request: LearnerWorkspaceResetInput,
+        reset_request: LearnerWorkspaceResetInput,
+        request: Request,
         context: TenantContext = Depends(request_context),
     ) -> LearnerWorkspaceResetResult:
-        require_learner_workspace_access(
+        access = resolve_learner_workspace_access(
+            request,
             context,
-            learner_user_id=context.user_id,
+            course_id=course_id,
             course_tenant_id=course_tenant_id,
         )
         require_course_id_access(
@@ -245,8 +249,8 @@ def register_course_canvas_routes(
         result = reset_learner_workspace(
             layout=app.state.canvas_workspace.layout,
             course_id=course_id,
-            user_id=context.user_id,
-            request=request,
+            user_id=access.user_id,
+            request=reset_request,
         )
         record_audit_event(
             app.state.database,
@@ -255,9 +259,9 @@ def register_course_canvas_routes(
             target_type="course",
             target_id=course_id,
             details={
-                "reset_canvas": request.reset_canvas,
-                "reset_course_memory": request.reset_course_memory,
-                "reset_progress": request.reset_progress,
+                "reset_canvas": reset_request.reset_canvas,
+                "reset_course_memory": reset_request.reset_course_memory,
+                "reset_progress": reset_request.reset_progress,
             },
         )
         return result

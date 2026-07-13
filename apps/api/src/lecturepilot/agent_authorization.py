@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
-from lecturepilot.api_auth import require_learner_workspace_access
 from lecturepilot.course_access import require_lecture_id_access
 from lecturepilot.models import AgentTurnInput, Course, Lecture
 from lecturepilot.tenancy import TenantContext
@@ -17,11 +16,6 @@ def authorize_agent_turn(
     seeded_lectures: list[Lecture],
     turn: AgentTurnInput,
 ) -> None:
-    require_learner_workspace_access(
-        context,
-        learner_user_id=turn.user_id,
-        course_tenant_id=course_tenant_id,
-    )
     require_lecture_id_access(
         app,
         context,

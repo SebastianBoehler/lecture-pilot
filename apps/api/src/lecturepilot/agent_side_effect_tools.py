@@ -55,7 +55,7 @@ class AgentSideEffectTools:
         if self.usage_quota and self.tenant_id:
             self.usage_quota.consume_image(
                 tenant_id=self.tenant_id,
-                user_id=self.user_id,
+                user_id=self.quota_user_id,
                 course_id=self.course_id,
             )
         return self._image_placement().generate(

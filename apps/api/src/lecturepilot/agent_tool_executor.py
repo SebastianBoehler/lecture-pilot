@@ -41,6 +41,7 @@ class AgentToolExecutor(AgentSideEffectTools):
         course_id: str,
         lecture_id: str,
         user_id: str,
+        quota_user_id: str | None = None,
         image_generator: Any | None = None,
         usage_quota: UsageQuota | None = None,
         tenant_id: str | None = None,
@@ -50,6 +51,7 @@ class AgentToolExecutor(AgentSideEffectTools):
         self.course_id = course_id
         self.lecture_id = lecture_id
         self.user_id = user_id
+        self.quota_user_id = quota_user_id or user_id
         self.image_generator = image_generator
         self.usage_quota = usage_quota
         self.tenant_id = tenant_id

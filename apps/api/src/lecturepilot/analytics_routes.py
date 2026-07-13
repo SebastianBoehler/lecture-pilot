@@ -11,7 +11,6 @@ from lecturepilot.analytics import (
 from lecturepilot.api_auth import (
     request_context,
     require_course_manager,
-    require_learner_workspace_access,
 )
 from lecturepilot.audit import record_audit_event
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument
@@ -21,6 +20,7 @@ from lecturepilot.learning_map import LearningMap, write_learning_map
 from lecturepilot.models import Course, Lecture
 from lecturepilot.readiness_analytics import CourseReadinessSummary, course_readiness_summary
 from lecturepilot.readiness_progress import ReadinessProgressStore
+from lecturepilot.professor_preview import resolve_learner_workspace_access
 from lecturepilot.tenancy import TenantContext
 
 
@@ -39,11 +39,13 @@ def register_analytics_routes(
         course_id: str,
         lecture_id: str,
         answer: QuizAnswerInput,
+        request: Request,
         context: TenantContext = Depends(request_context),
     ) -> QuizAnswerResult:
-        require_learner_workspace_access(
+        access = resolve_learner_workspace_access(
+            request,
             context,
-            learner_user_id=context.user_id,
+            course_id=course_id,
             course_tenant_id=course_tenant_id,
         )
         require_lecture_id_access(
@@ -64,7 +66,7 @@ def register_analytics_routes(
             document = app.state.canvas_workspace.read_document(
                 course_id=course_id,
                 lecture_id=lecture_id,
-                user_id=context.user_id,
+                user_id=access.user_id,
             )
         except CanvasWorkspaceError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -74,7 +76,7 @@ def register_analytics_routes(
         return _analytics_store(app).record_quiz_answer(
             course_id=course_id,
             lecture_id=lecture_id,
-            user_id=context.user_id,
+            user_id=access.user_id,
             attendance=answer.attendance,
             block=block,
             option_index=answer.option_index,

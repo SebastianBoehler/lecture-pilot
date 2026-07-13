@@ -12,7 +12,10 @@ from lecturepilot.agent_state_access import (
     observability as app_observability,
     user_memory_store,
 )
-from lecturepilot.agent_command_utils import dedupe_commands
+from lecturepilot.agent_command_utils import (
+    merge_tool_outputs,
+    without_generated_section_commands,
+)
 from lecturepilot.agent_tool_executor import AgentToolExecutor
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.coaching_orchestration import persist_coaching_turn, prepare_coaching_turn
@@ -30,19 +33,23 @@ async def complete_agent_turn(
     app: FastAPI,
     *,
     turn: AgentTurnInput,
+    actor_user_id: str | None = None,
     emit: Callable[[str], None] | None = None,
 ) -> AgentTurnResult:
+    actor_user_id = actor_user_id or turn.user_id
     reserved = False
     try:
         reserved = app.state.usage_quota.reserve_turn(
             tenant_id=app.state.course_tenant_id,
-            user_id=turn.user_id,
+            user_id=actor_user_id,
             course_id=turn.course_id,
         )
     except (UsageQuotaExceeded, ValueError) as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from exc
     observability = app_observability(app)
-    usage = model_usage_scope(actor_user_id=turn.user_id, course_id=turn.course_id, workload="tutor")
+    usage = model_usage_scope(
+        actor_user_id=actor_user_id, course_id=turn.course_id, workload="tutor"
+    )
     try:
         with usage, observability.agent_turn_span(turn) as span:
             result = await _complete_agent_turn_inner(
@@ -50,6 +57,7 @@ async def complete_agent_turn(
                 turn=turn,
                 emit=emit,
                 observability=observability,
+                actor_user_id=actor_user_id,
             )
             span.set_outputs(observability.result_output(result))
             return result
@@ -57,12 +65,17 @@ async def complete_agent_turn(
         if reserved:
             app.state.usage_quota.release_turn(
                 tenant_id=app.state.course_tenant_id,
-                user_id=turn.user_id,
+                user_id=actor_user_id,
                 course_id=turn.course_id,
             )
 
 
-async def agent_turn_events(app: FastAPI, *, turn: AgentTurnInput):
+async def agent_turn_events(
+    app: FastAPI,
+    *,
+    turn: AgentTurnInput,
+    actor_user_id: str | None = None,
+):
     queue: asyncio.Queue[dict | None] = asyncio.Queue()
 
     async def run_turn() -> None:
@@ -70,6 +83,7 @@ async def agent_turn_events(app: FastAPI, *, turn: AgentTurnInput):
             result = await complete_agent_turn(
                 app,
                 turn=turn,
+                actor_user_id=actor_user_id,
                 emit=lambda tag: queue.put_nowait({"type": "activity", "tag": tag}),
             )
             await queue.put({"type": "result", "result": result.model_dump(mode="json")})
@@ -95,6 +109,7 @@ async def _complete_agent_turn_inner(
     turn: AgentTurnInput,
     emit: Callable[[str], None] | None,
     observability: Observability,
+    actor_user_id: str,
 ) -> AgentTurnResult:
     def activity(tag: str) -> None:
         if emit:
@@ -131,6 +146,7 @@ async def _complete_agent_turn_inner(
                     course_id=turn.course_id,
                     lecture_id=turn.lecture_id,
                     user_id=turn.user_id,
+                    quota_user_id=actor_user_id,
                     image_generator=getattr(app.state, "image_generator", None),
                     usage_quota=app.state.usage_quota,
                     tenant_id=app.state.course_tenant_id,
@@ -196,7 +212,7 @@ def _persist_agent_turn_result(
     observability: Observability,
 ) -> AgentTurnResult:
     if tool_executor is not None and tool_executor.canvas_changed:
-        result = _without_generated_section_commands(result)
+        result = without_generated_section_commands(result)
     placements = {
         command.section.id: command.placement
         for command in result.canvas_commands
@@ -214,7 +230,7 @@ def _persist_agent_turn_result(
             observability=observability,
         )
     if tool_executor is not None:
-        result = _merge_tool_outputs(result, tool_executor)
+        result = merge_tool_outputs(result, tool_executor)
     result = keep_canvas_actions_from_passing_gate(result, turn.message)
     if result.quality_gate is not None and turn.course_id:
         activity("save quality gate")
@@ -281,20 +297,3 @@ def _replace_generated_sections(result: AgentTurnResult, sections) -> AgentTurnR
         for command in result.canvas_commands
     ]
     return result.model_copy(update={"canvas_commands": commands})
-
-
-def _without_generated_section_commands(result: AgentTurnResult) -> AgentTurnResult:
-    commands = [
-        command
-        for command in result.canvas_commands
-        if command.type not in {"append_section", "update_section"}
-    ]
-    return result.model_copy(update={"canvas_commands": commands})
-
-
-def _merge_tool_outputs(
-    result: AgentTurnResult, tool_executor: AgentToolExecutor
-) -> AgentTurnResult:
-    commands = dedupe_commands([*result.canvas_commands, *tool_executor.canvas_update_commands()])
-    gate = tool_executor.gate or result.quality_gate
-    return result.model_copy(update={"canvas_commands": commands, "quality_gate": gate})

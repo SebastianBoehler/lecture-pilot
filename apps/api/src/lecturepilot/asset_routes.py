@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 
-from lecturepilot.api_auth import request_context, require_same_tenant
+from lecturepilot.api_auth import request_context, require_course_owner, require_same_tenant
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.course_access import require_lecture_id_access
 from lecturepilot.models import Course, Lecture
+from lecturepilot.professor_preview import professor_preview_user_id
 from lecturepilot.tenancy import TenantContext
 
 
@@ -57,6 +58,7 @@ def register_asset_routes(
         lecture_id: str,
         student_key: str,
         asset_path: str,
+        request: Request,
         context: TenantContext = Depends(request_context),
     ) -> FileResponse:
         require_same_tenant(context, course_tenant_id=course_tenant_id)
@@ -69,7 +71,14 @@ def register_asset_routes(
             seeded_course=seeded_course,
             seeded_lectures=seeded_lectures,
         )
-        _require_workspace_asset_access(app, context=context, student_key=student_key)
+        _require_workspace_asset_access(
+            app,
+            request=request,
+            context=context,
+            course_id=course_id,
+            course_tenant_id=course_tenant_id,
+            student_key=student_key,
+        )
         try:
             path = app.state.canvas_workspace.workspace_asset_path(
                 course_id=course_id,
@@ -85,10 +94,22 @@ def register_asset_routes(
 def _require_workspace_asset_access(
     app: FastAPI,
     *,
+    request: Request,
     context: TenantContext,
+    course_id: str,
+    course_tenant_id: str,
     student_key: str,
 ) -> None:
     if app.state.canvas_workspace.layout.user_key(context.user_id) == student_key:
+        return
+    preview_user_id = professor_preview_user_id(context.user_id, course_id)
+    if app.state.canvas_workspace.layout.user_key(preview_user_id) == student_key:
+        require_course_owner(
+            request,
+            context,
+            course_id=course_id,
+            course_tenant_id=course_tenant_id,
+        )
         return
     raise HTTPException(
         status_code=403,

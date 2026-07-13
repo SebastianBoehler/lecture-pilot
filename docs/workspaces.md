@@ -41,6 +41,10 @@ and per-lecture learner overlays.
       course.md
       memory-trace.jsonl
 
+  previews/professors/<hashed-preview-id>/
+    memories/
+    courses/<course-id>/
+
   cache/
     pdf-previews/
 ```
@@ -140,6 +144,21 @@ courses/<course-id>/lectures/<lecture-id>/
 Agent commands append or update `canvas/student/*.md`. Personalized generated
 images are stored in `canvas/student-assets/`. `canvas.json` is a compiled API
 cache and not the editable source of truth.
+
+## Professor Learner Preview
+
+A professor can open a published lecture in a private learner preview. Its
+attendance, progress, canvas additions, tutor memory, and generated assets use
+the same learner contracts but live under:
+
+```txt
+.lecturepilot/previews/professors/<hashed-preview-id>/
+```
+
+The preview identity is derived from the authenticated professor and course.
+Only a course owner can request it. Preview activity is excluded from learner
+and cohort analytics, while model and image usage remain attributed to the
+professor account. Resetting the preview never deletes real student state.
 
 Canvas section Markdown is intentionally close to the learning-app explainer
 model: one section file is one stable teaching unit, and assets remain normal

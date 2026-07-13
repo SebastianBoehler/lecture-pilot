@@ -19,6 +19,10 @@ class CourseDeletionResult(BaseModel):
     archived: bool
 
 
+class ManagedCourseWorkspaceResult(CourseWorkspaceResult):
+    published_lecture_ids: list[str]
+
+
 def delete_course_workspace(
     *, layout: StorageLayout, course_id: str
 ) -> CourseDeletionResult | None:
@@ -30,10 +34,10 @@ def delete_course_workspace(
 
 
 def register_course_deletion_routes(app: FastAPI, *, course_tenant_id: str) -> None:
-    @app.get("/admin/courses", response_model=list[CourseWorkspaceResult])
+    @app.get("/admin/courses", response_model=list[ManagedCourseWorkspaceResult])
     def created_courses(
         context: TenantContext = Depends(request_context),
-    ) -> list[CourseWorkspaceResult]:
+    ) -> list[ManagedCourseWorkspaceResult]:
         if context.auth_mode == "session":
             repository = CourseRepository(app.state.database)
             owned = repository.list_owned(user_id=_user_id(context), tenant_id=course_tenant_id)
@@ -44,9 +48,14 @@ def register_course_deletion_routes(app: FastAPI, *, course_tenant_id: str) -> N
                 )
                 if workspace is not None:
                     workspaces.append(workspace)
-            return workspaces
+            return [_with_publication_state(app, workspace) for workspace in workspaces]
         require_course_manager(context, course_tenant_id=course_tenant_id)
-        return list_course_workspaces(app.state.canvas_workspace.workspace_root, course_tenant_id)
+        return [
+            _with_publication_state(app, workspace)
+            for workspace in list_course_workspaces(
+                app.state.canvas_workspace.workspace_root, course_tenant_id
+            )
+        ]
 
     @app.delete("/admin/courses/{course_id}", response_model=CourseDeletionResult)
     def delete_course(
@@ -92,3 +101,21 @@ def _user_id(context: TenantContext) -> UUID:
         return UUID(context.user_id)
     except ValueError as exc:
         raise HTTPException(status_code=401, detail="Database account is required.") from exc
+
+
+def _with_publication_state(
+    app: FastAPI,
+    workspace: CourseWorkspaceResult,
+) -> ManagedCourseWorkspaceResult:
+    published = [
+        lecture.id
+        for lecture in workspace.lectures
+        if app.state.canvas_workspace.has_published_course_canvas(
+            course_id=workspace.course.id,
+            lecture_id=lecture.id,
+        )
+    ]
+    return ManagedCourseWorkspaceResult(
+        **workspace.model_dump(),
+        published_lecture_ids=published,
+    )
