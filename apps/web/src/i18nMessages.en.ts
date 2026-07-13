@@ -227,6 +227,8 @@ export const enMessages = {
   "builder.status.pending": "Pending",
   "builder.define.title": "Define course and lecture scope",
   "builder.define.courseName": "Course name",
+  "builder.define.universityCourse": "Choose from Alma or ILIAS (optional)",
+  "builder.define.universityCoursePlaceholder": "Select a course",
   "builder.define.courseNameHelp":
     "Use the exact course title from Alma or ILIAS. LecturePilot matches enrolled students by course title and term.",
   "builder.define.visibility": "Course visibility",

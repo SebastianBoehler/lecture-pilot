@@ -33,6 +33,7 @@ export function PendingStatus({ label }: { label: string }) {
 }
 
 export function CourseSetupStep({
+  courseSuggestions,
   courseReady,
   isCreating,
   isReady,
@@ -40,6 +41,7 @@ export function CourseSetupStep({
   onSetupChange,
   setup,
 }: {
+  courseSuggestions: string[];
   courseReady: boolean;
   isCreating: boolean;
   isReady: boolean;
@@ -52,6 +54,7 @@ export function CourseSetupStep({
     <section className="flow-card wide">
       <StepHeader number="01" title={t("builder.define.title")} done={courseReady} />
       <CourseNameField
+        courseSuggestions={courseSuggestions}
         value={setup.courseTitle}
         onChange={(courseTitle) => onSetupChange({ ...setup, courseTitle })}
       />

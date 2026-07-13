@@ -20,6 +20,7 @@ import {
   scheduleItemFromLecture,
 } from "./professorWorkspaceActivation";
 import { publishLectureRows } from "./professorPublishRows";
+import { universityCourseTitles } from "./professorCourseSuggestions";
 import { useProfessorWorkflowRun } from "./professorWorkflowRun";
 import { lectureFromWorkspace, requireWorkspace } from "./professorWorkspaceView";
 import {
@@ -92,6 +93,7 @@ export function useProfessorCourseBuilder({
   const [isRestoring, setIsRestoring] = useState(false);
 
   const setupReady = isCourseSetupReady(setup);
+  const courseSuggestions = universityCourseTitles(session.university_courses ?? [], session.term);
   const bundleReady = Boolean(bundle?.files.length);
   const mediaReady = mediaIncluded || selectedVideos.size > 0 || hasCanvasVideo(canvas);
   const reviewReady = mediaReady || mediaReviewed;
@@ -328,6 +330,7 @@ export function useProfessorCourseBuilder({
   }
 
   const defineStep = {
+    courseSuggestions,
     courseReady,
     isCreating: pendingAction === "create",
     isReady: setupReady,

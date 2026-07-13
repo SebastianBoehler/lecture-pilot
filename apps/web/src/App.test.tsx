@@ -118,6 +118,16 @@ describe("LecturePilot app shell", () => {
 
   it("lands a non-student Alma account in the professor workspace", async () => {
     const user = userEvent.setup();
+    const professorAccount = {
+      username: "alma-professor",
+      email: "alma-professor@example.edu",
+      term: "Sommer 2026",
+      tenant_id: "tenant-tuebingen",
+      account_type: "professor",
+      university_role: "dozent",
+      roles: ["professor"],
+      courses: [],
+    };
     vi.stubGlobal(
       "fetch",
       vi.fn((input: RequestInfo | URL) => {
@@ -125,15 +135,35 @@ describe("LecturePilot app shell", () => {
           return Promise.resolve(
             jsonResponse(
               {
-                username: "alma-professor",
-                email: "alma-professor@example.edu",
-                term: "Sommer 2026",
-                tenant_id: "tenant-tuebingen",
-                account_type: "professor",
-                university_role: "lecturer",
-                roles: ["professor"],
+                ...professorAccount,
                 csrf_token: "csrf-token-with-at-least-thirty-two-characters",
-                courses: [],
+                university_courses: [],
+                university_course_sync_status: "loading",
+              },
+              200,
+            ),
+          );
+        }
+        if (String(input).endsWith("/me")) {
+          return Promise.resolve(
+            jsonResponse(
+              {
+                ...professorAccount,
+                university_courses: [
+                  {
+                    source: "ilias",
+                    external_course_id: "crs:1234",
+                    term: "Sommer 2026",
+                    title: "Advanced Systems",
+                  },
+                  {
+                    source: "alma",
+                    external_course_id: "title:other-course",
+                    term: "Sommer 2026",
+                    title: "Other Alma Course",
+                  },
+                ],
+                university_course_sync_status: "ready",
               },
               200,
             ),
@@ -157,6 +187,14 @@ describe("LecturePilot app shell", () => {
     expect(
       await screen.findByRole("navigation", { name: /course builder progress/i }),
     ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("option", { name: "Advanced Systems" }, { timeout: 2_000 }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Other Alma Course" })).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText(/choose from alma or ilias/i), "Advanced Systems");
+
+    expect(screen.getByLabelText(/course name/i)).toHaveValue("Advanced Systems");
   });
 
   it("opens the profile view and logs out", async () => {
