@@ -270,6 +270,7 @@ export const enMessages = {
   "courseUpdate.unchanged": "{count} unchanged files need no further work.",
   "courseUpdate.newLecture": "New lecture",
   "courseUpdate.existingLecture": "Existing lecture",
+  "courseUpdate.fileOne": "1 file",
   "courseUpdate.files": "{count} files",
   "courseUpdate.number": "Number",
   "courseUpdate.title": "Title",

@@ -125,6 +125,7 @@ describe("Professor course update", () => {
     await user.click(screen.getByRole("button", { name: "Compare materials" }));
     expect(await screen.findByText("Generalization")).toBeInTheDocument();
     expect(screen.getByText("1 file compared")).toBeInTheDocument();
+    expect(screen.getByText("1 file", { exact: true })).toBeInTheDocument();
     expect(screen.getByText(/New lecture/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Apply changes and create drafts" }));
 

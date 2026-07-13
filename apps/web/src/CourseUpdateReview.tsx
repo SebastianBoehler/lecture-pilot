@@ -53,7 +53,14 @@ export function CourseUpdateReview({
                     ? t("courseUpdate.newLecture")
                     : t("courseUpdate.existingLecture")}
                 </span>
-                <span>{t("courseUpdate.files", { count: candidate.file_paths.length })}</span>
+                <span>
+                  {t(
+                    candidate.file_paths.length === 1
+                      ? "courseUpdate.fileOne"
+                      : "courseUpdate.files",
+                    { count: candidate.file_paths.length },
+                  )}
+                </span>
               </small>
             </span>
           </label>

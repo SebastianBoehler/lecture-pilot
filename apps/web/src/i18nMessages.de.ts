@@ -278,6 +278,7 @@ export const deMessages: Record<MessageKey, string> = {
   "courseUpdate.unchanged": "{count} unveränderte Dateien benötigen keine weitere Verarbeitung.",
   "courseUpdate.newLecture": "Neue Vorlesung",
   "courseUpdate.existingLecture": "Bestehende Vorlesung",
+  "courseUpdate.fileOne": "1 Datei",
   "courseUpdate.files": "{count} Dateien",
   "courseUpdate.number": "Nummer",
   "courseUpdate.title": "Titel",
