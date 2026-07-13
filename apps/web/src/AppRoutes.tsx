@@ -23,6 +23,9 @@ import type {
 } from "./types";
 
 const InfoPage = lazy(() => import("./InfoPage").then((module) => ({ default: module.InfoPage })));
+const ChangelogPage = lazy(() =>
+  import("./ChangelogPage").then((module) => ({ default: module.ChangelogPage })),
+);
 const LessonWorkspace = lazy(() =>
   import("./LessonWorkspace").then((module) => ({ default: module.LessonWorkspace })),
 );
@@ -192,6 +195,11 @@ export function AppRoutes(props: AppRoutesProps) {
         }
         onBack={() => props.onViewChange(session ? "dashboard" : "login")}
       />
+    );
+  }
+  if (view === "changelog") {
+    return deferred(
+      <ChangelogPage onBack={() => props.onViewChange(session ? "dashboard" : "login")} />,
     );
   }
   if (view === "how-it-works" || view === "learning-science" || view === "privacy") {

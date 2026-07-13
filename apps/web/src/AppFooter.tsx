@@ -1,10 +1,12 @@
 import { useI18n } from "./i18n";
 
 export function AppFooter({
+  onOpenChangelog,
   onOpenHowItWorks,
   onOpenLearningScience,
   onOpenPrivacy,
 }: {
+  onOpenChangelog: () => void;
   onOpenHowItWorks: () => void;
   onOpenLearningScience: () => void;
   onOpenPrivacy: () => void;
@@ -13,6 +15,9 @@ export function AppFooter({
   return (
     <footer className="app-footer">
       <nav aria-label={t("footer.info")}>
+        <button type="button" onClick={onOpenChangelog}>
+          {t("footer.changelog")}
+        </button>
         <button type="button" onClick={onOpenHowItWorks}>
           {t("footer.howItWorks")}
         </button>

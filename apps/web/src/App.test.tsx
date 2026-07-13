@@ -278,6 +278,14 @@ describe("LecturePilot app shell", () => {
     expect(footer).toHaveTextContent("Built with ♥ in Tübingen");
     expect(within(footer).getByRole("img", { name: "love" })).toBeInTheDocument();
 
+    await user.click(screen.getByRole("button", { name: /what's new/i }));
+
+    expect(
+      await screen.findByRole("heading", { name: /what's new in lecturepilot/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /v0\.2\.0 on github/i })).toBeInTheDocument();
+    expect(screen.getByText(/from feedback/i)).toBeInTheDocument();
+
     await user.click(screen.getByRole("button", { name: /how it works/i }));
 
     expect(

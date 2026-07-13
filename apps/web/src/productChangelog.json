@@ -1,0 +1,124 @@
+{
+  "repositoryUrl": "https://github.com/SebastianBoehler/lecture-pilot",
+  "releases": [
+    {
+      "version": "0.2.0",
+      "date": "2026-07-13",
+      "title": {
+        "en": "A complete pilot flow for students and lecturers",
+        "de": "Ein vollständiger Pilotablauf für Studierende und Lehrende"
+      },
+      "summary": {
+        "en": "University sign-in, course maintenance, adaptive tutoring, and lecturer previews now work as one connected experience.",
+        "de": "Uni-Anmeldung, Kurspflege, adaptives Tutoring und die Vorschau für Lehrende greifen jetzt als ein zusammenhängender Ablauf ineinander."
+      },
+      "changes": [
+        {
+          "title": {
+            "en": "University accounts and courses",
+            "de": "Uni-Konten und Kurse"
+          },
+          "description": {
+            "en": "Students and lecturers sign in through Alma. LecturePilot uses their verified role, preloads profile details, and shows courses from Alma and ILIAS with their source.",
+            "de": "Studierende und Lehrende melden sich über Alma an. LecturePilot übernimmt die verifizierte Rolle und Profildaten und zeigt Kurse aus Alma und ILIAS mit ihrer Quelle."
+          }
+        },
+        {
+          "title": {
+            "en": "Courses can grow during the semester",
+            "de": "Kurse können im Semester weiterwachsen"
+          },
+          "description": {
+            "en": "Lecturers can add new lecture material to an existing course, review detected lectures, and remove unwanted lectures before generation without rebuilding the course.",
+            "de": "Lehrende können neue Unterlagen zu einem bestehenden Kurs ergänzen, erkannte Vorlesungen prüfen und unerwünschte Vorlesungen vor der Generierung entfernen, ohne den Kurs neu aufzubauen."
+          },
+          "feedbackDriven": true
+        },
+        {
+          "title": {
+            "en": "A private student preview for lecturers",
+            "de": "Eine private Studierendenansicht für Lehrende"
+          },
+          "description": {
+            "en": "Lecturers can open published lectures as a student, use the tutor, and test progress and memory without accessing or changing a real student's workspace.",
+            "de": "Lehrende können veröffentlichte Vorlesungen wie Studierende öffnen und Tutor, Fortschritt und Erinnerungen testen, ohne auf den Arbeitsbereich echter Studierender zuzugreifen."
+          }
+        },
+        {
+          "title": {
+            "en": "More adaptive study guidance",
+            "de": "Adaptivere Lernbegleitung"
+          },
+          "description": {
+            "en": "A short calibration, one recommended next study step, evidence-based tutor guidance, and transparent memory controls keep the experience focused on demonstrated understanding.",
+            "de": "Eine kurze Kalibrierung, ein empfohlener nächster Lernschritt, evidenzbasierte Tutor-Hinweise und transparente Erinnerungskontrollen richten das Lernen am gezeigten Verständnis aus."
+          }
+        },
+        {
+          "title": {
+            "en": "Clearer lecturer oversight",
+            "de": "Besserer Überblick für Lehrende"
+          },
+          "description": {
+            "en": "Course performance and model usage are visible in dedicated views while private learner chats and workspaces remain separated.",
+            "de": "Kursfortschritt und Modellnutzung sind in eigenen Ansichten sichtbar, während private Chats und Arbeitsbereiche der Studierenden getrennt bleiben."
+          }
+        }
+      ]
+    },
+    {
+      "version": "0.1.0",
+      "date": "2026-07-08",
+      "title": {
+        "en": "The first LecturePilot foundation",
+        "de": "Das erste LecturePilot-Fundament"
+      },
+      "summary": {
+        "en": "The initial pilot connected course material, structured learning canvases, and a source-aware AI tutor.",
+        "de": "Der erste Pilot verband Kursmaterialien, strukturierte Lernansichten und einen quellenbasierten KI-Tutor."
+      },
+      "changes": [
+        {
+          "title": {
+            "en": "Course-aware learning workspaces",
+            "de": "Kursbezogene Lernarbeitsbereiche"
+          },
+          "description": {
+            "en": "Lecture material becomes a structured canvas with explanations, original slides, quizzes, checkpoints, and source references.",
+            "de": "Vorlesungsmaterial wird zu einer strukturierten Lernansicht mit Erklärungen, Originalfolien, Quizzen, Checkpoints und Quellenangaben."
+          }
+        },
+        {
+          "title": {
+            "en": "A tutor that works inside the course",
+            "de": "Ein Tutor, der im Kurs arbeitet"
+          },
+          "description": {
+            "en": "The tutor can explain, highlight, check understanding, and add learner-owned notes while staying inside authorized lecture material.",
+            "de": "Der Tutor kann erklären, hervorheben, Verständnis prüfen und eigene Lernnotizen ergänzen, bleibt dabei aber innerhalb freigegebener Vorlesungsmaterialien."
+          }
+        },
+        {
+          "title": {
+            "en": "Tools for lecturers",
+            "de": "Werkzeuge für Lehrende"
+          },
+          "description": {
+            "en": "Lecturers can upload material, review generated lectures, publish selected content, and inspect course-level learning signals.",
+            "de": "Lehrende können Materialien hochladen, generierte Vorlesungen prüfen, ausgewählte Inhalte veröffentlichen und Lernsignale auf Kursebene einsehen."
+          }
+        },
+        {
+          "title": {
+            "en": "Private learner state by design",
+            "de": "Private Lernstände von Grund auf"
+          },
+          "description": {
+            "en": "Course sources, professor-approved canvases, and each learner's progress, notes, and memory are stored as separate layers.",
+            "de": "Kursquellen, von Lehrenden freigegebene Lernansichten sowie Fortschritt, Notizen und Erinnerungen einzelner Lernender werden als getrennte Ebenen gespeichert."
+          }
+        }
+      ]
+    }
+  ]
+}

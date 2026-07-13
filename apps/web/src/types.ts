@@ -2,7 +2,7 @@ import type { LearningMap } from "./learningMapTypes";
 import type { UniversityEnrollmentCourse } from "./universityCourseTypes";
 
 export type Theme = "light" | "dark";
-export type InfoPageKind = "how-it-works" | "learning-science" | "privacy";
+export type InfoPageKind = "changelog" | "how-it-works" | "learning-science" | "privacy";
 export type View =
   | "login"
   | "dashboard"

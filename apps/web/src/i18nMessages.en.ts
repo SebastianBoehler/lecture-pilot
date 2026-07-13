@@ -17,9 +17,18 @@ export const enMessages = {
   "nav.logout": "Log out",
   "nav.accountControls": "Account controls",
   "footer.info": "Project information",
+  "footer.changelog": "What's new",
   "footer.howItWorks": "How it works",
   "footer.learningScience": "Learn how to learn",
   "footer.privacy": "Privacy",
+  "info.back": "Back",
+  "changelog.title": "What's new in LecturePilot",
+  "changelog.intro":
+    "A product-level history of new capabilities and improvements. Technical commits stay on GitHub; this page focuses on what changed for students and lecturers.",
+  "changelog.history": "LecturePilot release history",
+  "changelog.latest": "Latest",
+  "changelog.feedbackDriven": "From feedback",
+  "changelog.onGitHub": "on GitHub",
   "usage.title": "Usage",
   "usage.subtitle":
     "Recorded model and tutor activity across your LecturePilot courses. Learner content is never shown here.",

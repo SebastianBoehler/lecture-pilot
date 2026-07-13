@@ -19,9 +19,18 @@ export const deMessages: Record<MessageKey, string> = {
   "nav.logout": "Abmelden",
   "nav.accountControls": "Kontosteuerung",
   "footer.info": "Projektinformationen",
+  "footer.changelog": "Neuigkeiten",
   "footer.howItWorks": "So funktioniert es",
   "footer.learningScience": "Lernen lernen",
   "footer.privacy": "Datenschutz",
+  "info.back": "Zurück",
+  "changelog.title": "Neu in LecturePilot",
+  "changelog.intro":
+    "Ein produktbezogener Überblick über neue Funktionen und Verbesserungen. Technische Commits bleiben auf GitHub; hier steht, was sich für Studierende und Lehrende geändert hat.",
+  "changelog.history": "LecturePilot-Versionsverlauf",
+  "changelog.latest": "Aktuell",
+  "changelog.feedbackDriven": "Aus Feedback",
+  "changelog.onGitHub": "auf GitHub",
   "usage.title": "Nutzung",
   "usage.subtitle":
     "Erfasste Modell- und Tutoraktivität für deine LecturePilot-Kurse. Lerninhalte werden hier nie angezeigt.",
