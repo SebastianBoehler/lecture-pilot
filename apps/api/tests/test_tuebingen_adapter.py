@@ -1,8 +1,15 @@
+import json
+import logging
 from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
 
+from lecturepilot.auth_diagnostics import (
+    AUTH_DIAGNOSTIC_LOGGER,
+    AUTH_DIAGNOSTIC_PREFIX,
+    auth_diagnostic_attempt,
+)
 from lecturepilot.ilias_identity import parse_ilias_identity_profile
 from lecturepilot.tuebingen_adapter import TuebingenCourseAdapter, _alma_courses, _ilias_courses
 from lecturepilot.university_models import UniversityLoginResult
@@ -118,6 +125,55 @@ def test_login_preloads_identity_from_authenticated_ilias_profile(monkeypatch) -
 
     assert result.display_name == "Daniel Example"
     assert result.email == "daniel@example.edu"
+
+
+def test_login_diagnostics_cover_provider_steps_without_personal_data(
+    monkeypatch,
+    caplog,
+) -> None:
+    monkeypatch.setenv("LECTUREPILOT_AUTH_DIAGNOSTICS", "true")
+    client = _FakeClient()
+    client.ilias = _IdentityIlias()
+    monkeypatch.setattr(
+        "tue_api_wrapper.sdk.TuebingenAuthenticatedClient.login",
+        lambda **_: client,
+    )
+
+    with caplog.at_level(logging.WARNING, logger=AUTH_DIAGNOSTIC_LOGGER):
+        with auth_diagnostic_attempt("professor01"):
+            TuebingenCourseAdapter().login(
+                username="professor01",
+                password="secret-password",
+                term="Sommer 2026",
+            )
+
+    events = [
+        json.loads(message.removeprefix(AUTH_DIAGNOSTIC_PREFIX))
+        for message in caplog.messages
+    ]
+    successful_steps = {
+        event["step"] for event in events if event["outcome"] == "succeeded"
+    }
+    assert {
+        "wrapper.import",
+        "wrapper.client_create",
+        "alma.profile",
+        "ilias.memberships",
+        "ilias.profile",
+        "wrapper.client_close",
+        "university.result",
+    } <= successful_steps
+    profile_event = next(
+        event
+        for event in events
+        if event["step"] == "alma.profile" and event["outcome"] == "succeeded"
+    )
+    assert profile_event["current_role"] == "lecturer"
+    serialized = "\n".join(caplog.messages)
+    assert "professor01" not in serialized
+    assert "secret-password" not in serialized
+    assert "Daniel Example" not in serialized
+    assert "daniel@example.edu" not in serialized
 
 
 def test_university_role_claims_are_bounded() -> None:
