@@ -16,6 +16,8 @@ from lecturepilot.db_models import (
     SessionRecord,
 )
 from lecturepilot.external_course_sync import sync_external_courses
+from lecturepilot.identity_repository import IdentityRepository
+from lecturepilot.university_models import ExternalCourseSource, UniversityLoginResult
 from security_db_helpers import FakeUniversityAdapter, candidate, login, mutation_headers
 
 
@@ -204,6 +206,62 @@ def test_enrollment_refresh_does_not_deactivate_another_tenant(tmp_path: Path) -
 
         assert enrollments[0].status == "inactive"
         assert enrollments[1].status == "active"
+
+
+def test_login_loading_state_revokes_stale_external_access_until_fresh_sync(
+    tmp_path: Path,
+) -> None:
+    external_course = candidate("alma", "unit:secure", title="Secure Systems")
+    app = _app(tmp_path, {"student": [external_course]})
+    owner_client = TestClient(app, base_url="http://localhost:8000")
+    owner = _professor_login(app, owner_client, "owner")
+    created = owner_client.post(
+        "/admin/course-workspaces",
+        headers=mutation_headers(owner),
+        json={
+            "course_title": "Secure Systems",
+            "target": "full-course",
+            "access_policy": "tuebingen_enrolled",
+        },
+    )
+    assert created.status_code == 200
+    login(TestClient(app, base_url="http://localhost:8000"), "student")
+
+    repository = IdentityRepository(app.state.database)
+    initial = UniversityLoginResult(
+        username="student",
+        term="Sommer 2026",
+        alma_current_role="student",
+        alma_available_roles=["student"],
+    )
+    loading = repository.begin_login(initial, tenant_id="tenant-tuebingen", sync_id="fresh")
+
+    assert loading.university_course_sync_status == "loading"
+    assert loading.courses == ()
+    assert not repository.complete_course_sync(
+        initial.model_copy(
+            update={
+                "courses": [external_course],
+                "sources_checked": {ExternalCourseSource.ALMA},
+            }
+        ),
+        tenant_id="tenant-tuebingen",
+        sync_id="stale",
+    )
+    assert repository.complete_course_sync(
+        initial.model_copy(
+            update={
+                "courses": [external_course],
+                "sources_checked": {ExternalCourseSource.ALMA},
+            }
+        ),
+        tenant_id="tenant-tuebingen",
+        sync_id="fresh",
+    )
+    refreshed = repository.account(user_id=loading.user_id, tenant_id="tenant-tuebingen")
+    assert refreshed is not None
+    assert refreshed.university_course_sync_status == "ready"
+    assert [course.id for course in refreshed.courses] == [created.json()["course"]["id"]]
 
 
 def _app(tmp_path: Path, courses_by_user: dict) -> object:

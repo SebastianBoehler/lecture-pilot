@@ -13,7 +13,7 @@ from lecturepilot.providers import DEFAULT_MODEL
 from lecturepilot.session_auth import SESSION_COOKIE_NAME
 from lecturepilot.tuebingen_adapter import TuebingenIntegrationUnavailable
 from lecturepilot.university_models import ExternalCourseCandidate, UniversityLoginResult
-from auth_helpers import student_headers
+from auth_helpers import pending_university_login, student_headers
 
 
 def test_health_endpoint() -> None:
@@ -58,20 +58,23 @@ def test_tuebingen_login_returns_courses_without_echoing_password(monkeypatch) -
         "university_role": None,
         "roles": ["student"],
         "courses": [],
-        "university_courses": [
-            {
-                "source": "alma",
-                "external_course_id": "unit:42",
-                "term": "Sommer 2026",
-                "title": "Machine Learning",
-                "number": None,
-                "organization": "Department of Computer Science",
-                "instructor": None,
-                "display_url": None,
-            }
-        ],
+        "university_courses": [],
+        "university_course_sync_status": "loading",
     }
-    assert client.get("/me").json()["university_courses"] == payload["university_courses"]
+    current = client.get("/me").json()
+    assert current["university_course_sync_status"] == "ready"
+    assert current["university_courses"] == [
+        {
+            "source": "alma",
+            "external_course_id": "unit:42",
+            "term": "Sommer 2026",
+            "title": "Machine Learning",
+            "number": None,
+            "organization": "Department of Computer Science",
+            "instructor": None,
+            "display_url": None,
+        }
+    ]
 
 
 def test_tuebingen_login_reports_missing_wrapper_dependency() -> None:
@@ -234,26 +237,29 @@ def test_agent_turn_enriches_harness_with_canvas_context(monkeypatch) -> None:
 
 
 class _FakeTuebingenAdapter:
-    def login(self, *, username: str, password: str, term: str) -> UniversityLoginResult:
+    def authenticate(self, *, username: str, password: str, term: str, diagnostics=None):
         assert password == "very-secret-password"
-        return UniversityLoginResult(
-            username=username,
-            term=term,
-            courses=[
-                ExternalCourseCandidate(
-                    source="alma",
-                    external_course_id="unit:42",
-                    title="Machine Learning",
-                    organization="Department of Computer Science",
-                    term=term,
-                )
-            ],
-            sources_checked={"alma"},
+        return pending_university_login(
+            UniversityLoginResult(
+                username=username,
+                term=term,
+                courses=[
+                    ExternalCourseCandidate(
+                        source="alma",
+                        external_course_id="unit:42",
+                        title="Machine Learning",
+                        organization="Department of Computer Science",
+                        term=term,
+                    )
+                ],
+                sources_checked={"alma"},
+            ),
+            preload_profile=False,
         )
 
 
 class _UnavailableTuebingenAdapter:
-    def login(self, *, username: str, password: str, term: str) -> UniversityLoginResult:
+    def authenticate(self, *, username: str, password: str, term: str, diagnostics=None):
         raise TuebingenIntegrationUnavailable("tue-api-wrapper is not installed.")
 
 

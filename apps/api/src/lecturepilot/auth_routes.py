@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from uuid import uuid4
+
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, Response
 
 from lecturepilot.account_models import (
     AccountResponse,
@@ -20,38 +22,48 @@ from lecturepilot.identity_repository import IdentityRepository
 from lecturepilot.session_auth import SESSION_COOKIE_NAME, SessionAuthSettings
 from lecturepilot.session_cookie import attach_session_cookie, clear_session_cookie
 from lecturepilot.tenancy import TenantContext
-from lecturepilot.tuebingen_adapter import TuebingenIntegrationUnavailable, TuebingenLoginError
+from lecturepilot.tuebingen_adapter import (
+    PendingUniversityLogin,
+    TuebingenIntegrationUnavailable,
+    TuebingenLoginError,
+)
 
 
 def register_auth_routes(app: FastAPI, *, course_tenant_id: str) -> None:
     @app.post("/auth/login", response_model=LoginResult)
-    def login(input_data: TuebingenLoginInput, response: Response) -> LoginResult:
+    def login(
+        input_data: TuebingenLoginInput,
+        response: Response,
+        background_tasks: BackgroundTasks,
+    ) -> LoginResult:
         with auth_diagnostic_attempt(input_data.username) as diagnostics:
             login_started = diagnostics.started("lecturepilot.login")
             try:
                 adapter_started = diagnostics.started("university.adapter")
                 try:
-                    identity = app.state.tuebingen_adapter.login(
+                    pending = app.state.tuebingen_adapter.authenticate(
                         username=input_data.username,
                         password=input_data.password.get_secret_value(),
                         term=input_data.term,
+                        diagnostics=diagnostics,
                     )
                 except Exception as exc:
                     diagnostics.failed("university.adapter", adapter_started, exc)
                     raise
+                identity = pending.initial_identity
                 diagnostics.succeeded(
                     "university.adapter",
                     adapter_started,
                     current_role=identity.alma_current_role,
                     available_roles=identity.alma_available_roles,
-                    course_count=len(identity.courses),
-                    source_count=len(identity.sources_checked),
-                    warning_count=len(identity.warnings),
                 )
                 database_started = diagnostics.started("database.identity_sync")
                 try:
-                    account = IdentityRepository(app.state.database).record_login(
-                        identity, tenant_id=course_tenant_id
+                    sync_id = uuid4().hex
+                    account = IdentityRepository(app.state.database).begin_login(
+                        identity,
+                        tenant_id=course_tenant_id,
+                        sync_id=sync_id,
                     )
                 except Exception as exc:
                     diagnostics.failed("database.identity_sync", database_started, exc)
@@ -75,6 +87,14 @@ def register_auth_routes(app: FastAPI, *, course_tenant_id: str) -> None:
                     raise
                 response.headers[AUTH_ATTEMPT_HEADER] = diagnostics.attempt_id
                 diagnostics.succeeded("session.issue", session_started)
+                background_tasks.add_task(
+                    _complete_university_sync,
+                    app,
+                    pending,
+                    course_tenant_id,
+                    sync_id,
+                    diagnostics,
+                )
                 diagnostics.succeeded(
                     "lecturepilot.login",
                     login_started,
@@ -124,4 +144,36 @@ def _login_error(
         status_code=status_code,
         detail=referenced_error(detail, diagnostics),
         headers={AUTH_ATTEMPT_HEADER: diagnostics.attempt_id},
+    )
+
+
+def _complete_university_sync(
+    app: FastAPI,
+    pending: PendingUniversityLogin,
+    tenant_id: str,
+    sync_id: str,
+    diagnostics: AuthDiagnostics,
+) -> None:
+    started = diagnostics.started("database.course_sync")
+    repository = IdentityRepository(app.state.database)
+    try:
+        identity = pending.synchronize()
+        applied = repository.complete_course_sync(
+            identity,
+            tenant_id=tenant_id,
+            sync_id=sync_id,
+        )
+    except Exception as exc:
+        repository.fail_course_sync(
+            username=pending.initial_identity.username,
+            sync_id=sync_id,
+        )
+        diagnostics.failed("database.course_sync", started, exc)
+        return
+    diagnostics.succeeded(
+        "database.course_sync",
+        started,
+        applied=applied,
+        course_count=len(identity.courses),
+        source_count=len(identity.sources_checked),
     )

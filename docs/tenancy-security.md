@@ -54,11 +54,18 @@ returns aggregate analytics only and never accepts or returns learner identifier
 LecturePilot cannot enumerate an Alma or ILIAS catalog. A professor creates a platform course using
 title and term. On student login, only that student's own upstream memberships are considered.
 
-1. Discard upstream memberships without a stable Alma `unitId` or ILIAS course/ref ID.
+1. Treat Alma timetable titles as term-scoped evidence with a deterministic title key; require a
+   stable course/ref ID for ILIAS memberships.
 2. Reuse an existing `(tenant, source, external_course_id, term)` binding when present.
 3. Otherwise compare normalized exact title and exact term with active platform courses.
 4. Bind and enroll only when exactly one course matches. Zero or multiple matches grant nothing.
-5. After binding, the stable upstream ID remains authoritative even if the displayed title changes.
+5. ILIAS bindings remain authoritative across title changes. Alma remains exact-name-and-term based
+   because its lightweight timetable does not expose an immutable course ID.
+
+Authentication verifies the active Alma role before issuing a session. Previous Alma/ILIAS-derived
+enrollments are deactivated at that boundary; Alma timetable and ILIAS data then synchronize in
+parallel, and only the current sync attempt may restore matched course access. The dashboard polls
+`GET /me` while this work is in progress and does not treat browser course data as authority.
 
 ## Denial rules
 

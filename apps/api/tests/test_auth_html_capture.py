@@ -66,7 +66,7 @@ def test_provider_login_error_html_is_captured_before_exception(
 
     with auth_diagnostic_attempt("professor01") as diagnostics:
         with pytest.raises(RuntimeError, match="Unexpected professor login page"):
-            _prepare_authenticated_client(api, _FailingClient, "alma")
+            _prepare_authenticated_client(api, _FailingClient, "alma", diagnostics)
 
     capture_dir = tmp_path / "auth-diagnostics" / diagnostics.attempt_id
     captures = list(capture_dir.glob("*.html"))

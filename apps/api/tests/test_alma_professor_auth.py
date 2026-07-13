@@ -9,6 +9,7 @@ from lecturepilot.app import create_app
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.db_models import AuditEventRecord, ExternalIdentityRecord, UserRecord
 from lecturepilot.university_models import UniversityLoginResult
+from auth_helpers import pending_university_login
 from security_db_helpers import mutation_headers
 
 
@@ -148,14 +149,16 @@ class _RoleUniversityAdapter:
         self.roles = roles
         self.available_roles = available_roles
 
-    def login(self, *, username: str, password: str, term: str) -> UniversityLoginResult:
+    def authenticate(self, *, username: str, password: str, term: str, diagnostics=None):
         assert password
         current_role = self.roles[username]
-        return UniversityLoginResult(
-            username=username,
-            display_name=username.replace("-", " ").title(),
-            email=f"{username}@example.edu",
-            term=term,
-            alma_current_role=current_role,
-            alma_available_roles=self.available_roles.get(username, [current_role]),
+        return pending_university_login(
+            UniversityLoginResult(
+                username=username,
+                display_name=username.replace("-", " ").title(),
+                email=f"{username}@example.edu",
+                term=term,
+                alma_current_role=current_role,
+                alma_available_roles=self.available_roles.get(username, [current_role]),
+            )
         )

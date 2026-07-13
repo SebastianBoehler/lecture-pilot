@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+from threading import Lock
 from typing import Any
 from urllib.parse import urlparse
 
@@ -17,6 +18,7 @@ class AuthHtmlCapture:
     attempt_id: str
     root: Path
     sequence: int = 0
+    lock: Lock = field(default_factory=Lock, repr=False)
 
     @classmethod
     def from_environment(cls, attempt_id: str) -> AuthHtmlCapture | None:
@@ -34,16 +36,17 @@ class AuthHtmlCapture:
         if not isinstance(html, str) or not _looks_like_html(response, html):
             return None
 
-        self.sequence += 1
         status = getattr(response, "status_code", None)
         method = str(getattr(getattr(response, "request", None), "method", "response"))
         safe_method = re.sub(r"[^a-z0-9]+", "-", method.casefold()).strip("-") or "response"
         safe_status = str(status) if isinstance(status, int) else "unknown"
-        filename = f"{self.sequence:03d}-{provider}-{safe_method}-{safe_status}.html"
-        attempt_dir = self.root / self.attempt_id
-        attempt_dir.mkdir(parents=True, exist_ok=True)
-        destination = attempt_dir / filename
-        destination.write_text(html, encoding="utf-8")
+        with self.lock:
+            self.sequence += 1
+            filename = f"{self.sequence:03d}-{provider}-{safe_method}-{safe_status}.html"
+            attempt_dir = self.root / self.attempt_id
+            attempt_dir.mkdir(parents=True, exist_ok=True)
+            destination = attempt_dir / filename
+            destination.write_text(html, encoding="utf-8")
 
         details: dict[str, Any] = {
             "capture_bytes": len(html.encode("utf-8")),

@@ -99,6 +99,7 @@ function publicationPayload(url: string, published: boolean) {
 function loginPayload() {
   return {
     username: "student01",
+    display_name: "Student Example",
     email: "student01@uni-tuebingen.de",
     term: "Sommer 2026",
     tenant_id: "tenant-tuebingen",

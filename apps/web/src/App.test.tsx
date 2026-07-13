@@ -29,7 +29,7 @@ describe("LecturePilot app shell", () => {
     await logIn(user);
 
     expect(
-      await screen.findByRole("heading", { name: /welcome, student01@uni-tuebingen\.de/i }),
+      await screen.findByRole("heading", { name: /welcome, student example/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /course workspaces/i })).toBeInTheDocument();
     expect(
@@ -64,6 +64,56 @@ describe("LecturePilot app shell", () => {
     expect(window.localStorage.getItem("lecturepilot.loginSession")).not.toContain(
       "signed-test-token",
     );
+  });
+
+  it("opens the app before course synchronization and refreshes the profile in place", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/auth/login")) {
+        return Promise.resolve(
+          jsonResponse({
+            username: "student01",
+            display_name: null,
+            email: null,
+            term: "Sommer 2026",
+            tenant_id: "tenant-tuebingen",
+            account_type: "student",
+            roles: ["student"],
+            csrf_token: "csrf-token-with-at-least-thirty-two-characters",
+            courses: [],
+            university_courses: [],
+            university_course_sync_status: "loading",
+          }),
+        );
+      }
+      if (url.endsWith("/me")) {
+        return Promise.resolve(
+          jsonResponse({
+            username: "student01",
+            display_name: "Student Example",
+            email: "student01@uni-tuebingen.de",
+            tenant_id: "tenant-tuebingen",
+            account_type: "student",
+            roles: ["student"],
+            courses: [],
+            university_courses: [],
+            university_course_sync_status: "ready",
+          }),
+        );
+      }
+      return Promise.resolve(jsonResponse([]));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+
+    await logIn(user);
+
+    expect(await screen.findByRole("status")).toHaveTextContent(/loading your university courses/i);
+    expect(
+      await screen.findByRole("heading", { name: /welcome, student example/i }),
+    ).toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/me"))).toBe(true);
   });
 
   it("lands a non-student Alma account in the professor workspace", async () => {
@@ -159,7 +209,7 @@ describe("LecturePilot app shell", () => {
     await user.click(screen.getByRole("button", { name: /preview local demo/i }));
 
     expect(
-      screen.getByRole("heading", { name: /welcome, local-demo/i, level: 1 }),
+      screen.getByRole("heading", { name: /welcome, demo student/i, level: 1 }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: /grundlagen des maschinellen lernens/i, level: 1 }),

@@ -121,6 +121,8 @@ Gate 1:
 - [x] Make `request_context` load the current enabled user, membership, and session from the database.
       Remove roles and course IDs as self-contained cookie authority.
 - [x] Add `GET /me` with the server-verified account type and Alma role.
+- [x] Return from login after Alma role verification, revoke stale external enrollments, and load
+      lightweight Alma timetable plus ILIAS membership/profile data in parallel behind `GET /me`.
 - [x] Keep a platform-admin endpoint to disable accounts without granting course or learner access.
 - [x] Add a one-time operator CLI to bootstrap the first platform admin by exact external identity.
       Every bootstrap and approval action writes an audit event.
@@ -139,16 +141,16 @@ Gate 2:
 
 ## Phase 3 — Professor-owned course creation and login-time upstream matching
 
-- [x] Define an `ExternalCourseCandidate` login contract with source, stable external ID, term,
-      number, title, organization, instructor metadata, and display URL. Discard upstream rows that
-      do not expose a stable ID.
+- [x] Define an `ExternalCourseCandidate` contract with source, external key, term, title, and
+      optional display metadata. ILIAS uses its stable course/ref ID; lightweight Alma timetable
+      rows use a deterministic title-and-term key and do not trigger course-detail enrichment.
 - [x] Generate an opaque LecturePilot course UUID at professor-created course creation; no upstream
       catalog selector or platform administrator is involved.
 - [x] Match only a student's own login memberships against active platform courses using normalized
       exact title plus term. Require exactly one match; zero or multiple matches grant no access.
 - [x] After a unique title/term match, persist `(tenant, source, external_course_id, term)` in
-      `course_external_refs` and use that stable link on subsequent logins even if display metadata
-      changes.
+      `course_external_refs`. Stable ILIAS links survive display-title changes; Alma remains
+      name-and-term based because the timetable path exposes no immutable course ID.
 - [x] Upsert active `course_enrollments` from both Alma and ILIAS evidence. A failed source refresh
       preserves evidence from that source; a successful refresh marks missing evidence inactive.
 - [x] Keep platform course search and join-request workflows out of this release.
@@ -157,7 +159,8 @@ Gate 3:
 
 - [x] Two identically named platform courses in one term are treated as ambiguous and do not grant
       enrollment; different terms and stable source IDs do not collide.
-- [x] Renaming a display title does not change ownership or student enrollment after stable binding.
+- [x] Renaming a display title does not change ownership; stable ILIAS bindings also preserve student
+      enrollment after a rename.
 - [x] The creator can manage the new course; another professor cannot see or mutate it.
 - [x] A student's enrolled courses are resolved from database links, not session claims or title
       slugs after the initial unique match.

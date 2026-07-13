@@ -38,6 +38,7 @@ import { lectures } from "./sampleData";
 import { logoutSession } from "./sessionApi";
 import { isDraftPreviewRequest, useInitialDraftPreview } from "./useInitialDraftPreview";
 import { usePublishedLectures } from "./usePublishedLectures";
+import { useUniversityCourseSync } from "./useUniversityCourseSync";
 import type { WorkspaceResetSelection } from "./WorkspaceResetControl";
 import type {
   Attendance,
@@ -87,6 +88,7 @@ function App() {
     availableLectures,
     session,
   );
+  useUniversityCourseSync(session, setSession);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -98,7 +100,8 @@ function App() {
   }, [locale]);
 
   useEffect(() => {
-    if (!session || isDraftPreviewRequest()) return;
+    if (!session || session.university_course_sync_status === "loading" || isDraftPreviewRequest())
+      return;
     void loadWorkspaceCourse(session, workspaceCourseId);
   }, [session]);
 
@@ -393,7 +396,9 @@ function App() {
           onLogin={(nextSession) => {
             setSession(nextSession);
             changeView(landingView(nextSession));
-            void loadWorkspaceCourse(nextSession);
+            if (nextSession.university_course_sync_status !== "loading") {
+              void loadWorkspaceCourse(nextSession);
+            }
           }}
           onOpenDemo={() => {
             setSession(localDemoSession);

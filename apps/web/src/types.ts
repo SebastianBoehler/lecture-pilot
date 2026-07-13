@@ -238,6 +238,7 @@ export type LoginSession = {
   csrf_token?: string | null;
   courses: UniversityCourse[];
   university_courses?: UniversityEnrollmentCourse[];
+  university_course_sync_status?: "loading" | "ready" | "error";
 };
 
 export type LearningGoal = "keep_up" | "understand_deeply" | "exam_preparation";

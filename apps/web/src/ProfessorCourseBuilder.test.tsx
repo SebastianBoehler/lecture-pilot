@@ -340,7 +340,7 @@ describe("Professor course builder", () => {
 
     await user.click(screen.getByRole("button", { name: /preview local demo/i }));
 
-    expect(screen.getByRole("heading", { name: /welcome, local-demo/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /welcome/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^course builder$/i })).not.toBeInTheDocument();
   });
 });

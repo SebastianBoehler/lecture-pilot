@@ -2,7 +2,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from auth_helpers import professor_headers, student_headers
+from auth_helpers import pending_university_login, professor_headers, student_headers
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
@@ -471,21 +471,23 @@ class _FakeLectureSchedulePlanner:
 
 
 class _FakeLoginAdapter:
-    def login(self, *, username: str, password: str, term: str) -> UniversityLoginResult:
-        return UniversityLoginResult(
-            username=username,
-            email=f"{username}@uni-tuebingen.de",
-            term=term,
-            courses=[
-                ExternalCourseCandidate(
-                    source="alma",
-                    external_course_id="unit:4193",
-                    title="INFO4193 Natural Language Processing",
-                    organization="Fachbereich Informatik",
-                    term=term,
-                )
-            ],
-            sources_checked={"alma"},
+    def authenticate(self, *, username: str, password: str, term: str, diagnostics=None):
+        return pending_university_login(
+            UniversityLoginResult(
+                username=username,
+                email=f"{username}@uni-tuebingen.de",
+                term=term,
+                courses=[
+                    ExternalCourseCandidate(
+                        source="alma",
+                        external_course_id="unit:4193",
+                        title="INFO4193 Natural Language Processing",
+                        organization="Fachbereich Informatik",
+                        term=term,
+                    )
+                ],
+                sources_checked={"alma"},
+            )
         )
 
 

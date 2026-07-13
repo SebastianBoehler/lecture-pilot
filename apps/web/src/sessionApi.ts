@@ -39,3 +39,20 @@ export async function logoutSession(session: LoginSession): Promise<void> {
     ...authRequestInit(session, { method: "POST" }),
   }).catch(() => undefined);
 }
+
+export async function refreshSession(
+  session: LoginSession,
+  signal?: AbortSignal,
+): Promise<LoginSession> {
+  const response = await fetch(apiUrl("/me"), authRequestInit(session, { signal }));
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(readApiError(payload, "Account refresh failed."));
+  }
+  const account = payload as Partial<LoginSession>;
+  return {
+    ...session,
+    ...account,
+    csrf_token: account.csrf_token ?? session.csrf_token,
+  };
+}

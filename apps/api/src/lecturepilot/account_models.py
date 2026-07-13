@@ -6,7 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, SecretStr
 
 from lecturepilot.models import Course, TenantRole
-from lecturepilot.university_models import ExternalCourseCandidate
+from lecturepilot.university_models import ExternalCourseCandidate, UniversityCourseSyncStatus
 
 
 AccountType = Literal["student", "professor"]
@@ -31,6 +31,7 @@ class LoginResult(BaseModel):
     access_token: str | None = None
     courses: list[Course]
     university_courses: list[ExternalCourseCandidate] = Field(default_factory=list)
+    university_course_sync_status: UniversityCourseSyncStatus = "ready"
 
 
 class AccountResponse(BaseModel):
@@ -45,6 +46,7 @@ class AccountResponse(BaseModel):
     courses: list[Course]
     csrf_token: str | None = Field(default=None, min_length=32, max_length=200)
     university_courses: list[ExternalCourseCandidate] = Field(default_factory=list)
+    university_course_sync_status: UniversityCourseSyncStatus = "ready"
 
 
 TuebingenLoginResult = LoginResult

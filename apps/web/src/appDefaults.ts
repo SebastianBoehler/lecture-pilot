@@ -29,6 +29,7 @@ function modeLabel(attendance: Attendance) {
 
 export const localDemoSession: LoginSession = {
   username: "local-demo",
+  display_name: "Demo Student",
   email: null,
   term: "Sommer 2026",
   tenant_id: "tenant-tuebingen",

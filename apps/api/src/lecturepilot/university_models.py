@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, StringConstraints
 
@@ -10,6 +10,7 @@ AlmaRole = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=1, max_length=120),
 ]
+UniversityCourseSyncStatus = Literal["loading", "ready", "error"]
 
 
 class ExternalCourseSource(StrEnum):

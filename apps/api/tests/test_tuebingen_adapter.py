@@ -11,29 +11,34 @@ from lecturepilot.auth_diagnostics import (
     auth_diagnostic_attempt,
 )
 from lecturepilot.ilias_identity import parse_ilias_identity_profile
-from lecturepilot.tuebingen_adapter import TuebingenCourseAdapter, _alma_courses, _ilias_courses
+from lecturepilot.tuebingen_adapter import TuebingenCourseAdapter
+from lecturepilot.tuebingen_courses import _alma_courses, _ilias_courses
 from lecturepilot.university_models import UniversityLoginResult
 
 
-def test_alma_memberships_require_stable_unit_id() -> None:
-    assignments = SimpleNamespace(
-        courses=[
-            SimpleNamespace(
-                title="Secure Systems",
-                detail_url="https://alma.example/course?unitId=12345",
-            ),
-            SimpleNamespace(
-                title="Unstable Course",
-                detail_url="https://alma.example/course?title=unstable",
-            ),
+def test_alma_timetable_courses_use_stable_title_ids_without_detail_pages() -> None:
+    timetable = SimpleNamespace(
+        occurrences=[
+            SimpleNamespace(summary="Secure Systems"),
+            SimpleNamespace(summary="Secure Systems"),
+            SimpleNamespace(summary="Probabilistic Machine Learning"),
         ]
     )
 
-    courses = _alma_courses(assignments, term="Sommer 2026")
+    courses = _alma_courses(timetable, term="Sommer 2026")
 
-    assert [(course.external_course_id, course.title) for course in courses] == [
-        ("unit:12345", "Secure Systems")
+    assert [course.title for course in courses] == [
+        "Secure Systems",
+        "Probabilistic Machine Learning",
     ]
+    assert all(course.external_course_id.startswith("title:") for course in courses)
+    assert (
+        courses[0].external_course_id
+        == _alma_courses(
+            SimpleNamespace(occurrences=[SimpleNamespace(summary="Secure Systems")]),
+            term="Sommer 2026",
+        )[0].external_course_id
+    )
 
 
 def test_ilias_memberships_require_stable_course_reference() -> None:
@@ -89,27 +94,32 @@ def test_ilias_identity_profile_rejects_malformed_email() -> None:
     assert identity.email is None
 
 
-def test_login_reads_server_verified_alma_role_even_without_course_data(monkeypatch) -> None:
+def test_authenticate_reads_server_verified_alma_role_before_course_sync(monkeypatch) -> None:
     client = _FakeClient()
     monkeypatch.setattr(
         "tue_api_wrapper.sdk.TuebingenAuthenticatedClient.login",
         lambda **_: client,
     )
 
-    result = TuebingenCourseAdapter().login(
+    login = TuebingenCourseAdapter().authenticate(
         username="professor01",
         password="secret",
         term="Sommer 2026",
     )
 
-    assert result.alma_current_role == "lecturer"
-    assert result.alma_available_roles == ["lecturer", "examiner"]
+    assert login.initial_identity.alma_current_role == "lecturer"
+    assert login.initial_identity.alma_available_roles == ["lecturer", "examiner"]
+    assert login.initial_identity.courses == []
+    assert not client.closed
+
+    result = login.synchronize()
+
     assert result.courses == []
     assert result.sources_checked == set()
     assert client.closed
 
 
-def test_login_preloads_identity_from_authenticated_ilias_profile(monkeypatch) -> None:
+def test_course_sync_preloads_identity_from_authenticated_ilias_profile(monkeypatch) -> None:
     client = _FakeClient()
     client.ilias = _IdentityIlias()
     monkeypatch.setattr(
@@ -117,11 +127,12 @@ def test_login_preloads_identity_from_authenticated_ilias_profile(monkeypatch) -
         lambda **_: client,
     )
 
-    result = TuebingenCourseAdapter().login(
+    login = TuebingenCourseAdapter().authenticate(
         username="professor01",
         password="secret",
         term="Sommer 2026",
     )
+    result = login.synchronize()
 
     assert result.display_name == "Daniel Example"
     assert result.email == "daniel@example.edu"
@@ -141,19 +152,17 @@ def test_login_diagnostics_cover_provider_steps_without_personal_data(
 
     with caplog.at_level(logging.WARNING, logger=AUTH_DIAGNOSTIC_LOGGER):
         with auth_diagnostic_attempt("professor01"):
-            TuebingenCourseAdapter().login(
+            login = TuebingenCourseAdapter().authenticate(
                 username="professor01",
                 password="secret-password",
                 term="Sommer 2026",
             )
+            login.synchronize()
 
     events = [
-        json.loads(message.removeprefix(AUTH_DIAGNOSTIC_PREFIX))
-        for message in caplog.messages
+        json.loads(message.removeprefix(AUTH_DIAGNOSTIC_PREFIX)) for message in caplog.messages
     ]
-    successful_steps = {
-        event["step"] for event in events if event["outcome"] == "succeeded"
-    }
+    successful_steps = {event["step"] for event in events if event["outcome"] == "succeeded"}
     assert {
         "wrapper.import",
         "wrapper.client_create",
@@ -161,7 +170,7 @@ def test_login_diagnostics_cover_provider_steps_without_personal_data(
         "ilias.memberships",
         "ilias.profile",
         "wrapper.client_close",
-        "university.result",
+        "university.sync",
     } <= successful_steps
     profile_event = next(
         event
@@ -203,8 +212,11 @@ class _FakeAlma:
             available_roles=("lecturer", "examiner"),
         )
 
-    def timetable_course_assignments(self, *_args, **_kwargs):
+    def timetable(self, *_args, **_kwargs):
         raise RuntimeError("No staff timetable available")
+
+    def timetable_course_assignments(self, *_args, **_kwargs):
+        raise AssertionError("LecturePilot must not request enriched Alma course assignments")
 
 
 def _unavailable():

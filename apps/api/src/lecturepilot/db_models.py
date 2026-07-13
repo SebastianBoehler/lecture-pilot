@@ -49,6 +49,8 @@ class ExternalIdentityRecord(Base):
     subject: Mapped[str] = mapped_column(String(200), nullable=False)
     email: Mapped[str | None] = mapped_column(String(320))
     provider_claims: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    course_sync_id: Mapped[str | None] = mapped_column(String(32))
+    course_sync_status: Mapped[str] = mapped_column(String(20), nullable=False, default="ready")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     last_login_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 

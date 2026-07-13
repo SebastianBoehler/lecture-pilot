@@ -6,6 +6,7 @@ import type { Attendance, Lecture, LoginSession, UniversityCourse } from "./type
 import { ExamReadinessPanel } from "./ExamReadinessPanel";
 import { LearnerOnboarding } from "./LearnerOnboarding";
 import { NextStudyRecommendation } from "./NextStudyRecommendation";
+import { CourseSyncEmpty, CourseSyncSkeleton } from "./CourseSyncState";
 import type { LearnerProfileState } from "./useLearnerProfile";
 
 const LECTURE_PREVIEW_COUNT = 2;
@@ -28,11 +29,13 @@ export function Dashboard({
   onSetAttendance: (lectureId: string, attendance: Attendance) => void;
 }) {
   const { t } = useI18n();
-  const studentLabel = session?.email ?? session?.username ?? "student";
+  const studentName = session?.display_name?.trim();
+  const syncStatus = session?.university_course_sync_status ?? "ready";
   const courseGroups = buildCourseGroups(session, workspaceCourse, lectures, publishedLectureIds, {
     aiTutorAvailable: t("dashboard.aiTutorAvailable"),
     noTutor: t("dashboard.noTutor"),
   });
+  const visibleCourseGroups = syncStatus === "loading" ? [] : courseGroups;
   const [openCourses, setOpenCourses] = useState<Record<string, boolean>>({});
   const [expandedLectureLists, setExpandedLectureLists] = useState<Record<string, boolean>>({});
   const workspaceLectures = publishedCourseLectures(lectures, publishedLectureIds);
@@ -43,7 +46,11 @@ export function Dashboard({
   return (
     <main className="dashboard">
       <section className="dashboard-header">
-        <h1>{t("dashboard.welcome", { student: studentLabel })}</h1>
+        <h1>
+          {studentName
+            ? t("dashboard.welcomeNamed", { student: studentName })
+            : t("dashboard.welcome")}
+        </h1>
         <p>{t("dashboard.subtitle")}</p>
       </section>
 
@@ -58,7 +65,11 @@ export function Dashboard({
           <h2 id="course-workspaces">{t("dashboard.courseWorkspaces")}</h2>
         </div>
         <div className="course-workspace-list">
-          {courseGroups.map((group) => {
+          {syncStatus === "loading" ? <CourseSyncSkeleton /> : null}
+          {syncStatus !== "loading" && courseGroups.length === 0 ? (
+            <CourseSyncEmpty failed={syncStatus === "error"} />
+          ) : null}
+          {visibleCourseGroups.map((group) => {
             const { course, sources, status, statusLabel, tutorAvailable, courseLectures } = group;
             const courseOpen = openCourses[course.id] ?? tutorAvailable;
             const allLecturesShown = expandedLectureLists[course.id] ?? false;

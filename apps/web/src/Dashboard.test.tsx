@@ -9,6 +9,7 @@ import type { LoginSession } from "./types";
 
 const realSession: LoginSession = {
   username: "zxoic73",
+  display_name: "Sebastian Böhler",
   email: "zxoic73@uni-tuebingen.de",
   term: "Sommer 2026",
   roles: ["student"],
@@ -95,6 +96,30 @@ describe("Dashboard course workspace matching", () => {
     expect(
       within(workspaceArticleElement).getByRole("button", { name: /open lecture 03/i }),
     ).toBeInTheDocument();
+  });
+
+  it("greets the learner by profile name instead of email or username", () => {
+    renderDashboard(realSession, false);
+
+    expect(screen.getByRole("heading", { name: "Welcome, Sebastian Böhler" })).toBeInTheDocument();
+    expect(screen.queryByText(/zxoic73@uni-tuebingen.de/)).not.toBeInTheDocument();
+  });
+
+  it("shows course skeletons while university data synchronizes", () => {
+    renderDashboard(
+      {
+        ...realSession,
+        courses: [],
+        university_courses: [],
+        university_course_sync_status: "loading",
+      },
+      false,
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent("Loading your university courses");
+    expect(
+      screen.queryByRole("heading", { name: /natural language processing/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("honors the local demo bridge for non-enrolled accounts", () => {

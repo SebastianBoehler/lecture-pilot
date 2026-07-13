@@ -51,6 +51,8 @@ This repository is intentionally small but runnable:
 - React/Vite frontend with dashboard and focused lesson workspace.
 - Unified TUE API login for students and professors, with the active
   Alma role verified by the backend.
+- Login returns after role verification; lightweight Alma timetable and ILIAS
+  membership/profile data then synchronize in parallel behind the dashboard.
 - The active Alma `student` role grants learner access; any other verified Alma
   role grants professor access. Browser-selected roles are never accepted.
 - Postgres-backed users, opaque sessions,

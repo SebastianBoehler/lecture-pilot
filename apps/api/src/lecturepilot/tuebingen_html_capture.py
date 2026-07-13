@@ -2,33 +2,31 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from lecturepilot.auth_diagnostics import current_auth_diagnostics
+from lecturepilot.auth_diagnostics import AuthDiagnostics
 
 
-def prepare_alma_html_capture(api: Any) -> None:
-    diagnostics = current_auth_diagnostics()
+def prepare_alma_html_capture(api: Any, diagnostics: AuthDiagnostics) -> None:
     if not diagnostics.html_capture_enabled:
         return
     from tue_api_wrapper.client import AlmaClient
 
-    _prepare_authenticated_client(api, AlmaClient, "alma")
+    _prepare_authenticated_client(api, AlmaClient, "alma", diagnostics)
 
 
-def prepare_ilias_html_capture(api: Any) -> None:
-    diagnostics = current_auth_diagnostics()
+def prepare_ilias_html_capture(api: Any, diagnostics: AuthDiagnostics) -> None:
     if not diagnostics.html_capture_enabled:
         return
     from tue_api_wrapper.ilias_client import IliasClient
 
-    _prepare_authenticated_client(api, IliasClient, "ilias")
+    _prepare_authenticated_client(api, IliasClient, "ilias", diagnostics)
 
 
 def _prepare_authenticated_client(
     api: Any,
     client_factory: Callable[[], Any],
     provider: str,
+    diagnostics: AuthDiagnostics,
 ) -> None:
-    diagnostics = current_auth_diagnostics()
     existing = getattr(api, "_client", None)
     if existing is not None:
         _install_hook(existing, diagnostics.response_hook(provider))

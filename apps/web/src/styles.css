@@ -2,6 +2,7 @@
 @import "./login.css";
 @import "./dashboard.css";
 @import "./dashboard-course-status.css";
+@import "./course-sync.css";
 @import "./learner-profile.css";
 @import "./onboarding.css";
 @import "./exam-readiness.css";

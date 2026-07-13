@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import type { LoginSession } from "./types";
 
@@ -7,10 +7,10 @@ const loginSessionKey = "lecturepilot.loginSession";
 export function useStoredLoginSession() {
   const [session, setSessionState] = useState<LoginSession | null>(readStoredLoginSession);
 
-  function setSession(nextSession: LoginSession | null) {
+  const setSession = useCallback((nextSession: LoginSession | null) => {
     writeStoredLoginSession(nextSession);
     setSessionState(nextSession);
-  }
+  }, []);
 
   return [session, setSession] as const;
 }

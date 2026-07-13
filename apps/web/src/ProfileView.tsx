@@ -13,6 +13,7 @@ export function ProfileView({
   learnerProfileState?: LearnerProfileState;
 }) {
   const { t } = useI18n();
+  const syncLoading = session.university_course_sync_status === "loading";
   return (
     <main className="profile-screen">
       <section className="profile-panel" aria-labelledby="profile-heading">
@@ -31,7 +32,9 @@ export function ProfileView({
         <dl className="profile-fields">
           <div>
             <dt>{t("profile.name")}</dt>
-            <dd>{session.display_name || t("profile.notLoaded")}</dd>
+            <dd>
+              {session.display_name || t(syncLoading ? "profile.loading" : "profile.notLoaded")}
+            </dd>
           </div>
           <div>
             <dt>{t("profile.username")}</dt>
@@ -39,7 +42,7 @@ export function ProfileView({
           </div>
           <div>
             <dt>{t("profile.email")}</dt>
-            <dd>{session.email || t("profile.notLoaded")}</dd>
+            <dd>{session.email || t(syncLoading ? "profile.loading" : "profile.notLoaded")}</dd>
           </div>
           {session.university_role ? (
             <div>
@@ -53,7 +56,7 @@ export function ProfileView({
           </div>
           <div>
             <dt>{t("profile.courses")}</dt>
-            <dd>{session.courses.length}</dd>
+            <dd>{syncLoading ? t("profile.loading") : session.courses.length}</dd>
           </div>
         </dl>
 
@@ -73,6 +76,10 @@ export function ProfileView({
                 <span>{course.term}</span>
               </article>
             ))}
+            {!syncLoading && session.courses.length === 0 ? (
+              <p className="workspace-empty">{t("profile.noWorkspaces")}</p>
+            ) : null}
+            {syncLoading ? <p className="workspace-empty">{t("profile.loadingCourses")}</p> : null}
           </div>
         </section>
       </section>

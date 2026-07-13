@@ -27,6 +27,27 @@ describe("ProfileView", () => {
     expect(screen.getByText("Daniel Example")).toBeInTheDocument();
     expect(screen.getByText("professor@example.edu")).toBeInTheDocument();
     expect(screen.queryByText(/professor access/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /request professor approval/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /request professor approval/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("distinguishes pending university data from joined LecturePilot workspaces", () => {
+    const session: LoginSession = {
+      username: "student01",
+      term: "Sommer 2026",
+      account_type: "student",
+      roles: ["student"],
+      courses: [],
+      university_course_sync_status: "loading",
+    };
+
+    renderWithI18n(<ProfileView session={session} />);
+
+    expect(screen.getByText("LecturePilot courses")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Your LecturePilot workspaces" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Your LecturePilot workspaces are loading.")).toBeInTheDocument();
   });
 });

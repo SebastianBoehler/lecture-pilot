@@ -1,0 +1,51 @@
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.course-sync-skeleton-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.course-sync-skeleton-row:last-child {
+  border-bottom: 0;
+}
+
+.course-sync-skeleton-title,
+.course-sync-skeleton-status {
+  display: block;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--color-border-primary);
+  animation: course-sync-pulse 1.3s ease-in-out infinite alternate;
+}
+
+.course-sync-skeleton-title {
+  width: min(52%, 360px);
+}
+
+.course-sync-skeleton-status {
+  width: 110px;
+}
+
+@keyframes course-sync-pulse {
+  to {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .course-sync-skeleton-title,
+  .course-sync-skeleton-status {
+    animation: none;
+  }
+}
