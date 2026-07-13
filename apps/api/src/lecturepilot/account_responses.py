@@ -12,6 +12,7 @@ def login_result(
 ) -> LoginResult:
     return LoginResult(
         username=account.username,
+        display_name=account.display_name,
         email=account.email,
         term=term,
         tenant_id=account.tenant_id,
@@ -28,6 +29,7 @@ def account_response(account: AccountView) -> AccountResponse:
     return AccountResponse(
         user_id=account.user_id,
         username=account.username,
+        display_name=account.display_name,
         email=account.email,
         tenant_id=account.tenant_id,
         account_type=account.account_type,

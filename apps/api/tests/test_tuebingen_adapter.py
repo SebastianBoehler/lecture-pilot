@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 from pydantic import ValidationError
 
+from lecturepilot.ilias_identity import parse_ilias_identity_profile
 from lecturepilot.tuebingen_adapter import TuebingenCourseAdapter, _alma_courses, _ilias_courses
 from lecturepilot.university_models import UniversityLoginResult
 
@@ -55,6 +56,32 @@ def test_ilias_memberships_require_stable_course_reference() -> None:
     ]
 
 
+def test_ilias_identity_profile_reads_account_managed_name_and_email() -> None:
+    identity = parse_ilias_identity_profile(
+        """
+        <input id="usr_firstname" name="usr_firstname" value="Daniel">
+        <input id="usr_lastname" name="usr_lastname" value="Example">
+        <input id="usr_email" name="usr_email" value="daniel@example.edu">
+        """
+    )
+
+    assert identity.display_name == "Daniel Example"
+    assert identity.email == "daniel@example.edu"
+
+
+def test_ilias_identity_profile_rejects_malformed_email() -> None:
+    identity = parse_ilias_identity_profile(
+        """
+        <input id="usr_firstname" value="Daniel">
+        <input id="usr_lastname" value="Example">
+        <input id="usr_email" value="not an email">
+        """
+    )
+
+    assert identity.display_name == "Daniel Example"
+    assert identity.email is None
+
+
 def test_login_reads_server_verified_alma_role_even_without_course_data(monkeypatch) -> None:
     client = _FakeClient()
     monkeypatch.setattr(
@@ -73,6 +100,24 @@ def test_login_reads_server_verified_alma_role_even_without_course_data(monkeypa
     assert result.courses == []
     assert result.sources_checked == set()
     assert client.closed
+
+
+def test_login_preloads_identity_from_authenticated_ilias_profile(monkeypatch) -> None:
+    client = _FakeClient()
+    client.ilias = _IdentityIlias()
+    monkeypatch.setattr(
+        "tue_api_wrapper.sdk.TuebingenAuthenticatedClient.login",
+        lambda **_: client,
+    )
+
+    result = TuebingenCourseAdapter().login(
+        username="professor01",
+        password="secret",
+        term="Sommer 2026",
+    )
+
+    assert result.display_name == "Daniel Example"
+    assert result.email == "daniel@example.edu"
 
 
 def test_university_role_claims_are_bounded() -> None:
@@ -108,3 +153,34 @@ class _FakeAlma:
 
 def _unavailable():
     raise RuntimeError("No ILIAS memberships available")
+
+
+class _IdentityIlias:
+    def __init__(self) -> None:
+        self.client = SimpleNamespace(
+            session=_IdentitySession(),
+            timeout_seconds=10,
+        )
+
+    def memberships(self):
+        return []
+
+
+class _IdentitySession:
+    def get(self, url, **_kwargs):
+        if "root/1" in url:
+            html = (
+                '<a href="/ilias.php?baseClass=ilDashboardGUI&amp;cmd=jumpToProfile">'
+                "Profil und Datenschutz</a>"
+            )
+        else:
+            html = """
+                <input id="usr_firstname" value="Daniel">
+                <input id="usr_lastname" value="Example">
+                <input id="usr_email" value="daniel@example.edu">
+            """
+        return SimpleNamespace(
+            text=html,
+            url=url,
+            raise_for_status=lambda: None,
+        )

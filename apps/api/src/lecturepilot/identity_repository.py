@@ -32,6 +32,7 @@ from lecturepilot.university_models import ExternalCourseCandidate, UniversityLo
 class AccountView:
     user_id: UUID
     username: str
+    display_name: str | None
     email: str | None
     tenant_id: str
     account_type: str
@@ -104,7 +105,7 @@ def _upsert_identity(
     )
     now = datetime.now(UTC)
     if external is None:
-        user = UserRecord()
+        user = UserRecord(display_name=identity.display_name)
         session.add(user)
         session.flush()
         external = ExternalIdentityRecord(
@@ -121,7 +122,10 @@ def _upsert_identity(
     user = session.get(UserRecord, external.user_id)
     if user is None or not user.enabled:
         raise PermissionError("This LecturePilot account is disabled.")
-    external.email = identity.email
+    if identity.display_name is not None:
+        user.display_name = identity.display_name
+    if identity.email is not None:
+        external.email = identity.email
     external.provider_claims = _provider_claims(identity)
     external.last_login_at = now
     user.updated_at = now
@@ -181,7 +185,8 @@ def _account_view(
     ).all()
     return AccountView(
         user_id=user.id,
-        username=user.display_name or external.subject,
+        username=external.subject,
+        display_name=user.display_name,
         email=external.email,
         tenant_id=membership.tenant_id,
         account_type="professor" if professor_account else "student",

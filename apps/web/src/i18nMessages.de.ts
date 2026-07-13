@@ -93,6 +93,7 @@ export const deMessages: Record<MessageKey, string> = {
   "attendance.unknown": "unbekannt",
   "profile.account": "Konto",
   "profile.title": "Profil",
+  "profile.name": "Name",
   "profile.username": "Benutzername",
   "profile.email": "E-Mail",
   "profile.universityRole": "Alma-Rolle",

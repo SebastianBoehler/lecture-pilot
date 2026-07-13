@@ -20,6 +20,7 @@ class TuebingenLoginInput(BaseModel):
 
 class LoginResult(BaseModel):
     username: str
+    display_name: str | None = None
     email: str | None = None
     term: str
     tenant_id: str = "tenant-tuebingen"
@@ -35,6 +36,7 @@ class LoginResult(BaseModel):
 class AccountResponse(BaseModel):
     user_id: UUID
     username: str
+    display_name: str | None = None
     email: str | None = None
     tenant_id: str
     account_type: AccountType

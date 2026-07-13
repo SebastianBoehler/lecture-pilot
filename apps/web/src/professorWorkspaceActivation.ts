@@ -17,7 +17,7 @@ export function courseFromSetup(courseId: string, setup: CourseSetup, session: L
   return {
     access_policy: setup.accessPolicy,
     id: courseId,
-    professor: session.email ?? session.username,
+    professor: session.display_name ?? session.email ?? session.username,
     term: session.term,
     title: setup.courseTitle,
   };

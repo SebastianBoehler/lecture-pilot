@@ -9,6 +9,7 @@ describe("ProfileView", () => {
   it("shows the Alma role without a separate professor approval flow", () => {
     const session: LoginSession = {
       username: "alma-professor",
+      display_name: "Daniel Example",
       email: "professor@example.edu",
       term: "Sommer 2026",
       tenant_id: "tenant-tuebingen",
@@ -23,6 +24,8 @@ describe("ProfileView", () => {
     renderWithI18n(<ProfileView session={session} />);
 
     expect(screen.getByText("lecturer")).toBeInTheDocument();
+    expect(screen.getByText("Daniel Example")).toBeInTheDocument();
+    expect(screen.getByText("professor@example.edu")).toBeInTheDocument();
     expect(screen.queryByText(/professor access/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /request professor approval/i })).not.toBeInTheDocument();
   });

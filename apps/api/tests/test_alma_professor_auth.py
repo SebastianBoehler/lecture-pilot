@@ -7,7 +7,7 @@ from sqlalchemy import select
 
 from lecturepilot.app import create_app
 from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.db_models import AuditEventRecord, ExternalIdentityRecord
+from lecturepilot.db_models import AuditEventRecord, ExternalIdentityRecord, UserRecord
 from lecturepilot.university_models import UniversityLoginResult
 from security_db_helpers import mutation_headers
 
@@ -25,6 +25,8 @@ def test_alma_nonstudent_role_immediately_grants_professor_access_and_is_audited
     professor = _login(client, "alma-professor")
 
     assert professor["account_type"] == "professor"
+    assert professor["display_name"] == "Alma Professor"
+    assert professor["email"] == "alma-professor@example.edu"
     assert professor["university_role"] == "lecturer"
     assert professor["roles"] == ["professor"]
     assert "professor_status" not in professor
@@ -50,6 +52,9 @@ def test_alma_nonstudent_role_immediately_grants_professor_access_and_is_audited
         assert login_event is not None
         assert login_event.details["alma_role"] == "lecturer"
         assert login_event.details["alma_available_roles"] == ["lecturer", "examiner"]
+        assert "email" not in login_event.details
+        assert "display_name" not in login_event.details
+        assert session.get(UserRecord, identity.user_id).display_name == "Alma Professor"
 
 
 def test_active_student_role_stays_student_even_with_other_available_roles(
@@ -148,6 +153,7 @@ class _RoleUniversityAdapter:
         current_role = self.roles[username]
         return UniversityLoginResult(
             username=username,
+            display_name=username.replace("-", " ").title(),
             email=f"{username}@example.edu",
             term=term,
             alma_current_role=current_role,

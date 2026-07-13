@@ -30,6 +30,10 @@ export function ProfileView({
 
         <dl className="profile-fields">
           <div>
+            <dt>{t("profile.name")}</dt>
+            <dd>{session.display_name || t("profile.notLoaded")}</dd>
+          </div>
+          <div>
             <dt>{t("profile.username")}</dt>
             <dd>{session.username}</dd>
           </div>

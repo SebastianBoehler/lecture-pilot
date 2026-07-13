@@ -4,6 +4,7 @@ import re
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+from lecturepilot.ilias_identity import fetch_ilias_identity
 from lecturepilot.university_models import (
     ExternalCourseCandidate,
     ExternalCourseSource,
@@ -36,6 +37,8 @@ class TuebingenCourseAdapter:
         courses: list[ExternalCourseCandidate] = []
         checked: set[ExternalCourseSource] = set()
         warnings: list[str] = []
+        display_name: str | None = None
+        email: str | None = None
         try:
             try:
                 profile = client.alma.profile()
@@ -55,12 +58,22 @@ class TuebingenCourseAdapter:
                 checked.add(ExternalCourseSource.ILIAS)
             except Exception:
                 warnings.append("ILIAS course membership data was unavailable for this login.")
+            else:
+                try:
+                    from tue_api_wrapper.ilias_client import ILIAS_ROOT_URL
+
+                    identity = fetch_ilias_identity(client.ilias.client, root_url=ILIAS_ROOT_URL)
+                    display_name = identity.display_name
+                    email = identity.email
+                except Exception:
+                    warnings.append("ILIAS profile data was unavailable for this login.")
         finally:
             client.close()
 
         return UniversityLoginResult(
             username=username.strip(),
-            email=_email_from_username(username),
+            display_name=display_name,
+            email=email,
             term=term,
             alma_current_role=profile.current_role,
             alma_available_roles=list(profile.available_roles),
@@ -151,8 +164,3 @@ def _read(value: Any, field: str) -> str | None:
         return None
     raw = value.get(field) if isinstance(value, dict) else getattr(value, field, None)
     return str(raw).strip() if raw not in (None, "") else None
-
-
-def _email_from_username(username: str) -> str | None:
-    cleaned = username.strip()
-    return cleaned if "@" in cleaned else None

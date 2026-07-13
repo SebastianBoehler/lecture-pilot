@@ -226,6 +226,7 @@ export type UniversityCourse = {
 
 export type LoginSession = {
   username: string;
+  display_name?: string | null;
   email?: string | null;
   term: string;
   tenant_id?: string;

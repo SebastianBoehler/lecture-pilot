@@ -87,6 +87,7 @@ export const enMessages = {
   "attendance.unknown": "unknown",
   "profile.account": "Account",
   "profile.title": "Profile",
+  "profile.name": "Name",
   "profile.username": "Username",
   "profile.email": "Email",
   "profile.universityRole": "Alma role",

@@ -48,6 +48,7 @@ def test_tuebingen_login_returns_courses_without_echoing_password(monkeypatch) -
     assert len(csrf_token) >= 32
     assert payload == {
         "username": "student01",
+        "display_name": None,
         "email": None,
         "term": "Sommer 2026",
         "tenant_id": "tenant-tuebingen",

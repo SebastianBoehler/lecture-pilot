@@ -30,6 +30,7 @@ class ExternalCourseCandidate(BaseModel):
 
 class UniversityLoginResult(BaseModel):
     username: str = Field(min_length=1, max_length=200)
+    display_name: str | None = Field(default=None, max_length=200)
     email: str | None = Field(default=None, max_length=320)
     term: str = Field(min_length=1, max_length=80)
     alma_current_role: AlmaRole | None = None
