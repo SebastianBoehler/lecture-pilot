@@ -37,7 +37,8 @@ describe("NextStudyRecommendation", () => {
     );
 
     expect(screen.getByRole("heading", { name: /next study step/i })).toBeInTheDocument();
-    expect(screen.getByText("Generalization")).toBeInTheDocument();
+    expect(screen.queryByText(/based on your progress/i)).not.toBeInTheDocument();
+    expect(screen.getByText("02 · Generalization")).toBeInTheDocument();
     expect(screen.getByText(/missed this lecture/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /start recommended lecture 02/i }));
     expect(onOpen).toHaveBeenCalledWith(candidateLectures[1]);

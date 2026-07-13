@@ -1,10 +1,16 @@
-import { CheckCircle2, Circle, LockKeyhole, PlayCircle } from "lucide-react";
+import { CheckCircle2, Circle, PlayCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { getLectureLearningMap } from "./learningMapApi";
 import { useI18n } from "./i18n";
+import type { MessageKey } from "./i18nMessages";
+import { LessonDrawerClose } from "./LessonDrawerClose";
+import { getLectureLearningMap } from "./learningMapApi";
+import { buildLearningTree, type LearningTreeBranch } from "./learningTree";
 import type { LearningMap, LearningMapGate, LearningMapNode } from "./learningMapTypes";
 import type { DocumentAnchorId, Lecture, LoginSession } from "./types";
+
+type PathStatus = "current" | "available";
+type Translator = (key: MessageKey, params?: Record<string, string | number>) => string;
 
 export function LearningPathPanel({
   activeAnchorId,
@@ -13,6 +19,7 @@ export function LearningPathPanel({
   lecture,
   passedGateIds,
   session,
+  onClose,
   onJumpAnchor,
 }: {
   activeAnchorId: DocumentAnchorId | null;
@@ -21,6 +28,7 @@ export function LearningPathPanel({
   lecture: Lecture;
   passedGateIds: string[];
   session: LoginSession;
+  onClose: () => void;
   onJumpAnchor: (anchorId: DocumentAnchorId) => void;
 }) {
   const { t } = useI18n();
@@ -50,16 +58,24 @@ export function LearningPathPanel({
     () => new Map((learningMap?.gates ?? []).map((gate) => [gate.id, gate])),
     [learningMap],
   );
-  const currentIndex = Math.max(
-    0,
-    learningMap?.nodes.findIndex((node) => isActiveNode(node, activeAnchorId, focusedSectionId)) ??
-      0,
+  const tree = useMemo(() => buildLearningTree(learningMap?.nodes ?? []), [learningMap]);
+  const indexById = useMemo(
+    () => new Map((learningMap?.nodes ?? []).map((node, index) => [node.id, index])),
+    [learningMap],
+  );
+  const titlesById = useMemo(
+    () => new Map((learningMap?.nodes ?? []).map((node) => [node.id, node.title])),
+    [learningMap],
   );
 
   return (
-    <aside className="drawer" aria-label={t("path.panel")}>
-      <div className="drawer-section">
-        <h2>{t("path.title")}</h2>
+    <aside className="drawer learning-path-drawer" id="lesson-panel" aria-label={t("path.panel")}>
+      <LessonDrawerClose returnFocusId="lesson-panel-trigger-path" onClose={onClose} />
+      <div className="drawer-section learning-path-section">
+        <header className="learning-path-heading">
+          <h2>{t("path.title")}</h2>
+          {learningMap ? <p>{learningMap.title}</p> : null}
+        </header>
         {error ? <p className="form-error">{error}</p> : null}
         {!learningMap && !error ? <p className="drawer-note">{t("path.loading")}</p> : null}
         {learningMap ? (
@@ -67,17 +83,17 @@ export function LearningPathPanel({
             className="student-path-tree"
             aria-label={t("path.list", { title: learningMap.title })}
           >
-            {learningMap.nodes.map((node, index) => (
-              <PathNode
-                active={isActiveNode(node, activeAnchorId, focusedSectionId)}
+            {tree.map((branch) => (
+              <PathBranch
+                activeAnchorId={activeAnchorId}
+                branch={branch}
+                focusedSectionId={focusedSectionId}
                 gateLookup={gatesById}
-                index={index}
-                key={node.id}
-                node={node}
+                indexById={indexById}
+                key={branch.node.id}
                 passedGateIds={passedGates}
-                status={nodeStatus(index, currentIndex)}
-                statusLabel={statusLabel(nodeStatus(index, currentIndex), t)}
                 t={t}
+                titlesById={titlesById}
                 onJumpAnchor={onJumpAnchor}
               />
             ))}
@@ -88,43 +104,63 @@ export function LearningPathPanel({
   );
 }
 
-function PathNode({
-  active,
+function PathBranch({
+  activeAnchorId,
+  branch,
+  focusedSectionId,
   gateLookup,
-  index,
-  node,
+  indexById,
   passedGateIds,
-  status,
-  statusLabel,
   t,
+  titlesById,
   onJumpAnchor,
 }: {
-  active: boolean;
+  activeAnchorId: DocumentAnchorId | null;
+  branch: LearningTreeBranch<LearningMapNode>;
+  focusedSectionId: string;
   gateLookup: Map<string, LearningMapGate>;
-  index: number;
-  node: LearningMapNode;
+  indexById: Map<string, number>;
   passedGateIds: Set<string>;
-  status: "done" | "current" | "upcoming";
-  statusLabel: string;
-  t: (key: "path.check.passed" | "path.check.gate" | "path.check.quiz") => string;
+  t: Translator;
+  titlesById: Map<string, string>;
   onJumpAnchor: (anchorId: DocumentAnchorId) => void;
 }) {
+  const { node } = branch;
+  const index = indexById.get(node.id) ?? 0;
+  const active = isActiveNode(node, activeAnchorId, focusedSectionId);
+  const status: PathStatus = active ? "current" : "available";
+  const label = statusLabel(status, t);
+  const prerequisiteTitles = node.prerequisites.map(
+    (prerequisiteId) => titlesById.get(prerequisiteId) ?? prerequisiteId,
+  );
+
   return (
     <li className={`student-path-node is-${status} ${active ? "is-active" : ""}`}>
       <button
-        aria-label={node.title}
+        aria-current={active ? "step" : undefined}
+        aria-label={`${node.title}, ${label}`}
         aria-pressed={active}
         className="student-path-node-button"
-        onClick={() => onJumpAnchor(node.section_id)}
         type="button"
+        onClick={() => onJumpAnchor(node.section_id)}
       >
-        <StatusIcon status={status} />
-        <span>
-          <span className="student-path-step">{String(index + 1).padStart(2, "0")}</span>
+        <span className="student-path-marker">
+          <StatusIcon status={status} />
+        </span>
+        <span className="student-path-node-copy">
+          <span className="student-path-node-meta">
+            <span className="student-path-step">{String(index + 1).padStart(2, "0")}</span>
+            <small>{label}</small>
+          </span>
           <strong>{node.title}</strong>
-          <small>{statusLabel}</small>
+          {prerequisiteTitles.length ? (
+            <span className="student-path-prerequisites">
+              {t("path.unlocksAfter", { prerequisites: prerequisiteTitles.join(", ") })}
+            </span>
+          ) : null}
         </span>
       </button>
+
       {node.gate_ids.length || node.quiz_ids.length ? (
         <div className="student-path-checks">
           {node.gate_ids.map((gateId) => (
@@ -147,6 +183,27 @@ function PathNode({
           ))}
         </div>
       ) : null}
+
+      {branch.children.length ? (
+        <ol
+          className={`student-path-branch ${branch.children.length === 1 ? "is-chain" : "is-fork"}`}
+        >
+          {branch.children.map((child) => (
+            <PathBranch
+              activeAnchorId={activeAnchorId}
+              branch={child}
+              focusedSectionId={focusedSectionId}
+              gateLookup={gateLookup}
+              indexById={indexById}
+              key={child.node.id}
+              passedGateIds={passedGateIds}
+              t={t}
+              titlesById={titlesById}
+              onJumpAnchor={onJumpAnchor}
+            />
+          ))}
+        </ol>
+      ) : null}
     </li>
   );
 }
@@ -162,17 +219,20 @@ function PathCheck({
 }) {
   return (
     <span className={passed ? "student-path-check is-passed" : "student-path-check"}>
-      {passed ? <CheckCircle2 size={13} /> : <Circle size={13} />}
-      {statusLabel}
+      {passed ? (
+        <CheckCircle2 aria-hidden="true" size={13} />
+      ) : (
+        <Circle aria-hidden="true" size={13} />
+      )}
+      <span>{statusLabel}</span>
       <strong>{label}</strong>
     </span>
   );
 }
 
-function StatusIcon({ status }: { status: "done" | "current" | "upcoming" }) {
-  if (status === "done") return <CheckCircle2 size={17} />;
-  if (status === "current") return <PlayCircle size={17} />;
-  return <LockKeyhole size={17} />;
+function StatusIcon({ status }: { status: PathStatus }) {
+  if (status === "current") return <PlayCircle aria-hidden="true" size={16} />;
+  return <Circle aria-hidden="true" size={15} />;
 }
 
 function isActiveNode(
@@ -180,25 +240,15 @@ function isActiveNode(
   activeAnchorId: DocumentAnchorId | null,
   focusedSectionId: string,
 ) {
+  if (!activeAnchorId) return node.section_id === focusedSectionId;
   return (
     node.section_id === activeAnchorId ||
-    node.section_id === focusedSectionId ||
-    node.gate_ids.includes(activeAnchorId ?? "") ||
-    node.quiz_ids.includes(activeAnchorId ?? "")
+    node.gate_ids.includes(activeAnchorId) ||
+    node.quiz_ids.includes(activeAnchorId)
   );
 }
 
-function nodeStatus(index: number, currentIndex: number) {
-  if (index < currentIndex) return "done";
-  if (index === currentIndex) return "current";
-  return "upcoming";
-}
-
-function statusLabel(
-  status: "done" | "current" | "upcoming",
-  t: (key: "path.status.visited" | "path.status.current" | "path.status.upcoming") => string,
-) {
-  if (status === "done") return t("path.status.visited");
+function statusLabel(status: PathStatus, t: Translator) {
   if (status === "current") return t("path.status.current");
-  return t("path.status.upcoming");
+  return t("path.status.available");
 }

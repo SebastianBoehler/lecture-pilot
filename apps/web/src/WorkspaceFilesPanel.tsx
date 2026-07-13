@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import { assetPreviewUrl } from "./assetMedia";
 import { AuthenticatedImage } from "./AuthenticatedAsset";
+import { LessonDrawerClose } from "./LessonDrawerClose";
 import { WorkspaceFileTree } from "./WorkspaceFileTree";
 import type { CanvasDocument, LoginSession, WorkspaceResource } from "./types";
 import { buildWorkspaceTree } from "./workspaceTree";
@@ -10,11 +11,13 @@ export function WorkspaceFilesPanel({
   canvasDocument,
   session,
   selectedResource,
+  onClose,
   onSelectResource,
 }: {
   canvasDocument: CanvasDocument | null;
   session: LoginSession;
   selectedResource: WorkspaceResource | null;
+  onClose: () => void;
   onSelectResource: (resource: WorkspaceResource) => void;
 }) {
   const nodes = useMemo(
@@ -23,7 +26,8 @@ export function WorkspaceFilesPanel({
   );
 
   return (
-    <aside className="drawer" aria-label="File workspace panel">
+    <aside className="drawer" id="lesson-panel" aria-label="File workspace panel">
+      <LessonDrawerClose returnFocusId="lesson-panel-trigger-files" onClose={onClose} />
       <div className="drawer-section">
         <h2>Workspace files</h2>
         {canvasDocument ? (

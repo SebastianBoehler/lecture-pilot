@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { CanvasBlocks } from "./CanvasBlocks";
 import { SectionSources } from "./SectionSources";
@@ -7,7 +7,6 @@ import type {
   CanvasDocument,
   CanvasSection,
   DocumentAnchorId,
-  Lecture,
   LoginSession,
   WorkspaceResource,
   CanvasBlock,
@@ -15,7 +14,6 @@ import type {
 
 export function LessonCanvas({
   canvasDocument,
-  lecture,
   focusedSectionId,
   highlightedBlockId,
   highlightedText,
@@ -28,7 +26,6 @@ export function LessonCanvas({
   session,
 }: {
   canvasDocument: CanvasDocument;
-  lecture: Lecture;
   focusedSectionId: string;
   highlightedBlockId: string | null;
   highlightedText: string | null;
@@ -40,7 +37,10 @@ export function LessonCanvas({
   onSubmitQuizAnswer: (block: CanvasBlock, answer: string, optionIndex: number) => void;
   session: LoginSession;
 }) {
+  const initialNavigationVersion = useRef(navigationVersion);
+
   useEffect(() => {
+    if (navigationVersion === initialNavigationVersion.current) return;
     const section = document.getElementById(focusedSectionId);
     if (typeof section?.scrollIntoView === "function") {
       section.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -60,12 +60,7 @@ export function LessonCanvas({
 
   return (
     <article className="canvas">
-      <p className="section-label">Lecture {lecture.number}</p>
       <h1>{canvasDocument.title}</h1>
-      <p className="lead">
-        A study document for probabilities, Bayes' rule, Naive Bayes classification, and risk-aware
-        decisions.
-      </p>
 
       {canvasDocument.sections.map((section) =>
         renderSection({

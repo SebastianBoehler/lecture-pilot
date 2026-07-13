@@ -1,4 +1,8 @@
-import type { ExamReadinessAttemptResult, ExamRevisionTask, Lecture } from "./types";
+import { useEffect, useRef } from "react";
+
+import { ExamReviewPlan } from "./ExamReviewPlan";
+import { useI18n } from "./i18n";
+import type { ExamReadinessAttemptResult, Lecture } from "./types";
 
 export function ExamReadinessResult({
   lectures,
@@ -9,70 +13,90 @@ export function ExamReadinessResult({
   onOpenLecture: (lecture: Lecture) => void;
   result: ExamReadinessAttemptResult;
 }) {
-  const ready = result.score !== null && result.score >= result.passing_score;
-  const taskGroups = groupTasks(result.tasks);
+  const { t } = useI18n();
+  const status = resultStatus(result);
+  const ready = status === "ready";
+  const rubricReviewCount = result.results.filter(
+    (item) => item.status === "needs_rubric_review",
+  ).length;
+  const score =
+    result.score === null ? t("exam.result.pendingScore") : `${Math.round(result.score * 100)}%`;
+  const headingRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
+
   return (
     <section className={`exam-result${ready ? " is-ready" : ""}`}>
-      <strong>{ready ? "Prüfungs-ready on scored checks" : "Keep reviewing"}</strong>
-      <span>
-        {result.score === null ? "Open-ended rubric review" : `${Math.round(result.score * 100)}% scored MC`}
-        {" · "}
-        {guidanceLabel(result.guidance_level)}
-      </span>
-      <p>
-        {ready
-          ? "MC answers are above the readiness threshold. Finish the rubric review tasks before relying on it."
-          : "Work through the source-linked tasks, then rerun the check."}
-      </p>
-      <div className="exam-revision-list">
-        {taskGroups.length ? (
-          taskGroups.map((group) => {
-            const lecture = lectures.find((item) => item.id === group.lectureId);
-            return (
-              <section className="exam-task-group" key={group.lectureId}>
-                <header>
-                  <strong>{group.lectureTitle}</strong>
-                  {lecture ? (
-                    <button type="button" onClick={() => onOpenLecture(lecture)}>
-                      Review lecture {lecture.number}: {lecture.title}
-                    </button>
-                  ) : null}
-                </header>
-                {group.tasks.map((task) => (
-                  <article className="exam-task" key={task.id}>
-                    <small>{task.section_title}</small>
-                    <p>{task.expected_evidence}</p>
-                    <span>{task.next_action}</span>
-                    {task.source_ref ? <code>{task.source_ref}</code> : null}
-                  </article>
-                ))}
-              </section>
-            );
-          })
-        ) : (
-          <span>No revision tasks returned.</span>
-        )}
-      </div>
+      <header className="exam-result-summary">
+        <div>
+          <h3 ref={headingRef} tabIndex={-1}>
+            {resultTitle(status, t)}
+          </h3>
+          <p>{resultHelp(status, t)}</p>
+        </div>
+        <div className="exam-score" aria-label={t("exam.result.scoreLabel", { score })}>
+          <strong>{score}</strong>
+          <span>
+            {result.score === null
+              ? t("exam.result.rubricReview")
+              : t("exam.result.target", { target: Math.round(result.passing_score * 100) })}
+          </span>
+        </div>
+      </header>
+
+      <ul className="exam-result-signals" aria-label={t("exam.result.summaryLabel")}>
+        <li>
+          <strong>{result.tasks.length}</strong> {priorityLabel(result.tasks.length, t)}
+        </li>
+        <li>
+          <strong>{rubricReviewCount}</strong> {rubricLabel(rubricReviewCount, t)}
+        </li>
+        <li>
+          <strong>{t("exam.result.support")}</strong> {guidanceLabel(result.guidance_level, t)}
+        </li>
+      </ul>
+
+      {result.tasks.length ? (
+        <ExamReviewPlan lectures={lectures} tasks={result.tasks} onOpenLecture={onOpenLecture} />
+      ) : (
+        <p className="exam-result-empty">{t("exam.result.noPriorities")}</p>
+      )}
     </section>
   );
 }
 
-function groupTasks(tasks: ExamRevisionTask[]) {
-  const groups = new Map<string, { lectureId: string; lectureTitle: string; tasks: ExamRevisionTask[] }>();
-  for (const task of tasks) {
-    const group = groups.get(task.lecture_id) ?? {
-      lectureId: task.lecture_id,
-      lectureTitle: task.lecture_title,
-      tasks: [],
-    };
-    group.tasks.push(task);
-    groups.set(task.lecture_id, group);
-  }
-  return Array.from(groups.values());
+type Translator = ReturnType<typeof useI18n>["t"];
+type ResultStatus = "pending" | "ready" | "review";
+
+function resultStatus(result: ExamReadinessAttemptResult): ResultStatus {
+  if (result.score === null) return "pending";
+  return result.score >= result.passing_score ? "ready" : "review";
 }
 
-function guidanceLabel(level: ExamReadinessAttemptResult["guidance_level"]) {
-  if (level === "challenge") return "challenge tasks";
-  if (level === "scaffolded") return "scaffolded review";
-  return "standard review";
+function resultTitle(status: ResultStatus, t: Translator) {
+  if (status === "pending") return t("exam.result.pending.title");
+  if (status === "ready") return t("exam.result.ready.title");
+  return t("exam.result.review.title");
+}
+
+function resultHelp(status: ResultStatus, t: Translator) {
+  if (status === "pending") return t("exam.result.pending.help");
+  if (status === "ready") return t("exam.result.ready.help");
+  return t("exam.result.review.help");
+}
+
+function priorityLabel(count: number, t: Translator) {
+  return t(count === 1 ? "exam.result.priority.one" : "exam.result.priority.many");
+}
+
+function rubricLabel(count: number, t: Translator) {
+  return t(count === 1 ? "exam.result.rubric.one" : "exam.result.rubric.many");
+}
+
+function guidanceLabel(level: ExamReadinessAttemptResult["guidance_level"], t: Translator) {
+  if (level === "challenge") return t("exam.result.guidance.challenge");
+  if (level === "scaffolded") return t("exam.result.guidance.scaffolded");
+  return t("exam.result.guidance.standard");
 }

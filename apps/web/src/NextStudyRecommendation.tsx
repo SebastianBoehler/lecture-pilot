@@ -17,15 +17,13 @@ export function NextStudyRecommendation({
   return (
     <section className="next-study" aria-labelledby="next-study-heading">
       <div>
-        <p className="section-label">{t("dashboard.recommendation.label")}</p>
         <h2 id="next-study-heading">{t("dashboard.recommendation.title")}</h2>
         <p>{reason(recommendation.reason, t)}</p>
       </div>
       <div className="next-study-action">
-        <span>
-          {t("dashboard.recommendation.lecture", { number: recommendation.lecture.number })}
-        </span>
-        <strong>{recommendation.lecture.title}</strong>
+        <strong>
+          {recommendation.lecture.number} · {recommendation.lecture.title}
+        </strong>
         <button type="button" onClick={() => onOpen(recommendation.lecture)}>
           {t("dashboard.recommendation.open", { number: recommendation.lecture.number })}
         </button>

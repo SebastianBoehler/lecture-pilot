@@ -25,15 +25,24 @@ describe("Lesson learning path", () => {
     const path = within(panel).getByRole("list", {
       name: /bayesian decision theory learning path/i,
     });
+    const currentStep = within(path).getByRole("button", {
+      name: /decision making under uncertainty.*current/i,
+    });
+    expect(currentStep).toHaveAttribute("aria-pressed", "true");
+    expect(currentStep).toHaveAttribute("aria-current", "step");
+    const firstBranch = currentStep.closest("li")?.querySelector(":scope > .student-path-branch");
+    expect(firstBranch).toBeInTheDocument();
     expect(
-      within(path).getByRole("button", { name: /decision making under uncertainty/i }),
-    ).toHaveAttribute("aria-pressed", "true");
-    expect(within(path).getByText(/bayesian decision theory/i)).toBeInTheDocument();
+      within(firstBranch as HTMLElement).getByRole("button", {
+        name: /bayes formula and conditional probability/i,
+      }),
+    ).toBeInTheDocument();
+    expect(within(path).getAllByText(/bayesian decision theory/i)).not.toHaveLength(0);
     expect(within(path).getAllByText(/^quiz$/i)).toHaveLength(2);
 
     await user.click(
       within(path).getByRole("button", {
-        name: /bayes formula and conditional probability/i,
+        name: /bayes formula and conditional probability.*available/i,
       }),
     );
 
@@ -42,6 +51,11 @@ describe("Lesson learning path", () => {
         screen.getByRole("region", { name: /bayes formula and conditional probability/i }),
       ).toHaveAttribute("aria-current", "true");
     });
+    expect(
+      within(path).getByRole("button", {
+        name: /decision making under uncertainty.*available/i,
+      }),
+    ).not.toHaveTextContent(/visited/i);
   });
 });
 

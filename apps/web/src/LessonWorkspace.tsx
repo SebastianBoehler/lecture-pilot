@@ -156,7 +156,6 @@ export function LessonWorkspace({
         {canvasDocument ? (
           <LessonCanvas
             canvasDocument={canvasDocument}
-            lecture={lecture}
             focusedSectionId={focusedSectionId}
             highlightedBlockId={highlightedBlockId}
             highlightedText={highlightedText}
@@ -173,45 +172,60 @@ export function LessonWorkspace({
 
       <aside className="rail" aria-label={t("lesson.controls")}>
         <button
+          id="lesson-panel-trigger-chat"
           className={panelMode === "chat" ? "rail-button is-active" : "rail-button"}
           type="button"
           aria-label={panelMode === "chat" ? t("lesson.closeChat") : t("lesson.openChat")}
+          aria-controls="lesson-panel"
+          aria-expanded={panelMode === "chat"}
           aria-pressed={panelMode === "chat"}
           onClick={() => onTogglePanel("chat")}
         >
           <MessageSquare size={18} />
         </button>
         <button
+          id="lesson-panel-trigger-outline"
           className={panelMode === "outline" ? "rail-button is-active" : "rail-button"}
           type="button"
-          aria-label={t("lesson.openOutline")}
+          aria-label={panelMode === "outline" ? t("lesson.closeOutline") : t("lesson.openOutline")}
+          aria-controls="lesson-panel"
+          aria-expanded={panelMode === "outline"}
           aria-pressed={panelMode === "outline"}
           onClick={() => onTogglePanel("outline")}
         >
           <TableOfContents size={18} />
         </button>
         <button
+          id="lesson-panel-trigger-path"
           className={panelMode === "path" ? "rail-button is-active" : "rail-button"}
           type="button"
-          aria-label={t("lesson.openPath")}
+          aria-label={panelMode === "path" ? t("lesson.closePath") : t("lesson.openPath")}
+          aria-controls="lesson-panel"
+          aria-expanded={panelMode === "path"}
           aria-pressed={panelMode === "path"}
           onClick={() => onTogglePanel("path")}
         >
           <GitBranch size={18} />
         </button>
         <button
+          id="lesson-panel-trigger-notes"
           className={panelMode === "notes" ? "rail-button is-active" : "rail-button"}
           type="button"
-          aria-label={t("lesson.openNotes")}
+          aria-label={panelMode === "notes" ? t("lesson.closeNotes") : t("lesson.openNotes")}
+          aria-controls="lesson-panel"
+          aria-expanded={panelMode === "notes"}
           aria-pressed={panelMode === "notes"}
           onClick={() => onTogglePanel("notes")}
         >
           <FileText size={18} />
         </button>
         <button
+          id="lesson-panel-trigger-files"
           className={panelMode === "files" ? "rail-button is-active" : "rail-button"}
           type="button"
-          aria-label={t("lesson.openFiles")}
+          aria-label={panelMode === "files" ? t("lesson.closeFiles") : t("lesson.openFiles")}
+          aria-controls="lesson-panel"
+          aria-expanded={panelMode === "files"}
           aria-pressed={panelMode === "files"}
           onClick={() => onTogglePanel("files")}
         >
@@ -220,12 +234,18 @@ export function LessonWorkspace({
       </aside>
 
       {panelMode === "chat" ? (
-        <TutorDrawer messages={messages} model={tutorModel} onSendMessage={onSendMessage} />
+        <TutorDrawer
+          messages={messages}
+          model={tutorModel}
+          onClose={() => onTogglePanel("chat")}
+          onSendMessage={onSendMessage}
+        />
       ) : null}
       {panelMode === "outline" ? (
         <OutlinePanel
           activeAnchorId={activeAnchorId}
           canvasDocument={canvasDocument}
+          onClose={() => onTogglePanel("outline")}
           onJumpAnchor={jumpToAnchor}
         />
       ) : null}
@@ -237,15 +257,19 @@ export function LessonWorkspace({
           lecture={lecture}
           passedGateIds={passedGateIds}
           session={session}
+          onClose={() => onTogglePanel("path")}
           onJumpAnchor={jumpToAnchor}
         />
       ) : null}
-      {panelMode === "notes" ? <NotesPanel lecture={lecture} /> : null}
+      {panelMode === "notes" ? (
+        <NotesPanel lecture={lecture} onClose={() => onTogglePanel("notes")} />
+      ) : null}
       {panelMode === "files" ? (
         <WorkspaceFilesPanel
           canvasDocument={canvasDocument}
           session={session}
           selectedResource={selectedResource}
+          onClose={() => onTogglePanel("files")}
           onSelectResource={selectWorkspaceResource}
         />
       ) : null}

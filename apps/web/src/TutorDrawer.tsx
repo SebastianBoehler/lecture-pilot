@@ -2,15 +2,18 @@ import { SendHorizontal } from "lucide-react";
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import { MathText } from "./MathText";
+import { LessonDrawerClose } from "./LessonDrawerClose";
 import type { ChatMessage } from "./types";
 
 export function TutorDrawer({
   messages,
   model,
+  onClose,
   onSendMessage,
 }: {
   messages: ChatMessage[];
   model: string | null;
+  onClose: () => void;
   onSendMessage: (message: string) => Promise<void>;
 }) {
   const [draft, setDraft] = useState("");
@@ -54,7 +57,8 @@ export function TutorDrawer({
   }
 
   return (
-    <aside className="drawer tutor-drawer" aria-label="Tutor drawer">
+    <aside className="drawer tutor-drawer" id="lesson-panel" aria-label="Tutor drawer">
+      <LessonDrawerClose returnFocusId="lesson-panel-trigger-chat" onClose={onClose} />
       <div className="drawer-section tutor-drawer-section">
         <div className="tutor-heading">
           <h2>Tutor</h2>

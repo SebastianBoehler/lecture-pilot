@@ -1,18 +1,22 @@
 import { useI18n } from "./i18n";
+import { LessonDrawerClose } from "./LessonDrawerClose";
 import type { CanvasBlock, CanvasDocument, DocumentAnchorId, Lecture } from "./types";
 
 export function OutlinePanel({
   activeAnchorId,
   canvasDocument,
+  onClose,
   onJumpAnchor,
 }: {
   activeAnchorId: DocumentAnchorId | null;
   canvasDocument: CanvasDocument | null;
+  onClose: () => void;
   onJumpAnchor: (anchorId: DocumentAnchorId) => void;
 }) {
   const { t } = useI18n();
   return (
-    <aside className="drawer" aria-label={t("outline.panel")}>
+    <aside className="drawer" id="lesson-panel" aria-label={t("outline.panel")}>
+      <LessonDrawerClose returnFocusId="lesson-panel-trigger-outline" onClose={onClose} />
       <div className="drawer-section">
         <h2>{t("outline.title")}</h2>
         <nav className="outline-tree" aria-label={t("outline.nav")}>
@@ -197,10 +201,11 @@ function outlineTextExcerpt(text: string) {
   return cleaned.split(" ").slice(0, 6).join(" ");
 }
 
-export function NotesPanel({ lecture }: { lecture: Lecture }) {
+export function NotesPanel({ lecture, onClose }: { lecture: Lecture; onClose: () => void }) {
   const { t } = useI18n();
   return (
-    <aside className="drawer" aria-label={t("notes.panel")}>
+    <aside className="drawer" id="lesson-panel" aria-label={t("notes.panel")}>
+      <LessonDrawerClose returnFocusId="lesson-panel-trigger-notes" onClose={onClose} />
       <div className="drawer-section">
         <h2>{t("notes.title")}</h2>
         <div className="source-list">

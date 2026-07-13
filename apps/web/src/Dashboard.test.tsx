@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -222,31 +222,55 @@ describe("Dashboard course workspace matching", () => {
     vi.stubGlobal("fetch", fetchMock);
     const onOpen = renderDashboard(matchedSession, true);
 
-    expect(screen.queryByRole("dialog", { name: /prüfungs-ready check/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: /exam readiness check/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /start exam check/i }));
 
-    const dialog = await screen.findByRole("dialog", { name: /prüfungs-ready check/i });
+    const dialog = await screen.findByRole("dialog", { name: /exam readiness check/i });
     const quizPrompt = await within(dialog).findByText(/which quantity should be minimized/i);
     expect(quizPrompt).toBeVisible();
+    expect(quizPrompt).toHaveFocus();
+    expect(within(dialog).getByText(/question 1 of 2/i)).toBeVisible();
+    expect(within(dialog).getByRole("button", { name: /next question/i })).toBeDisabled();
+    expect(
+      within(dialog).queryByText(/explain bayes formula as you would in an exam answer/i),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByText(/expected risk combines posterior probabilities/i),
     ).not.toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: /close exam readiness check/i }));
-    expect(screen.queryByRole("dialog", { name: /prüfungs-ready check/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: /exam readiness check/i })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: /open check/i })).toHaveFocus());
     await user.click(screen.getByRole("button", { name: /open check/i }));
 
-    const reopenedDialog = await screen.findByRole("dialog", { name: /prüfungs-ready check/i });
+    const reopenedDialog = await screen.findByRole("dialog", { name: /exam readiness check/i });
     expect(within(reopenedDialog).getByText(/which quantity should be minimized/i)).toBeVisible();
     await user.click(within(reopenedDialog).getByLabelText(/posterior probability alone/i));
+    await user.click(within(reopenedDialog).getByRole("button", { name: /next question/i }));
+    expect(within(reopenedDialog).getByText(/question 2 of 2/i)).toBeVisible();
+    expect(
+      within(reopenedDialog).getByText(/explain bayes formula as you would in an exam answer/i),
+    ).toHaveFocus();
+    expect(
+      within(reopenedDialog).queryByText(/which quantity should be minimized/i),
+    ).not.toBeInTheDocument();
     await user.type(
       within(reopenedDialog).getByPlaceholderText(/write a concise exam-style answer/i),
       "Use Bayes and compare risks.",
     );
     await user.click(within(reopenedDialog).getByRole("button", { name: /check readiness/i }));
 
-    expect(await within(reopenedDialog).findByText(/keep reviewing/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/expected risk combines posterior probabilities/i)).toHaveLength(1);
-    expect(within(reopenedDialog).getByText(/rubric review needed/i)).toBeInTheDocument();
+    expect(await within(reopenedDialog).findByText(/keep reviewing/i)).toHaveFocus();
+    expect(within(reopenedDialog).getByText("0%")).toBeInTheDocument();
+    const resultSummary = within(reopenedDialog).getByRole("list", { name: /result summary/i });
+    expect(resultSummary).toHaveTextContent(/2 priorities/i);
+    expect(resultSummary).toHaveTextContent(/1 answer needs rubric review/i);
+    expect(
+      within(reopenedDialog).getByText(/expected risk combines posterior probabilities/i),
+    ).not.toBeVisible();
+    await user.click(within(reopenedDialog).getAllByText(/source detail/i)[0]);
+    expect(
+      within(reopenedDialog).getByText(/expected risk combines posterior probabilities/i),
+    ).toBeInTheDocument();
     await user.click(within(reopenedDialog).getByRole("button", { name: /review lecture 03/i }));
     expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: "lecture-03" }));
     expect(fetchMock).toHaveBeenCalledWith(

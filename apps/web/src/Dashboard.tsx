@@ -133,6 +133,7 @@ export function Dashboard({
                             </p>
                             <div
                               className="attendance-control"
+                              role="group"
                               aria-label={t("dashboard.attendanceFor", {
                                 lecture: lecture.title,
                               })}
