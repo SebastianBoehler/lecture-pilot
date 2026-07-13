@@ -12,6 +12,7 @@ from lecturepilot.course_canvas_json import parse_model_json
 from lecturepilot.lecture_date_extraction import extract_source_date
 from lecturepilot.lecture_schedule import propose_lecture_schedule
 from lecturepilot.model_client import ModelExecutionError
+from lecturepilot.model_request_options import completion_options
 from lecturepilot.models import LectureScheduleItem, LectureScheduleProposal, ProviderCapability, ProviderSettings
 from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
 from lecturepilot.source_bundle import SourceBundleFile
@@ -37,9 +38,8 @@ class LiteLLMScheduleClient:
             response = await acompletion(
                 model=settings.model,
                 messages=messages,
-                max_tokens=8000,
-                temperature=0.1,
                 response_format=lecture_schedule_response_format(),
+                **completion_options(settings, temperature=0.1, max_tokens=8000),
             )
         except Exception as exc:
             raise ModelExecutionError("Lecture schedule model request failed.") from exc

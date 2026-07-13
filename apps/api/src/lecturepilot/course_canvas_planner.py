@@ -16,6 +16,7 @@ from lecturepilot.course_canvas_validation import validate_planned_document
 from lecturepilot.course_slide_interleaving import interleave_original_slides
 from lecturepilot.course_planner_warnings import planned_payload, with_payload_warnings
 from lecturepilot.model_client import ModelExecutionError
+from lecturepilot.model_request_options import completion_options
 from lecturepilot.models import ProviderCapability, ProviderSettings
 from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
 
@@ -35,9 +36,8 @@ class LiteLLMCoursePlanClient:
             response = await acompletion(
                 model=settings.model,
                 messages=messages,
-                max_tokens=18000,
-                temperature=0.2,
                 response_format=course_canvas_response_format(),
+                **completion_options(settings, temperature=0.2, max_tokens=18000),
             )
         except Exception as exc:
             raise ModelExecutionError("Course planner model request failed.") from exc

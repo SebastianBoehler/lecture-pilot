@@ -11,6 +11,7 @@ from lecturepilot.agent_response_schema import lecturepilot_response_format
 from lecturepilot.learning_gates import gate_rubric_context
 from lecturepilot.model_commands import canvas_context
 from lecturepilot.model_payload import agent_result_from_content
+from lecturepilot.model_request_options import completion_options
 from lecturepilot.models import (
     AgentTurnInput,
     AgentTurnResult,
@@ -71,8 +72,8 @@ class LiteLLMModelClient:
             response = await acompletion(
                 model=settings.model,
                 messages=_messages(turn),
-                temperature=0.3,
                 response_format=lecturepilot_response_format(),
+                **completion_options(settings, temperature=0.3, reasoning_effort="low"),
             )
         except ProviderConfigurationError:
             raise

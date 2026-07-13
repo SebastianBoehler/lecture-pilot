@@ -8,6 +8,7 @@ from lecturepilot.agent_tool_executor import AgentToolExecutor
 from lecturepilot.agent_response_schema import lecturepilot_response_format
 from lecturepilot.agent_tool_schemas import AgentToolProfile, agent_tool_names, agent_tool_schemas
 from lecturepilot.model_payload import agent_result_from_content
+from lecturepilot.model_request_options import completion_options
 from lecturepilot.models import AgentTurnInput, AgentTurnResult, ProviderSettings
 from lecturepilot.observability import Observability
 from lecturepilot.providers import ProviderConfigurationError
@@ -32,7 +33,7 @@ async def complete_tool_turn(
             messages=messages,
             tools=agent_tool_schemas(tool_profile),
             tool_choice="auto",
-            temperature=0.3,
+            **completion_options(settings, temperature=0.3, reasoning_effort="low"),
         )
         response_message = response.choices[0].message
         tool_calls = _tool_calls(response_message)
@@ -131,8 +132,8 @@ async def _final_json_response(
                 ),
             },
         ],
-        temperature=0.3,
         response_format=lecturepilot_response_format(),
+        **completion_options(settings, temperature=0.3, reasoning_effort="low"),
     )
     return agent_result_from_content(_message_content(response.choices[0].message), turn, settings.model)
 
