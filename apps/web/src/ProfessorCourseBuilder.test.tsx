@@ -38,6 +38,7 @@ describe("Professor course builder", () => {
     expect(
       screen.getByRole("heading", { name: /define course and lecture scope/i }),
     ).toBeInTheDocument();
+    expect(screen.queryByText(/course builder\s*·/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /upload materials/i })).not.toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: /live course analytics/i }),
@@ -80,11 +81,16 @@ describe("Professor course builder", () => {
     expect(await screen.findByRole("heading", { name: /upload materials/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /02 upload/i }));
-    expect(screen.getByText(/drop course folder here/i)).toBeInTheDocument();
+    expect(screen.getByText(/drop a folder or files here/i)).toBeInTheDocument();
     expect(screen.getByText(/choose a folder or files/i)).toBeInTheDocument();
-    expect(screen.getByText(/build and system files are ignored automatically/i)).toBeInTheDocument();
+    expect(screen.getByText(/^choose files$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^choose folder$/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/workspace folder/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/build and system files are ignored automatically/i),
+    ).toBeInTheDocument();
     await user.upload(
-      screen.getByLabelText(/upload course material/i),
+      screen.getByLabelText(/^choose files$/i),
       new File(["# extra note"], "supplement.md", { type: "text/markdown" }),
     );
     expect(screen.getByRole("button", { name: /upload and process materials/i })).toHaveClass(
@@ -93,6 +99,11 @@ describe("Professor course builder", () => {
     expect(screen.queryByRole("button", { name: /scan uploaded bundle/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /upload and process materials/i }));
     expect(await screen.findByText(/uploaded uploads\/supplement\.md/i)).toBeInTheDocument();
+    const materialUploadCall = fetchMock.mock.calls.find(
+      ([url, init]) => String(url).includes("/materials") && init?.method === "POST",
+    );
+    expect(materialUploadCall?.[1]?.body).toBeInstanceOf(FormData);
+    expect((materialUploadCall?.[1]?.body as FormData).get("path")).toBe("uploads/supplement.md");
     expect(screen.getByRole("heading", { name: /review youtube candidates/i })).toBeInTheDocument();
     expect(screen.getByText(/videos are saved directly for lecture 03/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /04 generate/i })).toBeDisabled();
@@ -110,7 +121,9 @@ describe("Professor course builder", () => {
     await user.click(candidate);
     expect(await screen.findByText(/saved 1 approved video for lecture 03/i)).toBeInTheDocument();
     expect(candidate).toBeChecked();
-    expect(screen.queryByRole("button", { name: /include selected videos/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /include selected videos/i }),
+    ).not.toBeInTheDocument();
 
     await user.click(candidate);
     expect(await screen.findByText(/removed video from lecture 03/i)).toBeInTheDocument();
@@ -150,10 +163,10 @@ describe("Professor course builder", () => {
     ).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^course performance$/i }));
     expect(await screen.findByRole("heading", { name: /course performance/i })).toBeInTheDocument();
-    expect(screen.queryByRole("navigation", { name: /performance course scope/i })).not.toBeInTheDocument();
     expect(
-      await screen.findByRole("heading", { name: /demo ml course/i }),
-    ).toBeInTheDocument();
+      screen.queryByRole("navigation", { name: /performance course scope/i }),
+    ).not.toBeInTheDocument();
+    expect(await screen.findByText(/^demo ml course$/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /refresh analytics/i }));
     expect(await screen.findByText("Events")).toBeInTheDocument();
     expect(screen.getAllByText("Quiz success").length).toBeGreaterThan(0);
@@ -212,7 +225,7 @@ describe("Professor course builder", () => {
     await user.type(screen.getByLabelText(/course name/i), "Demo ML Course");
     await user.click(screen.getByRole("button", { name: /create course workspace/i }));
     await user.upload(
-      await screen.findByLabelText(/upload course material/i),
+      await screen.findByLabelText(/^choose files$/i),
       new File(["# lecture one"], "Lecture01-eng.tex", { type: "application/x-tex" }),
     );
     await user.click(screen.getByRole("button", { name: /upload and process materials/i }));
@@ -274,7 +287,6 @@ describe("Professor course builder", () => {
         },
         workspace: { courseId: "demo-ml-course", lectureId: "lecture-01" },
         courseReady: true,
-        uploadPath: "uploads",
         bundleReady: true,
         canvasReady: true,
         lectureSchedule: [],
@@ -333,7 +345,7 @@ describe("Professor course builder", () => {
     await user.type(screen.getByLabelText(/lecture title/i), "Bayesian Decision Theory");
     await user.click(screen.getByRole("button", { name: /create course workspace/i }));
     await user.upload(
-      await screen.findByLabelText(/upload course material/i),
+      await screen.findByLabelText(/^choose files$/i, {}, { timeout: 3_000 }),
       new File(["# extra note"], "supplement.md", { type: "text/markdown" }),
     );
     await user.click(screen.getByRole("button", { name: /upload and process materials/i }));

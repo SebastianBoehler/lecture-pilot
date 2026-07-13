@@ -53,7 +53,7 @@ export function ProfessorLectureSchedule({
               <label>
                 {t("builder.schedule.date")}
                 <input
-                  placeholder="YYYY-MM-DD"
+                  type="date"
                   value={lecture.date}
                   onChange={(event) =>
                     onChange(updateSchedule(schedule, index, "date", event.target.value))

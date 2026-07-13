@@ -21,7 +21,7 @@ describe("professor material uploads", () => {
 
     const [dropped] = await materialFilesFromDrop(transfer);
 
-    expect(uploadDestination("uploads", dropped, 3)).toBe("uploads/course-folder/Lecture01-eng.tex");
+    expect(uploadDestination(dropped)).toBe("uploads/course-folder/Lecture01-eng.tex");
   });
 
   it("keeps nested picker paths", () => {
@@ -30,7 +30,7 @@ describe("professor material uploads", () => {
       value: "slides/week-02/Lecture02-eng.tex",
     });
 
-    expect(uploadDestination("uploads", file, 2)).toBe("uploads/slides/week-02/Lecture02-eng.tex");
+    expect(uploadDestination(file)).toBe("uploads/slides/week-02/Lecture02-eng.tex");
   });
 
   it("continues folder retries past files that were already uploaded", () => {

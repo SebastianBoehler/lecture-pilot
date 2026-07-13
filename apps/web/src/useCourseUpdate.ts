@@ -99,7 +99,7 @@ export function useCourseUpdate(
         setUpdateId(created.update_id);
         const skipped: string[] = [];
         await uploadPool(files, 6, async (file) => {
-          const path = uploadDestination("uploads", file, files.length);
+          const path = uploadDestination(file);
           try {
             await uploadCourseUpdateMaterial({
               courseId: workspace.course.id,

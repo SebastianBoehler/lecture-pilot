@@ -22,7 +22,7 @@ describe("Professor lecture media search", () => {
     await user.type(screen.getByLabelText(/course name/i), "Demo ML Course");
     await user.click(screen.getByRole("button", { name: /create course workspace/i }));
     await user.upload(
-      await screen.findByLabelText(/upload course material/i),
+      await screen.findByLabelText(/^choose files$/i),
       new File(["# lecture one"], "Lecture01-eng.tex", { type: "application/x-tex" }),
     );
     await user.click(screen.getByRole("button", { name: /upload and process materials/i }));

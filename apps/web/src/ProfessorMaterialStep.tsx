@@ -17,9 +17,7 @@ export function ProfessorMaterialStep({
   onUpload,
   onUploadFilesChange,
   pendingAction,
-  setUploadPath,
   uploadFiles,
-  uploadPath,
   workspaceReady,
 }: {
   bundle: SourceBundleManifest | null;
@@ -30,13 +28,12 @@ export function ProfessorMaterialStep({
   onScheduleChange: (schedule: LectureScheduleItem[]) => void;
   onUpload: () => void;
   onUploadFilesChange: (files: File[]) => void;
-  setUploadPath: (path: string) => void;
   uploadFiles: File[];
-  uploadPath: string;
   workspaceReady: boolean;
 }) {
   const { t } = useI18n();
-  const inputId = useId();
+  const fileInputId = useId();
+  const folderInputId = useId();
   const [isDragOver, setIsDragOver] = useState(false);
   const isBusy = pendingAction !== null;
   const isUploading = pendingAction === "upload";
@@ -53,13 +50,8 @@ export function ProfessorMaterialStep({
         title={t("builder.upload.title")}
         done={Boolean(bundle?.files.length)}
       />
-      <label>
-        {t("builder.upload.folder")}
-        <input value={uploadPath} onChange={(event) => setUploadPath(event.target.value)} />
-      </label>
-      <label
+      <div
         className={`material-drop-zone${isDragOver ? " is-drag-over" : ""}${disabled ? " is-disabled" : ""}`}
-        htmlFor={inputId}
         onDragOver={(event) => {
           event.preventDefault();
           if (!disabled) setIsDragOver(true);
@@ -71,12 +63,26 @@ export function ProfessorMaterialStep({
           if (!disabled) void materialFilesFromDrop(event.dataTransfer).then(onUploadFilesChange);
         }}
       >
-        <span className="material-drop-title">{t("builder.upload.dropTitle")}</span>
+        <span className="material-drop-title">{t("courseUpdate.dropTitle")}</span>
         <span className="material-drop-copy">{t("builder.upload.dropCopy")}</span>
-        <span className="material-drop-button">{t("builder.upload.choose")}</span>
+        <div className="material-drop-actions">
+          <label className="material-drop-button" htmlFor={fileInputId}>
+            {t("courseUpdate.chooseFiles")}
+          </label>
+          <label className="material-drop-button" htmlFor={folderInputId}>
+            {t("courseUpdate.chooseFolder")}
+          </label>
+        </div>
         <input
-          id={inputId}
-          aria-label={t("builder.upload.aria")}
+          id={fileInputId}
+          className="material-drop-input"
+          disabled={disabled}
+          multiple
+          onChange={(event) => onUploadFilesChange(Array.from(event.target.files ?? []))}
+          type="file"
+        />
+        <input
+          id={folderInputId}
           className="material-drop-input"
           disabled={disabled}
           multiple
@@ -84,7 +90,7 @@ export function ProfessorMaterialStep({
           type="file"
           {...{ directory: "", webkitdirectory: "" }}
         />
-      </label>
+      </div>
       <p className="material-format-note">{t("builder.upload.formats")}</p>
       <p className="material-selection-summary">{fileLabel}</p>
       <div className="flow-actions">

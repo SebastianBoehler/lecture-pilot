@@ -74,7 +74,6 @@ export function useProfessorCourseBuilder({
   }));
   const [bundle, setBundle] = useState<SourceBundleManifest | null>(null);
   const [lectureSchedule, setLectureSchedule] = useState<LectureScheduleItem[]>(savedFlow.lectureSchedule);
-  const [uploadPath, setUploadPath] = useState(savedFlow.uploadPath);
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [canvas, setCanvas] = useState<CanvasDocument | null>(null);
   const [generatedLectureIds, setGeneratedLectureIds] = useState<string[]>([]);
@@ -229,13 +228,12 @@ export function useProfessorCourseBuilder({
       setup,
       workspace,
       courseReady,
-      uploadPath,
       bundleReady,
       canvasReady: Boolean(canvas),
       lectureSchedule,
       query,
     });
-  }, [bundle, canvas, courseReady, lectureSchedule, query, restored, setup, uploadPath, workspace]);
+  }, [bundle, canvas, courseReady, lectureSchedule, query, restored, setup, workspace]);
 
   useEffect(() => {
     if (
@@ -415,9 +413,7 @@ export function useProfessorCourseBuilder({
     pendingAction,
     setup,
     uploadFiles,
-    uploadPath,
     workspaceReady: Boolean(workspace),
-    setUploadPath,
     onUploadFilesChange: setUploadFiles,
     onScheduleChange: setLectureSchedule,
     onUpload: () => run("upload", async () => {
@@ -425,7 +421,7 @@ export function useProfessorCourseBuilder({
       const uploaded = [];
       const ignored = [];
       for (const file of uploadFiles) {
-        const destination = uploadDestination(uploadPath, file, uploadFiles.length);
+        const destination = uploadDestination(file);
         try {
           uploaded.push(await uploadCourseMaterial({
             courseId: activeWorkspace.courseId,

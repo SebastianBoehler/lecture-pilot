@@ -15,7 +15,13 @@ export function PerformanceLectureRow({
 }) {
   const { t } = useI18n();
   return (
-    <button className={active ? "is-active" : undefined} type="button" onClick={onSelect}>
+    <button
+      aria-current={active ? "true" : undefined}
+      aria-pressed={active}
+      className={active ? "is-active" : undefined}
+      type="button"
+      onClick={onSelect}
+    >
       <span className="lecture-index">{lecture.number}</span>
       <span className="lecture-row-body">
         <strong>{lecture.title}</strong>
@@ -30,10 +36,7 @@ export function PerformanceLectureRow({
   );
 }
 
-function statusLabel(
-  status: LectureSnapshot["status"],
-  t: ReturnType<typeof useI18n>["t"],
-) {
+function statusLabel(status: LectureSnapshot["status"], t: ReturnType<typeof useI18n>["t"]) {
   if (status === "healthy") return t("analytics.status.healthy");
   if (status === "watch") return t("analytics.status.watch");
   if (status === "needs-attention") return t("analytics.status.attention");

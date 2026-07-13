@@ -22,7 +22,6 @@ export type SavedProfessorFlow = {
   setup: CourseSetup;
   workspace: CourseWorkspaceState | null;
   courseReady: boolean;
-  uploadPath: string;
   bundleReady: boolean;
   canvasReady: boolean;
   lectureSchedule: LectureScheduleItem[];
@@ -43,7 +42,6 @@ const defaultFlow: SavedProfessorFlow = {
   setup: defaultCourseSetup,
   workspace: null,
   courseReady: false,
-  uploadPath: "uploads",
   bundleReady: false,
   canvasReady: false,
   lectureSchedule: [],

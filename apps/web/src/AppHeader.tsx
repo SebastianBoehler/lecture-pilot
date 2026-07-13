@@ -3,6 +3,7 @@ import {
   FilePlus2,
   FolderOpen,
   Gauge,
+  CircleHelp,
   Home,
   Languages,
   LogOut,
@@ -13,6 +14,7 @@ import {
 
 import { canManageCourses, isStudentAccount } from "./authz";
 import { useI18n } from "./i18n";
+import { requestProfessorWalkthrough } from "./ProfessorWalkthrough";
 import type { LoginSession, Theme, View } from "./types";
 
 export function AppHeader({
@@ -55,9 +57,16 @@ export function AppHeader({
         </button>
       </div>
       {canManage ? (
-        <nav className="top-primary-nav" aria-label={t("nav.professor")}>
+        <nav
+          className="top-primary-nav"
+          aria-label={t("nav.professor")}
+          data-tour="professor-navigation"
+        >
           <button
+            aria-current={activeView === "performance" ? "page" : undefined}
+            aria-label={t("nav.performance")}
             className={`top-nav-button ${activeView === "performance" ? "is-active" : ""}`}
+            data-tour="course-performance"
             type="button"
             onClick={onOpenPerformance}
           >
@@ -65,7 +74,10 @@ export function AppHeader({
             <span>{t("nav.performance")}</span>
           </button>
           <button
+            aria-current={activeView === "usage" ? "page" : undefined}
+            aria-label={t("nav.usage")}
             className={`top-nav-button ${activeView === "usage" ? "is-active" : ""}`}
+            data-tour="usage"
             type="button"
             onClick={onOpenUsage}
           >
@@ -73,7 +85,10 @@ export function AppHeader({
             <span>{t("nav.usage")}</span>
           </button>
           <button
+            aria-current={activeView === "course-management" ? "page" : undefined}
+            aria-label={t("nav.manageCourses")}
             className={`top-nav-button ${activeView === "course-management" ? "is-active" : ""}`}
+            data-tour="manage-courses"
             type="button"
             onClick={onOpenCourseManagement}
           >
@@ -81,7 +96,10 @@ export function AppHeader({
             <span>{t("nav.manageCourses")}</span>
           </button>
           <button
+            aria-current={activeView === "professor" ? "page" : undefined}
+            aria-label={t("nav.courseBuilder")}
             className={`top-nav-button ${activeView === "professor" ? "is-active" : ""}`}
+            data-tour="course-builder"
             type="button"
             onClick={onOpenProfessor}
           >
@@ -92,6 +110,8 @@ export function AppHeader({
       ) : isStudentAccount(session) ? (
         <nav className="top-primary-nav" aria-label={t("nav.student")}>
           <button
+            aria-current={activeView === "dashboard" ? "page" : undefined}
+            aria-label={t("nav.workspaces")}
             className={`top-nav-button ${activeView === "dashboard" ? "is-active" : ""}`}
             type="button"
             onClick={onOpenDashboard}
@@ -106,6 +126,17 @@ export function AppHeader({
       <div className="top-utility-actions" aria-label={t("nav.accountControls")}>
         {session ? (
           <>
+            {canManage ? (
+              <button
+                className="top-icon-button"
+                data-tour="walkthrough"
+                type="button"
+                aria-label={t("nav.startWalkthrough")}
+                onClick={requestProfessorWalkthrough}
+              >
+                <CircleHelp size={17} />
+              </button>
+            ) : null}
             <button
               className="top-icon-button"
               type="button"

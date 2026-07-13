@@ -8,23 +8,25 @@ export type LectureSnapshot = {
   status: "healthy" | "watch" | "needs-attention" | "no-data";
 };
 
-export function lectureSnapshot(lecture: Lecture, analytics: LectureAnalyticsSummary | null): LectureSnapshot {
+export type AnalyticsSignals = {
+  attendance: Record<string, number>;
+  gateRate: number | null;
+  learners: number;
+  quizRate: number | null;
+};
+
+export function lectureSnapshot(
+  lecture: Lecture,
+  analytics: LectureAnalyticsSummary | null,
+): LectureSnapshot {
   if (analytics?.total_events) {
-    const attempts = analytics.quizzes.reduce((sum, quiz) => sum + quiz.total_attempts, 0);
-    const correct = analytics.quizzes.reduce((sum, quiz) => sum + quiz.correct_attempts, 0);
-    const passed = analytics.gates.reduce((sum, gate) => sum + (gate.status_counts.passed ?? 0), 0);
-    const checks = analytics.gates.reduce((sum, gate) => sum + gate.total_events, 0);
-    const learners = Math.max(
-      0,
-      ...analytics.quizzes.map((quiz) => quiz.unique_learners),
-      ...analytics.gates.map((gate) => gate.unique_learners),
-    );
+    const signals = analyticsSignals(analytics);
     return {
       events: analytics.total_events,
-      gateRate: checks ? percent(passed / checks) : "n/a",
-      learners,
-      quizRate: attempts ? percent(correct / attempts) : "n/a",
-      status: statusFor(attempts ? correct / attempts : 0.5, checks ? passed / checks : 0.5),
+      gateRate: percent(signals.gateRate),
+      learners: signals.learners,
+      quizRate: percent(signals.quizRate),
+      status: statusFor(signals.quizRate ?? 0.5, signals.gateRate ?? 0.5),
     };
   }
   return {
@@ -33,6 +35,32 @@ export function lectureSnapshot(lecture: Lecture, analytics: LectureAnalyticsSum
     learners: 0,
     quizRate: "n/a",
     status: "no-data",
+  };
+}
+
+export function analyticsSignals(analytics: LectureAnalyticsSummary): AnalyticsSignals {
+  const attempts = analytics.quizzes.reduce((sum, quiz) => sum + quiz.total_attempts, 0);
+  const correct = analytics.quizzes.reduce((sum, quiz) => sum + quiz.correct_attempts, 0);
+  const passed = analytics.gates.reduce((sum, gate) => sum + (gate.status_counts.passed ?? 0), 0);
+  const checks = analytics.gates.reduce((sum, gate) => sum + gate.total_events, 0);
+  const attendance = [...analytics.quizzes, ...analytics.gates].reduce<Record<string, number>>(
+    (totals, item) => {
+      for (const [label, value] of Object.entries(item.attendance_split)) {
+        totals[label] = (totals[label] ?? 0) + value;
+      }
+      return totals;
+    },
+    {},
+  );
+  return {
+    attendance,
+    gateRate: checks ? passed / checks : null,
+    learners: Math.max(
+      0,
+      ...analytics.quizzes.map((quiz) => quiz.unique_learners),
+      ...analytics.gates.map((gate) => gate.unique_learners),
+    ),
+    quizRate: attempts ? correct / attempts : null,
   };
 }
 

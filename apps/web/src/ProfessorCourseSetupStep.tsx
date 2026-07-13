@@ -52,6 +52,7 @@ export function ProfessorCourseSetupStep({
       </label>
       <div className="scope-toggle" role="group" aria-label={t("builder.define.scope")}>
         <button
+          aria-pressed={setup.target === "single-lecture"}
           className={setup.target === "single-lecture" ? "is-active" : ""}
           type="button"
           onClick={() => onSetupChange({ ...setup, target: "single-lecture" })}
@@ -59,6 +60,7 @@ export function ProfessorCourseSetupStep({
           {t("builder.define.specificLecture")}
         </button>
         <button
+          aria-pressed={setup.target === "full-course"}
           className={setup.target === "full-course" ? "is-active" : ""}
           type="button"
           onClick={() => onSetupChange({ ...setup, target: "full-course", lectureCount: "" })}
@@ -98,7 +100,7 @@ export function ProfessorCourseSetupStep({
           <label>
             {t("builder.define.firstLectureDate")}
             <input
-              placeholder="YYYY-MM-DD"
+              type="date"
               value={setup.firstLectureDate}
               onChange={(event) =>
                 onSetupChange({ ...setup, firstLectureDate: event.target.value })

@@ -1,23 +1,17 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
 
 import { AnalyticsEmptyState } from "./AnalyticsEmptyState";
 import { getLectureAnalytics } from "./analyticsApi";
 import { useI18n } from "./i18n";
 import { AnalyticsChart } from "./PerformanceCharts";
+import { PerformanceInsights } from "./PerformanceInsights";
 import { PerformanceLectureRow } from "./PerformanceLectureRow";
 import { PerformanceOverview } from "./PerformanceOverview";
-import { lectureSnapshot, percent, splitBars } from "./performanceMetrics";
+import { lectureSnapshot } from "./performanceMetrics";
 import { performanceCourseOptions, ProfessorCourseTabs } from "./ProfessorCourseTabs";
 import { ProfessorLearningMapTree } from "./ProfessorLearningMapTree";
-import type {
-  AnalyticsGateMetric,
-  AnalyticsQuizMetric,
-  Lecture,
-  LectureAnalyticsSummary,
-  LoginSession,
-  UniversityCourse,
-} from "./types";
+import type { Lecture, LectureAnalyticsSummary, LoginSession, UniversityCourse } from "./types";
 
 export function ProfessorCoursePerformance({
   lectures,
@@ -49,16 +43,42 @@ export function ProfessorCoursePerformance({
   const [analytics, setAnalytics] = useState<LectureAnalyticsSummary | null>(null);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const analyticsRequestVersion = useRef(0);
 
   useEffect(() => {
     setSelectedCourseId(workspaceCourse.id);
   }, [workspaceCourse.id]);
 
   useEffect(() => {
+    analyticsRequestVersion.current += 1;
     setSelectedLecture(null);
     setAnalytics(null);
     setAnalyticsError(null);
   }, [selectedCourseId]);
+
+  const refreshAnalytics = useCallback(
+    async (lecture = selectedLecture) => {
+      if (!lecture || !course || !workspaceSelected) return;
+      const requestVersion = ++analyticsRequestVersion.current;
+      setAnalyticsError(null);
+      setSelectedLecture(lecture);
+      setAnalytics((current) => (current?.lecture_id === lecture.id ? current : null));
+      setLoading(true);
+      try {
+        const summary = await getLectureAnalytics(course.id, lecture.id, session);
+        if (requestVersion !== analyticsRequestVersion.current) return;
+        setAnalytics(summary);
+      } catch (error) {
+        if (requestVersion !== analyticsRequestVersion.current) return;
+        setAnalyticsError(
+          error instanceof Error ? error.message : "Lecture analytics loading failed.",
+        );
+      } finally {
+        if (requestVersion === analyticsRequestVersion.current) setLoading(false);
+      }
+    },
+    [course, selectedLecture, session, workspaceSelected],
+  );
 
   useEffect(() => {
     if (!visibleLectures.length) {
@@ -69,23 +89,9 @@ export function ProfessorCoursePerformance({
     if (!selectedLecture) {
       void refreshAnalytics(visibleLectures[0]);
     }
-  }, [selectedLecture, visibleLectures]);
+  }, [refreshAnalytics, selectedLecture, visibleLectures]);
 
-  async function refreshAnalytics(lecture = selectedLecture) {
-    if (!lecture || !course || !workspaceSelected) return;
-    setAnalyticsError(null);
-    setSelectedLecture(lecture);
-    setLoading(true);
-    try {
-      setAnalytics(await getLectureAnalytics(course.id, lecture.id, session));
-    } catch (error) {
-      setAnalyticsError(
-        error instanceof Error ? error.message : "Lecture analytics loading failed.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
+  const selectedAnalytics = analytics?.lecture_id === selectedLecture?.id ? analytics : null;
 
   return (
     <main className="professor-screen performance-page">
@@ -93,6 +99,13 @@ export function ProfessorCoursePerformance({
         <div>
           <h1>{t("professor.performance.title")}</h1>
           <p>{t("professor.performance.subtitle")}</p>
+          {course ? (
+            <div className="performance-course-context">
+              <strong>{course.title}</strong>
+              <span aria-hidden="true">·</span>
+              <span>{course.term}</span>
+            </div>
+          ) : null}
         </div>
         <button
           aria-label={t("professor.refreshAnalytics")}
@@ -124,69 +137,67 @@ export function ProfessorCoursePerformance({
           </div>
         </section>
       ) : (
-        <section className="performance-console" aria-labelledby="course-performance-title">
-          <header className="performance-course-header">
-            <div>
-              <h2 id="course-performance-title">{course.title}</h2>
-              <p>
-                {course.professor} · {course.term}
-              </p>
+        <section className="performance-console">
+          <nav className="performance-lecture-rail" aria-label={t("professor.lectureList")}>
+            <div className="performance-rail-heading">
+              <span>{t("professor.courseLectures")}</span>
+              <small>{t("professor.publishedOnly")}</small>
             </div>
-            <div className="performance-course-meta" aria-label={t("professor.analyticsStatus")}>
-              <span>{t("professor.publishedLectures", { count: visibleLectures.length })}</span>
-              <span>
-                {t("professor.eventsLoaded", {
-                  count: lectureSnapshot(selectedLecture, analytics).events,
-                })}
-              </span>
+            <div className="performance-lecture-scroll">
+              {visibleLectures.map((lecture) => (
+                <PerformanceLectureRow
+                  active={lecture.id === selectedLecture.id}
+                  key={lecture.id}
+                  lecture={lecture}
+                  onSelect={() => void refreshAnalytics(lecture)}
+                  snapshot={
+                    lecture.id === selectedLecture.id
+                      ? lectureSnapshot(lecture, selectedAnalytics)
+                      : null
+                  }
+                />
+              ))}
             </div>
-          </header>
+          </nav>
 
-          <div className="performance-workbench">
-            <nav className="performance-lecture-rail" aria-label={t("professor.lectureList")}>
-              <div className="performance-rail-heading">
-                <span>{t("professor.courseLectures")}</span>
-                <small>{t("professor.publishedOnly")}</small>
+          <section className="analytics-board" aria-busy={loading}>
+            <header className="analytics-board-heading">
+              <div>
+                <h2>{selectedLecture.title}</h2>
+                <span>{selectedLecture.date}</span>
               </div>
-              <div className="performance-lecture-scroll">
-                {visibleLectures.map((lecture) => (
-                  <PerformanceLectureRow
-                    active={lecture.id === selectedLecture.id}
-                    key={lecture.id}
-                    lecture={lecture}
-                    onSelect={() => void refreshAnalytics(lecture)}
-                    snapshot={
-                      lecture.id === selectedLecture.id ? lectureSnapshot(lecture, analytics) : null
-                    }
-                  />
-                ))}
-              </div>
-            </nav>
-
-            <section className="analytics-board" aria-live="polite">
-              <header className="analytics-board-heading">
-                <div>
-                  <p>Lecture {selectedLecture.number}</p>
-                  <h2>{selectedLecture.title}</h2>
-                  <span>{selectedLecture.date}</span>
-                </div>
+              <div className="performance-course-meta" aria-label={t("professor.analyticsStatus")}>
+                <span>{t("professor.publishedLectures", { count: visibleLectures.length })}</span>
+                <span>
+                  {t("professor.eventsLoaded", {
+                    count: lectureSnapshot(selectedLecture, selectedAnalytics).events,
+                  })}
+                </span>
                 {loading ? (
-                  <span className="analytics-loading">{t("professor.loadingAnalytics")}</span>
+                  <span className="analytics-loading" role="status">
+                    {t("professor.loadingAnalytics")}
+                  </span>
                 ) : null}
-              </header>
-              {analyticsError ? <p className="form-error">{analyticsError}</p> : null}
-              <PerformanceOverview snapshot={lectureSnapshot(selectedLecture, analytics)} />
-              {analytics?.total_events ? (
-                <>
-                  <AnalyticsChart analytics={analytics} />
-                  <AnalyticsSummary analytics={analytics} />
-                  <ProfessorLearningMapTree analytics={analytics} />
-                </>
-              ) : (
-                <AnalyticsEmptyState />
-              )}
-            </section>
-          </div>
+              </div>
+            </header>
+            {analyticsError ? (
+              <p className="form-error" role="alert">
+                {analyticsError}
+              </p>
+            ) : null}
+            <PerformanceOverview snapshot={lectureSnapshot(selectedLecture, selectedAnalytics)} />
+            {selectedAnalytics?.total_events ? (
+              <>
+                <div className="performance-evidence-layout">
+                  <ProfessorLearningMapTree analytics={selectedAnalytics} />
+                  <PerformanceInsights analytics={selectedAnalytics} />
+                </div>
+                <AnalyticsChart analytics={selectedAnalytics} />
+              </>
+            ) : (
+              <AnalyticsEmptyState />
+            )}
+          </section>
         </section>
       )}
     </main>
@@ -202,120 +213,4 @@ function isWorkspaceCourse(course: UniversityCourse, workspaceCourse: University
 
 function normalizeCourseTitle(title: string) {
   return title.toLowerCase().replace(/\s+/g, " ").trim();
-}
-
-function AnalyticsSummary({ analytics }: { analytics: LectureAnalyticsSummary }) {
-  const { t } = useI18n();
-  if (!analytics.total_events) return <AnalyticsEmptyState />;
-  return (
-    <div className="analytics-summary">
-      <section className="analytics-column" aria-label={t("analytics.quizInsights")}>
-        <h3>{t("analytics.quizFriction")}</h3>
-        {analytics.quizzes.map((quiz) => (
-          <article className="analytics-panel" key={quiz.component_id}>
-            <header>
-              <span>Quiz</span>
-              <strong>{quiz.title}</strong>
-              <small>
-                {t("analytics.correct", {
-                  count: quiz.unique_learners,
-                  rate: percent(quiz.correct_rate),
-                })}
-              </small>
-            </header>
-            <p>{quiz.question}</p>
-            <QuizInsight quiz={quiz} />
-          </article>
-        ))}
-      </section>
-      <section className="analytics-column" aria-label={t("analytics.gateInsights")}>
-        <h3>{t("analytics.gateEvidence")}</h3>
-        {analytics.gates.map((gate) => (
-          <article className="analytics-panel" key={gate.gate_id}>
-            <header>
-              <span>Gate</span>
-              <strong>{gate.gate_id}</strong>
-              <small>
-                {t("analytics.checksLearners", {
-                  checks: gate.total_events,
-                  learners: gate.unique_learners,
-                })}
-              </small>
-            </header>
-            <GateInsight gate={gate} />
-          </article>
-        ))}
-      </section>
-    </div>
-  );
-}
-
-function QuizInsight({ quiz }: { quiz: AnalyticsQuizMetric }) {
-  const { t } = useI18n();
-  return (
-    <div className="analytics-insight-grid">
-      <section>
-        <h3>{t("analytics.answerDistribution")}</h3>
-        <MetricBars
-          values={quiz.options.map((option) => ({
-            label: `${String.fromCharCode(65 + option.option_index)} ${option.text}`,
-            value: option.selections,
-            total: quiz.total_attempts,
-            tone: option.correct ? "correct" : "wrong",
-          }))}
-        />
-      </section>
-      <section>
-        <h3>{t("analytics.attendanceSplit")}</h3>
-        <MetricBars values={splitBars(quiz.attendance_split)} />
-      </section>
-    </div>
-  );
-}
-
-function GateInsight({ gate }: { gate: AnalyticsGateMetric }) {
-  const { t } = useI18n();
-  return (
-    <div className="analytics-insight-grid">
-      <section>
-        <h3>{t("analytics.gateOutcomes")}</h3>
-        <MetricBars values={splitBars(gate.status_counts)} />
-      </section>
-      <section>
-        <h3>{t("analytics.attendanceSplit")}</h3>
-        <MetricBars values={splitBars(gate.attendance_split)} />
-      </section>
-    </div>
-  );
-}
-
-function MetricBars({
-  values,
-}: {
-  values: Array<{
-    label: string;
-    value: number;
-    total: number;
-    tone?: "correct" | "neutral" | "wrong";
-  }>;
-}) {
-  return (
-    <div className="metric-bar-list">
-      {values.map((item) => (
-        <div className={`metric-row is-${item.tone ?? "neutral"}`} key={item.label}>
-          <div>
-            <span>{item.label}</span>
-            <strong>{item.value}</strong>
-          </div>
-          <div className="metric-track">
-            <div className="metric-fill" style={barStyle(item.value, item.total)} />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function barStyle(value: number, total: number): CSSProperties {
-  return { "--metric-width": `${total ? Math.round((value / total) * 100) : 0}%` } as CSSProperties;
 }

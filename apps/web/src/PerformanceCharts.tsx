@@ -1,52 +1,49 @@
 import type { CSSProperties } from "react";
 
-import { percent } from "./performanceMetrics";
+import { useI18n } from "./i18n";
+import { analyticsSignals, percent } from "./performanceMetrics";
 import type { LectureAnalyticsSummary } from "./types";
 
 export function AnalyticsChart({ analytics }: { analytics: LectureAnalyticsSummary }) {
-  const quiz = analytics.quizzes[0];
-  const gate = analytics.gates[0];
-  const quizRate = quiz?.correct_rate ?? 0;
-  const passed = gate?.status_counts.passed ?? 0;
-  const gateRate = gate?.total_events ? passed / gate.total_events : 0;
+  const { t } = useI18n();
+  const signals = analyticsSignals(analytics);
   return (
-    <section className="performance-chart" aria-label="Lecture analytics chart">
-      <div>
-        <span>Quiz success</span>
-        <strong>{percent(quizRate)}</strong>
-        <MiniDonut value={quizRate} tone="success" />
+    <section className="performance-chart" aria-label={t("analytics.selectedOverview")}>
+      <div className="performance-signal">
+        <span>{t("analytics.quizSuccess")}</span>
+        <strong>{percent(signals.quizRate)}</strong>
+        <SignalBar tone="success" value={signals.quizRate} />
       </div>
-      <div>
-        <span>Gate pass rate</span>
-        <strong>{percent(gateRate)}</strong>
-        <MiniDonut value={gateRate} tone="warning" />
+      <div className="performance-signal">
+        <span>{t("analytics.gatePassRate")}</span>
+        <strong>{percent(signals.gateRate)}</strong>
+        <SignalBar tone="warning" value={signals.gateRate} />
       </div>
       <div className="attendance-chart">
-        <span>Attendance mix</span>
-        <StackedBar values={quiz?.attendance_split ?? gate?.attendance_split ?? {}} />
+        <span>{t("analytics.attendanceSplit")}</span>
+        <StackedBar values={signals.attendance} />
       </div>
     </section>
   );
 }
 
-function MiniDonut({ value, tone }: { value: number; tone: "success" | "warning" }) {
-  const radius = 16;
-  const circumference = 2 * Math.PI * radius;
+function SignalBar({ value, tone }: { value: number | null; tone: "success" | "warning" }) {
   return (
-    <svg className={`mini-donut is-${tone}`} viewBox="0 0 42 42" aria-hidden="true">
-      <circle cx="21" cy="21" r={radius} />
-      <circle
-        cx="21"
-        cy="21"
-        r={radius}
-        pathLength={circumference}
-        strokeDasharray={`${Math.max(0, Math.min(1, value)) * circumference} ${circumference}`}
+    <span className={`signal-track is-${tone}`} aria-hidden="true">
+      <span
+        className="signal-fill"
+        style={
+          {
+            "--signal-width": `${Math.round(Math.max(0, Math.min(1, value ?? 0)) * 100)}%`,
+          } as CSSProperties
+        }
       />
-    </svg>
+    </span>
   );
 }
 
 function StackedBar({ values }: { values: Record<string, number> }) {
+  const { t } = useI18n();
   const total = Object.values(values).reduce((sum, value) => sum + value, 0);
   return (
     <div className="stacked-bar">
@@ -54,11 +51,22 @@ function StackedBar({ values }: { values: Record<string, number> }) {
         <span
           className={`is-${label}`}
           key={label}
-          style={{ "--segment-width": `${total ? Math.round((value / total) * 100) : 0}%` } as CSSProperties}
+          style={
+            {
+              "--segment-width": `${total ? Math.round((value / total) * 100) : 0}%`,
+            } as CSSProperties
+          }
         >
-          {label} {value}
+          {attendanceLabel(label, t)} {value}
         </span>
       ))}
     </div>
   );
+}
+
+function attendanceLabel(label: string, t: ReturnType<typeof useI18n>["t"]) {
+  if (label === "present") return t("attendance.present");
+  if (label === "absent") return t("attendance.absent");
+  if (label === "unknown") return t("attendance.unknown");
+  return label;
 }

@@ -1,4 +1,5 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import { ProfessorLearningMapTree } from "./ProfessorLearningMapTree";
@@ -6,14 +7,32 @@ import { renderWithI18n } from "./test/renderWithI18n";
 import type { LectureAnalyticsSummary } from "./types";
 
 describe("ProfessorLearningMapTree", () => {
-  it("shows gate pass rates by learning path node", () => {
+  it("shows an expandable prerequisite tree with gate states", async () => {
+    const user = userEvent.setup();
     renderWithI18n(<ProfessorLearningMapTree analytics={analytics()} />);
 
     expect(screen.getByRole("heading", { name: /learning path gates/i })).toBeInTheDocument();
+    const tree = screen.getByRole("list", {
+      name: /bayesian decision theory learning path gates/i,
+    });
+    const rootToggle = within(tree).getByRole("button", {
+      name: /decision making.*100% passed/i,
+    });
+    expect(rootToggle).toHaveAttribute("aria-expanded", "false");
+
+    const rootItem = rootToggle.closest("li");
+    const branch = rootItem?.querySelector(":scope > .learning-map-branch");
+    expect(branch?.querySelectorAll(":scope > li")).toHaveLength(2);
+
+    await user.click(rootToggle);
+    expect(rootToggle).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText(/risk evidence gate/i)).toBeInTheDocument();
-    expect(screen.getByText(/100% passed/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/100% passed/i)).toHaveLength(2);
     expect(screen.getByText(/1\/1 checks/i)).toBeInTheDocument();
-    expect(screen.getByText(/unlocks after aim/i)).toBeInTheDocument();
+
+    const bayesToggle = within(tree).getByRole("button", { name: /bayes formula/i });
+    await user.click(bayesToggle);
+    expect(screen.getByText(/unlocks after decision making/i)).toBeInTheDocument();
   });
 });
 
@@ -56,6 +75,16 @@ function analytics(): LectureAnalyticsSummary {
           prerequisites: ["aim"],
           gate_ids: [],
           quiz_ids: ["risk-check"],
+        },
+        {
+          id: "losses",
+          title: "Loss decisions",
+          lecture_id: "lecture-03",
+          section_id: "losses",
+          source_ref: null,
+          prerequisites: ["aim"],
+          gate_ids: [],
+          quiz_ids: [],
         },
       ],
       gates: [
