@@ -84,10 +84,44 @@ file=@Lecture03-eng.tex
 
 The route checks the tenant role, rejects unsafe paths and unsupported file
 types, streams the body in 1 MiB chunks, enforces the per-type size limit, and
-atomically replaces the target. It computes SHA-256 during that same pass, so
+atomically creates the target. It computes SHA-256 during that same pass, so
 indexing does not need to read a newly uploaded large video twice. A rejected
 upload leaves no partial target behind. Production auth should replace the demo
 headers with backend session context before this becomes user-facing.
+
+## Incremental Course Updates
+
+Existing courses are updated through a separate staged workflow. A professor
+may select only new files or the complete current course folder. LecturePilot
+compares the staged and live source indexes by relative path and SHA-256:
+
+```txt
+same path + same hash       -> unchanged, no work
+same path + different hash  -> changed source
+new path                    -> new source
+missing from staged upload  -> keep existing source
+```
+
+Files are assigned first through the saved per-lecture source manifest and then
+through an unambiguous lecture number in the path. The review screen requires a
+professor decision for everything else. Applying the review promotes only the
+selected files, appends new lectures without replacing the existing schedule,
+and stores the source assignment under `builder/source-manifests/`.
+
+Promotion is transactional across source files, the source index, lecture
+manifests, and the course schedule. A failed metadata write restores the prior
+state. Applying source changes creates private canvas drafts; it never changes
+the published student canvas. Publishing remains a separate explicit action.
+
+The API surface is:
+
+```http
+POST   /admin/courses/{course_id}/updates
+POST   /admin/courses/{course_id}/updates/{update_id}/materials
+GET    /admin/courses/{course_id}/updates/{update_id}
+POST   /admin/courses/{course_id}/updates/{update_id}/apply
+DELETE /admin/courses/{course_id}/updates/{update_id}
+```
 
 ## Lecture Ownership
 

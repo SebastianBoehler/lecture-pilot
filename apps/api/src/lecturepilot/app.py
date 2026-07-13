@@ -18,6 +18,7 @@ from lecturepilot.course_canvas_routes import register_course_canvas_routes
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner, LiteLLMCoursePlanClient
 from lecturepilot.course_deletion import register_course_deletion_routes
 from lecturepilot.course_routes import register_course_routes
+from lecturepilot.course_update_routes import register_course_update_routes
 from lecturepilot.csrf import CsrfProtectionMiddleware, allowed_origins
 from lecturepilot.database import Database
 from lecturepilot.exam_readiness_routes import register_exam_readiness_routes
@@ -137,6 +138,7 @@ def create_app() -> FastAPI:
         ),
     )
     register_course_deletion_routes(app, course_tenant_id=COURSE_TENANT_ID)
+    register_course_update_routes(app, course_tenant_id=COURSE_TENANT_ID)
     register_exam_readiness_routes(
         app,
         course_tenant_id=COURSE_TENANT_ID,

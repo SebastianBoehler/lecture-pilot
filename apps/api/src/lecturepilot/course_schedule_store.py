@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
+import tempfile
 
 from lecturepilot.course_workspace import merge_course_workspace
 from lecturepilot.models import CourseWorkspaceResult
@@ -21,7 +23,7 @@ def write_course_workspace(
             workspace,
             replace_lectures=replace_lectures,
         )
-    target.write_text(workspace.model_dump_json(indent=2), encoding="utf-8")
+    _atomic_write(target, workspace.model_dump_json(indent=2))
     return workspace
 
 
@@ -42,7 +44,9 @@ def list_course_workspaces(workspace_root: Path, tenant_id: str) -> list[CourseW
     workspaces: list[CourseWorkspaceResult] = []
     for source in sorted(root.glob("*/builder/course-workspace.json")):
         try:
-            workspaces.append(CourseWorkspaceResult.model_validate_json(source.read_text(encoding="utf-8")))
+            workspaces.append(
+                CourseWorkspaceResult.model_validate_json(source.read_text(encoding="utf-8"))
+            )
         except ValueError:
             continue
     return workspaces
@@ -50,3 +54,17 @@ def list_course_workspaces(workspace_root: Path, tenant_id: str) -> list[CourseW
 
 def _workspace_path(course_root: Path) -> Path:
     return course_root / "builder" / "course-workspace.json"
+
+
+def _atomic_write(path: Path, content: str) -> None:
+    descriptor, temporary = tempfile.mkstemp(prefix=".course-workspace-", dir=path.parent)
+    temporary_path = Path(temporary)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        temporary_path.replace(path)
+    except BaseException:
+        temporary_path.unlink(missing_ok=True)
+        raise

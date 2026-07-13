@@ -8,7 +8,7 @@ authentication.
 
 | Principal              | Authority                                                                         |
 | ---------------------- | --------------------------------------------------------------------------------- |
-| Public                 | Health check and university login                                                   |
+| Public                 | Health check and university login                                                 |
 | Enrolled student       | Own unlocked lectures, canvas, assets, tutor turns, quiz events, readiness, reset |
 | Alma professor         | May create a course; gains no tenant-wide content access                          |
 | Course owner           | Manages only the course whose `owner_user_id` matches the session user            |
@@ -25,15 +25,15 @@ Production web builds do not render either development demo login.
 
 ## Route inventory
 
-| Class                       | Routes                                                                                                | Required object check                                                      |
-| --------------------------- | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Public                      | `GET /health`, `POST /auth/login`                                                   | Rate-limited; submitted credentials are never logged or returned           |
-| Self-service                | `GET /me`, `POST /auth/logout`                                                                      | Current opaque session                                                      |
-| Platform administration     | `POST /platform/users/{id}/disable`                                                                 | `platform_admin`; no course-content capability                              |
-| Course discovery            | `GET /courses`, `GET /courses/{course}/lectures`                                                      | Database visibility or enrollment; lecture unlock server-side              |
-| Learner-only                | `POST /agent/turn*`, canvas, learning map, quiz answer, readiness, learner reset, workspace assets    | Current session user plus active course enrollment; no learner ID accepted |
-| Course-owner administration | Course creation, source bundle, schedule, upload, draft, publish, media, aggregate analytics, archive | Verified non-student Alma role; exact `courses.owner_user_id` thereafter   |
-| Published course assets     | `GET /course-assets/{course}/{lecture}/{path}`                                                        | Course access, publication/unlock policy, confined path                    |
+| Class                       | Routes                                                                                                        | Required object check                                                      |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Public                      | `GET /health`, `POST /auth/login`                                                                             | Rate-limited; submitted credentials are never logged or returned           |
+| Self-service                | `GET /me`, `POST /auth/logout`                                                                                | Current opaque session                                                     |
+| Platform administration     | `POST /platform/users/{id}/disable`                                                                           | `platform_admin`; no course-content capability                             |
+| Course discovery            | `GET /courses`, `GET /courses/{course}/lectures`                                                              | Database visibility or enrollment; lecture unlock server-side              |
+| Learner-only                | `POST /agent/turn*`, canvas, learning map, quiz answer, readiness, learner reset, workspace assets            | Current session user plus active course enrollment; no learner ID accepted |
+| Course-owner administration | Course creation, source bundle, schedule, staged updates, draft, publish, media, aggregate analytics, archive | Verified non-student Alma role; exact `courses.owner_user_id` thereafter   |
+| Published course assets     | `GET /course-assets/{course}/{lecture}/{path}`                                                                | Course access, publication/unlock policy, confined path                    |
 
 The learner-only class includes:
 
@@ -46,8 +46,10 @@ The learner-only class includes:
 - `GET /courses/{course}/exam-readiness`
 - `POST /courses/{course}/exam-readiness/attempts`
 
-The course-owner class includes every `/admin/courses/{course}/*` route plus course deletion. It
-returns aggregate analytics only and never accepts or returns learner identifiers.
+The course-owner class includes every `/admin/courses/{course}/*` route plus course deletion. Staged
+course updates compare server-computed hashes, never interpret missing upload paths as deletions,
+and do not mutate published canvases. The class returns aggregate analytics only and never accepts
+or returns learner identifiers.
 
 ## University matching
 

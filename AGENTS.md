@@ -69,7 +69,7 @@ storage instead of local folders.
     course.json
     source/{uploads/,normalized/,assets/,source-index.json}
     canvas/lectures/<lecture-id>/{index.md,sections/*.md,assets/}
-    builder/{drafts/,review-state.json}
+    builder/{drafts/,source-manifests/,updates/,review-state.json}
   cache/{pdf-previews/,thumbnails/,extracted-text/}
 ```
 

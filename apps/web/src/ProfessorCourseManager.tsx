@@ -7,6 +7,7 @@ type ProfessorCourseManagerProps = {
   onCreateCourse: () => void;
   onDeleteCourse: (courseId: string) => void;
   onRefresh: () => void;
+  onUpdateCourse: (courseId: string) => void;
   workspaces: CourseWorkspaceResult[];
 };
 
@@ -16,6 +17,7 @@ export function ProfessorCourseManager({
   onCreateCourse,
   onDeleteCourse,
   onRefresh,
+  onUpdateCourse,
   workspaces,
 }: ProfessorCourseManagerProps) {
   const { t } = useI18n();
@@ -39,24 +41,37 @@ export function ProfessorCourseManager({
             <article className="created-course-row" key={workspace.course.id}>
               <div className="created-course-title">
                 <strong>{workspace.course.title}</strong>
-                <span>{workspace.course.professor} · {workspace.course.term}</span>
+                <span>
+                  {workspace.course.professor} · {workspace.course.term}
+                </span>
               </div>
               <div className="created-course-meta">
                 <strong>{t("professor.courseWorkspace")}</strong>
-                <span>{t("professor.configuredLectures", { count: workspace.lectures.length })}</span>
+                <span>
+                  {t("professor.configuredLectures", { count: workspace.lectures.length })}
+                </span>
                 <small>{workspace.course.id}</small>
               </div>
-              <button
-                className="refresh-button delete-course-button"
-                disabled={deletingCourseId === workspace.course.id}
-                type="button"
-                aria-label={t("professor.deleteCourse", { course: workspace.course.title })}
-                onClick={() => onDeleteCourse(workspace.course.id)}
-              >
-                {deletingCourseId === workspace.course.id
-                  ? t("professor.deleting")
-                  : t("professor.delete")}
-              </button>
+              <div className="created-course-actions">
+                <button
+                  className="refresh-button"
+                  type="button"
+                  onClick={() => onUpdateCourse(workspace.course.id)}
+                >
+                  {t("professor.update")}
+                </button>
+                <button
+                  className="refresh-button delete-course-button"
+                  disabled={deletingCourseId === workspace.course.id}
+                  type="button"
+                  aria-label={t("professor.deleteCourse", { course: workspace.course.title })}
+                  onClick={() => onDeleteCourse(workspace.course.id)}
+                >
+                  {deletingCourseId === workspace.course.id
+                    ? t("professor.deleting")
+                    : t("professor.delete")}
+                </button>
+              </div>
             </article>
           ))}
         </div>

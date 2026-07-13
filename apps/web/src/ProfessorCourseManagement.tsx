@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { useI18n } from "./i18n";
 import { ProfessorCourseManager } from "./ProfessorCourseManager";
+import { ProfessorCourseUpdate } from "./ProfessorCourseUpdate";
 import { deleteCourseWorkspace, listCourseWorkspaces } from "./professorApi";
 import { useProfessorWorkflowRun } from "./professorWorkflowRun";
 import type { CourseWorkspaceResult, LoginSession } from "./types";
@@ -19,11 +20,28 @@ export function ProfessorCourseManagement({
   const [workspaces, setWorkspaces] = useState<CourseWorkspaceResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null);
+  const [updatingWorkspace, setUpdatingWorkspace] = useState<CourseWorkspaceResult | null>(null);
   const { error, notice, run, setError } = useProfessorWorkflowRun();
 
   useEffect(() => {
     void refreshCourses();
   }, [session]);
+
+  if (updatingWorkspace) {
+    return (
+      <ProfessorCourseUpdate
+        session={session}
+        workspace={updatingWorkspace}
+        onBack={() => setUpdatingWorkspace(null)}
+        onWorkspaceUpdated={(updated) => {
+          setUpdatingWorkspace(updated);
+          setWorkspaces((current) =>
+            current.map((item) => (item.course.id === updated.course.id ? updated : item)),
+          );
+        }}
+      />
+    );
+  }
 
   return (
     <main className="professor-screen">
@@ -42,6 +60,9 @@ export function ProfessorCourseManagement({
         }}
         onRefresh={() => {
           void refreshCourses();
+        }}
+        onUpdateCourse={(courseId) => {
+          setUpdatingWorkspace(workspaces.find((item) => item.course.id === courseId) ?? null);
         }}
         workspaces={workspaces}
       />

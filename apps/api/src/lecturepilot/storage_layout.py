@@ -98,11 +98,34 @@ class StorageLayout:
     def course_source_index_path(self, course_id: str) -> Path:
         return self.course_source_root(course_id) / "source-index.json"
 
+    def course_update_root(self, course_id: str, update_id: str) -> Path:
+        return self.course_root(course_id) / "builder" / "updates" / safe_id(update_id)
+
+    def course_update_uploads_dir(self, course_id: str, update_id: str) -> Path:
+        return self.course_update_root(course_id, update_id) / "uploads"
+
+    def course_update_index_path(self, course_id: str, update_id: str) -> Path:
+        return self.course_update_root(course_id, update_id) / "source-index.json"
+
+    def lecture_source_manifest_path(self, course_id: str, lecture_id: str) -> Path:
+        return (
+            self.course_root(course_id)
+            / "builder"
+            / "source-manifests"
+            / f"{safe_id(lecture_id)}.json"
+        )
+
     def course_canvas_dir(self, course_id: str, lecture_id: str) -> Path:
         return self.course_root(course_id) / "canvas" / "lectures" / safe_id(lecture_id)
 
     def course_canvas_draft_dir(self, course_id: str, lecture_id: str) -> Path:
-        return self.course_root(course_id) / "canvas-drafts" / "lectures" / safe_id(lecture_id) / "latest"
+        return (
+            self.course_root(course_id)
+            / "canvas-drafts"
+            / "lectures"
+            / safe_id(lecture_id)
+            / "latest"
+        )
 
 
 def safe_id(value: str) -> str:
