@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from fastapi.testclient import TestClient
 
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import CanvasDocument, CanvasSection
+from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_media import (
     add_course_youtube_selection,
     add_youtube_selection,
@@ -133,6 +133,89 @@ def test_approved_youtube_selection_merges_into_canvas_section(tmp_path) -> None
 
     assert merged.sections[0].blocks[0].type == "video"
     assert merged.sections[0].blocks[0].asset_url == "https://www.youtube.com/watch?v=abc123abc12"
+
+
+def test_existing_video_section_is_reused_when_later_sections_follow(tmp_path) -> None:
+    video = _candidate()
+    add_youtube_selection(
+        material_root=tmp_path,
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        selection=YoutubeSelectionInput(video=video),
+        approved_by="professor-1",
+    )
+    document = CanvasDocument(
+        id="martius-ml-lecture-03",
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        title="Bayesian Decision Theory",
+        source_kind="latex",
+        source_ref="Lecture03-eng.tex",
+        workspace_path="canvas/index.md",
+        sections=[
+            CanvasSection(
+                id="professor-selected-videos",
+                title="Professor selected videos",
+                blocks=[
+                    CanvasBlock(
+                        id="youtube-abc123abc12",
+                        type="video",
+                        text="ML Course",
+                        asset_url=video.url,
+                        caption=video.title,
+                    )
+                ],
+            ),
+            CanvasSection(id="generated-review", title="Generated review"),
+        ],
+    )
+
+    merged = apply_course_media(document, tmp_path)
+
+    assert [section.id for section in merged.sections] == [
+        "professor-selected-videos",
+        "generated-review",
+    ]
+    assert [block.id for block in merged.sections[0].blocks] == ["youtube-abc123abc12"]
+
+
+def test_duplicate_video_sections_are_collapsed_and_unique_blocks_are_preserved(tmp_path) -> None:
+    document = CanvasDocument(
+        id="martius-ml-lecture-03",
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        title="Bayesian Decision Theory",
+        source_kind="latex",
+        source_ref="Lecture03-eng.tex",
+        workspace_path="canvas/index.md",
+        sections=[
+            CanvasSection(
+                id="professor-selected-videos",
+                title="Professor selected videos",
+                blocks=[CanvasBlock(id="youtube-first", type="video", caption="First")],
+            ),
+            CanvasSection(id="generated-review", title="Generated review"),
+            CanvasSection(
+                id="professor-selected-videos",
+                title="Professor selected videos",
+                blocks=[
+                    CanvasBlock(id="youtube-first", type="video", caption="First"),
+                    CanvasBlock(id="youtube-second", type="video", caption="Second"),
+                ],
+            ),
+        ],
+    )
+
+    merged = apply_course_media(document, tmp_path)
+
+    assert [section.id for section in merged.sections] == [
+        "professor-selected-videos",
+        "generated-review",
+    ]
+    assert [block.id for block in merged.sections[0].blocks] == [
+        "youtube-first",
+        "youtube-second",
+    ]
 
 
 def test_course_youtube_selection_becomes_planner_evidence(tmp_path) -> None:

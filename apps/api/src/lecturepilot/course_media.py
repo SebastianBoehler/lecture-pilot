@@ -9,6 +9,7 @@ from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSectio
 from lecturepilot.models import YoutubeSelectionInput, YoutubeSelectionResult, YoutubeVideoCandidate
 
 COURSE_MEDIA_POOL_ID = "__course__"
+MEDIA_SECTION_ID = "professor-selected-videos"
 
 
 def add_youtube_selection(
@@ -65,7 +66,10 @@ def course_media_evidence(document: CanvasDocument, material_root: Path) -> Canv
         course_id=document.course_id,
         lecture_id=COURSE_MEDIA_POOL_ID,
     )
-    blocks = [_evidence_video_block(YoutubeVideoCandidate.model_validate(entry["video"])) for entry in videos]
+    blocks = [
+        _evidence_video_block(YoutubeVideoCandidate.model_validate(entry["video"]))
+        for entry in videos
+    ]
     if not blocks:
         return document
     return document.model_copy(
@@ -84,17 +88,44 @@ def course_media_evidence(document: CanvasDocument, material_root: Path) -> Canv
 
 
 def apply_course_media(document: CanvasDocument, material_root: Path) -> CanvasDocument:
+    sections = _collapse_media_sections(
+        [section.model_copy(deep=True) for section in document.sections]
+    )
     path = _media_path(material_root, course_id=document.course_id, lecture_id=document.lecture_id)
     if not path.exists():
-        return document
+        return document.model_copy(update={"sections": sections})
     payload = _read_payload(path, course_id=document.course_id, lecture_id=document.lecture_id)
-    sections = [section.model_copy(deep=True) for section in document.sections]
     for entry in payload["videos"]:
         video = YoutubeVideoCandidate.model_validate(entry["video"])
         block = _video_block(video, block_id=str(entry["block_id"]))
         target = str(entry.get("section_id") or "")
         sections = _insert_video_block(sections, block=block, target_section_id=target)
     return document.model_copy(update={"sections": sections})
+
+
+def _collapse_media_sections(sections: list[CanvasSection]) -> list[CanvasSection]:
+    """Keep one canonical professor-media section and merge its unique blocks."""
+    result: list[CanvasSection] = []
+    media_index: int | None = None
+    media_block_ids: set[str] = set()
+    for section in sections:
+        if section.id != MEDIA_SECTION_ID:
+            result.append(section)
+            continue
+        if media_index is None:
+            media_index = len(result)
+            media_block_ids = {block.id for block in section.blocks}
+            result.append(section)
+            continue
+        unique_blocks = [block for block in section.blocks if block.id not in media_block_ids]
+        if not unique_blocks:
+            continue
+        media_block_ids.update(block.id for block in unique_blocks)
+        canonical = result[media_index]
+        result[media_index] = canonical.model_copy(
+            update={"blocks": [*canonical.blocks, *unique_blocks]}
+        )
+    return result
 
 
 def list_course_media(*, material_root: Path, course_id: str, lecture_id: str) -> list[dict]:
@@ -151,17 +182,19 @@ def _insert_video_block(
         sections[index] = section.model_copy(update={"blocks": [*section.blocks, block]})
         return sections
     media_section = _media_section(block)
-    if sections and sections[-1].id == media_section.id:
-        if any(existing.id == block.id for existing in sections[-1].blocks):
+    for index, section in enumerate(sections):
+        if section.id != media_section.id:
+            continue
+        if any(existing.id == block.id for existing in section.blocks):
             return sections
-        sections[-1] = sections[-1].model_copy(update={"blocks": [*sections[-1].blocks, block]})
+        sections[index] = section.model_copy(update={"blocks": [*section.blocks, block]})
         return sections
     return [*sections, media_section]
 
 
 def _media_section(block: CanvasBlock) -> CanvasSection:
     return CanvasSection(
-        id="professor-selected-videos",
+        id=MEDIA_SECTION_ID,
         title="Professor selected videos",
         source_ref="course media workspace",
         blocks=[block],
