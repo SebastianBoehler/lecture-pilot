@@ -82,6 +82,7 @@ describe("Professor course builder", () => {
     await user.click(screen.getByRole("button", { name: /02 upload/i }));
     expect(screen.getByText(/drop course folder here/i)).toBeInTheDocument();
     expect(screen.getByText(/choose a folder or files/i)).toBeInTheDocument();
+    expect(screen.getByText(/build and system files are ignored automatically/i)).toBeInTheDocument();
     await user.upload(
       screen.getByLabelText(/upload course material/i),
       new File(["# extra note"], "supplement.md", { type: "text/markdown" }),

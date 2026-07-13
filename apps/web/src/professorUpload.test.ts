@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { materialFilesFromDrop } from "./materialDrop";
-import { isSkippableUploadError, uploadDestination } from "./professorUpload";
+import {
+  ignoredUploadNotice,
+  isSkippableUploadError,
+  uploadDestination,
+} from "./professorUpload";
 
 describe("professor material uploads", () => {
   it("keeps custom relative paths from dropped folders", async () => {
@@ -34,7 +38,19 @@ describe("professor material uploads", () => {
       isSkippableUploadError(new Error("A course material file already exists at this path.")),
     ).toBe(true);
     expect(isSkippableUploadError(new Error("File type .aux is not writable."))).toBe(true);
+    expect(
+      isSkippableUploadError(new Error("File contents do not match the requested file type.")),
+    ).toBe(true);
+    expect(
+      isSkippableUploadError(new Error("Declared media type does not match the requested file type.")),
+    ).toBe(true);
     expect(isSkippableUploadError(new Error("The backend is unavailable."))).toBe(false);
+  });
+
+  it("names ignored companion files without presenting the batch as failed", () => {
+    expect(ignoredUploadNotice(["course/main.aux", "course/slides.log"])).toBe(
+      " Ignored 2 files: main.aux, slides.log.",
+    );
   });
 });
 

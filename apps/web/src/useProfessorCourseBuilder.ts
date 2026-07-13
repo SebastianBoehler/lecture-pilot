@@ -22,7 +22,11 @@ import {
 import { publishLectureRows } from "./professorPublishRows";
 import { useProfessorWorkflowRun } from "./professorWorkflowRun";
 import { lectureFromWorkspace, requireWorkspace } from "./professorWorkspaceView";
-import { isSkippableUploadError, uploadDestination } from "./professorUpload";
+import {
+  ignoredUploadNotice,
+  isSkippableUploadError,
+  uploadDestination,
+} from "./professorUpload";
 import {
   flattenVideoGroups,
   type YoutubeCandidateGroup,
@@ -361,27 +365,33 @@ export function useProfessorCourseBuilder({
     onUpload: () => run("upload", async () => {
       const activeWorkspace = requireWorkspace(workspace);
       const uploaded = [];
-      let skipped = 0;
+      const ignored = [];
       for (const file of uploadFiles) {
+        const destination = uploadDestination(uploadPath, file, uploadFiles.length);
         try {
           uploaded.push(await uploadCourseMaterial({
             courseId: activeWorkspace.courseId,
-            path: uploadDestination(uploadPath, file, uploadFiles.length),
+            path: destination,
             file,
             session,
           }));
         } catch (error) {
-          if (!isSkippableUploadError(error)) throw error;
-          skipped += 1;
+          if (!isSkippableUploadError(error)) {
+            const message = error instanceof Error ? error.message : String(error);
+            throw new Error(`${destination}: ${message}`);
+          }
+          ignored.push(destination);
         }
       }
       await updateBundleAndSchedule(activeWorkspace.courseId);
       resetGeneratedState();
       if (setup.target === "full-course") setScheduleApplied(false);
       if (setup.target !== "full-course") setActiveStep("review");
-      if (uploaded.length === 1) return `Uploaded ${uploaded[0].path} as ${uploaded[0].kind}.`;
-      const skippedText = skipped ? ` Skipped ${skipped} unsupported or already uploaded files.` : "";
-      return `Uploaded ${uploaded.length} materials into the source bundle.${skippedText}`;
+      const ignoredText = ignoredUploadNotice(ignored);
+      if (uploaded.length === 1) {
+        return `Uploaded ${uploaded[0].path} as ${uploaded[0].kind}.${ignoredText}`;
+      }
+      return `Uploaded ${uploaded.length} materials into the source bundle.${ignoredText}`;
     }),
     onApplySchedule: () => run("apply-schedule", async () => {
       const activeWorkspace = requireWorkspace(workspace);

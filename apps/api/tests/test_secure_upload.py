@@ -60,6 +60,57 @@ def test_upload_rejects_active_svg_content(tmp_path: Path) -> None:
     assert response.status_code == 400
 
 
+def test_upload_accepts_legacy_encoded_latex_source(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    response = client.post(
+        "/admin/courses/martius-ml/materials",
+        headers=professor_headers(),
+        data={"path": "Lecture02.tex"},
+        files={
+            "file": (
+                "Lecture02.tex",
+                b"\\documentclass{beamer}\n% Gr\xfc\xdfe\n",
+                "application/x-tex",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["kind"] == "latex"
+
+
+def test_upload_accepts_latex_style_files(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    response = client.post(
+        "/admin/courses/martius-ml/materials",
+        headers=professor_headers(),
+        data={"path": "beamerthemeUniTuebingen.sty"},
+        files={
+            "file": (
+                "beamerthemeUniTuebingen.sty",
+                b"\\ProvidesPackage{beamerthemeUniTuebingen}\n",
+                "text/plain",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["kind"] == "latex-support"
+
+
+def test_upload_rejects_binary_content_disguised_as_latex(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    response = client.post(
+        "/admin/courses/martius-ml/materials",
+        headers=professor_headers(),
+        data={"path": "not-really-latex.tex"},
+        files={"file": ("not-really-latex.tex", b"\x01" * 128, "application/x-tex")},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "File contents do not match the requested file type."
+
+
 def _client(tmp_path: Path) -> TestClient:
     app = create_app()
     app.state.canvas_workspace = CanvasWorkspace(

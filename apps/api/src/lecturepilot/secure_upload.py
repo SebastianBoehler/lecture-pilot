@@ -123,17 +123,22 @@ def _matches_signature(suffix: str, header: bytes, lowered: bytes) -> bool:
         return b"<svg" in lowered[:2048] and not any(value in lowered for value in forbidden)
     if suffix in {".json", ".ipynb"}:
         return lowered.startswith((b"{", b"[")) and b"\x00" not in header
-    if suffix in {".tex", ".md", ".txt", ".csv", ".py"}:
-        try:
-            header.decode("utf-8")
-        except UnicodeDecodeError:
-            return False
-        return b"\x00" not in header
+    if suffix in {".tex", ".sty", ".md", ".txt", ".csv", ".py"}:
+        return _looks_like_text(header)
     return False
+
+
+def _looks_like_text(header: bytes) -> bool:
+    if b"\x00" in header:
+        return False
+    allowed_controls = {9, 10, 13}
+    controls = sum(byte < 32 and byte not in allowed_controls or byte == 127 for byte in header)
+    return controls / len(header) <= 0.01
 
 
 _DECLARED_TYPES = {
     ".tex": {"application/x-tex", "text/x-tex", "text/plain"},
+    ".sty": {"application/x-tex", "text/x-tex", "text/plain"},
     ".md": {"text/markdown", "text/plain"},
     ".txt": {"text/plain"},
     ".csv": {"text/csv", "application/csv", "text/plain"},

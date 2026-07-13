@@ -28,9 +28,15 @@
 }
 
 .material-drop-copy,
-.material-selection-summary {
+.material-selection-summary,
+.material-format-note {
   color: var(--color-text-tertiary);
   font-size: 13px;
+}
+
+.material-format-note {
+  margin: 0;
+  line-height: 1.45;
 }
 
 .material-drop-button {

@@ -85,6 +85,7 @@ export function ProfessorMaterialStep({
           {...{ directory: "", webkitdirectory: "" }}
         />
       </label>
+      <p className="material-format-note">{t("builder.upload.formats")}</p>
       <p className="material-selection-summary">{fileLabel}</p>
       <div className="flow-actions">
         <button

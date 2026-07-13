@@ -257,6 +257,8 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.upload.dropCopy": "oder Ordner bzw. Dateien auswählen",
   "builder.upload.choose": "Materialien auswählen",
   "builder.upload.aria": "Kursmaterial hochladen",
+  "builder.upload.formats":
+    "Unterstützt werden PDF, TeX- und Style-Dateien, Textdokumente, Bilder, Videos, Python und Notebooks. Build- und Systemdateien werden automatisch ignoriert.",
   "builder.upload.noMaterials": "Noch keine Materialien indexiert.",
   "builder.upload.noFilesSelected": "Keine Dateien ausgewählt",
   "builder.upload.folderSummary": "Ordner: {folder} · {count} Dateien",

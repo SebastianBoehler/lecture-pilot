@@ -31,6 +31,7 @@ def test_source_bundle_endpoint_lists_only_uploaded_materials(tmp_path: Path) ->
     assert payload["files"] == []
     upload_types = {item["suffix"]: item for item in payload["supported_uploads"]}
     assert upload_types[".tex"]["kind"] == "latex"
+    assert upload_types[".sty"]["kind"] == "latex-support"
     assert upload_types[".mp4"]["max_bytes"] == 500 * 1024 * 1024
 
 

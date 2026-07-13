@@ -250,6 +250,8 @@ export const enMessages = {
   "builder.upload.dropCopy": "or choose a folder or files",
   "builder.upload.choose": "Choose materials",
   "builder.upload.aria": "Upload course material",
+  "builder.upload.formats":
+    "PDF, TeX and style files, text documents, images, videos, Python and notebooks are supported. Build and system files are ignored automatically.",
   "builder.upload.noMaterials": "No materials indexed yet.",
   "builder.upload.noFilesSelected": "No files selected",
   "builder.upload.folderSummary": "Folder: {folder} · {count} files",
