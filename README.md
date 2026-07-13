@@ -249,22 +249,6 @@ Trace content defaults to metadata only. Set
 `LECTUREPILOT_TRACE_CONTENT=full` only in local/private debugging sessions where
 course and student text may be stored in the tracing backend.
 
-For a supervised university-login compatibility check, temporarily set
-`LECTUREPILOT_AUTH_DIAGNOSTICS=true`. The API then writes correlated
-`AUTH_DIAGNOSTIC` JSON events for each Alma, ILIAS, database, and session step
-to its process log. The trace records timings, role strings, result counts,
-presence flags, HTTP status/host/path, and exception class names; it excludes
-credentials, cookies, tokens, raw provider responses, names, full email
-addresses, and exception messages. Disable the flag after the check.
-
-If the provider page format itself needs inspection, also temporarily set
-`LECTUREPILOT_AUTH_CAPTURE_HTML=true`. Every HTML response received during the
-Alma and ILIAS flow is then saved as a plain `.html` file under
-`<LECTUREPILOT_WORKSPACE_ROOT>/auth-diagnostics/<attempt-id>/`. The capture does
-not write request bodies, credentials, headers, or cookies, but response HTML
-may still contain personal or session data. Delete the attempt directory and
-disable both flags immediately after the supervised check.
-
 ## Design Source
 
 The first frontend direction was generated with OpenRouter model

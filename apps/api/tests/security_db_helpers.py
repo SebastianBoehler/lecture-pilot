@@ -13,7 +13,7 @@ class FakeUniversityAdapter:
     courses_by_user: dict[str, list[ExternalCourseCandidate]]
     roles_by_user: dict[str, str] = field(default_factory=dict)
 
-    def authenticate(self, *, username: str, password: str, term: str, diagnostics=None):
+    def authenticate(self, *, username: str, password: str, term: str):
         assert password
         courses = self.courses_by_user.get(username, [])
         return pending_university_login(

@@ -12,8 +12,6 @@ from lecturepilot.database import _psycopg_url
 def local_dev_auth_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LECTUREPILOT_ENV", "test")
     monkeypatch.setenv("LECTUREPILOT_AUTH_MODE", "dev")
-    monkeypatch.delenv("LECTUREPILOT_AUTH_DIAGNOSTICS", raising=False)
-    monkeypatch.delenv("LECTUREPILOT_AUTH_CAPTURE_HTML", raising=False)
     monkeypatch.setenv(
         "LECTUREPILOT_ALLOWED_MODELS",
         "gemini/gemini-3.1-flash-lite,gemini/test-model,"

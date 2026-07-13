@@ -1,7 +1,6 @@
 from fastapi.testclient import TestClient
 
 from lecturepilot.app import create_app
-from lecturepilot.auth_diagnostics import AUTH_ATTEMPT_HEADER
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import (
@@ -40,7 +39,6 @@ def test_tuebingen_login_returns_courses_without_echoing_password(monkeypatch) -
     )
 
     assert response.status_code == 200
-    assert len(response.headers[AUTH_ATTEMPT_HEADER]) == 32
     assert "very-secret-password" not in response.text
     assert "httponly" in response.headers["set-cookie"].lower()
     assert SESSION_COOKIE_NAME in response.cookies
@@ -91,9 +89,7 @@ def test_tuebingen_login_reports_missing_wrapper_dependency() -> None:
     )
 
     assert response.status_code == 503
-    assert len(response.headers[AUTH_ATTEMPT_HEADER]) == 32
     assert "tue-api-wrapper" in response.json()["detail"]
-    assert response.headers[AUTH_ATTEMPT_HEADER] in response.json()["detail"]
 
 
 def test_agent_turn_focuses_bayes_section(monkeypatch) -> None:
@@ -237,7 +233,7 @@ def test_agent_turn_enriches_harness_with_canvas_context(monkeypatch) -> None:
 
 
 class _FakeTuebingenAdapter:
-    def authenticate(self, *, username: str, password: str, term: str, diagnostics=None):
+    def authenticate(self, *, username: str, password: str, term: str):
         assert password == "very-secret-password"
         return pending_university_login(
             UniversityLoginResult(
@@ -259,7 +255,7 @@ class _FakeTuebingenAdapter:
 
 
 class _UnavailableTuebingenAdapter:
-    def authenticate(self, *, username: str, password: str, term: str, diagnostics=None):
+    def authenticate(self, *, username: str, password: str, term: str):
         raise TuebingenIntegrationUnavailable("tue-api-wrapper is not installed.")
 
 

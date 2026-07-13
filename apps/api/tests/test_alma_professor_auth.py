@@ -149,7 +149,7 @@ class _RoleUniversityAdapter:
         self.roles = roles
         self.available_roles = available_roles
 
-    def authenticate(self, *, username: str, password: str, term: str, diagnostics=None):
+    def authenticate(self, *, username: str, password: str, term: str):
         assert password
         current_role = self.roles[username]
         return pending_university_login(

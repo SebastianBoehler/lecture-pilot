@@ -471,7 +471,7 @@ class _FakeLectureSchedulePlanner:
 
 
 class _FakeLoginAdapter:
-    def authenticate(self, *, username: str, password: str, term: str, diagnostics=None):
+    def authenticate(self, *, username: str, password: str, term: str):
         return pending_university_login(
             UniversityLoginResult(
                 username=username,
