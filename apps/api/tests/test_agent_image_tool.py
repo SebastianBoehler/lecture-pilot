@@ -6,7 +6,7 @@ from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.image_generation import GeneratedImage
 
 
-def test_generate_image_writes_real_learner_canvas_section(tmp_path) -> None:
+def test_generate_image_does_not_append_a_generic_section_without_a_target(tmp_path) -> None:
     workspace = CanvasWorkspace(
         workspace_root=tmp_path / "workspaces",
         material_root=write_course_source(tmp_path),
@@ -29,15 +29,80 @@ def test_generate_image_writes_real_learner_canvas_section(tmp_path) -> None:
         },
     )
 
+    assert result["ok"] is False
+    assert "existing learner section" in result["error"]
+    document = workspace.read_document(
+        course_id="martius-ml", lecture_id="lecture-03", user_id="u1"
+    )
+    assert all(section.title != "Generated infographic" for section in document.sections)
+    assert not (
+        workspace.layout.user_canvas_dir("u1", "martius-ml", "lecture-03") / "student-assets"
+    ).exists()
+
+
+def test_generate_image_semantically_targets_an_existing_learner_section(tmp_path) -> None:
+    workspace = CanvasWorkspace(
+        workspace_root=tmp_path / "workspaces",
+        material_root=write_course_source(tmp_path),
+    )
+    workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="u1")
+    setup = AgentToolExecutor(
+        canvas_workspace=workspace,
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        user_id="u1",
+    )
+    written = setup.execute(
+        "write",
+        {
+            "path": "/lecture/canvas/student/regression-tasks-explained.md",
+            "content": (
+                "# Regression Tasks Explained\n\n"
+                "Regression maps inputs to a continuous target and measures prediction error."
+            ),
+        },
+    )
+    executor = AgentToolExecutor(
+        canvas_workspace=workspace,
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        user_id="u1",
+        image_generator=_FakeImageGenerator(),
+    )
+
+    result = executor.execute(
+        "generate_image",
+        {
+            "prompt": "Visualize regression tasks as inputs, model, loss, and prediction.",
+            "section_id": "regression-tasks-md",
+            "filename": "regression-visual",
+        },
+    )
+
     assert result["ok"] is True
-    assert result["asset_url"].endswith("/student-assets/posterior-visual.png")
-    assert result["markdown"].endswith("](" + result["asset_url"] + ")")
-    document = workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="u1")
-    section = document.sections[-1]
-    assert section.id == "posterior-visual-md"
-    assert section.blocks[0].type == "asset"
-    assert section.blocks[0].asset_url == result["asset_url"]
-    assert executor.canvas_update_commands()[-1].section_id == "posterior-visual-md"
+    assert result["needs_canvas_edit"] is True
+    assert result["section_id"] == written["section_id"]
+    assert result["target_path"] == written["path"]
+    edit = executor.execute(
+        "edit",
+        {
+            "path": written["path"],
+            "old_text": "Regression maps inputs to a continuous target and measures prediction error.",
+            "new_text": (
+                "Regression maps inputs to a continuous target and measures prediction error.\n\n"
+                + result["markdown"]
+            ),
+        },
+    )
+    assert edit["ok"] is True
+    document = workspace.read_document(
+        course_id="martius-ml", lecture_id="lecture-03", user_id="u1"
+    )
+    student_sections = [
+        section for section in document.sections if section.source_ref == "student workspace"
+    ]
+    assert [section.title for section in student_sections] == ["Regression Tasks Explained"]
+    assert sum(block.asset_url == result["asset_url"] for block in student_sections[0].blocks) == 1
 
 
 def test_generate_image_targets_existing_section_for_explicit_edit(tmp_path) -> None:
@@ -86,8 +151,12 @@ def test_generate_image_targets_existing_section_for_explicit_edit(tmp_path) -> 
     assert result["needs_canvas_edit"] is True
     assert result["target_path"] == written["path"]
     assert "Use edit, not write" in executor.pending_canvas_edit_instruction()
-    after_generate = workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="u1")
-    assert [section.id for section in after_generate.sections] == [section.id for section in before.sections]
+    after_generate = workspace.read_document(
+        course_id="martius-ml", lecture_id="lecture-03", user_id="u1"
+    )
+    assert [section.id for section in after_generate.sections] == [
+        section.id for section in before.sections
+    ]
     assert all(section.title != "Generated infographic" for section in after_generate.sections)
 
     edit = executor.execute(
@@ -101,7 +170,9 @@ def test_generate_image_targets_existing_section_for_explicit_edit(tmp_path) -> 
 
     assert edit["ok"] is True
     assert executor.pending_canvas_edit_instruction() is None
-    document = workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="u1")
+    document = workspace.read_document(
+        course_id="martius-ml", lecture_id="lecture-03", user_id="u1"
+    )
     section = next(section for section in document.sections if section.id == section_id)
     assert section.blocks[1].type == "asset"
     assert section.blocks[1].asset_url == result["asset_url"]
@@ -168,7 +239,11 @@ def test_pending_image_requires_edit_and_dedupes_insert(tmp_path) -> None:
 
     assert edit["ok"] is True
     assert executor.pending_canvas_edit_instruction() is None
-    raw = (workspace.layout.user_canvas_dir("u1", "martius-ml", "lecture-03") / "student" / "90-prior-explanation.md").read_text()
+    raw = (
+        workspace.layout.user_canvas_dir("u1", "martius-ml", "lecture-03")
+        / "student"
+        / "90-prior-explanation.md"
+    ).read_text()
     assert raw.count(image["asset_url"]) == 1
     assert raw.index("Use it as the bridge") < raw.index(image["asset_url"])
 

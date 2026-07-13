@@ -151,6 +151,7 @@ async def _complete_agent_turn_inner(
                     usage_quota=app.state.usage_quota,
                     tenant_id=app.state.course_tenant_id,
                     user_message=turn.message,
+                    initial_focus_section_id=turn.canvas_state.focused_section_id,
                 )
         except CanvasWorkspaceError:
             pass

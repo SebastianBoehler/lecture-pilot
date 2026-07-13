@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasSection
+from lecturepilot.canvas_models import CanvasSection
 from lecturepilot.generated_infographics import _safe_slug
 from lecturepilot.image_generation import ImageGenerationError
 from lecturepilot.storage_layout import safe_id
@@ -20,17 +20,11 @@ def generate_workspace_image(
     course_id: str,
     lecture_id: str,
     prompt: str,
-    section_id: str,
+    section: CanvasSection,
     filename: str | None,
 ) -> dict[str, str]:
     if image_generator is None:
         raise AgentImageToolError("No image provider is configured.")
-    section = CanvasSection(
-        id=safe_id(section_id),
-        title="Generated infographic",
-        source_ref="student workspace",
-        blocks=[CanvasBlock(id="prompt", type="paragraph", text=prompt)],
-    )
     try:
         generated = image_generator.generate_infographic(prompt=prompt, section=section)
         if generated.extension == "svg":

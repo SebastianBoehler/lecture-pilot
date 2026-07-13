@@ -58,7 +58,9 @@ async def complete_tool_turn(
     return await _final_json_response(acompletion, settings, messages, turn)
 
 
-def _with_tool_instruction(messages: list[dict[str, str]], tool_profile: AgentToolProfile) -> list[dict[str, str]]:
+def _with_tool_instruction(
+    messages: list[dict[str, str]], tool_profile: AgentToolProfile
+) -> list[dict[str, str]]:
     result = [dict(message) for message in messages]
     result[0]["content"] += (
         " You can use Pi-style low-level tools over a constrained filesystem image. "
@@ -70,7 +72,10 @@ def _with_tool_instruction(messages: list[dict[str, str]], tool_profile: AgentTo
         "Do not duplicate a successful write/edit/generate_image as an append_section or update_section "
         "in the final JSON; the filesystem tool output is the source of truth. "
         "If the student asks for an infographic, diagram, image, plot, chart, graph, or visual, "
-        "call generate_image before your final answer. Do not claim visual content was added unless "
+        "place it inside the best-fitting existing learner section. If none exists, write a meaningful "
+        "explanation section first and then call generate_image with its returned section_id. "
+        "Do not create a separate image-only section. Call generate_image before your final answer. "
+        "Do not claim visual content was added unless "
         "generate_image returned ok=true. If generate_image returns needs_canvas_edit=true, read the "
         "target section if needed, then use edit, not write, to insert the returned markdown directly "
         "after the sentence or bullet it explains before you answer. If you write Markdown that references the generated image, use the returned markdown "
@@ -135,7 +140,9 @@ async def _final_json_response(
         response_format=lecturepilot_response_format(),
         **completion_options(settings, temperature=0.3, reasoning_effort="low"),
     )
-    return agent_result_from_content(_message_content(response.choices[0].message), turn, settings.model)
+    return agent_result_from_content(
+        _message_content(response.choices[0].message), turn, settings.model
+    )
 
 
 def _tool_calls(message: Any) -> list[Any]:
@@ -153,7 +160,10 @@ def _message_content(message: Any) -> str | None:
 def _assistant_tool_message(message: Any, tool_calls: list[Any]) -> dict[str, Any]:
     if isinstance(message, dict):
         return message
-    calls = [call.model_dump() if hasattr(call, "model_dump") else _tool_call_dict(call) for call in tool_calls]
+    calls = [
+        call.model_dump() if hasattr(call, "model_dump") else _tool_call_dict(call)
+        for call in tool_calls
+    ]
     return {"role": "assistant", "content": _message_content(message), "tool_calls": calls}
 
 

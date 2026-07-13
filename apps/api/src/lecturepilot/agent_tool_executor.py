@@ -46,6 +46,7 @@ class AgentToolExecutor(AgentSideEffectTools):
         usage_quota: UsageQuota | None = None,
         tenant_id: str | None = None,
         user_message: str | None = None,
+        initial_focus_section_id: str | None = None,
     ) -> None:
         self.canvas_workspace = canvas_workspace
         self.course_id = course_id
@@ -56,6 +57,7 @@ class AgentToolExecutor(AgentSideEffectTools):
         self.usage_quota = usage_quota
         self.tenant_id = tenant_id
         self.user_message = user_message
+        self.initial_focus_section_id = initial_focus_section_id
         self.workspace_fs = WorkspaceFS(
             learner_workspace_capability(
                 canvas_workspace,

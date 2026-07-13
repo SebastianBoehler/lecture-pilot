@@ -56,7 +56,17 @@ def agent_tool_names(profile: AgentToolProfile = "tutor") -> set[str]:
 
 def tutor_tool_profile_for_message(message: str) -> AgentToolProfile:
     lowered = message.lower()
-    evidence_terms = ("source", "cite", "citation", "where", "find", "search", "exact", "evidence", "material")
+    evidence_terms = (
+        "source",
+        "cite",
+        "citation",
+        "where",
+        "find",
+        "search",
+        "exact",
+        "evidence",
+        "material",
+    )
     return "evidence" if any(term in lowered for term in evidence_terms) else "tutor"
 
 
@@ -102,7 +112,9 @@ def _all_tool_schemas() -> list[dict]:
             "write",
             "Create or overwrite a permitted learner file. Canvas Markdown under /lecture/canvas/student is append-ordered and returns the actual path plus section_id.",
             {
-                "path": _string("Writable file path under /lecture/canvas/student, /lecture/canvas/components, /lecture/canvas/student-assets, /user/memories, or /user/course/memories."),
+                "path": _string(
+                    "Writable file path under /lecture/canvas/student, /lecture/canvas/components, /lecture/canvas/student-assets, /user/memories, or /user/course/memories."
+                ),
                 "content": _string("Complete file content."),
             },
             ["path", "content"],
@@ -163,10 +175,12 @@ def _all_tool_schemas() -> list[dict]:
         ),
         _tool(
             "generate_image",
-            "Generate a raster infographic asset in the learner canvas workspace. Existing target sections still need an edit placement step.",
+            "Generate a raster infographic asset for an existing learner section. The returned Markdown still needs an edit placement step.",
             {
                 "prompt": _string("Image prompt grounded in the lecture material."),
-                "section_id": _string("Existing learner section id the infographic supports, or a new id only when the visual should become its own section."),
+                "section_id": _string(
+                    "Existing learner section id the infographic supports. Omit only when the focused learner section is the intended target."
+                ),
                 "filename": _string("Optional safe filename without extension."),
             },
             ["prompt"],

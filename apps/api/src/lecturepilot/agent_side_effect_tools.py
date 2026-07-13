@@ -58,10 +58,11 @@ class AgentSideEffectTools:
                 user_id=self.quota_user_id,
                 course_id=self.course_id,
             )
-        return self._image_placement().generate(
+        placement = self._image_placement()
+        placement.focused_section_id = self.focus_section_id or self.initial_focus_section_id
+        return placement.generate(
             args,
             image_generator=self.image_generator,
-            write=self._write,
         )
 
     def pending_canvas_edit_instruction(self) -> str | None:
@@ -86,6 +87,7 @@ class AgentSideEffectTools:
                 course_id=self.course_id,
                 lecture_id=self.lecture_id,
                 logical_for=self._logical_for,
+                focused_section_id=self.focus_section_id or self.initial_focus_section_id,
             )
         return self.image_placement
 
