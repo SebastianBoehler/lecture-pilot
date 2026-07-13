@@ -22,7 +22,7 @@ import {
 import { publishLectureRows } from "./professorPublishRows";
 import { useProfessorWorkflowRun } from "./professorWorkflowRun";
 import { lectureFromWorkspace, requireWorkspace } from "./professorWorkspaceView";
-import { uploadDestination } from "./professorUpload";
+import { isSkippableUploadError, uploadDestination } from "./professorUpload";
 import {
   flattenVideoGroups,
   type YoutubeCandidateGroup,
@@ -103,7 +103,6 @@ export function useProfessorCourseBuilder({
     ? scheduledLectureIds
     : workspace ? [workspace.lectureId] : [];
   const fullCoursePublishedCount = fullCourseLectureIds.filter((lectureId) => publishedLectureIds.includes(lectureId)).length;
-  const materialScope = setup.target === "full-course" ? "all course materials" : "materials for this lecture";
   const defaultYoutubeQuery = [
     setup.courseTitle,
     setup.target === "single-lecture" ? setup.lectureTitle : "machine learning lecture",
@@ -351,7 +350,6 @@ export function useProfessorCourseBuilder({
     bundle,
     courseReady,
     lectureSchedule,
-    materialScope,
     pendingAction,
     setup,
     uploadFiles,
@@ -382,16 +380,8 @@ export function useProfessorCourseBuilder({
       if (setup.target === "full-course") setScheduleApplied(false);
       if (setup.target !== "full-course") setActiveStep("review");
       if (uploaded.length === 1) return `Uploaded ${uploaded[0].path} as ${uploaded[0].kind}.`;
-      const skippedText = skipped ? ` Skipped ${skipped} unsupported files.` : "";
+      const skippedText = skipped ? ` Skipped ${skipped} unsupported or already uploaded files.` : "";
       return `Uploaded ${uploaded.length} materials into the source bundle.${skippedText}`;
-    }),
-    onScan: () => run("scan", async () => {
-      const activeWorkspace = requireWorkspace(workspace);
-      await updateBundleAndSchedule(activeWorkspace.courseId);
-      resetGeneratedState();
-      if (setup.target === "full-course") setScheduleApplied(false);
-      if (setup.target !== "full-course") setActiveStep("review");
-      return "Uploaded source bundle scanned.";
     }),
     onApplySchedule: () => run("apply-schedule", async () => {
       const activeWorkspace = requireWorkspace(workspace);
@@ -571,11 +561,6 @@ export function useProfessorCourseBuilder({
     uploadStep,
     workspace,
   };
-}
-
-function isSkippableUploadError(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error);
-  return /File type .* is not writable|Hidden workspace paths are not allowed|files are limited to/i.test(message);
 }
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {

@@ -12,10 +12,8 @@ export function ProfessorMaterialStep({
   bundle,
   courseReady,
   lectureSchedule,
-  materialScope,
   onApplySchedule,
   onScheduleChange,
-  onScan,
   onUpload,
   onUploadFilesChange,
   pendingAction,
@@ -28,9 +26,7 @@ export function ProfessorMaterialStep({
   courseReady: boolean;
   pendingAction: BuilderAction | null;
   lectureSchedule: LectureScheduleItem[];
-  materialScope: string;
   onApplySchedule: () => void;
-  onScan: () => void;
   onScheduleChange: (schedule: LectureScheduleItem[]) => void;
   onUpload: () => void;
   onUploadFilesChange: (files: File[]) => void;
@@ -97,15 +93,9 @@ export function ProfessorMaterialStep({
           type="button"
           onClick={onUpload}
         >
-          {isUploading
-            ? t("builder.upload.uploading")
-            : t("builder.upload.uploadSelected", { scope: materialScope })}
-        </button>
-        <button disabled={disabled} type="button" onClick={onScan}>
-          {pendingAction === "scan" ? t("builder.upload.scanning") : t("builder.upload.scan")}
+          {isUploading ? t("builder.upload.uploading") : t("builder.upload.uploadSelected")}
         </button>
       </div>
-      {pendingAction === "scan" ? <PendingStatus label={t("builder.upload.refreshing")} /> : null}
       {isUploading ? <PendingStatus label={t("builder.upload.uploadingStatus")} /> : null}
       {bundle ? <BundleSummary bundle={bundle} /> : null}
       <ProfessorLectureSchedule

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { materialFilesFromDrop } from "./materialDrop";
-import { uploadDestination } from "./professorUpload";
+import { isSkippableUploadError, uploadDestination } from "./professorUpload";
 
 describe("professor material uploads", () => {
   it("keeps custom relative paths from dropped folders", async () => {
@@ -27,6 +27,14 @@ describe("professor material uploads", () => {
     });
 
     expect(uploadDestination("uploads", file, 2)).toBe("uploads/slides/week-02/Lecture02-eng.tex");
+  });
+
+  it("continues folder retries past files that were already uploaded", () => {
+    expect(
+      isSkippableUploadError(new Error("A course material file already exists at this path.")),
+    ).toBe(true);
+    expect(isSkippableUploadError(new Error("File type .aux is not writable."))).toBe(true);
+    expect(isSkippableUploadError(new Error("The backend is unavailable."))).toBe(false);
   });
 });
 

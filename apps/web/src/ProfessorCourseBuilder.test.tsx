@@ -86,12 +86,11 @@ describe("Professor course builder", () => {
       screen.getByLabelText(/upload course material/i),
       new File(["# extra note"], "supplement.md", { type: "text/markdown" }),
     );
-    expect(
-      screen.getByRole("button", { name: /upload selected materials for this lecture/i }),
-    ).toHaveClass("primary-action");
-    await user.click(
-      screen.getByRole("button", { name: /upload selected materials for this lecture/i }),
+    expect(screen.getByRole("button", { name: /upload and process materials/i })).toHaveClass(
+      "primary-action",
     );
+    expect(screen.queryByRole("button", { name: /scan uploaded bundle/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /upload and process materials/i }));
     expect(await screen.findByText(/uploaded uploads\/supplement\.md/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /review youtube candidates/i })).toBeInTheDocument();
     expect(screen.getByText(/selected videos attach to lecture 03/i)).toBeInTheDocument();
@@ -201,7 +200,7 @@ describe("Professor course builder", () => {
       await screen.findByLabelText(/upload course material/i),
       new File(["# lecture one"], "Lecture01-eng.tex", { type: "application/x-tex" }),
     );
-    await user.click(screen.getByRole("button", { name: /upload selected all course materials/i }));
+    await user.click(screen.getByRole("button", { name: /upload and process materials/i }));
 
     expect(
       await screen.findByText(/2 lectures inferred from the source bundle/i),
@@ -315,9 +314,7 @@ describe("Professor course builder", () => {
       await screen.findByLabelText(/upload course material/i),
       new File(["# extra note"], "supplement.md", { type: "text/markdown" }),
     );
-    await user.click(
-      screen.getByRole("button", { name: /upload selected materials for this lecture/i }),
-    );
+    await user.click(screen.getByRole("button", { name: /upload and process materials/i }));
     await screen.findByRole("heading", { name: /review youtube candidates/i });
     await user.click(screen.getByRole("button", { name: /continue to canvas draft/i }));
 
