@@ -4,9 +4,16 @@ import type { Lecture, LoginSession, UniversityCourse } from "./types";
 import type { UniversityEnrollmentCourse } from "./universityCourseTypes";
 
 type CourseWorkspaceStatus = "matched" | "unmatched";
+type CourseSource = UniversityEnrollmentCourse["source"];
+
+type DisplayUniversityCourse = {
+  course: UniversityCourse;
+  sources: CourseSource[];
+};
 
 export type CourseWorkspaceGroup = {
   course: UniversityCourse;
+  sources: CourseSource[];
   status: CourseWorkspaceStatus;
   statusLabel: string;
   tutorAvailable: boolean;
@@ -28,14 +35,17 @@ export function buildCourseGroups(
   // University observations are display-only; only platform courses can authorize tutor access.
   const authorizedCourses = session?.courses ?? [];
   const observedCourses = displayUniversityCourses(session?.university_courses ?? []);
-  const enrolledCourses = observedCourses.length ? observedCourses : authorizedCourses;
+  const enrolledCourses = observedCourses.length
+    ? observedCourses
+    : authorizedCourses.map((course) => ({ course, sources: [] }));
   const workspaceAuthorized =
     authorizedCourses.some((course) => isWorkspaceCourse(course, workspaceCourse)) ||
     hasWorkspaceAccess(workspaceCourse);
   const courseGroups = enrolledCourses.length
-    ? enrolledCourses.map((course) =>
+    ? enrolledCourses.map(({ course, sources }) =>
         buildEnrolledCourseGroup(
           course,
+          sources,
           workspaceCourse,
           lectures,
           publishedLectureIds,
@@ -49,7 +59,7 @@ export function buildCourseGroups(
 
   if (
     enrolledCourses.length &&
-    !enrolledCourses.some((course) => isWorkspaceCourse(course, workspaceCourse)) &&
+    !enrolledCourses.some(({ course }) => isWorkspaceCourse(course, workspaceCourse)) &&
     workspaceAuthorized &&
     publishedLectureIds.length > 0
   ) {
@@ -69,6 +79,7 @@ export function publishedCourseLectures(lectures: Lecture[], publishedLectureIds
 
 function buildEnrolledCourseGroup(
   course: UniversityCourse,
+  sources: CourseSource[],
   workspaceCourse: UniversityCourse,
   lectures: Lecture[],
   publishedLectureIds: string[],
@@ -82,6 +93,7 @@ function buildEnrolledCourseGroup(
     isWorkspaceCourse(course, workspaceCourse);
   return {
     course: tutorAvailable ? workspaceCourse : course,
+    sources,
     status: tutorAvailable ? "matched" : "unmatched",
     statusLabel: tutorAvailable ? labels.aiTutorAvailable : labels.noTutor,
     tutorAvailable,
@@ -99,6 +111,7 @@ function buildDiscoverableCourseGroup(
   const tutorAvailable = publishedLectures.length > 0;
   return {
     course: workspaceCourse,
+    sources: [],
     status: tutorAvailable ? "matched" : "unmatched",
     statusLabel: tutorAvailable ? labels.aiTutorAvailable : labels.noTutor,
     tutorAvailable,
@@ -124,19 +137,30 @@ function normalizeCourseTitle(title: string) {
   return title.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-function displayUniversityCourses(courses: UniversityEnrollmentCourse[]): UniversityCourse[] {
-  const unique = new Map<string, UniversityCourse>();
+function displayUniversityCourses(
+  courses: UniversityEnrollmentCourse[],
+): DisplayUniversityCourse[] {
+  const unique = new Map<string, DisplayUniversityCourse>();
   for (const course of courses) {
     const key = `${course.term}:${course.title
       .normalize("NFKC")
       .toLocaleLowerCase("de-DE")
       .replace(/[^\p{L}\p{N}]+/gu, "")}`;
-    if (unique.has(key)) continue;
+    const existing = unique.get(key);
+    if (existing) {
+      if (!existing.sources.includes(course.source)) {
+        existing.sources.push(course.source);
+      }
+      continue;
+    }
     unique.set(key, {
-      id: `university:${course.source}:${course.external_course_id}`,
-      title: course.title,
-      professor: course.instructor ?? course.organization ?? "University of Tübingen",
-      term: course.term,
+      course: {
+        id: `university:${course.source}:${course.external_course_id}`,
+        title: course.title,
+        professor: course.instructor ?? course.organization ?? "University of Tübingen",
+        term: course.term,
+      },
+      sources: [course.source],
     });
   }
   return [...unique.values()];

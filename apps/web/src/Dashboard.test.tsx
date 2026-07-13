@@ -133,9 +133,15 @@ describe("Dashboard course workspace matching", () => {
     ).toHaveLength(1);
     const nlpCourse = workspaceArticle("INFO4193 Natural Language Processing");
     expect(within(nlpCourse).getByText("Not supported yet")).toBeInTheDocument();
+    expect(within(nlpCourse).getByText("Alma")).toBeInTheDocument();
+    expect(within(nlpCourse).getByText("ILIAS")).toBeInTheDocument();
     expect(within(nlpCourse).queryByText("Fachbereich Informatik")).not.toBeInTheDocument();
     expect(within(nlpCourse).queryByRole("button")).not.toBeInTheDocument();
     expect(within(nlpCourse).queryByText(/no matched lecturepilot/i)).not.toBeInTheDocument();
+
+    const dataEthicsCourse = workspaceArticle("Introduction to Data Ethics");
+    expect(within(dataEthicsCourse).getByText("Alma")).toBeInTheDocument();
+    expect(within(dataEthicsCourse).queryByText("ILIAS")).not.toBeInTheDocument();
   });
 
   it("keeps long course lecture lists compact until expanded", async () => {

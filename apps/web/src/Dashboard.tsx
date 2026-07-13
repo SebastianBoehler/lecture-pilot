@@ -59,7 +59,7 @@ export function Dashboard({
         </div>
         <div className="course-workspace-list">
           {courseGroups.map((group) => {
-            const { course, status, statusLabel, tutorAvailable, courseLectures } = group;
+            const { course, sources, status, statusLabel, tutorAvailable, courseLectures } = group;
             const courseOpen = openCourses[course.id] ?? tutorAvailable;
             const allLecturesShown = expandedLectureLists[course.id] ?? false;
             const visibleLectures = allLecturesShown
@@ -70,7 +70,18 @@ export function Dashboard({
               <article className={`course-workspace is-${status}`} key={`${status}-${course.id}`}>
                 <div className="course-row">
                   <div>
-                    <h3>{course.title}</h3>
+                    <div className="course-title-line">
+                      <h3>{course.title}</h3>
+                      {sources.length ? (
+                        <span aria-label="Course sources" className="course-source-tags">
+                          {sources.map((source) => (
+                            <span className="course-source-tag" key={source}>
+                              {source === "alma" ? "Alma" : "ILIAS"}
+                            </span>
+                          ))}
+                        </span>
+                      ) : null}
+                    </div>
                     {tutorAvailable ? <p>{course.professor}</p> : null}
                   </div>
                   <div className="course-row-actions">
