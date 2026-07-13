@@ -279,6 +279,7 @@ export const deMessages: Record<MessageKey, string> = {
   "courseUpdate.chooseFiles": "Dateien auswählen",
   "courseUpdate.chooseFolder": "Ordner auswählen",
   "courseUpdate.compare": "Materialien vergleichen",
+  "courseUpdate.uploading": "{completed} von {total} Dateien werden hochgeladen...",
   "courseUpdate.comparing": "Wird verglichen...",
   "courseUpdate.reviewTitle": "Erkannte Änderungen prüfen",
   "courseUpdate.reviewHelp":

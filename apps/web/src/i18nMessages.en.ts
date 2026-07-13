@@ -271,6 +271,7 @@ export const enMessages = {
   "courseUpdate.chooseFiles": "Choose files",
   "courseUpdate.chooseFolder": "Choose folder",
   "courseUpdate.compare": "Compare materials",
+  "courseUpdate.uploading": "Uploading {completed} of {total} files...",
   "courseUpdate.comparing": "Comparing...",
   "courseUpdate.reviewTitle": "Review detected changes",
   "courseUpdate.reviewHelp":

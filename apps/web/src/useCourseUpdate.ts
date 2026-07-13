@@ -35,7 +35,10 @@ export function useCourseUpdate(
   const [result, setResult] = useState<CourseUpdateApplyResult | null>(null);
   const [statuses, setStatuses] = useState<Record<string, WorkStatus>>({});
   const [ignored, setIgnored] = useState<string[]>([]);
-  const [busy, setBusy] = useState<"upload" | "apply" | "draft" | "publish" | null>(null);
+  const [busy, setBusy] = useState<
+    "upload" | "analyze" | "apply" | "draft" | "publish" | null
+  >(null);
+  const [uploadProgress, setUploadProgress] = useState({ completed: 0, total: 0 });
   const [error, setError] = useState<string | null>(null);
 
   const hasSelection = useMemo(
@@ -56,6 +59,7 @@ export function useCourseUpdate(
     result,
     selected,
     statuses,
+    uploadProgress,
     setAssignment(path: string, value: string) {
       setAssignments((current) => ({ ...current, [path]: value }));
     },
@@ -87,6 +91,7 @@ export function useCourseUpdate(
     compare: async () => {
       if (!files.length || busy) return;
       setBusy("upload");
+      setUploadProgress({ completed: 0, total: files.length });
       setError(null);
       try {
         if (updateId) await discardCourseUpdate(workspace.course.id, updateId, session);
@@ -106,8 +111,11 @@ export function useCourseUpdate(
           } catch (uploadError) {
             if (!isSkippableUploadError(uploadError)) throw uploadError;
             skipped.push(path);
+          } finally {
+            setUploadProgress((current) => ({ ...current, completed: current.completed + 1 }));
           }
         });
+        setBusy("analyze");
         const next = await getCourseUpdate(workspace.course.id, created.update_id, session);
         setIgnored(skipped);
         setAnalysis(next);

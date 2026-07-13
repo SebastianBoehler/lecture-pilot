@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -28,6 +28,57 @@ const workspace = {
 
 describe("Professor course update", () => {
   afterEach(() => vi.unstubAllGlobals());
+
+  it("reports upload progress before comparing the staged files", async () => {
+    const uploads: Array<(response: Response) => void> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith("/updates") && init?.method === "POST") {
+          return Promise.resolve(json({ course_id: "machine-learning", update_id: "progress" }));
+        }
+        if (url.includes("/updates/progress/materials")) {
+          return new Promise<Response>((resolve) => uploads.push(resolve));
+        }
+        if (url.endsWith("/updates/progress") && !init?.method) {
+          return Promise.resolve(
+            json({
+              course_id: "machine-learning",
+              update_id: "progress",
+              candidates: [],
+              existing_lectures: [],
+              unassigned_files: [],
+              unchanged_files: 2,
+            }),
+          );
+        }
+        throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${url}`);
+      }),
+    );
+    const user = userEvent.setup();
+    render(
+      <I18nProvider locale="en" setLocale={() => undefined}>
+        <ProfessorCourseUpdate
+          onBack={() => undefined}
+          onWorkspaceUpdated={() => undefined}
+          session={localProfessorSession}
+          workspace={workspace}
+        />
+      </I18nProvider>,
+    );
+    await user.upload(screen.getByLabelText("Choose files"), [
+      new File(["one"], "Lecture01.tex"),
+      new File(["two"], "Lecture02.tex"),
+    ]);
+    await user.click(screen.getByRole("button", { name: "Compare materials" }));
+    expect(screen.getByRole("button", { name: "Uploading 0 of 2 files..." })).toBeDisabled();
+    await waitFor(() => expect(uploads).toHaveLength(2));
+    uploads[0](json({ path: "Lecture01.tex", kind: "latex", size_bytes: 3 }));
+    expect(await screen.findByRole("button", { name: "Uploading 1 of 2 files..." })).toBeDisabled();
+    uploads[1](json({ path: "Lecture02.tex", kind: "latex", size_bytes: 3 }));
+    expect(await screen.findByText("2 files compared")).toBeInTheDocument();
+  });
 
   it("compares selected files, creates a private draft, and publishes only on confirmation", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {

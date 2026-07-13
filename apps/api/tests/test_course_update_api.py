@@ -25,6 +25,26 @@ def test_course_update_detects_unchanged_files_without_creating_work(tmp_path: P
     assert analysis.json()["unassigned_files"] == []
 
 
+def test_course_update_builds_source_index_once_after_uploads(tmp_path: Path) -> None:
+    client = _course_client(tmp_path)
+    update_id = _create_update(client)
+    _upload_update(client, update_id, "Lecture01.tex", _lecture("First"))
+    _upload_update(client, update_id, "Lecture02.tex", _lecture("Second"))
+    index_path = client.app.state.canvas_workspace.layout.course_update_index_path(
+        "update-demo", update_id
+    )
+
+    assert not index_path.exists()
+
+    response = client.get(
+        f"/admin/courses/update-demo/updates/{update_id}", headers=professor_headers()
+    )
+
+    assert response.status_code == 200
+    assert len(response.json()["candidates"]) == 2
+    assert index_path.exists()
+
+
 def test_course_update_changes_existing_and_appends_new_without_deleting_missing(
     tmp_path: Path,
 ) -> None:

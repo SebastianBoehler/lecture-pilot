@@ -20,7 +20,6 @@ from lecturepilot.course_update_models import (
     CourseUpdateUploadResult,
 )
 from lecturepilot.secure_upload import store_course_upload
-from lecturepilot.source_index import refresh_course_source_index
 from lecturepilot.tenancy import TenantContext
 from lecturepilot.workspace import WorkspacePolicyError
 from lecturepilot.workspace_fs import WorkspaceFSError
@@ -65,12 +64,7 @@ def register_course_update_routes(app: FastAPI, *, course_tenant_id: str) -> Non
                 tenant_id=context.tenant_id,
                 requested_path=path,
             )
-            refresh_course_source_index(
-                course_id=course_id,
-                uploads_dir=uploads,
-                index_path=layout.course_update_index_path(course_id, update_id),
-                known_hashes={stored.path: stored.sha256},
-            )
+            # Build the index once during analysis; rescanning here makes folder uploads quadratic.
         except CourseUpdateError as exc:
             raise _http_error(exc) from exc
         except (WorkspacePolicyError, WorkspaceFSError) as exc:

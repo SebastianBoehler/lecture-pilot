@@ -104,7 +104,11 @@ export function ProfessorCourseUpdate({
             type="button"
             onClick={() => void update.compare()}
           >
-            {update.busy === "upload" ? t("courseUpdate.comparing") : t("courseUpdate.compare")}
+            {update.busy === "upload"
+              ? t("courseUpdate.uploading", update.uploadProgress)
+              : update.busy === "analyze"
+                ? t("courseUpdate.comparing")
+                : t("courseUpdate.compare")}
           </button>
         </section>
       ) : null}
