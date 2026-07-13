@@ -64,6 +64,7 @@ type AppRoutesProps = {
   publishedLectureIds: string[];
   selectedCourseId: string;
   selectedLecture: Lecture;
+  secondaryReturnView: View;
   session: LoginSession | null;
   view: View;
   workspaceCourse: UniversityCourse;
@@ -101,6 +102,7 @@ export function AppRoutes(props: AppRoutesProps) {
     publishedLectureIds,
     selectedCourseId,
     selectedLecture,
+    secondaryReturnView,
     session,
     view,
     workspaceCourse,
@@ -139,7 +141,7 @@ export function AppRoutes(props: AppRoutesProps) {
         onBack={
           session.account_type === "professor" && !courseManagerSession
             ? undefined
-            : () => props.onViewChange(courseManagerSession ? "professor" : "dashboard")
+            : () => props.onViewChange(secondaryReturnView)
         }
       />
     );
@@ -198,13 +200,11 @@ export function AppRoutes(props: AppRoutesProps) {
     );
   }
   if (view === "changelog") {
-    return deferred(
-      <ChangelogPage onBack={() => props.onViewChange(session ? "dashboard" : "login")} />,
-    );
+    return deferred(<ChangelogPage onBack={() => props.onViewChange(secondaryReturnView)} />);
   }
   if (view === "how-it-works" || view === "learning-science" || view === "privacy") {
     return deferred(
-      <InfoPage kind={view} onBack={() => props.onViewChange(session ? "dashboard" : "login")} />,
+      <InfoPage kind={view} onBack={() => props.onViewChange(secondaryReturnView)} />,
     );
   }
   return deferred(

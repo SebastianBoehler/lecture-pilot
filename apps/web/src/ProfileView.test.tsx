@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { ProfileView } from "./ProfileView";
@@ -36,9 +36,12 @@ describe("ProfileView", () => {
       />,
     );
 
-    expect(screen.getByText("lecturer")).toBeInTheDocument();
-    expect(screen.getByText("Daniel Example")).toBeInTheDocument();
-    expect(screen.getByText("professor@example.edu")).toBeInTheDocument();
+    const account = screen.getByRole("region", { name: "Account" });
+    expect(screen.getByRole("heading", { level: 1, name: "Profile" })).toBeInTheDocument();
+    expect(within(account).getByText("lecturer")).toBeInTheDocument();
+    expect(within(account).getByText("Daniel Example")).toBeInTheDocument();
+    expect(within(account).getByText("professor@example.edu")).toBeInTheDocument();
+    expect(within(account).getByText("alma-professor")).toBeInTheDocument();
     expect(screen.queryByText(/professor access/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/student workspace access is required/i)).not.toBeInTheDocument();
     expect(

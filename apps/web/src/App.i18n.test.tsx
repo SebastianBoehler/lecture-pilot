@@ -12,14 +12,14 @@ describe("LecturePilot app shell i18n", () => {
 
     await user.click(screen.getByRole("button", { name: /switch interface to german/i }));
 
-    expect(screen.getByRole("heading", { name: /willkommen bei lecturepilot/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /bei lecturepilot anmelden/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/zdv-benutzername/i)).toBeInTheDocument();
     expect(window.localStorage.getItem("lecturepilot.locale")).toBe("de");
     await waitFor(() => expect(document.documentElement.lang).toBe("de"));
 
     await user.click(screen.getByRole("button", { name: /oberfläche auf englisch umstellen/i }));
 
-    expect(screen.getByRole("heading", { name: /welcome to lecturepilot/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /sign in to lecturepilot/i })).toBeInTheDocument();
     expect(window.localStorage.getItem("lecturepilot.locale")).toBe("en");
     await waitFor(() => expect(document.documentElement.lang).toBe("en"));
   });

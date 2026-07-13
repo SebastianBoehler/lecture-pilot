@@ -15,51 +15,51 @@ export function ProfileView({
   const { t } = useI18n();
   const syncLoading = session.university_course_sync_status === "loading";
   const hasLearnerWorkspace = session.roles?.includes("student") === true;
+  const displayName =
+    session.display_name || t(syncLoading ? "profile.loading" : "profile.notLoaded");
+  const email = session.email || t(syncLoading ? "profile.loading" : "profile.notLoaded");
   return (
     <main className="profile-screen">
       <section className="profile-panel" aria-labelledby="profile-heading">
-        <div className="panel-heading">
+        <header className="profile-view-header">
           <div>
-            <p className="section-label">{t("profile.account")}</p>
             <h1 id="profile-heading">{t("profile.title")}</h1>
           </div>
           {onBack ? (
             <button className="ghost-button" type="button" onClick={onBack}>
-              {t("lesson.back.dashboard")}
+              {t("info.back")}
             </button>
           ) : null}
-        </div>
+        </header>
 
-        <dl className="profile-fields">
-          <div>
-            <dt>{t("profile.name")}</dt>
-            <dd>
-              {session.display_name || t(syncLoading ? "profile.loading" : "profile.notLoaded")}
-            </dd>
-          </div>
-          <div>
-            <dt>{t("profile.username")}</dt>
-            <dd>{session.username}</dd>
-          </div>
-          <div>
-            <dt>{t("profile.email")}</dt>
-            <dd>{session.email || t(syncLoading ? "profile.loading" : "profile.notLoaded")}</dd>
-          </div>
-          {session.university_role ? (
-            <div>
-              <dt>{t("profile.universityRole")}</dt>
-              <dd>{session.university_role}</dd>
+        <section className="profile-account-summary" aria-label={t("profile.account")}>
+          <div className="profile-identity">
+            <span className="profile-avatar" aria-hidden="true">
+              {profileInitials(session.display_name, session.username)}
+            </span>
+            <div className="profile-identity-copy">
+              <h2>{displayName}</h2>
+              <p>{email}</p>
+              <span>{session.username}</span>
             </div>
-          ) : null}
-          <div>
-            <dt>{t("profile.term")}</dt>
-            <dd>{session.term}</dd>
           </div>
-          <div>
-            <dt>{t("profile.courses")}</dt>
-            <dd>{syncLoading ? t("profile.loading") : session.courses.length}</dd>
-          </div>
-        </dl>
+          <dl className="profile-facts">
+            {session.university_role ? (
+              <div>
+                <dt>{t("profile.universityRole")}</dt>
+                <dd>{session.university_role}</dd>
+              </div>
+            ) : null}
+            <div>
+              <dt>{t("profile.term")}</dt>
+              <dd>{session.term}</dd>
+            </div>
+            <div>
+              <dt>{t("profile.courses")}</dt>
+              <dd>{syncLoading ? t("profile.loading") : session.courses.length}</dd>
+            </div>
+          </dl>
+        </section>
 
         {hasLearnerWorkspace && learnerProfileState ? (
           <LearnerProfileControls session={session} state={learnerProfileState} />
@@ -67,7 +67,7 @@ export function ProfileView({
 
         <section className="profile-courses" aria-labelledby="profile-courses-heading">
           <h2 id="profile-courses-heading">{t("profile.loadedCourses")}</h2>
-          <div className="course-list">
+          <div className="course-list profile-course-list">
             {session.courses.map((course) => (
               <article className="course-row" key={course.id}>
                 <div>
@@ -86,4 +86,14 @@ export function ProfileView({
       </section>
     </main>
   );
+}
+
+function profileInitials(displayName: string | null | undefined, username: string) {
+  const name = displayName?.trim() || username;
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
 }

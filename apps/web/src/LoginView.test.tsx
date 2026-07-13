@@ -30,6 +30,20 @@ describe("LoginView", () => {
     expect(screen.getByRole("button", { name: /preview local demo/i })).toBeDisabled();
   });
 
+  it("keeps university sign-in primary and separates optional previews", () => {
+    renderWithI18n(
+      <LoginView onLogin={vi.fn()} onOpenDemo={vi.fn()} onOpenProfessorDemo={vi.fn()} />,
+    );
+
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Sign in to LecturePilot" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Preview without signing in" })).toBeInTheDocument();
+    expect(
+      screen.getByText(/students and teaching staff use the same ZDV sign-in/i),
+    ).toBeInTheDocument();
+  });
+
   it("does not render demo entry points when development access is disabled", () => {
     renderWithI18n(
       <LoginView
@@ -107,13 +121,12 @@ describe("LoginView", () => {
     await user.click(screen.getByRole("button", { name: /continue with uni tübingen/i }));
 
     await waitFor(() => expect(onLogin).toHaveBeenCalledOnce());
-    expect(window.localStorage.getItem("lecturepilot.rememberedStudentUsername")).toBe(
-      "student01",
-    );
-    expect([...Array(window.localStorage.length).keys()]
-      .map((index) => window.localStorage.getItem(window.localStorage.key(index) ?? ""))
-      .join(" "))
-      .not.toContain("student-secret");
+    expect(window.localStorage.getItem("lecturepilot.rememberedStudentUsername")).toBe("student01");
+    expect(
+      [...Array(window.localStorage.length).keys()]
+        .map((index) => window.localStorage.getItem(window.localStorage.key(index) ?? ""))
+        .join(" "),
+    ).not.toContain("student-secret");
   });
 
   it("prefills and clears a previously remembered student username", async () => {
@@ -142,5 +155,4 @@ describe("LoginView", () => {
 
     expect(screen.getByRole("checkbox", { name: /remember username/i })).not.toBeChecked();
   });
-
 });

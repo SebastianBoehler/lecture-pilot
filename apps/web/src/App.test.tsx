@@ -10,7 +10,7 @@ describe("LecturePilot app shell", () => {
   it("starts with the university login form", () => {
     render(<App />);
 
-    expect(screen.getByRole("heading", { name: /welcome to lecturepilot/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /sign in to lecturepilot/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/zdv username/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/term/i)).not.toBeInTheDocument();
@@ -36,6 +36,10 @@ describe("LecturePilot app shell", () => {
       screen.getByRole("navigation", { name: /student workspace navigation/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /workspaces/i })).toHaveClass("is-active");
+    expect(screen.getByRole("button", { name: /workspaces/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
     const probabilisticCourse = screen
       .getByRole("heading", {
         name: /probabilistic machine learning/i,
@@ -181,7 +185,11 @@ describe("LecturePilot app shell", () => {
     expect(
       await screen.findByRole("navigation", { name: /professor workspace navigation/i }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^usage$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^usage$/i })).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("button", { name: /course builder/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
     expect(
       screen.queryByRole("navigation", { name: /student workspace navigation/i }),
     ).not.toBeInTheDocument();
@@ -221,7 +229,7 @@ describe("LecturePilot app shell", () => {
 
     await user.click(screen.getByRole("button", { name: /log out/i }));
 
-    expect(screen.getByRole("heading", { name: /welcome to lecturepilot/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /sign in to lecturepilot/i })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /course workspaces/i })).not.toBeInTheDocument();
   });
 
@@ -284,7 +292,8 @@ describe("LecturePilot app shell", () => {
       await screen.findByRole("heading", { name: /what's new in lecturepilot/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /v0\.2\.0 on github/i })).toBeInTheDocument();
-    expect(screen.getByText(/from feedback/i)).toBeInTheDocument();
+    expect(screen.getByText(/courses can grow during the semester/i)).toBeInTheDocument();
+    expect(screen.queryByText(/from feedback/i)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /how it works/i }));
 

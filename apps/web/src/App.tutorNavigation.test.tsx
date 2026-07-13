@@ -53,22 +53,26 @@ describe("Tutor canvas navigation", () => {
     ];
     const baseFetch = mockLoginAndTutorFetch();
     let tutorIndex = 0;
-    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
-      if (url.includes("/agent/turn/stream")) {
-        return { ok: true, body: null };
-      }
-      if (url.includes("/agent/turn")) {
-        const response = tutorResponses[tutorIndex] ?? tutorResponses.at(-1);
-        tutorIndex += 1;
-        return { ok: true, json: async () => response };
-      }
-      return baseFetch(url, init);
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url.includes("/agent/turn/stream")) {
+          return { ok: true, body: null };
+        }
+        if (url.includes("/agent/turn")) {
+          const response = tutorResponses[tutorIndex] ?? tutorResponses.at(-1);
+          tutorIndex += 1;
+          return { ok: true, json: async () => response };
+        }
+        return baseFetch(url, init);
+      }),
+    );
     const user = userEvent.setup();
     render(<App />);
 
     await logIn(user);
     await openLecture03FromDashboard(user);
+    expect(scrollTargets).toEqual([]);
     await user.click(screen.getByLabelText(/open tutor chat/i));
     await sendTutorMessage(user, "Show me the Bayes formula.");
     expect(await screen.findByText(/focus moved/i)).toBeInTheDocument();
@@ -76,7 +80,9 @@ describe("Tutor canvas navigation", () => {
 
     scrollTargets.length = 0;
     await sendTutorMessage(user, "Create a detailed section.");
-    expect(await screen.findByRole("heading", { name: /soccer scouting example/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /soccer scouting example/i }),
+    ).toBeInTheDocument();
     expect(scrollTargets).not.toContain("bayes-formula-list");
     expect(scrollTargets.at(-1)).toBe("student-soccer-bayes-example");
   });

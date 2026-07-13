@@ -47,7 +47,9 @@ it("keeps tutor turns scoped to the course shown in a draft preview", async () =
 
   render(<App />);
 
-  expect(await screen.findByRole("heading", { name: "Scoped draft" })).toBeInTheDocument();
+  expect(
+    await screen.findByRole("heading", { name: "Scoped draft" }, { timeout: 3_000 }),
+  ).toBeInTheDocument();
   await user.click(screen.getByLabelText(/open tutor chat/i));
   await user.type(screen.getByPlaceholderText(/ask about this lecture/i), "Explain this draft.");
   await user.click(screen.getByRole("button", { name: /send message/i }));

@@ -7,11 +7,10 @@ export function CourseManagementAccessRequired({
 }) {
   return (
     <main className="dashboard">
-      <section className="dashboard-header">
+      <section aria-label={label} className="dashboard-header">
         <button className="ghost-button" type="button" onClick={onBack}>
           Back
         </button>
-        <p className="section-label">{label}</p>
         <h1>Professor account required</h1>
         <p>Only professor and tenant admin accounts can access this workspace.</p>
       </section>

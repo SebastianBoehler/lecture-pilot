@@ -77,20 +77,23 @@ export function UniversityLoginForm({
           value={password}
         />
       </label>
-      <div className="login-remember">
-        <label className="login-checkbox">
-          <input
-            aria-describedby="university-remember-help"
-            checked={rememberUsername}
-            name="remember_username"
-            onChange={(event) => setRememberUsername(event.target.checked)}
-            type="checkbox"
-          />
-          <span>{t("login.rememberUsername")}</span>
-        </label>
-        <p className="login-help" id="university-remember-help">
-          {t("login.rememberHelp")}
-        </p>
+      <div className="login-checkbox">
+        <input
+          aria-describedby="university-remember-help"
+          checked={rememberUsername}
+          id="remember-username"
+          name="remember_username"
+          onChange={(event) => setRememberUsername(event.target.checked)}
+          type="checkbox"
+        />
+        <span className="login-remember-copy">
+          <label className="login-remember-label" htmlFor="remember-username">
+            {t("login.rememberUsername")}
+          </label>
+          <span className="login-help" id="university-remember-help">
+            {t("login.rememberHelp")}
+          </span>
+        </span>
       </div>
       <button
         className="login-submit-button"
@@ -106,26 +109,36 @@ export function UniversityLoginForm({
         </p>
       ) : null}
       {showDemoAccess ? (
-        <div className="login-demo-actions">
-          <button
-            className="secondary-button"
-            disabled={isSubmitting}
-            type="button"
-            onClick={onOpenDemo}
-          >
-            {t("login.demo")}
-          </button>
-          <button
-            className="secondary-button"
-            disabled={isSubmitting}
-            type="button"
-            onClick={onOpenProfessorDemo}
-          >
-            {t("login.professorDemo")}
-          </button>
-        </div>
+        <section className="login-demo-actions" aria-labelledby="login-demo-title">
+          <div className="login-demo-copy">
+            <h2 id="login-demo-title">{t("login.demoTitle")}</h2>
+            <p>{t("login.demoHelp")}</p>
+          </div>
+          <div className="login-demo-buttons">
+            <button
+              className="secondary-button"
+              disabled={isSubmitting}
+              type="button"
+              onClick={onOpenDemo}
+            >
+              {t("login.demo")}
+            </button>
+            <button
+              className="secondary-button"
+              disabled={isSubmitting}
+              type="button"
+              onClick={onOpenProfessorDemo}
+            >
+              {t("login.professorDemo")}
+            </button>
+          </div>
+        </section>
       ) : null}
-      {error ? <p className="form-error" role="alert">{error}</p> : null}
+      {error ? (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      ) : null}
     </form>
   );
 }

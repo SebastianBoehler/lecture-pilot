@@ -17,6 +17,7 @@ import {
 import { AppFooter } from "./AppFooter";
 import { AppHeader } from "./AppHeader";
 import { AppRoutes } from "./AppRoutes";
+import { ProfessorWalkthrough } from "./ProfessorWalkthrough";
 import {
   initialMessagesForAttendance,
   localDemoSession,
@@ -39,6 +40,7 @@ import { logoutSession } from "./sessionApi";
 import { isDraftPreviewRequest, useInitialDraftPreview } from "./useInitialDraftPreview";
 import { usePublishedLectures } from "./usePublishedLectures";
 import { useUniversityCourseSync } from "./useUniversityCourseSync";
+import { useViewTransitionReset } from "./useViewTransitionReset";
 import type { WorkspaceResetSelection } from "./WorkspaceResetControl";
 import type {
   Attendance,
@@ -58,6 +60,7 @@ function App() {
   const [locale, setLocale] = useState<Locale>(() => readLocalePreference());
   const [session, setSession] = useStoredLoginSession();
   const [view, setView] = useState<View>(() => landingView(session));
+  const [secondaryReturnView, setSecondaryReturnView] = useState<View>(() => landingView(session));
   const [availableLectures, setAvailableLectures] = useState(() =>
     import.meta.env.DEV ? lectures : [],
   );
@@ -102,6 +105,8 @@ function App() {
     document.documentElement.lang = locale;
     writeLocalePreference(locale);
   }, [locale]);
+
+  useViewTransitionReset(view);
 
   useEffect(() => {
     if (!session || session.university_course_sync_status === "loading" || isDraftPreviewRequest())
@@ -348,6 +353,11 @@ function App() {
     setPanelMode(null);
   }
 
+  function openSecondaryView(nextView: View) {
+    if (nextView !== view) setSecondaryReturnView(view);
+    changeView(nextView);
+  }
+
   return (
     <I18nProvider locale={locale} setLocale={setLocale}>
       <div className="app-shell">
@@ -383,8 +393,7 @@ function App() {
             }
           }}
           onOpenProfile={() => {
-            setView("profile");
-            setPanelMode(null);
+            openSecondaryView("profile");
           }}
           onOpenProfessor={() => {
             if (courseManagerSession) {
@@ -394,6 +403,12 @@ function App() {
           }}
           onToggleTheme={() => setTheme(theme === "light" ? "dark" : "light")}
         />
+        {courseManagerSession ? (
+          <ProfessorWalkthrough
+            key={courseManagerSession.username}
+            username={courseManagerSession.username}
+          />
+        ) : null}
 
         <AppRoutes
           availableLectures={availableLectures}
@@ -413,6 +428,7 @@ function App() {
           publishedLectureIds={publishedLectureIds}
           selectedCourseId={selectedCourseId}
           selectedLecture={selectedLecture}
+          secondaryReturnView={secondaryReturnView}
           session={session}
           view={view}
           workspaceCourse={workspaceCourse}
@@ -471,10 +487,10 @@ function App() {
         />
         {view !== "lesson" ? (
           <AppFooter
-            onOpenChangelog={() => setView("changelog")}
-            onOpenHowItWorks={() => setView("how-it-works")}
-            onOpenLearningScience={() => setView("learning-science")}
-            onOpenPrivacy={() => setView("privacy")}
+            onOpenChangelog={() => openSecondaryView("changelog")}
+            onOpenHowItWorks={() => openSecondaryView("how-it-works")}
+            onOpenLearningScience={() => openSecondaryView("learning-science")}
+            onOpenPrivacy={() => openSecondaryView("privacy")}
           />
         ) : null}
       </div>
