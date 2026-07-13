@@ -23,6 +23,7 @@ async def test_model_client_requests_structured_json(monkeypatch: pytest.MonkeyP
                         content=json.dumps(
                             {
                                 "message": "Structured response.",
+                                "session_goal": "Apply Bayes to a new decision.",
                                 "canvas_commands": [
                                     {
                                         "type": "focus_section",
@@ -66,10 +67,11 @@ async def test_model_client_requests_structured_json(monkeypatch: pytest.MonkeyP
     )
 
     assert result.message == "Structured response."
+    assert result.session_goal == "Apply Bayes to a new decision."
     assert calls[0]["response_format"]["type"] == "json_schema"
     schema = calls[0]["response_format"]["json_schema"]["schema"]
     assert calls[0]["response_format"]["json_schema"]["strict"] is True
-    assert schema["required"] == ["message", "canvas_commands", "quality_gate"]
+    assert schema["required"] == ["message", "session_goal", "canvas_commands", "quality_gate"]
     assert calls[0]["temperature"] == 0.3
 
 

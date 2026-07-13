@@ -40,6 +40,7 @@ def test_agent_turn_stream_emits_activity_and_result(monkeypatch, tmp_path) -> N
         "read canvas",
         "load learner memory",
         "save attendance",
+        "load coaching progress",
         "call tutor model",
     ]
     assert events[-1]["type"] == "result"

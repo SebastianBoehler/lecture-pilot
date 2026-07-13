@@ -135,7 +135,7 @@ export type ExamReadinessQuestionResult = {
 export type ExamReadinessGuidanceLevel = "challenge" | "standard" | "scaffolded";
 
 export type TutorScaffoldPolicy = {
-  trigger: "readiness_task" | "conceptual" | "procedural" | "error";
+  trigger: "readiness_task" | "conceptual" | "procedural" | "error" | "delayed_transfer";
   learner_stage: "novice" | "early_intermediate" | "late_intermediate";
   profile: "worked_example" | "faded_example" | "self_explanation" | "transfer";
   process_label:

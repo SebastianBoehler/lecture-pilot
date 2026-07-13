@@ -90,6 +90,23 @@ def _messages(turn: AgentTurnInput) -> list[dict[str, str]]:
             "role": "system",
             "content": (
                 "You are LecturePilot, a text-first university tutor. "
+                "Your primary outcome is the student's ability to solve the next similar task "
+                "without LecturePilot, not merely completion of the current task. "
+                "Never ask the learner to select a learning style or preferred help level; "
+                "derive support from demonstrated evidence. "
+                "Follow the active scaffold policy and use the least support that can unlock progress. "
+                "Before substantive help, obtain an attempt, prediction, or proposed approach unless "
+                "the policy calls for one worked step because prerequisites are missing. "
+                "After a worked step, hand the next step back to the learner. After demonstrated "
+                "understanding, fade support and use an unfamiliar transfer question. "
+                "Do not treat an AI-assisted output as independent mastery. "
+                "When the coaching context marks a new goal, state the proposed session goal in one "
+                "short sentence and let the learner correct it without starting a preference interview. "
+                "Return the active or learner-corrected goal in session_goal on every turn. "
+                "When a delayed independent transfer check is due, ask one new application question "
+                "and withhold hints until the learner attempts it. "
+                "When a quality gate passes, end with one short reflection about what changed and "
+                "which approach the learner will try next time. Do not force reflection every turn. "
                 "Lead the tutoring flow from the current lecture canvas. "
                 "When /course/canvas/learning-map.json exists, read it first as the "
                 "ordered concept and gate map before searching source files. "
@@ -159,7 +176,8 @@ def _messages(turn: AgentTurnInput) -> list[dict[str, str]]:
                 "Current section: "
                 f"{turn.canvas_state.focused_section_id or 'bayesian-decision-theory-the-aim'}\n"
                 f"{_user_memory_context(turn)}\n"
-                f"{_readiness_scaffold_context(turn)}\n"
+                f"{_coaching_context(turn)}\n"
+                f"{_active_scaffold_context(turn)}\n"
                 f"{gate_rubric_context(turn.lecture_id)}\n"
                 f"{canvas_context(turn)}\n"
                 f"Student message: {turn.message}"
@@ -182,22 +200,33 @@ def _user_memory_context(turn: AgentTurnInput) -> str:
     )
 
 
-def _readiness_scaffold_context(turn: AgentTurnInput) -> str:
+def _active_scaffold_context(turn: AgentTurnInput) -> str:
     task = turn.readiness_task
-    if task is None:
-        return "Active readiness scaffold policy: none."
-    policy = task.scaffold_policy
+    policy = turn.scaffold_policy or (task.scaffold_policy if task is not None else None)
     if policy is None:
         return "Active readiness scaffold policy: none."
     return (
-        "Active readiness scaffold policy:\n"
-        f"- task_id: {task.id}\n"
+        "Active scaffold policy:\n"
+        f"- task_id: {task.id if task is not None else 'current tutor turn'}\n"
         f"- trigger: {policy.trigger}\n"
         f"- learner_stage: {policy.learner_stage}\n"
         f"- profile: {policy.profile}\n"
         f"- process_label: {policy.process_label}\n"
-        f"- source_ref: {task.source_ref or 'canvas section'}\n"
-        f"- expected_evidence: {task.expected_evidence}\n"
+        f"- source_ref: {task.source_ref if task and task.source_ref else 'canvas section'}\n"
+        f"- expected_evidence: {task.expected_evidence if task else 'active quality-gate evidence'}\n"
         f"- tutor_move: {policy.tutor_move}\n"
         f"- forbidden: {policy.forbidden}"
+    )
+
+
+def _coaching_context(turn: AgentTurnInput) -> str:
+    context = turn.coaching_context
+    return (
+        "Learning-coach context:\n"
+        f"- session_goal: {context.session_goal or 'derive from the active quality gate'}\n"
+        f"- goal_status: {'proposed' if context.goal_is_new else 'active'}\n"
+        f"- prior_assistance: {str(context.prior_assistance).lower()}\n"
+        f"- needs_evidence_count: {context.needs_evidence_count}\n"
+        f"- last_gate_status: {context.last_gate_status or 'none'}\n"
+        f"- delayed_transfer_due: {str(context.delayed_transfer_due).lower()}"
     )

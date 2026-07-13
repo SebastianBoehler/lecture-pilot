@@ -164,13 +164,13 @@ def _score(results: list[ExamReadinessQuestionResult]) -> float | None:
 
 
 def _guidance_level(score: float | None, previous_attempts: int) -> GuidanceLevel:
-    if previous_attempts >= 2:
-        return "scaffolded"
     if score is None:
-        return "standard"
+        return "scaffolded" if previous_attempts >= 2 else "standard"
     if score >= 0.8:
         return "challenge"
     if score < 0.4:
+        return "scaffolded"
+    if previous_attempts >= 2:
         return "scaffolded"
     return "standard"
 

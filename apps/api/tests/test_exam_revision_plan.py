@@ -1,7 +1,11 @@
 import pytest
 from pydantic import ValidationError
 
-from lecturepilot.exam_readiness import ExamReadinessCheck, ExamReadinessCoverage, ExamReadinessQuestion
+from lecturepilot.exam_readiness import (
+    ExamReadinessCheck,
+    ExamReadinessCoverage,
+    ExamReadinessQuestion,
+)
 from lecturepilot.exam_revision_plan import ExamReadinessAnswer, build_exam_revision_plan
 
 
@@ -10,7 +14,9 @@ def test_revision_plan_marks_wrong_mc_and_keeps_open_answers_for_review() -> Non
         check=_check(),
         answers=[
             ExamReadinessAnswer(question_id="lecture-03:q1", selected_index=0),
-            ExamReadinessAnswer(question_id="lecture-04:q2", text="Risk combines costs and probabilities."),
+            ExamReadinessAnswer(
+                question_id="lecture-04:q2", text="Risk combines costs and probabilities."
+            ),
         ],
     )
 
@@ -31,25 +37,32 @@ def test_guidance_level_reflects_score_and_repeated_attempts() -> None:
         check=_check(),
         answers=[
             ExamReadinessAnswer(question_id="lecture-03:q1", selected_index=1),
-            ExamReadinessAnswer(question_id="lecture-04:q2", text="Risk combines costs and probabilities."),
+            ExamReadinessAnswer(
+                question_id="lecture-04:q2", text="Risk combines costs and probabilities."
+            ),
         ],
     )
     repeated = build_exam_revision_plan(
         check=_check(),
         answers=[
             ExamReadinessAnswer(question_id="lecture-03:q1", selected_index=1),
-            ExamReadinessAnswer(question_id="lecture-04:q2", text="Risk combines costs and probabilities."),
+            ExamReadinessAnswer(
+                question_id="lecture-04:q2", text="Risk combines costs and probabilities."
+            ),
         ],
         previous_attempts=2,
     )
 
     assert strong.guidance_level == "challenge"
-    assert repeated.guidance_level == "scaffolded"
+    assert repeated.guidance_level == "challenge"
 
 
 def test_missing_answers_are_rejected() -> None:
     with pytest.raises(ValueError, match="Missing answer"):
-        build_exam_revision_plan(check=_check(), answers=[ExamReadinessAnswer(question_id="lecture-03:q1", selected_index=1)])
+        build_exam_revision_plan(
+            check=_check(),
+            answers=[ExamReadinessAnswer(question_id="lecture-03:q1", selected_index=1)],
+        )
 
 
 def test_answer_requires_selection_or_text() -> None:
@@ -62,7 +75,9 @@ def test_revision_task_backfills_scaffold_policy_for_stored_payloads() -> None:
         check=_check(),
         answers=[
             ExamReadinessAnswer(question_id="lecture-03:q1", selected_index=0),
-            ExamReadinessAnswer(question_id="lecture-04:q2", text="Risk combines costs and probabilities."),
+            ExamReadinessAnswer(
+                question_id="lecture-04:q2", text="Risk combines costs and probabilities."
+            ),
         ],
     )
     payload = plan.tasks[0].model_dump(mode="json")

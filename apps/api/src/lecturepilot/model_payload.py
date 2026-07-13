@@ -15,6 +15,7 @@ def agent_result_from_content(
     payload = parse_model_payload(content)
     return AgentTurnResult(
         message=read_message(payload),
+        session_goal=read_session_goal(payload),
         canvas_commands=read_canvas_commands(payload, turn),
         quality_gate=read_quality_gate(payload, turn),
         model=model,
@@ -41,3 +42,8 @@ def read_message(payload: dict) -> str:
     if not isinstance(message, str) or not message.strip():
         raise ProviderConfigurationError("Model JSON must include a non-empty message.")
     return message.strip()
+
+
+def read_session_goal(payload: dict) -> str | None:
+    goal = payload.get("session_goal")
+    return goal.strip() if isinstance(goal, str) and goal.strip() else None

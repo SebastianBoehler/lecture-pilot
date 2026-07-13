@@ -17,7 +17,7 @@ def test_model_prompt_includes_active_scaffold_policy() -> None:
     )
 
     user_prompt = messages[1]["content"]
-    assert "Active readiness scaffold policy:" in user_prompt
+    assert "Active scaffold policy:" in user_prompt
     assert "task_id: lecture-03-q1-review" in user_prompt
     assert "profile: worked_example" in user_prompt
     assert "expected_evidence: Name evidence as the normalizer." in user_prompt

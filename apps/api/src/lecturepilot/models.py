@@ -211,6 +211,15 @@ class AgentReadinessTask(BaseModel):
     scaffold_policy: TutorScaffoldPolicy
 
 
+class AgentCoachingContext(BaseModel):
+    session_goal: str = Field(default="", max_length=500)
+    goal_is_new: bool = False
+    prior_assistance: bool = False
+    needs_evidence_count: int = Field(default=0, ge=0)
+    last_gate_status: Literal["passed", "needs_evidence", "not_assessed"] | None = None
+    delayed_transfer_due: bool = False
+
+
 class AgentTurnInput(BaseModel):
     user_id: str = Field(min_length=1)
     course_id: str = Field(min_length=1)
@@ -222,6 +231,8 @@ class AgentTurnInput(BaseModel):
     canvas_context: CanvasDocument | None = None
     user_memory: UserMemoryContext = Field(default_factory=UserMemoryContext)
     readiness_task: AgentReadinessTask | None = None
+    scaffold_policy: TutorScaffoldPolicy | None = None
+    coaching_context: AgentCoachingContext = Field(default_factory=AgentCoachingContext)
 
 
 class AgentTurnRequest(BaseModel):
@@ -271,6 +282,7 @@ class QualityGateDecision(BaseModel):
 
 class AgentTurnResult(BaseModel):
     message: str
+    session_goal: str | None = Field(default=None, max_length=500)
     canvas_commands: list[CanvasCommand] = Field(default_factory=list)
     artifacts: list[ArtifactCommand] = Field(default_factory=list)
     quality_gate: QualityGateDecision | None = None

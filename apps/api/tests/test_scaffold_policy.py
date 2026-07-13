@@ -1,4 +1,7 @@
-from lecturepilot.scaffold_policy import scaffold_policy_for_revision_task
+from lecturepilot.scaffold_policy import (
+    scaffold_policy_for_revision_task,
+    scaffold_policy_for_tutor_turn,
+)
 
 
 def test_scaffolded_guidance_uses_worked_examples() -> None:
@@ -41,3 +44,64 @@ def test_challenge_guidance_uses_transfer_attempt() -> None:
     assert policy.learner_stage == "late_intermediate"
     assert policy.profile == "transfer"
     assert policy.process_label == "transfer_attempt"
+
+
+def test_first_diagnostic_turn_asks_for_self_explanation() -> None:
+    policy = scaffold_policy_for_tutor_turn(
+        attendance="unknown",
+        delayed_transfer_due=False,
+        last_gate_status=None,
+        needs_evidence_count=0,
+        prior_assistance=False,
+    )
+
+    assert policy.profile == "self_explanation"
+    assert policy.trigger == "conceptual"
+    assert "attempt" in policy.tutor_move.lower()
+
+
+def test_absent_learner_gets_one_worked_step_before_handoff() -> None:
+    policy = scaffold_policy_for_tutor_turn(
+        attendance="absent",
+        delayed_transfer_due=False,
+        last_gate_status=None,
+        needs_evidence_count=0,
+        prior_assistance=False,
+    )
+
+    assert policy.profile == "worked_example"
+    assert "next step" in policy.tutor_move.lower()
+
+
+def test_repeated_missing_evidence_escalates_support() -> None:
+    policy = scaffold_policy_for_tutor_turn(
+        attendance="present",
+        delayed_transfer_due=False,
+        last_gate_status="needs_evidence",
+        needs_evidence_count=2,
+        prior_assistance=True,
+    )
+
+    assert policy.profile == "worked_example"
+
+
+def test_passed_gate_and_delayed_check_return_agency() -> None:
+    passed = scaffold_policy_for_tutor_turn(
+        attendance="present",
+        delayed_transfer_due=False,
+        last_gate_status="passed",
+        needs_evidence_count=0,
+        prior_assistance=True,
+    )
+    delayed = scaffold_policy_for_tutor_turn(
+        attendance="present",
+        delayed_transfer_due=True,
+        last_gate_status="passed",
+        needs_evidence_count=0,
+        prior_assistance=True,
+    )
+
+    assert passed.profile == "transfer"
+    assert delayed.profile == "transfer"
+    assert delayed.trigger == "delayed_transfer"
+    assert "without hints" in delayed.tutor_move.lower()

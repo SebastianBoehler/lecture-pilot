@@ -15,6 +15,7 @@ from lecturepilot.agent_state_access import (
 from lecturepilot.agent_command_utils import dedupe_commands
 from lecturepilot.agent_tool_executor import AgentToolExecutor
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
+from lecturepilot.coaching_orchestration import persist_coaching_turn, prepare_coaching_turn
 from lecturepilot.gate_policy import keep_canvas_actions_from_passing_gate
 from lecturepilot.image_generation import ImageGenerationError
 from lecturepilot.model_client import ModelExecutionError
@@ -135,6 +136,7 @@ async def _complete_agent_turn_inner(
                 )
         except CanvasWorkspaceError:
             pass
+    turn = prepare_coaching_turn(app, turn, activity, observability)
     try:
         activity("call tutor model")
         with observability.model_span(course_id=turn.course_id, lecture_id=turn.lecture_id) as span:
@@ -234,6 +236,7 @@ def _persist_agent_turn_result(
                     attendance=turn.attendance,
                     decision=result.quality_gate,
                 )
+    persist_coaching_turn(app, turn, result, activity, observability)
     return result
 
 

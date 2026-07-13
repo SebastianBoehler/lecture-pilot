@@ -7,9 +7,17 @@ from pydantic import BaseModel, Field
 GuidanceLevel = Literal["challenge", "standard", "scaffolded"]
 RevisionTaskKind = Literal["review_wrong_mc", "review_open_answer"]
 LearnerStage = Literal["novice", "early_intermediate", "late_intermediate"]
-ScaffoldTrigger = Literal["readiness_task", "conceptual", "procedural", "error"]
+ScaffoldTrigger = Literal[
+    "readiness_task",
+    "conceptual",
+    "procedural",
+    "error",
+    "delayed_transfer",
+]
 ScaffoldProfile = Literal["worked_example", "faded_example", "self_explanation", "transfer"]
-ProcessLabel = Literal["shallow_lookup", "scaffolded_reasoning", "self_explanation", "transfer_attempt"]
+ProcessLabel = Literal[
+    "shallow_lookup", "scaffolded_reasoning", "self_explanation", "transfer_attempt"
+]
 
 
 class TutorScaffoldPolicy(BaseModel):
@@ -66,4 +74,77 @@ def scaffold_policy_for_revision_task(
         process_label="self_explanation",
         tutor_move="Give the first reasoning step and leave the next step for the learner to complete.",
         forbidden="Do not reveal the final answer before the learner fills the faded step.",
+    )
+
+
+def scaffold_policy_for_tutor_turn(
+    *,
+    attendance: str,
+    delayed_transfer_due: bool,
+    last_gate_status: str | None,
+    needs_evidence_count: int,
+    prior_assistance: bool,
+) -> TutorScaffoldPolicy:
+    if delayed_transfer_due:
+        return TutorScaffoldPolicy(
+            trigger="delayed_transfer",
+            learner_stage="late_intermediate",
+            profile="transfer",
+            process_label="transfer_attempt",
+            tutor_move=(
+                "Ask one new application question without hints and wait for the learner's "
+                "independent attempt before giving corrective feedback."
+            ),
+            forbidden="Do not provide a hint, solution step, or answer before the delayed attempt.",
+        )
+    if last_gate_status == "passed":
+        return _transfer_policy()
+    if needs_evidence_count >= 2:
+        return _worked_step_policy(trigger="error")
+    if needs_evidence_count == 1:
+        return TutorScaffoldPolicy(
+            trigger="error",
+            learner_stage="early_intermediate",
+            profile="faded_example",
+            process_label="self_explanation",
+            tutor_move="Give one targeted cue or first reasoning step, then leave the next step to the learner.",
+            forbidden="Do not reveal the final answer before the learner completes the faded step.",
+        )
+    if not prior_assistance and attendance == "absent":
+        return _worked_step_policy(trigger="conceptual")
+    return TutorScaffoldPolicy(
+        trigger="conceptual",
+        learner_stage="early_intermediate",
+        profile="self_explanation",
+        process_label="self_explanation",
+        tutor_move=(
+            "Ask for the learner's own attempt, prediction, or approach, then respond to the "
+            "specific evidence they provide."
+        ),
+        forbidden="Do not solve the whole task before the learner makes an attempt.",
+    )
+
+
+def _worked_step_policy(*, trigger: ScaffoldTrigger) -> TutorScaffoldPolicy:
+    return TutorScaffoldPolicy(
+        trigger=trigger,
+        learner_stage="novice",
+        profile="worked_example",
+        process_label="scaffolded_reasoning",
+        tutor_move=(
+            "Model one source-grounded reasoning step, explain the judgment behind it, "
+            "then hand the next step to the learner."
+        ),
+        forbidden="Do not complete the remaining reasoning steps for the learner.",
+    )
+
+
+def _transfer_policy() -> TutorScaffoldPolicy:
+    return TutorScaffoldPolicy(
+        trigger="conceptual",
+        learner_stage="late_intermediate",
+        profile="transfer",
+        process_label="transfer_attempt",
+        tutor_move="Ask one unfamiliar transfer question with no initial hints.",
+        forbidden="Do not reteach the concept before the learner attempts the transfer.",
     )

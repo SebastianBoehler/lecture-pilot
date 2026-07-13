@@ -27,6 +27,7 @@ export type CanvasCommand = {
 
 export type AgentTurnResult = {
   message: string;
+  session_goal?: string | null;
   canvas_commands: CanvasCommand[];
   quality_gate?: {
     gate_id: string;

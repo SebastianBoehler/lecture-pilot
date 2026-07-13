@@ -9,6 +9,7 @@ from lecturepilot.models import (
     CanvasCommand,
 )
 from lecturepilot.providers import DEFAULT_MODEL
+from lecturepilot.storage_layout import StorageLayout
 from lecturepilot.session_auth import SESSION_COOKIE_NAME
 from lecturepilot.tuebingen_adapter import TuebingenIntegrationUnavailable
 from lecturepilot.university_models import ExternalCourseCandidate, UniversityLoginResult
@@ -208,11 +209,11 @@ def test_agent_turn_reports_model_execution_error(monkeypatch) -> None:
     assert "Model request failed" in response.json()["detail"]
 
 
-def test_agent_turn_enriches_harness_with_canvas_context(monkeypatch) -> None:
+def test_agent_turn_enriches_harness_with_canvas_context(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
     app = create_app()
-    app.state.canvas_workspace = _FakeCanvasWorkspace()
+    app.state.canvas_workspace = _FakeCanvasWorkspace(tmp_path)
     app.state.agent_harness = _ContextHarness()
     client = TestClient(app)
 
@@ -291,6 +292,9 @@ class _FailingHarness:
 
 
 class _FakeCanvasWorkspace:
+    def __init__(self, root) -> None:
+        self.layout = StorageLayout(root)
+
     def read_document(self, *, course_id: str, lecture_id: str, user_id: str) -> CanvasDocument:
         return CanvasDocument(
             id="martius-ml-lecture-03",

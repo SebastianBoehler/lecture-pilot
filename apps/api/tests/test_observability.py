@@ -18,6 +18,7 @@ from lecturepilot.models import (
 )
 from lecturepilot.observability import Observability, observability_from_env
 from lecturepilot.providers import DEFAULT_MODEL
+from lecturepilot.storage_layout import StorageLayout
 from auth_helpers import student_headers
 
 
@@ -49,9 +50,7 @@ def test_mlflow_observability_redacts_turn_content(monkeypatch) -> None:
     observability = observability_from_env()
     with observability.agent_turn_span(turn) as span:
         span.set_outputs(
-            observability.result_output(
-                AgentTurnResult(message="Answer", model=DEFAULT_MODEL)
-            )
+            observability.result_output(AgentTurnResult(message="Answer", model=DEFAULT_MODEL))
         )
 
     recorded = fake_mlflow.started[0]
@@ -65,11 +64,11 @@ def test_mlflow_observability_redacts_turn_content(monkeypatch) -> None:
     assert recorded.span.outputs["message_sha256"]
 
 
-def test_agent_turn_records_workflow_spans(monkeypatch) -> None:
+def test_agent_turn_records_workflow_spans(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("LECTUREPILOT_OBSERVABILITY", "none")
     app = create_app()
     recording = _RecordingObservability()
-    layout = object()
+    layout = StorageLayout(tmp_path)
     app.state.observability = recording
     app.state.canvas_workspace = _CanvasWorkspace(layout)
     app.state.user_memory_store = _UserMemoryStore(layout)
@@ -94,10 +93,12 @@ def test_agent_turn_records_workflow_spans(monkeypatch) -> None:
         "read_canvas",
         "read_user_memory",
         "write_attendance",
+        "read_coaching_progress",
         "call_tutor_model",
         "prepare_canvas_update",
         "write_canvas_update",
         "record_quality_gate",
+        "write_coaching_progress",
     ]
     assert any(output["quality_gate"] == "needs_evidence" for output in recording.outputs)
 

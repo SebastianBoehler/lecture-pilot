@@ -3,12 +3,14 @@ from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSectio
 from lecturepilot.model_client import _messages
 from lecturepilot.model_commands import read_canvas_commands
 from lecturepilot.models import (
+    AgentCoachingContext,
     AgentTurnInput,
     AttendanceStatus,
     CanvasCommand,
     CanvasState,
     QualityGateStatus,
 )
+from lecturepilot.scaffold_policy import scaffold_policy_for_tutor_turn
 
 
 async def test_local_preview_tutor_runs_without_provider_key(monkeypatch) -> None:
@@ -160,6 +162,11 @@ def test_model_prompt_requires_guided_quality_gate_turns() -> None:
     assert "attendance selects the tutor stance" in system_prompt
     assert "examiner and coach" in system_prompt
     assert "teacher for an absent student" in system_prompt
+    assert "next similar task without lecturepilot" in system_prompt
+    assert "least support" in system_prompt
+    assert "never ask the learner to select a learning style" in system_prompt
+    assert "one short reflection" in system_prompt
+    assert "delayed independent transfer check" in system_prompt
     assert "canvas_commands" in system_prompt
     assert "highlight_span" in system_prompt
 
@@ -174,6 +181,31 @@ def test_model_prompt_includes_canvas_targets() -> None:
     assert "section_id=bayes-formula" in user_prompt
     assert "span_id=bayes-formula-list" in user_prompt
     assert "Posterior" in user_prompt
+
+
+def test_model_prompt_includes_derived_coaching_goal_and_support_policy() -> None:
+    turn = _contextual_turn().model_copy(
+        update={
+            "coaching_context": AgentCoachingContext(
+                session_goal="Explain Bayesian risk and transfer it to a new decision.",
+                goal_is_new=True,
+            ),
+            "scaffold_policy": scaffold_policy_for_tutor_turn(
+                attendance="present",
+                delayed_transfer_due=False,
+                last_gate_status=None,
+                needs_evidence_count=0,
+                prior_assistance=False,
+            ),
+        }
+    )
+
+    user_prompt = _messages(turn)[1]["content"]
+
+    assert "Explain Bayesian risk and transfer it to a new decision." in user_prompt
+    assert "goal_status: proposed" in user_prompt
+    assert "profile: self_explanation" in user_prompt
+    assert "Ask for the learner's own attempt" in user_prompt
 
 
 def test_model_parser_accepts_focus_and_highlight_commands() -> None:
@@ -208,7 +240,11 @@ def test_model_parser_rejects_invalid_canvas_ids() -> None:
         {
             "canvas_commands": [
                 {"type": "focus_section", "section_id": "not-in-canvas"},
-                {"type": "highlight_span", "section_id": "bayes-formula", "span_id": "missing-block"},
+                {
+                    "type": "highlight_span",
+                    "section_id": "bayes-formula",
+                    "span_id": "missing-block",
+                },
             ]
         },
         _contextual_turn(),
@@ -241,7 +277,11 @@ def test_model_parser_accepts_generated_student_section() -> None:
                             },
                             {
                                 "type": "list",
-                                "items": ["Prior player fit", "Likelihood of report", "Posterior belief"],
+                                "items": [
+                                    "Prior player fit",
+                                    "Likelihood of report",
+                                    "Posterior belief",
+                                ],
                             },
                         ],
                     },

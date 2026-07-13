@@ -73,6 +73,9 @@ def _agent_turn_schema() -> dict[str, Any]:
                 "type": "string",
                 "description": "Student-facing tutor response.",
             },
+            "session_goal": _nullable_string(
+                "Active session goal, including a learner correction when provided."
+            ),
             "canvas_commands": {
                 "type": "array",
                 "items": _canvas_command_schema(),
@@ -80,7 +83,7 @@ def _agent_turn_schema() -> dict[str, Any]:
             },
             "quality_gate": _quality_gate_schema(),
         },
-        "required": ["message", "canvas_commands", "quality_gate"],
+        "required": ["message", "session_goal", "canvas_commands", "quality_gate"],
     }
 
 
