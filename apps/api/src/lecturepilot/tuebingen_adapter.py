@@ -7,6 +7,10 @@ from urllib.parse import parse_qs, urlparse
 
 from lecturepilot.auth_diagnostics import current_auth_diagnostics
 from lecturepilot.ilias_identity import fetch_ilias_identity
+from lecturepilot.tuebingen_html_capture import (
+    prepare_alma_html_capture,
+    prepare_ilias_html_capture,
+)
 from lecturepilot.university_models import (
     ExternalCourseCandidate,
     ExternalCourseSource,
@@ -55,6 +59,7 @@ class TuebingenCourseAdapter:
         try:
             profile_started = diagnostics.started("alma.profile")
             try:
+                prepare_alma_html_capture(client.alma)
                 profile = client.alma.profile()
             except Exception as exc:
                 diagnostics.failed("alma.profile", profile_started, exc)
@@ -85,6 +90,7 @@ class TuebingenCourseAdapter:
                 )
             memberships_started = diagnostics.started("ilias.memberships")
             try:
+                prepare_ilias_html_capture(client.ilias)
                 memberships = client.ilias.memberships()
                 ilias_courses = _ilias_courses(memberships, term=term)
                 courses.extend(ilias_courses)

@@ -9,9 +9,11 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from time import monotonic
-from typing import Any, Iterator
+from typing import Any, Callable, Iterator
 from urllib.parse import urlparse
 from uuid import uuid4
+
+from lecturepilot.auth_html_capture import AuthHtmlCapture
 
 
 AUTH_ATTEMPT_HEADER = "X-Auth-Attempt-Id"
@@ -26,6 +28,11 @@ class AuthDiagnostics:
     subject_fingerprint: str
     enabled: bool
     attempt_started: float
+    html_capture: AuthHtmlCapture | None = None
+
+    @property
+    def html_capture_enabled(self) -> bool:
+        return self.html_capture is not None
 
     def started(self, step: str) -> float:
         started = monotonic()
@@ -37,6 +44,21 @@ class AuthDiagnostics:
 
     def failed(self, step: str, started: float, error: BaseException) -> None:
         self._emit(step, "failed", started, _error_details(error))
+
+    def response_hook(self, provider: str) -> Callable[..., None]:
+        def capture(response: Any, *_args: Any, **_kwargs: Any) -> None:
+            if self.html_capture is None:
+                return
+            started = monotonic()
+            try:
+                details = self.html_capture.capture_response(provider, response)
+            except Exception as exc:
+                self.failed("auth.html_capture", started, exc)
+            else:
+                if details is not None:
+                    self.succeeded("auth.html_capture", started, **details)
+
+        return capture
 
     def _emit(
         self,
@@ -65,7 +87,7 @@ class AuthDiagnostics:
         )
 
 
-_DISABLED_DIAGNOSTICS = AuthDiagnostics("untracked", "", False, 0.0)
+_DISABLED_DIAGNOSTICS = AuthDiagnostics("untracked", "", False, 0.0, None)
 _CURRENT: ContextVar[AuthDiagnostics] = ContextVar(
     "lecturepilot_auth_diagnostics",
     default=_DISABLED_DIAGNOSTICS,
@@ -74,11 +96,13 @@ _CURRENT: ContextVar[AuthDiagnostics] = ContextVar(
 
 @contextmanager
 def auth_diagnostic_attempt(username: str) -> Iterator[AuthDiagnostics]:
+    attempt_id = uuid4().hex
     diagnostics = AuthDiagnostics(
-        attempt_id=uuid4().hex,
+        attempt_id=attempt_id,
         subject_fingerprint=_fingerprint(username.strip().casefold()),
         enabled=_enabled(),
         attempt_started=monotonic(),
+        html_capture=AuthHtmlCapture.from_environment(attempt_id),
     )
     token = _CURRENT.set(diagnostics)
     try:

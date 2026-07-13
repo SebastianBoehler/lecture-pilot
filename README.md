@@ -255,6 +255,14 @@ presence flags, HTTP status/host/path, and exception class names; it excludes
 credentials, cookies, tokens, raw provider responses, names, full email
 addresses, and exception messages. Disable the flag after the check.
 
+If the provider page format itself needs inspection, also temporarily set
+`LECTUREPILOT_AUTH_CAPTURE_HTML=true`. Every HTML response received during the
+Alma and ILIAS flow is then saved as a plain `.html` file under
+`<LECTUREPILOT_WORKSPACE_ROOT>/auth-diagnostics/<attempt-id>/`. The capture does
+not write request bodies, credentials, headers, or cookies, but response HTML
+may still contain personal or session data. Delete the attempt directory and
+disable both flags immediately after the supervised check.
+
 ## Design Source
 
 The first frontend direction was generated with OpenRouter model
