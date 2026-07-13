@@ -234,8 +234,8 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.status.pending": "Ausstehend",
   "builder.define.title": "Kurs- und Vorlesungsumfang definieren",
   "builder.define.courseName": "Kursname",
-  "builder.define.universityCourse": "Aus Alma oder ILIAS auswählen (optional)",
-  "builder.define.universityCoursePlaceholder": "Kurs auswählen",
+  "builder.define.courseSearchError":
+    "Alma-Vorschläge konnten gerade nicht geladen werden. Du kannst den Kursnamen weiter manuell eingeben.",
   "builder.define.courseNameHelp":
     "Verwende den exakten Kurstitel aus Alma oder ILIAS. LecturePilot gleicht Kurstitel und Semester mit den Belegungen der Studierenden ab.",
   "builder.define.visibility": "Kurssichtbarkeit",

@@ -5,7 +5,7 @@ import {
   ProfessorBuilderStepper,
 } from "./ProfessorBuilderStepper";
 import { ProfessorCanvasDraftStep } from "./ProfessorCanvasDraftStep";
-import { CourseSetupStep } from "./ProfessorCourseBuilderParts";
+import { ProfessorCourseSetupStep } from "./ProfessorCourseSetupStep";
 import { ProfessorGenerationWarnings } from "./ProfessorGenerationWarnings";
 import { ProfessorMaterialStep } from "./ProfessorMaterialStep";
 import { ProfessorPublishStep } from "./ProfessorPublishStep";
@@ -45,9 +45,15 @@ export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
         />
         <div className="builder-workspace">
           <div className="professor-flow">
-            {builder.activeStep === "define" ? <CourseSetupStep {...builder.defineStep} /> : null}
-            {builder.activeStep === "upload" ? <ProfessorMaterialStep {...builder.uploadStep} /> : null}
-            {builder.activeStep === "review" ? <ProfessorReviewStep {...builder.mediaStep} /> : null}
+            {builder.activeStep === "define" ? (
+              <ProfessorCourseSetupStep {...builder.defineStep} />
+            ) : null}
+            {builder.activeStep === "upload" ? (
+              <ProfessorMaterialStep {...builder.uploadStep} />
+            ) : null}
+            {builder.activeStep === "review" ? (
+              <ProfessorReviewStep {...builder.mediaStep} />
+            ) : null}
             {builder.activeStep === "generate" ? (
               <ProfessorCanvasDraftStep {...builder.generateStep} />
             ) : null}

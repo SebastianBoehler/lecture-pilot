@@ -12,3 +12,13 @@ export function universityCourseTitles(courses: UniversityEnrollmentCourse[], te
     left.localeCompare(right, "de-DE", { sensitivity: "base" }),
   );
 }
+
+export function mergeCourseTitles(primary: string[], secondary: string[]) {
+  const titles = new Map<string, string>();
+  for (const rawTitle of [...primary, ...secondary]) {
+    const title = rawTitle.trim();
+    const key = title.toLocaleLowerCase("de-DE");
+    if (title && !titles.has(key)) titles.set(key, title);
+  }
+  return [...titles.values()];
+}

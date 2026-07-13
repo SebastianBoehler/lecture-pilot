@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { draftLectureCanvas, getCourseLectures, getDraftLectureCanvas } from "./api";
 import { builderSteps, initialBuilderStep, type BuilderStep } from "./ProfessorBuilderStepper";
@@ -21,6 +21,7 @@ import {
 } from "./professorWorkspaceActivation";
 import { publishLectureRows } from "./professorPublishRows";
 import { universityCourseTitles } from "./professorCourseSuggestions";
+import { useCourseTitleSuggestions } from "./useCourseTitleSuggestions";
 import { useProfessorWorkflowRun } from "./professorWorkflowRun";
 import { lectureFromWorkspace, requireWorkspace } from "./professorWorkspaceView";
 import {
@@ -93,7 +94,16 @@ export function useProfessorCourseBuilder({
   const [isRestoring, setIsRestoring] = useState(false);
 
   const setupReady = isCourseSetupReady(setup);
-  const courseSuggestions = universityCourseTitles(session.university_courses ?? [], session.term);
+  const personalCourseTitles = useMemo(
+    () => universityCourseTitles(session.university_courses ?? [], session.term),
+    [session.term, session.university_courses],
+  );
+  const { courseSearchFailed, courseSuggestions } = useCourseTitleSuggestions({
+    enabled: activeStep === "define" && !courseReady,
+    personalTitles: personalCourseTitles,
+    query: setup.courseTitle,
+    session,
+  });
   const bundleReady = Boolean(bundle?.files.length);
   const mediaReady = mediaIncluded || selectedVideos.size > 0 || hasCanvasVideo(canvas);
   const reviewReady = mediaReady || mediaReviewed;
@@ -330,6 +340,7 @@ export function useProfessorCourseBuilder({
   }
 
   const defineStep = {
+    courseSearchFailed,
     courseSuggestions,
     courseReady,
     isCreating: pendingAction === "create",

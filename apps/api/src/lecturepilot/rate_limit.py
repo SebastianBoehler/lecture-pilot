@@ -102,6 +102,7 @@ def _rule_for(scope: Scope, rules: dict[str, RateLimit]) -> RateLimit | None:
         or path.endswith("/exam-readiness")
         or path.endswith("/exam-readiness/attempts")
         or path.endswith("/media/youtube/search")
+        or path == "/admin/university-courses/search"
     ):
         return rules["paid"]
     return None

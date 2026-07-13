@@ -38,6 +38,8 @@ from lecturepilot.security_headers import (
 from lecturepilot.session_auth import SessionAuthSettings
 from lecturepilot.session_store import SessionStore
 from lecturepilot.tuebingen_adapter import TuebingenCourseAdapter
+from lecturepilot.university_course_routes import register_university_course_routes
+from lecturepilot.university_course_search import AlmaUniversityCourseSearch
 from lecturepilot.user_memory import UserMemoryStore
 from lecturepilot.usage_quota import UsageQuota
 from lecturepilot.youtube_discovery import YoutubeDiscovery
@@ -55,6 +57,7 @@ def create_app() -> FastAPI:
     app.state.usage_quota = UsageQuota(app.state.database)
     app.state.course_tenant_id = COURSE_TENANT_ID
     app.state.tuebingen_adapter = TuebingenCourseAdapter()
+    app.state.university_course_search = AlmaUniversityCourseSearch()
     app.state.agent_harness = LecturePilotHarness()
     app.state.course_planner = CourseCanvasPlanner()
     app.state.lecture_schedule_planner = LectureSchedulePlanner()
@@ -93,6 +96,7 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     register_auth_routes(app, course_tenant_id=COURSE_TENANT_ID)
+    register_university_course_routes(app, course_tenant_id=COURSE_TENANT_ID)
     register_account_admin_routes(app)
     register_learner_profile_routes(app, course_tenant_id=COURSE_TENANT_ID)
     register_admin_media_routes(

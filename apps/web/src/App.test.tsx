@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -187,14 +187,19 @@ describe("LecturePilot app shell", () => {
     expect(
       await screen.findByRole("navigation", { name: /course builder progress/i }),
     ).toBeInTheDocument();
-    expect(
-      await screen.findByRole("option", { name: "Advanced Systems" }, { timeout: 2_000 }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Other Alma Course" })).toBeInTheDocument();
+    const courseName = screen.getByLabelText(/course name/i);
+    await waitFor(
+      () => {
+        const suggestions = document.getElementById(courseName.getAttribute("list") ?? "");
+        expect(
+          Array.from((suggestions as HTMLDataListElement).options).map((option) => option.value),
+        ).toEqual(["Advanced Systems", "Other Alma Course"]);
+      },
+      { timeout: 2_000 },
+    );
+    await user.type(courseName, "Advanced Systems");
 
-    await user.selectOptions(screen.getByLabelText(/choose from alma or ilias/i), "Advanced Systems");
-
-    expect(screen.getByLabelText(/course name/i)).toHaveValue("Advanced Systems");
+    expect(courseName).toHaveValue("Advanced Systems");
   });
 
   it("opens the profile view and logs out", async () => {

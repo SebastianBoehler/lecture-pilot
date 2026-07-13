@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { universityCourseTitles } from "./professorCourseSuggestions";
+import { mergeCourseTitles, universityCourseTitles } from "./professorCourseSuggestions";
 
 describe("professor course suggestions", () => {
   it("returns unique, sorted titles from available university sources", () => {
@@ -41,5 +41,14 @@ describe("professor course suggestions", () => {
         "Sommer 2026",
       ),
     ).toEqual(["Algorithms", "Machine Learning", "Systems"]);
+  });
+
+  it("keeps personal course titles ahead of public Alma suggestions", () => {
+    expect(
+      mergeCourseTitles(
+        ["Personal Systems", "Machine Learning"],
+        ["machine learning", "Public Course"],
+      ),
+    ).toEqual(["Personal Systems", "Machine Learning", "Public Course"]);
   });
 });

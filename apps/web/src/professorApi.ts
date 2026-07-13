@@ -20,6 +20,28 @@ export async function listCourseWorkspaces(
   return Array.isArray(payload) ? payload.map(normalizeCourseWorkspaceResult) : [];
 }
 
+export type AlmaCourseSuggestion = {
+  title: string;
+  number?: string | null;
+  instructor?: string | null;
+};
+
+export async function searchAlmaCourseTitles(
+  query: string,
+  term: string,
+  session: LoginSession,
+  signal?: AbortSignal,
+): Promise<AlmaCourseSuggestion[]> {
+  const params = new URLSearchParams({ q: query, term, limit: "8" });
+  const response = await fetch(
+    apiUrl(`/admin/university-courses/search?${params}`),
+    authRequestInit(session, { signal }),
+  );
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(readApiError(payload, "Alma course search failed."));
+  return Array.isArray(payload?.items) ? payload.items : [];
+}
+
 export async function createCourseWorkspace(
   setup: CourseSetup,
   session: LoginSession,
