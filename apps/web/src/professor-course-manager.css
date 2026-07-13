@@ -27,7 +27,7 @@
 .course-manager-header .primary-action {
   margin-left: auto;
   border-color: var(--color-accent-primary);
-  color: #ffffff;
+  color: var(--color-on-accent);
   background: var(--color-accent-primary);
 }
 

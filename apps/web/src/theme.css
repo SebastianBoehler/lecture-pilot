@@ -1,20 +1,22 @@
 :root {
-  --color-bg-primary: #ffffff;
-  --color-bg-secondary: #f6f8fa;
-  --color-bg-tertiary: #edf0f3;
-  --color-border-primary: #d8dee4;
-  --color-border-focus: #0a58ca;
-  --color-text-primary: #1a1d21;
-  --color-text-secondary: #57606a;
-  --color-text-tertiary: #6e7781;
-  --color-accent-primary: #0a58ca;
-  --color-accent-hover: #0846b4;
+  --color-bg-primary: #fbfaf7;
+  --color-bg-secondary: #f4f2ec;
+  --color-bg-tertiary: #e9e7df;
+  --color-border-primary: #d7d4cb;
+  --color-border-strong: #b8b5ac;
+  --color-border-focus: #0b57d0;
+  --color-text-primary: #17191c;
+  --color-text-secondary: #5f6672;
+  --color-text-tertiary: #626872;
+  --color-accent-primary: #0b57d0;
+  --color-accent-hover: #0847b2;
+  --color-on-accent: #ffffff;
   --color-highlight-bg: #fff8c5;
   --color-highlight-border: #e3b34c;
   --color-danger: #cf222e;
   --control-height: 36px;
   --control-height-compact: 30px;
-  --control-radius: 6px;
+  --control-radius: 5px;
   --control-padding-x: 12px;
   color: var(--color-text-primary);
   background: var(--color-bg-primary);
@@ -26,34 +28,33 @@
     sans-serif;
   line-height: 1.5;
 }
-
 :root[data-theme="dark"] {
-  --color-bg-primary: #0d1117;
-  --color-bg-secondary: #161b22;
-  --color-bg-tertiary: #21262d;
-  --color-border-primary: #30363d;
-  --color-border-focus: #3b8bf0;
-  --color-text-primary: #e6edf3;
-  --color-text-secondary: #8b949e;
-  --color-text-tertiary: #6e7681;
-  --color-accent-primary: #3b8bf0;
-  --color-accent-hover: #58a6ff;
+  --color-bg-primary: #151513;
+  --color-bg-secondary: #1d1d1a;
+  --color-bg-tertiary: #292824;
+  --color-border-primary: #3a3933;
+  --color-border-strong: #55534b;
+  --color-border-focus: #6ca5ff;
+  --color-text-primary: #f2f0e9;
+  --color-text-secondary: #b3b1aa;
+  --color-text-tertiary: #929089;
+  --color-accent-primary: #6ca5ff;
+  --color-accent-hover: #8ab7ff;
+  --color-on-accent: #151513;
   --color-highlight-bg: #3b2e00;
   --color-highlight-border: #9e6a03;
   --color-danger: #f85149;
 }
-
 * {
   box-sizing: border-box;
 }
-
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
   background: var(--color-bg-primary);
+  text-rendering: optimizeLegibility;
 }
-
 button,
 input,
 select,
@@ -71,6 +72,10 @@ select:focus-visible,
 textarea:focus-visible {
   outline: 2px solid var(--color-border-focus);
   outline-offset: 2px;
+}
+
+main h1[tabindex="-1"]:focus {
+  outline: none;
 }
 
 .app-shell {
@@ -91,8 +96,8 @@ textarea:focus-visible {
   display: grid;
   grid-template-columns: minmax(160px, 1fr) auto minmax(160px, 1fr);
   align-items: center;
-  height: 56px;
-  padding: 0 20px;
+  min-height: 64px;
+  padding: 0 28px;
   border-bottom: 1px solid var(--color-border-primary);
   background: var(--color-bg-primary);
 }
@@ -109,7 +114,10 @@ textarea:focus-visible {
 }
 
 .brand {
-  font-weight: 700;
+  padding: 0;
+  font-size: 19px;
+  font-weight: 780;
+  letter-spacing: -0.035em;
 }
 
 .top-brand-zone {
@@ -122,7 +130,7 @@ textarea:focus-visible {
   display: inline-flex;
   align-items: center;
   align-self: stretch;
-  gap: 18px;
+  gap: 30px;
 }
 
 .top-nav-button {
@@ -135,8 +143,8 @@ textarea:focus-visible {
   padding: 0 2px;
   color: var(--color-text-secondary);
   background: transparent;
-  font-size: 13px;
-  font-weight: 650;
+  font-size: 14px;
+  font-weight: 680;
 }
 
 .top-nav-button::after {
@@ -175,7 +183,7 @@ textarea:focus-visible {
   width: 34px;
   height: 34px;
   border: 1px solid var(--color-border-primary);
-  border-radius: 6px;
+  border-radius: 5px;
   color: var(--color-text-secondary);
   background: var(--color-bg-primary);
 }
@@ -200,33 +208,4 @@ textarea:focus-visible {
   height: 34px;
   border: 1px solid var(--color-border-primary);
   border-radius: 6px;
-}
-
-.section-label {
-  margin: 0 0 8px;
-  color: var(--color-accent-primary);
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-@media (max-width: 860px) {
-  .top-bar {
-    grid-template-columns: auto 1fr auto;
-    padding: 0 12px;
-  }
-
-  .top-primary-nav {
-    justify-self: center;
-    gap: 10px;
-  }
-
-  .top-nav-button {
-    width: 34px;
-    justify-content: center;
-  }
-
-  .top-nav-button span {
-    display: none;
-  }
 }

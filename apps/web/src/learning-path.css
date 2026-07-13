@@ -1,85 +1,232 @@
-.student-path-tree {
+.learning-path-drawer {
+  container-name: learning-path;
+  container-type: inline-size;
+}
+
+.learning-path-section {
+  gap: 16px;
+}
+
+.learning-path-heading {
   display: grid;
-  gap: 10px;
+  gap: 3px;
+  border-bottom: 1px solid var(--color-border-primary);
+  padding-bottom: 13px;
+}
+
+.learning-path-heading h2,
+.learning-path-heading p {
+  margin: 0;
+}
+
+.learning-path-heading h2 {
+  font-size: 17px;
+  letter-spacing: -0.015em;
+}
+
+.learning-path-heading p {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.student-path-tree,
+.student-path-branch {
+  display: grid;
+  gap: 9px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .student-path-node {
-  display: grid;
-  gap: 8px;
-  border-left: 2px solid var(--color-border-primary);
-  padding-left: 10px;
-}
-
-.student-path-node.is-current,
-.student-path-node.is-active {
-  border-left-color: var(--color-accent-primary);
+  position: relative;
+  min-width: 0;
 }
 
 .student-path-node-button {
+  position: relative;
+  z-index: 1;
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 9px;
   align-items: start;
-  border: 1px solid var(--color-border-primary);
-  border-radius: 8px;
-  padding: 10px;
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  border-radius: 7px;
+  padding: 7px 8px;
   color: var(--color-text-primary);
   text-align: left;
-  background: var(--color-bg-secondary);
+  background: transparent;
 }
 
 .student-path-node-button:hover,
 .student-path-node-button[aria-pressed="true"] {
-  border-color: var(--color-accent-primary);
+  background: var(--color-bg-secondary);
+}
+
+.student-path-node-button[aria-current="step"] {
+  box-shadow: inset 2px 0 0 var(--color-accent-primary);
+}
+
+.student-path-marker {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 50%;
+  color: var(--color-text-tertiary);
   background: var(--color-bg-primary);
 }
 
-.student-path-node-button > svg {
-  margin-top: 2px;
-  color: var(--color-text-tertiary);
-}
-
-.student-path-node.is-done .student-path-node-button > svg,
-.student-path-node.is-current .student-path-node-button > svg {
+.student-path-node.is-current > .student-path-node-button .student-path-marker,
+.student-path-node.is-active > .student-path-node-button .student-path-marker {
+  border-color: var(--color-accent-primary);
   color: var(--color-accent-primary);
 }
 
-.student-path-node-button > span,
-.student-path-checks {
+.student-path-node-copy {
   display: grid;
   gap: 3px;
   min-width: 0;
+  padding-top: 1px;
+}
+
+.student-path-node-copy > strong,
+.student-path-check strong,
+.student-path-prerequisites {
+  overflow-wrap: anywhere;
+}
+
+.student-path-node-copy > strong {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.student-path-node-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .student-path-step,
-.student-path-node-button small {
+.student-path-node-meta small {
   color: var(--color-text-tertiary);
-  font-size: 12px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.student-path-node.is-current > .student-path-node-button .student-path-node-meta small,
+.student-path-node.is-active > .student-path-node-button .student-path-node-meta small {
+  color: var(--color-accent-primary);
+}
+
+.student-path-prerequisites {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.student-path-checks {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  margin: 2px 8px 7px 47px;
+}
+
+.student-path-check {
+  display: grid;
+  grid-template-columns: 14px auto minmax(0, 1fr);
+  gap: 5px;
+  align-items: center;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+}
+
+.student-path-check > span {
+  color: var(--color-text-tertiary);
+  font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
 }
 
-.student-path-node-button strong,
-.student-path-check strong {
-  overflow-wrap: anywhere;
-}
-
-.student-path-checks {
-  padding-left: 32px;
-}
-
-.student-path-check {
-  display: inline-grid;
-  grid-template-columns: 16px auto minmax(0, 1fr);
-  gap: 5px;
-  align-items: center;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-}
-
-.student-path-check.is-passed {
+.student-path-check.is-passed,
+.student-path-check.is-passed > span {
   color: var(--color-accent-primary);
+}
+
+.student-path-branch {
+  position: relative;
+  padding-top: 7px;
+}
+
+.student-path-branch::before {
+  content: "";
+  position: absolute;
+  inset-block: -8px 17px;
+  inset-inline-start: 0;
+  border-inline-start: 1px solid var(--color-border-primary);
+}
+
+.student-path-branch.is-chain {
+  margin: 1px 0 0;
+}
+
+.student-path-branch.is-chain::before {
+  inset-inline-start: 22px;
+}
+
+.student-path-branch.is-fork {
+  --student-path-fork-indent: 29px;
+
+  margin: 1px 0 0 14px;
+  padding-left: var(--student-path-fork-indent);
+}
+
+.student-path-branch.is-fork > .student-path-node::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: 21px;
+  right: calc(100% - 8px);
+  width: calc(var(--student-path-fork-indent) + 8px);
+  border-top: 1px solid var(--color-border-primary);
+}
+
+.student-path-branch.is-fork > .student-path-node:last-child::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: 22px;
+  bottom: -1px;
+  right: calc(100% + var(--student-path-fork-indent) - 1px);
+  width: 2px;
+  background: var(--color-bg-primary);
+}
+
+@container learning-path (max-width: 300px) {
+  .student-path-branch.is-fork {
+    --student-path-fork-indent: 18px;
+
+    margin-left: 5px;
+  }
+
+  .student-path-node-button {
+    padding-right: 4px;
+  }
+}
+
+@container learning-path (max-width: 230px) {
+  .student-path-branch.is-fork {
+    --student-path-fork-indent: 12px;
+
+    margin-left: 0;
+  }
 }

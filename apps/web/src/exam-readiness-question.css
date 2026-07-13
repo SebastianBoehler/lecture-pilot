@@ -1,0 +1,104 @@
+.exam-question {
+  display: grid;
+  gap: 20px;
+  max-width: 680px;
+  margin: 0 auto;
+  border: 0;
+  padding: 0;
+}
+
+.exam-question legend {
+  width: 100%;
+  padding: 0;
+  color: var(--color-text-primary);
+  font-size: clamp(21px, 2.8vw, 27px);
+  font-weight: 760;
+  line-height: 1.28;
+  letter-spacing: -0.025em;
+}
+
+.exam-question legend[tabindex="-1"]:focus {
+  outline: none;
+}
+
+.exam-question-context {
+  margin: 0 !important;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.exam-options {
+  display: grid;
+  gap: 9px;
+}
+
+.exam-options label {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  min-height: 48px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 7px;
+  padding: 12px 14px;
+  background: var(--color-bg-primary);
+  cursor: pointer;
+}
+
+.exam-options label:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-bg-secondary);
+}
+
+.exam-options label.is-selected {
+  border-color: var(--color-accent-primary);
+  background: color-mix(in srgb, var(--color-accent-primary) 7%, var(--color-bg-primary));
+}
+
+.exam-options input {
+  flex: 0 0 auto;
+  margin: 3px 0 0;
+  accent-color: var(--color-accent-primary);
+}
+
+.exam-question textarea {
+  width: 100%;
+  min-height: 154px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 7px;
+  padding: 13px 14px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.exam-modal-footer {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 16px;
+  border-top: 1px solid var(--color-border-primary);
+  padding: 14px 24px;
+}
+
+.exam-modal-footer > span {
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  text-align: center;
+}
+
+@media (max-width: 620px) {
+  .exam-question legend {
+    font-size: 21px;
+  }
+
+  .exam-modal-footer {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    padding-inline: 18px;
+  }
+
+  .exam-modal-footer > span {
+    display: none;
+  }
+}

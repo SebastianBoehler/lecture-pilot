@@ -72,7 +72,7 @@
 
 .course-update-page .primary-action {
   border-color: var(--color-accent-primary);
-  color: #ffffff;
+  color: var(--color-on-accent);
   background: var(--color-accent-primary);
 }
 

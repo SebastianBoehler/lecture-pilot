@@ -1,78 +1,101 @@
 .performance-chart {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
+  grid-template-columns: minmax(170px, 0.7fr) minmax(170px, 0.7fr) minmax(300px, 1.6fr);
+  gap: 24px;
 }
+
 .performance-chart > div {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px 12px;
+  align-items: end;
+  gap: 9px 14px;
   border-top: 1px solid var(--color-border-primary);
-  padding: 14px 0 0;
-  background: transparent;
+  padding-top: 13px;
 }
-.performance-chart span {
+
+.performance-chart > div > span:first-child {
   color: var(--color-text-tertiary);
-  font-size: 12px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 820;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+
 .performance-chart strong {
   font-size: 22px;
+  letter-spacing: -0.025em;
 }
-.mini-donut {
-  grid-row: span 2;
-  width: 42px;
-  height: 42px;
-  transform: rotate(-90deg);
+
+.signal-track {
+  display: block;
+  grid-column: 1 / -1;
+  height: 5px;
+  overflow: hidden;
+  background: var(--color-bg-tertiary);
 }
-.mini-donut circle {
-  fill: none;
-  stroke: var(--color-bg-tertiary);
-  stroke-width: 5;
+
+.signal-fill {
+  display: block;
+  width: var(--signal-width);
+  height: 100%;
+  background: var(--color-accent-primary);
 }
-.mini-donut circle + circle {
-  stroke: #2563eb;
-  stroke-linecap: round;
+
+.signal-track.is-success .signal-fill {
+  background: #18864b;
 }
-.mini-donut.is-success circle + circle {
-  stroke: #16a34a;
+
+.signal-track.is-warning .signal-fill {
+  background: #b26900;
 }
-.mini-donut.is-warning circle + circle {
-  stroke: #f59e0b;
-}
-.attendance-chart {
-  grid-column: span 1;
-}
+
 .stacked-bar {
   display: flex;
   grid-column: 1 / -1;
-  height: 32px;
+  min-height: 26px;
   overflow: hidden;
-  border-radius: 6px;
   background: var(--color-bg-tertiary);
 }
+
 .stacked-bar span {
   display: grid;
   width: var(--segment-width);
-  min-width: 34px;
+  min-width: 46px;
   place-items: center;
-  color: white;
-  font-size: 11px;
-  text-transform: none;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 750;
 }
+
 .stacked-bar .is-present {
-  background: #2563eb;
+  color: var(--color-on-accent);
+  background: var(--color-accent-primary);
 }
+
 .stacked-bar .is-absent {
-  background: #64748b;
+  background: #555f6e;
 }
+
 .stacked-bar .is-unknown {
-  background: #94a3b8;
+  background: #858b94;
 }
-@media (max-width: 960px) {
+
+@media (max-width: 900px) {
+  .performance-chart {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .attendance-chart {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 560px) {
   .performance-chart {
     grid-template-columns: 1fr;
+  }
+
+  .attendance-chart {
+    grid-column: auto;
   }
 }

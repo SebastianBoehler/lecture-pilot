@@ -1,11 +1,15 @@
 @import "./theme.css";
+@import "./theme-responsive.css";
 @import "./login.css";
 @import "./dashboard.css";
+@import "./dashboard-responsive.css";
 @import "./dashboard-course-status.css";
 @import "./course-sync.css";
 @import "./learner-profile.css";
 @import "./onboarding.css";
 @import "./exam-readiness.css";
+@import "./exam-readiness-question.css";
+@import "./exam-readiness-result.css";
 @import "./professor.css";
 @import "./professor-builder-shell.css";
 @import "./professor-actions.css";
@@ -26,7 +30,10 @@
 @import "./performance-charts.css";
 @import "./professor-learning-map-tree.css";
 @import "./professor-usage.css";
+@import "./professor-usage-responsive.css";
+@import "./professor-walkthrough.css";
 @import "./lesson.css";
+@import "./lesson-responsive.css";
 @import "./learning-path.css";
 @import "./chat.css";
 @import "./outline.css";

@@ -1,3 +1,5 @@
+@import "./profile-view.css";
+
 .next-study {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
@@ -15,7 +17,6 @@
 }
 
 .next-study h2 {
-  margin-top: 4px;
   font-size: 22px;
 }
 
@@ -30,13 +31,6 @@
   align-items: center;
 }
 
-.next-study-action span {
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
 .next-study-action strong {
   overflow-wrap: anywhere;
 }
@@ -48,17 +42,17 @@
   border-radius: var(--control-radius);
   min-height: var(--control-height);
   padding: 0 var(--control-padding-x);
-  color: #fff;
+  color: var(--color-on-accent);
   background: var(--color-accent-primary);
   font-weight: 700;
 }
 
 .learner-profile-controls {
-  border-top: 1px solid var(--color-border-primary);
+  border-top: 0;
 }
 
 .learner-profile-section {
-  padding: 22px 20px;
+  padding: 26px 0;
   border-bottom: 1px solid var(--color-border-primary);
 }
 
@@ -68,7 +62,7 @@
 }
 
 .learner-profile-section h2 {
-  font-size: 18px;
+  font-size: 17px;
 }
 
 .learner-profile-section > p {

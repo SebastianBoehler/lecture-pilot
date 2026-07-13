@@ -1,6 +1,6 @@
 .professor-preview-banner {
   position: sticky;
-  top: 68px;
+  top: calc(var(--lesson-header-offset, 64px) + 4px);
   z-index: 4;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;

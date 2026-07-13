@@ -13,13 +13,13 @@
 
 .flow-card .primary-action {
   border-color: color-mix(in srgb, var(--color-accent-primary) 72%, var(--color-border-primary));
-  color: #ffffff;
+  color: var(--color-on-accent);
   background: var(--color-accent-primary);
 }
 
 .flow-card .primary-action:hover:not(:disabled) {
   border-color: var(--color-accent-primary);
-  color: #ffffff;
+  color: var(--color-on-accent);
   background: color-mix(in srgb, var(--color-accent-primary) 88%, var(--color-text-primary));
 }
 

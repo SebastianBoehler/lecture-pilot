@@ -2,7 +2,8 @@
   display: grid;
   justify-items: center;
   gap: 8px;
-  border: 1px dashed color-mix(in srgb, var(--color-accent-primary) 42%, var(--color-border-primary));
+  border: 1px dashed
+    color-mix(in srgb, var(--color-accent-primary) 42%, var(--color-border-primary));
   border-radius: 10px;
   padding: 24px 18px;
   background: color-mix(in srgb, var(--color-bg-secondary) 76%, transparent);
@@ -47,6 +48,13 @@
   background: var(--color-bg-primary);
   font-size: 14px;
   font-weight: 700;
+}
+
+.material-drop-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
 }
 
 .material-drop-input {

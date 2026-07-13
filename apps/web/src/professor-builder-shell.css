@@ -3,38 +3,39 @@
   align-items: end;
   justify-content: space-between;
   gap: 24px;
-  margin-bottom: 32px;
+  margin-bottom: 30px;
 }
 
 .builder-masthead h1 {
   margin: 0;
-  font-size: clamp(32px, 4vw, 48px);
-  letter-spacing: -0.04em;
+  font-size: clamp(34px, 4vw, 48px);
+  letter-spacing: -0.045em;
   line-height: 1;
 }
 
 .builder-masthead > div > p:last-child {
-  margin: 10px 0 0;
-  max-width: 620px;
+  margin: 12px 0 0;
+  max-width: 660px;
   color: var(--color-text-secondary);
 }
 
 .builder-layout {
   display: grid;
-  grid-template-columns: 190px minmax(0, 1fr);
-  gap: 42px;
+  gap: 34px;
   align-items: start;
+  border-top: 1px solid var(--color-border-primary);
+  padding-top: 22px;
 }
 
 .builder-journey {
-  position: sticky;
-  top: 20px;
-  border-right: 1px solid var(--color-border-primary);
-  padding: 4px 22px 4px 0;
+  min-width: 0;
+  border-bottom: 1px solid var(--color-border-primary);
+  padding-bottom: 14px;
 }
 
 .builder-journey ol {
   display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 4px;
   margin: 0;
   padding: 0;
@@ -42,6 +43,7 @@
 }
 
 .builder-journey li {
+  min-width: 0;
   color: var(--color-text-tertiary);
 }
 
@@ -49,15 +51,15 @@
   display: grid;
   grid-template-columns: 30px minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   width: 100%;
+  min-height: 44px;
   border: 0;
-  border-radius: 6px;
-  padding: 9px 8px;
+  border-bottom: 2px solid transparent;
+  padding: 6px 8px 9px;
   color: inherit;
   text-align: left;
   background: transparent;
-  cursor: pointer;
 }
 
 .builder-journey button:hover:not(:disabled) {
@@ -91,19 +93,21 @@
 }
 
 .builder-journey .is-active button {
-  background: color-mix(in srgb, var(--color-accent-primary) 8%, var(--color-bg-primary));
-  box-shadow: inset 2px 0 0 var(--color-accent-primary);
+  border-bottom-color: var(--color-accent-primary);
+  background: color-mix(in srgb, var(--color-accent-primary) 6%, transparent);
 }
 
 .builder-journey .is-locked {
-  opacity: 0.38;
+  opacity: 0.42;
 }
 
 .builder-workspace {
   display: grid;
   gap: 18px;
+  width: min(920px, 100%);
   min-width: 0;
-  padding-bottom: 32px;
+  margin: 0 auto;
+  padding-bottom: 40px;
 }
 
 .builder-workspace .step-header {
@@ -118,30 +122,21 @@
 
 @media (max-width: 860px) {
   .builder-masthead {
+    display: grid;
     align-items: start;
     margin-bottom: 24px;
   }
 
-  .builder-layout {
-    grid-template-columns: 1fr;
-    gap: 22px;
-  }
-
   .builder-journey {
-    position: static;
     overflow-x: auto;
-    border-right: 0;
-    border-bottom: 1px solid var(--color-border-primary);
-    padding: 0 0 12px;
   }
 
   .builder-journey ol {
     display: flex;
     width: max-content;
-    gap: 4px;
   }
 
-  .builder-journey button {
-    width: auto;
+  .builder-journey li {
+    width: 150px;
   }
 }
