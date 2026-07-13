@@ -243,9 +243,20 @@
 
 .lecture-schedule-fields {
   display: grid;
-  grid-template-columns: 74px minmax(180px, 1fr) minmax(150px, 0.55fr);
+  grid-template-columns: 74px minmax(180px, 1fr) minmax(150px, 0.55fr) auto;
   gap: 8px;
   align-items: end;
+}
+
+.lecture-schedule-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  border-color: color-mix(in srgb, var(--color-danger) 45%, var(--color-border-primary));
+  color: var(--color-danger);
+  background: transparent;
 }
 
 .lecture-schedule-source {

@@ -184,6 +184,7 @@ function courseWorkspaceBody(
     lecture_number: setup.lectureNumber || null,
     lecture_count: Number(setup.lectureCount) || null,
     lectures,
+    replace_lectures: Boolean(courseId && setup.target === "full-course" && lectures.length),
     target: setup.target,
   };
 }

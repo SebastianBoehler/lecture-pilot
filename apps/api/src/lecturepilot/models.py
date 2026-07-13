@@ -117,6 +117,7 @@ class CourseWorkspaceSetupInput(BaseModel):
     lecture_number: str | None = Field(default=None, max_length=20)
     lecture_count: int | None = Field(default=None, ge=1, le=80)
     lectures: list["LectureScheduleItem"] = Field(default_factory=list, max_length=80)
+    replace_lectures: bool = False
     target: Literal["single-lecture", "full-course"] = "single-lecture"
     access_policy: CourseAccessPolicy = CourseAccessPolicy.TUEBINGEN_ENROLLED
 

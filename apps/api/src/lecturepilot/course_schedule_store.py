@@ -6,12 +6,21 @@ from lecturepilot.course_workspace import merge_course_workspace
 from lecturepilot.models import CourseWorkspaceResult
 
 
-def write_course_workspace(course_root: Path, workspace: CourseWorkspaceResult) -> CourseWorkspaceResult:
+def write_course_workspace(
+    course_root: Path,
+    workspace: CourseWorkspaceResult,
+    *,
+    replace_lectures: bool = False,
+) -> CourseWorkspaceResult:
     target = _workspace_path(course_root)
     target.parent.mkdir(parents=True, exist_ok=True)
     if target.exists():
         existing = read_course_workspace(course_root, workspace.course.id)
-        workspace = merge_course_workspace(existing, workspace)
+        workspace = merge_course_workspace(
+            existing,
+            workspace,
+            replace_lectures=replace_lectures,
+        )
     target.write_text(workspace.model_dump_json(indent=2), encoding="utf-8")
     return workspace
 

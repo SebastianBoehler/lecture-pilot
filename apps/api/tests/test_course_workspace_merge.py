@@ -82,6 +82,40 @@ def test_sparse_single_lecture_update_keeps_existing_material_mapping(tmp_path: 
     assert lecture["material_path"] == "Lecture03-eng.tex"
 
 
+def test_full_course_schedule_can_replace_inferred_lectures(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    response = client.post(
+        "/admin/course-workspaces",
+        json={
+            "course_title": "Demo ML Course",
+            "target": "full-course",
+            "lectures": [
+                {"number": "01", "title": "Overview", "date": "2026-05-06"},
+                {"number": "02", "title": "Generalization", "date": "2026-05-13"},
+            ],
+        },
+        headers=professor_headers(),
+    )
+    assert response.status_code == 200
+
+    response = client.post(
+        "/admin/course-workspaces",
+        json={
+            "course_id": "demo-ml-course",
+            "course_title": "Demo ML Course",
+            "target": "full-course",
+            "replace_lectures": True,
+            "lectures": [
+                {"number": "01", "title": "Overview", "date": "2026-05-06"},
+            ],
+        },
+        headers=professor_headers(),
+    )
+
+    assert response.status_code == 200
+    assert [lecture["id"] for lecture in response.json()["lectures"]] == ["lecture-01"]
+
+
 def _client(tmp_path: Path) -> TestClient:
     app = create_app()
     app.state.canvas_workspace = CanvasWorkspace(

@@ -34,8 +34,10 @@ def resolve_course_workspace(
 def merge_course_workspace(
     existing: CourseWorkspaceResult | None,
     incoming: CourseWorkspaceResult,
+    *,
+    replace_lectures: bool = False,
 ) -> CourseWorkspaceResult:
-    if existing is None or existing.course.id != incoming.course.id:
+    if replace_lectures or existing is None or existing.course.id != incoming.course.id:
         return incoming
     incoming_by_id = {lecture.id: lecture for lecture in incoming.lectures}
     merged = [

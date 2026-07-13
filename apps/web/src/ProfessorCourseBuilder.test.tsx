@@ -188,6 +188,7 @@ describe("Professor course builder", () => {
   it("proposes and applies a dated full-course lecture schedule from materials", async () => {
     const user = userEvent.setup();
     const fetchMock = professorFetchMock();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     vi.stubGlobal("fetch", fetchMock);
     render(<App />);
 
@@ -211,6 +212,11 @@ describe("Professor course builder", () => {
     expect(screen.getByDisplayValue("2026-05-13")).toBeInTheDocument();
     expect(screen.getByText("Lecture01-eng.tex")).toHaveAttribute("title", "Lecture01-eng.tex");
 
+    await user.click(screen.getByRole("button", { name: /remove lecture 02 from schedule/i }));
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("Lecture 02"));
+    expect(screen.queryByDisplayValue("2026-05-13")).not.toBeInTheDocument();
+    expect(screen.getByText(/1 lecture inferred from the source bundle/i)).toBeInTheDocument();
+
     await user.clear(screen.getByDisplayValue("Lecture 01"));
     await user.type(screen.getAllByLabelText(/^title$/i)[0], "Course overview");
     expect(screen.getByRole("button", { name: /apply lecture schedule/i })).toHaveClass(
@@ -219,16 +225,18 @@ describe("Professor course builder", () => {
     await user.click(screen.getByRole("button", { name: /apply lecture schedule/i }));
 
     expect(
-      await screen.findByText(/lecture schedule applied with 2 dated lectures/i),
+      await screen.findByText(/lecture schedule applied with 1 dated lectures/i),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText(/attach selected videos to/i)).toHaveValue("lecture-01");
+    expect(screen.getByText(/selected videos attach to lecture 01/i)).toBeInTheDocument();
     const scheduleCall = fetchMock.mock.calls.find((call) => {
       if (typeof call[1]?.body !== "string") return false;
       const body = JSON.parse(call[1].body);
-      return Array.isArray(body.lectures) && body.lectures.length === 2;
+      return Array.isArray(body.lectures) && body.lectures.length === 1;
     });
     expect(scheduleCall).toBeDefined();
-    expect(JSON.parse(String(scheduleCall?.[1]?.body)).lectures[0]).toMatchObject({
+    const scheduleRequest = JSON.parse(String(scheduleCall?.[1]?.body));
+    expect(scheduleRequest).toMatchObject({ replace_lectures: true });
+    expect(scheduleRequest.lectures[0]).toMatchObject({
       date: "2026-05-06",
       title: "Course overview",
     });

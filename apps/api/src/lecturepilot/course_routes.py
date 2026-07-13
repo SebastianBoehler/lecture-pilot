@@ -147,6 +147,7 @@ def register_course_routes(
             return write_course_workspace(
                 app.state.canvas_workspace.course_media_root(workspace.course.id),
                 workspace,
+                replace_lectures=setup.replace_lectures,
             )
         except Exception:
             if database_course and created_database_course:
