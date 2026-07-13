@@ -14,6 +14,7 @@ export function ProfileView({
 }) {
   const { t } = useI18n();
   const syncLoading = session.university_course_sync_status === "loading";
+  const hasLearnerWorkspace = session.roles?.includes("student") === true;
   return (
     <main className="profile-screen">
       <section className="profile-panel" aria-labelledby="profile-heading">
@@ -60,7 +61,7 @@ export function ProfileView({
           </div>
         </dl>
 
-        {learnerProfileState ? (
+        {hasLearnerWorkspace && learnerProfileState ? (
           <LearnerProfileControls session={session} state={learnerProfileState} />
         ) : null}
 

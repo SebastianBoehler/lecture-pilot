@@ -21,12 +21,26 @@ describe("ProfileView", () => {
       courses: [],
     };
 
-    renderWithI18n(<ProfileView session={session} />);
+    renderWithI18n(
+      <ProfileView
+        learnerProfileState={{
+          profile: null,
+          loading: false,
+          error: "Student workspace access is required.",
+          saveCalibration: async () => {},
+          removePreference: async () => {},
+          clearMemory: async () => {},
+          refresh: async () => {},
+        }}
+        session={session}
+      />,
+    );
 
     expect(screen.getByText("lecturer")).toBeInTheDocument();
     expect(screen.getByText("Daniel Example")).toBeInTheDocument();
     expect(screen.getByText("professor@example.edu")).toBeInTheDocument();
     expect(screen.queryByText(/professor access/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/student workspace access is required/i)).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /request professor approval/i }),
     ).not.toBeInTheDocument();

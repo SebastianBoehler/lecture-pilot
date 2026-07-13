@@ -96,11 +96,7 @@ export function AppRoutes(props: AppRoutesProps) {
     workspaceCourse,
     workspaceCourseId,
   } = props;
-  const learnerProfileEnabled = Boolean(
-    session &&
-    (session.account_type ?? "student") === "student" &&
-    !session.roles?.includes("tenant_admin"),
-  );
+  const learnerProfileEnabled = Boolean(session?.roles?.includes("student"));
   const learnerProfileState = useLearnerProfile(session, learnerProfileEnabled);
 
   if (view === "login") {
@@ -128,7 +124,7 @@ export function AppRoutes(props: AppRoutesProps) {
   if (view === "profile" && session) {
     return (
       <ProfileView
-        learnerProfileState={learnerProfileState}
+        learnerProfileState={learnerProfileEnabled ? learnerProfileState : undefined}
         session={session}
         onBack={
           session.account_type === "professor" && !courseManagerSession
