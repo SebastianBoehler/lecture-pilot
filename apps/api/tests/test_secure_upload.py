@@ -1,7 +1,9 @@
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from fastapi.testclient import TestClient
+import pytest
 
+import lecturepilot.secure_upload as secure_upload
 from auth_helpers import professor_headers
 from lecturepilot.app import create_app
 from lecturepilot.canvas_workspace import CanvasWorkspace
@@ -109,6 +111,55 @@ def test_upload_rejects_binary_content_disguised_as_latex(tmp_path: Path) -> Non
 
     assert response.status_code == 400
     assert response.json()["detail"] == "File contents do not match the requested file type."
+
+
+def test_upload_promotion_is_durable_in_target_and_quarantine_directories(
+    tmp_path: Path, monkeypatch
+) -> None:
+    uploads = tmp_path / "uploads"
+    quarantine = tmp_path / "quarantine"
+    uploads.mkdir()
+    quarantine.mkdir()
+    source = quarantine / "upload.part"
+    source.write_text("source", encoding="utf-8")
+    synced: list[Path] = []
+    monkeypatch.setattr(secure_upload, "fsync_directory", synced.append)
+
+    target = secure_upload._promote_upload(
+        uploads,
+        PurePosixPath("Lecture01.tex"),
+        source,
+    )
+
+    assert target.read_text(encoding="utf-8") == "source"
+    assert not source.exists()
+    assert synced == [uploads, quarantine]
+
+
+def test_upload_promotion_crash_never_leaves_two_live_links(tmp_path: Path, monkeypatch) -> None:
+    uploads = tmp_path / "uploads"
+    quarantine = tmp_path / "quarantine"
+    uploads.mkdir()
+    quarantine.mkdir()
+    source = quarantine / "upload.part"
+    source.write_text("source", encoding="utf-8")
+
+    def crash_after_rename(_path: Path) -> None:
+        raise SystemExit("simulated process crash")
+
+    monkeypatch.setattr(secure_upload, "fsync_directory", crash_after_rename)
+
+    with pytest.raises(SystemExit, match="simulated process crash"):
+        secure_upload._promote_upload(
+            uploads,
+            PurePosixPath("Lecture01.tex"),
+            source,
+        )
+
+    target = uploads / "Lecture01.tex"
+    assert target.read_text(encoding="utf-8") == "source"
+    assert target.stat().st_nlink == 1
+    assert not source.exists()
 
 
 def _client(tmp_path: Path) -> TestClient:

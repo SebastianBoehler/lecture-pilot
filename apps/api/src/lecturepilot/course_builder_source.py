@@ -9,6 +9,7 @@ from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.compiled_slide_canvas import latex_preview_warning
 from lecturepilot.course_schedule_store import read_course_workspace
 from lecturepilot.course_source_partition import select_lecture_source_files
+from lecturepilot.course_update_recovery import locked_course_state
 from lecturepilot.latex_compilation_client import LatexCompilationError, compile_latex_deck
 from lecturepilot.latex_dependency_bundle import resolve_latex_compiler_inputs
 from lecturepilot.lecture_slide_source import resolve_lecture_slide_source
@@ -27,6 +28,14 @@ logger = logging.getLogger("uvicorn.error.lecturepilot.compilation")
 
 
 def course_builder_source_document(app: FastAPI, course_id: str, lecture_id: str) -> CanvasDocument:
+    course_root = app.state.canvas_workspace.course_media_root(course_id)
+    with locked_course_state(course_root):
+        return _course_builder_source_document_locked(app, course_id, lecture_id)
+
+
+def _course_builder_source_document_locked(
+    app: FastAPI, course_id: str, lecture_id: str
+) -> CanvasDocument:
     workspace = app.state.canvas_workspace
     workspace_path = f"course-planner/{lecture_id}/source.json"
     uploads_dir = workspace.layout.course_uploads_dir(course_id)

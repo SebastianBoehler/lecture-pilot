@@ -7,6 +7,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from lecturepilot.durable_files import ensure_durable_directory, fsync_directory
 from lecturepilot.source_bundle import SourceBundleFile, scan_source_bundle
 from lecturepilot.source_index_models import CourseSourceIndex, IndexedSourceFile
 from lecturepilot.storage_layout import StorageLayout
@@ -86,7 +87,7 @@ def _read_index(path: Path, course_id: str) -> CourseSourceIndex | None:
 
 
 def _write_index(path: Path, index: CourseSourceIndex) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_durable_directory(path.parent)
     descriptor, temporary = tempfile.mkstemp(prefix=".source-index-", dir=path.parent)
     temporary_path = Path(temporary)
     try:
@@ -95,6 +96,7 @@ def _write_index(path: Path, index: CourseSourceIndex) -> None:
             handle.flush()
             os.fsync(handle.fileno())
         temporary_path.replace(path)
+        fsync_directory(path.parent)
     except BaseException:
         temporary_path.unlink(missing_ok=True)
         raise

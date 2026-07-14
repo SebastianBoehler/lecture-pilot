@@ -1,17 +1,26 @@
 from __future__ import annotations
 
 from collections import defaultdict
-import os
-from pathlib import Path
-import shutil
-import tempfile
 
 from lecturepilot.course_schedule_store import write_course_workspace
 from lecturepilot.course_source_partition import select_lecture_source_files
-from lecturepilot.course_update import CourseUpdateError, require_workspace
+from lecturepilot.course_update import (
+    CourseUpdateError,
+    begin_course_update_apply,
+    finish_course_update_apply,
+    mark_course_update_committed,
+    require_workspace,
+)
 from lecturepilot.course_update_analysis import analyze_course_update, live_source_index
 from lecturepilot.course_update_models import CourseUpdateApplyInput, CourseUpdateApplyResult
-from lecturepilot.course_update_storage import staged_file_transaction
+from lecturepilot.course_update_storage import (
+    CourseUpdateRecoveryError,
+    staged_file_transaction,
+)
+from lecturepilot.course_update_recovery import (
+    locked_course_state,
+    retire_committed_course_update,
+)
 from lecturepilot.course_workspace import resolve_course_workspace
 from lecturepilot.lecture_source_manifest import (
     read_lecture_source_manifest,
@@ -22,6 +31,23 @@ from lecturepilot.storage_layout import StorageLayout
 
 
 def apply_course_update(
+    layout: StorageLayout,
+    course_id: str,
+    update_id: str,
+    payload: CourseUpdateApplyInput,
+) -> CourseUpdateApplyResult:
+    with locked_course_state(layout.course_root(course_id)):
+        marker = begin_course_update_apply(layout, course_id, update_id)
+        try:
+            return _apply_course_update_locked(layout, course_id, update_id, payload)
+        except CourseUpdateRecoveryError:
+            raise
+        except BaseException:
+            finish_course_update_apply(marker)
+            raise
+
+
+def _apply_course_update_locked(
     layout: StorageLayout,
     course_id: str,
     update_id: str,
@@ -64,7 +90,7 @@ def apply_course_update(
         selected_paths=selected_paths,
         paths_by_lecture=paths_by_lecture,
     )
-    shutil.rmtree(layout.course_update_root(course_id, update_id), ignore_errors=True)
+    retire_committed_course_update(layout.course_update_root(course_id, update_id))
     return CourseUpdateApplyResult(
         course_id=course_id,
         update_id=update_id,
@@ -124,45 +150,25 @@ def _promote_update(
         layout.course_root(course_id) / "builder" / "course-workspace.json",
         *(layout.lecture_source_manifest_path(course_id, item) for item in paths_by_lecture),
     ]
-    snapshots = {path: path.read_bytes() if path.exists() else None for path in metadata}
-    try:
-        with staged_file_transaction(
-            staged_root=layout.course_update_uploads_dir(course_id, update_id),
-            live_root=layout.course_uploads_dir(course_id),
-            backup_root=layout.course_update_root(course_id, update_id) / "backup",
-            paths=selected_paths,
-        ):
-            updated_index = live_source_index(layout, course_id)
-            write_course_workspace(
-                layout.course_root(course_id), final_workspace, replace_lectures=True
+    course_root = layout.course_root(course_id)
+    with staged_file_transaction(
+        staged_root=layout.course_update_uploads_dir(course_id, update_id),
+        live_root=layout.course_uploads_dir(course_id),
+        backup_root=layout.course_update_root(course_id, update_id) / "recovery",
+        paths=selected_paths,
+        cleanup_on_success=False,
+    ) as transaction:
+        for path in metadata:
+            transaction.track_file(path, path.relative_to(course_root).as_posix())
+        transaction.checkpoint()
+        updated_index = live_source_index(layout, course_id)
+        write_course_workspace(course_root, final_workspace, replace_lectures=True)
+        for lecture_id, paths in manifest_paths.items():
+            write_lecture_source_manifest(
+                layout.lecture_source_manifest_path(course_id, lecture_id),
+                course_id=course_id,
+                lecture_id=lecture_id,
+                file_paths=list(paths),
+                source_index=updated_index,
             )
-            for lecture_id, paths in manifest_paths.items():
-                write_lecture_source_manifest(
-                    layout.lecture_source_manifest_path(course_id, lecture_id),
-                    course_id=course_id,
-                    lecture_id=lecture_id,
-                    file_paths=list(paths),
-                    source_index=updated_index,
-                )
-    except BaseException:
-        _restore(snapshots)
-        raise
-
-
-def _restore(snapshots: dict[Path, bytes | None]) -> None:
-    for path, content in snapshots.items():
-        if content is None:
-            path.unlink(missing_ok=True)
-            continue
-        path.parent.mkdir(parents=True, exist_ok=True)
-        descriptor, temporary = tempfile.mkstemp(prefix=".course-update-restore-", dir=path.parent)
-        temporary_path = Path(temporary)
-        try:
-            with os.fdopen(descriptor, "wb") as handle:
-                handle.write(content)
-                handle.flush()
-                os.fsync(handle.fileno())
-            temporary_path.replace(path)
-        except BaseException:
-            temporary_path.unlink(missing_ok=True)
-            raise
+        mark_course_update_committed(layout.course_update_root(course_id, update_id) / ".applying")

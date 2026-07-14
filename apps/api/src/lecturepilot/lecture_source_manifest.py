@@ -6,6 +6,7 @@ import tempfile
 
 from pydantic import BaseModel, Field, ValidationError
 
+from lecturepilot.durable_files import ensure_durable_directory, fsync_directory
 from lecturepilot.source_index_models import CourseSourceIndex
 
 
@@ -57,7 +58,7 @@ def write_lecture_source_manifest(
 
 
 def _atomic_write(path: Path, content: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_durable_directory(path.parent)
     descriptor, temporary = tempfile.mkstemp(prefix=".source-manifest-", dir=path.parent)
     temporary_path = Path(temporary)
     try:
@@ -66,6 +67,7 @@ def _atomic_write(path: Path, content: str) -> None:
             handle.flush()
             os.fsync(handle.fileno())
         temporary_path.replace(path)
+        fsync_directory(path.parent)
     except BaseException:
         temporary_path.unlink(missing_ok=True)
         raise

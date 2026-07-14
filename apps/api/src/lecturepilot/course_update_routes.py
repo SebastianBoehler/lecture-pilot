@@ -8,10 +8,13 @@ from lecturepilot.course_update import (
     CourseUpdateError,
     create_course_update,
     discard_course_update,
+    require_update_accepting_uploads,
     update_uploads_dir,
 )
 from lecturepilot.course_update_analysis import analyze_course_update
 from lecturepilot.course_update_apply import apply_course_update
+from lecturepilot.course_update_recovery import locked_course_state
+from lecturepilot.course_update_storage import CourseUpdateRecoveryError
 from lecturepilot.course_update_models import (
     CourseUpdateAnalysis,
     CourseUpdateApplyInput,
@@ -19,7 +22,7 @@ from lecturepilot.course_update_models import (
     CourseUpdateCreated,
     CourseUpdateUploadResult,
 )
-from lecturepilot.secure_upload import store_course_upload
+from lecturepilot.secure_upload import promote_course_upload, stage_course_upload
 from lecturepilot.tenancy import TenantContext
 from lecturepilot.workspace import WorkspacePolicyError
 from lecturepilot.workspace_fs import WorkspaceFSError
@@ -57,13 +60,20 @@ def register_course_update_routes(app: FastAPI, *, course_tenant_id: str) -> Non
         _require_manager(request, context, course_id, course_tenant_id)
         layout = app.state.canvas_workspace.layout
         try:
-            uploads = update_uploads_dir(layout, course_id, update_id)
-            stored = await store_course_upload(
+            course_root = layout.course_root(course_id)
+            staged = await stage_course_upload(
                 file,
-                uploads_root=uploads,
+                quarantine_root=course_root.parent / ".upload-quarantine" / course_root.name,
                 tenant_id=context.tenant_id,
                 requested_path=path,
             )
+            try:
+                with locked_course_state(course_root):
+                    require_update_accepting_uploads(layout, course_id, update_id)
+                    uploads = update_uploads_dir(layout, course_id, update_id)
+                    stored = promote_course_upload(staged, uploads_root=uploads)
+            finally:
+                staged.discard()
             # Build the index once during analysis; rescanning here makes folder uploads quadratic.
         except CourseUpdateError as exc:
             raise _http_error(exc) from exc
@@ -88,7 +98,9 @@ def register_course_update_routes(app: FastAPI, *, course_tenant_id: str) -> Non
     ) -> CourseUpdateAnalysis:
         _require_manager(request, context, course_id, course_tenant_id)
         try:
-            return analyze_course_update(app.state.canvas_workspace.layout, course_id, update_id)
+            layout = app.state.canvas_workspace.layout
+            with locked_course_state(layout.course_root(course_id)):
+                return analyze_course_update(layout, course_id, update_id)
         except CourseUpdateError as exc:
             raise _http_error(exc) from exc
         except WorkspaceFSError as exc:
@@ -110,6 +122,8 @@ def register_course_update_routes(app: FastAPI, *, course_tenant_id: str) -> Non
             result = apply_course_update(
                 app.state.canvas_workspace.layout, course_id, update_id, payload
             )
+        except CourseUpdateRecoveryError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
         except CourseUpdateError as exc:
             raise _http_error(exc) from exc
         except WorkspaceFSError as exc:

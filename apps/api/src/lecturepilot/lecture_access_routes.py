@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from uuid import UUID
 
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -12,6 +13,7 @@ from lecturepilot.course_schedule_store import (
     overwrite_course_workspace,
     read_course_workspace,
 )
+from lecturepilot.course_update_recovery import locked_course_state
 from lecturepilot.lecture_access_models import (
     CourseAccessSummary,
     LectureAccessRule,
@@ -59,7 +61,6 @@ def register_lecture_access_routes(
         request: Request,
         context: TenantContext = Depends(request_context),
     ) -> CourseAccessSummary:
-        workspace = _owned_workspace(app, request, context, course_id, course_tenant_id)
         if update.rule.publication_mode not in {
             PublicationMode.HIDDEN,
             PublicationMode.ON_LECTURE_DATE,
@@ -69,38 +70,42 @@ def register_lecture_access_routes(
                 detail="Course defaults support hidden or lecture-date publication only.",
             )
         _require_university_confirmation(update)
-        before = course_default_rule(workspace.course)
-        rule = update.rule.materialize()
-        canonical = resolve_course(app, course_id=course_id, seeded_course=seeded_course)
-        updated = workspace.model_copy(
-            update={
-                "course": canonical.model_copy(
-                    update={
-                        "access_policy": rule.audience,
-                        "default_publication_mode": rule.publication_mode,
-                    }
-                )
-            }
-        )
-        previous_db_policy = _update_database_policy(
-            app,
-            context,
-            course_tenant_id,
-            course_id,
-            rule.audience,
-        )
-        try:
-            overwrite_course_workspace(_course_root(app, course_id), updated)
-        except Exception:
-            if previous_db_policy is not None:
-                _update_database_policy(
-                    app,
-                    context,
-                    course_tenant_id,
-                    course_id,
-                    previous_db_policy,
-                )
-            raise
+        with _locked_owned_workspace(app, request, context, course_id, course_tenant_id) as (
+            course_root,
+            workspace,
+        ):
+            before = course_default_rule(workspace.course)
+            rule = update.rule.materialize()
+            canonical = resolve_course(app, course_id=course_id, seeded_course=seeded_course)
+            updated = workspace.model_copy(
+                update={
+                    "course": canonical.model_copy(
+                        update={
+                            "access_policy": rule.audience,
+                            "default_publication_mode": rule.publication_mode,
+                        }
+                    )
+                }
+            )
+            previous_db_policy = _update_database_policy(
+                app,
+                context,
+                course_tenant_id,
+                course_id,
+                rule.audience,
+            )
+            try:
+                overwrite_course_workspace(course_root, updated)
+            except Exception:
+                if previous_db_policy is not None:
+                    _update_database_policy(
+                        app,
+                        context,
+                        course_tenant_id,
+                        course_id,
+                        previous_db_policy,
+                    )
+                raise
         _audit_rule_change(
             app,
             context,
@@ -122,14 +127,17 @@ def register_lecture_access_routes(
         request: Request,
         context: TenantContext = Depends(request_context),
     ) -> LectureAccessSummary:
-        workspace = _owned_workspace(app, request, context, course_id, course_tenant_id)
         _require_university_confirmation(update)
-        index, lecture = _lecture(workspace, lecture_id)
-        before = lecture.access_override
-        rule = update.rule.materialize()
-        updated_lecture = lecture.model_copy(update={"access_override": rule})
-        updated = _replace_lecture(workspace, index, updated_lecture)
-        overwrite_course_workspace(_course_root(app, course_id), updated)
+        with _locked_owned_workspace(app, request, context, course_id, course_tenant_id) as (
+            course_root,
+            workspace,
+        ):
+            index, lecture = _lecture(workspace, lecture_id)
+            before = lecture.access_override
+            rule = update.rule.materialize()
+            updated_lecture = lecture.model_copy(update={"access_override": rule})
+            updated = _replace_lecture(workspace, index, updated_lecture)
+            overwrite_course_workspace(course_root, updated)
         _audit_rule_change(
             app,
             context,
@@ -151,11 +159,14 @@ def register_lecture_access_routes(
         request: Request,
         context: TenantContext = Depends(request_context),
     ) -> LectureAccessSummary:
-        workspace = _owned_workspace(app, request, context, course_id, course_tenant_id)
-        index, lecture = _lecture(workspace, lecture_id)
-        updated_lecture = lecture.model_copy(update={"access_override": None})
-        updated = _replace_lecture(workspace, index, updated_lecture)
-        overwrite_course_workspace(_course_root(app, course_id), updated)
+        with _locked_owned_workspace(app, request, context, course_id, course_tenant_id) as (
+            course_root,
+            workspace,
+        ):
+            index, lecture = _lecture(workspace, lecture_id)
+            updated_lecture = lecture.model_copy(update={"access_override": None})
+            updated = _replace_lecture(workspace, index, updated_lecture)
+            overwrite_course_workspace(course_root, updated)
         _audit_rule_change(
             app,
             context,
@@ -214,6 +225,22 @@ def _owned_workspace(app, request, context, course_id, tenant_id) -> CourseWorks
     if workspace is None:
         raise HTTPException(status_code=404, detail="Course workspace not found.")
     return workspace
+
+
+@contextmanager
+def _locked_owned_workspace(app, request, context, course_id, tenant_id):
+    require_course_manager(
+        context,
+        course_tenant_id=tenant_id,
+        request=request,
+        course_id=course_id,
+    )
+    course_root = _course_root(app, course_id)
+    with locked_course_state(course_root):
+        workspace = read_course_workspace(course_root, course_id)
+        if workspace is None:
+            raise HTTPException(status_code=404, detail="Course workspace not found.")
+        yield course_root, workspace
 
 
 def _course_root(app: FastAPI, course_id: str):

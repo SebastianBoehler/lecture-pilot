@@ -23,6 +23,7 @@ from lecturepilot.course_schedule_store import (
     list_course_workspaces,
     write_course_workspace,
 )
+from lecturepilot.course_update_recovery import locked_course_state
 from lecturepilot.course_workspace import resolve_course_workspace
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_usage import model_usage_scope
@@ -39,7 +40,7 @@ from lecturepilot.models import (
     TenantRole,
 )
 from lecturepilot.providers import ProviderConfigurationError
-from lecturepilot.secure_upload import store_course_upload
+from lecturepilot.secure_upload import promote_course_upload, stage_course_upload
 from lecturepilot.source_index import indexed_course_files
 from lecturepilot.tenancy import TenantContext
 from lecturepilot.workspace import WorkspacePolicy, WorkspacePolicyError
@@ -152,11 +153,13 @@ def register_course_routes(
             course=database_course,
         )
         try:
-            return write_course_workspace(
-                app.state.canvas_workspace.course_media_root(workspace.course.id),
-                workspace,
-                replace_lectures=setup.replace_lectures,
-            )
+            course_root = app.state.canvas_workspace.course_media_root(workspace.course.id)
+            with locked_course_state(course_root):
+                return write_course_workspace(
+                    course_root,
+                    workspace,
+                    replace_lectures=setup.replace_lectures,
+                )
         except Exception:
             if database_course and created_database_course:
                 CourseRepository(app.state.database).archive(
@@ -172,16 +175,10 @@ def register_course_routes(
         request: Request,
         context: TenantContext = Depends(request_context),
     ) -> SourceBundleManifest:
-        require_course_manager(
-            context,
-            course_tenant_id=course_tenant_id,
-            request=request,
-            course_id=course_id,
-        )
-        files = indexed_course_files(
-            layout=app.state.canvas_workspace.layout,
-            course_id=course_id,
-        )
+        _require_manager(context, request, course_id, course_tenant_id)
+        layout = app.state.canvas_workspace.layout
+        with locked_course_state(layout.course_root(course_id)):
+            files = indexed_course_files(layout=layout, course_id=course_id)
         counts = Counter(item.kind for item in files)
         uploads = [
             CourseMaterialUploadType(suffix=suffix, kind=kind, max_bytes=max_bytes)
@@ -207,12 +204,7 @@ def register_course_routes(
         count: int | None = None,
         context: TenantContext = Depends(request_context),
     ) -> LectureScheduleProposal:
-        require_course_manager(
-            context,
-            course_tenant_id=course_tenant_id,
-            request=request,
-            course_id=course_id,
-        )
+        _require_manager(context, request, course_id, course_tenant_id)
         roots = app.state.canvas_workspace.source_bundle_roots(
             course_id,
             include_seeded_materials=False,
@@ -222,6 +214,9 @@ def register_course_routes(
         except ValueError as exc:
             raise HTTPException(status_code=400, detail="Invalid first lecture date.") from exc
         try:
+            layout = app.state.canvas_workspace.layout
+            with locked_course_state(layout.course_root(course_id)):
+                files = indexed_course_files(layout=layout, course_id=course_id)
             with model_usage_scope(
                 actor_user_id=context.user_id,
                 course_id=course_id,
@@ -229,10 +224,7 @@ def register_course_routes(
             ):
                 return await app.state.lecture_schedule_planner.propose_schedule(
                     course_id=course_id,
-                    files=indexed_course_files(
-                        layout=app.state.canvas_workspace.layout,
-                        course_id=course_id,
-                    ),
+                    files=files,
                     roots=list(roots),
                     first_lecture_date=start_date,
                     requested_count=count,
@@ -254,23 +246,29 @@ def register_course_routes(
         context: TenantContext = Depends(request_context),
     ) -> CourseMaterialUploadResult:
         try:
-            require_course_manager(
-                context,
-                course_tenant_id=course_tenant_id,
-                request=request,
-                course_id=course_id,
-            )
-            stored = await store_course_upload(
+            _require_manager(context, request, course_id, course_tenant_id)
+            layout = app.state.canvas_workspace.layout
+            course_root = layout.course_root(course_id)
+            staged = await stage_course_upload(
                 file,
-                uploads_root=app.state.canvas_workspace.layout.course_uploads_dir(course_id),
+                quarantine_root=course_root.parent / ".upload-quarantine" / course_root.name,
                 tenant_id=context.tenant_id,
                 requested_path=path,
             )
-            indexed_course_files(
-                layout=app.state.canvas_workspace.layout,
-                course_id=course_id,
-                known_hashes={stored.path: stored.sha256},
-            )
+            try:
+                with locked_course_state(course_root):
+                    _require_manager(context, request, course_id, course_tenant_id)
+                    stored = promote_course_upload(
+                        staged,
+                        uploads_root=layout.course_uploads_dir(course_id),
+                    )
+                    indexed_course_files(
+                        layout=layout,
+                        course_id=course_id,
+                        known_hashes={stored.path: stored.sha256},
+                    )
+            finally:
+                staged.discard()
         except WorkspacePolicyError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -288,3 +286,12 @@ def register_course_routes(
             kind=stored.kind,
             size_bytes=stored.size_bytes,
         )
+
+
+def _require_manager(context, request, course_id, course_tenant_id) -> None:
+    require_course_manager(
+        context,
+        course_tenant_id=course_tenant_id,
+        request=request,
+        course_id=course_id,
+    )

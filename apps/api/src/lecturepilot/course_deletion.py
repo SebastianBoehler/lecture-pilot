@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from lecturepilot.api_auth import request_context, require_course_manager
 from lecturepilot.course_repository import CourseRepository
 from lecturepilot.course_schedule_store import list_course_workspaces, read_course_workspace
+from lecturepilot.course_update_recovery import locked_course_state
 from lecturepilot.lecture_access_models import CourseAccessSummary
 from lecturepilot.lecture_access_routes import build_course_access_summary
 from lecturepilot.models import CourseWorkspaceResult
@@ -30,9 +31,10 @@ def delete_course_workspace(
     *, layout: StorageLayout, course_id: str
 ) -> CourseDeletionResult | None:
     course_root = layout.course_root(course_id)
-    if not course_root.exists():
-        return None
-    shutil.rmtree(course_root)
+    with locked_course_state(course_root):
+        if not course_root.exists():
+            return None
+        shutil.rmtree(course_root)
     return CourseDeletionResult(course_id=course_id, archived=True)
 
 

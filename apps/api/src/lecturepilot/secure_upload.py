@@ -8,6 +8,7 @@ import secrets
 
 from fastapi import UploadFile
 
+from lecturepilot.durable_files import ensure_durable_directory, fsync_directory
 from lecturepilot.workspace import WorkspacePolicy, WorkspacePolicyError
 from lecturepilot.workspace_capability import CapabilityRoot, WorkspaceCapability
 from lecturepilot.workspace_fs import WorkspaceFS, WorkspaceFSError
@@ -21,6 +22,18 @@ class StoredUpload:
     sha256: str
 
 
+@dataclass(frozen=True)
+class StagedCourseUpload:
+    relative_path: PurePosixPath
+    quarantine_path: Path
+    kind: str
+    size_bytes: int
+    sha256: str
+
+    def discard(self) -> None:
+        self.quarantine_path.unlink(missing_ok=True)
+
+
 async def store_course_upload(
     upload: UploadFile,
     *,
@@ -28,6 +41,22 @@ async def store_course_upload(
     tenant_id: str,
     requested_path: str,
 ) -> StoredUpload:
+    staged = await stage_course_upload(
+        upload,
+        quarantine_root=uploads_root / ".quarantine",
+        tenant_id=tenant_id,
+        requested_path=requested_path,
+    )
+    return promote_course_upload(staged, uploads_root=uploads_root)
+
+
+async def stage_course_upload(
+    upload: UploadFile,
+    *,
+    quarantine_root: Path,
+    tenant_id: str,
+    requested_path: str,
+) -> StagedCourseUpload:
     policy = WorkspacePolicy()
     checked = policy.validate_course_material_upload(
         tenant_id=tenant_id,
@@ -35,54 +64,76 @@ async def store_course_upload(
         size_bytes=0,
     )
     relative = PurePosixPath(requested_path)
-    uploads_root.mkdir(parents=True, exist_ok=True)
-    quarantine = uploads_root / ".quarantine"
-    quarantine.mkdir(mode=0o700, exist_ok=True)
-    quarantine_path = quarantine / f"{secrets.token_hex(16)}.part"
+    ensure_durable_directory(quarantine_root)
+    quarantine_path = quarantine_root / f"{secrets.token_hex(16)}.part"
     size = 0
     digest = hashlib.sha256()
     header = bytearray()
     try:
-        with quarantine_path.open("xb") as handle:
-            while chunk := await upload.read(1024 * 1024):
-                size += len(chunk)
-                if size > checked.max_bytes:
-                    raise WorkspacePolicyError(
-                        f"{relative.suffix.lower()} files are limited to {checked.max_bytes} bytes."
-                    )
-                if len(header) < 8192:
-                    header.extend(chunk[: 8192 - len(header)])
-                digest.update(chunk)
-                handle.write(chunk)
-            handle.flush()
-            os.fsync(handle.fileno())
-        _validate_content(relative.suffix.lower(), bytes(header), upload.content_type)
         try:
-            target = _promote_upload(uploads_root, relative, quarantine_path)
-        except WorkspaceFSError as exc:
-            raise WorkspacePolicyError("Course material path is not safe.") from exc
-        return StoredUpload(
-            path=target.relative_to(uploads_root).as_posix(),
+            with quarantine_path.open("xb") as handle:
+                while chunk := await upload.read(1024 * 1024):
+                    size += len(chunk)
+                    if size > checked.max_bytes:
+                        raise WorkspacePolicyError(
+                            f"{relative.suffix.lower()} files are limited to {checked.max_bytes} bytes."
+                        )
+                    if len(header) < 8192:
+                        header.extend(chunk[: 8192 - len(header)])
+                    digest.update(chunk)
+                    handle.write(chunk)
+                handle.flush()
+                os.fsync(handle.fileno())
+            _validate_content(relative.suffix.lower(), bytes(header), upload.content_type)
+        finally:
+            await upload.close()
+        return StagedCourseUpload(
+            relative_path=relative,
+            quarantine_path=quarantine_path,
             kind=checked.kind,
             size_bytes=size,
             sha256=digest.hexdigest(),
         )
-    finally:
+    except BaseException:
         quarantine_path.unlink(missing_ok=True)
-        await upload.close()
+        raise
+
+
+def promote_course_upload(staged: StagedCourseUpload, *, uploads_root: Path) -> StoredUpload:
+    ensure_durable_directory(uploads_root)
+    try:
+        try:
+            target = _promote_upload(
+                uploads_root,
+                staged.relative_path,
+                staged.quarantine_path,
+            )
+        except WorkspaceFSError as exc:
+            raise WorkspacePolicyError("Course material path is not safe.") from exc
+        return StoredUpload(
+            path=target.relative_to(uploads_root).as_posix(),
+            kind=staged.kind,
+            size_bytes=staged.size_bytes,
+            sha256=staged.sha256,
+        )
+    finally:
+        staged.discard()
 
 
 def _promote_upload(root: Path, relative: PurePosixPath, source: Path) -> Path:
     workspace = WorkspaceFS(WorkspaceCapability((CapabilityRoot("/uploads", root, writable=True),)))
     logical = f"/uploads/{relative.as_posix()}"
     resolved = workspace.resolve(logical, for_write=True)
-    resolved.path.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
+    ensure_durable_directory(resolved.path.parent)
     resolved = workspace.resolve(logical, for_write=True)
     if resolved.path.exists():
         raise WorkspacePolicyError("A course material file already exists at this path.")
     try:
-        os.link(source, resolved.path, follow_symlinks=False)
-        source.unlink()
+        # Quarantine and course uploads share the course filesystem. A rename keeps
+        # exactly one directory entry at every crash point, unlike link-then-unlink.
+        os.rename(source, resolved.path)
+        fsync_directory(resolved.path.parent)
+        fsync_directory(source.parent)
     except (FileExistsError, OSError) as exc:
         raise WorkspacePolicyError("Course material could not be safely promoted.") from exc
     return resolved.path
