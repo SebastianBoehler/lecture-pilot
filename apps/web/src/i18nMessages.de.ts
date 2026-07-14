@@ -441,6 +441,7 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.define.courseNameHelp":
     "Verwende den exakten Kurstitel aus Alma oder ILIAS. LecturePilot gleicht Kurstitel und Semester mit den Belegungen der Studierenden ab.",
   "builder.define.visibility": "Kurssichtbarkeit",
+  "builder.define.visibility.instructors": "Nur Lehrende",
   "builder.define.visibility.enrolled": "Nur Kursteilnehmende",
   "builder.define.visibility.university": "Universitätsweiter Login",
   "builder.define.visibility.public": "Öffentlich auf der Plattform",

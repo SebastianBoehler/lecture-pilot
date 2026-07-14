@@ -90,11 +90,7 @@ function App() {
   );
   const [lastTutorModel, setLastTutorModel] = useState<string | null>(null);
   const [passedGateIds, setPassedGateIds] = useState<string[]>([]);
-  const [publishedLectureIds, setPublishedLectureIds] = usePublishedLectures(
-    workspaceCourseId,
-    availableLectures,
-    session,
-  );
+  const [publishedLectureIds, setPublishedLectureIds] = usePublishedLectures(availableLectures);
   useUniversityCourseSync(session, setSession);
 
   useEffect(() => {

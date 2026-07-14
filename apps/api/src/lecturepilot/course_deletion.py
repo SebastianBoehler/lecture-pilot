@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 from lecturepilot.api_auth import request_context, require_course_manager
 from lecturepilot.course_repository import CourseRepository
 from lecturepilot.course_schedule_store import list_course_workspaces, read_course_workspace
+from lecturepilot.lecture_access_models import CourseAccessSummary
+from lecturepilot.lecture_access_routes import build_course_access_summary
 from lecturepilot.models import CourseWorkspaceResult
 from lecturepilot.storage_layout import StorageLayout, StorageLayoutError, safe_id
 from lecturepilot.tenancy import TenantContext
@@ -21,6 +23,7 @@ class CourseDeletionResult(BaseModel):
 
 class ManagedCourseWorkspaceResult(CourseWorkspaceResult):
     published_lecture_ids: list[str]
+    access_summary: CourseAccessSummary
 
 
 def delete_course_workspace(
@@ -47,7 +50,19 @@ def register_course_deletion_routes(app: FastAPI, *, course_tenant_id: str) -> N
                     app.state.canvas_workspace.course_media_root(course.id), course.id
                 )
                 if workspace is not None:
-                    workspaces.append(workspace)
+                    workspaces.append(
+                        workspace.model_copy(
+                            update={
+                                "course": course.model_copy(
+                                    update={
+                                        "default_publication_mode": (
+                                            workspace.course.default_publication_mode
+                                        )
+                                    }
+                                )
+                            }
+                        )
+                    )
             return [_with_publication_state(app, workspace) for workspace in workspaces]
         require_course_manager(context, course_tenant_id=course_tenant_id)
         return [
@@ -118,4 +133,5 @@ def _with_publication_state(
     return ManagedCourseWorkspaceResult(
         **workspace.model_dump(),
         published_lecture_ids=published,
+        access_summary=build_course_access_summary(app, workspace),
     )

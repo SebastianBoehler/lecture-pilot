@@ -5,7 +5,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from lecturepilot.api_auth import request_context
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.course_access import (
-    can_review_course,
+    course_actor_access,
     require_course_id_access,
     resolve_course_lectures,
 )
@@ -21,7 +21,7 @@ from lecturepilot.exam_revision_plan import (
     build_exam_revision_plan,
 )
 from lecturepilot.models import Course, Lecture
-from lecturepilot.policies import is_lecture_unlocked
+from lecturepilot.lecture_access_policy import can_consume_lecture
 from lecturepilot.readiness_progress import ReadinessProgressStore
 from lecturepilot.professor_preview import resolve_learner_workspace_access
 from lecturepilot.tenancy import TenantContext
@@ -52,6 +52,7 @@ def register_exam_readiness_routes(
             course_id=course_id,
             course_tenant_id=course_tenant_id,
             seeded_course=seeded_course,
+            seeded_lectures=lectures,
         )
         check = _readiness_check(app, course_id, seeded_course, lectures, context)
         return public_exam_readiness_check(check)
@@ -77,6 +78,7 @@ def register_exam_readiness_routes(
             course_id=course_id,
             course_tenant_id=course_tenant_id,
             seeded_course=seeded_course,
+            seeded_lectures=lectures,
         )
         check = _readiness_check(app, course_id, seeded_course, lectures, context)
         store = _progress_store(app)
@@ -98,14 +100,18 @@ def _readiness_check(
     lectures: list[Lecture],
     context: TenantContext,
 ) -> ExamReadinessCheck:
-    _, course_lectures = resolve_course_lectures(
+    course, course_lectures = resolve_course_lectures(
         app,
         course_id=course_id,
         seeded_course=seeded_course,
         seeded_lectures=lectures,
     )
-    if not can_review_course(context):
-        course_lectures = [lecture for lecture in course_lectures if is_lecture_unlocked(lecture)]
+    actor = course_actor_access(app, context, course_id, app.state.course_tenant_id)
+    course_lectures = [
+        lecture
+        for lecture in course_lectures
+        if can_consume_lecture(course, lecture, **actor.__dict__)
+    ]
     documents = []
     for lecture in course_lectures:
         if not app.state.canvas_workspace.has_published_course_canvas(

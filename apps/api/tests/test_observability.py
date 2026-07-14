@@ -180,6 +180,9 @@ class _CanvasWorkspace:
         self.layout = layout
         self.applied: list[CanvasSection] = []
 
+    def has_published_course_canvas(self, *, course_id: str, lecture_id: str) -> bool:
+        return course_id == "martius-ml" and lecture_id == "lecture-03"
+
     def read_document(self, **kwargs: Any) -> CanvasDocument:
         return CanvasDocument(
             id="lecture-03-canvas",

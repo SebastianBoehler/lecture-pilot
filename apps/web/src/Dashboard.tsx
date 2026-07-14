@@ -1,6 +1,11 @@
 import { useState } from "react";
 
-import { buildCourseGroups, publishedCourseLectures } from "./dashboardCourses";
+import {
+  availableCourseLectures,
+  buildCourseGroups,
+  publishedCourseLectures,
+} from "./dashboardCourses";
+import { DashboardLectureRow } from "./DashboardLectureRow";
 import { useI18n } from "./i18n";
 import type { Attendance, Lecture, LoginSession, UniversityCourse } from "./types";
 import { ExamReadinessPanel } from "./ExamReadinessPanel";
@@ -38,7 +43,9 @@ export function Dashboard({
   const visibleCourseGroups = syncStatus === "loading" ? [] : courseGroups;
   const [openCourses, setOpenCourses] = useState<Record<string, boolean>>({});
   const [expandedLectureLists, setExpandedLectureLists] = useState<Record<string, boolean>>({});
-  const workspaceLectures = publishedCourseLectures(lectures, publishedLectureIds);
+  const workspaceLectures = availableCourseLectures(
+    publishedCourseLectures(lectures, publishedLectureIds),
+  );
   const courseProfile = learnerProfileState?.profile?.courses?.find(
     (course) => course.course_id === workspaceCourse.id,
   );
@@ -121,42 +128,12 @@ export function Dashboard({
                       aria-label={t("dashboard.availableLectures", { course: course.title })}
                     >
                       {visibleLectures.map((lecture) => (
-                        <article className="lecture-row" key={lecture.id}>
-                          <div className="lecture-number">{lecture.number}</div>
-                          <div>
-                            <h3>{lecture.title}</h3>
-                            <p>
-                              {lecture.date} ·{" "}
-                              {t("dashboard.attendance", {
-                                status: attendanceLabel(lecture.attendance, t),
-                              })}
-                            </p>
-                            <div
-                              className="attendance-control"
-                              role="group"
-                              aria-label={t("dashboard.attendanceFor", {
-                                lecture: lecture.title,
-                              })}
-                            >
-                              {(["present", "absent", "unknown"] as const).map((status) => (
-                                <button
-                                  aria-pressed={lecture.attendance === status}
-                                  className={
-                                    lecture.attendance === status ? "is-active" : undefined
-                                  }
-                                  key={status}
-                                  onClick={() => onSetAttendance(lecture.id, status)}
-                                  type="button"
-                                >
-                                  {attendanceLabel(status, t)}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                          <button type="button" onClick={() => onOpen(lecture)}>
-                            {t("dashboard.openLecture", { number: lecture.number })}
-                          </button>
-                        </article>
+                        <DashboardLectureRow
+                          key={lecture.id}
+                          lecture={lecture}
+                          onOpen={onOpen}
+                          onSetAttendance={onSetAttendance}
+                        />
                       ))}
                     </div>
                     {courseLectures.length > LECTURE_PREVIEW_COUNT ? (
@@ -177,7 +154,7 @@ export function Dashboard({
                     ) : null}
                     <ExamReadinessPanel
                       course={course}
-                      lectures={courseLectures}
+                      lectures={availableCourseLectures(courseLectures)}
                       session={session}
                       onOpenLecture={onOpen}
                     />
@@ -193,13 +170,4 @@ export function Dashboard({
       ) : null}
     </main>
   );
-}
-
-function attendanceLabel(
-  status: Attendance,
-  t: (key: "attendance.present" | "attendance.absent" | "attendance.unknown") => string,
-) {
-  if (status === "present") return t("attendance.present");
-  if (status === "absent") return t("attendance.absent");
-  return t("attendance.unknown");
 }

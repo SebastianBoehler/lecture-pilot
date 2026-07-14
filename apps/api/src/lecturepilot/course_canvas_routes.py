@@ -252,6 +252,7 @@ def register_course_canvas_routes(
             course_id=course_id,
             course_tenant_id=course_tenant_id,
             seeded_course=seeded_course,
+            seeded_lectures=lectures,
         )
         result = reset_learner_workspace(
             layout=app.state.canvas_workspace.layout,

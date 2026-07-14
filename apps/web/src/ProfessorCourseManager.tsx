@@ -1,15 +1,26 @@
 import { useI18n } from "./i18n";
-import type { CourseWorkspaceResult } from "./types";
+import {
+  accessAudienceLabel,
+  defaultReleaseLabel,
+  ProfessorLectureAccessStatus,
+} from "./ProfessorLectureAccessStatus";
+import type { Lecture, ManagedCourseWorkspaceResult } from "./types";
 
 type ProfessorCourseManagerProps = {
   deletingCourseId: string | null;
   isLoading: boolean;
   onCreateCourse: () => void;
   onDeleteCourse: (courseId: string) => void;
+  onManageCourseAccess: (workspace: ManagedCourseWorkspaceResult, triggerId: string) => void;
+  onManageLectureAccess: (
+    workspace: ManagedCourseWorkspaceResult,
+    lecture: Lecture,
+    triggerId: string,
+  ) => void;
   onRefresh: () => void;
-  onPreviewLecture: (courseId: string, lecture: CourseWorkspaceResult["lectures"][number]) => void;
+  onPreviewLecture: (courseId: string, lecture: Lecture) => void;
   onUpdateCourse: (courseId: string) => void;
-  workspaces: CourseWorkspaceResult[];
+  workspaces: ManagedCourseWorkspaceResult[];
 };
 
 export function ProfessorCourseManager({
@@ -17,6 +28,8 @@ export function ProfessorCourseManager({
   isLoading,
   onCreateCourse,
   onDeleteCourse,
+  onManageCourseAccess,
+  onManageLectureAccess,
   onRefresh,
   onPreviewLecture,
   onUpdateCourse,
@@ -49,13 +62,32 @@ export function ProfessorCourseManager({
                   </span>
                 </div>
                 <div className="created-course-meta">
-                  <strong>{t("professor.courseWorkspace")}</strong>
-                  <span>
+                  <strong>
                     {t("professor.configuredLectures", { count: workspace.lectures.length })}
+                  </strong>
+                  <span>
+                    {t("courseAccess.default", {
+                      audience: accessAudienceLabel(
+                        workspace.accessSummary.default_rule.audience,
+                        t,
+                      ),
+                      release: defaultReleaseLabel(workspace.accessSummary.default_rule, t),
+                    })}
                   </span>
                   <small>{workspace.course.id}</small>
                 </div>
                 <div className="created-course-actions">
+                  <button
+                    aria-label={t("courseAccess.manageDefaultAria", {
+                      course: workspace.course.title,
+                    })}
+                    className="refresh-button"
+                    id={`course-access-${workspace.course.id}`}
+                    type="button"
+                    onClick={(event) => onManageCourseAccess(workspace, event.currentTarget.id)}
+                  >
+                    {t("courseAccess.manageDefault")}
+                  </button>
                   <button
                     className="refresh-button"
                     type="button"
@@ -80,24 +112,41 @@ export function ProfessorCourseManager({
                 <summary>{t("professor.preview.lectures")}</summary>
                 <ul>
                   {workspace.lectures.map((lecture) => {
-                    const isPublished = workspace.publishedLectureIds?.includes(lecture.id);
+                    const accessSummary = workspace.accessSummary.lectures.find(
+                      (summary) => summary.lecture_id === lecture.id,
+                    );
+                    if (!accessSummary) {
+                      throw new Error(`Missing access summary for ${lecture.id}.`);
+                    }
                     return (
                       <li key={lecture.id}>
                         <span className="created-lecture-number">{lecture.number}</span>
-                        <span className="created-lecture-title">{lecture.title}</span>
-                        {isPublished ? (
+                        <span className="created-lecture-copy">
+                          <span className="created-lecture-title">{lecture.title}</span>
+                          <ProfessorLectureAccessStatus summary={accessSummary} />
+                        </span>
+                        <span className="created-lecture-actions">
+                          {accessSummary.content_ready ? (
+                            <button
+                              className="refresh-button"
+                              type="button"
+                              onClick={() => onPreviewLecture(workspace.course.id, lecture)}
+                            >
+                              {t("professor.preview.open")}
+                            </button>
+                          ) : null}
                           <button
+                            aria-label={t("courseAccess.manageAria", { lecture: lecture.title })}
                             className="refresh-button"
+                            id={`lecture-access-${workspace.course.id}-${lecture.id}`}
                             type="button"
-                            onClick={() => onPreviewLecture(workspace.course.id, lecture)}
+                            onClick={(event) =>
+                              onManageLectureAccess(workspace, lecture, event.currentTarget.id)
+                            }
                           >
-                            {t("professor.preview.open")}
+                            {t("courseAccess.manage")}
                           </button>
-                        ) : (
-                          <span className="created-lecture-status">
-                            {t("professor.preview.unpublished")}
-                          </span>
-                        )}
+                        </span>
                       </li>
                     );
                   })}

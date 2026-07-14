@@ -15,6 +15,7 @@
 @import "./professor-actions.css";
 @import "./professor-course-match.css";
 @import "./professor-course-manager.css";
+@import "./professor-course-access.css";
 @import "./professor-learner-preview.css";
 @import "./course-update.css";
 @import "./professor-flow.css";

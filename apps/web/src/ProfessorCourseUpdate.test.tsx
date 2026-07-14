@@ -83,7 +83,9 @@ describe("Professor course update", () => {
   it("compares selected files, creates a private draft, and publishes only on confirmation", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
-      if (url.endsWith("/admin/courses") && !init?.method) return json([workspace]);
+      if (url.endsWith("/admin/courses") && !init?.method) {
+        return json([{ ...workspace, access_summary: accessSummary(false) }]);
+      }
       if (url.endsWith("/admin/courses/machine-learning/updates") && init?.method === "POST") {
         return json({ course_id: "machine-learning", update_id: "update-1" });
       }
@@ -287,4 +289,29 @@ function json(value: unknown, status = 200) {
     status,
     headers: { "Content-Type": "application/json" },
   });
+}
+
+function accessSummary(contentReady: boolean) {
+  return {
+    course_id: "machine-learning",
+    default_rule: {
+      audience: "tuebingen_enrolled",
+      publication_mode: "on_lecture_date",
+      publication_at: null,
+    },
+    lectures: [
+      {
+        lecture_id: "lecture-01",
+        rule_source: "course_default",
+        rule: {
+          audience: "tuebingen_enrolled",
+          publication_mode: "on_lecture_date",
+          publication_at: null,
+        },
+        effective_publication_at: "2026-05-05T22:00:00Z",
+        release_status: "released",
+        content_ready: contentReady,
+      },
+    ],
+  };
 }

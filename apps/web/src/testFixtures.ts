@@ -16,6 +16,8 @@ export function mockLoginFetch({ published = false }: { published?: boolean } = 
         json: async () => publicationPayload(url, published),
       };
     }
+    if (url.endsWith("/courses")) return json(courseListPayload());
+    if (/\/courses\/[^/]+\/lectures$/.test(url)) return json(lectureListPayload(published));
     if (url.includes("/learning-map")) {
       return {
         ok: true,
@@ -51,6 +53,9 @@ export function mockLoginAndTutorFetch({
       };
     }
 
+    if (url.endsWith("/courses")) return json(courseListPayload());
+    if (/\/courses\/[^/]+\/lectures$/.test(url)) return json(lectureListPayload(published));
+
     if (url.includes("/learning-map")) {
       return {
         ok: true,
@@ -83,6 +88,38 @@ export function mockLoginAndTutorFetch({
         },
     };
   });
+}
+
+function courseListPayload() {
+  return [
+    {
+      access_policy: "public",
+      id: "martius-ml",
+      title: "Grundlagen des Maschinellen Lernens",
+      professor: "Prof. Georg Martius",
+      term: "Sommer 2026",
+    },
+  ];
+}
+
+function lectureListPayload(published: boolean) {
+  if (!published) return [];
+  return [
+    ["lecture-01", "Introduction and Learning Setup", "2026-05-06", "present", "Lecture01-eng.tex"],
+    ["lecture-02", "Linear Models and Generalization", "2026-05-13", "unknown", "Lecture02-eng.tex"],
+    ["lecture-03", "Bayesian Decision Theory", "2026-06-04", "absent", "Lecture03-eng.tex"],
+  ].map(([id, title, date, attendance, material_path]) => ({
+    lecture: { id, title, date, material_path },
+    attendance,
+    content_ready: true,
+    effective_publication_at: `${date}T00:00:00+02:00`,
+    release_status: "released",
+    unlocked: true,
+  }));
+}
+
+function json(payload: unknown) {
+  return { ok: true, json: async () => payload };
 }
 
 function publicationPayload(url: string, published: boolean) {

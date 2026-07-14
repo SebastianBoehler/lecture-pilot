@@ -14,19 +14,16 @@ from lecturepilot.api_auth import (
 )
 from lecturepilot.audit import record_audit_event
 from lecturepilot.course_access import (
-    filter_accessible_courses,
+    course_has_visible_lecture,
     lecture_views_for_context,
-    require_course_access,
-    resolve_course,
+    resolve_course_lectures,
 )
 from lecturepilot.course_repository import CourseRepository, CourseRepositoryError
 from lecturepilot.course_schedule_store import (
     list_course_workspaces,
-    read_course_workspace,
     write_course_workspace,
 )
 from lecturepilot.course_workspace import resolve_course_workspace
-from lecturepilot.dev_seeded_course import discovered_seeded_lecture_views
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_usage import model_usage_scope
 from lecturepilot.models import (
@@ -60,54 +57,64 @@ def register_course_routes(
         require_same_tenant(context, course_tenant_id=course_tenant_id)
         if context.auth_mode == "session":
             repository = CourseRepository(app.state.database)
-            accessible = (
-                repository.list_accessible(
-                    user_id=UUID(context.user_id), tenant_id=course_tenant_id
-                )
+            candidates = (
+                repository.list_all(tenant_id=course_tenant_id)
                 if TenantRole.STUDENT in context.roles
                 else repository.list_owned(
                     user_id=UUID(context.user_id), tenant_id=course_tenant_id
                 )
             )
-            return [course.model_dump() for course in accessible]
+            return [
+                course.model_dump()
+                for course in candidates
+                if course_has_visible_lecture(
+                    app,
+                    context,
+                    course,
+                    course_tenant_id=course_tenant_id,
+                )
+            ]
         stored = list_course_workspaces(app.state.canvas_workspace.workspace_root, course_tenant_id)
-        courses_by_id = {seeded_course.id: seeded_course}
-        courses_by_id.update({workspace.course.id: workspace.course for workspace in stored})
-        accessible = filter_accessible_courses(
-            context, list(courses_by_id.values()), course_tenant_id=course_tenant_id
-        )
-        return [course.model_dump() for course in accessible]
+        workspaces_by_id = {workspace.course.id: workspace for workspace in stored}
+        courses_by_id = {
+            seeded_course.id: seeded_course,
+            **{workspace.course.id: workspace.course for workspace in stored},
+        }
+        return [
+            course.model_dump()
+            for course in courses_by_id.values()
+            if course_has_visible_lecture(
+                app,
+                context,
+                course,
+                course_tenant_id=course_tenant_id,
+                lectures=(
+                    workspaces_by_id[course.id].lectures if course.id in workspaces_by_id else None
+                ),
+                seeded_lectures=seeded_lectures,
+            )
+        ]
 
     @app.get("/courses/{course_id}/lectures")
     def lectures(
         course_id: str,
         context: TenantContext = Depends(request_context),
     ) -> list[dict]:
-        course = resolve_course(app, course_id=course_id, seeded_course=seeded_course)
-        require_course_access(context, course=course, course_tenant_id=course_tenant_id)
-        workspace = read_course_workspace(
-            app.state.canvas_workspace.course_media_root(course_id), course_id
+        course, lecture_items = resolve_course_lectures(
+            app,
+            course_id=course_id,
+            seeded_course=seeded_course,
+            seeded_lectures=seeded_lectures,
         )
-        if workspace:
-            return [
-                item.model_dump(mode="json")
-                for item in lecture_views_for_context(context, workspace.lectures)
-            ]
-        discovered = discovered_seeded_lecture_views(
-            course_id,
-            app.state.canvas_workspace.material_root,
-        )
-        if discovered:
-            lecture_items = [item.lecture for item in discovered]
-            return [
-                item.model_dump(mode="json")
-                for item in lecture_views_for_context(context, lecture_items)
-            ]
-        if course_id != seeded_course.id:
-            raise HTTPException(status_code=404, detail="Course not found.")
         return [
             item.model_dump(mode="json")
-            for item in lecture_views_for_context(context, seeded_lectures)
+            for item in lecture_views_for_context(
+                app,
+                context,
+                course,
+                lecture_items,
+                course_tenant_id=course_tenant_id,
+            )
         ]
 
     @app.post("/admin/course-workspaces", response_model=CourseWorkspaceResult)

@@ -8,6 +8,7 @@ from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.models import AgentTurnInput, AgentTurnResult, CanvasCommand
 from lecturepilot.providers import DEFAULT_MODEL
 from auth_helpers import student_headers
+from canvas_workspace_fixtures import published_course_canvas
 
 
 def test_agent_turn_materializes_infographic_asset(monkeypatch, tmp_path: Path) -> None:
@@ -66,10 +67,7 @@ def test_agent_turn_materializes_infographic_asset(monkeypatch, tmp_path: Path) 
 def test_agent_turn_requires_image_provider_for_infographics(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     app = create_app()
-    app.state.canvas_workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=_write_course_source(tmp_path),
-    )
+    app.state.canvas_workspace = _published_workspace(tmp_path)
     app.state.agent_harness = _InfographicHarness()
     client = TestClient(app)
 
@@ -91,10 +89,7 @@ def test_agent_turn_requires_image_provider_for_infographics(monkeypatch, tmp_pa
 
 def test_workspace_asset_route_rejects_invalid_student_key(tmp_path: Path) -> None:
     app = create_app()
-    app.state.canvas_workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=_write_course_source(tmp_path),
-    )
+    app.state.canvas_workspace = _published_workspace(tmp_path)
     client = TestClient(app)
 
     response = client.get(
@@ -181,11 +176,5 @@ def _published_workspace(tmp_path: Path) -> CanvasWorkspace:
         workspace_root=tmp_path / "workspaces",
         material_root=_write_course_source(tmp_path),
     )
-    workspace.write_course_canvas(
-        workspace.source_document(
-            course_id="martius-ml",
-            lecture_id="lecture-03",
-            workspace_path=str(tmp_path / "published" / "index.md"),
-        )
-    )
+    workspace.write_course_canvas(published_course_canvas("martius-ml", "lecture-03"))
     return workspace

@@ -426,6 +426,7 @@ export const enMessages = {
   "builder.define.courseNameHelp":
     "Use the exact course title from Alma or ILIAS. LecturePilot matches enrolled students by course title and term.",
   "builder.define.visibility": "Course visibility",
+  "builder.define.visibility.instructors": "Instructors only",
   "builder.define.visibility.enrolled": "Course students only",
   "builder.define.visibility.university": "University-wide login",
   "builder.define.visibility.public": "Public on the platform",

@@ -53,6 +53,7 @@ async function handleRequest(input: RequestInfo | URL, _init?: RequestInit) {
         lectures: [lecture()],
         active_lecture_id: "lecture-01",
         published_lecture_ids: ["lecture-01"],
+        access_summary: accessSummary(true),
       },
     ]);
   }
@@ -82,6 +83,31 @@ async function handleRequest(input: RequestInfo | URL, _init?: RequestInit) {
   if (url.endsWith("/courses")) return json([course()]);
   if (url.includes("/canvas/publication")) return json({ published: false });
   return json([]);
+}
+
+function accessSummary(contentReady: boolean) {
+  return {
+    course_id: "demo-course",
+    default_rule: {
+      audience: "tuebingen_enrolled",
+      publication_mode: "on_lecture_date",
+      publication_at: null,
+    },
+    lectures: [
+      {
+        lecture_id: "lecture-01",
+        rule_source: "course_default",
+        rule: {
+          audience: "tuebingen_enrolled",
+          publication_mode: "on_lecture_date",
+          publication_at: null,
+        },
+        effective_publication_at: "2026-05-05T22:00:00Z",
+        release_status: "released",
+        content_ready: contentReady,
+      },
+    ],
+  };
 }
 
 function course() {

@@ -1,23 +1,27 @@
 import { apiUrl, readApiError } from "./api";
 import { authRequestInit } from "./authz";
-import { normalizeCourseWorkspaceResult } from "./lectureMapping";
+import {
+  normalizeCourseWorkspaceResult,
+  normalizeManagedCourseWorkspaceResult,
+} from "./lectureMapping";
 import type { CourseSetup } from "./professorBuilderState";
 import type {
   CourseWorkspaceResult,
   LectureScheduleItem,
   LectureScheduleProposal,
   LoginSession,
+  ManagedCourseWorkspaceResult,
   SourceBundleManifest,
   YoutubeVideoCandidate,
 } from "./types";
 
 export async function listCourseWorkspaces(
   session: LoginSession,
-): Promise<CourseWorkspaceResult[]> {
+): Promise<ManagedCourseWorkspaceResult[]> {
   const response = await fetch(apiUrl("/admin/courses"), authRequestInit(session));
   const payload = await response.json().catch(() => null);
   if (!response.ok) throw new Error(readApiError(payload, "Course workspace loading failed."));
-  return Array.isArray(payload) ? payload.map(normalizeCourseWorkspaceResult) : [];
+  return Array.isArray(payload) ? payload.map(normalizeManagedCourseWorkspaceResult) : [];
 }
 
 export type AlmaCourseSuggestion = {

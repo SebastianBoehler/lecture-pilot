@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from auth_helpers import professor_headers, student_headers
+from canvas_workspace_fixtures import published_course_canvas
 from lecturepilot.app import create_app
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_builder_source import course_builder_source_document
@@ -96,6 +97,9 @@ def test_discovered_seeded_lecture_uses_the_same_authorization_catalog(tmp_path:
         path = material_root / f"Lecture{number:02d}-eng.tex"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(_latex(f"Lecture {number}", f"LECTURE-{number}"))
+    client.app.state.canvas_workspace.write_course_canvas(
+        published_course_canvas("martius-ml", "lecture-04")
+    )
 
     response = client.get(
         "/courses/martius-ml/lectures/lecture-04/canvas/publication",
@@ -103,7 +107,7 @@ def test_discovered_seeded_lecture_uses_the_same_authorization_catalog(tmp_path:
     )
 
     assert response.status_code == 200
-    assert response.json()["published"] is False
+    assert response.json()["published"] is True
 
 
 def _client(tmp_path: Path) -> TestClient:

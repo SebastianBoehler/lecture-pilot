@@ -1,5 +1,12 @@
 import type { LearningMap } from "./learningMapTypes";
 import type { UniversityEnrollmentCourse } from "./universityCourseTypes";
+import type {
+  CourseAccessPolicy,
+  CourseAccessRule,
+  CourseAccessSummary,
+  CourseDefaultPublicationMode,
+  LectureReleaseStatus,
+} from "./courseAccessTypes";
 
 export type Theme = "light" | "dark";
 export type InfoPageKind = "changelog" | "how-it-works" | "learning-science" | "privacy";
@@ -21,15 +28,18 @@ export type DocumentAnchorId = string;
 
 export type Attendance = "unknown" | "present" | "absent";
 export type TenantRole = "tenant_admin" | "professor" | "tutor" | "student";
-export type CourseAccessPolicy = "public" | "platform_authenticated" | "tuebingen_enrolled";
-
 export type Lecture = {
   id: string;
   number: string;
   title: string;
   date: string;
   attendance: Attendance;
+  accessOverride?: CourseAccessRule | null;
+  contentReady?: boolean;
+  effectivePublicationAt?: string | null;
   materialPath?: string;
+  releaseStatus?: LectureReleaseStatus;
+  unlocked?: boolean;
 };
 
 export type CanvasBlock = {
@@ -208,6 +218,10 @@ export type CourseWorkspaceResult = {
   publishedLectureIds?: string[];
 };
 
+export type ManagedCourseWorkspaceResult = CourseWorkspaceResult & {
+  accessSummary: CourseAccessSummary;
+};
+
 export type YoutubeVideoCandidate = {
   video_id: string;
   title: string;
@@ -222,6 +236,7 @@ export type YoutubeVideoCandidate = {
 
 export type UniversityCourse = {
   access_policy?: CourseAccessPolicy;
+  default_publication_mode?: CourseDefaultPublicationMode;
   id: string;
   title: string;
   professor: string;

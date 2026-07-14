@@ -14,6 +14,9 @@ from auth_helpers import professor_headers, student_headers
 def test_created_course_requires_enrollment(tmp_path: Path) -> None:
     client = _client(tmp_path)
     _write_workspace(client, course_id="restricted-course")
+    client.app.state.canvas_workspace.write_course_canvas(
+        _document("restricted-course", "lecture-01")
+    )
 
     visible = client.get("/courses", headers=student_headers(course_ids=("martius-ml",)))
     denied = client.get(
@@ -27,8 +30,10 @@ def test_created_course_requires_enrollment(tmp_path: Path) -> None:
 
     assert visible.status_code == 200
     assert "restricted-course" not in {course["id"] for course in visible.json()}
-    assert denied.status_code == 403
+    assert denied.status_code == 200
+    assert denied.json() == []
     assert enrolled.status_code == 200
+    assert enrolled.json()[0]["lecture"]["id"] == "lecture-01"
 
 
 def test_future_dynamic_lecture_is_locked_for_enrolled_student(tmp_path: Path) -> None:
@@ -48,7 +53,8 @@ def test_future_dynamic_lecture_is_locked_for_enrolled_student(tmp_path: Path) -
     )
 
     assert lectures.status_code == 200
-    assert lectures.json() == []
+    assert lectures.json()[0]["release_status"] == "scheduled"
+    assert lectures.json()[0]["unlocked"] is False
     assert canvas.status_code == 403
     assert professor_canvas.status_code == 403
 

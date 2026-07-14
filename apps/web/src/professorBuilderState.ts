@@ -1,5 +1,5 @@
 import type { LectureScheduleItem } from "./types";
-import type { CourseAccessPolicy } from "./types";
+import type { CourseAccessPolicy } from "./courseAccessTypes";
 
 export type BuilderTarget = "single-lecture" | "full-course";
 

@@ -137,6 +137,19 @@
   border-bottom: 0;
 }
 
+.lecture-row.is-scheduled {
+  background: var(--color-bg-secondary);
+}
+
+.lecture-row.is-scheduled .lecture-number {
+  color: var(--color-text-tertiary);
+}
+
+.lecture-release-time {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
 .course-workspace-body[hidden] { display: none; }
 
 .lecture-row h3,

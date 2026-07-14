@@ -33,7 +33,9 @@ export function professorFetchMock() {
     if (url.includes("/canvas/draft")) return json(canvasPayload());
     if (url.includes("/canvas")) return json(canvasPayload());
     if (url.includes("/media/youtube/search")) return json({ items: [youtubeCandidate()] });
-    const mediaMatch = path.match(/^\/admin\/courses\/[^/]+\/lectures\/([^/]+)\/media\/youtube(?:\/([^/]+))?$/);
+    const mediaMatch = path.match(
+      /^\/admin\/courses\/[^/]+\/lectures\/([^/]+)\/media\/youtube(?:\/([^/]+))?$/,
+    );
     if (mediaMatch) {
       const [, lectureId, pathVideoId] = mediaMatch;
       if (init?.method === "DELETE") {
@@ -269,6 +271,7 @@ function courseWorkspacePayload(init?: RequestInit) {
   return {
     course: {
       access_policy: body.access_policy ?? "tuebingen_enrolled",
+      default_publication_mode: "on_lecture_date",
       id: "demo-ml-course",
       title,
       professor: "professor-demo",
@@ -276,6 +279,26 @@ function courseWorkspacePayload(init?: RequestInit) {
     },
     lectures,
     active_lecture_id: lectures[0].id,
+    access_summary: {
+      course_id: "demo-ml-course",
+      default_rule: {
+        audience: body.access_policy ?? "tuebingen_enrolled",
+        publication_mode: "on_lecture_date",
+        publication_at: null,
+      },
+      lectures: lectures.map((lecture: { id: string }) => ({
+        lecture_id: lecture.id,
+        rule_source: "course_default",
+        rule: {
+          audience: body.access_policy ?? "tuebingen_enrolled",
+          publication_mode: "on_lecture_date",
+          publication_at: null,
+        },
+        effective_publication_at: "2026-06-10T22:00:00Z",
+        release_status: "released",
+        content_ready: false,
+      })),
+    },
   };
 }
 

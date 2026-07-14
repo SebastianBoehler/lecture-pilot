@@ -4,8 +4,9 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 
 from lecturepilot.api_auth import request_context, require_course_owner, require_same_tenant
+from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
-from lecturepilot.course_access import require_lecture_id_access
+from lecturepilot.course_access import course_actor_access, require_lecture_id_access
 from lecturepilot.models import Course, Lecture
 from lecturepilot.professor_preview import professor_preview_user_id
 from lecturepilot.tenancy import TenantContext
@@ -26,7 +27,7 @@ def register_asset_routes(
         preview: str | None = None,
         context: TenantContext = Depends(request_context),
     ) -> FileResponse:
-        require_lecture_id_access(
+        course, _lecture = require_lecture_id_access(
             app,
             context,
             course_id=course_id,
@@ -35,6 +36,9 @@ def register_asset_routes(
             seeded_course=seeded_course,
             seeded_lectures=seeded_lectures,
         )
+        actor = course_actor_access(app, context, course_id, course_tenant_id)
+        if not actor.is_owner:
+            _require_published_canvas_asset(app, course.id, lecture_id, asset_path)
         try:
             if preview == "png":
                 path = app.state.canvas_workspace.asset_preview_path(
@@ -115,3 +119,30 @@ def _require_workspace_asset_access(
         status_code=403,
         detail="Workspace asset does not belong to the active user.",
     )
+
+
+def _require_published_canvas_asset(
+    app: FastAPI,
+    course_id: str,
+    lecture_id: str,
+    asset_path: str,
+) -> None:
+    document = app.state.canvas_workspace.course_canvas_store.read(
+        course_id=course_id,
+        lecture_id=lecture_id,
+        workspace_path="asset-authorization/index.md",
+    )
+    if document is None or asset_path not in _referenced_course_assets(document):
+        raise HTTPException(status_code=404, detail="Canvas asset was not found.")
+
+
+def _referenced_course_assets(document: CanvasDocument) -> set[str]:
+    prefix = f"/course-assets/{document.course_id}/{document.lecture_id}/"
+    referenced: set[str] = set()
+    for section in document.sections:
+        for block in section.blocks:
+            if block.asset_path:
+                referenced.add(block.asset_path.removeprefix("asset:"))
+            if block.asset_url and block.asset_url.startswith(prefix):
+                referenced.add(block.asset_url.removeprefix(prefix))
+    return referenced

@@ -7,6 +7,12 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
+from lecturepilot.lecture_access_models import (
+    CourseAccessPolicy,
+    LectureAccessRule,
+    LectureReleaseStatus,
+    PublicationMode,
+)
 from lecturepilot.scaffold_policy import TutorScaffoldPolicy
 
 
@@ -27,12 +33,6 @@ class ProviderCapability(StrEnum):
     TOOL_CALLS = "tool_calls"
     STRUCTURED_JSON = "structured_json"
     LONG_CONTEXT = "long_context"
-
-
-class CourseAccessPolicy(StrEnum):
-    PUBLIC = "public"
-    PLATFORM_AUTHENTICATED = "platform_authenticated"
-    TUEBINGEN_ENROLLED = "tuebingen_enrolled"
 
 
 class TenantRole(StrEnum):
@@ -67,6 +67,7 @@ class Course(BaseModel):
     professor: str
     term: str
     access_policy: CourseAccessPolicy = CourseAccessPolicy.TUEBINGEN_ENROLLED
+    default_publication_mode: PublicationMode = PublicationMode.ON_LECTURE_DATE
 
 
 class Lecture(BaseModel):
@@ -75,12 +76,16 @@ class Lecture(BaseModel):
     title: str
     date: date
     material_path: str | None = None
+    access_override: LectureAccessRule | None = None
 
 
 class LectureView(BaseModel):
     lecture: Lecture
     unlocked: bool
     attendance: AttendanceStatus = AttendanceStatus.UNKNOWN
+    release_status: LectureReleaseStatus = LectureReleaseStatus.RELEASED
+    effective_publication_at: datetime | None = None
+    content_ready: bool = False
 
 
 class SourceBundleEntry(BaseModel):

@@ -1,0 +1,237 @@
+.course-access-dialog {
+  width: min(460px, 100vw);
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0 0 0 auto;
+  border: 0;
+  border-left: 1px solid var(--color-border-strong);
+  padding: 0;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  box-shadow: -24px 0 64px color-mix(in srgb, #000 18%, transparent);
+}
+
+.course-access-dialog[open] {
+  display: block;
+}
+
+.course-access-dialog::backdrop {
+  background: color-mix(in srgb, #121416 45%, transparent);
+}
+
+html:has(.course-access-dialog[open]),
+body:has(.course-access-dialog[open]) {
+  overflow: hidden;
+}
+
+.course-access-form {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100%;
+}
+
+.course-access-dialog-header,
+.course-access-dialog-footer {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px 22px;
+}
+
+.course-access-dialog-header {
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.course-access-dialog-header h2,
+.course-access-dialog-header p,
+.course-access-preview {
+  margin: 0;
+}
+
+.course-access-dialog-header h2 {
+  font-size: 22px;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+.course-access-dialog-header p {
+  margin-top: 5px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.course-access-dialog-header button,
+.course-access-dialog-footer button {
+  min-height: 40px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--control-radius);
+  padding: 0 14px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  font-weight: 680;
+}
+
+.course-access-dialog-header button {
+  display: grid;
+  width: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0;
+  color: var(--color-text-secondary);
+}
+
+.course-access-dialog-body {
+  display: grid;
+  align-content: start;
+  gap: 24px;
+  min-height: 0;
+  padding: 22px;
+  overflow-y: auto;
+}
+
+.course-access-inherit,
+.course-access-confirmation {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 680;
+}
+
+.course-access-inherit input,
+.course-access-confirmation input,
+.course-access-option input {
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: var(--color-accent-primary);
+}
+
+.course-access-options {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.course-access-options legend {
+  margin-bottom: 7px;
+  padding: 0;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 760;
+}
+
+.course-access-option {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  border-top: 1px solid var(--color-border-primary);
+  padding: 12px 2px;
+  cursor: pointer;
+}
+
+.course-access-option > span {
+  display: grid;
+  gap: 2px;
+}
+
+.course-access-option strong {
+  font-size: 14px;
+}
+
+.course-access-option small,
+.course-access-field-note,
+.course-access-datetime small {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 450;
+}
+
+.course-access-options:disabled .course-access-option {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.course-access-field-note {
+  margin: 0 0 8px;
+}
+
+.course-access-datetime {
+  display: grid;
+  gap: 6px;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.course-access-datetime input {
+  min-height: 42px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--control-radius);
+  padding: 0 10px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+}
+
+.course-access-preview {
+  display: grid;
+  gap: 2px;
+  border-block: 1px solid var(--color-border-primary);
+  padding: 13px 0;
+}
+
+.course-access-preview strong {
+  font-size: 14px;
+}
+
+.course-access-preview span {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.course-access-confirmation {
+  border-left: 3px solid var(--color-highlight-border);
+  padding: 10px 0 10px 12px;
+  font-weight: 550;
+}
+
+.course-access-dialog-footer {
+  align-items: center;
+  justify-content: flex-end;
+  border-top: 1px solid var(--color-border-primary);
+}
+
+.course-access-dialog-footer .primary-action {
+  border-color: var(--color-accent-primary);
+  color: var(--color-on-accent);
+  background: var(--color-accent-primary);
+}
+
+.course-access-dialog button:disabled,
+.course-access-dialog input:disabled {
+  cursor: not-allowed;
+}
+
+@media (max-width: 520px) {
+  .course-access-dialog {
+    width: 100vw;
+    border-left: 0;
+  }
+
+  .course-access-dialog-header,
+  .course-access-dialog-body,
+  .course-access-dialog-footer {
+    padding-inline: 16px;
+  }
+
+  .course-access-dialog-footer button {
+    min-height: 44px;
+  }
+}

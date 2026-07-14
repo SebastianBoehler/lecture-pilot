@@ -27,6 +27,16 @@ def write_course_workspace(
     return workspace
 
 
+def overwrite_course_workspace(
+    course_root: Path,
+    workspace: CourseWorkspaceResult,
+) -> CourseWorkspaceResult:
+    target = _workspace_path(course_root)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    _atomic_write(target, workspace.model_dump_json(indent=2))
+    return workspace
+
+
 def read_course_workspace(course_root: Path, course_id: str) -> CourseWorkspaceResult | None:
     source = _workspace_path(course_root)
     if not source.exists():

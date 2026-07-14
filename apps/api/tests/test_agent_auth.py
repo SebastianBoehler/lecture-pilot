@@ -11,6 +11,7 @@ from lecturepilot.university_models import UniversityLoginResult
 from lecturepilot.providers import DEFAULT_MODEL
 from lecturepilot.session_auth import SESSION_COOKIE_NAME, SessionAuthError
 from auth_helpers import student_headers
+from canvas_workspace_fixtures import published_course_canvas
 
 
 def test_auth_defaults_fail_closed_without_local_env(monkeypatch) -> None:
@@ -192,10 +193,12 @@ def _turn_payload(user_id: str) -> dict:
 
 def _client(tmp_path) -> TestClient:
     app = create_app()
-    app.state.canvas_workspace = CanvasWorkspace(
+    workspace = CanvasWorkspace(
         workspace_root=tmp_path / "workspaces",
         material_root=tmp_path / "materials",
     )
+    workspace.write_course_canvas(published_course_canvas("martius-ml", "lecture-03"))
+    app.state.canvas_workspace = workspace
     return TestClient(app)
 
 

@@ -38,6 +38,26 @@ def course_canvas(section_id: str, title: str) -> CanvasDocument:
     )
 
 
+def published_course_canvas(course_id: str, lecture_id: str) -> CanvasDocument:
+    return CanvasDocument(
+        id=f"{course_id}-{lecture_id}",
+        course_id=course_id,
+        lecture_id=lecture_id,
+        title="Published lecture",
+        source_kind="generated",
+        source_ref="test fixture",
+        workspace_path="course/index.md",
+        sections=[
+            CanvasSection(
+                id="intro",
+                title="Intro",
+                source_ref="test fixture",
+                blocks=[CanvasBlock(id="intro-p", type="paragraph", text="Published.")],
+            )
+        ],
+    )
+
+
 _LECTURE_01 = r"""
 \mytitle[6 May, 2026]{1}{Introduction}
 \begin{frame}{Course setup}

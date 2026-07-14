@@ -37,23 +37,44 @@ def merge_course_workspace(
     *,
     replace_lectures: bool = False,
 ) -> CourseWorkspaceResult:
-    if replace_lectures or existing is None or existing.course.id != incoming.course.id:
+    if existing is None or existing.course.id != incoming.course.id:
         return incoming
+    course = incoming.course.model_copy(
+        update={"default_publication_mode": existing.course.default_publication_mode}
+    )
     incoming_by_id = {lecture.id: lecture for lecture in incoming.lectures}
+    if replace_lectures:
+        existing_by_id = {lecture.id: lecture for lecture in existing.lectures}
+        return incoming.model_copy(
+            update={
+                "course": course,
+                "lectures": [
+                    _merge_lecture(existing_by_id.get(lecture.id), lecture)
+                    for lecture in incoming.lectures
+                ],
+            }
+        )
     merged = [
         _merge_lecture(lecture, incoming_by_id.get(lecture.id)) for lecture in existing.lectures
     ]
     existing_ids = {lecture.id for lecture in existing.lectures}
     merged.extend(lecture for lecture in incoming.lectures if lecture.id not in existing_ids)
-    return incoming.model_copy(update={"lectures": merged})
+    return incoming.model_copy(update={"course": course, "lectures": merged})
 
 
-def _merge_lecture(existing: Lecture, incoming: Lecture | None) -> Lecture:
+def _merge_lecture(existing: Lecture | None, incoming: Lecture | None) -> Lecture:
+    if existing is None and incoming is not None:
+        return incoming
+    if existing is None:
+        raise ValueError("A lecture is required.")
     if incoming is None:
         return existing
     if existing.material_path and not incoming.material_path:
         return existing
-    return incoming
+    updates = {}
+    if existing.access_override and incoming.access_override is None:
+        updates["access_override"] = existing.access_override
+    return incoming.model_copy(update=updates)
 
 
 def _lectures_for_setup(setup: CourseWorkspaceSetupInput, course_id: str) -> list[Lecture]:

@@ -39,6 +39,7 @@ export function buildCourseGroups(
     ? observedCourses
     : authorizedCourses.map((course) => ({ course, sources: [] }));
   const workspaceAuthorized =
+    lectures.length > 0 ||
     authorizedCourses.some((course) => isWorkspaceCourse(course, workspaceCourse)) ||
     hasWorkspaceAccess(workspaceCourse);
   const courseGroups = enrolledCourses.length
@@ -75,6 +76,12 @@ export function buildCourseGroups(
 export function publishedCourseLectures(lectures: Lecture[], publishedLectureIds: string[]) {
   const published = new Set(publishedLectureIds);
   return lectures.filter((lecture) => published.has(lecture.id));
+}
+
+export function availableCourseLectures(lectures: Lecture[]) {
+  return lectures.filter(
+    (lecture) => lecture.releaseStatus !== "scheduled" && lecture.releaseStatus !== "hidden",
+  );
 }
 
 function buildEnrolledCourseGroup(

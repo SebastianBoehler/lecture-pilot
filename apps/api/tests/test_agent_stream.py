@@ -7,7 +7,7 @@ from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.models import AgentTurnInput, AgentTurnResult, CanvasCommand
 from lecturepilot.providers import DEFAULT_MODEL
 from auth_helpers import student_headers
-from canvas_workspace_fixtures import write_course_source
+from canvas_workspace_fixtures import published_course_canvas, write_course_source
 
 
 def test_agent_turn_stream_emits_activity_and_result(monkeypatch, tmp_path) -> None:
@@ -17,6 +17,9 @@ def test_agent_turn_stream_emits_activity_and_result(monkeypatch, tmp_path) -> N
     app.state.canvas_workspace = CanvasWorkspace(
         workspace_root=tmp_path / "workspaces",
         material_root=write_course_source(tmp_path),
+    )
+    app.state.canvas_workspace.write_course_canvas(
+        published_course_canvas("martius-ml", "lecture-01")
     )
     app.state.agent_harness = _FakeHarness()
     client = TestClient(app)

@@ -63,8 +63,16 @@
 
 .created-course-summary {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(200px, 0.7fr) auto;
+  grid-template-columns: minmax(220px, 1fr) minmax(280px, 0.9fr) auto;
   align-items: center;
+}
+
+.created-course-actions,
+.created-lecture-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .created-course-title strong,
@@ -96,8 +104,8 @@
 
 .created-course-lectures li {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) auto;
-  align-items: center;
+  grid-template-columns: 32px minmax(0, 1fr) minmax(150px, auto);
+  align-items: start;
   gap: 10px;
   border-top: 1px solid var(--color-border-primary);
   padding: 9px 0;
@@ -107,6 +115,28 @@
 .created-lecture-status {
   color: var(--color-text-tertiary);
   font-size: 12px;
+}
+
+.created-lecture-copy,
+.created-lecture-access-status {
+  display: grid;
+  min-width: 0;
+}
+
+.created-lecture-access-status {
+  gap: 1px;
+  margin-top: 3px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.created-lecture-access-status strong {
+  color: var(--color-text-primary);
+}
+
+.created-lecture-access-status small {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
 }
 
 .created-lecture-title {
@@ -120,8 +150,7 @@
 
 .created-course-meta strong {
   color: var(--color-text-primary);
-  font-size: 12px;
-  text-transform: uppercase;
+  font-size: 13px;
 }
 
 .created-course-meta small {
@@ -140,7 +169,7 @@
     grid-template-columns: 28px minmax(0, 1fr);
   }
 
-  .created-course-lectures li > :last-child {
+  .created-lecture-actions {
     grid-column: 2;
     justify-self: start;
   }

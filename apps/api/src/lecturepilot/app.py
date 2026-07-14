@@ -25,6 +25,7 @@ from lecturepilot.exam_readiness_routes import register_exam_readiness_routes
 from lecturepilot.harness import LecturePilotHarness
 from lecturepilot.image_generation_registry import image_generator_from_env
 from lecturepilot.lecture_schedule_planner import LectureSchedulePlanner, LiteLLMScheduleClient
+from lecturepilot.lecture_access_routes import register_lecture_access_routes
 from lecturepilot.model_client import LiteLLMModelClient
 from lecturepilot.model_usage import ModelUsageRecorder
 from lecturepilot.learner_state import LearnerStateStore
@@ -86,7 +87,7 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=list(allowed_origins()),
         allow_credentials=True,
-        allow_methods=["GET", "HEAD", "OPTIONS", "POST", "DELETE"],
+        allow_methods=["GET", "HEAD", "OPTIONS", "POST", "PUT", "DELETE"],
         allow_headers=[
             "Accept",
             "Authorization",
@@ -139,6 +140,11 @@ def create_app() -> FastAPI:
         ),
     )
     register_course_deletion_routes(app, course_tenant_id=COURSE_TENANT_ID)
+    register_lecture_access_routes(
+        app,
+        course_tenant_id=COURSE_TENANT_ID,
+        seeded_course=COURSE,
+    )
     register_course_update_routes(app, course_tenant_id=COURSE_TENANT_ID)
     register_exam_readiness_routes(
         app,

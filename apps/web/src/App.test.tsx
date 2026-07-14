@@ -271,11 +271,7 @@ describe("LecturePilot app shell", () => {
     expect(screen.queryByRole("button", { name: /open lecture 03/i })).not.toBeInTheDocument();
     expect(
       fetchMock.mock.calls.filter(([url]) => String(url).includes("/canvas/publication")),
-    ).toHaveLength(3);
-    const publicationCall = fetchMock.mock.calls.find(([url]) =>
-      String(url).includes("/canvas/publication"),
-    );
-    expect(new Headers(publicationCall?.[1]?.headers).get("x-user-id")).toBe("local-demo");
+    ).toHaveLength(0);
   });
 
   it("opens plain-language project information from the footer", async () => {

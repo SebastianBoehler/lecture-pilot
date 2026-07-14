@@ -151,6 +151,18 @@ class CourseRepository:
             ).all()
             return [_course(record) for record in records]
 
+    def list_all(self, *, tenant_id: str) -> list[Course]:
+        with self.database.session() as session:
+            records = session.scalars(
+                select(CourseRecord)
+                .where(
+                    CourseRecord.tenant_id == tenant_id,
+                    CourseRecord.archived_at.is_(None),
+                )
+                .order_by(CourseRecord.created_at)
+            ).all()
+            return [_course(record) for record in records]
+
     def is_owner(self, *, user_id: UUID, tenant_id: str, course_id: str) -> bool:
         identifier = _uuid(course_id)
         if identifier is None:
@@ -168,37 +180,52 @@ class CourseRepository:
                 is not None
             )
 
-    def can_learn(self, *, user_id: UUID, tenant_id: str, course_id: str) -> bool:
+    def is_enrolled(self, *, user_id: UUID, tenant_id: str, course_id: str) -> bool:
         identifier = _uuid(course_id)
         if identifier is None:
             return False
+        with self.database.session() as session:
+            return (
+                session.scalar(
+                    select(CourseEnrollmentRecord.id)
+                    .join(CourseRecord, CourseRecord.id == CourseEnrollmentRecord.course_id)
+                    .where(
+                        CourseEnrollmentRecord.course_id == identifier,
+                        CourseEnrollmentRecord.user_id == user_id,
+                        CourseEnrollmentRecord.status == "active",
+                        CourseRecord.tenant_id == tenant_id,
+                        CourseRecord.archived_at.is_(None),
+                    )
+                )
+                is not None
+            )
+
+    def update_access_policy(
+        self,
+        *,
+        user_id: UUID,
+        tenant_id: str,
+        course_id: str,
+        access_policy: CourseAccessPolicy,
+    ) -> CourseAccessPolicy:
+        identifier = _uuid(course_id)
+        if identifier is None:
+            raise CourseRepositoryError("Course id is invalid.")
         with self.database.session() as session:
             course = session.scalar(
                 select(CourseRecord).where(
                     CourseRecord.id == identifier,
                     CourseRecord.tenant_id == tenant_id,
+                    CourseRecord.owner_user_id == user_id,
                     CourseRecord.archived_at.is_(None),
                 )
             )
             if course is None:
-                return False
-            if course.owner_user_id == user_id:
-                return True
-            if course.access_policy in {
-                CourseAccessPolicy.PUBLIC.value,
-                CourseAccessPolicy.PLATFORM_AUTHENTICATED.value,
-            }:
-                return True
-            return (
-                session.scalar(
-                    select(CourseEnrollmentRecord.id).where(
-                        CourseEnrollmentRecord.course_id == identifier,
-                        CourseEnrollmentRecord.user_id == user_id,
-                        CourseEnrollmentRecord.status == "active",
-                    )
-                )
-                is not None
-            )
+                raise CourseRepositoryError("Course ownership is required.")
+            previous = CourseAccessPolicy(course.access_policy)
+            course.access_policy = access_policy.value
+            course.updated_at = datetime.now(UTC)
+            return previous
 
     def archive(self, *, user_id: UUID, tenant_id: str, course_id: str) -> bool:
         identifier = _uuid(course_id)

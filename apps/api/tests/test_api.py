@@ -295,6 +295,9 @@ class _FakeCanvasWorkspace:
     def __init__(self, root) -> None:
         self.layout = StorageLayout(root)
 
+    def has_published_course_canvas(self, *, course_id: str, lecture_id: str) -> bool:
+        return course_id == "martius-ml" and lecture_id == "lecture-03"
+
     def read_document(self, *, course_id: str, lecture_id: str, user_id: str) -> CanvasDocument:
         return CanvasDocument(
             id="martius-ml-lecture-03",

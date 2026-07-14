@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from auth_helpers import pending_university_login, professor_headers, student_headers
+from canvas_workspace_fixtures import published_course_canvas
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
@@ -104,6 +105,10 @@ def test_created_course_workspace_persists_lecture_schedule(tmp_path: Path) -> N
         headers=professor_headers("prof-demo"),
     )
     assert response.status_code == 200
+    for lecture_id in ("lecture-01", "lecture-02"):
+        client.app.state.canvas_workspace.write_course_canvas(
+            published_course_canvas("demo-ml-course", lecture_id)
+        )
 
     lectures = client.get("/courses/demo-ml-course/lectures", headers=student_headers("student01"))
 
@@ -331,6 +336,11 @@ def test_course_canvas_draft_can_use_markdown_text_and_pdf_without_latex(tmp_pat
     assert draft.status_code == 200
     assert draft.json()["source_kind"] == "generated"
     assert draft.json()["source_ref"] == "course planner from notes/overview.md, notes/risk.txt, slides/risk.pdf"
+    publish = client.post(
+        "/admin/courses/mixed-source-course/lectures/lecture-01/canvas/publish",
+        headers=professor_headers(),
+    )
+    assert publish.status_code == 200
 
     asset = client.get(
         "/course-assets/mixed-source-course/lecture-01/figures/risk.png",
@@ -521,6 +531,12 @@ class _FakeMixedSourcePlanner:
             for section in source_document.sections
             for block in section.blocks
         )
+        media = {
+            block.asset_path: block
+            for section in source_document.sections
+            for block in section.blocks
+            if block.asset_path in {"figures/risk.png", "videos/decision.mp4"}
+        }
         return source_document.model_copy(
             update={
                 "source_kind": "generated",
@@ -535,7 +551,9 @@ class _FakeMixedSourcePlanner:
                                 id="mixed-source-summary-p-1",
                                 type="paragraph",
                                 text="The planner saw Markdown, text, and PDF evidence.",
-                            )
+                            ),
+                            media["figures/risk.png"],
+                            media["videos/decision.mp4"],
                         ],
                     )
                 ],

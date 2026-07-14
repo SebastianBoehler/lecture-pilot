@@ -6,7 +6,7 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
-from canvas_workspace_fixtures import write_course_source
+from canvas_workspace_fixtures import course_canvas, write_course_source
 from lecturepilot.agent_tool_executor import AgentToolExecutor
 from lecturepilot.agent_tool_loop import complete_tool_turn
 from lecturepilot.app import create_app
@@ -283,7 +283,9 @@ class _ToolWritingHarness:
 
 
 def _workspace(tmp_path) -> CanvasWorkspace:
-    return CanvasWorkspace(workspace_root=tmp_path / "workspaces", material_root=write_course_source(tmp_path))
+    workspace = CanvasWorkspace(workspace_root=tmp_path / "workspaces", material_root=write_course_source(tmp_path))
+    workspace.write_course_canvas(course_canvas("bayes-formula", "Bayes formula"))
+    return workspace
 
 
 def _snapshot_call(kwargs: dict[str, Any]) -> dict[str, Any]:
