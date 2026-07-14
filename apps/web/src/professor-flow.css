@@ -46,7 +46,7 @@
 
 .generation-progress-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 8px;
   align-items: center;
   border-bottom: 1px solid var(--color-border-primary);
@@ -63,7 +63,15 @@
   color: var(--color-accent-primary);
 }
 
-.generation-progress-row.is-error strong,
+.generation-progress-row.is-error strong {
+  color: var(--color-danger);
+}
+
+.generation-progress-row.is-error button {
+  min-height: var(--control-height-compact);
+  padding: 4px 9px;
+}
+
 .generation-warnings strong {
   color: var(--color-accent-primary);
 }

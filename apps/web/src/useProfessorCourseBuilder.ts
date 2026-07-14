@@ -2,7 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { draftLectureCanvas, getCourseLectures, getDraftLectureCanvas } from "./api";
 import { builderSteps, initialBuilderStep, type BuilderStep } from "./ProfessorBuilderStepper";
-import { generateLectureCanvasDrafts, type CanvasGenerationProgress } from "./professorCanvasGeneration";
+import {
+  CanvasGenerationBatchError,
+  generateLectureCanvasDrafts,
+  type CanvasGenerationProgress,
+} from "./professorCanvasGeneration";
 import { hasCanvasVideo, toggleSelected } from "./ProfessorCourseBuilderParts";
 import {
   createCourseWorkspace,
@@ -340,6 +344,39 @@ export function useProfessorCourseBuilder({
     return flattenVideoGroups(groups).length;
   }
 
+  function updateGenerationItem(progress: CanvasGenerationProgress) {
+    setGenerationProgress((current) => current.map((item) => (
+      item.lectureId === progress.lectureId
+        ? { ...item, ...progress, errorKind: progress.errorKind, message: progress.message }
+        : item
+    )));
+  }
+
+  function recordGeneratedCanvas(lectureId: string, generatedCanvas: CanvasDocument) {
+    setCanvas(generatedCanvas);
+    setGeneratedLectureIds((current) => (
+      current.includes(lectureId) ? current : [...current, lectureId]
+    ));
+    setGenerationWarnings((current) => Array.from(new Set([
+      ...current,
+      ...(generatedCanvas.warnings ?? []),
+    ])));
+  }
+
+  async function generateCanvases(courseId: string, lectureIds: string[]) {
+    try {
+      return await generateLectureCanvasDrafts({
+        lectureIds,
+        draft: (lectureId) => draftLectureCanvas(courseId, lectureId, session),
+        onDraftReady: recordGeneratedCanvas,
+        onProgress: updateGenerationItem,
+      });
+    } catch (generationError) {
+      if (generationError instanceof CanvasGenerationBatchError) return null;
+      throw generationError;
+    }
+  }
+
   async function restoreFromBackend(
     targetWorkspace: { courseId: string; lectureId: string } | null,
     options: { quietDraftMiss?: boolean; skipWhenMissing?: boolean } = {},
@@ -489,6 +526,12 @@ export function useProfessorCourseBuilder({
         }]
         : [],
     totalCount: fullCourseLectureIds.length,
+    onRetry: (lectureId: string) => run("generate", async () => {
+      const activeWorkspace = requireWorkspace(workspace);
+      const canvases = await generateCanvases(activeWorkspace.courseId, [lectureId]);
+      if (!canvases) return;
+      return `${lectureId.replace("lecture-", "Lecture ")} canvas is ready to review.`;
+    }),
     onGenerate: () => run("generate", async () => {
       const activeWorkspace = requireWorkspace(workspace);
       const lectureIds = setup.target === "full-course" && fullCourseLectureIds.length
@@ -497,15 +540,8 @@ export function useProfessorCourseBuilder({
       setDraftReviewed(false);
       setGenerationProgress(lectureIds.map((lectureId) => ({ lectureId, status: "pending" })));
       setGenerationWarnings([]);
-      const canvases = await generateLectureCanvasDrafts({
-        lectureIds,
-        draft: (lectureId) => draftLectureCanvas(activeWorkspace.courseId, lectureId, session),
-        onProgress: (progress) => {
-          setGenerationProgress((current) => current.map((item) => (
-            item.lectureId === progress.lectureId ? { ...item, ...progress } : item
-          )));
-        },
-      });
+      const canvases = await generateCanvases(activeWorkspace.courseId, lectureIds);
+      if (!canvases) return;
       setCanvas(canvases[0] ?? null);
       setGeneratedLectureIds(lectureIds);
       setGenerationWarnings(Array.from(new Set(canvases.flatMap((item) => item.warnings ?? []))));

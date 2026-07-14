@@ -12,6 +12,7 @@ from lecturepilot.audit import record_audit_event
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.course_access import require_course_id_access, require_lecture_id_access
+from lecturepilot.course_canvas_store import InvalidCanvasDraftError
 from lecturepilot.course_media import apply_course_media, course_media_evidence
 from lecturepilot.learner_workspace_reset import (
     LearnerWorkspaceResetInput,
@@ -63,6 +64,8 @@ def register_course_canvas_routes(
                 document, app.state.canvas_workspace.course_media_root(course_id)
             )
             return app.state.canvas_workspace.write_course_canvas_draft(document)
+        except InvalidCanvasDraftError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
         except CanvasWorkspaceError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except SourceBundleCanvasError as exc:
@@ -89,6 +92,8 @@ def register_course_canvas_routes(
                 course_id=course_id,
                 lecture_id=lecture_id,
             )
+        except InvalidCanvasDraftError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
         except CanvasWorkspaceError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -117,6 +122,8 @@ def register_course_canvas_routes(
                 target_id=f"{course_id}:{lecture_id}",
             )
             return _publication_result(course_id, lecture_id, metadata)
+        except InvalidCanvasDraftError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
         except CanvasWorkspaceError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 

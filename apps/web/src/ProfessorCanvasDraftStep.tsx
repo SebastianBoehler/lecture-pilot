@@ -12,6 +12,7 @@ export function ProfessorCanvasDraftStep({
   isGenerating,
   onContinueToPublish,
   onGenerate,
+  onRetry,
   previewLectures,
   totalCount,
 }: {
@@ -23,6 +24,7 @@ export function ProfessorCanvasDraftStep({
   isGenerating: boolean;
   onContinueToPublish: () => void;
   onGenerate: () => void;
+  onRetry: (lectureId: string) => void;
   previewLectures: {
     id: string;
     label: string;
@@ -33,10 +35,16 @@ export function ProfessorCanvasDraftStep({
   const { t } = useI18n();
   const actionLabel = isFullCourse ? t("builder.generate.all") : t("builder.generate.single");
   const busyLabel = isFullCourse ? t("builder.generate.busyAll") : t("builder.generate.busySingle");
-  const statusLabel = isFullCourse
-    ? t("builder.generate.statusAll", { count: totalCount })
-    : t("builder.generate.statusSingle");
+  const activeCount = generationProgress.filter(
+    (item) => item.status === "pending" || item.status === "generating",
+  ).length;
+  const statusLabel =
+    isFullCourse && activeCount !== 1
+      ? t("builder.generate.statusAll", { count: activeCount || totalCount })
+      : t("builder.generate.statusSingle");
   const hasDraft = Boolean(canvas);
+  const allDraftsReady =
+    generationProgress.length === 0 || generationProgress.every((item) => item.status === "ready");
   return (
     <section className="flow-card">
       <StepHeader number="04" title={t("builder.generate.title")} done={hasDraft} />
@@ -49,7 +57,13 @@ export function ProfessorCanvasDraftStep({
         {isGenerating ? busyLabel : hasDraft ? t("builder.generate.regenerate") : actionLabel}
       </button>
       {isGenerating ? <PendingStatus label={statusLabel} /> : null}
-      {generationProgress.length ? <GenerationProgressList progress={generationProgress} /> : null}
+      {generationProgress.length ? (
+        <GenerationProgressList
+          isGenerating={isGenerating}
+          onRetry={onRetry}
+          progress={generationProgress}
+        />
+      ) : null}
       {hasDraft && isFullCourse ? (
         <p>{t("builder.generate.fullReady", { count: generatedCount })}</p>
       ) : null}
@@ -58,6 +72,7 @@ export function ProfessorCanvasDraftStep({
       ) : null}
       {hasDraft ? (
         <DraftReview
+          canContinue={allDraftsReady}
           lectures={previewLectures}
           onContinueToPublish={onContinueToPublish}
         />
@@ -67,15 +82,17 @@ export function ProfessorCanvasDraftStep({
 }
 
 function DraftReview({
+  canContinue,
   lectures,
   onContinueToPublish,
 }: {
+  canContinue: boolean;
   lectures: { id: string; label: string; previewHref: string }[];
   onContinueToPublish: () => void;
 }) {
   const { t } = useI18n();
   return (
-    <section className="draft-review" aria-label={t("builder.generate.review") }>
+    <section className="draft-review" aria-label={t("builder.generate.review")}>
       <header>
         <strong>{t("builder.generate.review")}</strong>
         <span>{t("builder.generate.reviewHelp")}</span>
@@ -90,24 +107,62 @@ function DraftReview({
           </div>
         ))}
       </div>
-      <button className="primary-action" type="button" onClick={onContinueToPublish}>
+      <button
+        className="primary-action"
+        disabled={!canContinue}
+        type="button"
+        onClick={onContinueToPublish}
+      >
         {t("builder.generate.continueToPublish")}
       </button>
     </section>
   );
 }
 
-function GenerationProgressList({ progress }: { progress: CanvasGenerationProgress[] }) {
+function GenerationProgressList({
+  isGenerating,
+  onRetry,
+  progress,
+}: {
+  isGenerating: boolean;
+  onRetry: (lectureId: string) => void;
+  progress: CanvasGenerationProgress[];
+}) {
   const { t } = useI18n();
   return (
-    <div className="generation-progress" aria-label={t("builder.generate.progress")}>
-      {progress.map((item) => (
-        <div className={`generation-progress-row is-${item.status}`} key={item.lectureId}>
-          <span>{item.lectureId.replace("lecture-", "Lecture ")}</span>
-          <strong>{item.status}</strong>
-          {item.message ? <small>{item.message}</small> : null}
-        </div>
-      ))}
+    <div
+      aria-label={t("builder.generate.progress")}
+      aria-live="polite"
+      className="generation-progress"
+    >
+      {progress.map((item) => {
+        const lectureLabel = item.lectureId.replace("lecture-", "Lecture ");
+        const message =
+          item.status === "error"
+            ? item.errorKind === "network"
+              ? t("builder.generate.error.network")
+              : t("builder.generate.error.service", {
+                  message: item.message ?? t("builder.generate.error.unknown"),
+                })
+            : item.message;
+        return (
+          <div className={`generation-progress-row is-${item.status}`} key={item.lectureId}>
+            <span>{lectureLabel}</span>
+            <strong>{item.status}</strong>
+            {item.status === "error" ? (
+              <button
+                aria-label={t("builder.generate.retryLecture", { lecture: lectureLabel })}
+                disabled={isGenerating}
+                type="button"
+                onClick={() => onRetry(item.lectureId)}
+              >
+                {t("builder.generate.retry")}
+              </button>
+            ) : null}
+            {message ? <small>{message}</small> : null}
+          </div>
+        );
+      })}
     </div>
   );
 }

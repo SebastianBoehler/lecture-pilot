@@ -12,6 +12,7 @@ from lecturepilot.course_canvas_ids import avoid_mirrored_section_ids
 from lecturepilot.course_canvas_json import parse_model_json
 from lecturepilot.course_canvas_prompt import planner_messages, repair_message
 from lecturepilot.course_canvas_section_planner import plan_sections_individually
+from lecturepilot.course_canvas_source_ref import planned_source_ref
 from lecturepilot.course_canvas_validation import validate_planned_document
 from lecturepilot.course_slide_interleaving import interleave_original_slides
 from lecturepilot.course_planner_warnings import planned_payload, with_payload_warnings
@@ -106,7 +107,7 @@ def _planned_document(payload: dict, source_document: CanvasDocument) -> CanvasD
         update={
             "title": title or source_document.title,
             "source_kind": "generated",
-            "source_ref": f"course planner from {source_document.source_ref}",
+            "source_ref": planned_source_ref(source_document.source_ref),
             "sections": sections,
         }
     )

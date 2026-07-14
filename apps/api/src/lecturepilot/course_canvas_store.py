@@ -6,11 +6,21 @@ import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 
+from pydantic import ValidationError
+
 from lecturepilot.canvas_learning_support import normalize_learning_support
-from lecturepilot.canvas_markdown import read_document_source, write_document_source
+from lecturepilot.canvas_markdown import (
+    CanvasMarkdownError,
+    read_document_source,
+    write_document_source,
+)
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.learning_map import write_learning_map
 from lecturepilot.storage_layout import StorageLayout
+
+
+class InvalidCanvasDraftError(RuntimeError):
+    """Raised when a generated or stored draft violates the canvas contract."""
 
 
 class CourseCanvasStore:
@@ -34,13 +44,9 @@ class CourseCanvasStore:
 
     def write(self, document: CanvasDocument) -> CanvasDocument:
         canvas_dir = self.path(document.course_id, document.lecture_id)
+        document = _prepared_document(document, canvas_dir)
         _clear_sections(canvas_dir)
-        write_document_source(
-            normalize_learning_support(document).model_copy(
-                update={"workspace_path": str(canvas_dir / "index.md")}
-            ),
-            canvas_dir,
-        )
+        write_document_source(document, canvas_dir)
         document = normalize_learning_support(read_document_source(canvas_dir))
         write_learning_map(document, canvas_dir)
         return document
@@ -49,25 +55,42 @@ class CourseCanvasStore:
         draft_dir = self.draft_path(course_id, lecture_id)
         if not (draft_dir / "index.md").exists():
             return None
-        document = normalize_learning_support(read_document_source(draft_dir))
-        write_learning_map(document, draft_dir)
-        return document
+        try:
+            document = normalize_learning_support(read_document_source(draft_dir))
+            write_learning_map(document, draft_dir)
+            return document
+        except (CanvasMarkdownError, ValidationError, ValueError) as exc:
+            raise InvalidCanvasDraftError(
+                "Stored canvas draft is invalid. Retry generation for this lecture."
+            ) from exc
 
     def write_draft(self, document: CanvasDocument) -> CanvasDocument:
         draft_dir = self.draft_path(document.course_id, document.lecture_id)
+        try:
+            document = _prepared_document(document, draft_dir)
+        except (CanvasMarkdownError, ValidationError, ValueError) as exc:
+            raise InvalidCanvasDraftError(
+                "Generated canvas draft is invalid and was not saved."
+            ) from exc
         _replace_canvas_dir(draft_dir)
-        write_document_source(
-            normalize_learning_support(document).model_copy(
-                update={"workspace_path": str(draft_dir / "index.md")}
-            ),
-            draft_dir,
-        )
-        return normalize_learning_support(read_document_source(draft_dir))
+        write_document_source(document, draft_dir)
+        try:
+            return normalize_learning_support(read_document_source(draft_dir))
+        except (CanvasMarkdownError, ValidationError, ValueError) as exc:
+            raise InvalidCanvasDraftError(
+                "Generated canvas draft is invalid and was not saved."
+            ) from exc
 
     def publish_draft(self, *, course_id: str, lecture_id: str, published_by: str) -> dict:
         draft_dir = self.draft_path(course_id, lecture_id)
         if not (draft_dir / "index.md").exists():
             raise FileNotFoundError("No canvas draft exists for this lecture.")
+        try:
+            read_document_source(draft_dir)
+        except (CanvasMarkdownError, ValidationError, ValueError) as exc:
+            raise InvalidCanvasDraftError(
+                "Stored canvas draft is invalid. Retry generation for this lecture."
+            ) from exc
         published_dir = self.path(course_id, lecture_id)
         previous = self.publication(course_id=course_id, lecture_id=lecture_id)
         version = int(previous.get("version", 0)) + 1 if previous else 1
@@ -125,6 +148,13 @@ class CourseCanvasStore:
 def _safe_id(value: str) -> str:
     safe = re.sub(r"[^a-zA-Z0-9_-]+", "-", value).strip("-")
     return (safe or "canvas")[:120]
+
+
+def _prepared_document(document: CanvasDocument, canvas_dir: Path) -> CanvasDocument:
+    normalized = normalize_learning_support(document).model_copy(
+        update={"workspace_path": str(canvas_dir / "index.md")}
+    )
+    return CanvasDocument.model_validate(normalized.model_dump())
 
 
 def _clear_sections(canvas_dir: Path) -> None:

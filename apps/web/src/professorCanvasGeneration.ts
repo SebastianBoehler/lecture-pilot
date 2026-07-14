@@ -5,19 +5,45 @@ const CANVAS_DRAFT_RETRY_DELAYS_MS = [1500, 3500];
 const CANVAS_DRAFT_WORKER_STAGGER_MS = 400;
 
 export type CanvasGenerationStatus = "pending" | "generating" | "ready" | "error";
+export type CanvasGenerationErrorKind = "network" | "service";
 
 export type CanvasGenerationProgress = {
   lectureId: string;
   status: CanvasGenerationStatus;
+  errorKind?: CanvasGenerationErrorKind;
   message?: string;
 };
 
-const wait = (delayMs: number) => new Promise((resolve) => {
-  window.setTimeout(resolve, delayMs);
-});
+export class CanvasGenerationBatchError extends Error {
+  readonly failures: CanvasGenerationProgress[];
+
+  constructor(failures: CanvasGenerationProgress[]) {
+    super("One or more lecture canvas drafts failed.");
+    this.name = "CanvasGenerationBatchError";
+    this.failures = failures;
+  }
+}
+
+const wait = (delayMs: number) =>
+  new Promise((resolve) => {
+    window.setTimeout(resolve, delayMs);
+  });
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Canvas generation failed.";
+}
+
+export function describeCanvasGenerationError(error: unknown): {
+  errorKind: CanvasGenerationErrorKind;
+  message?: string;
+} {
+  const message = errorMessage(error);
+  const isNetworkFailure =
+    error instanceof TypeError &&
+    (/failed to fetch/i.test(message) ||
+      /network ?error/i.test(message) ||
+      /load failed/i.test(message));
+  return isNetworkFailure ? { errorKind: "network" } : { errorKind: "service", message };
 }
 
 function shouldRetryCanvasDraft(error: unknown) {
@@ -58,10 +84,12 @@ async function draftWithRetry(
 export async function generateLectureCanvasDrafts({
   draft,
   lectureIds,
+  onDraftReady,
   onProgress,
 }: {
   draft: (lectureId: string) => Promise<CanvasDocument>;
   lectureIds: string[];
+  onDraftReady?: (lectureId: string, canvas: CanvasDocument) => void;
   onProgress?: (progress: CanvasGenerationProgress) => void;
 }) {
   const canvases = new Array<CanvasDocument>(lectureIds.length);
@@ -77,12 +105,13 @@ export async function generateLectureCanvasDrafts({
       onProgress?.({ lectureId, status: "generating" });
       try {
         canvases[currentIndex] = await draftWithRetry(lectureId, draft, onProgress);
+        onDraftReady?.(lectureId, canvases[currentIndex]);
         onProgress?.({ lectureId, status: "ready" });
       } catch (error) {
         const failure = {
           lectureId,
           status: "error",
-          message: errorMessage(error),
+          ...describeCanvasGenerationError(error),
         } satisfies CanvasGenerationProgress;
         failures.push(failure);
         onProgress?.(failure);
@@ -91,7 +120,7 @@ export async function generateLectureCanvasDrafts({
   });
   await Promise.all(workers);
   if (failures.length > 0) {
-    throw new Error(`${failures.length} lecture canvas draft${failures.length === 1 ? "" : "s"} failed. Retry generation after a short pause.`);
+    throw new CanvasGenerationBatchError(failures);
   }
   return canvases;
 }

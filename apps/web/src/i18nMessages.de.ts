@@ -526,6 +526,12 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.generate.singleReady": "{count} Abschnitte bereit zur Prüfung.",
   "builder.generate.preview": "Kursarbeitsbereich ansehen",
   "builder.generate.progress": "Fortschritt der Vorlesungserzeugung",
+  "builder.generate.retry": "Erneut versuchen",
+  "builder.generate.retryLecture": "{lecture} erneut versuchen",
+  "builder.generate.error.network":
+    "LecturePilot konnte die API nicht erreichen. Versuche diese Vorlesung erneut.",
+  "builder.generate.error.service": "Erzeugung fehlgeschlagen: {message}",
+  "builder.generate.error.unknown": "Es wurden keine Fehlerdetails zurückgegeben.",
   "builder.generate.regenerate": "Canvas-Entwurf erneut erzeugen",
   "builder.generate.review": "Canvas-Entwürfe prüfen",
   "builder.generate.reviewHelp":

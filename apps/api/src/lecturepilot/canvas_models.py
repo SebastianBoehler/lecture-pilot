@@ -5,6 +5,9 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
+MAX_SOURCE_REF_LENGTH = 500
+
+
 class CanvasBlock(BaseModel):
     id: str = Field(min_length=1, max_length=120)
     type: Literal[
@@ -35,7 +38,7 @@ class CanvasBlock(BaseModel):
 class CanvasSection(BaseModel):
     id: str = Field(min_length=1, max_length=120)
     title: str = Field(min_length=1, max_length=200)
-    source_ref: str | None = Field(default=None, max_length=500)
+    source_ref: str | None = Field(default=None, max_length=MAX_SOURCE_REF_LENGTH)
     blocks: list[CanvasBlock] = Field(default_factory=list)
 
 
@@ -46,7 +49,7 @@ class CanvasDocument(BaseModel):
     lecture_id: str = Field(min_length=1, max_length=120)
     title: str = Field(min_length=1, max_length=200)
     source_kind: Literal["latex", "markdown", "generated"]
-    source_ref: str = Field(min_length=1, max_length=500)
+    source_ref: str = Field(min_length=1, max_length=MAX_SOURCE_REF_LENGTH)
     workspace_path: str = Field(min_length=1, max_length=500)
     sections: list[CanvasSection] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list, max_length=20)

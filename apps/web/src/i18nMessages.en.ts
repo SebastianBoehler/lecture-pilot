@@ -509,6 +509,11 @@ export const enMessages = {
   "builder.generate.singleReady": "{count} sections ready for review.",
   "builder.generate.preview": "Preview course workspace",
   "builder.generate.progress": "Lecture generation progress",
+  "builder.generate.retry": "Retry",
+  "builder.generate.retryLecture": "Retry {lecture}",
+  "builder.generate.error.network": "LecturePilot could not reach the API. Retry this lecture.",
+  "builder.generate.error.service": "Generation failed: {message}",
+  "builder.generate.error.unknown": "No error details were returned.",
   "builder.generate.regenerate": "Regenerate draft canvas",
   "builder.generate.review": "Review draft canvases",
   "builder.generate.reviewHelp":

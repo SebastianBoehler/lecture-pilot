@@ -4,6 +4,7 @@ from typing import Protocol
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_text_normalizer import clean_canvas_items, clean_canvas_text
+from lecturepilot.course_canvas_source_ref import planned_source_ref
 from lecturepilot.course_canvas_validation import MAX_PLANNED_SECTIONS
 from lecturepilot.models import ProviderSettings
 from lecturepilot.providers import ProviderConfigurationError
@@ -40,7 +41,7 @@ async def plan_sections_individually(
     return source_document.model_copy(
         update={
             "source_kind": "generated",
-            "source_ref": f"course planner from {source_document.source_ref}",
+            "source_ref": planned_source_ref(source_document.source_ref),
             "sections": sections,
         }
     )

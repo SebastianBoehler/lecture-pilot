@@ -190,7 +190,7 @@ export async function draftLectureCanvas(
       method: "POST",
     }),
   );
-  const payload = await response.json();
+  const payload = await response.json().catch(() => null);
   if (!response.ok) throw new Error(readApiError(payload, "Canvas planner failed."));
   return payload as CanvasDocument;
 }
