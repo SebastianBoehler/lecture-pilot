@@ -22,22 +22,8 @@ cleanup() {
   fi
 }
 trap cleanup INT TERM EXIT
-if [[ -z "${OPENROUTER_API_KEY:-}" && -f ../sunderlabs/.env.local ]]; then
-  OPENROUTER_API_KEY="$(python - <<'PY'
-from pathlib import Path
-for line in Path("../sunderlabs/.env.local").read_text(errors="ignore").splitlines():
-    if line.startswith("OPENROUTER_API_KEY="):
-        print(line.split("=", 1)[1].strip().strip('"').strip("'"))
-        break
-PY
-)"
-  export OPENROUTER_API_KEY
-fi
-if [[ -z "${LECTUREPILOT_MODEL:-}" \
-  || "$LECTUREPILOT_MODEL" == "gemini/gemini-3.1-flash-lite" \
-  || "$LECTUREPILOT_MODEL" == "openrouter/google/gemini-3.1-flash-lite" ]]; then
-  export LECTUREPILOT_MODEL="openrouter/openai/gpt-oss-120b:nitro"
-fi
+
+bash scripts/check-provider-env.sh
 
 stop_repo_process_on_port() {
   local port="$1"
