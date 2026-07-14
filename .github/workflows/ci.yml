@@ -38,8 +38,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -c apps/api/requirements.lock -e "apps/api[test,agent,tuebingen]"
+          pip install -e apps/latex-compiler
       - name: Run API lint
-        run: python -m ruff check apps/api/src apps/api/tests
+        run: python -m ruff check apps/api/src apps/api/tests apps/latex-compiler/src apps/latex-compiler/tests
       - name: Verify database migrations
         run: |
           alembic -c apps/api/alembic.ini upgrade head
@@ -48,6 +49,8 @@ jobs:
           alembic -c apps/api/alembic.ini upgrade head
       - name: Run API test suite
         run: pytest apps/api/tests
+      - name: Run isolated compiler test suite
+        run: pytest apps/latex-compiler/tests
 
   ui-test-suite:
     name: UI test suite
