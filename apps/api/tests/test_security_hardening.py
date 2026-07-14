@@ -149,9 +149,26 @@ def test_production_preflight_accepts_complete_configuration() -> None:
         "LECTUREPILOT_ALLOWED_MODELS": "gemini/gemini-3.1-flash-lite",
         "GEMINI_API_KEY": "configured-outside-the-repository",
         "LECTUREPILOT_TRACE_CONTENT": "metadata",
+        "LECTUREPILOT_COMMIT_SHA": "b7f559d4a3c2",
     }
 
     assert validate_production_environment(configured) == []
+
+
+def test_production_preflight_rejects_stale_api_image_revision() -> None:
+    configured = {
+        "LECTUREPILOT_DOMAIN": "lecturepilot.example.edu",
+        "LECTUREPILOT_POSTGRES_PASSWORD": "safe_url_token_0123456789abcdef",
+        "LECTUREPILOT_MODEL": "gemini/gemini-3.1-flash-lite",
+        "LECTUREPILOT_ALLOWED_MODELS": "gemini/gemini-3.1-flash-lite",
+        "GEMINI_API_KEY": "configured-outside-the-repository",
+        "LECTUREPILOT_TRACE_CONTENT": "metadata",
+        "LECTUREPILOT_COMMIT_SHA": "b7f559d4a3c2",
+    }
+
+    errors = validate_production_environment(configured, build_commit_sha="aaaaaaaaaaaa")
+
+    assert errors == ["The API image revision does not match LECTUREPILOT_COMMIT_SHA."]
 
 
 def test_production_preflight_names_missing_settings_without_echoing_values() -> None:
@@ -170,6 +187,7 @@ def test_production_preflight_names_missing_settings_without_echoing_values() ->
     assert "LECTUREPILOT_ALLOWED_MODELS" in errors
     assert "GEMINI_API_KEY" in errors
     assert "LECTUREPILOT_TRACE_CONTENT" in errors
+    assert "LECTUREPILOT_COMMIT_SHA" in errors
     assert "do-not-echo-this" not in errors
 
 
@@ -180,9 +198,9 @@ def test_production_preflight_rejects_invalid_dns_labels() -> None:
         "LECTUREPILOT_MODEL": "gemini/gemini-3.1-flash-lite",
         "LECTUREPILOT_ALLOWED_MODELS": "gemini/gemini-3.1-flash-lite",
         "GEMINI_API_KEY": "configured-outside-the-repository",
+        "LECTUREPILOT_COMMIT_SHA": "b7f559d4a3c2",
     }
 
     assert any(
-        "LECTUREPILOT_DOMAIN" in error
-        for error in validate_production_environment(configured)
+        "LECTUREPILOT_DOMAIN" in error for error in validate_production_environment(configured)
     )

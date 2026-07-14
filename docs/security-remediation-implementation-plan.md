@@ -1,6 +1,6 @@
 # LecturePilot Security Remediation Implementation Plan
 
-Status: local implementation complete; live release blocked by the items listed below<br>
+Status: live pilot deployed; production security approval remains blocked by the items below<br>
 Prepared: 2026-07-10<br>
 Baseline: `main` at `01608fe`<br>
 Source findings: `security_best_practices_report.md`
@@ -27,7 +27,8 @@ Source findings: `security_best_practices_report.md`
   content through ordinary administration routes.
 - The tutor remains fully capable inside its authorized virtual workspace. The boundary limits
   which roots exist, not which normal file-navigation tools it may use inside those roots.
-- No live VM deployment happens until the final deployment gate is approved.
+- A live pilot was deployed before the final gate was closed. That operational decision does not
+  mark the remaining security, privacy, staging, or restore checks complete.
 
 ## Confirmed matching and analytics decisions
 
@@ -262,8 +263,8 @@ Gate 7:
       to opaque database IDs without copying learner data into course roots.
 - [ ] Add backup, restore, retention, account deletion, session revocation, audit review, and incident
       runbooks. Complete the privacy notice and provider/subprocessor inventory.
-- [ ] Run migrations and smoke checks in a disposable staging environment first. Do not deploy the
-      reviewed VM until the user separately approves live deployment.
+- [ ] Run migrations and smoke checks in a disposable staging environment. The live pilot was
+      deployed before this gate; deployment does not satisfy or waive it.
 
 Final gate:
 
@@ -272,7 +273,7 @@ Final gate:
 - [ ] Live staging verifies TLS, cookies, CSRF, headers, Host/Origin rejection, public ports, non-root
       runtime, enrollment sync, professor approval, course matching, isolation, and backup restore.
 - [ ] `security_best_practices_report.md` is re-reviewed and every public-hosting blocker is closed or
-      explicitly accepted by the user before any VM deployment.
+      explicitly accepted by the user before expanding the live pilot.
 
 Current blockers are representative cross-account student Alma/ILIAS identifiers, disposable
 hosted staging and restore verification, and approval of retention, deletion, privacy, and

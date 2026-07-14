@@ -8,6 +8,8 @@ import re
 
 from dotenv import dotenv_values
 
+from lecturepilot.release_info import release_info
+
 
 _DOMAIN_PATTERN = re.compile(
     r"^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+"
@@ -21,9 +23,14 @@ _PROVIDER_KEYS = {
 }
 _PLACEHOLDERS = {"change-me", "changeme", "password", "replace-me", "secret"}
 _URL_SAFE_PASSWORD = re.compile(r"^[A-Za-z0-9._~-]+$")
+_COMMIT_SHA = re.compile(r"^[0-9a-fA-F]{7,64}$")
 
 
-def validate_production_environment(env: Mapping[str, str | None]) -> list[str]:
+def validate_production_environment(
+    env: Mapping[str, str | None],
+    *,
+    build_commit_sha: str | None = None,
+) -> list[str]:
     errors: list[str] = []
     domain = _value(env, "LECTUREPILOT_DOMAIN").lower()
     if not _DOMAIN_PATTERN.fullmatch(domain):
@@ -58,20 +65,28 @@ def validate_production_environment(env: Mapping[str, str | None]) -> list[str]:
     trace_content = _value(env, "LECTUREPILOT_TRACE_CONTENT") or "metadata"
     if trace_content not in {"metadata", "redacted"}:
         errors.append("LECTUREPILOT_TRACE_CONTENT must be metadata or redacted in production.")
+
+    expected_commit_sha = _value(env, "LECTUREPILOT_COMMIT_SHA").lower()
+    if not _COMMIT_SHA.fullmatch(expected_commit_sha):
+        errors.append("LECTUREPILOT_COMMIT_SHA must be the deployed Git commit SHA.")
+    elif build_commit_sha is not None and expected_commit_sha != build_commit_sha.lower():
+        errors.append("The API image revision does not match LECTUREPILOT_COMMIT_SHA.")
     return errors
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Validate LecturePilot production configuration.")
     parser.add_argument("--env-file", default=".env", type=Path)
+    parser.add_argument("--require-build-identity", action="store_true")
     args = parser.parse_args()
     values = {
-        key: value
-        for key, value in dotenv_values(args.env_file).items()
-        if value is not None
+        key: value for key, value in dotenv_values(args.env_file).items() if value is not None
     }
     values.update(os.environ)
-    errors = validate_production_environment(values)
+    errors = validate_production_environment(
+        values,
+        build_commit_sha=release_info().commit_sha if args.require_build_identity else None,
+    )
     if args.env_file.is_file() and args.env_file.stat().st_mode & 0o077:
         errors.append(f"{args.env_file} must not be readable or writable by group/other users.")
     if errors:

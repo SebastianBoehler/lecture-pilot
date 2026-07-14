@@ -1,6 +1,7 @@
 # Security operations runbook
 
-This runbook describes the minimum staging procedure. It is not approval to deploy the live VM.
+This runbook describes the minimum procedure for staging and the deployed live pilot. Its existence,
+and the fact that the pilot is running, are not production security approval.
 
 ## Backup
 

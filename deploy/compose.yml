@@ -1,3 +1,11 @@
+x-api-build: &api-build
+  context: ..
+  dockerfile: apps/api/Dockerfile
+  args:
+    LECTUREPILOT_COMMIT_SHA: ${LECTUREPILOT_COMMIT_SHA:?Set the deployed Git commit SHA}
+
+x-api-image: &api-image lecturepilot-api:${LECTUREPILOT_COMMIT_SHA:?Set the deployed Git commit SHA}
+
 x-api-environment: &api-environment
   DATABASE_URL: postgresql://lecturepilot:${LECTUREPILOT_POSTGRES_PASSWORD:?Set a strong database password}@db:5432/lecturepilot
   LECTUREPILOT_ENV: production
@@ -16,6 +24,7 @@ x-api-environment: &api-environment
   LECTUREPILOT_ALLOWED_MODELS: ${LECTUREPILOT_ALLOWED_MODELS:?Set the model allowlist}
   LECTUREPILOT_OBSERVABILITY: logging
   LECTUREPILOT_TRACE_CONTENT: metadata
+  LECTUREPILOT_COMMIT_SHA: ${LECTUREPILOT_COMMIT_SHA:?Set the deployed Git commit SHA}
 
 services:
   gateway:
@@ -42,9 +51,8 @@ services:
     security_opt: [no-new-privileges:true]
 
   api:
-    build:
-      context: ..
-      dockerfile: apps/api/Dockerfile
+    image: *api-image
+    build: *api-build
     env_file:
       - ../.env
     environment: *api-environment
@@ -114,10 +122,17 @@ services:
     cpus: 1
 
   preflight:
-    build:
-      context: ..
-      dockerfile: apps/api/Dockerfile
-    command: [python, -m, lecturepilot.production_preflight, --env-file, /dev/null]
+    image: *api-image
+    build: *api-build
+    command:
+      [
+        python,
+        -m,
+        lecturepilot.production_preflight,
+        --env-file,
+        /dev/null,
+        --require-build-identity,
+      ]
     env_file:
       - ../.env
     environment:
@@ -132,9 +147,8 @@ services:
     security_opt: [no-new-privileges:true]
 
   migrate:
-    build:
-      context: ..
-      dockerfile: apps/api/Dockerfile
+    image: *api-image
+    build: *api-build
     command: [alembic, -c, apps/api/alembic.ini, upgrade, head]
     environment: *api-environment
     depends_on:

@@ -1,5 +1,8 @@
 FROM python:3.12-slim
 
+ARG LECTUREPILOT_COMMIT_SHA
+LABEL org.opencontainers.image.revision="${LECTUREPILOT_COMMIT_SHA}"
+
 WORKDIR /app
 
 COPY apps/api/pyproject.toml apps/api/pyproject.toml
@@ -8,6 +11,8 @@ COPY apps/api/src apps/api/src
 COPY apps/api/alembic.ini apps/api/alembic.ini
 COPY apps/api/migrations apps/api/migrations
 COPY README.md README.md
+
+RUN python -c 'import pathlib,re,sys; value=sys.argv[1].lower(); re.fullmatch(r"[0-9a-f]{7,64}", value) or sys.exit("LECTUREPILOT_COMMIT_SHA must be a Git commit SHA"); pathlib.Path("apps/api/src/lecturepilot/_build_commit.txt").write_text(value + "\n", encoding="ascii")' "$LECTUREPILOT_COMMIT_SHA"
 
 RUN pip install --no-cache-dir -c apps/api/requirements.lock -e "apps/api[agent,tuebingen]"
 

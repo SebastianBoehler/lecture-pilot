@@ -7,6 +7,7 @@ from lecturepilot.app import create_app
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_update_apply import apply_course_update
 from lecturepilot.course_update_models import CourseUpdateApplyInput
+from lecturepilot.course_update_storage import CourseUpdateRecoveryError
 
 
 def test_course_update_detects_unchanged_files_without_creating_work(tmp_path: Path) -> None:
@@ -209,6 +210,43 @@ def test_course_update_rolls_back_files_and_schedule_if_metadata_write_fails(
     assert (layout.course_uploads_dir("update-demo") / "Lecture01.tex").read_bytes() == original
     assert workspace_path.read_bytes() == workspace_before
     assert layout.course_update_root("update-demo", update_id).exists()
+
+
+def test_course_update_surfaces_recovery_id_when_automatic_rollback_fails(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    client = _course_client(tmp_path)
+    update_id = _create_update(client)
+
+    def fail_with_recovery(*_args, **_kwargs):
+        raise CourseUpdateRecoveryError("recovery-test-id")
+
+    monkeypatch.setattr(
+        "lecturepilot.course_update_routes.apply_course_update",
+        fail_with_recovery,
+    )
+
+    response = client.post(
+        f"/admin/courses/update-demo/updates/{update_id}/apply",
+        headers=professor_headers(),
+        json={
+            "lectures": [
+                {
+                    "lecture_id": "lecture-01",
+                    "number": "01",
+                    "title": "First",
+                    "date": "2026-05-06",
+                    "file_paths": ["Lecture01.tex"],
+                }
+            ]
+        },
+    )
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == (
+        "Course update recovery required (recovery id: recovery-test-id)."
+    )
 
 
 def _course_client(tmp_path: Path) -> TestClient:

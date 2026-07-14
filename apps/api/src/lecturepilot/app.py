@@ -1,8 +1,12 @@
 from __future__ import annotations
 
-from fastapi import FastAPI
+import os
+
+from fastapi import FastAPI, Request
+from fastapi import Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.responses import JSONResponse
 
 from lecturepilot.account_admin_routes import register_account_admin_routes
 from lecturepilot.admin_media_routes import register_admin_media_routes
@@ -19,6 +23,7 @@ from lecturepilot.course_canvas_planner import CourseCanvasPlanner, LiteLLMCours
 from lecturepilot.course_deletion import register_course_deletion_routes
 from lecturepilot.course_routes import register_course_routes
 from lecturepilot.course_update_routes import register_course_update_routes
+from lecturepilot.course_update_storage import CourseUpdateRecoveryError
 from lecturepilot.csrf import CsrfProtectionMiddleware, allowed_origins
 from lecturepilot.database import Database
 from lecturepilot.exam_readiness_routes import register_exam_readiness_routes
@@ -34,6 +39,7 @@ from lecturepilot.observability import observability_from_env
 from lecturepilot.professor_usage import ProfessorUsageRepository
 from lecturepilot.professor_usage_routes import register_professor_usage_routes
 from lecturepilot.rate_limit import RateLimitMiddleware
+from lecturepilot.release_info import release_info
 from lecturepilot.runtime_env import load_project_env
 from lecturepilot.sample_data import COURSE, LECTURES
 from lecturepilot.security_headers import (
@@ -57,7 +63,19 @@ load_project_env()
 
 def create_app() -> FastAPI:
     SessionAuthSettings.from_env()
-    app = FastAPI(title="LecturePilot API", version="0.1.0", **production_fastapi_kwargs())
+    release = release_info()
+    app = FastAPI(
+        title="LecturePilot API",
+        version=release.version,
+        **production_fastapi_kwargs(),
+    )
+
+    @app.exception_handler(CourseUpdateRecoveryError)
+    async def course_update_recovery_error(
+        _request: Request, exc: CourseUpdateRecoveryError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=500, content={"detail": str(exc)})
+
     app.state.database = Database()
     app.state.session_store = SessionStore(app.state.database)
     app.state.usage_quota = UsageQuota(app.state.database)
@@ -108,8 +126,16 @@ def create_app() -> FastAPI:
     app.add_middleware(SecurityHeadersMiddleware)
 
     @app.get("/health")
-    def health() -> dict[str, str]:
-        return {"status": "ok"}
+    def health(response: Response) -> dict[str, str]:
+        expected_commit = (os.getenv("LECTUREPILOT_COMMIT_SHA") or "").strip().lower()
+        identity_matches = not expected_commit or expected_commit == release.commit_sha
+        if not identity_matches:
+            response.status_code = 503
+        return {
+            "status": "ok" if identity_matches else "error",
+            "version": release.version,
+            "commit_sha": release.commit_sha,
+        }
 
     register_auth_routes(app, course_tenant_id=COURSE_TENANT_ID)
     register_university_course_routes(app, course_tenant_id=COURSE_TENANT_ID)

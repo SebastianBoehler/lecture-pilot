@@ -1,8 +1,8 @@
-# LecturePilot pre-deployment security review
+# LecturePilot production-pilot security status
 
-Date: 2026-07-11<br>
-Reviewed baseline: `main` at `386a700`, plus the local release-polish worktree<br>
-Verdict: **Do not deploy live yet**
+Original review: 2026-07-11; deployment status updated 2026-07-14<br>
+Reviewed security baseline: `main` at `386a700`, plus the local release-polish worktree<br>
+Deployment status: **A live pilot is deployed; production security approval remains pending**
 
 ## Executive summary
 
@@ -16,7 +16,8 @@ container stack.
 The published `tue-api-wrapper==0.3.0` requires Pillow 12.3, and the regenerated Python lock
 passes `pip-audit`; the previous high dependency blocker is closed. Representative cross-account
 Alma/ILIAS identifiers, live TLS/VM isolation, restore, and the legal retention/privacy policy remain
-unverified. No VM access or deployment occurred.
+unverified. The operator subsequently deployed a live pilot. This review did not independently
+inspect that VM or close the remaining gates, so deployment must not be read as security approval.
 
 No minimum analytics cohort is imposed. Course owners receive only aggregate values that actually
 exist, or an explicit no-data result. Platform course search, join requests, tutor invitations, and
@@ -112,7 +113,7 @@ daily turns, reserved tokens, image counts, and concurrent turns across workers 
 Evidence: `providers.py`, `usage_quota.py:38-181`, `agent_turn_orchestration.py`, and
 `test_usage_quota.py`.
 
-### H-7 — Deployment path and persistence: implemented, not live-verified
+### H-7 — Deployment path and persistence: deployed, not independently live-verified
 
 The web build uses same-origin `/api`; Caddy provides HTTPS and redirects; only 80/443 are published.
 API, web, and database stay internal. The API runs as UID 10001 with a read-only root, dropped
@@ -189,12 +190,14 @@ Passed locally:
   caught and fixed discovered-lecture authorization, oversized provider metadata, and draft-preview
   course-scope regressions.
 
-Not performed: a login with real professor Alma credentials, real cross-account university
-identifier comparison, disposable hosted staging, live VM/SSH, TLS/browser verification, restore
-rehearsal, provider data-retention review, or legal/privacy approval.
+Not performed by this security review: a login with real professor Alma credentials, real
+cross-account university identifier comparison, disposable hosted staging, live VM/SSH inspection,
+TLS/browser verification against the deployed pilot, restore rehearsal, provider data-retention
+review, or legal/privacy approval.
 
-## Deployment decision
+## Deployment status and operating decision
 
-Do not deploy to the live VM. Complete the real university identifier check, approve
-privacy/retention operations, and pass disposable staging. The current work is a locally verified
-remediation implementation, not a production authorization.
+The operator has deployed a live pilot. Until the real university identifier check, approved
+privacy/retention operations, disposable staging, and restore rehearsal are complete, do not expand
+access or treat the pilot as production-approved. The original local remediation evidence and the
+fact of deployment do not replace those checks.

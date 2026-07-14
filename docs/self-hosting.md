@@ -1,8 +1,9 @@
 # Self-hosting notes
 
 LecturePilot is designed for one hardened shared service, not per-user containers or arbitrary host
-filesystem access. The checked-in Compose stack is a staging starter; it is not approval to deploy
-the live VM.
+filesystem access. A live pilot has been deployed from the checked-in Compose topology. The files
+document the intended runtime, but neither the deployment nor this document closes the outstanding
+security and privacy gates.
 
 ## Runtime layout
 
@@ -22,6 +23,7 @@ Set at least:
 
 - `LECTUREPILOT_DOMAIN`
 - a strong `LECTUREPILOT_POSTGRES_PASSWORD`
+- `LECTUREPILOT_COMMIT_SHA` set to the exact deployed Git commit
 - the required model/image provider keys
 - the university-wrapper configuration needed by `tue-api-wrapper`
 - an explicit server model allowlist
@@ -37,6 +39,18 @@ python3 -c 'import secrets; print(secrets.token_urlsafe(32))'
 
 Use the generated URL-safe value for `LECTUREPILOT_POSTGRES_PASSWORD`. Set
 `LECTUREPILOT_MODEL`, include it in `LECTUREPILOT_ALLOWED_MODELS`, and add the matching provider key.
+Export the exact source revision before validating, building, or starting Compose:
+
+```bash
+export LECTUREPILOT_COMMIT_SHA="$(git rev-parse HEAD)"
+```
+
+Compose passes this value as an API-image build argument and as the expected runtime revision. The
+build writes it into the image, and the API, preflight, and migration services all reference that
+immutable revision-tagged image. `/api/health` reads only the baked value and returns unavailable if
+it differs from the expected revision. Container preflight rejects the same mismatch before startup.
+The API package version is read from the installed package metadata.
+
 The preflight reports missing setting names but never prints their values:
 
 ```bash
@@ -64,8 +78,8 @@ docker compose --env-file .env -f deploy/compose.yml build
 ```
 
 `docker compose up` runs the same preflight as a one-shot service before database migration and API
-startup. Missing or unsafe configuration therefore stops the deployment instead of degrading to
-development behavior.
+startup, with image-identity verification enabled. Missing or unsafe configuration and stale API
+images therefore stop the deployment instead of degrading to development behavior.
 
 The API image runs as UID 10001 with a read-only root, dropped capabilities, a temporary `/tmp`, and
 CPU/memory/process limits. Gateway, web, and database use patched derived images recorded in
@@ -92,10 +106,11 @@ bounded worker processes with page, pixel, CPU, memory, file, and timeout limits
 additionally isolated in the internal-only compiler container; a failure leaves the parsed text
 canvas usable and adds a professor-facing warning.
 
-## Current release blockers
+## Current pilot blockers
 
-Do not host publicly until all blockers in `security_best_practices_report.md` are closed. In
-particular, student Alma/ILIAS identifier matching across representative accounts, disposable TLS
-staging, backup restore, retention, deletion, privacy notice, and provider/subprocessor review remain
-unverified or incomplete. The pinned `tue-api-wrapper==0.3.0` and Pillow 12.3 dependency set passes
-the current Python audit.
+The live pilot is not production-security approval. Do not expand access until all blockers in
+`security_best_practices_report.md` are closed or explicitly accepted. In particular, student
+Alma/ILIAS identifier matching across representative accounts, disposable TLS staging, backup
+restore, retention, deletion, privacy notice, and provider/subprocessor review remain unverified or
+incomplete. The pinned `tue-api-wrapper==0.3.0` and Pillow 12.3 dependency set passed the recorded
+Python audit.

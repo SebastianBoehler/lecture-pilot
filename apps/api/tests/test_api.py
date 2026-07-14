@@ -15,15 +15,6 @@ from agent_test_helpers import CanvasContextWorkspace, agent_client
 from auth_helpers import pending_university_login, student_headers
 
 
-def test_health_endpoint() -> None:
-    client = TestClient(create_app())
-
-    response = client.get("/health")
-
-    assert response.status_code == 200
-    assert response.json()["status"] == "ok"
-
-
 def test_tuebingen_login_returns_courses_without_echoing_password(monkeypatch) -> None:
     monkeypatch.delenv("LECTUREPILOT_DEMO_INCLUDE_CREATED_COURSES", raising=False)
     app = create_app()
