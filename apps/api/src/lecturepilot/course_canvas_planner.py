@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from typing import Protocol
+from uuid import uuid4
 
 from lecturepilot.agent_response_schema import course_canvas_response_format
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
@@ -20,16 +21,25 @@ from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_request_options import completion_options
 from lecturepilot.model_usage import ModelUsageRecorder, complete_with_usage
 from lecturepilot.models import ProviderCapability, ProviderSettings
+from lecturepilot.observability import Observability
+from lecturepilot.logging_observability import current_operation_id
 from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
 
+
 class CoursePlanModelClient(Protocol):
-    async def complete_plan(self, *, settings: ProviderSettings, messages: list[dict[str, str]]) -> dict:
+    async def complete_plan(
+        self, *, settings: ProviderSettings, messages: list[dict[str, str]]
+    ) -> dict:
         """Return one source-grounded course canvas plan."""
+
+
 class LiteLLMCoursePlanClient:
     def __init__(self, usage_recorder: ModelUsageRecorder | None = None) -> None:
         self.usage_recorder = usage_recorder
 
-    async def complete_plan(self, *, settings: ProviderSettings, messages: list[dict[str, str]]) -> dict:
+    async def complete_plan(
+        self, *, settings: ProviderSettings, messages: list[dict[str, str]]
+    ) -> dict:
         try:
             from litellm import acompletion
         except ImportError as exc:
@@ -51,40 +61,82 @@ class LiteLLMCoursePlanClient:
         content = response.choices[0].message.content
         finish_reason = str(getattr(response.choices[0], "finish_reason", "") or "")
         return planned_payload(parse_model_json(content), finish_reason=finish_reason)
+
+
 class CourseCanvasPlanner:
-    def __init__(self, provider_registry: ProviderRegistry | None = None, model_client: CoursePlanModelClient | None = None) -> None:
+    def __init__(
+        self,
+        provider_registry: ProviderRegistry | None = None,
+        model_client: CoursePlanModelClient | None = None,
+        observability: Observability | None = None,
+    ) -> None:
         self.provider_registry = provider_registry or ProviderRegistry.from_env()
         self.model_client = model_client or LiteLLMCoursePlanClient()
+        self.observability = observability or Observability()
 
     async def plan_canvas(self, source_document: CanvasDocument) -> CanvasDocument:
-        settings = self.provider_registry.require_ready([ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON])
+        settings = self.provider_registry.require_ready(
+            [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
+        )
         source_document = filter_source_document_for_planning(source_document)
         messages = planner_messages(source_document)
         last_error: ProviderConfigurationError | None = None
-        for _ in range(2):
+        generation_id = current_operation_id() or uuid4().hex
+        span_attributes = {
+            "course_id": source_document.course_id,
+            "lecture_id": source_document.lecture_id,
+            "generation_id": generation_id,
+            "provider": settings.provider,
+            "model": settings.model,
+        }
+        for attempt in range(1, 3):
             try:
-                payload = await self.model_client.complete_plan(settings=settings, messages=messages)
-                document = avoid_mirrored_section_ids(_planned_document(payload, source_document), source_document)
-                document = enrich_learning_document(document)
-                document = interleave_original_slides(document, source_document)
-                document = with_payload_warnings(document, payload)
-                validate_planned_document(document, source_document)
-                return document
+                with self.observability.model_span(
+                    stage="primary_plan", attempt=attempt, **span_attributes
+                ) as span:
+                    payload = await self.model_client.complete_plan(
+                        settings=settings, messages=messages
+                    )
+                    document = avoid_mirrored_section_ids(
+                        _planned_document(payload, source_document), source_document
+                    )
+                    document = enrich_learning_document(document)
+                    document = interleave_original_slides(document, source_document)
+                    document = with_payload_warnings(document, payload)
+                    validate_planned_document(document, source_document)
+                    span.set_outputs(
+                        {
+                            "section_count": len(document.sections),
+                            "warning_count": len(document.warnings),
+                        }
+                    )
+                    return document
             except ProviderConfigurationError as exc:
                 last_error = exc
                 messages = [*messages, repair_message(str(exc), source_document)]
         if last_error:
-            sectionwise = await plan_sections_individually(
-                model_client=self.model_client,
-                settings=settings,
-                source_document=source_document,
-            )
-            sectionwise = avoid_mirrored_section_ids(sectionwise, source_document)
-            sectionwise = enrich_learning_document(sectionwise)
-            sectionwise = interleave_original_slides(sectionwise, source_document)
-            validate_planned_document(sectionwise, source_document)
-            return sectionwise
+            with self.observability.model_span(
+                stage="sectionwise_fallback", attempt=3, **span_attributes
+            ) as span:
+                sectionwise = await plan_sections_individually(
+                    model_client=self.model_client,
+                    settings=settings,
+                    source_document=source_document,
+                )
+                sectionwise = avoid_mirrored_section_ids(sectionwise, source_document)
+                sectionwise = enrich_learning_document(sectionwise)
+                sectionwise = interleave_original_slides(sectionwise, source_document)
+                validate_planned_document(sectionwise, source_document)
+                span.set_outputs(
+                    {
+                        "section_count": len(sectionwise.sections),
+                        "warning_count": len(sectionwise.warnings),
+                    }
+                )
+                return sectionwise
         raise last_error or ProviderConfigurationError("Course planner returned no usable draft.")
+
+
 def _planned_document(payload: dict, source_document: CanvasDocument) -> CanvasDocument:
     raw_sections = payload.get("sections")
     if not isinstance(raw_sections, list):
@@ -113,7 +165,9 @@ def _planned_document(payload: dict, source_document: CanvasDocument) -> CanvasD
     )
 
 
-def _read_section(raw_section: object, index: int, allowed_assets: dict[str, str | None]) -> CanvasSection | None:
+def _read_section(
+    raw_section: object, index: int, allowed_assets: dict[str, str | None]
+) -> CanvasSection | None:
     if not isinstance(raw_section, dict):
         return None
     title = str(raw_section.get("title") or f"Canvas section {index}").strip()[:200]
@@ -129,7 +183,9 @@ def _read_section(raw_section: object, index: int, allowed_assets: dict[str, str
     )
 
 
-def _read_blocks(raw_blocks: object, section_id: str, allowed_assets: dict[str, str | None]) -> list[CanvasBlock]:
+def _read_blocks(
+    raw_blocks: object, section_id: str, allowed_assets: dict[str, str | None]
+) -> list[CanvasBlock]:
     if not isinstance(raw_blocks, list):
         return []
     blocks: list[CanvasBlock] = []
@@ -138,12 +194,24 @@ def _read_blocks(raw_blocks: object, section_id: str, allowed_assets: dict[str, 
         if not isinstance(raw_block, dict):
             continue
         block_type = raw_block.get("type")
-        if block_type not in {"paragraph", "list", "callout", "math", "asset", "video", "table", "checkpoint", "quiz"}:
+        if block_type not in {
+            "paragraph",
+            "list",
+            "callout",
+            "math",
+            "asset",
+            "video",
+            "table",
+            "checkpoint",
+            "quiz",
+        }:
             block_type = "paragraph"
         if block_type in {"asset", "video"} and raw_block.get("asset_path") not in allowed_assets:
             continue
         counters[block_type] = counters.get(block_type, 0) + 1
-        block_id = _safe_id(str(raw_block.get("id") or f"{section_id}-{block_type}-{counters[block_type]}"))
+        block_id = _safe_id(
+            str(raw_block.get("id") or f"{section_id}-{block_type}-{counters[block_type]}")
+        )
         block = _read_block(raw_block, block_id, block_type, allowed_assets)
         if _is_usable_block(block):
             blocks.append(block)
@@ -171,7 +239,8 @@ def _read_block(
             asset_path=asset_path,
             asset_url=allowed_assets.get(asset_path),
             caption=str(raw_block.get("caption") or asset_path)[:500],
-            text=_trim(clean_canvas_text(raw_block.get("text") or raw_block.get("content")), 700) or None,
+            text=_trim(clean_canvas_text(raw_block.get("text") or raw_block.get("content")), 700)
+            or None,
         )
     if block_type == "quiz":
         return CanvasBlock(
@@ -179,7 +248,9 @@ def _read_block(
             type="quiz",
             text=_trim(clean_canvas_text(raw_block.get("text") or raw_block.get("question")), 1400),
             items=[_trim(item, 180) for item in clean_canvas_items(_block_items(raw_block)[:6])],
-            caption=str(raw_block.get("caption") or raw_block.get("title") or "Checkpoint quiz")[:500],
+            caption=str(raw_block.get("caption") or raw_block.get("title") or "Checkpoint quiz")[
+                :500
+            ],
             answer_index=_answer_index(raw_block),
         )
     if block_type in {"checkpoint", "table"}:
@@ -224,7 +295,9 @@ def _safe_id(value: str) -> str:
 
 
 def _trim(value: str, limit: int) -> str:
-    cleaned = value.strip() if value.lstrip().startswith(("```", "~~~")) else " ".join(value.split())
+    cleaned = (
+        value.strip() if value.lstrip().startswith(("```", "~~~")) else " ".join(value.split())
+    )
     if len(cleaned) <= limit:
         return cleaned
     return cleaned[: limit - 3].rstrip() + "..."

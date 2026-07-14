@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from pathlib import Path
+from uuid import uuid4
+
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 
@@ -7,6 +10,7 @@ from lecturepilot.api_auth import request_context, require_course_owner, require
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.course_access import course_actor_access, require_lecture_id_access
+from lecturepilot.logging_observability import operation_scope
 from lecturepilot.models import Course, Lecture
 from lecturepilot.professor_preview import professor_preview_user_id
 from lecturepilot.tenancy import TenantContext
@@ -27,34 +31,47 @@ def register_asset_routes(
         preview: str | None = None,
         context: TenantContext = Depends(request_context),
     ) -> FileResponse:
-        course, _lecture = require_lecture_id_access(
-            app,
-            context,
-            course_id=course_id,
-            lecture_id=lecture_id,
-            course_tenant_id=course_tenant_id,
-            seeded_course=seeded_course,
-            seeded_lectures=seeded_lectures,
-        )
-        actor = course_actor_access(app, context, course_id, course_tenant_id)
-        if not actor.is_owner:
-            _require_published_canvas_asset(app, course.id, lecture_id, asset_path)
-        try:
-            if preview == "png":
-                path = app.state.canvas_workspace.asset_preview_path(
-                    course_id=course_id,
-                    lecture_id=lecture_id,
-                    asset_path=asset_path,
-                )
-            else:
-                path = app.state.canvas_workspace.asset_path(
-                    course_id=course_id,
-                    lecture_id=lecture_id,
-                    asset_path=asset_path,
-                )
-        except CanvasWorkspaceError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-        return FileResponse(path)
+        operation_id = uuid4().hex
+        with (
+            operation_scope(operation_id),
+            app.state.observability.tool_span(
+                "course_asset_resolution",
+                course_id=course_id,
+                lecture_id=lecture_id,
+                stage="resolve",
+                attempt=1,
+                preview=preview == "png",
+                asset_extension=Path(asset_path).suffix.lower(),
+            ),
+        ):
+            course, _lecture = require_lecture_id_access(
+                app,
+                context,
+                course_id=course_id,
+                lecture_id=lecture_id,
+                course_tenant_id=course_tenant_id,
+                seeded_course=seeded_course,
+                seeded_lectures=seeded_lectures,
+            )
+            actor = course_actor_access(app, context, course_id, course_tenant_id)
+            if not actor.is_owner:
+                _require_published_canvas_asset(app, course.id, lecture_id, asset_path)
+            try:
+                if preview == "png":
+                    path = app.state.canvas_workspace.asset_preview_path(
+                        course_id=course_id,
+                        lecture_id=lecture_id,
+                        asset_path=asset_path,
+                    )
+                else:
+                    path = app.state.canvas_workspace.asset_path(
+                        course_id=course_id,
+                        lecture_id=lecture_id,
+                        asset_path=asset_path,
+                    )
+            except CanvasWorkspaceError as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+            return FileResponse(path)
 
     @app.get("/workspace-assets/{course_id}/{lecture_id}/{student_key}/{asset_path:path}")
     def workspace_asset(

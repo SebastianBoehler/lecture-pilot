@@ -12,8 +12,8 @@ from lecturepilot.audit import record_audit_event
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.course_access import require_course_id_access, require_lecture_id_access
+from lecturepilot.course_canvas_generation import generate_course_canvas_draft
 from lecturepilot.course_canvas_store import InvalidCanvasDraftError
-from lecturepilot.course_media import apply_course_media, course_media_evidence
 from lecturepilot.learner_workspace_reset import (
     LearnerWorkspaceResetInput,
     LearnerWorkspaceResetResult,
@@ -22,7 +22,6 @@ from lecturepilot.learner_workspace_reset import (
 from lecturepilot.learning_map import LearningMap, write_learning_map
 from lecturepilot.models import CanvasPublicationResult, Course, Lecture
 from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.model_usage import model_usage_scope
 from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.professor_preview import resolve_learner_workspace_access
 from lecturepilot.source_bundle_canvas import SourceBundleCanvasError
@@ -50,20 +49,13 @@ def register_course_canvas_routes(
     ) -> CanvasDocument:
         try:
             _require_owner(request, context, course_id, course_tenant_id)
-            source = source_document(course_id, lecture_id)
-            source = course_media_evidence(
-                source, app.state.canvas_workspace.course_media_root(course_id)
-            )
-            with model_usage_scope(
-                actor_user_id=context.user_id,
+            return await generate_course_canvas_draft(
+                app,
                 course_id=course_id,
-                workload="course_canvas",
-            ):
-                document = await app.state.course_planner.plan_canvas(source)
-            document = apply_course_media(
-                document, app.state.canvas_workspace.course_media_root(course_id)
+                lecture_id=lecture_id,
+                context=context,
+                source_document=source_document,
             )
-            return app.state.canvas_workspace.write_course_canvas_draft(document)
         except InvalidCanvasDraftError as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from exc
         except CanvasWorkspaceError as exc:

@@ -75,7 +75,9 @@ class MlflowObservability(Observability):
         return self._span(f"lecturepilot.{name}", "TOOL", _clean_attributes(attributes), None)
 
     def model_span(self, **attributes: Any) -> "MlflowSpan":
-        return self._span("lecturepilot.call_tutor_model", "LLM", _clean_attributes(attributes), None)
+        return self._span(
+            "lecturepilot.call_tutor_model", "LLM", _clean_attributes(attributes), None
+        )
 
     def result_output(self, result: AgentTurnResult) -> dict[str, Any]:
         output = _result_metadata(result)
@@ -127,6 +129,10 @@ def observability_from_env() -> Observability:
     backend = os.getenv("LECTUREPILOT_OBSERVABILITY", "none").strip().lower()
     if backend in _DISABLED:
         return Observability()
+    if backend == "logging":
+        from lecturepilot.logging_observability import LoggingObservability
+
+        return LoggingObservability()
     if backend != "mlflow":
         raise ObservabilityConfigurationError(f"Unsupported observability backend: {backend}")
     mlflow = _import_mlflow()

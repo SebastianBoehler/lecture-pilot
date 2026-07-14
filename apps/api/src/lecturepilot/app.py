@@ -64,13 +64,15 @@ def create_app() -> FastAPI:
     app.state.course_tenant_id = COURSE_TENANT_ID
     app.state.model_usage = ModelUsageRecorder(app.state.database, tenant_id=COURSE_TENANT_ID)
     app.state.professor_usage = ProfessorUsageRepository(app.state.database)
+    app.state.observability = observability_from_env()
     app.state.tuebingen_adapter = TuebingenCourseAdapter()
     app.state.university_course_search = AlmaUniversityCourseSearch()
     app.state.agent_harness = LecturePilotHarness(
         model_client=LiteLLMModelClient(app.state.model_usage)
     )
     app.state.course_planner = CourseCanvasPlanner(
-        model_client=LiteLLMCoursePlanClient(app.state.model_usage)
+        model_client=LiteLLMCoursePlanClient(app.state.model_usage),
+        observability=app.state.observability,
     )
     app.state.lecture_schedule_planner = LectureSchedulePlanner(
         model_client=LiteLLMScheduleClient(app.state.model_usage)
@@ -82,7 +84,6 @@ def create_app() -> FastAPI:
     app.state.image_generator = image_generator_from_env()
     app.state.canvas_workspace.image_generator = app.state.image_generator
     app.state.youtube_discovery = YoutubeDiscovery.from_env()
-    app.state.observability = observability_from_env()
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(allowed_origins()),
