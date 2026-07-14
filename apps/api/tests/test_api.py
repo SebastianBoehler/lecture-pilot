@@ -1,7 +1,6 @@
 from fastapi.testclient import TestClient
 
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import CanvasDocument, CanvasSection
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import (
     AgentTurnInput,
@@ -9,10 +8,10 @@ from lecturepilot.models import (
     CanvasCommand,
 )
 from lecturepilot.providers import DEFAULT_MODEL
-from lecturepilot.storage_layout import StorageLayout
 from lecturepilot.session_auth import SESSION_COOKIE_NAME
 from lecturepilot.tuebingen_adapter import TuebingenIntegrationUnavailable
 from lecturepilot.university_models import ExternalCourseCandidate, UniversityLoginResult
+from agent_test_helpers import CanvasContextWorkspace, agent_client
 from auth_helpers import pending_university_login, student_headers
 
 
@@ -96,12 +95,12 @@ def test_tuebingen_login_reports_missing_wrapper_dependency() -> None:
 def test_agent_turn_focuses_bayes_section(monkeypatch) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
-    app = create_app()
-    app.state.agent_harness = _FakeHarness(
-        message="A real model can answer this as a conversation.",
-        section_id="bayes-formula",
+    client = agent_client(
+        _FakeHarness(
+            message="A real model can answer this as a conversation.",
+            section_id="bayes-formula",
+        )
     )
-    client = TestClient(app)
 
     response = client.post(
         "/agent/turn",
@@ -133,12 +132,12 @@ def test_agent_turn_focuses_bayes_section(monkeypatch) -> None:
 def test_agent_turn_focuses_learning_goals(monkeypatch) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
-    app = create_app()
-    app.state.agent_harness = _FakeHarness(
-        message="The Bayes formula section came from the model client.",
-        section_id="bayes-formula",
+    client = agent_client(
+        _FakeHarness(
+            message="The Bayes formula section came from the model client.",
+            section_id="bayes-formula",
+        )
     )
-    client = TestClient(app)
 
     response = client.post(
         "/agent/turn",
@@ -161,12 +160,12 @@ def test_agent_turn_focuses_learning_goals(monkeypatch) -> None:
 def test_agent_turn_focuses_skill_check(monkeypatch) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
-    app = create_app()
-    app.state.agent_harness = _FakeHarness(
-        message="The model selected the skill check.",
-        section_id="bayes-rule-to-sum-up",
+    client = agent_client(
+        _FakeHarness(
+            message="The model selected the skill check.",
+            section_id="bayes-rule-to-sum-up",
+        )
     )
-    client = TestClient(app)
 
     response = client.post(
         "/agent/turn",
@@ -189,9 +188,7 @@ def test_agent_turn_focuses_skill_check(monkeypatch) -> None:
 def test_agent_turn_reports_model_execution_error(monkeypatch) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
-    app = create_app()
-    app.state.agent_harness = _FailingHarness()
-    client = TestClient(app)
+    client = agent_client(_FailingHarness())
 
     response = client.post(
         "/agent/turn",
@@ -213,7 +210,7 @@ def test_agent_turn_enriches_harness_with_canvas_context(monkeypatch, tmp_path) 
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
     app = create_app()
-    app.state.canvas_workspace = _FakeCanvasWorkspace(tmp_path)
+    app.state.canvas_workspace = CanvasContextWorkspace(tmp_path)
     app.state.agent_harness = _ContextHarness()
     client = TestClient(app)
 
@@ -288,24 +285,4 @@ class _FailingHarness:
     async def run_turn(self, turn: AgentTurnInput) -> AgentTurnResult:
         raise ModelExecutionError(
             "Model request failed. Check the provider key and model configuration."
-        )
-
-
-class _FakeCanvasWorkspace:
-    def __init__(self, root) -> None:
-        self.layout = StorageLayout(root)
-
-    def has_published_course_canvas(self, *, course_id: str, lecture_id: str) -> bool:
-        return course_id == "martius-ml" and lecture_id == "lecture-03"
-
-    def read_document(self, *, course_id: str, lecture_id: str, user_id: str) -> CanvasDocument:
-        return CanvasDocument(
-            id="martius-ml-lecture-03",
-            course_id=course_id,
-            lecture_id=lecture_id,
-            title="Bayesian Decision Theory",
-            source_kind="latex",
-            source_ref="Lecture03-eng.tex",
-            workspace_path=".lecturepilot/workspaces/test/canvas/index.md",
-            sections=[CanvasSection(id="bayes-formula", title="Bayes formula")],
         )

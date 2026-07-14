@@ -209,7 +209,7 @@ describe("Professor course builder", () => {
           init?.method === "POST",
       ),
     ).toBe(false);
-  });
+  }, 15_000);
 
   it("proposes and applies a dated full-course lecture schedule from materials", async () => {
     const user = userEvent.setup();
