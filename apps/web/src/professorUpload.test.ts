@@ -1,22 +1,19 @@
 import { describe, expect, it } from "vitest";
 
 import { materialFilesFromDrop } from "./materialDrop";
-import {
-  ignoredUploadNotice,
-  isSkippableUploadError,
-  uploadDestination,
-} from "./professorUpload";
+import { ignoredUploadNotice, isSkippableUploadError, uploadDestination } from "./professorUpload";
 
 describe("professor material uploads", () => {
   it("keeps custom relative paths from dropped folders", async () => {
     const file = new File(["content"], "Lecture01-eng.tex");
     const transfer = {
       files: [],
-      items: [{
-        webkitGetAsEntry: () => directoryEntry("course-folder", [
-          fileEntry("Lecture01-eng.tex", file),
-        ]),
-      }],
+      items: [
+        {
+          webkitGetAsEntry: () =>
+            directoryEntry("course-folder", [fileEntry("Lecture01-eng.tex", file)]),
+        },
+      ],
     } as unknown as DataTransfer;
 
     const [dropped] = await materialFilesFromDrop(transfer);
@@ -42,7 +39,9 @@ describe("professor material uploads", () => {
       isSkippableUploadError(new Error("File contents do not match the requested file type.")),
     ).toBe(true);
     expect(
-      isSkippableUploadError(new Error("Declared media type does not match the requested file type.")),
+      isSkippableUploadError(
+        new Error("Declared media type does not match the requested file type."),
+      ),
     ).toBe(true);
     expect(isSkippableUploadError(new Error("The backend is unavailable."))).toBe(false);
   });

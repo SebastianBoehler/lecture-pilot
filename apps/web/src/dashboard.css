@@ -150,7 +150,9 @@
   font-variant-numeric: tabular-nums;
 }
 
-.course-workspace-body[hidden] { display: none; }
+.course-workspace-body[hidden] {
+  display: none;
+}
 
 .lecture-row h3,
 .course-row h3,
@@ -201,7 +203,9 @@
   font-weight: 700;
 }
 
-.lecture-list-toggle { margin: 0 20px 14px; }
+.lecture-list-toggle {
+  margin: 0 20px 14px;
+}
 
 .workspace-empty {
   margin: 0;

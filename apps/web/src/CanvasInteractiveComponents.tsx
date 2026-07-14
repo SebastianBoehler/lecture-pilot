@@ -10,7 +10,12 @@ type ComponentBlockProps = {
   onSubmitAnswer: (block: CanvasBlock, answer: string, optionIndex: number) => void;
 };
 
-export function ComponentBlock({ block, className, onSubmitAnswer, sourceMarker }: ComponentBlockProps) {
+export function ComponentBlock({
+  block,
+  className,
+  onSubmitAnswer,
+  sourceMarker,
+}: ComponentBlockProps) {
   if (block.component_type === "single_choice_quiz") {
     return (
       <QuizBlock
@@ -27,8 +32,7 @@ export function ComponentBlock({ block, className, onSubmitAnswer, sourceMarker 
       <div className="canvas-learning-label">Interactive component</div>
       <strong>{block.caption || block.component_id || "Unsupported component"}</strong>
       <p>
-        This course component type is not enabled yet:
-        {" "}
+        This course component type is not enabled yet:{" "}
         <code>{block.component_type || "unknown"}</code>
       </p>
       {sourceMarker}

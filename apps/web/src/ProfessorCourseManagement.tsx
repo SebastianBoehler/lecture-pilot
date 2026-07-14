@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 
 import { deleteLectureAccess, updateCourseAccess, updateLectureAccess } from "./courseAccessApi";
 import type { CourseAccessSaveInput } from "./courseAccessTypes";
@@ -34,9 +34,10 @@ export function ProfessorCourseManagement({
   const [accessError, setAccessError] = useState<string | null>(null);
   const [accessNotice, setAccessNotice] = useState<string | null>(null);
   const { error, notice, run, setError } = useProfessorWorkflowRun();
+  const refreshCoursesFromSession = useEffectEvent(refreshCourses);
 
   useEffect(() => {
-    void refreshCourses();
+    void refreshCoursesFromSession();
   }, [session]);
 
   if (updatingWorkspace) {

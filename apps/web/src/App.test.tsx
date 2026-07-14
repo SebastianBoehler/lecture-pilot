@@ -64,6 +64,11 @@ describe("LecturePilot app shell", () => {
       expect.stringContaining("/auth/login"),
       expect.objectContaining({ credentials: "include", method: "POST" }),
     );
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/courses"))).toHaveLength(
+        1,
+      );
+    });
     expect(window.sessionStorage.getItem("lecturepilot.loginSession")).toBeNull();
     expect(window.localStorage.getItem("lecturepilot.loginSession")).not.toContain(
       "signed-test-token",

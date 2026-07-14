@@ -23,9 +23,10 @@ export function publishLectureRows({
   setup: CourseSetup;
   workspaceLecture: Lecture;
 }): PublishLectureRow[] {
-  const lectures = setup.target === "full-course" && lectureSchedule.length
-    ? lectureSchedule.map(lectureFromScheduleItem)
-    : [workspaceLecture];
+  const lectures =
+    setup.target === "full-course" && lectureSchedule.length
+      ? lectureSchedule.map(lectureFromScheduleItem)
+      : [workspaceLecture];
   return lectures.map((lecture) => ({
     id: lecture.id,
     label: `${lecture.number} · ${lecture.title}`,
@@ -47,5 +48,7 @@ function lectureFromScheduleItem(lecture: LectureScheduleItem): Lecture {
 
 function lectureIdFromNumber(number: string) {
   const parsed = Number(number);
-  return Number.isFinite(parsed) ? `lecture-${parsed.toString().padStart(2, "0")}` : `lecture-${number}`;
+  return Number.isFinite(parsed)
+    ? `lecture-${parsed.toString().padStart(2, "0")}`
+    : `lecture-${number}`;
 }

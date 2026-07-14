@@ -66,7 +66,9 @@ describe("Dashboard lecture availability", () => {
     const available = screen.getByRole("heading", { name: "Available lecture" }).closest("article");
     expect(available).not.toBeNull();
     expect(within(available!).getByRole("button", { name: /open lecture 01/i })).toBeEnabled();
-    expect(within(available!).getByRole("group", { name: /attendance for available/i })).toBeVisible();
+    expect(
+      within(available!).getByRole("group", { name: /attendance for available/i }),
+    ).toBeVisible();
   });
 
   it("shows a server-authorized course even when it is not in the enrollment snapshot", () => {

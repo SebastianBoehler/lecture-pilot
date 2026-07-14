@@ -11,7 +11,9 @@ export function lectureFromWorkspace(
   setup: CourseSetup,
   schedule: LectureScheduleItem[] = [],
 ): Lecture {
-  const scheduled = schedule.find((lecture) => lectureIdFromNumber(lecture.number) === workspace.lectureId);
+  const scheduled = schedule.find(
+    (lecture) => lectureIdFromNumber(lecture.number) === workspace.lectureId,
+  );
   return {
     id: workspace.lectureId,
     number: scheduled?.number ?? setup.lectureNumber ?? "01",
@@ -24,5 +26,7 @@ export function lectureFromWorkspace(
 
 function lectureIdFromNumber(number: string) {
   const parsed = Number(number);
-  return Number.isFinite(parsed) ? `lecture-${parsed.toString().padStart(2, "0")}` : `lecture-${number}`;
+  return Number.isFinite(parsed)
+    ? `lecture-${parsed.toString().padStart(2, "0")}`
+    : `lecture-${number}`;
 }

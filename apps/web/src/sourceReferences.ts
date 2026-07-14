@@ -33,10 +33,17 @@ export function blockSourceReference(
   block: CanvasBlock,
 ): SectionSourceReference {
   if (block.type !== "asset" && block.type !== "video") return references[0];
-  return references.find((reference) => reference.resource.path === (block.asset_path ?? block.caption ?? block.id)) ?? references[0];
+  return (
+    references.find(
+      (reference) => reference.resource.path === (block.asset_path ?? block.caption ?? block.id),
+    ) ?? references[0]
+  );
 }
 
-function lectureSourceResource(canvasDocument: CanvasDocument, section: CanvasSection): WorkspaceResource {
+function lectureSourceResource(
+  canvasDocument: CanvasDocument,
+  section: CanvasSection,
+): WorkspaceResource {
   const path = displaySourcePath(canvasDocument.source_ref);
   return {
     id: `source-${canvasDocument.id}-${section.id}`,
@@ -60,7 +67,11 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function assetSourceResource(asset: CanvasBlock, section: CanvasSection, number: number): WorkspaceResource {
+function assetSourceResource(
+  asset: CanvasBlock,
+  section: CanvasSection,
+  number: number,
+): WorkspaceResource {
   return {
     id: `asset-${number}-${asset.id}`,
     kind: asset.type === "video" ? "video" : "asset",

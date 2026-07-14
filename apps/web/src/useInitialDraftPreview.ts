@@ -44,8 +44,6 @@ export function useInitialDraftPreview({
   }, [availableLectures, onBlocked, onOpenLecture, session]);
 }
 
-export function isDraftPreviewRequest(
-  params = new URLSearchParams(window.location.search),
-) {
+export function isDraftPreviewRequest(params = new URLSearchParams(window.location.search)) {
   return params.get("preview") === "draft";
 }

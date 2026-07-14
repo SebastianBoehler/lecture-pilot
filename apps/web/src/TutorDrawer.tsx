@@ -70,11 +70,9 @@ export function TutorDrawer({
               {message.role === "agent" ? <ToolTags tags={message.toolTags} /> : null}
               <div
                 aria-busy={message.isPending ? "true" : undefined}
-                className={[
-                  "chat-message",
-                  message.role,
-                  message.isPending ? "is-pending" : "",
-                ].filter(Boolean).join(" ")}
+                className={["chat-message", message.role, message.isPending ? "is-pending" : ""]
+                  .filter(Boolean)
+                  .join(" ")}
               >
                 <div className="chat-message-content">
                   <MathText highlightedText={null} mode="block" text={message.content} />

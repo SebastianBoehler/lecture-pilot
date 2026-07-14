@@ -128,10 +128,7 @@ describe("ProfessorUsage", () => {
 
     expect(await screen.findAllByText("15,000")).not.toHaveLength(0);
     await user.click(screen.getByRole("button", { name: "7 days" }));
-    expect(screen.getByRole("button", { name: "7 days" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    expect(screen.getByRole("button", { name: "7 days" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.queryAllByText("15,000")).toHaveLength(0);
 
     await act(async () => {

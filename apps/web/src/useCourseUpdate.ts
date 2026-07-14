@@ -35,9 +35,9 @@ export function useCourseUpdate(
   const [result, setResult] = useState<CourseUpdateApplyResult | null>(null);
   const [statuses, setStatuses] = useState<Record<string, WorkStatus>>({});
   const [ignored, setIgnored] = useState<string[]>([]);
-  const [busy, setBusy] = useState<
-    "upload" | "analyze" | "apply" | "draft" | "publish" | null
-  >(null);
+  const [busy, setBusy] = useState<"upload" | "analyze" | "apply" | "draft" | "publish" | null>(
+    null,
+  );
   const [uploadProgress, setUploadProgress] = useState({ completed: 0, total: 0 });
   const [error, setError] = useState<string | null>(null);
 

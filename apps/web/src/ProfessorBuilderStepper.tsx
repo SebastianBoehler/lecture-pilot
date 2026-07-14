@@ -31,7 +31,13 @@ export function builderSteps({
     { available: true, id: "define", label: "Define", number: "01", ready: courseReady },
     { available: courseReady, id: "upload", label: "Upload", number: "02", ready: bundleReady },
     { available: reviewAvailable, id: "review", label: "Media", number: "03", ready: reviewReady },
-    { available: reviewReady || canvasReady, id: "generate", label: "Generate", number: "04", ready: canvasReady },
+    {
+      available: reviewReady || canvasReady,
+      id: "generate",
+      label: "Generate",
+      number: "04",
+      ready: canvasReady,
+    },
     {
       available: canvasReady && (draftReviewed || workspacePublished),
       id: "publish",

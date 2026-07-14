@@ -76,15 +76,13 @@ export function readSavedFlow(): SavedProfessorFlow {
 export function writeSavedFlow(flow: SavedProfessorFlow) {
   try {
     window.sessionStorage.setItem(flowStorageKey, JSON.stringify(flow));
-  } catch {
-  }
+  } catch {}
 }
 
 export function clearSavedFlow() {
   try {
     window.sessionStorage.removeItem(flowStorageKey);
-  } catch {
-  }
+  } catch {}
 }
 
 function isUntouchedLegacyDemoFlow(flow: Partial<SavedProfessorFlow>) {

@@ -79,7 +79,10 @@ export function toolTagsFromResult(result: AgentTurnResult): string[] {
         ? [`highlight: ${command.span_id}`, `phrase: ${command.highlight_text}`]
         : [`highlight: ${command.span_id}`];
     }
-    if ((command.type === "append_section" || command.type === "update_section") && command.section_id) {
+    if (
+      (command.type === "append_section" || command.type === "update_section") &&
+      command.section_id
+    ) {
       return [`canvas: ${command.section_id}`];
     }
     return [];

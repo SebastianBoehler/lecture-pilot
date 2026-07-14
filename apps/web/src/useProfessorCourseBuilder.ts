@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 
 import { draftLectureCanvas, getCourseLectures, getDraftLectureCanvas } from "./api";
 import { builderSteps, initialBuilderStep, type BuilderStep } from "./ProfessorBuilderStepper";
@@ -18,7 +18,12 @@ import {
   searchYoutubeMedia,
   uploadCourseMaterial,
 } from "./professorApi";
-import { isCourseSetupReady, readSavedFlow, writeSavedFlow, type CourseSetup } from "./professorBuilderState";
+import {
+  isCourseSetupReady,
+  readSavedFlow,
+  writeSavedFlow,
+  type CourseSetup,
+} from "./professorBuilderState";
 import {
   activationLectures,
   courseFromSetup,
@@ -30,11 +35,7 @@ import { universityCourseTitles } from "./professorCourseSuggestions";
 import { useCourseTitleSuggestions } from "./useCourseTitleSuggestions";
 import { useProfessorWorkflowRun } from "./professorWorkflowRun";
 import { lectureFromWorkspace, requireWorkspace } from "./professorWorkspaceView";
-import {
-  ignoredUploadNotice,
-  isSkippableUploadError,
-  uploadDestination,
-} from "./professorUpload";
+import { ignoredUploadNotice, isSkippableUploadError, uploadDestination } from "./professorUpload";
 import {
   flattenVideoGroups,
   type YoutubeCandidateGroup,
@@ -53,8 +54,14 @@ import type {
 export type ProfessorCourseBuilderProps = {
   session: LoginSession;
   onPublishWorkspace: (courseId: string, lectureId: string) => Promise<CanvasPublicationResult>;
-  onWorkspacePublished: (course: UniversityCourse, lectures: ReturnType<typeof lectureFromWorkspace>[]) => void;
-  previewWorkspaceUrl: (courseId: string, lecture: ReturnType<typeof lectureFromWorkspace>) => string;
+  onWorkspacePublished: (
+    course: UniversityCourse,
+    lectures: ReturnType<typeof lectureFromWorkspace>[],
+  ) => void;
+  previewWorkspaceUrl: (
+    courseId: string,
+    lecture: ReturnType<typeof lectureFromWorkspace>,
+  ) => string;
   publishedLectureIds: string[];
 };
 
@@ -69,15 +76,23 @@ export function useProfessorCourseBuilder({
   const [setup, setSetup] = useState(savedFlow.setup);
   const [workspace, setWorkspace] = useState(savedFlow.workspace);
   const [workspaceCourse, setWorkspaceCourse] = useState<UniversityCourse | null>(null);
-  const [workspaceLectures, setWorkspaceLectures] = useState<ReturnType<typeof lectureFromWorkspace>[]>([]);
-  const [courseReady, setCourseReady] = useState(savedFlow.courseReady && Boolean(savedFlow.workspace));
-  const [activeStep, setActiveStep] = useState<BuilderStep>(() => initialBuilderStep({
-    bundleReady: savedFlow.bundleReady,
-    canvasReady: savedFlow.canvasReady,
-    courseReady: savedFlow.courseReady && Boolean(savedFlow.workspace),
-  }));
+  const [workspaceLectures, setWorkspaceLectures] = useState<
+    ReturnType<typeof lectureFromWorkspace>[]
+  >([]);
+  const [courseReady, setCourseReady] = useState(
+    savedFlow.courseReady && Boolean(savedFlow.workspace),
+  );
+  const [activeStep, setActiveStep] = useState<BuilderStep>(() =>
+    initialBuilderStep({
+      bundleReady: savedFlow.bundleReady,
+      canvasReady: savedFlow.canvasReady,
+      courseReady: savedFlow.courseReady && Boolean(savedFlow.workspace),
+    }),
+  );
   const [bundle, setBundle] = useState<SourceBundleManifest | null>(null);
-  const [lectureSchedule, setLectureSchedule] = useState<LectureScheduleItem[]>(savedFlow.lectureSchedule);
+  const [lectureSchedule, setLectureSchedule] = useState<LectureScheduleItem[]>(
+    savedFlow.lectureSchedule,
+  );
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [canvas, setCanvas] = useState<CanvasDocument | null>(null);
   const [generatedLectureIds, setGeneratedLectureIds] = useState<string[]>([]);
@@ -99,6 +114,8 @@ export function useProfessorCourseBuilder({
   const { error, notice, pendingAction, run, setError } = useProfessorWorkflowRun();
   const [restored, setRestored] = useState(!savedFlow.bundleReady && !savedFlow.canvasReady);
   const [isRestoring, setIsRestoring] = useState(false);
+  const restoreGeneratedState = useEffectEvent(restoreFromBackend);
+  const runAutomaticVideoSearch = useEffectEvent(searchSuggestedVideos);
 
   const setupReady = isCourseSetupReady(setup);
   const personalCourseTitles = useMemo(
@@ -118,51 +135,65 @@ export function useProfessorCourseBuilder({
   const scheduledLectureIds = lectureSchedule.map((lecture) => lectureIdFromNumber(lecture.number));
   const mediaTargetLectures = workspace
     ? setup.target === "full-course"
-      ? workspaceLectures.length ? workspaceLectures : activationLectures(workspace, setup, lectureSchedule)
+      ? workspaceLectures.length
+        ? workspaceLectures
+        : activationLectures(workspace, setup, lectureSchedule)
       : [lectureFromWorkspace(workspace, setup, lectureSchedule)]
     : [];
   const mediaTargetLectureKey = mediaTargetLectures.map((lecture) => lecture.id).join("|");
   const mediaTargetLecture =
     mediaTargetLectures.find((lecture) => lecture.id === mediaLectureId) ?? mediaTargetLectures[0];
-  const fullCourseLectureIds = setup.target === "full-course" && scheduledLectureIds.length
-    ? scheduledLectureIds
-    : workspace ? [workspace.lectureId] : [];
-  const fullCoursePublishedCount = fullCourseLectureIds.filter((lectureId) => publishedLectureIds.includes(lectureId)).length;
+  const fullCourseLectureIds =
+    setup.target === "full-course" && scheduledLectureIds.length
+      ? scheduledLectureIds
+      : workspace
+        ? [workspace.lectureId]
+        : [];
+  const fullCoursePublishedCount = fullCourseLectureIds.filter((lectureId) =>
+    publishedLectureIds.includes(lectureId),
+  ).length;
   const suggestedQueries = youtubeSuggestionQueries(setup, mediaTargetLecture);
   const defaultYoutubeQuery = suggestedQueries[0] ?? setup.courseTitle.trim();
   const mediaCourseId = workspace?.courseId ?? "";
   const mediaTargetLectureId = mediaTargetLecture?.id ?? "";
-  const mediaSearchScopeKey = mediaCourseId && mediaTargetLectureId
-    ? `${mediaCourseId}:${mediaTargetLectureId}`
-    : "";
-  const suggestedSearchKey = workspace && suggestedQueries.length
-    ? [
-      workspace.courseId,
-      mediaTargetLecture?.id ?? "no-lecture",
-      bundle?.files.map((file) => `${file.path}:${file.size_bytes}`).join(",") ?? "no-bundle",
-      suggestedQueries.join("|"),
-    ].join("::")
-    : "";
+  const mediaSearchScopeKey =
+    mediaCourseId && mediaTargetLectureId ? `${mediaCourseId}:${mediaTargetLectureId}` : "";
+  const suggestedSearchKey =
+    workspace && suggestedQueries.length
+      ? [
+          workspace.courseId,
+          mediaTargetLecture?.id ?? "no-lecture",
+          bundle?.files.map((file) => `${file.path}:${file.size_bytes}`).join(",") ?? "no-bundle",
+          suggestedQueries.join("|"),
+        ].join("::")
+      : "";
   const availableVideos = flattenVideoGroups([
     ...suggestedVideoGroups,
     { query: query.trim() || defaultYoutubeQuery, videos },
   ]);
   const workspacePublished = Boolean(
-    workspace && (setup.target === "full-course"
+    workspace &&
+    (setup.target === "full-course"
       ? fullCourseLectureIds.length > 0 && fullCoursePublishedCount === fullCourseLectureIds.length
       : publishedLectureIds.includes(workspace.lectureId)),
   );
-  const previewHref = canvas && workspace
-    ? previewWorkspaceUrl(workspace.courseId, lectureFromWorkspace(workspace, setup, lectureSchedule))
-    : null;
-  const publishLectures = workspace ? publishLectureRows({
-    courseId: workspace.courseId,
-    lectureSchedule,
-    previewWorkspaceUrl,
-    publishedLectureIds,
-    setup,
-    workspaceLecture: lectureFromWorkspace(workspace, setup, lectureSchedule),
-  }) : [];
+  const previewHref =
+    canvas && workspace
+      ? previewWorkspaceUrl(
+          workspace.courseId,
+          lectureFromWorkspace(workspace, setup, lectureSchedule),
+        )
+      : null;
+  const publishLectures = workspace
+    ? publishLectureRows({
+        courseId: workspace.courseId,
+        lectureSchedule,
+        previewWorkspaceUrl,
+        publishedLectureIds,
+        setup,
+        workspaceLecture: lectureFromWorkspace(workspace, setup, lectureSchedule),
+      })
+    : [];
   const steps = builderSteps({
     bundleReady,
     canvasReady: !!canvas,
@@ -175,11 +206,14 @@ export function useProfessorCourseBuilder({
 
   useEffect(() => {
     let cancelled = false;
-    async function restoreGeneratedState() {
-      await restoreFromBackend(savedFlow.workspace, { quietDraftMiss: !savedFlow.canvasReady, skipWhenMissing: true });
+    async function restoreSavedWorkspace() {
+      await restoreGeneratedState(savedFlow.workspace, {
+        quietDraftMiss: !savedFlow.canvasReady,
+        skipWhenMissing: true,
+      });
       if (!cancelled) setRestored(true);
     }
-    if (!restored) void restoreGeneratedState();
+    if (!restored) void restoreSavedWorkspace();
     return () => {
       cancelled = true;
     };
@@ -224,7 +258,14 @@ export function useProfessorCourseBuilder({
           );
         }
       });
-  }, [defaultYoutubeQuery, mediaCourseId, mediaSearchScopeKey, mediaTargetLectureId, session, setError]);
+  }, [
+    defaultYoutubeQuery,
+    mediaCourseId,
+    mediaSearchScopeKey,
+    mediaTargetLectureId,
+    session,
+    setError,
+  ]);
 
   useEffect(() => {
     if (!restored) return;
@@ -237,25 +278,27 @@ export function useProfessorCourseBuilder({
       lectureSchedule,
       query,
     });
-  }, [bundle, canvas, courseReady, lectureSchedule, query, restored, setup, workspace]);
+  }, [bundleReady, canvas, courseReady, lectureSchedule, query, restored, setup, workspace]);
 
   useEffect(() => {
     if (
-      activeStep !== "review"
-      || !workspace
-      || !setupReady
-      || !suggestedQueries.length
-      || !suggestedSearchKey
-      || pendingAction !== null
-      || autoSuggestedSearchKey === suggestedSearchKey
-    ) return;
+      activeStep !== "review" ||
+      !workspace ||
+      !setupReady ||
+      !suggestedQueries.length ||
+      !suggestedSearchKey ||
+      pendingAction !== null ||
+      autoSuggestedSearchKey === suggestedSearchKey
+    )
+      return;
     let cancelled = false;
     setAutoSuggestedSearchKey(suggestedSearchKey);
     setAutoSuggesting(true);
     setError(null);
-    void searchSuggestedVideos(workspace.courseId)
+    void runAutomaticVideoSearch(workspace.courseId)
       .catch((autoError) => {
-        if (!cancelled) setError(autoError instanceof Error ? autoError.message : "YouTube suggestions failed.");
+        if (!cancelled)
+          setError(autoError instanceof Error ? autoError.message : "YouTube suggestions failed.");
       })
       .finally(() => {
         if (!cancelled) setAutoSuggesting(false);
@@ -323,7 +366,10 @@ export function useProfessorCourseBuilder({
     const responses = await Promise.all(
       suggestedQueries.map(async (searchQuery) => {
         try {
-          const response = await withTimeout(searchYoutubeMedia(courseId, searchQuery, session, 3), 6000);
+          const response = await withTimeout(
+            searchYoutubeMedia(courseId, searchQuery, session, 3),
+            6000,
+          );
           return { query: searchQuery, videos: response.items };
         } catch {
           return { query: searchQuery, videos: [] };
@@ -345,22 +391,23 @@ export function useProfessorCourseBuilder({
   }
 
   function updateGenerationItem(progress: CanvasGenerationProgress) {
-    setGenerationProgress((current) => current.map((item) => (
-      item.lectureId === progress.lectureId
-        ? { ...item, ...progress, errorKind: progress.errorKind, message: progress.message }
-        : item
-    )));
+    setGenerationProgress((current) =>
+      current.map((item) =>
+        item.lectureId === progress.lectureId
+          ? { ...item, ...progress, errorKind: progress.errorKind, message: progress.message }
+          : item,
+      ),
+    );
   }
 
   function recordGeneratedCanvas(lectureId: string, generatedCanvas: CanvasDocument) {
     setCanvas(generatedCanvas);
-    setGeneratedLectureIds((current) => (
-      current.includes(lectureId) ? current : [...current, lectureId]
-    ));
-    setGenerationWarnings((current) => Array.from(new Set([
-      ...current,
-      ...(generatedCanvas.warnings ?? []),
-    ])));
+    setGeneratedLectureIds((current) =>
+      current.includes(lectureId) ? current : [...current, lectureId],
+    );
+    setGenerationWarnings((current) =>
+      Array.from(new Set([...current, ...(generatedCanvas.warnings ?? [])])),
+    );
   }
 
   async function generateCanvases(courseId: string, lectureIds: string[]) {
@@ -391,27 +438,43 @@ export function useProfessorCourseBuilder({
       setBundle(restoredBundle);
       const restoredLectures = await getCourseLectures(targetWorkspace.courseId, session);
       setWorkspaceLectures(restoredLectures);
-      setWorkspaceCourse((current) => current ?? courseFromSetup(targetWorkspace.courseId, setup, session));
+      setWorkspaceCourse(
+        (current) => current ?? courseFromSetup(targetWorkspace.courseId, setup, session),
+      );
       if (setup.target === "full-course" && !lectureSchedule.length) {
         setLectureSchedule(restoredLectures.map(scheduleItemFromLecture));
       }
       try {
-        const restoredCanvas = await getDraftLectureCanvas(targetWorkspace.courseId, targetWorkspace.lectureId, session);
+        const restoredCanvas = await getDraftLectureCanvas(
+          targetWorkspace.courseId,
+          targetWorkspace.lectureId,
+          session,
+        );
         setCanvas(restoredCanvas);
         setGeneratedLectureIds(
-          setup.target === "full-course" ? restoredLectures.map((lecture) => lecture.id) : [targetWorkspace.lectureId],
+          setup.target === "full-course"
+            ? restoredLectures.map((lecture) => lecture.id)
+            : [targetWorkspace.lectureId],
         );
         setGenerationWarnings(restoredCanvas.warnings ?? []);
         setDraftReviewed(false);
         setActiveStep("generate");
       } catch (canvasError) {
         if (!options.quietDraftMiss) {
-          setError(canvasError instanceof Error ? canvasError.message : "Could not restore professor preview.");
+          setError(
+            canvasError instanceof Error
+              ? canvasError.message
+              : "Could not restore professor preview.",
+          );
         }
       }
     } catch (restoreError) {
       if (!options.skipWhenMissing) {
-        setError(restoreError instanceof Error ? restoreError.message : "Could not refresh workspace state.");
+        setError(
+          restoreError instanceof Error
+            ? restoreError.message
+            : "Could not refresh workspace state.",
+        );
       }
     } finally {
       setIsRestoring(false);
@@ -424,21 +487,22 @@ export function useProfessorCourseBuilder({
     courseReady,
     isCreating: pendingAction === "create",
     isReady: setupReady,
-    onCreate: () => run("create", async () => {
-      const schedule = setup.target === "full-course" ? lectureSchedule : [];
-      const created = await createCourseWorkspace(setup, session, schedule);
-      setWorkspace({ courseId: created.course.id, lectureId: created.active_lecture_id });
-      setMediaLectureId(created.active_lecture_id);
-      setWorkspaceCourse(created.course);
-      setWorkspaceLectures(created.lectures);
-      resetGeneratedState();
-      setScheduleApplied(setup.target !== "full-course");
-      setCourseReady(true);
-      setActiveStep("upload");
-      return setup.target === "full-course"
-        ? `Course workspace ${created.course.id} ready. Upload materials to infer the lecture schedule.`
-        : `Course workspace ${created.course.id}/${created.active_lecture_id} ready.`;
-    }),
+    onCreate: () =>
+      run("create", async () => {
+        const schedule = setup.target === "full-course" ? lectureSchedule : [];
+        const created = await createCourseWorkspace(setup, session, schedule);
+        setWorkspace({ courseId: created.course.id, lectureId: created.active_lecture_id });
+        setMediaLectureId(created.active_lecture_id);
+        setWorkspaceCourse(created.course);
+        setWorkspaceLectures(created.lectures);
+        resetGeneratedState();
+        setScheduleApplied(setup.target !== "full-course");
+        setCourseReady(true);
+        setActiveStep("upload");
+        return setup.target === "full-course"
+          ? `Course workspace ${created.course.id} ready. Upload materials to infer the lecture schedule.`
+          : `Course workspace ${created.course.id}/${created.active_lecture_id} ready.`;
+      }),
     onSetupChange: updateSetup,
     setup,
   };
@@ -453,54 +517,58 @@ export function useProfessorCourseBuilder({
     workspaceReady: Boolean(workspace),
     onUploadFilesChange: setUploadFiles,
     onScheduleChange: setLectureSchedule,
-    onUpload: () => run("upload", async () => {
-      const activeWorkspace = requireWorkspace(workspace);
-      const uploaded = [];
-      const ignored = [];
-      for (const file of uploadFiles) {
-        const destination = uploadDestination(file);
-        try {
-          uploaded.push(await uploadCourseMaterial({
-            courseId: activeWorkspace.courseId,
-            path: destination,
-            file,
-            session,
-          }));
-        } catch (error) {
-          if (!isSkippableUploadError(error)) {
-            const message = error instanceof Error ? error.message : String(error);
-            throw new Error(`${destination}: ${message}`);
+    onUpload: () =>
+      run("upload", async () => {
+        const activeWorkspace = requireWorkspace(workspace);
+        const uploaded = [];
+        const ignored = [];
+        for (const file of uploadFiles) {
+          const destination = uploadDestination(file);
+          try {
+            uploaded.push(
+              await uploadCourseMaterial({
+                courseId: activeWorkspace.courseId,
+                path: destination,
+                file,
+                session,
+              }),
+            );
+          } catch (error) {
+            if (!isSkippableUploadError(error)) {
+              const message = error instanceof Error ? error.message : String(error);
+              throw new Error(`${destination}: ${message}`);
+            }
+            ignored.push(destination);
           }
-          ignored.push(destination);
         }
-      }
-      await updateBundleAndSchedule(activeWorkspace.courseId);
-      resetGeneratedState();
-      if (setup.target === "full-course") setScheduleApplied(false);
-      if (setup.target !== "full-course") setActiveStep("review");
-      const ignoredText = ignoredUploadNotice(ignored);
-      if (uploaded.length === 1) {
-        return `Uploaded ${uploaded[0].path} as ${uploaded[0].kind}.${ignoredText}`;
-      }
-      return `Uploaded ${uploaded.length} materials into the source bundle.${ignoredText}`;
-    }),
-    onApplySchedule: () => run("apply-schedule", async () => {
-      const activeWorkspace = requireWorkspace(workspace);
-      const created = await createCourseWorkspace(
-        setup,
-        session,
-        lectureSchedule,
-        activeWorkspace.courseId,
-      );
-      setWorkspace({ courseId: created.course.id, lectureId: created.active_lecture_id });
-      setMediaLectureId(created.active_lecture_id);
-      setWorkspaceCourse(created.course);
-      setWorkspaceLectures(created.lectures);
-      resetGeneratedState();
-      setScheduleApplied(true);
-      setActiveStep("review");
-      return `Lecture schedule applied with ${created.lectures.length} dated lectures.`;
-    }),
+        await updateBundleAndSchedule(activeWorkspace.courseId);
+        resetGeneratedState();
+        if (setup.target === "full-course") setScheduleApplied(false);
+        if (setup.target !== "full-course") setActiveStep("review");
+        const ignoredText = ignoredUploadNotice(ignored);
+        if (uploaded.length === 1) {
+          return `Uploaded ${uploaded[0].path} as ${uploaded[0].kind}.${ignoredText}`;
+        }
+        return `Uploaded ${uploaded.length} materials into the source bundle.${ignoredText}`;
+      }),
+    onApplySchedule: () =>
+      run("apply-schedule", async () => {
+        const activeWorkspace = requireWorkspace(workspace);
+        const created = await createCourseWorkspace(
+          setup,
+          session,
+          lectureSchedule,
+          activeWorkspace.courseId,
+        );
+        setWorkspace({ courseId: created.course.id, lectureId: created.active_lecture_id });
+        setMediaLectureId(created.active_lecture_id);
+        setWorkspaceCourse(created.course);
+        setWorkspaceLectures(created.lectures);
+        resetGeneratedState();
+        setScheduleApplied(true);
+        setActiveStep("review");
+        return `Lecture schedule applied with ${created.lectures.length} dated lectures.`;
+      }),
   };
 
   const generateStep = {
@@ -514,40 +582,47 @@ export function useProfessorCourseBuilder({
       setDraftReviewed(true);
       setActiveStep("publish");
     },
-    previewLectures: setup.target === "full-course"
-      ? publishLectures
-        .filter((lecture) => generatedLectureIds.includes(lecture.id))
-        .map(({ id, label, previewHref: href }) => ({ id, label, previewHref: href }))
-      : workspace && previewHref
-        ? [{
-          id: workspace.lectureId,
-          label: `${lectureFromWorkspace(workspace, setup, lectureSchedule).number} · ${lectureFromWorkspace(workspace, setup, lectureSchedule).title}`,
-          previewHref,
-        }]
-        : [],
+    previewLectures:
+      setup.target === "full-course"
+        ? publishLectures
+            .filter((lecture) => generatedLectureIds.includes(lecture.id))
+            .map(({ id, label, previewHref: href }) => ({ id, label, previewHref: href }))
+        : workspace && previewHref
+          ? [
+              {
+                id: workspace.lectureId,
+                label: `${lectureFromWorkspace(workspace, setup, lectureSchedule).number} · ${lectureFromWorkspace(workspace, setup, lectureSchedule).title}`,
+                previewHref,
+              },
+            ]
+          : [],
     totalCount: fullCourseLectureIds.length,
-    onRetry: (lectureId: string) => run("generate", async () => {
-      const activeWorkspace = requireWorkspace(workspace);
-      const canvases = await generateCanvases(activeWorkspace.courseId, [lectureId]);
-      if (!canvases) return;
-      return `${lectureId.replace("lecture-", "Lecture ")} canvas is ready to review.`;
-    }),
-    onGenerate: () => run("generate", async () => {
-      const activeWorkspace = requireWorkspace(workspace);
-      const lectureIds = setup.target === "full-course" && fullCourseLectureIds.length
-        ? fullCourseLectureIds
-        : [activeWorkspace.lectureId];
-      setDraftReviewed(false);
-      setGenerationProgress(lectureIds.map((lectureId) => ({ lectureId, status: "pending" })));
-      setGenerationWarnings([]);
-      const canvases = await generateCanvases(activeWorkspace.courseId, lectureIds);
-      if (!canvases) return;
-      setCanvas(canvases[0] ?? null);
-      setGeneratedLectureIds(lectureIds);
-      setGenerationWarnings(Array.from(new Set(canvases.flatMap((item) => item.warnings ?? []))));
-      if (lectureIds.length === 1) return "Course-builder agent generated a source-grounded canvas draft.";
-      return `Course-builder agent generated ${lectureIds.length} source-grounded lecture canvases.`;
-    }),
+    onRetry: (lectureId: string) =>
+      run("generate", async () => {
+        const activeWorkspace = requireWorkspace(workspace);
+        const canvases = await generateCanvases(activeWorkspace.courseId, [lectureId]);
+        if (!canvases) return;
+        return `${lectureId.replace("lecture-", "Lecture ")} canvas is ready to review.`;
+      }),
+    onGenerate: () =>
+      run("generate", async () => {
+        const activeWorkspace = requireWorkspace(workspace);
+        const lectureIds =
+          setup.target === "full-course" && fullCourseLectureIds.length
+            ? fullCourseLectureIds
+            : [activeWorkspace.lectureId];
+        setDraftReviewed(false);
+        setGenerationProgress(lectureIds.map((lectureId) => ({ lectureId, status: "pending" })));
+        setGenerationWarnings([]);
+        const canvases = await generateCanvases(activeWorkspace.courseId, lectureIds);
+        if (!canvases) return;
+        setCanvas(canvases[0] ?? null);
+        setGeneratedLectureIds(lectureIds);
+        setGenerationWarnings(Array.from(new Set(canvases.flatMap((item) => item.warnings ?? []))));
+        if (lectureIds.length === 1)
+          return "Course-builder agent generated a source-grounded canvas draft.";
+        return `Course-builder agent generated ${lectureIds.length} source-grounded lecture canvases.`;
+      }),
   };
 
   const mediaStep = {
@@ -561,20 +636,22 @@ export function useProfessorCourseBuilder({
       setActiveStep("generate");
     },
     onQueryChange: setQuery,
-    onSearch: () => run("search", async () => {
-      const searchQuery = query.trim() || defaultYoutubeQuery;
-      if (!query.trim()) setQuery(searchQuery);
-      const activeWorkspace = requireWorkspace(workspace);
-      const response = await searchYoutubeMedia(activeWorkspace.courseId, searchQuery, session);
-      setVideos(response.items);
-      return `Found ${response.items.length} YouTube candidates.`;
-    }),
-    onSuggest: () => run("suggest-videos", async () => {
-      const activeWorkspace = requireWorkspace(workspace);
-      const count = await searchSuggestedVideos(activeWorkspace.courseId);
-      setAutoSuggestedSearchKey(suggestedSearchKey || null);
-      return `Found ${count} suggested YouTube candidates from ${suggestedQueries.length} searches.`;
-    }),
+    onSearch: () =>
+      run("search", async () => {
+        const searchQuery = query.trim() || defaultYoutubeQuery;
+        if (!query.trim()) setQuery(searchQuery);
+        const activeWorkspace = requireWorkspace(workspace);
+        const response = await searchYoutubeMedia(activeWorkspace.courseId, searchQuery, session);
+        setVideos(response.items);
+        return `Found ${response.items.length} YouTube candidates.`;
+      }),
+    onSuggest: () =>
+      run("suggest-videos", async () => {
+        const activeWorkspace = requireWorkspace(workspace);
+        const count = await searchSuggestedVideos(activeWorkspace.courseId);
+        setAutoSuggestedSearchKey(suggestedSearchKey || null);
+        return `Found ${count} suggested YouTube candidates from ${suggestedQueries.length} searches.`;
+      }),
     onTargetLectureChange: setMediaLectureId,
     onToggleVideo: (videoId: string) => {
       const activeWorkspace = requireWorkspace(workspace);
@@ -631,30 +708,39 @@ export function useProfessorCourseBuilder({
     canPublish: Boolean(canvas && workspace),
     isFullCourse: setup.target === "full-course",
     isPublishing: pendingAction === "publish",
-    onPublish: () => run("publish", async () => {
-      const activeWorkspace = requireWorkspace(workspace);
-      const lectureIds = setup.target === "full-course"
-        ? (generatedLectureIds.length ? generatedLectureIds : fullCourseLectureIds)
-        : [activeWorkspace.lectureId];
-      const published = [];
-      for (const lectureId of lectureIds) {
-        try {
-          published.push(await onPublishWorkspace(activeWorkspace.courseId, lectureId));
-        } catch (error) {
-          if (setup.target !== "full-course") throw error;
-          await draftLectureCanvas(activeWorkspace.courseId, lectureId, session);
-          published.push(await onPublishWorkspace(activeWorkspace.courseId, lectureId));
+    onPublish: () =>
+      run("publish", async () => {
+        const activeWorkspace = requireWorkspace(workspace);
+        const lectureIds =
+          setup.target === "full-course"
+            ? generatedLectureIds.length
+              ? generatedLectureIds
+              : fullCourseLectureIds
+            : [activeWorkspace.lectureId];
+        const published = [];
+        for (const lectureId of lectureIds) {
+          try {
+            published.push(await onPublishWorkspace(activeWorkspace.courseId, lectureId));
+          } catch (error) {
+            if (setup.target !== "full-course") throw error;
+            await draftLectureCanvas(activeWorkspace.courseId, lectureId, session);
+            published.push(await onPublishWorkspace(activeWorkspace.courseId, lectureId));
+          }
         }
-      }
-      onWorkspacePublished(
-        workspaceCourse ?? courseFromSetup(activeWorkspace.courseId, setup, session),
-        workspaceLectures.length ? workspaceLectures : activationLectures(activeWorkspace, setup, lectureSchedule),
-      );
-      const lastPublished = published[published.length - 1];
-      const when = lastPublished?.published_at ? ` at ${new Date(lastPublished.published_at).toLocaleString()}` : "";
-      if (published.length === 1) return `Tutor workspace published as version ${lastPublished.version ?? 1}${when}.`;
-      return `${published.length} tutor workspaces published for students${when}.`;
-    }),
+        onWorkspacePublished(
+          workspaceCourse ?? courseFromSetup(activeWorkspace.courseId, setup, session),
+          workspaceLectures.length
+            ? workspaceLectures
+            : activationLectures(activeWorkspace, setup, lectureSchedule),
+        );
+        const lastPublished = published[published.length - 1];
+        const when = lastPublished?.published_at
+          ? ` at ${new Date(lastPublished.published_at).toLocaleString()}`
+          : "";
+        if (published.length === 1)
+          return `Tutor workspace published as version ${lastPublished.version ?? 1}${when}.`;
+        return `${published.length} tutor workspaces published for students${when}.`;
+      }),
     publishedCount: fullCoursePublishedCount,
     lectures: publishLectures,
     ready: workspacePublished,

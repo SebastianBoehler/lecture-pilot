@@ -15,23 +15,26 @@ describe("Professor course builder defaults", () => {
 
   it("does not restore the old canned lecture 03 demo defaults for a fresh builder", async () => {
     const user = userEvent.setup();
-    window.sessionStorage.setItem("lecturepilot.professor-builder.current", JSON.stringify({
-      setup: {
-        accessPolicy: "tuebingen_enrolled",
-        courseTitle: "Grundlagen des Maschinellen Lernens",
-        lectureTitle: "Bayesian Decision Theory",
-        lectureNumber: "03",
-        lectureCount: "",
-        firstLectureDate: "2026-05-06",
-        target: "single-lecture",
-      },
-      workspace: null,
-      courseReady: false,
-      bundleReady: false,
-      canvasReady: false,
-      lectureSchedule: [],
-      query: "Bayesian decision theory machine learning Tübingen",
-    }));
+    window.sessionStorage.setItem(
+      "lecturepilot.professor-builder.current",
+      JSON.stringify({
+        setup: {
+          accessPolicy: "tuebingen_enrolled",
+          courseTitle: "Grundlagen des Maschinellen Lernens",
+          lectureTitle: "Bayesian Decision Theory",
+          lectureNumber: "03",
+          lectureCount: "",
+          firstLectureDate: "2026-05-06",
+          target: "single-lecture",
+        },
+        workspace: null,
+        courseReady: false,
+        bundleReady: false,
+        canvasReady: false,
+        lectureSchedule: [],
+        query: "Bayesian decision theory machine learning Tübingen",
+      }),
+    );
     vi.stubGlobal("fetch", professorFetchMock());
     render(<App />);
 
@@ -48,23 +51,26 @@ describe("Professor course builder defaults", () => {
 
   it("does not restore old full-course demo defaults without a created workspace", async () => {
     const user = userEvent.setup();
-    window.sessionStorage.setItem("lecturepilot.professor-builder.current", JSON.stringify({
-      setup: {
-        accessPolicy: "tuebingen_enrolled",
-        courseTitle: "Grundlagen des Maschinellen Lernens",
-        lectureTitle: "",
-        lectureNumber: "",
-        lectureCount: "",
-        firstLectureDate: "2026-06-07",
-        target: "full-course",
-      },
-      workspace: null,
-      courseReady: false,
-      bundleReady: false,
-      canvasReady: false,
-      lectureSchedule: [],
-      query: "",
-    }));
+    window.sessionStorage.setItem(
+      "lecturepilot.professor-builder.current",
+      JSON.stringify({
+        setup: {
+          accessPolicy: "tuebingen_enrolled",
+          courseTitle: "Grundlagen des Maschinellen Lernens",
+          lectureTitle: "",
+          lectureNumber: "",
+          lectureCount: "",
+          firstLectureDate: "2026-06-07",
+          target: "full-course",
+        },
+        workspace: null,
+        courseReady: false,
+        bundleReady: false,
+        canvasReady: false,
+        lectureSchedule: [],
+        query: "",
+      }),
+    );
     vi.stubGlobal("fetch", professorFetchMock());
     render(<App />);
 
@@ -78,9 +84,12 @@ describe("Professor course builder defaults", () => {
 
   it("shows a backend reachability error when course workspace creation cannot reach the API", async () => {
     const user = userEvent.setup();
-    vi.stubGlobal("fetch", vi.fn(async () => {
-      throw new TypeError("Failed to fetch");
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("Failed to fetch");
+      }),
+    );
     render(<App />);
 
     await openProfessorDemo(user);
@@ -88,7 +97,9 @@ describe("Professor course builder defaults", () => {
     await user.click(screen.getByRole("button", { name: /create course workspace/i }));
 
     expect(
-      await screen.findByText(/cannot reach the local lecturepilot api while creating the course workspace/i),
+      await screen.findByText(
+        /cannot reach the local lecturepilot api while creating the course workspace/i,
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/^Failed to fetch$/i)).not.toBeInTheDocument();
   });

@@ -13,7 +13,11 @@ export function activationLectures(
   return [lectureFromWorkspace(workspace, setup, schedule)];
 }
 
-export function courseFromSetup(courseId: string, setup: CourseSetup, session: LoginSession): UniversityCourse {
+export function courseFromSetup(
+  courseId: string,
+  setup: CourseSetup,
+  session: LoginSession,
+): UniversityCourse {
   return {
     access_policy: setup.accessPolicy,
     id: courseId,
@@ -25,7 +29,9 @@ export function courseFromSetup(courseId: string, setup: CourseSetup, session: L
 
 export function lectureIdFromNumber(number: string) {
   const parsed = Number(number);
-  return Number.isFinite(parsed) ? `lecture-${parsed.toString().padStart(2, "0")}` : `lecture-${number}`;
+  return Number.isFinite(parsed)
+    ? `lecture-${parsed.toString().padStart(2, "0")}`
+    : `lecture-${number}`;
 }
 
 export function scheduleItemFromLecture(lecture: Lecture): LectureScheduleItem {

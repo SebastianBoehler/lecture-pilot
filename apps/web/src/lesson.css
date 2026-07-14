@@ -118,7 +118,11 @@
 }
 
 .canvas-section.is-learner-generated {
-  border-left-color: color-mix(in srgb, var(--color-accent-primary) 42%, var(--color-border-primary));
+  border-left-color: color-mix(
+    in srgb,
+    var(--color-accent-primary) 42%,
+    var(--color-border-primary)
+  );
   border-left-width: 3px;
   background: color-mix(in srgb, var(--color-accent-primary) 4%, transparent);
 }

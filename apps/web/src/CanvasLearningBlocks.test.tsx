@@ -23,9 +23,24 @@ describe("CanvasLearningBlocks", () => {
 
     render(
       <>
-        <CheckpointBlock block={checkpoint} className="canvas-block" highlightedText={null} sourceMarker={null} />
-        <QuizBlock block={quiz} className="canvas-block" highlightedText={null} sourceMarker={null} />
-        <TableBlock block={table} className="canvas-block" highlightedText={null} sourceMarker={null} />
+        <CheckpointBlock
+          block={checkpoint}
+          className="canvas-block"
+          highlightedText={null}
+          sourceMarker={null}
+        />
+        <QuizBlock
+          block={quiz}
+          className="canvas-block"
+          highlightedText={null}
+          sourceMarker={null}
+        />
+        <TableBlock
+          block={table}
+          className="canvas-block"
+          highlightedText={null}
+          sourceMarker={null}
+        />
       </>,
     );
 
@@ -72,7 +87,14 @@ describe("CanvasLearningBlocks", () => {
       answer_index: 1,
     });
 
-    render(<QuizBlock block={quiz} className="canvas-block" highlightedText={null} sourceMarker={null} />);
+    render(
+      <QuizBlock
+        block={quiz}
+        className="canvas-block"
+        highlightedText={null}
+        sourceMarker={null}
+      />,
+    );
 
     const wrong = screen.getByRole("button", { name: "A Posterior only" });
     const correct = screen.getByRole("button", { name: "B Expected risk" });

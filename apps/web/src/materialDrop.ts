@@ -15,7 +15,10 @@ type MaterialFileEntry = MaterialEntry & {
 
 type MaterialDirectoryEntry = MaterialEntry & {
   createReader: () => {
-    readEntries: (success: (entries: MaterialEntry[]) => void, error?: (error: DOMException) => void) => void;
+    readEntries: (
+      success: (entries: MaterialEntry[]) => void,
+      error?: (error: DOMException) => void,
+    ) => void;
   };
 };
 

@@ -17,7 +17,11 @@ export function buildWorkspaceTree(canvasDocument: CanvasDocument): WorkspaceTre
   const learnerMemory = group("learner-memory", "Learner memory", "memory");
   const courseCanvasDir = `.lecturepilot/courses/tenant-tuebingen/${canvasDocument.course_id}/canvas/lectures/${canvasDocument.lecture_id}`;
   const learnerDir = `.lecturepilot/users/<account>/courses/${canvasDocument.course_id}/lectures/${canvasDocument.lecture_id}`;
-  addFile(courseCanvas.children, "index.md", canvasResource(canvasDocument, `${courseCanvasDir}/index.md`));
+  addFile(
+    courseCanvas.children,
+    "index.md",
+    canvasResource(canvasDocument, `${courseCanvasDir}/index.md`),
+  );
   addFile(courseCanvas.children, "canvas.json", {
     id: "compiled-canvas",
     kind: "canvas",
@@ -25,7 +29,13 @@ export function buildWorkspaceTree(canvasDocument: CanvasDocument): WorkspaceTre
     path: `${courseCanvasDir}/canvas.json`,
     displayPath: `${courseCanvasDir}/canvas.json`,
   });
-  addCanvasSections(courseCanvas.children, learnerFiles.children, canvasDocument, courseCanvasDir, learnerDir);
+  addCanvasSections(
+    courseCanvas.children,
+    learnerFiles.children,
+    canvasDocument,
+    courseCanvasDir,
+    learnerDir,
+  );
   addCourseSource(sourceMaterial.children, canvasDocument);
   addCourseAssets(sourceMaterial.children, learnerFiles.children, canvasDocument);
   addLearnerFiles(learnerFiles.children, canvasDocument, learnerDir);
@@ -146,7 +156,12 @@ function addLearnerFiles(
 
 function addLearnerMemory(roots: WorkspaceTreeNode[], canvasDocument: CanvasDocument) {
   const userRoot = ".lecturepilot/users/<account>";
-  addMemoryFile(roots, "memories/global.md", `${userRoot}/memories/global.md`, "Global tutor notes");
+  addMemoryFile(
+    roots,
+    "memories/global.md",
+    `${userRoot}/memories/global.md`,
+    "Global tutor notes",
+  );
   addMemoryFile(
     roots,
     "memories/memory-trace.jsonl",
@@ -224,7 +239,10 @@ function uniqueAssets(canvasDocument: CanvasDocument): {
   learnerOwned: boolean;
   sectionId: string;
 }[] {
-  const byPath = new Map<string, { asset: CanvasBlock; learnerOwned: boolean; sectionId: string }>();
+  const byPath = new Map<
+    string,
+    { asset: CanvasBlock; learnerOwned: boolean; sectionId: string }
+  >();
   for (const section of canvasDocument.sections) {
     for (const block of section.blocks) {
       const key = block.asset_path ?? block.asset_url;
@@ -256,9 +274,17 @@ function isStudentSection(section: CanvasSection) {
 }
 
 function isLearnerAsset(block: CanvasBlock) {
-  return Boolean(block.asset_path?.startsWith("student-assets/") || block.asset_url?.startsWith("/workspace-assets/"));
+  return Boolean(
+    block.asset_path?.startsWith("student-assets/") ||
+    block.asset_url?.startsWith("/workspace-assets/"),
+  );
 }
 
 function safeFilename(value: string) {
-  return value.replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 120) || "section";
+  return (
+    value
+      .replace(/[^a-zA-Z0-9_-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 120) || "section"
+  );
 }

@@ -11,7 +11,12 @@ type LearningBlockProps = {
   onSubmitAnswer?: (block: CanvasBlock, answer: string, optionIndex: number) => void;
 };
 
-export function CheckpointBlock({ block, className, highlightedText, sourceMarker }: LearningBlockProps) {
+export function CheckpointBlock({
+  block,
+  className,
+  highlightedText,
+  sourceMarker,
+}: LearningBlockProps) {
   return (
     <aside className={`${className} canvas-checkpoint`} id={block.id} key={block.id}>
       <div className="canvas-learning-label">{block.caption || "Checkpoint"}</div>
@@ -23,11 +28,7 @@ export function CheckpointBlock({ block, className, highlightedText, sourceMarke
   );
 }
 
-export function QuizBlock({
-  block,
-  className,
-  onSubmitAnswer,
-}: LearningBlockProps) {
+export function QuizBlock({ block, className, onSubmitAnswer }: LearningBlockProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const correctIndex = typeof block.answer_index === "number" ? block.answer_index : null;
   return (
@@ -68,7 +69,12 @@ export function QuizBlock({
   );
 }
 
-export function TableBlock({ block, className, highlightedText, sourceMarker }: LearningBlockProps) {
+export function TableBlock({
+  block,
+  className,
+  highlightedText,
+  sourceMarker,
+}: LearningBlockProps) {
   const table = parseMarkdownTable(block.text ?? "");
   if (!table) {
     return (
@@ -108,15 +114,25 @@ export function TableBlock({ block, className, highlightedText, sourceMarker }: 
 }
 
 function parseMarkdownTable(markdown: string) {
-  const lines = markdown.split("\n").map((line) => line.trim()).filter(Boolean);
+  const lines = markdown
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
   if (lines.length < 2 || !lines[0].includes("|") || !/^\|?\s*:?-{3,}/.test(lines[1])) return null;
   const headers = splitRow(lines[0]);
-  const rows = lines.slice(2).map(splitRow).filter((row) => row.length);
+  const rows = lines
+    .slice(2)
+    .map(splitRow)
+    .filter((row) => row.length);
   return { headers, rows };
 }
 
 function splitRow(line: string) {
-  return line.replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
+  return line
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((cell) => cell.trim());
 }
 
 function optionLetter(index: number) {

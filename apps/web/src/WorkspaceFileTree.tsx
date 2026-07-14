@@ -107,7 +107,9 @@ function TreeNode({
     <button
       aria-label={`Open ${node.name}`}
       aria-pressed={isSelected}
-      className={isSelected ? "workspace-tree-row is-file is-selected" : "workspace-tree-row is-file"}
+      className={
+        isSelected ? "workspace-tree-row is-file is-selected" : "workspace-tree-row is-file"
+      }
       style={depthStyle(depth)}
       type="button"
       onClick={() => node.resource && onSelectResource(node.resource)}
@@ -132,18 +134,16 @@ function depthStyle(depth: number) {
 function isSameResource(left: WorkspaceResource | null, right: WorkspaceResource) {
   return Boolean(
     left &&
-      (left.path === right.path ||
-        left.id === right.id ||
-        (left.url && right.url && left.url === right.url)),
+    (left.path === right.path ||
+      left.id === right.id ||
+      (left.url && right.url && left.url === right.url)),
   );
 }
 
 function folderClassName(node: WorkspaceTreeNode) {
-  return [
-    "workspace-tree-row",
-    "is-folder",
-    node.tone ? `is-${node.tone}` : "",
-  ].filter(Boolean).join(" ");
+  return ["workspace-tree-row", "is-folder", node.tone ? `is-${node.tone}` : ""]
+    .filter(Boolean)
+    .join(" ");
 }
 
 function fileIcon(resource: WorkspaceResource | undefined, name: string) {

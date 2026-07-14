@@ -3,7 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
-import { openLecture03FromDashboard, showAllPublishedLectures, soccerCanvasSection } from "./testLessonActions";
+import {
+  openLecture03FromDashboard,
+  showAllPublishedLectures,
+  soccerCanvasSection,
+} from "./testLessonActions";
 import { mockLoginAndTutorFetch, mockLoginFetch } from "./testFixtures";
 
 describe("LecturePilot attendance tutor intro", () => {
@@ -18,7 +22,9 @@ describe("LecturePilot attendance tutor intro", () => {
 
     await logIn(user);
     await showAllPublishedLectures(user);
-    const lectureRow = (await screen.findByRole("heading", { name: /bayesian decision theory/i })).closest("article");
+    const lectureRow = (
+      await screen.findByRole("heading", { name: /bayesian decision theory/i })
+    ).closest("article");
     expect(lectureRow).not.toBeNull();
     await user.click(within(lectureRow as HTMLElement).getByRole("button", { name: "present" }));
     await openLecture03FromDashboard(user);
@@ -64,7 +70,9 @@ describe("LecturePilot attendance tutor intro", () => {
 
     await logIn(user);
     await showAllPublishedLectures(user);
-    const lectureRow = (await screen.findByRole("heading", { name: /bayesian decision theory/i })).closest("article");
+    const lectureRow = (
+      await screen.findByRole("heading", { name: /bayesian decision theory/i })
+    ).closest("article");
     expect(lectureRow).not.toBeNull();
     await user.click(within(lectureRow as HTMLElement).getByRole("button", { name: "absent" }));
     await openLecture03FromDashboard(user);
@@ -75,10 +83,14 @@ describe("LecturePilot attendance tutor intro", () => {
     );
     await user.click(screen.getByRole("button", { name: /send message/i }));
 
-    expect(await screen.findByRole("heading", { name: /soccer scouting example/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /soccer scouting example/i }),
+    ).toBeInTheDocument();
     const history = screen.getByText("+1 earlier").closest("details");
     expect(history).not.toBeNull();
-    expect(within(history as HTMLElement).getByText("canvas: student-soccer-bayes-example")).toBeInTheDocument();
+    expect(
+      within(history as HTMLElement).getByText("canvas: student-soccer-bayes-example"),
+    ).toBeInTheDocument();
     expect(screen.getByText("focus: student-soccer-bayes-example")).toBeInTheDocument();
     expect(screen.getByText("highlight: student-soccer-bayes-example-p-1")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: /soccer scouting example/i })).toHaveAttribute(

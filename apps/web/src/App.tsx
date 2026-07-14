@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useState } from "react";
 
 import {
   getCourses,
@@ -104,10 +104,14 @@ function App() {
 
   useViewTransitionReset(view);
 
+  const loadWorkspaceCourseFromSession = useEffectEvent((activeSession: LoginSession) =>
+    loadWorkspaceCourse(activeSession, workspaceCourseId),
+  );
+
   useEffect(() => {
     if (!session || session.university_course_sync_status === "loading" || isDraftPreviewRequest())
       return;
-    void loadWorkspaceCourse(session, workspaceCourseId);
+    void loadWorkspaceCourseFromSession(session);
   }, [session]);
 
   async function loadWorkspaceCourse(
@@ -432,19 +436,14 @@ function App() {
           onLogin={(nextSession) => {
             setSession(nextSession);
             changeView(landingView(nextSession));
-            if (nextSession.university_course_sync_status !== "loading") {
-              void loadWorkspaceCourse(nextSession);
-            }
           }}
           onOpenDemo={() => {
             setSession(localDemoSession);
             changeView("dashboard");
-            void loadWorkspaceCourse(localDemoSession);
           }}
           onOpenProfessorDemo={() => {
             setSession(localProfessorSession);
             changeView("professor");
-            void loadWorkspaceCourse(localProfessorSession);
           }}
           onOpenLecture={(courseId, lecture) => {
             void handleOpenLecture(courseId, lecture);

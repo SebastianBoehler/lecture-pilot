@@ -106,7 +106,13 @@ function lectureListPayload(published: boolean) {
   if (!published) return [];
   return [
     ["lecture-01", "Introduction and Learning Setup", "2026-05-06", "present", "Lecture01-eng.tex"],
-    ["lecture-02", "Linear Models and Generalization", "2026-05-13", "unknown", "Lecture02-eng.tex"],
+    [
+      "lecture-02",
+      "Linear Models and Generalization",
+      "2026-05-13",
+      "unknown",
+      "Lecture02-eng.tex",
+    ],
     ["lecture-03", "Bayesian Decision Theory", "2026-06-04", "absent", "Lecture03-eng.tex"],
   ].map(([id, title, date, attendance, material_path]) => ({
     lecture: { id, title, date, material_path },

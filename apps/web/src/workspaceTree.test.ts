@@ -20,18 +20,22 @@ describe("workspace tree", () => {
     expect(pathsFor(tree[1])).toContain(
       ".lecturepilot/courses/tenant-tuebingen/martius-ml/canvas/lectures/lecture-03/sections/01-official-topic.md",
     );
-    expect(pathsFor(tree[2])).toEqual(expect.arrayContaining([
-      ".lecturepilot/users/<account>/courses/martius-ml/lectures/lecture-03/canvas/student/90-student-note.md",
-      ".lecturepilot/users/<account>/courses/martius-ml/lectures/lecture-03/canvas/student-assets/student-diagram.png",
-      ".lecturepilot/users/<account>/courses/martius-ml/lectures/lecture-03/canvas.json",
-    ]));
-    expect(pathsFor(tree[3])).toEqual(expect.arrayContaining([
-      ".lecturepilot/users/<account>/memories/global.md",
-      ".lecturepilot/users/<account>/memories/memory-trace.jsonl",
-      ".lecturepilot/users/<account>/memories/preferences.json",
-      ".lecturepilot/users/<account>/courses/martius-ml/memories/course.md",
-      ".lecturepilot/users/<account>/courses/martius-ml/memories/memory-trace.jsonl",
-    ]));
+    expect(pathsFor(tree[2])).toEqual(
+      expect.arrayContaining([
+        ".lecturepilot/users/<account>/courses/martius-ml/lectures/lecture-03/canvas/student/90-student-note.md",
+        ".lecturepilot/users/<account>/courses/martius-ml/lectures/lecture-03/canvas/student-assets/student-diagram.png",
+        ".lecturepilot/users/<account>/courses/martius-ml/lectures/lecture-03/canvas.json",
+      ]),
+    );
+    expect(pathsFor(tree[3])).toEqual(
+      expect.arrayContaining([
+        ".lecturepilot/users/<account>/memories/global.md",
+        ".lecturepilot/users/<account>/memories/memory-trace.jsonl",
+        ".lecturepilot/users/<account>/memories/preferences.json",
+        ".lecturepilot/users/<account>/courses/martius-ml/memories/course.md",
+        ".lecturepilot/users/<account>/courses/martius-ml/memories/memory-trace.jsonl",
+      ]),
+    );
     expect(resourceFor(tree, "sections/01-official-topic.md")).toMatchObject({
       sectionId: "official-topic",
     });
@@ -54,16 +58,20 @@ function pathsFor(node: ReturnType<typeof buildWorkspaceTree>[number]): string[]
   ].filter(Boolean);
 }
 
-function resourceFor(nodes: ReturnType<typeof buildWorkspaceTree>, path: string): WorkspaceResource | undefined {
+function resourceFor(
+  nodes: ReturnType<typeof buildWorkspaceTree>,
+  path: string,
+): WorkspaceResource | undefined {
   const resources = nodes.flatMap((node) => collectResources(node));
-  return resources.find((resource) => resource.displayPath?.endsWith(path) || resource.path.endsWith(path));
+  return resources.find(
+    (resource) => resource.displayPath?.endsWith(path) || resource.path.endsWith(path),
+  );
 }
 
-function collectResources(node: ReturnType<typeof buildWorkspaceTree>[number]): WorkspaceResource[] {
-  return [
-    ...(node.resource ? [node.resource] : []),
-    ...node.children.flatMap(collectResources),
-  ];
+function collectResources(
+  node: ReturnType<typeof buildWorkspaceTree>[number],
+): WorkspaceResource[] {
+  return [...(node.resource ? [node.resource] : []), ...node.children.flatMap(collectResources)];
 }
 
 function documentWithStudentSection(): CanvasDocument {
@@ -74,7 +82,8 @@ function documentWithStudentSection(): CanvasDocument {
     title: "Bayesian Decision Theory",
     source_kind: "generated",
     source_ref: "Lecture03-eng.tex",
-    workspace_path: ".lecturepilot/users/hash/courses/martius-ml/lectures/lecture-03/canvas/index.md",
+    workspace_path:
+      ".lecturepilot/users/hash/courses/martius-ml/lectures/lecture-03/canvas/index.md",
     sections: [
       {
         id: "official-topic",
@@ -91,7 +100,8 @@ function documentWithStudentSection(): CanvasDocument {
             id: "student-image",
             type: "asset",
             asset_path: "student-assets/student-diagram.png",
-            asset_url: "/workspace-assets/martius-ml/lecture-03/hash/student-assets/student-diagram.png",
+            asset_url:
+              "/workspace-assets/martius-ml/lecture-03/hash/student-assets/student-diagram.png",
             caption: "Student diagram",
             items: [],
           },

@@ -6,7 +6,7 @@ export function readDemoWorkspaceCourse(): UniversityCourse | null {
   if (!import.meta.env.DEV) return null;
   try {
     const saved = window.localStorage.getItem(demoWorkspaceKey);
-    return saved ? JSON.parse(saved) as UniversityCourse : null;
+    return saved ? (JSON.parse(saved) as UniversityCourse) : null;
   } catch {
     return null;
   }
@@ -16,8 +16,7 @@ export function writeDemoWorkspaceCourse(course: UniversityCourse) {
   if (!import.meta.env.DEV) return;
   try {
     window.localStorage.setItem(demoWorkspaceKey, JSON.stringify(course));
-  } catch {
-  }
+  } catch {}
 }
 
 export function clearDemoWorkspaceCourse(courseId?: string) {
@@ -29,6 +28,5 @@ export function clearDemoWorkspaceCourse(courseId?: string) {
     }
     const saved = readDemoWorkspaceCourse();
     if (saved?.id === courseId) window.localStorage.removeItem(demoWorkspaceKey);
-  } catch {
-  }
+  } catch {}
 }

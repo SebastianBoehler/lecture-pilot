@@ -80,9 +80,7 @@ function LessonWorkspaceHarness() {
         onBack={vi.fn()}
         onResetWorkspace={vi.fn(async () => undefined)}
         onSendMessage={vi.fn(async () => undefined)}
-        onTogglePanel={(mode) =>
-          setPanelMode((current) => (current === mode ? null : mode))
-        }
+        onTogglePanel={(mode) => setPanelMode((current) => (current === mode ? null : mode))}
       />
     </I18nProvider>
   );

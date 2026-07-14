@@ -32,7 +32,8 @@ export function DashboardLectureRow({
         ) : (
           <>
             <p>
-              {lecture.date} · {t("dashboard.attendance", {
+              {lecture.date} ·{" "}
+              {t("dashboard.attendance", {
                 status: attendanceLabel(lecture.attendance, t),
               })}
             </p>
@@ -65,10 +66,7 @@ export function DashboardLectureRow({
   );
 }
 
-function attendanceLabel(
-  status: Attendance,
-  t: ReturnType<typeof useI18n>["t"],
-) {
+function attendanceLabel(status: Attendance, t: ReturnType<typeof useI18n>["t"]) {
   if (status === "present") return t("attendance.present");
   if (status === "absent") return t("attendance.absent");
   return t("attendance.unknown");

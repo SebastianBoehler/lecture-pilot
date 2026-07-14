@@ -12,5 +12,8 @@ export function findKeySourceBlockId(blocks: CanvasBlock[]) {
 
 export function shouldShowSourceMarker(block: CanvasBlock, keySourceBlockId: string | null) {
   if (block.type === "quiz" || block.type === "component") return false;
-  return Boolean((block.type === "asset" || block.type === "video") && block.asset_url) || block.id === keySourceBlockId;
+  return (
+    Boolean((block.type === "asset" || block.type === "video") && block.asset_url) ||
+    block.id === keySourceBlockId
+  );
 }

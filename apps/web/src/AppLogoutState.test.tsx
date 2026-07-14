@@ -11,7 +11,10 @@ describe("App logout state", () => {
       "lecturepilot.professor-builder.current",
       JSON.stringify({ courseReady: true }),
     );
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => jsonPayload(url)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => jsonPayload(url)),
+    );
 
     render(<App />);
 

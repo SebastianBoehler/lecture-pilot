@@ -16,14 +16,20 @@ describe("Professor course deletion", () => {
   it("deletes a created course from the professor course list", async () => {
     const user = userEvent.setup();
     const fetchMock = professorFetchMock();
-    window.localStorage.setItem("lecturepilot.demo.workspaceCourse", JSON.stringify({
-      access_policy: "public",
-      id: "demo-ml-course",
-      title: "Demo ML Course",
-      professor: "professor-demo",
-      term: "Sommer 2026",
-    }));
-    vi.stubGlobal("confirm", vi.fn(() => true));
+    window.localStorage.setItem(
+      "lecturepilot.demo.workspaceCourse",
+      JSON.stringify({
+        access_policy: "public",
+        id: "demo-ml-course",
+        title: "Demo ML Course",
+        professor: "professor-demo",
+        term: "Sommer 2026",
+      }),
+    );
+    vi.stubGlobal(
+      "confirm",
+      vi.fn(() => true),
+    );
     vi.stubGlobal("fetch", fetchMock);
     render(<App />);
 
@@ -44,7 +50,9 @@ describe("Professor course deletion", () => {
     expect(screen.getByText(/no created course workspaces yet/i)).toBeInTheDocument();
     expect(window.localStorage.getItem("lecturepilot.demo.workspaceCourse")).toBeNull();
     await user.click(screen.getByRole("button", { name: /course performance/i }));
-    expect(screen.queryByRole("button", { name: /grundlagen des maschinellen lernens/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /grundlagen des maschinellen lernens/i }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/0 published lectures/i)).not.toBeInTheDocument();
     expect(await screen.findByText(/no published course workspace yet/i)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
