@@ -71,6 +71,12 @@ The API image runs as UID 10001 with a read-only root, dropped capabilities, a t
 CPU/memory/process limits. Gateway, web, and database use patched derived images recorded in
 `deploy/`.
 
+TeX compilation runs in the separate `latex-compiler` service. It receives one bounded source
+archive, has no database or provider credentials, has no external network, forces Beamer handout
+mode, disables shell escape, and returns only a bounded PDF. The API preserves uploaded matching
+PDFs as authoritative and stores compiled PDFs and rendered pages only under the normalized source
+directory.
+
 ## Storage and recovery
 
 Postgres stores identity, roles, sessions, ownership, enrollments, audit, and quota state. The named
@@ -82,7 +88,9 @@ restore rehearsal is a live-release gate.
 
 `WorkspacePolicy` applies per-type byte limits. Uploads stream to quarantine, validate signature and
 MIME, reject active SVG and unsafe paths, and promote atomically. PDF extraction and rendering run in
-bounded worker processes with page, pixel, CPU, memory, file, and timeout limits.
+bounded worker processes with page, pixel, CPU, memory, file, and timeout limits. TeX compilation is
+additionally isolated in the internal-only compiler container; a failure leaves the parsed text
+canvas usable and adds a professor-facing warning.
 
 ## Current release blockers
 

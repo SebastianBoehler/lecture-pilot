@@ -59,6 +59,9 @@ This repository is intentionally small but runnable:
   course ownership, Alma/ILIAS enrollment evidence, audit events, and durable
   quotas.
 - Capability-scoped, symlink-safe learner and course-builder workspaces.
+- Uploaded lecture PDFs remain authoritative for slide previews. TeX-only
+  lectures are compiled into handout previews by an isolated, no-secret
+  service; failures keep the text canvas and surface a professor warning.
 - Light and dark mode.
 - Backend and frontend tests.
 - CI, Dockerfiles, and Compose starter.
@@ -103,6 +106,7 @@ being built into the student-facing UI first.
 
 ```txt
 apps/api                 FastAPI backend and harness contracts
+apps/latex-compiler      Isolated, bounded TeX-to-PDF preview service
 apps/web                 React/Vite frontend
 services/agent           Agent runtime notes and future ADK/LiteLLM service
 packages/workspace       Workspace package placeholder
@@ -171,6 +175,10 @@ alembic -c apps/api/alembic.ini upgrade head
 pytest apps/api/tests
 uvicorn lecturepilot.app:app --app-dir apps/api/src --reload
 ```
+
+TeX-only slide previews require the isolated local compiler. See
+[docs/latex-compilation.md](docs/latex-compilation.md) for the run command and
+the PDF-first fallback contract.
 
 The full API suite requires a migrated PostgreSQL test database. CI provisions
 Postgres 16 automatically; local development may use any disposable Postgres
@@ -250,24 +258,11 @@ admin searches during course creation; approved selections are stored in the
 private course-material workspace and render as inline video blocks in the
 lesson canvas.
 
-## Optional Observability
+## Observability
 
-LecturePilot ships with a no-op observability layer by default. To trace agent
-turns, model calls, low-level workspace tools, canvas writes, and quality-gate
-decisions into a self-hosted MLflow tracking server, install the optional
-backend dependency and enable the backend:
-
-```bash
-pip install -e "apps/api[observability]"
-export LECTUREPILOT_OBSERVABILITY=mlflow
-export MLFLOW_TRACKING_URI=http://127.0.0.1:5000
-export MLFLOW_EXPERIMENT=lecturepilot-dev
-```
-
-Trace content defaults to metadata only. Set
-`LECTUREPILOT_TRACE_CONTENT=redacted` to add hashed prompt/response payloads, or
-`LECTUREPILOT_TRACE_CONTENT=full` only in local/private debugging sessions where
-course and student text may be stored in the tracing backend.
+Local tracing is disabled by default; production emits metadata-only JSON
+spans. Configuration and privacy boundaries are documented in
+[docs/observability.md](docs/observability.md).
 
 ## Design Source
 

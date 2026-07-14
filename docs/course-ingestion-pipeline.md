@@ -143,13 +143,14 @@ fails clearly instead of silently feeding the whole course to the model.
 it does not yet mean that every accepted binary format receives equivalent
 semantic extraction.
 
-| Kind                  | Current deterministic handling                                            |
-| --------------------- | ------------------------------------------------------------------------- |
-| LaTeX, Markdown, text | Text and structure imported locally                                       |
-| PDF                   | Text extracted and pages rendered locally, up to 20 pages per draft       |
-| Python, notebook      | Markdown and code imported locally as ordered, fenced Canvas content      |
-| Images, SVG, videos   | Preserved as source-backed media; optional JSON sidecars provide captions |
-| CSV, JSON             | Safely uploaded and indexed; semantic canvas extraction is still pending  |
+| Kind                | Current deterministic handling                                            |
+| ------------------- | ------------------------------------------------------------------------- |
+| LaTeX               | Text imported locally; missing slide PDFs compile in an isolated service  |
+| Markdown, text      | Text and structure imported locally                                       |
+| PDF                 | Text extracted and pages rendered locally, up to 20 pages per draft       |
+| Python, notebook    | Markdown and code imported locally as ordered, fenced Canvas content      |
+| Images, SVG, videos | Preserved as source-backed media; optional JSON sidecars provide captions |
+| CSV, JSON           | Safely uploaded and indexed; semantic canvas extraction is still pending  |
 
 Current per-file limits are 2–10 MiB for textual formats, 20 MiB for images and
 notebooks, 100 MiB for PDFs, and 500 MiB for videos. The total request ceiling

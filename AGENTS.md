@@ -41,6 +41,8 @@ pip install -e ../tue-api-wrapper/package
 
 ```bash
 source .venv/bin/activate
+# In another terminal, run the isolated compiler container documented in README.md.
+export LECTUREPILOT_LATEX_COMPILER_URL=http://127.0.0.1:8081
 uvicorn lecturepilot.app:app --app-dir apps/api/src --reload
 npm run dev --workspace apps/web
 ```
@@ -156,6 +158,7 @@ must produce before a gate can pass.
 
 ```txt
 apps/api/                 FastAPI backend, policies, harness contracts
+apps/latex-compiler/      Isolated, bounded TeX-to-PDF preview service
 apps/web/                 React/Vite app and UI tests
 docs/                     Architecture, workspaces, self-hosting, security notes
 deploy/                   Docker Compose starter
@@ -215,6 +218,8 @@ Important web modules: `App.tsx`, `Dashboard.tsx`, `LessonWorkspace.tsx`,
 ## Security And Data Rules
 
 - Treat course uploads and LaTeX/PDF/image assets as untrusted input.
+- Never compile uploaded TeX inside the API process. Use the no-secret,
+  internal-only compiler service; matching uploaded PDFs remain authoritative.
 - Never commit private professor material, real credentials, provider keys, or
   learner workspace data.
 - Reject hidden paths, absolute paths, `..` traversal, unsupported extensions,
@@ -270,6 +275,7 @@ Run the narrowest meaningful check first, then broaden:
 ```bash
 npm run quality
 pytest apps/api/tests -q
+PYTHONPATH=apps/latex-compiler/src pytest apps/latex-compiler/tests -q
 npm run test --workspace apps/web
 npm run build --workspace apps/web
 git diff --check
