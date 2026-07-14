@@ -4,10 +4,11 @@ import { useLayoutEffect, useRef } from "react";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
-import katex from "katex";
 import "katex/dist/katex.min.css";
+import "./math-text.css";
 
 import { katexOptions } from "./courseLatexMacros";
+import { delimitedMathIsRenderable, segmentDisplayMath, tryRenderDisplayMath } from "./displayMath";
 
 type MathTextMode = "inline" | "block";
 
@@ -25,23 +26,51 @@ export function MathText({
     ? normalizeMarkdownMath(highlightedText.trim()).trim()
     : null;
   const target = highlightedMarkdown
-    ? (
-      highlightTarget(plainMarkdownText(markdown), plainMarkdownText(highlightedMarkdown))
-      ?? highlightTarget(markdown, highlightedMarkdown)
-      ?? leadingTextBeforeMath(highlightedMarkdown)
-    )
+    ? (highlightTarget(plainMarkdownText(markdown), plainMarkdownText(highlightedMarkdown)) ??
+      highlightTarget(markdown, highlightedMarkdown) ??
+      leadingTextBeforeMath(highlightedMarkdown))
     : null;
   return <MarkdownRenderer highlightedText={target} mode={mode} text={markdown} />;
 }
 
 export function DisplayMath({ expression }: { expression: string }) {
   if (hasDelimitedMath(expression)) {
+    if (!delimitedMathIsRenderable(expression)) {
+      return <MathRenderFallback expression={expression} />;
+    }
     return <MathText highlightedText={null} mode="block" text={expression} />;
   }
+  const segments = segmentDisplayMath(expression);
+  if (segments.some(({ kind }) => kind === "prose")) {
+    return (
+      <div>
+        {segments.map((segment, index) =>
+          segment.kind === "math" ? (
+            <RenderedDisplayMath expression={segment.value} key={index} />
+          ) : (
+            <MathText highlightedText={null} key={index} mode="block" text={segment.value} />
+          ),
+        )}
+      </div>
+    );
+  }
+  return <RenderedDisplayMath expression={expression} />;
+}
+
+function RenderedDisplayMath({ expression }: { expression: string }) {
+  const html = tryRenderDisplayMath(expression);
+  if (!html) return <MathRenderFallback expression={expression} />;
+  return <div dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
+function MathRenderFallback({ expression }: { expression: string }) {
   return (
-    <div
-      dangerouslySetInnerHTML={{ __html: renderMath(expression, true) }}
-    />
+    <div aria-label="Formula could not be rendered" className="math-render-fallback" role="note">
+      <strong>Formula could not be rendered</strong>
+      <pre>
+        <code>{expression.trim()}</code>
+      </pre>
+    </div>
   );
 }
 
@@ -81,10 +110,7 @@ const blockComponents: Components = {
   a: SafeLink,
 };
 
-function SafeLink({
-  children,
-  href,
-}: ComponentProps<"a">) {
+function SafeLink({ children, href }: ComponentProps<"a">) {
   const target = safeHref(href);
   if (!target) return <>{children}</>;
   return (
@@ -242,20 +268,10 @@ function normalizeLooseLatexCommand(value: string) {
   return value.replace(/^\\+/, "\\");
 }
 
-function renderMath(expression: string, displayMode: boolean) {
-  return katex.renderToString(normalizeMathExpression(expression), {
-    ...katexOptions,
-    displayMode,
-    output: "html",
-  });
-}
-
-function normalizeMathExpression(expression: string) {
-  return expression.replaceAll("...", "\\dots");
-}
-
 function hasDelimitedMath(expression: string) {
-  return /\$\$[\s\S]+?\$\$|\$[^$\n]+\$|\\{1,2}\[[\s\S]+?\\{1,2}\]|\\{1,2}\([^)]*\\{1,2}\)/.test(expression);
+  return /\$\$[\s\S]+?\$\$|\$[^$\n]+\$|\\{1,2}\[[\s\S]+?\\{1,2}\]|\\{1,2}\([\s\S]*?\\{1,2}\)/.test(
+    expression,
+  );
 }
 
 type MarkdownNode = {

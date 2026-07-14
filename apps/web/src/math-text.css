@@ -1,0 +1,20 @@
+.math-render-fallback {
+  display: grid;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.math-render-fallback strong {
+  color: var(--color-danger);
+}
+
+.math-render-fallback pre {
+  overflow-x: auto;
+  margin: 0;
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+}

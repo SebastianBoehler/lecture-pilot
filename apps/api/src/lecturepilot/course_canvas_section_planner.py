@@ -4,8 +4,10 @@ from typing import Protocol
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_text_normalizer import clean_canvas_items, clean_canvas_text
+from lecturepilot.course_canvas_math import validate_section_math
+from lecturepilot.course_canvas_section_prompt import section_messages as _section_messages
 from lecturepilot.course_canvas_source_ref import planned_source_ref
-from lecturepilot.course_canvas_validation import MAX_PLANNED_SECTIONS
+from lecturepilot.course_canvas_validation import planned_section_bounds, source_topic_sections
 from lecturepilot.models import ProviderSettings
 from lecturepilot.providers import ProviderConfigurationError
 
@@ -27,7 +29,9 @@ async def plan_sections_individually(
     source_document: CanvasDocument,
 ) -> CanvasDocument:
     sections = []
-    for source_section in source_document.sections[:MAX_PLANNED_SECTIONS]:
+    source_sections = source_topic_sections(source_document) or source_document.sections
+    _, max_sections = planned_section_bounds(source_document)
+    for source_section in source_sections[:max_sections]:
         sections.append(
             await _plan_section(
                 model_client=model_client,
@@ -67,73 +71,27 @@ async def _plan_section(
     raise last_error or ProviderConfigurationError("Section planner returned invalid JSON.")
 
 
-def _section_messages(source_document: CanvasDocument, section: CanvasSection) -> list[dict[str, str]]:
-    return [
-        {
-            "role": "system",
-            "content": (
-                "Rewrite this extracted lecture section into a clean markdown learning "
-                "canvas section. Return one structured object with title and a sections array containing "
-                "exactly one object with id, title, source_ref, and blocks. "
-                "Use 4 to 7 blocks with self-study paragraphs, examples, and steps. "
-                "Blocks may be paragraph, list, callout, math, asset, video, "
-                "table, checkpoint, or quiz. Include a concise checkpoint or quiz when the "
-                "section introduces a key concept, worked example, or procedure. Quiz blocks use text as the question and "
-                "items as possible answers plus answer_index for the correct option. "
-                "Every block must include id, type, text, items, asset_path, caption, "
-                "and answer_index; use null or [] for fields that do not apply. "
-                "Do not preserve raw slide ids; create a stable learning topic id. Preserve "
-                "key formulas and source-backed assets. Add a worked example or infographic "
-                "brief when it helps learning. Explain why each key idea matters before "
-                "asking for retrieval. Use light Markdown for key terms and notation. "
-                "Preserve relevant fenced code in paragraph text with its language and "
-                "indentation; never execute it. "
-                "Do not invent unsupported topics."
-            ),
-        },
-        {
-            "role": "user",
-            "content": _section_evidence(source_document, section),
-        },
-    ]
-
-
-def _section_evidence(source_document: CanvasDocument, section: CanvasSection) -> str:
-    lines = [
-        f"Course id: {source_document.course_id}",
-        f"Lecture id: {source_document.lecture_id}",
-        f"Primary source: {source_document.source_ref}",
-        f"Required section id: {section.id}",
-        f"Source section title: {section.title}",
-        f"Source frames: {section.source_ref or 'unknown'}",
-    ]
-    for block in section.blocks:
-        if block.type in {"asset", "video"}:
-            lines.append(f"- {block.type} asset_path={block.asset_path}; caption={block.caption or ''}")
-        elif block.type == "list":
-            lines.append("- list: " + "; ".join(block.items[:24]))
-        else:
-            lines.append(f"- {block.type}: {block.text or ''}")
-    return _trim_layout("\n".join(lines), 12000)
-
-
 def _read_section_payload(
     payload: dict,
     source_section: CanvasSection,
     allowed_assets: dict[str, str | None],
 ) -> CanvasSection:
     payload = _section_payload(payload)
-    section_id = _safe_id(str(payload.get("id") or payload.get("section_id") or f"learning-{source_section.id}"))
+    section_id = _safe_id(
+        str(payload.get("id") or payload.get("section_id") or f"learning-{source_section.id}")
+    )
     blocks = _read_blocks(payload.get("blocks"), section_id, allowed_assets)
     if not blocks:
         raise ProviderConfigurationError(f"{source_section.id} has no usable blocks.")
     source_ref = str(payload.get("source_ref") or source_section.source_ref or "source evidence")
-    return CanvasSection(
+    section = CanvasSection(
         id=section_id,
         title=str(payload.get("title") or source_section.title)[:200],
         source_ref=source_ref[:500],
         blocks=blocks,
     )
+    validate_section_math(section)
+    return section
 
 
 def _section_payload(payload: dict) -> dict:
@@ -187,7 +145,17 @@ def _read_blocks(
         if not isinstance(raw_block, dict):
             continue
         block_type = raw_block.get("type")
-        if block_type not in {"paragraph", "list", "callout", "math", "asset", "video", "table", "checkpoint", "quiz"}:
+        if block_type not in {
+            "paragraph",
+            "list",
+            "callout",
+            "math",
+            "asset",
+            "video",
+            "table",
+            "checkpoint",
+            "quiz",
+        }:
             block_type = "paragraph"
         if block_type in {"asset", "video"} and raw_block.get("asset_path") not in allowed_assets:
             continue
@@ -211,7 +179,11 @@ def _read_block(
 ) -> CanvasBlock:
     if block_type == "list":
         raw_items = _block_items(raw_block)
-        return CanvasBlock(id=block_id, type="list", items=[_trim(item, 340) for item in clean_canvas_items(raw_items[:12])])
+        return CanvasBlock(
+            id=block_id,
+            type="list",
+            items=[_trim(item, 340) for item in clean_canvas_items(raw_items[:12])],
+        )
     if block_type in {"asset", "video"}:
         asset_path = str(raw_block.get("asset_path"))
         return CanvasBlock(
@@ -220,7 +192,8 @@ def _read_block(
             asset_path=asset_path,
             asset_url=allowed_assets.get(asset_path),
             caption=str(raw_block.get("caption") or asset_path)[:500],
-            text=_trim(clean_canvas_text(raw_block.get("text") or raw_block.get("content")), 700) or None,
+            text=_trim(clean_canvas_text(raw_block.get("text") or raw_block.get("content")), 700)
+            or None,
         )
     if block_type == "quiz":
         return CanvasBlock(
@@ -228,7 +201,9 @@ def _read_block(
             type="quiz",
             text=_trim(clean_canvas_text(raw_block.get("text") or raw_block.get("question")), 1400),
             items=[_trim(item, 180) for item in clean_canvas_items(_block_items(raw_block)[:6])],
-            caption=str(raw_block.get("caption") or raw_block.get("title") or "Checkpoint quiz")[:500],
+            caption=str(raw_block.get("caption") or raw_block.get("title") or "Checkpoint quiz")[
+                :500
+            ],
             answer_index=_answer_index(raw_block),
         )
     if block_type in {"checkpoint", "table"}:
@@ -273,14 +248,9 @@ def _safe_id(value: str) -> str:
 
 
 def _trim(value: str, limit: int) -> str:
-    cleaned = value.strip() if value.lstrip().startswith(("```", "~~~")) else " ".join(value.split())
-    if len(cleaned) <= limit:
-        return cleaned
-    return cleaned[: limit - 3].rstrip() + "..."
-
-
-def _trim_layout(value: str, limit: int) -> str:
-    cleaned = value.strip()
+    cleaned = (
+        value.strip() if value.lstrip().startswith(("```", "~~~")) else " ".join(value.split())
+    )
     if len(cleaned) <= limit:
         return cleaned
     return cleaned[: limit - 3].rstrip() + "..."

@@ -5,7 +5,11 @@ import { DisplayMath, MathText } from "./MathText";
 
 describe("MathText", () => {
   it("renders light markdown emphasis around inline math", () => {
-    render(<p><MathText highlightedText={null} text="Use **posterior** with `p(x | C)` and $P(C|x)$." /></p>);
+    render(
+      <p>
+        <MathText highlightedText={null} text="Use **posterior** with `p(x | C)` and $P(C|x)$." />
+      </p>,
+    );
 
     expect(screen.getByText("posterior").closest("strong")).not.toBeNull();
     expect(screen.getByText("p(x | C)").tagName).toBe("CODE");
@@ -82,6 +86,94 @@ describe("MathText", () => {
     expect(document.querySelector(".katex-display")).not.toBeNull();
   });
 
+  it("keeps explanatory prose readable beside an undelimited display equation", () => {
+    render(
+      <DisplayMath
+        expression={String.raw`The empirical risk is minimized by L(f) = \frac{1}{n}\sum_{i=1}^{n}\ell(f(x_i), y_i)`}
+      />,
+    );
+
+    const prose = screen.getByText("The empirical risk is minimized by");
+    expect(prose.closest(".katex")).toBeNull();
+    expect(document.querySelector(".katex-display")).not.toBeNull();
+    expect(document.querySelector(".math-render-fallback")).toBeNull();
+  });
+
+  it("separates multiple explanatory clauses from their equations", () => {
+    render(
+      <DisplayMath
+        expression={String.raw`The regularized loss is: L' = L + \lambda\lVert w\rVert^2. During optimization, the update is: w_i = w_i - \eta\nabla_i L`}
+      />,
+    );
+
+    expect(screen.getByText("The regularized loss is:").closest(".katex")).toBeNull();
+    expect(screen.getByText("During optimization, the update is:").closest(".katex")).toBeNull();
+    expect(document.querySelectorAll(".katex-display")).toHaveLength(2);
+  });
+
+  it("keeps trailing explanatory prose out of the equation renderer", () => {
+    render(
+      <DisplayMath
+        expression={String.raw`The latent process is: z_t = \mu_t + \epsilon_t, where epsilon~N(0,1).`}
+      />,
+    );
+
+    expect(screen.getByText("where epsilon~N(0,1).").closest(".katex")).toBeNull();
+    expect(document.querySelectorAll(".katex-display")).toHaveLength(1);
+  });
+
+  it("separates an unpunctuated explanatory continuation from display math", () => {
+    render(
+      <DisplayMath expression={String.raw`The optimum is w = 0 where the gradient vanishes`} />,
+    );
+
+    expect(screen.getByText("where the gradient vanishes").closest(".katex")).toBeNull();
+    expect(document.querySelectorAll(".katex-display")).toHaveLength(1);
+  });
+
+  it("keeps pure undelimited formulas on the KaTeX display path", () => {
+    render(<DisplayMath expression={String.raw`R(f) = \mathbb{E}[\ell(f(X), Y)]`} />);
+
+    expect(document.querySelector(".katex-display")).not.toBeNull();
+    expect(document.querySelector(".math-render-fallback")).toBeNull();
+  });
+
+  it("keeps valid multiline LaTeX environments intact", () => {
+    render(
+      <DisplayMath
+        expression={String.raw`\begin{aligned}
+f(x) &= x^2 && \text{if } x \geq 0 \\
+f(x) &= -x && \text{if } x < 0
+\end{aligned}`}
+      />,
+    );
+
+    expect(document.querySelectorAll(".katex-display")).toHaveLength(1);
+    expect(document.body).toHaveTextContent("if");
+    expect(document.querySelector(".math-render-fallback")).toBeNull();
+  });
+
+  it("shows unsupported display math as an explicit readable fallback", () => {
+    const expression = String.raw`\courseSpecificRisk{f} = \frac{1}{`;
+    render(<DisplayMath expression={expression} />);
+
+    const fallback = screen.getByText("Formula could not be rendered").closest("[role='note']");
+    expect(fallback).not.toBeNull();
+    expect(fallback).toHaveClass("math-render-fallback");
+    expect(fallback).toHaveTextContent("Formula could not be rendered");
+    expect(fallback).toHaveTextContent(expression);
+    expect(document.querySelector(".katex")).toBeNull();
+  });
+
+  it("shows unsupported delimited math as the same readable fallback", () => {
+    const expression = String.raw`Objective: $\courseSpecificRisk{f}$`;
+    render(<DisplayMath expression={expression} />);
+
+    const fallback = screen.getByText("Formula could not be rendered").closest("[role='note']");
+    expect(fallback).toHaveTextContent(expression);
+    expect(document.querySelector(".katex-error")).toBeNull();
+  });
+
   it("renders full markdown blocks with lists, tables, links, and math", () => {
     render(
       <div>
@@ -108,7 +200,10 @@ describe("MathText", () => {
     expect(screen.getByText("Probability").closest("strong")).not.toBeNull();
     expect(screen.getByText("Python").tagName).toBe("CODE");
     expect(screen.getByRole("table")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Course page" })).toHaveAttribute("href", "https://example.com");
+    expect(screen.getByRole("link", { name: "Course page" })).toHaveAttribute(
+      "href",
+      "https://example.com",
+    );
     expect(document.querySelector(".katex")).not.toBeNull();
   });
 
