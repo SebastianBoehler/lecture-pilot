@@ -20,7 +20,21 @@ def _archive(path: Path, *, main_path: str = "slides.tex") -> Path:
 
 
 def _fake_pdflatex(path: Path, body: str) -> Path:
-    path.write_text(f"#!/bin/sh\nset -eu\n{body}\n", encoding="utf-8")
+    path.write_text(
+        f"""#!/bin/sh
+set -eu
+contains_line() {{
+    needle=$1
+    file=$2
+    while IFS= read -r line; do
+        test "$line" != "$needle" || return 0
+    done < "$file"
+    return 1
+}}
+{body}
+""",
+        encoding="utf-8",
+    )
     path.chmod(0o700)
     return path
 
@@ -39,7 +53,7 @@ for arg in "$@"; do
     last=$arg
     case "$arg" in -output-directory=*) out=${arg#*=} ;; esac
 done
-grep -F '\\PassOptionsToClass{handout}{beamer}' "$last"
+contains_line '\\PassOptionsToClass{handout}{beamer}' "$last"
 printf '%%PDF-1.7\nvalid' > "$out/lecturepilot-slides.pdf"
 """,
     )
@@ -66,7 +80,7 @@ for arg in "$@"; do
     last=$arg
     case "$arg" in -output-directory=*) out=${arg#*=} ;; esac
 done
-grep -F '\input{\detokenize{slides.tex}}' "$last"
+contains_line '\input{\detokenize{slides.tex}}' "$last"
 printf '%%PDF-1.7\nvalid' > "$out/lecturepilot-slides.pdf"
 """,
     )
@@ -87,7 +101,7 @@ printf '%%PDF-1.7\nvalid' > "$out/lecturepilot-slides.pdf"
 
 
 def test_timeout_kills_compile_promptly(tmp_path: Path) -> None:
-    fake = _fake_pdflatex(tmp_path / "pdflatex", "sleep 60")
+    fake = _fake_pdflatex(tmp_path / "pdflatex", "while :; do :; done")
     started = time.monotonic()
 
     with pytest.raises(CompilerServiceError) as error:
