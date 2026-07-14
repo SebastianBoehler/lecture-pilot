@@ -12,7 +12,7 @@ def test_student_canvas_write_normalizes_model_quiz_lines() -> None:
         (
             "section_id=posterior-higher-quiz; title=Choosing Higher Posterior Quiz\n"
             "span_id=posterior-higher-quiz-1; type=quiz; "
-            "text=Which class has the higher posterior?; items=[\"C1\", \"C2\"]\n"
+            'text=Which class has the higher posterior?; items=["C1", "C2"]\n'
         ),
     )
 
@@ -155,7 +155,9 @@ def test_ordered_student_path_does_not_leak_into_section_id(tmp_path) -> None:
 
     assert second["ok"] is True
     assert second["section_id"] == "prior-explanation-md"
-    document = workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="u1")
+    document = workspace.read_document(
+        course_id="martius-ml", lecture_id="lecture-03", user_id="u1"
+    )
     section = document.sections[-1]
     assert section.id == "prior-explanation-md"
     assert section.title == "Prior Explanation"

@@ -15,9 +15,13 @@ from lecturepilot.providers import DEFAULT_MODEL
 
 
 async def test_tool_loop_requires_image_placement_before_final_answer(tmp_path) -> None:
-    workspace = CanvasWorkspace(workspace_root=tmp_path / "workspaces", material_root=write_course_source(tmp_path))
+    workspace = CanvasWorkspace(
+        workspace_root=tmp_path / "workspaces", material_root=write_course_source(tmp_path)
+    )
     workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="u1")
-    setup = AgentToolExecutor(canvas_workspace=workspace, course_id="martius-ml", lecture_id="lecture-03", user_id="u1")
+    setup = AgentToolExecutor(
+        canvas_workspace=workspace, course_id="martius-ml", lecture_id="lecture-03", user_id="u1"
+    )
     written = setup.execute(
         "write",
         {
@@ -145,5 +149,9 @@ class _FakeImageGenerator:
 
 def _response(content: str | None = None, tool_calls: list[dict] | None = None):
     return SimpleNamespace(
-        choices=[SimpleNamespace(message={"role": "assistant", "content": content, "tool_calls": tool_calls or []})]
+        choices=[
+            SimpleNamespace(
+                message={"role": "assistant", "content": content, "tool_calls": tool_calls or []}
+            )
+        ]
     )

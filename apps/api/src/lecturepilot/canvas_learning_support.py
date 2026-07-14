@@ -65,7 +65,9 @@ def _normalize_block(block: CanvasBlock, section_title: str) -> CanvasBlock:
     if block.type == "paragraph":
         match = _LEGACY_WHY_RE.match(block.text.strip())
         if match:
-            return block.model_copy(update={"text": support_why_text(section_title, match.group("anchor"))})
+            return block.model_copy(
+                update={"text": support_why_text(section_title, match.group("anchor"))}
+            )
     if block.type != "callout" or not _LEGACY_CHECKPOINT_RE.match(block.text.strip()):
         return block
     return block.model_copy(update={"text": support_check_prompt(section_title)})

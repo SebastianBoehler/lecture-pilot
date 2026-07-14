@@ -29,7 +29,9 @@ async def test_litellm_course_plan_client_requests_canvas_schema(monkeypatch) ->
     )
 
     assert payload["title"] == "T"
-    assert payload.warnings == ["Planner model finished with reason 'error'. Review this draft before publishing."]
+    assert payload.warnings == [
+        "Planner model finished with reason 'error'. Review this draft before publishing."
+    ]
     assert calls[0]["response_format"]["type"] == "json_schema"
     schema = calls[0]["response_format"]["json_schema"]["schema"]
     assert calls[0]["response_format"]["json_schema"]["strict"] is True
@@ -67,14 +69,22 @@ async def test_course_planner_restyles_source_evidence(monkeypatch) -> None:
         for item in document.sections
         if any(block.type in {"checkpoint", "quiz"} for block in item.blocks)
     ]
-    assert assessment_sections == ["text-preprocessing-pipeline", "learning-topic-6", "learning-topic-8"]
-    middle_checkpoint = next(block for block in document.sections[2].blocks if block.type == "checkpoint")
+    assert assessment_sections == [
+        "text-preprocessing-pipeline",
+        "learning-topic-6",
+        "learning-topic-8",
+    ]
+    middle_checkpoint = next(
+        block for block in document.sections[2].blocks if block.type == "checkpoint"
+    )
     assert middle_checkpoint.caption == "Quality gate"
     final_quiz = next(block for block in document.sections[-1].blocks if block.type == "quiz")
     assert final_quiz.answer_index == 0
     assert final_quiz.items[0].startswith("The concept controls")
     assert all(block.asset_path != "unseen.png" for block in section.blocks)
-    text_pipeline = next(item for item in document.sections if item.id == "text-preprocessing-pipeline")
+    text_pipeline = next(
+        item for item in document.sections if item.id == "text-preprocessing-pipeline"
+    )
     assert text_pipeline.blocks[0].text.startswith("Tokenization turns raw email text into tokens.")
     assert "###" not in text_pipeline.blocks[0].text
     assert "{'type'" not in text_pipeline.blocks[0].text
@@ -244,7 +254,9 @@ def _source_document() -> CanvasDocument:
             title="Slide dump",
             source_ref="frame 1",
             blocks=[
-                CanvasBlock(id="frame-1-list", type="list", items=["prior", "likelihood", "posterior"]),
+                CanvasBlock(
+                    id="frame-1-list", type="list", items=["prior", "likelihood", "posterior"]
+                ),
                 CanvasBlock(id="frame-1-math", type="math", text="P(C|x)=..."),
                 CanvasBlock(
                     id="frame-1-asset",
@@ -282,7 +294,9 @@ def _source_document() -> CanvasDocument:
             id=f"source-section-{index}",
             title=f"Source section {index}",
             source_ref=f"frame {index}",
-            blocks=[CanvasBlock(id=f"source-section-{index}-p", type="paragraph", text="Source detail.")],
+            blocks=[
+                CanvasBlock(id=f"source-section-{index}-p", type="paragraph", text="Source detail.")
+            ],
         )
         for index in range(2, 9)
     )

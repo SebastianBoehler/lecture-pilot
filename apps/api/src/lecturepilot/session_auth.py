@@ -40,9 +40,7 @@ class SessionAuthSettings:
         same_site = os.getenv("LECTUREPILOT_SESSION_COOKIE_SAMESITE", "lax").lower()
         if same_site not in {"lax", "strict", "none"}:
             raise SessionAuthError("Session cookie SameSite must be lax, strict, or none.")
-        cookie_secure = _bool_env(
-            "LECTUREPILOT_SESSION_COOKIE_SECURE", environment == "production"
-        )
+        cookie_secure = _bool_env("LECTUREPILOT_SESSION_COOKIE_SECURE", environment == "production")
         if environment == "production" and not cookie_secure:
             raise SessionAuthError("Secure session cookies are required in production.")
         if same_site == "none" and not cookie_secure:

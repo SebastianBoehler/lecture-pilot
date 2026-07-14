@@ -20,11 +20,17 @@ def canvas_context(turn: AgentTurnInput) -> str:
     document = turn.canvas_context
     if document is None:
         return "Canvas context: unavailable. Use the current section id only."
-    lines = [f"Canvas title: {document.title}", f"Canvas source: {document.source_ref}", "Allowed canvas targets:"]
+    lines = [
+        f"Canvas title: {document.title}",
+        f"Canvas source: {document.source_ref}",
+        "Allowed canvas targets:",
+    ]
     for section in document.sections:
         lines.append(f"- section_id={section.id}; title={section.title}")
         for block in section.blocks[:5]:
-            excerpt = _block_excerpt(block.type, block.text, block.items, block.caption, block.asset_path)
+            excerpt = _block_excerpt(
+                block.type, block.text, block.items, block.caption, block.asset_path
+            )
             if excerpt:
                 lines.append(f"  span_id={block.id}; type={block.type}; text={excerpt}")
     return _trim_text("\n".join(lines), 9000)
@@ -34,15 +40,23 @@ def read_canvas_commands(payload: dict, turn: AgentTurnInput) -> list[CanvasComm
     commands: list[CanvasCommand] = []
     raw_commands = payload.get("canvas_commands")
     if isinstance(raw_commands, list):
-        commands.extend(_read_command(item, turn) for item in raw_commands if isinstance(item, dict))
+        commands.extend(
+            _read_command(item, turn) for item in raw_commands if isinstance(item, dict)
+        )
     focus_id = _default_section_id(turn)
     if not any(command.type == "focus_section" for command in commands):
         commands.insert(0, CanvasCommand(type="focus_section", section_id=focus_id))
-    return _normalize_commands([command for command in commands if command.section_id], focus_id, turn)
+    return _normalize_commands(
+        [command for command in commands if command.section_id], focus_id, turn
+    )
 
 
 def read_quality_gate(payload: dict, turn: AgentTurnInput) -> QualityGateDecision:
-    expected_gate_id = "bayes-decision-check" if turn.lecture_id == "lecture-03" else "lecture-learning-outcome-check"
+    expected_gate_id = (
+        "bayes-decision-check"
+        if turn.lecture_id == "lecture-03"
+        else "lecture-learning-outcome-check"
+    )
     raw_gate = payload.get("quality_gate")
     if not isinstance(raw_gate, dict):
         return QualityGateDecision(
@@ -62,9 +76,15 @@ def _read_command(raw_command: dict, turn: AgentTurnInput) -> CanvasCommand:
     if command_type in {"append_section", "update_section"}:
         section = read_generated_section(raw_command)
         if section is not None:
-            placement = _read_placement(raw_command, turn, default_to_focus=command_type == "append_section")
-            return CanvasCommand(type=command_type, section_id=section.id, section=section, placement=placement)
-    return CanvasCommand(type="focus_section", section_id=_read_section_id(raw_command.get("section_id"), turn))
+            placement = _read_placement(
+                raw_command, turn, default_to_focus=command_type == "append_section"
+            )
+            return CanvasCommand(
+                type=command_type, section_id=section.id, section=section, placement=placement
+            )
+    return CanvasCommand(
+        type="focus_section", section_id=_read_section_id(raw_command.get("section_id"), turn)
+    )
 
 
 def _read_highlight_command(raw_command: dict, turn: AgentTurnInput) -> CanvasCommand | None:
@@ -124,9 +144,13 @@ def _default_section_id(turn: AgentTurnInput) -> str:
     return "bayesian-decision-theory-the-aim"
 
 
-def _normalize_commands(commands: list[CanvasCommand], fallback_focus_id: str, turn: AgentTurnInput) -> list[CanvasCommand]:
+def _normalize_commands(
+    commands: list[CanvasCommand], fallback_focus_id: str, turn: AgentTurnInput
+) -> list[CanvasCommand]:
     clean = _dedupe_commands(commands)
-    generated = [command for command in clean if command.type in {"append_section", "update_section"}]
+    generated = [
+        command for command in clean if command.type in {"append_section", "update_section"}
+    ]
     focus = next((command for command in clean if command.type == "focus_section"), None)
     if generated:
         focus = CanvasCommand(type="focus_section", section_id=generated[0].section_id)
@@ -201,7 +225,9 @@ def _dedupe_commands(commands: list[CanvasCommand]) -> list[CanvasCommand]:
     return result
 
 
-def _block_excerpt(block_type: str, text: str | None, items: list[str], caption: str | None, asset_path: str | None) -> str:
+def _block_excerpt(
+    block_type: str, text: str | None, items: list[str], caption: str | None, asset_path: str | None
+) -> str:
     if block_type == "asset":
         return _trim_text(caption or asset_path or "asset", 180)
     if items:

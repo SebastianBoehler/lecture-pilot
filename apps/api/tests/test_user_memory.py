@@ -18,7 +18,9 @@ def test_user_memory_context_includes_global_and_course_memory(tmp_path) -> None
     assert (user_root / "courses" / "martius-ml" / "memories" / "course.md").exists()
     assert (user_root / "courses" / "martius-ml" / "memories" / "memory-trace.jsonl").exists()
 
-    (user_root / "memories" / "global.md").write_text("- prefers concise analogies\n", encoding="utf-8")
+    (user_root / "memories" / "global.md").write_text(
+        "- prefers concise analogies\n", encoding="utf-8"
+    )
     (user_root / "courses" / "martius-ml" / "memories" / "course.md").write_text(
         "- needs Bayes risk examples\n",
         encoding="utf-8",

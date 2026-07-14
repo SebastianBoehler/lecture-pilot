@@ -47,7 +47,9 @@ def _find_phrase_block(
     lecture_id: str,
     phrase: str,
 ) -> tuple[str, str] | None:
-    document = canvas_workspace.read_document(course_id=course_id, lecture_id=lecture_id, user_id=user_id)
+    document = canvas_workspace.read_document(
+        course_id=course_id, lecture_id=lecture_id, user_id=user_id
+    )
     needle = _compact(phrase)
     for section in document.sections:
         for block in section.blocks:

@@ -50,17 +50,25 @@ def test_streamed_tool_turn_persists_canvas_memory_and_gate(tmp_path, monkeypatc
     result = events[-1]["result"]
     assert result["quality_gate"]["gate_id"] == "tool-loop-gate"
     assert result["quality_gate"]["status"] == "needs_evidence"
-    assert any(command["section_id"] == "student-tool-loop-note" for command in result["canvas_commands"])
+    assert any(
+        command["section_id"] == "student-tool-loop-note" for command in result["canvas_commands"]
+    )
 
     layout = app.state.canvas_workspace.layout
     user_root = layout.user_root("student01")
     lecture_root = layout.user_lecture_root("student01", "martius-ml", "lecture-03")
     assert "soccer analogies" in (user_root / "memories" / "global.md").read_text(encoding="utf-8")
-    assert json.loads((user_root / "memories" / "preferences.json").read_text())["analogy"] == "soccer"
-    assert '"scope": "global"' in (user_root / "memories" / "memory-trace.jsonl").read_text(encoding="utf-8")
+    assert (
+        json.loads((user_root / "memories" / "preferences.json").read_text())["analogy"] == "soccer"
+    )
+    assert '"scope": "global"' in (user_root / "memories" / "memory-trace.jsonl").read_text(
+        encoding="utf-8"
+    )
     course_memory = user_root / "courses" / "martius-ml" / "memories" / "course.md"
     course_trace = user_root / "courses" / "martius-ml" / "memories" / "memory-trace.jsonl"
-    assert "Bayes risk comparisons need worked examples" in course_memory.read_text(encoding="utf-8")
+    assert "Bayes risk comparisons need worked examples" in course_memory.read_text(
+        encoding="utf-8"
+    )
     assert '"scope": "course"' in course_trace.read_text(encoding="utf-8")
     assert '"lecture_id": "lecture-03"' in course_trace.read_text(encoding="utf-8")
     assert "tool-loop-gate" in (lecture_root / "gates.json").read_text(encoding="utf-8")
@@ -71,7 +79,9 @@ def test_streamed_tool_turn_persists_canvas_memory_and_gate(tmp_path, monkeypatc
     )
     assert canvas_response.status_code == 200, canvas_response.json()
     canvas = canvas_response.json()
-    student_section = next(section for section in canvas["sections"] if section["id"] == "student-tool-loop-note")
+    student_section = next(
+        section for section in canvas["sections"] if section["id"] == "student-tool-loop-note"
+    )
     assert student_section["blocks"][0]["text"] == "This was written through the real write tool."
 
     second = client.post(
@@ -95,7 +105,9 @@ class _ToolLoopHarness:
         self.calls = 0
         self.seen_memory_preferences: dict[str, Any] = {}
 
-    async def run_turn(self, turn: AgentTurnInput, *, tool_executor, observability, emit) -> AgentTurnResult:
+    async def run_turn(
+        self, turn: AgentTurnInput, *, tool_executor, observability, emit
+    ) -> AgentTurnResult:
         self.calls += 1
         if self.calls == 2:
             self.seen_memory_preferences = dict(turn.user_memory.preferences)
@@ -114,7 +126,10 @@ class _ToolLoopHarness:
             tool_executor=tool_executor,
             observability=observability or Observability(),
             emit=emit,
-            messages=[{"role": "system", "content": "Use tools."}, {"role": "user", "content": turn.message}],
+            messages=[
+                {"role": "system", "content": "Use tools."},
+                {"role": "user", "content": turn.message},
+            ],
         )
 
 
@@ -204,7 +219,11 @@ def _tool_call(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
 
 def _response(content: str | None = None, tool_calls: list[dict] | None = None):
     return SimpleNamespace(
-        choices=[SimpleNamespace(message={"role": "assistant", "content": content, "tool_calls": tool_calls or []})]
+        choices=[
+            SimpleNamespace(
+                message={"role": "assistant", "content": content, "tool_calls": tool_calls or []}
+            )
+        ]
     )
 
 

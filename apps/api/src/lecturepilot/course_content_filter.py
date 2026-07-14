@@ -32,10 +32,7 @@ def is_learning_section(section: CanvasSection) -> bool:
         for part in [
             section.title,
             section.source_ref or "",
-            *[
-                block.text or block.caption or " ".join(block.items)
-                for block in section.blocks[:3]
-            ],
+            *[block.text or block.caption or " ".join(block.items) for block in section.blocks[:3]],
         ]
         if part
     )

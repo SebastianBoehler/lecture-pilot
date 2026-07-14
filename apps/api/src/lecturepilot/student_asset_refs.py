@@ -21,10 +21,16 @@ def resolve_student_asset_refs(
         f"{layout.user_key(user_id)}/student-assets"
     )
     sections = [
-        section.model_copy(update={"blocks": [
-            _resolve_student_asset_block(block, canvas_dir=canvas_dir, asset_url_prefix=prefix)
-            for block in section.blocks
-        ]})
+        section.model_copy(
+            update={
+                "blocks": [
+                    _resolve_student_asset_block(
+                        block, canvas_dir=canvas_dir, asset_url_prefix=prefix
+                    )
+                    for block in section.blocks
+                ]
+            }
+        )
         for section in document.sections
     ]
     return document.model_copy(update={"sections": sections})
@@ -47,10 +53,12 @@ def _resolve_student_asset_block(
     if not (canvas_dir / "student-assets" / relative).exists():
         return block
     asset_path = f"student-assets/{relative.as_posix()}"
-    return block.model_copy(update={
-        "asset_path": asset_path,
-        "asset_url": f"{asset_url_prefix}/{relative.as_posix()}",
-    })
+    return block.model_copy(
+        update={
+            "asset_path": asset_path,
+            "asset_url": f"{asset_url_prefix}/{relative.as_posix()}",
+        }
+    )
 
 
 def _student_asset_target(asset_path: str | None, asset_url: str | None) -> str | None:

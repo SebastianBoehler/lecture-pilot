@@ -12,7 +12,9 @@ from lecturepilot.storage_layout import StorageLayout
 
 
 def test_normalizes_legacy_learning_support_copy() -> None:
-    anchor = "In binary classification, we categorize outcomes into four cases: True Positives (TP),"
+    anchor = (
+        "In binary classification, we categorize outcomes into four cases: True Positives (TP),"
+    )
     document = _document(
         [
             CanvasBlock(
@@ -77,7 +79,9 @@ def test_course_canvas_store_writes_clean_learning_support(tmp_path: Path) -> No
     written = store.write(document)
     section_path = next(store.path("martius-ml", "lecture-02").joinpath("sections").glob("*.md"))
 
-    assert written.sections[0].blocks[0].text == support_check_prompt("Measuring Binary Classifier Performance")
+    assert written.sections[0].blocks[0].text == support_check_prompt(
+        "Measuring Binary Classifier Performance"
+    )
     assert "Learning checkpoint: use" not in section_path.read_text(encoding="utf-8")
 
 

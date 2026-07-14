@@ -84,13 +84,18 @@ def build_exam_readiness_check(
     lectures: list[Lecture],
 ) -> ExamReadinessCheck:
     lecture_titles = {lecture.id: lecture.title for lecture in lectures}
-    by_lecture = [_questions_for_document(document, lecture_titles.get(document.lecture_id, document.title)) for document in documents]
+    by_lecture = [
+        _questions_for_document(document, lecture_titles.get(document.lecture_id, document.title))
+        for document in documents
+    ]
     questions = _mixed_questions(by_lecture, MAX_EXAM_QUESTIONS)
     coverage = [
         ExamReadinessCoverage(
             lecture_id=document.lecture_id,
             lecture_title=lecture_titles.get(document.lecture_id, document.title),
-            question_count=sum(1 for question in questions if question.lecture_id == document.lecture_id),
+            question_count=sum(
+                1 for question in questions if question.lecture_id == document.lecture_id
+            ),
         )
         for document in documents
     ]
@@ -102,7 +107,9 @@ def build_exam_readiness_check(
     )
 
 
-def _questions_for_document(document: CanvasDocument, lecture_title: str) -> list[ExamReadinessQuestion]:
+def _questions_for_document(
+    document: CanvasDocument, lecture_title: str
+) -> list[ExamReadinessQuestion]:
     multiple_choice = []
     open_ended = []
     for section in document.sections:
@@ -180,7 +187,9 @@ def _section_rubric(section: CanvasSection) -> list[str]:
     return rubric[:3]
 
 
-def _round_robin(question_groups: list[list[ExamReadinessQuestion]], limit: int) -> list[ExamReadinessQuestion]:
+def _round_robin(
+    question_groups: list[list[ExamReadinessQuestion]], limit: int
+) -> list[ExamReadinessQuestion]:
     selected = []
     index = 0
     while len(selected) < limit:
@@ -197,7 +206,9 @@ def _round_robin(question_groups: list[list[ExamReadinessQuestion]], limit: int)
     return selected
 
 
-def _mixed_questions(question_groups: list[list[ExamReadinessQuestion]], limit: int) -> list[ExamReadinessQuestion]:
+def _mixed_questions(
+    question_groups: list[list[ExamReadinessQuestion]], limit: int
+) -> list[ExamReadinessQuestion]:
     multiple_choice_groups = [
         [question for question in questions if question.kind == "multiple_choice"]
         for questions in question_groups
@@ -207,7 +218,9 @@ def _mixed_questions(question_groups: list[list[ExamReadinessQuestion]], limit: 
         for questions in question_groups
     ]
     open_target = min(MIN_OPEN_ENDED_QUESTIONS, _question_count(open_ended_groups), limit)
-    mc_target = min(MAX_MULTIPLE_CHOICE_QUESTIONS, _question_count(multiple_choice_groups), limit - open_target)
+    mc_target = min(
+        MAX_MULTIPLE_CHOICE_QUESTIONS, _question_count(multiple_choice_groups), limit - open_target
+    )
     selected = [
         *_round_robin([group for group in multiple_choice_groups if group], mc_target),
         *_round_robin([group for group in open_ended_groups if group], open_target),
@@ -229,4 +242,4 @@ def _question_count(groups: list[list[ExamReadinessQuestion]]) -> int:
 
 def _trim(value: str, limit: int) -> str:
     normalized = " ".join(value.split())
-    return normalized if len(normalized) <= limit else f"{normalized[:limit - 3].rstrip()}..."
+    return normalized if len(normalized) <= limit else f"{normalized[: limit - 3].rstrip()}..."

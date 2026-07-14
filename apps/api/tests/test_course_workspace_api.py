@@ -16,7 +16,9 @@ def test_professor_creates_stable_course_workspace_ids(tmp_path: Path) -> None:
 
     first = _create_workspace(client, "Demo ML Course", "03", "Bayesian Decision Theory")
     second = _create_workspace(client, "Robotics Seminar", "7", "Policy Gradients")
-    seeded = _create_workspace(client, "Grundlagen des Maschinellen Lernens", "03", "Bayesian Decision Theory")
+    seeded = _create_workspace(
+        client, "Grundlagen des Maschinellen Lernens", "03", "Bayesian Decision Theory"
+    )
 
     assert first["course"]["id"] == "demo-ml-course"
     assert first["course"]["access_policy"] == "tuebingen_enrolled"
@@ -148,9 +150,9 @@ def test_professor_can_infer_full_course_schedule_from_bundle(tmp_path: Path) ->
     client.app.state.lecture_schedule_planner = planner
     _create_workspace(client, "Demo ML Course", "01", "Course Setup")
     for path, content in [
-        ("uploads/Lecture01-eng.tex", br"\begin{frame}{Course Setup}Intro\end{frame}"),
-        ("uploads/Lecture02_old.tex", br"\begin{frame}{Old Version}Ignore\end{frame}"),
-        ("uploads/Lecture02-eng.tex", br"\begin{frame}{Bayes Classifier}Bayes\end{frame}"),
+        ("uploads/Lecture01-eng.tex", rb"\begin{frame}{Course Setup}Intro\end{frame}"),
+        ("uploads/Lecture02_old.tex", rb"\begin{frame}{Old Version}Ignore\end{frame}"),
+        ("uploads/Lecture02-eng.tex", rb"\begin{frame}{Bayes Classifier}Bayes\end{frame}"),
     ]:
         response = client.post(
             "/admin/courses/demo-ml-course/materials",
@@ -161,8 +163,7 @@ def test_professor_can_infer_full_course_schedule_from_bundle(tmp_path: Path) ->
         assert response.status_code == 200
 
     response = client.get(
-        "/admin/courses/demo-ml-course/lecture-schedule"
-        "?first_lecture_date=2026-05-06",
+        "/admin/courses/demo-ml-course/lecture-schedule?first_lecture_date=2026-05-06",
         headers=professor_headers(),
     )
 
@@ -311,13 +312,28 @@ def test_course_canvas_draft_can_use_markdown_text_and_pdf_without_latex(tmp_pat
     _create_workspace(client, "Mixed Source Course", "01", "Evidence and Risk")
 
     uploads = [
-        ("notes/overview.md", b"# Evidence Update\n\nBayes combines prior belief with likelihood evidence."),
-        ("notes/risk.txt", b"Risk-sensitive classification changes decisions when errors have different costs."),
-        ("slides/risk.pdf", _pdf_source("PDF slide text explains posterior risk and reject decisions.")),
+        (
+            "notes/overview.md",
+            b"# Evidence Update\n\nBayes combines prior belief with likelihood evidence.",
+        ),
+        (
+            "notes/risk.txt",
+            b"Risk-sensitive classification changes decisions when errors have different costs.",
+        ),
+        (
+            "slides/risk.pdf",
+            _pdf_source("PDF slide text explains posterior risk and reject decisions."),
+        ),
         ("figures/risk.png", b"\x89PNG\r\n\x1a\n"),
-        ("figures/risk.png.json", b'{"title":"Risk regions","description":"Posterior and loss threshold graphic"}'),
+        (
+            "figures/risk.png.json",
+            b'{"title":"Risk regions","description":"Posterior and loss threshold graphic"}',
+        ),
         ("videos/decision.mp4", b"\x00\x00\x00\x18ftypmp42"),
-        ("videos/decision.json", b'{"title":"Decision walkthrough","description":"Professor-provided media"}'),
+        (
+            "videos/decision.json",
+            b'{"title":"Decision walkthrough","description":"Professor-provided media"}',
+        ),
     ]
     for path, content in uploads:
         response = client.post(
@@ -335,7 +351,10 @@ def test_course_canvas_draft_can_use_markdown_text_and_pdf_without_latex(tmp_pat
 
     assert draft.status_code == 200
     assert draft.json()["source_kind"] == "generated"
-    assert draft.json()["source_ref"] == "course planner from notes/overview.md, notes/risk.txt, slides/risk.pdf"
+    assert (
+        draft.json()["source_ref"]
+        == "course planner from notes/overview.md, notes/risk.txt, slides/risk.pdf"
+    )
     publish = client.post(
         "/admin/courses/mixed-source-course/lectures/lecture-01/canvas/publish",
         headers=professor_headers(),
@@ -386,7 +405,7 @@ def _create_workspace(
 
 
 def _latex_source() -> bytes:
-    return br"""
+    return rb"""
 \title{Uploaded Lecture}
 \begin{frame}{Uploaded Concept}
 Bayes turns evidence into a posterior decision.
@@ -456,7 +475,9 @@ class _FakeLectureSchedulePlanner:
         self.last_paths: list[str] = []
         self.last_requested_count = None
 
-    async def propose_schedule(self, *, course_id, files, roots, first_lecture_date, requested_count):
+    async def propose_schedule(
+        self, *, course_id, files, roots, first_lecture_date, requested_count
+    ):
         self.last_first_lecture_date = first_lecture_date.isoformat()
         self.last_paths = [item.path for item in files]
         self.last_requested_count = requested_count
@@ -508,9 +529,7 @@ def _course_titles(payload: dict) -> list[str]:
 class _FakeMixedSourcePlanner:
     async def plan_canvas(self, source_document):
         evidence = "\n".join(
-            block.text or ""
-            for section in source_document.sections
-            for block in section.blocks
+            block.text or "" for section in source_document.sections for block in section.blocks
         )
         assert source_document.source_kind == "markdown"
         assert "Bayes combines prior belief" in evidence

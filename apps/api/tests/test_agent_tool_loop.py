@@ -131,5 +131,9 @@ async def test_tool_loop_omits_temperature_for_openai_gpt5(tmp_path) -> None:
 
 def _response(content: str | None = None, tool_calls: list[dict] | None = None):
     return SimpleNamespace(
-        choices=[SimpleNamespace(message={"role": "assistant", "content": content, "tool_calls": tool_calls or []})]
+        choices=[
+            SimpleNamespace(
+                message={"role": "assistant", "content": content, "tool_calls": tool_calls or []}
+            )
+        ]
     )

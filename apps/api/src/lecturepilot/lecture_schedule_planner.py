@@ -14,7 +14,12 @@ from lecturepilot.lecture_schedule import propose_lecture_schedule
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_request_options import completion_options
 from lecturepilot.model_usage import ModelUsageRecorder, complete_with_usage
-from lecturepilot.models import LectureScheduleItem, LectureScheduleProposal, ProviderCapability, ProviderSettings
+from lecturepilot.models import (
+    LectureScheduleItem,
+    LectureScheduleProposal,
+    ProviderCapability,
+    ProviderSettings,
+)
 from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
 from lecturepilot.source_bundle import SourceBundleFile
 
@@ -23,7 +28,9 @@ MAX_EXCERPT_CHARS = 2400
 
 
 class LectureScheduleModelClient(Protocol):
-    async def complete_schedule(self, *, settings: ProviderSettings, messages: list[dict[str, str]]) -> dict:
+    async def complete_schedule(
+        self, *, settings: ProviderSettings, messages: list[dict[str, str]]
+    ) -> dict:
         """Return a source-grounded full-course lecture schedule proposal."""
 
 
@@ -31,7 +38,9 @@ class LiteLLMScheduleClient:
     def __init__(self, usage_recorder: ModelUsageRecorder | None = None) -> None:
         self.usage_recorder = usage_recorder
 
-    async def complete_schedule(self, *, settings: ProviderSettings, messages: list[dict[str, str]]) -> dict:
+    async def complete_schedule(
+        self, *, settings: ProviderSettings, messages: list[dict[str, str]]
+    ) -> dict:
         try:
             from litellm import acompletion
         except ImportError as exc:
@@ -77,7 +86,9 @@ class LectureSchedulePlanner:
         last_error: ProviderConfigurationError | None = None
         for _ in range(2):
             try:
-                payload = await self.model_client.complete_schedule(settings=settings, messages=messages)
+                payload = await self.model_client.complete_schedule(
+                    settings=settings, messages=messages
+                )
                 return _complete_source_schedule(
                     _read_proposal(payload, course_id, files),
                     course_id=course_id,
@@ -89,7 +100,9 @@ class LectureSchedulePlanner:
             except ProviderConfigurationError as exc:
                 last_error = exc
                 messages = [*messages, _repair_message(str(exc))]
-        raise last_error or ProviderConfigurationError("Lecture schedule planner returned no usable proposal.")
+        raise last_error or ProviderConfigurationError(
+            "Lecture schedule planner returned no usable proposal."
+        )
 
 
 def _schedule_messages(
@@ -118,7 +131,9 @@ def _schedule_messages(
         },
         {
             "role": "user",
-            "content": _source_evidence(course_id, files, roots, first_lecture_date, requested_count),
+            "content": _source_evidence(
+                course_id, files, roots, first_lecture_date, requested_count
+            ),
         },
     ]
 
@@ -204,11 +219,18 @@ def _outline(text: str, kind: str) -> str:
     if kind == "latex":
         titles = [
             _clean_title(match.group(1))
-            for pattern in (r"\\section\{([^{}]+)\}", r"\\begin\{frame\}\{([^{}]+)\}", r"\\frametitle\{([^{}]+)\}")
+            for pattern in (
+                r"\\section\{([^{}]+)\}",
+                r"\\begin\{frame\}\{([^{}]+)\}",
+                r"\\frametitle\{([^{}]+)\}",
+            )
             for match in re.finditer(pattern, text)
         ]
     elif kind == "markdown":
-        titles = [_clean_title(match.group(1)) for match in re.finditer(r"^#{1,3}\s+(.+)$", text, re.MULTILINE)]
+        titles = [
+            _clean_title(match.group(1))
+            for match in re.finditer(r"^#{1,3}\s+(.+)$", text, re.MULTILINE)
+        ]
     else:
         titles = []
     unique = []
@@ -222,7 +244,9 @@ def _clean_title(value: str) -> str:
     return re.sub(r"\s+", " ", value.replace("\\\\", " ")).strip(" -")
 
 
-def _read_proposal(payload: dict, course_id: str, files: list[SourceBundleFile]) -> LectureScheduleProposal:
+def _read_proposal(
+    payload: dict, course_id: str, files: list[SourceBundleFile]
+) -> LectureScheduleProposal:
     raw_lectures = payload.get("lectures")
     if not isinstance(raw_lectures, list) or not raw_lectures:
         raise ProviderConfigurationError("Lecture schedule planner JSON must include lectures.")
@@ -244,7 +268,9 @@ def _read_proposal(payload: dict, course_id: str, files: list[SourceBundleFile])
                 )
             )
         except ValidationError as exc:
-            raise ProviderConfigurationError("Lecture schedule planner returned invalid lecture rows.") from exc
+            raise ProviderConfigurationError(
+                "Lecture schedule planner returned invalid lecture rows."
+            ) from exc
     if not lectures:
         raise ProviderConfigurationError("Lecture schedule planner returned no usable lectures.")
     return LectureScheduleProposal(
@@ -273,7 +299,9 @@ def _complete_source_schedule(
     if len(proposal.lectures) >= len(deterministic.lectures):
         return proposal
     by_number = {_lecture_key(lecture.number): lecture for lecture in proposal.lectures}
-    merged = [by_number.get(_lecture_key(lecture.number), lecture) for lecture in deterministic.lectures]
+    merged = [
+        by_number.get(_lecture_key(lecture.number), lecture) for lecture in deterministic.lectures
+    ]
     return LectureScheduleProposal(
         course_id=course_id,
         lectures=merged,

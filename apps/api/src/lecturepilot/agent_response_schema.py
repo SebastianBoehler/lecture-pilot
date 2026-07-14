@@ -52,7 +52,9 @@ def lecture_schedule_response_format() -> dict[str, Any]:
                                 "number": {"type": "string"},
                                 "title": {"type": "string"},
                                 "date": {"type": "string"},
-                                "material_path": _nullable_string("Source file path for this lecture."),
+                                "material_path": _nullable_string(
+                                    "Source file path for this lecture."
+                                ),
                             },
                             "required": ["number", "title", "date", "material_path"],
                         },

@@ -98,7 +98,9 @@ def build_exam_revision_plan(
         if question.id not in answers_by_question:
             raise ValueError(f"Missing answer for question {question.id}")
 
-    results = [_question_result(question, answers_by_question[question.id]) for question in check.questions]
+    results = [
+        _question_result(question, answers_by_question[question.id]) for question in check.questions
+    ]
     score = _score(results)
     guidance_level = _guidance_level(score, previous_attempts)
     return ExamReadinessAttemptResult(
@@ -124,7 +126,9 @@ def _answers_by_question(answers: list[ExamReadinessAnswer]) -> dict[str, ExamRe
     return by_question
 
 
-def _question_result(question: ExamReadinessQuestion, answer: ExamReadinessAnswer) -> ExamReadinessQuestionResult:
+def _question_result(
+    question: ExamReadinessQuestion, answer: ExamReadinessAnswer
+) -> ExamReadinessQuestionResult:
     if question.kind == "multiple_choice":
         if answer.selected_index is None:
             raise ValueError(f"Multiple-choice question {question.id} requires selected_index.")
@@ -181,7 +185,9 @@ def _revision_task(
     result: ExamReadinessQuestionResult,
     guidance_level: GuidanceLevel,
 ) -> ExamRevisionTask:
-    kind: RevisionTaskKind = "review_wrong_mc" if result.status == "incorrect" else "review_open_answer"
+    kind: RevisionTaskKind = (
+        "review_wrong_mc" if result.status == "incorrect" else "review_open_answer"
+    )
     return ExamRevisionTask(
         id=f"{safe_id(question.id)}-review",
         question_id=question.id,
@@ -211,5 +217,7 @@ def _expected_evidence(question: ExamReadinessQuestion) -> str:
 
 def _next_action(kind: RevisionTaskKind, question: ExamReadinessQuestion) -> str:
     if kind == "review_wrong_mc":
-        return f"Review {question.section_title}, then answer a follow-up without seeing the options."
+        return (
+            f"Review {question.section_title}, then answer a follow-up without seeing the options."
+        )
     return f"Compare your answer with the rubric for {question.section_title} and revise the weak point."

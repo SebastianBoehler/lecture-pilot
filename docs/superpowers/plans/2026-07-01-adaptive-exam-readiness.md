@@ -93,77 +93,77 @@ Explicitly not in this feature:
 ## Task 1: Pure Revision Planner
 
 - [x] Add Pydantic models:
-  `ExamReadinessAnswer`, `ExamReadinessAttemptInput`,
-  `ExamReadinessQuestionResult`, `ExamRevisionTask`,
-  `ExamReadinessAttemptResult`.
+      `ExamReadinessAnswer`, `ExamReadinessAttemptInput`,
+      `ExamReadinessQuestionResult`, `ExamRevisionTask`,
+      `ExamReadinessAttemptResult`.
 - [x] Implement `build_exam_revision_plan(check, answers, previous_attempts=())`
-  as a pure function.
+      as a pure function.
 - [x] Score MC questions deterministically.
 - [x] Preserve open-ended answers as `needs_rubric_review`; do not model-score.
 - [x] Build one revision task per wrong MC and one rubric-review task per open
-  answer.
+      answer.
 - [x] Add `guidance_level`:
-  `challenge` for strong MC score, `standard` for mixed score,
-  `scaffolded` for weak score or repeated failure.
+      `challenge` for strong MC score, `standard` for mixed score,
+      `scaffolded` for weak score or repeated failure.
 - [x] Include `source_ref`, `lecture_id`, `section_id`, `rubric`,
-  `expected_evidence`, and `next_action` on every task.
+      `expected_evidence`, and `next_action` on every task.
 - [x] Test wrong MC, open answer preservation, guidance levels, missing answer
-  validation, and stable task ids.
+      validation, and stable task ids.
 - [x] Run `pytest apps/api/tests/test_exam_revision_plan.py -q`.
 
 ## Task 2: Persist Attempts In Learner Progress
 
 - [x] Store progress at
-  `StorageLayout.user_course_root(user_id, course_id) / "progress.json"`.
+      `StorageLayout.user_course_root(user_id, course_id) / "progress.json"`.
 - [x] Keep schema small: `attempts`, `active_tasks`, `updated_at`.
 - [x] Persist theory-aligned fields only: `attempt_id`, `question_id`,
-  `task_id`, `lecture_id`, `section_id`, `answer_kind`, `correct`,
-  `first_try`, `attempt_index`, `status`, `created_at`.
+      `task_id`, `lecture_id`, `section_id`, `answer_kind`, `correct`,
+      `first_try`, `attempt_index`, `status`, `created_at`.
 - [x] Add `POST /courses/{course_id}/exam-readiness/attempts`.
 - [x] Reuse the same published-canvas and learner-access checks as the GET
-  route.
+      route.
 - [x] Return `ExamReadinessAttemptResult`.
 - [x] Test authenticated learner success, rejected unauthenticated request,
-  user isolation, and no write to official course source.
+      user isolation, and no write to official course source.
 - [x] Run
-  `pytest apps/api/tests/test_exam_readiness.py apps/api/tests/test_readiness_progress.py -q`.
+      `pytest apps/api/tests/test_exam_readiness.py apps/api/tests/test_readiness_progress.py -q`.
 
 ## Task 3: UI Submission And Revision Tasks
 
 - [x] Add TypeScript types for answers, attempt result, revision tasks, and
-  guidance level.
+      guidance level.
 - [x] Add `submitExamReadinessAttempt(courseId, answers, session)`.
 - [x] Replace local-only `gradeCheck` result with backend submission.
 - [x] Render task cards grouped by lecture with source ref, guidance level,
-  expected evidence, and a review button.
+      expected evidence, and a review button.
 - [x] Keep open answers visible with rubric-review status, not fake correctness.
 - [x] Show backend errors directly.
 - [x] Preserve the current "open lecture" navigation path.
 - [x] Keep `ExamReadinessPanel.tsx` under 300 lines by extracting task/result
-  components.
+      components.
 - [x] Run `npm run test --workspace apps/web -- Dashboard.test.tsx`.
 
 ## Task 4: Minimal Professor Signal
 
 - [x] Add a course-level summary helper over learner progress files:
-  attempts count, unique learners, task completion counts, weak section ids.
+      attempts count, unique learners, task completion counts, weak section ids.
 - [x] Do not expose learner free text, chat transcripts, or raw identifiers.
 - [x] Add `GET /admin/courses/{course_id}/exam-readiness/summary`.
 - [x] Defer web professor UI unless `ProfessorCoursePerformance.tsx` is split
-  first.
+      first.
 - [x] Run `pytest apps/api/tests/test_readiness_analytics.py -q`.
 
 ## Task 5: AGENTS.md Harness Documentation
 
 - [x] Add `record_readiness_attempt` as a typed readiness action.
 - [x] Document readiness context: selected task, source excerpt, rubric, and
-  learner course progress summary only.
+      learner course progress summary only.
 - [x] Document feedback policy: after attempt, concise, source-backed, no
-  keyword auto-pass, guidance intensity depends on readiness.
+      keyword auto-pass, guidance intensity depends on readiness.
 - [x] Document analytics policy: theory-aligned event fields, no raw time as a
-  primary signal, no raw learner text in professor aggregate.
+      primary signal, no raw learner text in professor aggregate.
 - [x] Document deferrals: model scoring, broad source search, image generation,
-  professor dashboard redesign.
+      professor dashboard redesign.
 
 ## Task 6: Final Verification
 

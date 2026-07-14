@@ -16,8 +16,9 @@ This repo should stay small, typed, and test-driven.
 Run before opening a pull request:
 
 ```bash
-pytest apps/api/tests
-npm run test --workspace apps/web
-npm run build --workspace apps/web
+npm run verify:fast
+npm run verify:full
 ```
 
+`verify:api` and `verify:web` run the same component checks as CI. The full API
+suite requires the disposable PostgreSQL database described in `README.md`.

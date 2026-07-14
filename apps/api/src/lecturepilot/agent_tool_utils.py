@@ -35,8 +35,7 @@ def normalize_logical_path(path: str) -> str:
 
 def relative_write_path(logical: str) -> str:
     return (
-        logical
-        .removeprefix("/lecture/canvas/")
+        logical.removeprefix("/lecture/canvas/")
         .removeprefix("/user/memories/")
         .removeprefix("/user/course/memories/")
     )

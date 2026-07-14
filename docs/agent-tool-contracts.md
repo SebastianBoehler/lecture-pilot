@@ -7,25 +7,25 @@ student-scoped storage.
 
 ## Profiles
 
-| Profile | Tools |
-| --- | --- |
-| `tutor` | `pwd`, `ls`, `read`, `write`, `edit`, `focus`, `highlight`, `record_gate`, `remember`, `generate_image` |
-| `evidence` | tutor tools plus `find`, `grep` |
-| `course_builder` | `pwd`, `ls`, `find`, `grep`, `read`, `write`, `edit`, `generate_image` |
+| Profile          | Tools                                                                                                   |
+| ---------------- | ------------------------------------------------------------------------------------------------------- |
+| `tutor`          | `pwd`, `ls`, `read`, `write`, `edit`, `focus`, `highlight`, `record_gate`, `remember`, `generate_image` |
+| `evidence`       | tutor tools plus `find`, `grep`                                                                         |
+| `course_builder` | `pwd`, `ls`, `find`, `grep`, `read`, `write`, `edit`, `generate_image`                                  |
 
 The course-builder profile intentionally has no learner-state tools such as
 `record_gate`, `remember`, `focus`, or `highlight`.
 
 ## Logical Roots
 
-| Root | Purpose |
-| --- | --- |
-| `/lecture/canvas` | learner-owned lecture canvas overlay |
-| `/course/canvas` | professor-approved published canvas |
-| `/course/source/uploads` | professor-uploaded source bundle |
-| `/user/memories` | cross-course learner memory and preferences |
-| `/user/course/memories` | course-specific learner memory for the active course |
-| `/user/profile.json` | learner profile file |
+| Root                     | Purpose                                              |
+| ------------------------ | ---------------------------------------------------- |
+| `/lecture/canvas`        | learner-owned lecture canvas overlay                 |
+| `/course/canvas`         | professor-approved published canvas                  |
+| `/course/source/uploads` | professor-uploaded source bundle                     |
+| `/user/memories`         | cross-course learner memory and preferences          |
+| `/user/course/memories`  | course-specific learner memory for the active course |
+| `/user/profile.json`     | learner profile file                                 |
 
 Tutor writes are allowed only below `/lecture/canvas/student/`,
 `/lecture/canvas/components/`, `/lecture/canvas/student-assets/`, and
@@ -34,20 +34,20 @@ course canvases are read-only from tutor turns.
 
 ## Tool Semantics
 
-| Tool | Required input | Side effect |
-| --- | --- | --- |
-| `pwd` | none | Returns available logical roots. |
-| `ls` | `path` | Lists visible files and directories. Hidden files are skipped. |
-| `find` | `path`, `glob` | Returns matching file entries, capped by `max_results`. |
-| `grep` | `pattern`, `path` | Searches text files and returns matching lines. |
-| `read` | `path` | Reads text files only, capped by `max_chars`. |
-| `write` | `path`, `content` | Creates or overwrites a permitted learner file. Canvas Markdown is validated and appended in render order. |
-| `edit` | `path`, `old_text`, `new_text` | Replaces one exact text occurrence in a permitted learner file. |
-| `focus` | `section_id` | Queues a canvas focus command for the frontend. |
-| `highlight` | `span_id`, `highlight_text` | Queues a canvas highlight command for an existing block or phrase. |
-| `record_gate` | `gate_id`, `status`, `reason` | Persists the learning-gate decision for the lecture. |
-| `remember` | `note`, optional `scope` | Appends durable learner memory and a trace record. `scope=global` writes cross-course memory; `scope=course` writes active-course memory. |
-| `generate_image` | `prompt`, `section_id` | Stores a raster infographic asset in the learner workspace. |
+| Tool             | Required input                 | Side effect                                                                                                                               |
+| ---------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `pwd`            | none                           | Returns available logical roots.                                                                                                          |
+| `ls`             | `path`                         | Lists visible files and directories. Hidden files are skipped.                                                                            |
+| `find`           | `path`, `glob`                 | Returns matching file entries, capped by `max_results`.                                                                                   |
+| `grep`           | `pattern`, `path`              | Searches text files and returns matching lines.                                                                                           |
+| `read`           | `path`                         | Reads text files only, capped by `max_chars`.                                                                                             |
+| `write`          | `path`, `content`              | Creates or overwrites a permitted learner file. Canvas Markdown is validated and appended in render order.                                |
+| `edit`           | `path`, `old_text`, `new_text` | Replaces one exact text occurrence in a permitted learner file.                                                                           |
+| `focus`          | `section_id`                   | Queues a canvas focus command for the frontend.                                                                                           |
+| `highlight`      | `span_id`, `highlight_text`    | Queues a canvas highlight command for an existing block or phrase.                                                                        |
+| `record_gate`    | `gate_id`, `status`, `reason`  | Persists the learning-gate decision for the lecture.                                                                                      |
+| `remember`       | `note`, optional `scope`       | Appends durable learner memory and a trace record. `scope=global` writes cross-course memory; `scope=course` writes active-course memory. |
+| `generate_image` | `prompt`, `section_id`         | Stores a raster infographic asset in the learner workspace.                                                                               |
 
 Every tool response is structured as `{ "ok": true, ... }` or
 `{ "ok": false, "error": "..." }`; failed tools are sent back to the model so it

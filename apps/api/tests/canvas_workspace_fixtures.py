@@ -32,7 +32,9 @@ def course_canvas(section_id: str, title: str) -> CanvasDocument:
                 id=section_id,
                 title=title,
                 source_ref="Lecture03-eng.tex frame 1",
-                blocks=[CanvasBlock(id=f"{section_id}-p-1", type="paragraph", text=f"{title} content.")],
+                blocks=[
+                    CanvasBlock(id=f"{section_id}-p-1", type="paragraph", text=f"{title} content.")
+                ],
             )
         ],
     )

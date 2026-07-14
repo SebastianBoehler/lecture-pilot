@@ -10,7 +10,9 @@ from lecturepilot.image_generation_registry import image_generator_from_env
 def test_gemini_image_generator_posts_native_image_request(monkeypatch) -> None:
     captured = {}
 
-    def fake_post_json(*, url: str, headers: dict[str, str], payload: dict, timeout_seconds: int) -> dict:
+    def fake_post_json(
+        *, url: str, headers: dict[str, str], payload: dict, timeout_seconds: int
+    ) -> dict:
         captured.update(
             {
                 "url": url,
@@ -93,7 +95,9 @@ def test_openrouter_image_generator_reads_data_url(monkeypatch) -> None:
 def test_huggingface_image_generator_reads_raw_bytes(monkeypatch) -> None:
     captured = {}
 
-    def fake_post_image_bytes(*, url: str, headers: dict[str, str], payload: dict, timeout_seconds: int):
+    def fake_post_image_bytes(
+        *, url: str, headers: dict[str, str], payload: dict, timeout_seconds: int
+    ):
         captured.update({"url": url, "headers": headers, "payload": payload})
         return b"hf-image", "image/webp"
 

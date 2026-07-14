@@ -22,6 +22,7 @@
 ## Task 1: PDF Slide Asset Renderer
 
 **Files:**
+
 - Create: `apps/api/src/lecturepilot/pdf_slide_assets.py`
 - Test: `apps/api/tests/test_pdf_slide_assets.py`
 
@@ -152,6 +153,7 @@ Run: `pytest apps/api/tests/test_pdf_slide_assets.py -q`
 ## Task 2: Add Slide Assets To PDF Source Evidence
 
 **Files:**
+
 - Modify: `apps/api/src/lecturepilot/source_bundle_canvas.py`
 - Test: `apps/api/tests/test_source_bundle_canvas.py`
 
@@ -195,6 +197,7 @@ Run: `pytest apps/api/tests/test_source_bundle_canvas.py::test_pdf_source_bundle
 ## Task 3: Interleave Slides Into Generated Sections
 
 **Files:**
+
 - Create: `apps/api/src/lecturepilot/course_slide_interleaving.py`
 - Test: `apps/api/tests/test_course_slide_interleaving.py`
 
@@ -217,6 +220,7 @@ Run: `pytest apps/api/tests/test_course_slide_interleaving.py -q`
 ## Task 4: Run Interleaving During Planning
 
 **Files:**
+
 - Modify: `apps/api/src/lecturepilot/course_canvas_planner.py`
 - Test: `apps/api/tests/test_course_canvas_planner.py`
 

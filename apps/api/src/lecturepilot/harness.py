@@ -34,9 +34,7 @@ class LecturePilotHarness:
         if tool_executor is not None:
             required.append(ProviderCapability.TOOL_CALLS)
         provider_registry = (
-            ProviderRegistry.from_env(model=turn.model)
-            if turn.model
-            else self.provider_registry
+            ProviderRegistry.from_env(model=turn.model) if turn.model else self.provider_registry
         )
         settings = provider_registry.require_ready(required)
         return await self.model_client.complete_turn(

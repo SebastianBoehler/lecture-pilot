@@ -80,7 +80,9 @@ class CanvasWorkspace:
                 )
             self._write_initial_source(document, canvas_dir, student_placements=student_placements)
 
-        document = apply_course_media(normalize_learning_support(read_document_source(canvas_dir)), self.material_root)
+        document = apply_course_media(
+            normalize_learning_support(read_document_source(canvas_dir)), self.material_root
+        )
         document = apply_course_media(document, self.course_media_root(course_id))
         document = resolve_student_asset_refs(
             document,
@@ -103,7 +105,9 @@ class CanvasWorkspace:
         placements: dict[str, object] | None = None,
     ) -> CanvasDocument:
         document = self.read_document(course_id=course_id, lecture_id=lecture_id, user_id=user_id)
-        write_student_sections(Path(document.workspace_path).parent, sections, placements=placements)
+        write_student_sections(
+            Path(document.workspace_path).parent, sections, placements=placements
+        )
         document = read_document_source(Path(document.workspace_path).parent)
         self._write_compiled_document(document, course_id, lecture_id, user_id)
         return document
@@ -188,11 +192,15 @@ class CanvasWorkspace:
     def course_media_root(self, course_id: str) -> Path:
         return self.layout.course_root(course_id)
 
-    def source_bundle_roots(self, course_id: str, *, include_seeded_materials: bool = True) -> list[Path]:
+    def source_bundle_roots(
+        self, course_id: str, *, include_seeded_materials: bool = True
+    ) -> list[Path]:
         roots = [self.layout.course_uploads_dir(course_id)]
         if include_seeded_materials:
             roots.append(self.material_root)
-        return [root for index, root in enumerate(roots) if root.exists() and root not in roots[:index]]
+        return [
+            root for index, root in enumerate(roots) if root.exists() and root not in roots[:index]
+        ]
 
     def _initial_document(self, *, course_id: str, lecture_id: str, user_id: str) -> CanvasDocument:
         canvas_dir = self._canvas_dir(course_id, lecture_id, user_id)
@@ -287,7 +295,9 @@ class CanvasWorkspace:
         sections: list[CanvasSection] = []
         if (canvas_dir / "index.md").exists():
             sections.extend(
-                section for section in read_document_source(canvas_dir).sections if is_student_section(section)
+                section
+                for section in read_document_source(canvas_dir).sections
+                if is_student_section(section)
             )
         compiled_paths = [
             self._compiled_path(course_id, lecture_id, user_id),
@@ -322,7 +332,9 @@ class CanvasWorkspace:
         *,
         student_placements: dict[str, object] | None = None,
     ) -> None:
-        base_sections = [section for section in document.sections if not is_student_section(section)]
+        base_sections = [
+            section for section in document.sections if not is_student_section(section)
+        ]
         student_sections = [section for section in document.sections if is_student_section(section)]
         sections_dir = canvas_dir / "sections"
         if sections_dir.exists():

@@ -1,4 +1,8 @@
-from lecturepilot.exam_revision_plan import ExamReadinessAttemptResult, ExamReadinessQuestionResult, ExamRevisionTask
+from lecturepilot.exam_revision_plan import (
+    ExamReadinessAttemptResult,
+    ExamReadinessQuestionResult,
+    ExamRevisionTask,
+)
 from lecturepilot.readiness_progress import ReadinessProgressStore
 from lecturepilot.storage_layout import StorageLayout
 

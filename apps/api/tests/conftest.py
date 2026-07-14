@@ -24,9 +24,9 @@ def local_dev_auth_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     with engine.begin() as connection:
         connection.execute(
             text(
-                    "TRUNCATE usage_counters, audit_events, course_enrollments, "
-                    "course_external_refs, courses, external_course_observations, sessions, "
-                    "tenant_memberships, external_identities, users CASCADE"
-                )
+                "TRUNCATE usage_counters, audit_events, course_enrollments, "
+                "course_external_refs, courses, external_course_observations, sessions, "
+                "tenant_memberships, external_identities, users CASCADE"
+            )
         )
     engine.dispose()

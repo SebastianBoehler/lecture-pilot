@@ -40,13 +40,18 @@ def test_enrichment_completes_thin_sections_before_validation() -> None:
         }
     )
     validate_planned_document(enriched, source)
-    assert all(len([block for block in section.blocks if block.type != "quiz"]) >= 4 for section in enriched.sections)
+    assert all(
+        len([block for block in section.blocks if block.type != "quiz"]) >= 4
+        for section in enriched.sections
+    )
     assessment_sections = [
         section
         for section in enriched.sections
         if any(block.type in {"checkpoint", "quiz"} for block in section.blocks)
     ]
-    quizzes = [block for section in enriched.sections for block in section.blocks if block.type == "quiz"]
+    quizzes = [
+        block for section in enriched.sections for block in section.blocks if block.type == "quiz"
+    ]
     assert [section.id for section in assessment_sections] == ["topic-2", "topic-4", "topic-5"]
     assert len(quizzes) == 2
     assert enriched.sections[-1].blocks[-1].type == "quiz"
@@ -105,6 +110,11 @@ def test_enrichment_preserves_model_authored_quizzes() -> None:
 
     enriched = enrich_learning_document(document)
 
-    preserved = [block for section in enriched.sections for block in section.blocks if block.id == "model-authored-quiz"]
+    preserved = [
+        block
+        for section in enriched.sections
+        for block in section.blocks
+        if block.id == "model-authored-quiz"
+    ]
     assert len(preserved) == 1
     assert preserved[0].text == "Which term changes after evidence?"

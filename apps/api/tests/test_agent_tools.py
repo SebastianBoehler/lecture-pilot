@@ -12,7 +12,13 @@ from lecturepilot.agent_tool_loop import complete_tool_turn
 from lecturepilot.app import create_app
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.gate_policy import keep_canvas_actions_from_passing_gate
-from lecturepilot.models import AgentTurnInput, AgentTurnResult, ProviderSettings, QualityGateDecision, QualityGateStatus
+from lecturepilot.models import (
+    AgentTurnInput,
+    AgentTurnResult,
+    ProviderSettings,
+    QualityGateDecision,
+    QualityGateStatus,
+)
 from lecturepilot.observability import Observability
 from lecturepilot.providers import DEFAULT_MODEL
 from auth_helpers import student_headers
@@ -66,7 +72,9 @@ def test_unix_named_tools_search_read_and_write_canvas(tmp_path) -> None:
     assert plain["section_id"] == "plain-threshold-note-md"
     section_ids = {command.section_id for command in executor.canvas_update_commands()}
     assert "plain-threshold-note-md" in section_ids
-    plain_section = workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="u1").sections[-1]
+    plain_section = workspace.read_document(
+        course_id="martius-ml", lecture_id="lecture-03", user_id="u1"
+    ).sections[-1]
     assert plain_section.title == "Plain threshold note"
     assert "# Plain threshold note" not in plain_section.blocks[0].text
     assert executor.canvas_update_commands()[-1].section_id == "plain-threshold-note-md"
@@ -131,7 +139,9 @@ async def test_tool_loop_executes_grep_before_final_answer(tmp_path) -> None:
                         "type": "function",
                         "function": {
                             "name": "grep",
-                            "arguments": json.dumps({"path": "/lecture/canvas", "pattern": "Bayes"}),
+                            "arguments": json.dumps(
+                                {"path": "/lecture/canvas", "pattern": "Bayes"}
+                            ),
                         },
                     }
                 ]
@@ -197,7 +207,10 @@ async def test_tool_loop_recovers_from_empty_post_tool_message(tmp_path) -> None
                     {
                         "id": "call-1",
                         "type": "function",
-                        "function": {"name": "find", "arguments": json.dumps({"path": "/lecture/canvas"})},
+                        "function": {
+                            "name": "find",
+                            "arguments": json.dumps({"path": "/lecture/canvas"}),
+                        },
                     }
                 ]
             )
@@ -206,16 +219,16 @@ async def test_tool_loop_recovers_from_empty_post_tool_message(tmp_path) -> None
         return _response(
             content=json.dumps(
                 {
-                        "message": "Final JSON after empty tool response.",
-                        "canvas_commands": [{"type": "focus_section", "section_id": "bayes-formula"}],
-                        "quality_gate": {
-                            "gate_id": "bayes-decision-check",
-                            "status": "needs_evidence",
-                            "reason": "Needs a worked explanation.",
-                        },
-                    }
-                )
+                    "message": "Final JSON after empty tool response.",
+                    "canvas_commands": [{"type": "focus_section", "section_id": "bayes-formula"}],
+                    "quality_gate": {
+                        "gate_id": "bayes-decision-check",
+                        "status": "needs_evidence",
+                        "reason": "Needs a worked explanation.",
+                    },
+                }
             )
+        )
 
     result = await complete_tool_turn(
         acompletion=fake_completion,
@@ -283,7 +296,9 @@ class _ToolWritingHarness:
 
 
 def _workspace(tmp_path) -> CanvasWorkspace:
-    workspace = CanvasWorkspace(workspace_root=tmp_path / "workspaces", material_root=write_course_source(tmp_path))
+    workspace = CanvasWorkspace(
+        workspace_root=tmp_path / "workspaces", material_root=write_course_source(tmp_path)
+    )
     workspace.write_course_canvas(course_canvas("bayes-formula", "Bayes formula"))
     return workspace
 
@@ -294,5 +309,9 @@ def _snapshot_call(kwargs: dict[str, Any]) -> dict[str, Any]:
 
 def _response(content: str | None = None, tool_calls: list[dict] | None = None):
     return SimpleNamespace(
-        choices=[SimpleNamespace(message={"role": "assistant", "content": content, "tool_calls": tool_calls or []})]
+        choices=[
+            SimpleNamespace(
+                message={"role": "assistant", "content": content, "tool_calls": tool_calls or []}
+            )
+        ]
     )

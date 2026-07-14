@@ -156,7 +156,9 @@ def test_student_canvas_sections_keep_persisted_placement(tmp_path: Path) -> Non
             second_section.id: CanvasSectionPlacement(section_id="bayes-formula"),
         },
     )
-    reloaded = workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="alice")
+    reloaded = workspace.read_document(
+        course_id="martius-ml", lecture_id="lecture-03", user_id="alice"
+    )
 
     assert _next_section_id(document, "bayes-formula") == section.id
     assert _next_section_id(document, section.id) == second_section.id
@@ -173,7 +175,9 @@ def test_student_asset_logical_paths_resolve_to_workspace_assets(tmp_path: Path)
         workspace_root=tmp_path / "workspaces",
         material_root=material_root,
     )
-    document = workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="alice")
+    document = workspace.read_document(
+        course_id="martius-ml", lecture_id="lecture-03", user_id="alice"
+    )
     canvas_dir = Path(document.workspace_path).parent
     (canvas_dir / "student-assets").mkdir()
     (canvas_dir / "student-assets" / "regression_visual.jpg").write_bytes(b"jpg")
@@ -191,7 +195,9 @@ source_ref: "student workspace"
         encoding="utf-8",
     )
 
-    updated = workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="alice")
+    updated = workspace.read_document(
+        course_id="martius-ml", lecture_id="lecture-03", user_id="alice"
+    )
 
     section = next(item for item in updated.sections if item.id == "student-regression-visual")
     asset = section.blocks[0]
@@ -206,7 +212,9 @@ def test_migrates_existing_compiled_student_sections_to_overlay(tmp_path: Path) 
         workspace_root=tmp_path / "workspaces",
         material_root=material_root,
     )
-    compiled_path = workspace.layout.legacy_compiled_canvas_path("alice", "martius-ml", "lecture-03")
+    compiled_path = workspace.layout.legacy_compiled_canvas_path(
+        "alice", "martius-ml", "lecture-03"
+    )
     compiled_path.parent.mkdir(parents=True)
     compiled_path.write_text(
         CanvasDocument(
@@ -223,7 +231,9 @@ def test_migrates_existing_compiled_student_sections_to_overlay(tmp_path: Path) 
                     id="bayes-formula",
                     title="Bayes formula",
                     source_ref="frames 6, 7, 8, 9",
-                    blocks=[CanvasBlock(id="bayes-formula-p-1", type="paragraph", text="Official.")],
+                    blocks=[
+                        CanvasBlock(id="bayes-formula-p-1", type="paragraph", text="Official.")
+                    ],
                 ),
                 CanvasSection(
                     id="student-soccer-bayes-example",
@@ -242,7 +252,9 @@ def test_migrates_existing_compiled_student_sections_to_overlay(tmp_path: Path) 
         encoding="utf-8",
     )
 
-    document = workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="alice")
+    document = workspace.read_document(
+        course_id="martius-ml", lecture_id="lecture-03", user_id="alice"
+    )
 
     canvas_dir = Path(document.workspace_path).parent
     assert next((canvas_dir / "sections").glob("*-bayes-formula.md"), None) is not None
@@ -265,7 +277,11 @@ def test_refreshes_stale_markdown_canvas_and_keeps_student_overlay(tmp_path: Pat
                 id="student-transfer-example",
                 title="Student transfer example",
                 source_ref="student workspace",
-                blocks=[CanvasBlock(id="student-transfer-example-p-1", type="paragraph", text="Personal note.")],
+                blocks=[
+                    CanvasBlock(
+                        id="student-transfer-example-p-1", type="paragraph", text="Personal note."
+                    )
+                ],
             )
         ],
     )
@@ -278,11 +294,19 @@ def test_refreshes_stale_markdown_canvas_and_keeps_student_overlay(tmp_path: Pat
         encoding="utf-8",
     )
     stale_section = canvas_dir / "sections" / "04-naive-bayes-classifiers.md"
-    stale_section.write_text(stale_section.read_text(encoding="utf-8") + "\nRaw stale official text.\n")
+    stale_section.write_text(
+        stale_section.read_text(encoding="utf-8") + "\nRaw stale official text.\n"
+    )
 
-    refreshed = workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="alice")
-    naive_section = next(section for section in refreshed.sections if section.id == "naive-bayes-classifiers")
-    naive_items = [item for block in naive_section.blocks if block.type == "list" for item in block.items]
+    refreshed = workspace.read_document(
+        course_id="martius-ml", lecture_id="lecture-03", user_id="alice"
+    )
+    naive_section = next(
+        section for section in refreshed.sections if section.id == "naive-bayes-classifiers"
+    )
+    naive_items = [
+        item for block in naive_section.blocks if block.type == "list" for item in block.items
+    ]
 
     assert refreshed.import_version == CANVAS_IMPORT_VERSION
     assert "Raw stale official text." not in stale_section.read_text(encoding="utf-8")
@@ -298,7 +322,9 @@ def test_stale_canvas_refresh_tolerates_concurrent_section_cleanup(
 ) -> None:
     material_root = write_course_source(tmp_path)
     workspace = CanvasWorkspace(workspace_root=tmp_path / "workspaces", material_root=material_root)
-    document = workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="alice")
+    document = workspace.read_document(
+        course_id="martius-ml", lecture_id="lecture-03", user_id="alice"
+    )
     canvas_dir = Path(document.workspace_path).parent
     manifest_path = canvas_dir / "index.md"
     manifest_path.write_text(
@@ -319,7 +345,9 @@ def test_stale_canvas_refresh_tolerates_concurrent_section_cleanup(
 
     monkeypatch.setattr(Path, "unlink", remove_first_matching_section)
 
-    refreshed = workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="alice")
+    refreshed = workspace.read_document(
+        course_id="martius-ml", lecture_id="lecture-03", user_id="alice"
+    )
 
     assert refreshed.import_version == CANVAS_IMPORT_VERSION
     assert removed is True
@@ -341,13 +369,19 @@ def test_refreshes_user_canvas_when_course_base_changes(tmp_path: Path) -> None:
                 id="student-transfer-example",
                 title="Student transfer example",
                 source_ref="student workspace",
-                blocks=[CanvasBlock(id="student-transfer-example-p-1", type="paragraph", text="Personal note.")],
+                blocks=[
+                    CanvasBlock(
+                        id="student-transfer-example-p-1", type="paragraph", text="Personal note."
+                    )
+                ],
             )
         ],
     )
 
     workspace.write_course_canvas(course_canvas("new-course-section", "New course section"))
-    refreshed = workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="alice")
+    refreshed = workspace.read_document(
+        course_id="martius-ml", lecture_id="lecture-03", user_id="alice"
+    )
 
     section_ids = {section.id for section in refreshed.sections}
     assert "new-course-section" in section_ids

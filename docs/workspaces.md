@@ -171,8 +171,8 @@ Long narrative paragraph with **Markdown emphasis**, inline math, and source mar
 ![Generated learner image](/workspace-assets/<course>/<lecture>/<user-key>/student-assets/risk.jpg)
 [Professor-approved video](https://youtu.be/12345678901)
 
-| Action | Expected risk |
-| --- | --- |
+| Action | Expected risk        |
+| ------ | -------------------- |
 | Reject | Prefer more evidence |
 
 :::checkpoint Risk gate
@@ -181,10 +181,11 @@ Explain why changing a loss term can move the decision threshold.
 
 :::quiz Retrieval check
 Which quantity directly changes the expected-risk decision?
+
 - Posterior probability
 - Slide number
 - Font size
-:::
+  :::
 ```
 
 The parser also accepts explicit block comments such as

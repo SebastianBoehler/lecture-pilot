@@ -17,7 +17,9 @@ _CANVAS_ACTION_TERMS = (
 )
 
 
-def keep_canvas_actions_from_passing_gate(result: AgentTurnResult, student_message: str) -> AgentTurnResult:
+def keep_canvas_actions_from_passing_gate(
+    result: AgentTurnResult, student_message: str
+) -> AgentTurnResult:
     gate = result.quality_gate
     if gate is None or gate.status != QualityGateStatus.PASSED:
         return result

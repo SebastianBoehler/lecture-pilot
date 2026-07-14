@@ -159,8 +159,12 @@ def _topic_target(turn: AgentTurnInput) -> TopicTarget:
             "losses-and-risks-list",
             "decision",
         )
-    if _mentions_any(normalized, ("posterior", "prior", "likelihood", "evidence", "formula", "p(c|x")):
-        return _canvas_target(turn, ("bayes", "conditional", "formula"), "probability") or TopicTarget(
+    if _mentions_any(
+        normalized, ("posterior", "prior", "likelihood", "evidence", "formula", "p(c|x")
+    ):
+        return _canvas_target(
+            turn, ("bayes", "conditional", "formula"), "probability"
+        ) or TopicTarget(
             "bayes-formula",
             "bayes-formula-list",
             "probability",

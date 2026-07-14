@@ -14,7 +14,9 @@ def test_youtube_discovery_normalizes_and_ranks_video_candidates() -> None:
 
 
 def test_youtube_discovery_filters_shorts_and_too_short_videos() -> None:
-    discovery = YoutubeDiscovery(api_key="test", min_duration_seconds=120, fetch_json=_fake_fetch_json)
+    discovery = YoutubeDiscovery(
+        api_key="test", min_duration_seconds=120, fetch_json=_fake_fetch_json
+    )
 
     response = discovery.search("bayesian decision theory", max_results=5)
 

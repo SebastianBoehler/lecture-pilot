@@ -50,7 +50,9 @@ class ProviderRegistry:
         missing = [capability for capability in required if capability not in _DEFAULT_CAPABILITIES]
         if missing:
             names = ", ".join(item.value for item in missing)
-            raise ProviderConfigurationError(f"Model {self.model} lacks required capabilities: {names}")
+            raise ProviderConfigurationError(
+                f"Model {self.model} lacks required capabilities: {names}"
+            )
         if not os.getenv(key_env):
             raise ProviderConfigurationError(f"{key_env} is required for model {self.model}.")
         return ProviderSettings(

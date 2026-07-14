@@ -35,7 +35,9 @@ class ReadinessProgressStore:
         self.layout = layout
 
     def attempt_count(self, *, user_id: str, course_id: str) -> int:
-        attempt_ids = {event.attempt_id for event in self.read(user_id=user_id, course_id=course_id).attempts}
+        attempt_ids = {
+            event.attempt_id for event in self.read(user_id=user_id, course_id=course_id).attempts
+        }
         return len(attempt_ids)
 
     def read(self, *, user_id: str, course_id: str) -> ReadinessProgress:
@@ -73,7 +75,9 @@ class ReadinessProgressStore:
                 section_id=item.section_id,
                 answer_kind=item.answer_kind,
                 correct=item.correct,
-                first_try=not any(event.question_id == item.question_id for event in progress.attempts),
+                first_try=not any(
+                    event.question_id == item.question_id for event in progress.attempts
+                ),
                 attempt_index=attempt_index,
                 status=item.status,
                 created_at=created_at,

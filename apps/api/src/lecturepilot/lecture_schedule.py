@@ -30,7 +30,9 @@ def propose_lecture_schedule(
             number=f"{number:02d}",
             title=_lecture_title(number, selected.get(number), roots),
             date=explicit_dates.get(index)
-            or anchored_weekly_date(index=index, explicit_dates=explicit_dates, first_lecture_date=first_lecture_date)
+            or anchored_weekly_date(
+                index=index, explicit_dates=explicit_dates, first_lecture_date=first_lecture_date
+            )
             or default_start_date + timedelta(days=7 * index),
             material_path=selected.get(number).path if number in selected else None,
         )
@@ -52,7 +54,9 @@ def _select_lecture_files(files: list[SourceBundleFile]) -> dict[int, SourceBund
     return {number: sorted(items, key=_source_priority)[0] for number, items in grouped.items()}
 
 
-def _source_dates(numbers: list[int], selected: dict[int, SourceBundleFile], roots: list[Path]) -> dict[int, date]:
+def _source_dates(
+    numbers: list[int], selected: dict[int, SourceBundleFile], roots: list[Path]
+) -> dict[int, date]:
     dates = {}
     for index, number in enumerate(numbers):
         source = selected.get(number)
@@ -120,5 +124,14 @@ def _is_admin_title(title: str) -> bool:
         return True
     return any(
         marker in lowered
-        for marker in ("admin", "before we start", "consult", "evaluation", "klausur", "lehrevaluation", "outline", "rückmeldung")
+        for marker in (
+            "admin",
+            "before we start",
+            "consult",
+            "evaluation",
+            "klausur",
+            "lehrevaluation",
+            "outline",
+            "rückmeldung",
+        )
     )

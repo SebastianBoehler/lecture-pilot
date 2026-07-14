@@ -130,7 +130,7 @@ profile, and secure course-material upload contract.
 See [docs/security-operations.md](docs/security-operations.md) for backup,
 restore, incident, and remaining retention requirements.
 See [security_best_practices_report.md](security_best_practices_report.md) for
-the current pre-deployment decision and open blockers.
+the current pilot security status and open production-approval blockers.
 
 ## Product Changelog And Releases
 
@@ -272,10 +272,16 @@ The first frontend direction was generated with OpenRouter model
 ## Testing
 
 ```bash
-pytest apps/api/tests
-npm run test --workspace apps/web
-npm run build --workspace apps/web
+npm run verify:fast
+npm run verify:api
+npm run verify:web
+npm run verify:full
 ```
+
+`verify:api` and `verify:web` are the component commands used by CI. All verify
+commands enforce formatting, zero lint warnings, and `git diff --check`; the
+full API suite requires the migrated disposable PostgreSQL database described
+above.
 
 Provider behavior is benchmarked separately from CI because real model calls are
 non-deterministic and depend on configured keys. To compare whether candidate

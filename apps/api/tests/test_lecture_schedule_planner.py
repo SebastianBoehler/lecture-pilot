@@ -80,7 +80,10 @@ def test_schedule_uses_explicit_slide_dates(tmp_path) -> None:
         roots=[tmp_path],
     )
 
-    assert [lecture.date.isoformat() for lecture in proposal.lectures] == ["2026-05-06", "2026-05-13"]
+    assert [lecture.date.isoformat() for lecture in proposal.lectures] == [
+        "2026-05-06",
+        "2026-05-13",
+    ]
 
 
 def test_schedule_anchors_missing_dates_from_detected_slide_date(tmp_path) -> None:
@@ -104,7 +107,10 @@ def test_schedule_anchors_missing_dates_from_detected_slide_date(tmp_path) -> No
         roots=[tmp_path],
     )
 
-    assert [lecture.date.isoformat() for lecture in proposal.lectures] == ["2026-05-06", "2026-05-13"]
+    assert [lecture.date.isoformat() for lecture in proposal.lectures] == [
+        "2026-05-06",
+        "2026-05-13",
+    ]
 
 
 async def test_litellm_schedule_client_requests_schedule_schema(monkeypatch) -> None:
@@ -154,7 +160,11 @@ async def test_schedule_planner_sends_topic_outline_to_model(tmp_path, monkeypat
 
     proposal = await planner.propose_schedule(
         course_id="martius-ml",
-        files=[SourceBundleFile(path="Lecture03-eng.tex", kind="latex", size_bytes=source.stat().st_size)],
+        files=[
+            SourceBundleFile(
+                path="Lecture03-eng.tex", kind="latex", size_bytes=source.stat().st_size
+            )
+        ],
         roots=[tmp_path],
         first_lecture_date=date(2026, 5, 6),
         requested_count=None,
@@ -178,7 +188,9 @@ async def test_schedule_planner_repairs_non_object_model_response(tmp_path, monk
 
     proposal = await planner.propose_schedule(
         course_id="demo-course",
-        files=[SourceBundleFile(path="Lecture01.tex", kind="latex", size_bytes=source.stat().st_size)],
+        files=[
+            SourceBundleFile(path="Lecture01.tex", kind="latex", size_bytes=source.stat().st_size)
+        ],
         roots=[tmp_path],
         first_lecture_date=date(2026, 5, 6),
         requested_count=None,
@@ -189,7 +201,9 @@ async def test_schedule_planner_repairs_non_object_model_response(tmp_path, monk
     assert "Do not return a bare array" in client.last_messages[-1]["content"]
 
 
-async def test_schedule_planner_keeps_source_detected_lectures_when_model_omits_rows(tmp_path, monkeypatch) -> None:
+async def test_schedule_planner_keeps_source_detected_lectures_when_model_omits_rows(
+    tmp_path, monkeypatch
+) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     first = tmp_path / "Lecture01-eng.tex"
     second = tmp_path / "Lecture02-eng.tex"

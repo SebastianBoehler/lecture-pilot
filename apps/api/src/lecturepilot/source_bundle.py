@@ -17,9 +17,7 @@ class SourceBundleFile:
 def scan_source_bundle(root: Path) -> list[SourceBundleFile]:
     if not root.exists():
         return []
-    workspace = WorkspaceFS(
-        WorkspaceCapability((CapabilityRoot("/source", root, writable=False),))
-    )
+    workspace = WorkspaceFS(WorkspaceCapability((CapabilityRoot("/source", root, writable=False),)))
     files = []
     for item in sorted(workspace.files("/source"), key=lambda item: item.logical):
         path = item.path

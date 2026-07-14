@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.canvas_learning_support import support_check_prompt, support_study_items, support_why_text
+from lecturepilot.canvas_learning_support import (
+    support_check_prompt,
+    support_study_items,
+    support_why_text,
+)
 
 
 MIN_TEACHING_BLOCKS = 4

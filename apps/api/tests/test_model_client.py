@@ -75,9 +75,13 @@ async def test_model_client_requests_structured_json(monkeypatch: pytest.MonkeyP
     assert calls[0]["temperature"] == 0.3
 
 
-async def test_model_client_preserves_payload_contract_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_model_client_preserves_payload_contract_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     async def fake_completion(**kwargs):
-        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="not json"))])
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content="not json"))]
+        )
 
     monkeypatch.setitem(sys.modules, "litellm", SimpleNamespace(acompletion=fake_completion))
 

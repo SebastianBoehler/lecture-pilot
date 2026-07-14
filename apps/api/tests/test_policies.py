@@ -40,4 +40,3 @@ def test_workspace_policy_rejects_unsafe_or_oversized_files(path: str, size: int
 
     with pytest.raises(WorkspacePolicyError):
         policy.validate_write(path, size)
-

@@ -12,7 +12,9 @@ from lecturepilot.source_bundle import scan_source_bundle
 SEEDED_COURSE_START_DATE = date(2026, 5, 6)
 
 
-def discovered_seeded_lecture_views(course_id: str, material_root: Path | None = None) -> list[LectureView]:
+def discovered_seeded_lecture_views(
+    course_id: str, material_root: Path | None = None
+) -> list[LectureView]:
     if course_id != SEEDED_COURSE_ID:
         return []
     root = material_root or default_material_root()

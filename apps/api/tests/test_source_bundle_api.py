@@ -148,7 +148,9 @@ def test_uploaded_latex_can_seed_a_canvas_document(tmp_path: Path) -> None:
     ]
 
 
-def test_nested_uploaded_latex_matches_requested_lecture_before_sorted_fallback(tmp_path: Path) -> None:
+def test_nested_uploaded_latex_matches_requested_lecture_before_sorted_fallback(
+    tmp_path: Path,
+) -> None:
     client, _ = _client(tmp_path)
     for path, title in (
         ("uploads/course/Lecture01-eng.tex", "Wrong Overview"),
@@ -222,7 +224,10 @@ def test_professor_canvas_draft_stays_private_until_publish(tmp_path: Path) -> N
     payload = student.json()
     assert payload["source_kind"] == "generated"
     assert [section["title"] for section in payload["sections"]] == ["Planner summary"]
-    assert payload["sections"][0]["blocks"][0]["text"] == "Bayes rule becomes a compact learning section."
+    assert (
+        payload["sections"][0]["blocks"][0]["text"]
+        == "Bayes rule becomes a compact learning section."
+    )
 
 
 def _client(tmp_path: Path) -> tuple[TestClient, Path]:
@@ -240,7 +245,7 @@ def _professor_headers() -> dict[str, str]:
 
 
 def _latex_source() -> bytes:
-    return br"""
+    return rb"""
 \title{Uploaded Lecture}
 \begin{frame}{Uploaded Bayes Concept}
 \begin{itemize}

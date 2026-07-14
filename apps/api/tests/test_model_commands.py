@@ -1,6 +1,11 @@
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.model_commands import read_canvas_commands
-from lecturepilot.models import AgentTurnInput, AttendanceStatus, CanvasSectionPlacement, CanvasState
+from lecturepilot.models import (
+    AgentTurnInput,
+    AttendanceStatus,
+    CanvasSectionPlacement,
+    CanvasState,
+)
 
 
 def test_missing_generated_section_command_does_not_create_fake_section() -> None:

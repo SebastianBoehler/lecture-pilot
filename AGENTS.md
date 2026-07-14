@@ -273,18 +273,15 @@ Important web modules: `App.tsx`, `Dashboard.tsx`, `LessonWorkspace.tsx`,
 Run the narrowest meaningful check first, then broaden:
 
 ```bash
-npm run quality
-pytest apps/api/tests -q
-PYTHONPATH=apps/latex-compiler/src pytest apps/latex-compiler/tests -q
-npm run test --workspace apps/web
-npm run build --workspace apps/web
-git diff --check
+npm run verify:fast
+npm run verify:api
+npm run verify:web
+npm run verify:full
 ```
 
 Additional local hygiene checks:
 
 ```bash
-npm run format:check        # known baseline may need one-time formatting cleanup
 npm run dead-code:exports   # advisory exported-symbol cleanup report
 ```
 
@@ -300,9 +297,9 @@ File-size guard:
 find apps/api/src apps/api/tests apps/web/src -type f \( -name '*.py' -o -name '*.ts' -o -name '*.tsx' -o -name '*.css' \) -print0 | xargs -0 wc -l | awk '$2 != "total" && $1 > 300 { print }'
 ```
 
-CI lives in `.github/workflows/ci.yml` and runs API tests, web tests, and the
-web build. Keep local verification aligned with CI unless deliberately changing
-CI.
+CI lives in `.github/workflows/ci.yml` and invokes `verify:api` and `verify:web`
+after its database migration check. Keep local verification aligned with those
+package scripts unless deliberately changing CI.
 
 ## Contribution Notes
 

@@ -7,7 +7,11 @@ from typing import Any
 from canvas_workspace_fixtures import write_course_source
 from lecturepilot.agent_tool_executor import AgentToolExecutor
 from lecturepilot.agent_tool_loop import complete_tool_turn
-from lecturepilot.agent_tool_schemas import agent_tool_names, agent_tool_schemas, tutor_tool_profile_for_message
+from lecturepilot.agent_tool_schemas import (
+    agent_tool_names,
+    agent_tool_schemas,
+    tutor_tool_profile_for_message,
+)
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.models import AgentTurnInput, ProviderSettings
 from lecturepilot.observability import Observability
@@ -23,14 +27,25 @@ def test_agent_tool_profiles_expose_minimal_expected_tools() -> None:
     assert {"find", "grep"}.issubset(evidence)
     assert {"record_gate", "remember"}.issubset(tutor)
     assert {"record_gate", "remember", "focus", "highlight"}.isdisjoint(course_builder)
-    assert {"pwd", "ls", "find", "grep", "read", "write", "edit", "generate_image"} == course_builder
+    assert {
+        "pwd",
+        "ls",
+        "find",
+        "grep",
+        "read",
+        "write",
+        "edit",
+        "generate_image",
+    } == course_builder
     assert {schema["function"]["name"] for schema in agent_tool_schemas("tutor")} == tutor
     assert tutor_tool_profile_for_message("show me the exact source for this claim") == "evidence"
     assert tutor_tool_profile_for_message("help me understand this formula") == "tutor"
 
 
 async def test_tool_loop_default_profile_rejects_search_tool_calls(tmp_path) -> None:
-    workspace = CanvasWorkspace(workspace_root=tmp_path / "workspaces", material_root=write_course_source(tmp_path))
+    workspace = CanvasWorkspace(
+        workspace_root=tmp_path / "workspaces", material_root=write_course_source(tmp_path)
+    )
     workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="u1")
     executor = AgentToolExecutor(
         canvas_workspace=workspace,
@@ -50,7 +65,9 @@ async def test_tool_loop_default_profile_rejects_search_tool_calls(tmp_path) -> 
                         "type": "function",
                         "function": {
                             "name": "grep",
-                            "arguments": json.dumps({"path": "/lecture/canvas", "pattern": "Bayes"}),
+                            "arguments": json.dumps(
+                                {"path": "/lecture/canvas", "pattern": "Bayes"}
+                            ),
                         },
                     }
                 ]
@@ -97,5 +114,9 @@ async def test_tool_loop_default_profile_rejects_search_tool_calls(tmp_path) -> 
 
 def _response(content: str | None = None, tool_calls: list[dict] | None = None):
     return SimpleNamespace(
-        choices=[SimpleNamespace(message={"role": "assistant", "content": content, "tool_calls": tool_calls or []})]
+        choices=[
+            SimpleNamespace(
+                message={"role": "assistant", "content": content, "tool_calls": tool_calls or []}
+            )
+        ]
     )

@@ -29,7 +29,9 @@ class OpenRouterImageGenerator:
     def generate_infographic(self, *, prompt: str, section: CanvasSection) -> GeneratedImage:
         payload = {
             "model": self.model,
-            "messages": [{"role": "user", "content": infographic_prompt(prompt=prompt, section=section)}],
+            "messages": [
+                {"role": "user", "content": infographic_prompt(prompt=prompt, section=section)}
+            ],
             "modalities": ["image", "text"],
             "image_config": {"aspect_ratio": self.aspect_ratio, "image_size": self.image_size},
             "stream": False,

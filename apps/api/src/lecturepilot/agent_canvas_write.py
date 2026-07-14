@@ -8,7 +8,9 @@ from pathlib import Path
 from lecturepilot.storage_layout import safe_id
 
 
-def prepare_student_canvas_write(logical_path: str, path: Path, content: str) -> tuple[Path, str, str | None]:
+def prepare_student_canvas_write(
+    logical_path: str, path: Path, content: str
+) -> tuple[Path, str, str | None]:
     content = normalize_student_canvas_markdown(logical_path, content)
     section_id = student_canvas_section_id(logical_path, content)
     if is_student_markdown_path(logical_path):
@@ -109,7 +111,11 @@ def _model_fields(line: str) -> dict[str, str]:
 
 def _rich_block_from_fields(fields: dict[str, str], block_type: str) -> list[str]:
     block_id = safe_id(fields.get("span_id") or fields.get("id") or block_type)
-    lines = [f'<!-- block id="{block_id}" type="{block_type}" -->', f":::{block_type}", fields["text"]]
+    lines = [
+        f'<!-- block id="{block_id}" type="{block_type}" -->',
+        f":::{block_type}",
+        fields["text"],
+    ]
     if block_type == "quiz":
         for item in _items_from_model_field(fields.get("items", "")):
             lines.append(f"- {item}")
@@ -169,7 +175,10 @@ def _schema_quiz_from_lines(lines: list[str]) -> list[str] | None:
     looks_like_quiz = (
         "type=quiz" in stripped_lines
         or "--- quiz" in stripped_lines
-        or ("items:" in stripped_lines and any(line.startswith("correct") for line in stripped_lines))
+        or (
+            "items:" in stripped_lines
+            and any(line.startswith("correct") for line in stripped_lines)
+        )
     )
     if not looks_like_quiz:
         return None
@@ -278,7 +287,7 @@ def _section_id_from_logical_path(logical_path: str) -> str:
 def _path_for_section_id(directory: Path, section_id: str | None) -> Path | None:
     if not section_id or not directory.exists():
         return None
-    marker = f'id: {json.dumps(section_id)}'
+    marker = f"id: {json.dumps(section_id)}"
     for candidate in sorted(directory.glob("*.md")):
         if marker in candidate.read_text(encoding="utf-8", errors="ignore").splitlines()[:6]:
             return candidate

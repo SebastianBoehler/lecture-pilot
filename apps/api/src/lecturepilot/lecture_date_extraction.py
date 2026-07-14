@@ -50,9 +50,7 @@ DATE_COMMAND_RE = re.compile(r"\\(?:date|subtitle|author)\s*\{([^{}]{4,120})\}",
 ISO_DATE_RE = re.compile(r"\b(20\d{2})[-/](0?[1-9]|1[0-2])[-/](0?[1-9]|[12]\d|3[01])\b")
 EU_DATE_RE = re.compile(r"\b(0?[1-9]|[12]\d|3[01])\.(0?[1-9]|1[0-2])\.(20\d{2})\b")
 MONTH_DATE_RE = re.compile(
-    r"\b("
-    + "|".join(sorted(MONTHS, key=len, reverse=True))
-    + r")\.?\s+([0-3]?\d),?\s+(20\d{2})\b",
+    r"\b(" + "|".join(sorted(MONTHS, key=len, reverse=True)) + r")\.?\s+([0-3]?\d),?\s+(20\d{2})\b",
     re.IGNORECASE,
 )
 DATE_MONTH_RE = re.compile(
@@ -129,7 +127,10 @@ def _pdf_text(path: Path) -> str:
     except Exception:
         return ""
     try:
-        pages = [document.load_page(index).get_text("text") for index in range(min(len(document), MAX_PDF_DATE_PAGES))]
+        pages = [
+            document.load_page(index).get_text("text")
+            for index in range(min(len(document), MAX_PDF_DATE_PAGES))
+        ]
         return "\n\n".join(pages)[:MAX_DATE_SCAN_CHARS]
     finally:
         document.close()

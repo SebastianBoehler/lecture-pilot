@@ -32,7 +32,4 @@ def lecture_source_name(lecture_id: str) -> str | None:
     return _LECTURE_SOURCES.get(lecture_id)
 
 
-_LECTURE_SOURCES = {
-    f"lecture-{index:02d}": f"Lecture{index:02d}-eng.tex"
-    for index in range(1, 81)
-}
+_LECTURE_SOURCES = {f"lecture-{index:02d}": f"Lecture{index:02d}-eng.tex" for index in range(1, 81)}

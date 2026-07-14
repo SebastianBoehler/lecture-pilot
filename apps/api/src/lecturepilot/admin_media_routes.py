@@ -120,16 +120,12 @@ def register_admin_media_routes(
             lecture_id=COURSE_MEDIA_POOL_ID,
         )
 
-    @app.delete(
-        "/admin/courses/{course_id}/lectures/{lecture_id}/media/youtube/{video_id}"
-    )
+    @app.delete("/admin/courses/{course_id}/lectures/{lecture_id}/media/youtube/{video_id}")
     def remove_lecture_youtube_media(
         course_id: str,
         lecture_id: str,
         request: Request,
-        video_id: str = Path(
-            ..., min_length=1, max_length=100, pattern=r"^[A-Za-z0-9_-]+$"
-        ),
+        video_id: str = Path(..., min_length=1, max_length=100, pattern=r"^[A-Za-z0-9_-]+$"),
         context: TenantContext = Depends(request_context),
     ) -> dict[str, int]:
         _assert_seeded_lecture(course_id, lecture_id, course, lecture_ids)

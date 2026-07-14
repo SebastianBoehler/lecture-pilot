@@ -65,9 +65,15 @@ def test_agent_appended_canvas_section_persists_for_same_student(tmp_path: Path)
     )
 
     assert response.status_code == 200
-    assert _next_section_id(same_student.json(), "bayesian-decision-theory-the-aim") == "student-soccer-bayes-example"
+    assert (
+        _next_section_id(same_student.json(), "bayesian-decision-theory-the-aim")
+        == "student-soccer-bayes-example"
+    )
     assert other_student.status_code == 200
-    assert _next_section_id(other_student.json(), "bayesian-decision-theory-the-aim") == "student-soccer-bayes-example"
+    assert (
+        _next_section_id(other_student.json(), "bayesian-decision-theory-the-aim")
+        == "student-soccer-bayes-example"
+    )
     assert professor_view.status_code == 403
     lecture_root = app.state.canvas_workspace.layout.user_lecture_root(
         "student01",
@@ -106,7 +112,9 @@ def test_learner_workspace_reset_clears_selected_scopes(tmp_path: Path) -> None:
     layout = app.state.canvas_workspace.layout
     course_root = layout.user_course_root("student01", "martius-ml")
     lecture_root = layout.user_lecture_root("student01", "martius-ml", "lecture-03")
-    (course_root / "progress.json").write_text('{"attempts": [], "active_tasks": []}', encoding="utf-8")
+    (course_root / "progress.json").write_text(
+        '{"attempts": [], "active_tasks": []}', encoding="utf-8"
+    )
 
     response = client.post(
         "/courses/martius-ml/learner-workspace/reset",
@@ -178,7 +186,7 @@ class _AppendingHarness:
                     items=["The posterior-weighted loss", "The slide number"],
                     option_ids=["posterior-risk", "slide-number"],
                     answer_index=0,
-                )
+                ),
             ],
         )
         return AgentTurnResult(

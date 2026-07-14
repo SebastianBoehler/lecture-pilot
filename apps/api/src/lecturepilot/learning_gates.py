@@ -9,7 +9,9 @@ class EvidenceRule:
     required_terms: tuple[tuple[str, ...], ...]
 
     def matches(self, text: str) -> bool:
-        return all(any(term in text for term in alternatives) for alternatives in self.required_terms)
+        return all(
+            any(term in text for term in alternatives) for alternatives in self.required_terms
+        )
 
 
 @dataclass(frozen=True)

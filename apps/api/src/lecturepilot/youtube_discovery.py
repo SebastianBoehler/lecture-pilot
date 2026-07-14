@@ -82,7 +82,9 @@ class YoutubeDiscovery:
             next_page_token=search_payload.get("nextPageToken"),
         )
 
-    def _candidate_details(self, video_ids: list[str], *, query: str) -> list[YoutubeVideoCandidate]:
+    def _candidate_details(
+        self, video_ids: list[str], *, query: str
+    ) -> list[YoutubeVideoCandidate]:
         if not video_ids:
             return []
         details_payload = self.fetch_json(
@@ -94,12 +96,19 @@ class YoutubeDiscovery:
             },
         )
         by_id = {_item_id(item): item for item in _payload_items(details_payload)}
-        candidates = [_candidate_from_item(by_id[video_id], query=query) for video_id in video_ids if video_id in by_id]
+        candidates = [
+            _candidate_from_item(by_id[video_id], query=query)
+            for video_id in video_ids
+            if video_id in by_id
+        ]
         candidates = [candidate for candidate in candidates if self._keeps_candidate(candidate)]
         return sorted(candidates, key=_rank_key, reverse=True)
 
     def _keeps_candidate(self, candidate: YoutubeVideoCandidate) -> bool:
-        if candidate.duration.seconds is not None and candidate.duration.seconds < self.min_duration_seconds:
+        if (
+            candidate.duration.seconds is not None
+            and candidate.duration.seconds < self.min_duration_seconds
+        ):
             return False
         return not _SHORT_MARKERS_RE.search(" ".join([candidate.title, candidate.description]))
 
@@ -142,12 +151,16 @@ def _candidate_from_item(item: dict[str, Any], *, query: str) -> YoutubeVideoCan
 
 def _score_candidate(candidate: YoutubeVideoCandidate, *, query: str) -> tuple[float, str]:
     query_terms = _terms(query)
-    video_terms = _terms(" ".join([candidate.title, candidate.channel_title, candidate.description]))
+    video_terms = _terms(
+        " ".join([candidate.title, candidate.channel_title, candidate.description])
+    )
     overlap = len(query_terms & video_terms)
     duration_bonus = 1.0 if 180 <= (candidate.duration.seconds or 0) <= 1800 else 0.3
     view_bonus = min((candidate.view_count or 0) / 100_000, 3.0)
     score = (overlap * 3.0) + duration_bonus + view_bonus
-    return round(score, 2), f"{overlap} query terms matched; duration and views used as tie breakers."
+    return round(
+        score, 2
+    ), f"{overlap} query terms matched; duration and views used as tie breakers."
 
 
 def _rank_key(candidate: YoutubeVideoCandidate) -> tuple[float, int, int]:

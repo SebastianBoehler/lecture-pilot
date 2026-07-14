@@ -4,7 +4,9 @@ from lecturepilot.canvas_models import CanvasBlock, CanvasDocument
 from lecturepilot.course_canvas_validation import section_ids
 
 
-def avoid_mirrored_section_ids(document: CanvasDocument, source_document: CanvasDocument) -> CanvasDocument:
+def avoid_mirrored_section_ids(
+    document: CanvasDocument, source_document: CanvasDocument
+) -> CanvasDocument:
     source_ids = section_ids(source_document)
     if not source_ids:
         return document
@@ -24,7 +26,10 @@ def avoid_mirrored_section_ids(document: CanvasDocument, source_document: Canvas
             section.model_copy(
                 update={
                     "id": section_id,
-                    "blocks": [_rename_block(block, old_prefix=section.id, new_prefix=section_id) for block in section.blocks],
+                    "blocks": [
+                        _rename_block(block, old_prefix=section.id, new_prefix=section_id)
+                        for block in section.blocks
+                    ],
                 }
             )
         )

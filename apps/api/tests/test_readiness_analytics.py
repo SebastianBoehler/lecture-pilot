@@ -25,7 +25,9 @@ def test_professor_reads_privacy_preserving_readiness_summary(tmp_path: Path) ->
         )
         assert response.status_code == 200
 
-    summary = client.get("/admin/courses/demo-ml-course/exam-readiness/summary", headers=professor_headers())
+    summary = client.get(
+        "/admin/courses/demo-ml-course/exam-readiness/summary", headers=professor_headers()
+    )
 
     assert summary.status_code == 200
     payload = summary.json()
@@ -33,7 +35,11 @@ def test_professor_reads_privacy_preserving_readiness_summary(tmp_path: Path) ->
     assert payload["total_attempts"] == 2
     assert payload["unique_learners"] == 2
     assert payload["task_status_counts"] == {"open": 3}
-    assert payload["weak_sections"][0] == {"lecture_id": "lecture-03", "section_id": "risk", "open_tasks": 3}
+    assert payload["weak_sections"][0] == {
+        "lecture_id": "lecture-03",
+        "section_id": "risk",
+        "open_tasks": 3,
+    }
     assert "student-a" not in str(payload)
     assert "Expected risk weighs losses" not in str(payload)
 
@@ -99,7 +105,9 @@ def _create_course(client: TestClient) -> None:
                             items=["Posterior only", "Expected risk"],
                             answer_index=1,
                         ),
-                        CanvasBlock(id="risk-text", type="paragraph", text="Expected risk weighs losses."),
+                        CanvasBlock(
+                            id="risk-text", type="paragraph", text="Expected risk weighs losses."
+                        ),
                     ],
                 )
             ],
