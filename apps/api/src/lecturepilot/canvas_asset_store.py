@@ -27,20 +27,21 @@ class CanvasAssetStore:
 
     def course_asset_path(self, *, course_id: str, lecture_id: str, asset_path: str) -> Path:
         _assert_safe_asset_path(asset_path, "course material root", COURSE_MEDIA_SUFFIXES)
+        if source := self._maybe_source_path(course_id, lecture_id):
+            candidates = [
+                (source.parent, asset_path),
+                (source.parent / "images", asset_path),
+            ]
+            if candidate := _first_course_media(candidates):
+                return candidate
         candidates = [
             (self.layout.course_normalized_dir(course_id), asset_path),
             (self.layout.course_uploads_dir(course_id), asset_path),
             (self.layout.course_uploads_dir(course_id), f"images/{asset_path}"),
             (self.material_root, f"images/{asset_path}"),
         ]
-        if source := self._maybe_source_path(course_id, lecture_id):
-            candidates.insert(0, (source.parent, asset_path))
-        for root, relative in candidates:
-            candidate = _safe_candidate(root, relative)
-            if candidate is None:
-                continue
-            if _is_allowed_course_media(candidate):
-                return candidate
+        if candidate := _first_course_media(candidates):
+            return candidate
         raise CanvasAssetError("Canvas asset was not found.")
 
     def course_asset_preview_path(
@@ -106,19 +107,19 @@ class CanvasAssetStore:
         )
         if source_name:
             source_names.append(source_name)
-        if uploads_dir.exists():
-            workspace = WorkspaceFS(WorkspaceCapability((CapabilityRoot("/uploads", uploads_dir),)))
-            source_names.extend(
-                item.logical.removeprefix("/uploads/")
-                for item in workspace.files("/uploads")
-                if item.path.suffix.lower() == ".tex"
-            )
         candidates = [uploads_dir / name for name in dict.fromkeys(source_names)]
         if source_name and course_id == SEEDED_COURSE_ID:
             candidates.append(self.material_root / source_name)
-        for source_path in candidates:
-            source = _safe_candidate(source_path.parent, source_path.name)
-            if source is not None and source.is_file():
+        if source := _first_existing_source(candidates):
+            return source
+        if uploads_dir.exists():
+            workspace = WorkspaceFS(WorkspaceCapability((CapabilityRoot("/uploads", uploads_dir),)))
+            discovered = [
+                item.path
+                for item in workspace.files("/uploads")
+                if item.path.suffix.lower() == ".tex"
+            ]
+            if source := _first_existing_source(discovered):
                 return source
         raise CanvasAssetError(f"No LaTeX source found for {course_id}/{lecture_id}.")
 
@@ -142,6 +143,22 @@ def _is_allowed_course_media(path: Path) -> bool:
         and path.suffix.lower() in COURSE_MEDIA_SUFFIXES
         and path.stat().st_size <= MAX_COURSE_MEDIA_BYTES
     )
+
+
+def _first_existing_source(candidates: list[Path]) -> Path | None:
+    for source_path in candidates:
+        source = _safe_candidate(source_path.parent, source_path.name)
+        if source is not None and source.is_file():
+            return source
+    return None
+
+
+def _first_course_media(candidates: list[tuple[Path, str]]) -> Path | None:
+    for root, relative in candidates:
+        candidate = _safe_candidate(root, relative)
+        if candidate is not None and _is_allowed_course_media(candidate):
+            return candidate
+    return None
 
 
 def _safe_candidate(root: Path, relative: str) -> Path | None:

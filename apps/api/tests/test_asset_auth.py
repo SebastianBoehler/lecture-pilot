@@ -17,22 +17,24 @@ from lecturepilot.models import Course, CourseWorkspaceResult, Lecture
 from lecturepilot.professor_preview import professor_preview_user_id
 
 
-def test_course_asset_requires_authentication(tmp_path: Path) -> None:
+def test_normalized_course_asset_requires_authentication(tmp_path: Path) -> None:
     app = create_app()
     app.state.canvas_workspace = CanvasWorkspace(
         workspace_root=tmp_path / "workspaces",
         material_root=tmp_path / "materials",
     )
     asset_path = (
-        app.state.canvas_workspace.layout.course_uploads_dir("martius-ml") / "figures" / "risk.png"
+        app.state.canvas_workspace.layout.course_normalized_dir("martius-ml")
+        / "generated-slides"
+        / "risk.png"
     )
     asset_path.parent.mkdir(parents=True)
     asset_path.write_bytes(b"\x89PNG\r\n")
     app.state.canvas_workspace.write_course_canvas(
-        _document("martius-ml", "lecture-03", asset_path="figures/risk.png")
+        _document("martius-ml", "lecture-03", asset_path="generated-slides/risk.png")
     )
     client = TestClient(app)
-    url = "/course-assets/martius-ml/lecture-03/figures/risk.png"
+    url = "/course-assets/martius-ml/lecture-03/generated-slides/risk.png"
 
     assert client.get(url).status_code == 401
     response = client.get(url, headers=student_headers("student01"))
@@ -86,7 +88,15 @@ def test_course_asset_uses_scheduled_source_directory(tmp_path: Path) -> None:
     (source_dir / "Lecture01-eng.tex").write_text("lecture", encoding="utf-8")
     slide = source_dir / "generated-slides" / "lecture-01" / "slides" / "slide-001.png"
     slide.parent.mkdir(parents=True)
-    slide.write_bytes(b"\x89PNG\r\n")
+    slide.write_bytes(b"scheduled lecture slide")
+    relative_slide = "generated-slides/lecture-01/slides/slide-001.png"
+    for generic_root in (
+        layout.course_normalized_dir("martius-ml"),
+        layout.course_uploads_dir("martius-ml"),
+    ):
+        generic_slide = generic_root / relative_slide
+        generic_slide.parent.mkdir(parents=True, exist_ok=True)
+        generic_slide.write_bytes(b"generic shadow")
     write_course_workspace(
         layout.course_root("martius-ml"),
         CourseWorkspaceResult(
@@ -112,18 +122,80 @@ def test_course_asset_uses_scheduled_source_directory(tmp_path: Path) -> None:
         _document(
             "martius-ml",
             "lecture-01",
-            asset_path="generated-slides/lecture-01/slides/slide-001.png",
+            asset_path=relative_slide,
         )
     )
     client = TestClient(app)
 
     response = client.get(
-        "/course-assets/martius-ml/lecture-01/generated-slides/lecture-01/slides/slide-001.png",
+        f"/course-assets/martius-ml/lecture-01/{relative_slide}",
         headers=student_headers("student01"),
     )
 
     assert response.status_code == 200
-    assert response.content.startswith(b"\x89PNG")
+    assert response.content == b"scheduled lecture slide"
+
+
+def test_course_asset_resolves_legacy_graphicspath_reference(tmp_path: Path, monkeypatch) -> None:
+    app = create_app()
+    app.state.canvas_workspace = CanvasWorkspace(
+        workspace_root=tmp_path / "workspaces",
+        material_root=tmp_path / "materials",
+    )
+    layout = app.state.canvas_workspace.layout
+    source_dir = layout.course_uploads_dir("martius-ml") / "uploads" / "course-folder"
+    source_dir.mkdir(parents=True)
+    (source_dir / "Lecture02.tex").write_text("lecture", encoding="utf-8")
+    figure = source_dir / "images" / "examples" / "mnistExamples.png"
+    figure.parent.mkdir(parents=True)
+    figure.write_bytes(b"scheduled graphicspath image")
+    for generic_root in (
+        layout.course_normalized_dir("martius-ml"),
+        layout.course_uploads_dir("martius-ml"),
+    ):
+        generic_figure = generic_root / "examples" / "mnistExamples.png"
+        generic_figure.parent.mkdir(parents=True, exist_ok=True)
+        generic_figure.write_bytes(b"generic shadow")
+    write_course_workspace(
+        layout.course_root("martius-ml"),
+        CourseWorkspaceResult(
+            course=Course(
+                id="martius-ml",
+                title="Nested course",
+                professor="Professor",
+                term="Sommer 2026",
+            ),
+            lectures=[
+                Lecture(
+                    id="lecture-02",
+                    course_id="martius-ml",
+                    title="Generalization",
+                    date="2026-04-21",
+                    material_path="uploads/course-folder/Lecture02.tex",
+                )
+            ],
+            active_lecture_id="lecture-02",
+        ),
+    )
+    app.state.canvas_workspace.write_course_canvas(
+        _document(
+            "martius-ml",
+            "lecture-02",
+            asset_path="examples/mnistExamples.png",
+        )
+    )
+
+    def reject_recursive_scan(*_args, **_kwargs):
+        raise AssertionError("scheduled source lookup must not scan every uploaded file")
+
+    monkeypatch.setattr("lecturepilot.canvas_asset_store.WorkspaceFS.files", reject_recursive_scan)
+    response = TestClient(app).get(
+        "/course-assets/martius-ml/lecture-02/examples/mnistExamples.png",
+        headers=student_headers("student01"),
+    )
+
+    assert response.status_code == 200
+    assert response.content == b"scheduled graphicspath image"
 
 
 def test_course_asset_must_be_referenced_by_the_authorized_lecture(tmp_path: Path) -> None:

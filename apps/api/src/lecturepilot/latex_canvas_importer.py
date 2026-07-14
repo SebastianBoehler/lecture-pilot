@@ -5,11 +5,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.latex_canvas_assets import LatexAssetResolver
 from lecturepilot.latex_canvas_text import (
     clean_inline,
     is_skipped_frame_title,
     paragraphs_from_latex,
-    read_assets,
     read_items,
     read_math_blocks,
     read_title,
@@ -43,18 +43,21 @@ def import_latex_canvas(
     lecture_id: str,
     workspace_path: str,
     derived_root: Path | None = None,
+    include_matching_pdf_slides: bool = True,
 ) -> CanvasDocument:
     source = strip_comments(source_path.read_text(encoding="utf-8", errors="replace"))
     frames = _read_frames(source)
-    sections = _read_grouped_sections(frames, material_root, course_id, lecture_id)
-    sections = append_matching_pdf_slides(
-        sections=sections,
-        source_path=source_path,
-        material_root=material_root,
-        course_id=course_id,
-        lecture_id=lecture_id,
-        derived_root=derived_root,
-    )
+    asset_resolver = LatexAssetResolver.from_source(source, material_root=material_root)
+    sections = _read_grouped_sections(frames, asset_resolver, course_id, lecture_id)
+    if include_matching_pdf_slides:
+        sections = append_matching_pdf_slides(
+            sections=sections,
+            source_path=source_path,
+            material_root=material_root,
+            course_id=course_id,
+            lecture_id=lecture_id,
+            derived_root=derived_root,
+        )
     return CanvasDocument(
         id=f"{course_id}-{lecture_id}",
         import_version=CANVAS_IMPORT_VERSION,
@@ -68,17 +71,18 @@ def import_latex_canvas(
     )
 
 
-
 def _read_grouped_sections(
     frames: list[LatexFrame],
-    material_root: Path,
+    asset_resolver: LatexAssetResolver,
     course_id: str,
     lecture_id: str,
 ) -> list[CanvasSection]:
     if lecture_id != "lecture-03":
-        return read_study_sections(frames, material_root, course_id, lecture_id) or _read_frame_chunk_sections(
+        return read_study_sections(
+            frames, asset_resolver, course_id, lecture_id
+        ) or _read_frame_chunk_sections(
             frames,
-            material_root,
+            asset_resolver,
             course_id,
             lecture_id,
         )
@@ -97,16 +101,18 @@ def _read_grouped_sections(
                 id=group.id,
                 title=group.title,
                 source_ref=_source_ref(group_frames),
-                blocks=_read_group_blocks(group.id, group_frames, material_root, course_id, lecture_id),
+                blocks=_read_group_blocks(
+                    group.id, group_frames, asset_resolver, course_id, lecture_id
+                ),
             )
         )
-    return sections or _read_frame_chunk_sections(frames, material_root, course_id, lecture_id)
+    return sections or _read_frame_chunk_sections(frames, asset_resolver, course_id, lecture_id)
 
 
 def _read_group_blocks(
     section_id: str,
     frames: list[LatexFrame],
-    material_root: Path,
+    asset_resolver: LatexAssetResolver,
     course_id: str,
     lecture_id: str,
 ) -> list[CanvasBlock]:
@@ -117,21 +123,23 @@ def _read_group_blocks(
     for math_index, formula in enumerate(read_math_blocks(body), start=1):
         blocks.append(CanvasBlock(id=f"{section_id}-math-{math_index}", type="math", text=formula))
     for paragraph_index, paragraph in enumerate(paragraphs_from_latex(body), start=1):
-        blocks.append(CanvasBlock(id=f"{section_id}-p-{paragraph_index}", type="paragraph", text=paragraph))
-    for asset_index, asset in enumerate(read_assets(body, material_root=material_root), start=1):
+        blocks.append(
+            CanvasBlock(id=f"{section_id}-p-{paragraph_index}", type="paragraph", text=paragraph)
+        )
+    for asset_index, asset in enumerate(asset_resolver.read_assets(body), start=1):
         blocks.append(_asset_block(section_id, asset_index, asset, course_id, lecture_id))
     return blocks
 
 
 def _read_frame_chunk_sections(
     frames: list[LatexFrame],
-    material_root: Path,
+    asset_resolver: LatexAssetResolver,
     course_id: str,
     lecture_id: str,
 ) -> list[CanvasSection]:
     sections = []
     for frame in frames:
-        blocks = _read_group_blocks(frame.slug, [frame], material_root, course_id, lecture_id)
+        blocks = _read_group_blocks(frame.slug, [frame], asset_resolver, course_id, lecture_id)
         if blocks:
             sections.append(
                 CanvasSection(
@@ -197,7 +205,12 @@ _LECTURE_03_GROUPS = (
     CanvasGroup(
         id="bayes-formula",
         title="Bayes formula and conditional probability",
-        frame_slugs=("refresher-conditional-probability", "bayes-formula", "bayes-formula-2", "bayes-formula-3"),
+        frame_slugs=(
+            "refresher-conditional-probability",
+            "bayes-formula",
+            "bayes-formula-2",
+            "bayes-formula-3",
+        ),
     ),
     CanvasGroup(
         id="bayes-rule-to-sum-up",
@@ -277,7 +290,7 @@ _LECTURE_03_GROUPS = (
         ),
     ),
 )
-CANVAS_IMPORT_VERSION = 11
+CANVAS_IMPORT_VERSION = 12
 _FRAME_RE = re.compile(
     r"\\begin\{frame}(?:\[[^]]*])?(?:\{(?P<title>[^{}]+)})?(?P<body>.*?)\\end\{frame}",
     re.DOTALL,

@@ -11,8 +11,7 @@ def test_latex_import_keeps_long_lists_formulas_and_pdf_assets(tmp_path: Path) -
     _write_pdf(image_dir / "diagram.pdf")
     (image_dir / "figure.jpg").write_bytes(b"jpg")
     items = "\n".join(
-        rf"\item Coverage item {index:02d} with enough learning words."
-        for index in range(1, 26)
+        rf"\item Coverage item {index:02d} with enough learning words." for index in range(1, 26)
     )
     formulas = "\n".join(rf"\[ P(C_{index}\mid X) = {index} \]" for index in range(1, 7))
     source_path = material_root / "Lecture03-eng.tex"
@@ -40,7 +39,9 @@ This paragraph carries additional conceptual content for the generated canvas.
         workspace_path="canvas/index.md",
     )
     section = next(item for item in document.sections if item.id == "naive-bayes-classifiers")
-    imported_items = [item for block in section.blocks if block.type == "list" for item in block.items]
+    imported_items = [
+        item for block in section.blocks if block.type == "list" for item in block.items
+    ]
     list_blocks = [block for block in section.blocks if block.type == "list"]
     imported_assets = [block.asset_path for block in section.blocks if block.type == "asset"]
     imported_formulas = [block.text for block in section.blocks if block.type == "math"]
@@ -80,7 +81,9 @@ This frame introduces conditional probability with a Venn diagram.
     )
     section = next(item for item in document.sections if item.id == "bayes-formula")
     asset_index = next(index for index, block in enumerate(section.blocks) if block.type == "asset")
-    paragraph_index = next(index for index, block in enumerate(section.blocks) if block.type == "paragraph")
+    paragraph_index = next(
+        index for index, block in enumerate(section.blocks) if block.type == "paragraph"
+    )
 
     assert [block.asset_path for block in section.blocks if block.type == "asset"] == [
         "Ch3/Venn_C-X_3.pdf"
@@ -111,9 +114,12 @@ Machine learning systems improve from data and evidence.
         workspace_path="canvas/index.md",
     )
 
-    slide_section = next(section for section in document.sections if section.id == "original-slide-assets")
+    slide_section = next(
+        section for section in document.sections if section.id == "original-slide-assets"
+    )
     slide = slide_section.blocks[0]
-    assert slide.asset_path == "generated-slides/lecture-01/Lecture01-eng/slide-001.png"
+    assert slide.asset_path.startswith("generated-slides/lecture-01/Lecture01-eng-")
+    assert slide.asset_path.endswith("/slide-001.png")
     assert slide.caption == "Original slide 1 from Lecture01-eng.pdf"
     assert (material_root / slide.asset_path).read_bytes().startswith(b"\x89PNG")
 
@@ -241,9 +247,7 @@ First line\\[.5em]
 """
     )
 
-    assert formulas == [
-        r"\log(P(C|x)) \propto \log(P(C)) + \sum_i \log(P(x_i|C))"
-    ]
+    assert formulas == [r"\log(P(C|x)) \propto \log(P(C)) + \sum_i \log(P(x_i|C))"]
 
 
 def test_inline_math_keeps_required_braces() -> None:

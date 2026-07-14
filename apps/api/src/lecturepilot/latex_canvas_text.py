@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 import re
-from pathlib import Path
 
+from lecturepilot.latex_canvas_assets import (
+    BROWSER_ASSET_SUFFIXES,
+    BROWSER_IMAGE_SUFFIXES,
+    LATEX_ASSET_RE,
+    is_allowed_canvas_asset,
+)
 
-def is_allowed_canvas_asset(path: Path) -> bool:
-    return (
-        path.exists()
-        and path.is_file()
-        and path.suffix.lower() in BROWSER_ASSET_SUFFIXES
-        and path.stat().st_size <= _MAX_CANVAS_ASSET_BYTES
-    )
+__all__ = (
+    "BROWSER_ASSET_SUFFIXES",
+    "BROWSER_IMAGE_SUFFIXES",
+    "is_allowed_canvas_asset",
+)
 
 
 def read_items(body: str) -> list[str]:
@@ -21,7 +24,7 @@ def read_items(body: str) -> list[str]:
 def paragraphs_from_latex(body: str) -> list[str]:
     cleaned = remove_noisy_environments(body)
     cleaned = _ITEM_ENV_RE.sub(" ", cleaned)
-    cleaned = _ASSET_RE.sub(" ", cleaned)
+    cleaned = LATEX_ASSET_RE.sub(" ", cleaned)
     cleaned = _MATH_BLOCK_RE.sub(" ", cleaned)
     chunks = re.split(r"\\\\|\\pause|\\sp\{[^}]*\}|\\vspace\{[^}]*\}|\n\s*\n", cleaned)
     paragraphs = [clean_inline(chunk) for chunk in chunks]
@@ -36,29 +39,6 @@ def read_math_blocks(body: str) -> list[str]:
             if formula:
                 formulas.append(formula)
     return unique(formulas)
-
-
-def read_assets(body: str, *, material_root: Path) -> list[str]:
-    assets = []
-    for match in _ASSET_RE.finditer(body):
-        asset = resolve_image_asset(match.group("path").strip(), material_root=material_root)
-        if asset and asset not in assets:
-            assets.append(asset)
-    return collapse_overlay_assets(assets)
-
-
-def resolve_image_asset(raw_path: str, *, material_root: Path) -> str | None:
-    if raw_path.startswith("images/"):
-        raw_path = raw_path.removeprefix("images/")
-    suffix = Path(raw_path).suffix.lower()
-    image_path = material_root / "images" / raw_path
-    if suffix in BROWSER_ASSET_SUFFIXES and is_allowed_canvas_asset(image_path):
-        return raw_path
-    for extension in (".jpg", ".jpeg", ".png", ".webp", ".svg", ".pdf"):
-        candidate = f"{raw_path}{extension}"
-        if is_allowed_canvas_asset(material_root / "images" / candidate):
-            return candidate
-    return None
 
 
 def clean_inline(text: str) -> str:
@@ -109,31 +89,10 @@ def remove_display_math(text: str) -> str:
     return re.sub(r"[:;]\s*$|\s+", " ", text).strip()
 
 
-def collapse_overlay_assets(assets: list[str]) -> list[str]:
-    selected: dict[str, tuple[int, str]] = {}
-    order: list[str] = []
-    for asset in assets:
-        key, number = _overlay_asset_key(asset)
-        if key not in selected:
-            order.append(key)
-            selected[key] = (number, asset)
-            continue
-        if number >= selected[key][0]:
-            selected[key] = (number, asset)
-    return [selected[key][1] for key in order]
-
-
 def _needs_aligned_wrapper(formula: str) -> bool:
     if "\\begin{" in formula:
         return False
     return "&" in formula or "\\\\" in formula
-
-
-def _overlay_asset_key(asset: str) -> tuple[str, int]:
-    match = _OVERLAY_ASSET_RE.match(asset)
-    if not match:
-        return asset, 0
-    return f"{match.group('base')}{match.group('suffix')}", int(match.group("number"))
 
 
 def read_title(source: str) -> str | None:
@@ -170,14 +129,9 @@ def unique(values: list[str]) -> list[str]:
     return result
 
 
-BROWSER_ASSET_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".svg", ".pdf"}
-BROWSER_IMAGE_SUFFIXES = BROWSER_ASSET_SUFFIXES
-_MAX_CANVAS_ASSET_BYTES = 20 * 1024 * 1024
 _TITLE_RE = re.compile(r"\\mytitle(?:\[[^]]*])?\{[^{}]*}\{(?P<title>[^{}]+)}")
 _ITEM_RE = re.compile(r"\\item\s+(.*?)(?=\\item|\\end\{itemize}|$)", re.DOTALL)
 _ITEM_ENV_RE = re.compile(r"\\begin\{itemize}.*?\\end\{itemize}", re.DOTALL)
-_ASSET_RE = re.compile(r"\\(?:ig|includegraphics)(?:\[[^]]*])?\{(?P<path>[^{}]+)}")
-_OVERLAY_ASSET_RE = re.compile(r"(?P<base>.+)[_-](?P<number>\d+)(?P<suffix>\.[^.]+)$")
 _INLINE_MATH_RE = re.compile(r"\$[^$\n]+\$|\\\([^)]*\\\)")
 _MATH_BLOCK_RE = re.compile(
     r"\$\$.*?\$\$"

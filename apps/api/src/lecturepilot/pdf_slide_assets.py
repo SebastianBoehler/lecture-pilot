@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
-from lecturepilot.canvas_models import CanvasBlock
 from lecturepilot.bounded_processing import BoundedProcessingError, run_bounded
+from lecturepilot.bounded_sampling import evenly_sampled_indexes
+from lecturepilot.canvas_models import CanvasBlock
 from lecturepilot.storage_layout import safe_id
 
 
@@ -24,9 +26,12 @@ def render_pdf_slide_blocks(
     course_id: str,
     lecture_id: str,
     source_ref: str,
+    caption_kind: str = "original",
 ) -> list[CanvasBlock]:
     if pdf_path.suffix.lower() != ".pdf":
         raise PdfSlideAssetError("Only PDF source files can be rendered as slides.")
+    if caption_kind not in {"original", "compiled"}:
+        raise PdfSlideAssetError("PDF slide caption kind is invalid.")
 
     try:
         payloads = run_bounded(
@@ -36,6 +41,7 @@ def render_pdf_slide_blocks(
             course_id,
             lecture_id,
             source_ref,
+            caption_kind,
         )
     except BoundedProcessingError as exc:
         raise PdfSlideAssetError(str(exc)) from exc
@@ -52,12 +58,14 @@ def _render_pdf_payloads(
     course_id: str,
     lecture_id: str,
     source_ref: str,
+    caption_kind: str,
 ) -> list[dict]:
     fitz = _fitz()
     pdf = Path(pdf_path)
     root = Path(output_root)
     stem = safe_id(pdf.stem)
-    slide_root = f"generated-slides/{safe_id(lecture_id)}/{stem}"
+    fingerprint = _pdf_fingerprint(pdf)
+    slide_root = f"generated-slides/{safe_id(lecture_id)}/{stem}-{fingerprint}"
     (root / slide_root).mkdir(parents=True, exist_ok=True)
     document = fitz.open(pdf)
     try:
@@ -70,9 +78,10 @@ def _render_pdf_payloads(
                 course_id=course_id,
                 lecture_id=lecture_id,
                 source_ref=source_ref,
+                caption_kind=caption_kind,
                 index=index,
             ).model_dump(mode="json")
-            for index in range(min(len(document), MAX_RENDERED_SLIDES))
+            for index in evenly_sampled_indexes(len(document), MAX_RENDERED_SLIDES)
         ]
     finally:
         document.close()
@@ -87,6 +96,7 @@ def _render_page(
     course_id: str,
     lecture_id: str,
     source_ref: str,
+    caption_kind: str,
     index: int,
 ) -> CanvasBlock:
     number = index + 1
@@ -97,12 +107,13 @@ def _render_page(
         if pixmap.width * pixmap.height > MAX_RENDERED_PIXELS:
             raise PdfSlideAssetError("Rendered PDF page exceeds the pixel limit.")
         pixmap.save(output_path)
+    label = "Compiled slide" if caption_kind == "compiled" else "Original slide"
     return CanvasBlock(
         id=f"{safe_id(lecture_id)}-original-slide-{number:03}",
         type="asset",
         asset_path=asset_path,
         asset_url=f"/course-assets/{course_id}/{lecture_id}/{asset_path}",
-        caption=f"Original slide {number} from {source_ref}",
+        caption=f"{label} {number} from {source_ref}",
     )
 
 
@@ -112,3 +123,8 @@ def _fitz():
     except ImportError as exc:
         raise PdfSlideAssetError("PyMuPDF is required to render original slides.") from exc
     return fitz
+
+
+def _pdf_fingerprint(path: Path) -> str:
+    with path.open("rb") as handle:
+        return hashlib.file_digest(handle, "sha256").hexdigest()

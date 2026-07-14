@@ -3,11 +3,11 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Protocol
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
-from lecturepilot.latex_canvas_text import paragraphs_from_latex, read_assets, read_items, read_math_blocks, slug
+from lecturepilot.latex_canvas_assets import LatexAssetResolver
+from lecturepilot.latex_canvas_text import paragraphs_from_latex, read_items, read_math_blocks, slug
 
 
 class LatexFrameLike(Protocol):
@@ -26,13 +26,13 @@ class StudyGroup:
 
 def read_study_sections(
     frames: list[LatexFrameLike],
-    material_root: Path,
+    asset_resolver: LatexAssetResolver,
     course_id: str,
     lecture_id: str,
 ) -> list[CanvasSection]:
     sections: list[CanvasSection] = []
     for group in _study_groups(frames):
-        blocks = _study_blocks(group, material_root, course_id, lecture_id)
+        blocks = _study_blocks(group, asset_resolver, course_id, lecture_id)
         if blocks:
             sections.append(
                 CanvasSection(
@@ -64,20 +64,20 @@ def _study_groups(frames: list[LatexFrameLike]) -> list[StudyGroup]:
 
 def _study_blocks(
     group: StudyGroup,
-    material_root: Path,
+    asset_resolver: LatexAssetResolver,
     course_id: str,
     lecture_id: str,
 ) -> list[CanvasBlock]:
     body = "\n".join(frame.body for frame in group.frames)
     blocks: list[CanvasBlock] = []
 
-    for index, paragraph in enumerate(paragraphs_from_latex(body)[:2], start=1):
+    for index, paragraph in enumerate(paragraphs_from_latex(body)[:4], start=1):
         blocks.append(CanvasBlock(id=f"{group.id}-p-{index}", type="paragraph", text=paragraph))
 
     if items := read_items(body):
-        blocks.append(CanvasBlock(id=f"{group.id}-list", type="list", items=items[:8]))
+        blocks.append(CanvasBlock(id=f"{group.id}-list", type="list", items=items[:16]))
 
-    for index, asset in enumerate(read_assets(body, material_root=material_root)[:2], start=1):
+    for index, asset in enumerate(asset_resolver.read_assets(body)[:3], start=1):
         blocks.append(
             CanvasBlock(
                 id=f"{group.id}-asset-{index}",
@@ -89,9 +89,9 @@ def _study_blocks(
         )
 
     formulas = read_math_blocks(body)
-    for index, formula in enumerate(formulas[:3], start=1):
+    for index, formula in enumerate(formulas[:5], start=1):
         blocks.append(CanvasBlock(id=f"{group.id}-math-{index}", type="math", text=formula))
-    if len(formulas) > 3:
+    if len(formulas) > 5:
         blocks.append(
             CanvasBlock(
                 id=f"{group.id}-derivation-note",
