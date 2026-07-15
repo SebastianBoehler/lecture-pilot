@@ -17,10 +17,10 @@ RUN python -c 'import pathlib,re,sys; value=sys.argv[1].lower(); re.fullmatch(r"
 RUN pip install --no-cache-dir -c apps/api/requirements.lock -e "apps/api[agent,tuebingen]"
 
 RUN useradd --create-home --uid 10001 lecturepilot \
-    && mkdir -p /app/storage \
-    && chown -R lecturepilot:lecturepilot /app/storage
+    && mkdir -p /app/logs /app/storage \
+    && chown -R lecturepilot:lecturepilot /app/logs /app/storage
 
 USER 10001:10001
 
 EXPOSE 8000
-CMD ["uvicorn", "lecturepilot.app:app", "--app-dir", "apps/api/src", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=172.16.0.0/12", "--limit-concurrency=100", "--backlog=512", "--timeout-keep-alive=5", "--no-server-header"]
+CMD ["uvicorn", "lecturepilot.app:app", "--app-dir", "apps/api/src", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=172.16.0.0/12", "--limit-concurrency=100", "--backlog=512", "--timeout-keep-alive=5", "--no-server-header", "--no-access-log"]

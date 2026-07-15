@@ -35,11 +35,14 @@ from lecturepilot.model_client import LiteLLMModelClient
 from lecturepilot.model_usage import ModelUsageRecorder
 from lecturepilot.learner_state import LearnerStateStore
 from lecturepilot.learner_profile_routes import register_learner_profile_routes
+from lecturepilot.metadata_events import configure_metadata_file_logging, emit_metadata_event
 from lecturepilot.observability import observability_from_env
 from lecturepilot.professor_usage import ProfessorUsageRepository
 from lecturepilot.professor_usage_routes import register_professor_usage_routes
 from lecturepilot.rate_limit import RateLimitMiddleware
 from lecturepilot.release_info import release_info
+from lecturepilot.request_diagnostics import RequestDiagnosticsMiddleware
+from lecturepilot.runtime_readiness import RuntimeReadiness
 from lecturepilot.runtime_env import load_project_env
 from lecturepilot.sample_data import COURSE, LECTURES
 from lecturepilot.security_headers import (
@@ -63,6 +66,7 @@ load_project_env()
 
 def create_app() -> FastAPI:
     SessionAuthSettings.from_env()
+    configure_metadata_file_logging()
     release = release_info()
     app = FastAPI(
         title="LecturePilot API",
@@ -77,6 +81,7 @@ def create_app() -> FastAPI:
         return JSONResponse(status_code=500, content={"detail": str(exc)})
 
     app.state.database = Database()
+    app.state.runtime_readiness = RuntimeReadiness(app.state.database)
     app.state.session_store = SessionStore(app.state.database)
     app.state.usage_quota = UsageQuota(app.state.database)
     app.state.course_tenant_id = COURSE_TENANT_ID
@@ -111,6 +116,7 @@ def create_app() -> FastAPI:
             "Accept",
             "Authorization",
             "Content-Type",
+            "Idempotency-Key",
             "X-Course-Ids",
             "X-CSRF-Token",
             "X-LecturePilot-Learner-Preview",
@@ -118,12 +124,14 @@ def create_app() -> FastAPI:
             "X-User-Id",
             "X-User-Role",
         ],
+        expose_headers=["X-Generation-Id", "X-Generation-Status", "X-Request-ID"],
     )
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts())
     app.add_middleware(RequestBodyLimitMiddleware)
     app.add_middleware(RateLimitMiddleware)
     app.add_middleware(CsrfProtectionMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(RequestDiagnosticsMiddleware)
 
     @app.get("/health")
     def health(response: Response) -> dict[str, str]:
@@ -135,6 +143,22 @@ def create_app() -> FastAPI:
             "status": "ok" if identity_matches else "error",
             "version": release.version,
             "commit_sha": release.commit_sha,
+        }
+
+    @app.get("/ready")
+    def ready(response: Response) -> dict[str, object]:
+        result = app.state.runtime_readiness.check()
+        if not result.ready:
+            response.status_code = 503
+            emit_metadata_event(
+                "runtime.readiness_failed",
+                error=True,
+                reason=result.failed_checks,
+                status="error",
+            )
+        return {
+            "status": "ok" if result.ready else "error",
+            "checks": result.checks,
         }
 
     register_auth_routes(app, course_tenant_id=COURSE_TENANT_ID)

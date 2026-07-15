@@ -51,6 +51,11 @@ immutable revision-tagged image. `/api/health` reads only the baked value and re
 it differs from the expected revision. Container preflight rejects the same mismatch before startup.
 The API package version is read from the installed package metadata.
 
+`/api/health` is the cheap process/build liveness check. `/api/ready` additionally verifies a live
+Postgres query and the isolated compiler health response; Compose requires both the build-identity
+check and runtime readiness before marking the API healthy. Neither endpoint returns connection
+details.
+
 The preflight reports missing setting names but never prints their values:
 
 ```bash
@@ -97,6 +102,13 @@ Postgres stores identity, roles, sessions, ownership, enrollments, audit, and qu
 storage volume contains course and learner files. They form one recovery unit and must be backed up,
 restored, encrypted, and versioned together. Follow `docs/security-operations.md`; a successful
 restore rehearsal is a live-release gate.
+
+The production database preloads `pg_stat_statements` and enables I/O timing. The migration creates
+the normalized-statistics extension, but application logs never emit SQL text or bound parameters.
+When upgrading an existing stack, recreate the `db` service with the new preload command before
+running the migration service.
+API and compiler metadata logs live in their own persistent, daily-rotated named volumes; see
+`docs/observability.md` for retention and inspection commands.
 
 ## Upload and parser limits
 

@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 import lecturepilot.release_info as release_info_module
 from lecturepilot.app import create_app
+from lecturepilot.runtime_readiness import ReadinessResult
 
 
 def test_health_endpoint(tmp_path: Path, monkeypatch) -> None:
@@ -73,3 +74,47 @@ def test_health_endpoint_rejects_stale_baked_release_identity(tmp_path: Path, mo
         "version": package_version("lecturepilot-api"),
         "commit_sha": "aaaaaaaaaaaa",
     }
+
+
+def test_readiness_endpoint_checks_runtime_dependencies() -> None:
+    app = create_app()
+    app.state.runtime_readiness = _Readiness(
+        ReadinessResult(
+            ready=True,
+            checks={"database": "ok", "latex_compiler": "ok"},
+        )
+    )
+
+    response = TestClient(app).get("/ready")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "ok",
+        "checks": {"database": "ok", "latex_compiler": "ok"},
+    }
+
+
+def test_readiness_endpoint_fails_closed_without_dependency_details() -> None:
+    app = create_app()
+    app.state.runtime_readiness = _Readiness(
+        ReadinessResult(
+            ready=False,
+            checks={"database": "ok", "latex_compiler": "error"},
+        )
+    )
+
+    response = TestClient(app).get("/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "status": "error",
+        "checks": {"database": "ok", "latex_compiler": "error"},
+    }
+
+
+class _Readiness:
+    def __init__(self, result: ReadinessResult) -> None:
+        self.result = result
+
+    def check(self) -> ReadinessResult:
+        return self.result

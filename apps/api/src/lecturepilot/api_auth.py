@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import Header, HTTPException, Request
 
 from lecturepilot.course_repository import CourseRepository
+from lecturepilot.metadata_events import emit_metadata_event
 from lecturepilot.models import TenantRole
 from lecturepilot.session_auth import (
     SESSION_COOKIE_NAME,
@@ -45,6 +46,12 @@ def request_context(
     try:
         principal = request.app.state.session_store.authenticate(token)
     except SessionStoreError as exc:
+        emit_metadata_event(
+            "auth.session_rejected",
+            duration_ms=exc.duration_ms,
+            reason=exc.reason,
+            status="error",
+        )
         raise HTTPException(status_code=401, detail=str(exc)) from exc
     request.state.session_principal = principal
     request.state.session_token = token

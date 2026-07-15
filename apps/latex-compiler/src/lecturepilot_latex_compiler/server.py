@@ -52,7 +52,8 @@ class CompilerRequestHandler(BaseHTTPRequestHandler):
             self._handle_compile_request()
         except (BrokenPipeError, ConnectionResetError):
             self.request_diagnostics.record(499, "client_disconnected")
-        except Exception:
+        except Exception as exc:
+            self.request_diagnostics.record_exception(exc)
             try:
                 self._json_error(
                     500,
@@ -98,7 +99,8 @@ class CompilerRequestHandler(BaseHTTPRequestHandler):
                 except CompilerServiceError as exc:
                     self._json_error(exc.status, exc.code, exc.message)
                     return
-                except Exception:
+                except Exception as exc:
+                    self.request_diagnostics.record_exception(exc)
                     self._json_error(
                         500,
                         "internal_error",

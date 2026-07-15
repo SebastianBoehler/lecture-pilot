@@ -58,7 +58,10 @@ def test_course_owner_and_alma_ilias_enrollment_are_object_scoped(tmp_path: Path
         unrelated_client.get(f"/admin/courses/{course_id}/lectures/lecture-01/analytics"),
         unrelated_client.post(
             f"/admin/courses/{course_id}/lectures/lecture-01/canvas/draft",
-            headers=mutation_headers(unrelated),
+            headers={
+                **mutation_headers(unrelated),
+                "Idempotency-Key": "draft-request-key-denied-0001",
+            },
         ),
         unrelated_client.delete(f"/admin/courses/{course_id}", headers=mutation_headers(unrelated)),
         unrelated_client.post(
@@ -101,6 +104,10 @@ def test_opaque_session_tokens_are_hashed_at_rest(tmp_path: Path) -> None:
         assert record.token_hash == hashlib.sha256(raw_token.encode()).hexdigest()
         assert raw_token not in record.token_hash
         assert session["csrf_token"] not in record.csrf_hash
+    termination = app.state.session_store.revoke(raw_token)
+    assert termination is not None
+    assert termination.reason == "manual_logout"
+    assert termination.duration_ms >= 0
 
 
 def test_ambiguous_title_and_term_match_fails_closed(tmp_path: Path) -> None:

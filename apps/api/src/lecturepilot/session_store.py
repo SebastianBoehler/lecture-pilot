@@ -15,7 +15,10 @@ from lecturepilot.identity_repository import AccountView, IdentityRepository
 
 
 class SessionStoreError(PermissionError):
-    pass
+    def __init__(self, message: str, *, reason: str, duration_ms: int | None = None) -> None:
+        super().__init__(message)
+        self.reason = reason
+        self.duration_ms = duration_ms
 
 
 @dataclass(frozen=True)
@@ -29,6 +32,12 @@ class IssuedSession:
 class SessionPrincipal:
     session_id: UUID
     account: AccountView
+
+
+@dataclass(frozen=True)
+class SessionTermination:
+    reason: str
+    duration_ms: int
 
 
 class SessionStore:
@@ -54,47 +63,66 @@ class SessionStore:
 
     def authenticate(self, token: str) -> SessionPrincipal:
         if not token:
-            raise SessionStoreError("Authentication is required.")
+            raise SessionStoreError("Authentication is required.", reason="missing_session")
         with self.database.session() as session:
             record = session.scalar(
                 select(SessionRecord).where(SessionRecord.token_hash == _hash(token))
             )
-            if record is None or record.revoked_at is not None:
-                raise SessionStoreError("Session is invalid or revoked.")
-            if _aware(record.expires_at) <= datetime.now(UTC):
-                raise SessionStoreError("Session has expired.")
+            if record is None:
+                raise SessionStoreError("Session is invalid or revoked.", reason="invalid_session")
+            if record.revoked_at is not None:
+                raise SessionStoreError(
+                    "Session is invalid or revoked.",
+                    reason="revoked",
+                    duration_ms=_duration_ms(record.created_at, record.revoked_at),
+                )
+            now = datetime.now(UTC)
+            if _aware(record.expires_at) <= now:
+                raise SessionStoreError(
+                    "Session has expired.",
+                    reason="expired",
+                    duration_ms=_duration_ms(record.created_at, record.expires_at),
+                )
             user = session.get(UserRecord, record.user_id)
             if user is None or not user.enabled:
-                raise SessionStoreError("Account is disabled.")
+                raise SessionStoreError("Account is disabled.", reason="account_disabled")
             session_id = record.id
             user_id = record.user_id
             tenant_id = record.tenant_id
         account = self.identities.account(user_id=user_id, tenant_id=tenant_id)
         if account is None:
-            raise SessionStoreError("Account membership is unavailable.")
+            raise SessionStoreError(
+                "Account membership is unavailable.", reason="membership_unavailable"
+            )
         return SessionPrincipal(session_id=session_id, account=account)
 
     def verify_csrf(self, token: str, csrf_token: str | None) -> None:
         if not csrf_token:
-            raise SessionStoreError("CSRF token is required.")
+            raise SessionStoreError("CSRF token is required.", reason="missing_csrf")
         with self.database.session() as session:
             record = session.scalar(
                 select(SessionRecord).where(SessionRecord.token_hash == _hash(token))
             )
             if record is None or record.revoked_at is not None:
-                raise SessionStoreError("Session is invalid or revoked.")
+                raise SessionStoreError("Session is invalid or revoked.", reason="invalid_session")
             if not hmac.compare_digest(record.csrf_hash, _hash(csrf_token)):
-                raise SessionStoreError("CSRF token is invalid.")
+                raise SessionStoreError("CSRF token is invalid.", reason="invalid_csrf")
 
-    def revoke(self, token: str | None) -> None:
+    def revoke(self, token: str | None) -> SessionTermination | None:
         if not token:
-            return
+            return None
         with self.database.session() as session:
             record = session.scalar(
                 select(SessionRecord).where(SessionRecord.token_hash == _hash(token))
             )
             if record is not None and record.revoked_at is None:
-                record.revoked_at = datetime.now(UTC)
+                revoked_at = datetime.now(UTC)
+                record.revoked_at = revoked_at
+                return SessionTermination(
+                    reason="manual_logout",
+                    duration_ms=_duration_ms(record.created_at, revoked_at),
+                )
+        return None
 
     def revoke_user(self, user_id: UUID) -> None:
         with self.database.session() as session:
@@ -111,3 +139,7 @@ def _hash(value: str) -> str:
 
 def _aware(value: datetime) -> datetime:
     return value if value.tzinfo else value.replace(tzinfo=UTC)
+
+
+def _duration_ms(start: datetime, end: datetime) -> int:
+    return max(0, round((_aware(end) - _aware(start)).total_seconds() * 1000))

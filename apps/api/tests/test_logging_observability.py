@@ -7,6 +7,7 @@ from pathlib import Path
 import yaml
 
 from lecturepilot.logging_observability import LOGGER_NAME, logger, operation_scope
+from lecturepilot.metadata_events import configure_metadata_file_logging
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.observability import observability_from_env
 
@@ -40,8 +41,11 @@ def test_logging_observability_emits_allowlisted_metadata_only(monkeypatch, capl
             )
 
     records = [record for record in caplog.records if record.name == LOGGER_NAME]
-    assert len(records) == 1
-    payload = json.loads(records[0].message)
+    assert len(records) == 2
+    started = json.loads(records[0].message)
+    payload = json.loads(records[1].message)
+    assert started["event"] == "observability.span_started"
+    assert started["status"] == "started"
     assert payload["attempt"] == 2
     assert payload["course_id"] == "course-1"
     assert payload["event"] == "observability.span_finished"
@@ -90,6 +94,19 @@ def test_logging_observability_records_exception_class_without_message(monkeypat
     assert "PRIVATE" not in caplog.records[-1].message
 
 
+def test_logging_observability_reserves_operational_status(monkeypatch, caplog) -> None:
+    monkeypatch.setenv("LECTUREPILOT_OBSERVABILITY", "logging")
+    observability = observability_from_env()
+
+    with caplog.at_level(logging.INFO, logger=LOGGER_NAME):
+        with observability.tool_span("quality_gate", status="passed"):
+            pass
+
+    payload = json.loads(caplog.records[-1].message)
+    assert payload["status"] == "ok"
+    assert "passed" not in caplog.records[-1].message
+
+
 def test_logging_observability_uses_uvicorn_pipeline_without_own_handlers() -> None:
     assert LOGGER_NAME.startswith("uvicorn.error.")
     assert logger.handlers == []
@@ -101,3 +118,21 @@ def test_production_compose_enables_metadata_only_logging() -> None:
 
     assert environment["LECTUREPILOT_OBSERVABILITY"] == "logging"
     assert environment["LECTUREPILOT_TRACE_CONTENT"] == "metadata"
+
+
+def test_metadata_file_logging_keeps_fourteen_calendar_files(tmp_path, monkeypatch) -> None:
+    path = tmp_path / "metadata.jsonl"
+    monkeypatch.setenv("LECTUREPILOT_METADATA_LOG_PATH", str(path))
+
+    configure_metadata_file_logging()
+
+    handler = next(
+        item
+        for item in logger.handlers
+        if getattr(item, "lecturepilot_log_path", None) == str(path)
+    )
+    assert handler.backupCount == 13
+    assert logger.propagate is False
+    logger.removeHandler(handler)
+    handler.close()
+    logger.propagate = True

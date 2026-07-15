@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from http.client import HTTPConnection
 import json
+import logging
 from pathlib import Path
 from threading import Event, Thread
 import time
@@ -10,7 +11,10 @@ import zipfile
 import pytest
 
 from lecturepilot_latex_compiler.errors import COMPILE_FAILED, CompilerServiceError
-from lecturepilot_latex_compiler.request_diagnostics import LOGGER_NAME
+from lecturepilot_latex_compiler.request_diagnostics import (
+    LOGGER_NAME,
+    configure_logging,
+)
 from lecturepilot_latex_compiler.server import create_server
 
 
@@ -193,9 +197,31 @@ def test_request_log_is_metadata_only_and_replaces_unsafe_id(
     assert event == {
         "code": "internal_error",
         "event": "latex_compile_request",
+        "exception_type": "RuntimeError",
         "latency_ms": event["latency_ms"],
         "request_id": request_id,
         "status": 500,
     }
     assert isinstance(event["latency_ms"], int)
     assert "private" not in caplog.messages[0]
+
+
+def test_compiler_metadata_log_rotates_for_fourteen_calendar_files(
+    tmp_path: Path, monkeypatch
+) -> None:
+    path = tmp_path / "compiler.jsonl"
+    monkeypatch.setenv("LECTUREPILOT_METADATA_LOG_PATH", str(path))
+
+    configure_logging()
+
+    logger = logging.getLogger(LOGGER_NAME)
+    handler = next(
+        item
+        for item in logger.handlers
+        if getattr(item, "lecturepilot_log_path", None) == str(path)
+    )
+    assert handler.backupCount == 13
+    assert logger.propagate is False
+    logger.removeHandler(handler)
+    handler.close()
+    logger.propagate = True

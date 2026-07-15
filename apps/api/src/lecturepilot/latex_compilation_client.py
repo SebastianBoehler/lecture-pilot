@@ -10,7 +10,7 @@ from typing import BinaryIO
 from urllib.parse import quote, urlsplit
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from lecturepilot.logging_observability import current_operation_id
+from lecturepilot.metadata_events import current_correlation_id
 from lecturepilot.source_index_models import IndexedSourceFile
 from lecturepilot.storage_layout import safe_id
 
@@ -199,8 +199,8 @@ def _request_compilation(archive: BinaryIO, size: int, main_path: str) -> bytes:
         connection.putrequest("POST", endpoint)
         connection.putheader("Content-Type", "application/zip")
         connection.putheader("Content-Length", str(size))
-        if operation_id := current_operation_id():
-            connection.putheader("X-Request-ID", operation_id)
+        if correlation_id := current_correlation_id():
+            connection.putheader("X-Request-ID", correlation_id)
         connection.endheaders()
         while chunk := archive.read(1024 * 1024):
             connection.send(chunk)

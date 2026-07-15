@@ -24,6 +24,7 @@ x-api-environment: &api-environment
   LECTUREPILOT_ALLOWED_MODELS: ${LECTUREPILOT_ALLOWED_MODELS:?Set the model allowlist}
   LECTUREPILOT_OBSERVABILITY: logging
   LECTUREPILOT_TRACE_CONTENT: metadata
+  LECTUREPILOT_METADATA_LOG_PATH: /app/logs/api-metadata.jsonl
   LECTUREPILOT_COMMIT_SHA: ${LECTUREPILOT_COMMIT_SHA:?Set the deployed Git commit SHA}
 
 services:
@@ -58,6 +59,7 @@ services:
     environment: *api-environment
     expose: ["8000"]
     volumes:
+      - lecturepilot-api-logs:/app/logs
       - lecturepilot-storage:/app/storage
     depends_on:
       latex-compiler:
@@ -74,11 +76,11 @@ services:
         - -c
         - >-
           import os, urllib.request;
-          request = urllib.request.Request(
-            'http://127.0.0.1:8000/health',
-            headers={'Host': os.environ['LECTUREPILOT_ALLOWED_HOSTS']}
-          );
-          urllib.request.urlopen(request, timeout=2)
+          headers = {'Host': os.environ['LECTUREPILOT_ALLOWED_HOSTS']};
+          [urllib.request.urlopen(
+            urllib.request.Request('http://127.0.0.1:8000/' + path, headers=headers),
+            timeout=2
+          ).close() for path in ('health', 'ready')]
       interval: 15s
       timeout: 3s
       retries: 5
@@ -98,6 +100,10 @@ services:
       dockerfile: apps/latex-compiler/Dockerfile
     init: true
     expose: ["8080"]
+    environment:
+      LECTUREPILOT_METADATA_LOG_PATH: /app/logs/compiler-metadata.jsonl
+    volumes:
+      - lecturepilot-compiler-logs:/app/logs
     networks:
       - latex-compiler
     healthcheck:
@@ -172,6 +178,12 @@ services:
       POSTGRES_USER: lecturepilot
       POSTGRES_PASSWORD: ${LECTUREPILOT_POSTGRES_PASSWORD:?Set a strong database password}
     expose: ["5432"]
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - track_io_timing=on
     volumes:
       - lecturepilot-postgres:/var/lib/postgresql/data
     healthcheck:
@@ -196,8 +208,10 @@ services:
     security_opt: [no-new-privileges:true]
 
 volumes:
+  lecturepilot-api-logs:
   lecturepilot-caddy-config:
   lecturepilot-caddy-data:
+  lecturepilot-compiler-logs:
   lecturepilot-postgres:
   lecturepilot-storage:
 

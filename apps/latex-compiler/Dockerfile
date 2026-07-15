@@ -28,7 +28,9 @@ COPY apps/latex-compiler/src ./src
 RUN pip install --no-cache-dir . \
     && groupadd --gid 10002 latex-compiler \
     && useradd --no-create-home --uid 10002 --gid 10002 \
-      --shell /usr/sbin/nologin latex-compiler
+      --shell /usr/sbin/nologin latex-compiler \
+    && mkdir -p /app/logs \
+    && chown latex-compiler:latex-compiler /app/logs
 
 USER 10002:10002
 EXPOSE 8080

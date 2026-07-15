@@ -23,10 +23,10 @@ from lecturepilot.course_schedule_store import (
     list_course_workspaces,
     write_course_workspace,
 )
+from lecturepilot.course_schedule_generation import generate_lecture_schedule
 from lecturepilot.course_update_recovery import locked_course_state
 from lecturepilot.course_workspace import resolve_course_workspace
 from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.model_usage import model_usage_scope
 from lecturepilot.models import (
     Course,
     CourseMaterialUploadResult,
@@ -205,30 +205,18 @@ def register_course_routes(
         context: TenantContext = Depends(request_context),
     ) -> LectureScheduleProposal:
         _require_manager(context, request, course_id, course_tenant_id)
-        roots = app.state.canvas_workspace.source_bundle_roots(
-            course_id,
-            include_seeded_materials=False,
-        )
         try:
             start_date = date.fromisoformat(first_lecture_date) if first_lecture_date else None
         except ValueError as exc:
             raise HTTPException(status_code=400, detail="Invalid first lecture date.") from exc
         try:
-            layout = app.state.canvas_workspace.layout
-            with locked_course_state(layout.course_root(course_id)):
-                files = indexed_course_files(layout=layout, course_id=course_id)
-            with model_usage_scope(
-                actor_user_id=context.user_id,
+            return await generate_lecture_schedule(
+                app,
                 course_id=course_id,
-                workload="course_schedule",
-            ):
-                return await app.state.lecture_schedule_planner.propose_schedule(
-                    course_id=course_id,
-                    files=files,
-                    roots=list(roots),
-                    first_lecture_date=start_date,
-                    requested_count=count,
-                )
+                context=context,
+                first_lecture_date=start_date,
+                requested_count=count,
+            )
         except ProviderConfigurationError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         except ModelExecutionError as exc:
@@ -242,6 +230,7 @@ def register_course_routes(
         course_id: str,
         request: Request,
         path: str = Form(..., min_length=1, max_length=500),
+        refresh_index: bool = Form(True),
         file: UploadFile = File(...),
         context: TenantContext = Depends(request_context),
     ) -> CourseMaterialUploadResult:
@@ -262,11 +251,12 @@ def register_course_routes(
                         staged,
                         uploads_root=layout.course_uploads_dir(course_id),
                     )
-                    indexed_course_files(
-                        layout=layout,
-                        course_id=course_id,
-                        known_hashes={stored.path: stored.sha256},
-                    )
+                    if refresh_index:
+                        indexed_course_files(
+                            layout=layout,
+                            course_id=course_id,
+                            known_hashes={stored.path: stored.sha256},
+                        )
             finally:
                 staged.discard()
         except WorkspacePolicyError as exc:

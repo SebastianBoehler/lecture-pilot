@@ -1,3 +1,5 @@
+import json
+import logging
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -7,6 +9,7 @@ from canvas_workspace_fixtures import published_course_canvas
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.logging_observability import LOGGER_NAME, LoggingObservability
 from lecturepilot.models import LectureScheduleItem, LectureScheduleProposal
 from lecturepilot.university_models import ExternalCourseCandidate, UniversityLoginResult
 
@@ -144,10 +147,11 @@ def test_live_login_does_not_grant_courses_from_demo_flag(tmp_path: Path, monkey
     assert _course_titles(response.json()) == []
 
 
-def test_professor_can_infer_full_course_schedule_from_bundle(tmp_path: Path) -> None:
+def test_professor_can_infer_full_course_schedule_from_bundle(tmp_path: Path, caplog) -> None:
     client = _client(tmp_path)
     planner = _FakeLectureSchedulePlanner()
     client.app.state.lecture_schedule_planner = planner
+    client.app.state.observability = LoggingObservability()
     _create_workspace(client, "Demo ML Course", "01", "Course Setup")
     for path, content in [
         ("uploads/Lecture01-eng.tex", rb"\begin{frame}{Course Setup}Intro\end{frame}"),
@@ -162,10 +166,11 @@ def test_professor_can_infer_full_course_schedule_from_bundle(tmp_path: Path) ->
         )
         assert response.status_code == 200
 
-    response = client.get(
-        "/admin/courses/demo-ml-course/lecture-schedule?first_lecture_date=2026-05-06",
-        headers=professor_headers(),
-    )
+    with caplog.at_level(logging.INFO, logger=LOGGER_NAME):
+        response = client.get(
+            "/admin/courses/demo-ml-course/lecture-schedule?first_lecture_date=2026-05-06",
+            headers=professor_headers(),
+        )
 
     assert response.status_code == 200
     payload = response.json()
@@ -176,6 +181,16 @@ def test_professor_can_infer_full_course_schedule_from_bundle(tmp_path: Path) ->
     assert planner.last_requested_count is None
     assert planner.last_first_lecture_date == "2026-05-06"
     assert "uploads/Lecture01-eng.tex" in planner.last_paths
+    events = [json.loads(record.message) for record in caplog.records]
+    schedule_events = [
+        event for event in events if event.get("span") == "lecturepilot.course_schedule_generation"
+    ]
+    assert [event["event"] for event in schedule_events] == [
+        "observability.span_started",
+        "observability.span_finished",
+    ]
+    assert schedule_events[-1]["lecture_count"] == 2
+    assert schedule_events[-1]["source_count"] == 3
 
 
 def test_schedule_inference_rejects_invalid_start_date(tmp_path: Path) -> None:
@@ -210,7 +225,7 @@ def test_dynamic_course_workspace_uses_uploaded_source(tmp_path: Path) -> None:
 
     draft = client.post(
         "/admin/courses/demo-ml-course/lectures/lecture-07/canvas/draft",
-        headers=professor_headers(),
+        headers={**professor_headers(), "Idempotency-Key": "draft-request-key-0007"},
     )
     assert draft.status_code == 200
     assert draft.json()["course_id"] == "demo-ml-course"
@@ -298,7 +313,7 @@ def test_full_course_draft_uses_matching_lecture_source(tmp_path: Path) -> None:
 
     draft = client.post(
         "/admin/courses/demo-ml-course/lectures/lecture-02/canvas/draft",
-        headers=professor_headers(),
+        headers={**professor_headers(), "Idempotency-Key": "draft-request-key-0002"},
     )
 
     assert draft.status_code == 200
@@ -346,7 +361,7 @@ def test_course_canvas_draft_can_use_markdown_text_and_pdf_without_latex(tmp_pat
 
     draft = client.post(
         "/admin/courses/mixed-source-course/lectures/lecture-01/canvas/draft",
-        headers=professor_headers(),
+        headers={**professor_headers(), "Idempotency-Key": "draft-request-key-mixed-0001"},
     )
 
     assert draft.status_code == 200

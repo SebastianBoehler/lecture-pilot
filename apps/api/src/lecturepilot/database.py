@@ -90,6 +90,12 @@ class Database:
                 f"Database migration revision is stale: current={current}, expected={expected}."
             )
 
+    def ping(self) -> None:
+        if self.engine is None:
+            raise DatabaseConfigurationError("Database is not configured.")
+        with self.engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+
 
 def _psycopg_url(url: str) -> str:
     if url.startswith("postgresql://"):
