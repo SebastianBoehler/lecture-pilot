@@ -45,6 +45,8 @@ async def test_source_resolution_failure_logs_generation_stage_without_content(
                 lecture_id="lecture-02",
                 context=context,
                 source_document=fail_source,
+                generation_id="generation-id-0000000000000000001",
+                attempt=1,
             )
 
     payloads = [

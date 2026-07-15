@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from uuid import uuid4
-
 from fastapi import FastAPI
 from starlette.concurrency import run_in_threadpool
 
@@ -20,14 +18,15 @@ async def generate_course_canvas_draft(
     lecture_id: str,
     context: TenantContext,
     source_document: Callable[[str, str], CanvasDocument],
+    generation_id: str,
+    attempt: int,
 ) -> CanvasDocument:
-    generation_id = uuid4().hex
     observability = app.state.observability
     common = {
         "course_id": course_id,
         "lecture_id": lecture_id,
         "generation_id": generation_id,
-        "attempt": 1,
+        "attempt": attempt,
     }
     registry = getattr(getattr(app.state, "course_planner", None), "provider_registry", None)
     model = getattr(registry, "model", None)

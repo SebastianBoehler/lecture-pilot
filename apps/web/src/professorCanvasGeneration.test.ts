@@ -21,20 +21,22 @@ describe("professor canvas generation", () => {
   });
 
   it("reports successful drafts even when another lecture fails", async () => {
+    vi.useFakeTimers();
     const onDraftReady = vi.fn();
     const onProgress = vi.fn();
 
-    await expect(
-      generateLectureCanvasDrafts({
-        draft: async (lectureId) => {
-          if (lectureId === "lecture-02") throw new TypeError("Failed to fetch");
-          return canvas;
-        },
-        lectureIds: ["lecture-01", "lecture-02"],
-        onDraftReady,
-        onProgress,
-      }),
-    ).rejects.toBeInstanceOf(CanvasGenerationBatchError);
+    const generation = generateLectureCanvasDrafts({
+      draft: async (lectureId) => {
+        if (lectureId === "lecture-02") throw new TypeError("Failed to fetch");
+        return canvas;
+      },
+      lectureIds: ["lecture-01", "lecture-02"],
+      onDraftReady,
+      onProgress,
+    });
+    const assertion = expect(generation).rejects.toBeInstanceOf(CanvasGenerationBatchError);
+    await vi.runAllTimersAsync();
+    await assertion;
 
     expect(onDraftReady).toHaveBeenCalledWith("lecture-01", canvas);
     expect(onProgress).toHaveBeenCalledWith(
@@ -44,5 +46,24 @@ describe("professor canvas generation", () => {
         errorKind: "network",
       }),
     );
+    vi.useRealTimers();
+  });
+
+  it("automatically reconnects a network failure through the same draft callback", async () => {
+    vi.useFakeTimers();
+    const draft = vi
+      .fn<() => Promise<CanvasDocument>>()
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValueOnce(canvas);
+
+    const generation = generateLectureCanvasDrafts({
+      draft,
+      lectureIds: ["lecture-01"],
+    });
+    await vi.runAllTimersAsync();
+
+    await expect(generation).resolves.toEqual([canvas]);
+    expect(draft).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
   });
 });

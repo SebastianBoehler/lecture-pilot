@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 
-import { draftLectureCanvas, publishLectureCanvas } from "./api";
+import { publishLectureCanvas } from "./api";
+import { draftLectureCanvas } from "./canvasDraftApi";
 import {
   applyCourseUpdate,
   createCourseUpdate,

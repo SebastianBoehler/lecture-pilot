@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 
-import { draftLectureCanvas, getCourseLectures, getDraftLectureCanvas } from "./api";
+import { getCourseLectures, getDraftLectureCanvas } from "./api";
+import { draftLectureCanvas } from "./canvasDraftApi";
 import { builderSteps, initialBuilderStep, type BuilderStep } from "./ProfessorBuilderStepper";
 import {
   CanvasGenerationBatchError,
@@ -16,7 +17,6 @@ import {
   proposeLectureSchedule,
   removeYoutubeMedia,
   searchYoutubeMedia,
-  uploadCourseMaterial,
 } from "./professorApi";
 import {
   isCourseSetupReady,
@@ -35,7 +35,8 @@ import { universityCourseTitles } from "./professorCourseSuggestions";
 import { useCourseTitleSuggestions } from "./useCourseTitleSuggestions";
 import { useProfessorWorkflowRun } from "./professorWorkflowRun";
 import { lectureFromWorkspace, requireWorkspace } from "./professorWorkspaceView";
-import { ignoredUploadNotice, isSkippableUploadError, uploadDestination } from "./professorUpload";
+import { uploadProfessorMaterials } from "./professorMaterialUpload";
+import { ignoredUploadNotice } from "./professorUpload";
 import {
   flattenVideoGroups,
   type YoutubeCandidateGroup,
@@ -348,19 +349,6 @@ export function useProfessorCourseBuilder({
     setMediaReviewed(false);
   }
 
-  async function updateBundleAndSchedule(courseId: string) {
-    const nextBundle = await getSourceBundle(courseId, session);
-    setBundle(nextBundle);
-    if (setup.target !== "full-course") return;
-    const proposal = await proposeLectureSchedule({
-      courseId,
-      count: Number(setup.lectureCount) || null,
-      firstLectureDate: setup.firstLectureDate,
-      session,
-    });
-    setLectureSchedule(proposal.lectures);
-  }
-
   async function searchSuggestedVideos(courseId: string) {
     const generation = ++suggestedSearchGeneration.current;
     const responses = await Promise.all(
@@ -520,36 +508,32 @@ export function useProfessorCourseBuilder({
     onUpload: () =>
       run("upload", async () => {
         const activeWorkspace = requireWorkspace(workspace);
-        const uploaded = [];
-        const ignored = [];
-        for (const file of uploadFiles) {
-          const destination = uploadDestination(file);
-          try {
-            uploaded.push(
-              await uploadCourseMaterial({
-                courseId: activeWorkspace.courseId,
-                path: destination,
-                file,
-                session,
-              }),
-            );
-          } catch (error) {
-            if (!isSkippableUploadError(error)) {
-              const message = error instanceof Error ? error.message : String(error);
-              throw new Error(`${destination}: ${message}`);
-            }
-            ignored.push(destination);
-          }
+        const result = await uploadProfessorMaterials({
+          courseId: activeWorkspace.courseId,
+          files: uploadFiles,
+          session,
+        });
+        if (result.bundle) setBundle(result.bundle);
+        if (result.uploaded.length > 0 || result.mutationUncertain) {
+          resetGeneratedState();
+          if (setup.target === "full-course") setScheduleApplied(false);
         }
-        await updateBundleAndSchedule(activeWorkspace.courseId);
-        resetGeneratedState();
-        if (setup.target === "full-course") setScheduleApplied(false);
+        if (result.error) throw result.error;
+        if (setup.target === "full-course") {
+          const proposal = await proposeLectureSchedule({
+            courseId: activeWorkspace.courseId,
+            count: Number(setup.lectureCount) || null,
+            firstLectureDate: setup.firstLectureDate,
+            session,
+          });
+          setLectureSchedule(proposal.lectures);
+        }
         if (setup.target !== "full-course") setActiveStep("review");
-        const ignoredText = ignoredUploadNotice(ignored);
-        if (uploaded.length === 1) {
-          return `Uploaded ${uploaded[0].path} as ${uploaded[0].kind}.${ignoredText}`;
+        const ignoredText = ignoredUploadNotice(result.ignored);
+        if (result.uploaded.length === 1) {
+          return `Uploaded ${result.uploaded[0].path} as ${result.uploaded[0].kind}.${ignoredText}`;
         }
-        return `Uploaded ${uploaded.length} materials into the source bundle.${ignoredText}`;
+        return `Uploaded ${result.uploaded.length} materials into the source bundle.${ignoredText}`;
       }),
     onApplySchedule: () =>
       run("apply-schedule", async () => {

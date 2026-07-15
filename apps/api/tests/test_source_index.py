@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from auth_helpers import professor_headers
+import lecturepilot.course_routes as course_routes
 from lecturepilot.app import create_app
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.source_index_models import CourseSourceIndex
@@ -30,6 +31,49 @@ def test_upload_updates_hash_addressed_course_source_index(tmp_path: Path) -> No
     assert index.files[0].path == "Lecture01/notes.md"
     assert index.files[0].sha256 == hashlib.sha256(content).hexdigest()
     assert index.files[0].status == "indexed"
+
+
+def test_deferred_upload_batch_refreshes_source_index_once(tmp_path: Path, monkeypatch) -> None:
+    client = _client(tmp_path)
+    refreshes = 0
+    audit_events: list[dict] = []
+    original_index = course_routes.indexed_course_files
+
+    def counted_index(*args, **kwargs):
+        nonlocal refreshes
+        refreshes += 1
+        return original_index(*args, **kwargs)
+
+    monkeypatch.setattr(course_routes, "indexed_course_files", counted_index)
+    monkeypatch.setattr(
+        course_routes,
+        "record_audit_event",
+        lambda *args, **kwargs: audit_events.append(kwargs),
+    )
+
+    for number in range(6):
+        response = client.post(
+            "/admin/courses/indexed-course/materials",
+            data={
+                "path": f"Lecture{number:02d}/notes.md",
+                "refresh_index": "false",
+            },
+            files={"file": ("notes.md", f"# Lecture {number}".encode())},
+            headers=professor_headers(),
+        )
+        assert response.status_code == 200
+
+    index_path = client.app.state.canvas_workspace.layout.course_source_index_path("indexed-course")
+    assert refreshes == 0
+    assert not index_path.exists()
+    assert [event["event_type"] for event in audit_events] == ["course.material_uploaded"] * 6
+
+    manifest = client.get("/courses/indexed-course/source-bundle", headers=professor_headers())
+
+    assert manifest.status_code == 200
+    assert len(manifest.json()["files"]) == 6
+    assert refreshes == 1
+    assert index_path.exists()
 
 
 def test_oversized_streamed_upload_leaves_no_partial_file(tmp_path: Path) -> None:

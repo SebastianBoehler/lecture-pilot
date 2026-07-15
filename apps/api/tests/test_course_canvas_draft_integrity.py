@@ -68,7 +68,7 @@ def test_generation_rejects_invalid_draft_without_replacing_existing(
 
     response = client.post(
         "/admin/courses/draft-integrity/lectures/lecture-01/canvas/draft",
-        headers=professor_headers(),
+        headers={**professor_headers(), "Idempotency-Key": "draft-request-key-invalid-0001"},
     )
 
     assert response.status_code == 502
@@ -79,6 +79,22 @@ def test_generation_rejects_invalid_draft_without_replacing_existing(
     )
     assert preview.status_code == 200
     assert preview.json()["title"] == existing.title
+
+
+def test_generation_requires_a_valid_idempotency_key(tmp_path: Path) -> None:
+    client = _course_client(tmp_path)
+    path = "/admin/courses/draft-integrity/lectures/lecture-01/canvas/draft"
+
+    missing = client.post(path, headers=professor_headers())
+    invalid = client.post(
+        path,
+        headers={**professor_headers(), "Idempotency-Key": "too-short"},
+    )
+
+    assert missing.status_code == 422
+    assert missing.json()["detail"][0]["loc"] == ["header", "Idempotency-Key"]
+    assert invalid.status_code == 400
+    assert invalid.json()["detail"] == "Idempotency-Key must be 16-128 URL-safe characters."
 
 
 def test_invalid_stored_draft_returns_actionable_error(tmp_path: Path) -> None:

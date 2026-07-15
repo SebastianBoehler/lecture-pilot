@@ -5,6 +5,9 @@ from typing import Any
 from lecturepilot.models import ProviderSettings
 
 
+MODEL_REQUEST_TIMEOUT_SECONDS = 120
+
+
 def completion_options(
     settings: ProviderSettings,
     *,
@@ -12,7 +15,10 @@ def completion_options(
     max_tokens: int | None = None,
     reasoning_effort: str | None = None,
 ) -> dict[str, Any]:
-    options: dict[str, Any] = {}
+    options: dict[str, Any] = {
+        "timeout": MODEL_REQUEST_TIMEOUT_SECONDS,
+        "max_retries": 0,
+    }
     if _is_openai_gpt5(settings):
         if reasoning_effort:
             options["reasoning_effort"] = reasoning_effort

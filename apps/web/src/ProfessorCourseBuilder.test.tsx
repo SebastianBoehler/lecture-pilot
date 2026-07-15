@@ -104,6 +104,7 @@ describe("Professor course builder", () => {
     );
     expect(materialUploadCall?.[1]?.body).toBeInstanceOf(FormData);
     expect((materialUploadCall?.[1]?.body as FormData).get("path")).toBe("uploads/supplement.md");
+    expect((materialUploadCall?.[1]?.body as FormData).get("refresh_index")).toBe("false");
     expect(screen.getByRole("heading", { name: /review youtube candidates/i })).toBeInTheDocument();
     expect(screen.getByText(/videos are saved directly for lecture 03/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /04 generate/i })).toBeDisabled();

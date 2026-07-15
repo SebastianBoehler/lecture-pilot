@@ -190,7 +190,7 @@ def test_professor_canvas_draft_stays_private_until_publish(tmp_path: Path) -> N
 
     draft = client.post(
         "/admin/courses/martius-ml/lectures/lecture-03/canvas/draft",
-        headers=_professor_headers(),
+        headers={**_professor_headers(), "Idempotency-Key": "draft-request-key-0001"},
     )
 
     assert draft.status_code == 200

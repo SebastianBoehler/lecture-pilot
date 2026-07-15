@@ -226,6 +226,7 @@ class ModelUsageEventRecord(Base):
     __tablename__ = "model_usage_events"
     __table_args__ = (
         Index("ix_model_usage_tenant_course_created", "tenant_id", "course_id", "created_at"),
+        Index("ix_model_usage_request_attempt", "request_id", "attempt"),
     )
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -239,6 +240,11 @@ class ModelUsageEventRecord(Base):
     workload: Mapped[str] = mapped_column(String(40), nullable=False)
     provider: Mapped[str] = mapped_column(String(40), nullable=False)
     model: Mapped[str] = mapped_column(String(160), nullable=False)
+    request_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    operation_id: Mapped[str | None] = mapped_column(String(64))
+    attempt: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="succeeded")
+    error_type: Mapped[str | None] = mapped_column(String(80))
     input_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     output_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     total_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

@@ -12,7 +12,7 @@ from lecturepilot.audit import record_audit_event
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.course_access import require_course_id_access, require_lecture_id_access
-from lecturepilot.course_canvas_generation import generate_course_canvas_draft
+from lecturepilot.course_canvas_draft_routes import register_course_canvas_draft_routes
 from lecturepilot.course_canvas_store import InvalidCanvasDraftError
 from lecturepilot.learner_workspace_reset import (
     LearnerWorkspaceResetInput,
@@ -21,10 +21,7 @@ from lecturepilot.learner_workspace_reset import (
 )
 from lecturepilot.learning_map import LearningMap, write_learning_map
 from lecturepilot.models import CanvasPublicationResult, Course, Lecture
-from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.professor_preview import resolve_learner_workspace_access
-from lecturepilot.source_bundle_canvas import SourceBundleCanvasError
 from lecturepilot.tenancy import TenantContext
 
 
@@ -36,58 +33,11 @@ def register_course_canvas_routes(
     seeded_course: Course,
     source_document: Callable[[str, str], CanvasDocument],
 ) -> None:
-    @app.post(
-        "/admin/courses/{course_id}/lectures/{lecture_id}/canvas/draft",
-        response_model=CanvasDocument,
-        response_model_exclude={"workspace_path"},
+    register_course_canvas_draft_routes(
+        app,
+        course_tenant_id=course_tenant_id,
+        source_document=source_document,
     )
-    async def draft_course_canvas(
-        course_id: str,
-        lecture_id: str,
-        request: Request,
-        context: TenantContext = Depends(request_context),
-    ) -> CanvasDocument:
-        try:
-            _require_owner(request, context, course_id, course_tenant_id)
-            return await generate_course_canvas_draft(
-                app,
-                course_id=course_id,
-                lecture_id=lecture_id,
-                context=context,
-                source_document=source_document,
-            )
-        except InvalidCanvasDraftError as exc:
-            raise HTTPException(status_code=502, detail=str(exc)) from exc
-        except CanvasWorkspaceError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-        except SourceBundleCanvasError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        except ProviderConfigurationError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-        except ModelExecutionError as exc:
-            raise HTTPException(status_code=502, detail=str(exc)) from exc
-
-    @app.get(
-        "/admin/courses/{course_id}/lectures/{lecture_id}/canvas/draft",
-        response_model=CanvasDocument,
-        response_model_exclude={"workspace_path"},
-    )
-    def preview_course_canvas_draft(
-        course_id: str,
-        lecture_id: str,
-        request: Request,
-        context: TenantContext = Depends(request_context),
-    ) -> CanvasDocument:
-        try:
-            _require_owner(request, context, course_id, course_tenant_id)
-            return app.state.canvas_workspace.read_course_canvas_draft(
-                course_id=course_id,
-                lecture_id=lecture_id,
-            )
-        except InvalidCanvasDraftError as exc:
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
-        except CanvasWorkspaceError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @app.post(
         "/admin/courses/{course_id}/lectures/{lecture_id}/canvas/publish",

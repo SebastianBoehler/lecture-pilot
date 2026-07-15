@@ -1,4 +1,5 @@
 import type { CanvasDocument } from "./types";
+import { CanvasDraftRequestError } from "./canvasDraftApi";
 
 const CANVAS_DRAFT_CONCURRENCY = 3;
 const CANVAS_DRAFT_RETRY_DELAYS_MS = [1500, 3500];
@@ -47,13 +48,19 @@ export function describeCanvasGenerationError(error: unknown): {
 }
 
 function shouldRetryCanvasDraft(error: unknown) {
+  if (error instanceof CanvasDraftRequestError && error.terminalGeneration) return false;
   const message = errorMessage(error).toLowerCase();
   return (
+    (error instanceof TypeError &&
+      (message.includes("failed to fetch") ||
+        message.includes("network error") ||
+        message.includes("load failed"))) ||
     message.includes("rate") ||
     message.includes("429") ||
     message.includes("502") ||
     message.includes("503") ||
     message.includes("bad gateway") ||
+    message.includes("still in progress") ||
     message.includes("service unavailable") ||
     message.includes("model request failed")
   );

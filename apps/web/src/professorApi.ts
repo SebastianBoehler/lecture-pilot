@@ -112,11 +112,15 @@ export async function uploadCourseMaterial(input: {
   courseId: string;
   path: string;
   file: File;
+  refreshIndex?: boolean;
   session: LoginSession;
 }) {
   const body = new FormData();
   body.append("path", input.path);
   body.append("file", input.file);
+  if (input.refreshIndex !== undefined) {
+    body.append("refresh_index", String(input.refreshIndex));
+  }
   const response = await fetch(apiUrl(`/admin/courses/${input.courseId}/materials`), {
     ...authRequestInit(input.session, { method: "POST", body }),
   });

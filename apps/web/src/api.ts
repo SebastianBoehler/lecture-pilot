@@ -179,22 +179,6 @@ export async function getLectureCanvas(
   return payload as CanvasDocument;
 }
 
-export async function draftLectureCanvas(
-  courseId: string,
-  lectureId: string,
-  session: LoginSession,
-): Promise<CanvasDocument> {
-  const response = await fetch(
-    apiUrl(`/admin/courses/${courseId}/lectures/${lectureId}/canvas/draft`),
-    authRequestInit(session, {
-      method: "POST",
-    }),
-  );
-  const payload = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(readApiError(payload, "Canvas planner failed."));
-  return payload as CanvasDocument;
-}
-
 export async function getDraftLectureCanvas(
   courseId: string,
   lectureId: string,
