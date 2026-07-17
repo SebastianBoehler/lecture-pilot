@@ -56,3 +56,20 @@ def test_web_server_rejects_obvious_wordpress_probes_before_spa_fallback() -> No
     assert "xmlrpc" in config[probe_rule:spa_fallback]
     assert "content|includes|json" in config[probe_rule:spa_fallback]
     assert "return 404" in config[probe_rule:spa_fallback]
+
+
+def test_production_images_do_not_rebuild_stock_caddy() -> None:
+    dockerfile = (REPO_ROOT / "deploy" / "Caddy.Dockerfile").read_text()
+
+    assert dockerfile.startswith("FROM caddy:2.11.4-alpine")
+    assert "xcaddy" not in dockerfile
+    assert "builder" not in dockerfile
+
+
+def test_successful_deploy_discards_build_cache_but_retains_rollback_images() -> None:
+    deploy_script = (REPO_ROOT / "scripts" / "deploy-production.sh").read_text()
+
+    assert 'readonly RETAIN_IMAGES_FOR="168h"' in deploy_script
+    assert 'docker image prune -af --filter "until=${RETAIN_IMAGES_FOR}"' in deploy_script
+    assert "docker builder prune -af >/dev/null" in deploy_script
+    assert "docker builder prune -af --filter" not in deploy_script

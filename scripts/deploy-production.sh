@@ -6,7 +6,7 @@ readonly REPOSITORY_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly ENV_FILE="${REPOSITORY_ROOT}/.env"
 readonly COMPOSE_FILE="${REPOSITORY_ROOT}/deploy/compose.yml"
 readonly MIN_FREE_KB=$((1024 * 1024))
-readonly RETAIN_CACHE_FOR="168h"
+readonly RETAIN_IMAGES_FOR="168h"
 
 compose() {
   docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" "$@"
@@ -81,8 +81,8 @@ main() {
   compose up -d --no-deps --no-build api web
 
   trap - EXIT
-  docker image prune -af --filter "until=${RETAIN_CACHE_FOR}" >/dev/null
-  docker builder prune -af --filter "until=${RETAIN_CACHE_FOR}" >/dev/null
+  docker image prune -af --filter "until=${RETAIN_IMAGES_FOR}" >/dev/null
+  docker builder prune -af >/dev/null
   compose ps
 }
 
