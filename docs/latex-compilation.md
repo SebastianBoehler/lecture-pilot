@@ -21,6 +21,11 @@ A matching uploaded PDF, including a numbered handout such as
 service or a dependency is unavailable, generation continues from parsed TeX
 and asks the professor to fix the source or upload the PDF.
 
+The compiler intentionally ships only TeX Live's standard font set. Course
+previews preserve content, equations, figures, and core layout. Optional font
+and decorative symbol packages are normalized to standard LaTeX instead of
+requiring the original presentation typography.
+
 Production uses the internal-only compiler service defined in
 `deploy/compose.yml`; see [self-hosting.md](self-hosting.md) for its isolation
 and resource boundaries.

@@ -100,6 +100,44 @@ printf '%%PDF-1.7\nvalid' > "$out/lecturepilot-slides.pdf"
     assert result.startswith(b"%PDF-1.7")
 
 
+def test_replaces_optional_visual_packages_with_standard_latex(tmp_path: Path) -> None:
+    fake = _fake_pdflatex(
+        tmp_path / "pdflatex",
+        r"""
+contains_line '\providecommand{\mathds}[1]{\mathbf{#1}}' slides.tex
+contains_line '\providecommand{\epsdice}[1]{#1}' slides.tex
+contains_line '\providecommand{\sout}[1]{#1}' slides.tex
+if contains_line '\usepackage{dsfont}' slides.tex; then exit 9; fi
+if contains_line '\usepackage{epsdice}' slides.tex; then exit 10; fi
+if contains_line '\usepackage[normalem]{ulem}' slides.tex; then exit 11; fi
+out=''
+for arg in "$@"; do
+    case "$arg" in -output-directory=*) out=${arg#*=} ;; esac
+done
+printf '%%PDF-1.7\nvalid' > "$out/lecturepilot-slides.pdf"
+""",
+    )
+    archive_path = _archive(tmp_path / "source.zip")
+    with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr(
+            "slides.tex",
+            "\\documentclass{beamer}\n"
+            "\\usepackage{dsfont}\n"
+            "\\usepackage{epsdice}\n"
+            "\\usepackage[normalem]{ulem}\n"
+            "\\def\\indicator{\\mathds{1}}\n"
+            "\\begin{document}\\begin{frame}Hi\\end{frame}\\end{document}",
+        )
+
+    result = compile_archive(
+        archive_path,
+        "slides.tex",
+        pdflatex_bin=str(fake),
+    )
+
+    assert result.startswith(b"%PDF-1.7")
+
+
 def test_timeout_kills_compile_promptly(tmp_path: Path) -> None:
     fake = _fake_pdflatex(tmp_path / "pdflatex", "while :; do :; done")
     started = time.monotonic()

@@ -31,6 +31,9 @@ from lecturepilot_latex_compiler.limits import (
     COMPILE_WALL_SECONDS,
     MAX_OUTPUT_BYTES,
 )
+from lecturepilot_latex_compiler.tex_normalization import (
+    replace_optional_visual_dependencies,
+)
 
 
 def compile_archive(
@@ -45,6 +48,7 @@ def compile_archive(
         source_root = job_root / "source"
         output_root = job_root / "output"
         extract_source_archive(archive_path, source_root)
+        replace_optional_visual_dependencies(source_root)
         main = _resolve_main(source_root, main_path)
         output_root.mkdir(mode=0o700)
         wrapper = _write_handout_wrapper(main)

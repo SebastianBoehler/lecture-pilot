@@ -7,7 +7,6 @@ RUN printf '%s\n' \
       > /etc/dpkg/dpkg.cfg.d/01_nodoc \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
-      texlive-fonts-extra \
       texlive-fonts-recommended \
       texlive-lang-german \
       texlive-latex-base \
