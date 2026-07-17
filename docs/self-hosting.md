@@ -75,16 +75,31 @@ otherwise reject the session. The production Compose path has no such override: 
 renews certificates, redirects HTTP to HTTPS, and adds HSTS before traffic reaches the internal web
 or API services.
 
-Validate without starting the live stack:
+Validate the Compose configuration without starting the live stack:
 
 ```bash
+export LECTUREPILOT_COMMIT_SHA="$(git rev-parse HEAD)"
 docker compose --env-file .env -f deploy/compose.yml config --quiet
-docker compose --env-file .env -f deploy/compose.yml build
 ```
 
-`docker compose up` runs the same preflight as a one-shot service before database migration and API
-startup, with image-identity verification enabled. Missing or unsafe configuration and stale API
-images therefore stop the deployment instead of degrading to development behavior.
+Deploy a routine application update with:
+
+```bash
+scripts/deploy-production.sh
+```
+
+The deployment script checks Docker's filesystem for at least 1 GiB of free space before building,
+then builds only the API and web images, one at a time. It does not rebuild the database, gateway, or
+LaTeX compiler during an application-only release. If a build fails, incomplete BuildKit cache and
+dangling images are removed automatically; named volumes are never pruned. Old unused cache and
+images are retained for seven days after a successful release to keep one recent rollback path and
+useful dependency layers without allowing Docker storage to grow indefinitely.
+
+Compose runs the preflight as a one-shot service before database migration and API startup, with
+image-identity verification enabled. Missing or unsafe configuration and stale API images therefore
+stop the deployment instead of degrading to development behavior. Rebuild infrastructure services
+explicitly only when their Dockerfile or runtime configuration changes and the host has sufficient
+headroom.
 
 The API image runs as UID 10001 with a read-only root, dropped capabilities, a temporary `/tmp`, and
 CPU/memory/process limits. Gateway, web, and database use patched derived images recorded in

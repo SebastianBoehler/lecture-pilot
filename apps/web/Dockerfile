@@ -1,14 +1,13 @@
 FROM node:22-slim AS build
 
-ARG LECTUREPILOT_COMMIT_SHA=development
-ENV LECTUREPILOT_COMMIT_SHA=${LECTUREPILOT_COMMIT_SHA}
-
 WORKDIR /app
 COPY package.json package-lock.json .npmrc ./
 COPY apps/web/package.json apps/web/package.json
 RUN npm ci
 
 COPY apps/web apps/web
+ARG LECTUREPILOT_COMMIT_SHA=development
+ENV LECTUREPILOT_COMMIT_SHA=${LECTUREPILOT_COMMIT_SHA}
 RUN npm run build --workspace apps/web
 
 FROM nginx:1.30.3-alpine3.23
