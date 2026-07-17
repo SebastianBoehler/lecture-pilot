@@ -15,6 +15,7 @@ import type {
 } from "./types";
 import { authRequestInit, learnerRequestInit } from "./authz";
 import { readApiError } from "./apiError";
+import { resolveApiBaseUrl } from "./apiBaseUrl";
 import { normalizeLectureList } from "./lectureMapping";
 
 export { readApiError } from "./apiError";
@@ -58,8 +59,7 @@ type AgentTurnStreamEvent =
   | { type: "result"; result: AgentTurnResult }
   | { type: "error"; message: string };
 
-const apiBaseUrl =
-  import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? "/api" : "http://127.0.0.1:8000");
+const apiBaseUrl = resolveApiBaseUrl(import.meta.env.PROD, import.meta.env.VITE_API_BASE_URL);
 
 export function apiUrl(path: string): string {
   if (path.startsWith("http://") || path.startsWith("https://")) {
