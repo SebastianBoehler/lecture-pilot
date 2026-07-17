@@ -4,6 +4,7 @@ import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
 import { MathText } from "./MathText";
 import { LessonDrawerClose } from "./LessonDrawerClose";
 import type { ChatMessage } from "./types";
+import { useVersionUpdateActivity } from "./VersionUpdateBoundary";
 
 export function TutorDrawer({
   messages,
@@ -21,6 +22,7 @@ export function TutorDrawer({
   const [isSending, setIsSending] = useState(false);
   const messageListRef = useRef<HTMLDivElement>(null);
   const hasPendingTurn = messages.some((message) => message.isPending);
+  useVersionUpdateActivity(isSending || hasPendingTurn || Boolean(draft.trim()));
 
   useEffect(() => {
     const list = messageListRef.current;

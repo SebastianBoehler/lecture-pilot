@@ -14,10 +14,16 @@ import {
   useProfessorCourseBuilder,
   type ProfessorCourseBuilderProps,
 } from "./useProfessorCourseBuilder";
+import { useVersionUpdateActivity } from "./VersionUpdateBoundary";
 
 export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
   const { t } = useI18n();
   const builder = useProfessorCourseBuilder(props);
+  useVersionUpdateActivity(
+    builder.isRestoring ||
+      builder.uploadStep.pendingAction !== null ||
+      builder.uploadStep.uploadFiles.length > 0,
+  );
 
   return (
     <main className="professor-screen">

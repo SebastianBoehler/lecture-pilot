@@ -529,6 +529,7 @@ export function useProfessorCourseBuilder({
           setLectureSchedule(proposal.lectures);
         }
         if (setup.target !== "full-course") setActiveStep("review");
+        setUploadFiles([]);
         const ignoredText = ignoredUploadNotice(result.ignored);
         if (result.uploaded.length === 1) {
           return `Uploaded ${result.uploaded[0].path} as ${result.uploaded[0].kind}.${ignoredText}`;

@@ -6,6 +6,7 @@ import { materialFilesFromDrop } from "./materialDrop";
 import { materialSelectionSummary } from "./materialSelectionSummary";
 import type { CourseWorkspaceResult, LoginSession } from "./types";
 import { useCourseUpdate } from "./useCourseUpdate";
+import { useVersionUpdateActivity } from "./VersionUpdateBoundary";
 
 export function ProfessorCourseUpdate({
   onBack,
@@ -33,6 +34,12 @@ export function ProfessorCourseUpdate({
   const publishedCount = Object.values(update.statuses).filter(
     (status) => status === "published",
   ).length;
+  const hasUnfinishedUpdate = Boolean(
+    update.busy ||
+    (!update.result && (update.files.length || update.analysis)) ||
+    (update.result && publishedCount < update.result.affected_lecture_ids.length),
+  );
+  useVersionUpdateActivity(hasUnfinishedUpdate);
 
   return (
     <main className="professor-screen course-update-page">

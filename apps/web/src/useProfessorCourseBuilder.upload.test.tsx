@@ -103,6 +103,7 @@ describe("Professor course builder upload invalidation", () => {
       await upload;
     });
     expect(result.current.error).toMatch(/schedule generation failed/i);
+    expect(result.current.uploadStep.uploadFiles).toHaveLength(1);
   });
 
   it("invalidates a restored draft when source-bundle refresh fails after upload", async () => {

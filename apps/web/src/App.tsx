@@ -41,6 +41,7 @@ import { isDraftPreviewRequest, useInitialDraftPreview } from "./useInitialDraft
 import { usePublishedLectures } from "./usePublishedLectures";
 import { useUniversityCourseSync } from "./useUniversityCourseSync";
 import { useViewTransitionReset } from "./useViewTransitionReset";
+import { useVersionUpdateActivity } from "./VersionUpdateBoundary";
 import type { WorkspaceResetSelection } from "./WorkspaceResetControl";
 import type {
   Attendance,
@@ -88,6 +89,7 @@ function App() {
   const [messages, setMessages] = useState<ChatMessage[]>(
     initialMessagesForAttendance(lectures[2].attendance),
   );
+  useVersionUpdateActivity(messages.some((message) => Boolean(message.isPending)));
   const [lastTutorModel, setLastTutorModel] = useState<string | null>(null);
   const [passedGateIds, setPassedGateIds] = useState<string[]>([]);
   const [publishedLectureIds, setPublishedLectureIds] = usePublishedLectures(availableLectures);

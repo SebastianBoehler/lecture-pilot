@@ -4,6 +4,7 @@ import { useI18n } from "./i18n";
 import { useRememberedLoginIdentifier } from "./loginPreferences";
 import { loginWithTuebingen } from "./sessionApi";
 import type { LoginSession } from "./types";
+import { useVersionUpdateActivity } from "./VersionUpdateBoundary";
 
 export function UniversityLoginForm({
   onLogin,
@@ -27,6 +28,8 @@ export function UniversityLoginForm({
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [initialUsername] = useState(username);
+  useVersionUpdateActivity(isSubmitting || Boolean(password) || username !== initialUsername);
 
   async function submitLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

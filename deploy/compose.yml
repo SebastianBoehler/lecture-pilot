@@ -197,6 +197,8 @@ services:
     build:
       context: ..
       dockerfile: apps/web/Dockerfile
+      args:
+        LECTUREPILOT_COMMIT_SHA: ${LECTUREPILOT_COMMIT_SHA:?Set the deployed Git commit SHA}
     expose: ["80"]
     restart: unless-stopped
     read_only: true
