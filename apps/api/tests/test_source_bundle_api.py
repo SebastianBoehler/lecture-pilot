@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT_VERSION
 from auth_helpers import professor_headers, student_headers
 
 
@@ -190,7 +191,11 @@ def test_professor_canvas_draft_stays_private_until_publish(tmp_path: Path) -> N
 
     draft = client.post(
         "/admin/courses/martius-ml/lectures/lecture-03/canvas/draft",
-        headers={**_professor_headers(), "Idempotency-Key": "draft-request-key-0001"},
+        headers={
+            **_professor_headers(),
+            CLIENT_CONTRACT_HEADER: CLIENT_CONTRACT_VERSION,
+            "Idempotency-Key": "draft-request-key-0001",
+        },
     )
 
     assert draft.status_code == 200

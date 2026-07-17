@@ -1,5 +1,7 @@
 import type { LearnerWorkspaceMode, LoginSession, TenantRole } from "./types";
 
+export const LECTUREPILOT_CLIENT_CONTRACT = "1";
+
 const courseManagementRoles = new Set<TenantRole>(["professor"]);
 
 export function canManageCourses(session: LoginSession | null) {
@@ -43,6 +45,7 @@ export function authRequestInit(session: LoginSession, init: RequestInit = {}): 
   new Headers(init.headers).forEach((value, key) => {
     headers.set(key, value);
   });
+  headers.set("X-LecturePilot-Client-Contract", LECTUREPILOT_CLIENT_CONTRACT);
   const method = (init.method ?? "GET").toUpperCase();
   if (
     session.auth_transport === "cookie" &&

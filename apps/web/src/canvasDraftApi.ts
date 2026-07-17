@@ -34,7 +34,7 @@ export async function draftLectureCanvas(
       window.sessionStorage.removeItem(storageKey);
     }
     throw new CanvasDraftRequestError(
-      readApiError(payload, "Canvas planner failed."),
+      readApiError(payload, "Canvas generation request failed."),
       terminalGeneration,
     );
   }

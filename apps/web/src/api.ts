@@ -14,7 +14,10 @@ import type {
   UniversityCourse,
 } from "./types";
 import { authRequestInit, learnerRequestInit } from "./authz";
+import { readApiError } from "./apiError";
 import { normalizeLectureList } from "./lectureMapping";
+
+export { readApiError } from "./apiError";
 
 export type CanvasCommand = {
   type: "focus_section" | "highlight_span" | "open_artifact" | "append_section" | "update_section";
@@ -274,10 +277,4 @@ export async function getCourses(session: LoginSession): Promise<UniversityCours
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Course loading failed."));
   return payload as UniversityCourse[];
-}
-
-export function readApiError(payload: unknown, fallback: string) {
-  return typeof (payload as { detail?: unknown }).detail === "string"
-    ? String((payload as { detail: string }).detail)
-    : fallback;
 }

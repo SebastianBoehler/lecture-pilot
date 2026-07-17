@@ -9,6 +9,10 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from lecturepilot.api_auth import request_context, require_course_manager
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
+from lecturepilot.client_contract import (
+    CLIENT_CONTRACT_HEADER,
+    require_current_client_contract,
+)
 from lecturepilot.course_canvas_generation import generate_course_canvas_draft
 from lecturepilot.course_canvas_generation_jobs import (
     CanvasGenerationStatusResponse,
@@ -49,10 +53,12 @@ def register_course_canvas_draft_routes(
         lecture_id: str,
         request: Request,
         response: Response,
-        idempotency_key: Annotated[str, Header(alias="Idempotency-Key")],
+        idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
+        client_contract: Annotated[str | None, Header(alias=CLIENT_CONTRACT_HEADER)] = None,
         context: TenantContext = Depends(request_context),
     ) -> CanvasDocument:
         _require_owner(request, context, course_id, course_tenant_id)
+        require_current_client_contract(client_contract)
         request_key = _request_key(idempotency_key)
         store = _store(app)
         try:
@@ -191,7 +197,9 @@ def register_course_canvas_draft_routes(
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-def _request_key(value: str) -> str:
+def _request_key(value: str | None) -> str:
+    if value is None:
+        raise HTTPException(status_code=400, detail="Idempotency-Key header is required.")
     try:
         return validate_generation_request_key(value)
     except ValueError as exc:

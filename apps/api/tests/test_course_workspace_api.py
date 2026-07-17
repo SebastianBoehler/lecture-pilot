@@ -9,6 +9,7 @@ from canvas_workspace_fixtures import published_course_canvas
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT_VERSION
 from lecturepilot.logging_observability import LOGGER_NAME, LoggingObservability
 from lecturepilot.models import LectureScheduleItem, LectureScheduleProposal
 from lecturepilot.university_models import ExternalCourseCandidate, UniversityLoginResult
@@ -225,7 +226,11 @@ def test_dynamic_course_workspace_uses_uploaded_source(tmp_path: Path) -> None:
 
     draft = client.post(
         "/admin/courses/demo-ml-course/lectures/lecture-07/canvas/draft",
-        headers={**professor_headers(), "Idempotency-Key": "draft-request-key-0007"},
+        headers={
+            **professor_headers(),
+            CLIENT_CONTRACT_HEADER: CLIENT_CONTRACT_VERSION,
+            "Idempotency-Key": "draft-request-key-0007",
+        },
     )
     assert draft.status_code == 200
     assert draft.json()["course_id"] == "demo-ml-course"
@@ -313,7 +318,11 @@ def test_full_course_draft_uses_matching_lecture_source(tmp_path: Path) -> None:
 
     draft = client.post(
         "/admin/courses/demo-ml-course/lectures/lecture-02/canvas/draft",
-        headers={**professor_headers(), "Idempotency-Key": "draft-request-key-0002"},
+        headers={
+            **professor_headers(),
+            CLIENT_CONTRACT_HEADER: CLIENT_CONTRACT_VERSION,
+            "Idempotency-Key": "draft-request-key-0002",
+        },
     )
 
     assert draft.status_code == 200
@@ -361,7 +370,11 @@ def test_course_canvas_draft_can_use_markdown_text_and_pdf_without_latex(tmp_pat
 
     draft = client.post(
         "/admin/courses/mixed-source-course/lectures/lecture-01/canvas/draft",
-        headers={**professor_headers(), "Idempotency-Key": "draft-request-key-mixed-0001"},
+        headers={
+            **professor_headers(),
+            CLIENT_CONTRACT_HEADER: CLIENT_CONTRACT_VERSION,
+            "Idempotency-Key": "draft-request-key-mixed-0001",
+        },
     )
 
     assert draft.status_code == 200

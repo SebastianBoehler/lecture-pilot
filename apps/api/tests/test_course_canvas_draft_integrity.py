@@ -8,6 +8,7 @@ from canvas_workspace_fixtures import published_course_canvas
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import MAX_SOURCE_REF_LENGTH, CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT_VERSION
 from lecturepilot.course_canvas_planner import _planned_document
 from lecturepilot.course_canvas_store import CourseCanvasStore, InvalidCanvasDraftError
 from lecturepilot.storage_layout import StorageLayout
@@ -68,7 +69,11 @@ def test_generation_rejects_invalid_draft_without_replacing_existing(
 
     response = client.post(
         "/admin/courses/draft-integrity/lectures/lecture-01/canvas/draft",
-        headers={**professor_headers(), "Idempotency-Key": "draft-request-key-invalid-0001"},
+        headers={
+            **professor_headers(),
+            **_client_contract_headers(),
+            "Idempotency-Key": "draft-request-key-invalid-0001",
+        },
     )
 
     assert response.status_code == 502
@@ -85,16 +90,48 @@ def test_generation_requires_a_valid_idempotency_key(tmp_path: Path) -> None:
     client = _course_client(tmp_path)
     path = "/admin/courses/draft-integrity/lectures/lecture-01/canvas/draft"
 
-    missing = client.post(path, headers=professor_headers())
+    missing = client.post(path, headers={**professor_headers(), **_client_contract_headers()})
     invalid = client.post(
         path,
-        headers={**professor_headers(), "Idempotency-Key": "too-short"},
+        headers={
+            **professor_headers(),
+            **_client_contract_headers(),
+            "Idempotency-Key": "too-short",
+        },
     )
 
-    assert missing.status_code == 422
-    assert missing.json()["detail"][0]["loc"] == ["header", "Idempotency-Key"]
+    assert missing.status_code == 400
+    assert missing.json()["detail"] == "Idempotency-Key header is required."
     assert invalid.status_code == 400
     assert invalid.json()["detail"] == "Idempotency-Key must be 16-128 URL-safe characters."
+
+
+def test_stale_client_is_rejected_before_generation_work(tmp_path: Path) -> None:
+    client = _course_client(tmp_path)
+    planner = _UnexpectedCoursePlanner()
+    client.app.state.course_planner = planner
+
+    response = client.post(
+        "/admin/courses/draft-integrity/lectures/lecture-01/canvas/draft",
+        headers={
+            **professor_headers(),
+            "Idempotency-Key": "draft-request-key-stale-0001",
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {
+        "code": "client_update_required",
+        "detail": "LecturePilot was updated. Reload this page to continue.",
+    }
+    assert response.headers[CLIENT_CONTRACT_HEADER] == CLIENT_CONTRACT_VERSION
+    assert planner.called is False
+    generations = (
+        client.app.state.canvas_workspace.layout.course_root("draft-integrity")
+        / "builder"
+        / "generations"
+    )
+    assert not generations.exists()
 
 
 def test_invalid_stored_draft_returns_actionable_error(tmp_path: Path) -> None:
@@ -177,3 +214,15 @@ class _InvalidCoursePlanner:
                 "source_ref": "s" * (MAX_SOURCE_REF_LENGTH + 1),
             }
         )
+
+
+class _UnexpectedCoursePlanner:
+    called = False
+
+    async def plan_canvas(self, source_document: CanvasDocument) -> CanvasDocument:
+        self.called = True
+        raise AssertionError("stale clients must not start canvas planning")
+
+
+def _client_contract_headers() -> dict[str, str]:
+    return {CLIENT_CONTRACT_HEADER: CLIENT_CONTRACT_VERSION}

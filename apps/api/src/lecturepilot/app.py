@@ -17,6 +17,12 @@ from lecturepilot.agent_routes import register_agent_routes
 from lecturepilot.auth_routes import register_auth_routes
 from lecturepilot.body_limits import RequestBodyLimitMiddleware
 from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.client_contract import (
+    CLIENT_CONTRACT_HEADER,
+    CLIENT_CONTRACT_VERSION,
+    CLIENT_UPDATE_REQUIRED_CODE,
+    ClientUpdateRequiredError,
+)
 from lecturepilot.course_builder_source import course_builder_source_document
 from lecturepilot.course_canvas_routes import register_course_canvas_routes
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner, LiteLLMCoursePlanClient
@@ -80,6 +86,16 @@ def create_app() -> FastAPI:
     ) -> JSONResponse:
         return JSONResponse(status_code=500, content={"detail": str(exc)})
 
+    @app.exception_handler(ClientUpdateRequiredError)
+    async def client_update_required(
+        _request: Request, exc: ClientUpdateRequiredError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=409,
+            content={"code": CLIENT_UPDATE_REQUIRED_CODE, "detail": str(exc)},
+            headers={CLIENT_CONTRACT_HEADER: CLIENT_CONTRACT_VERSION},
+        )
+
     app.state.database = Database()
     app.state.runtime_readiness = RuntimeReadiness(app.state.database)
     app.state.session_store = SessionStore(app.state.database)
@@ -117,6 +133,7 @@ def create_app() -> FastAPI:
             "Authorization",
             "Content-Type",
             "Idempotency-Key",
+            CLIENT_CONTRACT_HEADER,
             "X-Course-Ids",
             "X-CSRF-Token",
             "X-LecturePilot-Learner-Preview",
@@ -124,7 +141,12 @@ def create_app() -> FastAPI:
             "X-User-Id",
             "X-User-Role",
         ],
-        expose_headers=["X-Generation-Id", "X-Generation-Status", "X-Request-ID"],
+        expose_headers=[
+            CLIENT_CONTRACT_HEADER,
+            "X-Generation-Id",
+            "X-Generation-Status",
+            "X-Request-ID",
+        ],
     )
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts())
     app.add_middleware(RequestBodyLimitMiddleware)

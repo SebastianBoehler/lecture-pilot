@@ -63,13 +63,17 @@ def test_canvas_generation_headers_are_available_to_the_local_browser() -> None:
         headers={
             "Origin": origin,
             "Access-Control-Request-Method": "POST",
-            "Access-Control-Request-Headers": "idempotency-key",
+            "Access-Control-Request-Headers": ("idempotency-key,x-lecturepilot-client-contract"),
         },
     )
     response = client.get("/health", headers={"Origin": origin})
 
     assert preflight.status_code == 200
     assert "idempotency-key" in preflight.headers["access-control-allow-headers"].lower()
+    assert (
+        "x-lecturepilot-client-contract"
+        in preflight.headers["access-control-allow-headers"].lower()
+    )
     exposed = response.headers["access-control-expose-headers"].lower()
     assert "x-generation-id" in exposed
     assert "x-generation-status" in exposed
