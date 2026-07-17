@@ -90,10 +90,11 @@ scripts/deploy-production.sh
 
 The deployment script checks Docker's filesystem for at least 1 GiB of free space before building,
 then builds only the API and web images, one at a time. It does not rebuild the database, gateway, or
-LaTeX compiler during an application-only release. If a build fails, incomplete BuildKit cache and
-dangling images are removed automatically; named volumes are never pruned. Old unused cache and
-images are retained for seven days after a successful release to keep one recent rollback path and
-useful dependency layers without allowing Docker storage to grow indefinitely.
+LaTeX compiler during an application-only release. Preflight and migration run against the existing
+infrastructure before Compose recreates only the API and web services. If a build fails, incomplete
+BuildKit cache and dangling images are removed automatically; named volumes are never pruned. Old
+unused cache and images are retained for seven days after a successful release to keep one recent
+rollback path and useful dependency layers without allowing Docker storage to grow indefinitely.
 
 Compose runs the preflight as a one-shot service before database migration and API startup, with
 image-identity verification enabled. Missing or unsafe configuration and stale API images therefore

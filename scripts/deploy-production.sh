@@ -73,8 +73,12 @@ main() {
   echo "Building web ${LECTUREPILOT_COMMIT_SHA}..."
   compose build web
 
+  echo "Checking the application against the running infrastructure..."
+  compose run --rm --no-deps preflight
+  compose run --rm --no-deps migrate
+
   echo "Starting the verified application images..."
-  compose up -d --no-build --remove-orphans
+  compose up -d --no-deps --no-build api web
 
   trap - EXIT
   docker image prune -af --filter "until=${RETAIN_CACHE_FOR}" >/dev/null
