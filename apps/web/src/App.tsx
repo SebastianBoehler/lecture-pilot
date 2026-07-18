@@ -463,16 +463,21 @@ function App() {
           }}
           onWorkspacePublished={(course, nextLectures) => {
             if (!nextLectures.length) return;
+            const publishedLectures = nextLectures.map((lecture) => ({
+              ...lecture,
+              contentReady: true,
+            }));
             writeDemoWorkspaceCourse(course);
             setWorkspaceCourse(course);
             setWorkspaceCourseId(course.id);
             setSelectedCourseId(course.id);
-            setAvailableLectures(nextLectures);
+            setAvailableLectures(publishedLectures);
             setSelectedLecture(
               (current) =>
-                nextLectures.find((lecture) => lecture.id === current.id) ?? nextLectures[0],
+                publishedLectures.find((lecture) => lecture.id === current.id) ??
+                publishedLectures[0],
             );
-            setPublishedLectureIds(nextLectures.map((lecture) => lecture.id));
+            setPublishedLectureIds(publishedLectures.map((lecture) => lecture.id));
           }}
           onWorkspaceDeleted={handleWorkspaceDeleted}
           onViewChange={changeView}

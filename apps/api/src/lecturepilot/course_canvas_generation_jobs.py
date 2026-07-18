@@ -32,6 +32,7 @@ class CanvasGenerationJob(BaseModel):
     created_at: datetime
     updated_at: datetime
     error_code: str | None = Field(default=None, max_length=80)
+    error_detail: str | None = Field(default=None, max_length=1_000)
     canvas: CanvasDocument | None = None
 
 
@@ -41,6 +42,7 @@ class CanvasGenerationStatusResponse(BaseModel):
     attempt: int
     updated_at: datetime
     error_code: str | None = None
+    error_detail: str | None = None
     canvas: CanvasDocument | None = None
 
 
@@ -88,6 +90,7 @@ class CanvasGenerationStore:
                         "attempt": existing.attempt + 1,
                         "updated_at": now,
                         "error_code": None,
+                        "error_detail": None,
                         "canvas": None,
                     }
                 )
@@ -128,6 +131,7 @@ class CanvasGenerationStore:
         actor_user_id: str,
         request_key: str,
         error_code: str,
+        error_detail: str | None = None,
     ) -> CanvasGenerationJob:
         return self._finish(
             job,
@@ -135,6 +139,7 @@ class CanvasGenerationStore:
             request_key=request_key,
             status="failed",
             error_code=error_code,
+            error_detail=error_detail,
         )
 
     def touch(
@@ -166,6 +171,7 @@ class CanvasGenerationStore:
         request_key: str,
         status: GenerationStatus,
         error_code: str | None = None,
+        error_detail: str | None = None,
         canvas: CanvasDocument | None = None,
     ) -> CanvasGenerationJob:
         path = self._path(job.course_id, job.lecture_id, actor_user_id, request_key)
@@ -180,6 +186,7 @@ class CanvasGenerationStore:
                     "status": status,
                     "updated_at": datetime.now(UTC),
                     "error_code": error_code,
+                    "error_detail": error_detail,
                     "canvas": canvas,
                 }
             )

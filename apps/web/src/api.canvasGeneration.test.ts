@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from "vitest";
 
-import { draftLectureCanvas } from "./canvasDraftApi";
+import { draftLectureCanvas, repairLectureCanvas } from "./canvasDraftApi";
 import { LECTUREPILOT_CLIENT_CONTRACT } from "./authz";
 import type { LoginSession } from "./types";
 
@@ -78,6 +78,20 @@ it("uses a neutral error when the response has no usable API detail", async () =
 
   await expect(draftLectureCanvas("course-1", "lecture-01", session)).rejects.toThrow(
     "Canvas generation request failed.",
+  );
+});
+
+it("sends AI repairs to the persisted repair endpoint", async () => {
+  vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("11111111-1111-4111-8111-111111111111");
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValue(new Response(JSON.stringify(canvas), { status: 200 }));
+  vi.stubGlobal("fetch", fetchMock);
+
+  await repairLectureCanvas("course-1", "lecture-01", session);
+
+  expect(fetchMock.mock.calls[0]?.[0]).toContain(
+    "/admin/courses/course-1/lectures/lecture-01/canvas/draft/repair",
   );
 });
 

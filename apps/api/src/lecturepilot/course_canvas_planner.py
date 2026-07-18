@@ -9,8 +9,10 @@ from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSectio
 from lecturepilot.canvas_text_normalizer import clean_canvas_items, clean_canvas_text
 from lecturepilot.course_content_filter import filter_source_document_for_planning
 from lecturepilot.course_canvas_enrichment import enrich_learning_document
+from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_ids import avoid_mirrored_section_ids
 from lecturepilot.course_canvas_json import parse_model_json
+from lecturepilot.course_canvas_math import normalize_generated_math_block
 from lecturepilot.course_canvas_prompt import planner_messages, repair_message
 from lecturepilot.course_canvas_section_planner import plan_sections_individually
 from lecturepilot.course_canvas_source_ref import planned_source_ref
@@ -74,12 +76,19 @@ class CourseCanvasPlanner:
         self.model_client = model_client or LiteLLMCoursePlanClient()
         self.observability = observability or Observability()
 
-    async def plan_canvas(self, source_document: CanvasDocument) -> CanvasDocument:
+    async def plan_canvas(
+        self,
+        source_document: CanvasDocument,
+        *,
+        repair_context: str | None = None,
+    ) -> CanvasDocument:
         settings = self.provider_registry.require_ready(
             [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
         )
         source_document = filter_source_document_for_planning(source_document)
         messages = planner_messages(source_document)
+        if repair_context:
+            messages.append(repair_message(repair_context, source_document))
         last_error: ProviderConfigurationError | None = None
         generation_id = current_operation_id() or uuid4().hex
         span_attributes = {
@@ -140,7 +149,7 @@ class CourseCanvasPlanner:
 def _planned_document(payload: dict, source_document: CanvasDocument) -> CanvasDocument:
     raw_sections = payload.get("sections")
     if not isinstance(raw_sections, list):
-        raise ProviderConfigurationError("Course planner JSON must include sections.")
+        raise CanvasGenerationRepairableError("Course planner JSON must include sections.")
     allowed_assets = {
         block.asset_path: block.asset_url
         for section in source_document.sections
@@ -153,7 +162,7 @@ def _planned_document(payload: dict, source_document: CanvasDocument) -> CanvasD
         if (section := _read_section(raw_section, index, allowed_assets)) is not None
     ]
     if not sections:
-        raise ProviderConfigurationError("Course planner returned no usable canvas sections.")
+        raise CanvasGenerationRepairableError("Course planner returned no usable canvas sections.")
     title = str(payload.get("title") or source_document.title).strip()[:200]
     return source_document.model_copy(
         update={
@@ -224,6 +233,7 @@ def _read_block(
     block_type: str,
     allowed_assets: dict[str, str | None],
 ) -> CanvasBlock:
+    raw_text = clean_canvas_text(raw_block.get("text") or raw_block.get("content"))
     if block_type == "list":
         raw_items = _block_items(raw_block)
         return CanvasBlock(
@@ -257,13 +267,15 @@ def _read_block(
         return CanvasBlock(
             id=block_id,
             type=block_type,
-            text=_trim(clean_canvas_text(raw_block.get("text") or raw_block.get("content")), 2400),
+            text=_trim(raw_text, 2400),
             caption=str(raw_block.get("caption") or raw_block.get("title") or "")[:500] or None,
         )
+    if block_type == "math":
+        block_type, raw_text = normalize_generated_math_block(raw_text)
     return CanvasBlock(
         id=block_id,
         type=block_type,
-        text=_trim(clean_canvas_text(raw_block.get("text") or raw_block.get("content")), 2400),
+        text=_trim(raw_text, 2400),
     )
 
 

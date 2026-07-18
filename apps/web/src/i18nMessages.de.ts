@@ -529,8 +529,12 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.generate.progress": "Fortschritt der Vorlesungserzeugung",
   "builder.generate.retry": "Erneut versuchen",
   "builder.generate.retryLecture": "{lecture} erneut versuchen",
+  "builder.generate.repair": "Mit KI reparieren",
+  "builder.generate.repairLecture": "{lecture} mit KI reparieren",
   "builder.generate.error.network":
     "LecturePilot konnte die API nicht erreichen. Versuche diese Vorlesung erneut.",
+  "builder.generate.error.repair":
+    "Entwurf hat Quellen- oder Formatprüfung nicht bestanden: {message} Die KI-Reparatur prüft die betroffene Quelle und merkt sich die validierte Korrektur für diese Quellversion.",
   "builder.generate.error.service": "Erzeugung fehlgeschlagen: {message}",
   "builder.generate.error.unknown": "Es wurden keine Fehlerdetails zurückgegeben.",
   "builder.generate.regenerate": "Canvas-Entwurf erneut erzeugen",

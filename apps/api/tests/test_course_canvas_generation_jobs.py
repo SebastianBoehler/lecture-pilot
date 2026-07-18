@@ -1,4 +1,5 @@
 from lecturepilot import course_canvas_generation_jobs
+from lecturepilot.course_canvas_generation_failures import find_latest_canvas_failure
 from lecturepilot.course_canvas_generation_jobs import CanvasGenerationStore
 from lecturepilot.storage_layout import StorageLayout
 
@@ -41,6 +42,40 @@ def test_generation_key_is_scoped_to_authenticated_actor(tmp_path) -> None:
         request_key="request-key-0001",
     )
 
+    assert other_actor is None
+
+
+def test_latest_failed_generation_retains_actionable_detail_for_its_actor(tmp_path) -> None:
+    store = CanvasGenerationStore(StorageLayout(tmp_path), lease_seconds=30)
+    job, _ = store.begin(
+        course_id="course-1",
+        lecture_id="lecture-01",
+        actor_user_id="professor-1",
+        request_key="request-key-failed-0001",
+    )
+    store.fail(
+        job,
+        actor_user_id="professor-1",
+        request_key="request-key-failed-0001",
+        error_code="provider_configuration_error",
+        error_detail="Math block uses a course-specific command: \\P.",
+    )
+
+    failure = find_latest_canvas_failure(
+        store.layout,
+        course_id="course-1",
+        lecture_id="lecture-01",
+        actor_user_id="professor-1",
+    )
+    other_actor = find_latest_canvas_failure(
+        store.layout,
+        course_id="course-1",
+        lecture_id="lecture-01",
+        actor_user_id="professor-2",
+    )
+
+    assert failure is not None
+    assert failure.error_detail == "Math block uses a course-specific command: \\P."
     assert other_actor is None
 
 

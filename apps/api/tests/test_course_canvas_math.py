@@ -4,8 +4,13 @@ import pytest
 
 from lecturepilot.canvas_markdown_blocks import block_to_markdown
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.course_canvas_math import generated_math_instructions, validate_section_math
+from lecturepilot.course_canvas_math import (
+    generated_math_instructions,
+    normalize_generated_math,
+    validate_section_math,
+)
 from lecturepilot.course_canvas_prompt import planner_messages, repair_message
+from lecturepilot.course_canvas_planner import _planned_document
 from lecturepilot.course_canvas_section_planner import _section_messages
 from lecturepilot.course_canvas_validation import validate_planned_document
 from lecturepilot.providers import ProviderConfigurationError
@@ -46,6 +51,95 @@ def test_clean_aligned_display_equation_is_accepted_unchanged() -> None:
     markdown = block_to_markdown(section.blocks[0])
     assert markdown.count("```math") == 1
     assert f"```math\n{formula}\n```" in markdown
+
+
+def test_generated_math_normalization_preserves_formula_and_expands_probability_macro() -> None:
+    formula = r"\P(y \mid x)=\frac{p(x \mid y)p(y)}{p(x)}"
+
+    normalized = normalize_generated_math(formula)
+
+    assert normalized == r"\Pr(y \mid x)=\frac{p(x \mid y)p(y)}{p(x)}"
+    validate_section_math(_section_with_math(normalized))
+
+
+def test_generated_math_normalization_removes_outer_delimiters() -> None:
+    formula = "```math\n" + r"z=W x+b" + "\n```"
+
+    normalized = normalize_generated_math(formula)
+
+    assert normalized == r"z=W x+b"
+    validate_section_math(_section_with_math(normalized))
+
+
+def test_generated_math_normalization_expands_attention_symbols() -> None:
+    formula = r"\Q=XW_Q,\K=XW_K,\V=XW_V"
+
+    normalized = normalize_generated_math(formula)
+
+    assert normalized == r"Q=XW_Q,K=XW_K,V=XW_V"
+    validate_section_math(_section_with_math(normalized))
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
+        r"w^\top x",
+        r"\mathop{\mathrm{argmin}}_w f(w)",
+    ],
+)
+def test_portable_katex_transpose_and_operator_commands_are_accepted(formula: str) -> None:
+    validate_section_math(_section_with_math(formula))
+
+
+def test_generated_math_normalization_combines_multiple_display_wrappers() -> None:
+    formula = "$$a=b$$\n" + r"\[c=d\]"
+
+    normalized = normalize_generated_math(formula)
+
+    assert normalized == r"\begin{gathered}a=b \\ c=d\end{gathered}"
+    validate_section_math(_section_with_math(normalized))
+
+
+def test_generated_math_normalization_combines_multiple_fenced_expressions() -> None:
+    formula = "```latex\na=b\n```\n```math\nc=d\n```"
+
+    normalized = normalize_generated_math(formula)
+
+    assert normalized == r"\begin{gathered}a=b \\ c=d\end{gathered}"
+    validate_section_math(_section_with_math(normalized))
+
+
+def test_generated_math_normalization_marks_plain_formula_labels_as_text() -> None:
+    formula = r"Word probability estimate \hat p(w_i)=\frac{c(w_i)}{N}"
+
+    normalized = normalize_generated_math(formula)
+
+    assert normalized == r"\text{Word probability estimate }\hat p(w_i)=\frac{c(w_i)}{N}"
+    validate_section_math(_section_with_math(normalized))
+
+
+def test_planner_reclassifies_plain_prose_mislabeled_as_math() -> None:
+    document = _planned_document(
+        {
+            "sections": [
+                {
+                    "id": "word-estimates",
+                    "title": "Estimating word probabilities",
+                    "blocks": [
+                        {
+                            "id": "word-estimates-label",
+                            "type": "math",
+                            "text": "Estimating word probabilities",
+                        }
+                    ],
+                }
+            ]
+        },
+        _source_document(),
+    )
+
+    assert document.sections[0].blocks[0].type == "paragraph"
+    assert document.sections[0].blocks[0].text == "Estimating word probabilities"
 
 
 @pytest.mark.parametrize(

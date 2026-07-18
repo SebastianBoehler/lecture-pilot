@@ -13,6 +13,7 @@ from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.course_access import require_course_id_access, require_lecture_id_access
 from lecturepilot.course_canvas_draft_routes import register_course_canvas_draft_routes
+from lecturepilot.course_canvas_repair_routes import register_course_canvas_repair_routes
 from lecturepilot.course_canvas_store import InvalidCanvasDraftError
 from lecturepilot.learner_workspace_reset import (
     LearnerWorkspaceResetInput,
@@ -34,6 +35,11 @@ def register_course_canvas_routes(
     source_document: Callable[[str, str], CanvasDocument],
 ) -> None:
     register_course_canvas_draft_routes(
+        app,
+        course_tenant_id=course_tenant_id,
+        source_document=source_document,
+    )
+    register_course_canvas_repair_routes(
         app,
         course_tenant_id=course_tenant_id,
         source_document=source_document,

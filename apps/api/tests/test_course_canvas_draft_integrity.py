@@ -9,6 +9,7 @@ from lecturepilot.app import create_app
 from lecturepilot.canvas_models import MAX_SOURCE_REF_LENGTH, CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT_VERSION
+from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_planner import _planned_document
 from lecturepilot.course_canvas_store import CourseCanvasStore, InvalidCanvasDraftError
 from lecturepilot.storage_layout import StorageLayout
@@ -169,6 +170,86 @@ def test_invalid_stored_draft_returns_actionable_error(tmp_path: Path) -> None:
     assert publish.json()["detail"] == expected
 
 
+def test_ai_repair_uses_and_persists_failure_guidance_for_the_source_revision(
+    tmp_path: Path,
+) -> None:
+    client = _course_client(tmp_path)
+    planner = _RepairingCoursePlanner()
+    client.app.state.course_planner = planner
+    draft_path = "/admin/courses/draft-integrity/lectures/lecture-01/canvas/draft"
+
+    failed = client.post(
+        draft_path,
+        headers={
+            **professor_headers(),
+            **_client_contract_headers(),
+            "Idempotency-Key": "draft-request-key-repair-failure-0001",
+        },
+    )
+    missing_draft = client.get(draft_path, headers=professor_headers())
+    repaired = client.post(
+        f"{draft_path}/repair",
+        headers={
+            **professor_headers(),
+            **_client_contract_headers(),
+            "Idempotency-Key": "draft-request-key-repair-success-0001",
+        },
+    )
+    regenerated = client.post(
+        draft_path,
+        headers={
+            **professor_headers(),
+            **_client_contract_headers(),
+            "Idempotency-Key": "draft-request-key-repair-regenerate-0001",
+        },
+    )
+    source_path = (
+        client.app.state.canvas_workspace.layout.course_uploads_dir("draft-integrity")
+        / "Lecture01.tex"
+    )
+    source_path.write_bytes(
+        b"""
+\\title{Draft integrity revised}
+\\begin{frame}{Changed source}
+This revised source evidence changes the lecture fingerprint while remaining valid.
+\\end{frame}
+"""
+    )
+    invalidated = client.post(
+        draft_path,
+        headers={
+            **professor_headers(),
+            **_client_contract_headers(),
+            "Idempotency-Key": "draft-request-key-repair-invalidated-0001",
+        },
+    )
+
+    assert failed.status_code == 503
+    assert failed.headers["X-Generation-Repairable"] == "true"
+    assert missing_draft.status_code == 404
+    assert missing_draft.headers["X-Generation-Repairable"] == "true"
+    assert missing_draft.json()["detail"] == (
+        "Math block risk-equation uses unsupported command \\P."
+    )
+    assert repaired.status_code == 200
+    assert regenerated.status_code == 200
+    assert invalidated.status_code == 503
+    assert planner.repair_contexts == [
+        None,
+        "Math block risk-equation uses unsupported command \\P.",
+        "Math block risk-equation uses unsupported command \\P.",
+        None,
+    ]
+    repair_record = (
+        client.app.state.canvas_workspace.layout.course_root("draft-integrity")
+        / "builder"
+        / "repairs"
+        / "lecture-01.json"
+    )
+    assert repair_record.exists()
+    assert "source_revision" in repair_record.read_text(encoding="utf-8")
+
+
 def _course_client(tmp_path: Path) -> TestClient:
     app = create_app()
     app.state.canvas_workspace = CanvasWorkspace(
@@ -212,6 +293,29 @@ class _InvalidCoursePlanner:
             update={
                 "source_kind": "generated",
                 "source_ref": "s" * (MAX_SOURCE_REF_LENGTH + 1),
+            }
+        )
+
+
+class _RepairingCoursePlanner:
+    def __init__(self) -> None:
+        self.repair_contexts: list[str | None] = []
+
+    async def plan_canvas(
+        self,
+        source_document: CanvasDocument,
+        *,
+        repair_context: str | None = None,
+    ) -> CanvasDocument:
+        self.repair_contexts.append(repair_context)
+        if repair_context is None:
+            raise CanvasGenerationRepairableError(
+                "Math block risk-equation uses unsupported command \\P."
+            )
+        return source_document.model_copy(
+            update={
+                "source_kind": "generated",
+                "source_ref": "Repaired from source evidence",
             }
         )
 

@@ -20,6 +20,18 @@ import { normalizeLectureList } from "./lectureMapping";
 
 export { readApiError } from "./apiError";
 
+export class CanvasDraftLoadError extends Error {
+  readonly repairable: boolean;
+  readonly status: number;
+
+  constructor(message: string, status: number, repairable = false) {
+    super(message);
+    this.name = "CanvasDraftLoadError";
+    this.status = status;
+    this.repairable = repairable;
+  }
+}
+
 export type CanvasCommand = {
   type: "focus_section" | "highlight_span" | "open_artifact" | "append_section" | "update_section";
   section_id?: string | null;
@@ -192,7 +204,13 @@ export async function getDraftLectureCanvas(
     authRequestInit(session),
   );
   const payload = await response.json();
-  if (!response.ok) throw new Error(readApiError(payload, "Canvas draft loading failed."));
+  if (!response.ok) {
+    throw new CanvasDraftLoadError(
+      readApiError(payload, "Canvas draft loading failed."),
+      response.status,
+      response.headers.get("X-Generation-Repairable") === "true",
+    );
+  }
   return payload as CanvasDocument;
 }
 

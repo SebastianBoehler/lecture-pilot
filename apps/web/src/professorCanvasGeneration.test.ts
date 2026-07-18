@@ -5,6 +5,7 @@ import {
   describeCanvasGenerationError,
   generateLectureCanvasDrafts,
 } from "./professorCanvasGeneration";
+import { CanvasDraftRequestError } from "./canvasDraftApi";
 import type { CanvasDocument } from "./types";
 
 const canvas = { id: "lecture-01-canvas" } as CanvasDocument;
@@ -17,6 +18,28 @@ describe("professor canvas generation", () => {
     expect(describeCanvasGenerationError(new Error("Source reference is too long"))).toEqual({
       errorKind: "service",
       message: "Source reference is too long",
+    });
+  });
+
+  it("marks a terminal source or validation failure as repairable", () => {
+    expect(
+      describeCanvasGenerationError(
+        new CanvasDraftRequestError("Math block contains explanatory prose.", true, true),
+      ),
+    ).toEqual({
+      errorKind: "repair",
+      message: "Math block contains explanatory prose.",
+    });
+  });
+
+  it("keeps non-repairable terminal failures as service errors", () => {
+    expect(
+      describeCanvasGenerationError(
+        new CanvasDraftRequestError("Upload does not contain lecture material.", true),
+      ),
+    ).toEqual({
+      errorKind: "service",
+      message: "Upload does not contain lecture material.",
     });
   });
 

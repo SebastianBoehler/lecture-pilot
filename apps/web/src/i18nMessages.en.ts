@@ -512,7 +512,11 @@ export const enMessages = {
   "builder.generate.progress": "Lecture generation progress",
   "builder.generate.retry": "Retry",
   "builder.generate.retryLecture": "Retry {lecture}",
+  "builder.generate.repair": "Repair with AI",
+  "builder.generate.repairLecture": "Repair {lecture} with AI",
   "builder.generate.error.network": "LecturePilot could not reach the API. Retry this lecture.",
+  "builder.generate.error.repair":
+    "Draft failed source or format checks: {message} AI repair checks the affected source and remembers the validated correction for this source version.",
   "builder.generate.error.service": "Generation failed: {message}",
   "builder.generate.error.unknown": "No error details were returned.",
   "builder.generate.regenerate": "Regenerate draft canvas",

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
+from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_math import validate_document_math
-from lecturepilot.providers import ProviderConfigurationError
 
 
 MIN_PLANNED_SECTIONS = 5
@@ -18,12 +18,12 @@ def validate_planned_document(document: CanvasDocument, source_document: CanvasD
     section_count = len(document.sections)
     min_sections, max_sections = planned_section_bounds(source_document)
     if section_count < min_sections:
-        raise ProviderConfigurationError(
+        raise CanvasGenerationRepairableError(
             f"Course planner returned {section_count} sections; "
             f"at least {min_sections} are required for this lecture."
         )
     if section_count > max_sections:
-        raise ProviderConfigurationError(
+        raise CanvasGenerationRepairableError(
             f"Course planner returned {section_count} sections; "
             f"at most {max_sections} are allowed for this lecture."
         )
@@ -31,7 +31,7 @@ def validate_planned_document(document: CanvasDocument, source_document: CanvasD
     thin_sections = [section.title for section in document.sections if _teaching_units(section) < 4]
     if thin_sections:
         names = ", ".join(thin_sections[:3])
-        raise ProviderConfigurationError(
+        raise CanvasGenerationRepairableError(
             f"Canvas sections need at least 4 teaching blocks: {names}."
         )
     short_sections = [
@@ -39,24 +39,28 @@ def validate_planned_document(document: CanvasDocument, source_document: CanvasD
     ]
     if short_sections:
         names = ", ".join(short_sections[:3])
-        raise ProviderConfigurationError(f"Canvas sections need more explanatory detail: {names}.")
+        raise CanvasGenerationRepairableError(
+            f"Canvas sections need more explanatory detail: {names}."
+        )
     if missing_refs := [section.title for section in document.sections if not section.source_ref]:
         names = ", ".join(missing_refs[:3])
-        raise ProviderConfigurationError(f"Canvas sections need source references: {names}.")
+        raise CanvasGenerationRepairableError(f"Canvas sections need source references: {names}.")
     required_practice, required_quizzes = planned_assessment_requirements(section_count)
     if practice_count(document) < required_practice:
-        raise ProviderConfigurationError(
+        raise CanvasGenerationRepairableError(
             f"Planned canvas needs assessment blocks in at least {required_practice} sections."
         )
     if quiz_count(document) < required_quizzes:
-        raise ProviderConfigurationError(
+        raise CanvasGenerationRepairableError(
             f"Planned canvas needs at least {required_quizzes} retrieval quizzes."
         )
     if not any(block.type == "quiz" for block in document.sections[-1].blocks):
-        raise ProviderConfigurationError("Planned canvas needs a final-section retrieval quiz.")
+        raise CanvasGenerationRepairableError(
+            "Planned canvas needs a final-section retrieval quiz."
+        )
     mirrored = section_ids(document) & section_ids(source_document)
     if len(mirrored) > max(3, section_count // 2):
-        raise ProviderConfigurationError(
+        raise CanvasGenerationRepairableError(
             "Course planner mirrored too many extracted slide section ids."
         )
 

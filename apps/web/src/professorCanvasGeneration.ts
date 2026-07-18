@@ -6,7 +6,7 @@ const CANVAS_DRAFT_RETRY_DELAYS_MS = [1500, 3500];
 const CANVAS_DRAFT_WORKER_STAGGER_MS = 400;
 
 export type CanvasGenerationStatus = "pending" | "generating" | "ready" | "error";
-export type CanvasGenerationErrorKind = "network" | "service";
+export type CanvasGenerationErrorKind = "network" | "repair" | "service";
 
 export type CanvasGenerationProgress = {
   lectureId: string;
@@ -44,7 +44,11 @@ export function describeCanvasGenerationError(error: unknown): {
     (/failed to fetch/i.test(message) ||
       /network ?error/i.test(message) ||
       /load failed/i.test(message));
-  return isNetworkFailure ? { errorKind: "network" } : { errorKind: "service", message };
+  if (isNetworkFailure) return { errorKind: "network" };
+  if (error instanceof CanvasDraftRequestError && error.terminalGeneration && error.repairable) {
+    return { errorKind: "repair", message };
+  }
+  return { errorKind: "service", message };
 }
 
 function shouldRetryCanvasDraft(error: unknown) {

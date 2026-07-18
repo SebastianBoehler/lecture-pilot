@@ -139,6 +139,7 @@ async def _execute(
             actor_user_id=actor_user_id,
             request_key=request_key,
             error_code=_error_code(exc),
+            error_detail=_error_detail(exc),
         )
         raise
     finally:
@@ -225,3 +226,7 @@ def _error_code(exc: Exception) -> str:
     name = type(exc).__name__
     safe = re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
     return safe[:80] or "generation_failed"
+
+
+def _error_detail(exc: Exception) -> str:
+    return str(exc).strip()[:1_000] or "Canvas generation failed."

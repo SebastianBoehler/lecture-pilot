@@ -308,6 +308,9 @@ describe("Professor course builder", () => {
     expect(await screen.findByText(/2 tutor workspaces published/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/published lecture workspaces/i)).toHaveTextContent("Lecture 01");
     expect(screen.getByLabelText(/published lecture workspaces/i)).toHaveTextContent("Lecture 02");
+    await user.click(screen.getByRole("button", { name: /^course performance$/i }));
+    expect(await screen.findByText(/2 published lectures/i)).toBeInTheDocument();
+    expect(screen.queryByText(/no published course workspace yet/i)).not.toBeInTheDocument();
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining("/admin/courses/demo-ml-course/lectures/lecture-01/canvas/publish"),

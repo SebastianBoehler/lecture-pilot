@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
-from lecturepilot.providers import ProviderConfigurationError
+from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 
 
 _PORTABLE_KATEX_COMMANDS = frozenset(
@@ -21,10 +21,10 @@ _PORTABLE_KATEX_COMMANDS = frozenset(
     textrm textsf texttt
     cfrac dfrac frac sqrt tfrac dbinom tbinom
     coprod iint iiint int oint prod sum bigcap bigcup bigodot bigoplus bigotimes bigsqcup biguplus
-    lim liminf limsup max min sup inf limits nolimits
+    lim liminf limsup max min sup inf limits nolimits mathop
     Pr arg cos cosh cot coth csc deg det dim exp gcd hom ker lg ln log sec sin sinh tan tanh
     arccos arcsin arctan
-    partial nabla ell hbar imath jmath infty emptyset varnothing Re Im wp aleph
+    partial nabla ell hbar imath jmath infty emptyset varnothing Re Im wp aleph top bot
     approx asymp cong equiv ge geq geqslant gt le leq leqslant lt neq ne propto sim simeq
     subset subseteq supset supseteq sqsubseteq sqsupseteq in ni notin mid parallel perp models
     prec preceq succ succeq
@@ -66,21 +66,115 @@ _ALLOWED_ENVIRONMENTS = frozenset(
         "vmatrix",
     }
 )
-_TEXT_ARGUMENT_RE = re.compile(r"\\(?:operatorname|text|textrm|textsf|texttt)\*?\{[^{}]*\}")
+_TEXT_ARGUMENT_RE = re.compile(
+    r"\\(?:operatorname|text|textrm|textsf|texttt|mathrm|mathsf|mathtt|mathit)\*?\{[^{}]*\}"
+)
 _PLAIN_WORD_RE = re.compile(r"(?<!\\)\b[A-Za-z]{3,}\b")
+_LEADING_LABEL_RE = re.compile(
+    r"^(?P<label>[A-Za-z][A-Za-z0-9 ,.'’()/-]*[A-Za-z][ :]\s*)"
+    r"(?P<formula>(?:\\[A-Za-z]+|[A-Za-z]\s*[_^(]).*)$",
+    re.DOTALL,
+)
+_SOURCE_SHORTHANDS = (
+    (re.compile(r"\\P\b"), r"\\Pr"),
+    (re.compile(r"\\K\b"), "K"),
+    (re.compile(r"\\Q\b"), "Q"),
+    (re.compile(r"\\V\b"), "V"),
+)
+_GENERATED_MATH_WRAPPERS = (
+    re.compile(
+        r"^```(?:math|latex)?\s*(?P<formula>(?:(?!```).)*)\s*```$",
+        re.DOTALL | re.IGNORECASE,
+    ),
+    re.compile(
+        r"^~~~(?:math|latex)?\s*(?P<formula>(?:(?!~~~).)*)\s*~~~$",
+        re.DOTALL | re.IGNORECASE,
+    ),
+    re.compile(r"^\$\$(?P<formula>.*?)\$\$$", re.DOTALL),
+    re.compile(r"^\$(?P<formula>.*?)\$$", re.DOTALL),
+    re.compile(r"^\\\[(?P<formula>.*?)\\\]$", re.DOTALL),
+    re.compile(r"^\\\((?P<formula>.*?)\\\)$", re.DOTALL),
+)
+_DISPLAY_SEGMENT_RE = re.compile(
+    r"\s*(?:```(?:math|latex)?\s*(?P<fence>.*?)\s*```|"
+    r"~~~(?:math|latex)?\s*(?P<tilde>.*?)\s*~~~|"
+    r"\$\$(?P<dollar>.*?)\$\$|\\\[(?P<bracket>.*?)\\\])\s*",
+    re.DOTALL | re.IGNORECASE,
+)
 
 
 def generated_math_instructions() -> str:
     return (
         "For every math block, return only one self-contained display expression as raw LaTeX "
         "from the portable KaTeX command subset. Do not add Markdown fences, dollar delimiters, "
-        "document environments, preamble commands, or source-defined macros. Rewrite source "
-        "shorthands with standard commands, for example \\mathbb{N} for a number set and "
+        "document environments, preamble commands, or source-defined macros. "
+        "Prefer copying an equation from the provided source math evidence instead of inventing "
+        "or algebraically rewriting it. Rewrite source shorthands with standard commands, for "
+        "example \\mathbb{N} for a number set and "
         "\\operatorname{loss} for a named operator. Put definitions, labels, and explanatory prose "
         "in adjacent paragraph or callout blocks; short in-equation labels may use \\text{...}. "
         "Keep a single equation as one expression. For a multi-line derivation, use "
         "\\begin{aligned} ... \\\\ ... \\end{aligned} inside the math block."
     )
+
+
+def normalize_generated_math(value: str) -> str:
+    """Apply unambiguous display-math repairs before strict validation."""
+    formula = value.strip()
+    for wrapper in _GENERATED_MATH_WRAPPERS:
+        if match := wrapper.fullmatch(formula):
+            formula = match.group("formula").strip()
+            break
+    else:
+        formula = _combine_display_segments(formula)
+    for pattern, replacement in _SOURCE_SHORTHANDS:
+        formula = pattern.sub(replacement, formula)
+    match = _LEADING_LABEL_RE.match(formula)
+    if not match or not _looks_like_expression(match.group("formula")):
+        return formula
+    label = match.group("label").replace("{", r"\{").replace("}", r"\}")
+    return rf"\text{{{label}}}{match.group('formula')}"
+
+
+def _combine_display_segments(value: str) -> str:
+    """Join a model response made solely of display-delimited expressions."""
+    matches = list(_DISPLAY_SEGMENT_RE.finditer(value))
+    if len(matches) < 2:
+        return value
+    cursor = 0
+    formulas: list[str] = []
+    for match in matches:
+        if value[cursor : match.start()].strip():
+            return value
+        formulas.append(
+            (
+                match.group("fence")
+                or match.group("tilde")
+                or match.group("dollar")
+                or match.group("bracket")
+                or ""
+            ).strip()
+        )
+        cursor = match.end()
+    if value[cursor:].strip() or any(not formula for formula in formulas):
+        return value
+    joined = r" \\ ".join(formulas)
+    return rf"\begin{{gathered}}{joined}\end{{gathered}}"
+
+
+def normalize_generated_math_block(value: str) -> tuple[str, str]:
+    """Normalize model math and demote plain prose that was assigned the wrong block type."""
+    formula = normalize_generated_math(value)
+    block_type = (
+        "paragraph"
+        if _contains_plain_prose(formula) and not _looks_like_expression(formula)
+        else "math"
+    )
+    return block_type, formula
+
+
+def _looks_like_expression(value: str) -> bool:
+    return bool(re.search(r"\\[A-Za-z]+|[=_^]|[A-Za-z]\s*\(", value))
 
 
 def validate_document_math(document: CanvasDocument) -> None:
@@ -94,7 +188,9 @@ def validate_section_math(section: CanvasSection) -> None:
             continue
         error = math_block_error(block.text or "")
         if error:
-            raise ProviderConfigurationError(f"Math block {block.id} in {section.title} {error}")
+            raise CanvasGenerationRepairableError(
+                f"Math block {block.id} in {section.title} {error}"
+            )
 
 
 def math_block_error(value: str) -> str | None:

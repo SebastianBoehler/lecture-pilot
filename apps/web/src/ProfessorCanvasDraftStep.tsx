@@ -47,7 +47,11 @@ export function ProfessorCanvasDraftStep({
     generationProgress.length === 0 || generationProgress.every((item) => item.status === "ready");
   return (
     <section className="flow-card">
-      <StepHeader number="04" title={t("builder.generate.title")} done={hasDraft} />
+      <StepHeader
+        number="04"
+        title={t("builder.generate.title")}
+        done={hasDraft && allDraftsReady}
+      />
       <button
         className={hasDraft ? undefined : "primary-action"}
         disabled={!canGenerate || isGenerating}
@@ -137,11 +141,12 @@ function GenerationProgressList({
     >
       {progress.map((item) => {
         const lectureLabel = item.lectureId.replace("lecture-", "Lecture ");
+        const canRepair = item.errorKind === "repair";
         const message =
           item.status === "error"
             ? item.errorKind === "network"
               ? t("builder.generate.error.network")
-              : t("builder.generate.error.service", {
+              : t(canRepair ? "builder.generate.error.repair" : "builder.generate.error.service", {
                   message: item.message ?? t("builder.generate.error.unknown"),
                 })
             : item.message;
@@ -151,12 +156,15 @@ function GenerationProgressList({
             <strong>{item.status}</strong>
             {item.status === "error" ? (
               <button
-                aria-label={t("builder.generate.retryLecture", { lecture: lectureLabel })}
+                aria-label={t(
+                  canRepair ? "builder.generate.repairLecture" : "builder.generate.retryLecture",
+                  { lecture: lectureLabel },
+                )}
                 disabled={isGenerating}
                 type="button"
                 onClick={() => onRetry(item.lectureId)}
               >
-                {t("builder.generate.retry")}
+                {t(canRepair ? "builder.generate.repair" : "builder.generate.retry")}
               </button>
             ) : null}
             {message ? <small>{message}</small> : null}

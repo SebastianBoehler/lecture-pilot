@@ -4,7 +4,8 @@ from typing import Protocol
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_text_normalizer import clean_canvas_items, clean_canvas_text
-from lecturepilot.course_canvas_math import validate_section_math
+from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
+from lecturepilot.course_canvas_math import normalize_generated_math_block, validate_section_math
 from lecturepilot.course_canvas_section_prompt import section_messages as _section_messages
 from lecturepilot.course_canvas_source_ref import planned_source_ref
 from lecturepilot.course_canvas_validation import planned_section_bounds, source_topic_sections
@@ -41,7 +42,7 @@ async def plan_sections_individually(
             )
         )
     if not sections:
-        raise ProviderConfigurationError("Section planner returned no usable sections.")
+        raise CanvasGenerationRepairableError("Section planner returned no usable sections.")
     return source_document.model_copy(
         update={
             "source_kind": "generated",
@@ -68,7 +69,7 @@ async def _plan_section(
         except ProviderConfigurationError as exc:
             last_error = exc
             messages = [*messages, {"role": "user", "content": f"Repair the section: {exc}"}]
-    raise last_error or ProviderConfigurationError("Section planner returned invalid JSON.")
+    raise last_error or CanvasGenerationRepairableError("Section planner returned invalid JSON.")
 
 
 def _read_section_payload(
@@ -82,7 +83,7 @@ def _read_section_payload(
     )
     blocks = _read_blocks(payload.get("blocks"), section_id, allowed_assets)
     if not blocks:
-        raise ProviderConfigurationError(f"{source_section.id} has no usable blocks.")
+        raise CanvasGenerationRepairableError(f"{source_section.id} has no usable blocks.")
     source_ref = str(payload.get("source_ref") or source_section.source_ref or "source evidence")
     section = CanvasSection(
         id=section_id,
@@ -177,6 +178,7 @@ def _read_block(
     block_type: str,
     allowed_assets: dict[str, str | None],
 ) -> CanvasBlock:
+    raw_text = clean_canvas_text(raw_block.get("text") or raw_block.get("content"))
     if block_type == "list":
         raw_items = _block_items(raw_block)
         return CanvasBlock(
@@ -210,13 +212,15 @@ def _read_block(
         return CanvasBlock(
             id=block_id,
             type=block_type,
-            text=_trim(clean_canvas_text(raw_block.get("text") or raw_block.get("content")), 2400),
+            text=_trim(raw_text, 2400),
             caption=str(raw_block.get("caption") or raw_block.get("title") or "")[:500] or None,
         )
+    if block_type == "math":
+        block_type, raw_text = normalize_generated_math_block(raw_text)
     return CanvasBlock(
         id=block_id,
         type=block_type,
-        text=_trim(clean_canvas_text(raw_block.get("text") or raw_block.get("content")), 2400),
+        text=_trim(raw_text, 2400),
     )
 
 
