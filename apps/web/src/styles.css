@@ -40,6 +40,7 @@
 @import "./outline.css";
 @import "./canvas-blocks.css";
 @import "./canvas-learning-blocks.css";
+@import "./source-evidence.css";
 @import "./sources.css";
 
 .route-loading {

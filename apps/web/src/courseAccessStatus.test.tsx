@@ -31,7 +31,7 @@ describe("course access status", () => {
     expect(datetimeLocalValue(publicationAt)).toBe("2026-07-18T09:00");
   });
 
-  it("shows authoritative content, audience, exact date, and relative countdown", () => {
+  it("shows audience, exact date, and relative countdown in one compact status", () => {
     renderWithI18n(
       <ProfessorLectureAccessStatus
         now={now}
@@ -50,10 +50,7 @@ describe("course access status", () => {
       />,
     );
 
-    expect(
-      screen.getByText("Published").closest(".created-lecture-access-status"),
-    ).toHaveTextContent("Published · Course participants");
+    expect(screen.getByLabelText("Course participants")).toHaveTextContent("Course");
     expect(screen.getByText(/Available 18 Jul 2026, 09:00 · in 4 days/)).toBeInTheDocument();
-    expect(screen.getByText("Custom access")).toBeInTheDocument();
   });
 });

@@ -40,9 +40,7 @@ describe("professor course access management", () => {
     );
 
     expect(await screen.findByText(/Default access: Course participants/)).toBeInTheDocument();
-    expect(
-      screen.getByText("Published").closest(".created-lecture-access-status"),
-    ).toHaveTextContent("Published · Course participants");
+    expect(screen.getByLabelText("Course participants")).toBeInTheDocument();
     expect(screen.getByText(/Available 18 Jul 2026, 02:00/)).toBeInTheDocument();
 
     await user.click(
@@ -66,9 +64,7 @@ describe("professor course access management", () => {
     expect(
       await screen.findByText("Default access saved for Machine Learning."),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText("Published").closest(".created-lecture-access-status"),
-    ).toHaveTextContent("Published · Instructors only");
+    expect(screen.getByLabelText("Instructors only")).toBeInTheDocument();
     expect(screen.getByText("Hidden from students")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Manage access for Introduction" }));

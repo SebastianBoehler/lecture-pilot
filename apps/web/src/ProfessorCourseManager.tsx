@@ -123,8 +123,8 @@ export function ProfessorCourseManager({
                         <span className="created-lecture-number">{lecture.number}</span>
                         <span className="created-lecture-copy">
                           <span className="created-lecture-title">{lecture.title}</span>
-                          <ProfessorLectureAccessStatus summary={accessSummary} />
                         </span>
+                        <ProfessorLectureAccessStatus summary={accessSummary} />
                         <span className="created-lecture-actions">
                           {accessSummary.content_ready ? (
                             <button

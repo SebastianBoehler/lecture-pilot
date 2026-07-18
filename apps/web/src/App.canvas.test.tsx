@@ -218,7 +218,9 @@ describe("LecturePilot canvas interactions", () => {
     const bayesSection = screen.getByRole("region", {
       name: /bayes formula and conditional probability/i,
     });
-    const sourceFooter = within(bayesSection).getByText("Sources").closest("footer");
+    const sourceFooter = within(bayesSection)
+      .getByText("Evidence", { selector: ".source-heading" })
+      .closest("footer");
     expect(sourceFooter).toHaveTextContent(/Lecture03-eng\.tex/);
     expect(sourceFooter).toHaveTextContent(/frames 6, 7, 8, 9/);
     expect(
@@ -363,17 +365,13 @@ describe("LecturePilot canvas interactions", () => {
     const decisionSection = screen.getByRole("region", {
       name: /decision making under uncertainty/i,
     });
-    await user.click(
-      within(decisionSection).getByRole("button", { name: /Ch3\/spam-DALL-E\.jpg/i }),
-    );
+    await user.click(within(decisionSection).getByRole("button", { name: /spam-DALL-E\.jpg/i }));
 
     const filePanel = screen.getByRole("complementary", { name: /file workspace panel/i });
     expect(
       within(filePanel).getByRole("heading", { name: /workspace files/i }),
     ).toBeInTheDocument();
-    expect(
-      within(filePanel).getByRole("img", { name: /Ch3\/spam-DALL-E\.jpg/i }),
-    ).toBeInTheDocument();
+    expect(within(filePanel).getByRole("img", { name: /spam-DALL-E\.jpg/i })).toBeInTheDocument();
     expect(
       within(filePanel).getByRole("button", { name: /open spam-DALL-E\.jpg/i }),
     ).toHaveAttribute("aria-pressed", "true");
