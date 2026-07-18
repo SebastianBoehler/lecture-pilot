@@ -4,7 +4,7 @@ from collections.abc import Callable
 
 from fastapi import FastAPI
 
-from lecturepilot.coaching_progress import CoachingProgressStore
+from lecturepilot.coaching_progress import CoachingProgressStore, CoachingTurnEvent
 from lecturepilot.learning_gates import gate_spec_for_lecture
 from lecturepilot.models import AgentTurnInput, AgentTurnResult
 from lecturepilot.observability import Observability
@@ -51,16 +51,16 @@ def persist_coaching_turn(
     result: AgentTurnResult,
     activity: Callable[[str], None],
     observability: Observability,
-) -> None:
+) -> CoachingTurnEvent | None:
     if result.quality_gate is None or turn.scaffold_policy is None:
-        return
+        return None
     activity("save coaching progress")
     with observability.tool_span(
         "write_coaching_progress",
         gate_id=result.quality_gate.gate_id,
         support_profile=turn.scaffold_policy.profile,
     ):
-        CoachingProgressStore(app.state.canvas_workspace.layout).record_turn(
+        return CoachingProgressStore(app.state.canvas_workspace.layout).record_turn(
             user_id=turn.user_id,
             course_id=turn.course_id,
             lecture_id=turn.lecture_id,

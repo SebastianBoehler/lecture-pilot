@@ -246,16 +246,16 @@ def _persist_agent_turn_result(
                 user_id=turn.user_id,
                 decision=result.quality_gate,
             )
-            analytics_store = app_analytics_store(app)
-            if analytics_store is not None:
+            coaching_event = persist_coaching_turn(app, turn, result, activity, observability)
+            if (analytics_store := app_analytics_store(app)) is not None:
                 analytics_store.record_quality_gate(
                     course_id=turn.course_id,
                     lecture_id=turn.lecture_id,
                     user_id=turn.user_id,
                     attendance=turn.attendance,
                     decision=result.quality_gate,
+                    coaching_event=coaching_event,
                 )
-    persist_coaching_turn(app, turn, result, activity, observability)
     return result
 
 

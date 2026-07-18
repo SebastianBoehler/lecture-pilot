@@ -151,6 +151,13 @@ def test_quality_gate_turns_are_recorded_in_analytics(tmp_path: Path) -> None:
     assert gate["status_counts"] == {"passed": 1}
     assert gate["attendance_split"] == {"present": 1}
     assert gate["unique_learners"] == 1
+    assert gate["independent_attempts"] == 1
+    assert gate["independent_passes"] == 1
+    assert gate["supported_attempts"] == 0
+    assert gate["transfer_attempts"] == 0
+    assert gate["independent_transfer_passes"] == 0
+    assert gate["assistance_level_counts"] == {"none": 1}
+    assert gate["evidence_counts"] == {"posterior": 1, "risk": 1}
 
 
 def _client(tmp_path: Path) -> TestClient:
@@ -234,5 +241,6 @@ class _GateHarness:
                 gate_id="risk-gate",
                 status=QualityGateStatus.PASSED,
                 reason="Student connected posterior and risk.",
+                evidence_ids=["posterior", "risk"],
             ),
         )

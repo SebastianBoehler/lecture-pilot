@@ -209,8 +209,25 @@ def _quality_gate_schema() -> dict[str, Any]:
             "status": {"type": "string", "enum": ["passed", "needs_evidence", "not_assessed"]},
             "reason": {"type": "string"},
             "next_prompt": _nullable_string("Concrete next evidence request."),
+            "evidence_ids": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Required evidence labels explicitly demonstrated by the learner.",
+            },
+            "missing_evidence_ids": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Required evidence labels still missing from the learner response.",
+            },
         },
-        "required": ["gate_id", "status", "reason", "next_prompt"],
+        "required": [
+            "gate_id",
+            "status",
+            "reason",
+            "next_prompt",
+            "evidence_ids",
+            "missing_evidence_ids",
+        ],
     }
 
 

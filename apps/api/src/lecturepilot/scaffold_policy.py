@@ -18,6 +18,7 @@ ScaffoldProfile = Literal["worked_example", "faded_example", "self_explanation",
 ProcessLabel = Literal[
     "shallow_lookup", "scaffolded_reasoning", "self_explanation", "transfer_attempt"
 ]
+AssistanceLevel = Literal["none", "prompt", "cue", "faded_example", "worked_step"]
 
 
 class TutorScaffoldPolicy(BaseModel):
@@ -25,6 +26,7 @@ class TutorScaffoldPolicy(BaseModel):
     learner_stage: LearnerStage
     profile: ScaffoldProfile
     process_label: ProcessLabel
+    assistance_level: AssistanceLevel
     tutor_move: str = Field(min_length=1, max_length=500)
     forbidden: str = Field(min_length=1, max_length=500)
 
@@ -40,6 +42,7 @@ def scaffold_policy_for_revision_task(
             learner_stage="novice",
             profile="worked_example",
             process_label="scaffolded_reasoning",
+            assistance_level="worked_step",
             tutor_move=(
                 "Show one source-grounded worked example step, explain why it works, "
                 "then ask the learner to complete the next step."
@@ -52,6 +55,7 @@ def scaffold_policy_for_revision_task(
             learner_stage="late_intermediate",
             profile="transfer",
             process_label="transfer_attempt",
+            assistance_level="none",
             tutor_move=(
                 "Ask a transfer question with minimal hints and provide corrective feedback "
                 "only after the learner attempts it."
@@ -64,6 +68,7 @@ def scaffold_policy_for_revision_task(
             learner_stage="early_intermediate",
             profile="self_explanation",
             process_label="self_explanation",
+            assistance_level="prompt",
             tutor_move="Prompt the learner to compare their answer with the rubric and explain the missing principle.",
             forbidden="Do not rewrite the whole answer before the learner self-explains the gap.",
         )
@@ -72,6 +77,7 @@ def scaffold_policy_for_revision_task(
         learner_stage="early_intermediate",
         profile="faded_example",
         process_label="self_explanation",
+        assistance_level="faded_example",
         tutor_move="Give the first reasoning step and leave the next step for the learner to complete.",
         forbidden="Do not reveal the final answer before the learner fills the faded step.",
     )
@@ -91,6 +97,7 @@ def scaffold_policy_for_tutor_turn(
             learner_stage="late_intermediate",
             profile="transfer",
             process_label="transfer_attempt",
+            assistance_level="none",
             tutor_move=(
                 "Ask one new application question without hints and wait for the learner's "
                 "independent attempt before giving corrective feedback."
@@ -107,6 +114,7 @@ def scaffold_policy_for_tutor_turn(
             learner_stage="early_intermediate",
             profile="faded_example",
             process_label="self_explanation",
+            assistance_level="cue",
             tutor_move="Give one targeted cue or first reasoning step, then leave the next step to the learner.",
             forbidden="Do not reveal the final answer before the learner completes the faded step.",
         )
@@ -117,6 +125,7 @@ def scaffold_policy_for_tutor_turn(
         learner_stage="early_intermediate",
         profile="self_explanation",
         process_label="self_explanation",
+        assistance_level="prompt",
         tutor_move=(
             "Ask for the learner's own attempt, prediction, or approach, then respond to the "
             "specific evidence they provide."
@@ -131,6 +140,7 @@ def _worked_step_policy(*, trigger: ScaffoldTrigger) -> TutorScaffoldPolicy:
         learner_stage="novice",
         profile="worked_example",
         process_label="scaffolded_reasoning",
+        assistance_level="worked_step",
         tutor_move=(
             "Model one source-grounded reasoning step, explain the judgment behind it, "
             "then hand the next step to the learner."
@@ -145,6 +155,7 @@ def _transfer_policy() -> TutorScaffoldPolicy:
         learner_stage="late_intermediate",
         profile="transfer",
         process_label="transfer_attempt",
+        assistance_level="none",
         tutor_move="Ask one unfamiliar transfer question with no initial hints.",
         forbidden="Do not reteach the concept before the learner attempts the transfer.",
     )

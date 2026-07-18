@@ -74,12 +74,52 @@ function QuizInsight({ quiz }: { quiz: AnalyticsQuizMetric }) {
 
 function GateInsight({ gate }: { gate: AnalyticsGateMetric }) {
   const { t } = useI18n();
+  const assessedAttempts = gate.independent_attempts + gate.supported_attempts;
   return (
     <div className="analytics-insight-grid">
       <section>
         <h3>{t("analytics.gateOutcomes")}</h3>
         <MetricBars values={splitBars(gate.status_counts)} />
       </section>
+      <section>
+        <h3>{t("analytics.independentLearning")}</h3>
+        <MetricBars
+          values={[
+            {
+              label: t("analytics.independentAttempts"),
+              value: gate.independent_attempts,
+              total: assessedAttempts,
+            },
+            {
+              label: t("analytics.independentPasses"),
+              value: gate.independent_passes,
+              total: gate.independent_attempts,
+              tone: "correct",
+            },
+            {
+              label: t("analytics.supportedAttempts"),
+              value: gate.supported_attempts,
+              total: assessedAttempts,
+            },
+            {
+              label: t("analytics.independentTransferPasses"),
+              value: gate.independent_transfer_passes,
+              total: gate.transfer_attempts,
+              tone: "correct",
+            },
+          ]}
+        />
+      </section>
+      <section>
+        <h3>{t("analytics.scaffoldsUsed")}</h3>
+        <MetricBars values={splitBars(gate.assistance_level_counts)} />
+      </section>
+      {Object.keys(gate.evidence_counts).length ? (
+        <section>
+          <h3>{t("analytics.demonstratedEvidence")}</h3>
+          <MetricBars values={splitBars(gate.evidence_counts)} />
+        </section>
+      ) : null}
       <section>
         <h3>{t("analytics.attendanceSplit")}</h3>
         <MetricBars values={splitBars(gate.attendance_split)} />

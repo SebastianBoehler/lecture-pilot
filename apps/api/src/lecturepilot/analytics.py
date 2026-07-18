@@ -10,6 +10,8 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from lecturepilot.canvas_models import CanvasBlock
+from lecturepilot.coaching_analytics import AnalyticsGateMetric, gate_metrics
+from lecturepilot.coaching_progress import CoachingTurnEvent
 from lecturepilot.learning_map import LearningMap
 from lecturepilot.models import AttendanceStatus, QualityGateDecision
 from lecturepilot.professor_preview import is_professor_preview_user_id
@@ -52,15 +54,6 @@ class AnalyticsQuizMetric(BaseModel):
     latest_activity: str | None
     attendance_split: dict[str, int]
     options: list[AnalyticsOptionMetric]
-
-
-class AnalyticsGateMetric(BaseModel):
-    gate_id: str
-    total_events: int
-    unique_learners: int
-    latest_activity: str | None
-    status_counts: dict[str, int]
-    attendance_split: dict[str, int]
 
 
 class LectureAnalyticsSummary(BaseModel):
@@ -137,9 +130,13 @@ class AnalyticsStore:
         user_id: str,
         attendance: AttendanceStatus,
         decision: QualityGateDecision,
+        coaching_event: CoachingTurnEvent | None = None,
     ) -> None:
         if is_professor_preview_user_id(user_id):
             return
+        learning_evidence = (
+            coaching_event.model_dump(mode="json") if coaching_event is not None else {}
+        )
         self._append(
             course_id,
             lecture_id,
@@ -152,6 +149,13 @@ class AnalyticsStore:
                 "gate_id": decision.gate_id,
                 "status": decision.status.value,
                 "reason": decision.reason,
+                "assistance_level": learning_evidence.get("assistance_level", "unknown"),
+                "support_before_attempt": learning_evidence.get("support_before_attempt", False),
+                "independent_attempt": learning_evidence.get("independent_attempt", False),
+                "transfer_attempt": learning_evidence.get("transfer_attempt", False),
+                "support_profile": learning_evidence.get("support_profile"),
+                "process_label": learning_evidence.get("process_label"),
+                "evidence_ids": decision.evidence_ids,
                 "created_at": _now(),
             },
         )
@@ -163,7 +167,7 @@ class AnalyticsStore:
             lecture_id=lecture_id,
             total_events=len(events),
             quizzes=_quiz_metrics(events),
-            gates=_gate_metrics(events),
+            gates=gate_metrics(events),
         )
 
     def _append(self, course_id: str, lecture_id: str, payload: dict) -> None:
@@ -247,28 +251,6 @@ def _option_metrics(events: list[dict], latest: dict) -> list[AnalyticsOptionMet
             )
         )
     return metrics
-
-
-def _gate_metrics(events: list[dict]) -> list[AnalyticsGateMetric]:
-    grouped: dict[str, list[dict]] = defaultdict(list)
-    for event in events:
-        if event.get("type") == "gate_decision":
-            grouped[str(event.get("gate_id") or "gate")].append(event)
-    return [_gate_metric(gate_id, items) for gate_id, items in sorted(grouped.items())]
-
-
-def _gate_metric(gate_id: str, events: list[dict]) -> AnalyticsGateMetric:
-    latest = max(events, key=lambda item: str(item.get("created_at") or ""))
-    return AnalyticsGateMetric(
-        gate_id=gate_id,
-        total_events=len(events),
-        unique_learners=len(
-            {str(event.get("user_key")) for event in events if event.get("user_key")}
-        ),
-        latest_activity=str(latest.get("created_at") or "") or None,
-        status_counts=_count_values(events, "status"),
-        attendance_split=_count_values(events, "attendance"),
-    )
 
 
 def _count_values(events: list[dict], key: Literal["attendance", "status"]) -> dict[str, int]:

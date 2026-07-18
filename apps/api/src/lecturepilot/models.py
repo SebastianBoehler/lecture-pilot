@@ -13,19 +13,17 @@ from lecturepilot.lecture_access_models import (
     LectureReleaseStatus,
     PublicationMode,
 )
-from lecturepilot.scaffold_policy import TutorScaffoldPolicy
+from lecturepilot.quality_gate_models import (
+    QualityGateDecision,
+    QualityGateStatus as QualityGateStatus,
+)
+from lecturepilot.scaffold_policy import AssistanceLevel, TutorScaffoldPolicy
 
 
 class AttendanceStatus(StrEnum):
     PRESENT = "present"
     ABSENT = "absent"
     UNKNOWN = "unknown"
-
-
-class QualityGateStatus(StrEnum):
-    PASSED = "passed"
-    NEEDS_EVIDENCE = "needs_evidence"
-    NOT_ASSESSED = "not_assessed"
 
 
 class ProviderCapability(StrEnum):
@@ -224,6 +222,10 @@ class AgentCoachingContext(BaseModel):
     needs_evidence_count: int = Field(default=0, ge=0)
     last_gate_status: Literal["passed", "needs_evidence", "not_assessed"] | None = None
     delayed_transfer_due: bool = False
+    support_before_attempt: bool = False
+    last_assistance_level: AssistanceLevel = "none"
+    evidence_ids: list[str] = Field(default_factory=list, max_length=40)
+    missing_evidence_ids: list[str] = Field(default_factory=list, max_length=40)
 
 
 class AgentTurnInput(BaseModel):
@@ -277,13 +279,6 @@ class ArtifactCommand(BaseModel):
     type: Literal["summary", "quiz", "code", "diagram"]
     title: str
     payload: dict[str, Any]
-
-
-class QualityGateDecision(BaseModel):
-    gate_id: str = Field(min_length=1, max_length=120)
-    status: QualityGateStatus
-    reason: str = Field(min_length=1, max_length=500)
-    next_prompt: str | None = Field(default=None, max_length=500)
 
 
 class AgentTurnResult(BaseModel):

@@ -35,6 +35,8 @@ def test_first_assessed_turn_is_recorded_as_independent_attempt(tmp_path) -> Non
     assert progress.session_goal == "Explain Model selection and apply it to one unfamiliar case."
     assert progress.turns[0].independent_attempt is True
     assert progress.turns[0].support_profile == "self_explanation"
+    assert progress.turns[0].support_before_attempt is False
+    assert progress.turns[0].assistance_level == "prompt"
 
 
 def test_prior_tutor_turn_prevents_assisted_answer_from_counting_as_independent(tmp_path) -> None:
@@ -73,6 +75,53 @@ def test_prior_tutor_turn_prevents_assisted_answer_from_counting_as_independent(
 
     progress = store.read(user_id="student-1", course_id="course-1", lecture_id="lecture-1")
     assert progress.turns[1].independent_attempt is False
+    assert progress.turns[1].support_before_attempt is True
+
+
+def test_assistance_and_evidence_survive_a_fresh_store_instance(tmp_path) -> None:
+    layout = StorageLayout(tmp_path)
+    store = CoachingProgressStore(layout)
+    context = store.context(
+        user_id="student-1",
+        course_id="course-1",
+        lecture_id="lecture-1",
+        gate_id="gate-1",
+        gate_title="Model selection",
+    )
+    policy = scaffold_policy_for_tutor_turn(
+        attendance="absent",
+        delayed_transfer_due=False,
+        last_gate_status=None,
+        needs_evidence_count=0,
+        prior_assistance=False,
+    )
+    store.record_turn(
+        user_id="student-1",
+        course_id="course-1",
+        lecture_id="lecture-1",
+        context=context,
+        policy=policy,
+        decision=QualityGateDecision(
+            gate_id="gate-1",
+            status=QualityGateStatus.NEEDS_EVIDENCE,
+            reason="The learner connected the data and model but omitted evaluation.",
+            evidence_ids=["data-model-connection"],
+            missing_evidence_ids=["held-out-evaluation"],
+        ),
+    )
+
+    next_context = CoachingProgressStore(layout).context(
+        user_id="student-1",
+        course_id="course-1",
+        lecture_id="lecture-1",
+        gate_id="gate-1",
+        gate_title="Model selection",
+    )
+
+    assert next_context.support_before_attempt is True
+    assert next_context.last_assistance_level == "worked_step"
+    assert next_context.evidence_ids == ["data-model-connection"]
+    assert next_context.missing_evidence_ids == ["held-out-evaluation"]
 
 
 def test_learner_corrected_session_goal_is_used_on_the_next_turn(tmp_path) -> None:
@@ -189,6 +238,8 @@ def test_passing_due_transfer_marks_it_complete_instead_of_rescheduling(tmp_path
     progress = store.read(user_id="student-1", course_id="course-1", lecture_id="lecture-1")
     assert progress.delayed_transfer is not None
     assert progress.delayed_transfer.completed_at is not None
+    assert progress.turns[-1].transfer_attempt is True
+    assert progress.turns[-1].independent_attempt is True
 
 
 def _policy(context: AgentCoachingContext):

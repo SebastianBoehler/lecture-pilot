@@ -13,6 +13,7 @@ def test_scaffolded_guidance_uses_worked_examples() -> None:
     assert policy.learner_stage == "novice"
     assert policy.profile == "worked_example"
     assert policy.process_label == "scaffolded_reasoning"
+    assert policy.assistance_level == "worked_step"
 
 
 def test_standard_wrong_mc_uses_faded_example() -> None:
@@ -23,6 +24,7 @@ def test_standard_wrong_mc_uses_faded_example() -> None:
 
     assert policy.learner_stage == "early_intermediate"
     assert policy.profile == "faded_example"
+    assert policy.assistance_level == "faded_example"
 
 
 def test_standard_open_answer_uses_self_explanation() -> None:
@@ -57,6 +59,7 @@ def test_first_diagnostic_turn_asks_for_self_explanation() -> None:
 
     assert policy.profile == "self_explanation"
     assert policy.trigger == "conceptual"
+    assert policy.assistance_level == "prompt"
     assert "attempt" in policy.tutor_move.lower()
 
 
@@ -83,6 +86,20 @@ def test_repeated_missing_evidence_escalates_support() -> None:
     )
 
     assert policy.profile == "worked_example"
+    assert policy.assistance_level == "worked_step"
+
+
+def test_first_missing_evidence_uses_a_targeted_cue() -> None:
+    policy = scaffold_policy_for_tutor_turn(
+        attendance="present",
+        delayed_transfer_due=False,
+        last_gate_status="needs_evidence",
+        needs_evidence_count=1,
+        prior_assistance=True,
+    )
+
+    assert policy.profile == "faded_example"
+    assert policy.assistance_level == "cue"
 
 
 def test_passed_gate_and_delayed_check_return_agency() -> None:
@@ -102,6 +119,8 @@ def test_passed_gate_and_delayed_check_return_agency() -> None:
     )
 
     assert passed.profile == "transfer"
+    assert passed.assistance_level == "none"
     assert delayed.profile == "transfer"
+    assert delayed.assistance_level == "none"
     assert delayed.trigger == "delayed_transfer"
     assert "without hints" in delayed.tutor_move.lower()

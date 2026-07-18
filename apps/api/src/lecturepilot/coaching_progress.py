@@ -10,7 +10,7 @@ from lecturepilot.models import (
     QualityGateDecision,
     QualityGateStatus,
 )
-from lecturepilot.scaffold_policy import TutorScaffoldPolicy
+from lecturepilot.scaffold_policy import AssistanceLevel, TutorScaffoldPolicy
 from lecturepilot.storage_layout import StorageLayout
 
 TRANSFER_DELAY = timedelta(days=2)
@@ -24,6 +24,11 @@ class CoachingTurnEvent(BaseModel):
     support_profile: str
     process_label: str
     independent_attempt: bool
+    assistance_level: AssistanceLevel = "none"
+    support_before_attempt: bool = False
+    transfer_attempt: bool = False
+    evidence_ids: list[str] = Field(default_factory=list, max_length=40)
+    missing_evidence_ids: list[str] = Field(default_factory=list, max_length=40)
 
 
 class DelayedTransferCheck(BaseModel):
@@ -69,6 +74,7 @@ class CoachingProgressStore:
     ) -> AgentCoachingContext:
         progress = self.read(user_id=user_id, course_id=course_id, lecture_id=lecture_id)
         gate_turns = [turn for turn in progress.turns if turn.gate_id == gate_id]
+        latest_turn = gate_turns[-1] if gate_turns else None
         transfer = progress.delayed_transfer
         current_time = now or datetime.now(UTC)
         transfer_due = False
@@ -86,6 +92,14 @@ class CoachingProgressStore:
             ),
             last_gate_status=gate_turns[-1].gate_status.value if gate_turns else None,
             delayed_transfer_due=transfer_due,
+            support_before_attempt=(
+                latest_turn is not None and latest_turn.assistance_level != "none"
+            ),
+            last_assistance_level=(latest_turn.assistance_level if latest_turn else "none"),
+            evidence_ids=sorted(
+                {evidence_id for turn in gate_turns for evidence_id in turn.evidence_ids}
+            ),
+            missing_evidence_ids=(latest_turn.missing_evidence_ids if latest_turn else []),
         )
 
     def record_turn(
@@ -99,25 +113,30 @@ class CoachingProgressStore:
         decision: QualityGateDecision,
         session_goal: str | None = None,
         now: datetime | None = None,
-    ) -> None:
+    ) -> CoachingTurnEvent:
         current_time = now or datetime.now(UTC)
         created_at = current_time.isoformat()
         progress = self.read(user_id=user_id, course_id=course_id, lecture_id=lecture_id)
         progress.session_goal = (session_goal or context.session_goal).strip()
         progress.goal_proposed = True
-        progress.turns.append(
-            CoachingTurnEvent(
-                created_at=created_at,
-                gate_id=decision.gate_id,
-                gate_status=decision.status,
-                support_profile=policy.profile,
-                process_label=policy.process_label,
-                independent_attempt=(
-                    decision.status != QualityGateStatus.NOT_ASSESSED
-                    and not context.prior_assistance
-                ),
-            )
+        assessed_attempt = decision.status != QualityGateStatus.NOT_ASSESSED
+        assistance_level = (
+            "none" if decision.status == QualityGateStatus.PASSED else policy.assistance_level
         )
+        event = CoachingTurnEvent(
+            created_at=created_at,
+            gate_id=decision.gate_id,
+            gate_status=decision.status,
+            support_profile=policy.profile,
+            process_label=policy.process_label,
+            independent_attempt=assessed_attempt and not context.support_before_attempt,
+            assistance_level=assistance_level,
+            support_before_attempt=context.support_before_attempt,
+            transfer_attempt=context.delayed_transfer_due and assessed_attempt,
+            evidence_ids=decision.evidence_ids,
+            missing_evidence_ids=decision.missing_evidence_ids,
+        )
+        progress.turns.append(event)
         progress.turns = progress.turns[-MAX_TURN_EVENTS:]
         if decision.status == QualityGateStatus.PASSED:
             progress.delayed_transfer = _updated_transfer(
@@ -133,6 +152,7 @@ class CoachingProgressStore:
             lecture_id=lecture_id,
             progress=progress,
         )
+        return event
 
     def _path(self, *, user_id: str, course_id: str, lecture_id: str):
         return self.layout.user_lecture_root(user_id, course_id, lecture_id) / "tutor-state.json"

@@ -49,6 +49,13 @@ function analytics(): LectureAnalyticsSummary {
         unique_learners: 1,
         status_counts: { passed: 1 },
         attendance_split: { present: 1 },
+        independent_attempts: 1,
+        independent_passes: 1,
+        supported_attempts: 0,
+        transfer_attempts: 0,
+        independent_transfer_passes: 0,
+        assistance_level_counts: { none: 1 },
+        evidence_counts: {},
       },
     ],
     learning_map: {

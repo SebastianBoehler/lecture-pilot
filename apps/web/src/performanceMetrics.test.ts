@@ -76,6 +76,13 @@ function analytics() {
         status_counts: { failed: 1, passed: 3 },
         total_events: 4,
         unique_learners: 4,
+        independent_attempts: 2,
+        independent_passes: 2,
+        supported_attempts: 2,
+        transfer_attempts: 1,
+        independent_transfer_passes: 1,
+        assistance_level_counts: { none: 2, prompt: 2 },
+        evidence_counts: {},
       },
     ],
   };
