@@ -103,6 +103,34 @@ def test_simple_asset_macro_arguments_resolve_without_bundling_the_directory(
     ]
 
 
+def test_resolver_includes_custom_class_and_bibtex_support(tmp_path: Path) -> None:
+    root = tmp_path / "uploads"
+    _write(
+        root / "nested/course/main.tex",
+        r"""
+        \documentclass{lecture-notes}
+        \bibliographystyle{course-style}
+        \bibliography{references}
+        """,
+    )
+    _write(root / "lecture-notes.cls", r"\LoadClass{article}")
+    _write(root / "course-style.bst", "ENTRY{}{}{}")
+    _write(root / "references.bib", "@book{source, title={Course source}}")
+
+    inputs = resolve_latex_compiler_inputs(
+        source_root=root,
+        source_index=_index(root),
+        source_path="nested/course/main.tex",
+    )
+
+    assert [item.path for item in inputs] == [
+        "course-style.bst",
+        "lecture-notes.cls",
+        "nested/course/main.tex",
+        "references.bib",
+    ]
+
+
 def _index(root: Path) -> CourseSourceIndex:
     files = []
     for path in sorted(item for item in root.rglob("*") if item.is_file()):

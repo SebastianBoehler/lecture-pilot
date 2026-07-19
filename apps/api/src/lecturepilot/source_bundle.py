@@ -38,6 +38,9 @@ def scan_source_bundle(root: Path) -> list[SourceBundleFile]:
 SOURCE_SUFFIXES = {
     ".tex": "latex",
     ".sty": "latex-support",
+    ".cls": "latex-support",
+    ".bib": "latex-support",
+    ".bst": "latex-support",
     ".md": "markdown",
     ".txt": "text",
     ".csv": "table",

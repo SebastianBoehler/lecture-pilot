@@ -36,6 +36,9 @@ class WorkspacePolicy:
     allowed_course_material_uploads: dict[str, tuple[str, int]] = {
         ".tex": ("latex", 10 * 1024 * 1024),
         ".sty": ("latex-support", 10 * 1024 * 1024),
+        ".cls": ("latex-support", 10 * 1024 * 1024),
+        ".bib": ("latex-support", 10 * 1024 * 1024),
+        ".bst": ("latex-support", 10 * 1024 * 1024),
         ".md": ("markdown", 5 * 1024 * 1024),
         ".txt": ("text", 2 * 1024 * 1024),
         ".csv": ("table", 5 * 1024 * 1024),

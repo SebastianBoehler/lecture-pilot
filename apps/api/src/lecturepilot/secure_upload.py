@@ -174,7 +174,7 @@ def _matches_signature(suffix: str, header: bytes, lowered: bytes) -> bool:
         return b"<svg" in lowered[:2048] and not any(value in lowered for value in forbidden)
     if suffix in {".json", ".ipynb"}:
         return lowered.startswith((b"{", b"[")) and b"\x00" not in header
-    if suffix in {".tex", ".sty", ".md", ".txt", ".csv", ".py"}:
+    if suffix in {".tex", ".sty", ".cls", ".bib", ".bst", ".md", ".txt", ".csv", ".py"}:
         return _looks_like_text(header)
     return False
 
@@ -190,6 +190,9 @@ def _looks_like_text(header: bytes) -> bool:
 _DECLARED_TYPES = {
     ".tex": {"application/x-tex", "text/x-tex", "text/plain"},
     ".sty": {"application/x-tex", "text/x-tex", "text/plain"},
+    ".cls": {"application/x-tex", "text/x-tex", "text/plain"},
+    ".bib": {"application/x-bibtex", "text/plain"},
+    ".bst": {"application/x-bibtex-style", "text/plain"},
     ".md": {"text/markdown", "text/plain"},
     ".txt": {"text/plain"},
     ".csv": {"text/csv", "application/csv", "text/plain"},

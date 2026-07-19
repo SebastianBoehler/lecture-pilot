@@ -10,7 +10,7 @@ from lecturepilot.source_index_models import CourseSourceIndex, IndexedSourceFil
 
 
 _TEXT_KINDS = {"latex", "latex-support"}
-_TEX_EXTENSIONS = (".tex", ".sty")
+_TEX_EXTENSIONS = (".tex", ".sty", ".cls")
 _ASSET_EXTENSIONS = (".pdf", ".png", ".jpg", ".jpeg", ".svg")
 _MAX_TEX_BYTES = 10 * 1024 * 1024
 
@@ -97,6 +97,12 @@ def _tex_dependencies(source: str) -> list[tuple[str, tuple[str, ...]]]:
         dependencies.append((match.group("path"), _TEX_EXTENSIONS))
     for match in _PACKAGE_RE.finditer(source):
         dependencies.extend((name.strip(), (".sty",)) for name in match.group("names").split(","))
+    for match in _CLASS_RE.finditer(source):
+        dependencies.append((match.group("name").strip(), (".cls",)))
+    for match in _BIBLIOGRAPHY_RE.finditer(source):
+        dependencies.extend((name.strip(), (".bib",)) for name in match.group("names").split(","))
+    for match in _BIBLIOGRAPHY_STYLE_RE.finditer(source):
+        dependencies.append((match.group("name").strip(), (".bst",)))
     for match in _THEME_RE.finditer(source):
         prefix = _THEME_PREFIXES[match.group("kind") or ""]
         dependencies.append((f"{prefix}{match.group('name').strip()}", (".sty",)))
@@ -171,6 +177,12 @@ def _strip_comments(source: str) -> str:
 
 _INPUT_RE = re.compile(r"\\(?:input|include|subfile)\s*\{(?P<path>[^{}]+)}")
 _PACKAGE_RE = re.compile(r"\\usepackage(?:\[[^]]*])?\s*\{(?P<names>[^{}]+)}")
+_CLASS_RE = re.compile(
+    r"\\(?:documentclass|LoadClass|LoadClassWithOptions)(?:\[[^]]*])?"
+    r"\s*\{(?P<name>[^{}]+)}"
+)
+_BIBLIOGRAPHY_RE = re.compile(r"\\bibliography\s*\{(?P<names>[^{}]+)}")
+_BIBLIOGRAPHY_STYLE_RE = re.compile(r"\\bibliographystyle\s*\{(?P<name>[^{}]+)}")
 _THEME_RE = re.compile(
     r"\\use(?P<kind>color|font|inner|outer)?theme(?:\[[^]]*])?\s*\{(?P<name>[^{}]+)}"
 )

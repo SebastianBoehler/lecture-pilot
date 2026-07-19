@@ -100,6 +100,27 @@ def test_upload_accepts_latex_style_files(tmp_path: Path) -> None:
     assert response.json()["kind"] == "latex-support"
 
 
+@pytest.mark.parametrize(
+    ("path", "content"),
+    [
+        ("lecture-notes.cls", b"\\ProvidesClass{lecture-notes}\n"),
+        ("references.bib", b"@book{source, title={Course source}}\n"),
+        ("course-style.bst", b"ENTRY{}{}{}\n"),
+    ],
+)
+def test_upload_accepts_latex_support_formats(tmp_path: Path, path: str, content: bytes) -> None:
+    client = _client(tmp_path)
+    response = client.post(
+        "/admin/courses/martius-ml/materials",
+        headers=professor_headers(),
+        data={"path": path},
+        files={"file": (path, content, "text/plain")},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["kind"] == "latex-support"
+
+
 def test_upload_rejects_binary_content_disguised_as_latex(tmp_path: Path) -> None:
     client = _client(tmp_path)
     response = client.post(
