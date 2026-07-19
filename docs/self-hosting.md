@@ -108,9 +108,10 @@ CPU/memory/process limits. Gateway, web, and database use patched derived images
 
 TeX compilation runs in the separate `latex-compiler` service. It receives one bounded source
 archive, has no database or provider credentials, has no external network, forces Beamer handout
-mode, disables shell escape, and returns only a bounded PDF. The API preserves uploaded matching
-PDFs as authoritative and stores compiled PDFs and rendered pages only under the normalized source
-directory.
+mode, and returns only a bounded PDF. The pinned Tectonic runtime uses a build-seeded bundle with
+`--only-cached --untrusted`; it cannot download packages or execute shell commands. The API
+preserves uploaded matching PDFs as authoritative and stores compiled PDFs and rendered pages only
+under the normalized source directory.
 
 ## Storage and recovery
 
