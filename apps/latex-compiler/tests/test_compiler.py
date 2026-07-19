@@ -187,7 +187,7 @@ def test_transcodes_explicit_latin1_sources_for_xetex(tmp_path: Path) -> None:
         tmp_path / "tectonic",
         r"""
 contains_line '\usepackage[utf8]{inputenc}' legacy.tex
-grep -Fq 'Grüße' legacy.tex
+contains_line '\begin{document}Grüße\end{document}' legacy.tex
 out=''
 last=''
 for arg in "$@"; do
