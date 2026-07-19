@@ -5,10 +5,16 @@ from zipfile import ZipFile
 import pytest
 
 from lecturepilot.latex_compilation_client import (
+    COMPILATION_PROTOCOL_VERSION,
     LatexCompilationError,
     compile_latex_deck,
 )
 from lecturepilot.source_index_models import CourseSourceIndex, IndexedSourceFile
+
+
+def test_cache_protocol_identifies_tectonic_engine_and_bundle() -> None:
+    assert "tectonic-0.16.9" in COMPILATION_PROTOCOL_VERSION
+    assert "tlextras-2022.0r0" in COMPILATION_PROTOCOL_VERSION
 
 
 def test_compiler_bundle_contains_tex_dependencies_but_not_video(

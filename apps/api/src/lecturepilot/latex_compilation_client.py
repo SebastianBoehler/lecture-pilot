@@ -15,7 +15,7 @@ from lecturepilot.source_index_models import IndexedSourceFile
 from lecturepilot.storage_layout import safe_id
 
 
-COMPILATION_PROTOCOL_VERSION = "latex-handout-v1"
+COMPILATION_PROTOCOL_VERSION = "tectonic-0.16.9-handout-v2-tlextras-2022.0r0"
 COMPILER_INPUT_KINDS = {
     "code",
     "image",

@@ -1,0 +1,98 @@
+\documentclass[notes=hide,10pt,mathserif,compress,aspectratio=169]{beamer}
+\usepackage{fullpage}
+\usepackage{twoopt}
+\usepackage{ifthen}
+\usepackage{tikz}
+\usepackage{tikzsymbols}
+\usepackage{multimedia}
+\usepackage{graphicx}
+\usepackage{bm}
+\usepackage{dsfont}
+\usepackage{stmaryrd}
+\usepackage{eurosym}
+\usepackage{pifont}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{nicematrix}
+\usepackage{array}
+\usepackage{tagging}
+\usepackage[export]{adjustbox}
+\usepackage{nicefrac}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{framed}
+\usepackage{amsmath}
+\usepackage{mathtools}
+\usepackage{tabularx}
+\usepackage{tabu}
+\usepackage{pbox}
+\usepackage{colortbl}
+\usepackage{numprint}
+\usepackage{pgfplots}
+\usepackage{listings}
+\usepackage{pdfpages}
+\usepackage{xspace}
+\usepackage[thicklines]{cancel}
+\usepackage[ngerman]{babel}
+\usepackage[german=quotes]{csquotes}
+\usetikzlibrary{positioning,shapes,shapes.geometric,arrows.meta,calc,matrix}
+\usefonttheme{structurebold}
+\pgfplotsset{compat=1.18}
+\title{LecturePilot bundle seed}
+\author{LecturePilot}
+\newcommand{\seedstyles}{regular {\itshape italic} {\bfseries bold}
+  {\bfseries\itshape bold italic} {\scshape small caps}}
+\newcommand{\seedfamily}[1]{%
+  {#1\tiny\seedstyles} {#1\scriptsize\seedstyles}
+  {#1\footnotesize\seedstyles} {#1\small\seedstyles}
+  {#1\normalsize\seedstyles} {#1\large\seedstyles}
+  {#1\Large\seedstyles} {#1\LARGE\seedstyles}
+  {#1\huge\seedstyles} {#1\Huge\seedstyles}}
+\newcommand{\seedtfm}[1]{{\font\seedfont=#1\seedfont ABC}}
+
+\begin{document}
+\begin{frame}
+  \titlepage
+\end{frame}
+\begin{frame}[fragile]{LecturePilot bundle seed}
+  \seedfamily{\sffamily}
+  \seedfamily{\rmfamily}
+  \seedfamily{\ttfamily}
+  {\tiny $100+x\in\mathbb{R}\;\Box$} {\scriptsize $100+x\in\mathbb{R}\;\Box$}
+  {\footnotesize $100+x\in\mathbb{R}\;\Box$} {\small $100+x\in\mathbb{R}\;\Box$}
+  {\normalsize $100+x\in\mathbb{R}\;\Box$} {\large $100+x\in\mathbb{R}\;\Box$}
+  {\Large $100+x\in\mathbb{R}\;\Box$} {\LARGE $100+x\in\mathbb{R}\;\Box$}
+  {\huge $100+x\in\mathbb{R}\;\Box$} {\Huge $100+x\in\mathbb{R}\;\Box$}
+  $\displaystyle \sum_{i_j=1}^{100} \frac{x_{y_z}}{1+\mathbb{R}_{k_\ell}}$
+  \seedtfm{cmr5}\seedtfm{cmr6}\seedtfm{cmr7}\seedtfm{cmr8}\seedtfm{cmr9}
+  \seedtfm{cmr10}\seedtfm{cmr12}\seedtfm{cmr17}
+  \seedtfm{cmmi5}\seedtfm{cmmi6}\seedtfm{cmmi7}\seedtfm{cmmi8}
+  \seedtfm{cmmi9}\seedtfm{cmmi10}\seedtfm{cmmi12}
+  \seedtfm{cmsy5}\seedtfm{cmsy6}\seedtfm{cmsy7}\seedtfm{cmsy8}
+  \seedtfm{cmsy9}\seedtfm{cmsy10}
+  \seedtfm{cmbx5}\seedtfm{cmbx6}\seedtfm{cmbx7}\seedtfm{cmbx8}
+  \seedtfm{cmbx9}\seedtfm{cmbx10}\seedtfm{cmbx12}
+  \seedtfm{cmmib5}\seedtfm{cmmib6}\seedtfm{cmmib7}\seedtfm{cmmib8}
+  \seedtfm{cmmib9}\seedtfm{cmmib10}
+  \seedtfm{cmbsy5}\seedtfm{cmbsy6}\seedtfm{cmbsy7}\seedtfm{cmbsy8}
+  \seedtfm{cmbsy9}\seedtfm{cmbsy10}
+  \seedtfm{cmex7}\seedtfm{cmex8}\seedtfm{cmex9}\seedtfm{cmex10}
+  \seedtfm{cmss8}\seedtfm{cmss9}\seedtfm{cmss10}\seedtfm{cmss12}
+  \seedtfm{cmss17}
+  \seedtfm{cmtt8}\seedtfm{cmtt9}\seedtfm{cmtt10}\seedtfm{cmtt12}
+  $\bm{x} \in \llbracket 0,1 \rrbracket$, $\mathds{1}_{A}$,
+  \nicefrac{1}{2}, \euro, \ding{51}
+  \begin{tikzpicture}
+    \begin{axis}[width=4cm,height=3cm]
+      \addplot coordinates {(0,0) (1,1)};
+    \end{axis}
+  \end{tikzpicture}
+  \begin{algorithmic}
+    \State $x \gets 1$
+  \end{algorithmic}
+  \lstset{language=Python}
+  \begin{lstlisting}
+  x = 1
+  \end{lstlisting}
+\end{frame}
+\end{document}

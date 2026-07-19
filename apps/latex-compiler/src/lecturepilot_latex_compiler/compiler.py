@@ -31,16 +31,22 @@ from lecturepilot_latex_compiler.limits import (
     COMPILE_WALL_SECONDS,
     MAX_OUTPUT_BYTES,
 )
+from lecturepilot_latex_compiler.source_compatibility import prepare_source_tree
 from lecturepilot_latex_compiler.tex_normalization import (
+    normalize_legacy_input_encodings,
     replace_optional_visual_dependencies,
 )
+
+
+TECTONIC_BUNDLE = "https://data1.fullyjustified.net/tlextras-2022.0r0.tar"
+TECTONIC_CACHE_DIR = "/var/cache/tectonic"
 
 
 def compile_archive(
     archive_path: Path,
     main_path: str,
     *,
-    pdflatex_bin: str = "/usr/bin/pdflatex",
+    tectonic_bin: str = "/usr/local/bin/tectonic",
     timeout_seconds: float = COMPILE_WALL_SECONDS,
 ) -> bytes:
     with tempfile.TemporaryDirectory(prefix="lecturepilot-latex-") as temporary:
@@ -49,14 +55,15 @@ def compile_archive(
         output_root = job_root / "output"
         extract_source_archive(archive_path, source_root)
         replace_optional_visual_dependencies(source_root)
+        normalize_legacy_input_encodings(source_root)
         main = _resolve_main(source_root, main_path)
+        prepare_source_tree(source_root, main)
         output_root.mkdir(mode=0o700)
         wrapper = _write_handout_wrapper(main)
-        pdf_path = _run_pdflatex(
+        pdf_path = _run_tectonic(
             wrapper=wrapper,
-            source_root=source_root,
             output_root=output_root,
-            pdflatex_bin=pdflatex_bin,
+            tectonic_bin=tectonic_bin,
             timeout_seconds=timeout_seconds,
         )
         return _read_pdf(pdf_path)
@@ -83,6 +90,8 @@ def _write_handout_wrapper(main: Path) -> Path:
     wrapper = main.parent / f"lecturepilot-{secrets.token_hex(12)}.tex"
     wrapper.write_text(
         "\\PassOptionsToClass{handout}{beamer}\n"
+        "\\AtBeginDocument{\\ifcsname movie\\endcsname"
+        "\\renewcommand{\\movie}[3][]{#2}\\fi}\n"
         f"\\input{{\\detokenize{{{main.name}}}}}\n",
         encoding="utf-8",
     )
@@ -90,23 +99,23 @@ def _write_handout_wrapper(main: Path) -> Path:
     return wrapper
 
 
-def _run_pdflatex(
+def _run_tectonic(
     *,
     wrapper: Path,
-    source_root: Path,
     output_root: Path,
-    pdflatex_bin: str,
+    tectonic_bin: str,
     timeout_seconds: float,
 ) -> Path:
     command = [
-        pdflatex_bin,
-        "-no-shell-escape",
-        "-interaction=nonstopmode",
-        "-halt-on-error",
-        "-file-line-error",
-        "-recorder",
-        "-jobname=lecturepilot-slides",
-        f"-output-directory={output_root}",
+        tectonic_bin,
+        "-X",
+        "compile",
+        "--only-cached",
+        "--untrusted",
+        "--bundle",
+        TECTONIC_BUNDLE,
+        "--outdir",
+        str(output_root),
         wrapper.name,
     ]
     process_command, process_limits = _process_command(command)
@@ -114,51 +123,46 @@ def _run_pdflatex(
     transcript_path = output_root / "compiler-output.txt"
     try:
         with transcript_path.open("wb") as transcript:
-            for _ in range(2):
-                remaining = deadline - time.monotonic()
-                if remaining <= 0:
-                    raise CompilerServiceError(
-                        "compile_timeout", COMPILE_TIMEOUT, status=504
-                    )
-                process = subprocess.Popen(
-                    process_command,
-                    cwd=wrapper.parent,
-                    env=_compiler_environment(source_root, output_root),
-                    stdin=subprocess.DEVNULL,
-                    stdout=transcript,
-                    stderr=subprocess.STDOUT,
-                    start_new_session=True,
-                    preexec_fn=process_limits,
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise CompilerServiceError(
+                    "compile_timeout", COMPILE_TIMEOUT, status=504
                 )
-                try:
-                    return_code = process.wait(timeout=remaining)
-                except subprocess.TimeoutExpired as exc:
-                    _kill_process_group(process)
-                    raise CompilerServiceError(
-                        "compile_timeout", COMPILE_TIMEOUT, status=504
-                    ) from exc
-                if return_code != 0:
-                    raise CompilerServiceError("compile_failed", COMPILE_FAILED)
+            process = subprocess.Popen(
+                process_command,
+                cwd=wrapper.parent,
+                env=_compiler_environment(output_root),
+                stdin=subprocess.DEVNULL,
+                stdout=transcript,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+                preexec_fn=process_limits,
+            )
+            try:
+                return_code = process.wait(timeout=remaining)
+            except subprocess.TimeoutExpired as exc:
+                _kill_process_group(process)
+                raise CompilerServiceError(
+                    "compile_timeout", COMPILE_TIMEOUT, status=504
+                ) from exc
+            if return_code != 0:
+                raise CompilerServiceError("compile_failed", COMPILE_FAILED)
     except FileNotFoundError as exc:
         raise CompilerServiceError(
             "compiler_unavailable", COMPILE_FAILED, status=503
         ) from exc
     except (OSError, subprocess.SubprocessError) as exc:
         raise CompilerServiceError("compile_failed", COMPILE_FAILED) from exc
-    return output_root / "lecturepilot-slides.pdf"
+    return output_root / wrapper.with_suffix(".pdf").name
 
 
-def _compiler_environment(source_root: Path, output_root: Path) -> dict[str, str]:
+def _compiler_environment(output_root: Path) -> dict[str, str]:
     return {
         "HOME": str(output_root),
         "LANG": "C.UTF-8",
         "PATH": "/usr/bin:/bin",
         "SHELL": "/bin/false",
-        "TEXINPUTS": f".:{source_root}//:",
-        "TEXMFOUTPUT": str(output_root),
-        "openin_any": "p",
-        "openout_any": "p",
-        "shell_escape": "0",
+        "TECTONIC_CACHE_DIR": TECTONIC_CACHE_DIR,
     }
 
 

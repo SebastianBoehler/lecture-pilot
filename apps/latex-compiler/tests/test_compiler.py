@@ -19,7 +19,7 @@ def _archive(path: Path, *, main_path: str = "slides.tex") -> Path:
     return path
 
 
-def _fake_pdflatex(path: Path, body: str) -> Path:
+def _fake_tectonic(path: Path, body: str) -> Path:
     path.write_text(
         f"""#!/bin/sh
 set -eu
@@ -39,49 +39,52 @@ contains_line() {{
     return path
 
 
-def test_forces_handout_and_disables_shell_escape(tmp_path: Path) -> None:
-    fake = _fake_pdflatex(
-        tmp_path / "pdflatex",
+def test_forces_handout_and_uses_offline_cache(tmp_path: Path) -> None:
+    fake = _fake_tectonic(
+        tmp_path / "tectonic",
         """
-case " $* " in *" -no-shell-escape "*) ;; *) exit 7 ;; esac
-test "$openin_any" = p
-test "$openout_any" = p
-test "$shell_escape" = 0
+case " $* " in *" --only-cached "*) ;; *) exit 7 ;; esac
+test "$TECTONIC_CACHE_DIR" = /var/cache/tectonic
 out=''
 last=''
 for arg in "$@"; do
     last=$arg
-    case "$arg" in -output-directory=*) out=${arg#*=} ;; esac
+    case "$arg" in --outdir) next_is_out=1 ;; *)
+        if test "${next_is_out:-0}" = 1; then out=$arg; next_is_out=0; fi ;;
+    esac
 done
 contains_line '\\PassOptionsToClass{handout}{beamer}' "$last"
-printf '%%PDF-1.7\nvalid' > "$out/lecturepilot-slides.pdf"
+printf '%%PDF-1.7\nvalid' > "$out/${last%.tex}.pdf"
 """,
     )
 
     result = compile_archive(
         _archive(tmp_path / "source.zip"),
         "slides.tex",
-        pdflatex_bin=str(fake),
+        tectonic_bin=str(fake),
     )
 
     assert result.startswith(b"%PDF-1.7")
 
 
-def test_nested_main_uses_its_directory_and_root_texinputs(tmp_path: Path) -> None:
-    fake = _fake_pdflatex(
-        tmp_path / "pdflatex",
+def test_nested_main_can_read_support_files_from_its_directory_and_root(
+    tmp_path: Path,
+) -> None:
+    fake = _fake_tectonic(
+        tmp_path / "tectonic",
         r"""
 test -f slides.tex
-test -f ../shared.tex
-case "$TEXINPUTS" in */source//:) ;; *) exit 8 ;; esac
+test -f shared.tex
 out=''
 last=''
 for arg in "$@"; do
     last=$arg
-    case "$arg" in -output-directory=*) out=${arg#*=} ;; esac
+    case "$arg" in --outdir) next_is_out=1 ;; *)
+        if test "${next_is_out:-0}" = 1; then out=$arg; next_is_out=0; fi ;;
+    esac
 done
 contains_line '\input{\detokenize{slides.tex}}' "$last"
-printf '%%PDF-1.7\nvalid' > "$out/lecturepilot-slides.pdf"
+printf '%%PDF-1.7\nvalid' > "$out/${last%.tex}.pdf"
 """,
     )
     archive_path = _archive(
@@ -94,15 +97,52 @@ printf '%%PDF-1.7\nvalid' > "$out/lecturepilot-slides.pdf"
     result = compile_archive(
         archive_path,
         "schedule/slides.tex",
-        pdflatex_bin=str(fake),
+        tectonic_bin=str(fake),
+    )
+
+    assert result.startswith(b"%PDF-1.7")
+
+
+def test_adds_case_correct_aliases_for_professor_asset_references(
+    tmp_path: Path,
+) -> None:
+    fake = _fake_tectonic(
+        tmp_path / "tectonic",
+        r"""
+test -f images/deepnets/initialization_xavier.png
+out=''
+last=''
+for arg in "$@"; do
+    last=$arg
+    case "$arg" in --outdir) next_is_out=1 ;; *)
+        if test "${next_is_out:-0}" = 1; then out=$arg; next_is_out=0; fi ;;
+    esac
+done
+printf '%%PDF-1.7\nvalid' > "$out/${last%.tex}.pdf"
+""",
+    )
+    archive_path = tmp_path / "source.zip"
+    with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr(
+            "slides.tex",
+            "\\documentclass{beamer}\n"
+            "\\graphicspath{{images/deepnets/}}\n"
+            "\\begin{document}\\includegraphics{initialization_xavier}\\end{document}",
+        )
+        archive.writestr("images/deepnets/initialization_Xavier.png", b"image")
+
+    result = compile_archive(
+        archive_path,
+        "slides.tex",
+        tectonic_bin=str(fake),
     )
 
     assert result.startswith(b"%PDF-1.7")
 
 
 def test_replaces_optional_visual_packages_with_standard_latex(tmp_path: Path) -> None:
-    fake = _fake_pdflatex(
-        tmp_path / "pdflatex",
+    fake = _fake_tectonic(
+        tmp_path / "tectonic",
         r"""
 contains_line '\providecommand{\mathds}[1]{\mathbf{#1}}' slides.tex
 contains_line '\providecommand{\epsdice}[1]{#1}' slides.tex
@@ -111,10 +151,14 @@ if contains_line '\usepackage{dsfont}' slides.tex; then exit 9; fi
 if contains_line '\usepackage{epsdice}' slides.tex; then exit 10; fi
 if contains_line '\usepackage[normalem]{ulem}' slides.tex; then exit 11; fi
 out=''
+last=''
 for arg in "$@"; do
-    case "$arg" in -output-directory=*) out=${arg#*=} ;; esac
+    last=$arg
+    case "$arg" in --outdir) next_is_out=1 ;; *)
+        if test "${next_is_out:-0}" = 1; then out=$arg; next_is_out=0; fi ;;
+    esac
 done
-printf '%%PDF-1.7\nvalid' > "$out/lecturepilot-slides.pdf"
+printf '%%PDF-1.7\nvalid' > "$out/${last%.tex}.pdf"
 """,
     )
     archive_path = _archive(tmp_path / "source.zip")
@@ -132,21 +176,55 @@ printf '%%PDF-1.7\nvalid' > "$out/lecturepilot-slides.pdf"
     result = compile_archive(
         archive_path,
         "slides.tex",
-        pdflatex_bin=str(fake),
+        tectonic_bin=str(fake),
+    )
+
+    assert result.startswith(b"%PDF-1.7")
+
+
+def test_transcodes_explicit_latin1_sources_for_xetex(tmp_path: Path) -> None:
+    fake = _fake_tectonic(
+        tmp_path / "tectonic",
+        r"""
+contains_line '\usepackage[utf8]{inputenc}' legacy.tex
+grep -Fq 'Grüße' legacy.tex
+out=''
+last=''
+for arg in "$@"; do
+    last=$arg
+    case "$arg" in --outdir) next_is_out=1 ;; *)
+        if test "${next_is_out:-0}" = 1; then out=$arg; next_is_out=0; fi ;;
+    esac
+done
+printf '%%PDF-1.7\nvalid' > "$out/${last%.tex}.pdf"
+""",
+    )
+    archive_path = tmp_path / "source.zip"
+    with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr(
+            "legacy.tex",
+            b"\\documentclass{article}\n\\usepackage[latin1]{inputenc}\n"
+            b"\\begin{document}Gr\xfc\xdfe\\end{document}\n",
+        )
+
+    result = compile_archive(
+        archive_path,
+        "legacy.tex",
+        tectonic_bin=str(fake),
     )
 
     assert result.startswith(b"%PDF-1.7")
 
 
 def test_timeout_kills_compile_promptly(tmp_path: Path) -> None:
-    fake = _fake_pdflatex(tmp_path / "pdflatex", "while :; do :; done")
+    fake = _fake_tectonic(tmp_path / "tectonic", "while :; do :; done")
     started = time.monotonic()
 
     with pytest.raises(CompilerServiceError) as error:
         compile_archive(
             _archive(tmp_path / "source.zip"),
             "slides.tex",
-            pdflatex_bin=str(fake),
+            tectonic_bin=str(fake),
             timeout_seconds=0.2,
         )
 
@@ -155,15 +233,15 @@ def test_timeout_kills_compile_promptly(tmp_path: Path) -> None:
 
 
 def test_does_not_expose_compiler_output(tmp_path: Path) -> None:
-    fake = _fake_pdflatex(
-        tmp_path / "pdflatex", "echo 'private course text' >&2; exit 1"
+    fake = _fake_tectonic(
+        tmp_path / "tectonic", "echo 'private course text' >&2; exit 1"
     )
 
     with pytest.raises(CompilerServiceError) as error:
         compile_archive(
             _archive(tmp_path / "source.zip"),
             "slides.tex",
-            pdflatex_bin=str(fake),
+            tectonic_bin=str(fake),
         )
 
     assert error.value.code == "compile_failed"
