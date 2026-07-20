@@ -53,3 +53,35 @@ def test_learning_map_derives_ordered_concepts_checkpoints_and_quizzes() -> None
     assert learning_map.nodes[1].quiz_ids == ["risk-quiz"]
     assert learning_map.gates[0].prompt == "Explain the learning setup."
     assert [gate.id for gate in learning_map.gates].count("bayes-decision-check") == 1
+
+
+def test_learning_map_bounds_generated_checkpoint_titles() -> None:
+    long_caption = "Confirm the learner can explain the mechanism. " * 6
+    document = CanvasDocument(
+        id="course-lecture-01",
+        course_id="course",
+        lecture_id="lecture-01",
+        title="Lecture 01",
+        source_kind="generated",
+        source_ref="source.md",
+        workspace_path="/tmp/index.md",
+        sections=[
+            CanvasSection(
+                id="introduction",
+                title="Introduction",
+                blocks=[
+                    CanvasBlock(
+                        id="intro-check",
+                        type="checkpoint",
+                        caption=long_caption,
+                        text="Explain the evidence in your own words. " * 40,
+                    )
+                ],
+            )
+        ],
+    )
+
+    learning_map = build_learning_map(document)
+
+    assert learning_map.gates[0].title == long_caption[:200]
+    assert len(learning_map.gates[0].prompt) == 1000

@@ -95,8 +95,8 @@ def _checkpoint_gate(
     return LearningMapGate(
         id=block.id,
         concept_id=section.id,
-        title=block.caption or section.title,
-        prompt=block.text or "",
+        title=(block.caption or section.title)[:200],
+        prompt=(block.text or "")[:1000],
         evidence_required="Student explains the checkpoint evidence in their own words.",
         section_id=section.id,
         source_ref=section.source_ref or document.source_ref,
