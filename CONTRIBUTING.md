@@ -22,3 +22,5 @@ npm run verify:full
 
 `verify:api` and `verify:web` run the same component checks as CI. The full API
 suite requires the disposable PostgreSQL database described in `README.md`.
+`docs:check`, included in the fast and web checks, verifies that local links in
+every tracked Markdown file still resolve.
