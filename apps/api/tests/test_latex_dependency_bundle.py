@@ -103,6 +103,26 @@ def test_simple_asset_macro_arguments_resolve_without_bundling_the_directory(
     ]
 
 
+def test_decimal_asset_basename_still_resolves_a_real_graphic_extension(tmp_path: Path) -> None:
+    root = tmp_path / "uploads"
+    _write(
+        root / "Lecture08.tex",
+        r"\graphicspath{{images/clustering/}}\ig{synthetic_blobs_0.35_data}",
+    )
+    _write(root / "images/clustering/synthetic_blobs_0.35_data.pdf", "%PDF-figure")
+
+    inputs = resolve_latex_compiler_inputs(
+        source_root=root,
+        source_index=_index(root),
+        source_path="Lecture08.tex",
+    )
+
+    assert [item.path for item in inputs] == [
+        "images/clustering/synthetic_blobs_0.35_data.pdf",
+        "Lecture08.tex",
+    ]
+
+
 def test_resolver_includes_custom_class_and_bibtex_support(tmp_path: Path) -> None:
     root = tmp_path / "uploads"
     _write(

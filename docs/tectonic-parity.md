@@ -21,18 +21,21 @@ The Tectonic image is 70.0% smaller, but this cold service-level corpus run is
 about 52% slower at the median. The migration is therefore a distribution,
 reproducibility, and attack-surface win, not a compile-speed win.
 
+A follow-up integration run on 2026-07-20 fixed dependency lookup for graphic
+basenames containing decimal-like suffixes such as `plot_0.35_data`. Tectonic
+then compiled 25/27 documents, including the two Lecture 08 variants that had
+previously been bundled without their real `.pdf` extensions. The remaining
+two failures were already present in the TeX Live baseline and are invalid or
+missing-dependency professor sources rather than engine regressions.
+
 All 23 successful outputs have the same page count. Extracted-text similarity
 is at least 99.29% per document, with a 99.91% median. Manual inspection of
 representative lecture and tutorial pages found no missing content or visible
 layout regression. Their mean grayscale raster deltas were 0.06%, 0.79%, and
 0.70%; PDF bytes are not expected to be identical across pdfTeX and XeTeX.
 
-The same four source roots fail on both engines: two reference missing figure
-assets, one contains a malformed custom-macro argument, and one references a
-missing local TeX input.
-
-These are professor-source issues rather than migration regressions. A matching
-uploaded PDF remains authoritative for such courses.
+The baseline's other two failures reference invalid or missing local course
+dependencies. A matching uploaded PDF remains authoritative for such courses.
 
 ## Format and edge-case matrix
 

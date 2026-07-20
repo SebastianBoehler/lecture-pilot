@@ -134,15 +134,19 @@ def _resolve(
     candidates = [base / reference for base in bases]
     candidates.extend(base / search / reference for search in search_paths for base in bases)
     for candidate in dict.fromkeys(_normalized(path) for path in candidates):
-        variants = (
-            (candidate,)
-            if candidate.suffix
-            else tuple(candidate.with_suffix(extension) for extension in extensions)
-        )
+        variants = _candidate_variants(candidate, extensions)
         for variant in variants:
             if item := indexed.get(variant.as_posix().casefold()):
                 return item
     return None
+
+
+def _candidate_variants(
+    candidate: PurePosixPath, extensions: tuple[str, ...]
+) -> tuple[PurePosixPath, ...]:
+    if not extensions or candidate.suffix.lower() in extensions:
+        return (candidate,)
+    return tuple(PurePosixPath(f"{candidate.as_posix()}{extension}") for extension in extensions)
 
 
 def _safe_reference(value: str) -> PurePosixPath | None:
