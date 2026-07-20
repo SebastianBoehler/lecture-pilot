@@ -115,7 +115,7 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
                     document = avoid_mirrored_section_ids(
                         planned_document(payload, source_document), source_document
                     )
-                    document = enrich_learning_document(document)
+                    document = enrich_learning_document(document, output_language=output_language)
                     document = interleave_original_slides(document, source_document)
                     document = with_payload_warnings(document, payload)
                     validate_planned_document(document, source_document)
@@ -150,7 +150,9 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
                         output_language=output_language,
                     )
                     sectionwise = avoid_mirrored_section_ids(sectionwise, source_document)
-                    sectionwise = enrich_learning_document(sectionwise)
+                    sectionwise = enrich_learning_document(
+                        sectionwise, output_language=output_language
+                    )
                     sectionwise = interleave_original_slides(sectionwise, source_document)
                     validate_planned_document(sectionwise, source_document)
                     span.set_outputs(

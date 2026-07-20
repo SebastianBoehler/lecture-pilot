@@ -5,6 +5,8 @@ import pytest
 
 from auth_helpers import professor_headers
 from canvas_workspace_fixtures import published_course_canvas
+from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.course_canvas_enrichment import enrich_learning_document
 from lecturepilot.course_canvas_prompt import planner_messages, repair_message
 from lecturepilot.course_canvas_section_prompt import section_messages
 from lecturepilot.course_builder_source import course_builder_source_document
@@ -122,6 +124,50 @@ def test_generation_contract_writes_mixed_source_evidence_in_selected_language()
         assert "German" in prompt
         assert "evidence in any language" in prompt
         assert "formulas, code, identifiers, file paths, and source citations" in prompt
+
+
+def test_deterministic_canvas_enrichment_uses_selected_language() -> None:
+    document = CanvasDocument(
+        id="bilingual-course-lecture-01",
+        course_id="bilingual-course",
+        lecture_id="lecture-01",
+        title="Einfuehrung",
+        source_kind="generated",
+        source_ref="Lecture01.tex and Lecture01-eng.tex",
+        workspace_path="canvas/index.md",
+        sections=[
+            CanvasSection(
+                id="classification",
+                title="Klassifikation",
+                source_ref="Lecture01.tex frames 1-2",
+                blocks=[
+                    CanvasBlock(
+                        id="classification-intro",
+                        type="paragraph",
+                        text="Eine Klassifikation ordnet Eingaben diskreten Klassen zu.",
+                    )
+                ],
+            )
+        ],
+    )
+
+    enriched = enrich_learning_document(document, output_language="de")
+    blocks = enriched.sections[0].blocks
+    rendered = "\n".join(
+        [
+            *(block.text or "" for block in blocks),
+            *(item for block in blocks for item in block.items),
+            *(block.caption or "" for block in blocks),
+        ]
+    )
+
+    assert "Warum das wichtig ist" in rendered
+    assert "Lernzielkontrolle" in rendered
+    assert "Abrufübung" in rendered
+    assert "Why this matters" not in rendered
+    assert "Quality gate" not in rendered
+    assert "Retrieval check" not in rendered
+    assert "Identify the relevant variable" not in rendered
 
 
 async def test_section_repair_keeps_the_selected_course_language(

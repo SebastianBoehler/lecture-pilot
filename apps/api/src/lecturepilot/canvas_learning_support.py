@@ -24,14 +24,27 @@ _LEGACY_STUDY_ITEMS = [
 ]
 
 
-def support_check_prompt(section_title: str) -> str:
+def support_check_prompt(section_title: str, output_language: str = "en") -> str:
+    if _is_german(output_language):
+        return (
+            f"Prüfe dich selbst: Was würdest du in **{section_title}** zuerst berechnen "
+            "oder vergleichen, und warum? Nenne ein konkretes Beispiel aus diesem Abschnitt "
+            "und eine Einschränkung oder einen möglichen Fehlerfall."
+        )
     return (
         f"Check yourself: In **{section_title}**, what would you compute or compare first, and why? "
         "Answer with one concrete example from this section and one limitation or failure mode."
     )
 
 
-def support_why_text(section_title: str, anchor: str) -> str:
+def support_why_text(section_title: str, anchor: str, output_language: str = "en") -> str:
+    if _is_german(output_language):
+        return (
+            f"**Warum das wichtig ist.** {section_title} ist relevant, wenn das Konzept eine "
+            f"Entscheidung, Schätzung oder einen Modellvergleich verändert. Konzentriere dich auf "
+            f"{anchor}. Frage, welche Größe oder welcher Fall geschätzt wird, welche Evidenz das "
+            "Ergebnis verändert und welche Handlung sich bei einem anderen Ergebnis ändern würde."
+        )
     return (
         f"**Why this matters.** {section_title} is useful when the concept changes a decision, "
         f"estimate, or model comparison. Focus on {anchor}. Ask what quantity or case is being "
@@ -39,12 +52,24 @@ def support_why_text(section_title: str, anchor: str) -> str:
     )
 
 
-def support_study_items() -> list[str]:
+def support_study_items(output_language: str = "en") -> list[str]:
+    if _is_german(output_language):
+        return [
+            "Identifiziere vor der Interpretation die relevante Variable, Formel, Metrik oder den relevanten Fall.",
+            "Trenne Beobachtungen aus den Daten von Entscheidungen bei der Modellierung.",
+            "Beschreibe, wie sich die Schlussfolgerung bei einem anderen Schwellenwert, anderen Kosten oder einer anderen Beobachtung ändern würde.",
+        ]
     return [
         "Identify the relevant variable, formula, metric, or case before interpreting it.",
         "Separate what is observed in the data from what is chosen by the modeler.",
         "Describe how the conclusion would change under a different threshold, cost, or observation.",
     ]
+
+
+def _is_german(output_language: str) -> bool:
+    if output_language not in {"de", "en"}:
+        raise ValueError("Canvas language must be 'de' or 'en'.")
+    return output_language == "de"
 
 
 def normalize_learning_support(document: CanvasDocument) -> CanvasDocument:
