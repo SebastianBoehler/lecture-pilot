@@ -1,179 +1,151 @@
-# Workspace Storage
+# Workspace storage
 
-LecturePilot uses one shared course source/canvas plus private user memories
-and per-lecture learner overlays.
+LecturePilot stores one professor-owned course source/canvas and private
+learner overlays. The default local root is `.lecturepilot/`; production
+Compose mounts the same logical layout at `/app/storage` on a persistent named
+volume.
 
 ```txt
-.lecturepilot/
+<workspace-root>/
   courses/<tenant-id>/<course-id>/
     source/
       uploads/
       normalized/
-      assets/
       source-index.json
-    canvas/
-      lectures/<lecture-id>/
-        index.md
-        sections/*.md
-        assets/
-      media/
+    canvas/lectures/<lecture-id>/
+      index.md
+      sections/*.md
+      assets/
+      publication.json
+      learning-map.json
+    canvas-drafts/lectures/<lecture-id>/latest/
     builder/
-      drafts/
-      review-state.json
+      generations/<lecture-id>/*.json
+      repairs/<lecture-id>.json
+      source-manifests/<lecture-id>.json
+      updates/<update-id>/
+    canvas/media/
+    course.json
 
   users/<hashed-user-id>/
-    profile.json
     memories/
       global.md
       preferences.json
       memory-trace.jsonl
-    courses/<course-id>/lectures/<lecture-id>/
-      attendance.json
-      gates.json
-      tutor-state.json
-      canvas/
-        index.md
-        sections/*.md
-        student/*.md
-        student-assets/*
-      canvas.json
-    courses/<course-id>/memories/
-      course.md
-      memory-trace.jsonl
-
-  previews/professors/<hashed-preview-id>/
-    memories/
     courses/<course-id>/
+      progress.json
+      memories/
+        course.md
+        memory-trace.jsonl
+      lectures/<lecture-id>/
+        attendance.json
+        gates.json
+        tutor-state.json
+        canvas/
+          index.md
+          sections/*.md
+          student/*.md
+          components/*.yaml
+          student-assets/*
+        canvas.json
 
-  cache/
-    pdf-previews/
+  previews/professors/<hashed-preview-id>/...
 ```
 
-The default local workspace root is `.lecturepilot/`. It is gitignored.
-Production can keep this logical layout while storing metadata in Postgres and
-files in S3-compatible object storage such as MinIO.
+The exact set of files is created lazily; absence is normal before a course,
+draft, learner state, or optional feature exists.
 
-## Source Roots
+## Durable storage boundary
 
-Professor material is private. The local demo source root is configured with
-`LECTUREPILOT_COURSE_MATERIAL_ROOT`; when unset, the API still looks for a
-repo-local private folder under `local-course-materials/` for demo use.
+Postgres is authoritative for users, sessions, roles, ownership, enrollments,
+audit events, and quotas. The workspace volume is authoritative for course
+files, generated derivatives, Markdown canvases, generation state, and learner
+overlays. A recovery operation must treat both as one matched unit.
 
-Professor uploads go to:
+Production does not currently use S3-compatible object storage. Protected
+course and learner assets are served through authenticated API routes. An
+object-storage adapter would also require short-lived signed delivery and must
+preserve all capability, ownership, and path checks.
 
-```txt
-.lecturepilot/courses/<tenant-id>/<course-id>/source/uploads/
+## Professor source and builder state
+
+Uploaded material lives only under the owned course's `source/uploads/` root.
+The canonical index records relative paths, types, sizes, hashes, and
+modification metadata. Rendered PDF pages and TeX-compiled previews live in
+`source/normalized/` and are excluded from source discovery.
+
+Private builder state includes:
+
+- lecture-to-source manifests;
+- staged incremental updates and their analysis;
+- idempotent generation records with actor and request-key hashes;
+- targeted-repair provenance tied to a source revision; and
+- the latest private draft for each lecture.
+
+Publication atomically copies a valid draft into the shared course canvas and
+increments `publication.json`. Original source files remain immutable evidence.
+Students never read drafts, staged updates, generation errors, or repair
+records.
+
+Local sanitized demos may set `LECTUREPILOT_COURSE_MATERIAL_ROOT`; the seeded
+course can read that legacy source/canvas layout. Uploaded production courses
+must have an explicitly published course canvas. New writes use the current
+course and `users/` layout.
+
+## Learner workspace
+
+`StorageLayout.user_key` hashes the authenticated user ID before it becomes a
+directory name. Raw university usernames and browser-supplied user IDs do not
+select filesystem roots.
+
+Cross-course teaching preferences and notes live under `memories/`. Course
+memory is separate so course-specific observations do not bleed into another
+subject. Each `memory-trace.jsonl` entry records scope, course, lecture, tool,
+note, and any preference change for provenance.
+
+Course `progress.json` holds exam-readiness attempts and revision state.
+Per-lecture state holds attendance, gates, coaching state, and the canvas
+overlay. Agent-created Markdown goes to `canvas/student/*.md`;
+interactive definitions go to `canvas/components/*.yaml`; provider-generated
+raster images go to `canvas/student-assets/`. `canvas.json` is a compiled API
+cache, never the editable source of truth.
+
+The reader can import old `workspaces/students/.../canvas.json` or legacy asset
+paths for migration compatibility. It does not write new learner state there.
+Learner reset removes only the authenticated learner's selected course state.
+
+## Professor learner preview
+
+A course owner can enter learner mode without impersonating a student. The
+preview uses the same attendance, canvas, tutor, memory, and image contracts but
+stores them under a pseudonymous `previews/professors/` root derived from the
+owner and course.
+
+Preview state is excluded from learner/cohort analytics. Model and image usage
+still belongs to the professor account. Resetting a preview cannot address or
+delete a real learner workspace.
+
+## Canvas Markdown
+
+One section file is one stable teaching unit. The parser supports:
+
+- paragraphs with light Markdown and inline math;
+- raw LaTeX display fences using ` ```math `;
+- course assets through `asset:relative/path`;
+- authenticated learner asset URLs;
+- approved YouTube links;
+- Markdown tables;
+- callouts, checkpoints, and quizzes; and
+- explicit block comments for stable focus/highlight IDs.
+
+Example:
+
+````md
+<!-- block id="risk-equation" type="math" -->
+
+```math
+R(a_i\mid x)=\sum_j L(a_i\mid \omega_j)P(\omega_j\mid x)
 ```
-
-The source bundle endpoint scans uploaded course sources first and then the
-private local course root for compatibility:
-
-```txt
-GET /courses/{course_id}/source-bundle
-```
-
-It classifies TeX, Markdown/text, CSV/JSON, PDF, images, SVG, videos, Python
-code, and notebooks as course source artifacts.
-
-## Course Canvas
-
-The course planner writes professor-approved base canvases to:
-
-```txt
-.lecturepilot/courses/<tenant-id>/<course-id>/canvas/lectures/<lecture-id>/
-  index.md
-  sections/*.md
-  assets/
-```
-
-Original source files remain immutable evidence. The base canvas is the
-professor-approved learning document derived from those sources. It is shared by
-students and should not contain private learner state.
-
-If no approved course canvas exists, the API can still bootstrap from mapped
-LaTeX source files. The long-context LLM ingestion pipeline described in
-[course-ingestion-pipeline.md](course-ingestion-pipeline.md) is the target
-course-creation path: upload sources, generate a draft canvas, stage optional
-videos or generated infographics, and require professor approval before
-publishing.
-
-## Learner Workspace
-
-Each student gets a pseudonymous user root:
-
-```txt
-.lecturepilot/users/<hashed-user-id>/
-```
-
-Raw usernames are not used in filesystem paths. The user root holds cross-course
-memory:
-
-```txt
-profile.json
-memories/global.md
-memories/preferences.json
-memories/memory-trace.jsonl
-```
-
-Course-specific memory lives beside the learner's course state:
-
-```txt
-courses/<course-id>/memories/course.md
-courses/<course-id>/memories/memory-trace.jsonl
-```
-
-`memory-trace.jsonl` is append-only provenance for memory writes. Entries record
-the memory scope, active course, lecture, tool name, note, and optional
-preference change so tutor personalization is inspectable rather than hidden.
-
-Lecture-specific state lives below the user/course/lecture intersection:
-
-```txt
-courses/<course-id>/lectures/<lecture-id>/
-  attendance.json
-  gates.json
-  tutor-state.json
-  canvas/
-    index.md
-    sections/*.md
-    student/*.md
-    student-assets/*
-  canvas.json
-```
-
-Agent commands append or update `canvas/student/*.md`. Personalized generated
-images are stored in `canvas/student-assets/`. `canvas.json` is a compiled API
-cache and not the editable source of truth.
-
-## Professor Learner Preview
-
-A professor can open a published lecture in a private learner preview. Its
-attendance, progress, canvas additions, tutor memory, and generated assets use
-the same learner contracts but live under:
-
-```txt
-.lecturepilot/previews/professors/<hashed-preview-id>/
-```
-
-The preview identity is derived from the authenticated professor and course.
-Only a course owner can request it. Preview activity is excluded from learner
-and cohort analytics, while model and image usage remain attributed to the
-professor account. Resetting the preview never deletes real student state.
-
-Canvas section Markdown is intentionally close to the learning-app explainer
-model: one section file is one stable teaching unit, and assets remain normal
-file references. Supported section blocks are:
-
-```md
-Long narrative paragraph with **Markdown emphasis**, inline math, and source markers.
-
-![Course image](asset:Ch3/spam-DALL-E.jpg)
-![Generated learner image](/workspace-assets/<course>/<lecture>/<user-key>/student-assets/risk.jpg)
-[Professor-approved video](https://youtu.be/12345678901)
-
-| Action | Expected risk        |
-| ------ | -------------------- |
-| Reject | Prefer more evidence |
 
 :::checkpoint Risk gate
 Explain why changing a loss term can move the decision threshold.
@@ -186,46 +158,41 @@ Which quantity directly changes the expected-risk decision?
 - Slide number
 - Font size
   :::
-```
+````
 
-The parser also accepts explicit block comments such as
-`<!-- block id="risk-table" type="table" -->` when a pipeline or agent needs a
-stable block id for later focus/highlight commands.
+Generated canvas math is intentionally more portable than arbitrary professor
+TeX: it accepts a KaTeX-compatible command/environment subset, rejects preamble
+macros and prose in math blocks, and gives targeted repair an exact block when
+possible. This restriction applies to the learning canvas, not to the isolated
+Tectonic slide-preview compiler.
 
-## Agent Rules
+## Agent-visible roots
 
-The agent sees this filesystem image through typed tools only. It may use
-`pwd`, `ls`, `find`, `grep`, and `read` to inspect authorized roots; `write` and
-`edit` to update learner-owned Markdown/component/memory files; `focus` and
-`highlight` to navigate the canvas; `generate_image` for raster infographics;
-and `record_gate` plus `remember` for progress and personalization. It must not
-freely traverse host paths, mutate official source files, duplicate large course
-assets into learner folders, or reveal future lecture material.
-
-## File Policy
-
-Generated learner files are limited to typed study artifacts:
+The model never receives host filesystem access. Typed capabilities expose only
+the roots needed for the active profile:
 
 ```txt
-Markdown: 5 MB
-Text: 2 MB
-JSON: 2 MB
-PNG/JPG/JPEG/WEBP: 20 MB
-SVG: 2 MB
+/course/source/uploads   read-only professor evidence
+/course/canvas           read-only published canvas
+/lecture/canvas          current learner overlay
+/user/memories           current learner global memory
+/user/course/memories    current learner course memory
+/user/profile.json       current learner profile
 ```
 
-Course uploads are stricter and professor-controlled:
+Tutor writes are restricted to learner Markdown/components/assets and memory.
+Course-builder writes are restricted to its course-authoring workspace and do
+not gain learner memory or gate tools. See
+[agent-tool-contracts.md](agent-tool-contracts.md).
 
-```txt
-TeX: 10 MB
-Markdown/text/CSV/JSON: 2-5 MB
-PDF: 100 MB
-Images/SVG/GIF: 2-20 MB
-Videos: 500 MB
-Python/notebooks: 5-20 MB
-```
+## File policy
 
-The API rejects hidden paths, absolute paths, `..` traversal, unsupported file
-types, and oversized payloads. Production deployments should add object storage,
-tenant quotas, audit logs, malware scanning, retention, deletion, and
-short-lived signed URLs for protected assets.
+Generated learner files are limited to Markdown (5 MiB), text/JSON/YAML (2
+MiB), raster images (20 MiB), and SVG (2 MiB). Course material has separate
+per-type limits up to 100 MiB for PDF and 500 MiB for video.
+
+Logical and HTTP access rejects absolute/hidden/traversal paths, unsupported
+types, oversized content, symbolic-link escape, and hard links. Professor
+uploads additionally use signature/MIME validation, quarantine, and atomic
+promotion. Durable quotas and audit events are implemented; malware scanning,
+automated retention/deletion, and object storage are not.

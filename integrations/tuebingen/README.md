@@ -1,13 +1,20 @@
 # Tübingen Integration
 
-This package will adapt `tue-api-wrapper` responses into LecturePilot course,
-lecture, attendance, and material records.
+The integration is implemented in the API through the published
+`tue-api-wrapper==0.3.0` package. This directory records the integration
+boundary; it contains no separate deployable package.
 
-Initial responsibilities:
+Current responsibilities:
 
-- authenticated Alma timetable title lookup without per-course detail enrichment
-- course matching
-- lecture date extraction
-- ILIAS/Moodle material discovery
-- safe session storage handoff to the backend
-- parallel post-login Alma/ILIAS synchronization with persisted loading/error state
+- authenticate credentials and verify the server-reported active Alma role;
+- return quickly after identity/role verification, then synchronize the
+  lightweight Alma timetable and ILIAS memberships in the background;
+- persist sync loading/error state and replace stale external enrollments;
+- match a student's own upstream memberships conservatively to exact
+  title-and-term platform courses; and
+- keep university credentials and provider sessions out of browser and
+  LecturePilot persistence.
+
+The adapter code is in `apps/api/src/lecturepilot/tuebingen_adapter.py`; account
+and matching policy is documented in
+[`../../docs/tenancy-security.md`](../../docs/tenancy-security.md).

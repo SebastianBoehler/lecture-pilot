@@ -5,6 +5,12 @@ filesystem access. A live pilot has been deployed from the checked-in Compose to
 document the intended runtime, but neither the deployment nor this document closes the outstanding
 security and privacy gates.
 
+Live check on 2026-07-20: the public health endpoint reported version `0.2.1` at commit
+`a854cfa5c5a9c98fd33066bc756c73b3c9ad4e09`; API, Postgres, and Tectonic containers were healthy;
+only the gateway published host ports; HTTPS returned the configured CSP, HSTS, no-referrer,
+no-sniff, frame-deny, and Permissions-Policy headers. This is a point-in-time deployment check, not
+a substitute for the staging and recovery gates below.
+
 ## Runtime layout
 
 ```txt
@@ -139,7 +145,7 @@ canvas usable and adds a professor-facing warning.
 
 The live pilot is not production-security approval. Do not expand access until all blockers in
 `security_best_practices_report.md` are closed or explicitly accepted. In particular, student
-Alma/ILIAS identifier matching across representative accounts, disposable TLS staging, backup
-restore, retention, deletion, privacy notice, and provider/subprocessor review remain unverified or
-incomplete. The pinned `tue-api-wrapper==0.3.0` and Pillow 12.3 dependency set passed the recorded
-Python audit.
+Alma/ILIAS identifier matching across representative accounts, disposable staging authorization
+tests, matched backup restore, retention/deletion, privacy notice, and provider/subprocessor review
+remain unverified or incomplete. The pinned `tue-api-wrapper==0.3.0` and Pillow 12.3 dependency set
+passed the recorded Python audit.

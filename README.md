@@ -13,7 +13,7 @@
 </div>
 
 It combines a normal web app, a typed learner workspace, and a constrained agent
-harness. The first target integration is University of Tübingen via
+harness. The current university integration is University of Tübingen via
 [`tue-api-wrapper`](https://github.com/SebastianBoehler/tue-api-wrapper).
 
 ## Preview
@@ -26,16 +26,17 @@ harness. The first target integration is University of Tübingen via
   />
 </p>
 
-## What It Builds Toward
+## Product Flow
 
-- Login through university credentials.
-- Fetch courses and timetables from the university backend.
-- Show only lectures that already happened.
-- Ask whether the learner attended.
-- Load official lecture material from LaTeX/PDF/Markdown sources.
-- Render a focused lesson canvas.
-- Discover curated external media as workspace pre-assets.
-- Let a text-only agent highlight, explain, quiz, and save progress.
+- Login through university credentials and synchronize the learner's own Alma
+  timetable and ILIAS memberships.
+- Let professors upload differently structured course folders, review/reorder a
+  proposed schedule, generate and repair private lecture drafts, then publish.
+- Show learners only authorized, published lectures whose access date passed.
+- Ask whether the learner attended, render source-backed slides and a focused
+  lesson canvas, then adapt the tutoring stance.
+- Let the constrained agent highlight, explain, quiz, generate learner-owned
+  study artifacts, and save progress/memory.
 
 ## Current Slice
 
@@ -63,13 +64,17 @@ This repository is intentionally small but runnable:
   lectures are compiled into handout previews by an isolated, no-secret
   service; failures keep the text canvas and surface a professor warning.
 - Light and dark mode.
+- Resumable/idempotent canvas generation with progress guidance, exact failed
+  block diagnostics, and targeted **Fix with AI** repair.
+- Professor course updates, lecture access scheduling, drag-and-drop lecture
+  order, learner preview, usage/performance aggregates, and release notices.
 - Backend and frontend tests.
 - CI, Dockerfiles, and Compose starter.
 
 Provider-backed tutor turns intentionally fail with a clear error until a real
 API key is configured.
 
-## Agent Harness Direction
+## Agent Harness
 
 LecturePilot is an agent harness for teaching, not a generic chatbot. The agent
 acts as a text-first tutor that can also build and revise the learning
@@ -95,32 +100,25 @@ capabilities that make coding agents useful, while the backend still enforces
 tenant access, lecture unlocks, path safety, file-type limits, source
 immutability, and auditability.
 
-This direction matches current agent frameworks: agents are configured with
-instructions, tools, state, and runtime guardrails; MCP-style tools expose
-external systems through controlled roots; durable runtimes add persistence,
-human review, and traceability around those tool calls. Optional observability
-such as MLflow/OpenTelemetry should wrap these low-level tool spans rather than
-being built into the student-facing UI first.
-
 ## Repository Layout
 
 ```txt
 apps/api                 FastAPI backend and harness contracts
 apps/latex-compiler      Isolated, bounded TeX-to-PDF preview service
 apps/web                 React/Vite frontend
-services/agent           Agent runtime notes and future ADK/LiteLLM service
-packages/workspace       Workspace package placeholder
-packages/course          Course package placeholder
-packages/agent-harness   Harness package placeholder
-integrations/tuebingen   TUE API wrapper integration placeholder
-docs                     Architecture and design notes
+services/agent           Reserved extraction boundary; runtime is currently in API
+packages/*               Reserved package boundaries; no runtime code yet
+integrations/tuebingen   Integration boundary notes; adapter code is in API
+docs                     Current architecture/operations docs and historical records
 deploy                   Docker and self-hosting files
 ```
 
+Start with the [documentation map](docs/README.md) to distinguish current
+operating guidance from dated design/implementation records.
 See [docs/media-discovery.md](docs/media-discovery.md) for the YouTube/media
 pre-asset contract.
 See [docs/course-ingestion-pipeline.md](docs/course-ingestion-pipeline.md) for
-the long-context LLM upload, canvas planning, and professor approval pipeline.
+the upload, canvas planning/repair, professor review, and publication pipeline.
 See [docs/workspaces.md](docs/workspaces.md) for filesystem-backed canvas and
 learner storage.
 See [docs/agent-tool-contracts.md](docs/agent-tool-contracts.md) for the
@@ -130,7 +128,7 @@ profile, and secure course-material upload contract.
 See [docs/security-operations.md](docs/security-operations.md) for backup,
 restore, incident, and remaining retention requirements.
 See [security_best_practices_report.md](security_best_practices_report.md) for
-the current pilot security status and open production-approval blockers.
+the current evidence-backed pilot status and open production-approval gates.
 
 ## Product Changelog And Releases
 
@@ -264,10 +262,11 @@ Local tracing is disabled by default; production emits metadata-only JSON
 spans. Configuration and privacy boundaries are documented in
 [docs/observability.md](docs/observability.md).
 
-## Design Source
+## Historical Design Source
 
-The first frontend direction was generated with OpenRouter model
-`z-ai/glm-5.1` and saved in [docs/glm-5.1-ui-design.md](docs/glm-5.1-ui-design.md).
+The original 2026-06-05 frontend direction is preserved in
+[docs/glm-5.1-ui-design.md](docs/glm-5.1-ui-design.md). It is historical input,
+not the current UI specification.
 
 ## Testing
 
@@ -279,7 +278,8 @@ npm run verify:full
 ```
 
 `verify:api` and `verify:web` are the component commands used by CI. All verify
-commands enforce formatting, zero lint warnings, and `git diff --check`; the
+commands enforce documentation links, formatting, zero lint warnings, and
+`git diff --check`; the
 full API suite requires the migrated disposable PostgreSQL database described
 above.
 

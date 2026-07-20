@@ -1,5 +1,11 @@
 # Adaptive Exam Readiness Implementation Plan
 
+> Historical implementation plan from 2026-07-01. Persisted source-backed
+> readiness attempts, revision plans, and scaffold policy have landed. Use
+> [`../../architecture.md`](../../architecture.md),
+> [`../../workspaces.md`](../../workspaces.md), and the current API/web tests for
+> the implemented contract.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use
 > `superpowers:subagent-driven-development` for parallel execution, or
 > `superpowers:executing-plans` for sequential execution. Update checkboxes as

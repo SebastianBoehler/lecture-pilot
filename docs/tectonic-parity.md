@@ -1,10 +1,14 @@
-# Tectonic compiler parity spike
+# Tectonic compiler parity evidence
 
-Recorded on 2026-07-19 on ARM64. This spike compares the existing TeX Live
+Recorded on 2026-07-19 on ARM64. The initial comparison used the existing TeX Live
 compiler image with the pinned Tectonic 0.16.9 image through the real isolated
 HTTP service. Both services ran read-only with one CPU. The private corpus was
 indexed and dependency-bundled through the same API path used by LecturePilot;
 source contents were not written to the report.
+
+Tectonic is now the deployed compiler. The results below are dated migration
+evidence, while [`latex-compilation.md`](latex-compilation.md) is the current
+runtime contract.
 
 ## Result
 

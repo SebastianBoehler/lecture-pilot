@@ -1,5 +1,9 @@
 # LecturePilot redesign QA
 
+> Historical QA record for the redesign completed before release `0.2.0`.
+> Results below describe the tested build at that time, not a standing claim
+> about the current UI. See [`docs/README.md`](docs/README.md) for current docs.
+
 ## Pass 1
 
 ### P1 — primary learning visualization started too low

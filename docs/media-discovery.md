@@ -1,6 +1,6 @@
-# Media Discovery
+# Media discovery
 
-LecturePilot should treat external media as course workspace pre-assets, not as
+LecturePilot treats external media as professor-reviewed course assets, not as
 free-form model browsing during a tutor turn.
 
 The discovery contract mirrors the practical `learning-app` pipeline:
@@ -22,20 +22,16 @@ Implemented admin endpoints:
 
 ```http
 GET /admin/courses/{course_id}/media/youtube/search?q=bayesian+decision+theory
-X-Tenant-Id: tenant-tuebingen
-X-User-Id: prof01
-X-User-Role: professor
 ```
 
 The search route uses the YouTube Data API when `YOUTUBE_API_KEY` is set. It
 normalizes `search.list` results through `videos.list`, rejects shorts and tiny
-clips, then ranks by term overlap, duration fit, and view count.
+clips, then ranks by term overlap, duration fit, and view count. The current
+database session must own the exact course; development identity headers exist
+only when explicitly enabled locally.
 
 ```http
 POST /admin/courses/{course_id}/lectures/{lecture_id}/media/youtube
-X-Tenant-Id: tenant-tuebingen
-X-User-Id: prof01
-X-User-Role: professor
 Content-Type: application/json
 ```
 
@@ -53,29 +49,30 @@ Body:
 }
 ```
 
-Approved selections are stored under
-`local-course-materials/<course>/canvas/media/` and merged into the returned
-canvas as `video` blocks. The professor can stage candidates without exposing
-them to students until they approve a selection.
+Approved selections are stored under the persistent course workspace at
+`courses/<tenant>/<course>/canvas/media/` and merged into the selected section
+as `video` blocks. Search candidates are transient; only an explicit owner
+selection becomes course state. Students see that selection only through a
+published and unlocked canvas.
 
-The tutor can explain, pause on, or ask questions about the selected video, but
-the harness should decide which videos are visible to the learner. The agent
-should not independently browse future or unrelated media while a lesson is in
-progress.
+The tutor can explain or ask questions about a visible approved video. It does
+not receive a general browser or YouTube-search tool and cannot independently
+add future or unrelated media during a learner turn.
 
 Example workspace record:
 
 ```json
 {
-  "video_id": "selected-video-id",
-  "title": "Naive Bayes classifier lecture",
-  "channel_title": "ML Course",
-  "url": "https://www.youtube.com/watch?v=selected-video-id",
-  "source": "youtube-discovery",
-  "query": "Bayesian decision theory Naive Bayes classifier lecture",
-  "checkpoints": [
-    { "label": "Bayes rule", "seconds": 420 },
-    { "label": "Classification decision", "seconds": 980 }
-  ]
+  "block_id": "youtube-selected-video-id",
+  "section_id": "bayes-formula",
+  "approved_by": "<internal-user-id>",
+  "approved_at": "2026-07-20T10:00:00+00:00",
+  "note": null,
+  "video": {
+    "video_id": "selected-video-id",
+    "title": "Naive Bayes classifier lecture",
+    "channel_title": "ML Course",
+    "url": "https://www.youtube.com/watch?v=selected-video-id"
+  }
 }
 ```

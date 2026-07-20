@@ -1,12 +1,15 @@
 # Interleaved Slides Implementation Plan
 
+> Historical 2026-06-18 plan. PDF slide interleaving has landed and TeX-only
+> previews now use isolated Tectonic. Current behavior:
+> [`course ingestion`](../../course-ingestion-pipeline.md) and
+> [`LaTeX compilation`](../../latex-compilation.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Show original professor slides inside generated lecture canvases by rendering source PDF pages to course assets and inserting representative slide image blocks into generated sections.
 
 **Architecture:** Render PDF pages into PNG files under the course uploads tree, expose them through existing `/course-assets/...` URLs, and insert one representative original-slide `asset` block at the start of each generated canvas section. Reuse existing canvas asset rendering in the React app; no new frontend block type for v1.
-
-**Tech Stack:** FastAPI backend, Pydantic canvas models, PyMuPDF (`fitz`), Markdown canvas serialization, `pytest`.
 
 ---
 

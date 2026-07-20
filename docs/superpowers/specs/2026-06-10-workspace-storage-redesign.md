@@ -1,5 +1,11 @@
 # Workspace Storage Redesign
 
+> Historical design specification from 2026-06-10. The current layout has
+> landed with later changes, including `users/` writes, professor previews,
+> builder generation/update state, Postgres authority, and a production
+> persistent volume. Use [`../../workspaces.md`](../../workspaces.md) and
+> [`../../architecture.md`](../../architecture.md) as the current contracts.
+
 ## Goal
 
 LecturePilot needs a storage model that is easy to self-host, cheap to operate

@@ -52,9 +52,8 @@ agent-flow checks without sending real credentials.
 
 ## Agent Storage Image
 
-The agent should be seeded with a clear filesystem image. Treat this as the
-logical structure even when production storage is backed by Postgres and object
-storage instead of local folders.
+The agent should be seeded with this logical filesystem image. Production keeps
+database authority in Postgres and files on the persisted `/app/storage` volume.
 
 ```txt
 .lecturepilot/
@@ -69,10 +68,10 @@ storage instead of local folders.
         canvas/{student/*.md,components/*.yaml,student-assets/*}
   courses/<tenant-id>/<course-id>/
     course.json
-    source/{uploads/,normalized/,assets/,source-index.json}
+    source/{uploads/,normalized/,source-index.json}
     canvas/lectures/<lecture-id>/{index.md,sections/*.md,assets/}
-    builder/{drafts/,source-manifests/,updates/,review-state.json}
-  cache/{pdf-previews/,thumbnails/,extracted-text/}
+    canvas-drafts/lectures/<lecture-id>/latest/
+    builder/{generations/,repairs/,source-manifests/,updates/}
 ```
 
 Official source material belongs to `courses/<tenant>/<course>/source`.
@@ -82,13 +81,9 @@ Professor-approved learning documents belong to
 generated notes, and generated images belong under the user's course/lecture
 workspace.
 
-Global memory records cross-course teaching preferences. Course memory records
-course-specific tutoring observations. `memory-trace.jsonl` stores append-only
-provenance for memory writes, including the course, lecture, tool, and note.
-
 The agent uses a small set of low-level typed tools over this image. Default
 tutor gets `pwd`, `ls`, `read`, `write`, `edit`, `focus`, `highlight`,
-`generate_image`, `record_gate`, `record_readiness_attempt`, and `remember`.
+`generate_image`, `record_gate`, and `remember`.
 Evidence-heavy turns add `find` and `grep`; course-builder/admin agents use
 file and image tools without learner gate or memory tools. Product actions such
 as `append_section` and `update_section` compile to writes in
@@ -127,11 +122,9 @@ The professor/admin staging endpoint accepts the file types listed in
 `WorkspacePolicy.allowed_course_material_uploads` and rejects unsafe paths,
 unsupported suffixes, oversized payloads, and non-professor roles.
 
-The current local implementation still writes learner overlays into the older
-`.lecturepilot/workspaces/students/<sha256-user-prefix>/courses/<course-id>/`
-path. The target structure is the `users/<user-key>/courses/...` image above.
-Keep new work moving toward that split instead of adding more behavior to the
-legacy `workspaces/students` path.
+New learner writes use `users/<user-key>/courses/...`. The reader still accepts
+the older `.lecturepilot/workspaces/students/...` compiled canvas and asset
+paths for migration compatibility; do not add new writes to that legacy root.
 
 The Markdown files under `canvas/` are the editable source of truth. Treat
 `canvas.json` as a compiled API cache/artifact, not as the primary authoring
@@ -163,18 +156,9 @@ apps/web/                 React/Vite app and UI tests
 docs/                     Architecture, workspaces, self-hosting, security notes
 deploy/                   Docker Compose starter
 integrations/tuebingen/   TUE API wrapper integration notes
-packages/                 Future package boundaries/placeholders
-services/agent/           Future external agent runtime notes
+packages/                 Reserved package boundaries; no runtime code yet
+services/agent/           Reserved external-runtime boundary; runtime is in API
 ```
-
-Important API modules: `app.py`, `canvas_workspace.py`,
-`canvas_markdown.py`, `source_bundle.py`, `harness.py`, `model_client.py`,
-`image_generation*.py`, `policies.py`, `providers.py`, `tenancy.py`,
-`tuebingen_adapter.py`, and `workspace.py`.
-
-Important web modules: `App.tsx`, `Dashboard.tsx`, `LessonWorkspace.tsx`,
-`LessonCanvas.tsx`, `SectionSources.tsx`, `SourceMarker.tsx`,
-`WorkspaceFilesPanel.tsx`, `TutorDrawer.tsx`, `api.ts`, and `types.ts`.
 
 ## Agent Harness Rules
 
@@ -183,8 +167,9 @@ Important web modules: `App.tsx`, `Dashboard.tsx`, `LessonWorkspace.tsx`,
 - Attendance changes agent behavior; it must not fork the workspace schema.
 - The tutor should lead the session, ask targeted checks, and only pass quality
   gates after meaningful evidence from the student.
-- Exam-readiness turns use `record_readiness_attempt` and typed scaffold policy
-  over the selected task, source excerpt, rubric, and course progress summary.
+- Exam-readiness submissions use the typed API action and scaffold policy over
+  the selected task, source excerpt, rubric, and course progress summary; they
+  are not a general agent filesystem tool.
 - Readiness feedback comes after an attempt, stays source-backed, never keyword
   auto-passes, and uses less guidance for stronger learners.
 - Readiness analytics use task ids, attempt index, correctness, status, and
@@ -227,8 +212,9 @@ Important web modules: `App.tsx`, `Dashboard.tsx`, `LessonWorkspace.tsx`,
 - Derive tenant/course/user authority from backend session/profile context, not
   browser-controlled ids.
 - Keep raw user identifiers out of filesystem paths; use hashed prefixes.
-- Production work should preserve the path toward signed URLs, quotas, audit
-  logs, retention, deletion, and object storage.
+- Production already has durable quotas and audit events. Preserve the path
+  toward approved retention/deletion plus object storage and signed URLs if
+  protected files move off authenticated API routes.
 
 ## Engineering Standards
 
@@ -277,12 +263,6 @@ npm run verify:fast
 npm run verify:api
 npm run verify:web
 npm run verify:full
-```
-
-Additional local hygiene checks:
-
-```bash
-npm run dead-code:exports   # advisory exported-symbol cleanup report
 ```
 
 Provider benchmark:

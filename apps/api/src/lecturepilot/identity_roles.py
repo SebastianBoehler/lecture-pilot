@@ -9,7 +9,7 @@ ALMA_AVAILABLE_ROLES_CLAIM = "alma_available_roles"
 
 
 def alma_account_type(current_role: str | None) -> Literal["student", "professor"]:
-    """Classify a non-student as a candidate; database approval remains the permission boundary."""
+    """Map the server-reported active Alma role to the LecturePilot account type."""
     if not current_role or _normalize(current_role) == "student":
         return "student"
     return "professor"

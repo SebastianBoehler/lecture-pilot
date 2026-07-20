@@ -1,203 +1,179 @@
-# LecturePilot production-pilot security status
+# LecturePilot pilot security status
 
-Original review: 2026-07-11; deployment status updated 2026-07-14<br>
-Reviewed security baseline: `main` at `386a700`, plus the local release-polish worktree<br>
-Deployment status: **A live pilot is deployed; production security approval remains pending**
+Review refreshed: 2026-07-20<br>
+Implementation baseline: release `0.2.1`, commit
+`a854cfa5c5a9c98fd33066bc756c73b3c9ad4e09`<br>
+Decision: **the live pilot is hardened, but broader production approval remains
+blocked by the operational and privacy gates below**
 
-## Executive summary
+This is the current status document. The older implementation sequence is
+preserved as a historical record in
+[`docs/security-remediation-implementation-plan.md`](docs/security-remediation-implementation-plan.md).
 
-The original application-level high findings are remediated locally. LecturePilot now has
-database-backed student and professor identity, approval, roles, course ownership, enrollments,
-opaque revocable sessions, CSRF protection, self-only learner workspaces, aggregate-only professor
-analytics, symlink-safe
-agent/file capabilities, guarded uploads and parsers, durable quotas, and a same-origin hardened
-container stack.
+## Scope and evidence
 
-The published `tue-api-wrapper==0.3.0` requires Pillow 12.3, and the regenerated Python lock
-passes `pip-audit`; the previous high dependency blocker is closed. Representative cross-account
-Alma/ILIAS identifiers, live TLS/VM isolation, restore, and the legal retention/privacy policy remain
-unverified. The operator subsequently deployed a live pilot. This review did not independently
-inspect that VM or close the remaining gates, so deployment must not be read as security approval.
+The refresh checked the FastAPI authorization/session/upload/workspace code and
+tests, React API/auth boundary, Alembic/Postgres models, production Compose and
+Dockerfiles, Caddy/nginx policy, Tectonic service, dependency locks, and current
+operator documentation.
 
-No minimum analytics cohort is imposed. Course owners receive only aggregate values that actually
-exist, or an explicit no-data result. Platform course search, join requests, tutor invitations, and
-co-instructor delegation are not implemented.
+A point-in-time live check on 2026-07-20 confirmed:
+
+- public `/api/health` returned `0.2.1` and the exact baseline SHA;
+- API, Postgres, and Tectonic containers reported healthy;
+- only Caddy published host ports 80/443;
+- the host filesystem was 12% used and `/var` was 32% used; and
+- HTTPS returned CSP, one-year HSTS, `no-referrer`, `nosniff`, frame denial,
+  and a restrictive Permissions Policy.
+
+The live check did not use real professor/student credentials, perform an
+authorization attack suite against production, inspect provider retention, or
+restore a backup.
 
 ## Confirmed authorization model
 
-| Capability                                                      | Holder                  |
-| --------------------------------------------------------------- | ----------------------- |
-| Approve/reject professor requests and disable accounts          | Platform administrator  |
-| Create a course                                                 | Approved professor      |
-| Manage source, schedule, publication, media, analytics, archive | Exact course owner      |
-| Learn from published and unlocked course material               | Active enrolled student |
-| Canvas, tutor, memory, generated files, readiness, reset        | That learner only       |
+| Capability                                                                 | Holder                                                                    |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Authenticate                                                               | University identity verified by the server-side Alma adapter              |
+| Create a course                                                            | Account whose active Alma role is not `student`                           |
+| Manage source, schedule, drafts, publication, media, and course aggregates | Exact course owner                                                        |
+| Learn from a course                                                        | Current enrollment or the course's explicit access policy                 |
+| Open an unpublished/future lecture                                         | Nobody through learner routes                                             |
+| Canvas, tutor, memory, assets, readiness, profile, and reset               | That learner only                                                         |
+| Disable an account                                                         | Platform administrator; this does not grant course/learner content access |
 
-Platform administrators do not gain course-content access. Professor status grants course creation,
-not access to all courses. Details and the route inventory are in `docs/tenancy-security.md`.
+Browser role, tenant, course, learner, and model values are never authority in
+production. Tutor/co-instructor delegation and platform course join requests
+are not implemented.
 
-## University course matching
+## Implemented controls
 
-LecturePilot does not attempt to enumerate Alma or ILIAS. A professor creates a platform course with
-title and term. Student login returns only that student's memberships.
+### Identity, sessions, and CSRF
 
-- Alma `unitId` and ILIAS course/ref IDs are required as stable upstream identifiers.
-- An existing `(tenant, source, external ID, term)` link is reused.
-- A new link requires exactly one normalized exact title plus exact term match.
-- Zero or multiple platform matches grant no enrollment.
-- After binding, the stable upstream ID remains authoritative across title changes.
+- The submitted university password is used only for the server-side login
+  call and is not persisted or returned.
+- The server-reported active Alma `student` role maps to learner; any other
+  active Alma role maps directly to professor. Available roles are stored for
+  audit. There is no separate local professor-password or approval flow.
+- Sessions are random opaque tokens; the database stores SHA-256 token and CSRF
+  hashes, expiry, revocation, user, and tenant. Logout and account disablement
+  revoke authority.
+- Production cookies are `Secure`, `HttpOnly`, and `SameSite=Lax`.
+  Cookie-authenticated mutations require the session CSRF token, an exact
+  HTTPS Origin, and same-site Fetch Metadata. Bearer-authenticated server calls
+  do not use the cookie-CSRF path.
 
-Evidence: `external_course_sync.py:21-193`, `tuebingen_adapter.py:23-140`, and
-`test_database_security.py`.
+### Course and learner isolation
 
-## Finding status
+- Course administration requires professor role, same tenant, and exact
+  `courses.owner_user_id`; professor status is not tenant-wide course access.
+- Student routes reconstruct the learner from the session and verify course
+  visibility/enrollment, publication, and lecture date.
+- Workspace assets bind the URL's pseudonymous key back to the current learner.
+- Professors receive aggregate usage/performance only. Ordinary professor and
+  platform-admin routes cannot read learner canvas, chat, memory, generated
+  files, readiness attempts, or reset state.
+- Professor learner preview uses a separate owner-derived workspace and is
+  excluded from learner/cohort analytics.
 
-### H-1 — Identity, sessions, and professor roles: remediated locally
+### University enrollment matching
 
-SQLAlchemy/Postgres/Alembic models now store users, external identities, tenant memberships,
-professor requests, sessions, courses, external refs, enrollments, audit events, and quotas.
-Sessions are random opaque values; only hashes are stored. Approval and disablement revoke existing
-sessions. Production fails when the database is absent or behind the current migration.
+Login deactivates stale Alma/ILIAS-derived enrollments before background sync.
+For each current upstream observation, LecturePilot reuses a previously bound
+`(tenant, source, external_course_id, term)` reference. A new reference is
+created only when normalized exact title plus exact term matches exactly one
+active `tuebingen_enrolled` platform course. Zero or multiple matches grant no
+enrollment. ILIAS supplies stable reference IDs; the lightweight Alma timetable
+path remains exact-title-and-term dependent.
 
-Students and professor candidates authenticate through the same university adapter. An active Alma
-`student` role remains a student; any other active role creates a pending professor request and
-grants no role until a platform administrator approves it. The raw Alma role remains visible for
-review, and approval revokes the pending session so the professor must sign in again. Production
-builds render neither demo login.
+### Files, parsers, and TeX
 
-Evidence: `database.py:21-83`, `session_store.py:34-103`, `identity_repository.py:23-184`,
-`professor_identity_repository.py`, `professor_auth_routes.py`, `approval_routes.py`, and migrations
-`20260710_0001` through `0003`.
+- Capability roots use normalized logical paths, descriptor-relative no-follow
+  access, and hard-link rejection. Source, learner, preview, and builder write
+  capabilities are separate.
+- Uploads stream to quarantine with request/per-type limits, SHA-256,
+  MIME/signature checks, active-SVG rejection, and atomic no-overwrite
+  promotion.
+- PDF extraction/rendering uses bounded processes with page, pixel, CPU,
+  memory, file, and timeout limits. Notebook/Python ingestion never executes
+  code.
+- Uploaded TeX never runs in the API. The internal Tectonic service is
+  read-only, resource-limited, no-secret, external-network isolated, and uses a
+  build-seeded bundle with `--only-cached --untrusted`. Shell escape and runtime
+  package downloads remain disabled.
 
-### H-2 — Cross-course and learner access: remediated locally
+### Providers, cost, logging, and deployment
 
-Course authority comes from `courses.owner_user_id`. Every learner route derives the learner from
-the session; learner IDs were removed from agent, quiz, canvas, and reset inputs. Workspace assets
-are self-only. Professor analytics expose aggregate records without learner keys, text, chats,
-canvases, or readiness attempts.
+- Provider keys remain server-side. The server validates the configured model
+  against an allowlist and checks capabilities before a request.
+- Postgres atomically enforces daily turn/token/image and concurrent-turn
+  quotas across workers and restarts. Request-body and route rate limits add a
+  separate front-line bound.
+- Audit events cover identity sync, external-course binding, account disable,
+  course lifecycle, uploads/updates, publication, aggregate analytics access,
+  learner profile changes, and learner reset.
+- Production JSONL observability is metadata-only and excludes prompts,
+  responses, source content, filenames, raw learner content, credentials,
+  request URLs, query strings, and exception messages.
+- Caddy is the only public service. API and compiler run with read-only roots,
+  dropped capabilities, no-new-privileges, temporary filesystems, and CPU,
+  memory, and process limits. Postgres and application storage use persistent
+  volumes.
 
-Evidence: `api_auth.py:85-121`, `course_routes.py:49-265`, `analytics_routes.py`,
-`course_canvas_routes.py`, and `test_database_security.py`.
+## Residual risks and release gates
 
-### H-3 — CSRF: remediated locally
+### High-priority operational gates
 
-Cookie-authenticated mutations require the session-bound token, an allowed exact Origin, and Fetch
-Metadata validation. The frontend adds the header centrally. Missing token, wrong Origin, and valid
-same-origin cases have regression tests.
+1. **Representative university fixtures:** verify current Alma and ILIAS
+   identifiers and matching across multiple real student accounts, terms,
+   duplicate titles, and role types. Confirm that no student observation can
+   produce professor authority.
+2. **Disposable staging authorization suite:** exercise TLS redirects, Host,
+   Origin/CSRF, cookie flags, cross-owner/course/learner denials, quota
+   exhaustion, upload rejection, compiler isolation, and public-port inventory
+   against a non-production deployment.
+3. **Matched recovery rehearsal:** back up and restore Postgres plus the exact
+   storage-volume snapshot, migrate it, and prove owner/learner isolation and
+   asset/audit integrity before relying on recovery.
+4. **Privacy operations:** approve controller/contact, legal basis, notice,
+   provider/subprocessor inventory, retention and backup expiry, learner
+   export/deletion, physical course deletion, and incident-notification owners.
 
-Evidence: `csrf.py:24-59`, `session_store.py`, `apps/web/src/authz.ts`, and
-`test_database_security.py`.
+### Known implementation boundaries
 
-### H-4 — Symlink/path escape: remediated locally
+- Content signature and MIME validation are not malware scanning. Introduce a
+  quarantine scanner before accepting formats/risk levels that require it.
+- Protected files currently stay behind authenticated API routes on a
+  persistent volume. S3-compatible storage and short-lived signed delivery are
+  future work, not deployed controls.
+- Prompt-injection instructions reduce model misuse but are not a security
+  boundary; typed capabilities, server authorization, quotas, and source
+  immutability are the boundary.
+- Tectonic intentionally does not support every TeX workflow. Unsupported
+  shell escape, Biber, raw-SVG conversion, host fonts, or unseeded packages
+  require an authoritative uploaded PDF or a reviewed image rebuild, never a
+  weaker runtime sandbox.
+- Course deletion is a soft archive. Automated physical deletion and learner
+  data export/deletion are not implemented.
 
-`WorkspaceFS` performs logical-root resolution, Unicode normalization, hidden/traversal rejection,
-descriptor-relative no-follow opens, and hard-link rejection. Agent tools, source scanning, uploads,
-and asset serving use the same boundary. The learner agent retains recursive navigation and writes
-within only its declared writable roots.
+## Verification expectations
 
-Evidence: `workspace_fs.py:17-179`, `workspace_capability.py`, `safe_course_files.py`,
-`test_workspace_fs_security.py`, and `test_agent_tool_roots_security.py`.
+Repository changes must pass the component checks used by CI:
 
-### H-5 — Multipart denial of service: remediated locally
+```bash
+npm run verify:api
+npm run verify:web
+```
 
-`python-multipart` is pinned to 0.0.32. Request body limits remain enabled, and accepted uploads are
-streamed to quarantine rather than read wholly into memory.
+Security-sensitive changes additionally need the narrow authorization,
+session/CSRF, workspace, upload, quota, bounded-processing, and compiler tests
+that own the changed boundary. Dependency/container scans and the real-account,
+staging, privacy, and recovery gates are release evidence; passing unit tests
+alone does not close them.
 
-Evidence: `apps/api/pyproject.toml`, `requirements.lock`, `secure_upload.py:22-134`.
+## Operating decision
 
-### H-6 — Model authority and cost abuse: remediated locally
-
-The browser cannot choose a model. The server validates an allowlist. Postgres atomically enforces
-daily turns, reserved tokens, image counts, and concurrent turns across workers and restarts.
-
-Evidence: `providers.py`, `usage_quota.py:38-181`, `agent_turn_orchestration.py`, and
-`test_usage_quota.py`.
-
-### H-7 — Deployment path and persistence: deployed, not independently live-verified
-
-The web build uses same-origin `/api`; Caddy provides HTTPS and redirects; only 80/443 are published.
-API, web, and database stay internal. The API runs as UID 10001 with a read-only root, dropped
-capabilities, resource limits, and a persisted `/app/storage` volume. Migrations complete before API
-startup. Gateway, web, and database images were rebuilt on patched runtimes.
-
-Evidence: `deploy/compose.yml`, `deploy/Caddyfile`, `deploy/Caddy.Dockerfile`,
-`deploy/Postgres.Dockerfile`, and both application Dockerfiles.
-
-### M-1 — Unsafe uploads and parsing: remediated locally
-
-Uploads use per-type byte limits, MIME/signature checks, quarantine, atomic no-overwrite promotion,
-and active SVG rejection. PDF preview, slide rendering, and extraction run in a bounded process pool
-with page/pixel/time/CPU/memory/file limits. Production-style worker tests passed on macOS and Linux.
-
-Evidence: `secure_upload.py`, `bounded_processing.py:16-69`, `pdf_preview.py`,
-`pdf_slide_assets.py`, `pdf_extract.py`, and `test_secure_upload.py`.
-
-### M-2 — Readiness answers before attempt: remediated locally
-
-The public check DTO excludes answer indices and rubrics. Submission reconstructs the canonical
-server-side check before scoring. Browser and API tests confirm the answer is absent before submit.
-
-Evidence: `exam_readiness.py:46-76`, `exam_readiness_routes.py`, and readiness tests.
-
-### M-3 — Hostile source instructions: reduced
-
-Prompts label source, canvas, tool output, and memory as untrusted. Durable memory and paid image
-actions require an explicit current learner request. Typed tools and capabilities still enforce the
-real boundary if a model follows hostile content.
-
-Evidence: `model_client.py`, `agent_side_effect_tools.py`, and agent tool tests.
-
-### M-4/L-1 — Privacy, audit, and response leakage: partially remediated
-
-Audit records cover login, account changes, course lifecycle, upstream binding, uploads,
-publication, aggregate analytics, and reset. Public DTOs omit host storage paths and unnecessary
-publisher identity. Course deletion is a soft archive. Automated physical deletion, learner data
-export/deletion, approved retention periods, legal notice, and subprocessor inventory remain open.
-
-Evidence: `audit.py`, route modules, `docs/security-operations.md`.
-
-## Remaining live-release blockers
-
-1. **Real university fixtures:** confirm stable Alma/ILIAS IDs across representative student accounts
-   and both supported enrollment paths. University data must never grant the professor role.
-2. **Disposable staging:** verify public TLS, redirects, trusted Host, Origin/CSRF rejection, secure
-   cookies, public ports, non-root runtime, approval, matching, isolation, quotas, and backup/restore.
-3. **Privacy operations:** approve controller/contact, legal basis, provider/subprocessor inventory,
-   retention periods, learner export/deletion, backup expiry, and incident-notification ownership.
-
-## Verification evidence
-
-Passed locally:
-
-- API: 285 tests.
-- Web: 86 tests; TypeScript/Vite production build. Heavy lesson, professor, and article views are
-  lazy-loaded; the eager entry bundle is 285.60 kB minified / 87.44 kB gzip.
-- Quality: ESLint, Ruff, and Knip; existing React hook warnings remain non-failing.
-- PostgreSQL: Alembic drift check and downgrade/upgrade; production schema verification.
-- Security: CSRF/object authorization, Alma+ILIAS matching, symlink/hard-link/Unicode confinement,
-  upload validation, quotas, pre-attempt answer withholding, and bounded Linux worker.
-- Dependencies: npm production audit and a fresh Python lock audit report zero known
-  vulnerabilities. `tue-api-wrapper==0.3.0` resolves to Pillow 12.3 and `defusedxml`.
-- Secrets: Trivy repository secret scan found no secret.
-- Containers: gateway, web, API, and database images build; API is UID 10001; production JS contains
-  no localhost API URL; Caddy config validates. Current images have zero fixed high/critical
-  findings.
-- Browser: the unified Alma professor fixture reaches a pending profile without professor
-  privileges; approval revokes the pending session and a fresh login unlocks owned-course creation.
-  Earlier course creation, guarded
-  upload/index, schedule inference, media search, generated draft, publication, separate-student
-  dashboard/canvas, quiz, and tutor request passed with zero final-page console errors. The run
-  caught and fixed discovered-lecture authorization, oversized provider metadata, and draft-preview
-  course-scope regressions.
-
-Not performed by this security review: a login with real professor Alma credentials, real
-cross-account university identifier comparison, disposable hosted staging, live VM/SSH inspection,
-TLS/browser verification against the deployed pilot, restore rehearsal, provider data-retention
-review, or legal/privacy approval.
-
-## Deployment status and operating decision
-
-The operator has deployed a live pilot. Until the real university identifier check, approved
-privacy/retention operations, disposable staging, and restore rehearsal are complete, do not expand
-access or treat the pilot as production-approved. The original local remediation evidence and the
-fact of deployment do not replace those checks.
+Keep the current deployment constrained as a pilot. Do not expand access or
+describe it as production-approved until the four high-priority gates are
+completed or explicitly accepted by the responsible operator/controller with
+scope, owner, and review date recorded.

@@ -1,16 +1,16 @@
 # Agent Service
 
-The first real runtime should live here once the harness grows beyond the
-deterministic preview implementation.
+This directory reserves a possible future process boundary; it is not a
+deployed service today. The real provider-backed runtime lives in the FastAPI
+application under `apps/api/src/lecturepilot/`.
 
-Planned runtime:
+Current runtime ownership:
 
-- Google ADK orchestration
-- LiteLLM provider routing
-- canvas command emission
-- artifact generation
-- model/tool event logging
+- `harness.py` selects the development preview or provider-backed path;
+- `model_client.py` and `agent_tool_loop.py` run LiteLLM turns and typed tools;
+- workspace executors enforce logical roots and durable side effects; and
+- observability records metadata-only model and tool events in production.
 
-The web app and API should continue depending on the harness contract, not ADK
-directly.
-
+If the runtime is extracted later, the API and web app must continue depending
+on the existing harness contract rather than a provider SDK or orchestration
+framework directly.

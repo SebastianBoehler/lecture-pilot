@@ -35,7 +35,9 @@ Do not overwrite a live volume until the rehearsal and integrity checks pass.
 ## Account and session response
 
 - Disabling an account uses `POST /platform/users/{user_id}/disable` and revokes its sessions.
-- Professor approval and rejection revoke existing sessions so the user must authenticate again.
+- The active server-reported Alma role determines student/professor access on each synchronized
+  identity snapshot. A role change takes effect through a new university login; disabling the
+  LecturePilot account remains the immediate local revocation path.
 - A suspected session theft requires account disablement or direct session revocation, review of
   `audit_events`, and rotation of any exposed session/provider/database secret.
 - Provider keys and the database password live only in the deployment secret source, never Compose,
@@ -43,10 +45,10 @@ Do not overwrite a live volume until the rehearsal and integrity checks pass.
 
 ## Audit review
 
-Review failed authorization logs and database audit events for login, professor request/review,
-account disablement, course creation/archive, upstream-reference binding, upload, publication,
-aggregate analytics access, and learner reset. Alert on repeated cross-course denials, unusual paid
-usage, quota exhaustion, or repeated malformed uploads.
+Review failed authorization metadata and database audit events for login, account disablement,
+course creation/archive, upstream-reference binding, upload, publication, aggregate analytics
+access, and learner reset. Alert on repeated cross-course denials, unusual paid usage, quota
+exhaustion, or repeated malformed uploads.
 
 ## Retention and deletion status
 

@@ -87,3 +87,8 @@ The end-to-end backend regression is
 student Markdown section, persists memory, records a gate, emits focus/highlight
 activity tags, reloads the student canvas through the API, and verifies the
 memory is loaded into a later tutor turn.
+
+Exam-readiness submission is a typed application endpoint, not a general agent
+filesystem tool. The backend reconstructs the canonical task before scoring and
+stores the attempt in course `progress.json`; the model cannot write readiness
+answers or marks through `write`/`edit`.

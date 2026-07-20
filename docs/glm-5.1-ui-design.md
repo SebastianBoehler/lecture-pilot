@@ -2,6 +2,11 @@
 
 Generated via OpenRouter model `z-ai/glm-5.1` on 2026-06-05.
 
+> Historical design input. The application has since been redesigned and this
+> file is not the current UI contract. Use the live components under
+> `apps/web/src/` and the rules in [`../AGENTS.md`](../AGENTS.md); the dated QA
+> record is [`../design-qa.md`](../design-qa.md).
+
 ## Information Architecture
 
 ### Dashboard
