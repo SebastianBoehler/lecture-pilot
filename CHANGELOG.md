@@ -4,6 +4,30 @@ A product-level history of improvements for students and lecturers. Technical de
 
 [View all GitHub Releases](https://github.com/SebastianBoehler/lecture-pilot/releases)
 
+## [0.2.1](https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.2.1) — Safer course generation and recovery
+
+Released 2026-07-20
+
+Lecture ordering, LaTeX slides, generation progress, and failed canvas drafts are now easier to review and recover.
+
+### What changed
+
+- **Targeted AI repair** _(From feedback)_ — When one generated block fails validation, Retry repairs only that block or section, checks the complete draft again, and preserves unchanged content.
+- **Broader LaTeX slide support** — LecturePilot now handles more real-world TeX layouts, including graphics with decimal-style filenames, while keeping compilation isolated.
+- **Review lecture order before generation** _(From feedback)_ — Detected lectures follow their source filenames and can be reordered with drag handles or accessible move controls before applying the schedule.
+- **Clear generation timing** _(From feedback)_ — The course builder estimates the duration and makes clear that generation continues on the server, so lecturers can leave and return later.
+
+### Deutsch
+
+**Sicherere Kurserstellung und Wiederherstellung**
+
+Vorlesungsreihenfolge, LaTeX-Folien, Generierungsfortschritt und fehlgeschlagene Canvas-Entwürfe lassen sich jetzt leichter prüfen und wiederherstellen.
+
+- **Gezielte KI-Reparatur** _(Aus Feedback)_ — Wenn ein generierter Block die Prüfung nicht besteht, repariert Wiederholen nur diesen Block oder Abschnitt, prüft den vollständigen Entwurf erneut und erhält unveränderte Inhalte.
+- **Breitere Unterstützung für LaTeX-Folien** — LecturePilot verarbeitet jetzt mehr praxisnahe TeX-Strukturen, einschließlich Grafiken mit dezimalartigen Dateinamen, und hält die Kompilierung weiterhin isoliert.
+- **Vorlesungsreihenfolge vor der Generierung prüfen** _(Aus Feedback)_ — Erkannte Vorlesungen folgen ihren Quelldateinamen und können vor dem Übernehmen des Zeitplans per Ziehgriff oder zugänglichen Verschiebeschaltflächen sortiert werden.
+- **Klare Generierungsdauer** _(Aus Feedback)_ — Die Kurserstellung schätzt die Dauer und weist darauf hin, dass die Generierung auf dem Server weiterläuft, sodass Lehrende später zurückkehren können.
+
 ## [0.2.0](https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.2.0) — A complete pilot flow for students and lecturers
 
 Released 2026-07-13

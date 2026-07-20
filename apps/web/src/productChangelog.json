@@ -2,6 +2,63 @@
   "repositoryUrl": "https://github.com/SebastianBoehler/lecture-pilot",
   "releases": [
     {
+      "version": "0.2.1",
+      "date": "2026-07-20",
+      "title": {
+        "en": "Safer course generation and recovery",
+        "de": "Sicherere Kurserstellung und Wiederherstellung"
+      },
+      "summary": {
+        "en": "Lecture ordering, LaTeX slides, generation progress, and failed canvas drafts are now easier to review and recover.",
+        "de": "Vorlesungsreihenfolge, LaTeX-Folien, Generierungsfortschritt und fehlgeschlagene Canvas-Entwürfe lassen sich jetzt leichter prüfen und wiederherstellen."
+      },
+      "changes": [
+        {
+          "title": {
+            "en": "Targeted AI repair",
+            "de": "Gezielte KI-Reparatur"
+          },
+          "description": {
+            "en": "When one generated block fails validation, Retry repairs only that block or section, checks the complete draft again, and preserves unchanged content.",
+            "de": "Wenn ein generierter Block die Prüfung nicht besteht, repariert Wiederholen nur diesen Block oder Abschnitt, prüft den vollständigen Entwurf erneut und erhält unveränderte Inhalte."
+          },
+          "feedbackDriven": true
+        },
+        {
+          "title": {
+            "en": "Broader LaTeX slide support",
+            "de": "Breitere Unterstützung für LaTeX-Folien"
+          },
+          "description": {
+            "en": "LecturePilot now handles more real-world TeX layouts, including graphics with decimal-style filenames, while keeping compilation isolated.",
+            "de": "LecturePilot verarbeitet jetzt mehr praxisnahe TeX-Strukturen, einschließlich Grafiken mit dezimalartigen Dateinamen, und hält die Kompilierung weiterhin isoliert."
+          }
+        },
+        {
+          "title": {
+            "en": "Review lecture order before generation",
+            "de": "Vorlesungsreihenfolge vor der Generierung prüfen"
+          },
+          "description": {
+            "en": "Detected lectures follow their source filenames and can be reordered with drag handles or accessible move controls before applying the schedule.",
+            "de": "Erkannte Vorlesungen folgen ihren Quelldateinamen und können vor dem Übernehmen des Zeitplans per Ziehgriff oder zugänglichen Verschiebeschaltflächen sortiert werden."
+          },
+          "feedbackDriven": true
+        },
+        {
+          "title": {
+            "en": "Clear generation timing",
+            "de": "Klare Generierungsdauer"
+          },
+          "description": {
+            "en": "The course builder estimates the duration and makes clear that generation continues on the server, so lecturers can leave and return later.",
+            "de": "Die Kurserstellung schätzt die Dauer und weist darauf hin, dass die Generierung auf dem Server weiterläuft, sodass Lehrende später zurückkehren können."
+          },
+          "feedbackDriven": true
+        }
+      ]
+    },
+    {
       "version": "0.2.0",
       "date": "2026-07-13",
       "title": {
