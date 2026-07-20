@@ -45,6 +45,8 @@ _SAFE_KEYS = {
     "root_cause_type",
     "route",
     "section_count",
+    "section_id",
+    "section_index",
     "source_count",
     "span",
     "span_type",

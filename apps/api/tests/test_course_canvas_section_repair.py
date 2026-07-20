@@ -109,6 +109,14 @@ async def test_full_planner_quarantines_the_invalid_candidate_with_block_coordin
 ) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     source = published_course_canvas("targeted-repair", "lecture-01")
+    source = source.model_copy(
+        update={
+            "sections": [
+                source.sections[0],
+                source.sections[0].model_copy(update={"id": "summary", "title": "Summary"}),
+            ]
+        }
+    )
     candidate = _invalid_candidate(source)
     target_section = candidate.sections[0]
     invalid_math = target_section.blocks[1].model_copy(update={"text": r"z=\mu+\epsilon\N(0,1)"})
@@ -128,10 +136,10 @@ async def test_full_planner_quarantines_the_invalid_candidate_with_block_coordin
             ]
         }
     )
-    model = _RepeatingModel(
+    model = _SectionModel(
         {
-            "title": candidate.title,
-            "sections": [section.model_dump() for section in candidate.sections],
+            "intro": candidate.sections[0].model_dump(),
+            "summary": candidate.sections[1].model_dump(),
         }
     )
     planner = CourseCanvasPlanner(
@@ -144,7 +152,7 @@ async def test_full_planner_quarantines_the_invalid_candidate_with_block_coordin
 
     assert caught.value.candidate is not None
     assert caught.value.section_id == "learning-optimization"
-    assert caught.value.block_id == "optimization-math"
+    assert caught.value.block_id == "learning-optimization-math-1"
     assert [section.id for section in caught.value.candidate.sections] == [
         "learning-optimization",
         "learning-summary",
@@ -238,12 +246,14 @@ class _RepairModel:
         return self.payloads[len(self.messages) - 1]
 
 
-class _RepeatingModel:
-    def __init__(self, payload: dict) -> None:
-        self.payload = payload
+class _SectionModel:
+    def __init__(self, sections: dict[str, dict]) -> None:
+        self.sections = sections
 
     async def complete_plan(self, *, settings, messages):
-        return self.payload
+        evidence = messages[1]["content"]
+        source_id = evidence.split("Required section id: ", 1)[1].splitlines()[0]
+        return {"title": "Candidate", "sections": [self.sections[source_id]]}
 
 
 def _planner(

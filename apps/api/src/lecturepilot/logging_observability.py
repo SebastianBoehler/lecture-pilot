@@ -32,6 +32,8 @@ _SAFE_ATTRIBUTE_KEYS = {
     "provider",
     "requested_count",
     "section_count",
+    "section_id",
+    "section_index",
     "source_count",
     "stage",
     "support_profile",

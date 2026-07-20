@@ -35,6 +35,7 @@ async def test_litellm_course_plan_client_requests_canvas_schema(monkeypatch) ->
     assert calls[0]["response_format"]["type"] == "json_schema"
     schema = calls[0]["response_format"]["json_schema"]["schema"]
     assert calls[0]["response_format"]["json_schema"]["strict"] is True
+    assert calls[0]["max_tokens"] == 6000
     assert schema["required"] == ["title", "sections"]
 
 
@@ -49,7 +50,7 @@ async def test_course_planner_restyles_source_evidence(monkeypatch) -> None:
 
     assert document.source_kind == "generated"
     assert document.source_ref == "course planner from Lecture03-eng.tex"
-    assert document.title == "Bayes as a decision workflow"
+    assert document.title == "Slide dump"
     section = document.sections[0]
     assert section.title == "Evidence, update, decision"
     assert section.blocks[0].asset_path.startswith("generated-slides/")
@@ -95,13 +96,15 @@ class _FakePlanClient:
     async def complete_plan(self, *, settings, messages):
         assert settings.model == "gemini/test-model"
         system_prompt = messages[0]["content"]
-        assert "original slide" in system_prompt.lower()
-        assert "pdf page" in system_prompt.lower()
+        assert "source-backed assets" in system_prompt.lower()
+        assert "exactly one object" in system_prompt.lower()
         evidence = messages[1]["content"]
-        assert "Slide dump" in evidence
-        assert "asset_path=Ch3/venn.pdf" in evidence
-        assert "original slide id=original-slide-001" in evidence
-        assert "video id=frame-1-video" in evidence
+        source_id = evidence.split("Required section id: ", 1)[1].splitlines()[0]
+        if source_id == "evidence-update-decision":
+            assert "Slide dump" in evidence
+            assert "asset_path=Ch3/venn.pdf" in evidence
+            assert "asset_path=generated-slides/lecture-03" in evidence
+            assert "asset_path=videos/bayes-risk.mp4" in evidence
         base_section = {
             "id": "bayes-decision-workflow",
             "title": "Evidence, update, decision",
@@ -241,10 +244,11 @@ class _FakePlanClient:
                 },
             ],
         }
-        return {
-            "title": "Bayes as a decision workflow",
-            "sections": [base_section, *extra_sections],
-        }
+        sections = [base_section, *extra_sections]
+        source_index = (
+            1 if source_id == "evidence-update-decision" else int(source_id.rsplit("-", 1)[1])
+        )
+        return {"title": "Bayes as a decision workflow", "sections": [sections[source_index - 1]]}
 
 
 def _source_document() -> CanvasDocument:

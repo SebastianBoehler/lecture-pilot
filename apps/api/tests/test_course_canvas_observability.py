@@ -9,6 +9,7 @@ import pytest
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner
+from lecturepilot.course_canvas_section_planner import plan_sections_individually
 from lecturepilot.course_canvas_generation import generate_course_canvas_draft
 from lecturepilot.logging_observability import (
     LOGGER_NAME,
@@ -16,6 +17,7 @@ from lecturepilot.logging_observability import (
     current_operation_id,
 )
 from lecturepilot.model_client import ModelExecutionError
+from lecturepilot.models import ProviderSettings
 from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
 from lecturepilot.source_bundle_canvas import SourceBundleCanvasError
 from lecturepilot.tenancy import TenantContext
@@ -78,16 +80,57 @@ async def test_course_planner_logs_model_retry_attempts_without_error_messages(
     payloads = [
         json.loads(record.message) for record in caplog.records if record.name == LOGGER_NAME
     ]
-    assert [payload["attempt"] for payload in payloads] == [1, 2]
+    section_payloads = [payload for payload in payloads if payload["stage"] == "section_plan"]
+    assert [payload["attempt"] for payload in section_payloads] == [1, 2]
     assert len({payload["generation_id"] for payload in payloads}) == 1
     assert all(payload["course_id"] == "martius-ml" for payload in payloads)
     assert all(payload["lecture_id"] == "lecture-03" for payload in payloads)
     assert all(payload["provider"] == "gemini" for payload in payloads)
     assert all(payload["model"] == "gemini/test-model" for payload in payloads)
-    assert [payload["exception_type"] for payload in payloads] == [
+    assert [payload["exception_type"] for payload in section_payloads] == [
         "ProviderConfigurationError",
         "ModelExecutionError",
     ]
+    assert any(payload["stage"] == "sectionwise_plan" for payload in payloads)
+    assert "PRIVATE" not in " ".join(record.message for record in caplog.records)
+
+
+async def test_section_fallback_logs_each_section_attempt_without_content(caplog) -> None:
+    client = _RepairingSectionPlanClient()
+    source = _source_document()
+
+    with caplog.at_level(logging.INFO, logger=LOGGER_NAME):
+        await plan_sections_individually(
+            model_client=client,
+            settings=ProviderSettings(
+                provider="test",
+                model="test/model",
+                api_key_env="TEST_API_KEY",
+                capabilities=set(),
+            ),
+            source_document=source,
+            observability=LoggingObservability(),
+            span_attributes={
+                "course_id": source.course_id,
+                "lecture_id": source.lecture_id,
+                "generation_id": "generation-id-0000000000000000002",
+                "provider": "test",
+                "model": "test/model",
+            },
+        )
+
+    payloads = [
+        json.loads(record.message)
+        for record in caplog.records
+        if record.name == LOGGER_NAME and '"stage":"section_plan"' in record.message
+    ]
+    finished = [
+        payload for payload in payloads if payload["event"] == "observability.span_finished"
+    ]
+    assert [payload["attempt"] for payload in finished] == [1, 2]
+    assert [payload["status"] for payload in finished] == ["error", "ok"]
+    assert {payload["section_id"] for payload in finished} == {"source-risk"}
+    assert {payload["section_index"] for payload in finished} == {1}
     assert "PRIVATE" not in " ".join(record.message for record in caplog.records)
 
 
@@ -100,6 +143,30 @@ class _FailingPlanClient:
         if self.calls == 1:
             raise ProviderConfigurationError("PRIVATE invalid model response")
         raise ModelExecutionError("PRIVATE provider failure")
+
+
+class _RepairingSectionPlanClient:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def complete_plan(self, *, settings, messages):
+        self.calls += 1
+        if self.calls == 1:
+            return {"sections": [{"title": "PRIVATE invalid", "blocks": []}]}
+        return {
+            "sections": [
+                {
+                    "title": "Risk",
+                    "source_ref": "Lecture03.tex frame 8",
+                    "blocks": [
+                        {
+                            "type": "paragraph",
+                            "text": "A source-grounded explanation of risk.",
+                        }
+                    ],
+                }
+            ]
+        }
 
 
 def _source_document() -> CanvasDocument:
