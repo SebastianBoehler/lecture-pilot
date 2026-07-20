@@ -10,7 +10,7 @@ from lecturepilot.canvas_models import MAX_SOURCE_REF_LENGTH, CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT_VERSION
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
-from lecturepilot.course_canvas_planner import _planned_document
+from lecturepilot.course_canvas_plan_parser import planned_document as _planned_document
 from lecturepilot.course_canvas_store import CourseCanvasStore, InvalidCanvasDraftError
 from lecturepilot.storage_layout import StorageLayout
 

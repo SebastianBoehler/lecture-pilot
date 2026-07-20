@@ -8,10 +8,14 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from lecturepilot.api_auth import request_context, require_course_manager
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER, require_current_client_contract
-from lecturepilot.course_canvas_generation import generate_course_canvas_draft
+from lecturepilot.course_canvas_generation import (
+    generate_course_canvas_draft,
+    repair_targeted_course_canvas_draft,
+)
 from lecturepilot.course_canvas_generation_failures import find_latest_canvas_failure
 from lecturepilot.course_canvas_generation_http import run_canvas_generation_request
 from lecturepilot.course_canvas_generation_jobs import CanvasGenerationStore
+from lecturepilot.course_canvas_repairs import lecture_source_revision
 from lecturepilot.course_canvas_generation_service import (
     CANVAS_GENERATION_LEASE_SECONDS,
     validate_generation_request_key,
@@ -62,6 +66,21 @@ def register_course_canvas_repair_routes(
                 status_code=409,
                 detail="No actionable failed generation is available for AI repair.",
             )
+        targeted = failure.repair is not None
+        if targeted and failure.repair is not None and failure.repair.source_revision is not None:
+            current_revision = lecture_source_revision(
+                store.layout,
+                course_id=course_id,
+                lecture_id=lecture_id,
+            )
+            if current_revision != failure.repair.source_revision:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        "Lecture source changed after this failure. "
+                        "Generate a new draft before repairing it."
+                    ),
+                )
         outcome = await run_canvas_generation_request(
             app=app,
             store=store,
@@ -69,16 +88,29 @@ def register_course_canvas_repair_routes(
             lecture_id=lecture_id,
             context=context,
             request_key=request_key,
-            generate=lambda generation_id, attempt: generate_course_canvas_draft(
-                app,
-                course_id=course_id,
-                lecture_id=lecture_id,
-                context=context,
-                source_document=source_document,
-                generation_id=generation_id,
-                attempt=attempt,
-                repair_failure_code=failure.error_code or "generation_failed",
-                repair_failure_detail=failure.error_detail,
+            generate=lambda generation_id, attempt: (
+                repair_targeted_course_canvas_draft(
+                    app,
+                    course_id=course_id,
+                    lecture_id=lecture_id,
+                    context=context,
+                    source_document=source_document,
+                    failure=failure,
+                    generation_id=generation_id,
+                    attempt=attempt,
+                )
+                if targeted
+                else generate_course_canvas_draft(
+                    app,
+                    course_id=course_id,
+                    lecture_id=lecture_id,
+                    context=context,
+                    source_document=source_document,
+                    generation_id=generation_id,
+                    attempt=attempt,
+                    repair_failure_code=failure.error_code or "generation_failed",
+                    repair_failure_detail=failure.error_detail,
+                )
             ),
         )
         response.headers["X-Generation-Id"] = outcome.job.generation_id

@@ -189,7 +189,9 @@ def validate_section_math(section: CanvasSection) -> None:
         error = math_block_error(block.text or "")
         if error:
             raise CanvasGenerationRepairableError(
-                f"Math block {block.id} in {section.title} {error}"
+                f"Math block {block.id} in {section.title} {error}",
+                section_id=section.id,
+                block_id=block.id,
             )
 
 

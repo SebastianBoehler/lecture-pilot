@@ -8,11 +8,13 @@ import re
 from typing import Any
 
 from lecturepilot.canvas_models import CanvasDocument
+from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_generation_jobs import (
     CanvasGenerationJob,
     CanvasGenerationStore,
     CanvasGenerationStoreError,
 )
+from lecturepilot.course_canvas_repair_target import CanvasGenerationRepairTarget
 
 
 CANVAS_GENERATION_TIMEOUT_SECONDS = 900
@@ -134,12 +136,14 @@ async def _execute(
         )
         raise CanvasGenerationTimeoutError("Canvas generation timed out.") from exc
     except Exception as exc:
+        repair = _repair_metadata(exc)
         store.fail(
             job,
             actor_user_id=actor_user_id,
             request_key=request_key,
             error_code=_error_code(exc),
             error_detail=_error_detail(exc),
+            **repair,
         )
         raise
     finally:
@@ -230,3 +234,20 @@ def _error_code(exc: Exception) -> str:
 
 def _error_detail(exc: Exception) -> str:
     return str(exc).strip()[:1_000] or "Canvas generation failed."
+
+
+def _repair_metadata(exc: Exception) -> dict:
+    if not isinstance(exc, CanvasGenerationRepairableError):
+        return {}
+    return {
+        "repair": (
+            CanvasGenerationRepairTarget(
+                candidate=exc.candidate,
+                section_id=exc.section_id,
+                block_id=exc.block_id,
+                source_revision=exc.source_revision,
+            )
+            if exc.candidate is not None and exc.section_id is not None
+            else None
+        )
+    }

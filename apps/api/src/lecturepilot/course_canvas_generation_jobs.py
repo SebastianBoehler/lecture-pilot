@@ -12,6 +12,7 @@ from uuid import uuid4
 from pydantic import BaseModel, Field
 
 from lecturepilot.canvas_models import CanvasDocument
+from lecturepilot.course_canvas_repair_target import CanvasGenerationRepairTarget
 from lecturepilot.durable_files import ensure_durable_directory, fsync_directory
 from lecturepilot.metadata_events import emit_metadata_event
 from lecturepilot.storage_layout import StorageLayout, safe_id
@@ -34,16 +35,7 @@ class CanvasGenerationJob(BaseModel):
     error_code: str | None = Field(default=None, max_length=80)
     error_detail: str | None = Field(default=None, max_length=1_000)
     canvas: CanvasDocument | None = None
-
-
-class CanvasGenerationStatusResponse(BaseModel):
-    generation_id: str
-    status: GenerationStatus
-    attempt: int
-    updated_at: datetime
-    error_code: str | None = None
-    error_detail: str | None = None
-    canvas: CanvasDocument | None = None
+    repair: CanvasGenerationRepairTarget | None = None
 
 
 class CanvasGenerationStoreError(RuntimeError):
@@ -92,6 +84,7 @@ class CanvasGenerationStore:
                         "error_code": None,
                         "error_detail": None,
                         "canvas": None,
+                        "repair": None,
                     }
                 )
                 self._write(path, existing)
@@ -132,6 +125,7 @@ class CanvasGenerationStore:
         request_key: str,
         error_code: str,
         error_detail: str | None = None,
+        repair: CanvasGenerationRepairTarget | None = None,
     ) -> CanvasGenerationJob:
         return self._finish(
             job,
@@ -140,6 +134,7 @@ class CanvasGenerationStore:
             status="failed",
             error_code=error_code,
             error_detail=error_detail,
+            repair=repair,
         )
 
     def touch(
@@ -173,6 +168,7 @@ class CanvasGenerationStore:
         error_code: str | None = None,
         error_detail: str | None = None,
         canvas: CanvasDocument | None = None,
+        repair: CanvasGenerationRepairTarget | None = None,
     ) -> CanvasGenerationJob:
         path = self._path(job.course_id, job.lecture_id, actor_user_id, request_key)
         with self._locked(path):
@@ -188,6 +184,7 @@ class CanvasGenerationStore:
                     "error_code": error_code,
                     "error_detail": error_detail,
                     "canvas": canvas,
+                    "repair": repair,
                 }
             )
             self._write(path, updated)

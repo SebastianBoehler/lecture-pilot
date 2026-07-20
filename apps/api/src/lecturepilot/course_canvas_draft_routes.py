@@ -15,10 +15,8 @@ from lecturepilot.client_contract import (
 from lecturepilot.course_canvas_generation import generate_course_canvas_draft
 from lecturepilot.course_canvas_generation_failures import find_latest_canvas_failure
 from lecturepilot.course_canvas_generation_http import run_canvas_generation_request
-from lecturepilot.course_canvas_generation_jobs import (
-    CanvasGenerationStatusResponse,
-    CanvasGenerationStore,
-)
+from lecturepilot.course_canvas_generation_jobs import CanvasGenerationStore
+from lecturepilot.course_canvas_generation_response import CanvasGenerationStatusResponse
 from lecturepilot.course_canvas_generation_service import (
     CANVAS_GENERATION_LEASE_SECONDS,
     validate_generation_request_key,

@@ -7,7 +7,7 @@ import pytest
 
 from lecturepilot.canvas_markdown import read_document_source, write_document_source
 from lecturepilot.canvas_text_normalizer import clean_canvas_text
-from lecturepilot.course_canvas_planner import _read_block as read_planned_block
+from lecturepilot.course_canvas_plan_parser import _read_block as read_planned_block
 from lecturepilot.course_canvas_prompt import planner_messages
 from lecturepilot.course_canvas_section_planner import _read_block as read_section_planned_block
 from lecturepilot.source_bundle_canvas import (

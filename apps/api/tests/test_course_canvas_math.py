@@ -10,7 +10,7 @@ from lecturepilot.course_canvas_math import (
     validate_section_math,
 )
 from lecturepilot.course_canvas_prompt import planner_messages, repair_message
-from lecturepilot.course_canvas_planner import _planned_document
+from lecturepilot.course_canvas_plan_parser import planned_document as _planned_document
 from lecturepilot.course_canvas_section_planner import _section_messages
 from lecturepilot.course_canvas_validation import validate_planned_document
 from lecturepilot.providers import ProviderConfigurationError
