@@ -1,7 +1,7 @@
 import type { CanvasDocument } from "./types";
 import { CanvasDraftRequestError } from "./canvasDraftApi";
 
-const CANVAS_DRAFT_CONCURRENCY = 3;
+export const CANVAS_DRAFT_CONCURRENCY = 3;
 const CANVAS_DRAFT_RETRY_DELAYS_MS = [1500, 3500];
 const CANVAS_DRAFT_WORKER_STAGGER_MS = 400;
 

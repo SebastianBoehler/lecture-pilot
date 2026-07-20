@@ -11,6 +11,7 @@ from lecturepilot.agent_response_schema import lecture_schedule_response_format
 from lecturepilot.course_canvas_json import parse_model_json
 from lecturepilot.lecture_date_extraction import extract_source_date
 from lecturepilot.lecture_schedule import propose_lecture_schedule
+from lecturepilot.lecture_schedule_completion import complete_source_schedule
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_request_options import completion_options
 from lecturepilot.model_usage import ModelUsageRecorder, complete_with_usage
@@ -89,7 +90,7 @@ class LectureSchedulePlanner:
                 payload = await self.model_client.complete_schedule(
                     settings=settings, messages=messages
                 )
-                return _complete_source_schedule(
+                return complete_source_schedule(
                     _read_proposal(payload, course_id, files),
                     course_id=course_id,
                     files=files,
@@ -278,40 +279,6 @@ def _read_proposal(
         lectures=lectures,
         source_paths=[lecture.material_path for lecture in lectures if lecture.material_path],
     )
-
-
-def _complete_source_schedule(
-    proposal: LectureScheduleProposal,
-    *,
-    course_id: str,
-    files: list[SourceBundleFile],
-    roots: list[Path],
-    first_lecture_date: date | None,
-    requested_count: int | None,
-) -> LectureScheduleProposal:
-    deterministic = propose_lecture_schedule(
-        course_id=course_id,
-        files=files,
-        roots=roots,
-        first_lecture_date=first_lecture_date,
-        requested_count=requested_count,
-    )
-    if len(proposal.lectures) >= len(deterministic.lectures):
-        return proposal
-    by_number = {_lecture_key(lecture.number): lecture for lecture in proposal.lectures}
-    merged = [
-        by_number.get(_lecture_key(lecture.number), lecture) for lecture in deterministic.lectures
-    ]
-    return LectureScheduleProposal(
-        course_id=course_id,
-        lectures=merged,
-        source_paths=[lecture.material_path for lecture in merged if lecture.material_path],
-    )
-
-
-def _lecture_key(number: str) -> str:
-    digits = re.sub(r"\D+", "", number)
-    return str(int(digits)) if digits else number.strip().casefold()
 
 
 def _schedule_number(number: str) -> str:

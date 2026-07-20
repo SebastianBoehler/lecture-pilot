@@ -205,6 +205,20 @@
   animation: flow-spin 0.8s linear infinite;
 }
 
+.generation-time-notice {
+  display: grid;
+  gap: 4px;
+  border-left: 3px solid var(--color-accent-primary);
+  padding: 8px 10px;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+  font-size: 13px;
+}
+
+.generation-time-notice strong {
+  color: var(--color-text-primary);
+}
+
 @keyframes flow-spin {
   to {
     transform: rotate(360deg);
@@ -229,6 +243,15 @@
   font-size: 12px;
 }
 
+.lecture-schedule-reorder-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 4px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
 .lecture-schedule-list {
   display: grid;
   gap: 8px;
@@ -239,11 +262,81 @@
   gap: 5px;
   border-bottom: 1px solid var(--color-border-primary);
   padding: 4px 0 10px;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+
+.lecture-schedule-row.is-drop-target {
+  border-bottom-color: var(--color-accent-primary);
+  background: color-mix(in srgb, var(--color-accent-primary) 6%, transparent);
+}
+
+.lecture-schedule-drag-handle,
+.lecture-schedule-move-buttons button {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--color-text-tertiary);
+  background: transparent;
+}
+
+.lecture-schedule-drag-handle:not(:disabled) {
+  cursor: grab;
+}
+
+.lecture-schedule-drag-handle:not(:disabled):active {
+  cursor: grabbing;
+}
+
+.lecture-schedule-number-field {
+  display: grid;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.lecture-schedule-number-controls {
+  display: grid;
+  grid-template-columns: 32px minmax(42px, 1fr) 20px;
+  gap: 0;
+}
+
+.lecture-schedule-drag-handle {
+  width: 32px;
+  min-height: 38px;
+  border-radius: 6px 0 0 6px;
+}
+
+.lecture-schedule-number-controls input {
+  min-width: 0;
+  border-radius: 0;
+}
+
+.lecture-schedule-move-buttons {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  overflow: hidden;
+  border: 1px solid var(--color-border-primary);
+  border-left: 0;
+  border-radius: 0 6px 6px 0;
+}
+
+.lecture-schedule-move-buttons button {
+  width: 20px;
+  min-height: 19px;
+  border: 0;
+  border-radius: 0;
+}
+
+.lecture-schedule-move-buttons button + button {
+  border-top: 1px solid var(--color-border-primary);
 }
 
 .lecture-schedule-fields {
   display: grid;
-  grid-template-columns: 74px minmax(180px, 1fr) minmax(150px, 0.55fr) auto;
+  grid-template-columns: 142px minmax(180px, 1fr) minmax(150px, 0.55fr) 38px;
   gap: 8px;
   align-items: end;
 }
@@ -252,11 +345,21 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  width: 38px;
   min-height: 38px;
+  padding: 0;
   border-color: color-mix(in srgb, var(--color-danger) 45%, var(--color-border-primary));
   color: var(--color-danger);
   background: transparent;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.lecture-schedule-remove:not(:disabled):hover {
+  border-color: var(--color-danger);
+  color: #fff;
+  background: var(--color-danger);
 }
 
 .lecture-schedule-source {

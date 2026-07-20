@@ -1,6 +1,8 @@
-import { Trash2 } from "lucide-react";
+import { useState } from "react";
+import { ArrowDown, ArrowUp, GripVertical, Trash2 } from "lucide-react";
 
 import { useI18n } from "./i18n";
+import { reorderLectureSchedule } from "./lectureScheduleReorder";
 import type { LectureScheduleItem } from "./types";
 
 export function ProfessorLectureSchedule({
@@ -17,6 +19,10 @@ export function ProfessorLectureSchedule({
   schedule: LectureScheduleItem[];
 }) {
   const { t } = useI18n();
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
+  const moveLecture = (fromIndex: number, toIndex: number) =>
+    onChange(reorderLectureSchedule(schedule, fromIndex, toIndex));
   if (!schedule.length) return null;
   return (
     <section className="lecture-schedule" aria-label={t("builder.schedule.title")}>
@@ -27,20 +33,77 @@ export function ProfessorLectureSchedule({
             count: schedule.length,
           })}
         </span>
+        <p className="lecture-schedule-reorder-hint">
+          <GripVertical aria-hidden="true" size={14} />
+          {t("builder.schedule.reorderHelp")}
+        </p>
       </header>
-      <div className="lecture-schedule-list">
+      <div className="lecture-schedule-list" role="list">
         {schedule.map((lecture, index) => (
-          <div className="lecture-schedule-row" key={`${lecture.number}-${index}`}>
+          <div
+            className={`lecture-schedule-row${dropIndex === index ? " is-drop-target" : ""}`}
+            key={`${lecture.material_path ?? lecture.title}-${lecture.date}`}
+            onDragOver={(event) => {
+              event.preventDefault();
+              if (!disabled && draggedIndex !== null) setDropIndex(index);
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              if (!disabled && draggedIndex !== null) moveLecture(draggedIndex, index);
+              setDraggedIndex(null);
+              setDropIndex(null);
+            }}
+            role="listitem"
+          >
             <div className="lecture-schedule-fields">
-              <label>
-                {t("builder.schedule.number")}
-                <input
-                  value={lecture.number}
-                  onChange={(event) =>
-                    onChange(updateSchedule(schedule, index, "number", event.target.value))
-                  }
-                />
-              </label>
+              <div className="lecture-schedule-number-field">
+                <span>{t("builder.schedule.number")}</span>
+                <div className="lecture-schedule-number-controls">
+                  <button
+                    aria-label={t("builder.schedule.drag", { number: lecture.number })}
+                    className="lecture-schedule-drag-handle"
+                    disabled={disabled}
+                    draggable={!disabled}
+                    onDragEnd={() => {
+                      setDraggedIndex(null);
+                      setDropIndex(null);
+                    }}
+                    onDragStart={(event) => {
+                      event.dataTransfer.effectAllowed = "move";
+                      event.dataTransfer.setData("text/plain", String(index));
+                      setDraggedIndex(index);
+                    }}
+                    type="button"
+                  >
+                    <GripVertical aria-hidden="true" size={17} />
+                  </button>
+                  <input
+                    aria-label={t("builder.schedule.number")}
+                    value={lecture.number}
+                    onChange={(event) =>
+                      onChange(updateSchedule(schedule, index, "number", event.target.value))
+                    }
+                  />
+                  <div className="lecture-schedule-move-buttons">
+                    <button
+                      aria-label={t("builder.schedule.moveUp", { number: lecture.number })}
+                      disabled={disabled || index === 0}
+                      onClick={() => moveLecture(index, index - 1)}
+                      type="button"
+                    >
+                      <ArrowUp aria-hidden="true" size={12} />
+                    </button>
+                    <button
+                      aria-label={t("builder.schedule.moveDown", { number: lecture.number })}
+                      disabled={disabled || index === schedule.length - 1}
+                      onClick={() => moveLecture(index, index + 1)}
+                      type="button"
+                    >
+                      <ArrowDown aria-hidden="true" size={12} />
+                    </button>
+                  </div>
+                </div>
+              </div>
               <label>
                 {t("builder.schedule.lectureTitle")}
                 <input
@@ -74,7 +137,6 @@ export function ProfessorLectureSchedule({
                 }}
               >
                 <Trash2 aria-hidden="true" size={15} />
-                {t("builder.schedule.removeLabel")}
               </button>
             </div>
             <small className="lecture-schedule-source" title={lecture.material_path ?? undefined}>

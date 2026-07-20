@@ -472,6 +472,10 @@ export const enMessages = {
   "builder.schedule.title": "Proposed lecture schedule",
   "builder.schedule.help": "{count} lectures inferred from the source bundle",
   "builder.schedule.helpOne": "{count} lecture inferred from the source bundle",
+  "builder.schedule.reorderHelp": "Drag rows to change their order. Numbers update automatically.",
+  "builder.schedule.drag": "Drag lecture {number} to reorder",
+  "builder.schedule.moveUp": "Move lecture {number} up",
+  "builder.schedule.moveDown": "Move lecture {number} down",
   "builder.schedule.number": "No.",
   "builder.schedule.lectureTitle": "Title",
   "builder.schedule.date": "Date",
@@ -506,6 +510,12 @@ export const enMessages = {
   "builder.generate.busySingle": "Generating draft canvas...",
   "builder.generate.statusAll": "Generating source-grounded canvases for {count} lectures...",
   "builder.generate.statusSingle": "Generating a source-grounded canvas draft...",
+  "builder.generate.timingLabel": "Generation timing",
+  "builder.generate.estimateSingle": "Estimated time: about 10–15 minutes.",
+  "builder.generate.estimateAll":
+    "Estimated time: about {min}–{max} minutes for {count} lectures (up to {concurrency} at once).",
+  "builder.generate.backgroundHelp":
+    "Generation continues on the server. You can leave this page and come back later; use Refresh workspace to load completed drafts.",
   "builder.generate.fullReady": "{count} lecture canvases ready to review.",
   "builder.generate.singleReady": "{count} sections ready for review.",
   "builder.generate.preview": "Preview course workspace",

@@ -487,6 +487,11 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.schedule.title": "Vorgeschlagener Vorlesungsplan",
   "builder.schedule.help": "{count} Vorlesungen aus dem Quellenbündel abgeleitet",
   "builder.schedule.helpOne": "{count} Vorlesung aus dem Quellenbündel abgeleitet",
+  "builder.schedule.reorderHelp":
+    "Ziehe Zeilen in die richtige Reihenfolge. Die Nummern werden automatisch aktualisiert.",
+  "builder.schedule.drag": "Vorlesung {number} zum Umsortieren ziehen",
+  "builder.schedule.moveUp": "Vorlesung {number} nach oben verschieben",
+  "builder.schedule.moveDown": "Vorlesung {number} nach unten verschieben",
   "builder.schedule.number": "Nr.",
   "builder.schedule.lectureTitle": "Titel",
   "builder.schedule.date": "Datum",
@@ -523,6 +528,12 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.generate.statusAll":
     "Quellengestützte Canvases für {count} Vorlesungen werden erzeugt...",
   "builder.generate.statusSingle": "Quellengestützter Canvas-Entwurf wird erzeugt...",
+  "builder.generate.timingLabel": "Dauer der Erzeugung",
+  "builder.generate.estimateSingle": "Geschätzte Dauer: etwa 10–15 Minuten.",
+  "builder.generate.estimateAll":
+    "Geschätzte Dauer: etwa {min}–{max} Minuten für {count} Vorlesungen (bis zu {concurrency} gleichzeitig).",
+  "builder.generate.backgroundHelp":
+    "Die Erzeugung läuft auf dem Server weiter. Du kannst diese Seite verlassen und später zurückkommen; mit Arbeitsbereich aktualisieren werden fertige Entwürfe geladen.",
   "builder.generate.fullReady": "{count} Vorlesungscanvases bereit zur Prüfung.",
   "builder.generate.singleReady": "{count} Abschnitte bereit zur Prüfung.",
   "builder.generate.preview": "Kursarbeitsbereich ansehen",

@@ -1,6 +1,9 @@
 import { useI18n } from "./i18n";
 import { PendingStatus, StepHeader } from "./ProfessorCourseBuilderParts";
-import type { CanvasGenerationProgress } from "./professorCanvasGeneration";
+import {
+  CANVAS_DRAFT_CONCURRENCY,
+  type CanvasGenerationProgress,
+} from "./professorCanvasGeneration";
 import type { CanvasDocument } from "./types";
 
 export function ProfessorCanvasDraftStep({
@@ -45,6 +48,15 @@ export function ProfessorCanvasDraftStep({
   const hasDraft = Boolean(canvas);
   const allDraftsReady =
     generationProgress.length === 0 || generationProgress.every((item) => item.status === "ready");
+  const generationRounds = Math.max(1, Math.ceil(totalCount / CANVAS_DRAFT_CONCURRENCY));
+  const timeEstimate = isFullCourse
+    ? t("builder.generate.estimateAll", {
+        concurrency: CANVAS_DRAFT_CONCURRENCY,
+        count: totalCount,
+        max: generationRounds * 15,
+        min: generationRounds * 10,
+      })
+    : t("builder.generate.estimateSingle");
   return (
     <section className="flow-card">
       <StepHeader
@@ -52,6 +64,10 @@ export function ProfessorCanvasDraftStep({
         title={t("builder.generate.title")}
         done={hasDraft && allDraftsReady}
       />
+      <aside aria-label={t("builder.generate.timingLabel")} className="generation-time-notice">
+        <strong>{timeEstimate}</strong>
+        <span>{t("builder.generate.backgroundHelp")}</span>
+      </aside>
       <button
         className={hasDraft ? undefined : "primary-action"}
         disabled={!canGenerate || isGenerating}
