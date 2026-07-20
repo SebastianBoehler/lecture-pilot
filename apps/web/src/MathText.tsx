@@ -9,6 +9,7 @@ import "./math-text.css";
 
 import { katexOptions } from "./courseLatexMacros";
 import { delimitedMathIsRenderable, segmentDisplayMath, tryRenderDisplayMath } from "./displayMath";
+import { looseLatexPlugin } from "./looseLatex";
 
 type MathTextMode = "inline" | "block";
 
@@ -189,10 +190,6 @@ function isHighlightBlocked(element: HTMLElement | null) {
   return false;
 }
 
-function textNode(value: string): MarkdownNode {
-  return { type: "text", value };
-}
-
 function normalizeMarkdownMath(value: string) {
   return value
     .replace(/\\{1,2}\[([\s\S]*?)\\{1,2}\]/g, (_, formula: string) => `\n$$\n${formula}\n$$\n`)
@@ -214,71 +211,8 @@ function leadingTextBeforeMath(value: string) {
   return text && text.length >= 4 ? text : null;
 }
 
-function looseLatexPlugin() {
-  return (tree: unknown) => {
-    splitLooseLatexText(tree as MarkdownNode);
-    return tree;
-  };
-}
-
-function splitLooseLatexText(node: MarkdownNode) {
-  if (!node || blockedMarkdownNode(node) || !Array.isArray(node.children)) return;
-  const next = [];
-  for (const child of node.children) {
-    if (child.type === "text" && typeof child.value === "string") {
-      next.push(...looseLatexPieces(child.value));
-    } else {
-      splitLooseLatexText(child);
-      next.push(child);
-    }
-  }
-  node.children = next;
-}
-
-function looseLatexPieces(value: string): MarkdownNode[] {
-  const pieces: MarkdownNode[] = [];
-  let cursor = 0;
-  for (const match of value.matchAll(/\\+[a-zA-Z]+(?:\s*[_^](?:\{[^{}]+\}|[a-zA-Z0-9]+))*/g)) {
-    if (match.index === undefined) continue;
-    if (match.index > cursor) pieces.push(textNode(value.slice(cursor, match.index)));
-    pieces.push(inlineMathNode(normalizeLooseLatexCommand(match[0])));
-    cursor = match.index + match[0].length;
-  }
-  if (cursor < value.length) pieces.push(textNode(value.slice(cursor)));
-  return pieces.length ? pieces : [textNode(value)];
-}
-
-function blockedMarkdownNode(node: MarkdownNode) {
-  return ["code", "inlineCode", "math", "inlineMath"].includes(String(node.type || ""));
-}
-
-function inlineMathNode(value: string): MarkdownNode {
-  return {
-    type: "inlineMath",
-    value,
-    data: {
-      hName: "code",
-      hProperties: { className: ["language-math", "math-inline"] },
-      hChildren: [textNode(value)],
-    },
-  };
-}
-
-function normalizeLooseLatexCommand(value: string) {
-  return value.replace(/^\\+/, "\\");
-}
-
 function hasDelimitedMath(expression: string) {
   return /\$\$[\s\S]+?\$\$|\$[^$\n]+\$|\\{1,2}\[[\s\S]+?\\{1,2}\]|\\{1,2}\([\s\S]*?\\{1,2}\)/.test(
     expression,
   );
 }
-
-type MarkdownNode = {
-  type?: string;
-  tagName?: string;
-  value?: string;
-  properties?: Record<string, unknown>;
-  data?: Record<string, unknown>;
-  children?: MarkdownNode[];
-};

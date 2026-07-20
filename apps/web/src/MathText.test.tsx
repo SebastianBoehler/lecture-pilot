@@ -30,6 +30,65 @@ describe("MathText", () => {
     expect(document.querySelector(".phrase-highlight")?.textContent).toBe("loss function");
   });
 
+  it("renders complete braced LaTeX commands inside generated prose", () => {
+    render(
+      <p>
+        <MathText
+          highlightedText={null}
+          text={String.raw`The dataset notation \mathcal{D}, hypothesis h(\mathbf{x}), and loss \mathcal{L} clarify the objective.`}
+        />
+      </p>,
+    );
+
+    expect(document.querySelector(".katex-error")).toBeNull();
+    expect(document.querySelectorAll(".katex")).toHaveLength(3);
+    expect(document.querySelectorAll(".katex")[1]?.textContent).toContain("h(x)");
+  });
+
+  it("renders a complete undelimited equation inside generated prose", () => {
+    render(
+      <p>
+        <MathText
+          highlightedText={null}
+          text={String.raw`Worked example: Hypothesis: h(\mathbf{x}) = \mathbf{w}^T \mathbf{x}. Steps: define the loss.`}
+        />
+      </p>,
+    );
+
+    expect(document.querySelector(".katex-error")).toBeNull();
+    expect(document.querySelectorAll(".katex")).toHaveLength(1);
+    expect(document.querySelector(".katex")?.textContent).toContain("h(x)=wTx");
+  });
+
+  it("does not treat equality inside a subscript group as an equation boundary", () => {
+    render(
+      <p>
+        <MathText
+          highlightedText={null}
+          text={String.raw`Examples are written as ordered pairs {\mathbf{x}^t, y^t}_{t=1}^N where each index selects one sample.`}
+        />
+      </p>,
+    );
+
+    expect(document.querySelector(".katex-error")).toBeNull();
+    expect(document.querySelectorAll(".katex")).toHaveLength(1);
+    expect(document.body).toHaveTextContent("where each index selects one sample");
+  });
+
+  it("keeps sized LaTeX delimiter pairs in one renderable expression", () => {
+    render(
+      <p>
+        <MathText
+          highlightedText={null}
+          text={String.raw`Choose \sum_{t=1}^N \sum_{i=1}^K 1\left(h_i(\mathbf{x}^t) \neq y_i^t\right).`}
+        />
+      </p>,
+    );
+
+    expect(document.querySelector(".katex-error")).toBeNull();
+    expect(document.querySelectorAll(".katex")).toHaveLength(3);
+  });
+
   it("renders bracketed display math embedded in imported slide text", () => {
     render(
       <p>
