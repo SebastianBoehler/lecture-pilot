@@ -28,6 +28,7 @@ async def plan_sections_individually(
     model_client: SectionPlanModelClient,
     settings: ProviderSettings,
     source_document: CanvasDocument,
+    output_language: str = "en",
 ) -> CanvasDocument:
     sections = []
     source_sections = source_topic_sections(source_document) or source_document.sections
@@ -39,6 +40,7 @@ async def plan_sections_individually(
                 settings=settings,
                 source_document=source_document,
                 source_section=source_section,
+                output_language=output_language,
             )
         )
     if not sections:
@@ -58,8 +60,13 @@ async def _plan_section(
     settings: ProviderSettings,
     source_document: CanvasDocument,
     source_section: CanvasSection,
+    output_language: str,
 ) -> CanvasSection:
-    messages = _section_messages(source_document, source_section)
+    messages = _section_messages(
+        source_document,
+        source_section,
+        output_language=output_language,
+    )
     allowed_assets = _allowed_assets(source_section)
     last_error: ProviderConfigurationError | None = None
     for _ in range(2):

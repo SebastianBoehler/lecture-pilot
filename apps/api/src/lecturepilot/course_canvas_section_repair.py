@@ -5,6 +5,7 @@ from typing import Protocol
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
+from lecturepilot.course_canvas_language import canvas_language_instruction
 from lecturepilot.course_canvas_math import generated_math_instructions
 from lecturepilot.course_canvas_section_planner import _read_section_payload
 from lecturepilot.course_canvas_validation import validate_planned_document
@@ -35,13 +36,20 @@ class CourseCanvasSectionRepairMixin:
         section_id: str,
         block_id: str | None,
         failure_context: str,
+        output_language: str = "en",
     ) -> CanvasDocument:
         section = _section(candidate_document, section_id)
         target = _block(section, block_id) if block_id else None
         settings = self.provider_registry.require_ready(
             [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
         )
-        messages = _repair_messages(source_document, section, target, failure_context)
+        messages = _repair_messages(
+            source_document,
+            section,
+            target,
+            failure_context,
+            output_language=output_language,
+        )
         last_error: CanvasGenerationRepairableError | None = None
         for _attempt in range(2):
             repaired: CanvasDocument | None = None
@@ -96,6 +104,8 @@ def _repair_messages(
     section: CanvasSection,
     target: CanvasBlock | None,
     failure: str,
+    *,
+    output_language: str,
 ) -> list[dict[str, str]]:
     scope = (
         "Return one section whose blocks array contains only replacement blocks for the failed "
@@ -109,6 +119,7 @@ def _repair_messages(
             "role": "system",
             "content": (
                 "You are applying a surgical patch to a generated LecturePilot canvas. "
+                f"{canvas_language_instruction(output_language)} "
                 f"{scope} Return the standard structured canvas JSON with exactly one section. "
                 "Preserve the meaning and use only the supplied evidence. "
                 f"{generated_math_instructions()}"

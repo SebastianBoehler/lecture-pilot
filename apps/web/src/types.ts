@@ -243,13 +243,13 @@ export type YoutubeVideoCandidate = {
 
 export type UniversityCourse = {
   access_policy?: CourseAccessPolicy;
+  canvas_language?: "de" | "en";
   default_publication_mode?: CourseDefaultPublicationMode;
   id: string;
   title: string;
   professor: string;
   term: string;
 };
-
 export type LoginSession = {
   username: string;
   display_name?: string | null;

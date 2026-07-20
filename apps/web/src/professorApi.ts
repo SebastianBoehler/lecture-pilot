@@ -219,6 +219,7 @@ function courseWorkspaceBody(
     course_id: courseId ?? null,
     term: term ?? null,
     access_policy: setup.accessPolicy,
+    canvas_language: setup.canvasLanguage,
     course_title: setup.courseTitle,
     lecture_title: setup.lectureTitle || null,
     lecture_number: setup.lectureNumber || null,

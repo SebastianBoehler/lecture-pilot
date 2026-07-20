@@ -153,7 +153,10 @@ def resolve_course(app: FastAPI, *, course_id: str, seeded_course: Course) -> Co
             workspace = _read_workspace(app, course_id)
             if workspace:
                 return stored_course.model_copy(
-                    update={"default_publication_mode": workspace.course.default_publication_mode}
+                    update={
+                        "canvas_language": workspace.course.canvas_language,
+                        "default_publication_mode": workspace.course.default_publication_mode,
+                    }
                 )
             return stored_course
     workspace = _read_workspace(app, course_id)

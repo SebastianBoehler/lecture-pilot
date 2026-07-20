@@ -20,6 +20,7 @@ export function courseFromSetup(
 ): UniversityCourse {
   return {
     access_policy: setup.accessPolicy,
+    canvas_language: setup.canvasLanguage,
     id: courseId,
     professor: session.display_name ?? session.email ?? session.username,
     term: session.term,

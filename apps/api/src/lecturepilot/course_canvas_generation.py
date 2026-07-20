@@ -14,6 +14,7 @@ from lecturepilot.course_canvas_repairs import (
 )
 from lecturepilot.course_media import apply_course_media, course_media_evidence
 from lecturepilot.course_canvas_validation import validate_planned_document
+from lecturepilot.course_schedule_store import read_course_workspace
 from lecturepilot.logging_observability import operation_scope
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_usage import model_usage_scope
@@ -67,6 +68,7 @@ async def generate_course_canvas_draft(
         repair_context = repair_failure_detail or (
             repair_record.failure_detail if repair_record else None
         )
+        output_language = _canvas_language(app, course_id)
         with observability.tool_span("course_canvas_generation", stage="model_plan", **common):
             with model_usage_scope(
                 actor_user_id=context.user_id,
@@ -78,9 +80,13 @@ async def generate_course_canvas_draft(
                         document = await app.state.course_planner.plan_canvas(
                             source,
                             repair_context=repair_context,
+                            output_language=output_language,
                         )
                     else:
-                        document = await app.state.course_planner.plan_canvas(source)
+                        document = await app.state.course_planner.plan_canvas(
+                            source,
+                            output_language=output_language,
+                        )
                 except CanvasGenerationRepairableError as exc:
                     raise exc.with_source_revision(
                         lecture_source_revision(
@@ -144,6 +150,7 @@ async def repair_targeted_course_canvas_draft(
         source = await run_in_threadpool(source_document, course_id, lecture_id)
         media_root = app.state.canvas_workspace.course_media_root(course_id)
         source = course_media_evidence(source, media_root)
+        output_language = _canvas_language(app, course_id)
         try:
             with model_usage_scope(
                 actor_user_id=context.user_id,
@@ -156,6 +163,7 @@ async def repair_targeted_course_canvas_draft(
                     section_id=repair.section_id,
                     block_id=repair.block_id,
                     failure_context=failure.error_detail,
+                    output_language=output_language,
                 )
             validate_planned_document(document, source)
         except CanvasGenerationRepairableError as exc:
@@ -184,3 +192,11 @@ async def repair_targeted_course_canvas_draft(
             {"section_count": len(document.sections), "warning_count": len(document.warnings)}
         )
         return document
+
+
+def _canvas_language(app: FastAPI, course_id: str) -> str:
+    workspace = read_course_workspace(
+        app.state.canvas_workspace.course_media_root(course_id),
+        course_id,
+    )
+    return workspace.course.canvas_language if workspace else "en"

@@ -79,14 +79,21 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
         source_document: CanvasDocument,
         *,
         repair_context: str | None = None,
+        output_language: str = "en",
     ) -> CanvasDocument:
         settings = self.provider_registry.require_ready(
             [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
         )
         source_document = filter_source_document_for_planning(source_document)
-        messages = planner_messages(source_document)
+        messages = planner_messages(source_document, output_language=output_language)
         if repair_context:
-            messages.append(repair_message(repair_context, source_document))
+            messages.append(
+                repair_message(
+                    repair_context,
+                    source_document,
+                    output_language=output_language,
+                )
+            )
         last_error: ProviderConfigurationError | None = None
         generation_id = current_operation_id() or uuid4().hex
         span_attributes = {
@@ -123,7 +130,14 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
                 if isinstance(exc, CanvasGenerationRepairableError) and document is not None:
                     exc.with_candidate(document)
                 last_error = exc
-                messages = [*messages, repair_message(str(exc), source_document)]
+                messages = [
+                    *messages,
+                    repair_message(
+                        str(exc),
+                        source_document,
+                        output_language=output_language,
+                    ),
+                ]
         if last_error:
             try:
                 with self.observability.model_span(
@@ -133,6 +147,7 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
                         model_client=self.model_client,
                         settings=settings,
                         source_document=source_document,
+                        output_language=output_language,
                     )
                     sectionwise = avoid_mirrored_section_ids(sectionwise, source_document)
                     sectionwise = enrich_learning_document(sectionwise)

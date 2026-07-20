@@ -283,7 +283,7 @@ def _write(path: Path) -> None:
 
 
 class _FakeCoursePlanner:
-    async def plan_canvas(self, source_document):
+    async def plan_canvas(self, source_document, *, output_language: str):
         assert source_document.source_ref == "Lecture03-eng.tex"
         return source_document.model_copy(
             update={

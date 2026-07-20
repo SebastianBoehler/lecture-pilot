@@ -210,7 +210,13 @@ def test_schedule_inference_rejects_invalid_start_date(tmp_path: Path) -> None:
 def test_dynamic_course_workspace_uses_uploaded_source(tmp_path: Path) -> None:
     client = _client(tmp_path)
     client.app.state.course_planner = _FakeCoursePlanner()
-    _create_workspace(client, "Demo ML Course", "07", "Kernel Methods")
+    _create_workspace(
+        client,
+        "Demo ML Course",
+        "07",
+        "Kernel Methods",
+        canvas_language="de",
+    )
 
     upload = client.post(
         "/admin/courses/demo-ml-course/materials",
@@ -417,10 +423,13 @@ def _create_workspace(
     course_title: str,
     lecture_number: str,
     lecture_title: str,
+    *,
+    canvas_language: str = "en",
 ) -> dict:
     response = client.post(
         "/admin/course-workspaces",
         json={
+            "canvas_language": canvas_language,
             "course_title": course_title,
             "lecture_number": lecture_number,
             "lecture_title": lecture_title,
@@ -456,7 +465,8 @@ def _pdf_source(text: str) -> bytes:
 
 
 class _FakeCoursePlanner:
-    async def plan_canvas(self, source_document):
+    async def plan_canvas(self, source_document, *, output_language: str):
+        assert output_language == "de"
         assert source_document.course_id == "demo-ml-course"
         assert source_document.lecture_id == "lecture-07"
         assert source_document.source_ref == "uploads/Lecture07.tex"
@@ -487,7 +497,7 @@ class _RecordingCoursePlanner:
     def __init__(self) -> None:
         self.seen_source_refs: list[str] = []
 
-    async def plan_canvas(self, source_document):
+    async def plan_canvas(self, source_document, *, output_language: str):
         self.seen_source_refs.append(source_document.source_ref)
         return source_document.model_copy(
             update={
@@ -555,7 +565,7 @@ def _course_titles(payload: dict) -> list[str]:
 
 
 class _FakeMixedSourcePlanner:
-    async def plan_canvas(self, source_document):
+    async def plan_canvas(self, source_document, *, output_language: str):
         evidence = "\n".join(
             block.text or "" for section in source_document.sections for block in section.blocks
         )

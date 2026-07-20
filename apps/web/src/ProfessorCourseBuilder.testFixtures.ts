@@ -278,6 +278,7 @@ function courseWorkspacePayload(init?: RequestInit) {
   return {
     course: {
       access_policy: body.access_policy ?? "tuebingen_enrolled",
+      canvas_language: body.canvas_language ?? "en",
       default_publication_mode: "on_lecture_date",
       id: "demo-ml-course",
       title,

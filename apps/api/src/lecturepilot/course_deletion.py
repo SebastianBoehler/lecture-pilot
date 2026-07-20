@@ -57,9 +57,10 @@ def register_course_deletion_routes(app: FastAPI, *, course_tenant_id: str) -> N
                             update={
                                 "course": course.model_copy(
                                     update={
+                                        "canvas_language": workspace.course.canvas_language,
                                         "default_publication_mode": (
                                             workspace.course.default_publication_mode
-                                        )
+                                        ),
                                     }
                                 )
                             }

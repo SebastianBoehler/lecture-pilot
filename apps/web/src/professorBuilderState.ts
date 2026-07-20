@@ -5,6 +5,7 @@ export type BuilderTarget = "single-lecture" | "full-course";
 
 export type CourseSetup = {
   accessPolicy: CourseAccessPolicy;
+  canvasLanguage: "de" | "en";
   courseTitle: string;
   lectureTitle: string;
   lectureNumber: string;
@@ -30,6 +31,7 @@ export type SavedProfessorFlow = {
 
 const defaultCourseSetup: CourseSetup = {
   accessPolicy: "tuebingen_enrolled",
+  canvasLanguage: "en",
   courseTitle: "",
   lectureTitle: "",
   lectureNumber: "",

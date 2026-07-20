@@ -425,6 +425,11 @@ export const enMessages = {
     "Alma suggestions could not be loaded. You can keep entering the course name manually.",
   "builder.define.courseNameHelp":
     "Use the exact course title from Alma or ILIAS. LecturePilot matches enrolled students by course title and term.",
+  "builder.define.courseLanguage": "Course language",
+  "builder.define.courseLanguage.german": "German",
+  "builder.define.courseLanguage.english": "English",
+  "builder.define.courseLanguage.help":
+    "All matching uploaded materials remain available as evidence; every canvas is written in the selected language.",
   "builder.define.visibility": "Course visibility",
   "builder.define.visibility.instructors": "Instructors only",
   "builder.define.visibility.enrolled": "Course students only",

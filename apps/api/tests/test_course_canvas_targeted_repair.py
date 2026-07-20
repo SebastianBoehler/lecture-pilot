@@ -141,6 +141,7 @@ class _TargetedRepairPlanner:
         source_document: CanvasDocument,
         *,
         repair_context: str | None = None,
+        output_language: str,
     ) -> CanvasDocument:
         if repair_context is not None:
             self.full_repair_called = True
@@ -163,6 +164,7 @@ class _TargetedRepairPlanner:
         section_id: str,
         block_id: str | None,
         failure_context: str,
+        output_language: str,
     ) -> CanvasDocument:
         self.targeted_repair_calls.append((section_id, block_id, failure_context))
         section = candidate_document.sections[0]

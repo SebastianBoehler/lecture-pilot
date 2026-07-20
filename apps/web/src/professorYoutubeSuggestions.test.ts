@@ -26,6 +26,7 @@ describe("professor YouTube suggestions", () => {
 function setup(): CourseSetup {
   return {
     accessPolicy: "tuebingen_enrolled",
+    canvasLanguage: "en",
     courseTitle: "Grundlagen des Maschinellen Lernens",
     lectureTitle: "",
     lectureNumber: "",

@@ -16,13 +16,18 @@ def resolve_course_workspace(
     term: str,
     course: Course | None = None,
 ) -> CourseWorkspaceResult:
-    course = course or Course(
-        access_policy=setup.access_policy,
-        id=_course_id(setup.course_title),
-        title=setup.course_title.strip(),
-        professor=professor,
-        term=term,
-    )
+    if course is None:
+        course = Course(
+            access_policy=setup.access_policy,
+            canvas_language=setup.canvas_language,
+            id=_course_id(setup.course_title),
+            title=setup.course_title.strip(),
+            professor=professor,
+            term=term,
+        )
+    else:
+        if "canvas_language" in setup.model_fields_set:
+            course = course.model_copy(update={"canvas_language": setup.canvas_language})
     lectures = _lectures_for_setup(setup, course.id)
     return CourseWorkspaceResult(
         course=course,

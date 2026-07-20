@@ -440,6 +440,11 @@ export const deMessages: Record<MessageKey, string> = {
     "Alma-Vorschläge konnten gerade nicht geladen werden. Du kannst den Kursnamen weiter manuell eingeben.",
   "builder.define.courseNameHelp":
     "Verwende den exakten Kurstitel aus Alma oder ILIAS. LecturePilot gleicht Kurstitel und Semester mit den Belegungen der Studierenden ab.",
+  "builder.define.courseLanguage": "Kurssprache",
+  "builder.define.courseLanguage.german": "Deutsch",
+  "builder.define.courseLanguage.english": "Englisch",
+  "builder.define.courseLanguage.help":
+    "Alle passenden Uploads bleiben als Quellen verfügbar; jedes Canvas wird in der gewählten Sprache erstellt.",
   "builder.define.visibility": "Kurssichtbarkeit",
   "builder.define.visibility.instructors": "Nur Lehrende",
   "builder.define.visibility.enrolled": "Nur Kursteilnehmende",

@@ -64,6 +64,7 @@ class Course(BaseModel):
     title: str
     professor: str
     term: str
+    canvas_language: Literal["de", "en"] = "en"
     access_policy: CourseAccessPolicy = CourseAccessPolicy.TUEBINGEN_ENROLLED
     default_publication_mode: PublicationMode = PublicationMode.ON_LECTURE_DATE
 
@@ -115,6 +116,7 @@ class CourseMaterialUploadResult(BaseModel):
 class CourseWorkspaceSetupInput(BaseModel):
     course_id: str | None = Field(default=None, max_length=120)
     course_title: str = Field(min_length=1, max_length=200)
+    canvas_language: Literal["de", "en"] = "en"
     term: str | None = Field(default=None, max_length=80)
     lecture_title: str | None = Field(default=None, max_length=200)
     lecture_number: str | None = Field(default=None, max_length=20)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
+from lecturepilot.course_canvas_language import canvas_language_instruction
 from lecturepilot.course_canvas_math import generated_math_instructions
 
 
@@ -8,7 +9,10 @@ MAX_SECTION_EVIDENCE_CHARS = 24_000
 
 
 def section_messages(
-    source_document: CanvasDocument, section: CanvasSection
+    source_document: CanvasDocument,
+    section: CanvasSection,
+    *,
+    output_language: str = "en",
 ) -> list[dict[str, str]]:
     return [
         {
@@ -16,6 +20,7 @@ def section_messages(
             "content": (
                 "Rewrite this extracted lecture section into a clean markdown learning "
                 "canvas section. Return one structured object with title and a sections array containing "
+                f"{canvas_language_instruction(output_language)} "
                 "exactly one object with id, title, source_ref, and blocks. "
                 "Use 4 to 8 detailed teaching blocks with self-study paragraphs, examples, and steps. "
                 "Blocks may be paragraph, list, callout, math, asset, video, "

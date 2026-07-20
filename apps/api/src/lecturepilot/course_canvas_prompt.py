@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.course_canvas_language import canvas_language_instruction
 from lecturepilot.course_canvas_math import generated_math_instructions
 from lecturepilot.course_canvas_validation import (
     planned_section_bounds,
@@ -13,7 +14,11 @@ MAX_SOURCE_EVIDENCE_CHARS = 80_000
 MAX_BLOCK_EVIDENCE_CHARS = 1_600
 
 
-def planner_messages(source_document: CanvasDocument) -> list[dict[str, str]]:
+def planner_messages(
+    source_document: CanvasDocument,
+    *,
+    output_language: str = "en",
+) -> list[dict[str, str]]:
     min_sections, max_sections = planned_section_bounds(source_document)
     return [
         {
@@ -21,6 +26,7 @@ def planner_messages(source_document: CanvasDocument) -> list[dict[str, str]]:
             "content": (
                 "You are the LecturePilot course-builder agent. Create an editable, "
                 "source-grounded study document from extracted lecture material. "
+                f"{canvas_language_instruction(output_language)} "
                 "Do not mirror slide-by-slide order, do not preserve extracted slide ids, "
                 "and do not create one section per frame. Synthesize the full evidence into "
                 f"{min_sections} to {max_sections} pedagogical sections with stable topic ids, four to eight detailed "
@@ -48,12 +54,18 @@ def planner_messages(source_document: CanvasDocument) -> list[dict[str, str]]:
     ]
 
 
-def repair_message(error: str, source_document: CanvasDocument) -> dict[str, str]:
+def repair_message(
+    error: str,
+    source_document: CanvasDocument,
+    *,
+    output_language: str = "en",
+) -> dict[str, str]:
     min_sections, max_sections = planned_section_bounds(source_document)
     return {
         "role": "user",
         "content": (
             f"The previous draft failed validation: {error}. Return a corrected JSON draft. "
+            f"{canvas_language_instruction(output_language)} "
             f"Do not mirror extracted slide ids. Group source evidence into {min_sections} to {max_sections} study "
             "sections, cite source files and frames in source_ref, use 4 to 8 detailed "
             "teaching blocks and 600 explanatory characters per section. "

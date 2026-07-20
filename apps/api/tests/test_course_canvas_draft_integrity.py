@@ -288,7 +288,12 @@ Source evidence explains the generated canvas contract in sufficient detail.
 
 
 class _InvalidCoursePlanner:
-    async def plan_canvas(self, source_document: CanvasDocument) -> CanvasDocument:
+    async def plan_canvas(
+        self,
+        source_document: CanvasDocument,
+        *,
+        output_language: str,
+    ) -> CanvasDocument:
         return source_document.model_copy(
             update={
                 "source_kind": "generated",
@@ -306,6 +311,7 @@ class _RepairingCoursePlanner:
         source_document: CanvasDocument,
         *,
         repair_context: str | None = None,
+        output_language: str,
     ) -> CanvasDocument:
         self.repair_contexts.append(repair_context)
         if repair_context is None:
@@ -323,7 +329,12 @@ class _RepairingCoursePlanner:
 class _UnexpectedCoursePlanner:
     called = False
 
-    async def plan_canvas(self, source_document: CanvasDocument) -> CanvasDocument:
+    async def plan_canvas(
+        self,
+        source_document: CanvasDocument,
+        *,
+        output_language: str,
+    ) -> CanvasDocument:
         self.called = True
         raise AssertionError("stale clients must not start canvas planning")
 
