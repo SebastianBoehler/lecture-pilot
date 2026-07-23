@@ -73,7 +73,7 @@ export async function deleteCourseWorkspace(courseId: string, session: LoginSess
   });
   const payload = await response.json().catch(() => null);
   if (!response.ok) throw new Error(readApiError(payload, "Course deletion failed."));
-  return payload as { course_id: string; deleted: boolean; deleted_path: string };
+  return payload as { course_id: string; deleted: boolean };
 }
 
 export async function proposeLectureSchedule(input: {

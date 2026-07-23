@@ -18,6 +18,7 @@ from lecturepilot.course_access import (
     lecture_views_for_context,
     resolve_course_lectures,
 )
+from lecturepilot.course_deletion import delete_course_files
 from lecturepilot.course_repository import CourseRepository, CourseRepositoryError
 from lecturepilot.course_schedule_store import (
     list_course_workspaces,
@@ -162,9 +163,13 @@ def register_course_routes(
                 )
         except Exception:
             if database_course and created_database_course:
-                CourseRepository(app.state.database).archive(
+                CourseRepository(app.state.database).delete(
                     user_id=UUID(context.user_id),
                     tenant_id=course_tenant_id,
+                    course_id=database_course.id,
+                )
+                delete_course_files(
+                    layout=app.state.canvas_workspace.layout,
                     course_id=database_course.id,
                 )
             raise

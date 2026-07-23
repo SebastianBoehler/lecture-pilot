@@ -125,7 +125,6 @@ class CourseRecord(Base):
     access_policy: Mapped[str] = mapped_column(String(40), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
-    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class CourseExternalRefRecord(Base):

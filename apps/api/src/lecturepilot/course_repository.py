@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import or_, select
+from sqlalchemy import delete, or_, select
 
 from lecturepilot.database import Database
 from lecturepilot.db_models import (
@@ -11,6 +11,7 @@ from lecturepilot.db_models import (
     CourseEnrollmentRecord,
     CourseRecord,
     TenantMembershipRecord,
+    UsageCounterRecord,
 )
 from lecturepilot.models import (
     Course,
@@ -87,7 +88,6 @@ class CourseRepository:
                 select(CourseRecord).where(
                     CourseRecord.id == identifier,
                     CourseRecord.tenant_id == tenant_id,
-                    CourseRecord.archived_at.is_(None),
                 )
             )
             return _course(record) if record else None
@@ -102,7 +102,6 @@ class CourseRepository:
                     CourseRecord.id == identifier,
                     CourseRecord.tenant_id == tenant_id,
                     CourseRecord.owner_user_id == user_id,
-                    CourseRecord.archived_at.is_(None),
                 )
             )
             if record is None:
@@ -121,7 +120,6 @@ class CourseRepository:
                 )
                 .where(
                     CourseRecord.tenant_id == tenant_id,
-                    CourseRecord.archived_at.is_(None),
                     or_(
                         CourseRecord.owner_user_id == user_id,
                         CourseEnrollmentRecord.id.is_not(None),
@@ -145,7 +143,6 @@ class CourseRepository:
                 .where(
                     CourseRecord.tenant_id == tenant_id,
                     CourseRecord.owner_user_id == user_id,
-                    CourseRecord.archived_at.is_(None),
                 )
                 .order_by(CourseRecord.created_at)
             ).all()
@@ -155,10 +152,7 @@ class CourseRepository:
         with self.database.session() as session:
             records = session.scalars(
                 select(CourseRecord)
-                .where(
-                    CourseRecord.tenant_id == tenant_id,
-                    CourseRecord.archived_at.is_(None),
-                )
+                .where(CourseRecord.tenant_id == tenant_id)
                 .order_by(CourseRecord.created_at)
             ).all()
             return [_course(record) for record in records]
@@ -174,7 +168,6 @@ class CourseRepository:
                         CourseRecord.id == identifier,
                         CourseRecord.tenant_id == tenant_id,
                         CourseRecord.owner_user_id == user_id,
-                        CourseRecord.archived_at.is_(None),
                     )
                 )
                 is not None
@@ -194,7 +187,6 @@ class CourseRepository:
                         CourseEnrollmentRecord.user_id == user_id,
                         CourseEnrollmentRecord.status == "active",
                         CourseRecord.tenant_id == tenant_id,
-                        CourseRecord.archived_at.is_(None),
                     )
                 )
                 is not None
@@ -217,7 +209,6 @@ class CourseRepository:
                     CourseRecord.id == identifier,
                     CourseRecord.tenant_id == tenant_id,
                     CourseRecord.owner_user_id == user_id,
-                    CourseRecord.archived_at.is_(None),
                 )
             )
             if course is None:
@@ -227,7 +218,7 @@ class CourseRepository:
             course.updated_at = datetime.now(UTC)
             return previous
 
-    def archive(self, *, user_id: UUID, tenant_id: str, course_id: str) -> bool:
+    def delete(self, *, user_id: UUID, tenant_id: str, course_id: str) -> bool:
         identifier = _uuid(course_id)
         if identifier is None:
             return False
@@ -237,17 +228,22 @@ class CourseRepository:
                     CourseRecord.id == identifier,
                     CourseRecord.tenant_id == tenant_id,
                     CourseRecord.owner_user_id == user_id,
-                    CourseRecord.archived_at.is_(None),
                 )
             )
             if course is None:
                 return False
-            course.archived_at = datetime.now(UTC)
+            session.execute(
+                delete(UsageCounterRecord).where(
+                    UsageCounterRecord.tenant_id == tenant_id,
+                    UsageCounterRecord.course_id == course_id,
+                )
+            )
+            session.delete(course)
             session.add(
                 AuditEventRecord(
                     tenant_id=tenant_id,
                     actor_user_id=user_id,
-                    event_type="course.archived",
+                    event_type="course.deleted",
                     target_type="course",
                     target_id=course_id,
                 )

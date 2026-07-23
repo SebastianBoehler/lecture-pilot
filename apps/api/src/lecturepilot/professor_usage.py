@@ -44,7 +44,6 @@ class ProfessorUsageRepository:
                 .where(
                     CourseRecord.tenant_id == tenant_id,
                     CourseRecord.owner_user_id == actor_id,
-                    CourseRecord.archived_at.is_(None),
                 )
                 .order_by(CourseRecord.created_at)
             ).all()

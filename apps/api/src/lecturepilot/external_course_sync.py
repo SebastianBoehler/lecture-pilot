@@ -5,6 +5,7 @@ import unicodedata
 from uuid import UUID
 
 from sqlalchemy import select, text, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from lecturepilot.db_models import (
@@ -15,6 +16,7 @@ from lecturepilot.db_models import (
     ExternalCourseObservationRecord,
 )
 from lecturepilot.models import CourseAccessPolicy
+from lecturepilot.metadata_events import emit_metadata_event
 from lecturepilot.university_models import ExternalCourseCandidate
 
 
@@ -87,42 +89,62 @@ def _sync_enrollments(
             .values(status="inactive", synced_at=now)
         )
     for observation in observations:
-        session.execute(
-            text("SELECT pg_advisory_xact_lock(hashtext(:course_key))"),
-            {
-                "course_key": (
-                    f"course-ref:{tenant_id}:{observation.source.value}:"
-                    f"{observation.external_course_id}:{observation.term}"
-                )
-            },
-        )
-        external_ref = _external_course_ref(session, tenant_id, observation)
+        try:
+            with session.begin_nested():
+                _sync_observation(session, user_id, tenant_id, observation, now)
+        except IntegrityError as exc:
+            emit_metadata_event(
+                "university_course_sync.observation_skipped",
+                error=True,
+                exception_type=type(exc).__name__,
+                root_cause_type=type(exc.orig).__name__,
+                outcome="skipped_course",
+            )
+
+
+def _sync_observation(
+    session: Session,
+    user_id: UUID,
+    tenant_id: str,
+    observation: ExternalCourseCandidate,
+    now: datetime,
+) -> None:
+    session.execute(
+        text("SELECT pg_advisory_xact_lock(hashtext(:course_key))"),
+        {
+            "course_key": (
+                f"course-ref:{tenant_id}:{observation.source.value}:"
+                f"{observation.external_course_id}:{observation.term}"
+            )
+        },
+    )
+    external_ref = _external_course_ref(session, tenant_id, observation)
+    if external_ref is None:
+        external_ref = _match_and_link_course(session, user_id, tenant_id, observation)
         if external_ref is None:
-            external_ref = _match_and_link_course(session, user_id, tenant_id, observation)
-            if external_ref is None:
-                continue
-        enrollment = session.scalar(
-            select(CourseEnrollmentRecord).where(
-                CourseEnrollmentRecord.course_id == external_ref.course_id,
-                CourseEnrollmentRecord.user_id == user_id,
-                CourseEnrollmentRecord.source == observation.source.value,
-                CourseEnrollmentRecord.external_course_id == observation.external_course_id,
+            return
+    enrollment = session.scalar(
+        select(CourseEnrollmentRecord).where(
+            CourseEnrollmentRecord.course_id == external_ref.course_id,
+            CourseEnrollmentRecord.user_id == user_id,
+            CourseEnrollmentRecord.source == observation.source.value,
+            CourseEnrollmentRecord.external_course_id == observation.external_course_id,
+        )
+    )
+    if enrollment is None:
+        session.add(
+            CourseEnrollmentRecord(
+                course_id=external_ref.course_id,
+                user_id=user_id,
+                source=observation.source.value,
+                external_course_id=observation.external_course_id,
+                status="active",
+                synced_at=now,
             )
         )
-        if enrollment is None:
-            session.add(
-                CourseEnrollmentRecord(
-                    course_id=external_ref.course_id,
-                    user_id=user_id,
-                    source=observation.source.value,
-                    external_course_id=observation.external_course_id,
-                    status="active",
-                    synced_at=now,
-                )
-            )
-        else:
-            enrollment.status = "active"
-            enrollment.synced_at = now
+    else:
+        enrollment.status = "active"
+        enrollment.synced_at = now
 
 
 def _external_course_ref(
@@ -131,14 +153,11 @@ def _external_course_ref(
     observation: ExternalCourseCandidate,
 ) -> CourseExternalRefRecord | None:
     return session.scalar(
-        select(CourseExternalRefRecord)
-        .join(CourseRecord, CourseRecord.id == CourseExternalRefRecord.course_id)
-        .where(
+        select(CourseExternalRefRecord).where(
             CourseExternalRefRecord.tenant_id == tenant_id,
             CourseExternalRefRecord.source == observation.source.value,
             CourseExternalRefRecord.external_course_id == observation.external_course_id,
             CourseExternalRefRecord.term == observation.term,
-            CourseRecord.archived_at.is_(None),
         )
     )
 
@@ -154,7 +173,6 @@ def _match_and_link_course(
             CourseRecord.tenant_id == tenant_id,
             CourseRecord.term == observation.term,
             CourseRecord.access_policy == CourseAccessPolicy.TUEBINGEN_ENROLLED.value,
-            CourseRecord.archived_at.is_(None),
         )
     ).all()
     title_key = _course_title_key(observation.title)

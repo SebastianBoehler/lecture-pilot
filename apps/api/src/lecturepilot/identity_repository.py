@@ -233,7 +233,6 @@ def _account_view(
             & (CourseEnrollmentRecord.status == "active"),
         )
         .where(
-            CourseRecord.archived_at.is_(None),
             CourseRecord.tenant_id == membership.tenant_id,
             or_(*access_conditions),
         )

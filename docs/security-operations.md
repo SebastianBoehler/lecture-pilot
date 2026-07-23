@@ -46,16 +46,18 @@ Do not overwrite a live volume until the rehearsal and integrity checks pass.
 ## Audit review
 
 Review failed authorization metadata and database audit events for login, account disablement,
-course creation/archive, upstream-reference binding, upload, publication, aggregate analytics
+course creation/deletion, upstream-reference binding, upload, publication, aggregate analytics
 access, and learner reset. Alert on repeated cross-course denials, unusual paid usage, quota
 exhaustion, or repeated malformed uploads.
 
 ## Retention and deletion status
 
-Course deletion is a soft archive. Automated physical deletion, learner export/deletion, backup
-expiry, legal retention periods, privacy notice details, and the final provider/subprocessor
-inventory are not implemented or approved. These are live-release blockers; operators must not
-invent retention periods or manually delete partial records without an approved policy.
+Course deletion removes the owned database course, its enrollment and upstream-reference records,
+and its official, learner, preview, and legacy workspaces. Audit events retain only the deletion
+event and opaque course id. Automated learner-account export/deletion, backup expiry, legal
+retention periods, privacy notice details, and the final provider/subprocessor inventory are not
+implemented or approved. Operators must not invent retention periods or manually delete partial
+records outside the owned deletion flow.
 
 ## Incident sequence
 

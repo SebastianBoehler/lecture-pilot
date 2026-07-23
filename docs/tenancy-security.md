@@ -25,15 +25,15 @@ Production web builds do not render either development demo login.
 
 ## Route inventory
 
-| Class                       | Routes                                                                                                              | Required object check                                                      |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Public                      | `GET /health`, `POST /auth/login`                                                                                   | Rate-limited; submitted credentials are never logged or returned           |
-| Self-service                | `GET /me`, learning-profile routes, `POST /auth/logout`                                                             | Current opaque session                                                     |
-| Platform administration     | `POST /platform/users/{id}/disable`                                                                                 | `platform_admin`; no course-content capability                             |
-| Course discovery            | `GET /courses`, `GET /courses/{course}/lectures`                                                                    | Database visibility or enrollment; lecture unlock server-side              |
-| Learner-only                | `POST /agent/turn*`, canvas, learning map, quiz answer, readiness, learner reset, workspace assets                  | Current session user plus active course enrollment; no learner ID accepted |
-| Course-owner administration | Course creation, source bundle, schedule, staged updates, draft/repair/publish, media, preview, aggregates, archive | Verified non-student Alma role; exact `courses.owner_user_id` thereafter   |
-| Published course assets     | `GET /course-assets/{course}/{lecture}/{path}`                                                                      | Course access, publication/unlock policy, confined path                    |
+| Class                       | Routes                                                                                                               | Required object check                                                      |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Public                      | `GET /health`, `POST /auth/login`                                                                                    | Rate-limited; submitted credentials are never logged or returned           |
+| Self-service                | `GET /me`, learning-profile routes, `POST /auth/logout`                                                              | Current opaque session                                                     |
+| Platform administration     | `POST /platform/users/{id}/disable`                                                                                  | `platform_admin`; no course-content capability                             |
+| Course discovery            | `GET /courses`, `GET /courses/{course}/lectures`                                                                     | Database visibility or enrollment; lecture unlock server-side              |
+| Learner-only                | `POST /agent/turn*`, canvas, learning map, quiz answer, readiness, learner reset, workspace assets                   | Current session user plus active course enrollment; no learner ID accepted |
+| Course-owner administration | Course creation, source bundle, schedule, staged updates, draft/repair/publish, media, preview, aggregates, deletion | Verified non-student Alma role; exact `courses.owner_user_id` thereafter   |
+| Published course assets     | `GET /course-assets/{course}/{lecture}/{path}`                                                                       | Course access, publication/unlock policy, confined path                    |
 
 The learner-only class includes:
 

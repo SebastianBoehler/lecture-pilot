@@ -18,7 +18,6 @@ export function professorFetchMock() {
       return json({
         course_id: courseId,
         deleted: true,
-        deleted_path: `.lecturepilot/courses/${courseId}`,
       });
     }
     if (url.endsWith("/admin/course-workspaces")) return json(courseWorkspacePayload(init));

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 import shutil
 from uuid import UUID
 
@@ -19,7 +20,7 @@ from lecturepilot.tenancy import TenantContext
 
 class CourseDeletionResult(BaseModel):
     course_id: str = Field(min_length=1)
-    archived: bool
+    deleted: bool
 
 
 class ManagedCourseWorkspaceResult(CourseWorkspaceResult):
@@ -31,11 +32,29 @@ def delete_course_workspace(
     *, layout: StorageLayout, course_id: str
 ) -> CourseDeletionResult | None:
     course_root = layout.course_root(course_id)
+    if not course_root.exists():
+        return None
+    delete_course_files(layout=layout, course_id=course_id)
+    return CourseDeletionResult(course_id=course_id, deleted=True)
+
+
+def delete_course_files(*, layout: StorageLayout, course_id: str) -> None:
+    course_root = layout.course_root(course_id)
     with locked_course_state(course_root):
-        if not course_root.exists():
-            return None
-        shutil.rmtree(course_root)
-    return CourseDeletionResult(course_id=course_id, archived=True)
+        _delete_tree(course_root)
+    relative = Path("courses") / safe_id(course_id)
+    for parent in (
+        layout.root / "users",
+        layout.root / "previews" / "professors",
+        layout.root / "workspaces" / "students",
+    ):
+        for user_root in parent.glob("*"):
+            _delete_tree(user_root / relative)
+
+
+def _delete_tree(path: Path) -> None:
+    if path.is_dir():
+        shutil.rmtree(path)
 
 
 def register_course_deletion_routes(app: FastAPI, *, course_tenant_id: str) -> None:
@@ -90,14 +109,15 @@ def register_course_deletion_routes(app: FastAPI, *, course_tenant_id: str) -> N
         if not _is_canonical_course_id(course_id):
             raise HTTPException(status_code=400, detail="Invalid course id.")
         if context.auth_mode == "session":
-            archived = CourseRepository(app.state.database).archive(
+            deleted = CourseRepository(app.state.database).delete(
                 user_id=_user_id(context),
                 tenant_id=course_tenant_id,
                 course_id=course_id,
             )
-            if not archived:
+            if not deleted:
                 raise HTTPException(status_code=404, detail="Course was not found.")
-            return CourseDeletionResult(course_id=course_id, archived=True)
+            delete_course_files(layout=app.state.canvas_workspace.layout, course_id=course_id)
+            return CourseDeletionResult(course_id=course_id, deleted=True)
         result = delete_course_workspace(
             layout=app.state.canvas_workspace.layout,
             course_id=course_id,
