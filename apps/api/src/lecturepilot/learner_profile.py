@@ -75,10 +75,20 @@ def _course_profiles(courses_root: Path) -> list[LearnerCourseProfile]:
                 course_id=course_root.name,
                 memory=_read_text(memory_path, limit=4000),
                 passed_lecture_ids=_passed_lecture_ids(course_root),
-                files=_files(course_root),
+                files=_files(course_root, include=_is_personal_course_file),
             )
         )
     return profiles
+
+
+def _is_personal_course_file(path: Path) -> bool:
+    parts = path.parts
+    return (
+        len(parts) >= 5
+        and parts[0] == "lectures"
+        and parts[2] == "canvas"
+        and parts[3] in {"student", "components", "student-assets"}
+    )
 
 
 def _files(root: Path, include=None) -> list[LearnerFile]:

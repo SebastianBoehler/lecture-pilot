@@ -22,6 +22,15 @@ def test_learner_profile_persists_goal_and_lists_owned_course_files(tmp_path) ->
     note_path = lecture_root / "canvas" / "student" / "summary.md"
     note_path.parent.mkdir(parents=True)
     note_path.write_text("# My summary\n", encoding="utf-8")
+    component_path = lecture_root / "canvas" / "components" / "practice.yaml"
+    component_path.parent.mkdir(parents=True)
+    component_path.write_text("kind: quiz\n", encoding="utf-8")
+    asset_path = lecture_root / "canvas" / "student-assets" / "diagram.png"
+    asset_path.parent.mkdir(parents=True)
+    asset_path.write_bytes(b"personal-image")
+    official_path = lecture_root / "canvas" / "sections" / "official.md"
+    official_path.parent.mkdir(parents=True)
+    official_path.write_text("# Official canvas\n", encoding="utf-8")
 
     with TestClient(app) as client:
         saved = client.post(
@@ -41,6 +50,11 @@ def test_learner_profile_persists_goal_and_lists_owned_course_files(tmp_path) ->
     course = next(item for item in payload["courses"] if item["course_id"] == "martius-ml")
     assert course["passed_lecture_ids"] == ["lecture-01"]
     files = {item["path"]: item for item in course["files"]}
+    assert set(files) == {
+        "lectures/lecture-01/canvas/components/practice.yaml",
+        "lectures/lecture-01/canvas/student-assets/diagram.png",
+        "lectures/lecture-01/canvas/student/summary.md",
+    }
     assert files["lectures/lecture-01/canvas/student/summary.md"]["content"] == "# My summary\n"
     assert "users/" not in " ".join(files)
 
