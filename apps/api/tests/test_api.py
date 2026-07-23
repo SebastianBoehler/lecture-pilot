@@ -84,7 +84,7 @@ def test_tuebingen_login_reports_missing_wrapper_dependency() -> None:
 
 
 def test_agent_turn_focuses_bayes_section(monkeypatch) -> None:
-    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
     client = agent_client(
         _FakeHarness(
@@ -121,7 +121,7 @@ def test_agent_turn_focuses_bayes_section(monkeypatch) -> None:
 
 
 def test_agent_turn_focuses_learning_goals(monkeypatch) -> None:
-    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
     client = agent_client(
         _FakeHarness(
@@ -149,7 +149,7 @@ def test_agent_turn_focuses_learning_goals(monkeypatch) -> None:
 
 
 def test_agent_turn_focuses_skill_check(monkeypatch) -> None:
-    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
     client = agent_client(
         _FakeHarness(
@@ -177,7 +177,7 @@ def test_agent_turn_focuses_skill_check(monkeypatch) -> None:
 
 
 def test_agent_turn_reports_model_execution_error(monkeypatch) -> None:
-    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
     client = agent_client(_FailingHarness())
 
@@ -198,7 +198,7 @@ def test_agent_turn_reports_model_execution_error(monkeypatch) -> None:
 
 
 def test_agent_turn_enriches_harness_with_canvas_context(monkeypatch, tmp_path) -> None:
-    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
     app = create_app()
     app.state.canvas_workspace = CanvasContextWorkspace(tmp_path)

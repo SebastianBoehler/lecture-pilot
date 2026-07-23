@@ -14,7 +14,7 @@ def local_dev_auth_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LECTUREPILOT_AUTH_MODE", "dev")
     monkeypatch.setenv(
         "LECTUREPILOT_ALLOWED_MODELS",
-        "gemini/gemini-3.1-flash-lite,gemini/test-model,"
+        "openai/gpt-5.6-luna,gemini/gemini-3.1-flash-lite,gemini/test-model,"
         "openrouter/z-ai/glm-5.1,openrouter/openai/gpt-oss-120b:nitro",
     )
     database_url = os.getenv("DATABASE_URL")

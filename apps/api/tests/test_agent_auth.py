@@ -132,7 +132,7 @@ def test_production_auth_protects_course_listing(monkeypatch) -> None:
 
 
 def test_agent_turn_requires_configured_provider(monkeypatch, tmp_path) -> None:
-    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
     client = _client(tmp_path)
 
@@ -143,7 +143,7 @@ def test_agent_turn_requires_configured_provider(monkeypatch, tmp_path) -> None:
     )
 
     assert response.status_code == 503
-    assert "GEMINI_API_KEY" in response.json()["detail"]
+    assert "OPENAI_API_KEY" in response.json()["detail"]
 
 
 def test_agent_turn_rejects_browser_selected_model(monkeypatch, tmp_path) -> None:

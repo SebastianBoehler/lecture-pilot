@@ -10,7 +10,6 @@ from lecturepilot.agent_tool_loop import complete_tool_turn
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.models import AgentTurnInput, ProviderSettings
 from lecturepilot.observability import Observability
-from lecturepilot.providers import DEFAULT_MODEL
 
 
 async def test_tool_loop_repairs_plain_text_first_answer(tmp_path) -> None:
@@ -49,7 +48,7 @@ async def test_tool_loop_repairs_plain_text_first_answer(tmp_path) -> None:
         acompletion=fake_completion,
         settings=ProviderSettings(
             provider="gemini",
-            model=DEFAULT_MODEL,
+            model="gemini/test-model",
             api_key_env="GEMINI_API_KEY",
             capabilities=set(),
         ),
@@ -103,7 +102,7 @@ async def test_tool_loop_omits_temperature_for_openai_gpt5(tmp_path) -> None:
         acompletion=fake_completion,
         settings=ProviderSettings(
             provider="openai",
-            model="openai/gpt-5-mini",
+            model="openai/gpt-5.6-luna",
             api_key_env="OPENAI_API_KEY",
             capabilities=set(),
         ),

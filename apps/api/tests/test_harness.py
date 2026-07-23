@@ -12,7 +12,7 @@ from lecturepilot.providers import DEFAULT_MODEL, ProviderRegistry
 
 
 async def test_harness_uses_model_client_for_agent_turn(monkeypatch) -> None:
-    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     harness = LecturePilotHarness(
         provider_registry=ProviderRegistry.from_env(model=DEFAULT_MODEL),
         model_client=_FakeModelClient(),

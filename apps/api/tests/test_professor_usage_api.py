@@ -99,7 +99,7 @@ def _record(
         )
     )
     with model_usage_scope(actor_user_id=user_id, course_id=course_id, workload="course_canvas"):
-        recorder.record_response(response, model="openai/gpt-5-mini")
+        recorder.record_response(response, model="openai/gpt-5.6-luna")
 
 
 class _FakeProfessorUsage:

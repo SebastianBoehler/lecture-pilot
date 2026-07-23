@@ -8,7 +8,7 @@ import pytest
 
 from lecturepilot.model_client import LiteLLMModelClient
 from lecturepilot.models import AgentTurnInput, AttendanceStatus, CanvasState, ProviderSettings
-from lecturepilot.providers import DEFAULT_MODEL, ProviderConfigurationError
+from lecturepilot.providers import ProviderConfigurationError
 
 
 async def test_model_client_requests_structured_json(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -52,7 +52,7 @@ async def test_model_client_requests_structured_json(monkeypatch: pytest.MonkeyP
     result = await LiteLLMModelClient().complete_turn(
         settings=ProviderSettings(
             provider="gemini",
-            model=DEFAULT_MODEL,
+            model="gemini/test-model",
             api_key_env="GEMINI_API_KEY",
             capabilities=set(),
         ),
@@ -89,7 +89,7 @@ async def test_model_client_preserves_payload_contract_errors(
         await LiteLLMModelClient().complete_turn(
             settings=ProviderSettings(
                 provider="gemini",
-                model=DEFAULT_MODEL,
+                model="gemini/test-model",
                 api_key_env="GEMINI_API_KEY",
                 capabilities=set(),
             ),
@@ -137,7 +137,7 @@ async def test_model_client_omits_temperature_for_openai_gpt5(
     await LiteLLMModelClient().complete_turn(
         settings=ProviderSettings(
             provider="openai",
-            model="openai/gpt-5-mini",
+            model="openai/gpt-5.6-luna",
             api_key_env="OPENAI_API_KEY",
             capabilities=set(),
         ),

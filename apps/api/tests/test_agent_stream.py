@@ -11,7 +11,7 @@ from canvas_workspace_fixtures import published_course_canvas, write_course_sour
 
 
 def test_agent_turn_stream_emits_activity_and_result(monkeypatch, tmp_path) -> None:
-    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
     app = create_app()
     app.state.canvas_workspace = CanvasWorkspace(

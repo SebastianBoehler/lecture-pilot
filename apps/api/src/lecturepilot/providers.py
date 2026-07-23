@@ -23,7 +23,7 @@ _DEFAULT_CAPABILITIES = {
     ProviderCapability.STRUCTURED_JSON,
 }
 
-DEFAULT_MODEL = "gemini/gemini-3.1-flash-lite"
+DEFAULT_MODEL = "openai/gpt-5.6-luna"
 
 
 @dataclass(frozen=True)

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-model="${LECTUREPILOT_MODEL:-gemini/gemini-3.1-flash-lite}"
+model="${LECTUREPILOT_MODEL:-openai/gpt-5.6-luna}"
 if [[ "$model" != */* ]]; then
   echo "LECTUREPILOT_MODEL must include a provider prefix: ${model}" >&2
   exit 1

@@ -212,8 +212,8 @@ Run the API and web app in two terminals:
 
 ```bash
 source .venv/bin/activate
-export GEMINI_API_KEY=...
-export LECTUREPILOT_MODEL=gemini/gemini-3.1-flash-lite
+export OPENAI_API_KEY=...
+export LECTUREPILOT_MODEL=openai/gpt-5.6-luna
 uvicorn lecturepilot.app:app --app-dir apps/api/src --reload
 ```
 
@@ -236,8 +236,8 @@ backend fixture for `local-preview-user` tests.
 Copy `.env.example` to `.env` and set one provider key.
 
 ```bash
-GEMINI_API_KEY=...
-LECTUREPILOT_MODEL=gemini/gemini-3.1-flash-lite
+OPENAI_API_KEY=...
+LECTUREPILOT_MODEL=openai/gpt-5.6-luna
 LECTUREPILOT_IMAGE_PROVIDER=auto
 GEMINI_IMAGE_MODEL=gemini-3.1-flash-image
 ```
@@ -290,8 +290,8 @@ contract, run:
 
 ```bash
 python scripts/benchmark_gate_models.py \
-  --model gemini/gemini-3.1-flash-lite \
-  --model gemini/gemini-3.5-flash
+  --model openai/gpt-5.6-luna \
+  --model gemini/gemini-3.1-flash-lite
 ```
 
 ## License
