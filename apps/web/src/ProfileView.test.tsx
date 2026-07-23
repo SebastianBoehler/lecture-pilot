@@ -32,6 +32,7 @@ describe("ProfileView", () => {
           clearMemory: async () => {},
           refresh: async () => {},
         }}
+        onLogout={() => undefined}
         session={session}
       />,
     );
@@ -59,12 +60,12 @@ describe("ProfileView", () => {
       university_course_sync_status: "loading",
     };
 
-    renderWithI18n(<ProfileView session={session} />);
+    renderWithI18n(<ProfileView onLogout={() => undefined} session={session} />);
 
-    expect(screen.getByText("LecturePilot courses")).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "Your LecturePilot workspaces" }),
+      within(screen.getByRole("region", { name: "Account" })).getByText("Workspaces"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Your LecturePilot workspaces are loading.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Workspaces" })).toBeInTheDocument();
+    expect(screen.getByText("Your workspaces are loading.")).toBeInTheDocument();
   });
 });

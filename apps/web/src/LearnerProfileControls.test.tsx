@@ -42,9 +42,39 @@ const profile: LearnerProfile = {
 };
 
 describe("LearnerProfileControls", () => {
+  it("collapses an empty learner profile into one quiet state", () => {
+    renderWithI18n(
+      <LearnerProfileControls
+        session={{ ...session, courses: [] }}
+        state={{
+          profile: {
+            ...profile,
+            preferences: {
+              learning_goal: "understand_deeply",
+              onboarding_completed: true,
+            },
+            global_notes: "",
+            courses: [],
+          },
+          loading: false,
+          error: null,
+          saveCalibration: vi.fn(),
+          removePreference: vi.fn(),
+          clearMemory: vi.fn(),
+          refresh: vi.fn(),
+        }}
+      />,
+    );
+
+    expect(screen.getAllByText("Nothing saved yet.")).toHaveLength(1);
+    expect(screen.queryByText("No additional structured preferences are stored.")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Course files" })).toBeNull();
+  });
+
   it("shows stored memory and every course file with controls", async () => {
     const user = userEvent.setup();
     const removePreference = vi.fn().mockResolvedValue(undefined);
+    const clearMemory = vi.fn().mockResolvedValue(undefined);
     renderWithI18n(
       <LearnerProfileControls
         session={session}
@@ -54,7 +84,7 @@ describe("LearnerProfileControls", () => {
           error: null,
           saveCalibration: vi.fn(),
           removePreference,
-          clearMemory: vi.fn(),
+          clearMemory,
           refresh: vi.fn(),
         }}
       />,
@@ -62,8 +92,10 @@ describe("LearnerProfileControls", () => {
 
     expect(screen.getByText("Prefers short summaries.")).toBeInTheDocument();
     expect(screen.getByText("Needs more Bayes examples.")).toBeInTheDocument();
-    expect(screen.getByText("lectures/lecture-01/canvas/student/summary.md")).toBeInTheDocument();
+    expect(screen.getByText("lecture-01 · summary.md")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /remove analogy/i }));
     expect(removePreference).toHaveBeenCalledWith("analogy");
+    await user.click(screen.getByRole("button", { name: /clear course memory/i }));
+    expect(clearMemory).toHaveBeenCalledWith("martius-ml");
   });
 });

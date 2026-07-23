@@ -4,51 +4,37 @@ import type { LearnerCourseProfile, UniversityCourse } from "./types";
 export function LearnerCourseFiles({
   courses,
   profiles,
-  pending,
-  onClearMemory,
 }: {
   courses: UniversityCourse[];
   profiles: LearnerCourseProfile[];
-  pending: boolean;
-  onClearMemory: (courseId: string) => Promise<void>;
 }) {
   const { t } = useI18n();
-  const entries = mergeCourses(courses, profiles);
+  const entries = mergeCourses(courses, profiles).filter(
+    ({ profile }) => (profile?.files.length ?? 0) > 0,
+  );
+  if (!entries.length) return null;
 
   return (
     <section className="learner-profile-section" aria-labelledby="learner-files-heading">
-      <h2 id="learner-files-heading">{t("profile.files.title")}</h2>
-      <p>{t("profile.files.help")}</p>
-      <div className="learner-course-files">
-        {entries.map(({ course, profile }) => (
-          <details key={course.id}>
-            <summary>
-              <span>
-                <strong>{course.title}</strong>
-                <small>{t("profile.files.count", { count: profile?.files.length ?? 0 })}</small>
-              </span>
-            </summary>
-            <div className="course-memory-summary">
-              <div>
-                <strong>{t("profile.memory.course")}</strong>
-                <p>{profile?.memory || t("profile.memory.empty")}</p>
-              </div>
-              {profile?.memory ? (
-                <button
-                  disabled={pending}
-                  type="button"
-                  onClick={() => void onClearMemory(course.id)}
-                >
-                  {t("profile.memory.clearCourse")}
-                </button>
-              ) : null}
-            </div>
-            {profile?.files.length ? (
+      <div className="profile-section-intro">
+        <h2 id="learner-files-heading">{t("profile.files.title")}</h2>
+        <p>{t("profile.files.help")}</p>
+      </div>
+      <div className="profile-section-content">
+        <div className="learner-course-files">
+          {entries.map(({ course, profile }) => (
+            <details key={course.id}>
+              <summary>
+                <span>
+                  <strong>{course.title}</strong>
+                  <small>{t("profile.files.count", { count: profile?.files.length ?? 0 })}</small>
+                </span>
+              </summary>
               <div className="learner-file-list">
-                {profile.files.map((file) => (
+                {profile?.files.map((file) => (
                   <details key={file.path}>
                     <summary>
-                      <span>{file.path}</span>
+                      <span title={file.path}>{personalFileLabel(file.path)}</span>
                       <small>{formatBytes(file.size_bytes)}</small>
                     </summary>
                     {file.content ? (
@@ -59,11 +45,9 @@ export function LearnerCourseFiles({
                   </details>
                 ))}
               </div>
-            ) : (
-              <p className="profile-empty-copy">{t("profile.files.empty")}</p>
-            )}
-          </details>
-        ))}
+            </details>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -90,4 +74,11 @@ function mergeCourses(courses: UniversityCourse[], profiles: LearnerCourseProfil
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   return `${(bytes / 1024).toFixed(1)} KB`;
+}
+
+function personalFileLabel(path: string) {
+  const match = path.match(
+    /^lectures\/([^/]+)\/canvas\/(?:student|components|student-assets)\/(.+)$/,
+  );
+  return match ? `${match[1]} · ${match[2]}` : path;
 }

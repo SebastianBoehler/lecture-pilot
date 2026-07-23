@@ -1,3 +1,5 @@
+import { LogOut } from "lucide-react";
+
 import { useI18n } from "./i18n";
 import { LearnerProfileControls } from "./LearnerProfileControls";
 import type { LoginSession } from "./types";
@@ -6,10 +8,12 @@ import type { LearnerProfileState } from "./useLearnerProfile";
 export function ProfileView({
   session,
   onBack,
+  onLogout,
   learnerProfileState,
 }: {
   session: LoginSession;
   onBack?: () => void;
+  onLogout: () => void;
   learnerProfileState?: LearnerProfileState;
 }) {
   const { t } = useI18n();
@@ -25,11 +29,17 @@ export function ProfileView({
           <div>
             <h1 id="profile-heading">{t("profile.title")}</h1>
           </div>
-          {onBack ? (
-            <button className="ghost-button" type="button" onClick={onBack}>
-              {t("info.back")}
+          <div className="profile-view-actions">
+            {onBack ? (
+              <button className="ghost-button" type="button" onClick={onBack}>
+                {t("info.back")}
+              </button>
+            ) : null}
+            <button className="profile-logout-button" type="button" onClick={onLogout}>
+              <LogOut aria-hidden="true" size={16} />
+              <span>{t("nav.logout")}</span>
             </button>
-          ) : null}
+          </div>
         </header>
 
         <section className="profile-account-summary" aria-label={t("profile.account")}>
@@ -66,21 +76,27 @@ export function ProfileView({
         ) : null}
 
         <section className="profile-courses" aria-labelledby="profile-courses-heading">
-          <h2 id="profile-courses-heading">{t("profile.loadedCourses")}</h2>
-          <div className="course-list profile-course-list">
-            {session.courses.map((course) => (
-              <article className="course-row" key={course.id}>
-                <div>
-                  <h3>{course.title}</h3>
-                  <p>{course.professor}</p>
-                </div>
-                <span>{course.term}</span>
-              </article>
-            ))}
-            {!syncLoading && session.courses.length === 0 ? (
-              <p className="workspace-empty">{t("profile.noWorkspaces")}</p>
-            ) : null}
-            {syncLoading ? <p className="workspace-empty">{t("profile.loadingCourses")}</p> : null}
+          <div className="profile-section-intro">
+            <h2 id="profile-courses-heading">{t("profile.loadedCourses")}</h2>
+          </div>
+          <div className="profile-section-content">
+            <div className="course-list profile-course-list">
+              {session.courses.map((course) => (
+                <article className="course-row" key={course.id}>
+                  <div>
+                    <h3>{course.title}</h3>
+                    <p>{course.professor}</p>
+                  </div>
+                  <span>{course.term}</span>
+                </article>
+              ))}
+              {!syncLoading && session.courses.length === 0 ? (
+                <p className="workspace-empty">{t("profile.noWorkspaces")}</p>
+              ) : null}
+              {syncLoading ? (
+                <p className="workspace-empty">{t("profile.loadingCourses")}</p>
+              ) : null}
+            </div>
           </div>
         </section>
       </section>

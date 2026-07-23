@@ -21,6 +21,7 @@ describe("App logout state", () => {
     await user.click(screen.getByRole("button", { name: /preview professor account/i }));
     expect(window.sessionStorage.getItem("lecturepilot.professor-builder.current")).not.toBeNull();
 
+    await user.click(screen.getByRole("button", { name: /open profile/i }));
     await user.click(screen.getByRole("button", { name: /log out/i }));
 
     expect(window.sessionStorage.getItem("lecturepilot.professor-builder.current")).toBeNull();

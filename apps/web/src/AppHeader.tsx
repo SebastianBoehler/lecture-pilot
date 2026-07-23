@@ -6,7 +6,6 @@ import {
   CircleHelp,
   Home,
   Languages,
-  LogOut,
   MessageSquarePlus,
   Moon,
   Sun,
@@ -23,7 +22,6 @@ export function AppHeader({
   session,
   theme,
   onBrand,
-  onLogout,
   onOpenDashboard,
   onOpenCourseManagement,
   onOpenPerformance,
@@ -37,7 +35,6 @@ export function AppHeader({
   session: LoginSession | null;
   theme: Theme;
   onBrand: () => void;
-  onLogout: () => void;
   onOpenDashboard: () => void;
   onOpenCourseManagement: () => void;
   onOpenPerformance: () => void;
@@ -132,6 +129,7 @@ export function AppHeader({
             <button
               aria-label={t("nav.sendFeedback")}
               className="top-icon-button feedback-header-button"
+              data-tour={canManage ? "professor-support" : undefined}
               type="button"
               onClick={onOpenFeedback}
             >
@@ -156,14 +154,6 @@ export function AppHeader({
               onClick={onOpenProfile}
             >
               <UserRound size={17} />
-            </button>
-            <button
-              className="top-icon-button"
-              type="button"
-              aria-label={t("nav.logout")}
-              onClick={onLogout}
-            >
-              <LogOut size={17} />
             </button>
           </>
         ) : null}

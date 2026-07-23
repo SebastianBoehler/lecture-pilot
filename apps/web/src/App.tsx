@@ -375,7 +375,6 @@ function App() {
             setView(landingView(session));
             setPanelMode(null);
           }}
-          onLogout={handleLogout}
           onOpenDashboard={() => {
             setView(session ? "dashboard" : "login");
             setPanelMode(null);
@@ -456,6 +455,7 @@ function App() {
           view={view}
           workspaceCourse={workspaceCourse}
           workspaceCourseId={workspaceCourseId}
+          onLogout={handleLogout}
           onLogin={(nextSession) => {
             setSession(nextSession);
             changeView(landingView(nextSession));

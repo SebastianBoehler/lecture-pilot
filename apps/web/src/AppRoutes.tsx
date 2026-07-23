@@ -69,6 +69,7 @@ type AppRoutesProps = {
   view: View;
   workspaceCourse: UniversityCourse;
   workspaceCourseId: string;
+  onLogout: () => void;
   onLogin: (session: LoginSession) => void;
   onOpenDemo: () => void;
   onOpenLecture: (courseId: string, lecture: Lecture) => void;
@@ -137,6 +138,7 @@ export function AppRoutes(props: AppRoutesProps) {
     return (
       <ProfileView
         learnerProfileState={learnerProfileEnabled ? learnerProfileState : undefined}
+        onLogout={props.onLogout}
         session={session}
         onBack={
           session.account_type === "professor" && !courseManagerSession
