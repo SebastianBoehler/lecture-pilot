@@ -7,6 +7,7 @@ import {
   Home,
   Languages,
   LogOut,
+  MessageSquarePlus,
   Moon,
   Sun,
   UserRound,
@@ -29,6 +30,7 @@ export function AppHeader({
   onOpenUsage,
   onOpenProfile,
   onOpenProfessor,
+  onOpenFeedback,
   onToggleTheme,
 }: {
   activeView: View;
@@ -42,6 +44,7 @@ export function AppHeader({
   onOpenUsage: () => void;
   onOpenProfile: () => void;
   onOpenProfessor: () => void;
+  onOpenFeedback: () => void;
   onToggleTheme: () => void;
 }) {
   const { locale, setLocale, t } = useI18n();
@@ -126,6 +129,15 @@ export function AppHeader({
       <div className="top-utility-actions" aria-label={t("nav.accountControls")}>
         {session ? (
           <>
+            <button
+              aria-label={t("nav.sendFeedback")}
+              className="top-icon-button feedback-header-button"
+              type="button"
+              onClick={onOpenFeedback}
+            >
+              <MessageSquarePlus size={17} />
+              <span>{t("nav.feedback")}</span>
+            </button>
             {canManage ? (
               <button
                 className="top-icon-button"

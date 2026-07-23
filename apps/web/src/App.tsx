@@ -17,6 +17,7 @@ import {
 import { AppFooter } from "./AppFooter";
 import { AppHeader } from "./AppHeader";
 import { AppRoutes } from "./AppRoutes";
+import { FeedbackDialog } from "./FeedbackDialog";
 import { ProfessorWalkthrough } from "./ProfessorWalkthrough";
 import {
   initialMessagesForAttendance,
@@ -40,6 +41,7 @@ import { logoutSession } from "./sessionApi";
 import { isDraftPreviewRequest, useInitialDraftPreview } from "./useInitialDraftPreview";
 import { usePublishedLectures } from "./usePublishedLectures";
 import { useUniversityCourseSync } from "./useUniversityCourseSync";
+import { useFeedbackPrompt } from "./useFeedbackPrompt";
 import { useViewTransitionReset } from "./useViewTransitionReset";
 import { useVersionUpdateActivity } from "./VersionUpdateBoundary";
 import type { WorkspaceResetSelection } from "./WorkspaceResetControl";
@@ -61,6 +63,7 @@ function App() {
   const [locale, setLocale] = useState<Locale>(() => readLocalePreference());
   const [session, setSession] = useStoredLoginSession();
   const [view, setView] = useState<View>(() => landingView(session));
+  const feedback = useFeedbackPrompt(session, view === "dashboard");
   const [secondaryReturnView, setSecondaryReturnView] = useState<View>(() => landingView(session));
   const [availableLectures, setAvailableLectures] = useState(() =>
     import.meta.env.DEV ? lectures : [],
@@ -226,6 +229,7 @@ function App() {
         current.includes(passedGateId) ? current : [...current, passedGateId],
       );
     }
+    feedback.recordSuccessfulTutorTurn();
   }
 
   function handleLogout() {
@@ -403,8 +407,25 @@ function App() {
               setPanelMode(null);
             }
           }}
+          onOpenFeedback={feedback.openManually}
           onToggleTheme={() => setTheme(theme === "light" ? "dark" : "light")}
         />
+        {session && feedback.source ? (
+          <FeedbackDialog
+            accountType={session.account_type ?? "student"}
+            context={
+              view === "lesson"
+                ? {
+                    courseTitle: workspaceCourse.title,
+                    lectureTitle: selectedLecture.title,
+                  }
+                : {}
+            }
+            open
+            source={feedback.source}
+            onClose={feedback.close}
+          />
+        ) : null}
         {courseManagerSession ? (
           <ProfessorWalkthrough
             key={courseManagerSession.username}
