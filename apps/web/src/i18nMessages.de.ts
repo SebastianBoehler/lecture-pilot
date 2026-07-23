@@ -45,24 +45,21 @@ export const deMessages: Record<MessageKey, string> = {
   "tour.nextProgress": "Weiter · {current}/{total}",
   "tour.open": "Rundgang öffnen",
   "tour.skip": "Überspringen",
-  "tour.navigation.title": "Zwischen Bereichen wechseln",
+  "tour.navigation.title": "Von Kursmaterial zu studentischem Lernen",
   "tour.navigation.content":
-    "Nutze das obere Menü, um Kurse zu erstellen und zu verwalten sowie Leistung und Nutzung zu prüfen.",
-  "tour.builder.title": "Kurs erstellen",
+    "LecturePilot führt von Kursquellen zu veröffentlichten Tutor-Arbeitsbereichen und zeigt anschließend, wie Studierende sie nutzen.",
+  "tour.builder.title": "Erstellen und veröffentlichen",
   "tour.builder.content":
-    "Lege den Kurs an, lade Quellen hoch, prüfe den Entwurf und veröffentliche ihn.",
-  "tour.manage.title": "Kurse verwalten",
+    "Definiere den Kurs, lade Material hoch, prüfe erzeugte Vorlesungen in der Lernendenansicht und veröffentliche erst, wenn alles bereit ist.",
+  "tour.manage.title": "Vor dem Start als Studierende prüfen",
   "tour.manage.content":
-    "Öffne einen Kurs, prüfe die Lernendenansicht oder aktualisiere veröffentlichte Inhalte.",
-  "tour.performance.title": "Lernfortschritt prüfen",
+    "Öffne jede Vorlesung in der Studierendenansicht, aktualisiere Inhalte und steuere den Zugriff auf Kurs oder einzelne Vorlesungen.",
+  "tour.performance.title": "Erkennen, was Aufmerksamkeit braucht",
   "tour.performance.content":
-    "Erkenne schwache Quiz- und Gate-Ergebnisse und öffne die betroffenen Konzepte im Lernpfad.",
-  "tour.usage.title": "Nutzung prüfen",
-  "tour.usage.content":
-    "Vergleiche Modellanfragen und Tokens nach Funktion und Kurs. Tutor-Limits findest du darunter.",
-  "tour.restart.title": "Rundgang erneut starten",
+    "Nach dem Start siehst du hier Muster aus Quizzen und Gates. Unter Nutzung findest du Modellaktivität und Tokenmengen – niemals Lernendentexte.",
+  "tour.restart.title": "Feedback während des Tests",
   "tour.restart.content":
-    "Über diese Hilfe-Schaltfläche kannst du den Rundgang jederzeit neu starten.",
+    "Sende Feedback, Funktionswünsche oder Fehler mit Seiten- und Versionskontext. Über die Hilfe startest du den Rundgang erneut.",
   "footer.info": "Projektinformationen",
   "footer.changelog": "Neuigkeiten",
   "footer.howItWorks": "So funktioniert es",

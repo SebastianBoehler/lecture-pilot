@@ -54,18 +54,48 @@ describe("ProfessorWalkthrough", () => {
     expect(joyride.reset).toHaveBeenCalledWith(true);
   });
 
+  it("moves through the real professor workflow in five short steps", async () => {
+    const onViewChange = vi.fn();
+    renderTour("professor-flow", "en", onViewChange);
+    mountTourTargets();
+
+    const steps = joyride.props?.steps as Array<Record<string, unknown>>;
+
+    expect(steps).toHaveLength(5);
+    expect(steps[0]).toMatchObject({
+      placement: "center",
+      target: "body",
+      title: "From material to student learning",
+    });
+
+    await (steps[1].before as () => Promise<void>)();
+    expect(onViewChange).toHaveBeenLastCalledWith("professor");
+    expect(steps[1].target).toBe('[data-tour="course-creation-workflow"]');
+
+    await (steps[2].before as () => Promise<void>)();
+    expect(onViewChange).toHaveBeenLastCalledWith("course-management");
+    expect(steps[2].target).toBe('[data-tour="course-management-workflow"]');
+
+    await (steps[3].before as () => Promise<void>)();
+    expect(onViewChange).toHaveBeenLastCalledWith("performance");
+    expect(steps[3].target).toBe('[data-tour="course-performance-workflow"]');
+
+    expect(steps[4].target).toBe('[data-tour="professor-support"]');
+  });
+
   it("uses compact action copy and keeps the progress action on one line", () => {
     renderTour("professor-three", "de");
 
     const locale = joyride.props?.locale as Record<string, string>;
     const options = joyride.props?.options as Record<string, string>;
-    const steps = joyride.props?.steps as Array<Record<string, string>>;
+    const steps = joyride.props?.steps as Array<Record<string, unknown>>;
     const styles = joyride.props?.styles as Record<string, Record<string, string>>;
 
     expect(locale.nextWithProgress).toBe("Weiter · {current}/{total}");
     expect(steps[1]).toMatchObject({
-      content: "Lege den Kurs an, lade Quellen hoch, prüfe den Entwurf und veröffentliche ihn.",
-      title: "Kurs erstellen",
+      content:
+        "Definiere den Kurs, lade Material hoch, prüfe erzeugte Vorlesungen in der Lernendenansicht und veröffentliche erst, wenn alles bereit ist.",
+      title: "Erstellen und veröffentlichen",
     });
     expect(styles.buttonPrimary.whiteSpace).toBe("nowrap");
     expect(options.textColor).toBe("var(--color-on-accent)");
@@ -78,10 +108,27 @@ describe("ProfessorWalkthrough", () => {
   });
 });
 
-function renderTour(username: string, locale: Locale = "en") {
+function renderTour(
+  username: string,
+  locale: Locale = "en",
+  onViewChange: (view: "professor" | "course-management" | "performance") => void = () => undefined,
+) {
   return render(
     <I18nProvider locale={locale} setLocale={() => undefined}>
-      <ProfessorWalkthrough username={username} />
+      <ProfessorWalkthrough username={username} onViewChange={onViewChange} />
     </I18nProvider>,
   );
+}
+
+function mountTourTargets() {
+  const targets = [
+    "course-creation-workflow",
+    "course-management-workflow",
+    "course-performance-workflow",
+  ];
+  targets.forEach((target) => {
+    const node = document.createElement("div");
+    node.dataset.tour = target;
+    document.body.appendChild(node);
+  });
 }

@@ -43,7 +43,7 @@ export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
           </button>
         </div>
       </section>
-      <div className="builder-layout">
+      <div className="builder-layout" data-tour="course-creation-workflow">
         <ProfessorBuilderStepper
           activeStep={builder.activeStep}
           steps={builder.steps}

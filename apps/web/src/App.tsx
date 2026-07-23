@@ -428,6 +428,10 @@ function App() {
         {courseManagerSession ? (
           <ProfessorWalkthrough
             key={courseManagerSession.username}
+            onViewChange={(nextView) => {
+              setPanelMode(null);
+              setView(nextView);
+            }}
             username={courseManagerSession.username}
           />
         ) : null}

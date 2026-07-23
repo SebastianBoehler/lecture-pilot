@@ -43,21 +43,21 @@ export const enMessages = {
   "tour.nextProgress": "Next · {current}/{total}",
   "tour.open": "Open walkthrough",
   "tour.skip": "Skip",
-  "tour.navigation.title": "Move between workspaces",
+  "tour.navigation.title": "From material to student learning",
   "tour.navigation.content":
-    "Use the top menu to create and manage courses, review performance, and check usage.",
-  "tour.builder.title": "Create a course",
-  "tour.builder.content": "Set up the course, upload sources, review the draft, then publish.",
-  "tour.manage.title": "Manage courses",
-  "tour.manage.content": "Open a course, preview the learner view, or update published content.",
-  "tour.performance.title": "Review learning progress",
+    "LecturePilot takes you from course sources to published tutor workspaces, then shows how students are using them.",
+  "tour.builder.title": "Build and publish",
+  "tour.builder.content":
+    "Define the course, upload material, review generated lectures in the learner view, and publish only when they are ready.",
+  "tour.manage.title": "Preview before students enter",
+  "tour.manage.content":
+    "Open each lecture as a student, update content, and control who can access the course or an individual lecture.",
+  "tour.performance.title": "See what needs attention",
   "tour.performance.content":
-    "Find weak quiz and gate results, then open the affected concepts in the learning path.",
-  "tour.usage.title": "Review usage",
-  "tour.usage.content":
-    "Compare model requests and tokens by function and course. Tutor limits appear below.",
-  "tour.restart.title": "Restart the walkthrough",
-  "tour.restart.content": "Use this help button to restart the walkthrough at any time.",
+    "After students begin, review quiz and gate patterns here. Use Usage for model activity and token volume—never learner text.",
+  "tour.restart.title": "Feedback while you test",
+  "tour.restart.content":
+    "Send feedback, feature requests, or bugs with page and version context. The help button restarts this tour.",
   "footer.info": "Project information",
   "footer.changelog": "What's new",
   "footer.howItWorks": "How it works",

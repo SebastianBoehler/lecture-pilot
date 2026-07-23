@@ -72,10 +72,7 @@ export function FeedbackDialog({
       role="dialog"
     >
       <header className="feedback-dialog-header">
-        <div>
-          <span>LecturePilot</span>
-          <h2 id="feedback-dialog-title">{title}</h2>
-        </div>
+        <h2 id="feedback-dialog-title">{title}</h2>
         <button aria-label={t("feedback.close")} type="button" onClick={onClose}>
           <X size={17} />
         </button>

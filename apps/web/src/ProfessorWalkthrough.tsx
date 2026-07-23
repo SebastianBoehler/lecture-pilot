@@ -4,9 +4,18 @@ import { EVENTS, STATUS, useJoyride, type EventData, type Step } from "react-joy
 import { useI18n } from "./i18n";
 
 export const PROFESSOR_WALKTHROUGH_EVENT = "lecturepilot:start-professor-walkthrough";
-const PROFESSOR_WALKTHROUGH_VERSION = "v1";
+const PROFESSOR_WALKTHROUGH_VERSION = "v2";
+const TOUR_TARGET_WAIT_MS = 2500;
 
-export function ProfessorWalkthrough({ username }: { username: string }) {
+type ProfessorWalkthroughView = "professor" | "course-management" | "performance";
+
+export function ProfessorWalkthrough({
+  onViewChange,
+  username,
+}: {
+  onViewChange: (view: ProfessorWalkthroughView) => void;
+  username: string;
+}) {
   const { t } = useI18n();
   const { controls, Tour } = useJoyride({
     continuous: true,
@@ -42,7 +51,7 @@ export function ProfessorWalkthrough({ username }: { username: string }) {
       skip: t("tour.skip"),
     },
     run: !hasSeenProfessorWalkthrough(username),
-    steps: walkthroughSteps(t),
+    steps: walkthroughSteps(t, onViewChange),
     styles: {
       buttonBack: {
         border: "1px solid color-mix(in srgb, var(--color-on-accent) 64%, transparent)",
@@ -99,39 +108,72 @@ function handleTourEvent(event: EventData, username: string) {
   }
 }
 
-function walkthroughSteps(t: ReturnType<typeof useI18n>["t"]): Step[] {
+function walkthroughSteps(
+  t: ReturnType<typeof useI18n>["t"],
+  onViewChange: (view: ProfessorWalkthroughView) => void,
+): Step[] {
   return [
     {
       content: t("tour.navigation.content"),
-      placement: "bottom",
-      target: '[data-tour="professor-navigation"]',
+      placement: "center",
+      target: "body",
       title: t("tour.navigation.title"),
     },
     {
+      before: openView("professor", '[data-tour="course-creation-workflow"]', onViewChange),
       content: t("tour.builder.content"),
-      target: '[data-tour="course-builder"]',
+      target: '[data-tour="course-creation-workflow"]',
       title: t("tour.builder.title"),
     },
     {
+      before: openView(
+        "course-management",
+        '[data-tour="course-management-workflow"]',
+        onViewChange,
+      ),
       content: t("tour.manage.content"),
-      target: '[data-tour="manage-courses"]',
+      target: '[data-tour="course-management-workflow"]',
       title: t("tour.manage.title"),
     },
     {
+      before: openView("performance", '[data-tour="course-performance-workflow"]', onViewChange),
       content: t("tour.performance.content"),
-      target: '[data-tour="course-performance"]',
+      target: '[data-tour="course-performance-workflow"]',
       title: t("tour.performance.title"),
-    },
-    {
-      content: t("tour.usage.content"),
-      target: '[data-tour="usage"]',
-      title: t("tour.usage.title"),
     },
     {
       content: t("tour.restart.content"),
       placement: "bottom-end",
-      target: '[data-tour="walkthrough"]',
+      target: '[data-tour="professor-support"]',
       title: t("tour.restart.title"),
     },
   ];
+}
+
+function openView(
+  view: ProfessorWalkthroughView,
+  target: string,
+  onViewChange: (view: ProfessorWalkthroughView) => void,
+) {
+  return async () => {
+    onViewChange(view);
+    await waitForTourTarget(target);
+  };
+}
+
+function waitForTourTarget(target: string) {
+  if (document.querySelector(target)) return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    const observer = new MutationObserver(() => {
+      if (!document.querySelector(target)) return;
+      window.clearTimeout(timeoutId);
+      observer.disconnect();
+      resolve();
+    });
+    const timeoutId = window.setTimeout(() => {
+      observer.disconnect();
+      resolve();
+    }, TOUR_TARGET_WAIT_MS);
+    observer.observe(document.body, { childList: true, subtree: true });
+  });
 }

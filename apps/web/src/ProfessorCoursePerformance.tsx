@@ -94,7 +94,7 @@ export function ProfessorCoursePerformance({
   const selectedAnalytics = analytics?.lecture_id === selectedLecture?.id ? analytics : null;
 
   return (
-    <main className="professor-screen performance-page">
+    <main className="professor-screen performance-page" data-tour="course-performance-workflow">
       <section className="professor-page-header">
         <div>
           <h1>{t("professor.performance.title")}</h1>
