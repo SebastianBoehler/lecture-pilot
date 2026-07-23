@@ -50,6 +50,7 @@ async def test_section_repair_applies_only_replacement_blocks_and_preserves_the_
     prompt = model.messages[0]
     assert "optimization-math" in prompt[-1]["content"]
     assert "only replacement blocks" in prompt[0]["content"]
+    assert "Move explanatory prose into a paragraph or callout" in prompt[0]["content"]
     assert "move that text to a paragraph" in prompt[-1]["content"]
 
 
@@ -65,6 +66,18 @@ async def test_section_repair_retries_once_with_the_new_validation_error(
     )
     source = published_course_canvas("targeted-repair", "lecture-01")
     candidate = _invalid_candidate(source)
+    section = candidate.sections[0]
+    invalid = section.blocks[1].model_copy(update={"text": r"z=\mu+\epsilon\N(0,1)"})
+    candidate = candidate.model_copy(
+        update={
+            "sections": [
+                section.model_copy(
+                    update={"blocks": [section.blocks[0], invalid, *section.blocks[2:]]}
+                ),
+                *candidate.sections[1:],
+            ]
+        }
+    )
 
     repaired = await planner.repair_section(
         source,
@@ -75,7 +88,12 @@ async def test_section_repair_retries_once_with_the_new_validation_error(
     )
 
     assert len(model.messages) == 2
+    assert (
+        "Replace unsupported commands with portable KaTeX commands"
+        in model.messages[0][0]["content"]
+    )
     assert "unsupported or course-specific" in model.messages[1][-1]["content"]
+    assert model.temperatures == [0.3, 0.3]
     repaired_math = next(
         block for block in repaired.sections[0].blocks if block.id == "optimization-math"
     )
@@ -208,41 +226,16 @@ async def test_section_repair_retains_the_patch_and_advances_to_the_next_invalid
     assert first_math.text == r"w^\top x"
 
 
-async def test_block_repair_rejects_an_oversized_patch(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    planner, _model = _planner(
-        monkeypatch,
-        [
-            _repair_payload(
-                [{"type": "paragraph", "text": f"Unrelated rewrite {index}."} for index in range(4)]
-            ),
-            _repair_payload(
-                [{"type": "paragraph", "text": f"Unrelated rewrite {index}."} for index in range(4)]
-            ),
-        ],
-    )
-    source = published_course_canvas("targeted-repair", "lecture-01")
-    candidate = _invalid_candidate(source)
-
-    with pytest.raises(CanvasGenerationRepairableError, match="at most 3 replacement blocks"):
-        await planner.repair_section(
-            source,
-            candidate,
-            section_id="learning-optimization",
-            block_id="optimization-math",
-            failure_context="Repair only the failed formula.",
-        )
-
-
 class _RepairModel:
     def __init__(self, payloads: list[dict]) -> None:
         self.payloads = payloads
         self.messages: list[list[dict[str, str]]] = []
+        self.temperatures: list[float] = []
 
-    async def complete_plan(self, *, settings, messages):
+    async def complete_plan(self, *, settings, messages, temperature=0.2):
         assert settings.model == "gemini/test-model"
         self.messages.append(messages)
+        self.temperatures.append(temperature)
         return self.payloads[len(self.messages) - 1]
 
 

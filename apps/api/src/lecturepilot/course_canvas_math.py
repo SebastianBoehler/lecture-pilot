@@ -22,7 +22,7 @@ _PORTABLE_KATEX_COMMANDS = frozenset(
     cfrac dfrac frac sqrt tfrac dbinom tbinom
     coprod iint iiint int oint prod sum bigcap bigcup bigodot bigoplus bigotimes bigsqcup biguplus
     lim liminf limsup max min sup inf limits nolimits mathop
-    Pr arg cos cosh cot coth csc deg det dim exp gcd hom ker lg ln log sec sin sinh tan tanh
+    Pr arg cos cosh cot coth csc deg det dim exp gcd hom ker lg ln log prime sec sin sinh tan tanh
     arccos arcsin arctan
     partial nabla ell hbar imath jmath infty emptyset varnothing Re Im wp aleph top bot
     approx asymp cong equiv ge geq geqslant gt le leq leqslant lt neq ne propto sim simeq
@@ -127,6 +127,8 @@ def normalize_generated_math(value: str) -> str:
             break
     else:
         formula = _combine_display_segments(formula)
+    formula = formula.replace(r"\[", "").replace(r"\]", "")
+    formula = formula.replace(r"\(", "").replace(r"\)", "")
     for pattern, replacement in _SOURCE_SHORTHANDS:
         formula = pattern.sub(replacement, formula)
     match = _LEADING_LABEL_RE.match(formula)

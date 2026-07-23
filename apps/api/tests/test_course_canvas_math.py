@@ -84,6 +84,7 @@ def test_generated_math_normalization_expands_attention_symbols() -> None:
     "formula",
     [
         r"w^\top x",
+        r"f^\prime(x)",
         r"\mathop{\mathrm{argmin}}_w f(w)",
     ],
 )

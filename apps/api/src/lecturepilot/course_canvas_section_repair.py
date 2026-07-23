@@ -7,6 +7,10 @@ from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSectio
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_language import canvas_language_instruction
 from lecturepilot.course_canvas_math import generated_math_instructions
+from lecturepilot.course_canvas_repair_preflight import (
+    normalize_repair_candidate,
+    repair_failure_constraint,
+)
 from lecturepilot.course_canvas_section_planner import _read_section_payload
 from lecturepilot.course_canvas_validation import validate_planned_document
 from lecturepilot.models import ProviderCapability, ProviderSettings
@@ -19,6 +23,7 @@ class _RepairModel(Protocol):
         *,
         settings: ProviderSettings,
         messages: list[dict[str, str]],
+        temperature: float = 0.2,
     ) -> dict: ...
 
 
@@ -38,8 +43,21 @@ class CourseCanvasSectionRepairMixin:
         failure_context: str,
         output_language: str = "en",
     ) -> CanvasDocument:
+        candidate_document = normalize_repair_candidate(
+            candidate_document,
+            section_id,
+            block_id,
+            failure_context,
+        )
         section = _section(candidate_document, section_id)
         target = _block(section, block_id) if block_id else None
+        try:
+            validate_planned_document(candidate_document, source_document)
+            return candidate_document
+        except CanvasGenerationRepairableError as exc:
+            if _is_new_target(exc, section, target):
+                raise exc.with_candidate(candidate_document)
+            failure_context = str(exc)
         settings = self.provider_registry.require_ready(
             [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
         )
@@ -57,6 +75,7 @@ class CourseCanvasSectionRepairMixin:
                 payload = await self.model_client.complete_plan(
                     settings=settings,
                     messages=messages,
+                    temperature=0.3,
                 )
                 replacement = _read_section_payload(
                     payload,
@@ -122,6 +141,7 @@ def _repair_messages(
                 f"{canvas_language_instruction(output_language)} "
                 f"{scope} Return the standard structured canvas JSON with exactly one section. "
                 "Preserve the meaning and use only the supplied evidence. "
+                f"{repair_failure_constraint(failure)} "
                 f"{generated_math_instructions()}"
             ),
         },

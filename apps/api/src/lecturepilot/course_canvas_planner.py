@@ -25,7 +25,11 @@ from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
 
 class CoursePlanModelClient(Protocol):
     async def complete_plan(
-        self, *, settings: ProviderSettings, messages: list[dict[str, str]]
+        self,
+        *,
+        settings: ProviderSettings,
+        messages: list[dict[str, str]],
+        temperature: float = 0.2,
     ) -> dict:
         """Return one source-grounded course canvas plan."""
 
@@ -35,7 +39,11 @@ class LiteLLMCoursePlanClient:
         self.usage_recorder = usage_recorder
 
     async def complete_plan(
-        self, *, settings: ProviderSettings, messages: list[dict[str, str]]
+        self,
+        *,
+        settings: ProviderSettings,
+        messages: list[dict[str, str]],
+        temperature: float = 0.2,
     ) -> dict:
         try:
             from litellm import acompletion
@@ -51,7 +59,7 @@ class LiteLLMCoursePlanClient:
                 model=settings.model,
                 messages=messages,
                 response_format=course_canvas_response_format(),
-                **completion_options(settings, temperature=0.2, max_tokens=6000),
+                **completion_options(settings, temperature=temperature, max_tokens=6000),
             )
         except Exception as exc:
             raise ModelExecutionError("Course planner model request failed.") from exc
