@@ -30,8 +30,8 @@ export function HowItWorksArticle() {
         <h2 id="course-heading">Every course has its own workspace</h2>
         <p>
           Slides, PDFs, LaTeX files, images, and the published lecture canvas live together in a
-          structured course workspace. We sometimes call this a <em>course image</em>: the organized
-          view of a course that the tutor is allowed to work inside.
+          structured course workspace. Together, they form the <em>course image</em>: the organized
+          view of the course that the tutor is allowed to work inside.
         </p>
         <p>
           Machine Learning and Macroeconomics therefore do not blur into the same memory. Each
@@ -83,8 +83,8 @@ export function HowItWorksArticle() {
           useful unit is the learning signal across the course, not surveillance of an individual.
         </p>
         <p className="how-conclusion">
-          The goal is not to build a chatbot that knows everything. It is to give a teaching agent
-          the right context, useful tools, and clear boundaries.
+          LecturePilot does not ask a chatbot to know everything. It gives the tutor the right
+          course context, useful tools, and clear boundaries.
         </p>
       </section>
     </article>
