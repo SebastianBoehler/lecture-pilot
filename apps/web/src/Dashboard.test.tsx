@@ -262,9 +262,7 @@ describe("Dashboard course workspace matching", () => {
     expect(await within(reopenedDialog).findByText(/keep reviewing/i)).toHaveFocus();
     expect(within(reopenedDialog).getByText("38%")).toBeInTheDocument();
     expect(
-      await within(reopenedDialog).findByText(
-        "Good explanation; add one concrete failure mode.",
-      ),
+      await within(reopenedDialog).findByText("Good explanation; add one concrete failure mode."),
     ).toBeInTheDocument();
     expect(within(reopenedDialog).getByText("Bayes formula")).toBeInTheDocument();
     expect(within(reopenedDialog).queryByText(/awaiting rubric review/i)).not.toBeInTheDocument();

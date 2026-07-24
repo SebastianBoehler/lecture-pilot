@@ -161,7 +161,9 @@ def test_exam_readiness_attempt_is_persisted_in_learner_progress(tmp_path: Path)
     assert '"feedback": "Add one concrete failure mode."' in progress
 
 
-def test_exam_readiness_rejects_out_of_range_mc_before_open_answer_evaluation(tmp_path: Path) -> None:
+def test_exam_readiness_rejects_out_of_range_mc_before_open_answer_evaluation(
+    tmp_path: Path,
+) -> None:
     client = _client(tmp_path)
     evaluator = _RecordingEvaluator()
     client.app.state.open_answer_evaluator = evaluator

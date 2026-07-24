@@ -40,7 +40,9 @@ export function ExamReadinessResult({
         <div className="exam-score" aria-label={t("exam.result.scoreLabel", { score })}>
           <strong>{score}</strong>
           {result.score !== null ? (
-            <span>{t("exam.result.target", { target: Math.round(result.passing_score * 100) })}</span>
+            <span>
+              {t("exam.result.target", { target: Math.round(result.passing_score * 100) })}
+            </span>
           ) : null}
         </div>
       </header>

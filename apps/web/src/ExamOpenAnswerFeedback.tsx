@@ -25,7 +25,10 @@ export function ExamOpenAnswerFeedback({
   if (!feedback.length) return null;
 
   return (
-    <section className="exam-open-answer-feedback" aria-labelledby="exam-open-answer-feedback-title">
+    <section
+      className="exam-open-answer-feedback"
+      aria-labelledby="exam-open-answer-feedback-title"
+    >
       <header>
         <h4 id="exam-open-answer-feedback-title">{t("exam.feedback.title")}</h4>
       </header>
