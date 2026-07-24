@@ -324,7 +324,7 @@ describe("LecturePilot app shell", () => {
 
     expect(await screen.findByRole("heading", { name: /privacy notice/i })).toBeInTheDocument();
     expect(
-      screen.getByText(/provider keys and model routing stay on the backend/i),
+      screen.getByText(/provider api keys remain on the lecturepilot service/i),
     ).toBeInTheDocument();
   });
 
