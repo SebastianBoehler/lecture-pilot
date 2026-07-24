@@ -18,6 +18,8 @@ class ReadinessProgressQuestionEvent(BaseModel):
     section_id: str
     answer_kind: str
     correct: bool | None = None
+    score: float | None = Field(default=None, ge=0.0, le=1.0)
+    feedback: str | None = Field(default=None, min_length=1, max_length=600)
     first_try: bool
     attempt_index: int = Field(ge=1)
     status: str
@@ -75,6 +77,8 @@ class ReadinessProgressStore:
                 section_id=item.section_id,
                 answer_kind=item.answer_kind,
                 correct=item.correct,
+                score=item.score,
+                feedback=item.feedback,
                 first_try=not any(
                     event.question_id == item.question_id for event in progress.attempts
                 ),

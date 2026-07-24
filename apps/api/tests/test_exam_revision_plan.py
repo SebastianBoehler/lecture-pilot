@@ -30,7 +30,8 @@ def test_revision_plan_uses_evaluated_open_answer_scores() -> None:
 
     assert plan.results[1].score == 0.75
     assert plan.results[1].feedback == "Good explanation; add one concrete failure mode."
-    assert plan.results[1].status == "correct"
+    assert plan.results[1].correct is None
+    assert plan.results[1].status == "evaluated"
     assert plan.score == 0.375
     assert [task.kind for task in plan.tasks] == ["review_wrong_mc"]
     assert plan.tasks[0].id == "lecture-03-q1-review"
@@ -41,7 +42,7 @@ def test_revision_plan_uses_evaluated_open_answer_scores() -> None:
     assert plan.tasks[0].scaffold_policy.profile == "worked_example"
 
 
-def test_revision_plan_averages_multiple_choice_and_open_answer_scores() -> None:
+def test_revision_plan_displays_combined_multiple_choice_and_open_answer_scores() -> None:
     plan = build_exam_revision_plan(
         check=_check(),
         answers=[
@@ -60,34 +61,31 @@ def test_revision_plan_averages_multiple_choice_and_open_answer_scores() -> None
     )
 
     assert plan.results[1].score == 0.75
-    assert plan.results[1].status == "correct"
+    assert plan.results[1].correct is None
+    assert plan.results[1].status == "evaluated"
     assert plan.score == 0.875
     assert plan.tasks == []
 
 
-@pytest.mark.parametrize(
-    ("score", "status"),
-    [(0.4, "incorrect"), (0.7499, "incorrect"), (0.39, "incorrect")],
-)
-def test_revision_plan_does_not_create_review_tasks_for_partial_or_incorrect_open_answers(
-    score: float,
-    status: str,
-) -> None:
+def test_open_answer_score_does_not_change_wrong_mc_task_guidance() -> None:
     plan = build_exam_revision_plan(
         check=_check(),
         answers=[
-            ExamReadinessAnswer(question_id="lecture-03:q1", selected_index=1),
+            ExamReadinessAnswer(question_id="lecture-03:q1", selected_index=0),
             ExamReadinessAnswer(question_id="lecture-04:q2", text="Risk combines costs."),
         ],
         open_evaluations={
             "lecture-04:q2": OpenAnswerEvaluation(
-                question_id="lecture-04:q2", score=score, feedback="Review the failure mode."
+                question_id="lecture-04:q2", score=1.0, feedback="Complete answer."
             )
         },
     )
 
-    assert plan.results[1].status == status
-    assert plan.tasks == []
+    assert plan.score == 0.5
+    assert plan.tasks[0].kind == "review_wrong_mc"
+    assert plan.tasks[0].guidance_level == "scaffolded"
+    assert plan.tasks[0].scaffold_policy is not None
+    assert plan.tasks[0].scaffold_policy.profile == "worked_example"
 
 
 def test_guidance_level_reflects_score_and_repeated_attempts() -> None:

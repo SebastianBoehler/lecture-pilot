@@ -10,7 +10,7 @@ from lecturepilot.scaffold_policy import TutorScaffoldPolicy, scaffold_policy_fo
 from lecturepilot.storage_layout import safe_id
 
 GuidanceLevel = Literal["challenge", "standard", "scaffolded"]
-QuestionStatus = Literal["correct", "incorrect", "needs_rubric_review"]
+QuestionStatus = Literal["correct", "incorrect", "evaluated", "needs_rubric_review"]
 RevisionTaskKind = Literal["review_wrong_mc", "review_open_answer"]
 
 
@@ -106,6 +106,9 @@ def build_exam_revision_plan(
     ]
     score = _score(results)
     guidance_level = _guidance_level(score, previous_attempts)
+    multiple_choice_guidance_level = _guidance_level(
+        _multiple_choice_score(results), previous_attempts
+    )
     return ExamReadinessAttemptResult(
         course_id=check.course_id,
         passing_score=check.passing_score,
@@ -113,7 +116,11 @@ def build_exam_revision_plan(
         guidance_level=guidance_level,
         results=results,
         tasks=[
-            _revision_task(question=question, result=result, guidance_level=guidance_level)
+            _revision_task(
+                question=question,
+                result=result,
+                guidance_level=multiple_choice_guidance_level,
+            )
             for question, result in zip(check.questions, results, strict=True)
             if result.answer_kind == "multiple_choice" and result.status == "incorrect"
         ],
@@ -138,6 +145,12 @@ def validate_exam_readiness_answers(
             raise ValueError(f"Missing answer for question {question.id}")
         if question.kind == "multiple_choice" and answer.selected_index is None:
             raise ValueError(f"Multiple-choice question {question.id} requires selected_index.")
+        if (
+            question.kind == "multiple_choice"
+            and answer.selected_index is not None
+            and answer.selected_index >= len(question.options)
+        ):
+            raise ValueError(f"Selected option does not exist for question {question.id}.")
         if question.kind == "open_ended" and not answer.text:
             raise ValueError(f"Open-ended question {question.id} requires text.")
     return answers_by_question
@@ -170,17 +183,16 @@ def _question_result(
         raise ValueError(f"Missing open-answer evaluation for question {question.id}")
     if evaluation.question_id != question.id:
         raise ValueError(f"Open-answer evaluation question id does not match {question.id}")
-    correct = evaluation.score >= 0.75
     return ExamReadinessQuestionResult(
         question_id=question.id,
         kind=question.kind,
         lecture_id=question.lecture_id,
         section_id=question.section_id,
         answer_kind="open_ended",
-        correct=correct,
+        correct=None,
         score=evaluation.score,
         feedback=evaluation.feedback,
-        status="correct" if correct else "incorrect",
+        status="evaluated",
     )
 
 
@@ -189,6 +201,10 @@ def _score(results: list[ExamReadinessQuestionResult]) -> float | None:
     if not scored:
         return None
     return round(sum(scored) / len(scored), 4)
+
+
+def _multiple_choice_score(results: list[ExamReadinessQuestionResult]) -> float | None:
+    return _score([result for result in results if result.answer_kind == "multiple_choice"])
 
 
 def _guidance_level(score: float | None, previous_attempts: int) -> GuidanceLevel:

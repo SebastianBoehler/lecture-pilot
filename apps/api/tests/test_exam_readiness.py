@@ -144,6 +144,8 @@ def test_exam_readiness_attempt_is_persisted_in_learner_progress(tmp_path: Path)
     assert payload["guidance_level"] == "scaffolded"
     assert payload["results"][1]["score"] == 0.75
     assert payload["results"][1]["feedback"] == "Add one concrete failure mode."
+    assert payload["results"][1]["correct"] is None
+    assert payload["results"][1]["status"] == "evaluated"
     assert payload["tasks"][0]["source_ref"] == "lecture-03.tex"
     progress_path = (
         workspace.layout.user_course_root("student-a", "demo-ml-course") / "progress.json"
@@ -154,6 +156,49 @@ def test_exam_readiness_attempt_is_persisted_in_learner_progress(tmp_path: Path)
     assert "student-a" not in progress
     assert "Bayes compares evidence" not in progress
     assert "first_try" in progress
+    assert '"correct": null' in progress
+    assert '"score": 0.75' in progress
+    assert '"feedback": "Add one concrete failure mode."' in progress
+
+
+def test_exam_readiness_rejects_out_of_range_mc_before_open_answer_evaluation(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    evaluator = _RecordingEvaluator()
+    client.app.state.open_answer_evaluator = evaluator
+    client.post(
+        "/admin/course-workspaces",
+        json={
+            "course_title": "Demo ML Course",
+            "target": "single-lecture",
+            "lecture_number": "03",
+            "lecture_title": "Bayesian Decision Theory",
+        },
+        headers=professor_headers(),
+    )
+    workspace: CanvasWorkspace = client.app.state.canvas_workspace
+    workspace.write_course_canvas(
+        _document("lecture-03", "Bayesian Decision Theory", with_quiz=True)
+    )
+
+    response = client.post(
+        "/courses/demo-ml-course/exam-readiness/attempts",
+        headers=student_headers("student-a"),
+        json={
+            "answers": [
+                {"question_id": "lecture-03:lecture-03-quiz", "selected_index": 3},
+                {
+                    "question_id": "lecture-03:lecture-03-section:open",
+                    "text": "Bayes compares evidence.",
+                },
+            ]
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Selected option does not exist for question lecture-03:lecture-03-quiz."
+    )
+    assert evaluator.calls == 0
 
 
 def test_exam_readiness_attempt_requires_authentication(tmp_path: Path) -> None:
@@ -225,6 +270,15 @@ class _FakeEvaluator:
             )
             for item in items
         ]
+
+
+class _RecordingEvaluator:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def evaluate(self, **_kwargs) -> list[OpenAnswerEvaluation]:
+        self.calls += 1
+        return []
 
 
 def _document(lecture_id: str, title: str, *, with_quiz: bool) -> CanvasDocument:
