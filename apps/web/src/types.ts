@@ -139,7 +139,6 @@ export type ExamReadinessAnswer = {
   selected_index?: number | null;
   text?: string | null;
 };
-
 export type ExamReadinessQuestionResult = {
   question_id: string;
   kind: "multiple_choice" | "open_ended";
@@ -149,9 +148,10 @@ export type ExamReadinessQuestionResult = {
   correct: boolean | null;
   selected_index?: number | null;
   correct_index?: number | null;
-  status: "correct" | "incorrect" | "needs_rubric_review";
+  status: "correct" | "incorrect" | "evaluated" | "needs_rubric_review";
+  score?: number | null;
+  feedback?: string | null;
 };
-
 export type ExamReadinessGuidanceLevel = "challenge" | "standard" | "scaffolded";
 
 export type TutorScaffoldPolicy = {

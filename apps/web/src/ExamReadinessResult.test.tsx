@@ -4,13 +4,19 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ExamReadinessResult } from "./ExamReadinessResult";
 import { renderWithI18n } from "./test/renderWithI18n";
-import type { ExamReadinessAttemptResult, ExamRevisionTask, Lecture } from "./types";
+import type {
+  ExamReadinessAttemptResult,
+  ExamReadinessCheck,
+  ExamRevisionTask,
+  Lecture,
+} from "./types";
 
 describe("ExamReadinessResult", () => {
   it("keeps a long review plan compact until the learner asks for more", async () => {
     const user = userEvent.setup();
     renderWithI18n(
       <ExamReadinessResult
+        check={check}
         lectures={[lecture]}
         result={resultWithTasks(5)}
         onOpenLecture={vi.fn()}
@@ -26,15 +32,20 @@ describe("ExamReadinessResult", () => {
     expect(screen.getByRole("heading", { name: "Topic 4" })).toBeVisible();
   });
 
-  it("keeps an unscored open-answer result neutral until rubric review", () => {
+  it("keeps an unscored legacy open-answer result neutral", () => {
     renderWithI18n(
-      <ExamReadinessResult lectures={[lecture]} result={pendingResult()} onOpenLecture={vi.fn()} />,
+      <ExamReadinessResult
+        check={check}
+        lectures={[lecture]}
+        result={pendingResult()}
+        onOpenLecture={vi.fn()}
+      />,
     );
 
-    expect(screen.getByRole("heading", { name: "Awaiting rubric review" })).toHaveFocus();
+    expect(screen.getByRole("heading", { name: "Result pending" })).toHaveFocus();
     expect(screen.queryByRole("heading", { name: "Keep reviewing" })).not.toBeInTheDocument();
     expect(screen.getByText("Pending")).toBeInTheDocument();
-    expect(screen.getByText(/no readiness result has been assigned/i)).toBeInTheDocument();
+    expect(screen.getByText(/no readiness score has been assigned/i)).toBeInTheDocument();
   });
 });
 
@@ -44,6 +55,14 @@ const lecture: Lecture = {
   title: "Bayesian Decision Theory",
   date: "2026-04-29",
   attendance: "unknown",
+};
+
+const check: ExamReadinessCheck = {
+  course_id: "martius-ml",
+  passing_score: 0.7,
+  published_lecture_count: 1,
+  coverage: [],
+  questions: [],
 };
 
 function resultWithTasks(count: number): ExamReadinessAttemptResult {

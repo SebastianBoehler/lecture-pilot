@@ -260,10 +260,16 @@ describe("Dashboard course workspace matching", () => {
     await user.click(within(reopenedDialog).getByRole("button", { name: /check readiness/i }));
 
     expect(await within(reopenedDialog).findByText(/keep reviewing/i)).toHaveFocus();
-    expect(within(reopenedDialog).getByText("0%")).toBeInTheDocument();
+    expect(within(reopenedDialog).getByText("38%")).toBeInTheDocument();
+    expect(
+      await within(reopenedDialog).findByText(
+        "Good explanation; add one concrete failure mode.",
+      ),
+    ).toBeInTheDocument();
+    expect(within(reopenedDialog).getByText("Bayes formula")).toBeInTheDocument();
+    expect(within(reopenedDialog).queryByText(/awaiting rubric review/i)).not.toBeInTheDocument();
     const resultSummary = within(reopenedDialog).getByRole("list", { name: /result summary/i });
-    expect(resultSummary).toHaveTextContent(/2 priorities/i);
-    expect(resultSummary).toHaveTextContent(/1 answer needs rubric review/i);
+    expect(resultSummary).toHaveTextContent(/1 priority/i);
     expect(
       within(reopenedDialog).getByText(/expected risk combines posterior probabilities/i),
     ).not.toBeVisible();
@@ -359,7 +365,7 @@ function examReadinessAttemptPayload() {
     created_at: "2026-07-01T12:00:00+00:00",
     course_id: "martius-ml",
     passing_score: 0.7,
-    score: 0,
+    score: 0.375,
     guidance_level: "scaffolded",
     results: [
       {
@@ -380,7 +386,9 @@ function examReadinessAttemptPayload() {
         section_id: "bayes-formula",
         answer_kind: "open_ended",
         correct: null,
-        status: "needs_rubric_review",
+        status: "evaluated",
+        score: 0.75,
+        feedback: "Good explanation; add one concrete failure mode.",
       },
     ],
     tasks: [
@@ -399,23 +407,6 @@ function examReadinessAttemptPayload() {
         rubric: ["Expected risk combines posterior probabilities with loss values."],
         expected_evidence: "Expected risk combines posterior probabilities with loss values.",
         next_action: "Review Losses and risks, then answer a follow-up without seeing the options.",
-      },
-      {
-        id: "lecture-03-bayes-formula-open-review",
-        question_id: "lecture-03:bayes-formula:open",
-        kind: "review_open_answer",
-        status: "open",
-        guidance_level: "scaffolded",
-        lecture_id: "lecture-03",
-        lecture_title: "Bayesian Decision Theory",
-        section_id: "bayes-formula",
-        section_title: "Bayes formula",
-        prompt: "Explain Bayes formula as you would in an exam answer.",
-        source_ref: "Lecture03-eng.tex frames 5-6",
-        rubric: ["Bayes formula turns evidence into a posterior distribution."],
-        expected_evidence: "Bayes formula turns evidence into a posterior distribution.",
-        next_action:
-          "Compare your answer with the rubric for Bayes formula and revise the weak point.",
       },
     ],
   };

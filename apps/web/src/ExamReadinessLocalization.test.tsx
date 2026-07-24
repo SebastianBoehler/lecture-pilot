@@ -11,7 +11,7 @@ describe("Exam readiness localization", () => {
     vi.unstubAllGlobals();
   });
 
-  it("keeps course text intact inside a German rubric-review flow", async () => {
+  it("keeps course text intact inside evaluated German open-answer feedback", async () => {
     const user = userEvent.setup();
     vi.stubGlobal(
       "fetch",
@@ -42,16 +42,18 @@ describe("Exam readiness localization", () => {
     );
     await user.click(within(dialog).getByRole("button", { name: "Bereitschaft prüfen" }));
 
-    expect(
-      await within(dialog).findByRole("heading", { name: "Rubrikprüfung ausstehend" }),
-    ).toHaveFocus();
+    expect(await within(dialog).findByRole("heading", { name: "Bereit" })).toHaveFocus();
     expect(within(dialog).queryByText("Dein Ergebnis")).not.toBeInTheDocument();
     expect(within(dialog).queryByText("Nächste Schritte")).not.toBeInTheDocument();
-    expect(within(dialog).queryByRole("heading", { name: "Weiter üben" })).not.toBeInTheDocument();
-    expect(within(dialog).getByText("Ausstehend")).toBeInTheDocument();
-    expect(within(dialog).getByText("Review the source concept.")).toBeInTheDocument();
+    const feedback = within(dialog).getByRole("region", { name: "Feedback zu offenen Antworten" });
+    expect(within(feedback).getByText("75%")).toBeInTheDocument();
+    expect(within(feedback).getByText("Source concept")).toBeInTheDocument();
+    expect(
+      within(feedback).getByText("Gute Erklärung; nenne noch einen Fehlerfall."),
+    ).toBeInTheDocument();
+    expect(within(dialog).queryByText(/Rubrikprüfung ausstehend/i)).not.toBeInTheDocument();
     expect(within(dialog).getByRole("list", { name: "Ergebnisübersicht" })).toHaveTextContent(
-      "1 Priorität",
+      "0 Prioritäten",
     );
   });
 });
@@ -103,7 +105,7 @@ function attemptPayload() {
   return {
     course_id: course.id,
     passing_score: 0.7,
-    score: null,
+    score: 0.75,
     guidance_level: "standard",
     results: [
       {
@@ -113,34 +115,12 @@ function attemptPayload() {
         section_id: "source-concept",
         answer_kind: "open_ended",
         correct: null,
-        status: "needs_rubric_review",
+        status: "evaluated",
+        score: 0.75,
+        feedback: "Gute Erklärung; nenne noch einen Fehlerfall.",
       },
     ],
-    tasks: [
-      {
-        id: "question-1-review",
-        question_id: "question-1",
-        kind: "review_open_answer",
-        status: "open",
-        guidance_level: "standard",
-        lecture_id: lecture.id,
-        lecture_title: lecture.title,
-        section_id: "source-concept",
-        section_title: "Source concept",
-        prompt: "Explain the source concept.",
-        rubric: ["Use source evidence."],
-        expected_evidence: "Use source evidence.",
-        next_action: "Review the source concept.",
-        scaffold_policy: {
-          trigger: "readiness_task",
-          learner_stage: "novice",
-          profile: "worked_example",
-          process_label: "scaffolded_reasoning",
-          tutor_move: "Ask for evidence.",
-          forbidden: "Reveal the answer.",
-        },
-      },
-    ],
+    tasks: [],
   };
 }
 

@@ -180,12 +180,17 @@ export function ExamReadinessModal({
         </>
       ) : null}
 
-      {result ? (
+      {result && check ? (
         <section
           className="exam-modal-body exam-result-body"
           aria-label={t("exam.result.sectionLabel")}
         >
-          <ExamReadinessResult lectures={lectures} result={result} onOpenLecture={onOpenLecture} />
+          <ExamReadinessResult
+            check={check}
+            lectures={lectures}
+            result={result}
+            onOpenLecture={onOpenLecture}
+          />
         </section>
       ) : null}
     </dialog>
