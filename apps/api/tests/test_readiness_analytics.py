@@ -6,6 +6,7 @@ from auth_helpers import professor_headers, student_headers
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.exam_answer_evaluation import OpenAnswerEvaluation
 
 
 def test_professor_reads_privacy_preserving_readiness_summary(tmp_path: Path) -> None:
@@ -34,11 +35,11 @@ def test_professor_reads_privacy_preserving_readiness_summary(tmp_path: Path) ->
     assert payload["course_id"] == "demo-ml-course"
     assert payload["total_attempts"] == 2
     assert payload["unique_learners"] == 2
-    assert payload["task_status_counts"] == {"open": 3}
+    assert payload["task_status_counts"] == {"open": 1}
     assert payload["weak_sections"][0] == {
         "lecture_id": "lecture-03",
         "section_id": "risk",
-        "open_tasks": 3,
+        "open_tasks": 1,
     }
     assert "student-a" not in str(payload)
     assert "Expected risk weighs losses" not in str(payload)
@@ -69,7 +70,19 @@ def _client(tmp_path: Path) -> TestClient:
         workspace_root=tmp_path / "workspaces",
         material_root=tmp_path / "materials",
     )
+    app.state.open_answer_evaluator = _Evaluator()
     return TestClient(app)
+
+
+class _Evaluator:
+    async def evaluate(self, **_kwargs) -> list[OpenAnswerEvaluation]:
+        return [
+            OpenAnswerEvaluation(
+                question_id="lecture-03:risk:open",
+                score=0.75,
+                feedback="Add one concrete consequence.",
+            )
+        ]
 
 
 def _create_course(client: TestClient) -> None:
