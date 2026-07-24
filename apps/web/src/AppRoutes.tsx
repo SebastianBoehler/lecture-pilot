@@ -1,5 +1,6 @@
 import { lazy, Suspense, type ReactNode } from "react";
 
+import { courseUpdatePath, type AppRoute } from "./appRoute";
 import { CourseManagementAccessRequired } from "./CourseManagementAccessRequired";
 import { Dashboard } from "./Dashboard";
 import { draftPreviewUrl } from "./draftPreviewUrl";
@@ -55,7 +56,6 @@ type AppRoutesProps = {
   highlightedBlockId: string | null;
   highlightedText: string | null;
   lastTutorModel: string | null;
-  lessonBackView: "dashboard" | "professor" | "course-management";
   lessonMode: LessonMode;
   messages: ChatMessage[];
   navigationVersion: number;
@@ -64,13 +64,14 @@ type AppRoutesProps = {
   publishedLectureIds: string[];
   selectedCourseId: string;
   selectedLecture: Lecture;
-  secondaryReturnView: View;
+  route: AppRoute;
   session: LoginSession | null;
   view: View;
   workspaceCourse: UniversityCourse;
   workspaceCourseId: string;
   onLogout: () => void;
   onLogin: (session: LoginSession) => void;
+  onNavigatePath: (path: string) => void;
   onOpenDemo: () => void;
   onOpenLecture: (courseId: string, lecture: Lecture) => void;
   onPreviewLecture: (courseId: string, lecture: Lecture) => void;
@@ -95,7 +96,6 @@ export function AppRoutes(props: AppRoutesProps) {
     highlightedBlockId,
     highlightedText,
     lastTutorModel,
-    lessonBackView,
     lessonMode,
     messages,
     navigationVersion,
@@ -103,7 +103,7 @@ export function AppRoutes(props: AppRoutesProps) {
     publishedLectureIds,
     selectedCourseId,
     selectedLecture,
-    secondaryReturnView,
+    route,
     session,
     view,
     workspaceCourse,
@@ -140,11 +140,6 @@ export function AppRoutes(props: AppRoutesProps) {
         learnerProfileState={learnerProfileEnabled ? learnerProfileState : undefined}
         onLogout={props.onLogout}
         session={session}
-        onBack={
-          session.account_type === "professor" && !courseManagerSession
-            ? undefined
-            : () => props.onViewChange(secondaryReturnView)
-        }
       />
     );
   }
@@ -163,8 +158,11 @@ export function AppRoutes(props: AppRoutesProps) {
     return deferred(
       <ProfessorCourseManagement
         onCreateCourse={() => props.onViewChange("professor")}
+        onCloseCourseUpdate={() => props.onViewChange("course-management")}
         onPreviewLecture={props.onPreviewLecture}
+        onUpdateCourse={(courseId) => props.onNavigatePath(courseUpdatePath(courseId))}
         session={courseManagerSession}
+        updateCourseId={route.view === "course-management" ? route.updateCourseId : undefined}
         onWorkspaceDeleted={props.onWorkspaceDeleted}
       />,
     );
@@ -202,12 +200,10 @@ export function AppRoutes(props: AppRoutesProps) {
     );
   }
   if (view === "changelog") {
-    return deferred(<ChangelogPage onBack={() => props.onViewChange(secondaryReturnView)} />);
+    return deferred(<ChangelogPage />);
   }
   if (view === "how-it-works" || view === "learning-science" || view === "privacy") {
-    return deferred(
-      <InfoPage kind={view} onBack={() => props.onViewChange(secondaryReturnView)} />,
-    );
+    return deferred(<InfoPage kind={view} />);
   }
   return deferred(
     <LessonWorkspace
@@ -226,14 +222,6 @@ export function AppRoutes(props: AppRoutesProps) {
       passedGateIds={props.passedGateIds}
       previewMode={lessonMode === "professor-preview"}
       workspaceMode={lessonMode === "professor-preview" ? "professor-preview" : "learner"}
-      backLabel={
-        lessonBackView === "professor"
-          ? "Course builder"
-          : lessonBackView === "course-management"
-            ? "Course management"
-            : "Dashboard"
-      }
-      onBack={() => props.onViewChange(lessonBackView)}
       onSendMessage={props.onSendMessage}
       onResetWorkspace={props.onResetWorkspace}
       onTogglePanel={props.onTogglePanel}

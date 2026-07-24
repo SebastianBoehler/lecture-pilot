@@ -38,6 +38,15 @@ it("keeps tutor turns scoped to the course shown in a draft preview", async () =
     if (url.includes("/canvas/publication")) {
       return jsonResponse({ published: false });
     }
+    if (url.endsWith("/courses/security-course/lectures")) {
+      return jsonResponse([
+        {
+          id: "lecture-01",
+          title: "Security",
+          date: "Draft",
+        },
+      ]);
+    }
     if (url.endsWith("/courses")) {
       return jsonResponse(localProfessorSession.courses);
     }

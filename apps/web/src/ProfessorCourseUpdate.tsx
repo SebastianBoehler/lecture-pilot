@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useEffect, useEffectEvent, useId, useState } from "react";
 
 import { CourseUpdateReview } from "./CourseUpdateReview";
 import { useI18n } from "./i18n";
@@ -24,6 +24,7 @@ export function ProfessorCourseUpdate({
   const folderInputId = useId();
   const [isDragOver, setIsDragOver] = useState(false);
   const update = useCourseUpdate(workspace, session, onWorkspaceUpdated);
+  const cancelUpdate = useEffectEvent(update.cancel);
   const summary = materialSelectionSummary(update.files, {
     folderSummary: (folder, count) => t("builder.upload.folderSummary", { count, folder }),
     noFilesSelected: t("builder.upload.noFilesSelected"),
@@ -40,6 +41,13 @@ export function ProfessorCourseUpdate({
     (update.result && publishedCount < update.result.affected_lecture_ids.length),
   );
   useVersionUpdateActivity(hasUnfinishedUpdate);
+
+  useEffect(
+    () => () => {
+      void cancelUpdate();
+    },
+    [],
+  );
 
   return (
     <main className="professor-screen course-update-page">

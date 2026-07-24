@@ -63,7 +63,6 @@ export const enMessages = {
   "footer.howItWorks": "How it works",
   "footer.learningScience": "Learn how to learn",
   "footer.privacy": "Privacy",
-  "info.back": "Back",
   "changelog.title": "What's new in LecturePilot",
   "changelog.history": "LecturePilot release history",
   "changelog.latest": "Latest",
@@ -363,7 +362,6 @@ export const enMessages = {
   "professor.preview.bannerTitle": "Student preview",
   "professor.preview.bannerHelp":
     "Learning state created here is stored only in your private preview and never affects student data or course analytics.",
-  "professor.preview.back": "Back to course management",
   "courseUpdate.back": "Back to courses",
   "courseUpdate.pageTitle": "Update {course}",
   "courseUpdate.pageHelp":

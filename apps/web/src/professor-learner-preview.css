@@ -3,7 +3,7 @@
   top: calc(var(--lesson-header-offset, 64px) + 4px);
   z-index: 4;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 12px;
   margin-bottom: 14px;
@@ -27,15 +27,4 @@
 .professor-preview-banner span {
   color: var(--color-text-secondary);
   font-size: 12px;
-}
-
-@media (max-width: 720px) {
-  .professor-preview-banner {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .professor-preview-banner button {
-    grid-column: 2;
-    justify-self: start;
-  }
 }

@@ -1,11 +1,4 @@
-import {
-  ChevronLeft,
-  FileText,
-  FolderTree,
-  GitBranch,
-  MessageSquare,
-  TableOfContents,
-} from "lucide-react";
+import { FileText, FolderTree, GitBranch, MessageSquare, TableOfContents } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { useI18n } from "./i18n";
@@ -43,10 +36,8 @@ export function LessonWorkspace({
   panelMode,
   passedGateIds,
   tutorModel,
-  backLabel = "Dashboard",
   previewMode = false,
   workspaceMode = "learner",
-  onBack,
   onSendMessage,
   onTogglePanel,
   onResetWorkspace,
@@ -64,10 +55,8 @@ export function LessonWorkspace({
   panelMode: LessonPanelMode | null;
   passedGateIds: string[];
   tutorModel: string | null;
-  backLabel?: string;
   previewMode?: boolean;
   workspaceMode?: LearnerWorkspaceMode;
-  onBack: () => void;
   onSendMessage: (message: string) => Promise<void>;
   onTogglePanel: (mode: LessonPanelMode) => void;
   onResetWorkspace: (options: WorkspaceResetSelection) => Promise<void>;
@@ -136,15 +125,9 @@ export function LessonWorkspace({
   return (
     <main className={layoutClass}>
       <section className="lesson-main">
-        {previewMode ? <ProfessorLearnerPreviewBanner onBack={onBack} /> : null}
+        {previewMode ? <ProfessorLearnerPreviewBanner /> : null}
         <div className="lesson-toolbar">
           <div className="lesson-toolbar-actions">
-            {!previewMode ? (
-              <button className="ghost-button" type="button" onClick={onBack}>
-                <ChevronLeft size={17} />
-                {backLabel}
-              </button>
-            ) : null}
             <WorkspaceResetControl disabled={!canvasDocument} onReset={onResetWorkspace} />
           </div>
           <span>{lecture.date}</span>

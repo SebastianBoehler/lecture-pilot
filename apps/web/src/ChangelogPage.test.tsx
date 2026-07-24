@@ -1,13 +1,12 @@
 import { screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { ChangelogPage } from "./ChangelogPage";
 import { renderWithI18n } from "./test/renderWithI18n";
 
 describe("ChangelogPage", () => {
   it("reduces each release to one title, a date, summary, and brief bullets", () => {
-    renderWithI18n(<ChangelogPage onBack={() => undefined} />);
+    renderWithI18n(<ChangelogPage />);
 
     expect(screen.getByRole("heading", { name: "What's new in LecturePilot" })).toBeInTheDocument();
     const releases = screen.getAllByRole("article");
@@ -36,16 +35,12 @@ describe("ChangelogPage", () => {
     expect(screen.queryByText(/feat\(|fix\(|chore\(/i)).not.toBeInTheDocument();
   });
 
-  it("renders the release history in German and returns to the previous view", async () => {
-    const onBack = vi.fn();
-    const user = userEvent.setup();
-    renderWithI18n(<ChangelogPage onBack={onBack} />, { locale: "de" });
+  it("renders the release history in German", () => {
+    renderWithI18n(<ChangelogPage />, { locale: "de" });
 
     expect(screen.getByRole("heading", { name: "Neu in LecturePilot" })).toBeInTheDocument();
     expect(screen.getByText("20. Juli 2026")).toBeInTheDocument();
     expect(screen.getByText("Gezielte KI-Reparatur")).toBeInTheDocument();
     expect(screen.queryByText("Aus Feedback")).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Zurück" }));
-    expect(onBack).toHaveBeenCalledOnce();
   });
 });

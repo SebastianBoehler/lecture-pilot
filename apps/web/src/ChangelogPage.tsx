@@ -1,7 +1,7 @@
 import { useI18n } from "./i18n";
 import { productChangelog, releaseUrl } from "./productChangelog";
 
-export function ChangelogPage({ onBack }: { onBack: () => void }) {
+export function ChangelogPage() {
   const { locale, t } = useI18n();
   const dateFormatter = new Intl.DateTimeFormat(locale === "de" ? "de-DE" : "en-GB", {
     day: "numeric",
@@ -12,9 +12,6 @@ export function ChangelogPage({ onBack }: { onBack: () => void }) {
 
   return (
     <main className="changelog-page">
-      <button className="ghost-button info-back" type="button" onClick={onBack}>
-        {t("info.back")}
-      </button>
       <header className="changelog-header">
         <h1>{t("changelog.title")}</h1>
       </header>

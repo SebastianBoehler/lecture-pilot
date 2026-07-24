@@ -65,7 +65,6 @@ export const deMessages: Record<MessageKey, string> = {
   "footer.howItWorks": "So funktioniert es",
   "footer.learningScience": "Lernen lernen",
   "footer.privacy": "Datenschutz",
-  "info.back": "Zurück",
   "changelog.title": "Neu in LecturePilot",
   "changelog.history": "LecturePilot-Versionsverlauf",
   "changelog.latest": "Aktuell",
@@ -371,7 +370,6 @@ export const deMessages: Record<MessageKey, string> = {
   "professor.preview.bannerTitle": "Studierendenansicht",
   "professor.preview.bannerHelp":
     "Lernstände, die du hier erzeugst, werden nur in deiner privaten Vorschau gespeichert und beeinflussen weder Studierendendaten noch Kursanalysen.",
-  "professor.preview.back": "Zurück zur Kursverwaltung",
   "courseUpdate.back": "Zurück zu den Kursen",
   "courseUpdate.pageTitle": "{course} aktualisieren",
   "courseUpdate.pageHelp":

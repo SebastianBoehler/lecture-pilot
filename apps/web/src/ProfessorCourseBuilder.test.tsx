@@ -147,8 +147,10 @@ describe("Professor course builder", () => {
     expect(screen.getByText(/planner model finished with reason/i)).toBeInTheDocument();
     expect(await screen.findByText(/2 sections ready for review/i)).toBeInTheDocument();
     const draftPreview = screen.getByRole("link", { name: /preview course workspace/i });
-    expect(draftPreview).toHaveAttribute("href", expect.stringContaining("preview=draft"));
-    expect(draftPreview).toHaveAttribute("href", expect.stringContaining("lectureId=lecture-03"));
+    expect(draftPreview).toHaveAttribute(
+      "href",
+      expect.stringContaining("/professor/courses/demo-ml-course/lectures/lecture-03/draft"),
+    );
     expect(screen.getByRole("button", { name: /05 publish/i })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: /continue to publishing/i }));
     expect(screen.getByRole("heading", { name: /publish tutor workspace/i })).toBeInTheDocument();
@@ -157,7 +159,7 @@ describe("Professor course builder", () => {
     expect(screen.getByLabelText(/published lecture workspaces/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /preview/i })).toHaveAttribute(
       "href",
-      expect.stringContaining("lectureId=lecture-03"),
+      expect.stringContaining("/professor/courses/demo-ml-course/lectures/lecture-03/draft"),
     );
     expect(
       screen.queryByRole("heading", { name: /live course analytics/i }),
@@ -178,8 +180,10 @@ describe("Professor course builder", () => {
     await user.click(screen.getByRole("button", { name: /04 generate/i }));
     const previewLink = screen.getByRole("link", { name: /preview course workspace/i });
     expect(previewLink).toHaveAttribute("target", "_blank");
-    expect(previewLink).toHaveAttribute("href", expect.stringContaining("preview=draft"));
-    expect(previewLink).toHaveAttribute("href", expect.stringContaining("courseId=demo-ml-course"));
+    expect(previewLink).toHaveAttribute(
+      "href",
+      expect.stringContaining("/professor/courses/demo-ml-course/lectures/lecture-03/draft"),
+    );
     expect(await screen.findByText(/2 sections ready for review/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^lecturepilot$/i }));
     expect(await screen.findByRole("heading", { name: /^generate$/i })).toBeInTheDocument();

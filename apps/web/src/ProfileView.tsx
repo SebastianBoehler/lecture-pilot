@@ -7,12 +7,10 @@ import type { LearnerProfileState } from "./useLearnerProfile";
 
 export function ProfileView({
   session,
-  onBack,
   onLogout,
   learnerProfileState,
 }: {
   session: LoginSession;
-  onBack?: () => void;
   onLogout: () => void;
   learnerProfileState?: LearnerProfileState;
 }) {
@@ -30,11 +28,6 @@ export function ProfileView({
             <h1 id="profile-heading">{t("profile.title")}</h1>
           </div>
           <div className="profile-view-actions">
-            {onBack ? (
-              <button className="ghost-button" type="button" onClick={onBack}>
-                {t("info.back")}
-              </button>
-            ) : null}
             <button className="profile-logout-button" type="button" onClick={onLogout}>
               <LogOut aria-hidden="true" size={16} />
               <span>{t("nav.logout")}</span>

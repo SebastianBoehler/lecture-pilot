@@ -162,13 +162,15 @@ describe("Professor course update", () => {
       <I18nProvider locale="en" setLocale={() => undefined}>
         <ProfessorCourseManagement
           onCreateCourse={() => undefined}
+          onCloseCourseUpdate={() => undefined}
           onWorkspaceDeleted={() => undefined}
           session={localProfessorSession}
+          updateCourseId="machine-learning"
         />
       </I18nProvider>,
     );
 
-    await user.click(await screen.findByRole("button", { name: "Update" }));
+    await screen.findByRole("heading", { name: /Update Machine Learning/i });
     await user.upload(
       screen.getByLabelText("Choose files"),
       new File(["\\title{Generalization}"], "Lecture02.tex", {

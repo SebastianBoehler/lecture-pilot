@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useEffectEvent, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 
 import {
   getCourses,
@@ -17,6 +17,7 @@ import {
 import { AppFooter } from "./AppFooter";
 import { AppHeader } from "./AppHeader";
 import { AppRoutes } from "./AppRoutes";
+import { lessonPath, pathForView, requiresSession, type AppRoute } from "./appRoute";
 import { FeedbackDialog } from "./FeedbackDialog";
 import { ProfessorWalkthrough } from "./ProfessorWalkthrough";
 import {
@@ -38,7 +39,7 @@ import { clearSavedFlow } from "./professorBuilderState";
 import { useStoredLoginSession } from "./loginSessionStorage";
 import { lectures } from "./sampleData";
 import { logoutSession } from "./sessionApi";
-import { isDraftPreviewRequest, useInitialDraftPreview } from "./useInitialDraftPreview";
+import { useAppRoute } from "./useAppRoute";
 import { usePublishedLectures } from "./usePublishedLectures";
 import { useUniversityCourseSync } from "./useUniversityCourseSync";
 import { useFeedbackPrompt } from "./useFeedbackPrompt";
@@ -61,27 +62,25 @@ import type {
 function App() {
   const [theme, setTheme] = useState<Theme>("light");
   const [locale, setLocale] = useState<Locale>(() => readLocalePreference());
+  const { navigate, route } = useAppRoute();
   const [session, setSession] = useStoredLoginSession();
-  const [view, setView] = useState<View>(() => landingView(session));
+  const view = !session && requiresSession(route.view) ? "login" : route.view;
   const feedback = useFeedbackPrompt(session, view === "dashboard");
-  const [secondaryReturnView, setSecondaryReturnView] = useState<View>(() => landingView(session));
   const [availableLectures, setAvailableLectures] = useState(() =>
     import.meta.env.DEV ? lectures : [],
   );
   const [workspaceCourse, setWorkspaceCourse] = useState<UniversityCourse>(
     localDemoSession.courses[0],
   );
-  const [workspaceCourseId, setWorkspaceCourseId] = useState(() =>
-    import.meta.env.DEV ? "martius-ml" : "",
+  const initialCourseId =
+    route.view === "lesson" ? route.courseId : import.meta.env.DEV ? "martius-ml" : "";
+  const [workspaceCourseId, setWorkspaceCourseId] = useState(initialCourseId);
+  const [selectedCourseId, setSelectedCourseId] = useState(initialCourseId);
+  const [selectedLecture, setSelectedLecture] = useState(() => initialLecture(route));
+  const [lessonMode, setLessonMode] = useState<LessonMode>(() =>
+    route.view === "lesson" ? route.lessonMode : "learner",
   );
-  const [selectedCourseId, setSelectedCourseId] = useState(() =>
-    import.meta.env.DEV ? "martius-ml" : "",
-  );
-  const [selectedLecture, setSelectedLecture] = useState(lectures[2]);
-  const [lessonBackView, setLessonBackView] = useState<
-    "dashboard" | "professor" | "course-management"
-  >("dashboard");
-  const [lessonMode, setLessonMode] = useState<LessonMode>("learner");
+  const loadedLessonRoute = useRef<string | null>(null);
   const [panelMode, setPanelMode] = useState<LessonPanelMode | null>(null);
   const [canvasDocument, setCanvasDocument] = useState<CanvasDocument | null>(null);
   const [canvasError, setCanvasError] = useState<string | null>(null);
@@ -107,17 +106,29 @@ function App() {
     writeLocalePreference(locale);
   }, [locale]);
 
+  useEffect(() => {
+    if (session && route.view === "login") {
+      navigate(pathForView(landingView(session)), { replace: true });
+      setPanelMode(null);
+    }
+  }, [navigate, route.view, session]);
+
   useViewTransitionReset(view);
 
   const loadWorkspaceCourseFromSession = useEffectEvent((activeSession: LoginSession) =>
     loadWorkspaceCourse(activeSession, workspaceCourseId),
   );
+  const shouldLoadWorkspaceFromSession = route.view !== "lesson";
 
   useEffect(() => {
-    if (!session || session.university_course_sync_status === "loading" || isDraftPreviewRequest())
+    if (
+      !session ||
+      session.university_course_sync_status === "loading" ||
+      !shouldLoadWorkspaceFromSession
+    )
       return;
     void loadWorkspaceCourseFromSession(session);
-  }, [session]);
+  }, [session, shouldLoadWorkspaceFromSession]);
 
   async function loadWorkspaceCourse(
     activeSession: LoginSession,
@@ -236,7 +247,7 @@ function App() {
     if (session) void logoutSession(session);
     setSession(null);
     clearSavedFlow();
-    setView("login");
+    navigate(pathForView("login"), { replace: true });
     setPanelMode(null);
     setFocusedSectionId("bayesian-decision-theory-the-aim");
     setHighlightedBlockId(null);
@@ -253,14 +264,14 @@ function App() {
     async (
       courseId: string,
       lecture: Lecture,
-      backView: "dashboard" | "professor" | "course-management" = "dashboard",
       mode: LessonMode = "learner",
+      updateRoute = true,
     ) => {
+      loadedLessonRoute.current = lessonRouteKey(courseId, lecture.id, mode);
+      if (updateRoute) navigate(lessonPath(courseId, lecture.id, mode));
       setSelectedCourseId(courseId);
       setSelectedLecture(lecture);
-      setLessonBackView(backView);
       setLessonMode(mode);
-      setView("lesson");
       setPanelMode(null);
       setCanvasDocument(null);
       setCanvasError(null);
@@ -289,20 +300,41 @@ function App() {
         setCanvasError(error instanceof Error ? error.message : "Canvas loading failed.");
       }
     },
-    [session],
+    [navigate, session],
   );
 
-  useInitialDraftPreview({
-    availableLectures,
-    session,
-    onBlocked: () => {
-      setView("dashboard");
-      setCanvasError("Draft preview requires a course-management account.");
+  const restoreLessonRoute = useEffectEvent(
+    async (nextRoute: Extract<AppRoute, { view: "lesson" }>) => {
+      if (!session) return;
+      if (nextRoute.lessonMode !== "learner" && !canManageCourses(session)) {
+        loadedLessonRoute.current = null;
+        changeView("dashboard", true);
+        setCanvasError("Lecture preview requires a course-management account.");
+        return;
+      }
+      try {
+        const nextLectures = await getCourseLectures(nextRoute.courseId, session);
+        const lecture = nextLectures.find((item) => item.id === nextRoute.lectureId);
+        if (!lecture) throw new Error("This lecture could not be found.");
+        const course = session.courses.find((item) => item.id === nextRoute.courseId);
+        if (course) setWorkspaceCourse(course);
+        setWorkspaceCourseId(nextRoute.courseId);
+        setAvailableLectures(nextLectures);
+        await handleOpenLecture(nextRoute.courseId, lecture, nextRoute.lessonMode, false);
+      } catch (error) {
+        loadedLessonRoute.current = null;
+        setCanvasError(error instanceof Error ? error.message : "Canvas loading failed.");
+      }
     },
-    onOpenLecture: (courseId, lecture, backView, previewDraft) => {
-      void handleOpenLecture(courseId, lecture, backView, previewDraft ? "draft" : "learner");
-    },
-  });
+  );
+
+  useEffect(() => {
+    if (route.view !== "lesson" || !session) return;
+    const key = lessonRouteKey(route.courseId, route.lectureId, route.lessonMode);
+    if (loadedLessonRoute.current === key) return;
+    loadedLessonRoute.current = key;
+    void restoreLessonRoute(route);
+  }, [route, session]);
 
   function handleSetAttendance(lectureId: string, attendance: Attendance) {
     setAvailableLectures((current) =>
@@ -354,14 +386,10 @@ function App() {
 
   const courseManagerSession = canManageCourses(session) ? session : null;
 
-  function changeView(nextView: View) {
-    setView(nextView);
+  function changeView(nextView: View, replace = false) {
+    if (nextView === "lesson") return;
+    navigate(pathForView(nextView), { replace });
     setPanelMode(null);
-  }
-
-  function openSecondaryView(nextView: View) {
-    if (nextView !== view) setSecondaryReturnView(view);
-    changeView(nextView);
   }
 
   return (
@@ -372,38 +400,32 @@ function App() {
           session={session}
           theme={theme}
           onBrand={() => {
-            setView(landingView(session));
-            setPanelMode(null);
+            changeView(landingView(session));
           }}
           onOpenDashboard={() => {
-            setView(session ? "dashboard" : "login");
-            setPanelMode(null);
+            changeView(session ? "dashboard" : "login");
           }}
           onOpenPerformance={() => {
             if (courseManagerSession) {
-              setView("performance");
-              setPanelMode(null);
+              changeView("performance");
             }
           }}
           onOpenUsage={() => {
             if (courseManagerSession) {
-              setView("usage");
-              setPanelMode(null);
+              changeView("usage");
             }
           }}
           onOpenCourseManagement={() => {
             if (courseManagerSession) {
-              setView("course-management");
-              setPanelMode(null);
+              changeView("course-management");
             }
           }}
           onOpenProfile={() => {
-            openSecondaryView("profile");
+            changeView("profile");
           }}
           onOpenProfessor={() => {
             if (courseManagerSession) {
-              setView("professor");
-              setPanelMode(null);
+              changeView("professor");
             }
           }}
           onOpenFeedback={feedback.openManually}
@@ -429,8 +451,7 @@ function App() {
           <ProfessorWalkthrough
             key={courseManagerSession.username}
             onViewChange={(nextView) => {
-              setPanelMode(null);
-              setView(nextView);
+              changeView(nextView);
             }}
             username={courseManagerSession.username}
           />
@@ -445,7 +466,6 @@ function App() {
           highlightedBlockId={highlightedBlockId}
           highlightedText={highlightedText}
           lastTutorModel={lastTutorModel}
-          lessonBackView={lessonBackView}
           lessonMode={lessonMode}
           messages={messages}
           navigationVersion={navigationVersion}
@@ -454,7 +474,7 @@ function App() {
           publishedLectureIds={publishedLectureIds}
           selectedCourseId={selectedCourseId}
           selectedLecture={selectedLecture}
-          secondaryReturnView={secondaryReturnView}
+          route={route}
           session={session}
           view={view}
           workspaceCourse={workspaceCourse}
@@ -462,22 +482,23 @@ function App() {
           onLogout={handleLogout}
           onLogin={(nextSession) => {
             setSession(nextSession);
-            changeView(landingView(nextSession));
+            if (route.view === "login") changeView(landingView(nextSession), true);
           }}
           onOpenDemo={() => {
             setSession(localDemoSession);
-            changeView("dashboard");
+            if (route.view === "login") changeView("dashboard", true);
           }}
           onOpenProfessorDemo={() => {
             setSession(localProfessorSession);
-            changeView("professor");
+            if (route.view === "login") changeView("professor", true);
           }}
           onOpenLecture={(courseId, lecture) => {
             void handleOpenLecture(courseId, lecture);
           }}
           onPreviewLecture={(courseId, lecture) => {
-            void handleOpenLecture(courseId, lecture, "course-management", "professor-preview");
+            void handleOpenLecture(courseId, lecture, "professor-preview");
           }}
+          onNavigatePath={navigate}
           onSetAttendance={handleSetAttendance}
           onPublishWorkspace={async (courseId, lectureId) => {
             if (!courseManagerSession)
@@ -514,10 +535,10 @@ function App() {
         />
         {view !== "lesson" ? (
           <AppFooter
-            onOpenChangelog={() => openSecondaryView("changelog")}
-            onOpenHowItWorks={() => openSecondaryView("how-it-works")}
-            onOpenLearningScience={() => openSecondaryView("learning-science")}
-            onOpenPrivacy={() => openSecondaryView("privacy")}
+            onOpenChangelog={() => changeView("changelog")}
+            onOpenHowItWorks={() => changeView("how-it-works")}
+            onOpenLearningScience={() => changeView("learning-science")}
+            onOpenPrivacy={() => changeView("privacy")}
           />
         ) : null}
       </div>
@@ -527,10 +548,27 @@ function App() {
 
 export default App;
 
-function landingView(session: LoginSession | null): View {
+function landingView(session: LoginSession | null): Exclude<View, "lesson"> {
   if (!session) return "login";
   if ((session.account_type ?? "student") === "professor") {
     return canManageCourses(session) ? "professor" : "profile";
   }
   return "dashboard";
+}
+
+function initialLecture(route: AppRoute) {
+  if (route.view !== "lesson") return lectures[2];
+  return (
+    lectures.find((lecture) => lecture.id === route.lectureId) ?? {
+      id: route.lectureId,
+      number: route.lectureId.replace(/^lecture-/, ""),
+      title: "Lecture",
+      date: "",
+      attendance: "unknown" as Attendance,
+    }
+  );
+}
+
+function lessonRouteKey(courseId: string, lectureId: string, mode: LessonMode) {
+  return `${mode}:${courseId}:${lectureId}`;
 }

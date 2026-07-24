@@ -20,11 +20,17 @@ it("opens a published lecture in a professor-owned student preview", async () =>
   render(<App />);
 
   await user.click(await screen.findByRole("button", { name: "Manage courses" }));
+  expect(window.location.pathname).toBe("/professor/courses");
   await user.click(await screen.findByRole("button", { name: "Preview as student" }));
 
   expect(await screen.findByText("Student preview")).toBeInTheDocument();
+  expect(window.location.pathname).toBe(
+    "/professor/courses/demo-course/lectures/lecture-01/preview",
+  );
   expect(screen.getByText(/stored only in your private preview/i)).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Back to course management" })).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Back to course management" }),
+  ).not.toBeInTheDocument();
 
   const canvasCall = fetchMock.mock.calls.find(([url]) =>
     String(url).endsWith("/courses/demo-course/lectures/lecture-01/canvas"),

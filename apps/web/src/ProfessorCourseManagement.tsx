@@ -15,20 +15,25 @@ import type { CourseWorkspaceResult, LoginSession, ManagedCourseWorkspaceResult 
 
 export function ProfessorCourseManagement({
   onCreateCourse,
+  onCloseCourseUpdate,
   onPreviewLecture = () => undefined,
+  onUpdateCourse,
   session,
+  updateCourseId,
   onWorkspaceDeleted,
 }: {
   onCreateCourse: () => void;
+  onCloseCourseUpdate?: () => void;
   onPreviewLecture?: (courseId: string, lecture: CourseWorkspaceResult["lectures"][number]) => void;
+  onUpdateCourse?: (courseId: string) => void;
   session: LoginSession;
+  updateCourseId?: string;
   onWorkspaceDeleted: (courseId: string) => void;
 }) {
   const { t } = useI18n();
   const [workspaces, setWorkspaces] = useState<ManagedCourseWorkspaceResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null);
-  const [updatingWorkspace, setUpdatingWorkspace] = useState<CourseWorkspaceResult | null>(null);
   const [accessTarget, setAccessTarget] = useState<ProfessorAccessTarget | null>(null);
   const [accessSaving, setAccessSaving] = useState(false);
   const [accessError, setAccessError] = useState<string | null>(null);
@@ -40,17 +45,25 @@ export function ProfessorCourseManagement({
     void refreshCoursesFromSession();
   }, [session]);
 
-  if (updatingWorkspace) {
+  const updatingWorkspace = updateCourseId
+    ? (workspaces.find((item) => item.course.id === updateCourseId) ?? null)
+    : null;
+
+  if (updatingWorkspace && onCloseCourseUpdate) {
     return (
       <ProfessorCourseUpdate
         session={session}
         workspace={updatingWorkspace}
         onBack={() => {
-          setUpdatingWorkspace(null);
+          onCloseCourseUpdate();
           void refreshCourses();
         }}
         onWorkspaceUpdated={(updated) => {
-          setUpdatingWorkspace(updated);
+          setWorkspaces((current) =>
+            current.map((item) =>
+              item.course.id === updated.course.id ? { ...item, ...updated } : item,
+            ),
+          );
         }}
       />
     );
@@ -86,7 +99,7 @@ export function ProfessorCourseManagement({
         }}
         onPreviewLecture={onPreviewLecture}
         onUpdateCourse={(courseId) => {
-          setUpdatingWorkspace(workspaces.find((item) => item.course.id === courseId) ?? null);
+          onUpdateCourse?.(courseId);
         }}
         workspaces={workspaces}
       />

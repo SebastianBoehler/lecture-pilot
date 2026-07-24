@@ -4,16 +4,6 @@
   padding: 48px 0 80px;
 }
 
-.changelog-page .info-back {
-  margin-bottom: 40px;
-  padding: 0;
-  color: var(--color-text-secondary);
-}
-
-.changelog-page .info-back:hover {
-  color: var(--color-text-primary);
-}
-
 .changelog-header {
   margin-bottom: 44px;
 }
@@ -89,9 +79,5 @@
   .changelog-page {
     width: min(100% - 32px, 680px);
     padding-top: 32px;
-  }
-
-  .changelog-page .info-back {
-    margin-bottom: 32px;
   }
 }
