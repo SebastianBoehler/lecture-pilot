@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import Depends, FastAPI, HTTPException, Request
+from pydantic import ValidationError
 
 from lecturepilot.api_auth import request_context
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
@@ -15,15 +16,20 @@ from lecturepilot.exam_readiness import (
     build_exam_readiness_check,
     public_exam_readiness_check,
 )
+from lecturepilot.exam_answer_evaluation import OpenAnswerEvaluationInput
 from lecturepilot.exam_revision_plan import (
     ExamReadinessAttemptInput,
     ExamReadinessAttemptResult,
     build_exam_revision_plan,
+    validate_exam_readiness_answers,
 )
+from lecturepilot.model_client import ModelExecutionError
+from lecturepilot.model_usage import model_usage_scope
 from lecturepilot.models import Course, Lecture
 from lecturepilot.lecture_access_policy import can_consume_lecture
 from lecturepilot.readiness_progress import ReadinessProgressStore
 from lecturepilot.professor_preview import resolve_learner_workspace_access
+from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.tenancy import TenantContext
 
 
@@ -60,7 +66,7 @@ def register_exam_readiness_routes(
     @app.post(
         "/courses/{course_id}/exam-readiness/attempts", response_model=ExamReadinessAttemptResult
     )
-    def record_exam_readiness_attempt(
+    async def record_exam_readiness_attempt(
         course_id: str,
         attempt: ExamReadinessAttemptInput,
         request: Request,
@@ -83,9 +89,38 @@ def register_exam_readiness_routes(
         check = _readiness_check(app, course_id, seeded_course, lectures, context)
         store = _progress_store(app)
         try:
+            answers_by_question = validate_exam_readiness_answers(
+                check=check, answers=attempt.answers
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        items = [
+            OpenAnswerEvaluationInput(
+                question_id=question.id,
+                prompt=question.prompt,
+                answer=answers_by_question[question.id].text or "",
+                rubric=question.rubric,
+            )
+            for question in check.questions
+            if question.kind == "open_ended"
+        ]
+        try:
+            with model_usage_scope(
+                actor_user_id=access.user_id,
+                course_id=course_id,
+                workload="readiness_evaluation",
+            ):
+                evaluations = await app.state.open_answer_evaluator.evaluate(items=items)
+        except (ModelExecutionError, ProviderConfigurationError, ValidationError) as exc:
+            raise HTTPException(
+                status_code=503,
+                detail="Open-answer evaluation is temporarily unavailable. Please retry.",
+            ) from exc
+        try:
             result = build_exam_revision_plan(
                 check=check,
                 answers=attempt.answers,
+                open_evaluations={evaluation.question_id: evaluation for evaluation in evaluations},
                 previous_attempts=store.attempt_count(user_id=access.user_id, course_id=course_id),
             )
         except ValueError as exc:

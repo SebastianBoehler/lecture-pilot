@@ -6,10 +6,11 @@ from lecturepilot.exam_readiness import (
     ExamReadinessCoverage,
     ExamReadinessQuestion,
 )
+from lecturepilot.exam_answer_evaluation import OpenAnswerEvaluation
 from lecturepilot.exam_revision_plan import ExamReadinessAnswer, build_exam_revision_plan
 
 
-def test_revision_plan_marks_wrong_mc_and_keeps_open_answers_for_review() -> None:
+def test_revision_plan_uses_evaluated_open_answer_scores() -> None:
     plan = build_exam_revision_plan(
         check=_check(),
         answers=[
@@ -18,18 +19,75 @@ def test_revision_plan_marks_wrong_mc_and_keeps_open_answers_for_review() -> Non
                 question_id="lecture-04:q2", text="Risk combines costs and probabilities."
             ),
         ],
+        open_evaluations={
+            "lecture-04:q2": OpenAnswerEvaluation(
+                question_id="lecture-04:q2",
+                score=0.75,
+                feedback="Good explanation; add one concrete failure mode.",
+            )
+        },
     )
 
-    assert plan.score == 0.0
-    assert [task.kind for task in plan.tasks] == ["review_wrong_mc", "review_open_answer"]
+    assert plan.results[1].score == 0.75
+    assert plan.results[1].feedback == "Good explanation; add one concrete failure mode."
+    assert plan.results[1].status == "correct"
+    assert plan.score == 0.375
+    assert [task.kind for task in plan.tasks] == ["review_wrong_mc"]
     assert plan.tasks[0].id == "lecture-03-q1-review"
     assert plan.tasks[0].lecture_id == "lecture-03"
     assert plan.tasks[0].source_ref == "Lecture03-eng.tex frames 5-6"
     assert plan.tasks[0].expected_evidence == "Name evidence as the normalizer."
     assert plan.tasks[0].scaffold_policy is not None
     assert plan.tasks[0].scaffold_policy.profile == "worked_example"
-    assert plan.tasks[1].rubric == ["Compare posterior-weighted losses.", "Name one failure mode."]
-    assert plan.results[1].status == "needs_rubric_review"
+
+
+def test_revision_plan_averages_multiple_choice_and_open_answer_scores() -> None:
+    plan = build_exam_revision_plan(
+        check=_check(),
+        answers=[
+            ExamReadinessAnswer(question_id="lecture-03:q1", selected_index=1),
+            ExamReadinessAnswer(
+                question_id="lecture-04:q2", text="Risk combines costs and probabilities."
+            ),
+        ],
+        open_evaluations={
+            "lecture-04:q2": OpenAnswerEvaluation(
+                question_id="lecture-04:q2",
+                score=0.75,
+                feedback="Good explanation; add one concrete failure mode.",
+            )
+        },
+    )
+
+    assert plan.results[1].score == 0.75
+    assert plan.results[1].status == "correct"
+    assert plan.score == 0.875
+    assert plan.tasks == []
+
+
+@pytest.mark.parametrize(
+    ("score", "status"),
+    [(0.4, "incorrect"), (0.7499, "incorrect"), (0.39, "incorrect")],
+)
+def test_revision_plan_does_not_create_review_tasks_for_partial_or_incorrect_open_answers(
+    score: float,
+    status: str,
+) -> None:
+    plan = build_exam_revision_plan(
+        check=_check(),
+        answers=[
+            ExamReadinessAnswer(question_id="lecture-03:q1", selected_index=1),
+            ExamReadinessAnswer(question_id="lecture-04:q2", text="Risk combines costs."),
+        ],
+        open_evaluations={
+            "lecture-04:q2": OpenAnswerEvaluation(
+                question_id="lecture-04:q2", score=score, feedback="Review the failure mode."
+            )
+        },
+    )
+
+    assert plan.results[1].status == status
+    assert plan.tasks == []
 
 
 def test_guidance_level_reflects_score_and_repeated_attempts() -> None:
@@ -41,6 +99,7 @@ def test_guidance_level_reflects_score_and_repeated_attempts() -> None:
                 question_id="lecture-04:q2", text="Risk combines costs and probabilities."
             ),
         ],
+        open_evaluations=_open_evaluations(0.75),
     )
     repeated = build_exam_revision_plan(
         check=_check(),
@@ -50,6 +109,7 @@ def test_guidance_level_reflects_score_and_repeated_attempts() -> None:
                 question_id="lecture-04:q2", text="Risk combines costs and probabilities."
             ),
         ],
+        open_evaluations=_open_evaluations(0.75),
         previous_attempts=2,
     )
 
@@ -79,6 +139,7 @@ def test_revision_task_backfills_scaffold_policy_for_stored_payloads() -> None:
                 question_id="lecture-04:q2", text="Risk combines costs and probabilities."
             ),
         ],
+        open_evaluations=_open_evaluations(0.75),
     )
     payload = plan.tasks[0].model_dump(mode="json")
     payload.pop("scaffold_policy")
@@ -124,3 +185,11 @@ def _check() -> ExamReadinessCheck:
             ),
         ],
     )
+
+
+def _open_evaluations(score: float) -> dict[str, OpenAnswerEvaluation]:
+    return {
+        "lecture-04:q2": OpenAnswerEvaluation(
+            question_id="lecture-04:q2", score=score, feedback="Clear explanation."
+        )
+    }

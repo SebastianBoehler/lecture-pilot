@@ -33,6 +33,10 @@ from lecturepilot.course_update_storage import CourseUpdateRecoveryError
 from lecturepilot.csrf import CsrfProtectionMiddleware, allowed_origins
 from lecturepilot.database import Database
 from lecturepilot.exam_readiness_routes import register_exam_readiness_routes
+from lecturepilot.exam_answer_evaluation import (
+    LiteLLMOpenAnswerEvaluationClient,
+    OpenAnswerEvaluator,
+)
 from lecturepilot.harness import LecturePilotHarness
 from lecturepilot.image_generation_registry import image_generator_from_env
 from lecturepilot.lecture_schedule_planner import LectureSchedulePlanner, LiteLLMScheduleClient
@@ -115,6 +119,9 @@ def create_app() -> FastAPI:
     )
     app.state.lecture_schedule_planner = LectureSchedulePlanner(
         model_client=LiteLLMScheduleClient(app.state.model_usage)
+    )
+    app.state.open_answer_evaluator = OpenAnswerEvaluator(
+        model_client=LiteLLMOpenAnswerEvaluationClient(app.state.model_usage)
     )
     app.state.canvas_workspace = CanvasWorkspace()
     app.state.learner_state = LearnerStateStore(app.state.canvas_workspace.layout)

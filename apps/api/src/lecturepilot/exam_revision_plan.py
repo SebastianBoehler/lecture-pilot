@@ -4,6 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
+from lecturepilot.exam_answer_evaluation import OpenAnswerEvaluation
 from lecturepilot.exam_readiness import ExamReadinessCheck, ExamReadinessQuestion
 from lecturepilot.scaffold_policy import TutorScaffoldPolicy, scaffold_policy_for_revision_task
 from lecturepilot.storage_layout import safe_id
@@ -40,6 +41,8 @@ class ExamReadinessQuestionResult(BaseModel):
     section_id: str
     answer_kind: Literal["multiple_choice", "open_ended"]
     correct: bool | None
+    score: float | None = Field(default=None, ge=0.0, le=1.0)
+    feedback: str | None = Field(default=None, min_length=1, max_length=600)
     selected_index: int | None = None
     correct_index: int | None = None
     status: QuestionStatus
@@ -87,19 +90,19 @@ def build_exam_revision_plan(
     *,
     check: ExamReadinessCheck,
     answers: list[ExamReadinessAnswer],
+    open_evaluations: dict[str, OpenAnswerEvaluation] | None = None,
     previous_attempts: int = 0,
 ) -> ExamReadinessAttemptResult:
-    answers_by_question = _answers_by_question(answers)
-    questions_by_id = {question.id: question for question in check.questions}
-    unknown_ids = set(answers_by_question) - set(questions_by_id)
-    if unknown_ids:
-        raise ValueError(f"Unknown answer question id: {sorted(unknown_ids)[0]}")
-    for question in check.questions:
-        if question.id not in answers_by_question:
-            raise ValueError(f"Missing answer for question {question.id}")
+    answers_by_question = validate_exam_readiness_answers(check=check, answers=answers)
+    evaluations = open_evaluations or {}
 
     results = [
-        _question_result(question, answers_by_question[question.id]) for question in check.questions
+        _question_result(
+            question,
+            answers_by_question[question.id],
+            evaluation=evaluations.get(question.id),
+        )
+        for question in check.questions
     ]
     score = _score(results)
     guidance_level = _guidance_level(score, previous_attempts)
@@ -112,22 +115,38 @@ def build_exam_revision_plan(
         tasks=[
             _revision_task(question=question, result=result, guidance_level=guidance_level)
             for question, result in zip(check.questions, results, strict=True)
-            if result.status != "correct"
+            if result.answer_kind == "multiple_choice" and result.status == "incorrect"
         ],
     )
 
 
-def _answers_by_question(answers: list[ExamReadinessAnswer]) -> dict[str, ExamReadinessAnswer]:
-    by_question: dict[str, ExamReadinessAnswer] = {}
+def validate_exam_readiness_answers(
+    *, check: ExamReadinessCheck, answers: list[ExamReadinessAnswer]
+) -> dict[str, ExamReadinessAnswer]:
+    answers_by_question: dict[str, ExamReadinessAnswer] = {}
     for answer in answers:
-        if answer.question_id in by_question:
+        if answer.question_id in answers_by_question:
             raise ValueError(f"Duplicate answer for question {answer.question_id}")
-        by_question[answer.question_id] = answer
-    return by_question
+        answers_by_question[answer.question_id] = answer
+    questions_by_id = {question.id: question for question in check.questions}
+    unknown_ids = set(answers_by_question) - set(questions_by_id)
+    if unknown_ids:
+        raise ValueError(f"Unknown answer question id: {sorted(unknown_ids)[0]}")
+    for question in check.questions:
+        answer = answers_by_question.get(question.id)
+        if answer is None:
+            raise ValueError(f"Missing answer for question {question.id}")
+        if question.kind == "multiple_choice" and answer.selected_index is None:
+            raise ValueError(f"Multiple-choice question {question.id} requires selected_index.")
+        if question.kind == "open_ended" and not answer.text:
+            raise ValueError(f"Open-ended question {question.id} requires text.")
+    return answers_by_question
 
 
 def _question_result(
-    question: ExamReadinessQuestion, answer: ExamReadinessAnswer
+    question: ExamReadinessQuestion,
+    answer: ExamReadinessAnswer,
+    evaluation: OpenAnswerEvaluation | None,
 ) -> ExamReadinessQuestionResult:
     if question.kind == "multiple_choice":
         if answer.selected_index is None:
@@ -142,29 +161,34 @@ def _question_result(
             section_id=question.section_id,
             answer_kind="multiple_choice",
             correct=correct,
+            score=1.0 if correct else 0.0,
             selected_index=answer.selected_index,
             correct_index=question.answer_index,
             status="correct" if correct else "incorrect",
         )
-    if not answer.text:
-        raise ValueError(f"Open-ended question {question.id} requires text.")
+    if evaluation is None:
+        raise ValueError(f"Missing open-answer evaluation for question {question.id}")
+    if evaluation.question_id != question.id:
+        raise ValueError(f"Open-answer evaluation question id does not match {question.id}")
+    correct = evaluation.score >= 0.75
     return ExamReadinessQuestionResult(
         question_id=question.id,
         kind=question.kind,
         lecture_id=question.lecture_id,
         section_id=question.section_id,
         answer_kind="open_ended",
-        correct=None,
-        status="needs_rubric_review",
+        correct=correct,
+        score=evaluation.score,
+        feedback=evaluation.feedback,
+        status="correct" if correct else "incorrect",
     )
 
 
 def _score(results: list[ExamReadinessQuestionResult]) -> float | None:
-    scored = [result for result in results if result.answer_kind == "multiple_choice"]
+    scored = [result.score for result in results if result.score is not None]
     if not scored:
         return None
-    correct = sum(1 for result in scored if result.correct is True)
-    return round(correct / len(scored), 4)
+    return round(sum(scored) / len(scored), 4)
 
 
 def _guidance_level(score: float | None, previous_attempts: int) -> GuidanceLevel:

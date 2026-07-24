@@ -6,6 +6,7 @@ from auth_helpers import professor_headers, student_headers
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.exam_answer_evaluation import OpenAnswerEvaluation
 
 
 def test_exam_readiness_uses_published_course_canvases(tmp_path: Path) -> None:
@@ -139,8 +140,10 @@ def test_exam_readiness_attempt_is_persisted_in_learner_progress(tmp_path: Path)
     assert response.status_code == 200
     payload = response.json()
     assert payload["attempt_id"].startswith("attempt-")
-    assert payload["score"] == 0
+    assert payload["score"] == 0.375
     assert payload["guidance_level"] == "scaffolded"
+    assert payload["results"][1]["score"] == 0.75
+    assert payload["results"][1]["feedback"] == "Add one concrete failure mode."
     assert payload["tasks"][0]["source_ref"] == "lecture-03.tex"
     progress_path = (
         workspace.layout.user_course_root("student-a", "demo-ml-course") / "progress.json"
@@ -208,7 +211,20 @@ def _client(tmp_path: Path) -> TestClient:
         workspace_root=tmp_path / "workspaces",
         material_root=tmp_path / "materials",
     )
+    app.state.open_answer_evaluator = _FakeEvaluator()
     return TestClient(app)
+
+
+class _FakeEvaluator:
+    async def evaluate(self, *, items, **_kwargs) -> list[OpenAnswerEvaluation]:
+        return [
+            OpenAnswerEvaluation(
+                question_id=item.question_id,
+                score=0.75,
+                feedback="Add one concrete failure mode.",
+            )
+            for item in items
+        ]
 
 
 def _document(lecture_id: str, title: str, *, with_quiz: bool) -> CanvasDocument:
