@@ -354,6 +354,7 @@ export const enMessages = {
   "professor.update": "Update",
   "professor.preview.lectures": "Lectures",
   "professor.preview.open": "Preview as student",
+  "professor.preview.readiness": "Preview readiness check",
   "professor.preview.unpublished": "Not published",
   "professor.preview.bannerTitle": "Student preview",
   "professor.preview.bannerHelp":

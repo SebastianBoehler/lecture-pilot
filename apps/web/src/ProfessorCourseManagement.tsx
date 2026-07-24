@@ -101,6 +101,7 @@ export function ProfessorCourseManagement({
         onUpdateCourse={(courseId) => {
           onUpdateCourse?.(courseId);
         }}
+        session={session}
         workspaces={workspaces}
       />
       {accessTarget ? (

@@ -362,6 +362,7 @@ export const deMessages: Record<MessageKey, string> = {
   "professor.update": "Aktualisieren",
   "professor.preview.lectures": "Vorlesungen",
   "professor.preview.open": "Als Studierende ansehen",
+  "professor.preview.readiness": "Prüfungscheck ansehen",
   "professor.preview.unpublished": "Nicht veröffentlicht",
   "professor.preview.bannerTitle": "Studierendenansicht",
   "professor.preview.bannerHelp":

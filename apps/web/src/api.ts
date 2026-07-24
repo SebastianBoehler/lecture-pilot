@@ -249,10 +249,12 @@ export async function getCanvasPublication(
 export async function getExamReadinessCheck(
   courseId: string,
   session: LoginSession,
+  mode: LearnerWorkspaceMode = "learner",
 ): Promise<ExamReadinessCheck> {
-  const response = await fetch(apiUrl(`/courses/${courseId}/exam-readiness`), {
-    ...authRequestInit(session),
-  });
+  const response = await fetch(
+    apiUrl(`/courses/${courseId}/exam-readiness`),
+    learnerRequestInit(session, mode),
+  );
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Exam readiness check loading failed."));
   return payload as ExamReadinessCheck;
@@ -262,10 +264,11 @@ export async function submitExamReadinessAttempt(
   courseId: string,
   answers: ExamReadinessAnswer[],
   session: LoginSession,
+  mode: LearnerWorkspaceMode = "learner",
 ): Promise<ExamReadinessAttemptResult> {
   const response = await fetch(
     apiUrl(`/courses/${courseId}/exam-readiness/attempts`),
-    authRequestInit(session, {
+    learnerRequestInit(session, mode, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ answers }),

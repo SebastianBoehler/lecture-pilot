@@ -9,6 +9,7 @@ import type {
   ExamReadinessAttemptResult,
   ExamReadinessCheck,
   Lecture,
+  LearnerWorkspaceMode,
   LoginSession,
   UniversityCourse,
 } from "./types";
@@ -16,11 +17,15 @@ import type {
 export function ExamReadinessPanel({
   course,
   lectures,
+  mode = "learner",
   onOpenLecture,
   session,
+  compact = false,
 }: {
   course: UniversityCourse;
+  compact?: boolean;
   lectures: Lecture[];
+  mode?: LearnerWorkspaceMode;
   onOpenLecture: (lecture: Lecture) => void;
   session: LoginSession | null;
 }) {
@@ -47,7 +52,7 @@ export function ExamReadinessPanel({
     setAnswers({});
     setActiveQuestion(0);
     try {
-      setCheck(await getExamReadinessCheck(course.id, session));
+      setCheck(await getExamReadinessCheck(course.id, session, mode));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : t("exam.loadFailed"));
     } finally {
@@ -71,13 +76,55 @@ export function ExamReadinessPanel({
     setError(null);
     try {
       setAttemptResult(
-        await submitExamReadinessAttempt(course.id, answersForCheck(check, answers), session),
+        await submitExamReadinessAttempt(course.id, answersForCheck(check, answers), session, mode),
       );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : t("exam.submitFailed"));
     } finally {
       setSubmitting(false);
     }
+  }
+
+  const modal = open ? (
+    <ExamReadinessModal
+      activeQuestion={activeQuestion}
+      answers={answers}
+      check={check}
+      course={course}
+      error={error}
+      lectures={lectures}
+      loading={loading}
+      result={attemptResult}
+      submitting={submitting}
+      onAnswer={(question, answer) =>
+        setAnswers((current) => ({ ...current, [question.id]: answer }))
+      }
+      onBack={() => setActiveQuestion((current) => Math.max(0, current - 1))}
+      onClose={closeCheck}
+      onNext={() =>
+        setActiveQuestion((current) => Math.min((check?.questions.length ?? 1) - 1, current + 1))
+      }
+      onOpenLecture={onOpenLecture}
+      onRestart={() => void startCheck()}
+      onSubmit={() => void submitCheck()}
+    />
+  ) : null;
+
+  if (compact) {
+    return (
+      <>
+        <button
+          ref={triggerRef}
+          className="refresh-button"
+          disabled={loading}
+          type="button"
+          onClick={openCheck}
+        >
+          {t("professor.preview.readiness")}
+        </button>
+        {modal}
+      </>
+    );
   }
 
   return (
@@ -96,32 +143,7 @@ export function ExamReadinessPanel({
           </button>
         </div>
       </header>
-      {open ? (
-        <ExamReadinessModal
-          activeQuestion={activeQuestion}
-          answers={answers}
-          check={check}
-          course={course}
-          error={error}
-          lectures={lectures}
-          loading={loading}
-          result={attemptResult}
-          submitting={submitting}
-          onAnswer={(question, answer) =>
-            setAnswers((current) => ({ ...current, [question.id]: answer }))
-          }
-          onBack={() => setActiveQuestion((current) => Math.max(0, current - 1))}
-          onClose={closeCheck}
-          onNext={() =>
-            setActiveQuestion((current) =>
-              Math.min((check?.questions.length ?? 1) - 1, current + 1),
-            )
-          }
-          onOpenLecture={onOpenLecture}
-          onRestart={() => void startCheck()}
-          onSubmit={() => void submitCheck()}
-        />
-      ) : null}
+      {modal}
     </section>
   );
 }

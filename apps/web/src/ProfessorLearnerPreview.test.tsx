@@ -50,6 +50,26 @@ it("opens a published lecture in a professor-owned student preview", async () =>
   );
 });
 
+it("opens the readiness check in the professor preview workspace", async () => {
+  const user = userEvent.setup();
+  window.localStorage.setItem("lecturepilot.loginSession", JSON.stringify(localProfessorSession));
+  const fetchMock = vi.fn(handleRequest);
+  vi.stubGlobal("fetch", fetchMock);
+
+  render(<App />);
+
+  await user.click(await screen.findByRole("button", { name: "Manage courses" }));
+  await user.click(await screen.findByRole("button", { name: "Preview readiness check" }));
+
+  expect(await screen.findByRole("dialog", { name: "Exam readiness check" })).toBeInTheDocument();
+  const readinessCall = fetchMock.mock.calls.find(([url]) =>
+    String(url).endsWith("/courses/demo-course/exam-readiness"),
+  );
+  expect(new Headers(readinessCall?.[1]?.headers).get("X-LecturePilot-Learner-Preview")).toBe(
+    "professor",
+  );
+});
+
 async function handleRequest(input: RequestInfo | URL, _init?: RequestInit) {
   const url = String(input);
   if (url.endsWith("/admin/courses")) {
@@ -76,6 +96,26 @@ async function handleRequest(input: RequestInfo | URL, _init?: RequestInit) {
       })}\n`,
       { status: 200 },
     );
+  }
+  if (url.endsWith("/courses/demo-course/exam-readiness")) {
+    return json({
+      course_id: "demo-course",
+      passing_score: 0.7,
+      published_lecture_count: 1,
+      coverage: [],
+      questions: [
+        {
+          id: "question-01",
+          kind: "multiple_choice",
+          lecture_id: "lecture-01",
+          lecture_title: "Introduction",
+          section_id: "introduction",
+          section_title: "Introduction",
+          prompt: "Which quantity should be minimized?",
+          options: ["Expected risk", "Posterior probability"],
+        },
+      ],
+    });
   }
   if (url.includes("/courses/demo-course/lectures/lecture-01/canvas/publication")) {
     return json({ course_id: "demo-course", lecture_id: "lecture-01", published: true });

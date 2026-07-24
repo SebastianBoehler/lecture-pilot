@@ -4,7 +4,8 @@ import {
   defaultReleaseLabel,
   ProfessorLectureAccessStatus,
 } from "./ProfessorLectureAccessStatus";
-import type { Lecture, ManagedCourseWorkspaceResult } from "./types";
+import { ExamReadinessPanel } from "./ExamReadinessPanel";
+import type { Lecture, LoginSession, ManagedCourseWorkspaceResult } from "./types";
 
 type ProfessorCourseManagerProps = {
   deletingCourseId: string | null;
@@ -20,6 +21,7 @@ type ProfessorCourseManagerProps = {
   onRefresh: () => void;
   onPreviewLecture: (courseId: string, lecture: Lecture) => void;
   onUpdateCourse: (courseId: string) => void;
+  session: LoginSession;
   workspaces: ManagedCourseWorkspaceResult[];
 };
 
@@ -33,6 +35,7 @@ export function ProfessorCourseManager({
   onRefresh,
   onPreviewLecture,
   onUpdateCourse,
+  session,
   workspaces,
 }: ProfessorCourseManagerProps) {
   const { t } = useI18n();
@@ -99,6 +102,18 @@ export function ProfessorCourseManager({
                   >
                     {t("professor.update")}
                   </button>
+                  {workspace.publishedLectureIds?.length ? (
+                    <ExamReadinessPanel
+                      compact
+                      course={workspace.course}
+                      lectures={workspace.lectures.filter((lecture) =>
+                        workspace.publishedLectureIds?.includes(lecture.id),
+                      )}
+                      mode="professor-preview"
+                      session={session}
+                      onOpenLecture={(lecture) => onPreviewLecture(workspace.course.id, lecture)}
+                    />
+                  ) : null}
                   <button
                     className="refresh-button delete-course-button"
                     disabled={deletingCourseId === workspace.course.id}
