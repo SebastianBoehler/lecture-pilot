@@ -283,9 +283,7 @@ export async function getCourseLectures(
   courseId: string,
   session: LoginSession,
 ): Promise<Lecture[]> {
-  const response = await fetch(apiUrl(`/courses/${courseId}/lectures`), {
-    ...authRequestInit(session),
-  });
+  const response = await fetch(apiUrl(`/courses/${courseId}/lectures`), authRequestInit(session));
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Course lecture loading failed."));
   return normalizeLectureList(payload);
