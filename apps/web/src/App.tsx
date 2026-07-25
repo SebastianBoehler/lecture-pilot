@@ -63,7 +63,7 @@ function App() {
   const [theme, setTheme] = useState<Theme>("light");
   const [locale, setLocale] = useState<Locale>(() => readLocalePreference());
   const { navigate, route } = useAppRoute();
-  const [session, setSession] = useStoredLoginSession();
+  const [session, setSession, restoringSession] = useStoredLoginSession();
   const view = !session && requiresSession(route.view) ? "login" : route.view;
   const feedback = useFeedbackPrompt(session, view === "dashboard");
   const [availableLectures, setAvailableLectures] = useState(() =>
@@ -112,6 +112,12 @@ function App() {
       setPanelMode(null);
     }
   }, [navigate, route.view, session]);
+
+  useEffect(() => {
+    if (!restoringSession && !session && requiresSession(route.view)) {
+      navigate(pathForView("login"), { replace: true });
+    }
+  }, [navigate, restoringSession, route.view, session]);
 
   useViewTransitionReset(view);
 
@@ -472,6 +478,7 @@ function App() {
           panelMode={panelMode}
           passedGateIds={passedGateIds}
           publishedLectureIds={publishedLectureIds}
+          restoringSession={restoringSession}
           selectedCourseId={selectedCourseId}
           selectedLecture={selectedLecture}
           route={route}
@@ -533,7 +540,7 @@ function App() {
             setPanelMode((current) => (current === mode ? null : mode));
           }}
         />
-        {view !== "lesson" ? (
+        {!restoringSession && view !== "lesson" ? (
           <AppFooter
             onOpenChangelog={() => changeView("changelog")}
             onOpenHowItWorks={() => changeView("how-it-works")}

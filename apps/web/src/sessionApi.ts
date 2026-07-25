@@ -7,6 +7,16 @@ type TuebingenLoginInput = {
   password: string;
 };
 
+export class SessionRefreshError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "SessionRefreshError";
+  }
+}
+
 export async function loginWithTuebingen(input: TuebingenLoginInput): Promise<LoginSession> {
   return createSession("/auth/login", input);
 }
@@ -47,7 +57,10 @@ export async function refreshSession(
   const response = await fetch(apiUrl("/me"), authRequestInit(session, { signal }));
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(readApiError(payload, "Account refresh failed."));
+    throw new SessionRefreshError(
+      readApiError(payload, "Account refresh failed."),
+      response.status,
+    );
   }
   const account = payload as Partial<LoginSession>;
   return {

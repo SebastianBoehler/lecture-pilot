@@ -18,45 +18,60 @@ export type LearnerProfileState = {
   refresh: () => Promise<void>;
 };
 
+type CachedLearnerProfile = {
+  owner: string;
+  profile: LearnerProfile;
+};
+
 export function useLearnerProfile(
   session: LoginSession | null,
   enabled: boolean,
 ): LearnerProfileState {
-  const [profile, setProfile] = useState<LearnerProfile | null>(null);
+  const owner = session
+    ? `${session.tenant_id ?? "tenant-tuebingen"}:${session.username}:${session.csrf_token ?? "dev"}`
+    : null;
+  const [cached, setCached] = useState<CachedLearnerProfile | null>(null);
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
+  const profile = cached?.owner === owner ? cached.profile : null;
 
   const refresh = useCallback(async () => {
-    if (!session || !enabled) return;
+    if (!session || !enabled || !owner) return;
     setLoading(true);
     setError(null);
     try {
-      setProfile(await getLearnerProfile(session));
+      setCached({ owner, profile: await getLearnerProfile(session) });
     } catch (nextError) {
       setError(message(nextError));
     } finally {
       setLoading(false);
     }
-  }, [enabled, session]);
+  }, [enabled, owner, session]);
+
+  useEffect(() => {
+    if (!owner) setCached(null);
+  }, [owner]);
 
   useEffect(() => {
     if (!enabled) {
-      setProfile(null);
       setLoading(false);
       setError(null);
       return;
     }
+    if (profile) return;
     void refresh();
-  }, [enabled, refresh]);
+  }, [enabled, profile, refresh]);
 
   async function mutate(action: () => Promise<unknown>) {
-    if (!session) return;
+    if (!session || !owner) return;
     setLoading(true);
     setError(null);
     try {
       const result = await action();
-      if (result) setProfile(result as LearnerProfile);
-      else setProfile(await getLearnerProfile(session));
+      setCached({
+        owner,
+        profile: result ? (result as LearnerProfile) : await getLearnerProfile(session),
+      });
     } catch (nextError) {
       setError(message(nextError));
       throw nextError;

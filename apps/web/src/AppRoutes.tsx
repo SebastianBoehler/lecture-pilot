@@ -62,6 +62,7 @@ type AppRoutesProps = {
   panelMode: LessonPanelMode | null;
   passedGateIds: string[];
   publishedLectureIds: string[];
+  restoringSession: boolean;
   selectedCourseId: string;
   selectedLecture: Lecture;
   route: AppRoute;
@@ -101,6 +102,7 @@ export function AppRoutes(props: AppRoutesProps) {
     navigationVersion,
     panelMode,
     publishedLectureIds,
+    restoringSession,
     selectedCourseId,
     selectedLecture,
     route,
@@ -109,9 +111,14 @@ export function AppRoutes(props: AppRoutesProps) {
     workspaceCourse,
     workspaceCourseId,
   } = props;
-  const learnerProfileEnabled = Boolean(session?.roles?.includes("student"));
+  const learnerProfileEnabled = Boolean(
+    !restoringSession &&
+    session?.roles?.includes("student") &&
+    (view === "dashboard" || view === "profile"),
+  );
   const learnerProfileState = useLearnerProfile(session, learnerProfileEnabled);
 
+  if (restoringSession) return <ViewLoadingState />;
   if (view === "login") {
     return (
       <LoginView
