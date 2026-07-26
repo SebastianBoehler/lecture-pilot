@@ -39,6 +39,12 @@ def parsed_asset_target(
         if not _is_safe_local_asset_path(asset_path):
             return None, ""
         return asset_path, target
+    if "/lecture/canvas/student-assets/" in target:
+        relative = target.split("/lecture/canvas/student-assets/", 1)[1]
+        asset_path = f"student-assets/{relative}"
+        if not _is_safe_local_asset_path(asset_path):
+            return None, ""
+        return asset_path, target
     asset_path = target.removeprefix("asset:").strip()
     if not _is_safe_local_asset_path(asset_path):
         return None, ""
