@@ -10,7 +10,6 @@ from lecturepilot.models import Lecture
 
 MAX_EXAM_QUESTIONS = 10
 PASSING_SCORE = 0.7
-MIN_OPEN_ENDED_QUESTIONS = 3
 MAX_MULTIPLE_CHOICE_QUESTIONS = 6
 
 
@@ -88,7 +87,8 @@ def build_exam_readiness_check(
         _questions_for_document(document, lecture_titles.get(document.lecture_id, document.title))
         for document in documents
     ]
-    questions = _mixed_questions(by_lecture, MAX_EXAM_QUESTIONS)
+    question_limit = max(MAX_EXAM_QUESTIONS, sum(bool(group) for group in by_lecture))
+    questions = _mixed_questions(by_lecture, question_limit)
     coverage = [
         ExamReadinessCoverage(
             lecture_id=document.lecture_id,
@@ -209,35 +209,69 @@ def _round_robin(
 def _mixed_questions(
     question_groups: list[list[ExamReadinessQuestion]], limit: int
 ) -> list[ExamReadinessQuestion]:
-    multiple_choice_groups = [
-        [question for question in questions if question.kind == "multiple_choice"]
-        for questions in question_groups
-    ]
-    open_ended_groups = [
-        [question for question in questions if question.kind == "open_ended"]
-        for questions in question_groups
-    ]
-    open_target = min(MIN_OPEN_ENDED_QUESTIONS, _question_count(open_ended_groups), limit)
-    mc_target = min(
-        MAX_MULTIPLE_CHOICE_QUESTIONS, _question_count(multiple_choice_groups), limit - open_target
-    )
-    selected = [
-        *_round_robin([group for group in multiple_choice_groups if group], mc_target),
-        *_round_robin([group for group in open_ended_groups if group], open_target),
-    ]
+    groups = [group for group in question_groups if group]
+    selected = _coverage_questions(groups, limit)
     remaining = limit - len(selected)
     if remaining <= 0:
         return selected[:limit]
     selected_ids = {question.id for question in selected}
     leftovers = [
         [question for question in questions if question.id not in selected_ids]
-        for questions in question_groups
+        for questions in groups
     ]
-    return [*selected, *_round_robin([group for group in leftovers if group], remaining)][:limit]
+    open_leftovers = [
+        [question for question in group if question.kind == "open_ended"] for group in leftovers
+    ]
+    added_open = _round_robin([group for group in open_leftovers if group], remaining)
+    selected.extend(added_open)
+    remaining = limit - len(selected)
+    if remaining <= 0:
+        return selected[:limit]
+    selected_ids.update(question.id for question in added_open)
+    mc_budget = max(
+        0,
+        MAX_MULTIPLE_CHOICE_QUESTIONS
+        - sum(question.kind == "multiple_choice" for question in selected),
+    )
+    mc_leftovers = [
+        [
+            question
+            for question in group
+            if question.id not in selected_ids and question.kind == "multiple_choice"
+        ]
+        for group in leftovers
+    ]
+    added_mc = _round_robin(
+        [group for group in mc_leftovers if group],
+        min(remaining, mc_budget),
+    )
+    selected.extend(added_mc)
+    return selected[:limit]
 
 
-def _question_count(groups: list[list[ExamReadinessQuestion]]) -> int:
-    return sum(len(group) for group in groups)
+def _coverage_questions(
+    groups: list[list[ExamReadinessQuestion]], limit: int
+) -> list[ExamReadinessQuestion]:
+    selected = []
+    mc_count = 0
+    for group in groups[:limit]:
+        multiple_choice = next(
+            (question for question in group if question.kind == "multiple_choice"),
+            None,
+        )
+        open_ended = next(
+            (question for question in group if question.kind == "open_ended"),
+            None,
+        )
+        if multiple_choice is not None and mc_count < MAX_MULTIPLE_CHOICE_QUESTIONS:
+            selected.append(multiple_choice)
+            mc_count += 1
+        elif open_ended is not None:
+            selected.append(open_ended)
+        elif multiple_choice is not None:
+            selected.append(multiple_choice)
+            mc_count += 1
+    return selected
 
 
 def _trim(value: str, limit: int) -> str:
