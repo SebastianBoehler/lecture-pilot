@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+import re
 import unicodedata
 from uuid import UUID
 
@@ -18,6 +19,10 @@ from lecturepilot.db_models import (
 from lecturepilot.models import CourseAccessPolicy
 from lecturepilot.metadata_events import emit_metadata_event
 from lecturepilot.university_models import ExternalCourseCandidate
+
+_MODULE_CODE_PREFIX = re.compile(
+    r"^\s*[^\W\d_]{2,}\s*-?\s*\d{3,}[^\W\d_]?\s*[:\-–—]?\s*", re.UNICODE
+)
 
 
 def sync_external_courses(
@@ -208,4 +213,5 @@ def _match_and_link_course(
 
 def _course_title_key(value: str) -> str:
     normalized = unicodedata.normalize("NFKC", value).casefold()
+    normalized = _MODULE_CODE_PREFIX.sub("", normalized)
     return "".join(character for character in normalized if character.isalnum())

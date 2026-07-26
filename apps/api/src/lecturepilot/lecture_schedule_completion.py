@@ -50,7 +50,10 @@ def _merge_lecture(
     model_lecture = by_path.get(detected.material_path or "")
     if model_lecture is None:
         numbered = by_number.get(_lecture_key(detected.number))
-        if numbered and numbered.material_path in {None, detected.material_path}:
+        if numbered and (
+            detected.material_path is None
+            or numbered.material_path in {None, detected.material_path}
+        ):
             model_lecture = numbered
     if model_lecture is None:
         return detected
@@ -58,7 +61,7 @@ def _merge_lecture(
         number=detected.number,
         title=model_lecture.title,
         date=detected.date,
-        material_path=detected.material_path,
+        material_path=detected.material_path or model_lecture.material_path,
     )
 
 

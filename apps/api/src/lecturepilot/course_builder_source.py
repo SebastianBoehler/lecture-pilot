@@ -107,6 +107,8 @@ def _course_builder_source_document_locked(
             compiled_slide_source_ref=slide_source.primary_tex_path,
             warnings=warnings,
         )
+        if scheduled:
+            document = document.model_copy(update={"title": scheduled.title})
         write_lecture_source_manifest(
             manifest_path,
             course_id=course_id,
