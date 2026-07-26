@@ -17,13 +17,7 @@ def test_enrichment_completes_thin_sections_before_validation() -> None:
                 id=f"topic-{index}",
                 title=f"Topic {index}",
                 source_ref=f"source frame {index}",
-                blocks=[
-                    CanvasBlock(
-                        id=f"topic-{index}-p-1",
-                        type="paragraph",
-                        text="Posterior risk connects evidence with a decision threshold.",
-                    )
-                ],
+                blocks=_thin_blocks(index),
             )
             for index in range(1, 6)
         ],
@@ -54,7 +48,7 @@ def test_enrichment_completes_thin_sections_before_validation() -> None:
     ]
     assert [section.id for section in assessment_sections] == ["topic-2", "topic-4", "topic-5"]
     assert len(quizzes) == 2
-    assert enriched.sections[-1].blocks[-1].type == "quiz"
+    assert any(block.type == "quiz" for block in enriched.sections[-1].blocks)
     callouts = [
         block.text
         for section in enriched.sections
@@ -70,6 +64,27 @@ def test_enrichment_completes_thin_sections_before_validation() -> None:
         for block in section.blocks
     )
     assert "turns the source material into a decision step" not in all_text
+
+
+def _thin_blocks(index: int) -> list[CanvasBlock]:
+    blocks = [
+        CanvasBlock(
+            id=f"topic-{index}-p-1",
+            type="paragraph",
+            text="Posterior risk connects evidence with a decision threshold.",
+        )
+    ]
+    if index in {4, 5}:
+        blocks.append(
+            CanvasBlock(
+                id=f"topic-{index}-quiz",
+                type="quiz",
+                text="Which statement follows from the source?",
+                items=["Expected risk informs the decision.", "Evidence can be ignored."],
+                answer_index=0,
+            )
+        )
+    return blocks
 
 
 def test_enrichment_preserves_model_authored_quizzes() -> None:

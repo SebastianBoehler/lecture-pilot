@@ -163,7 +163,7 @@ def test_deterministic_canvas_enrichment_uses_selected_language() -> None:
 
     assert "Warum das wichtig ist" in rendered
     assert "Lernzielkontrolle" in rendered
-    assert "Abrufübung" in rendered
+    assert "Abrufübung" not in rendered
     assert "Why this matters" not in rendered
     assert "Quality gate" not in rendered
     assert "Retrieval check" not in rendered

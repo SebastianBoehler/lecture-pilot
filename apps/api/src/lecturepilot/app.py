@@ -26,6 +26,7 @@ from lecturepilot.client_contract import (
 from lecturepilot.course_builder_source import course_builder_source_document
 from lecturepilot.course_canvas_routes import register_course_canvas_routes
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner, LiteLLMCoursePlanClient
+from lecturepilot.course_canvas_quality import CanvasQualityReviewer, LiteLLMCanvasQualityClient
 from lecturepilot.course_deletion import register_course_deletion_routes
 from lecturepilot.course_routes import register_course_routes
 from lecturepilot.course_update_routes import register_course_update_routes
@@ -115,6 +116,7 @@ def create_app() -> FastAPI:
     )
     app.state.course_planner = CourseCanvasPlanner(
         model_client=LiteLLMCoursePlanClient(app.state.model_usage),
+        quality_reviewer=CanvasQualityReviewer(LiteLLMCanvasQualityClient(app.state.model_usage)),
         observability=app.state.observability,
     )
     app.state.lecture_schedule_planner = LectureSchedulePlanner(

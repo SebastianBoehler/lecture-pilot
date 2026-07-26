@@ -49,7 +49,10 @@ def planner_messages(
                 "callout, math, asset, video, table, checkpoint, or quiz. "
                 f"{_assessment_instructions()} "
                 "Every block must include id, type, text, items, asset_path, caption, and answer_index; use null or [] where not relevant. Quiz blocks use text as the question, items as answers, and answer_index for the correct option. Asset and video blocks may only use asset_path values "
-                "listed in the evidence. Do not invent unsupported topics. Cite source "
+                "listed in the evidence. Quiz blocks need exactly one source-supported correct "
+                "option, plausible distractors, and its zero-based answer_index; never guess a "
+                "key. Every teaching claim and selected quiz answer must follow from the supplied "
+                "professor evidence. Do not invent unsupported topics. Cite source "
                 "files and frames in every source_ref. Never return a short overview."
             ),
         },

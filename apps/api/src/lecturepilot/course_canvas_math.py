@@ -69,7 +69,7 @@ _ALLOWED_ENVIRONMENTS = frozenset(
 _TEXT_ARGUMENT_RE = re.compile(
     r"\\(?:operatorname|text|textrm|textsf|texttt|mathrm|mathsf|mathtt|mathit)\*?\{[^{}]*\}"
 )
-_PLAIN_WORD_RE = re.compile(r"(?<!\\)\b[A-Za-z]{3,}\b")
+_PLAIN_WORD_RE = re.compile(r"(?<![\\.])\b[A-Za-z]{3,}\b(?!\.)")
 _LEADING_LABEL_RE = re.compile(
     r"^(?P<label>[A-Za-z][A-Za-z0-9 ,.'’()/-]*[A-Za-z][ :]\s*)"
     r"(?P<formula>(?:\\[A-Za-z]+|[A-Za-z]\s*[_^(]).*)$",

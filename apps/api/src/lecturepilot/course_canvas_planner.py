@@ -9,6 +9,7 @@ from lecturepilot.course_content_filter import filter_source_document_for_planni
 from lecturepilot.course_canvas_enrichment import enrich_learning_document
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_json import parse_model_json
+from lecturepilot.course_canvas_quality import CanvasQualityReviewer
 from lecturepilot.course_canvas_section_planner import plan_sections_individually
 from lecturepilot.course_canvas_section_repair import CourseCanvasSectionRepairMixin
 from lecturepilot.course_canvas_validation import validate_planned_document
@@ -73,10 +74,12 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
         self,
         provider_registry: ProviderRegistry | None = None,
         model_client: CoursePlanModelClient | None = None,
+        quality_reviewer: CanvasQualityReviewer | None = None,
         observability: Observability | None = None,
     ) -> None:
         self.provider_registry = provider_registry or ProviderRegistry.from_env()
         self.model_client = model_client or LiteLLMCoursePlanClient()
+        self.quality_reviewer = quality_reviewer or CanvasQualityReviewer()
         self.observability = observability or Observability()
 
     async def plan_canvas(
@@ -99,29 +102,45 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
             "model": settings.model,
         }
         document: CanvasDocument | None = None
+        quality_feedback: str | None = None
         try:
-            with self.observability.model_span(
-                stage="sectionwise_plan", attempt=1, **span_attributes
-            ) as span:
-                document = await plan_sections_individually(
-                    model_client=self.model_client,
-                    settings=settings,
-                    source_document=source_document,
-                    output_language=output_language,
-                    repair_context=repair_context,
-                    observability=self.observability,
-                    span_attributes=span_attributes,
+            for quality_attempt in range(1, 3):
+                active_repair = (
+                    "\n".join(value for value in (repair_context, quality_feedback) if value)
+                    or None
                 )
-                document = enrich_learning_document(document, output_language=output_language)
-                document = interleave_original_slides(document, source_document)
-                validate_planned_document(document, source_document)
-                span.set_outputs(
-                    {
-                        "section_count": len(document.sections),
-                        "warning_count": len(document.warnings),
-                    }
-                )
-                return document
+                with self.observability.model_span(
+                    stage="sectionwise_plan",
+                    attempt=quality_attempt,
+                    **span_attributes,
+                ) as span:
+                    document = await plan_sections_individually(
+                        model_client=self.model_client,
+                        settings=settings,
+                        source_document=source_document,
+                        output_language=output_language,
+                        repair_context=active_repair,
+                        observability=self.observability,
+                        span_attributes=span_attributes,
+                    )
+                    document = enrich_learning_document(document, output_language=output_language)
+                    document = interleave_original_slides(document, source_document)
+                    validate_planned_document(document, source_document)
+                    try:
+                        await self.validate_quality(source_document, document, settings=settings)
+                    except CanvasGenerationRepairableError as exc:
+                        exc.with_candidate(document)
+                        if quality_attempt == 2:
+                            raise
+                        quality_feedback = str(exc)
+                        continue
+                    span.set_outputs(
+                        {
+                            "section_count": len(document.sections),
+                            "warning_count": len(document.warnings),
+                        }
+                    )
+                    return document
         except CanvasGenerationRepairableError as exc:
             candidate = exc.candidate or document
             if candidate is not None:
@@ -129,3 +148,19 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
                 candidate = interleave_original_slides(candidate, source_document)
                 exc.with_candidate(candidate)
             raise
+
+    async def validate_quality(
+        self,
+        source_document: CanvasDocument,
+        candidate_document: CanvasDocument,
+        *,
+        settings: ProviderSettings | None = None,
+    ) -> None:
+        active_settings = settings or self.provider_registry.require_ready(
+            [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
+        )
+        await self.quality_reviewer.validate(
+            settings=active_settings,
+            source_document=source_document,
+            candidate_document=candidate_document,
+        )

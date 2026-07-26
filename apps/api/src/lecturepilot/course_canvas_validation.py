@@ -28,6 +28,7 @@ def validate_planned_document(document: CanvasDocument, source_document: CanvasD
             f"at most {max_sections} are allowed for this lecture."
         )
     validate_document_math(document)
+    _validate_quizzes(document)
     thin_sections = [section.title for section in document.sections if _teaching_units(section) < 4]
     if thin_sections:
         names = ", ".join(thin_sections[:3])
@@ -102,6 +103,27 @@ def quiz_count(document: CanvasDocument) -> int:
     return sum(
         1 for section in document.sections for block in section.blocks if block.type == "quiz"
     )
+
+
+def _validate_quizzes(document: CanvasDocument) -> None:
+    for section in document.sections:
+        for block in section.blocks:
+            if block.type != "quiz":
+                continue
+            if len(block.items) < 2:
+                raise CanvasGenerationRepairableError(
+                    f"Quiz block {block.id} needs at least 2 answer options.",
+                    candidate=document,
+                    section_id=section.id,
+                    block_id=block.id,
+                )
+            if block.answer_index is None or block.answer_index >= len(block.items):
+                raise CanvasGenerationRepairableError(
+                    f"Quiz block {block.id} needs an explicit valid answer_index.",
+                    candidate=document,
+                    section_id=section.id,
+                    block_id=block.id,
+                )
 
 
 def _teaching_units(section) -> int:

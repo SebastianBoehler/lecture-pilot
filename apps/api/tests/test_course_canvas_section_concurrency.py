@@ -57,6 +57,7 @@ async def test_course_planner_starts_with_the_bounded_section_outline(
     planner = CourseCanvasPlanner(
         provider_registry=ProviderRegistry.from_env("gemini/test-model"),
         model_client=client,
+        quality_reviewer=_NoIssuesQualityReviewer(),
     )
 
     planned = await planner.plan_canvas(_source_document(4))
@@ -121,6 +122,22 @@ def _section_payload(source_id: str, *, math: str | None = None) -> dict:
     ]
     if math:
         blocks.append({"type": "math", "text": math})
+    if source_id == "source-1":
+        blocks.append(
+            {
+                "type": "checkpoint",
+                "text": "Explain the source-backed mechanism and its failure mode.",
+            }
+        )
+    if source_id in {"source-2", "source-4"}:
+        blocks.append(
+            {
+                "type": "quiz",
+                "text": "Which statement matches the source?",
+                "items": ["An unrelated claim.", f"The explanation for {source_id}."],
+                "answer_index": 1,
+            }
+        )
     return {
         "sections": [
             {
@@ -131,6 +148,11 @@ def _section_payload(source_id: str, *, math: str | None = None) -> dict:
             }
         ]
     }
+
+
+class _NoIssuesQualityReviewer:
+    async def validate(self, **_kwargs) -> None:
+        return None
 
 
 def _source_document(section_count: int) -> CanvasDocument:

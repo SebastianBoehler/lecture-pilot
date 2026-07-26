@@ -163,6 +163,7 @@ async def test_full_planner_quarantines_the_invalid_candidate_with_block_coordin
     planner = CourseCanvasPlanner(
         provider_registry=ProviderRegistry.from_env("gemini/test-model"),
         model_client=model,
+        quality_reviewer=_NoIssuesQualityReviewer(),
     )
 
     with pytest.raises(CanvasGenerationRepairableError) as caught:
@@ -239,6 +240,11 @@ class _RepairModel:
         return self.payloads[len(self.messages) - 1]
 
 
+class _NoIssuesQualityReviewer:
+    async def validate(self, **_kwargs) -> None:
+        return None
+
+
 class _SectionModel:
     def __init__(self, sections: dict[str, dict]) -> None:
         self.sections = sections
@@ -259,6 +265,7 @@ def _planner(
         CourseCanvasPlanner(
             provider_registry=ProviderRegistry.from_env("gemini/test-model"),
             model_client=model,
+            quality_reviewer=_NoIssuesQualityReviewer(),
         ),
         model,
     )

@@ -26,7 +26,7 @@ def enrich_learning_document(
 def _enrich_section(
     section: CanvasSection, index: int, total: int, output_language: str
 ) -> CanvasSection:
-    wants_checkpoint, wants_quiz = _assessment_targets(index, total)
+    wants_checkpoint = _checkpoint_target(index, total)
     blocks = _complete_teaching_blocks(section, output_language)
     ids = {block.id for block in blocks}
     if wants_checkpoint and not any(block.type == "checkpoint" for block in blocks):
@@ -39,27 +39,12 @@ def _enrich_section(
                 text=_checkpoint_text(section.title, output_language),
             )
         )
-    if wants_quiz and not any(block.type == "quiz" for block in blocks):
-        block_id = _unique_id(f"{section.id}-quiz", ids)
-        blocks.append(
-            CanvasBlock(
-                id=block_id,
-                type="quiz",
-                caption=("Abrufübung" if output_language == "de" else "Retrieval check"),
-                text=_quiz_text(section.title, output_language),
-                items=_quiz_items(section.title, output_language),
-                answer_index=0,
-            )
-        )
     return section.model_copy(update={"blocks": blocks})
 
 
-def _assessment_targets(index: int, total: int) -> tuple[bool, bool]:
+def _checkpoint_target(index: int, total: int) -> bool:
     checkpoint_index = max(1, min(total, (total + 1) // 3))
-    practice_quiz_index = max(checkpoint_index + 1, min(total, (2 * total + 2) // 3))
-    wants_checkpoint = index == checkpoint_index
-    wants_quiz = index in {practice_quiz_index, total}
-    return wants_checkpoint, wants_quiz
+    return index == checkpoint_index
 
 
 def _complete_teaching_blocks(section: CanvasSection, output_language: str) -> list[CanvasBlock]:
@@ -122,26 +107,6 @@ def _checkpoint_text(title: str, output_language: str) -> str:
         f"Explain the key mechanism in **{title}** in your own words, "
         "then name one decision consequence or failure mode."
     )
-
-
-def _quiz_text(title: str, output_language: str) -> str:
-    if output_language == "de":
-        return f"Welche Antwort beschreibt **{title}** am besten?"
-    return f"Which answer best captures **{title}**?"
-
-
-def _quiz_items(title: str, output_language: str) -> list[str]:
-    if output_language == "de":
-        return [
-            f"Das Konzept bestimmt, wie wir über {title.lower()} argumentieren.",
-            "Es ist nur ein Detail der Notation und verändert keine Entscheidungen.",
-            "Es kann ignoriert werden, sobald ein Modell irgendeine Wahrscheinlichkeit ausgegeben hat.",
-        ]
-    return [
-        f"The concept controls how we reason about {title.lower()}.",
-        "It is only a notation detail and does not change decisions.",
-        "It can be ignored once a model has produced any probability.",
-    ]
 
 
 def _teaching_blocks(blocks: list[CanvasBlock]) -> list[CanvasBlock]:

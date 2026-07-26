@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from starlette.concurrency import run_in_threadpool
 
 from lecturepilot.canvas_models import CanvasDocument
+from lecturepilot.course_content_filter import filter_source_document_for_planning
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_generation_jobs import CanvasGenerationJob
 from lecturepilot.course_canvas_repairs import (
@@ -150,6 +151,7 @@ async def repair_targeted_course_canvas_draft(
         source = await run_in_threadpool(source_document, course_id, lecture_id)
         media_root = app.state.canvas_workspace.course_media_root(course_id)
         source = course_media_evidence(source, media_root)
+        source = filter_source_document_for_planning(source)
         output_language = _canvas_language(app, course_id)
         try:
             with model_usage_scope(
@@ -166,6 +168,7 @@ async def repair_targeted_course_canvas_draft(
                     output_language=output_language,
                 )
             validate_planned_document(document, source)
+            await app.state.course_planner.validate_quality(source, document)
         except CanvasGenerationRepairableError as exc:
             if exc.candidate is None:
                 exc.with_candidate(candidate)

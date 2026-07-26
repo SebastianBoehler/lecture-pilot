@@ -51,13 +51,14 @@ class CourseCanvasSectionRepairMixin:
         )
         section = _section(candidate_document, section_id)
         target = _block(section, block_id) if block_id else None
-        try:
-            validate_planned_document(candidate_document, source_document)
-            return candidate_document
-        except CanvasGenerationRepairableError as exc:
-            if _is_new_target(exc, section, target):
-                raise exc.with_candidate(candidate_document)
-            failure_context = str(exc)
+        if not failure_context.startswith("Canvas quality review failed:"):
+            try:
+                validate_planned_document(candidate_document, source_document)
+                return candidate_document
+            except CanvasGenerationRepairableError as exc:
+                if _is_new_target(exc, section, target):
+                    raise exc.with_candidate(candidate_document)
+                failure_context = str(exc)
         settings = self.provider_registry.require_ready(
             [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
         )

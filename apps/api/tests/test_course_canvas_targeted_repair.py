@@ -39,6 +39,7 @@ def test_ai_repair_replaces_only_the_failed_block_and_preserves_neighboring_sect
     assert failed.headers["X-Generation-Repairable"] == "true"
     assert repaired.status_code == 200
     assert planner.full_repair_called is False
+    assert planner.quality_review_calls == 1
     assert planner.targeted_repair_calls == [
         (
             "learning-optimization",
@@ -134,7 +135,15 @@ class _TargetedRepairPlanner:
         self.candidate: CanvasDocument | None = None
         self.repaired_document: CanvasDocument | None = None
         self.full_repair_called = False
+        self.quality_review_calls = 0
         self.targeted_repair_calls: list[tuple[str, str | None, str]] = []
+
+    async def validate_quality(
+        self,
+        source_document: CanvasDocument,
+        candidate_document: CanvasDocument,
+    ) -> None:
+        self.quality_review_calls += 1
 
     async def plan_canvas(
         self,

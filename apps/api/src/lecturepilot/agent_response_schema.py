@@ -175,7 +175,15 @@ def _block_schema() -> dict[str, Any]:
             "asset_path": _nullable_string("Course or learner asset path."),
             "asset_url": _nullable_string("Resolved learner asset URL."),
             "caption": _nullable_string("Caption for assets, callouts, or checks."),
-            "answer_index": {"type": ["integer", "null"], "minimum": 0, "maximum": 25},
+            "answer_index": {
+                "type": ["integer", "null"],
+                "minimum": 0,
+                "maximum": 25,
+                "description": (
+                    "Zero-based index of the single source-supported correct quiz option; "
+                    "null for non-quiz blocks."
+                ),
+            },
             "component_id": _nullable_string("File-backed component id."),
             "component_type": _nullable_string("Component renderer type."),
             "component_ref": _nullable_string("Component definition path."),

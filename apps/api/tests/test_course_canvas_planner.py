@@ -44,6 +44,7 @@ async def test_course_planner_restyles_source_evidence(monkeypatch) -> None:
     planner = CourseCanvasPlanner(
         provider_registry=ProviderRegistry.from_env("gemini/test-model"),
         model_client=_FakePlanClient(),
+        quality_reviewer=_NoIssuesQualityReviewer(),
     )
 
     document = await planner.plan_canvas(_source_document())
@@ -80,8 +81,8 @@ async def test_course_planner_restyles_source_evidence(monkeypatch) -> None:
     )
     assert middle_checkpoint.caption == "Quality gate"
     final_quiz = next(block for block in document.sections[-1].blocks if block.type == "quiz")
-    assert final_quiz.answer_index == 0
-    assert final_quiz.items[0].startswith("The concept controls")
+    assert final_quiz.answer_index == 1
+    assert final_quiz.items[1] == "The posterior combines prior and likelihood evidence."
     assert all(block.asset_path != "unseen.png" for block in section.blocks)
     text_pipeline = next(
         item for item in document.sections if item.id == "text-preprocessing-pipeline"
@@ -244,11 +245,28 @@ class _FakePlanClient:
                 },
             ],
         }
+        for section_index in (6, 8):
+            extra_sections[section_index - 2]["blocks"].append(
+                {
+                    "type": "quiz",
+                    "text": "Which statement follows from the lecture evidence?",
+                    "items": [
+                        "The posterior ignores the likelihood.",
+                        "The posterior combines prior and likelihood evidence.",
+                    ],
+                    "answer_index": 1,
+                }
+            )
         sections = [base_section, *extra_sections]
         source_index = (
             1 if source_id == "evidence-update-decision" else int(source_id.rsplit("-", 1)[1])
         )
         return {"title": "Bayes as a decision workflow", "sections": [sections[source_index - 1]]}
+
+
+class _NoIssuesQualityReviewer:
+    async def validate(self, **_kwargs) -> None:
+        return None
 
 
 def _source_document() -> CanvasDocument:

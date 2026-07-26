@@ -159,8 +159,12 @@ def _block_items(raw_block: dict) -> list:
 
 def _answer_index(raw_block: dict) -> int:
     items = _block_items(raw_block)[:6]
-    value = raw_block.get("answer_index", raw_block.get("correct_index", 0))
-    return value if isinstance(value, int) and 0 <= value < len(items) else 0
+    value = raw_block.get("answer_index", raw_block.get("correct_index"))
+    if not isinstance(value, int) or not 0 <= value < len(items):
+        raise CanvasGenerationRepairableError(
+            "Quiz blocks need an explicit answer_index within the answer options."
+        )
+    return value
 
 
 def _is_usable_block(block: CanvasBlock) -> bool:

@@ -198,6 +198,12 @@ def test_structurally_valid_math_is_accepted(formula: str) -> None:
     validate_section_math(_section_with_math(formula))
 
 
+def test_qualified_program_identifiers_are_not_misclassified_as_prose() -> None:
+    validate_section_math(
+        _section_with_math(r"(p.X\le CTR.X)\land(p.X\ge CBL.X)\land(p.Y\le CTR.Y)")
+    )
+
+
 def test_planned_document_validation_rejects_prose_in_math_blocks() -> None:
     document = _valid_generated_document()
     document.sections[0].blocks[0] = CanvasBlock(

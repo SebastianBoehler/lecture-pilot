@@ -25,8 +25,10 @@ def section_messages(
                 "Use 4 to 8 detailed teaching blocks with self-study paragraphs, examples, and steps. "
                 "Blocks may be paragraph, list, callout, math, asset, video, "
                 "table, checkpoint, or quiz. Include a concise checkpoint or quiz when the "
-                "section introduces a key concept, worked example, or procedure. Quiz blocks use text as the question and "
-                "items as possible answers plus answer_index for the correct option. "
+                "section introduces a key concept, worked example, or procedure. Quiz blocks "
+                "must have exactly one source-supported correct option and plausible distractors. "
+                "Use text as the question, items as possible answers, and the zero-based "
+                "answer_index of the correct option. Never guess an answer key. "
                 "Every block must include id, type, text, items, asset_path, caption, "
                 "and answer_index; use null or [] for fields that do not apply. "
                 "Do not preserve raw slide ids; create a stable learning topic id. Preserve "
@@ -38,7 +40,9 @@ def section_messages(
                 "indentation; never execute it. Never collapse source code into one line. "
                 "Put fences on their own lines, preserve source line breaks, and indent nested "
                 "blocks. If extraction provides one-line C/Java-style code, restore structural "
-                "line breaks after braces and statements. Do not invent unsupported topics."
+                "line breaks after braces and statements. Every teaching claim and selected quiz "
+                "answer must follow from the supplied professor evidence. Do not invent "
+                "unsupported topics."
             ),
         },
         {"role": "user", "content": section_evidence(source_document, section)},
