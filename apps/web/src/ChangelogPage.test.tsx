@@ -15,15 +15,15 @@ describe("ChangelogPage", () => {
     expect(
       latestRelease.getByRole("heading", {
         level: 2,
-        name: "Safer course generation and recovery",
+        name: "Faster course creation and stronger learning feedback",
       }),
     ).toBeInTheDocument();
-    expect(latestRelease.getByText("20 July 2026")).toBeInTheDocument();
-    expect(latestRelease.getByRole("link", { name: /v0\.2\.1 on GitHub/i })).toHaveAttribute(
+    expect(latestRelease.getByText("26 July 2026")).toBeInTheDocument();
+    expect(latestRelease.getByRole("link", { name: /v0\.3\.0 on GitHub/i })).toHaveAttribute(
       "href",
-      "https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.2.1",
+      "https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.3.0",
     );
-    expect(latestRelease.getByText("Targeted AI repair")).toBeInTheDocument();
+    expect(latestRelease.getByText("Localized parallel course generation")).toBeInTheDocument();
     expect(
       latestRelease.queryByText(/students and lecturers sign in through Alma/i),
     ).not.toBeInTheDocument();
@@ -39,8 +39,8 @@ describe("ChangelogPage", () => {
     renderWithI18n(<ChangelogPage />, { locale: "de" });
 
     expect(screen.getByRole("heading", { name: "Neu in LecturePilot" })).toBeInTheDocument();
-    expect(screen.getByText("20. Juli 2026")).toBeInTheDocument();
-    expect(screen.getByText("Gezielte KI-Reparatur")).toBeInTheDocument();
+    expect(screen.getByText("26. Juli 2026")).toBeInTheDocument();
+    expect(screen.getByText("Lokalisierte parallele Kurserstellung")).toBeInTheDocument();
     expect(screen.queryByText("Aus Feedback")).not.toBeInTheDocument();
   });
 });

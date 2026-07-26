@@ -4,6 +4,32 @@ A product-level history of improvements for students and lecturers. Technical de
 
 [View all GitHub Releases](https://github.com/SebastianBoehler/lecture-pilot/releases)
 
+## [0.3.0](https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.3.0) — Faster course creation and stronger learning feedback
+
+Released 2026-07-26
+
+LecturePilot now generates course canvases faster and in the selected language, gives students evaluated exam-readiness feedback, and makes learner and lecturer workflows clearer and safer.
+
+### What changed
+
+- **Localized parallel course generation** — Lecturers choose the canvas language before generation, lecture sections are prepared concurrently, and generated guidance follows that language.
+- **More dependable recovery and course safety** _(From feedback)_ — Targeted repair now catches more malformed LaTeX and math cases, learning-map gates stay bounded, and deleting a course safely removes stale state.
+- **Evaluated exam-readiness practice** — Open answers are evaluated after an attempt with clear feedback and revision guidance, while lecturers can preview the same readiness checks without changing learner progress.
+- **A clearer learner account** _(From feedback)_ — Profiles show only learner-owned files, navigation is URL-backed, contextual feedback is easier to send, and restored sessions are validated before protected pages load.
+- **Clearer lecturer workflows** — Course setup includes clearer walkthrough guidance, readiness previews are easier to inspect, and updated tutor routing reduces response latency.
+
+### Deutsch
+
+**Schnellere Kurserstellung und stärkeres Lernfeedback**
+
+LecturePilot erstellt Kurs-Canvases jetzt schneller und in der gewählten Sprache, gibt Studierenden bewertetes Feedback zur Prüfungsreife und macht Abläufe für Lernende und Lehrende klarer und sicherer.
+
+- **Lokalisierte parallele Kurserstellung** — Lehrende wählen vor der Generierung die Canvas-Sprache; Vorlesungsabschnitte werden parallel erstellt und die generierten Lernhilfen folgen dieser Sprache.
+- **Zuverlässigere Wiederherstellung und Kurssicherheit** _(Aus Feedback)_ — Die gezielte Reparatur erkennt mehr fehlerhafte LaTeX- und Mathematikfälle, Lernpfad-Sperren bleiben begrenzt und beim Löschen eines Kurses werden veraltete Zustände sicher entfernt.
+- **Bewertete Übungen zur Prüfungsreife** — Offene Antworten werden nach einem Versuch mit klarem Feedback und Überarbeitungshinweisen bewertet; Lehrende können dieselben Prüfungsreife-Aufgaben ansehen, ohne den Lernfortschritt zu verändern.
+- **Ein übersichtlicheres Lernkonto** _(Aus Feedback)_ — Profile zeigen nur Dateien der Lernenden, die Navigation ist URL-basiert, kontextbezogenes Feedback lässt sich leichter senden und wiederhergestellte Sitzungen werden vor dem Laden geschützter Seiten geprüft.
+- **Klarere Abläufe für Lehrende** — Die Kurseinrichtung bietet klarere Schritt-für-Schritt-Hinweise, Vorschauen zur Prüfungsreife lassen sich leichter prüfen und eine aktualisierte Tutor-Anbindung verkürzt die Antwortzeit.
+
 ## [0.2.1](https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.2.1) — Safer course generation and recovery
 
 Released 2026-07-20
