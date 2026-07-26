@@ -84,6 +84,16 @@ export function availableCourseLectures(lectures: Lecture[]) {
   );
 }
 
+export function findUniversityWorkspaceCourse(
+  courses: UniversityCourse[],
+  universityCourses: UniversityEnrollmentCourse[],
+) {
+  const enrolledKeys = new Set(
+    universityCourses.map((course) => courseMatchKey(course.title, course.term)),
+  );
+  return courses.find((course) => enrolledKeys.has(courseMatchKey(course.title, course.term)));
+}
+
 function buildEnrolledCourseGroup(
   course: UniversityCourse,
   sources: CourseSource[],
@@ -141,7 +151,16 @@ function hasWorkspaceAccess(workspaceCourse: UniversityCourse) {
 }
 
 function normalizeCourseTitle(title: string) {
-  return title.toLowerCase().replace(/\s+/g, " ").trim();
+  return title
+    .normalize("NFKC")
+    .replace(/^\s*[\p{L}]{2,}\s*-?\s*\d{3,}[\p{L}]?\s*[:\-–—]?\s*/u, "")
+    .toLocaleLowerCase("de-DE")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function courseMatchKey(title: string, term: string) {
+  return `${normalizeCourseTitle(title)}:${term.toLocaleLowerCase("de-DE").trim()}`;
 }
 
 function displayUniversityCourses(

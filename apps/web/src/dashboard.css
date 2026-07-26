@@ -22,8 +22,7 @@
 }
 
 .dashboard-header p:last-child,
-.lead,
-.lecture-row p {
+.lead {
   color: var(--color-text-secondary);
 }
 
@@ -64,153 +63,12 @@
   font-size: 13px;
 }
 
-.lecture-row {
-  display: grid;
-  grid-template-columns: 48px 1fr auto;
-  gap: 16px;
-  align-items: center;
-  padding: 18px 20px;
-  border-bottom: 1px solid var(--color-border-primary);
-}
-
-.course-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--color-border-primary);
-}
-
-.course-row-actions {
-  display: flex;
-  flex: 0 0 auto;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.course-title-line,
-.course-source-tags {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.course-title-line {
-  gap: 7px;
-}
-
-.course-source-tags {
-  gap: 4px;
-}
-
-.course-source-tag {
-  border: 1px solid var(--color-border-primary);
-  border-radius: 999px;
-  padding: 2px 6px;
-  color: var(--color-text-tertiary);
-  background: var(--color-bg-primary);
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.course-workspace {
-  border-bottom: 1px solid var(--color-border-primary);
-}
-
-.course-workspace:last-child {
-  border-bottom: 0;
-}
-
 .course-list .course-row:last-child {
   border-bottom: 0;
 }
 
-.course-workspace .course-row {
-  border-bottom: 1px solid var(--color-border-primary);
-  background: var(--color-bg-secondary);
-}
-
-.course-workspace .lecture-row:last-child {
-  border-bottom: 0;
-}
-
-.lecture-row.is-scheduled {
-  background: var(--color-bg-secondary);
-}
-
-.lecture-row.is-scheduled .lecture-number {
-  color: var(--color-text-tertiary);
-}
-
-.lecture-release-time {
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-}
-
-.course-workspace-body[hidden] {
-  display: none;
-}
-
-.lecture-row h3,
-.course-row h3,
 .drawer h2 {
   margin: 0;
-}
-
-.lecture-row p,
-.course-row p {
-  margin: 4px 0 0;
-  font-size: 14px;
-}
-
-.course-row p,
-.course-row span {
-  color: var(--color-text-secondary);
-}
-
-.workspace-status {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  min-height: var(--control-height-compact);
-  border: 1px solid var(--color-border-primary);
-  border-radius: 999px;
-  padding: 0 9px;
-  background: var(--color-bg-primary);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.workspace-status.is-matched {
-  border-color: var(--color-accent-primary);
-  color: var(--color-accent-primary);
-}
-
-.course-toggle,
-.lecture-list-toggle {
-  border: 1px solid var(--color-border-primary);
-  border-radius: var(--control-radius);
-  min-height: var(--control-height);
-  padding: 0 var(--control-padding-x);
-  color: var(--color-text-primary);
-  background: var(--color-bg-primary);
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.lecture-list-toggle {
-  margin: 0 20px 14px;
-}
-
-.workspace-empty {
-  margin: 0;
-  padding: 14px 20px 18px;
-  color: var(--color-text-secondary);
 }
 
 .profile-fields {
@@ -291,62 +149,12 @@
   background: var(--color-bg-primary);
 }
 
-.lecture-number {
-  color: var(--color-text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.lecture-row > button {
-  border: 1px solid var(--color-accent-primary);
-  border-radius: var(--control-radius);
-  min-height: var(--control-height);
-  padding: 0 var(--control-padding-x);
-  color: var(--color-on-accent);
-  background: var(--color-accent-primary);
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.attendance-control {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
-}
-
-.attendance-control button {
-  border: 1px solid var(--color-border-primary);
-  border-radius: var(--control-radius);
-  min-height: var(--control-height-compact);
-  padding: 0 10px;
-  color: var(--color-text-secondary);
-  background: var(--color-bg-secondary);
-  font-size: 12px;
-  font-weight: 650;
-  text-transform: capitalize;
-}
-
-.attendance-control button.is-active {
-  border-color: var(--color-accent-primary);
-  color: var(--color-accent-primary);
-  background: var(--color-bg-primary);
-}
-
 @media (max-width: 860px) {
-  .lecture-row {
-    grid-template-columns: 38px 1fr;
-  }
-
   .profile-fields {
     grid-template-columns: 1fr;
   }
 
   .profile-setting-row {
     grid-template-columns: 1fr;
-  }
-
-  .lecture-row > button {
-    grid-column: 2;
-    justify-self: start;
   }
 }

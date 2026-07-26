@@ -2,6 +2,7 @@
 @import "./theme-responsive.css";
 @import "./login.css";
 @import "./dashboard.css";
+@import "./dashboard-course-workspace.css";
 @import "./dashboard-responsive.css";
 @import "./dashboard-course-status.css";
 @import "./course-sync.css";

@@ -62,6 +62,7 @@ export function Dashboard({
       </section>
 
       <NextStudyRecommendation
+        course={workspaceCourse}
         lectures={workspaceLectures}
         passedLectureIds={courseProfile?.passed_lecture_ids ?? []}
         onOpen={onOpen}
@@ -85,7 +86,10 @@ export function Dashboard({
               : courseLectures.slice(0, LECTURE_PREVIEW_COUNT);
             const bodyId = `course-workspace-${course.id}`;
             return (
-              <article className={`course-workspace is-${status}`} key={`${status}-${course.id}`}>
+              <article
+                className={`course-workspace is-${status}${courseOpen ? " is-open" : ""}`}
+                key={`${status}-${course.id}`}
+              >
                 <div className="course-row">
                   <div>
                     <div className="course-title-line">
@@ -122,7 +126,13 @@ export function Dashboard({
                   </div>
                 </div>
                 {tutorAvailable ? (
-                  <div className="course-workspace-body" hidden={!courseOpen} id={bodyId}>
+                  <div
+                    aria-label={t("dashboard.studyWorkspaceFor", { course: course.title })}
+                    className="course-workspace-body"
+                    hidden={!courseOpen}
+                    id={bodyId}
+                    role="region"
+                  >
                     <div
                       className="lecture-list"
                       aria-label={t("dashboard.availableLectures", { course: course.title })}

@@ -138,12 +138,14 @@ export const deMessages: Record<MessageKey, string> = {
   "dashboard.showFirstLectures": "Erste {count} Vorlesungen anzeigen",
   "dashboard.showAllLectures": "Alle {count} Vorlesungen anzeigen",
   "dashboard.availableLectures": "Verfügbare Vorlesungen für {course}",
+  "dashboard.studyWorkspaceFor": "Lernbereich für {course}",
   "dashboard.attendance": "Teilnahme {status}",
   "dashboard.attendanceFor": "Teilnahme für {lecture}",
   "dashboard.openLecture": "Vorlesung {number} öffnen",
   "dashboard.recommendation.title": "Nächster Lernschritt",
   "dashboard.recommendation.lecture": "Vorlesung {number}",
   "dashboard.recommendation.open": "Empfohlene Vorlesung {number} starten",
+  "dashboard.recommendation.openForCourse": "Empfohlene Vorlesung {number} in {course} starten",
   "dashboard.recommendation.missed":
     "Du hast diese Vorlesung verpasst und ihren Lerncheck noch nicht bestanden.",
   "dashboard.recommendation.diagnostic":

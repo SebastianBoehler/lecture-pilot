@@ -132,12 +132,14 @@ export const enMessages = {
   "dashboard.showFirstLectures": "Show first {count} lectures",
   "dashboard.showAllLectures": "Show all {count} lectures",
   "dashboard.availableLectures": "Available lectures for {course}",
+  "dashboard.studyWorkspaceFor": "Study workspace for {course}",
   "dashboard.attendance": "attendance {status}",
   "dashboard.attendanceFor": "Attendance for {lecture}",
   "dashboard.openLecture": "Open lecture {number}",
   "dashboard.recommendation.title": "Next study step",
   "dashboard.recommendation.lecture": "Lecture {number}",
   "dashboard.recommendation.open": "Start recommended lecture {number}",
+  "dashboard.recommendation.openForCourse": "Start recommended lecture {number} in {course}",
   "dashboard.recommendation.missed":
     "You missed this lecture and have not passed its learning check yet.",
   "dashboard.recommendation.diagnostic":

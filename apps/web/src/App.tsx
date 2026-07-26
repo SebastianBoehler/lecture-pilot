@@ -31,6 +31,7 @@ import {
   readDemoWorkspaceCourse,
   writeDemoWorkspaceCourse,
 } from "./demoWorkspaceAccess";
+import { findUniversityWorkspaceCourse } from "./dashboardCourses";
 import { developmentWorkspaceCourse } from "./devWorkspaceAccess";
 import { I18nProvider, type Locale } from "./i18n";
 import { resetLearnerWorkspace } from "./learnerWorkspaceApi";
@@ -145,8 +146,18 @@ function App() {
       const demoCourse = readDemoWorkspaceCourse();
       const devCourse = developmentWorkspaceCourse();
       const preferredCourse = courses.find((course) => course.id === preferredCourseId);
+      const universityWorkspaceCourse = findUniversityWorkspaceCourse(
+        courses,
+        activeSession.university_courses ?? [],
+      );
       const storedCourses = [...courses].reverse();
-      const candidates = [demoCourse, preferredCourse, devCourse, ...storedCourses].filter(
+      const candidates = [
+        universityWorkspaceCourse,
+        demoCourse,
+        preferredCourse,
+        devCourse,
+        ...storedCourses,
+      ].filter(
         (course, index, list): course is UniversityCourse =>
           Boolean(course) && list.findIndex((item) => item?.id === course?.id) === index,
       );

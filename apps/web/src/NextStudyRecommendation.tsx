@@ -1,11 +1,13 @@
 import { useI18n } from "./i18n";
-import type { Lecture } from "./types";
+import type { Lecture, UniversityCourse } from "./types";
 
 export function NextStudyRecommendation({
+  course,
   lectures,
   passedLectureIds,
   onOpen,
 }: {
+  course: UniversityCourse;
   lectures: Lecture[];
   passedLectureIds: string[];
   onOpen: (lecture: Lecture) => void;
@@ -21,10 +23,18 @@ export function NextStudyRecommendation({
         <p>{reason(recommendation.reason, t)}</p>
       </div>
       <div className="next-study-action">
+        <span className="next-study-course">{course.title}</span>
         <strong>
           {recommendation.lecture.number} · {recommendation.lecture.title}
         </strong>
-        <button type="button" onClick={() => onOpen(recommendation.lecture)}>
+        <button
+          aria-label={t("dashboard.recommendation.openForCourse", {
+            course: course.title,
+            number: recommendation.lecture.number,
+          })}
+          type="button"
+          onClick={() => onOpen(recommendation.lecture)}
+        >
           {t("dashboard.recommendation.open", { number: recommendation.lecture.number })}
         </button>
       </div>

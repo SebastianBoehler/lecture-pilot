@@ -20,7 +20,7 @@ export function DashboardLectureRow({
   return (
     <article className={`lecture-row${scheduled ? " is-scheduled" : ""}`}>
       <div className="lecture-number">{lecture.number}</div>
-      <div>
+      <div className="lecture-summary">
         <h3>{lecture.title}</h3>
         {scheduled && availableAt ? (
           <p className="lecture-release-time">
@@ -30,35 +30,35 @@ export function DashboardLectureRow({
             })}
           </p>
         ) : (
-          <>
-            <p>
-              {lecture.date} ·{" "}
-              {t("dashboard.attendance", {
-                status: attendanceLabel(lecture.attendance, t),
-              })}
-            </p>
-            <div
-              className="attendance-control"
-              role="group"
-              aria-label={t("dashboard.attendanceFor", { lecture: lecture.title })}
-            >
-              {(["present", "absent", "unknown"] as const).map((status) => (
-                <button
-                  aria-pressed={lecture.attendance === status}
-                  className={lecture.attendance === status ? "is-active" : undefined}
-                  key={status}
-                  onClick={() => onSetAttendance(lecture.id, status)}
-                  type="button"
-                >
-                  {attendanceLabel(status, t)}
-                </button>
-              ))}
-            </div>
-          </>
+          <p>
+            {lecture.date} ·{" "}
+            {t("dashboard.attendance", {
+              status: attendanceLabel(lecture.attendance, t),
+            })}
+          </p>
         )}
       </div>
       {scheduled ? null : (
-        <button type="button" onClick={() => onOpen(lecture)}>
+        <div
+          className="attendance-control"
+          role="group"
+          aria-label={t("dashboard.attendanceFor", { lecture: lecture.title })}
+        >
+          {(["present", "absent", "unknown"] as const).map((status) => (
+            <button
+              aria-pressed={lecture.attendance === status}
+              className={lecture.attendance === status ? "is-active" : undefined}
+              key={status}
+              onClick={() => onSetAttendance(lecture.id, status)}
+              type="button"
+            >
+              {attendanceLabel(status, t)}
+            </button>
+          ))}
+        </div>
+      )}
+      {scheduled ? null : (
+        <button className="lecture-open-button" type="button" onClick={() => onOpen(lecture)}>
           {t("dashboard.openLecture", { number: lecture.number })}
         </button>
       )}
