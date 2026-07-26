@@ -3,7 +3,11 @@ from __future__ import annotations
 from typing import Protocol
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.canvas_text_normalizer import clean_canvas_items, clean_canvas_text
+from lecturepilot.canvas_text_normalizer import (
+    clean_canvas_items,
+    clean_canvas_text,
+    trim_canvas_text,
+)
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_math import normalize_generated_math_block, validate_section_math
 from lecturepilot.course_canvas_section_batch import SectionPlanResult, plan_section_batch
@@ -217,7 +221,7 @@ def _read_block(
         return CanvasBlock(
             id=block_id,
             type="list",
-            items=[_trim(item, 340) for item in clean_canvas_items(raw_items[:12])],
+            items=[trim_canvas_text(item, 340) for item in clean_canvas_items(raw_items[:12])],
         )
     if block_type in {"asset", "video"}:
         asset_path = str(raw_block.get("asset_path"))
@@ -227,15 +231,22 @@ def _read_block(
             asset_path=asset_path,
             asset_url=allowed_assets.get(asset_path),
             caption=str(raw_block.get("caption") or asset_path)[:500],
-            text=_trim(clean_canvas_text(raw_block.get("text") or raw_block.get("content")), 700)
+            text=trim_canvas_text(
+                clean_canvas_text(raw_block.get("text") or raw_block.get("content")), 700
+            )
             or None,
         )
     if block_type == "quiz":
         return CanvasBlock(
             id=block_id,
             type="quiz",
-            text=_trim(clean_canvas_text(raw_block.get("text") or raw_block.get("question")), 1400),
-            items=[_trim(item, 180) for item in clean_canvas_items(_block_items(raw_block)[:6])],
+            text=trim_canvas_text(
+                clean_canvas_text(raw_block.get("text") or raw_block.get("question")), 1400
+            ),
+            items=[
+                trim_canvas_text(item, 180)
+                for item in clean_canvas_items(_block_items(raw_block)[:6])
+            ],
             caption=str(raw_block.get("caption") or raw_block.get("title") or "Checkpoint quiz")[
                 :500
             ],
@@ -245,7 +256,7 @@ def _read_block(
         return CanvasBlock(
             id=block_id,
             type=block_type,
-            text=_trim(raw_text, 2400),
+            text=trim_canvas_text(raw_text, 2400),
             caption=str(raw_block.get("caption") or raw_block.get("title") or "")[:500] or None,
         )
     if block_type == "math":
@@ -253,7 +264,7 @@ def _read_block(
     return CanvasBlock(
         id=block_id,
         type=block_type,
-        text=_trim(raw_text, 2400),
+        text=trim_canvas_text(raw_text, 2400),
     )
 
 
@@ -282,12 +293,3 @@ def _allowed_assets(section: CanvasSection) -> dict[str, str | None]:
 def _safe_id(value: str) -> str:
     safe = "".join(char.lower() if char.isalnum() else "-" for char in value)
     return "-".join(part for part in safe.split("-") if part)[:120] or "learning-section"
-
-
-def _trim(value: str, limit: int) -> str:
-    cleaned = (
-        value.strip() if value.lstrip().startswith(("```", "~~~")) else " ".join(value.split())
-    )
-    if len(cleaned) <= limit:
-        return cleaned
-    return cleaned[: limit - 3].rstrip() + "..."

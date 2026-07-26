@@ -9,6 +9,7 @@ from lecturepilot.canvas_markdown import read_document_source, write_document_so
 from lecturepilot.canvas_text_normalizer import clean_canvas_text
 from lecturepilot.course_canvas_plan_parser import _read_block as read_planned_block
 from lecturepilot.course_canvas_prompt import planner_messages
+from lecturepilot.course_canvas_section_prompt import section_messages
 from lecturepilot.course_canvas_section_planner import _read_block as read_section_planned_block
 from lecturepilot.source_bundle_canvas import (
     SourceBundleCanvasError,
@@ -113,9 +114,29 @@ def test_notebook_code_keeps_indentation_across_planner_boundaries(tmp_path: Pat
 
     assert code in planner_messages(document)[1]["content"]
     assert "preserve it" in planner_messages(document)[0]["content"]
+    assert "Never collapse source code into one line" in planner_messages(document)[0]["content"]
+    assert (
+        "Never collapse source code into one line"
+        in section_messages(document, document.sections[0])[0]["content"]
+    )
     assert clean_canvas_text(code) == code
     assert read_planned_block({"text": code}, "code-1", "paragraph", {}).text == code
     assert read_section_planned_block({"text": code}, "code-1", "paragraph", {}).text == code
+
+
+def test_embedded_fenced_code_keeps_block_boundaries_across_planners() -> None:
+    text = (
+        "Inspect the implementation.\n\n"
+        "```java\n"
+        "public int findLast(int[] values) {\n"
+        "    return values.length - 1;\n"
+        "}\n"
+        "```\n\n"
+        "Then test the boundary."
+    )
+
+    assert read_planned_block({"text": text}, "code-1", "paragraph", {}).text == text
+    assert read_section_planned_block({"text": text}, "code-1", "paragraph", {}).text == text
 
 
 def test_malformed_notebook_returns_a_controlled_error(tmp_path: Path) -> None:

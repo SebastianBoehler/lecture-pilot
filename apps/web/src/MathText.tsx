@@ -1,14 +1,17 @@
 import ReactMarkdown, { type Components } from "react-markdown";
 import type { ComponentProps } from "react";
 import { useLayoutEffect, useRef } from "react";
+import rehypeHighlight from "rehype-highlight";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import "katex/dist/katex.min.css";
 import "./math-text.css";
+import "./syntax-highlight.css";
 
 import { katexOptions } from "./courseLatexMacros";
 import { delimitedMathIsRenderable, segmentDisplayMath, tryRenderDisplayMath } from "./displayMath";
+import { formatLegacyFencedCode } from "./formatFencedCode";
 import { looseLatexPlugin } from "./looseLatex";
 
 type MathTextMode = "inline" | "block";
@@ -22,9 +25,9 @@ export function MathText({
   mode?: MathTextMode;
   text: string;
 }) {
-  const markdown = normalizeMarkdownMath(text);
+  const markdown = normalizeMarkdown(text);
   const highlightedMarkdown = highlightedText?.trim()
-    ? normalizeMarkdownMath(highlightedText.trim()).trim()
+    ? normalizeMarkdown(highlightedText.trim()).trim()
     : null;
   const target = highlightedMarkdown
     ? (highlightTarget(plainMarkdownText(markdown), plainMarkdownText(highlightedMarkdown)) ??
@@ -93,7 +96,10 @@ function MarkdownRenderer({
   const content = (
     <ReactMarkdown
       components={mode === "inline" ? inlineComponents : blockComponents}
-      rehypePlugins={[[rehypeKatex, katexOptions]]}
+      rehypePlugins={[
+        [rehypeKatex, katexOptions],
+        [rehypeHighlight, { detect: false }],
+      ]}
       remarkPlugins={[remarkGfm, remarkMath, looseLatexPlugin]}
     >
       {text}
@@ -194,6 +200,18 @@ function normalizeMarkdownMath(value: string) {
   return value
     .replace(/\\{1,2}\[([\s\S]*?)\\{1,2}\]/g, (_, formula: string) => `\n$$\n${formula}\n$$\n`)
     .replace(/\\{1,2}\(([\s\S]*?)\\{1,2}\)/g, (_, formula: string) => `$${formula}$`);
+}
+
+function normalizeMarkdown(value: string) {
+  return normalizeMarkdownMath(normalizeFencedCode(value));
+}
+
+function normalizeFencedCode(value: string) {
+  return value.replace(
+    /```([A-Za-z0-9_+-]*)[ \t]*([\s\S]*?)```/g,
+    (_, language: string, code: string) =>
+      `\n\n\`\`\`${language}\n${formatLegacyFencedCode(language, code)}\n\`\`\`\n\n`,
+  );
 }
 
 function plainMarkdownText(value: string) {

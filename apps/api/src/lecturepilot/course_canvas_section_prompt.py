@@ -35,7 +35,10 @@ def section_messages(
                 "asking for retrieval. Use light Markdown for key terms and notation. "
                 f"{generated_math_instructions()} "
                 "Preserve relevant fenced code in paragraph text with its language and "
-                "indentation; never execute it. Do not invent unsupported topics."
+                "indentation; never execute it. Never collapse source code into one line. "
+                "Put fences on their own lines, preserve source line breaks, and indent nested "
+                "blocks. If extraction provides one-line C/Java-style code, restore structural "
+                "line breaks after braces and statements. Do not invent unsupported topics."
             ),
         },
         {"role": "user", "content": section_evidence(source_document, section)},

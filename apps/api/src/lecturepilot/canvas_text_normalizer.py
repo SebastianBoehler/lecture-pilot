@@ -13,7 +13,7 @@ def clean_canvas_text(value: Any) -> str:
     if isinstance(value, list):
         return "\n".join(item for item in clean_canvas_items(value) if item)
     text = str(value).strip()
-    if _is_fenced_code(text):
+    if _contains_fenced_code(text):
         return text
     parsed = _parse_structured_text(text)
     if parsed is not None:
@@ -23,6 +23,13 @@ def clean_canvas_text(value: Any) -> str:
 
 def clean_canvas_items(values: list[Any]) -> list[str]:
     return [item for value in values if (item := clean_canvas_text(value))]
+
+
+def trim_canvas_text(value: str, limit: int) -> str:
+    cleaned = value.strip() if _contains_fenced_code(value) else " ".join(value.split())
+    if len(cleaned) <= limit:
+        return cleaned
+    return cleaned[: limit - 3].rstrip() + "..."
 
 
 def _clean_mapping(value: dict) -> str:
@@ -51,10 +58,10 @@ def _strip_markdown_artifacts(text: str) -> str:
     return "\n".join(line for line in lines if line).strip()
 
 
-def _is_fenced_code(text: str) -> bool:
+def _contains_fenced_code(text: str) -> bool:
     return bool(
-        re.fullmatch(
-            r"(?P<fence>`{3,}|~{3,})[^\n]*\n[\s\S]*\n(?P=fence)",
+        re.search(
+            r"(?P<fence>`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:\n)?(?P=fence)",
             text,
         )
     )

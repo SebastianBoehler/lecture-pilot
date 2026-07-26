@@ -106,6 +106,20 @@
   background: var(--color-bg-secondary);
 }
 
+.canvas-markdown pre code {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre;
+}
+
+.canvas-table-fallback {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 .canvas-markdown table {
   width: 100%;
   border-collapse: collapse;
