@@ -39,7 +39,6 @@ it("opens a published lecture in a professor-owned student preview", async () =>
     "professor",
   );
 
-  await user.click(screen.getByLabelText("Open tutor chat"));
   await user.type(screen.getByPlaceholderText(/ask about this lecture/i), "Test this concept.");
   await user.click(screen.getByRole("button", { name: /send message/i }));
   expect(await screen.findByText("Private preview answer.")).toBeInTheDocument();

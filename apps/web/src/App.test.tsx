@@ -246,7 +246,6 @@ describe("LecturePilot app shell", () => {
 
     await logIn(user);
     await openLecture03FromDashboard(user);
-    await user.click(screen.getByLabelText(/open tutor chat/i));
     await user.type(screen.getByPlaceholderText(/ask about this lecture/i), "Test fast model.");
     await user.click(screen.getByRole("button", { name: /send message/i }));
 
@@ -340,8 +339,8 @@ describe("LecturePilot app shell", () => {
       screen.getByRole("heading", { name: /^bayesian decision theory$/i, level: 1 }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /course workspaces/i })).not.toBeInTheDocument();
-    expect(screen.getByLabelText(/open tutor chat/i)).toBeInTheDocument();
-    expect(screen.queryByPlaceholderText(/ask about this lecture/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/close tutor chat/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/ask about this lecture/i)).toBeInTheDocument();
   });
 
   it("switches the focused workspace rail between tutor, outline, and notes", async () => {
@@ -351,7 +350,6 @@ describe("LecturePilot app shell", () => {
 
     await logIn(user);
     await openLecture03FromDashboard(user);
-    await user.click(screen.getByLabelText(/open tutor chat/i));
 
     expect(screen.getByPlaceholderText(/ask about this lecture/i)).toBeInTheDocument();
 
@@ -450,7 +448,6 @@ describe("LecturePilot app shell", () => {
 
     await user.click(screen.getByRole("button", { name: /preview local demo/i }));
     await openLecture03FromDashboard(user);
-    await user.click(screen.getByLabelText(/open tutor chat/i));
     expect(screen.getByText(/model after first turn/i)).toBeInTheDocument();
 
     const prompt = screen.getByPlaceholderText(/ask about this lecture/i);

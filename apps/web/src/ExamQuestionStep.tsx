@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 
 import { useI18n } from "./i18n";
+import { MathText } from "./MathText";
 import type { ExamReadinessQuestion } from "./types";
 
 export function ExamQuestionStep({
@@ -23,7 +24,7 @@ export function ExamQuestionStep({
   return (
     <fieldset className="exam-question" aria-describedby={contextId}>
       <legend ref={legendRef} tabIndex={-1}>
-        {question.prompt}
+        <MathText highlightedText={null} text={question.prompt} />
       </legend>
       <p className="exam-question-context" id={contextId}>
         {question.lecture_title} <span aria-hidden="true">·</span> {question.section_title}
@@ -41,7 +42,9 @@ export function ExamQuestionStep({
                 type="radio"
                 onChange={() => onAnswer(optionIndex)}
               />
-              <span>{option}</span>
+              <span>
+                <MathText highlightedText={null} text={option} />
+              </span>
             </label>
           ))}
         </div>

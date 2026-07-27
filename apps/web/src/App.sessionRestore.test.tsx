@@ -62,7 +62,7 @@ it("restores a canvas session without loading learner-profile data", async () =>
 
   render(<App />);
 
-  expect(await screen.findByLabelText(/open tutor chat/i)).toBeInTheDocument();
+  expect(await screen.findByLabelText(/close tutor chat/i)).toBeInTheDocument();
   await waitFor(() => {
     expect(
       fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/me/learning-profile")),

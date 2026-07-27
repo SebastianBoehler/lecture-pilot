@@ -228,11 +228,11 @@ describe("Dashboard course workspace matching", () => {
     const dialog = await screen.findByRole("dialog", { name: /exam readiness check/i });
     const quizPrompt = await within(dialog).findByText(/which quantity should be minimized/i);
     expect(quizPrompt).toBeVisible();
-    expect(quizPrompt).toHaveFocus();
+    expect(quizPrompt.closest("legend")).toHaveFocus();
     expect(within(dialog).getByText(/question 1 of 2/i)).toBeVisible();
     expect(within(dialog).getByRole("button", { name: /next question/i })).toBeDisabled();
     expect(
-      within(dialog).queryByText(/explain bayes formula as you would in an exam answer/i),
+      within(dialog).queryByText(/how does bayes formula combine prior and likelihood evidence/i),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByText(/expected risk combines posterior probabilities/i),
@@ -248,13 +248,15 @@ describe("Dashboard course workspace matching", () => {
     await user.click(within(reopenedDialog).getByRole("button", { name: /next question/i }));
     expect(within(reopenedDialog).getByText(/question 2 of 2/i)).toBeVisible();
     expect(
-      within(reopenedDialog).getByText(/explain bayes formula as you would in an exam answer/i),
+      within(reopenedDialog)
+        .getByText(/how does bayes formula combine prior and likelihood evidence/i)
+        .closest("legend"),
     ).toHaveFocus();
     expect(
       within(reopenedDialog).queryByText(/which quantity should be minimized/i),
     ).not.toBeInTheDocument();
     await user.type(
-      within(reopenedDialog).getByPlaceholderText(/write a concise exam-style answer/i),
+      within(reopenedDialog).getByPlaceholderText(/write a concise answer/i),
       "Use Bayes and compare risks.",
     );
     await user.click(within(reopenedDialog).getByRole("button", { name: /check readiness/i }));
@@ -350,7 +352,7 @@ function examReadinessPayload() {
         lecture_title: "Bayesian Decision Theory",
         section_id: "bayes-formula",
         section_title: "Bayes formula",
-        prompt: "Explain Bayes formula as you would in an exam answer.",
+        prompt: "How does Bayes formula combine prior and likelihood evidence?",
         options: [],
       },
     ],

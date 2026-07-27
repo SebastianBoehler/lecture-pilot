@@ -79,12 +79,13 @@ function useAuthenticatedAssetUrl(src: string, session: LoginSession): AssetStat
     setAsset({ url: null, error: null, loading: true });
     void fetch(resolvedUrl, authRequestInit(session))
       .then(async (response) => {
-        if (!response.ok) throw new Error("Asset could not be loaded.");
+        if (!response.ok) throw new Error(`Asset could not be loaded (${response.status}).`);
         objectUrl = URL.createObjectURL(await response.blob());
         if (active) setAsset({ url: objectUrl, error: null, loading: false });
       })
-      .catch(() => {
-        if (active) setAsset({ url: null, error: "Asset could not be loaded.", loading: false });
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : "Asset could not be loaded.";
+        if (active) setAsset({ url: null, error: message, loading: false });
       });
 
     return () => {

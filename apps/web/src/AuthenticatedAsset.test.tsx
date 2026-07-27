@@ -63,4 +63,24 @@ describe("AuthenticatedImage", () => {
     expect(image).toHaveAttribute("src", "https://example.edu/assets/risk.png");
     await waitFor(() => expect(fetchMock).not.toHaveBeenCalled());
   });
+
+  it("exposes the protected asset response status when loading fails", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(null, { status: 404 })),
+    );
+
+    render(
+      <AuthenticatedImage
+        alt="Missing diagram"
+        session={session}
+        src="/course-assets/demo-course/lecture-01/figures/missing.png"
+      />,
+    );
+
+    expect(await screen.findByAltText("Missing diagram")).toHaveAttribute(
+      "title",
+      "Asset could not be loaded (404).",
+    );
+  });
 });

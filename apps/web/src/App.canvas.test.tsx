@@ -44,7 +44,6 @@ describe("LecturePilot canvas interactions", () => {
 
     await logIn(user);
     await openLecture03FromDashboard(user);
-    await user.click(screen.getByLabelText(/open tutor chat/i));
     await user.type(screen.getByPlaceholderText(/ask about this lecture/i), "Show me posterior.");
     await user.click(screen.getByRole("button", { name: /send message/i }));
 
@@ -115,7 +114,6 @@ describe("LecturePilot canvas interactions", () => {
 
     await logIn(user);
     await openLecture03FromDashboard(user);
-    await user.click(screen.getByLabelText(/open tutor chat/i));
     await user.type(
       screen.getByPlaceholderText(/ask about this lecture/i),
       "Add a soccer example.",

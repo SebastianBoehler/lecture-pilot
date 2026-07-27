@@ -78,6 +78,11 @@
   flex-direction: column;
 }
 
+.exam-modal.exam-modal--loading {
+  height: 280px;
+  min-height: 0;
+}
+
 .exam-modal::backdrop {
   background: color-mix(in srgb, #121416 52%, transparent);
 }
@@ -134,9 +139,39 @@ body:has(.exam-modal[open]) {
 }
 
 .exam-modal-loading {
-  margin: auto;
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 0;
+  padding: 24px;
   color: var(--color-text-secondary);
-  font-weight: 650;
+}
+
+.exam-modal-loading strong {
+  display: block;
+  color: var(--color-text-primary);
+  font-size: 15px;
+}
+
+.exam-modal-loading p {
+  max-width: 440px;
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.exam-modal-spinner {
+  flex: 0 0 auto;
+  color: var(--color-accent-primary);
+  animation: exam-spinner 0.8s linear infinite;
+}
+
+@keyframes exam-spinner {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .exam-modal-empty {

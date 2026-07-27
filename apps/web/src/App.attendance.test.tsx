@@ -28,7 +28,6 @@ describe("LecturePilot attendance tutor intro", () => {
     expect(lectureRow).not.toBeNull();
     await user.click(within(lectureRow as HTMLElement).getByRole("button", { name: "present" }));
     await openLecture03FromDashboard(user);
-    await user.click(screen.getByLabelText(/open tutor chat/i));
 
     expect(screen.getByText(/you marked this lecture as attended/i)).toBeInTheDocument();
     expect(screen.getByText("mode: verification")).toBeInTheDocument();
@@ -76,7 +75,6 @@ describe("LecturePilot attendance tutor intro", () => {
     expect(lectureRow).not.toBeNull();
     await user.click(within(lectureRow as HTMLElement).getByRole("button", { name: "absent" }));
     await openLecture03FromDashboard(user);
-    await user.click(screen.getByLabelText(/open tutor chat/i));
     await user.type(
       screen.getByPlaceholderText(/ask about this lecture/i),
       "Explain this with a soccer example.",

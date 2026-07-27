@@ -73,7 +73,6 @@ describe("Tutor canvas navigation", () => {
     await logIn(user);
     await openLecture03FromDashboard(user);
     expect(scrollTargets).toEqual([]);
-    await user.click(screen.getByLabelText(/open tutor chat/i));
     await sendTutorMessage(user, "Show me the Bayes formula.");
     expect(await screen.findByText(/focus moved/i)).toBeInTheDocument();
     expect(scrollTargets.at(-1)).toBe("bayes-formula-list");

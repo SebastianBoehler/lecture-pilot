@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
 
 import { DisplayMath, MathText } from "./MathText";
 
@@ -197,6 +198,18 @@ describe("MathText", () => {
     expect(document.querySelector(".math-render-fallback")).toBeNull();
   });
 
+  it("renders structural LaTeX commands whose identifiers look like prose", () => {
+    render(
+      <DisplayMath
+        expression={String.raw`\frac{\mathrm{LOC}_{\mathrm{com}}}{\mathrm{LOC}_{\mathrm{phy}}} \times 100\%`}
+      />,
+    );
+
+    expect(document.querySelector(".katex-display")).not.toBeNull();
+    expect(document.querySelector(".katex-error")).toBeNull();
+    expect(document.body.textContent).not.toContain(String.raw`\frac`);
+  });
+
   it("keeps valid multiline LaTeX environments intact", () => {
     render(
       <DisplayMath
@@ -266,7 +279,9 @@ f(x) &= -x && \text{if } x < 0
     expect(document.querySelector(".katex")).not.toBeNull();
   });
 
-  it("renders notebook code cells as inert fenced code", () => {
+  it("renders notebook code cells with a language label and copy control", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
     const { container } = render(
       <MathText
         highlightedText={null}
@@ -278,6 +293,12 @@ f(x) &= -x && \text{if } x < 0
     const code = container.querySelector("pre code.language-python");
     expect(code).not.toBeNull();
     expect(code?.textContent).toContain("return theta - gradient");
+    expect(screen.getByText("python")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Copy" }));
+    expect(writeText).toHaveBeenCalledWith(
+      "def step(theta, gradient):\n    return theta - gradient",
+    );
+    expect(screen.getByRole("button", { name: "Copied" })).toBeInTheDocument();
     expect(container.querySelector("script")).toBeNull();
   });
 

@@ -1,4 +1,4 @@
-import { RotateCcw, X } from "lucide-react";
+import { LoaderCircle, RotateCcw, X } from "lucide-react";
 import { useLayoutEffect, useRef } from "react";
 
 import { ExamQuestionStep } from "./ExamQuestionStep";
@@ -71,7 +71,7 @@ export function ExamReadinessModal({
       aria-describedby={descriptionId}
       aria-labelledby={titleId}
       aria-modal="true"
-      className="exam-modal"
+      className={`exam-modal${loading && !check ? " exam-modal--loading" : ""}`}
       ref={dialogRef}
       role="dialog"
       onCancel={(event) => {
@@ -102,9 +102,13 @@ export function ExamReadinessModal({
 
       {error && check ? <p className="form-error exam-modal-error">{error}</p> : null}
       {loading && !check ? (
-        <p className="exam-modal-loading" role="status">
-          {t("exam.preparingStatus")}
-        </p>
+        <section className="exam-modal-loading" role="status">
+          <LoaderCircle aria-hidden="true" className="exam-modal-spinner" size={22} />
+          <div>
+            <strong>{t("exam.preparingStatus")}</strong>
+            <p>{t("exam.preparingHelp")}</p>
+          </div>
+        </section>
       ) : null}
       {error && !check && !loading ? (
         <section className="exam-modal-empty" role="alert">

@@ -109,6 +109,13 @@ function findProseBoundary(value: string) {
 }
 
 function looksLikeFormula(value: string) {
+  if (
+    /^\s*\\(?:begin|frac|dfrac|tfrac|sqrt|sum|prod|int|lim|left|vec|mathbf|mathbb|mathrm)\b/.test(
+      value,
+    )
+  ) {
+    return true;
+  }
   if (/=|\\(?:approx|equiv|geq?|leq?|in|sim)\b/.test(value)) return true;
   const withoutCommands = value.replace(/\\[a-zA-Z]+/g, "");
   if (looksLikeProse(withoutCommands)) return false;

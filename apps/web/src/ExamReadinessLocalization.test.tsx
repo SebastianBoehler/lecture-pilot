@@ -35,11 +35,8 @@ describe("Exam readiness localization", () => {
     const dialog = await screen.findByRole("dialog", { name: "Prüfungscheck" });
     expect(within(dialog).queryByRole("main")).not.toBeInTheDocument();
     expect(within(dialog).queryByText("Prüfungsvorbereitung")).not.toBeInTheDocument();
-    expect(within(dialog).getByText("Explain the source concept.")).toHaveFocus();
-    await user.type(
-      within(dialog).getByLabelText("Deine Antwort im Prüfungsstil"),
-      "Eine kurze Antwort.",
-    );
+    expect(within(dialog).getByText("Explain the source concept.").closest("legend")).toHaveFocus();
+    await user.type(within(dialog).getByLabelText("Deine Antwort"), "Eine kurze Antwort.");
     await user.click(within(dialog).getByRole("button", { name: "Bereitschaft prüfen" }));
 
     expect(await within(dialog).findByRole("heading", { name: "Bereit" })).toHaveFocus();
@@ -55,6 +52,39 @@ describe("Exam readiness localization", () => {
     expect(within(dialog).getByRole("list", { name: "Ergebnisübersicht" })).toHaveTextContent(
       "0 Prioritäten",
     );
+  });
+
+  it("explains that loading selects existing source-backed questions", async () => {
+    const user = userEvent.setup();
+    let resolveFetch: ((value: ReturnType<typeof json>) => void) | undefined;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        () =>
+          new Promise<ReturnType<typeof json>>((resolve) => {
+            resolveFetch = resolve;
+          }),
+      ),
+    );
+    renderWithI18n(
+      <ExamReadinessPanel
+        course={course}
+        lectures={[lecture]}
+        session={session}
+        onOpenLecture={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Start exam check" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Exam readiness check" });
+    const status = within(dialog).getByRole("status");
+    expect(status).toHaveTextContent("Selecting your questions");
+    expect(status).toHaveTextContent("It is not generating new questions");
+    expect(dialog).toHaveClass("exam-modal--loading");
+
+    resolveFetch?.(json(checkPayload()));
+    expect(await within(dialog).findByText("Explain the source concept.")).toBeInTheDocument();
   });
 });
 

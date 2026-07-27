@@ -82,7 +82,9 @@ function App() {
     route.view === "lesson" ? route.lessonMode : "learner",
   );
   const loadedLessonRoute = useRef<string | null>(null);
-  const [panelMode, setPanelMode] = useState<LessonPanelMode | null>(null);
+  const [panelMode, setPanelMode] = useState<LessonPanelMode | null>(
+    route.view === "lesson" ? "chat" : null,
+  );
   const [canvasDocument, setCanvasDocument] = useState<CanvasDocument | null>(null);
   const [canvasError, setCanvasError] = useState<string | null>(null);
   const [focusedSectionId, setFocusedSectionId] = useState("bayesian-decision-theory-the-aim");
@@ -289,7 +291,7 @@ function App() {
       setSelectedCourseId(courseId);
       setSelectedLecture(lecture);
       setLessonMode(mode);
-      setPanelMode(null);
+      setPanelMode("chat");
       setCanvasDocument(null);
       setCanvasError(null);
       setFocusedSectionId("bayesian-decision-theory-the-aim");
