@@ -170,8 +170,16 @@ source .venv/bin/activate
 pip install -e "apps/api[test,agent]"
 export DATABASE_URL=postgresql://lecturepilot:lecturepilot-test@127.0.0.1:55432/lecturepilot_test
 alembic -c apps/api/alembic.ini upgrade head
-pytest apps/api/tests
 uvicorn lecturepilot.app:app --app-dir apps/api/src --reload
+```
+
+Run tests against a separate disposable database so their table cleanup cannot
+erase local login, course, or learner state:
+
+```bash
+export LECTUREPILOT_TEST_DATABASE_URL=postgresql://lecturepilot:lecturepilot-test@127.0.0.1:55432/lecturepilot_pytest
+DATABASE_URL="$LECTUREPILOT_TEST_DATABASE_URL" alembic -c apps/api/alembic.ini upgrade head
+pytest apps/api/tests
 ```
 
 TeX-only slide previews require the isolated local compiler. See

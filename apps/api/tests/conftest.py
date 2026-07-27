@@ -4,8 +4,21 @@ import os
 
 import pytest
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
 
 from lecturepilot.database import _psycopg_url
+from lecturepilot.runtime_env import load_project_env
+
+
+load_project_env()
+_TEST_DATABASE_URL = os.getenv("LECTUREPILOT_TEST_DATABASE_URL", "").strip()
+if not _TEST_DATABASE_URL:
+    raise RuntimeError(
+        "LECTUREPILOT_TEST_DATABASE_URL is required and must name a dedicated *_pytest database."
+    )
+if not (make_url(_TEST_DATABASE_URL).database or "").endswith("_pytest"):
+    raise RuntimeError("LECTUREPILOT_TEST_DATABASE_URL must name a dedicated *_pytest database.")
+os.environ["DATABASE_URL"] = _TEST_DATABASE_URL
 
 
 @pytest.fixture(autouse=True)

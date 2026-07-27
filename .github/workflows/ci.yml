@@ -16,18 +16,19 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_DB: lecturepilot_test
+          POSTGRES_DB: lecturepilot_pytest
           POSTGRES_USER: lecturepilot
           POSTGRES_PASSWORD: lecturepilot-test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U lecturepilot -d lecturepilot_test"
+          --health-cmd "pg_isready -U lecturepilot -d lecturepilot_pytest"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
     env:
-      DATABASE_URL: postgresql://lecturepilot:lecturepilot-test@127.0.0.1:5432/lecturepilot_test
+      DATABASE_URL: postgresql://lecturepilot:lecturepilot-test@127.0.0.1:5432/lecturepilot_pytest
+      LECTUREPILOT_TEST_DATABASE_URL: postgresql://lecturepilot:lecturepilot-test@127.0.0.1:5432/lecturepilot_pytest
     steps:
       - uses: actions/checkout@v6
       - name: Set up Python
