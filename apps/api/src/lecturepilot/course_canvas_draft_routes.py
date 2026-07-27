@@ -125,6 +125,7 @@ def register_course_canvas_draft_routes(
                 course_id=course_id,
                 lecture_id=lecture_id,
                 actor_user_id=context.user_id,
+                repairable_only=True,
             )
             headers = (
                 {"X-Generation-Repairable": "true"}

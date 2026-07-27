@@ -13,6 +13,7 @@ from lecturepilot.course_canvas_repair_preflight import (
 )
 from lecturepilot.course_canvas_section_planner import _read_section_payload
 from lecturepilot.course_canvas_validation import validate_planned_document
+from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import ProviderCapability, ProviderSettings
 from lecturepilot.providers import ProviderConfigurationError
 
@@ -70,13 +71,14 @@ class CourseCanvasSectionRepairMixin:
             output_language=output_language,
         )
         last_error: CanvasGenerationRepairableError | None = None
-        for _attempt in range(2):
+        invalid_patch_count = 0
+        for attempt in range(3):
             repaired: CanvasDocument | None = None
             try:
                 payload = await self.model_client.complete_plan(
                     settings=settings,
                     messages=messages,
-                    temperature=0.3,
+                    temperature=0.1,
                 )
                 replacement = _read_section_payload(
                     payload,
@@ -95,7 +97,13 @@ class CourseCanvasSectionRepairMixin:
                 if repaired is not None and _is_new_target(exc, section, target):
                     raise exc.with_candidate(repaired)
                 last_error = exc
+                invalid_patch_count += 1
+                if invalid_patch_count == 2:
+                    break
                 messages = [*messages, _retry_message(str(exc), target)]
+            except ModelExecutionError:
+                if attempt == 2:
+                    raise
             except ProviderConfigurationError:
                 raise
         detail = str(last_error or "The proposed section patch is invalid.")
@@ -140,7 +148,11 @@ def _repair_messages(
             "content": (
                 "You are applying a surgical patch to a generated LecturePilot canvas. "
                 f"{canvas_language_instruction(output_language)} "
-                f"{scope} Return the standard structured canvas JSON with exactly one section. "
+                f"{scope} Return JSON only, with exactly this outer shape: "
+                '{"sections":[{"id":"same-section-id","title":"same title",'
+                '"source_ref":"same source reference","blocks":[...]}]}. '
+                "Each replacement block must include type, text, items, asset_path, caption, "
+                "and answer_index, using null or [] when a field does not apply. "
                 "Preserve the meaning and use only the supplied evidence. "
                 f"{repair_failure_constraint(failure)} "
                 f"{generated_math_instructions()}"
@@ -216,10 +228,6 @@ def _stable_replacement_blocks(
 ) -> list[CanvasBlock]:
     if not replacements:
         raise CanvasGenerationRepairableError("The proposed patch returned no replacement blocks.")
-    if len(replacements) > 3:
-        raise CanvasGenerationRepairableError(
-            "A block repair may contain at most 3 replacement blocks."
-        )
     primary = next(
         (index for index, block in enumerate(replacements) if block.type == target.type),
         len(replacements) - 1,

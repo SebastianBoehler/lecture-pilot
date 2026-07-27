@@ -2,47 +2,54 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_prompt import planner_messages, repair_message, source_evidence
 from lecturepilot.course_canvas_section_prompt import section_evidence
 from lecturepilot.course_canvas_section_planner import (
+    _read_section_payload,
     _section_messages,
     plan_sections_individually,
 )
 from lecturepilot.course_canvas_validation import (
-    planned_section_bounds,
     source_topic_sections,
     validate_planned_document,
 )
 from lecturepilot.latex_canvas_importer import import_latex_canvas
 from lecturepilot.models import ProviderSettings
-from lecturepilot.providers import ProviderConfigurationError
 
 
-def test_planner_uses_adaptive_section_targets_in_full_and_repair_contracts() -> None:
-    short_source = _source_document(4)
-    full_source = _source_document(10)
+def test_planner_uses_source_driven_depth_without_content_quotas() -> None:
+    source = _source_document(10)
+    prompt = planner_messages(source)[0]["content"]
+    repair = repair_message("bad draft", source)["content"]
+    section_prompt = _section_messages(source, source.sections[0])[0]["content"]
 
-    assert planned_section_bounds(short_source) == (4, 7)
-    assert planned_section_bounds(full_source) == (8, 12)
-    assert "4 to 7 pedagogical sections" in planner_messages(short_source)[0]["content"]
-    assert "8 to 12 pedagogical sections" in planner_messages(full_source)[0]["content"]
-    assert "4 to 7 study sections" in repair_message("bad draft", short_source)["content"]
-    assert "8 to 12 study sections" in repair_message("bad draft", full_source)["content"]
-
-
-def test_full_lecture_validation_requires_eight_but_allows_twelve_sections() -> None:
-    full_source = _source_document(10)
-
-    validate_planned_document(_generated_document(12), full_source)
-    with pytest.raises(ProviderConfigurationError, match="at least 8"):
-        validate_planned_document(_generated_document(7), full_source)
+    assert "Let section count and depth follow the supplied evidence" in prompt
+    assert "fixed section, block, or character quota" in prompt
+    assert "fixed section, block, or character quota" in repair
+    assert "length or block-count quota" in section_prompt
 
 
-def test_short_lecture_validation_does_not_force_eight_sections() -> None:
-    validate_planned_document(_generated_document(4), _source_document(4))
+def test_validation_does_not_enforce_a_section_or_character_quota() -> None:
+    validate_planned_document(_generated_document(1), _source_document(10))
+
+
+def test_section_parser_preserves_model_supported_depth_and_long_code() -> None:
+    source_section = _source_document(1).sections[0]
+    code = "```java\npublic class Example {\n" + "  int value;\n" * 300 + "}\n```"
+    blocks = [
+        {"type": "paragraph", "text": f"Source-supported block {index}."} for index in range(9)
+    ]
+    blocks.append({"type": "paragraph", "text": code})
+
+    section = _read_section_payload(
+        {"title": "Complete example", "blocks": blocks},
+        source_section,
+        {},
+    )
+
+    assert len(section.blocks) == 10
+    assert section.blocks[-1].text == code
 
 
 def test_single_topic_lecture_uses_coherent_assessment_requirements() -> None:
@@ -51,10 +58,8 @@ def test_single_topic_lecture_uses_coherent_assessment_requirements() -> None:
     validate_planned_document(_generated_document(1), source)
     prompt = planner_messages(source)[0]["content"]
     repair = repair_message("bad draft", source)["content"]
-    assert "fewer than 3 sections" in prompt
-    assert "at least one quiz" in prompt
-    assert "fewer than 3 sections" in repair
-    assert "at least one quiz" in repair
+    assert "at least one standalone assessment" in prompt
+    assert "at least one standalone assessment" in repair
 
 
 def test_asset_only_outline_section_does_not_inflate_fallback_topic_count() -> None:
@@ -75,7 +80,6 @@ def test_asset_only_outline_section_does_not_inflate_fallback_topic_count() -> N
     )
 
     assert len(source_topic_sections(source)) == 7
-    assert planned_section_bounds(source) == (5, 7)
 
 
 async def test_section_fallback_skips_asset_only_outline_sections() -> None:
@@ -113,8 +117,8 @@ def test_planner_and_section_fallback_receive_materially_more_bounded_evidence()
     assert 70_000 < len(full_evidence) <= 80_000
     assert 20_000 < len(fallback_evidence) <= 24_000
     assert (
-        "4 to 8 detailed teaching blocks"
-        in _section_messages(source, source.sections[0])[0]["content"]
+        "depth and structure follow the supplied evidence"
+        in (_section_messages(source, source.sections[0])[0]["content"])
     )
 
 
@@ -224,14 +228,21 @@ def _generated_document(section_count: int) -> CanvasDocument:
         ]
         if index == 1:
             blocks.append(
-                CanvasBlock(id="opening-check", type="checkpoint", text="Explain the mechanism.")
+                CanvasBlock(
+                    id="opening-check",
+                    type="checkpoint",
+                    text=(
+                        "Explain how evidence changes the posterior decision and identify "
+                        "one failure mode."
+                    ),
+                )
             )
         if index == 2 or index == section_count:
             blocks.append(
                 CanvasBlock(
                     id=f"quiz-{index}",
                     type="quiz",
-                    text="Which explanation follows the source mechanism?",
+                    text="Which explanation correctly describes the decision mechanism?",
                     items=["The detailed explanation.", "An unrelated claim."],
                     answer_index=0,
                 )

@@ -60,6 +60,7 @@ def register_course_canvas_repair_routes(
             course_id=course_id,
             lecture_id=lecture_id,
             actor_user_id=context.user_id,
+            repairable_only=True,
         )
         if failure is None or not failure.error_detail:
             raise HTTPException(

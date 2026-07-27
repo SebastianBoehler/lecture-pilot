@@ -13,7 +13,8 @@ def block_to_markdown(block: CanvasBlock) -> str:
     if block.type == "asset":
         target = asset_markdown_target(block)
         caption = block.caption or block.asset_path or "Course figure"
-        return f"{header}\n![{caption}]({target})"
+        detail = f"\n\n{block.text}" if block.text else ""
+        return f"{header}\n![{caption}]({target}){detail}"
     if block.type == "video":
         target = asset_markdown_target(block)
         caption = block.caption or "Course video"
@@ -126,6 +127,7 @@ def _read_block(
     if block_type == "asset":
         match = _IMAGE_RE.search(chunk)
         target = match.group("target") if match else ""
+        detail = chunk.replace(match.group(0), "", 1).strip() if match else None
         asset_path, asset_url = parsed_asset_target(
             target,
             course_id=course_id,
@@ -137,6 +139,7 @@ def _read_block(
             asset_path=asset_path,
             asset_url=asset_url,
             caption=match.group("caption") if match else asset_url,
+            text=detail or None,
         )
     if block_type == "video":
         caption, url, detail = _read_video(chunk)
@@ -286,7 +289,7 @@ _IMAGE_RE = re.compile(r"!\[(?P<caption>[^]]*)]\((?P<target>[^)]+)\)")
 _LINK_RE = re.compile(r"\[(?P<caption>[^]]+)]\((?P<target>[^)]+)\)|(?P<bare>https?://\S+)")
 _MATH_RE = re.compile(r"```math\s*(?P<formula>.*?)```", re.DOTALL)
 _RICH_RE = re.compile(
-    r":::(?P<kind>[a-zA-Z_-]+)\s*(?P<label>[^\n]*)\n(?P<body>.*?)\n?:::",
+    r":::(?P<kind>[a-zA-Z_-]+)[ \t]*(?P<label>[^\n]*)\n(?P<body>.*?)\n?:::",
     re.DOTALL,
 )
 _TABLE_SEPARATOR_RE = re.compile(r"\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?")

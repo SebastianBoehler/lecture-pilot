@@ -3,10 +3,7 @@ from __future__ import annotations
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_language import canvas_language_instruction
 from lecturepilot.course_canvas_math import generated_math_instructions
-from lecturepilot.course_canvas_validation import (
-    planned_section_bounds,
-    required_section_ids,
-)
+from lecturepilot.course_canvas_validation import required_section_ids
 
 
 MAX_SOURCE_EVIDENCE_SECTIONS = 80
@@ -19,7 +16,6 @@ def planner_messages(
     *,
     output_language: str = "en",
 ) -> list[dict[str, str]]:
-    min_sections, max_sections = planned_section_bounds(source_document)
     return [
         {
             "role": "system",
@@ -28,10 +24,12 @@ def planner_messages(
                 "source-grounded study document from extracted lecture material. "
                 f"{canvas_language_instruction(output_language)} "
                 "Do not mirror slide-by-slide order, do not preserve extracted slide ids, "
-                "and do not create one section per frame. Synthesize the full evidence into "
-                f"{min_sections} to {max_sections} pedagogical sections with stable topic ids, four to eight detailed "
-                "teaching blocks per section, key formulas, grouped lists, worked examples, "
+                "and do not create one section per frame. Organize every usable source topic "
+                "into coherent pedagogical sections with stable topic ids, key formulas, "
+                "grouped lists, worked examples, "
                 "callouts, infographic briefs, and existing source assets or videos when they help learning. "
+                "Let section count and depth follow the supplied evidence. Do not pad thin "
+                "material or omit dense material to meet a fixed section, block, or character quota. "
                 "Collapse long formula runs into a named derivation with only the essential equations. "
                 f"{generated_math_instructions()} "
                 "Make paragraphs self-study friendly: explain reason, mechanism, and consequence in "
@@ -66,15 +64,14 @@ def repair_message(
     *,
     output_language: str = "en",
 ) -> dict[str, str]:
-    min_sections, max_sections = planned_section_bounds(source_document)
     return {
         "role": "user",
         "content": (
             f"The previous draft failed validation: {error}. Return a corrected JSON draft. "
             f"{canvas_language_instruction(output_language)} "
-            f"Do not mirror extracted slide ids. Group source evidence into {min_sections} to {max_sections} study "
-            "sections, cite source files and frames in source_ref, use 4 to 8 detailed "
-            "teaching blocks and 600 explanatory characters per section. "
+            "Do not mirror extracted slide ids. Organize every usable source topic into coherent "
+            "study sections and cite source files and frames in source_ref. Let section depth "
+            "follow the evidence; do not write to a fixed section, block, or character quota. "
             f"{_assessment_instructions()} "
             "Source outline ids available for coverage: "
             f"{', '.join(required_section_ids(source_document)) or 'see evidence titles'}. "
@@ -85,10 +82,16 @@ def repair_message(
 
 def _assessment_instructions() -> str:
     return (
-        "For a draft with fewer than 3 sections, put a checkpoint or quiz in every section "
-        "and include at least one quiz. Otherwise, spread assessment blocks across at least "
-        "3 sections and include at least 2 quizzes. Place them after key concepts, worked "
-        "examples, or skill transitions, with a final retrieval quiz in the last section."
+        "Include at least one standalone assessment for the lecture, and add further "
+        "assessments only where the supplied evidence supports a determinate answer. Place "
+        "them after relevant concepts, worked examples, or skill transitions. Every "
+        "assessment text must be a specific, standalone, source-grounded question or "
+        "task that remains understandable away from the canvas. Put short labels such as "
+        "'Checkpoint' or 'Why this matters' only in caption, never at the start of text. "
+        "Do not refer to an exercise sheet, slide, source, section, or earlier question without "
+        "restating the necessary context. Do not use generic scaffolding such as 'explain the "
+        "key mechanism' or 'as you would in an exam answer'. Quiz text must contain exactly one "
+        "direct question ending in a question mark."
     )
 
 

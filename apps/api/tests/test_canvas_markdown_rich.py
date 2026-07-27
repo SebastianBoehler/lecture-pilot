@@ -155,3 +155,82 @@ def test_canvas_markdown_roundtrips_local_video_assets(tmp_path: Path) -> None:
     assert block.asset_path == "videos/prof-risk.mp4"
     assert block.asset_url == "/course-assets/demo-course/lecture-01/videos/prof-risk.mp4"
     assert block.caption == "Professor risk walkthrough"
+
+
+def test_canvas_markdown_roundtrips_assessments_without_captions(tmp_path: Path) -> None:
+    document = CanvasDocument(
+        id="demo-course-lecture-01",
+        course_id="demo-course",
+        lecture_id="lecture-01",
+        title="Demo",
+        source_kind="generated",
+        source_ref="source bundle",
+        workspace_path=str(tmp_path / "canvas" / "index.md"),
+        sections=[
+            CanvasSection(
+                id="assessment",
+                title="Assessment",
+                source_ref="lecture.pdf",
+                blocks=[
+                    CanvasBlock(
+                        id="assessment-checkpoint",
+                        type="checkpoint",
+                        text="Why does branch coverage not guarantee correctness?",
+                    ),
+                    CanvasBlock(
+                        id="assessment-quiz",
+                        type="quiz",
+                        text="Which artifact determines whether an observed result is correct?",
+                        items=["Control-flow graph", "Test oracle", "Coverage report"],
+                        answer_index=1,
+                    ),
+                ],
+            )
+        ],
+    )
+
+    write_document_source(document, tmp_path / "canvas")
+    reloaded = read_document_source(tmp_path / "canvas")
+
+    assert reloaded.sections[0].blocks[0].text == (
+        "Why does branch coverage not guarantee correctness?"
+    )
+    assert reloaded.sections[0].blocks[1].text == (
+        "Which artifact determines whether an observed result is correct?"
+    )
+    assert reloaded.sections[0].blocks[1].answer_index == 1
+
+
+def test_canvas_markdown_roundtrips_explanatory_asset_text(tmp_path: Path) -> None:
+    document = CanvasDocument(
+        id="demo-course-lecture-01",
+        course_id="demo-course",
+        lecture_id="lecture-01",
+        title="Demo",
+        source_kind="generated",
+        source_ref="source bundle",
+        workspace_path=str(tmp_path / "canvas" / "index.md"),
+        sections=[
+            CanvasSection(
+                id="figure",
+                title="Figure",
+                source_ref="lecture.pdf",
+                blocks=[
+                    CanvasBlock(
+                        id="figure-asset",
+                        type="asset",
+                        asset_path="generated-slides/lecture-01/slide-001.png",
+                        caption="Control-flow graph",
+                        text="The two outgoing edges represent the true and false outcomes.",
+                    )
+                ],
+            )
+        ],
+    )
+
+    write_document_source(document, tmp_path / "canvas")
+    reloaded = read_document_source(tmp_path / "canvas")
+
+    assert reloaded.sections[0].blocks[0].text == (
+        "The two outgoing edges represent the true and false outcomes."
+    )

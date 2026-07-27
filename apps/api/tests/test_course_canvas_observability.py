@@ -81,7 +81,7 @@ async def test_course_planner_logs_model_retry_attempts_without_error_messages(
         json.loads(record.message) for record in caplog.records if record.name == LOGGER_NAME
     ]
     section_payloads = [payload for payload in payloads if payload["stage"] == "section_plan"]
-    assert [payload["attempt"] for payload in section_payloads] == [1, 2]
+    assert [payload["attempt"] for payload in section_payloads] == [1, 2, 3]
     assert len({payload["generation_id"] for payload in payloads}) == 1
     assert all(payload["course_id"] == "martius-ml" for payload in payloads)
     assert all(payload["lecture_id"] == "lecture-03" for payload in payloads)
@@ -89,6 +89,7 @@ async def test_course_planner_logs_model_retry_attempts_without_error_messages(
     assert all(payload["model"] == "gemini/test-model" for payload in payloads)
     assert [payload["exception_type"] for payload in section_payloads] == [
         "ProviderConfigurationError",
+        "ModelExecutionError",
         "ModelExecutionError",
     ]
     assert any(payload["stage"] == "sectionwise_plan" for payload in payloads)

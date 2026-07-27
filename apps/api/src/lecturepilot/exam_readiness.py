@@ -4,6 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from lecturepilot.assessment_prompts import readiness_prompt
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_content_filter import is_learning_section
 from lecturepilot.models import Lecture
@@ -118,8 +119,9 @@ def _questions_for_document(
         for block in section.blocks:
             if question := _quiz_question(document, lecture_title, section, block):
                 multiple_choice.append(question)
-        if question := _open_question(document, lecture_title, section):
-            open_ended.append(question)
+        for block in section.blocks:
+            if question := _open_question(document, lecture_title, section, block):
+                open_ended.append(question)
     return [*multiple_choice[:2], *open_ended[:2]]
 
 
@@ -133,7 +135,9 @@ def _quiz_question(
         return None
     if block.answer_index is None or block.answer_index >= len(block.items) or len(block.items) < 2:
         return None
-    prompt = _trim(block.text or block.caption or section.title, 500)
+    prompt = readiness_prompt(block.text, "quiz")
+    if not prompt:
+        return None
     return ExamReadinessQuestion(
         id=f"{document.lecture_id}:{block.id}",
         kind="multiple_choice",
@@ -153,21 +157,24 @@ def _open_question(
     document: CanvasDocument,
     lecture_title: str,
     section: CanvasSection,
+    block: CanvasBlock,
 ) -> ExamReadinessQuestion | None:
+    if block.type != "checkpoint":
+        return None
+    prompt = readiness_prompt(block.text, "checkpoint")
+    if not prompt:
+        return None
     rubric = _section_rubric(section)
     if not rubric:
         return None
     return ExamReadinessQuestion(
-        id=f"{document.lecture_id}:{section.id}:open",
+        id=f"{document.lecture_id}:{block.id}:open",
         kind="open_ended",
         lecture_id=document.lecture_id,
         lecture_title=lecture_title,
         section_id=section.id,
         section_title=section.title,
-        prompt=(
-            f"Explain {section.title} as you would in an exam answer. "
-            "Name the key idea, when it applies, and one common mistake."
-        ),
+        prompt=prompt,
         rubric=rubric,
         source_ref=section.source_ref or document.source_ref,
     )

@@ -130,7 +130,7 @@ def test_exam_readiness_attempt_is_persisted_in_learner_progress(tmp_path: Path)
             "answers": [
                 {"question_id": "lecture-03:lecture-03-quiz", "selected_index": 0},
                 {
-                    "question_id": "lecture-03:lecture-03-section:open",
+                    "question_id": "lecture-03:lecture-03-checkpoint:open",
                     "text": "Bayes compares evidence.",
                 },
             ]
@@ -189,7 +189,7 @@ def test_exam_readiness_rejects_out_of_range_mc_before_open_answer_evaluation(
             "answers": [
                 {"question_id": "lecture-03:lecture-03-quiz", "selected_index": 3},
                 {
-                    "question_id": "lecture-03:lecture-03-section:open",
+                    "question_id": "lecture-03:lecture-03-checkpoint:open",
                     "text": "Bayes compares evidence.",
                 },
             ]
@@ -237,7 +237,7 @@ def test_exam_readiness_attempts_are_user_isolated(tmp_path: Path) -> None:
                 "answers": [
                     {"question_id": "lecture-03:lecture-03-quiz", "selected_index": 1},
                     {
-                        "question_id": "lecture-03:lecture-03-section:open",
+                        "question_id": "lecture-03:lecture-03-checkpoint:open",
                         "text": "Expected risk uses costs.",
                     },
                 ]
@@ -307,6 +307,17 @@ def _document(lecture_id: str, title: str, *, with_quiz: bool) -> CanvasDocument
                 answer_index=1,
             )
         )
+    blocks.append(
+        CanvasBlock(
+            id=f"{lecture_id}-checkpoint",
+            type="checkpoint",
+            caption="Transfer check",
+            text=(
+                "How do evidence, model assumptions, and a decision rule interact "
+                "when making a prediction?"
+            ),
+        )
+    )
     return CanvasDocument(
         id=f"demo-ml-course-{lecture_id}",
         course_id="demo-ml-course",

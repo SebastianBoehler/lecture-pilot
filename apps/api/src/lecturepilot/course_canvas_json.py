@@ -3,12 +3,12 @@ from __future__ import annotations
 import json
 import re
 
-from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
+from lecturepilot.model_client import ModelExecutionError
 
 
 def parse_model_json(content: str | None) -> dict:
     if not content:
-        raise CanvasGenerationRepairableError("Course planner returned an empty response.")
+        raise ModelExecutionError("Course planner returned an empty response.")
     cleaned = _strip_code_fence(content.strip())
     candidates = [cleaned]
     candidates.extend(_escape_invalid_json_backslashes(candidate) for candidate in list(candidates))
@@ -19,8 +19,8 @@ def parse_model_json(content: str | None) -> dict:
             continue
         if isinstance(payload, dict):
             return payload
-        raise CanvasGenerationRepairableError("Course planner JSON must be an object.")
-    raise CanvasGenerationRepairableError("Course planner did not return valid JSON.")
+        raise ModelExecutionError("Course planner JSON must be an object.")
+    raise ModelExecutionError("Course planner did not return valid JSON.")
 
 
 def _escape_invalid_json_backslashes(content: str) -> str:

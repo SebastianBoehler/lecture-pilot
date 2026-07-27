@@ -8,6 +8,7 @@ from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSectio
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner
 from lecturepilot.course_canvas_section_planner import plan_sections_individually
+from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import ProviderSettings
 from lecturepilot.providers import ProviderRegistry
 
@@ -47,6 +48,19 @@ async def test_section_planner_keeps_a_complete_candidate_after_one_section_fail
     assert [section.id for section in caught.value.candidate.sections] == [
         f"learning-source-{index}" for index in range(1, 5)
     ]
+
+
+async def test_section_planner_retries_an_empty_model_response() -> None:
+    client = _TransientSectionPlanClient()
+
+    planned = await plan_sections_individually(
+        model_client=client,
+        settings=_settings(),
+        source_document=_source_document(1),
+    )
+
+    assert client.calls == 2
+    assert planned.sections[0].id == "learning-source-1"
 
 
 async def test_course_planner_starts_with_the_bounded_section_outline(
@@ -105,6 +119,17 @@ class _SectionOnlyPlanClient:
         return _section_payload(source_id)
 
 
+class _TransientSectionPlanClient:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def complete_plan(self, *, settings, messages):
+        self.calls += 1
+        if self.calls == 1:
+            raise ModelExecutionError("Course planner returned an empty response.")
+        return _section_payload(_source_id(messages))
+
+
 def _source_id(messages: list[dict[str, str]]) -> str:
     evidence = messages[1]["content"]
     return evidence.split("Required section id: ", 1)[1].splitlines()[0]
@@ -126,14 +151,17 @@ def _section_payload(source_id: str, *, math: str | None = None) -> dict:
         blocks.append(
             {
                 "type": "checkpoint",
-                "text": "Explain the source-backed mechanism and its failure mode.",
+                "text": (
+                    "Explain how evidence changes posterior risk and identify one resulting "
+                    "failure mode."
+                ),
             }
         )
     if source_id in {"source-2", "source-4"}:
         blocks.append(
             {
                 "type": "quiz",
-                "text": "Which statement matches the source?",
+                "text": f"Which statement correctly describes {source_id}?",
                 "items": ["An unrelated claim.", f"The explanation for {source_id}."],
                 "answer_index": 1,
             }

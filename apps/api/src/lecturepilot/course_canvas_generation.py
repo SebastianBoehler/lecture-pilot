@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from hashlib import sha256
+
 from collections.abc import Callable
 from fastapi import FastAPI
 from starlette.concurrency import run_in_threadpool
@@ -17,9 +19,7 @@ from lecturepilot.course_media import apply_course_media, course_media_evidence
 from lecturepilot.course_canvas_validation import validate_planned_document
 from lecturepilot.course_schedule_store import read_course_workspace
 from lecturepilot.logging_observability import operation_scope
-from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_usage import model_usage_scope
-from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.tenancy import TenantContext
 
 
@@ -159,28 +159,19 @@ async def repair_targeted_course_canvas_draft(
                 course_id=course_id,
                 workload="course_canvas",
             ):
-                document = await app.state.course_planner.repair_section(
-                    source,
-                    candidate,
+                document = await _repair_until_quality_valid(
+                    app,
+                    source=source,
+                    candidate=candidate,
                     section_id=repair.section_id,
                     block_id=repair.block_id,
                     failure_context=failure.error_detail,
                     output_language=output_language,
                 )
-            validate_planned_document(document, source)
-            await app.state.course_planner.validate_quality(source, document)
         except CanvasGenerationRepairableError as exc:
             if exc.candidate is None:
                 exc.with_candidate(candidate)
             raise exc.with_source_revision(repair.source_revision)
-        except (ModelExecutionError, ProviderConfigurationError) as exc:
-            raise CanvasGenerationRepairableError(
-                str(exc),
-                candidate=candidate,
-                section_id=repair.section_id,
-                block_id=repair.block_id,
-                source_revision=repair.source_revision,
-            ) from exc
         document = apply_course_media(document, media_root)
         document = app.state.canvas_workspace.write_course_canvas_draft(document)
         persist_repair_guidance(
@@ -195,6 +186,55 @@ async def repair_targeted_course_canvas_draft(
             {"section_count": len(document.sections), "warning_count": len(document.warnings)}
         )
         return document
+
+
+async def _repair_until_quality_valid(
+    app: FastAPI,
+    *,
+    source: CanvasDocument,
+    candidate: CanvasDocument,
+    section_id: str,
+    block_id: str | None,
+    failure_context: str,
+    output_language: str,
+) -> CanvasDocument:
+    active_candidate = candidate
+    active_section_id = section_id
+    active_block_id = block_id
+    active_failure = failure_context
+    repair_states: set[tuple[str, str | None, str]] = set()
+    while True:
+        candidate_digest = sha256(active_candidate.model_dump_json().encode()).hexdigest()
+        repair_state = (active_section_id, active_block_id, candidate_digest)
+        if repair_state in repair_states:
+            raise CanvasGenerationRepairableError(
+                active_failure,
+                candidate=active_candidate,
+                section_id=active_section_id,
+                block_id=active_block_id,
+            )
+        repair_states.add(repair_state)
+        repaired: CanvasDocument | None = None
+        try:
+            repaired = await app.state.course_planner.repair_section(
+                source,
+                active_candidate,
+                section_id=active_section_id,
+                block_id=active_block_id,
+                failure_context=active_failure,
+                output_language=output_language,
+            )
+            validate_planned_document(repaired, source)
+            await app.state.course_planner.validate_quality(source, repaired)
+            return repaired
+        except CanvasGenerationRepairableError as exc:
+            next_candidate = exc.candidate or repaired or active_candidate
+            if exc.section_id is None:
+                raise exc.with_candidate(next_candidate)
+            active_candidate = next_candidate
+            active_section_id = exc.section_id
+            active_block_id = exc.block_id
+            active_failure = str(exc)
 
 
 def _canvas_language(app: FastAPI, course_id: str) -> str:

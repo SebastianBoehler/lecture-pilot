@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
-from lecturepilot.course_canvas_math import normalize_generated_math_block
+from lecturepilot.course_canvas_math import math_block_error, normalize_generated_math_block
 
 
 def normalize_repair_candidate(
@@ -12,7 +12,7 @@ def normalize_repair_candidate(
     failure: str,
 ) -> CanvasDocument:
     lowered = failure.casefold()
-    if block_id is None or ("delimiter" not in lowered and "fence" not in lowered):
+    if block_id is None:
         return document
     section = next((item for item in document.sections if item.id == section_id), None)
     if section is None:
@@ -20,7 +20,21 @@ def normalize_repair_candidate(
     target = next((item for item in section.blocks if item.id == block_id), None)
     if target is None:
         raise CanvasGenerationRepairableError("The failed block no longer exists.")
-    if target.type != "math":
+    if target.type != "math" or not any(
+        marker in lowered
+        for marker in (
+            "math block",
+            "delimiter",
+            "fence",
+            "unsupported command",
+            "explanatory prose",
+        )
+    ):
+        return document
+    current_error = (math_block_error(target.text or "") or "").casefold()
+    if "unsupported" in lowered and "unsupported" not in current_error:
+        return document
+    if "explanatory prose" in lowered and "explanatory prose" not in current_error:
         return document
     block_type, text = normalize_generated_math_block(target.text or "")
     normalized = target.model_copy(update={"type": block_type, "text": text})
@@ -46,5 +60,22 @@ def repair_failure_constraint(failure: str) -> str:
     if "explanatory prose" in lowered:
         return (
             "Move explanatory prose into a paragraph or callout and keep only math in math blocks."
+        )
+    if any(
+        marker in lowered
+        for marker in (
+            "understandable without",
+            "depends on",
+            "not restated",
+            "cannot determine",
+            "omitted exercise",
+        )
+    ):
+        return (
+            "Make the assessment fully standalone by including every value, definition, table "
+            "entry, and premise needed to answer it. Never refer to a sheet, slide, source, prior "
+            "question, or omitted context. If the supplied evidence is insufficient to create a "
+            "determinate standalone assessment, replace the failed assessment with an accurate "
+            "teaching paragraph instead of inventing data."
         )
     return "Correct only the reported validation failure."

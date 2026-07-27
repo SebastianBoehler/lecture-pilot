@@ -5,9 +5,11 @@ from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner
 from lecturepilot.course_canvas_quality import (
     CanvasQualityReviewer,
+    _quality_messages,
 )
 from lecturepilot.models import ProviderSettings
-from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
+from lecturepilot.model_client import ModelExecutionError
+from lecturepilot.providers import ProviderRegistry
 from test_course_canvas_targeted_repair import _invalid_candidate
 
 
@@ -33,6 +35,15 @@ async def test_quality_reviewer_rejects_a_wrong_selected_quiz_answer() -> None:
         )
 
 
+def test_quality_review_treats_checkpoints_as_open_answer_tasks() -> None:
+    document = _source_document()
+
+    prompt = _quality_messages(document, document)[0]["content"]
+
+    assert "A checkpoint is an open-answer task" in prompt
+    assert "does not need answer options" in prompt
+
+
 async def test_quality_reviewer_rejects_unknown_issue_coordinates() -> None:
     document = _source_document()
     reviewer = CanvasQualityReviewer(
@@ -47,12 +58,67 @@ async def test_quality_reviewer_rejects_unknown_issue_coordinates() -> None:
         )
     )
 
-    with pytest.raises(ProviderConfigurationError, match="unknown section"):
+    with pytest.raises(ModelExecutionError, match="unknown section"):
         await reviewer.validate(
             settings=_settings(),
             source_document=document,
             candidate_document=document,
         )
+
+
+async def test_quality_reviewer_preserves_detailed_issue_reasoning() -> None:
+    document = _source_document()
+    detailed_reason = "Unsupported derivation detail. " * 30
+    reviewer = CanvasQualityReviewer(
+        model_client=_QualityClient(
+            [
+                {
+                    "section_id": "topic",
+                    "block_id": "source",
+                    "reason": detailed_reason,
+                }
+            ]
+        )
+    )
+
+    with pytest.raises(CanvasGenerationRepairableError) as caught:
+        await reviewer.validate(
+            settings=_settings(),
+            source_document=document,
+            candidate_document=document,
+        )
+
+    assert detailed_reason.strip() in str(caught.value)
+
+
+async def test_quality_reviewer_targets_the_section_when_multiple_blocks_fail() -> None:
+    document = _source_document()
+    reviewer = CanvasQualityReviewer(
+        model_client=_QualityClient(
+            [
+                {
+                    "section_id": "topic",
+                    "block_id": "quiz",
+                    "reason": "The selected answer is unsupported.",
+                },
+                {
+                    "section_id": "topic",
+                    "block_id": "source",
+                    "reason": "The task depends on omitted code.",
+                },
+            ]
+        )
+    )
+
+    with pytest.raises(CanvasGenerationRepairableError) as caught:
+        await reviewer.validate(
+            settings=_settings(),
+            source_document=document,
+            candidate_document=document,
+        )
+
+    assert caught.value.section_id == "topic"
+    assert caught.value.block_id is None
 
 
 async def test_course_planner_regenerates_once_with_quality_feedback(

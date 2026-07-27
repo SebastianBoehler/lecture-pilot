@@ -3,27 +3,15 @@ import pytest
 from canvas_workspace_fixtures import published_course_canvas
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner
+from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.providers import ProviderRegistry
 from test_course_canvas_targeted_repair import _invalid_candidate
 
 
-async def test_section_repair_applies_only_replacement_blocks_and_preserves_the_rest(
+async def test_section_repair_normalizes_explanatory_math_without_calling_the_model(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    planner, model = _planner(
-        monkeypatch,
-        [
-            _repair_payload(
-                [
-                    {
-                        "type": "paragraph",
-                        "text": "The transpose aligns the weight vector with the input dimensions.",
-                    },
-                    {"type": "math", "text": r"w^\top x"},
-                ]
-            )
-        ],
-    )
+    planner, model = _planner(monkeypatch, [])
     source = published_course_canvas("targeted-repair", "lecture-01")
     candidate = _invalid_candidate(source)
 
@@ -41,17 +29,11 @@ async def test_section_repair_applies_only_replacement_blocks_and_preserves_the_
     assert repaired.sections[1] == candidate.sections[1]
     assert repaired.sections[0].blocks[0] == candidate.sections[0].blocks[0]
     assert repaired.sections[0].blocks[-3:] == candidate.sections[0].blocks[-3:]
-    replacement = repaired.sections[0].blocks[1:3]
-    assert [(block.id, block.type) for block in replacement] == [
-        ("optimization-math-repair-1", "paragraph"),
-        ("optimization-math", "math"),
-    ]
-    assert replacement[1].text == r"w^\top x"
-    prompt = model.messages[0]
-    assert "optimization-math" in prompt[-1]["content"]
-    assert "only replacement blocks" in prompt[0]["content"]
-    assert "Move explanatory prose into a paragraph or callout" in prompt[0]["content"]
-    assert "move that text to a paragraph" in prompt[-1]["content"]
+    replacement = repaired.sections[0].blocks[1]
+    assert replacement.id == "optimization-math"
+    assert replacement.type == "math"
+    assert replacement.text == r"\text{The score is computed as }w^\top x."
+    assert model.messages == []
 
 
 async def test_section_repair_retries_once_with_the_new_validation_error(
@@ -92,8 +74,37 @@ async def test_section_repair_retries_once_with_the_new_validation_error(
         "Replace unsupported commands with portable KaTeX commands"
         in model.messages[0][0]["content"]
     )
+    assert "exactly this outer shape" in model.messages[0][0]["content"]
+    assert '"same-section-id"' in model.messages[0][0]["content"]
     assert "unsupported or course-specific" in model.messages[1][-1]["content"]
-    assert model.temperatures == [0.3, 0.3]
+    assert model.temperatures == [0.1, 0.1]
+    repaired_math = next(
+        block for block in repaired.sections[0].blocks if block.id == "optimization-math"
+    )
+    assert repaired_math.text == r"z=\mu+\epsilon"
+
+
+async def test_section_repair_retries_an_empty_model_response(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    planner, model = _planner(
+        monkeypatch,
+        [
+            ModelExecutionError("Course planner returned an empty response."),
+            _repair_payload([{"type": "math", "text": r"z=\mu+\epsilon"}]),
+        ],
+    )
+    source = published_course_canvas("targeted-repair", "lecture-01")
+
+    repaired = await planner.repair_section(
+        source,
+        _invalid_candidate(source),
+        section_id="learning-optimization",
+        block_id="optimization-math",
+        failure_context="The formula is unsupported by the source.",
+    )
+
+    assert len(model.messages) == 2
     repaired_math = next(
         block for block in repaired.sections[0].blocks if block.id == "optimization-math"
     )
@@ -215,7 +226,7 @@ async def test_section_repair_retains_the_patch_and_advances_to_the_next_invalid
             failure_context="The first formula contains explanatory prose.",
         )
 
-    assert len(model.messages) == 1
+    assert model.messages == []
     assert caught.value.section_id == "learning-summary"
     assert caught.value.block_id == "summary-2"
     assert caught.value.candidate is not None
@@ -224,11 +235,11 @@ async def test_section_repair_retains_the_patch_and_advances_to_the_next_invalid
         for block in caught.value.candidate.sections[0].blocks
         if block.id == "optimization-math"
     )
-    assert first_math.text == r"w^\top x"
+    assert first_math.text == r"\text{The score is computed as }w^\top x."
 
 
 class _RepairModel:
-    def __init__(self, payloads: list[dict]) -> None:
+    def __init__(self, payloads: list[dict | Exception]) -> None:
         self.payloads = payloads
         self.messages: list[list[dict[str, str]]] = []
         self.temperatures: list[float] = []
@@ -237,7 +248,10 @@ class _RepairModel:
         assert settings.model == "gemini/test-model"
         self.messages.append(messages)
         self.temperatures.append(temperature)
-        return self.payloads[len(self.messages) - 1]
+        payload = self.payloads[len(self.messages) - 1]
+        if isinstance(payload, Exception):
+            raise payload
+        return payload
 
 
 class _NoIssuesQualityReviewer:
@@ -257,7 +271,7 @@ class _SectionModel:
 
 def _planner(
     monkeypatch: pytest.MonkeyPatch,
-    payloads: list[dict],
+    payloads: list[dict | Exception],
 ) -> tuple[CourseCanvasPlanner, _RepairModel]:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     model = _RepairModel(payloads)

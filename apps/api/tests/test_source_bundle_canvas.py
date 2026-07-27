@@ -1,7 +1,8 @@
 from pathlib import Path
 
 from lecturepilot.pdf_slide_assets import MAX_RENDERED_SLIDES
-from lecturepilot.source_bundle_canvas import MAX_PDF_PAGES, import_source_bundle_canvas
+from lecturepilot.source_bundle_canvas import import_source_bundle_canvas
+from lecturepilot.source_bundle_pdf import PDF_PAGES_PER_SECTION
 
 
 def test_source_bundle_canvas_imports_markdown_text_pdf_and_assets(tmp_path: Path) -> None:
@@ -161,7 +162,7 @@ def test_compiled_slide_pdf_is_visual_evidence_without_duplicate_pdf_text(
 
 def test_pdf_source_bundle_samples_text_and_slides_across_the_full_deck(tmp_path: Path) -> None:
     root = tmp_path / "bundle"
-    page_count = max(MAX_PDF_PAGES, MAX_RENDERED_SLIDES) + 7
+    page_count = max(PDF_PAGES_PER_SECTION, MAX_RENDERED_SLIDES) + 7
     _write_pdf(
         root / "long-lecture.pdf",
         *[
@@ -177,18 +178,24 @@ def test_pdf_source_bundle_samples_text_and_slides_across_the_full_deck(tmp_path
         workspace_path="planner/source.json",
     )
 
-    section = next(item for item in document.sections if item.id == "long-lecture-pdf")
+    sections = [item for item in document.sections if item.id.startswith("long-lecture-pdf")]
+    assert len(sections) >= 2
     paragraph_text = "\n".join(
-        block.text or "" for block in section.blocks if block.type == "paragraph"
+        block.text or ""
+        for section in sections
+        for block in section.blocks
+        if block.type == "paragraph"
     )
     slide_captions = [
         block.caption or ""
+        for section in sections
         for block in section.blocks
         if block.asset_path and block.asset_path.startswith("generated-slides/")
     ]
     assert "[PDF page 1]" in paragraph_text
     assert f"[PDF page {page_count}]" in paragraph_text
-    assert section.source_ref and section.source_ref.endswith(str(page_count))
+    assert sections[0].source_ref and "pages 1" in sections[0].source_ref
+    assert sections[-1].source_ref and sections[-1].source_ref.endswith(str(page_count))
     assert slide_captions[0] == "Original slide 1 from long-lecture.pdf"
     assert slide_captions[-1] == f"Original slide {page_count} from long-lecture.pdf"
 

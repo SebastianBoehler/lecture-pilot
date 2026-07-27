@@ -2,23 +2,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from lecturepilot.bounded_processing import BoundedProcessingError
-from lecturepilot.bounded_sampling import evenly_sampled_indexes
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.canvas_models import CanvasDocument, CanvasSection
 from lecturepilot.compiled_slide_canvas import compiled_slide_preview
 from lecturepilot.latex_canvas_importer import CANVAS_IMPORT_VERSION, import_latex_canvas
 from lecturepilot.latex_canvas_text import BROWSER_ASSET_SUFFIXES, slug
-from lecturepilot.pdf_extract import pdf_page_count, read_pdf_text
-from lecturepilot.pdf_slide_assets import PdfSlideAssetError, render_pdf_slide_blocks
 from lecturepilot.source_bundle import SourceBundleFile, scan_source_bundle
 from lecturepilot.source_bundle_latex import scoped_latex_sections, source_kind
-from lecturepilot.source_bundle_media import asset_section, media_caption, video_section
+from lecturepilot.source_bundle_media import asset_section, video_section
+from lecturepilot.source_bundle_pdf import PdfSourceError, pdf_sections
+from lecturepilot.source_bundle_text import heading, text_blocks
 from lecturepilot.source_code_canvas import SourceCodeCanvasError, code_section, notebook_section
 
 
-MAX_TEXT_CHARS_PER_FILE = 12000
-MAX_PDF_PAGES = 20
-MAX_PDF_TEXT_BLOCKS = 12
 VIDEO_SUFFIXES = {".mp4", ".webm", ".mov", ".mkv", ".avi"}
 
 
@@ -63,15 +58,19 @@ def import_source_bundle_canvas(
                 sections.append(section)
                 source_refs.append(file.path)
         elif file.kind == "pdf":
-            if section := _pdf_section(
-                path,
-                file.path,
-                source_root,
-                derived_root,
-                course_id,
-                lecture_id,
-            ):
-                sections.append(section)
+            try:
+                imported_pdf_sections = pdf_sections(
+                    path=path,
+                    source_ref=file.path,
+                    source_root=source_root,
+                    derived_root=derived_root,
+                    course_id=course_id,
+                    lecture_id=lecture_id,
+                )
+            except PdfSourceError as exc:
+                raise SourceBundleCanvasError(str(exc)) from exc
+            if imported_pdf_sections:
+                sections.extend(imported_pdf_sections)
                 source_refs.append(file.path)
         elif file.kind == "notebook":
             try:
@@ -127,130 +126,16 @@ def import_source_bundle_canvas(
 
 def _text_section(path: Path, source_ref: str, *, kind: str) -> CanvasSection | None:
     text = path.read_text(encoding="utf-8", errors="replace")
-    blocks = _text_blocks(source_ref, text)
+    blocks = text_blocks(source_ref, text)
     if not blocks:
         return None
-    title = _heading(text) or path.stem.replace("-", " ").replace("_", " ").title()
+    title = heading(text) or path.stem.replace("-", " ").replace("_", " ").title()
     return CanvasSection(
         id=slug(source_ref),
         title=title[:200],
         source_ref=source_ref,
         blocks=blocks,
     )
-
-
-def _pdf_section(
-    path: Path,
-    source_ref: str,
-    source_root: Path,
-    derived_root: Path,
-    course_id: str,
-    lecture_id: str,
-) -> CanvasSection | None:
-    text = _pdf_text(path)
-    page_numbers = [
-        index + 1 for index in evenly_sampled_indexes(_pdf_page_count(path), MAX_PDF_PAGES)
-    ]
-    section_id = slug(source_ref)
-    caption = media_caption(source_root, source_ref)
-    blocks = _pdf_text_blocks(source_ref, text)
-    blocks.append(
-        CanvasBlock(
-            id=f"{section_id}-asset-1",
-            type="asset",
-            asset_path=source_ref,
-            asset_url=f"/course-assets/{course_id}/{lecture_id}/{source_ref}",
-            caption=caption,
-        )
-    )
-    try:
-        blocks.extend(
-            render_pdf_slide_blocks(
-                pdf_path=path,
-                source_root=source_root,
-                output_root=derived_root,
-                course_id=course_id,
-                lecture_id=lecture_id,
-                source_ref=source_ref,
-            )
-        )
-    except PdfSlideAssetError as exc:
-        raise SourceBundleCanvasError(str(exc)) from exc
-    return CanvasSection(
-        id=section_id,
-        title=path.stem.replace("-", " ").replace("_", " ").title()[:200],
-        source_ref=f"{source_ref} pages {', '.join(map(str, page_numbers))}",
-        blocks=blocks,
-    )
-
-
-def _text_blocks(source_ref: str, text: str) -> list[CanvasBlock]:
-    paragraphs = _paragraphs(text)
-    return [
-        CanvasBlock(
-            id=f"{slug(source_ref)}-p-{index}",
-            type="paragraph",
-            text=paragraph,
-        )
-        for index, paragraph in enumerate(paragraphs[:8], start=1)
-    ]
-
-
-def _pdf_text_blocks(source_ref: str, text: str) -> list[CanvasBlock]:
-    paragraphs = _paragraphs(text)
-    selected = [
-        paragraphs[index] for index in evenly_sampled_indexes(len(paragraphs), MAX_PDF_TEXT_BLOCKS)
-    ]
-    return [
-        CanvasBlock(id=f"{slug(source_ref)}-p-{index}", type="paragraph", text=paragraph)
-        for index, paragraph in enumerate(selected, start=1)
-    ]
-
-
-def _paragraphs(text: str) -> list[str]:
-    cleaned = _strip_markdown_noise(text)[:MAX_TEXT_CHARS_PER_FILE]
-    paragraphs = []
-    for chunk in cleaned.split("\n\n"):
-        paragraph = " ".join(line.strip() for line in chunk.splitlines() if line.strip())
-        if len(paragraph.split()) >= 5:
-            paragraphs.append(paragraph[:1800])
-    return paragraphs
-
-
-def _strip_markdown_noise(text: str) -> str:
-    lines = []
-    for line in text.replace("\r\n", "\n").splitlines():
-        stripped = line.strip()
-        if stripped.startswith("<!--"):
-            continue
-        lines.append(stripped.lstrip("# ").lstrip("> ").lstrip("-* "))
-    return "\n".join(lines)
-
-
-def _heading(text: str) -> str | None:
-    for line in text.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("#"):
-            return stripped.lstrip("# ").strip()
-    return None
-
-
-def _pdf_text(path: Path) -> str:
-    try:
-        return read_pdf_text(
-            str(path),
-            max_pages=MAX_PDF_PAGES,
-            max_chars=MAX_TEXT_CHARS_PER_FILE,
-        )
-    except (BoundedProcessingError, ImportError) as exc:
-        raise SourceBundleCanvasError("PDF text extraction failed safely.") from exc
-
-
-def _pdf_page_count(path: Path) -> int:
-    try:
-        return pdf_page_count(str(path))
-    except (BoundedProcessingError, ImportError) as exc:
-        raise SourceBundleCanvasError("PDF page inspection failed safely.") from exc
 
 
 def _has_text(section: CanvasSection) -> bool:

@@ -121,6 +121,11 @@ def _create_course(client: TestClient) -> None:
                         CanvasBlock(
                             id="risk-text", type="paragraph", text="Expected risk weighs losses."
                         ),
+                        CanvasBlock(
+                            id="risk",
+                            type="checkpoint",
+                            text="How does expected risk use losses when choosing an action?",
+                        ),
                     ],
                 )
             ],

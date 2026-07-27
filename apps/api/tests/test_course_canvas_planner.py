@@ -5,6 +5,7 @@ import sys
 from types import SimpleNamespace
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner, LiteLLMCoursePlanClient
 from lecturepilot.providers import ProviderRegistry
 
@@ -39,6 +40,40 @@ async def test_litellm_course_plan_client_requests_canvas_schema(monkeypatch) ->
     assert schema["required"] == ["title", "sections"]
 
 
+async def test_course_planner_retries_structural_validation_with_feedback(monkeypatch) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    source = _source_document()
+    repair_contexts = []
+    validation_calls = 0
+
+    async def fake_plan_sections(**kwargs):
+        repair_contexts.append(kwargs["repair_context"])
+        return source
+
+    def fake_validate(_document, _source) -> None:
+        nonlocal validation_calls
+        validation_calls += 1
+        if validation_calls == 1:
+            raise CanvasGenerationRepairableError("Assessment prompt is not standalone.")
+
+    monkeypatch.setattr(
+        "lecturepilot.course_canvas_planner.plan_sections_individually",
+        fake_plan_sections,
+    )
+    monkeypatch.setattr(
+        "lecturepilot.course_canvas_planner.validate_planned_document",
+        fake_validate,
+    )
+    planner = CourseCanvasPlanner(
+        provider_registry=ProviderRegistry.from_env("gemini/test-model"),
+        quality_reviewer=_NoIssuesQualityReviewer(),
+    )
+
+    await planner.plan_canvas(source)
+
+    assert repair_contexts == [None, "Assessment prompt is not standalone."]
+
+
 async def test_course_planner_restyles_source_evidence(monkeypatch) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     planner = CourseCanvasPlanner(
@@ -62,6 +97,7 @@ async def test_course_planner_restyles_source_evidence(monkeypatch) -> None:
         "video",
         "list",
         "callout",
+        "checkpoint",
     ]
     assert section.blocks[3].asset_path == "Ch3/venn.pdf"
     assert section.blocks[3].asset_url == "/course-assets/martius-ml/lecture-03/Ch3/venn.pdf"
@@ -72,14 +108,12 @@ async def test_course_planner_restyles_source_evidence(monkeypatch) -> None:
         if any(block.type in {"checkpoint", "quiz"} for block in item.blocks)
     ]
     assert assessment_sections == [
-        "text-preprocessing-pipeline",
+        "bayes-decision-workflow",
         "learning-topic-6",
         "learning-topic-8",
     ]
-    middle_checkpoint = next(
-        block for block in document.sections[2].blocks if block.type == "checkpoint"
-    )
-    assert middle_checkpoint.caption == "Quality gate"
+    authored_checkpoint = next(block for block in section.blocks if block.type == "checkpoint")
+    assert authored_checkpoint.caption == "Decision workflow check"
     final_quiz = next(block for block in document.sections[-1].blocks if block.type == "quiz")
     assert final_quiz.answer_index == 1
     assert final_quiz.items[1] == "The posterior combines prior and likelihood evidence."
@@ -156,6 +190,14 @@ class _FakePlanClient:
                         "The learner should be able to point at the canvas and explain which source "
                         "quantity changes after observation and which quantity is a fixed modeling choice."
                     ),
+                },
+                {
+                    "type": "checkpoint",
+                    "text": (
+                        "How do prior, likelihood, posterior, and decision costs interact "
+                        "when selecting an action?"
+                    ),
+                    "caption": "Decision workflow check",
                 },
             ],
         }
@@ -249,7 +291,7 @@ class _FakePlanClient:
             extra_sections[section_index - 2]["blocks"].append(
                 {
                     "type": "quiz",
-                    "text": "Which statement follows from the lecture evidence?",
+                    "text": "Which statement correctly describes the posterior update?",
                     "items": [
                         "The posterior ignores the likelihood.",
                         "The posterior combines prior and likelihood evidence.",

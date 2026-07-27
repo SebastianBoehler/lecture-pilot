@@ -69,7 +69,9 @@ _ALLOWED_ENVIRONMENTS = frozenset(
 _TEXT_ARGUMENT_RE = re.compile(
     r"\\(?:operatorname|text|textrm|textsf|texttt|mathrm|mathsf|mathtt|mathit)\*?\{[^{}]*\}"
 )
-_PLAIN_WORD_RE = re.compile(r"(?<![\\.])\b[A-Za-z]{3,}\b(?!\.)")
+_SCRIPT_IDENTIFIER_RE = re.compile(r"[_^]\{[A-Za-z0-9,+\-=&\s]*\}")
+_BOOLEAN_LITERAL_RE = re.compile(r"(?<![\\A-Za-z])(?P<literal>true|false)(?![A-Za-z])")
+_PLAIN_PHRASE_RE = re.compile(r"(?<![\\.])\b[A-Za-z]{3,}\b(?:\s+|[-–—]\s*)\b[A-Za-z]{3,}\b(?!\.)")
 _LEADING_LABEL_RE = re.compile(
     r"^(?P<label>[A-Za-z][A-Za-z0-9 ,.'’()/-]*[A-Za-z][ :]\s*)"
     r"(?P<formula>(?:\\[A-Za-z]+|[A-Za-z]\s*[_^(]).*)$",
@@ -131,6 +133,7 @@ def normalize_generated_math(value: str) -> str:
     formula = formula.replace(r"\(", "").replace(r"\)", "")
     for pattern, replacement in _SOURCE_SHORTHANDS:
         formula = pattern.sub(replacement, formula)
+    formula = _replace_boolean_literals(formula)
     match = _LEADING_LABEL_RE.match(formula)
     if not match or not _looks_like_expression(match.group("formula")):
         return formula
@@ -138,8 +141,28 @@ def normalize_generated_math(value: str) -> str:
     return rf"\text{{{label}}}{match.group('formula')}"
 
 
+def _replace_boolean_literals(formula: str) -> str:
+    parts: list[str] = []
+    cursor = 0
+    for match in _TEXT_ARGUMENT_RE.finditer(formula):
+        parts.append(
+            _BOOLEAN_LITERAL_RE.sub(
+                lambda literal: rf"\mathrm{{{literal.group('literal')}}}",
+                formula[cursor : match.start()],
+            )
+        )
+        parts.append(match.group(0))
+        cursor = match.end()
+    parts.append(
+        _BOOLEAN_LITERAL_RE.sub(
+            lambda literal: rf"\mathrm{{{literal.group('literal')}}}",
+            formula[cursor:],
+        )
+    )
+    return "".join(parts)
+
+
 def _combine_display_segments(value: str) -> str:
-    """Join a model response made solely of display-delimited expressions."""
     matches = list(_DISPLAY_SEGMENT_RE.finditer(value))
     if len(matches) < 2:
         return value
@@ -165,7 +188,6 @@ def _combine_display_segments(value: str) -> str:
 
 
 def normalize_generated_math_block(value: str) -> tuple[str, str]:
-    """Normalize model math and demote plain prose that was assigned the wrong block type."""
     formula = normalize_generated_math(value)
     block_type = (
         "paragraph"
@@ -273,5 +295,6 @@ def _is_escaped(value: str, index: int) -> bool:
 def _contains_plain_prose(formula: str) -> bool:
     without_labels = _TEXT_ARGUMENT_RE.sub(" ", formula)
     without_environments = _ENVIRONMENT_RE.sub(" ", without_labels)
-    without_commands = _CONTROL_WORD_RE.sub(" ", without_environments)
-    return bool(_PLAIN_WORD_RE.search(without_commands))
+    without_commands = _CONTROL_WORD_RE.sub(" § ", without_environments)
+    without_script_identifiers = _SCRIPT_IDENTIFIER_RE.sub(" ", without_commands)
+    return bool(_PLAIN_PHRASE_RE.search(without_script_identifiers))

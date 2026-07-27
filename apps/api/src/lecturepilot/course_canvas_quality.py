@@ -20,7 +20,7 @@ class CanvasQualityIssue(BaseModel):
 
     section_id: str = Field(min_length=1, max_length=120)
     block_id: str | None = Field(default=None, max_length=120)
-    reason: str = Field(min_length=1, max_length=600)
+    reason: str = Field(min_length=1)
 
 
 class _CanvasQualityPayload(BaseModel):
@@ -99,11 +99,12 @@ class CanvasQualityReviewer:
             return
         first = issues[0]
         details = "; ".join(issue.reason for issue in issues[:5])
+        same_section = len({issue.section_id for issue in issues}) == 1
         raise CanvasGenerationRepairableError(
             f"Canvas quality review failed: {details}",
             candidate=candidate_document,
             section_id=first.section_id,
-            block_id=first.block_id,
+            block_id=None if len(issues) > 1 and same_section else first.block_id,
         )
 
 
@@ -150,8 +151,12 @@ def _quality_messages(
                 "error. A quiz is invalid when its selected answer is not supported by the source, "
                 "when another option is also correct, or when its question and selected answer do "
                 "not match. Plausible wrong distractors are allowed only inside quiz options and "
-                "must not be reported merely for being false. Report unsupported teaching claims, "
-                "altered code behavior, wrong formulas, and contradictions. Do not report style, "
+                "must not be reported merely for being false. A checkpoint is an open-answer task "
+                "and does not need answer options, an answer key, or a selected answer when its "
+                "prompt asks a direct, determinate question or task. Report unsupported teaching claims, "
+                "altered code behavior, wrong formulas, and contradictions. Also report an "
+                "assessment whose task is generic or depends on an exercise sheet, slide, source, "
+                "section, or prior question that is not restated. Do not otherwise report style, "
                 "wording, missing enrichment, or harmless simplification. Use exact candidate "
                 "section and block ids. Return an empty issues array only when no material issue "
                 "remains."
@@ -178,10 +183,10 @@ def _validate_coordinates(
     }
     for issue in issues:
         if issue.section_id not in blocks_by_section:
-            raise ProviderConfigurationError(
+            raise ModelExecutionError(
                 f"Canvas quality review returned unknown section {issue.section_id}."
             )
         if issue.block_id is not None and issue.block_id not in blocks_by_section[issue.section_id]:
-            raise ProviderConfigurationError(
+            raise ModelExecutionError(
                 f"Canvas quality review returned unknown block {issue.block_id}."
             )

@@ -12,6 +12,7 @@ def find_latest_canvas_failure(
     course_id: str,
     lecture_id: str,
     actor_user_id: str,
+    repairable_only: bool = False,
 ) -> CanvasGenerationJob | None:
     """Return the newest durable failure for this professor and lecture."""
     actor_key = layout.user_key(actor_user_id)
@@ -22,6 +23,7 @@ def find_latest_canvas_failure(
         if (job := _read_job(path)) is not None
         and job.status == "failed"
         and job.actor_key == actor_key
+        and (not repairable_only or job.error_code == "canvas_generation_repairable_error")
     ]
     return max(failures, key=lambda job: job.updated_at, default=None)
 

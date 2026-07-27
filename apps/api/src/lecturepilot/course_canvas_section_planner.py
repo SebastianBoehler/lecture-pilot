@@ -6,13 +6,13 @@ from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSectio
 from lecturepilot.canvas_text_normalizer import (
     clean_canvas_items,
     clean_canvas_text,
-    trim_canvas_text,
 )
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_math import normalize_generated_math_block, validate_section_math
 from lecturepilot.course_canvas_section_batch import SectionPlanResult, plan_section_batch
 from lecturepilot.course_canvas_section_prompt import section_messages as _section_messages
-from lecturepilot.course_canvas_validation import planned_section_bounds, source_topic_sections
+from lecturepilot.course_canvas_validation import source_topic_sections
+from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import ProviderSettings
 from lecturepilot.observability import Observability
 from lecturepilot.providers import ProviderConfigurationError
@@ -39,7 +39,6 @@ async def plan_sections_individually(
     span_attributes: dict[str, str] | None = None,
 ) -> CanvasDocument:
     source_sections = source_topic_sections(source_document) or source_document.sections
-    _, max_sections = planned_section_bounds(source_document)
     trace = observability or Observability()
 
     async def plan_one(section_index: int, source_section: CanvasSection) -> SectionPlanResult:
@@ -55,10 +54,9 @@ async def plan_sections_individually(
             section_index=section_index,
         )
 
-    selected = source_sections[:max_sections]
-    if not selected:
+    if not source_sections:
         raise CanvasGenerationRepairableError("Section planner returned no usable sections.")
-    return await plan_section_batch(source_document, selected, plan_one)
+    return await plan_section_batch(source_document, source_sections, plan_one)
 
 
 async def _plan_section(
@@ -83,9 +81,9 @@ async def _plan_section(
             {"role": "user", "content": f"Avoid this previous generation failure: {repair_context}"}
         )
     allowed_assets = _allowed_assets(source_section)
-    last_error: ProviderConfigurationError | None = None
+    last_error: ProviderConfigurationError | ModelExecutionError | None = None
     last_candidate: CanvasSection | None = None
-    for attempt in range(1, 3):
+    for attempt in range(1, 4):
         section: CanvasSection | None = None
         try:
             with observability.model_span(
@@ -100,6 +98,9 @@ async def _plan_section(
                 validate_section_math(section)
                 span.set_outputs({"section_count": 1})
                 return SectionPlanResult(section)
+        except ModelExecutionError as exc:
+            last_error = exc
+            continue
         except ProviderConfigurationError as exc:
             if section is not None or last_candidate is None:
                 last_error = exc
@@ -107,7 +108,9 @@ async def _plan_section(
             messages = [*messages, {"role": "user", "content": f"Repair the section: {exc}"}]
     if isinstance(last_error, CanvasGenerationRepairableError):
         return SectionPlanResult(last_candidate or source_section, last_error)
-    raise last_error or CanvasGenerationRepairableError("Section planner returned invalid JSON.")
+    if last_error is not None:
+        raise last_error
+    raise CanvasGenerationRepairableError("Section planner returned invalid JSON.")
 
 
 def _read_section_payload(
@@ -179,7 +182,7 @@ def _read_blocks(
         return []
     blocks = []
     counters: dict[str, int] = {}
-    for raw_block in raw_blocks[:8]:
+    for raw_block in raw_blocks:
         if not isinstance(raw_block, dict):
             continue
         block_type = raw_block.get("type")
@@ -221,7 +224,7 @@ def _read_block(
         return CanvasBlock(
             id=block_id,
             type="list",
-            items=[trim_canvas_text(item, 340) for item in clean_canvas_items(raw_items[:12])],
+            items=clean_canvas_items(raw_items),
         )
     if block_type in {"asset", "video"}:
         asset_path = str(raw_block.get("asset_path"))
@@ -231,22 +234,14 @@ def _read_block(
             asset_path=asset_path,
             asset_url=allowed_assets.get(asset_path),
             caption=str(raw_block.get("caption") or asset_path)[:500],
-            text=trim_canvas_text(
-                clean_canvas_text(raw_block.get("text") or raw_block.get("content")), 700
-            )
-            or None,
+            text=clean_canvas_text(raw_block.get("text") or raw_block.get("content")) or None,
         )
     if block_type == "quiz":
         return CanvasBlock(
             id=block_id,
             type="quiz",
-            text=trim_canvas_text(
-                clean_canvas_text(raw_block.get("text") or raw_block.get("question")), 1400
-            ),
-            items=[
-                trim_canvas_text(item, 180)
-                for item in clean_canvas_items(_block_items(raw_block)[:6])
-            ],
+            text=clean_canvas_text(raw_block.get("text") or raw_block.get("question")),
+            items=clean_canvas_items(_block_items(raw_block)[:26]),
             caption=str(raw_block.get("caption") or raw_block.get("title") or "Checkpoint quiz")[
                 :500
             ],
@@ -256,7 +251,7 @@ def _read_block(
         return CanvasBlock(
             id=block_id,
             type=block_type,
-            text=trim_canvas_text(raw_text, 2400),
+            text=raw_text,
             caption=str(raw_block.get("caption") or raw_block.get("title") or "")[:500] or None,
         )
     if block_type == "math":
@@ -264,7 +259,7 @@ def _read_block(
     return CanvasBlock(
         id=block_id,
         type=block_type,
-        text=trim_canvas_text(raw_text, 2400),
+        text=raw_text,
     )
 
 
@@ -277,7 +272,7 @@ def _block_items(raw_block: dict) -> list:
 
 
 def _answer_index(raw_block: dict) -> int:
-    items = _block_items(raw_block)[:6]
+    items = _block_items(raw_block)[:26]
     value = raw_block.get("answer_index", raw_block.get("correct_index"))
     if not isinstance(value, int) or not 0 <= value < len(items):
         raise CanvasGenerationRepairableError(

@@ -6,7 +6,6 @@ from uuid import uuid4
 from lecturepilot.agent_response_schema import course_canvas_response_format
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.course_content_filter import filter_source_document_for_planning
-from lecturepilot.course_canvas_enrichment import enrich_learning_document
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_json import parse_model_json
 from lecturepilot.course_canvas_quality import CanvasQualityReviewer
@@ -104,7 +103,7 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
         document: CanvasDocument | None = None
         quality_feedback: str | None = None
         try:
-            for quality_attempt in range(1, 3):
+            for quality_attempt in range(1, 4):
                 active_repair = (
                     "\n".join(value for value in (repair_context, quality_feedback) if value)
                     or None
@@ -123,14 +122,13 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
                         observability=self.observability,
                         span_attributes=span_attributes,
                     )
-                    document = enrich_learning_document(document, output_language=output_language)
                     document = interleave_original_slides(document, source_document)
-                    validate_planned_document(document, source_document)
                     try:
+                        validate_planned_document(document, source_document)
                         await self.validate_quality(source_document, document, settings=settings)
                     except CanvasGenerationRepairableError as exc:
                         exc.with_candidate(document)
-                        if quality_attempt == 2:
+                        if quality_attempt == 3:
                             raise
                         quality_feedback = str(exc)
                         continue
@@ -144,7 +142,6 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
         except CanvasGenerationRepairableError as exc:
             candidate = exc.candidate or document
             if candidate is not None:
-                candidate = enrich_learning_document(candidate, output_language=output_language)
                 candidate = interleave_original_slides(candidate, source_document)
                 exc.with_candidate(candidate)
             raise

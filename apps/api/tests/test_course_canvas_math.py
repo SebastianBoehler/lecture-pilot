@@ -80,6 +80,22 @@ def test_generated_math_normalization_expands_attention_symbols() -> None:
     validate_section_math(_section_with_math(normalized))
 
 
+def test_generated_math_normalization_marks_boolean_literals_as_operators() -> None:
+    formula = (
+        r"\begin{aligned}"
+        r"p_{c=true} &= \text{predicate with } c \text{ replaced by true} \\ "
+        r"p_{c=false} &= \text{predicate with } c \text{ replaced by false}"
+        r"\end{aligned}"
+    )
+
+    normalized = normalize_generated_math(formula)
+
+    assert r"p_{c=\mathrm{true}}" in normalized
+    assert r"p_{c=\mathrm{false}}" in normalized
+    assert r"\text{ replaced by true}" in normalized
+    validate_section_math(_section_with_math(normalized))
+
+
 @pytest.mark.parametrize(
     "formula",
     [
@@ -202,6 +218,15 @@ def test_qualified_program_identifiers_are_not_misclassified_as_prose() -> None:
     validate_section_math(
         _section_with_math(r"(p.X\le CTR.X)\land(p.X\ge CBL.X)\land(p.Y\le CTR.Y)")
     )
+
+
+def test_word_identifiers_in_subscripts_are_not_misclassified_as_prose() -> None:
+    validate_section_math(_section_with_math(r"v_{HK}(C) = \left(F_{in}(C) F_{out}(C)\right)^2"))
+
+
+def test_word_identifiers_in_program_formulas_are_not_misclassified_as_prose() -> None:
+    for formula in (r"\{I \land \neg(sum \le a)\}", r"I[sum \mapsto sum + k]"):
+        validate_section_math(_section_with_math(formula))
 
 
 def test_planned_document_validation_rejects_prose_in_math_blocks() -> None:

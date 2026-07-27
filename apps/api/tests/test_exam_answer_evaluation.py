@@ -219,6 +219,11 @@ def _route_document() -> CanvasDocument:
                         type="paragraph",
                         text="Expected risk combines posterior probabilities and losses.",
                     ),
+                    CanvasBlock(
+                        id="section",
+                        type="checkpoint",
+                        text=("How does expected risk combine posterior probabilities and losses?"),
+                    ),
                 ],
             )
         ],

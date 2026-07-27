@@ -5,7 +5,6 @@ from types import SimpleNamespace
 import pytest
 
 from canvas_workspace_fixtures import published_course_canvas
-from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_math import normalize_generated_math, validate_section_math
 from lecturepilot.course_canvas_planner import LiteLLMCoursePlanClient
 from lecturepilot.providers import ProviderRegistry
@@ -78,20 +77,21 @@ async def test_section_repair_normalizes_redundant_math_without_calling_the_mode
     assert model.messages == []
 
 
-async def test_block_repair_rejects_an_oversized_patch(
+async def test_block_repair_accepts_the_evidence_supported_patch_size(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    oversized = _repair_payload(
-        [{"type": "paragraph", "text": f"Unrelated rewrite {index}."} for index in range(4)]
+    replacement = _repair_payload(
+        [{"type": "paragraph", "text": f"Source-supported detail {index}."} for index in range(4)]
     )
-    planner, _model = _planner(monkeypatch, [oversized, oversized])
+    planner, _model = _planner(monkeypatch, [replacement])
     source = published_course_canvas("targeted-repair", "lecture-01")
 
-    with pytest.raises(CanvasGenerationRepairableError, match="at most 3 replacement blocks"):
-        await planner.repair_section(
-            source,
-            _invalid_candidate(source),
-            section_id="learning-optimization",
-            block_id="optimization-math",
-            failure_context="Repair only the failed formula.",
-        )
+    repaired = await planner.repair_section(
+        source,
+        _invalid_candidate(source),
+        section_id="learning-optimization",
+        block_id="optimization-math",
+        failure_context="Repair only the failed formula.",
+    )
+
+    assert len(repaired.sections[0].blocks) == 8
