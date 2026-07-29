@@ -1,5 +1,6 @@
 import { useI18n } from "./i18n";
-import type { LearnerCourseProfile, UniversityCourse } from "./types";
+import { findProfileCourse, humanizeCourseId } from "./profileCourseDisplay";
+import type { LearnerCourseProfile, LearnerFile, UniversityCourse } from "./types";
 
 export function LearnerCourseFiles({
   courses,
@@ -9,9 +10,7 @@ export function LearnerCourseFiles({
   profiles: LearnerCourseProfile[];
 }) {
   const { t } = useI18n();
-  const entries = mergeCourses(courses, profiles).filter(
-    ({ profile }) => (profile?.files.length ?? 0) > 0,
-  );
+  const entries = mergeCourses(courses, profiles).filter(({ files }) => files.length > 0);
   if (!entries.length) return null;
 
   return (
@@ -22,16 +21,16 @@ export function LearnerCourseFiles({
       </div>
       <div className="profile-section-content">
         <div className="learner-course-files">
-          {entries.map(({ course, profile }) => (
+          {entries.map(({ course, files }) => (
             <details key={course.id}>
               <summary>
                 <span>
                   <strong>{course.title}</strong>
-                  <small>{t("profile.files.count", { count: profile?.files.length ?? 0 })}</small>
+                  <small>{t("profile.files.count", { count: files.length })}</small>
                 </span>
               </summary>
               <div className="learner-file-list">
-                {profile?.files.map((file) => (
+                {files.map((file) => (
                   <details key={file.path}>
                     <summary>
                       <span title={file.path}>{personalFileLabel(file.path)}</span>
@@ -54,21 +53,28 @@ export function LearnerCourseFiles({
 }
 
 function mergeCourses(courses: UniversityCourse[], profiles: LearnerCourseProfile[]) {
-  const known = new Map(courses.map((course) => [course.id, course]));
+  const entries = new Map<string, { course: UniversityCourse; files: LearnerFile[] }>(
+    courses.map((course) => [course.id, { course, files: [] }]),
+  );
   for (const profile of profiles) {
-    if (!known.has(profile.course_id)) {
-      known.set(profile.course_id, {
+    const matchedCourse = findProfileCourse(profile.course_id, courses);
+    const key = matchedCourse?.id ?? profile.course_id;
+    const entry = entries.get(key) ?? {
+      course: matchedCourse ?? {
         id: profile.course_id,
-        title: profile.course_id,
+        title: humanizeCourseId(profile.course_id),
         professor: "",
         term: "",
-      });
+      },
+      files: [],
+    };
+    const knownPaths = new Set(entry.files.map((file) => file.path));
+    for (const file of profile.files) {
+      if (!knownPaths.has(file.path)) entry.files.push(file);
     }
+    entries.set(key, entry);
   }
-  return Array.from(known.values()).map((course) => ({
-    course,
-    profile: profiles.find((item) => item.course_id === course.id),
-  }));
+  return Array.from(entries.values());
 }
 
 function formatBytes(bytes: number) {

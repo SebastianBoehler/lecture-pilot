@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { BrainCircuit, CalendarClock, Check, GraduationCap, Network } from "lucide-react";
 
 import { useI18n } from "./i18n";
 import { LearnerCourseFiles } from "./LearnerCourseFiles";
+import { findProfileCourse, humanizeCourseId } from "./profileCourseDisplay";
 import type { LearningGoal, LoginSession } from "./types";
 import type { LearnerProfileState } from "./useLearnerProfile";
 
@@ -18,8 +20,19 @@ export function LearnerProfileControls({
   const { t } = useI18n();
   const [pending, setPending] = useState(false);
   const profile = state.profile;
-  if (state.loading && !profile)
-    return <p className="profile-status">{t("profile.learning.loading")}</p>;
+  if (state.loading && !profile) {
+    return (
+      <section className="learner-profile-section" aria-labelledby="learning-profile-heading">
+        <div className="profile-section-intro">
+          <h2 id="learning-profile-heading">{t("profile.learning.title")}</h2>
+          <p>{t("profile.learning.help")}</p>
+        </div>
+        <p className="profile-status" role="status">
+          {t("profile.learning.loading")}
+        </p>
+      </section>
+    );
+  }
   if (!profile) return state.error ? <p className="form-error">{state.error}</p> : null;
 
   const visiblePreferences = Object.entries(profile.preferences).filter(
@@ -55,7 +68,16 @@ export function LearnerProfileControls({
                 type="button"
                 onClick={() => void run(() => state.saveCalibration(goal))}
               >
-                {goalLabel(goal, t)}
+                <span className="profile-goal-icon" aria-hidden="true">
+                  {goalIcon(goal)}
+                </span>
+                <span className="profile-goal-copy">
+                  <strong>{goalLabel(goal, t)}</strong>
+                  <small>{goalHelp(goal, t)}</small>
+                </span>
+                {profile.learning_goal === goal ? (
+                  <Check className="profile-goal-check" aria-hidden="true" size={18} />
+                ) : null}
               </button>
             ))}
           </div>
@@ -122,7 +144,13 @@ export function LearnerProfileControls({
               ) : null}
             </>
           ) : (
-            <p className="profile-empty-copy">{t("profile.memory.empty")}</p>
+            <div className="profile-empty-state">
+              <BrainCircuit aria-hidden="true" size={20} />
+              <div>
+                <strong>{t("profile.memory.empty")}</strong>
+                <p>{t("profile.memory.emptyHelp")}</p>
+              </div>
+            </div>
           )}
         </div>
       </section>
@@ -139,10 +167,22 @@ function goalLabel(goal: LearningGoal, t: ReturnType<typeof useI18n>["t"]) {
   return t("learningGoal.understandDeeply");
 }
 
+function goalHelp(goal: LearningGoal, t: ReturnType<typeof useI18n>["t"]) {
+  if (goal === "keep_up") return t("learningGoal.keepUp.help");
+  if (goal === "exam_preparation") return t("learningGoal.examPreparation.help");
+  return t("learningGoal.understandDeeply.help");
+}
+
+function goalIcon(goal: LearningGoal) {
+  if (goal === "keep_up") return <CalendarClock size={19} />;
+  if (goal === "exam_preparation") return <GraduationCap size={19} />;
+  return <Network size={19} />;
+}
+
 function formatValue(value: unknown) {
   return typeof value === "string" ? value : JSON.stringify(value);
 }
 
 function courseTitle(courseId: string, session: LoginSession) {
-  return session.courses.find((course) => course.id === courseId)?.title || courseId;
+  return findProfileCourse(courseId, session.courses)?.title || humanizeCourseId(courseId);
 }

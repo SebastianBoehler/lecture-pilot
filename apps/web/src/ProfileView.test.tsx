@@ -6,6 +6,34 @@ import { renderWithI18n } from "./test/renderWithI18n";
 import type { LoginSession } from "./types";
 
 describe("ProfileView", () => {
+  it("frames the page around account control and learning personalization", () => {
+    const session: LoginSession = {
+      username: "student01",
+      display_name: "Ada Student",
+      email: "ada@example.edu",
+      term: "Sommer 2026",
+      roles: ["student"],
+      courses: [
+        {
+          id: "martius-ml",
+          title: "Machine Learning",
+          professor: "Prof. M",
+          term: "Sommer 2026",
+        },
+      ],
+    };
+
+    renderWithI18n(<ProfileView onLogout={() => undefined} session={session} />);
+
+    expect(screen.getByRole("heading", { level: 1, name: "Profile" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Manage your account and decide how your tutor supports your learning."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Account" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Workspaces" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
+  });
+
   it("shows the Alma role without a separate professor approval flow", () => {
     const session: LoginSession = {
       username: "alma-professor",

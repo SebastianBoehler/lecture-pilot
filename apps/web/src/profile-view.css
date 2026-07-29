@@ -1,46 +1,66 @@
 .profile-screen {
-  width: min(1040px, calc(100% - 48px));
+  width: min(1120px, calc(100% - 48px));
   margin: 0 auto;
-  padding: 44px 0 80px;
+  padding: 48px 0 80px;
 }
 
 .profile-screen .profile-panel {
   border: 0;
-  border-radius: 0;
   background: transparent;
 }
 
 .profile-view-header {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 28px;
+  gap: 32px;
+  margin-bottom: 32px;
 }
 
-.profile-view-header h1 {
-  font-size: clamp(32px, 4vw, 42px);
-  letter-spacing: -0.035em;
+.profile-heading-copy {
+  max-width: 620px;
 }
 
-.profile-view-actions,
+.profile-eyebrow,
+.profile-account-label {
+  display: block;
+  color: var(--color-accent-primary);
+  font-size: 12px;
+  font-weight: 780;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.profile-heading-copy h1,
+.profile-heading-copy p {
+  margin: 0;
+}
+
+.profile-heading-copy h1 {
+  margin-top: 6px;
+  font-size: clamp(34px, 4vw, 44px);
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+}
+
+.profile-heading-copy p {
+  margin-top: 10px;
+  color: var(--color-text-secondary);
+  font-size: 16px;
+  line-height: 1.55;
+}
+
 .profile-logout-button {
   display: inline-flex;
   align-items: center;
-}
-
-.profile-view-actions {
-  gap: 14px;
-}
-
-.profile-logout-button {
-  min-height: var(--control-height);
+  min-height: 40px;
+  flex: 0 0 auto;
   gap: 8px;
   border: 1px solid var(--color-border-primary);
-  border-radius: var(--control-radius);
-  padding: 0 var(--control-padding-x);
+  border-radius: 7px;
+  padding: 0 14px;
   color: var(--color-text-primary);
-  background: transparent;
+  background: var(--color-bg-primary);
   font-weight: 700;
 }
 
@@ -50,37 +70,54 @@
   background: color-mix(in srgb, var(--color-danger) 7%, transparent);
 }
 
-.profile-account-summary {
+.profile-layout {
   display: grid;
-  grid-template-columns: minmax(300px, 1.3fr) auto;
-  gap: 48px;
-  align-items: center;
-  padding: 30px 0;
-  border-top: 1px solid var(--color-border-primary);
-  border-bottom: 1px solid var(--color-border-primary);
+  grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.profile-account-column,
+.profile-learning-column {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.profile-account-summary,
+.profile-control-note,
+.learner-profile-section,
+.profile-courses {
+  border: 1px solid var(--color-border-primary);
+  border-radius: 12px;
+  background: var(--color-bg-primary);
+}
+
+.profile-account-summary {
+  padding: 24px;
   animation: profile-enter 180ms ease-out both;
 }
 
 .profile-identity {
-  display: flex;
-  align-items: center;
+  display: grid;
+  justify-items: start;
   min-width: 0;
-  gap: 18px;
+  gap: 16px;
+  margin-top: 18px;
 }
 
 .profile-avatar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 64px;
-  width: 64px;
-  height: 64px;
-  border: 1px solid var(--color-border-primary);
-  border-radius: 12px;
+  width: 72px;
+  height: 72px;
+  border: 1px solid color-mix(in srgb, var(--color-accent-primary) 28%, transparent);
+  border-radius: 20px;
   color: var(--color-accent-primary);
-  background: var(--color-bg-secondary);
-  font-size: 20px;
-  font-weight: 780;
+  background: color-mix(in srgb, var(--color-accent-primary) 9%, var(--color-bg-primary));
+  font-size: 22px;
+  font-weight: 800;
 }
 
 .profile-identity-copy {
@@ -94,9 +131,9 @@
 
 .profile-identity-copy h2 {
   overflow-wrap: anywhere;
-  font-size: 24px;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+  font-size: 23px;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
 }
 
 .profile-identity-copy p,
@@ -108,34 +145,60 @@
 }
 
 .profile-identity-copy p {
-  margin-top: 6px;
-  font-size: 15px;
+  margin-top: 7px;
+}
+
+.profile-identity-copy span {
+  margin-top: 2px;
+  color: var(--color-text-tertiary);
+  font-size: 13px;
 }
 
 .profile-facts {
   display: grid;
-  grid-auto-columns: minmax(118px, auto);
-  grid-auto-flow: column;
-  margin: 0;
-}
-
-.profile-facts div {
-  min-width: 0;
-  padding: 2px 22px;
-  border-left: 1px solid var(--color-border-primary);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 14px;
+  margin: 24px 0 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border-primary);
 }
 
 .profile-facts dt {
   color: var(--color-text-secondary);
-  font-size: 13px;
-  font-weight: 650;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .profile-facts dd {
-  margin: 6px 0 0;
+  margin: 5px 0 0;
   overflow-wrap: anywhere;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 720;
+}
+
+.profile-control-note {
+  display: flex;
+  gap: 12px;
+  padding: 18px;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+}
+
+.profile-control-note svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--color-accent-primary);
+}
+
+.profile-control-note strong {
+  color: var(--color-text-primary);
+  font-size: 14px;
+}
+
+.profile-control-note p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .profile-section-intro h2,
@@ -144,54 +207,71 @@
 }
 
 .profile-section-intro h2 {
-  font-size: 19px;
+  border: 0;
+  padding: 0;
+  font-size: 20px;
   line-height: 1.3;
+  letter-spacing: -0.015em;
 }
 
 .profile-section-intro p {
-  max-width: 260px;
-  margin-top: 7px;
+  max-width: 520px;
+  margin-top: 5px;
   color: var(--color-text-secondary);
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.5;
 }
 
-.profile-section-content {
-  min-width: 0;
+.profile-courses {
+  padding: 24px;
+  animation: profile-enter 180ms 100ms ease-out both;
 }
 
-.profile-screen .profile-courses {
-  display: grid;
-  grid-template-columns: minmax(200px, 0.72fr) minmax(0, 1.55fr);
-  gap: 48px;
-  padding: 32px 0;
-  border-bottom: 1px solid var(--color-border-primary);
-  animation: profile-enter 180ms 80ms ease-out both;
+.profile-courses .profile-section-content {
+  margin-top: 18px;
 }
 
 .profile-course-list {
-  border-top: 0;
+  display: grid;
+  gap: 8px;
 }
 
-.profile-screen .profile-course-list .course-row {
-  padding: 15px 0;
-  border-top: 1px solid var(--color-border-primary);
-}
-
-.profile-screen .profile-course-list .course-row:first-child {
-  padding-top: 0;
-  border-top: 0;
-}
-
-.profile-screen .profile-course-list .course-row h3 {
-  font-size: 16px;
-}
-
-.profile-screen .profile-course-list .workspace-empty {
-  padding: 14px 16px;
-  border-left: 2px solid var(--color-border-primary);
+.profile-course-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 13px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
   background: var(--color-bg-secondary);
+}
+
+.profile-course-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  color: var(--color-accent-primary);
+  background: var(--color-bg-primary);
+}
+
+.profile-course-row h3,
+.profile-course-row p {
+  margin: 0;
+}
+
+.profile-course-row h3 {
+  overflow-wrap: anywhere;
   font-size: 15px;
+}
+
+.profile-course-row p,
+.profile-course-row > span:last-child {
+  color: var(--color-text-secondary);
+  font-size: 13px;
 }
 
 @keyframes profile-enter {
@@ -203,76 +283,5 @@
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@media (max-width: 780px) {
-  .profile-screen {
-    width: min(100% - 32px, 1040px);
-    padding-top: 32px;
-  }
-
-  .profile-account-summary {
-    grid-template-columns: 1fr;
-    gap: 26px;
-  }
-
-  .profile-facts {
-    padding-top: 20px;
-    border-top: 1px solid var(--color-border-primary);
-  }
-
-  .profile-facts div:first-child {
-    padding-left: 0;
-    border-left: 0;
-  }
-
-  .profile-screen .profile-courses {
-    grid-template-columns: 1fr;
-    gap: 18px;
-  }
-}
-
-@media (max-width: 520px) {
-  .profile-view-header {
-    align-items: flex-start;
-    gap: 16px;
-  }
-
-  .profile-view-actions {
-    flex-direction: column-reverse;
-    align-items: flex-end;
-    gap: 8px;
-  }
-
-  .profile-account-summary {
-    padding: 24px 0;
-  }
-
-  .profile-avatar {
-    flex-basis: 56px;
-    width: 56px;
-    height: 56px;
-  }
-
-  .profile-identity-copy h2 {
-    font-size: 21px;
-  }
-
-  .profile-facts {
-    grid-auto-flow: row;
-    gap: 14px;
-  }
-
-  .profile-facts div {
-    padding: 0;
-    border-left: 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .profile-account-summary,
-  .profile-screen .profile-courses {
-    animation: none;
   }
 }

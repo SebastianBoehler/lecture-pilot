@@ -42,6 +42,33 @@ const profile: LearnerProfile = {
 };
 
 describe("LearnerProfileControls", () => {
+  it("explains how each learning goal changes the tutor", () => {
+    renderWithI18n(
+      <LearnerProfileControls
+        session={session}
+        state={{
+          profile,
+          loading: false,
+          error: null,
+          saveCalibration: vi.fn(),
+          removePreference: vi.fn(),
+          clearMemory: vi.fn(),
+          refresh: vi.fn(),
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Stay current and close gaps from missed sessions.")).toBeVisible();
+    expect(screen.getByText("Prioritize explanations, connections, and transfer.")).toBeVisible();
+    expect(
+      screen.getByText("Prioritize cumulative retrieval and exam-readiness tasks."),
+    ).toBeVisible();
+    expect(screen.getByRole("button", { name: /understand concepts deeply/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
   it("collapses an empty learner profile into one quiet state", () => {
     renderWithI18n(
       <LearnerProfileControls
