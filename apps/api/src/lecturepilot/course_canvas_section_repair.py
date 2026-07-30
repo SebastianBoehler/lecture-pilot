@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from typing import Protocol
 
+from lecturepilot.canvas_component_catalog import component_catalog_instruction
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_language import canvas_language_instruction
@@ -152,7 +153,9 @@ def _repair_messages(
                 '{"sections":[{"id":"same-section-id","title":"same title",'
                 '"source_ref":"same source reference","blocks":[...]}]}. '
                 "Each replacement block must include type, text, items, asset_path, caption, "
-                "and answer_index, using null or [] when a field does not apply. "
+                "answer_index, component_id, component_type, component_ref, component_version, "
+                "option_ids, and component_data, using null or [] when a field does not apply. "
+                f"{component_catalog_instruction()} "
                 "Preserve the meaning and use only the supplied evidence. "
                 f"{repair_failure_constraint(failure)} "
                 f"{generated_math_instructions()}"

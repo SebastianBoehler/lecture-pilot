@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from lecturepilot.canvas_component_catalog import component_block_from_payload
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.model_generated_ids import (
     safe_generated_id,
@@ -52,13 +53,14 @@ def _read_generated_block(raw_block: dict, section_id: str, index: int) -> Canva
     if block_type not in _GENERATED_BLOCK_TYPES:
         block_type = "paragraph"
     block_id = safe_generated_id(str(raw_block.get("id") or f"{section_id}-b-{index}"))
-    items, option_ids, option_answer = _read_block_options(raw_block)
+    if block_type == "component":
+        return component_block_from_payload(raw_block, block_id)
+    items, _, option_answer = _read_block_options(raw_block)
     answer_index = option_answer
     if answer_index is None:
         answer_index = _answer_index(
             raw_block.get("answer_index", raw_block.get("correct_index")), len(items)
         )
-    component_id = safe_generated_id(str(raw_block.get("component_id") or block_id))
     return CanvasBlock(
         id=block_id,
         type=block_type,
@@ -68,16 +70,8 @@ def _read_generated_block(raw_block: dict, section_id: str, index: int) -> Canva
         or None,
         items=items,
         caption=str(raw_block.get("caption") or raw_block.get("title") or "")[:500] or None,
-        answer_index=answer_index if block_type in {"quiz", "component"} else None,
-        component_id=component_id if block_type == "component" else None,
-        component_type=_component_type(raw_block) if block_type == "component" else None,
-        component_ref=_component_ref(raw_block.get("component_ref"), component_id)
-        if block_type == "component"
-        else None,
-        component_version=_component_version(
-            raw_block.get("component_version", raw_block.get("version"))
-        ),
-        option_ids=option_ids if block_type == "component" else [],
+        answer_index=answer_index if block_type == "quiz" else None,
+        option_ids=[],
     )
 
 
@@ -125,28 +119,6 @@ def _answer_index(value: object, item_count: int) -> int | None:
     if isinstance(value, str) and value.isdigit():
         index = int(value)
         return index if 0 <= index < item_count else None
-    return None
-
-
-def _component_type(raw_block: dict) -> str:
-    value = raw_block.get("component_type") or raw_block.get("kind") or "single_choice_quiz"
-    return str(value)[:120]
-
-
-def _component_ref(value: object, component_id: str) -> str:
-    ref = str(value or component_id).strip()
-    if not ref or ref.startswith("/") or ".." in ref.split("/"):
-        ref = component_id
-    if not ref.endswith((".yaml", ".yml", ".json")):
-        ref = f"{ref}.yaml"
-    return ref[:240]
-
-
-def _component_version(value: object) -> int | None:
-    if isinstance(value, int) and value >= 1:
-        return value
-    if isinstance(value, str) and value.isdigit() and int(value) >= 1:
-        return int(value)
     return None
 
 

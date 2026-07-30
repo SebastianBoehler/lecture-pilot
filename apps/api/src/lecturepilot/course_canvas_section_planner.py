@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from lecturepilot.canvas_component_catalog import (
+    component_block_from_payload,
+    component_spec_issue,
+)
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_text_normalizer import (
     clean_canvas_items,
@@ -11,6 +15,12 @@ from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_math import normalize_generated_math_block, validate_section_math
 from lecturepilot.course_canvas_section_batch import SectionPlanResult, plan_section_batch
 from lecturepilot.course_canvas_section_prompt import section_messages as _section_messages
+from lecturepilot.course_canvas_section_values import (
+    allowed_assets as _allowed_assets,
+    answer_index as _answer_index,
+    block_items as _block_items,
+    safe_section_id as _safe_id,
+)
 from lecturepilot.course_canvas_validation import source_topic_sections
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import ProviderSettings
@@ -196,6 +206,7 @@ def _read_blocks(
             "table",
             "checkpoint",
             "quiz",
+            "component",
         }:
             block_type = "paragraph"
         if block_type in {"asset", "video"} and raw_block.get("asset_path") not in allowed_assets:
@@ -207,7 +218,7 @@ def _read_blocks(
             block_type,
             allowed_assets,
         )
-        if block.text or block.items or block.asset_path:
+        if block.text or block.items or block.asset_path or block.component_ref:
             blocks.append(block)
     return blocks
 
@@ -219,6 +230,11 @@ def _read_block(
     allowed_assets: dict[str, str | None],
 ) -> CanvasBlock:
     raw_text = clean_canvas_text(raw_block.get("text") or raw_block.get("content"))
+    if block_type == "component":
+        block = component_block_from_payload(raw_block, block_id)
+        if issue := component_spec_issue(block):
+            raise CanvasGenerationRepairableError(f"Component block {block_id} {issue}")
+        return block
     if block_type == "list":
         raw_items = _block_items(raw_block)
         return CanvasBlock(
@@ -261,34 +277,3 @@ def _read_block(
         type=block_type,
         text=raw_text,
     )
-
-
-def _block_items(raw_block: dict) -> list:
-    if isinstance(raw_block.get("items"), list):
-        return raw_block["items"]
-    if isinstance(raw_block.get("content"), list):
-        return raw_block["content"]
-    return []
-
-
-def _answer_index(raw_block: dict) -> int:
-    items = _block_items(raw_block)[:26]
-    value = raw_block.get("answer_index", raw_block.get("correct_index"))
-    if not isinstance(value, int) or not 0 <= value < len(items):
-        raise CanvasGenerationRepairableError(
-            "Quiz blocks need an explicit answer_index within the answer options."
-        )
-    return value
-
-
-def _allowed_assets(section: CanvasSection) -> dict[str, str | None]:
-    return {
-        block.asset_path: block.asset_url
-        for block in section.blocks
-        if block.type in {"asset", "video"} and block.asset_path
-    }
-
-
-def _safe_id(value: str) -> str:
-    safe = "".join(char.lower() if char.isalnum() else "-" for char in value)
-    return "-".join(part for part in safe.split("-") if part)[:120] or "learning-section"

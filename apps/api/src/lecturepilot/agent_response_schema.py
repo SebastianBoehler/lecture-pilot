@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from typing import Any
 
+from lecturepilot.component_response_schema import (
+    component_data_schema,
+    component_type_schema,
+)
+
 
 def lecturepilot_response_format() -> dict[str, Any]:
     return {
@@ -185,10 +190,11 @@ def _block_schema() -> dict[str, Any]:
                 ),
             },
             "component_id": _nullable_string("File-backed component id."),
-            "component_type": _nullable_string("Component renderer type."),
+            "component_type": component_type_schema(),
             "component_ref": _nullable_string("Component definition path."),
             "component_version": {"type": ["integer", "null"], "minimum": 1},
             "option_ids": {"type": "array", "items": {"type": "string"}},
+            "component_data": _nullable(component_data_schema()),
         },
         "required": [
             "id",
@@ -204,6 +210,7 @@ def _block_schema() -> dict[str, Any]:
             "component_ref",
             "component_version",
             "option_ids",
+            "component_data",
         ],
     }
 

@@ -4,6 +4,7 @@ import json
 from collections.abc import Callable
 from typing import Protocol
 
+from lecturepilot.canvas_component_catalog import component_catalog_instruction
 from lecturepilot.agent_tool_executor import AgentToolExecutor
 from lecturepilot.agent_tool_loop import complete_tool_turn
 from lecturepilot.agent_tool_schemas import AgentToolProfile, tutor_tool_profile_for_message
@@ -152,8 +153,9 @@ def _messages(turn: AgentTurnInput) -> list[dict[str, str]]:
                 "quiz, or component blocks. Quiz blocks use text as the question and "
                 "items as answers. Component blocks are real file-backed interactive "
                 "artifacts: use type component, component_id, component_type, "
-                "component_version, text as the prompt, options with id/text/correct, "
-                "or option_ids plus answer_index. "
+                "component_version, text as the prompt, items as answers, stable "
+                "option_ids, and answer_index for single-choice components. "
+                f"{component_catalog_instruction()} "
                 "Checkpoint blocks use text as the evidence the student must produce. "
                 "For append_section, include placement with mode after_section or "
                 "before_section and a section_id from the canvas context so the new "

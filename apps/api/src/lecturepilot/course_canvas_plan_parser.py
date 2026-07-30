@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import re
 
+from lecturepilot.canvas_component_catalog import (
+    component_block_from_payload,
+    component_spec_issue,
+)
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_text_normalizer import (
     clean_canvas_items,
@@ -80,6 +84,7 @@ def _read_blocks(
             "table",
             "checkpoint",
             "quiz",
+            "component",
         }:
             block_type = "paragraph"
         if block_type in {"asset", "video"} and raw_block.get("asset_path") not in allowed_assets:
@@ -101,6 +106,11 @@ def _read_block(
     allowed_assets: dict[str, str | None],
 ) -> CanvasBlock:
     raw_text = clean_canvas_text(raw_block.get("text") or raw_block.get("content"))
+    if block_type == "component":
+        block = component_block_from_payload(raw_block, block_id)
+        if issue := component_spec_issue(block):
+            raise CanvasGenerationRepairableError(f"Component block {block_id} {issue}")
+        return block
     if block_type == "list":
         raw_items = _block_items(raw_block)
         return CanvasBlock(
@@ -172,6 +182,8 @@ def _is_usable_block(block: CanvasBlock) -> bool:
         return bool(block.asset_path)
     if block.type == "list":
         return bool(block.items)
+    if block.type == "component":
+        return bool(block.component_ref)
     return bool(block.text and block.text.strip())
 
 

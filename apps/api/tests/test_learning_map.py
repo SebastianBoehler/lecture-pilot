@@ -85,3 +85,51 @@ def test_learning_map_bounds_generated_checkpoint_titles() -> None:
 
     assert learning_map.gates[0].title == long_caption[:200]
     assert len(learning_map.gates[0].prompt) == 1000
+
+
+def test_learning_map_only_counts_assessments_as_quizzes() -> None:
+    document = CanvasDocument(
+        id="course-lecture-02",
+        course_id="course",
+        lecture_id="lecture-02",
+        title="Lecture 02",
+        source_kind="generated",
+        source_ref="source.md",
+        workspace_path="/tmp/index.md",
+        sections=[
+            CanvasSection(
+                id="decision-boundaries",
+                title="Decision boundaries",
+                blocks=[
+                    CanvasBlock(
+                        id="risk-chart",
+                        type="component",
+                        component_id="risk-chart",
+                        component_type="interactive_chart",
+                        component_ref="components/risk-chart.yaml",
+                        component_version=1,
+                    ),
+                    CanvasBlock(
+                        id="risk-process",
+                        type="component",
+                        component_id="risk-process",
+                        component_type="process_explorer",
+                        component_ref="components/risk-process.yaml",
+                        component_version=1,
+                    ),
+                    CanvasBlock(
+                        id="risk-choice",
+                        type="component",
+                        component_id="risk-choice",
+                        component_type="single_choice_quiz",
+                        component_ref="components/risk-choice.yaml",
+                        component_version=1,
+                    ),
+                ],
+            )
+        ],
+    )
+
+    learning_map = build_learning_map(document)
+
+    assert learning_map.nodes[0].quiz_ids == ["risk-choice"]

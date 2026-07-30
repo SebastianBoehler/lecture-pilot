@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from lecturepilot.canvas_component_catalog import component_catalog_instruction
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_language import canvas_language_instruction
 from lecturepilot.course_canvas_math import generated_math_instructions
@@ -44,9 +45,14 @@ def planner_messages(
                 "the recognition anchor for each section and cite the matching PDF page or frame in source_ref. "
                 "Return one structured draft with title and sections. Each section must "
                 "include id, title, source_ref, and blocks. Blocks may be paragraph, list, "
-                "callout, math, asset, video, table, checkpoint, or quiz. "
+                "callout, math, asset, video, table, checkpoint, quiz, or component. "
+                f"{component_catalog_instruction()} "
                 f"{_assessment_instructions()} "
-                "Every block must include id, type, text, items, asset_path, caption, and answer_index; use null or [] where not relevant. Quiz blocks use text as the question, items as answers, and answer_index for the correct option. Asset and video blocks may only use asset_path values "
+                "Every block must include id, type, text, items, asset_path, caption, answer_index, "
+                "component_id, component_type, component_ref, component_version, option_ids, and "
+                "component_data; use null or [] where not relevant. Quiz blocks use text as the "
+                "question, items as answers, and answer_index for the correct option. Asset and "
+                "video blocks may only use asset_path values "
                 "listed in the evidence. Quiz blocks need exactly one source-supported correct "
                 "option, plausible distractors, and its zero-based answer_index; never guess a "
                 "key. Every teaching claim and selected quiz answer must follow from the supplied "

@@ -27,6 +27,11 @@ def official_canvas_signature(document: CanvasDocument):
                     block.component_ref,
                     block.component_version,
                     tuple(block.option_ids),
+                    (
+                        block.component_data.model_dump_json()
+                        if block.component_data is not None
+                        else None
+                    ),
                 )
                 for block in section.blocks
             ],

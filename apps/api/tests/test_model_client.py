@@ -72,6 +72,15 @@ async def test_model_client_requests_structured_json(monkeypatch: pytest.MonkeyP
     schema = calls[0]["response_format"]["json_schema"]["schema"]
     assert calls[0]["response_format"]["json_schema"]["strict"] is True
     assert schema["required"] == ["message", "session_goal", "canvas_commands", "quality_gate"]
+    block_schema = schema["properties"]["canvas_commands"]["items"]["properties"]["section"][
+        "properties"
+    ]["blocks"]["items"]
+    assert block_schema["properties"]["component_type"]["enum"] == [
+        "single_choice_quiz",
+        "interactive_chart",
+        "process_explorer",
+        None,
+    ]
     assert calls[0]["temperature"] == 0.3
 
 

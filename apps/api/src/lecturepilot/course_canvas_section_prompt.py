@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from lecturepilot.canvas_component_catalog import component_catalog_instruction
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_language import canvas_language_instruction
 from lecturepilot.course_canvas_math import generated_math_instructions
@@ -27,7 +28,9 @@ def section_messages(
                 "examples, or steps; do not pad thin evidence or omit dense evidence to meet "
                 "a length or block-count quota. "
                 "Blocks may be paragraph, list, callout, math, asset, video, "
-                "table, checkpoint, or quiz. Include a concise checkpoint or quiz when the "
+                "table, checkpoint, quiz, or component. "
+                f"{component_catalog_instruction()} "
+                "Include a concise checkpoint or quiz when the "
                 "evidence supports a determinate assessment. Quiz blocks "
                 "must have exactly one source-supported correct option and plausible distractors. "
                 "Every assessment text must be a specific, standalone question or concrete task "
@@ -38,8 +41,9 @@ def section_messages(
                 "answer' phrasing. Quiz text must be one direct question ending in a question mark. "
                 "Use text as the question, items as possible answers, and the zero-based "
                 "answer_index of the correct option. Never guess an answer key. "
-                "Every block must include id, type, text, items, asset_path, caption, "
-                "and answer_index; use null or [] for fields that do not apply. "
+                "Every block must include id, type, text, items, asset_path, caption, answer_index, "
+                "component_id, component_type, component_ref, component_version, option_ids, and "
+                "component_data; use null or [] for fields that do not apply. "
                 "Do not preserve raw slide ids; create a stable learning topic id. Preserve "
                 "key formulas and source-backed assets. Add a worked example or infographic "
                 "brief when it helps learning. Explain why each key idea matters before "

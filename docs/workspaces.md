@@ -136,6 +136,7 @@ One section file is one stable teaching unit. The parser supports:
 - approved YouTube links;
 - Markdown tables;
 - callouts, checkpoints, and quizzes; and
+- `:::component <name>` references to trusted YAML components; and
 - explicit block comments for stable focus/highlight IDs.
 
 Example:
@@ -165,6 +166,14 @@ TeX: it accepts a KaTeX-compatible command/environment subset, rejects preamble
 macros and prose in math blocks, and gives targeted repair an exact block when
 possible. This restriction applies to the learning canvas, not to the isolated
 Tectonic slide-preview compiler.
+
+Component YAML is data, never executable course code. The supported registry is
+`single_choice_quiz`, `interactive_chart`, and `process_explorer`.
+`interactive_chart` supports bar, line, scatter, and heatmap data. Frames store
+exact values, labeled points, or rectangular matrices under `data`;
+`process_explorer` stores ordered title/text steps. The backend validates the
+schema before publication, and the frontend maps only these trusted types to
+bundled React renderers.
 
 ## Agent-visible roots
 

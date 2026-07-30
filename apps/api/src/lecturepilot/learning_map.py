@@ -130,5 +130,8 @@ def _lecture_gate_for_section(
 
 def _quiz_ids(blocks: list[CanvasBlock]) -> list[str]:
     return [
-        block.component_id or block.id for block in blocks if block.type in {"quiz", "component"}
+        block.component_id or block.id
+        for block in blocks
+        if block.type == "quiz"
+        or (block.type == "component" and block.component_type == "single_choice_quiz")
     ]

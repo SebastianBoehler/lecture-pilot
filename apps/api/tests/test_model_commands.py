@@ -173,17 +173,21 @@ def test_generated_component_blocks_keep_file_backed_metadata() -> None:
                                 "component_type": "single_choice_quiz",
                                 "version": 2,
                                 "text": "Which rule should drive a cost-sensitive classifier?",
-                                "options": [
-                                    {
-                                        "id": "lowest-risk",
-                                        "text": "Choose the lowest expected risk.",
-                                        "correct": True,
-                                    },
-                                    {
-                                        "id": "highest-posterior",
-                                        "text": "Always choose the highest posterior.",
-                                    },
+                                "component_data": {
+                                    "chart_type": None,
+                                    "x_label": None,
+                                    "y_label": None,
+                                    "control_label": None,
+                                    "labels": [],
+                                    "frames": [],
+                                    "steps": [],
+                                },
+                                "items": [
+                                    "Choose the lowest expected risk.",
+                                    "Always choose the highest posterior.",
                                 ],
+                                "option_ids": ["lowest-risk", "highest-posterior"],
+                                "answer_index": 0,
                             }
                         ],
                     },
@@ -201,6 +205,8 @@ def test_generated_component_blocks_keep_file_backed_metadata() -> None:
     assert block.component_version == 2
     assert block.option_ids == ["lowest-risk", "highest-posterior"]
     assert block.answer_index == 0
+    assert block.component_data is not None
+    assert block.component_data.frames == []
 
 
 def test_generated_section_coerces_loose_quiz_text_to_quiz_block() -> None:

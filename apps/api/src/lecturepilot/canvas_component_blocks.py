@@ -5,6 +5,7 @@ from pathlib import Path
 
 import yaml
 
+from lecturepilot.canvas_component_catalog import component_data_from_payload
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 
 
@@ -53,6 +54,7 @@ def read_component_block(
         items=items,
         option_ids=option_ids,
         answer_index=answer_index,
+        component_data=component_data_from_payload(payload.get("data")),
     )
 
 
@@ -109,7 +111,7 @@ def _read_option(option: object, index: int) -> tuple[str, str, bool]:
 
 
 def _block_payload(block: CanvasBlock) -> dict:
-    return {
+    payload = {
         "id": block.component_id or block.id,
         "version": block.component_version or 1,
         "type": block.component_type or "unknown",
@@ -124,6 +126,9 @@ def _block_payload(block: CanvasBlock) -> dict:
             for index, item in enumerate(block.items)
         ],
     }
+    if block.component_data is not None:
+        payload["data"] = block.component_data.model_dump(mode="json")
+    return payload
 
 
 def _resolve_component_path(components_dir: Path, ref: str) -> Path:

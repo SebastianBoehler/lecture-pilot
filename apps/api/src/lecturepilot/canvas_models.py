@@ -8,6 +8,38 @@ from pydantic import BaseModel, Field
 MAX_SOURCE_REF_LENGTH = 500
 
 
+class CanvasComponentPoint(BaseModel):
+    label: str = Field(min_length=1, max_length=120)
+    x: float
+    y: float
+    series: str | None = Field(default=None, max_length=120)
+
+
+class CanvasComponentFrame(BaseModel):
+    label: str = Field(min_length=1, max_length=120)
+    values: list[float] = Field(default_factory=list, max_length=24)
+    points: list[CanvasComponentPoint] = Field(default_factory=list, max_length=120)
+    matrix: list[list[float]] = Field(default_factory=list, max_length=12)
+    explanation: str = Field(min_length=1, max_length=500)
+
+
+class CanvasComponentStep(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    text: str = Field(min_length=1, max_length=800)
+
+
+class CanvasComponentData(BaseModel):
+    chart_type: Literal["bar", "line", "scatter", "heatmap"] | None = None
+    control_type: Literal["buttons", "slider"] | None = None
+    x_label: str | None = Field(default=None, max_length=120)
+    y_label: str | None = Field(default=None, max_length=120)
+    control_label: str | None = Field(default=None, max_length=120)
+    labels: list[str] = Field(default_factory=list, max_length=24)
+    row_labels: list[str] = Field(default_factory=list, max_length=12)
+    frames: list[CanvasComponentFrame] = Field(default_factory=list, max_length=12)
+    steps: list[CanvasComponentStep] = Field(default_factory=list, max_length=12)
+
+
 class CanvasBlock(BaseModel):
     id: str = Field(min_length=1, max_length=120)
     type: Literal[
@@ -33,6 +65,7 @@ class CanvasBlock(BaseModel):
     component_ref: str | None = Field(default=None, max_length=240)
     component_version: int | None = Field(default=None, ge=1)
     option_ids: list[str] = Field(default_factory=list, max_length=26)
+    component_data: CanvasComponentData | None = None
 
 
 class CanvasSection(BaseModel):

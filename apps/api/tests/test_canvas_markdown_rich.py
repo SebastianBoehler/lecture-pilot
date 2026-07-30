@@ -119,6 +119,70 @@ options:
     assert "id: lowest-risk" in component_text
 
 
+def test_canvas_markdown_roundtrips_schema_driven_interactive_chart(tmp_path: Path) -> None:
+    document = CanvasDocument(
+        id="demo-course-lecture-01",
+        course_id="demo-course",
+        lecture_id="lecture-01",
+        title="Demo",
+        source_kind="generated",
+        source_ref="lecture.pdf",
+        workspace_path=str(tmp_path / "canvas" / "index.md"),
+        sections=[
+            CanvasSection(
+                id="risk-curve",
+                title="Risk curve",
+                source_ref="lecture.pdf page 4",
+                blocks=[
+                    CanvasBlock(
+                        id="risk-cost-explorer",
+                        type="component",
+                        component_id="risk-cost-explorer",
+                        component_type="interactive_chart",
+                        component_ref="risk-cost-explorer.yaml",
+                        component_version=1,
+                        caption="Cost-sensitive risk",
+                        text="Predict how the preferred action changes before moving the control.",
+                        component_data={
+                            "chart_type": "line",
+                            "x_label": "Action",
+                            "y_label": "Expected risk",
+                            "control_label": "False-negative cost",
+                            "labels": ["Reject", "Classify"],
+                            "frames": [
+                                {
+                                    "label": "1x",
+                                    "values": [0.2, 0.6],
+                                    "explanation": "Reject has lower expected risk.",
+                                },
+                                {
+                                    "label": "5x",
+                                    "values": [0.8, 0.3],
+                                    "explanation": "Classify now has lower expected risk.",
+                                },
+                            ],
+                            "steps": [],
+                        },
+                    )
+                ],
+            )
+        ],
+    )
+
+    write_document_source(document, tmp_path / "canvas")
+    reloaded = read_document_source(tmp_path / "canvas")
+    block = reloaded.sections[0].blocks[0]
+    component_text = (tmp_path / "canvas" / "components" / "risk-cost-explorer.yaml").read_text(
+        encoding="utf-8"
+    )
+
+    assert block.component_data is not None
+    assert block.component_data.control_label == "False-negative cost"
+    assert block.component_data.frames[1].values == [0.8, 0.3]
+    assert "data:" in component_text
+    assert "explanation: Classify now has lower expected risk." in component_text
+
+
 def test_canvas_markdown_roundtrips_local_video_assets(tmp_path: Path) -> None:
     document = CanvasDocument(
         id="demo-course-lecture-01",
