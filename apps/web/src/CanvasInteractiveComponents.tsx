@@ -1,13 +1,22 @@
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 
+import { InteractiveChart } from "./CanvasInteractiveChart";
 import { QuizBlock } from "./CanvasLearningBlocks";
+import { ProcessExplorer } from "./CanvasProcessExplorer";
+import { useI18n } from "./i18n";
 import type { CanvasBlock } from "./types";
 
-type ComponentBlockProps = {
+export type ComponentRendererProps = {
   block: CanvasBlock;
   className: string;
   sourceMarker: ReactNode;
   onSubmitAnswer: (block: CanvasBlock, answer: string, optionIndex: number) => void;
+};
+
+const componentRegistry: Record<string, ComponentType<ComponentRendererProps>> = {
+  single_choice_quiz: SingleChoiceQuiz,
+  interactive_chart: InteractiveChart,
+  process_explorer: ProcessExplorer,
 };
 
 export function ComponentBlock({
@@ -15,27 +24,38 @@ export function ComponentBlock({
   className,
   onSubmitAnswer,
   sourceMarker,
-}: ComponentBlockProps) {
-  if (block.component_type === "single_choice_quiz") {
+}: ComponentRendererProps) {
+  const { t } = useI18n();
+  const Renderer = componentRegistry[block.component_type || ""];
+  if (Renderer)
     return (
-      <QuizBlock
+      <Renderer
         block={block}
-        className={`${className} canvas-component`}
-        highlightedText={null}
-        sourceMarker={null}
+        className={className}
+        sourceMarker={sourceMarker}
         onSubmitAnswer={onSubmitAnswer}
       />
     );
-  }
   return (
     <aside className={`${className} canvas-component canvas-component-unsupported`} id={block.id}>
-      <div className="canvas-learning-label">Interactive component</div>
-      <strong>{block.caption || block.component_id || "Unsupported component"}</strong>
+      <div className="canvas-learning-label">{t("component.unsupported.label")}</div>
+      <strong>{block.caption || block.component_id || t("component.unsupported.title")}</strong>
       <p>
-        This course component type is not enabled yet:{" "}
-        <code>{block.component_type || "unknown"}</code>
+        {t("component.unsupported.message")} <code>{block.component_type || "unknown"}</code>
       </p>
       {sourceMarker}
     </aside>
+  );
+}
+
+function SingleChoiceQuiz({ block, className, onSubmitAnswer }: ComponentRendererProps) {
+  return (
+    <QuizBlock
+      block={block}
+      className={`${className} canvas-component`}
+      highlightedText={null}
+      sourceMarker={null}
+      onSubmitAnswer={onSubmitAnswer}
+    />
   );
 }

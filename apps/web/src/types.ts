@@ -13,6 +13,19 @@ export type {
   AnalyticsQuizMetric,
   LectureAnalyticsSummary,
 } from "./analyticsTypes";
+export type {
+  CanvasBlock,
+  CanvasComponentData,
+  CanvasComponentFrame,
+  CanvasComponentPoint,
+  CanvasComponentStep,
+  CanvasDocument,
+  CanvasPublicationResult,
+  CanvasSection,
+  CanvasSectionId,
+  CanvasSectionPlacement,
+  DocumentAnchorId,
+} from "./canvasTypes";
 export type { WorkspaceResource } from "./workspaceResourceTypes";
 
 export type Theme = "light" | "dark";
@@ -30,8 +43,6 @@ export type View =
 export type LessonPanelMode = "chat" | "outline" | "path" | "notes" | "files";
 export type LearnerWorkspaceMode = "learner" | "professor-preview";
 export type LessonMode = LearnerWorkspaceMode | "draft";
-export type CanvasSectionId = string;
-export type DocumentAnchorId = string;
 
 export type Attendance = "unknown" | "present" | "absent";
 export type TenantRole = "tenant_admin" | "professor" | "tutor" | "student";
@@ -47,65 +58,6 @@ export type Lecture = {
   materialPath?: string;
   releaseStatus?: LectureReleaseStatus;
   unlocked?: boolean;
-};
-
-export type CanvasBlock = {
-  id: string;
-  type:
-    | "paragraph"
-    | "list"
-    | "asset"
-    | "callout"
-    | "math"
-    | "video"
-    | "checkpoint"
-    | "quiz"
-    | "table"
-    | "component";
-  text?: string | null;
-  items: string[];
-  asset_path?: string | null;
-  asset_url?: string | null;
-  caption?: string | null;
-  answer_index?: number | null;
-  component_id?: string | null;
-  component_type?: string | null;
-  component_ref?: string | null;
-  component_version?: number | null;
-  option_ids?: string[];
-};
-
-export type CanvasSection = {
-  id: string;
-  title: string;
-  source_ref?: string | null;
-  blocks: CanvasBlock[];
-};
-
-export type CanvasSectionPlacement = {
-  mode: "after_section" | "before_section";
-  section_id: string;
-};
-
-export type CanvasDocument = {
-  id: string;
-  import_version?: number;
-  course_id: string;
-  lecture_id: string;
-  title: string;
-  source_kind: "latex" | "markdown" | "generated";
-  source_ref: string;
-  workspace_path?: string;
-  sections: CanvasSection[];
-  warnings?: string[];
-};
-
-export type CanvasPublicationResult = {
-  course_id: string;
-  lecture_id: string;
-  published: boolean;
-  version?: number | null;
-  published_at?: string | null;
 };
 
 export type ExamReadinessQuestion = {
