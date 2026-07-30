@@ -25,7 +25,6 @@ export function ProfileView({
       <section className="profile-panel" aria-labelledby="profile-heading">
         <header className="profile-view-header">
           <div className="profile-heading-copy">
-            <span className="profile-eyebrow">{t("profile.overline")}</span>
             <h1 id="profile-heading">{t("profile.title")}</h1>
             <p>{t("profile.subtitle")}</p>
           </div>

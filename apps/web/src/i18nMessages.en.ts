@@ -230,7 +230,6 @@ export const enMessages = {
   "attendance.absent": "absent",
   "attendance.unknown": "unknown",
   "profile.account": "Account",
-  "profile.overline": "Account and learning",
   "profile.title": "Profile",
   "profile.subtitle": "Manage your account and decide how your tutor supports your learning.",
   "profile.name": "Name",

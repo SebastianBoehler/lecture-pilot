@@ -238,7 +238,6 @@ export const deMessages: Record<MessageKey, string> = {
   "attendance.absent": "abwesend",
   "attendance.unknown": "unbekannt",
   "profile.account": "Konto",
-  "profile.overline": "Konto und Lernen",
   "profile.title": "Profil",
   "profile.subtitle":
     "Verwalte dein Konto und entscheide, wie dich dein Tutor beim Lernen unterstützt.",

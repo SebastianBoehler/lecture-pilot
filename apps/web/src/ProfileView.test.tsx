@@ -26,6 +26,7 @@ describe("ProfileView", () => {
     renderWithI18n(<ProfileView onLogout={() => undefined} session={session} />);
 
     expect(screen.getByRole("heading", { level: 1, name: "Profile" })).toBeInTheDocument();
+    expect(screen.queryByText("Account and learning")).not.toBeInTheDocument();
     expect(
       screen.getByText("Manage your account and decide how your tutor supports your learning."),
     ).toBeInTheDocument();
