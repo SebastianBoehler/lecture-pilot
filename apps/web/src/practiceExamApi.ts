@@ -8,6 +8,7 @@ import type {
   PracticeExam,
   PracticeExamGenerationInput,
   PracticeExamGenerationStatus,
+  PracticeExamSolutionSheet,
 } from "./practiceExamTypes";
 import type { LoginSession } from "./types";
 
@@ -97,6 +98,33 @@ export async function downloadPracticeExamPdf(
   if (!response.ok) {
     const payload = await response.json().catch(() => null);
     throw new Error(readApiError(payload, "PDF download failed."));
+  }
+  return response.blob();
+}
+
+export async function loadPracticeExamSolutions(
+  courseId: string,
+  examId: string,
+  session: LoginSession,
+) {
+  return requestJson<PracticeExamSolutionSheet>(
+    `/courses/${courseId}/practice-exams/${examId}/solutions`,
+    session,
+  );
+}
+
+export async function downloadPracticeExamSolutionPdf(
+  courseId: string,
+  examId: string,
+  session: LoginSession,
+) {
+  const response = await fetch(
+    apiUrl(`/courses/${courseId}/practice-exams/${examId}/solutions/pdf`),
+    authRequestInit(session),
+  );
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw new Error(readApiError(payload, "Solution PDF download failed."));
   }
   return response.blob();
 }

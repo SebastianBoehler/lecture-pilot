@@ -54,6 +54,9 @@ class PracticeExamStore:
     def pdf_path(self, *, user_id: str, course_id: str, exam_id: str) -> Path:
         return self._exam_path(user_id, course_id, exam_id).parent / "exam.pdf"
 
+    def solution_pdf_path(self, *, user_id: str, course_id: str, exam_id: str) -> Path:
+        return self._exam_path(user_id, course_id, exam_id).parent / "solutions.pdf"
+
     def _exam_path(self, user_id: str, course_id: str, exam_id: str) -> Path:
         if _EXAM_ID.fullmatch(exam_id) is None:
             raise FileNotFoundError(exam_id)

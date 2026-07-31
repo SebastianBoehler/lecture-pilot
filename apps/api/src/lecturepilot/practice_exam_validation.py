@@ -51,10 +51,15 @@ def validate_practice_exam(
                 raise PracticeExamValidationError(
                     f"Question {question.id} requires distinct non-empty options."
                 )
-        elif any(not item.strip() for item in question.rubric):
-            raise PracticeExamValidationError(
-                f"Question {question.id} requires non-empty rubric criteria."
-            )
+        else:
+            if any(not item.strip() for item in question.rubric):
+                raise PracticeExamValidationError(
+                    f"Question {question.id} requires non-empty rubric criteria."
+                )
+            if not question.reference_answer or not question.reference_answer.strip():
+                raise PracticeExamValidationError(
+                    f"Question {question.id} requires a full-credit reference answer."
+                )
     used_sources = {source_id for question in exam.questions for source_id in question.source_ids}
     available_lectures = {_lecture_id(source_id) for source_id in authoritative_source_ids}
     cited_lectures = {_lecture_id(source_id) for source_id in used_sources}

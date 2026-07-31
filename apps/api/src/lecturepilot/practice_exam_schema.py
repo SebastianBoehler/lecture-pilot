@@ -51,6 +51,7 @@ def _question_schema(
         "options": {"type": "array", "items": {"type": "string"}, "maxItems": 6},
         "answer_index": {"type": ["integer", "null"], "minimum": 0, "maximum": 5},
         "rubric": {"type": "array", "items": {"type": "string"}, "maxItems": 8},
+        "reference_answer": {"type": ["string", "null"]},
         "source_ids": {
             "type": "array",
             "items": {"type": "string", "enum": sorted(authoritative_source_ids)},

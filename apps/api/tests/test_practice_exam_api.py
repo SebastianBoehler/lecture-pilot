@@ -32,6 +32,7 @@ def test_generation_returns_public_exam_and_replays_idempotently(tmp_path: Path)
     assert len(first.json()["questions"]) == 20
     assert "answer_index" not in first.text
     assert "rubric" not in first.text
+    assert "reference_answer" not in first.text
     assert "source_ids" not in first.text
     assert "ppi_source_ids" not in first.text
 
@@ -153,6 +154,30 @@ def test_exam_library_read_and_delete_are_learner_private(tmp_path: Path) -> Non
     )
 
 
+def test_solution_sheet_is_separate_and_learner_private(tmp_path: Path) -> None:
+    client, _planner = _client(tmp_path)
+    generated = _generate(client).json()
+    exam_id = generated["id"]
+
+    own = client.get(
+        f"/courses/martius-ml/practice-exams/{exam_id}/solutions",
+        headers=student_headers("student-a"),
+    )
+    other = client.get(
+        f"/courses/martius-ml/practice-exams/{exam_id}/solutions",
+        headers=student_headers("student-b"),
+    )
+
+    assert own.status_code == 200
+    assert own.json()["exam_id"] == exam_id
+    assert own.json()["questions"][0]["answer_index"] == 1
+    assert own.json()["questions"][1]["reference_answer"] == (
+        "Empirical risk averages observed loss and applies it to the stated decision."
+    )
+    assert "source_ids" not in own.text
+    assert other.status_code == 404
+
+
 def _generate(
     client: TestClient,
     *,
@@ -213,6 +238,11 @@ class _Planner:
                 options=["A", "B", "C", "D"] if index % 2 else [],
                 answer_index=1 if index % 2 else None,
                 rubric=[] if index % 2 else ["Defines risk", "Applies risk"],
+                reference_answer=(
+                    None
+                    if index % 2
+                    else "Empirical risk averages observed loss and applies it to the stated decision."
+                ),
                 source_ids=["lecture-01:risk:definition"],
                 ppi_pattern_ids=[],
             )

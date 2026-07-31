@@ -97,8 +97,9 @@ describe("PracticeExamPanel", () => {
     });
   });
 
-  it("offers direct open, PDF, and delete actions while clearing a deleted draft", async () => {
-    vi.stubGlobal("fetch", existingExamFetch());
+  it("offers the exam and solution PDFs before an online attempt", async () => {
+    const fetchMock = existingExamFetch();
+    vi.stubGlobal("fetch", fetchMock);
     vi.stubGlobal(
       "confirm",
       vi.fn(() => true),
@@ -109,16 +110,27 @@ describe("PracticeExamPanel", () => {
     const examRow = await screen.findByRole("listitem");
     const openButton = within(examRow).getByRole("button", { name: "Open" });
     const pdfButton = within(examRow).getByRole("button", { name: "Download PDF" });
+    const solutionPdfButton = within(examRow).getByRole("button", {
+      name: "Download solutions PDF",
+    });
     const deleteButton = within(examRow).getByRole("button", { name: "Delete exam" });
     expect(openButton).toHaveTextContent("Open");
+    expect(pdfButton).toHaveTextContent("Exam PDF");
     expect(pdfButton).toHaveAttribute("title", "Download PDF");
+    expect(solutionPdfButton).toHaveTextContent("Solutions PDF");
+    expect(solutionPdfButton).toHaveAttribute("title", "Download solutions PDF");
     expect(deleteButton).toHaveAttribute("title", "Delete exam");
+
+    await user.click(solutionPdfButton);
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/practice-exams/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/solutions/pdf"),
+      expect.any(Object),
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent("Compiler unavailable");
 
     await user.click(openButton);
     await user.type(screen.getByLabelText("Your answer for question 2"), "Temporary");
     await user.click(screen.getByRole("button", { name: "Close exam" }));
-    await user.click(pdfButton);
-    expect(await screen.findByRole("alert")).toHaveTextContent("Compiler unavailable");
     await user.click(deleteButton);
     await waitFor(() =>
       expect(readPracticeExamDraft("student-a", "course-1", "a".repeat(32))).toEqual({}),

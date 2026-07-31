@@ -52,7 +52,9 @@ def register_practice_exam_routes(
         idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
         context: TenantContext = Depends(request_context),
     ) -> PracticeExamPublic:
-        _authorize(app, context, course_id, course_tenant_id, seeded_course, seeded_lectures)
+        authorize_practice_exam_access(
+            app, context, course_id, course_tenant_id, seeded_course, seeded_lectures
+        )
         request_key = _request_key(idempotency_key)
         store = app.state.practice_exam_generation_store
         try:
@@ -128,7 +130,9 @@ def register_practice_exam_routes(
         idempotency_key: Annotated[str, Header(alias="Idempotency-Key")],
         context: TenantContext = Depends(request_context),
     ) -> PracticeExamGenerationStatusResponse:
-        _authorize(app, context, course_id, course_tenant_id, seeded_course, seeded_lectures)
+        authorize_practice_exam_access(
+            app, context, course_id, course_tenant_id, seeded_course, seeded_lectures
+        )
         job = app.state.practice_exam_generation_store.read(
             user_id=context.user_id,
             course_id=course_id,
@@ -142,7 +146,9 @@ def register_practice_exam_routes(
     def list_exams(
         course_id: str, context: TenantContext = Depends(request_context)
     ) -> list[PracticeExamPublic]:
-        _authorize(app, context, course_id, course_tenant_id, seeded_course, seeded_lectures)
+        authorize_practice_exam_access(
+            app, context, course_id, course_tenant_id, seeded_course, seeded_lectures
+        )
         return [
             public_practice_exam(exam)
             for exam in app.state.practice_exam_store.list(
@@ -156,7 +162,9 @@ def register_practice_exam_routes(
         exam_id: str,
         context: TenantContext = Depends(request_context),
     ) -> PracticeExamPublic:
-        _authorize(app, context, course_id, course_tenant_id, seeded_course, seeded_lectures)
+        authorize_practice_exam_access(
+            app, context, course_id, course_tenant_id, seeded_course, seeded_lectures
+        )
         return public_practice_exam(_read_exam(app, context.user_id, course_id, exam_id))
 
     @app.get("/courses/{course_id}/practice-exams/{exam_id}/pdf")
@@ -165,7 +173,9 @@ def register_practice_exam_routes(
         exam_id: str,
         context: TenantContext = Depends(request_context),
     ) -> FileResponse:
-        _authorize(app, context, course_id, course_tenant_id, seeded_course, seeded_lectures)
+        authorize_practice_exam_access(
+            app, context, course_id, course_tenant_id, seeded_course, seeded_lectures
+        )
         try:
             path = app.state.practice_exam_pdf_service.render(
                 user_id=context.user_id,
@@ -192,7 +202,9 @@ def register_practice_exam_routes(
         exam_id: str,
         context: TenantContext = Depends(request_context),
     ) -> dict[str, bool]:
-        _authorize(app, context, course_id, course_tenant_id, seeded_course, seeded_lectures)
+        authorize_practice_exam_access(
+            app, context, course_id, course_tenant_id, seeded_course, seeded_lectures
+        )
         if not app.state.practice_exam_store.delete(
             user_id=context.user_id, course_id=course_id, exam_id=exam_id
         ):
@@ -200,7 +212,9 @@ def register_practice_exam_routes(
         return {"deleted": True}
 
 
-def _authorize(app, context, course_id, tenant_id, seeded_course, seeded_lectures) -> None:
+def authorize_practice_exam_access(
+    app, context, course_id, tenant_id, seeded_course, seeded_lectures
+) -> None:
     if TenantRole.STUDENT not in context.roles:
         raise HTTPException(status_code=403, detail="Student access is required.")
     if not course_actor_access(app, context, course_id, tenant_id).is_enrolled:

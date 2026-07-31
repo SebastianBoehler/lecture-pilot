@@ -58,6 +58,7 @@ from lecturepilot.practice_exam_generation_jobs import PracticeExamGenerationSto
 from lecturepilot.practice_exam_planner import LiteLLMPracticeExamClient, PracticeExamPlanner
 from lecturepilot.practice_exam_pdf import PracticeExamPdfService
 from lecturepilot.practice_exam_routes import register_practice_exam_routes
+from lecturepilot.practice_exam_solution_routes import register_practice_exam_solution_routes
 from lecturepilot.practice_exam_store import PracticeExamStore
 from lecturepilot.rate_limit import RateLimitMiddleware
 from lecturepilot.release_info import release_info
@@ -256,6 +257,7 @@ def create_app() -> FastAPI:
     )
     register_ppi_exam_source_routes(app, **seeded_route_args)
     register_practice_exam_routes(app, **seeded_route_args)
+    register_practice_exam_solution_routes(app, **seeded_route_args)
     register_asset_routes(app, **seeded_route_args)
     register_course_routes(
         app,

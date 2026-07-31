@@ -64,7 +64,7 @@ database authority in Postgres and files on the persisted `/app/storage` volume.
       progress.json
       exam-sources/ppi/<ppi-lecture-id>/{manifest.json,source.zip,normalized/}
       practice-exam-generations/<request-key-hash>.json
-      practice-exams/<exam-id>/{exam.json,exam.pdf}
+      practice-exams/<exam-id>/{exam.json,exam.pdf,solutions.pdf}
       memories/{course.md,memory-trace.jsonl}
       lectures/<lecture-id>/
         {attendance.json,gates.json,tutor-state.json}
@@ -179,7 +179,10 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
   source ids; do not treat raw time as primary or expose learner text in
   professor aggregates.
 - Practice exams remain separate from Exam Readiness: they are immutable,
-  source-grounded 20–30 question simulations with no submission or grading.
+  source-grounded 20–30 question simulations with no answer persistence or
+  server-side grading. A separate post-attempt solution sheet may score
+  multiple choice locally and provide full-credit reference answers for
+  self-review.
   PPI protocols may inform question patterns only; every question must remain
   anchored to unlocked published course evidence and must not copy protocol
   wording.

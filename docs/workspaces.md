@@ -43,6 +43,7 @@ volume.
       practice-exams/<exam-id>/
         exam.json
         exam.pdf
+        solutions.pdf
       memories/
         course.md
         memory-trace.jsonl
@@ -63,6 +64,12 @@ volume.
 
 The exact set of files is created lazily; absence is normal before a course,
 draft, learner state, or optional feature exists.
+
+Practice-exam answer keys remain private inside `exam.json` and are omitted
+from normal learner exam responses. After the learner finishes an attempt, a
+separate authenticated solution-sheet response exposes multiple-choice keys,
+full-credit reference answers, and rubrics. `solutions.pdf` is compiled lazily
+and never replaces the answer-free `exam.pdf`.
 
 `builder/source-routing.json` is the professor-confirmed pre-generation map.
 It binds every uploaded source to one lecture, the whole course, reference-only

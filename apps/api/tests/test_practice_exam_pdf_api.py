@@ -36,6 +36,42 @@ def test_pdf_endpoint_is_authenticated_and_user_isolated(tmp_path: Path, monkeyp
     assert other.status_code == 404
 
 
+def test_solution_pdf_is_a_separate_authenticated_document(tmp_path: Path, monkeypatch) -> None:
+    client, _planner = _client(tmp_path)
+    client.app.state.practice_exam_pdf_service = PracticeExamPdfService(
+        client.app.state.practice_exam_store
+    )
+    exam_id = _generate(client).json()["id"]
+    rendered: list[str] = []
+
+    def compile_document(*, source: str, output: Path) -> Path:
+        rendered.append(source)
+        return _write_pdf(output)
+
+    monkeypatch.setattr("lecturepilot.practice_exam_pdf.compile_latex_document", compile_document)
+
+    own = client.get(
+        f"/courses/martius-ml/practice-exams/{exam_id}/solutions/pdf",
+        headers=student_headers("student-a"),
+    )
+    other = client.get(
+        f"/courses/martius-ml/practice-exams/{exam_id}/solutions/pdf",
+        headers=student_headers("student-b"),
+    )
+
+    assert own.status_code == 200
+    assert "solution" in own.headers["content-disposition"]
+    assert "Correct answer" in rendered[0]
+    assert "Full-credit answer" in rendered[0]
+    assert (
+        client.app.state.practice_exam_store.solution_pdf_path(
+            user_id="student-a", course_id="martius-ml", exam_id=exam_id
+        ).name
+        == "solutions.pdf"
+    )
+    assert other.status_code == 404
+
+
 def test_pdf_retry_does_not_regenerate_exam(tmp_path: Path, monkeypatch) -> None:
     client, planner = _client(tmp_path)
     client.app.state.practice_exam_pdf_service = PracticeExamPdfService(

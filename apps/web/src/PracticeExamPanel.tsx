@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Download, Eye, Trash2 } from "lucide-react";
+import { Download, Eye, FileCheck2, Trash2 } from "lucide-react";
 
 import { useI18n } from "./i18n";
 import {
@@ -10,7 +10,7 @@ import {
   practiceExamGenerationStatus,
 } from "./practiceExamApi";
 import { clearPracticeExamDraft, ensurePracticeExamDraftAccount } from "./practiceExamDraft";
-import { savePracticeExamPdf } from "./practiceExamDownload";
+import { savePracticeExamPdf, savePracticeExamSolutionPdf } from "./practiceExamDownload";
 import { PracticeExamSetup } from "./PracticeExamSetup";
 import type { PpiExamSource, PracticeExam, PracticeExamGenerationInput } from "./practiceExamTypes";
 import { PracticeExamView } from "./PracticeExamView";
@@ -31,6 +31,7 @@ export function PracticeExamPanel({
   const [generationKey, setGenerationKey] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [pdfExamId, setPdfExamId] = useState<string | null>(null);
+  const [solutionPdfExamId, setSolutionPdfExamId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -125,6 +126,19 @@ export function PracticeExamPanel({
     }
   }
 
+  async function downloadSolutionPdf(exam: PracticeExam) {
+    if (!session) return;
+    setSolutionPdfExamId(exam.id);
+    setError(null);
+    try {
+      await savePracticeExamSolutionPdf(course.id, exam.id, session);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : t("practice.solutions.pdfFailed"));
+    } finally {
+      setSolutionPdfExamId(null);
+    }
+  }
+
   return (
     <section
       className="practice-exams"
@@ -170,13 +184,29 @@ export function PracticeExamPanel({
                   aria-label={
                     pdfExamId === exam.id ? t("practice.pdfPreparing") : t("practice.pdf")
                   }
-                  className="practice-exam-icon-button"
+                  className="practice-exam-open-button"
                   disabled={pdfExamId === exam.id}
                   title={t("practice.pdf")}
                   type="button"
                   onClick={() => void downloadPdf(exam)}
                 >
                   <Download aria-hidden="true" size={16} />
+                  <span>{t("practice.pdfShort")}</span>
+                </button>
+                <button
+                  aria-label={
+                    solutionPdfExamId === exam.id
+                      ? t("practice.solutions.pdfPreparing")
+                      : t("practice.solutions.pdf")
+                  }
+                  className="practice-exam-open-button"
+                  disabled={solutionPdfExamId === exam.id}
+                  title={t("practice.solutions.pdf")}
+                  type="button"
+                  onClick={() => void downloadSolutionPdf(exam)}
+                >
+                  <FileCheck2 aria-hidden="true" size={16} />
+                  <span>{t("practice.solutions.pdfShort")}</span>
                 </button>
                 <button
                   aria-label={t("practice.delete")}

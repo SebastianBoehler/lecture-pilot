@@ -120,6 +120,7 @@ def test_learner_workspace_reset_clears_selected_scopes(tmp_path: Path) -> None:
         course_root / "practice-exam-generations" / "request.json",
         course_root / "practice-exams" / ("a" * 32) / "exam.json",
         course_root / "practice-exams" / ("a" * 32) / "exam.pdf",
+        course_root / "practice-exams" / ("a" * 32) / "solutions.pdf",
     ):
         private_path.parent.mkdir(parents=True, exist_ok=True)
         private_path.write_text("private exam data", encoding="utf-8")

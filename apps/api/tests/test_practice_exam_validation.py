@@ -108,6 +108,9 @@ def _exam() -> PracticeExam:
                 options=["One", "Two", "Three", "Four"] if index % 2 else [],
                 answer_index=1 if index % 2 else None,
                 rubric=[] if index % 2 else ["Defines risk", "Applies it"],
+                reference_answer=(
+                    None if index % 2 else "Risk is expected loss, applied to this example."
+                ),
                 source_ids=["lecture-01:risk"],
                 ppi_pattern_ids=["ppi-42"] if index == 2 else [],
             )

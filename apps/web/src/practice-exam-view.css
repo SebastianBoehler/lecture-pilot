@@ -12,6 +12,29 @@
   padding-bottom: 16px;
 }
 
+.practice-exam-privacy {
+  margin-top: 18px;
+  border-left: 2px solid var(--color-accent-primary);
+  padding: 2px 0 2px 12px;
+  color: var(--color-text-primary);
+}
+
+.practice-exam-privacy strong,
+.practice-exam-privacy p {
+  margin: 0;
+}
+
+.practice-exam-privacy strong {
+  font-size: 13px;
+}
+
+.practice-exam-privacy p {
+  margin-top: 2px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .practice-question-list {
   display: grid;
   gap: 28px;
@@ -67,4 +90,104 @@
   padding: 12px;
   resize: vertical;
   line-height: 1.5;
+}
+
+.practice-solution-sheet {
+  display: grid;
+  gap: 18px;
+}
+
+.practice-solution-summary {
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--color-border-primary);
+  border-left: 3px solid var(--color-accent-primary);
+  padding: 16px;
+}
+
+.practice-solution-summary p,
+.practice-solution-summary h3,
+.practice-solution-note,
+.practice-solution-detail p {
+  margin: 0;
+}
+
+.practice-solution-summary p,
+.practice-solution-list > li > header,
+.practice-solution-note {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.practice-solution-summary h3 {
+  font-size: 20px;
+}
+
+.practice-solution-summary > strong {
+  font-size: 17px;
+}
+
+.practice-solution-list {
+  display: grid;
+  gap: 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.practice-solution-list > li {
+  display: grid;
+  gap: 10px;
+  border-bottom: 1px solid var(--color-border-primary);
+  padding-bottom: 24px;
+}
+
+.practice-solution-list > li > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  text-transform: uppercase;
+}
+
+.practice-solution-prompt {
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.practice-solution-detail {
+  display: grid;
+  gap: 12px;
+  border-left: 2px solid var(--color-border-primary);
+  padding-left: 14px;
+}
+
+.practice-solution-detail > div {
+  display: grid;
+  gap: 4px;
+}
+
+.practice-solution-detail ul {
+  display: grid;
+  gap: 5px;
+  margin: 3px 0 0;
+  padding-left: 20px;
+}
+
+.practice-solution-status {
+  justify-self: start;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 12px;
+}
+
+.practice-solution-status.is-correct {
+  border-color: var(--color-accent-primary);
+  color: var(--color-accent-primary);
+}
+
+.practice-solution-status.is-incorrect {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
 }

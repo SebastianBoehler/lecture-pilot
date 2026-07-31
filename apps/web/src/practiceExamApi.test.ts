@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { downloadPracticeExamPdf, generatePracticeExam } from "./practiceExamApi";
+import {
+  downloadPracticeExamPdf,
+  downloadPracticeExamSolutionPdf,
+  generatePracticeExam,
+  loadPracticeExamSolutions,
+} from "./practiceExamApi";
 import type { LoginSession } from "./types";
 
 describe("practice exam API", () => {
@@ -45,6 +50,37 @@ describe("practice exam API", () => {
       "Bearer test-token",
     );
   });
+
+  it("loads a separate authenticated solution sheet", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      json(solutionPayload()),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await loadPracticeExamSolutions("course-1", "a".repeat(32), session);
+
+    expect(result.questions[0].answer_index).toBe(0);
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/solutions");
+    expect(new Headers(fetchMock.mock.calls[0][1]?.headers).get("Authorization")).toBe(
+      "Bearer test-token",
+    );
+  });
+
+  it("downloads the separate authenticated solution PDF", async () => {
+    const fetchMock = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        new Response(new Blob(["%PDF-solutions"], { type: "application/pdf" }), {
+          status: 200,
+          headers: { "Content-Type": "application/pdf" },
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await downloadPracticeExamSolutionPdf("course-1", "a".repeat(32), session);
+
+    expect(result.type).toBe("application/pdf");
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/solutions/pdf");
+  });
 });
 
 const session: LoginSession = {
@@ -66,6 +102,24 @@ function examPayload() {
     created_at: "2026-07-31T10:00:00Z",
     total_points: 40,
     questions: [],
+  };
+}
+
+function solutionPayload() {
+  return {
+    exam_id: "a".repeat(32),
+    title: "Practice exam solutions",
+    total_points: 40,
+    questions: [
+      {
+        id: "q-01",
+        kind: "multiple_choice",
+        points: 3,
+        answer_index: 0,
+        reference_answer: null,
+        rubric: [],
+      },
+    ],
   };
 }
 

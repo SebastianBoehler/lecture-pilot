@@ -7,6 +7,7 @@ from lecturepilot.practice_exam_models import (
     PracticeExam,
     PracticeExamGenerationInput,
     PracticeExamQuestion,
+    practice_exam_solution_sheet,
     public_practice_exam,
 )
 from lecturepilot.practice_exam_store import PracticeExamStore
@@ -26,11 +27,25 @@ def test_public_exam_hides_authoring_data() -> None:
     question = payload["questions"][0]
     assert "answer_index" not in question
     assert "rubric" not in question
+    assert "reference_answer" not in question
     assert "source_ids" not in question
     assert "ppi_pattern_ids" not in question
     assert payload["questions"][0]["prompt"] == "Question 1?"
     assert len(payload["questions"]) == 20
     assert public.instructions == ["Show your reasoning for open-ended questions."]
+
+
+def test_solution_sheet_exposes_only_answer_key_and_full_credit_guidance() -> None:
+    sheet = practice_exam_solution_sheet(_exam())
+
+    multiple_choice = sheet.questions[0]
+    open_ended = sheet.questions[1]
+    assert multiple_choice.answer_index == 1
+    assert multiple_choice.reference_answer is None
+    assert open_ended.answer_index is None
+    assert open_ended.reference_answer == "A full-credit invariance explanation."
+    assert open_ended.rubric == ["Uses invariance."]
+    assert "source_ids" not in sheet.model_dump_json()
 
 
 def test_generation_input_has_bounded_defaults_and_unique_sources() -> None:
@@ -90,6 +105,7 @@ def _exam(
             options=["First", "Second"] if index % 2 else [],
             answer_index=1 if index % 2 else None,
             rubric=[] if index % 2 else ["Uses invariance."],
+            reference_answer=(None if index % 2 else "A full-credit invariance explanation."),
             source_ids=[f"lecture-{index:02d}:section"],
             ppi_pattern_ids=["ppi-42"] if index == 1 else [],
         )

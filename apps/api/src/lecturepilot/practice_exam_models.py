@@ -30,6 +30,7 @@ class PracticeExamQuestion(BaseModel):
     options: list[str] = Field(default_factory=list, max_length=6)
     answer_index: int | None = Field(default=None, ge=0, le=5)
     rubric: list[str] = Field(default_factory=list, max_length=8)
+    reference_answer: str | None = Field(default=None, max_length=4_000)
     source_ids: list[str] = Field(min_length=1, max_length=8)
     ppi_pattern_ids: list[str] = Field(default_factory=list, max_length=8)
 
@@ -42,8 +43,12 @@ class PracticeExamQuestion(BaseModel):
                 raise ValueError("Multiple-choice questions require a valid answer index.")
             if self.rubric:
                 raise ValueError("Multiple-choice questions cannot contain an open-answer rubric.")
+            if self.reference_answer is not None:
+                raise ValueError("Multiple-choice questions cannot contain a reference answer.")
         elif self.options or self.answer_index is not None or not self.rubric:
             raise ValueError("Open-ended questions require a rubric and cannot contain options.")
+        elif self.reference_answer is not None and not self.reference_answer.strip():
+            raise ValueError("Open-ended reference answers cannot be blank.")
         return self
 
 
@@ -96,6 +101,22 @@ class PracticeExamPublic(BaseModel):
     questions: list[PracticeExamPublicQuestion]
 
 
+class PracticeExamSolutionQuestion(BaseModel):
+    id: str
+    kind: PracticeExamQuestionKind
+    points: int
+    answer_index: int | None = None
+    reference_answer: str | None = None
+    rubric: list[str] = Field(default_factory=list)
+
+
+class PracticeExamSolutionSheet(BaseModel):
+    exam_id: str
+    title: str
+    total_points: int
+    questions: list[PracticeExamSolutionQuestion]
+
+
 class PracticeExamGenerationInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -125,6 +146,32 @@ def public_practice_exam(exam: PracticeExam) -> PracticeExamPublic:
                 prompt=question.prompt,
                 points=question.points,
                 options=question.options,
+            )
+            for question in exam.questions
+        ],
+    )
+
+
+def practice_exam_solution_sheet(exam: PracticeExam) -> PracticeExamSolutionSheet:
+    missing = [
+        question.id
+        for question in exam.questions
+        if question.kind == "open_ended" and not question.reference_answer
+    ]
+    if missing:
+        raise ValueError("This practice exam predates full-credit reference answers.")
+    return PracticeExamSolutionSheet(
+        exam_id=exam.id,
+        title=f"{exam.title} — Solutions",
+        total_points=exam.total_points,
+        questions=[
+            PracticeExamSolutionQuestion(
+                id=question.id,
+                kind=question.kind,
+                points=question.points,
+                answer_index=question.answer_index,
+                reference_answer=question.reference_answer,
+                rubric=question.rubric,
             )
             for question in exam.questions
         ],

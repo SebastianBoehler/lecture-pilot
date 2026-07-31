@@ -223,6 +223,11 @@ def _payload() -> dict:
                 "options": ["A", "B", "C", "D"] if index % 2 else [],
                 "answer_index": 1 if index % 2 else None,
                 "rubric": [] if index % 2 else ["Defines risk", "Applies the definition"],
+                "reference_answer": (
+                    None
+                    if index % 2
+                    else "Risk is the expected loss; empirical risk is its sample estimate."
+                ),
                 "source_ids": ["lecture-01:risk:definition"],
                 "ppi_pattern_ids": [],
             }

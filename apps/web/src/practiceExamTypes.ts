@@ -27,6 +27,22 @@ export type PracticeExamGenerationInput = {
 export type PracticeExamAnswer = { selected_index?: number; text?: string };
 export type PracticeExamAnswers = Record<string, PracticeExamAnswer>;
 
+export type PracticeExamSolutionQuestion = {
+  id: string;
+  kind: "multiple_choice" | "open_ended";
+  points: number;
+  answer_index: number | null;
+  reference_answer: string | null;
+  rubric: string[];
+};
+
+export type PracticeExamSolutionSheet = {
+  exam_id: string;
+  title: string;
+  total_points: number;
+  questions: PracticeExamSolutionQuestion[];
+};
+
 export type PpiExamFile = {
   path: string;
   text_path: string;
