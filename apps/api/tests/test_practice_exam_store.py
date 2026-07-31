@@ -14,7 +14,13 @@ from lecturepilot.storage_layout import StorageLayout
 
 
 def test_public_exam_hides_authoring_data() -> None:
-    public = public_practice_exam(_exam())
+    exam = _exam()
+    exam.instructions = [
+        "Time limit: 90 minutes. Total: 100 points.",
+        "Answer indices are zero-based.",
+        "Show your reasoning for open-ended questions.",
+    ]
+    public = public_practice_exam(exam)
 
     payload = public.model_dump(mode="json")
     question = payload["questions"][0]
@@ -24,6 +30,7 @@ def test_public_exam_hides_authoring_data() -> None:
     assert "ppi_pattern_ids" not in question
     assert payload["questions"][0]["prompt"] == "Question 1?"
     assert len(payload["questions"]) == 20
+    assert public.instructions == ["Show your reasoning for open-ended questions."]
 
 
 def test_generation_input_has_bounded_defaults_and_unique_sources() -> None:

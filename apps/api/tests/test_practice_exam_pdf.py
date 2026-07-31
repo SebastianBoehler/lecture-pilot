@@ -38,6 +38,10 @@ def test_tex_renderer_escapes_untrusted_text_and_omits_private_authoring_data() 
     assert tex.index("Question 1") < tex.index("Question 2")
     assert r"$\square$" in tex
     assert r"\vspace" in tex
+    assert tex.count(r"\begin{minipage}{\textwidth}") == len(exam.questions)
+    assert tex.count(r"\end{minipage}") == len(exam.questions)
+    assert r"\fancyhf{}" in tex
+    assert r"\setlength{\headheight}{14pt}" in tex
     assert "answer_index" not in tex
     assert "rubric" not in tex
     assert "source_ids" not in tex

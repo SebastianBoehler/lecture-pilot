@@ -30,7 +30,9 @@ def practice_exam_messages(
         "options and one valid zero-based answer_index; their rubric must be empty. Open-ended "
         "questions need an empty options list, null answer_index, and concrete rubric criteria. "
         "Use stable ids q-01, q-02, and so on. Cite selected PPI ids only when their pattern "
-        f"materially influenced a question.{repair}"
+        "materially influenced a question. Instructions must contain only learner actions: never "
+        "repeat the duration, question count, total points, or answer-index conventions. "
+        f"{repair}"
     )
     user = (
         f"Course: {course_title}\n\n"

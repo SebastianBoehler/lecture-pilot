@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import re
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -8,6 +9,12 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 PracticeExamQuestionKind = Literal["multiple_choice", "open_ended"]
 PracticeExamDifficulty = Literal["introductory", "standard", "advanced"]
+_ADMIN_INSTRUCTION = re.compile(
+    r"\b(?:time\s*limit|duration|minutes?|total|answer(?:_|\s|-)?ind(?:ex|ices)|"
+    r"zero(?:\s|-)?based|zeitlimit|dauer|minuten?|gesamt|antwortind(?:ex|izes)|"
+    r"nullbasiert)\b|\b\d+\s*(?:points?|punkte?)\b",
+    re.IGNORECASE,
+)
 
 
 class PracticeExamQuestion(BaseModel):
@@ -106,7 +113,7 @@ def public_practice_exam(exam: PracticeExam) -> PracticeExamPublic:
         course_id=exam.course_id,
         title=exam.title,
         language=exam.language,
-        instructions=exam.instructions,
+        instructions=sanitize_practice_exam_instructions(exam.instructions),
         duration_minutes=exam.duration_minutes,
         created_at=exam.created_at,
         total_points=exam.total_points,
@@ -121,3 +128,16 @@ def public_practice_exam(exam: PracticeExam) -> PracticeExamPublic:
             for question in exam.questions
         ],
     )
+
+
+def sanitize_practice_exam_instructions(instructions: list[str]) -> list[str]:
+    safe: list[str] = []
+    seen: set[str] = set()
+    for instruction in instructions:
+        normalized = " ".join(instruction.split())
+        key = normalized.casefold()
+        if not normalized or key in seen or _ADMIN_INSTRUCTION.search(normalized):
+            continue
+        safe.append(normalized)
+        seen.add(key)
+    return safe

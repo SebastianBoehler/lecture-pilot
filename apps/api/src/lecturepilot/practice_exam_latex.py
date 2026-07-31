@@ -26,9 +26,12 @@ def render_practice_exam_tex(exam: PracticeExamPublic) -> str:
         r"\usepackage{amssymb}",
         r"\usepackage{fancyhdr}",
         r"\setlength{\parindent}{0pt}",
+        r"\setlength{\headheight}{14pt}",
         r"\pagestyle{fancy}",
+        r"\fancyhf{}",
         rf"\lhead{{{escape_tex(exam.title)}}}",
         rf"\rhead{{{exam.duration_minutes} min · {exam.total_points} points}}",
+        r"\cfoot{\thepage}",
         r"\begin{document}",
         rf"\section*{{{escape_tex(exam.title)}}}",
         rf"\textbf{{Duration:}} {exam.duration_minutes} minutes\quad "
@@ -43,6 +46,7 @@ def render_practice_exam_tex(exam: PracticeExamPublic) -> str:
         lines.extend(
             [
                 r"\vspace{1em}",
+                r"\noindent\begin{minipage}{\textwidth}",
                 rf"\subsection*{{Question {index} \hfill {question.points} points}}",
                 escape_tex(question.prompt) + r"\par",
                 r"\vspace{0.6em}",
@@ -55,6 +59,7 @@ def render_practice_exam_tex(exam: PracticeExamPublic) -> str:
             answer_space = min(8.0, max(2.5, question.points * 0.8))
             lines.append(rf"\vspace{{{answer_space:.1f}cm}}")
             lines.append(r"\hrule")
+        lines.append(r"\end{minipage}")
     lines.extend([r"\end{document}", ""])
     return "\n".join(lines)
 

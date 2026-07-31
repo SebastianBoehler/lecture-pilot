@@ -14,7 +14,11 @@ from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_request_options import completion_options
 from lecturepilot.model_usage import ModelUsageRecorder, complete_with_usage
 from lecturepilot.models import ProviderCapability, ProviderSettings
-from lecturepilot.practice_exam_models import PracticeExam, PracticeExamQuestion
+from lecturepilot.practice_exam_models import (
+    PracticeExam,
+    PracticeExamQuestion,
+    sanitize_practice_exam_instructions,
+)
 from lecturepilot.practice_exam_prompt import (
     authoritative_canvas_evidence,
     ppi_pattern_evidence,
@@ -168,7 +172,7 @@ def _exam_from_payload(
         course_id=course_id,
         title=payload["title"],
         language=language,
-        instructions=payload["instructions"],
+        instructions=sanitize_practice_exam_instructions(payload["instructions"]),
         duration_minutes=duration_minutes,
         created_at=datetime.now(UTC),
         total_points=sum(item.points for item in questions),
