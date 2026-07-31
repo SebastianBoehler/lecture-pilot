@@ -11,6 +11,10 @@ from lecturepilot.practice_exam_planner import (
     PracticeExamPlanner,
     PracticeExamPlanningError,
 )
+from lecturepilot.practice_exam_prompt import (
+    MAX_COURSE_EVIDENCE_CHARS,
+    authoritative_canvas_evidence,
+)
 from lecturepilot.practice_exam_schema import practice_exam_response_format
 
 
@@ -114,6 +118,21 @@ def test_provider_schema_is_strict_and_requires_authoring_fields() -> None:
         "lecture-02:tokens:definition",
     ]
     assert question["properties"]["ppi_pattern_ids"]["maxItems"] == 0
+
+
+def test_authoritative_ids_include_only_evidence_visible_to_the_model() -> None:
+    document = _document()
+    document.sections[0].blocks = [
+        CanvasBlock(id=f"block-{index}", type="paragraph", text=str(index) * 20_000)
+        for index in range(4)
+    ]
+
+    evidence, source_ids = authoritative_canvas_evidence([document])
+
+    assert len(evidence) <= MAX_COURSE_EVIDENCE_CHARS
+    assert source_ids
+    assert len(source_ids) < 4
+    assert all(source_id in evidence for source_id in source_ids)
 
 
 def _plan_args() -> dict:
