@@ -5,7 +5,8 @@
 Add a learner-only flow that generates one source-grounded practice exam and
 offers the same immutable exam as an interactive web form and a print- or
 tablet-ready PDF. A standard exam contains 25 mixed multiple-choice and
-open-ended questions, with a supported range of 20–30 questions.
+open-ended questions, with a supported range of 20–50 questions. The default
+remains exam-length; 40–50 questions support broader course coverage.
 
 Exam generation uses currently unlocked, published course canvases. A learner
 may optionally enrich the exam pattern with privately retained PPI exam
@@ -193,8 +194,9 @@ Add a separate `Practice exam` surface beside, not inside, Exam Readiness.
 1. `Generate practice exam` opens a compact setup dialog.
 2. Course material is always selected. The learner may choose retained PPI
    sources or select `Connect PPI` to import one.
-3. The setup offers 20–30 questions with 25 selected initially and a 90-minute
-   duration initially. It does not expose model or generation settings.
+3. The setup offers 20–50 questions with 25 selected initially and a 90-minute
+   duration initially. It explains that 20–30 questions suit exam simulation
+   while 40–50 provide broader coverage. It does not expose model settings.
 4. `Generate exam` shows a source-grounded generation state and keeps the
    idempotency key for recovery.
 5. A completed exam opens as a focused online exam with visible progress,

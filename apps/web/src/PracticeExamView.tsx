@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { useI18n } from "./i18n";
-import { downloadPracticeExamPdf } from "./practiceExamApi";
+import { savePracticeExamPdf } from "./practiceExamDownload";
 import { readPracticeExamDraft, savePracticeExamDraft } from "./practiceExamDraft";
 import type { PracticeExam, PracticeExamAnswers } from "./practiceExamTypes";
 import type { LoginSession } from "./types";
@@ -36,13 +36,7 @@ export function PracticeExamView({
     setPdfBusy(true);
     setError(null);
     try {
-      const blob = await downloadPracticeExamPdf(courseId, exam.id, session);
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = `practice-exam-${exam.id.slice(0, 8)}.pdf`;
-      anchor.click();
-      URL.revokeObjectURL(url);
+      await savePracticeExamPdf(courseId, exam.id, session);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : t("practice.pdfFailed"));
     } finally {

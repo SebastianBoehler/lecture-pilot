@@ -50,8 +50,8 @@
             "de": "Vollständige Übungsprüfungen online oder auf Papier"
           },
           "description": {
-            "en": "Students can generate private, source-grounded practice exams, reuse their own retained PPI protocols as optional pattern evidence, answer in the browser, or download the same questions as a print-ready PDF.",
-            "de": "Studierende können private, quellengestützte Übungsprüfungen erstellen, eigene gespeicherte PPI-Protokolle optional als Mustervorgabe verwenden, sie im Browser bearbeiten oder dieselben Fragen als druckfertiges PDF herunterladen."
+            "en": "Students can generate private, source-grounded practice exams with 20–50 questions, reuse their own retained PPI protocols as optional pattern evidence, answer in the browser, or download the same questions as a print-ready PDF. Larger exams distribute coverage across the available lectures and sections.",
+            "de": "Studierende können private, quellengestützte Übungsprüfungen mit 20–50 Fragen erstellen, eigene gespeicherte PPI-Protokolle optional als Mustervorgabe verwenden, sie im Browser bearbeiten oder dieselben Fragen als druckfertiges PDF herunterladen. Größere Prüfungen verteilen die Abdeckung über die verfügbaren Vorlesungen und Abschnitte."
           },
           "feedbackDriven": true
         },

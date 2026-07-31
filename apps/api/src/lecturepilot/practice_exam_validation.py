@@ -56,6 +56,15 @@ def validate_practice_exam(
                 f"Question {question.id} requires non-empty rubric criteria."
             )
     used_sources = {source_id for question in exam.questions for source_id in question.source_ids}
+    available_lectures = {_lecture_id(source_id) for source_id in authoritative_source_ids}
+    cited_lectures = {_lecture_id(source_id) for source_id in used_sources}
+    if len(available_lectures) <= question_count and not available_lectures.issubset(
+        cited_lectures
+    ):
+        missing = ", ".join(sorted(available_lectures - cited_lectures))
+        raise PracticeExamValidationError(
+            f"Practice exam questions must cover every available lecture; missing: {missing}."
+        )
     if set(exam.source_ids) != used_sources:
         raise PracticeExamValidationError(
             "Practice exam source ids must exactly match the cited course sources."
@@ -84,3 +93,7 @@ def _reject_protocol_copy(exam: PracticeExam, protocol_texts: list[str]) -> None
 
 def _normalized(value: str) -> str:
     return re.sub(r"\s+", " ", value).strip().casefold()
+
+
+def _lecture_id(source_id: str) -> str:
+    return source_id.split(":", 1)[0]

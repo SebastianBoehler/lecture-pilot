@@ -43,6 +43,7 @@ class PracticeExamModelClient(Protocol):
         settings: ProviderSettings,
         messages: list[dict[str, str]],
         response_format: dict,
+        max_tokens: int,
     ) -> dict:
         """Return a structured practice exam authoring payload."""
 
@@ -57,6 +58,7 @@ class LiteLLMPracticeExamClient:
         settings: ProviderSettings,
         messages: list[dict[str, str]],
         response_format: dict,
+        max_tokens: int,
     ) -> dict:
         try:
             from litellm import acompletion
@@ -71,7 +73,7 @@ class LiteLLMPracticeExamClient:
                 model=settings.model,
                 messages=messages,
                 response_format=response_format,
-                **completion_options(settings, temperature=0.2, max_tokens=20_000),
+                **completion_options(settings, temperature=0.2, max_tokens=max_tokens),
             )
         except Exception as exc:
             raise ModelExecutionError("Practice exam model request failed.") from exc
@@ -120,6 +122,7 @@ class PracticeExamPlanner:
             payload = await self.model_client.complete_exam(
                 settings=settings,
                 response_format=response_format,
+                max_tokens=_exam_output_token_budget(question_count),
                 messages=practice_exam_messages(
                     course_title=course_title,
                     language=language,
@@ -188,3 +191,7 @@ def _source_revision(course_evidence: str, ppi_sources: dict[str, list[str]]) ->
         {"course": course_evidence, "ppi": ppi_sources}, sort_keys=True, ensure_ascii=False
     )
     return sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _exam_output_token_budget(question_count: int) -> int:
+    return max(20_000, question_count * 600)

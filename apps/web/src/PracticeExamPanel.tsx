@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Download, Eye, Trash2 } from "lucide-react";
 
 import { useI18n } from "./i18n";
 import {
@@ -9,6 +10,7 @@ import {
   practiceExamGenerationStatus,
 } from "./practiceExamApi";
 import { clearPracticeExamDraft, ensurePracticeExamDraftAccount } from "./practiceExamDraft";
+import { savePracticeExamPdf } from "./practiceExamDownload";
 import { PracticeExamSetup } from "./PracticeExamSetup";
 import type { PpiExamSource, PracticeExam, PracticeExamGenerationInput } from "./practiceExamTypes";
 import { PracticeExamView } from "./PracticeExamView";
@@ -28,6 +30,7 @@ export function PracticeExamPanel({
   const [activeExam, setActiveExam] = useState<PracticeExam | null>(null);
   const [generationKey, setGenerationKey] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [pdfExamId, setPdfExamId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -109,6 +112,19 @@ export function PracticeExamPanel({
     }
   }
 
+  async function downloadPdf(exam: PracticeExam) {
+    if (!session) return;
+    setPdfExamId(exam.id);
+    setError(null);
+    try {
+      await savePracticeExamPdf(course.id, exam.id, session);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : t("practice.pdfFailed"));
+    } finally {
+      setPdfExamId(null);
+    }
+  }
+
   return (
     <section
       className="practice-exams"
@@ -141,12 +157,35 @@ export function PracticeExamPanel({
                   })}
                 </span>
               </div>
-              <div>
-                <button type="button" onClick={() => setActiveExam(exam)}>
-                  {t("practice.openOnline")}
+              <div className="practice-exam-library-actions">
+                <button
+                  className="practice-exam-open-button"
+                  type="button"
+                  onClick={() => setActiveExam(exam)}
+                >
+                  <Eye aria-hidden="true" size={16} />
+                  <span>{t("practice.open")}</span>
                 </button>
-                <button type="button" onClick={() => void remove(exam)}>
-                  {t("practice.delete")}
+                <button
+                  aria-label={
+                    pdfExamId === exam.id ? t("practice.pdfPreparing") : t("practice.pdf")
+                  }
+                  className="practice-exam-icon-button"
+                  disabled={pdfExamId === exam.id}
+                  title={t("practice.pdf")}
+                  type="button"
+                  onClick={() => void downloadPdf(exam)}
+                >
+                  <Download aria-hidden="true" size={16} />
+                </button>
+                <button
+                  aria-label={t("practice.delete")}
+                  className="practice-exam-icon-button practice-exam-delete-button"
+                  title={t("practice.delete")}
+                  type="button"
+                  onClick={() => void remove(exam)}
+                >
+                  <Trash2 aria-hidden="true" size={16} />
                 </button>
               </div>
             </li>

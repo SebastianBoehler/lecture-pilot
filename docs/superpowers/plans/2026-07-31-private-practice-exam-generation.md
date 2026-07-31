@@ -15,7 +15,7 @@
 - Keep PPI credentials in request memory only; never persist or log credentials, cookies, protocol text, prompts, rubrics, or backend learner answers.
 - Spend a PPI token only after a fresh state check and `confirm_token_spend=true`.
 - Retain validated PPI sources privately and indefinitely until explicit source, course-workspace, or account deletion.
-- Generate 20–30 questions, default 25, and a default 90-minute duration.
+- Generate 20–50 questions, default 25, and a default 90-minute duration.
 - No grading, submission, solutions, scan ingestion, or readiness-progress integration.
 - Keep every new code file below 300 lines; do not add mock/fallback product behavior.
 
@@ -105,7 +105,7 @@ def test_archive_rejects_traversal(tmp_path):
 - Consumes: published `CanvasDocument` values and normalized `PpiExamSourceManifest` content.
 - Produces: `practice_exam_response_format()`, `PracticeExamPlanner.plan(...) -> PracticeExam`, and `validate_practice_exam(exam, authoritative_source_ids, question_count)`.
 
-- [ ] **Step 1: Write failing validator tests for 20–30 count, unique prompts/IDs, MC option and answer integrity, points, official source anchors, PPI-only anchors, and leaked protocol excerpts.**
+- [ ] **Step 1: Write failing validator tests for 20–50 count, unique prompts/IDs, MC option and answer integrity, points, official source anchors, PPI-only anchors, and leaked protocol excerpts.**
 
 ```python
 def test_rejects_ppi_only_question():

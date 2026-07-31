@@ -9,6 +9,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 PracticeExamQuestionKind = Literal["multiple_choice", "open_ended"]
 PracticeExamDifficulty = Literal["introductory", "standard", "advanced"]
+MIN_PRACTICE_EXAM_QUESTIONS = 20
+MAX_PRACTICE_EXAM_QUESTIONS = 50
 _ADMIN_INSTRUCTION = re.compile(
     r"\b(?:time\s*limit|duration|minutes?|total|answer(?:_|\s|-)?ind(?:ex|ices)|"
     r"zero(?:\s|-)?based|zeitlimit|dauer|minuten?|gesamt|antwortind(?:ex|izes)|"
@@ -55,11 +57,14 @@ class PracticeExam(BaseModel):
     instructions: list[str] = Field(min_length=1, max_length=12)
     duration_minutes: int = Field(ge=30, le=300)
     created_at: datetime
-    total_points: int = Field(ge=1, le=2_000)
+    total_points: int = Field(ge=1, le=2_500)
     source_revision: str = Field(pattern=r"^[0-9a-f]{64}$")
     source_ids: list[str] = Field(min_length=1, max_length=240)
     ppi_source_ids: list[str] = Field(default_factory=list, max_length=8)
-    questions: list[PracticeExamQuestion] = Field(min_length=20, max_length=30)
+    questions: list[PracticeExamQuestion] = Field(
+        min_length=MIN_PRACTICE_EXAM_QUESTIONS,
+        max_length=MAX_PRACTICE_EXAM_QUESTIONS,
+    )
 
     @model_validator(mode="after")
     def validate_totals_and_ids(self) -> "PracticeExam":
@@ -96,7 +101,11 @@ class PracticeExamPublic(BaseModel):
 class PracticeExamGenerationInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    question_count: int = Field(default=25, ge=20, le=30)
+    question_count: int = Field(
+        default=25,
+        ge=MIN_PRACTICE_EXAM_QUESTIONS,
+        le=MAX_PRACTICE_EXAM_QUESTIONS,
+    )
     duration_minutes: int = Field(default=90, ge=30, le=300)
     ppi_source_ids: list[str] = Field(default_factory=list, max_length=8)
 

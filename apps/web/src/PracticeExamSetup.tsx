@@ -2,6 +2,11 @@ import { useState } from "react";
 
 import { useI18n } from "./i18n";
 import { PpiExamSourcePicker } from "./PpiExamSourcePicker";
+import {
+  DEFAULT_PRACTICE_EXAM_QUESTIONS,
+  MAX_PRACTICE_EXAM_QUESTIONS,
+  MIN_PRACTICE_EXAM_QUESTIONS,
+} from "./practiceExamLimits";
 import type { PpiExamSource, PracticeExamGenerationInput } from "./practiceExamTypes";
 import type { LoginSession, UniversityCourse } from "./types";
 import { useModalDialog } from "./useModalDialog";
@@ -26,7 +31,7 @@ export function PracticeExamSetup({
   onSourceImported: (source: PpiExamSource) => void;
 }) {
   const { t } = useI18n();
-  const [questionCount, setQuestionCount] = useState(25);
+  const [questionCount, setQuestionCount] = useState(DEFAULT_PRACTICE_EXAM_QUESTIONS);
   const [duration, setDuration] = useState(90);
   const [selected, setSelected] = useState<string[]>([]);
   const dialogRef = useModalDialog();
@@ -69,8 +74,8 @@ export function PracticeExamSetup({
           <label>
             <span>{t("practice.setup.questions")}</span>
             <input
-              max={30}
-              min={20}
+              max={MAX_PRACTICE_EXAM_QUESTIONS}
+              min={MIN_PRACTICE_EXAM_QUESTIONS}
               type="number"
               value={questionCount}
               onChange={(event) => setQuestionCount(Number(event.currentTarget.value))}
@@ -125,7 +130,11 @@ export function PracticeExamSetup({
         </button>
         <button
           className="practice-primary"
-          disabled={generating || questionCount < 20 || questionCount > 30}
+          disabled={
+            generating ||
+            questionCount < MIN_PRACTICE_EXAM_QUESTIONS ||
+            questionCount > MAX_PRACTICE_EXAM_QUESTIONS
+          }
           type="button"
           onClick={() =>
             onGenerate({

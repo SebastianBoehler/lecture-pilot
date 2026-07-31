@@ -5,6 +5,7 @@ from lecturepilot.canvas_models import CanvasDocument
 
 MAX_COURSE_EVIDENCE_CHARS = 60_000
 MAX_PPI_EVIDENCE_CHARS = 30_000
+MAX_COURSE_EVIDENCE_ITEM_CHARS = 2_400
 
 
 def practice_exam_messages(
@@ -24,6 +25,8 @@ def practice_exam_messages(
         f"{duration_minutes}-minute exam. Mix multiple-choice and open-ended questions, "
         "vary difficulty, assign sensible points, and include private answer keys or rubrics. "
         "Every question must cite at least one supplied authoritative course source id. "
+        "Cover every lecture represented in the evidence before repeating a lecture, then maximize "
+        "section and concept breadth before adding variants of an already tested concept. "
         "PPI material is non-authoritative pattern evidence only: use it to infer style, topic "
         "weight, and format, never as the sole factual source and never copy its wording. "
         "Create original standalone questions. Multiple-choice questions need distinct plausible "
@@ -48,22 +51,48 @@ def authoritative_canvas_evidence(documents: list[CanvasDocument]) -> tuple[str,
     lines: list[str] = []
     source_ids: set[str] = set()
     used_characters = 0
+    document_items = [_document_evidence_items(document) for document in documents]
     for document in documents:
         header = f"Lecture: {document.title} ({document.lecture_id})"
         used_characters, added = _append_bounded(lines, header, used_characters)
         if not added:
+            return "\n".join(lines), source_ids
+    positions = [0] * len(document_items)
+    while True:
+        found_item = False
+        for index, items in enumerate(document_items):
+            if positions[index] >= len(items):
+                continue
+            found_item = True
+            source_id, line = items[positions[index]]
+            positions[index] += 1
+            remaining = MAX_COURSE_EVIDENCE_CHARS - used_characters - (1 if lines else 0)
+            if remaining < 80:
+                return "\n".join(lines), source_ids
+            bounded = _trim(line, min(MAX_COURSE_EVIDENCE_ITEM_CHARS, remaining))
+            used_characters, added = _append_bounded(lines, bounded, used_characters)
+            if added:
+                source_ids.add(source_id)
+        if not found_item:
             break
-        for section in document.sections:
-            for block in section.blocks:
-                content = block.text or "\n".join(block.items)
-                if not content.strip() or block.type in {"asset", "video"}:
-                    continue
-                source_id = f"{document.lecture_id}:{section.id}:{block.id}"
-                line = f"[{source_id}] {section.title}: {content.strip()}"
-                used_characters, added = _append_bounded(lines, line, used_characters)
-                if added:
-                    source_ids.add(source_id)
     return "\n".join(lines), source_ids
+
+
+def _document_evidence_items(document: CanvasDocument) -> list[tuple[str, str]]:
+    section_items: list[list[tuple[str, str]]] = []
+    for section in document.sections:
+        items: list[tuple[str, str]] = []
+        for block in section.blocks:
+            content = block.text or "\n".join(block.items)
+            if not content.strip() or block.type in {"asset", "video"}:
+                continue
+            source_id = f"{document.lecture_id}:{section.id}:{block.id}"
+            items.append((source_id, f"[{source_id}] {section.title}: {content.strip()}"))
+        section_items.append(items)
+    interleaved: list[tuple[str, str]] = []
+    for position in range(max((len(items) for items in section_items), default=0)):
+        interleaved.extend(items[position] for items in section_items if position < len(items))
+    return interleaved
 
 
 def ppi_pattern_evidence(sources: dict[str, list[str]]) -> str:

@@ -38,10 +38,13 @@ def test_generation_input_has_bounded_defaults_and_unique_sources() -> None:
 
     assert request.question_count == 25
     assert request.duration_minutes == 90
+    assert PracticeExamGenerationInput(question_count=50).question_count == 50
     with pytest.raises(ValueError, match="duplicate"):
         PracticeExamGenerationInput(ppi_source_ids=["ppi-42", "ppi-42"])
     with pytest.raises(ValueError):
         PracticeExamGenerationInput(question_count=19)
+    with pytest.raises(ValueError):
+        PracticeExamGenerationInput(question_count=51)
 
 
 def test_store_isolates_users_and_lists_newest_first(tmp_path: Path) -> None:

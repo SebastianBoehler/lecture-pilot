@@ -67,6 +67,16 @@ def test_validator_rejects_unselected_ppi_pattern() -> None:
         )
 
 
+def test_validator_requires_coverage_of_every_available_lecture() -> None:
+    with pytest.raises(PracticeExamValidationError, match="every available lecture"):
+        validate_practice_exam(
+            _exam(),
+            authoritative_source_ids={"lecture-01:risk", "lecture-02:generalization"},
+            question_count=20,
+            selected_ppi_source_ids={"ppi-42"},
+        )
+
+
 def test_validator_rejects_copied_protocol_excerpt() -> None:
     excerpt = (
         "This unusually specific protocol sentence describes every hidden detail of the old exam "

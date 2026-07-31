@@ -10,6 +10,7 @@ from lecturepilot.models import ProviderCapability, ProviderSettings
 from lecturepilot.practice_exam_planner import (
     PracticeExamPlanner,
     PracticeExamPlanningError,
+    _exam_output_token_budget,
 )
 from lecturepilot.practice_exam_prompt import (
     MAX_COURSE_EVIDENCE_CHARS,
@@ -118,6 +119,8 @@ def test_provider_schema_is_strict_and_requires_authoring_fields() -> None:
         "lecture-02:tokens:definition",
     ]
     assert question["properties"]["ppi_pattern_ids"]["maxItems"] == 0
+    assert _exam_output_token_budget(25) == 20_000
+    assert _exam_output_token_budget(50) == 30_000
 
 
 def test_authoritative_ids_include_only_evidence_visible_to_the_model() -> None:
@@ -131,8 +134,26 @@ def test_authoritative_ids_include_only_evidence_visible_to_the_model() -> None:
 
     assert len(evidence) <= MAX_COURSE_EVIDENCE_CHARS
     assert source_ids
-    assert len(source_ids) < 4
+    assert len(source_ids) == 4
     assert all(source_id in evidence for source_id in source_ids)
+
+
+def test_authoritative_evidence_spreads_budget_across_lectures() -> None:
+    documents = []
+    for index in range(1, 15):
+        document = _document()
+        document.id = f"canvas-{index:02d}"
+        document.lecture_id = f"lecture-{index:02d}"
+        document.title = f"Lecture {index:02d}"
+        document.sections[0].blocks[0].text = f"Concept {index}. " + "evidence " * 2_000
+        documents.append(document)
+
+    evidence, source_ids = authoritative_canvas_evidence(documents)
+
+    assert len(evidence) <= MAX_COURSE_EVIDENCE_CHARS
+    assert {source_id.split(":", 1)[0] for source_id in source_ids} == {
+        f"lecture-{index:02d}" for index in range(1, 15)
+    }
 
 
 def _plan_args() -> dict:
@@ -214,7 +235,7 @@ class _ModelClient:
         self.messages: list[list[dict[str, str]]] = []
         self.response_formats: list[dict] = []
 
-    async def complete_exam(self, *, settings, messages, response_format):
+    async def complete_exam(self, *, settings, messages, response_format, max_tokens):
         self.messages.append(deepcopy(messages))
         self.response_formats.append(deepcopy(response_format))
         response = self.responses[self.calls]

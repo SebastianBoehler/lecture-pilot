@@ -36,6 +36,19 @@ def test_generation_returns_public_exam_and_replays_idempotently(tmp_path: Path)
     assert "ppi_source_ids" not in first.text
 
 
+def test_generation_accepts_comprehensive_50_question_exam(tmp_path: Path) -> None:
+    client, _planner = _client(tmp_path)
+
+    response = _generate(
+        client,
+        question_count=50,
+        key="practice-exam-key-comprehensive-0001",
+    )
+
+    assert response.status_code == 200
+    assert len(response.json()["questions"]) == 50
+
+
 def test_generation_uses_only_published_unlocked_canvas_and_selected_private_source(
     tmp_path: Path,
 ) -> None:
@@ -143,6 +156,7 @@ def test_exam_library_read_and_delete_are_learner_private(tmp_path: Path) -> Non
 def _generate(
     client: TestClient,
     *,
+    question_count: int = 20,
     ppi_source_ids: list[str] | None = None,
     key: str = "practice-exam-key-0001",
 ):
@@ -150,7 +164,7 @@ def _generate(
         "/courses/martius-ml/practice-exam-generations",
         headers={**student_headers("student-a"), "Idempotency-Key": key},
         json={
-            "question_count": 20,
+            "question_count": question_count,
             "duration_minutes": 90,
             "ppi_source_ids": ppi_source_ids or [],
         },

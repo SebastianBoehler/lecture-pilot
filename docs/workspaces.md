@@ -125,11 +125,15 @@ Learner reset removes only the authenticated learner's selected course state.
 ## Private practice exams and PPI sources
 
 Practice exams are a learner-owned layer beside, not inside, Exam Readiness.
-The API generates one immutable 20–30 question exam from currently unlocked,
+The API generates one immutable 20–50 question exam from currently unlocked,
 published canvases. Its private record includes answer keys, rubrics, and source
 provenance; browser and PDF responses use a public projection that omits those
 fields. Online answers are kept only in the active browser tab and are never
 submitted in this release.
+
+Generation interleaves the bounded evidence budget across lectures and sections
+instead of filling it from the start of the course. Every lecture represented in
+the evidence must be covered before the exam is accepted.
 
 An enrolled learner may optionally connect a separate PPI account. Credentials
 exist only for the active catalog/import request. If the selected PPI lecture is

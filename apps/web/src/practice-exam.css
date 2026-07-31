@@ -82,10 +82,35 @@
 .practice-exam-library > li > div:first-child {
   display: grid;
   gap: 2px;
+  min-width: 0;
 }
-.practice-exam-library > li > div:last-child {
+.practice-exam-library-actions {
   display: flex;
+  align-items: center;
   gap: 8px;
+}
+.practice-exam-open-button,
+.practice-exam-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.practice-exam-open-button {
+  gap: 6px;
+}
+.practice-exam-icon-button {
+  width: var(--control-height);
+  padding: 0 !important;
+  color: var(--color-text-secondary) !important;
+}
+.practice-exam-icon-button:hover {
+  color: var(--color-text-primary) !important;
+  background: var(--color-bg-secondary) !important;
+}
+.practice-exam-delete-button:hover {
+  border-color: color-mix(in srgb, var(--color-danger) 55%, var(--color-border-primary));
+  color: var(--color-danger) !important;
+  background: color-mix(in srgb, var(--color-danger) 7%, transparent) !important;
 }
 
 .practice-exam-dialog {
@@ -218,6 +243,7 @@ body:has(.practice-exam-dialog[open]) {
   background: var(--color-bg-secondary);
 }
 
+.practice-exams button:disabled,
 .practice-exam-dialog button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
@@ -235,10 +261,10 @@ body:has(.practice-exam-dialog[open]) {
   .practice-exams > header > button {
     width: 100%;
   }
-  .practice-exam-library > li > div:last-child {
+  .practice-exam-library-actions {
     width: 100%;
   }
-  .practice-exam-library > li > div:last-child button {
+  .practice-exam-open-button {
     flex: 1;
   }
   .practice-exam-dialog {

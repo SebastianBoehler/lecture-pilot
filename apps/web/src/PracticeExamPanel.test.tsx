@@ -53,8 +53,13 @@ describe("PracticeExamPanel", () => {
     await user.click(screen.getByRole("button", { name: "Generate exam" }));
 
     const dialog = screen.getByRole("dialog", { name: "Generate practice exam" });
-    expect(within(dialog).getByLabelText("Questions")).toHaveValue(25);
+    const questionInput = within(dialog).getByLabelText("Questions");
+    expect(questionInput).toHaveValue(25);
+    expect(questionInput).toHaveAttribute("max", "50");
     expect(within(dialog).getByLabelText("Duration in minutes")).toHaveValue(90);
+    await user.clear(questionInput);
+    await user.type(questionInput, "50");
+    expect(within(dialog).getByRole("button", { name: "Generate 50-question exam" })).toBeEnabled();
   });
 
   it("reuses cached PPI material without asking for credentials", async () => {
@@ -134,7 +139,7 @@ describe("PracticeExamPanel", () => {
     });
   });
 
-  it("shows PDF failures and clears the draft after confirmed deletion", async () => {
+  it("offers direct open, PDF, and delete actions while clearing a deleted draft", async () => {
     vi.stubGlobal("fetch", existingExamFetch());
     vi.stubGlobal(
       "confirm",
@@ -142,12 +147,21 @@ describe("PracticeExamPanel", () => {
     );
     const user = userEvent.setup();
     renderPanel();
-    await user.click(await screen.findByRole("button", { name: "Open online" }));
+
+    const examRow = await screen.findByRole("listitem");
+    const openButton = within(examRow).getByRole("button", { name: "Open" });
+    const pdfButton = within(examRow).getByRole("button", { name: "Download PDF" });
+    const deleteButton = within(examRow).getByRole("button", { name: "Delete exam" });
+    expect(openButton).toHaveTextContent("Open");
+    expect(pdfButton).toHaveAttribute("title", "Download PDF");
+    expect(deleteButton).toHaveAttribute("title", "Delete exam");
+
+    await user.click(openButton);
     await user.type(screen.getByLabelText("Your answer for question 2"), "Temporary");
-    await user.click(screen.getByRole("button", { name: "Download PDF" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Compiler unavailable");
     await user.click(screen.getByRole("button", { name: "Close exam" }));
-    await user.click(screen.getByRole("button", { name: "Delete exam" }));
+    await user.click(pdfButton);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Compiler unavailable");
+    await user.click(deleteButton);
     await waitFor(() =>
       expect(readPracticeExamDraft("student-a", "course-1", "a".repeat(32))).toEqual({}),
     );
