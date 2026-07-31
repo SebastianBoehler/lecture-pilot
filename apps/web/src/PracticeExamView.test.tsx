@@ -19,19 +19,21 @@ describe("PracticeExamView", () => {
     expect(document.querySelectorAll(".katex")).toHaveLength(2);
   });
 
-  it("separates the question-number styling from the rendered prompt", () => {
+  it("uses a compact numeric prefix instead of repeating the question label", () => {
     renderWithI18n(
       <PracticeExamView courseId="course-1" exam={exam} session={session} onClose={vi.fn()} />,
     );
 
-    const legend = screen.getByText("Question 1").closest("legend");
-    const number = screen.getByText("Question 1");
+    const number = screen.getByText("1.");
+    const legend = number.closest("legend");
     const prompt = legend?.children.item(1);
 
     expect(prompt).not.toBeNull();
     expect(number).toHaveClass("practice-question-number");
+    expect(number).toHaveAttribute("aria-hidden", "true");
     expect(prompt).toHaveClass("practice-question-prompt");
     expect(number).not.toContainElement(prompt as HTMLElement);
+    expect(screen.queryByText("Question 1")).not.toBeInTheDocument();
   });
 
   it("makes the professor-visibility boundary clear without interrupting the exam", () => {

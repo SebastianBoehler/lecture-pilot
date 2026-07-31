@@ -150,8 +150,8 @@ export function PracticeExamView({
                 <li key={question.id}>
                   <fieldset>
                     <legend>
-                      <span className="practice-question-number">
-                        {t("practice.question", { number: index + 1 })}
+                      <span aria-hidden="true" className="practice-question-number">
+                        {index + 1}.
                       </span>
                       <span className="practice-question-prompt">
                         <MathText highlightedText={null} text={question.prompt} />

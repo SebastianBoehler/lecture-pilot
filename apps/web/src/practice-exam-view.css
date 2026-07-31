@@ -53,15 +53,20 @@
 
 .practice-question-list legend {
   display: grid;
-  gap: 5px;
+  grid-template-columns: 2.2ch minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  margin-bottom: 8px;
   padding-right: 80px;
 }
 
 .practice-question-number {
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: 17px;
   font-weight: 650;
-  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.45;
+  text-align: right;
 }
 
 .practice-question-prompt {
