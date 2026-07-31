@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import yaml
@@ -49,7 +50,7 @@ def read_component_block(
         component_type=str(payload.get("type") or "unknown")[:120],
         component_ref=component_ref or _default_ref_for_id(component_id),
         component_version=_component_version(payload.get("version")),
-        caption=str(payload.get("title") or label or "Interactive component")[:500],
+        caption=str(payload.get("title") or _component_title(component_id))[:500],
         text=str(payload.get("prompt") or payload.get("text") or "").strip() or None,
         items=items,
         option_ids=option_ids,
@@ -160,6 +161,19 @@ def _default_component_ref(block: CanvasBlock) -> str:
 
 def _default_ref_for_id(component_id: str) -> str:
     return f"{component_id}.yaml"
+
+
+def _component_title(component_id: str) -> str:
+    stem = Path(component_id).stem
+    words = [word for word in re.split(r"[-_\s]+", stem) if word]
+    if len(words) > 1 and words[-1].lower() in {"component", "explorer", "process"}:
+        words.pop()
+    acronyms = {"ai", "api", "llm", "nlp", "ui", "ux"}
+    title = " ".join(
+        word.upper() if word.lower() in acronyms else word.capitalize() if index == 0 else word
+        for index, word in enumerate(words)
+    )
+    return title or "Interactive component"
 
 
 def _component_version(value: object) -> int | None:

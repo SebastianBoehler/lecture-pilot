@@ -23,14 +23,15 @@ export function ProcessExplorer({ block, className, sourceMarker }: ProcessExplo
   }
   const safeIndex = Math.min(activeIndex, steps.length - 1);
   const active = steps[safeIndex];
+  const title = processTitle(block, t("component.process.title"));
 
   return (
     <section className={`${className} canvas-component canvas-process-explorer`} id={block.id}>
       <header className="canvas-component-header">
-        <h3>{block.caption || t("component.process.title")}</h3>
+        <h3>{title}</h3>
         {block.text ? <p>{block.text}</p> : null}
       </header>
-      <ol className="canvas-process-steps">
+      <ol className={`canvas-process-steps${steps.length === 5 ? " is-five-step" : ""}`}>
         {steps.map((step, index) => (
           <li key={`${index}-${step.title}`}>
             <button
@@ -39,8 +40,8 @@ export function ProcessExplorer({ block, className, sourceMarker }: ProcessExplo
               onClick={() => setActiveIndex(index)}
               type="button"
             >
-              <span>{index + 1}</span>
-              {step.title}
+              <span className="canvas-process-step-number">{index + 1}</span>
+              <span className="canvas-process-step-title">{step.title}</span>
             </button>
           </li>
         ))}
@@ -58,4 +59,35 @@ export function ProcessExplorer({ block, className, sourceMarker }: ProcessExplo
       {sourceMarker}
     </section>
   );
+}
+
+function processTitle(block: CanvasBlock, fallback: string): string {
+  const caption = block.caption?.trim();
+  if (caption && !/\.ya?ml$/i.test(caption)) {
+    return caption;
+  }
+  const source = block.component_id || caption || block.component_ref;
+  const stem =
+    source
+      ?.split("/")
+      .pop()
+      ?.replace(/\.[^.]+$/, "") ?? "";
+  const words = stem.split(/[-_\s]+/).filter(Boolean);
+  if (
+    words.length > 1 &&
+    ["component", "explorer", "process"].includes(words.at(-1)!.toLowerCase())
+  ) {
+    words.pop();
+  }
+  const acronyms = new Set(["ai", "api", "llm", "nlp", "ui", "ux"]);
+  const title = words
+    .map((word, index) =>
+      acronyms.has(word.toLowerCase()) ? word.toUpperCase() : index === 0 ? capitalize(word) : word,
+    )
+    .join(" ");
+  return title || fallback;
+}
+
+function capitalize(value: string): string {
+  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }

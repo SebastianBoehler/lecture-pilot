@@ -181,78 +181,6 @@
   text-align: left;
 }
 
-.canvas-process-steps {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 8px;
-  margin: 18px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.canvas-process-steps button {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  width: 100%;
-  min-height: 54px;
-  gap: 10px;
-  border: 1px solid var(--color-border-primary);
-  border-radius: 8px;
-  padding: 9px 11px;
-  color: var(--color-text-primary);
-  background: var(--color-bg-secondary);
-  text-align: left;
-  font-weight: 700;
-}
-
-.canvas-process-steps button:hover,
-.canvas-process-steps button[aria-current="step"] {
-  border-color: var(--color-accent-primary);
-}
-
-.canvas-process-steps button[aria-current="step"] {
-  background: color-mix(in srgb, var(--color-accent-primary) 8%, var(--color-bg-primary));
-}
-
-.canvas-process-steps button span {
-  display: grid;
-  width: 26px;
-  height: 26px;
-  place-items: center;
-  border-radius: 50%;
-  color: var(--color-text-secondary);
-  background: var(--color-bg-primary);
-  font-size: 12px;
-}
-
-.canvas-process-detail {
-  min-height: 126px;
-  margin-top: 12px;
-  border: 1px solid var(--color-border-primary);
-  border-radius: 8px;
-  padding: 16px;
-}
-
-.canvas-process-detail > span {
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-
-.canvas-process-detail h4 {
-  margin: 7px 0 0;
-  font-size: 16px;
-}
-
-.canvas-process-detail p {
-  margin: 6px 0 0;
-  color: var(--color-text-secondary);
-  line-height: 1.55;
-}
-
 @media (max-width: 620px) {
   .canvas-interactive-chart,
   .canvas-process-explorer {
@@ -262,15 +190,10 @@
   .canvas-chart-graphic {
     min-height: 180px;
   }
-
-  .canvas-process-steps {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .canvas-chart-control input,
-  .canvas-process-steps button {
+  .canvas-chart-control input {
     scroll-behavior: auto;
   }
 }
