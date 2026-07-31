@@ -30,6 +30,10 @@ from lecturepilot.course_canvas_quality import CanvasQualityReviewer, LiteLLMCan
 from lecturepilot.course_deletion import register_course_deletion_routes
 from lecturepilot.course_routes import register_course_routes
 from lecturepilot.course_source_routing_routes import register_course_source_routing_routes
+from lecturepilot.course_source_routing_planner import (
+    CourseSourceRoutingPlanner,
+    LiteLLMSourceRoutingClient,
+)
 from lecturepilot.course_update_routes import register_course_update_routes
 from lecturepilot.course_update_storage import CourseUpdateRecoveryError
 from lecturepilot.csrf import CsrfProtectionMiddleware, allowed_origins
@@ -131,6 +135,9 @@ def create_app() -> FastAPI:
     )
     app.state.lecture_schedule_planner = LectureSchedulePlanner(
         model_client=LiteLLMScheduleClient(app.state.model_usage)
+    )
+    app.state.source_routing_planner = CourseSourceRoutingPlanner(
+        model_client=LiteLLMSourceRoutingClient(app.state.model_usage)
     )
     app.state.open_answer_evaluator = OpenAnswerEvaluator(
         model_client=LiteLLMOpenAnswerEvaluationClient(app.state.model_usage)

@@ -447,6 +447,7 @@ export function useProfessorCourseBuilder({
         setLectureSchedule(restoredLectures.map(scheduleItemFromLecture));
       }
       if (setup.target === "full-course") {
+        setScheduleApplied(restoredLectures.length > 0);
         const restoredDrafts = await restoreFullCourseCanvasDrafts({
           courseId: targetWorkspace.courseId,
           lectureIds: restoredLectures.map((lecture) => lecture.id),
@@ -783,7 +784,7 @@ export function useProfessorCourseBuilder({
         const activeWorkspace = requireWorkspace(workspace);
         await sourceRouting.confirm(activeWorkspace.courseId);
         setActiveStep("review");
-        return "Source routing confirmed for canvas generation.";
+        return "Source assignments confirmed for Canvas generation.";
       }),
   };
 

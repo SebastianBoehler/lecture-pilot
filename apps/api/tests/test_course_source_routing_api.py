@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from auth_helpers import professor_headers
+from auth_helpers import install_test_source_routing_planner, professor_headers
 from lecturepilot.app import create_app
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_builder_source import course_builder_source_document
@@ -19,8 +19,8 @@ def test_professor_reviews_and_confirms_every_source_route(tmp_path: Path) -> No
     _upload(client, "Lecture03.md", b"# Lecture 03\n\nBayes rule.")
     _upload(client, "exam-protocols/README.md", b"# Historical protocols")
 
-    response = client.get(
-        f"/admin/courses/{COURSE_ID}/source-routing",
+    response = client.post(
+        f"/admin/courses/{COURSE_ID}/source-routing/proposal",
         headers=professor_headers(),
     )
 
@@ -30,7 +30,7 @@ def test_professor_reviews_and_confirms_every_source_route(tmp_path: Path) -> No
     routes = {item["path"]: item for item in payload["routes"]}
     assert routes["Lecture03.md"]["role"] == "lecture"
     assert routes["Lecture03.md"]["lecture_id"] == "lecture-03"
-    assert routes["exam-protocols/README.md"]["role"] == "reference_only"
+    assert routes["exam-protocols/README.md"]["role"] == "excluded"
     assert routes["exam-protocols/README.md"]["lecture_id"] is None
 
     incomplete = client.put(
@@ -64,8 +64,8 @@ def test_generation_requires_current_routing_and_uses_only_generation_sources(
     with pytest.raises(SourceBundleCanvasError, match="Review and confirm source routing"):
         course_builder_source_document(client.app, COURSE_ID, "lecture-03")
 
-    routing = client.get(
-        f"/admin/courses/{COURSE_ID}/source-routing",
+    routing = client.post(
+        f"/admin/courses/{COURSE_ID}/source-routing/proposal",
         headers=professor_headers(),
     ).json()
     confirmed = client.put(
@@ -103,8 +103,8 @@ def test_generation_requires_current_routing_and_uses_only_generation_sources(
 def test_replacing_the_lecture_schedule_invalidates_confirmed_routing(tmp_path: Path) -> None:
     client = _client(tmp_path)
     _upload(client, "Lecture03.md", b"# Lecture 03\n\nBayes rule maps evidence into decisions.")
-    routing = client.get(
-        f"/admin/courses/{COURSE_ID}/source-routing", headers=professor_headers()
+    routing = client.post(
+        f"/admin/courses/{COURSE_ID}/source-routing/proposal", headers=professor_headers()
     ).json()
     confirmed = client.put(
         f"/admin/courses/{COURSE_ID}/source-routing",
@@ -132,8 +132,12 @@ def test_replacing_the_lecture_schedule_invalidates_confirmed_routing(tmp_path: 
     )
     assert replaced.status_code == 200
 
-    refreshed = client.get(
+    unavailable = client.get(
         f"/admin/courses/{COURSE_ID}/source-routing", headers=professor_headers()
+    )
+    assert unavailable.status_code == 409
+    refreshed = client.post(
+        f"/admin/courses/{COURSE_ID}/source-routing/proposal", headers=professor_headers()
     )
     assert refreshed.status_code == 200
     assert refreshed.json()["confirmed"] is False
@@ -148,6 +152,7 @@ def _client(tmp_path: Path) -> TestClient:
         material_root=tmp_path / "course",
     )
     client = TestClient(app)
+    install_test_source_routing_planner(client)
     created = client.post(
         "/admin/course-workspaces",
         json={

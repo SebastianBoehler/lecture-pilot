@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -8,7 +9,6 @@ from pydantic import BaseModel, Field, model_validator
 class SourceRouteRole(StrEnum):
     LECTURE = "lecture"
     COURSE_WIDE = "course_wide"
-    REFERENCE_ONLY = "reference_only"
     EXCLUDED = "excluded"
 
 
@@ -34,7 +34,7 @@ class CourseSourceRoutingInput(BaseModel):
 
 
 class CourseSourceRoutingManifest(BaseModel):
-    schema_version: int = 1
+    schema_version: Literal[2] = 2
     course_id: str = Field(min_length=1, max_length=120)
     source_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     confirmed: bool

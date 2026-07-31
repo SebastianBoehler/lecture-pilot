@@ -11,6 +11,8 @@ export type {
   AnalyticsGateMetric,
   AnalyticsOptionMetric,
   AnalyticsQuizMetric,
+  CourseAnalyticsSummary,
+  CourseLectureAnalytics,
   LectureAnalyticsSummary,
 } from "./analyticsTypes";
 export type {
@@ -157,7 +159,7 @@ export type SourceBundleManifest = {
   counts_by_kind: Record<string, number>;
 };
 
-export type SourceRouteRole = "lecture" | "course_wide" | "reference_only" | "excluded";
+export type SourceRouteRole = "lecture" | "course_wide" | "excluded";
 
 export type CourseSourceRoute = {
   path: string;

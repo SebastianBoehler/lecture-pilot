@@ -186,6 +186,10 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
   PPI protocols may inform question patterns only; every question must remain
   anchored to unlocked published course evidence and must not copy protocol
   wording.
+- Before canvas generation, the source-routing agent must semantically assign
+  every indexed course file exactly once as lecture-specific, course-wide, or
+  not used. Professors review and may edit this complete proposal; generation
+  remains blocked until they confirm the current source revision.
 - Canvas commands may focus sections, highlight specific blocks or phrases, and
   append/update learner-specific Markdown sections.
 - Infographic requests may call the backend image-generation tool. Provider

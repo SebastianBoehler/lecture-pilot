@@ -57,6 +57,7 @@ describe("Professor course builder restoration", () => {
         status: "error",
       }),
     ]);
+    expect(result.current.steps.find((step) => step.id === "sources")?.available).toBe(true);
   });
 });
 

@@ -109,16 +109,17 @@ export async function getSourceBundle(
   return payload as SourceBundleManifest;
 }
 
-export async function getSourceRouting(
+export async function proposeSourceRouting(
   courseId: string,
   session: LoginSession,
 ): Promise<CourseSourceRoutingManifest> {
   const response = await fetch(
-    apiUrl(`/admin/courses/${courseId}/source-routing`),
-    authRequestInit(session),
+    apiUrl(`/admin/courses/${courseId}/source-routing/proposal`),
+    authRequestInit(session, { method: "POST" }),
   );
   const payload = await response.json();
-  if (!response.ok) throw new Error(readApiError(payload, "Source routing failed to load."));
+  if (!response.ok)
+    throw new Error(readApiError(payload, "Source assignment proposal failed to generate."));
   return payload as CourseSourceRoutingManifest;
 }
 

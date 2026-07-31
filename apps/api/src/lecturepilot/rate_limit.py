@@ -99,6 +99,7 @@ def _rule_for(scope: Scope, rules: dict[str, RateLimit]) -> RateLimit | None:
     if method in {"GET", "POST"} and (
         path.endswith("/canvas/draft")
         or path.endswith("/lecture-schedule")
+        or path.endswith("/source-routing/proposal")
         or path.endswith("/exam-readiness")
         or path.endswith("/exam-readiness/attempts")
         or path.endswith("/media/youtube/search")

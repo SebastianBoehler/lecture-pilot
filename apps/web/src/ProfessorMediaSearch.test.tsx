@@ -27,8 +27,8 @@ describe("Professor lecture media search", () => {
     );
     await user.click(screen.getByRole("button", { name: /upload and process materials/i }));
     await user.click(await screen.findByRole("button", { name: /apply lecture schedule/i }));
-    await screen.findByRole("heading", { name: /review source routing/i });
-    await user.click(screen.getByRole("button", { name: /confirm source routing/i }));
+    await screen.findByRole("heading", { name: /review source assignments/i });
+    await user.click(screen.getByRole("button", { name: /confirm assignments/i }));
 
     const target = screen.getByLabelText(/choose videos for/i);
     const suggestions = screen.getByRole("region", { name: /suggested searches/i });

@@ -71,6 +71,41 @@ def lecture_schedule_response_format() -> dict[str, Any]:
     }
 
 
+def source_routing_response_format() -> dict[str, Any]:
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "lecturepilot_source_routing",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "routes": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "path": {"type": "string"},
+                                "role": {
+                                    "type": "string",
+                                    "enum": ["lecture", "course_wide", "excluded"],
+                                },
+                                "lecture_id": _nullable_string(
+                                    "Required for lecture-specific sources; null otherwise."
+                                ),
+                            },
+                            "required": ["path", "role", "lecture_id"],
+                        },
+                    },
+                },
+                "required": ["routes"],
+            },
+        },
+    }
+
+
 def _agent_turn_schema() -> dict[str, Any]:
     return {
         "type": "object",

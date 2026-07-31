@@ -3,7 +3,7 @@ import { StepHeader } from "./ProfessorCourseBuilderParts";
 import { lectureIdFromNumber } from "./professorWorkspaceActivation";
 import type { CourseSourceRoutingManifest, LectureScheduleItem, SourceRouteRole } from "./types";
 
-const ROLES: SourceRouteRole[] = ["lecture", "course_wide", "reference_only", "excluded"];
+const ROLES: SourceRouteRole[] = ["lecture", "course_wide", "excluded"];
 
 export function ProfessorSourceRoutingStep({
   isSaving,
@@ -31,17 +31,50 @@ export function ProfessorSourceRoutingStep({
         done={Boolean(routing?.confirmed)}
       />
       <p className="flow-help">{t("builder.sources.help")}</p>
-      <p className="source-routing-note">{t("builder.sources.referenceHelp")}</p>
-      <div className="source-routing-list">
+      <div
+        aria-label={t("builder.sources.legendLabel")}
+        className="source-routing-legend"
+        role="list"
+      >
+        <div role="listitem">
+          <strong>{t("builder.sources.role.lecture")}</strong>
+          <span>{t("builder.sources.legend.lecture")}</span>
+        </div>
+        <div role="listitem">
+          <strong>{t("builder.sources.role.courseWide")}</strong>
+          <span>{t("builder.sources.legend.courseWide")}</span>
+        </div>
+        <div role="listitem">
+          <strong>{t("builder.sources.role.excluded")}</strong>
+          <span>{t("builder.sources.legend.excluded")}</span>
+        </div>
+      </div>
+      <div
+        aria-label={t("builder.sources.tableLabel")}
+        className="source-routing-list"
+        role="table"
+      >
+        <div className="source-routing-columns" role="row">
+          <span role="columnheader">{t("builder.sources.column.file")}</span>
+          <span role="columnheader">{t("builder.sources.column.use")}</span>
+          <span role="columnheader">{t("builder.sources.column.lecture")}</span>
+        </div>
         {routing?.routes.map((route) => (
-          <div className="source-routing-row" key={route.path}>
-            <div className="source-routing-file">
-              <strong title={route.path}>{route.path}</strong>
-              <span>{route.kind}</span>
+          <div className="source-routing-row" key={route.path} role="row">
+            <div className="source-routing-file" role="cell">
+              <span className="source-routing-name" title={route.path}>
+                {fileName(route.path)}
+              </span>
+              <span className="source-routing-meta">
+                <span>{route.kind}</span>
+                {fileDirectory(route.path) ? (
+                  <span className="source-routing-directory">{fileDirectory(route.path)}</span>
+                ) : null}
+              </span>
             </div>
-            <label>
-              <span className="sr-only">
-                {t("builder.sources.routeLabel", { path: route.path })}
+            <div className="source-routing-control" role="cell">
+              <span aria-hidden="true" className="source-routing-mobile-label">
+                {t("builder.sources.column.use")}
               </span>
               <select
                 aria-label={t("builder.sources.routeLabel", { path: route.path })}
@@ -61,11 +94,11 @@ export function ProfessorSourceRoutingStep({
                   </option>
                 ))}
               </select>
-            </label>
+            </div>
             {route.role === "lecture" ? (
-              <label>
-                <span className="sr-only">
-                  {t("builder.sources.lectureLabel", { path: route.path })}
+              <div className="source-routing-control" role="cell">
+                <span aria-hidden="true" className="source-routing-mobile-label">
+                  {t("builder.sources.column.lecture")}
                 </span>
                 <select
                   aria-label={t("builder.sources.lectureLabel", { path: route.path })}
@@ -80,8 +113,12 @@ export function ProfessorSourceRoutingStep({
                     </option>
                   ))}
                 </select>
-              </label>
-            ) : null}
+              </div>
+            ) : (
+              <span aria-hidden="true" className="source-routing-empty" role="cell">
+                —
+              </span>
+            )}
           </div>
         ))}
       </div>
@@ -102,6 +139,14 @@ export function ProfessorSourceRoutingStep({
 function roleLabel(role: SourceRouteRole, t: ReturnType<typeof useI18n>["t"]): string {
   if (role === "lecture") return t("builder.sources.role.lecture");
   if (role === "course_wide") return t("builder.sources.role.courseWide");
-  if (role === "reference_only") return t("builder.sources.role.referenceOnly");
   return t("builder.sources.role.excluded");
+}
+
+function fileName(path: string): string {
+  return path.split("/").at(-1) ?? path;
+}
+
+function fileDirectory(path: string): string {
+  const separator = path.lastIndexOf("/");
+  return separator < 0 ? "" : path.slice(0, separator + 1);
 }

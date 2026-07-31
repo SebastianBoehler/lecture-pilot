@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from auth_helpers import professor_headers, student_headers
+from auth_helpers import install_test_source_routing_planner, professor_headers, student_headers
 from canvas_workspace_fixtures import published_course_canvas
 from lecturepilot.app import create_app
 from lecturepilot.canvas_workspace import CanvasWorkspace
@@ -272,8 +272,9 @@ def _upload(client: TestClient, path: str, content: bytes) -> None:
 
 
 def _confirm_routing(client: TestClient, lecture_overrides: dict[str, str] | None = None) -> None:
-    routing = client.get(
-        "/admin/courses/partitioned-course/source-routing",
+    install_test_source_routing_planner(client)
+    routing = client.post(
+        "/admin/courses/partitioned-course/source-routing/proposal",
         headers=professor_headers(),
     ).json()
     for route in routing["routes"]:

@@ -7,10 +7,6 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from lecturepilot.course_source_partition import (
-    is_course_wide_source,
-    select_lecture_source_files,
-)
 from lecturepilot.course_source_routing_models import (
     CourseSourceRoute,
     CourseSourceRoutingInput,
@@ -19,7 +15,6 @@ from lecturepilot.course_source_routing_models import (
 )
 from lecturepilot.durable_files import ensure_durable_directory, fsync_directory
 from lecturepilot.models import Lecture
-from lecturepilot.lecture_schedule import LECTURE_FILE_RE
 from lecturepilot.source_index_models import CourseSourceIndex, IndexedSourceFile
 
 
@@ -28,6 +23,10 @@ class SourceRoutingError(ValueError):
 
 
 class StaleSourceRoutingError(SourceRoutingError):
+    pass
+
+
+class SourceRoutingProposalRequired(SourceRoutingError):
     pass
 
 
@@ -56,12 +55,33 @@ def review_source_routing(
     stored = read_source_routing(routing_path, course_id)
     if stored is not None and stored.source_revision == revision:
         return stored
-    return CourseSourceRoutingManifest(
-        course_id=course_id,
-        source_revision=revision,
-        confirmed=False,
-        routes=_suggest_routes(index.files, lectures),
+    raise SourceRoutingProposalRequired(
+        "Generate an agent source-assignment proposal before reviewing it."
     )
+
+
+def save_source_routing_proposal(
+    *,
+    course_id: str,
+    index: CourseSourceIndex,
+    lectures: list[Lecture],
+    routing_path: Path,
+    routes: list[CourseSourceRoute],
+) -> CourseSourceRoutingManifest:
+    indexed_paths = {item.path for item in index.files}
+    route_paths = {route.path for route in routes}
+    if len(route_paths) != len(routes) or route_paths != indexed_paths:
+        raise SourceRoutingError(
+            "The routing agent must assign every uploaded source exactly once."
+        )
+    manifest = CourseSourceRoutingManifest(
+        course_id=course_id,
+        source_revision=source_revision(index, lectures),
+        confirmed=False,
+        routes=routes,
+    )
+    _write_source_routing(routing_path, manifest)
+    return manifest
 
 
 def confirm_source_routing(
@@ -139,63 +159,6 @@ def read_source_routing(path: Path, course_id: str) -> CourseSourceRoutingManife
     except (OSError, ValidationError):
         return None
     return routing if routing.course_id == course_id else None
-
-
-def _suggest_routes(
-    files: list[IndexedSourceFile], lectures: list[Lecture]
-) -> list[CourseSourceRoute]:
-    bundle_files = [item.as_bundle_file() for item in files]
-    selected_by_lecture = {
-        lecture.id: _suggested_lecture_paths(bundle_files, lectures, lecture)
-        for lecture in lectures
-    }
-    routes = []
-    for item in files:
-        lecture_ids = [
-            lecture.id for lecture in lectures if item.path in selected_by_lecture[lecture.id]
-        ]
-        role = SourceRouteRole.REFERENCE_ONLY
-        lecture_id = None
-        if is_course_wide_source(item.path):
-            role = SourceRouteRole.COURSE_WIDE
-        elif len(lecture_ids) == 1:
-            role = SourceRouteRole.LECTURE
-            lecture_id = lecture_ids[0]
-        routes.append(
-            CourseSourceRoute(
-                path=item.path,
-                kind=item.kind,
-                sha256=item.sha256,
-                role=role,
-                lecture_id=lecture_id,
-            )
-        )
-    return routes
-
-
-def _suggested_lecture_paths(files, lectures: list[Lecture], lecture: Lecture) -> set[str]:
-    if len(lectures) > 1:
-        return {
-            item.path
-            for item in select_lecture_source_files(
-                files=files,
-                lectures=lectures,
-                lecture_id=lecture.id,
-            )
-        }
-    material_path = lecture.material_path
-    number_match = LECTURE_FILE_RE.search(lecture.id)
-    number = int(number_match.group(1)) if number_match else None
-    return {
-        item.path
-        for item in files
-        if item.path == material_path
-        or (
-            number is not None
-            and (match := LECTURE_FILE_RE.search(item.path)) is not None
-            and int(match.group(1)) == number
-        )
-    }
 
 
 def _write_source_routing(path: Path, routing: CourseSourceRoutingManifest) -> None:

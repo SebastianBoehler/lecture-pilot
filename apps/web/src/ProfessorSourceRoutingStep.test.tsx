@@ -21,8 +21,8 @@ const routing: CourseSourceRoutingManifest = {
     {
       kind: "markdown",
       lecture_id: null,
-      path: "exam-protocols/README.md",
-      role: "reference_only",
+      path: "build/cache.json",
+      role: "excluded",
       sha256: "c".repeat(64),
     },
   ],
@@ -48,19 +48,23 @@ describe("ProfessorSourceRoutingStep", () => {
       </I18nProvider>,
     );
 
-    expect(screen.getByRole("heading", { name: /review source routing/i })).toBeInTheDocument();
-    expect(screen.getByText("exam-protocols/README.md")).toBeInTheDocument();
-    expect(screen.getByLabelText(/route exam-protocols\/readme\.md/i)).toHaveValue(
-      "reference_only",
-    );
-    expect(
-      screen.getByText(/reference only files are kept out of generation/i),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /review source assignments/i })).toBeInTheDocument();
+    expect(screen.getByText(/agent proposed a destination for every file/i)).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "File" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Use in" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Lecture" })).toBeInTheDocument();
+    expect(screen.getByText("cache.json")).toHaveClass("source-routing-name");
+    expect(screen.getByText("build/")).toHaveClass("source-routing-directory");
+    expect(screen.getByLabelText(/route build\/cache\.json/i)).toHaveValue("excluded");
+    expect(screen.getByText(/sent only to the selected lecture/i)).toBeInTheDocument();
+    expect(screen.getByText(/sent to every lecture/i)).toBeInTheDocument();
+    expect(screen.getByText(/never sent to canvas generation/i)).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /reference only/i })).not.toBeInTheDocument();
 
-    await user.selectOptions(screen.getByLabelText(/route exam-protocols\/readme\.md/i), "lecture");
-    expect(onRouteChange).toHaveBeenCalledWith("exam-protocols/README.md", "lecture", "lecture-03");
+    await user.selectOptions(screen.getByLabelText(/route build\/cache\.json/i), "lecture");
+    expect(onRouteChange).toHaveBeenCalledWith("build/cache.json", "lecture", "lecture-03");
 
-    await user.click(screen.getByRole("button", { name: /confirm source routing/i }));
+    await user.click(screen.getByRole("button", { name: /confirm assignments/i }));
     expect(onConfirm).toHaveBeenCalledOnce();
   });
 });

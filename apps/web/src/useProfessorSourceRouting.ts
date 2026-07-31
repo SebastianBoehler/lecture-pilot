@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 
-import { confirmSourceRouting, getSourceRouting } from "./professorApi";
+import { confirmSourceRouting, proposeSourceRouting } from "./professorApi";
 import type { CourseSourceRoutingManifest, LoginSession, SourceRouteRole } from "./types";
 
 export function useProfessorSourceRouting(session: LoginSession) {
@@ -8,7 +8,7 @@ export function useProfessorSourceRouting(session: LoginSession) {
 
   const load = useCallback(
     async (courseId: string) => {
-      const result = await getSourceRouting(courseId, session);
+      const result = await proposeSourceRouting(courseId, session);
       setRouting(result);
       return result;
     },
