@@ -46,3 +46,28 @@ export type LectureAnalyticsSummary = {
   quizzes: AnalyticsQuizMetric[];
   gates: AnalyticsGateMetric[];
 };
+
+export type CourseLectureAnalytics = {
+  lecture_id: string;
+  total_events: number;
+  unique_learners: number;
+  quiz_attempts: number;
+  quiz_correct_attempts: number;
+  quiz_rate: number | null;
+  gate_checks: number;
+  gate_passes: number;
+  gate_rate: number | null;
+};
+
+export type CourseAnalyticsSummary = {
+  course_id: string;
+  total_events: number;
+  unique_learners: number;
+  quiz_attempts: number;
+  quiz_correct_attempts: number;
+  quiz_rate: number | null;
+  gate_checks: number;
+  gate_passes: number;
+  gate_rate: number | null;
+  lectures: CourseLectureAnalytics[];
+};

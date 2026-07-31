@@ -2,10 +2,24 @@ import { apiUrl } from "./api";
 import { authRequestInit, learnerRequestInit } from "./authz";
 import type {
   Attendance,
+  CourseAnalyticsSummary,
   LearnerWorkspaceMode,
   LectureAnalyticsSummary,
   LoginSession,
 } from "./types";
+
+export async function getCourseAnalytics(
+  courseId: string,
+  session: LoginSession,
+): Promise<CourseAnalyticsSummary> {
+  const response = await analyticsFetch(
+    apiUrl(`/admin/courses/${courseId}/analytics`),
+    authRequestInit(session),
+  );
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "Course analytics loading failed."));
+  return payload as CourseAnalyticsSummary;
+}
 
 export async function recordQuizAnswer(input: {
   courseId: string;

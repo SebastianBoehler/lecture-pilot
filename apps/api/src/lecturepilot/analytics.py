@@ -161,7 +161,7 @@ class AnalyticsStore:
         )
 
     def summary(self, *, course_id: str, lecture_id: str) -> LectureAnalyticsSummary:
-        events = [event.payload for event in self._read(course_id, lecture_id)]
+        events = self.events(course_id=course_id, lecture_id=lecture_id)
         return LectureAnalyticsSummary(
             course_id=course_id,
             lecture_id=lecture_id,
@@ -169,6 +169,9 @@ class AnalyticsStore:
             quizzes=_quiz_metrics(events),
             gates=gate_metrics(events),
         )
+
+    def events(self, *, course_id: str, lecture_id: str) -> list[dict]:
+        return [event.payload for event in self._read(course_id, lecture_id)]
 
     def _append(self, course_id: str, lecture_id: str, payload: dict) -> None:
         path = self._events_path(course_id, lecture_id)

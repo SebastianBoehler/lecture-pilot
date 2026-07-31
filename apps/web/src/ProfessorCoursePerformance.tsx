@@ -1,17 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { LayoutDashboard } from "lucide-react";
 
-import { AnalyticsEmptyState } from "./AnalyticsEmptyState";
-import { getLectureAnalytics } from "./analyticsApi";
+import { getCourseAnalytics, getLectureAnalytics } from "./analyticsApi";
 import { useI18n } from "./i18n";
-import { AnalyticsChart } from "./PerformanceCharts";
-import { PerformanceInsights } from "./PerformanceInsights";
+import {
+  CourseBoard,
+  LectureBoard,
+  PerformanceEmptyState,
+  PerformancePageHeader,
+} from "./PerformanceBoards";
 import { PerformanceLectureRow } from "./PerformanceLectureRow";
-import { PerformanceOverview } from "./PerformanceOverview";
-import { lectureSnapshot } from "./performanceMetrics";
+import { courseLectureSnapshot, lectureSnapshot } from "./performanceMetrics";
 import { performanceCourseOptions, ProfessorCourseTabs } from "./ProfessorCourseTabs";
-import { ProfessorLearningMapTree } from "./ProfessorLearningMapTree";
-import type { Lecture, LectureAnalyticsSummary, LoginSession, UniversityCourse } from "./types";
+import type {
+  CourseAnalyticsSummary,
+  Lecture,
+  LectureAnalyticsSummary,
+  LoginSession,
+  UniversityCourse,
+} from "./types";
 
 export function ProfessorCoursePerformance({
   lectures,
@@ -25,10 +32,9 @@ export function ProfessorCoursePerformance({
   workspaceCourse: UniversityCourse;
 }) {
   const { t } = useI18n();
-  const hasPublishedWorkspace = publishedLectureIds.length > 0;
   const courseOptions = useMemo(
-    () => performanceCourseOptions([], workspaceCourse, hasPublishedWorkspace),
-    [hasPublishedWorkspace, workspaceCourse],
+    () => performanceCourseOptions([], workspaceCourse, publishedLectureIds.length > 0),
+    [publishedLectureIds.length, workspaceCourse],
   );
   const [selectedCourseId, setSelectedCourseId] = useState(workspaceCourse.id);
   const course =
@@ -40,85 +46,80 @@ export function ProfessorCoursePerformance({
     return lectures.filter((lecture) => published.has(lecture.id));
   }, [lectures, publishedLectureIds, workspaceSelected]);
   const [selectedLecture, setSelectedLecture] = useState<Lecture | null>(null);
-  const [analytics, setAnalytics] = useState<LectureAnalyticsSummary | null>(null);
+  const [courseAnalytics, setCourseAnalytics] = useState<CourseAnalyticsSummary | null>(null);
+  const [lectureAnalytics, setLectureAnalytics] = useState<LectureAnalyticsSummary | null>(null);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const analyticsRequestVersion = useRef(0);
+  const requestVersion = useRef(0);
 
-  useEffect(() => {
-    setSelectedCourseId(workspaceCourse.id);
-  }, [workspaceCourse.id]);
-
-  useEffect(() => {
-    analyticsRequestVersion.current += 1;
-    setSelectedLecture(null);
-    setAnalytics(null);
+  const loadCourseAnalytics = useCallback(async () => {
+    if (!course || !workspaceSelected) return;
+    const version = ++requestVersion.current;
     setAnalyticsError(null);
-  }, [selectedCourseId]);
+    setLoading(true);
+    try {
+      const summary = await getCourseAnalytics(course.id, session);
+      if (version === requestVersion.current) setCourseAnalytics(summary);
+    } catch (error) {
+      if (version === requestVersion.current) setAnalyticsError(errorMessage(error, "course"));
+    } finally {
+      if (version === requestVersion.current) setLoading(false);
+    }
+  }, [course, session, workspaceSelected]);
 
-  const refreshAnalytics = useCallback(
-    async (lecture = selectedLecture) => {
-      if (!lecture || !course || !workspaceSelected) return;
-      const requestVersion = ++analyticsRequestVersion.current;
+  const loadLectureAnalytics = useCallback(
+    async (lecture: Lecture) => {
+      if (!course || !workspaceSelected) return;
+      const version = ++requestVersion.current;
       setAnalyticsError(null);
       setSelectedLecture(lecture);
-      setAnalytics((current) => (current?.lecture_id === lecture.id ? current : null));
+      setLectureAnalytics((current) => (current?.lecture_id === lecture.id ? current : null));
       setLoading(true);
       try {
         const summary = await getLectureAnalytics(course.id, lecture.id, session);
-        if (requestVersion !== analyticsRequestVersion.current) return;
-        setAnalytics(summary);
+        if (version === requestVersion.current) setLectureAnalytics(summary);
       } catch (error) {
-        if (requestVersion !== analyticsRequestVersion.current) return;
-        setAnalyticsError(
-          error instanceof Error ? error.message : "Lecture analytics loading failed.",
-        );
+        if (version === requestVersion.current) setAnalyticsError(errorMessage(error, "lecture"));
       } finally {
-        if (requestVersion === analyticsRequestVersion.current) setLoading(false);
+        if (version === requestVersion.current) setLoading(false);
       }
     },
-    [course, selectedLecture, session, workspaceSelected],
+    [course, session, workspaceSelected],
   );
 
-  useEffect(() => {
-    if (!visibleLectures.length) {
-      setSelectedLecture(null);
-      setAnalytics(null);
-      return;
-    }
-    if (!selectedLecture) {
-      void refreshAnalytics(visibleLectures[0]);
-    }
-  }, [refreshAnalytics, selectedLecture, visibleLectures]);
+  useEffect(() => setSelectedCourseId(workspaceCourse.id), [workspaceCourse.id]);
 
-  const selectedAnalytics = analytics?.lecture_id === selectedLecture?.id ? analytics : null;
+  useEffect(() => {
+    requestVersion.current += 1;
+    setSelectedLecture(null);
+    setCourseAnalytics(null);
+    setLectureAnalytics(null);
+    setAnalyticsError(null);
+  }, [selectedCourseId]);
+
+  useEffect(() => {
+    if (visibleLectures.length) void loadCourseAnalytics();
+  }, [loadCourseAnalytics, visibleLectures.length]);
+
+  const showOverview = () => {
+    requestVersion.current += 1;
+    setSelectedLecture(null);
+    setLectureAnalytics(null);
+    setAnalyticsError(null);
+    if (!courseAnalytics) void loadCourseAnalytics();
+  };
+  const selectedAnalytics =
+    lectureAnalytics?.lecture_id === selectedLecture?.id ? lectureAnalytics : null;
 
   return (
     <main className="professor-screen performance-page" data-tour="course-performance-workflow">
-      <section className="professor-page-header">
-        <div>
-          <h1>{t("professor.performance.title")}</h1>
-          <p>{t("professor.performance.subtitle")}</p>
-          {course ? (
-            <div className="performance-course-context">
-              <strong>{course.title}</strong>
-              <span aria-hidden="true">·</span>
-              <span>{course.term}</span>
-            </div>
-          ) : null}
-        </div>
-        <button
-          aria-label={t("professor.refreshAnalytics")}
-          className="refresh-button"
-          disabled={loading || !selectedLecture}
-          type="button"
-          onClick={() => void refreshAnalytics()}
-        >
-          <RefreshCw className={loading ? "is-spinning" : ""} size={15} />
-          <span>{loading ? t("professor.refreshing") : t("professor.refresh")}</span>
-        </button>
-      </section>
-
+      <PerformancePageHeader
+        course={course}
+        loading={loading}
+        refresh={() =>
+          selectedLecture ? void loadLectureAnalytics(selectedLecture) : void loadCourseAnalytics()
+        }
+      />
       {courseOptions.length > 1 ? (
         <ProfessorCourseTabs
           courses={courseOptions}
@@ -128,14 +129,8 @@ export function ProfessorCoursePerformance({
           onSelect={setSelectedCourseId}
         />
       ) : null}
-
-      {!selectedLecture || !course ? (
-        <section className="performance-console is-empty">
-          <div className="analytics-empty-state">
-            <strong>{t("professor.noPublishedWorkspace")}</strong>
-            <p>{t("professor.publishBeforeAnalytics")}</p>
-          </div>
-        </section>
+      {!course || !visibleLectures.length ? (
+        <PerformanceEmptyState />
       ) : (
         <section className="performance-console">
           <nav className="performance-lecture-rail" aria-label={t("professor.lectureList")}>
@@ -143,65 +138,72 @@ export function ProfessorCoursePerformance({
               <span>{t("professor.courseLectures")}</span>
               <small>{t("professor.publishedOnly")}</small>
             </div>
+            <button
+              aria-current={!selectedLecture ? "true" : undefined}
+              aria-pressed={!selectedLecture}
+              className={`course-overview-row${!selectedLecture ? " is-active" : ""}`}
+              type="button"
+              onClick={showOverview}
+            >
+              <span className="lecture-index course-overview-icon">
+                <LayoutDashboard size={16} />
+              </span>
+              <span className="lecture-row-body">
+                <strong>{t("analytics.courseOverview")}</strong>
+                <small>{t("analytics.allPublishedLectures")}</small>
+              </span>
+            </button>
             <div className="performance-lecture-scroll">
               {visibleLectures.map((lecture) => (
                 <PerformanceLectureRow
-                  active={lecture.id === selectedLecture.id}
+                  active={lecture.id === selectedLecture?.id}
                   key={lecture.id}
                   lecture={lecture}
-                  onSelect={() => void refreshAnalytics(lecture)}
-                  snapshot={
-                    lecture.id === selectedLecture.id
-                      ? lectureSnapshot(lecture, selectedAnalytics)
-                      : null
-                  }
+                  onSelect={() => void loadLectureAnalytics(lecture)}
+                  snapshot={snapshotFor(lecture, selectedAnalytics, courseAnalytics)}
                 />
               ))}
             </div>
           </nav>
-
           <section className="analytics-board" aria-busy={loading}>
-            <header className="analytics-board-heading">
-              <div>
-                <h2>{selectedLecture.title}</h2>
-                <span>{selectedLecture.date}</span>
-              </div>
-              <div className="performance-course-meta" aria-label={t("professor.analyticsStatus")}>
-                <span>{t("professor.publishedLectures", { count: visibleLectures.length })}</span>
-                <span>
-                  {t("professor.eventsLoaded", {
-                    count: lectureSnapshot(selectedLecture, selectedAnalytics).events,
-                  })}
-                </span>
-                {loading ? (
-                  <span className="analytics-loading" role="status">
-                    {t("professor.loadingAnalytics")}
-                  </span>
-                ) : null}
-              </div>
-            </header>
-            {analyticsError ? (
-              <p className="form-error" role="alert">
-                {analyticsError}
-              </p>
-            ) : null}
-            <PerformanceOverview snapshot={lectureSnapshot(selectedLecture, selectedAnalytics)} />
-            {selectedAnalytics?.total_events ? (
-              <>
-                <div className="performance-evidence-layout">
-                  <ProfessorLearningMapTree analytics={selectedAnalytics} />
-                  <PerformanceInsights analytics={selectedAnalytics} />
-                </div>
-                <AnalyticsChart analytics={selectedAnalytics} />
-              </>
+            {selectedLecture ? (
+              <LectureBoard
+                analytics={selectedAnalytics}
+                error={analyticsError}
+                lecture={selectedLecture}
+                lectureCount={visibleLectures.length}
+                loading={loading}
+              />
             ) : (
-              <AnalyticsEmptyState />
+              <CourseBoard
+                analytics={courseAnalytics}
+                error={analyticsError}
+                lectures={visibleLectures}
+                loading={loading}
+                onSelectLecture={(lecture) => void loadLectureAnalytics(lecture)}
+              />
             )}
           </section>
         </section>
       )}
     </main>
   );
+}
+
+function snapshotFor(
+  lecture: Lecture,
+  selected: LectureAnalyticsSummary | null,
+  course: CourseAnalyticsSummary | null,
+) {
+  if (selected?.lecture_id === lecture.id) return lectureSnapshot(lecture, selected);
+  const rollup = course?.lectures.find((item) => item.lecture_id === lecture.id);
+  return rollup ? courseLectureSnapshot(rollup) : null;
+}
+
+function errorMessage(error: unknown, scope: "course" | "lecture") {
+  return error instanceof Error
+    ? error.message
+    : `${scope === "course" ? "Course" : "Lecture"} analytics loading failed.`;
 }
 
 function isWorkspaceCourse(course: UniversityCourse, workspaceCourse: UniversityCourse) {

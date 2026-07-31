@@ -1,0 +1,143 @@
+.course-overview-panel {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: 9px;
+  overflow: hidden;
+}
+
+.course-overview-panel > header {
+  align-items: start;
+  border-bottom: 1px solid var(--color-border-primary);
+  display: flex;
+  gap: 24px;
+  justify-content: space-between;
+  padding: 18px 20px;
+}
+
+.course-overview-panel h3,
+.course-overview-panel h4 {
+  margin: 0;
+}
+
+.course-overview-panel h3 {
+  font-size: 19px;
+}
+
+.course-overview-panel header p {
+  color: var(--color-text-secondary);
+  margin: 4px 0 0;
+}
+
+.course-overview-panel header > span {
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.course-overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(190px, 0.75fr);
+}
+
+.course-overview-grid > section {
+  min-width: 0;
+  padding: 18px 20px 20px;
+}
+
+.course-overview-grid > section + section {
+  border-left: 1px solid var(--color-border-primary);
+}
+
+.course-overview-grid h4 {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  letter-spacing: 0.045em;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+.attention-lecture-list {
+  display: grid;
+  gap: 2px;
+}
+
+.attention-lecture-list button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--color-text-primary);
+  display: grid;
+  gap: 11px;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  padding: 10px 8px;
+  text-align: start;
+  width: 100%;
+}
+
+.attention-lecture-list button:hover {
+  background: color-mix(in srgb, var(--color-accent-primary) 6%, transparent);
+}
+
+.attention-lecture-number {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.attention-lecture-list button > span:nth-child(2) {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.attention-lecture-list strong {
+  font-size: 13px;
+}
+
+.attention-lecture-list small,
+.course-overview-empty {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.course-overview-empty {
+  margin: 16px 0;
+}
+
+.signal-coverage dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.signal-coverage dl > div {
+  align-items: baseline;
+  border-bottom: 1px solid var(--color-border-primary);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 7px 0;
+}
+
+.signal-coverage dt {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.signal-coverage dd {
+  font-size: 16px;
+  font-weight: 800;
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .course-overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .course-overview-grid > section + section {
+    border-left: 0;
+    border-top: 1px solid var(--color-border-primary);
+  }
+}

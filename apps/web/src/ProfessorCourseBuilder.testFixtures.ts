@@ -33,6 +33,9 @@ export function professorFetchMock() {
     }
     if (url.includes("/materials"))
       return json({ path: "uploads/supplement.md", kind: "markdown", size_bytes: 12 });
+    if (path.match(/^\/admin\/courses\/[^/]+\/analytics$/)) {
+      return json(courseAnalyticsPayload());
+    }
     if (url.includes("/analytics")) return json(analyticsPayload());
     if (url.includes("/canvas/publication"))
       return json(publicationPayload(url, publishedLectures));
@@ -166,7 +169,7 @@ function sourceRouting(confirmed: boolean) {
         kind: "video",
         lecture_id: null,
         path: "videos/demo.mp4",
-        role: "reference_only",
+        role: "excluded",
         sha256: "d".repeat(64),
       },
     ],
@@ -289,6 +292,33 @@ function analyticsPayload() {
         },
       ],
     },
+  };
+}
+
+function courseAnalyticsPayload() {
+  return {
+    course_id: "demo-ml-course",
+    gate_checks: 1,
+    gate_passes: 1,
+    gate_rate: 1,
+    lectures: [
+      {
+        gate_checks: 1,
+        gate_passes: 1,
+        gate_rate: 1,
+        lecture_id: "lecture-03",
+        quiz_attempts: 2,
+        quiz_correct_attempts: 1,
+        quiz_rate: 0.5,
+        total_events: 3,
+        unique_learners: 2,
+      },
+    ],
+    quiz_attempts: 2,
+    quiz_correct_attempts: 1,
+    quiz_rate: 0.5,
+    total_events: 3,
+    unique_learners: 2,
   };
 }
 

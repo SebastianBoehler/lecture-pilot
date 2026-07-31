@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -106,11 +106,11 @@ describe("Professor course builder", () => {
     expect(materialUploadCall?.[1]?.body).toBeInstanceOf(FormData);
     expect((materialUploadCall?.[1]?.body as FormData).get("path")).toBe("uploads/supplement.md");
     expect((materialUploadCall?.[1]?.body as FormData).get("refresh_index")).toBe("false");
-    expect(screen.getByRole("heading", { name: /review source routing/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/route videos\/demo\.mp4/i)).toHaveValue("reference_only");
+    expect(screen.getByRole("heading", { name: /review source assignments/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/route videos\/demo\.mp4/i)).toHaveValue("excluded");
     expect(screen.getByRole("button", { name: /04 media/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /05 generate/i })).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: /confirm source routing/i }));
+    await user.click(screen.getByRole("button", { name: /confirm assignments/i }));
     expect(
       await screen.findByRole("heading", { name: /review youtube candidates/i }),
     ).toBeInTheDocument();
@@ -179,6 +179,12 @@ describe("Professor course builder", () => {
     ).not.toBeInTheDocument();
     expect(await screen.findByText(/^demo ml course$/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /refresh analytics/i }));
+    await user.click(
+      within(screen.getByRole("navigation", { name: /performance lecture list/i })).getByRole(
+        "button",
+        { name: /bayesian decision theory/i },
+      ),
+    );
     expect(await screen.findByText("Events")).toBeInTheDocument();
     expect(screen.getAllByText("Quiz success").length).toBeGreaterThan(0);
     expect(screen.getAllByText("50%").length).toBeGreaterThan(0);
@@ -266,7 +272,7 @@ describe("Professor course builder", () => {
     expect(
       await screen.findByText(/lecture schedule applied with 1 dated lectures/i),
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /review source routing/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /review source assignments/i })).toBeInTheDocument();
     const scheduleCall = fetchMock.mock.calls.find((call) => {
       if (typeof call[1]?.body !== "string") return false;
       const body = JSON.parse(call[1].body);
@@ -365,8 +371,8 @@ describe("Professor course builder", () => {
       new File(["# extra note"], "supplement.md", { type: "text/markdown" }),
     );
     await user.click(screen.getByRole("button", { name: /upload and process materials/i }));
-    await screen.findByRole("heading", { name: /review source routing/i });
-    await user.click(screen.getByRole("button", { name: /confirm source routing/i }));
+    await screen.findByRole("heading", { name: /review source assignments/i });
+    await user.click(screen.getByRole("button", { name: /confirm assignments/i }));
     await screen.findByRole("heading", { name: /review youtube candidates/i });
     await user.click(screen.getByRole("button", { name: /continue to canvas draft/i }));
 

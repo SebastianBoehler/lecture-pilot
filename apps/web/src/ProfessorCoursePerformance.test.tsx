@@ -1,17 +1,58 @@
-import { act, screen } from "@testing-library/react";
+import { act, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ProfessorCoursePerformance } from "./ProfessorCoursePerformance";
+import {
+  activityAnalytics,
+  course,
+  courseActivityAnalytics,
+  json,
+  lecture,
+  noActivityAnalytics,
+  noActivityCourse,
+  secondLecture,
+  session,
+} from "./ProfessorCoursePerformance.testFixtures";
 import { renderWithI18n } from "./test/renderWithI18n";
 
 describe("ProfessorCoursePerformance", () => {
   afterEach(() => vi.unstubAllGlobals());
 
+  it("opens with a course overview and drills into a selected lecture", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) =>
+        json(
+          String(input).includes("/lectures/")
+            ? activityAnalytics("lecture-01")
+            : courseActivityAnalytics(),
+        ),
+      ),
+    );
+
+    renderWithI18n(
+      <ProfessorCoursePerformance
+        lectures={[lecture(), secondLecture()]}
+        publishedLectureIds={["lecture-01", "lecture-02"]}
+        session={session()}
+        workspaceCourse={course()}
+      />,
+    );
+
+    expect(await screen.findByRole("heading", { name: /course overview/i })).toBeInTheDocument();
+    expect(screen.getByText("3", { selector: ".analytics-kpi strong" })).toBeInTheDocument();
+    await user.click(lectureButton(/introduction/i));
+    expect(await screen.findByRole("heading", { name: "Introduction" })).toBeInTheDocument();
+  });
+
   it("does not render zero-percent charts when a published lecture has no learner activity", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => json(noActivityAnalytics())),
+      vi.fn(async (input: RequestInfo | URL) =>
+        json(String(input).includes("/lectures/") ? noActivityAnalytics() : noActivityCourse()),
+      ),
     );
 
     renderWithI18n(
@@ -23,6 +64,7 @@ describe("ProfessorCoursePerformance", () => {
       />,
     );
 
+    await userEvent.setup().click(lectureButton(/introduction/i));
     expect(await screen.findByText(/no learner signals yet/i)).toBeInTheDocument();
     expect(screen.queryByLabelText("Lecture analytics chart")).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /learning path gates/i })).not.toBeInTheDocument();
@@ -35,6 +77,7 @@ describe("ProfessorCoursePerformance", () => {
       "fetch",
       vi
         .fn()
+        .mockResolvedValueOnce(json(courseActivityAnalytics()))
         .mockImplementationOnce(
           () =>
             new Promise((_, reject) => {
@@ -53,7 +96,9 @@ describe("ProfessorCoursePerformance", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: /second lecture/i }));
+    await screen.findByRole("heading", { name: /course overview/i });
+    await user.click(lectureButton(/introduction/i));
+    await user.click(lectureButton(/second lecture/i));
     expect(await screen.findAllByText("50%")).not.toHaveLength(0);
     await act(async () => {
       rejectStaleRequest(new TypeError("Failed to fetch"));
@@ -69,6 +114,7 @@ describe("ProfessorCoursePerformance", () => {
       "fetch",
       vi
         .fn()
+        .mockResolvedValueOnce(json(courseActivityAnalytics()))
         .mockResolvedValueOnce(json(activityAnalytics("lecture-01")))
         .mockImplementationOnce(
           () =>
@@ -87,8 +133,10 @@ describe("ProfessorCoursePerformance", () => {
       />,
     );
 
+    await screen.findByRole("heading", { name: /course overview/i });
+    await user.click(lectureButton(/introduction/i));
     expect(await screen.findAllByText("50%")).not.toHaveLength(0);
-    await user.click(screen.getByRole("button", { name: /second lecture/i }));
+    await user.click(lectureButton(/second lecture/i));
     expect(screen.queryAllByText("50%")).toHaveLength(0);
 
     await act(async () => {
@@ -97,79 +145,44 @@ describe("ProfessorCoursePerformance", () => {
     expect(await screen.findByText(/cannot reach the local LecturePilot API/i)).toBeInTheDocument();
     expect(screen.queryAllByText("50%")).toHaveLength(0);
   });
+
+  it("keeps lecture selection and evidence views explicit", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) =>
+        json(
+          String(input).includes("/lectures/")
+            ? activityAnalytics("lecture-01")
+            : courseActivityAnalytics(),
+        ),
+      ),
+    );
+
+    renderWithI18n(
+      <ProfessorCoursePerformance
+        lectures={[lecture(), secondLecture()]}
+        publishedLectureIds={["lecture-01", "lecture-02"]}
+        session={session()}
+        workspaceCourse={course()}
+      />,
+    );
+
+    await screen.findByRole("heading", { name: /course overview/i });
+    await userEvent.setup().click(lectureButton(/introduction/i));
+    expect(await screen.findByRole("heading", { name: "Introduction" })).toBeInTheDocument();
+    expect(lectureButton(/introduction/i)).toHaveAttribute("aria-current", "true");
+    expect(screen.getByRole("tab", { name: /quiz friction.*1/i })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByRole("tab", { name: /gate evidence.*0/i })).toBeDisabled();
+    expect(screen.queryByLabelText("Lecture analytics chart")).not.toBeInTheDocument();
+  });
 });
 
-function json(payload: unknown) {
-  return { ok: true, json: async () => payload };
-}
-
-function course() {
-  return {
-    id: "demo-ml-course",
-    professor: "professor-demo",
-    term: "Summer 2026",
-    title: "Demo ML Course",
-  };
-}
-
-function lecture() {
-  return {
-    attendance: "unknown" as const,
-    date: "2026-05-09",
-    id: "lecture-01",
-    number: "01",
-    title: "Introduction",
-  };
-}
-
-function secondLecture() {
-  return {
-    attendance: "unknown" as const,
-    date: "2026-05-16",
-    id: "lecture-02",
-    number: "02",
-    title: "Second lecture",
-  };
-}
-
-function noActivityAnalytics() {
-  return {
-    course_id: "demo-ml-course",
-    gates: [],
-    lecture_id: "lecture-01",
-    quizzes: [],
-    total_events: 0,
-  };
-}
-
-function activityAnalytics(lectureId: string) {
-  return {
-    course_id: "demo-ml-course",
-    gates: [],
-    lecture_id: lectureId,
-    quizzes: [
-      {
-        attendance_split: { present: 2 },
-        component_id: "quiz-1",
-        component_type: "quiz",
-        correct_attempts: 1,
-        correct_rate: 0.5,
-        options: [],
-        question: "Question",
-        title: "Quiz",
-        total_attempts: 2,
-        unique_learners: 2,
-      },
-    ],
-    total_events: 2,
-  };
-}
-
-function session() {
-  return {
-    courses: [course()],
-    roles: ["professor" as const],
-    term: "Summer 2026",
-    username: "professor-demo",
-  };
+function lectureButton(name: RegExp) {
+  return within(screen.getByRole("navigation", { name: /performance lecture list/i })).getByRole(
+    "button",
+    { name },
+  );
 }

@@ -16,6 +16,8 @@ from lecturepilot.audit import record_audit_event
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.course_access import require_lecture_id_access
+from lecturepilot.course_analytics import CourseAnalyticsSummary, course_analytics_summary
+from lecturepilot.course_schedule_store import read_course_workspace
 from lecturepilot.learning_map import LearningMap, write_learning_map
 from lecturepilot.models import Course, Lecture
 from lecturepilot.readiness_analytics import CourseReadinessSummary, course_readiness_summary
@@ -81,6 +83,53 @@ def register_analytics_routes(
             block=block,
             option_index=answer.option_index,
         )
+
+    @app.get(
+        "/admin/courses/{course_id}/analytics",
+        response_model=CourseAnalyticsSummary,
+    )
+    def course_analytics(
+        course_id: str,
+        request: Request,
+        context: TenantContext = Depends(request_context),
+    ) -> CourseAnalyticsSummary:
+        require_course_manager(
+            context,
+            course_tenant_id=course_tenant_id,
+            request=request,
+            course_id=course_id,
+        )
+        workspace = read_course_workspace(
+            app.state.canvas_workspace.course_media_root(course_id),
+            course_id,
+        )
+        if workspace is None:
+            raise HTTPException(status_code=404, detail="Course workspace not found.")
+        lecture_ids = [
+            lecture.id
+            for lecture in workspace.lectures
+            if app.state.canvas_workspace.has_published_course_canvas(
+                course_id=course_id,
+                lecture_id=lecture.id,
+            )
+        ]
+        store = _analytics_store(app)
+        summary = course_analytics_summary(
+            course_id=course_id,
+            lecture_ids=lecture_ids,
+            read_events=lambda lecture_id: store.events(
+                course_id=course_id,
+                lecture_id=lecture_id,
+            ),
+        )
+        record_audit_event(
+            app.state.database,
+            context,
+            event_type="analytics.course_aggregate_viewed",
+            target_type="course",
+            target_id=course_id,
+        )
+        return summary
 
     @app.get(
         "/admin/courses/{course_id}/lectures/{lecture_id}/analytics",

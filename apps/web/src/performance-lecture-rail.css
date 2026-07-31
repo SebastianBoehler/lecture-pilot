@@ -1,110 +1,130 @@
 .performance-lecture-rail {
+  align-self: start;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: 10px;
   display: grid;
-  grid-template-columns: 150px minmax(0, 1fr);
-  gap: 18px;
-  align-items: stretch;
-  min-width: 0;
-  border-bottom: 1px solid var(--color-border-primary);
-  padding-bottom: 10px;
+  gap: 8px;
+  padding: 10px;
+  position: sticky;
+  top: 78px;
 }
 
 .performance-rail-heading {
-  display: grid;
-  align-content: center;
-  gap: 2px;
+  align-items: baseline;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  padding: 5px 6px 8px;
 }
 
 .performance-rail-heading span {
-  font-size: 11px;
-  font-weight: 850;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 750;
 }
 
 .performance-rail-heading small {
   color: var(--color-text-tertiary);
+  text-align: end;
 }
 
 .performance-lecture-scroll {
-  display: flex;
-  gap: 6px;
-  min-width: 0;
-  overflow-x: auto;
-  padding: 1px 1px 5px;
+  display: grid;
+  gap: 4px;
+  max-height: calc(100vh - 190px);
+  min-height: 0;
+  overflow-y: auto;
   scrollbar-color: var(--color-border-primary) transparent;
   scrollbar-width: thin;
 }
 
+.course-overview-row {
+  border-bottom: 1px solid var(--color-border-primary) !important;
+  border-radius: 0 !important;
+  margin-bottom: 2px;
+}
+
+.course-overview-row .course-overview-icon {
+  border-radius: 50%;
+}
+
 .performance-lecture-rail button {
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
-  gap: 9px;
   align-items: start;
-  min-width: 210px;
-  border: 1px solid transparent;
-  border-radius: 5px;
-  padding: 7px 10px;
-  color: var(--color-text-primary);
-  text-align: left;
   background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: var(--color-text-primary);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 34px minmax(0, 1fr);
+  min-width: 0;
+  padding: 10px;
+  text-align: start;
+  width: 100%;
 }
 
 .performance-lecture-rail button:hover {
-  background: var(--color-bg-secondary);
+  background: var(--color-bg-primary);
 }
 
 .performance-lecture-rail button.is-active {
-  border-color: var(--color-border-primary);
-  background: var(--color-bg-secondary);
-  box-shadow: inset 0 -2px 0 var(--color-accent-primary);
+  background: color-mix(in srgb, var(--color-accent-primary) 7%, var(--color-bg-primary));
+  border-color: transparent;
 }
 
 .lecture-index {
-  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 27px;
-  height: 27px;
-  border: 1px solid var(--color-border-primary);
-  border-radius: 50%;
-  color: var(--color-text-tertiary);
   background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: 7px;
+  color: var(--color-text-tertiary);
+  display: inline-flex;
   font-size: 11px;
-  font-weight: 850;
+  font-weight: 800;
+  height: 32px;
+  justify-content: center;
+  width: 32px;
 }
 
+.performance-lecture-rail button.is-active .lecture-index {
+  background: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+  color: var(--color-on-accent);
+}
+
+.lecture-row-body,
 .performance-lecture-rail strong,
 .performance-lecture-rail small {
   display: block;
+  min-width: 0;
 }
 
 .performance-lecture-rail strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 13px;
+  line-height: 1.3;
 }
 
 .performance-lecture-rail small {
-  margin-top: 1px;
   color: var(--color-text-tertiary);
+  margin-top: 2px;
 }
 
 .lecture-status {
-  display: inline-flex;
   align-items: center;
-  gap: 5px;
-  margin-top: 6px;
   color: var(--color-text-secondary);
+  display: inline-flex;
   font-size: 11px;
   font-weight: 700;
+  gap: 5px;
+  margin-top: 6px;
 }
 
 .lecture-status::before {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
   background: currentColor;
+  border-radius: 50%;
   content: "";
+  height: 6px;
+  width: 6px;
 }
 
 .lecture-status.is-healthy {
@@ -124,15 +144,28 @@
   color: var(--color-text-tertiary);
 }
 
-@media (max-width: 720px) {
+@media (max-width: 900px) {
   .performance-lecture-rail {
-    grid-template-columns: 1fr;
-    gap: 10px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    position: static;
   }
 
   .performance-rail-heading {
+    padding-inline: 0;
+  }
+
+  .performance-lecture-scroll {
     display: flex;
-    align-items: baseline;
-    gap: 8px;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 6px;
+  }
+
+  .performance-lecture-rail button {
+    flex: 0 0 230px;
   }
 }

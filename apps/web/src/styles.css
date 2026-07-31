@@ -34,8 +34,10 @@
 @import "./learning-science.css";
 @import "./performance.css";
 @import "./performance-lecture-rail.css";
+@import "./course-performance-overview.css";
 @import "./performance-course-tabs.css";
-@import "./performance-charts.css";
+@import "./performance-analysis.css";
+@import "./performance-analysis-responsive.css";
 @import "./professor-learning-map-tree.css";
 @import "./professor-usage.css";
 @import "./professor-usage-responsive.css";

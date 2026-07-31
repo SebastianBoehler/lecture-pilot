@@ -4,10 +4,16 @@ import { AlertTriangle, BarChart3, CheckCircle2, Users } from "lucide-react";
 import { useI18n } from "./i18n";
 import type { LectureSnapshot } from "./performanceMetrics";
 
-export function PerformanceOverview({ snapshot }: { snapshot: LectureSnapshot }) {
+export function PerformanceOverview({
+  label,
+  snapshot,
+}: {
+  label?: string;
+  snapshot: LectureSnapshot;
+}) {
   const { t } = useI18n();
   return (
-    <div className="performance-overview" aria-label={t("analytics.selectedOverview")}>
+    <div className="performance-overview" aria-label={label ?? t("analytics.selectedOverview")}>
       <MetricCard
         icon={<BarChart3 size={18} />}
         label={t("analytics.events")}

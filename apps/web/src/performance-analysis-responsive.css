@@ -1,0 +1,51 @@
+@media (max-width: 1180px) {
+  .performance-analysis-header {
+    align-items: start;
+    display: grid;
+  }
+
+  .performance-analysis-tabs {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .insight-browser {
+    grid-template-columns: minmax(190px, 0.65fr) minmax(0, 1.35fr);
+  }
+
+  .analytics-insight-grid,
+  .analytics-insight-grid.is-gate {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .performance-analysis-header,
+  .performance-analysis-panel {
+    padding: 16px;
+  }
+
+  .performance-analysis-tabs {
+    width: 100%;
+  }
+
+  .insight-browser {
+    grid-template-columns: 1fr;
+  }
+
+  .insight-browser-list {
+    border-bottom: 1px solid var(--color-border-primary);
+    border-right: 0;
+    display: flex;
+    max-height: none;
+    overflow-x: auto;
+  }
+
+  .insight-browser-list button {
+    flex: 0 0 240px;
+  }
+
+  .insight-browser-detail {
+    padding: 18px;
+  }
+}

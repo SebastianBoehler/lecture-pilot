@@ -1,38 +1,113 @@
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 
-import { AnalyticsEmptyState } from "./AnalyticsEmptyState";
 import { useI18n } from "./i18n";
 import { percent, splitBars } from "./performanceMetrics";
 import type { AnalyticsGateMetric, AnalyticsQuizMetric, LectureAnalyticsSummary } from "./types";
 
-export function PerformanceInsights({ analytics }: { analytics: LectureAnalyticsSummary }) {
+export function PerformanceInsights({
+  analytics,
+  view,
+}: {
+  analytics: LectureAnalyticsSummary;
+  view: "quizzes" | "gates";
+}) {
+  const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
+  const [selectedGateId, setSelectedGateId] = useState<string | null>(null);
+
+  if (view === "quizzes") {
+    const selected =
+      analytics.quizzes.find((quiz) => quiz.component_id === selectedQuizId) ??
+      analytics.quizzes[0];
+    return selected ? (
+      <QuizBrowser quizzes={analytics.quizzes} selected={selected} onSelect={setSelectedQuizId} />
+    ) : (
+      <InsightEmpty kind="quizzes" />
+    );
+  }
+
+  const selected =
+    analytics.gates.find((gate) => gate.gate_id === selectedGateId) ?? analytics.gates[0];
+  return selected ? (
+    <GateBrowser gates={analytics.gates} selected={selected} onSelect={setSelectedGateId} />
+  ) : (
+    <InsightEmpty kind="gates" />
+  );
+}
+
+function QuizBrowser({
+  onSelect,
+  quizzes,
+  selected,
+}: {
+  onSelect: (id: string) => void;
+  quizzes: AnalyticsQuizMetric[];
+  selected: AnalyticsQuizMetric;
+}) {
   const { t } = useI18n();
-  if (!analytics.total_events) return <AnalyticsEmptyState />;
   return (
-    <div className="analytics-summary">
-      <section className="analytics-column" aria-label={t("analytics.quizInsights")}>
-        <h3>{t("analytics.quizFriction")}</h3>
-        {analytics.quizzes.map((quiz) => (
-          <article className="analytics-panel" key={quiz.component_id}>
-            <header>
-              <strong>{quiz.title}</strong>
+    <div className="insight-browser">
+      <nav aria-label={t("analytics.quizList")} className="insight-browser-list">
+        {quizzes.map((quiz, index) => (
+          <button
+            aria-current={quiz.component_id === selected.component_id ? "true" : undefined}
+            className={quiz.component_id === selected.component_id ? "is-active" : undefined}
+            key={quiz.component_id}
+            type="button"
+            onClick={() => onSelect(quiz.component_id)}
+          >
+            <span className="insight-item-index">{String(index + 1).padStart(2, "0")}</span>
+            <span>
+              <strong>{quiz.question}</strong>
               <small>
                 {t("analytics.correct", {
                   count: quiz.unique_learners,
                   rate: percent(quiz.correct_rate),
                 })}
               </small>
-            </header>
-            <p>{quiz.question}</p>
-            <QuizInsight quiz={quiz} />
-          </article>
+            </span>
+          </button>
         ))}
-      </section>
-      <section className="analytics-column" aria-label={t("analytics.gateInsights")}>
-        <h3>{t("analytics.gateEvidence")}</h3>
-        {analytics.gates.map((gate) => (
-          <article className="analytics-panel" key={gate.gate_id}>
-            <header>
+      </nav>
+      <article className="insight-browser-detail">
+        <header>
+          <span>{selected.title}</span>
+          <h3>{selected.question}</h3>
+          <p>
+            {t("analytics.correct", {
+              count: selected.unique_learners,
+              rate: percent(selected.correct_rate),
+            })}
+          </p>
+        </header>
+        <QuizInsight quiz={selected} />
+      </article>
+    </div>
+  );
+}
+
+function GateBrowser({
+  gates,
+  onSelect,
+  selected,
+}: {
+  gates: AnalyticsGateMetric[];
+  onSelect: (id: string) => void;
+  selected: AnalyticsGateMetric;
+}) {
+  const { t } = useI18n();
+  return (
+    <div className="insight-browser">
+      <nav aria-label={t("analytics.gateList")} className="insight-browser-list">
+        {gates.map((gate, index) => (
+          <button
+            aria-current={gate.gate_id === selected.gate_id ? "true" : undefined}
+            className={gate.gate_id === selected.gate_id ? "is-active" : undefined}
+            key={gate.gate_id}
+            type="button"
+            onClick={() => onSelect(gate.gate_id)}
+          >
+            <span className="insight-item-index">{String(index + 1).padStart(2, "0")}</span>
+            <span>
               <strong>{gate.gate_id}</strong>
               <small>
                 {t("analytics.checksLearners", {
@@ -40,11 +115,37 @@ export function PerformanceInsights({ analytics }: { analytics: LectureAnalytics
                   learners: gate.unique_learners,
                 })}
               </small>
-            </header>
-            <GateInsight gate={gate} />
-          </article>
+            </span>
+          </button>
         ))}
-      </section>
+      </nav>
+      <article className="insight-browser-detail">
+        <header>
+          <span>{t("analytics.gateEvidence")}</span>
+          <h3>{selected.gate_id}</h3>
+          <p>
+            {t("analytics.checksLearners", {
+              checks: selected.total_events,
+              learners: selected.unique_learners,
+            })}
+          </p>
+        </header>
+        <GateInsight gate={selected} />
+      </article>
+    </div>
+  );
+}
+
+function InsightEmpty({ kind }: { kind: "quizzes" | "gates" }) {
+  const { t } = useI18n();
+  return (
+    <div className="performance-insight-empty">
+      <strong>
+        {t(kind === "quizzes" ? "analytics.noQuizEvidence" : "analytics.noGateEvidence")}
+      </strong>
+      <p>
+        {t(kind === "quizzes" ? "analytics.noQuizEvidenceHelp" : "analytics.noGateEvidenceHelp")}
+      </p>
     </div>
   );
 }
@@ -54,7 +155,7 @@ function QuizInsight({ quiz }: { quiz: AnalyticsQuizMetric }) {
   return (
     <div className="analytics-insight-grid">
       <section>
-        <h3>{t("analytics.answerDistribution")}</h3>
+        <h4>{t("analytics.answerDistribution")}</h4>
         <MetricBars
           values={quiz.options.map((option) => ({
             label: `${String.fromCharCode(65 + option.option_index)} ${option.text}`,
@@ -65,7 +166,7 @@ function QuizInsight({ quiz }: { quiz: AnalyticsQuizMetric }) {
         />
       </section>
       <section>
-        <h3>{t("analytics.attendanceSplit")}</h3>
+        <h4>{t("analytics.attendanceSplit")}</h4>
         <MetricBars values={splitBars(quiz.attendance_split)} />
       </section>
     </div>
@@ -76,68 +177,70 @@ function GateInsight({ gate }: { gate: AnalyticsGateMetric }) {
   const { t } = useI18n();
   const assessedAttempts = gate.independent_attempts + gate.supported_attempts;
   return (
-    <div className="analytics-insight-grid">
-      <section>
-        <h3>{t("analytics.gateOutcomes")}</h3>
-        <MetricBars values={splitBars(gate.status_counts)} />
-      </section>
-      <section>
-        <h3>{t("analytics.independentLearning")}</h3>
-        <MetricBars
-          values={[
-            {
-              label: t("analytics.independentAttempts"),
-              value: gate.independent_attempts,
-              total: assessedAttempts,
-            },
-            {
-              label: t("analytics.independentPasses"),
-              value: gate.independent_passes,
-              total: gate.independent_attempts,
-              tone: "correct",
-            },
-            {
-              label: t("analytics.supportedAttempts"),
-              value: gate.supported_attempts,
-              total: assessedAttempts,
-            },
-            {
-              label: t("analytics.independentTransferPasses"),
-              value: gate.independent_transfer_passes,
-              total: gate.transfer_attempts,
-              tone: "correct",
-            },
-          ]}
-        />
-      </section>
-      <section>
-        <h3>{t("analytics.scaffoldsUsed")}</h3>
-        <MetricBars values={splitBars(gate.assistance_level_counts)} />
-      </section>
+    <div className="analytics-insight-grid is-gate">
+      <InsightSection title={t("analytics.gateOutcomes")} values={splitBars(gate.status_counts)} />
+      <InsightSection
+        title={t("analytics.independentLearning")}
+        values={[
+          {
+            label: t("analytics.independentAttempts"),
+            value: gate.independent_attempts,
+            total: assessedAttempts,
+          },
+          {
+            label: t("analytics.independentPasses"),
+            value: gate.independent_passes,
+            total: gate.independent_attempts,
+            tone: "correct",
+          },
+          {
+            label: t("analytics.supportedAttempts"),
+            value: gate.supported_attempts,
+            total: assessedAttempts,
+          },
+          {
+            label: t("analytics.independentTransferPasses"),
+            value: gate.independent_transfer_passes,
+            total: gate.transfer_attempts,
+            tone: "correct",
+          },
+        ]}
+      />
+      <InsightSection
+        title={t("analytics.scaffoldsUsed")}
+        values={splitBars(gate.assistance_level_counts)}
+      />
       {Object.keys(gate.evidence_counts).length ? (
-        <section>
-          <h3>{t("analytics.demonstratedEvidence")}</h3>
-          <MetricBars values={splitBars(gate.evidence_counts)} />
-        </section>
+        <InsightSection
+          title={t("analytics.demonstratedEvidence")}
+          values={splitBars(gate.evidence_counts)}
+        />
       ) : null}
-      <section>
-        <h3>{t("analytics.attendanceSplit")}</h3>
-        <MetricBars values={splitBars(gate.attendance_split)} />
-      </section>
+      <InsightSection
+        title={t("analytics.attendanceSplit")}
+        values={splitBars(gate.attendance_split)}
+      />
     </div>
   );
 }
 
-function MetricBars({
-  values,
-}: {
-  values: Array<{
-    label: string;
-    value: number;
-    total: number;
-    tone?: "correct" | "neutral" | "wrong";
-  }>;
-}) {
+type MetricValue = {
+  label: string;
+  value: number;
+  total: number;
+  tone?: "correct" | "neutral" | "wrong";
+};
+
+function InsightSection({ title, values }: { title: string; values: MetricValue[] }) {
+  return (
+    <section>
+      <h4>{title}</h4>
+      <MetricBars values={values} />
+    </section>
+  );
+}
+
+function MetricBars({ values }: { values: MetricValue[] }) {
   return (
     <div className="metric-bar-list">
       {values.map((item) => (

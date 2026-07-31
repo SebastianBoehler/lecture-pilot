@@ -1,4 +1,4 @@
-import type { Lecture, LectureAnalyticsSummary } from "./types";
+import type { CourseLectureAnalytics, Lecture, LectureAnalyticsSummary } from "./types";
 
 export type LectureSnapshot = {
   events: number;
@@ -26,7 +26,7 @@ export function lectureSnapshot(
       gateRate: percent(signals.gateRate),
       learners: signals.learners,
       quizRate: percent(signals.quizRate),
-      status: statusFor(signals.quizRate ?? 0.5, signals.gateRate ?? 0.5),
+      status: statusFor(signals.quizRate, signals.gateRate),
     };
   }
   return {
@@ -64,6 +64,18 @@ export function analyticsSignals(analytics: LectureAnalyticsSummary): AnalyticsS
   };
 }
 
+export function courseLectureSnapshot(analytics: CourseLectureAnalytics): LectureSnapshot {
+  return {
+    events: analytics.total_events,
+    gateRate: percent(analytics.gate_rate),
+    learners: analytics.unique_learners,
+    quizRate: percent(analytics.quiz_rate),
+    status: analytics.total_events
+      ? statusFor(analytics.quiz_rate, analytics.gate_rate)
+      : "no-data",
+  };
+}
+
 export function percent(value: number | null) {
   return value === null ? "n/a" : `${Math.round(value * 100)}%`;
 }
@@ -77,8 +89,12 @@ export function splitBars(values: Record<string, number>) {
   }));
 }
 
-function statusFor(quizRate: number, gateRate: number): LectureSnapshot["status"] {
-  if (quizRate < 0.58 || gateRate < 0.6) return "needs-attention";
-  if (quizRate < 0.72 || gateRate < 0.72) return "watch";
+function statusFor(quizRate: number | null, gateRate: number | null): LectureSnapshot["status"] {
+  if ((quizRate !== null && quizRate < 0.58) || (gateRate !== null && gateRate < 0.6)) {
+    return "needs-attention";
+  }
+  if ((quizRate !== null && quizRate < 0.72) || (gateRate !== null && gateRate < 0.72)) {
+    return "watch";
+  }
   return "healthy";
 }

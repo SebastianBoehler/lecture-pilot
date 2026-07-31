@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { analyticsSignals, lectureSnapshot } from "./performanceMetrics";
+import { analyticsSignals, courseLectureSnapshot, lectureSnapshot } from "./performanceMetrics";
 
 describe("lectureSnapshot", () => {
   it("labels missing learner activity as no data rather than a warning state", () => {
@@ -25,6 +25,22 @@ describe("lectureSnapshot", () => {
       learners: 6,
       quizRate: "60%",
     });
+  });
+
+  it("does not turn a strong quiz signal into an alert when no gate evidence exists", () => {
+    expect(
+      courseLectureSnapshot({
+        gate_checks: 0,
+        gate_passes: 0,
+        gate_rate: null,
+        lecture_id: "lecture-01",
+        quiz_attempts: 3,
+        quiz_correct_attempts: 3,
+        quiz_rate: 1,
+        total_events: 3,
+        unique_learners: 2,
+      }).status,
+    ).toBe("healthy");
   });
 });
 
