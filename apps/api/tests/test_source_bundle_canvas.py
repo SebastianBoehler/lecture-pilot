@@ -69,6 +69,25 @@ def test_source_bundle_canvas_imports_markdown_text_pdf_and_assets(tmp_path: Pat
     ]
 
 
+def test_source_bundle_canvas_compacts_long_multi_source_reference(tmp_path: Path) -> None:
+    root = tmp_path / "bundle"
+    for index in range(8):
+        _write(
+            root / "exam-review" / f"{index:02d}-{'protocol-' * 8}.md",
+            f"# Protocol {index}\n\nThis protocol records detailed oral exam evidence number {index}.",
+        )
+
+    document = import_source_bundle_canvas(
+        source_root=root,
+        course_id="demo-course",
+        lecture_id="lecture-14",
+        workspace_path="planner/source.json",
+    )
+
+    assert len(document.source_ref) <= 500
+    assert "more sources" in document.source_ref
+
+
 def test_pdf_source_bundle_adds_original_slide_assets(tmp_path: Path) -> None:
     root = tmp_path / "bundle"
     _write_pdf(

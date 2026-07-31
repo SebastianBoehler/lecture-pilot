@@ -15,6 +15,7 @@ from lecturepilot.source_code_canvas import SourceCodeCanvasError, code_section,
 
 
 VIDEO_SUFFIXES = {".mp4", ".webm", ".mov", ".mkv", ".avi"}
+MAX_SOURCE_REF_CHARS = 500
 
 
 class SourceBundleCanvasError(RuntimeError):
@@ -117,7 +118,7 @@ def import_source_bundle_canvas(
         lecture_id=lecture_id,
         title=_title_from_sections(sections),
         source_kind=source_kind(source_refs),
-        source_ref=", ".join(source_refs[:8]) or "source bundle",
+        source_ref=_compact_source_ref(source_refs),
         workspace_path=workspace_path,
         sections=_dedupe_sections(sections),
         warnings=list(dict.fromkeys(document_warnings))[:20],
@@ -136,6 +137,24 @@ def _text_section(path: Path, source_ref: str, *, kind: str) -> CanvasSection | 
         source_ref=source_ref,
         blocks=blocks,
     )
+
+
+def _compact_source_ref(source_refs: list[str]) -> str:
+    if not source_refs:
+        return "source bundle"
+    visible = source_refs[:8]
+    joined = ", ".join(visible)
+    if len(joined) <= MAX_SOURCE_REF_CHARS:
+        return joined
+    for count in range(len(visible) - 1, 0, -1):
+        suffix = f", … ({len(source_refs) - count} more sources)"
+        candidate = f"{', '.join(visible[:count])}{suffix}"
+        if len(candidate) <= MAX_SOURCE_REF_CHARS:
+            return candidate
+    if len(source_refs) == 1:
+        return f"{source_refs[0][: MAX_SOURCE_REF_CHARS - 1]}…"
+    suffix = f" … ({len(source_refs) - 1} more sources)"
+    return f"{source_refs[0][: MAX_SOURCE_REF_CHARS - len(suffix)]}{suffix}"
 
 
 def _has_text(section: CanvasSection) -> bool:
