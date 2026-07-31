@@ -37,7 +37,6 @@ export function ProfileView({
         <div className="profile-layout">
           <aside className="profile-account-column">
             <section className="profile-account-summary" aria-label={t("profile.account")}>
-              <span className="profile-account-label">{t("profile.account")}</span>
               <div className="profile-identity">
                 <span className="profile-avatar" aria-hidden="true">
                   {profileInitials(session.display_name, session.username)}

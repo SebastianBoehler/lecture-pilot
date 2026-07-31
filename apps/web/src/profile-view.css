@@ -21,15 +21,6 @@
   max-width: 620px;
 }
 
-.profile-account-label {
-  display: block;
-  color: var(--color-accent-primary);
-  font-size: 12px;
-  font-weight: 780;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
 .profile-heading-copy h1,
 .profile-heading-copy p {
   margin: 0;
@@ -101,7 +92,6 @@
   justify-items: start;
   min-width: 0;
   gap: 16px;
-  margin-top: 18px;
 }
 
 .profile-avatar {
