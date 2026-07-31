@@ -50,6 +50,9 @@ from lecturepilot.metadata_events import configure_metadata_file_logging, emit_m
 from lecturepilot.observability import observability_from_env
 from lecturepilot.professor_usage import ProfessorUsageRepository
 from lecturepilot.professor_usage_routes import register_professor_usage_routes
+from lecturepilot.ppi_exam_source_routes import register_ppi_exam_source_routes
+from lecturepilot.ppi_exam_source_service import PpiExamSourceService
+from lecturepilot.ppi_exam_source_store import PpiExamSourceStore
 from lecturepilot.rate_limit import RateLimitMiddleware
 from lecturepilot.release_info import release_info
 from lecturepilot.request_diagnostics import RequestDiagnosticsMiddleware
@@ -129,6 +132,8 @@ def create_app() -> FastAPI:
     app.state.learner_state = LearnerStateStore(app.state.canvas_workspace.layout)
     app.state.user_memory_store = UserMemoryStore(app.state.canvas_workspace.layout)
     app.state.analytics_store = AnalyticsStore(app.state.canvas_workspace.layout)
+    app.state.ppi_exam_source_store = PpiExamSourceStore(app.state.canvas_workspace.layout)
+    app.state.ppi_exam_source_service = PpiExamSourceService(app.state.ppi_exam_source_store)
     app.state.image_generator = image_generator_from_env()
     app.state.canvas_workspace.image_generator = app.state.image_generator
     app.state.youtube_discovery = YoutubeDiscovery.from_env()
@@ -234,6 +239,7 @@ def create_app() -> FastAPI:
         seeded_course=COURSE,
         lectures=LECTURES,
     )
+    register_ppi_exam_source_routes(app, **seeded_route_args)
     register_asset_routes(app, **seeded_route_args)
     register_course_routes(
         app,
