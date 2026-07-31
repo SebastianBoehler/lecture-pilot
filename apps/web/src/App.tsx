@@ -40,6 +40,7 @@ import { clearSavedFlow } from "./professorBuilderState";
 import { useStoredLoginSession } from "./loginSessionStorage";
 import { lectures } from "./sampleData";
 import { logoutSession } from "./sessionApi";
+import { clearAllPracticeExamDrafts } from "./practiceExamDraft";
 import { useAppRoute } from "./useAppRoute";
 import { usePublishedLectures } from "./usePublishedLectures";
 import { useUniversityCourseSync } from "./useUniversityCourseSync";
@@ -268,6 +269,7 @@ function App() {
     if (session) void logoutSession(session);
     setSession(null);
     clearSavedFlow();
+    clearAllPracticeExamDrafts();
     navigate(pathForView("login"), { replace: true });
     setPanelMode(null);
     setFocusedSectionId("bayesian-decision-theory-the-aim");

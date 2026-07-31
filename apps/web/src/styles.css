@@ -12,6 +12,8 @@
 @import "./exam-readiness.css";
 @import "./exam-readiness-question.css";
 @import "./exam-readiness-result.css";
+@import "./practice-exam.css";
+@import "./practice-exam-view.css";
 @import "./professor.css";
 @import "./professor-builder-shell.css";
 @import "./professor-actions.css";

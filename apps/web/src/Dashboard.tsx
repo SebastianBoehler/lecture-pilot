@@ -11,6 +11,7 @@ import type { Attendance, Lecture, LoginSession, UniversityCourse } from "./type
 import { ExamReadinessPanel } from "./ExamReadinessPanel";
 import { LearnerOnboarding } from "./LearnerOnboarding";
 import { NextStudyRecommendation } from "./NextStudyRecommendation";
+import { PracticeExamPanel } from "./PracticeExamPanel";
 import { CourseSyncEmpty, CourseSyncSkeleton } from "./CourseSyncState";
 import type { LearnerProfileState } from "./useLearnerProfile";
 
@@ -168,6 +169,7 @@ export function Dashboard({
                       session={session}
                       onOpenLecture={onOpen}
                     />
+                    <PracticeExamPanel course={course} session={session} />
                   </div>
                 ) : null}
               </article>

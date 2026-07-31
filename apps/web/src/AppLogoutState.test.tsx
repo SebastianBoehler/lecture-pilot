@@ -11,6 +11,10 @@ describe("App logout state", () => {
       "lecturepilot.professor-builder.current",
       JSON.stringify({ courseReady: true }),
     );
+    window.sessionStorage.setItem(
+      "lecturepilot.practice-exam-draft.student.course.exam",
+      JSON.stringify({ "q-01": { text: "private draft" } }),
+    );
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string) => jsonPayload(url)),
@@ -25,6 +29,9 @@ describe("App logout state", () => {
     await user.click(screen.getByRole("button", { name: /log out/i }));
 
     expect(window.sessionStorage.getItem("lecturepilot.professor-builder.current")).toBeNull();
+    expect(
+      window.sessionStorage.getItem("lecturepilot.practice-exam-draft.student.course.exam"),
+    ).toBeNull();
   });
 });
 
