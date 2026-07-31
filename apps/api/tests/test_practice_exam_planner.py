@@ -15,6 +15,7 @@ from lecturepilot.practice_exam_planner import (
 from lecturepilot.practice_exam_prompt import (
     MAX_COURSE_EVIDENCE_CHARS,
     authoritative_canvas_evidence,
+    practice_exam_messages,
 )
 from lecturepilot.practice_exam_schema import practice_exam_response_format
 
@@ -121,6 +122,22 @@ def test_provider_schema_is_strict_and_requires_authoring_fields() -> None:
     assert question["properties"]["ppi_pattern_ids"]["maxItems"] == 0
     assert _exam_output_token_budget(25) == 20_000
     assert _exam_output_token_budget(50) == 30_000
+
+
+def test_generation_prompt_defines_the_supported_exam_markup_contract() -> None:
+    system = practice_exam_messages(
+        course_title="Machine Learning",
+        language="en",
+        duration_minutes=90,
+        question_count=20,
+        course_evidence="[lecture-01:risk:definition] Empirical risk.",
+        ppi_evidence="",
+    )[0]["content"]
+
+    assert "backticks" in system
+    assert "$...$" in system
+    assert "raw HTML" in system
+    assert "LaTeX document commands" in system
 
 
 def test_authoritative_ids_include_only_evidence_visible_to_the_model() -> None:

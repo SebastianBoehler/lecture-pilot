@@ -35,6 +35,10 @@ def practice_exam_messages(
         "Use stable ids q-01, q-02, and so on. Cite selected PPI ids only when their pattern "
         "materially influenced a question. Instructions must contain only learner actions: never "
         "repeat the duration, question count, total points, or answer-index conventions. "
+        "In instructions, prompts, options, and rubrics, use only light Markdown: **bold**, "
+        "*emphasis*, backticks for literal code or tokens, $...$ for inline math, and $$...$$ "
+        "for display math. Do not emit raw HTML, headings, links, tables, fenced code blocks, "
+        "or LaTeX document commands. "
         f"{repair}"
     )
     user = (

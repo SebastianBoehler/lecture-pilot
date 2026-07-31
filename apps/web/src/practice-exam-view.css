@@ -32,14 +32,20 @@
   display: grid;
   gap: 5px;
   padding-right: 80px;
-  font-size: 16px;
-  font-weight: 650;
 }
 
-.practice-question-list legend span {
+.practice-question-number {
   color: var(--color-text-secondary);
   font-size: 12px;
+  font-weight: 650;
   text-transform: uppercase;
+}
+
+.practice-question-prompt {
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.45;
+  text-transform: none;
 }
 
 .practice-question-points {

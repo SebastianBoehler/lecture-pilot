@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { useI18n } from "./i18n";
+import { MathText } from "./MathText";
 import { savePracticeExamPdf } from "./practiceExamDownload";
 import { readPracticeExamDraft, savePracticeExamDraft } from "./practiceExamDraft";
 import type { PracticeExam, PracticeExamAnswers } from "./practiceExamTypes";
@@ -82,7 +83,9 @@ export function PracticeExamView({
         ) : null}
         <div className="practice-exam-instructions">
           {exam.instructions.map((instruction) => (
-            <p key={instruction}>{instruction}</p>
+            <p key={instruction}>
+              <MathText highlightedText={null} text={instruction} />
+            </p>
           ))}
           <p>{t("practice.view.localDraft")}</p>
         </div>
@@ -91,8 +94,12 @@ export function PracticeExamView({
             <li key={question.id}>
               <fieldset>
                 <legend>
-                  <span>{t("practice.question", { number: index + 1 })}</span>
-                  {question.prompt}
+                  <span className="practice-question-number">
+                    {t("practice.question", { number: index + 1 })}
+                  </span>
+                  <span className="practice-question-prompt">
+                    <MathText highlightedText={null} text={question.prompt} />
+                  </span>
                 </legend>
                 <span className="practice-question-points">
                   {t("practice.points", { count: question.points })}
@@ -106,7 +113,9 @@ export function PracticeExamView({
                         type="radio"
                         onChange={() => answer(question.id, { selected_index: optionIndex })}
                       />
-                      <span>{option}</span>
+                      <span>
+                        <MathText highlightedText={null} text={option} />
+                      </span>
                     </label>
                   ))
                 ) : (

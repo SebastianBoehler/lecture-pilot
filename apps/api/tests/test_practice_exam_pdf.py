@@ -47,6 +47,42 @@ def test_tex_renderer_escapes_untrusted_text_and_omits_private_authoring_data() 
     assert "source_ids" not in tex
 
 
+def test_tex_renderer_supports_safe_markdown_and_latex_in_exam_content() -> None:
+    exam = _public_exam(
+        prompt=r"Compute $P(w_i \mid w_{i-1}) = \frac{c(w_{i-1},w_i)}{c(w_{i-1})}$ for `new`."
+    )
+    exam.instructions = ["Use **clear reasoning**."]
+    exam.questions[0].options = ["*Maximum likelihood*", "Uniform probability"]
+    exam.questions[1].prompt = r"Interpret $$\begin{bmatrix}1 & 0 \\ 0 & 1\end{bmatrix}$$."
+
+    tex = render_practice_exam_tex(exam)
+
+    assert r"\textbf{clear reasoning}" in tex
+    assert r"\texttt{new}" in tex
+    assert r"\emph{Maximum likelihood}" in tex
+    assert r"$P(w_i \mid w_{i-1}) = \frac{c(w_{i-1},w_i)}{c(w_{i-1})}$" in tex
+    assert r"\usepackage{amsmath}" in tex
+    assert r"\[\begin{bmatrix}1 & 0 \\ 0 & 1\end{bmatrix}\]" in tex
+
+
+def test_tex_renderer_escapes_disallowed_commands_inside_math_delimiters() -> None:
+    exam = _public_exam(prompt=r"Do not execute $x \input{/etc/passwd}$ here.")
+
+    tex = render_practice_exam_tex(exam)
+
+    assert r"$x \input{/etc/passwd}$" not in tex
+    assert r"\textbackslash{}input\{/etc/passwd\}" in tex
+
+
+def test_tex_renderer_escapes_mismatched_math_environments() -> None:
+    exam = _public_exam(prompt=r"Do not compile $$\begin{matrix}x\end{pmatrix}$$ here.")
+
+    tex = render_practice_exam_tex(exam)
+
+    assert r"\[\begin{matrix}x\end{pmatrix}\]" not in tex
+    assert r"\textbackslash{}begin\{matrix\}" in tex
+
+
 def test_generic_document_compiler_uses_content_fingerprint_cache(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
