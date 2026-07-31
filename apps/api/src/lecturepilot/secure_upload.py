@@ -5,6 +5,7 @@ import hashlib
 import os
 from pathlib import Path, PurePosixPath
 import secrets
+import unicodedata
 
 from fastapi import UploadFile
 
@@ -57,6 +58,7 @@ async def stage_course_upload(
     tenant_id: str,
     requested_path: str,
 ) -> StagedCourseUpload:
+    requested_path = unicodedata.normalize("NFC", requested_path)
     policy = WorkspacePolicy()
     checked = policy.validate_course_material_upload(
         tenant_id=tenant_id,

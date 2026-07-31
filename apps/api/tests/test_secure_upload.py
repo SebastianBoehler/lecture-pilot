@@ -1,4 +1,5 @@
 from pathlib import Path, PurePosixPath
+import unicodedata
 
 from fastapi.testclient import TestClient
 import pytest
@@ -98,6 +99,24 @@ def test_upload_accepts_latex_style_files(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert response.json()["kind"] == "latex-support"
+
+
+def test_upload_normalizes_decomposed_unicode_paths(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    decomposed = unicodedata.normalize("NFD", "Prüfungsprotokolle/exam.pdf")
+
+    response = client.post(
+        "/admin/courses/martius-ml/materials",
+        headers=professor_headers(),
+        data={"path": decomposed},
+        files={"file": ("exam.pdf", b"%PDF-1.4\n%%EOF\n", "application/pdf")},
+    )
+
+    uploads = client.app.state.canvas_workspace.layout.course_uploads_dir("martius-ml")
+    normalized = unicodedata.normalize("NFC", decomposed)
+    assert response.status_code == 200
+    assert response.json()["path"] == normalized
+    assert (uploads / normalized).is_file()
 
 
 @pytest.mark.parametrize(
