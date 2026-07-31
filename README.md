@@ -20,7 +20,7 @@ harness. The current university integration is University of Tübingen via
 
 <p align="center">
   <img
-    alt="LecturePilot lesson canvas showing a Bayesian Decision Theory lecture with source-backed content and workspace tools"
+    alt="LecturePilot lesson canvas showing a source-backed checkpoint, quality gate, and tutor workspace"
     src="docs/assets/lecturepilot-lesson-ui.jpg"
     width="900"
   />
