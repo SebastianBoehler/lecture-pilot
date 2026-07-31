@@ -4,12 +4,14 @@ from hashlib import sha256
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Response
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from lecturepilot.api_auth import request_context
 from lecturepilot.course_access import course_actor_access, require_course_id_access
 from lecturepilot.course_canvas_generation_service import validate_generation_request_key
 from lecturepilot.metadata_events import emit_metadata_event
+from lecturepilot.latex_compilation_client import LatexCompilationError
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import Course, Lecture, TenantRole
 from lecturepilot.practice_exam_generation import generate_practice_exam
@@ -153,6 +155,33 @@ def register_practice_exam_routes(
     ) -> PracticeExamPublic:
         _authorize(app, context, course_id, course_tenant_id, seeded_course, seeded_lectures)
         return public_practice_exam(_read_exam(app, context.user_id, course_id, exam_id))
+
+    @app.get("/courses/{course_id}/practice-exams/{exam_id}/pdf")
+    def exam_pdf(
+        course_id: str,
+        exam_id: str,
+        context: TenantContext = Depends(request_context),
+    ) -> FileResponse:
+        _authorize(app, context, course_id, course_tenant_id, seeded_course, seeded_lectures)
+        try:
+            path = app.state.practice_exam_pdf_service.render(
+                user_id=context.user_id,
+                course_id=course_id,
+                exam_id=exam_id,
+            )
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail="Practice exam not found.") from exc
+        except LatexCompilationError as exc:
+            status = 503 if exc.code == "compiler_unavailable" else 502
+            raise HTTPException(
+                status_code=status,
+                detail="PDF generation is temporarily unavailable. Please retry.",
+            ) from exc
+        return FileResponse(
+            path,
+            media_type="application/pdf",
+            filename=f"practice-exam-{exam_id[:8]}.pdf",
+        )
 
     @app.delete("/courses/{course_id}/practice-exams/{exam_id}")
     def delete_exam(

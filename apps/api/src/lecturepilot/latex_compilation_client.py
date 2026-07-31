@@ -278,3 +278,6 @@ def _write_atomic(path: Path, payload: bytes) -> None:
     except BaseException:
         temporary_path.unlink(missing_ok=True)
         raise
+
+
+from lecturepilot.latex_document_compilation import compile_latex_document  # noqa: E402,F401

@@ -55,6 +55,7 @@ from lecturepilot.ppi_exam_source_service import PpiExamSourceService
 from lecturepilot.ppi_exam_source_store import PpiExamSourceStore
 from lecturepilot.practice_exam_generation_jobs import PracticeExamGenerationStore
 from lecturepilot.practice_exam_planner import LiteLLMPracticeExamClient, PracticeExamPlanner
+from lecturepilot.practice_exam_pdf import PracticeExamPdfService
 from lecturepilot.practice_exam_routes import register_practice_exam_routes
 from lecturepilot.practice_exam_store import PracticeExamStore
 from lecturepilot.rate_limit import RateLimitMiddleware
@@ -139,6 +140,7 @@ def create_app() -> FastAPI:
     app.state.ppi_exam_source_store = PpiExamSourceStore(app.state.canvas_workspace.layout)
     app.state.ppi_exam_source_service = PpiExamSourceService(app.state.ppi_exam_source_store)
     app.state.practice_exam_store = PracticeExamStore(app.state.canvas_workspace.layout)
+    app.state.practice_exam_pdf_service = PracticeExamPdfService(app.state.practice_exam_store)
     app.state.practice_exam_generation_store = PracticeExamGenerationStore(
         app.state.canvas_workspace.layout, lease_seconds=180
     )
