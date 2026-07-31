@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from auth_helpers import professor_headers
+from auth_helpers import confirm_source_routing, professor_headers
 from lecturepilot.course_builder_source import course_builder_source_document
 from test_course_workspace_api import _client
 
@@ -30,6 +30,11 @@ def test_builder_source_uses_scheduled_lecture_title(tmp_path: Path) -> None:
         headers=professor_headers(),
     )
     assert uploaded.status_code == 200
+    confirm_source_routing(
+        client,
+        "software-quality",
+        {"uploads/12419_resource.md": ("lecture", "lecture-04")},
+    )
 
     source = course_builder_source_document(
         client.app,

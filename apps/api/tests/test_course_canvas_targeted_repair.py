@@ -2,7 +2,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from auth_helpers import professor_headers
+from auth_helpers import confirm_source_routing, professor_headers
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
@@ -282,6 +282,7 @@ The score is the inner product of the transposed weight vector and the input.
         headers=professor_headers(),
     )
     assert upload.status_code == 200
+    confirm_source_routing(client, "targeted-repair")
     return client
 
 

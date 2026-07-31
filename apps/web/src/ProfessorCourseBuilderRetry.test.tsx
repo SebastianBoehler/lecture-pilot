@@ -47,6 +47,8 @@ describe("Professor course builder generation retry", () => {
     await user.click(screen.getByRole("button", { name: /upload and process materials/i }));
     await screen.findByText(/2 lectures inferred from the source bundle/i);
     await user.click(screen.getByRole("button", { name: /apply lecture schedule/i }));
+    await screen.findByRole("heading", { name: /review source routing/i });
+    await user.click(screen.getByRole("button", { name: /confirm source routing/i }));
     await screen.findByRole("heading", { name: /review youtube candidates/i });
     await user.click(screen.getByRole("button", { name: /continue to canvas draft/i }));
     vi.useFakeTimers();

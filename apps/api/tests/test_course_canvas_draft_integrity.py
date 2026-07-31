@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from auth_helpers import professor_headers
+from auth_helpers import confirm_source_routing, professor_headers
 from canvas_workspace_fixtures import published_course_canvas
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import MAX_SOURCE_REF_LENGTH, CanvasDocument
@@ -215,6 +215,7 @@ This revised source evidence changes the lecture fingerprint while remaining val
 \\end{frame}
 """
     )
+    confirm_source_routing(client, "draft-integrity")
     invalidated = client.post(
         draft_path,
         headers={
@@ -284,6 +285,7 @@ Source evidence explains the generated canvas contract in sufficient detail.
         headers=professor_headers(),
     )
     assert upload.status_code == 200
+    confirm_source_routing(client, "draft-integrity")
     return client
 
 

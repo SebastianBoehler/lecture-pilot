@@ -74,7 +74,7 @@ database authority in Postgres and files on the persisted `/app/storage` volume.
     source/{uploads/,normalized/,source-index.json}
     canvas/lectures/<lecture-id>/{index.md,sections/*.md,assets/}
     canvas-drafts/lectures/<lecture-id>/latest/
-    builder/{generations/,repairs/,source-manifests/,updates/}
+    builder/{generations/,repairs/,source-manifests/,source-routing.json,updates/}
 ```
 
 Official source material belongs to `courses/<tenant>/<course>/source`.

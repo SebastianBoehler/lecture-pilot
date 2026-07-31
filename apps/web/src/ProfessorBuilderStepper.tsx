@@ -1,6 +1,6 @@
 import { useI18n } from "./i18n";
 
-export type BuilderStep = "define" | "upload" | "generate" | "review" | "publish";
+export type BuilderStep = "define" | "upload" | "sources" | "review" | "generate" | "publish";
 
 export type StepState = {
   available: boolean;
@@ -17,6 +17,7 @@ export function builderSteps({
   draftReviewed,
   reviewAvailable,
   reviewReady,
+  routingReady,
   workspacePublished,
 }: {
   bundleReady: boolean;
@@ -25,24 +26,32 @@ export function builderSteps({
   draftReviewed: boolean;
   reviewAvailable: boolean;
   reviewReady: boolean;
+  routingReady: boolean;
   workspacePublished: boolean;
 }): StepState[] {
   return [
     { available: true, id: "define", label: "Define", number: "01", ready: courseReady },
     { available: courseReady, id: "upload", label: "Upload", number: "02", ready: bundleReady },
-    { available: reviewAvailable, id: "review", label: "Media", number: "03", ready: reviewReady },
     {
-      available: reviewReady || canvasReady,
+      available: reviewAvailable,
+      id: "sources",
+      label: "Sources",
+      number: "03",
+      ready: routingReady,
+    },
+    { available: routingReady, id: "review", label: "Media", number: "04", ready: reviewReady },
+    {
+      available: (routingReady && reviewReady) || canvasReady,
       id: "generate",
       label: "Generate",
-      number: "04",
+      number: "05",
       ready: canvasReady,
     },
     {
       available: canvasReady && (draftReviewed || workspacePublished),
       id: "publish",
       label: "Publish",
-      number: "05",
+      number: "06",
       ready: workspacePublished,
     },
   ];
@@ -58,7 +67,7 @@ export function initialBuilderStep({
   courseReady: boolean;
 }): BuilderStep {
   if (canvasReady) return "generate";
-  if (bundleReady) return "review";
+  if (bundleReady) return "sources";
   if (courseReady) return "upload";
   return "define";
 }
@@ -106,6 +115,7 @@ export function builderStepLabel(
     key:
       | "builder.step.define"
       | "builder.step.upload"
+      | "builder.step.sources"
       | "builder.step.review"
       | "builder.step.generate"
       | "builder.step.publish",
@@ -113,6 +123,7 @@ export function builderStepLabel(
 ) {
   if (step === "define") return t("builder.step.define");
   if (step === "upload") return t("builder.step.upload");
+  if (step === "sources") return t("builder.step.sources");
   if (step === "review") return t("builder.step.review");
   if (step === "generate") return t("builder.step.generate");
   return t("builder.step.publish");

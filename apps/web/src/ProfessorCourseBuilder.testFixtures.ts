@@ -4,6 +4,7 @@ export function professorFetchMock() {
   const publishedLectures = new Set<string>();
   const deletedCourses = new Set<string>();
   const selectedMedia = new Map<string, { video: ReturnType<typeof youtubeCandidate> }>();
+  let routing = sourceRouting(false);
   return vi.fn(async (url: string, init?: RequestInit) => {
     const path = new URL(url, "http://localhost").pathname;
     if (path === "/admin/courses") {
@@ -23,6 +24,13 @@ export function professorFetchMock() {
     if (url.endsWith("/admin/course-workspaces")) return json(courseWorkspacePayload(init));
     if (url.includes("/lecture-schedule")) return json(lectureSchedulePayload());
     if (url.includes("/source-bundle")) return json(sourceBundle());
+    if (url.includes("/source-routing")) {
+      if (init?.method === "PUT") {
+        const body = JSON.parse(String(init.body));
+        routing = { ...routing, ...body, confirmed: true };
+      }
+      return json(routing);
+    }
     if (url.includes("/materials"))
       return json({ path: "uploads/supplement.md", kind: "markdown", size_bytes: 12 });
     if (url.includes("/analytics")) return json(analyticsPayload());
@@ -131,6 +139,37 @@ function sourceBundle() {
       { path: "videos/demo.mp4", kind: "video", size_bytes: 3000 },
     ],
     counts_by_kind: { latex: 1, pdf: 1, video: 1 },
+  };
+}
+
+function sourceRouting(confirmed: boolean) {
+  return {
+    confirmed,
+    course_id: "demo-ml-course",
+    source_revision: "a".repeat(64),
+    routes: [
+      {
+        kind: "latex",
+        lecture_id: "lecture-03",
+        path: "Lecture03-eng.tex",
+        role: "lecture",
+        sha256: "b".repeat(64),
+      },
+      {
+        kind: "pdf",
+        lecture_id: "lecture-03",
+        path: "Ch3/Venn_C-X_1.pdf",
+        role: "lecture",
+        sha256: "c".repeat(64),
+      },
+      {
+        kind: "video",
+        lecture_id: null,
+        path: "videos/demo.mp4",
+        role: "reference_only",
+        sha256: "d".repeat(64),
+      },
+    ],
   };
 }
 

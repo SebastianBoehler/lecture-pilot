@@ -7,6 +7,7 @@ import {
 import type { CourseSetup } from "./professorBuilderState";
 import type {
   CourseWorkspaceResult,
+  CourseSourceRoutingManifest,
   LectureScheduleItem,
   LectureScheduleProposal,
   LoginSession,
@@ -106,6 +107,40 @@ export async function getSourceBundle(
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Source scan failed."));
   return payload as SourceBundleManifest;
+}
+
+export async function getSourceRouting(
+  courseId: string,
+  session: LoginSession,
+): Promise<CourseSourceRoutingManifest> {
+  const response = await fetch(
+    apiUrl(`/admin/courses/${courseId}/source-routing`),
+    authRequestInit(session),
+  );
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "Source routing failed to load."));
+  return payload as CourseSourceRoutingManifest;
+}
+
+export async function confirmSourceRouting(
+  courseId: string,
+  routing: CourseSourceRoutingManifest,
+  session: LoginSession,
+): Promise<CourseSourceRoutingManifest> {
+  const response = await fetch(
+    apiUrl(`/admin/courses/${courseId}/source-routing`),
+    authRequestInit(session, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        source_revision: routing.source_revision,
+        routes: routing.routes,
+      }),
+    }),
+  );
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "Source routing confirmation failed."));
+  return payload as CourseSourceRoutingManifest;
 }
 
 export async function uploadCourseMaterial(input: {

@@ -56,3 +56,27 @@ def professor_headers(user_id: str = "prof01") -> dict[str, str]:
         "X-User-Id": user_id,
         "X-User-Role": "professor",
     }
+
+
+def confirm_source_routing(
+    client,
+    course_id: str,
+    route_overrides: dict[str, tuple[str, str | None]] | None = None,
+) -> dict:
+    response = client.get(
+        f"/admin/courses/{course_id}/source-routing",
+        headers=professor_headers(),
+    )
+    assert response.status_code == 200
+    routing = response.json()
+    for route in routing["routes"]:
+        override = (route_overrides or {}).get(route["path"])
+        if override:
+            route.update({"role": override[0], "lecture_id": override[1]})
+    confirmed = client.put(
+        f"/admin/courses/{course_id}/source-routing",
+        json={"source_revision": routing["source_revision"], "routes": routing["routes"]},
+        headers=professor_headers(),
+    )
+    assert confirmed.status_code == 200
+    return confirmed.json()

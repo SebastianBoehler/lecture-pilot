@@ -23,6 +23,7 @@ volume.
       generations/<lecture-id>/*.json
       repairs/<lecture-id>.json
       source-manifests/<lecture-id>.json
+      source-routing.json
       updates/<update-id>/
     canvas/media/
     course.json
@@ -62,6 +63,12 @@ volume.
 
 The exact set of files is created lazily; absence is normal before a course,
 draft, learner state, or optional feature exists.
+
+`builder/source-routing.json` is the professor-confirmed pre-generation map.
+It binds every uploaded source to one lecture, the whole course, reference-only
+storage, or exclusion, and is invalidated when either the indexed sources or
+lecture schedule changes. Per-lecture source manifests record what a completed
+generation actually consumed.
 
 ## Durable storage boundary
 

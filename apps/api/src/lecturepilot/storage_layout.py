@@ -149,6 +149,9 @@ class StorageLayout:
             / f"{safe_id(lecture_id)}.json"
         )
 
+    def course_source_routing_path(self, course_id: str) -> Path:
+        return self.course_root(course_id) / "builder" / "source-routing.json"
+
     def lecture_canvas_repair_path(self, course_id: str, lecture_id: str) -> Path:
         return self.course_root(course_id) / "builder" / "repairs" / f"{safe_id(lecture_id)}.json"
 

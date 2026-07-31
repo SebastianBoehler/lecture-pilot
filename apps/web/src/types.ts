@@ -157,6 +157,23 @@ export type SourceBundleManifest = {
   counts_by_kind: Record<string, number>;
 };
 
+export type SourceRouteRole = "lecture" | "course_wide" | "reference_only" | "excluded";
+
+export type CourseSourceRoute = {
+  path: string;
+  kind: string;
+  sha256: string;
+  role: SourceRouteRole;
+  lecture_id: string | null;
+};
+
+export type CourseSourceRoutingManifest = {
+  course_id: string;
+  source_revision: string;
+  confirmed: boolean;
+  routes: CourseSourceRoute[];
+};
+
 export type LectureScheduleItem = {
   number: string;
   title: string;

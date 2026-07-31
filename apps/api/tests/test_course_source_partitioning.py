@@ -10,8 +10,6 @@ from canvas_workspace_fixtures import published_course_canvas
 from lecturepilot.app import create_app
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_builder_source import course_builder_source_document
-from lecturepilot.lecture_source_manifest import write_lecture_source_manifest
-from lecturepilot.source_index import refresh_course_source_index
 from lecturepilot.source_bundle import scan_source_bundle
 
 
@@ -26,6 +24,7 @@ def test_nested_markdown_sources_follow_applied_lecture_schedule(tmp_path: Path)
     _upload(
         client, paths[1], b"# Lecture Two\n\nOnly lecture two explains model selection clearly."
     )
+    _confirm_routing(client)
 
     first = course_builder_source_document(client.app, "partitioned-course", "lecture-01")
     second = course_builder_source_document(client.app, "partitioned-course", "lecture-02")
@@ -45,6 +44,7 @@ def test_same_named_nested_latex_sources_use_their_lecture_folders(tmp_path: Pat
     _create_full_course(client, paths)
     _upload(client, paths[0], _latex("Lecture One", "FOUNDATION-MARKER"))
     _upload(client, paths[1], _latex("Lecture Two", "MODEL-MARKER"))
+    _confirm_routing(client)
 
     first = course_builder_source_document(client.app, "partitioned-course", "lecture-01")
     second = course_builder_source_document(client.app, "partitioned-course", "lecture-02")
@@ -62,6 +62,7 @@ def test_tex_only_lecture_uses_compiled_slide_previews(
     path = "Lecture01.tex"
     _create_full_course(client, (path,))
     _upload(client, path, _latex("Lecture One", "FOUNDATION-MARKER"))
+    _confirm_routing(client)
 
     def compile_deck(**kwargs) -> Path:
         output = kwargs["output_root"] / "compiled-latex/lecture-01/hash/Lecture01-hash.pdf"
@@ -96,6 +97,7 @@ def test_tex_compile_failure_keeps_text_canvas_and_adds_actionable_warning(
     path = "Lecture01.tex"
     _create_full_course(client, (path,))
     _upload(client, path, _latex("Lecture One", "FOUNDATION-MARKER"))
+    _confirm_routing(client)
 
     def fail_compile(**kwargs) -> Path:
         raise LatexCompilationError("private compiler detail")
@@ -121,6 +123,7 @@ def test_numbered_handout_pdf_skips_compilation_and_is_not_duplicated(
     _create_full_course(client, paths)
     _upload(client, paths[1], _latex("Lecture Two", "MODEL-MARKER"))
     _upload(client, "Lecture02-handout.pdf", _pdf("Authoritative uploaded slides"))
+    _confirm_routing(client)
 
     def unexpected_compile(**kwargs) -> Path:
         raise AssertionError("matching PDF must prevent compilation")
@@ -141,7 +144,7 @@ def test_numbered_handout_pdf_skips_compilation_and_is_not_duplicated(
     assert document.warnings == []
 
 
-def test_manifest_assigned_generic_pdf_is_authoritative(
+def test_reviewed_route_for_generic_pdf_is_authoritative(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     client = _client(tmp_path)
@@ -149,19 +152,7 @@ def test_manifest_assigned_generic_pdf_is_authoritative(
     _create_full_course(client, paths)
     _upload(client, paths[1], _latex("Lecture Two", "MODEL-MARKER"))
     _upload(client, "week-two.pdf", _pdf("Explicitly assigned slides"))
-    workspace = client.app.state.canvas_workspace
-    index = refresh_course_source_index(
-        course_id="partitioned-course",
-        uploads_dir=workspace.layout.course_uploads_dir("partitioned-course"),
-        index_path=workspace.layout.course_source_index_path("partitioned-course"),
-    )
-    write_lecture_source_manifest(
-        workspace.layout.lecture_source_manifest_path("partitioned-course", "lecture-02"),
-        course_id="partitioned-course",
-        lecture_id="lecture-02",
-        file_paths=[paths[1], "week-two.pdf"],
-        source_index=index,
-    )
+    _confirm_routing(client, {"week-two.pdf": "lecture-02"})
 
     def unexpected_compile(**kwargs) -> Path:
         raise AssertionError("assigned PDF must prevent compilation")
@@ -186,6 +177,7 @@ def test_rendered_pdf_slides_are_not_reindexed_as_professor_sources(tmp_path: Pa
     path = "uploads/course/Lecture 1 - Foundations/slides.pdf"
     _create_full_course(client, (path,))
     _upload(client, path, _pdf("Grounded PDF lecture evidence for students."))
+    _confirm_routing(client)
 
     document = course_builder_source_document(client.app, "partitioned-course", "lecture-01")
 
@@ -274,6 +266,23 @@ def _upload(client: TestClient, path: str, content: bytes) -> None:
         "/admin/courses/partitioned-course/materials",
         data={"path": path},
         files={"file": (Path(path).name, content)},
+        headers=professor_headers(),
+    )
+    assert response.status_code == 200
+
+
+def _confirm_routing(client: TestClient, lecture_overrides: dict[str, str] | None = None) -> None:
+    routing = client.get(
+        "/admin/courses/partitioned-course/source-routing",
+        headers=professor_headers(),
+    ).json()
+    for route in routing["routes"]:
+        lecture_id = (lecture_overrides or {}).get(route["path"])
+        if lecture_id:
+            route.update({"role": "lecture", "lecture_id": lecture_id})
+    response = client.put(
+        "/admin/courses/partitioned-course/source-routing",
+        json={"source_revision": routing["source_revision"], "routes": routing["routes"]},
         headers=professor_headers(),
     )
     assert response.status_code == 200

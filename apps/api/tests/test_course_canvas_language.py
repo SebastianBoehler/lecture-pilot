@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from auth_helpers import professor_headers
+from auth_helpers import confirm_source_routing, professor_headers
 from canvas_workspace_fixtures import published_course_canvas
 from lecturepilot.course_canvas_prompt import planner_messages, repair_message
 from lecturepilot.course_canvas_section_prompt import section_messages
@@ -96,6 +96,7 @@ def test_bilingual_uploads_remain_available_as_generation_evidence(tmp_path: Pat
             headers=professor_headers("prof-demo"),
         )
         assert uploaded.status_code == 200
+    confirm_source_routing(client, "bilingual-evidence-course")
 
     source = course_builder_source_document(
         client.app,

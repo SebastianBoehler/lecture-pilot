@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 export type BuilderAction =
   | "apply-schedule"
   | "create"
+  | "confirm-routing"
   | "delete-course"
   | "generate"
   | "include-videos"

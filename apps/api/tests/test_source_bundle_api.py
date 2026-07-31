@@ -176,6 +176,17 @@ def test_nested_uploaded_latex_matches_requested_lecture_before_sorted_fallback(
 
 def test_professor_canvas_draft_stays_private_until_publish(tmp_path: Path) -> None:
     client, material_root = _client(tmp_path)
+    workspace = client.post(
+        "/admin/course-workspaces",
+        json={
+            "course_title": "Martius ML",
+            "target": "single-lecture",
+            "lecture_number": "03",
+            "lecture_title": "Bayesian Decision Theory",
+        },
+        headers=_professor_headers(),
+    )
+    assert workspace.status_code == 200
     client.app.state.course_planner = _FakeCoursePlanner()
     store = client.app.state.canvas_workspace.course_canvas_store
     draft_dir = store.draft_path("martius-ml", "lecture-03")
@@ -188,6 +199,15 @@ def test_professor_canvas_draft_stays_private_until_publish(tmp_path: Path) -> N
         files={"file": ("Lecture03-eng.tex", _latex_source())},
         headers=_professor_headers(),
     )
+    routing = client.get(
+        "/admin/courses/martius-ml/source-routing", headers=_professor_headers()
+    ).json()
+    confirmed = client.put(
+        "/admin/courses/martius-ml/source-routing",
+        json={"source_revision": routing["source_revision"], "routes": routing["routes"]},
+        headers=_professor_headers(),
+    )
+    assert confirmed.status_code == 200
 
     draft = client.post(
         "/admin/courses/martius-ml/lectures/lecture-03/canvas/draft",

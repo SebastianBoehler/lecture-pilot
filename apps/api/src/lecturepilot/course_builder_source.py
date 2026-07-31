@@ -8,15 +8,12 @@ from fastapi import FastAPI
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.compiled_slide_canvas import latex_preview_warning
 from lecturepilot.course_schedule_store import read_course_workspace
-from lecturepilot.course_source_partition import select_lecture_source_files
+from lecturepilot.course_source_routing import SourceRoutingError, selected_routed_files
 from lecturepilot.course_update_recovery import locked_course_state
 from lecturepilot.latex_compilation_client import LatexCompilationError, compile_latex_deck
 from lecturepilot.latex_dependency_bundle import resolve_latex_compiler_inputs
 from lecturepilot.lecture_slide_source import resolve_lecture_slide_source
-from lecturepilot.lecture_source_manifest import (
-    read_lecture_source_manifest,
-    write_lecture_source_manifest,
-)
+from lecturepilot.lecture_source_manifest import write_lecture_source_manifest
 from lecturepilot.logging_observability import current_operation_id
 from lecturepilot.source_index import refresh_course_source_index
 from lecturepilot.source_bundle_canvas import SourceBundleCanvasError, import_source_bundle_canvas
@@ -45,23 +42,25 @@ def _course_builder_source_document_locked(
             uploads_dir=uploads_dir,
             index_path=workspace.layout.course_source_index_path(course_id),
         )
-        indexed = [item.as_bundle_file() for item in source_index.files]
     except WorkspaceFSError as exc:
         raise SourceBundleCanvasError("Course source contains an unsafe symbolic link.") from exc
-    if indexed:
+    if source_index.files:
         course_workspace = read_course_workspace(workspace.course_media_root(course_id), course_id)
         lectures = course_workspace.lectures if course_workspace else []
         scheduled = next((item for item in lectures if item.id == lecture_id), None)
-        selected = select_lecture_source_files(
-            files=indexed,
-            lectures=lectures,
-            lecture_id=lecture_id,
-        )
+        try:
+            routed = selected_routed_files(
+                course_id=course_id,
+                lecture_id=lecture_id,
+                index=source_index,
+                lectures=lectures,
+                routing_path=workspace.layout.course_source_routing_path(course_id),
+            )
+        except SourceRoutingError as exc:
+            raise SourceBundleCanvasError(str(exc)) from exc
+        selected = [item.as_bundle_file() for item in routed]
         manifest_path = workspace.layout.lecture_source_manifest_path(course_id, lecture_id)
-        manifest = read_lecture_source_manifest(manifest_path, course_id, lecture_id)
-        explicit_paths = {item.path for item in manifest.files}
-        selected_paths = {item.path for item in selected} | explicit_paths
-        selected = [item for item in indexed if item.path in selected_paths]
+        explicit_paths = {item.path for item in selected}
         if not selected:
             raise SourceBundleCanvasError(
                 f"No uploaded source material is assigned to {course_id}/{lecture_id}."

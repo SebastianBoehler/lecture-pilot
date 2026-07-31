@@ -1,0 +1,243 @@
+.practice-ppi-import {
+  margin-top: 12px;
+  border-top: 1px solid var(--color-border-primary);
+  padding-top: 12px;
+}
+
+.practice-ppi-credentials {
+  align-items: end;
+  justify-content: flex-start;
+  margin-top: 12px;
+}
+
+.practice-ppi-credentials input {
+  min-height: 38px;
+  padding: 0 10px;
+}
+
+.practice-ppi-catalog {
+  container: ppi-catalog / inline-size;
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.practice-ppi-catalog-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 16px;
+}
+
+.practice-ppi-search {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.practice-ppi-search input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 11px;
+  font-size: 16px;
+}
+
+.practice-ppi-token-balance {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--control-radius);
+  padding: 0 12px;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.practice-ppi-result-count {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.practice-ppi-catalog-list {
+  margin: 0;
+  border-top: 1px solid var(--color-border-primary);
+  padding: 0;
+  list-style: none;
+}
+
+.practice-ppi-course {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(148px, auto);
+  align-items: center;
+  gap: 16px;
+  border-bottom: 1px solid var(--color-border-primary);
+  padding: 12px 0;
+}
+
+.practice-ppi-course-details {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.practice-ppi-course-details strong {
+  font-size: 14px;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+}
+
+.practice-ppi-course-details span {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.practice-ppi-course-action {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.practice-ppi-course-action button,
+.practice-ppi-saved-badge {
+  white-space: nowrap;
+}
+
+.practice-ppi-course-action button {
+  min-width: 148px;
+}
+
+.practice-ppi-saved-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 999px;
+  padding: 0 10px;
+  border-color: color-mix(in srgb, var(--color-accent-primary) 38%, var(--color-border-primary));
+  color: var(--color-accent-primary);
+  background: color-mix(in srgb, var(--color-accent-primary) 7%, var(--color-bg-primary));
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.practice-ppi-import-progress,
+.practice-ppi-ready {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  border: 1px solid color-mix(in srgb, var(--color-accent-primary) 36%, var(--color-border-primary));
+  border-radius: 8px;
+  padding: 14px;
+  background: color-mix(in srgb, var(--color-accent-primary) 6%, var(--color-bg-primary));
+}
+
+.practice-ppi-import-progress > div,
+.practice-ppi-ready > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.practice-ppi-import-progress strong,
+.practice-ppi-ready strong {
+  font-size: 15px;
+}
+
+.practice-ppi-import-progress span,
+.practice-ppi-ready span {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.practice-ppi-import-progress p {
+  grid-column: 2 / -1;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.practice-button-spinner {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: practice-spin 700ms linear infinite;
+}
+
+.practice-primary .practice-button-spinner {
+  margin-right: 7px;
+  vertical-align: -3px;
+}
+
+@keyframes practice-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .practice-button-spinner {
+    animation-duration: 1.6s;
+  }
+}
+
+.practice-ppi-no-results {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  border-top: 1px solid var(--color-border-primary);
+  padding-top: 16px;
+}
+
+.practice-ppi-no-results p {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+@container ppi-catalog (max-width: 430px) {
+  .practice-ppi-catalog-tools,
+  .practice-ppi-course {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .practice-ppi-token-balance {
+    justify-self: start;
+  }
+
+  .practice-ppi-course-action {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 620px) {
+  .practice-ppi-credentials {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .practice-ppi-course-action button {
+    width: 100%;
+  }
+
+  .practice-ppi-import-progress,
+  .practice-ppi-ready {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .practice-ppi-ready > button {
+    grid-column: 1 / -1;
+  }
+}

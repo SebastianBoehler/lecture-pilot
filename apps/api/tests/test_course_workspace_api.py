@@ -4,7 +4,12 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from auth_helpers import pending_university_login, professor_headers, student_headers
+from auth_helpers import (
+    confirm_source_routing,
+    pending_university_login,
+    professor_headers,
+    student_headers,
+)
 from canvas_workspace_fixtures import published_course_canvas
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
@@ -229,6 +234,7 @@ def test_dynamic_course_workspace_uses_uploaded_source(tmp_path: Path) -> None:
     bundle = client.get("/courses/demo-ml-course/source-bundle", headers=professor_headers())
     assert bundle.status_code == 200
     assert [item["path"] for item in bundle.json()["files"]] == ["uploads/Lecture07.tex"]
+    confirm_source_routing(client, "demo-ml-course")
 
     draft = client.post(
         "/admin/courses/demo-ml-course/lectures/lecture-07/canvas/draft",
@@ -321,6 +327,7 @@ def test_full_course_draft_uses_matching_lecture_source(tmp_path: Path) -> None:
             headers=professor_headers(),
         )
         assert upload.status_code == 200
+    confirm_source_routing(client, "demo-ml-course")
 
     draft = client.post(
         "/admin/courses/demo-ml-course/lectures/lecture-02/canvas/draft",
@@ -373,6 +380,12 @@ def test_course_canvas_draft_can_use_markdown_text_and_pdf_without_latex(tmp_pat
             headers=professor_headers(),
         )
         assert response.status_code == 200
+
+    confirm_source_routing(
+        client,
+        "mixed-source-course",
+        {path: ("course_wide", None) for path, _content in uploads},
+    )
 
     draft = client.post(
         "/admin/courses/mixed-source-course/lectures/lecture-01/canvas/draft",
