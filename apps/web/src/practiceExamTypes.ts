@@ -21,7 +21,7 @@ export type PracticeExam = {
 export type PracticeExamGenerationInput = {
   question_count: number;
   duration_minutes: number;
-  ppi_source_ids: string[];
+  ppi_source_ids: [] | [string];
 };
 
 export type PracticeExamAnswer = { selected_index?: number; text?: string };

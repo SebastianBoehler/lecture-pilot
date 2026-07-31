@@ -33,16 +33,11 @@ export function PracticeExamSetup({
   const { t } = useI18n();
   const [questionCount, setQuestionCount] = useState(DEFAULT_PRACTICE_EXAM_QUESTIONS);
   const [duration, setDuration] = useState(90);
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selectedSource, setSelectedSource] = useState<PpiExamSource | null>(
+    sources.length === 1 ? sources[0] : null,
+  );
+  const [importingSource, setImportingSource] = useState(false);
   const dialogRef = useModalDialog();
-
-  function toggleSource(sourceId: string) {
-    setSelected((current) =>
-      current.includes(sourceId)
-        ? current.filter((item) => item !== sourceId)
-        : [...current, sourceId],
-    );
-  }
 
   return (
     <dialog
@@ -52,7 +47,7 @@ export function PracticeExamSetup({
       ref={dialogRef}
       onCancel={(event) => {
         event.preventDefault();
-        onClose();
+        if (!importingSource) onClose();
       }}
     >
       <header>
@@ -65,6 +60,7 @@ export function PracticeExamSetup({
         <button
           aria-label={t("practice.setup.close")}
           className="practice-exam-dialog-close"
+          disabled={importingSource}
           type="button"
           onClick={onClose}
         >
@@ -107,43 +103,61 @@ export function PracticeExamSetup({
             <h3 id="saved-ppi-sources">{t("practice.ppi.saved")}</h3>
             <span>{t("practice.ppi.savedHelp")}</span>
           </div>
-          {sources.length ? (
-            <div className="practice-source-list">
-              {sources.map((source) => (
-                <label key={source.id}>
-                  <input
-                    checked={selected.includes(source.id)}
-                    type="checkbox"
-                    onChange={() => toggleSource(source.id)}
-                  />
-                  <span>
-                    {source.title} ·{" "}
-                    {t("practice.ppi.protocolCount", { count: source.protocol_count })}
-                  </span>
-                </label>
-              ))}
+          {selectedSource ? (
+            <div className="practice-ppi-ready" role="status">
+              <div>
+                <strong>{t("practice.ppi.ready")}</strong>
+                <span>
+                  {selectedSource.title} ·{" "}
+                  {t("practice.ppi.protocolCount", { count: selectedSource.protocol_count })}
+                </span>
+              </div>
+              <button
+                disabled={generating || importingSource}
+                type="button"
+                onClick={() => setSelectedSource(null)}
+              >
+                {t("practice.ppi.changeSource")}
+              </button>
             </div>
           ) : (
-            <p className="practice-empty-copy">{t("practice.ppi.noneSaved")}</p>
+            <>
+              {sources.length ? (
+                <div aria-label={t("practice.ppi.chooseSource")} className="practice-source-list">
+                  {sources.map((source) => (
+                    <button key={source.id} type="button" onClick={() => setSelectedSource(source)}>
+                      <span>{source.title}</span>
+                      <span>
+                        {t("practice.ppi.protocolCount", { count: source.protocol_count })}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="practice-empty-copy">{t("practice.ppi.noneSaved")}</p>
+              )}
+              <PpiExamSourcePicker
+                courseId={course.id}
+                session={session}
+                onImported={(source) => {
+                  onSourceImported(source);
+                  setSelectedSource(source);
+                }}
+                onImportingChange={setImportingSource}
+              />
+            </>
           )}
-          <PpiExamSourcePicker
-            courseId={course.id}
-            session={session}
-            onImported={(source) => {
-              onSourceImported(source);
-              setSelected((current) => [...new Set([...current, source.id])]);
-            }}
-          />
         </section>
       </div>
       <footer>
-        <button type="button" onClick={onClose}>
+        <button disabled={importingSource} type="button" onClick={onClose}>
           {t("practice.cancel")}
         </button>
         <button
           className="practice-primary"
           disabled={
             generating ||
+            importingSource ||
             questionCount < MIN_PRACTICE_EXAM_QUESTIONS ||
             questionCount > MAX_PRACTICE_EXAM_QUESTIONS
           }
@@ -152,13 +166,20 @@ export function PracticeExamSetup({
             onGenerate({
               question_count: questionCount,
               duration_minutes: duration,
-              ppi_source_ids: selected,
+              ppi_source_ids: selectedSource ? [selectedSource.id] : [],
             })
           }
         >
-          {generating
-            ? t("practice.generating")
-            : t("practice.generateCount", { count: questionCount })}
+          {importingSource ? (
+            <>
+              <span aria-hidden="true" className="practice-button-spinner" />
+              {t("practice.ppi.importingSource")}
+            </>
+          ) : generating ? (
+            t("practice.generating")
+          ) : (
+            t("practice.generateCount", { count: questionCount })
+          )}
         </button>
       </footer>
     </dialog>

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+import logging
 from typing import Any
 
+from lecturepilot.ppi_exam_source_archive import PpiArchiveError
 from lecturepilot.ppi_exam_source_models import (
     PpiCatalogLecture,
     PpiCatalogResponse,
@@ -11,6 +13,9 @@ from lecturepilot.ppi_exam_source_models import (
     PpiImportResult,
 )
 from lecturepilot.ppi_exam_source_store import PpiExamSourceStore
+
+
+logger = logging.getLogger(__name__)
 
 
 class PpiServiceError(RuntimeError):
@@ -115,7 +120,7 @@ class PpiExamSourceService:
                 borrowed_until=entitlement.borrowed_until,
             )
             return PpiImportResult(source=source, token_spent=token_spent, reused=False)
-        except PpiServiceError:
+        except (PpiServiceError, PpiArchiveError):
             raise
         except Exception as exc:
             _raise_service_error(exc)
@@ -172,4 +177,5 @@ def _raise_service_error(exc: Exception) -> None:
         raise PpiAccessError("PPI rejected the requested operation.") from exc
     if isinstance(exc, PpiServiceError):
         raise exc
+    logger.exception("Unexpected PPI integration failure; exception_type=%s", name)
     raise PpiIntegrationUnavailable("PPI is temporarily unavailable. Please retry.") from exc

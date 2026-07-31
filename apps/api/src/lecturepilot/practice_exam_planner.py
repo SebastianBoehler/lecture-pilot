@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from hashlib import sha256
 import json
+import logging
 from typing import Protocol
 from uuid import uuid4
 
@@ -30,6 +31,9 @@ from lecturepilot.practice_exam_validation import (
     validate_practice_exam,
 )
 from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
+
+
+logger = logging.getLogger(__name__)
 
 
 class PracticeExamPlanningError(ValueError):
@@ -118,7 +122,7 @@ class PracticeExamPlanner:
         )
         repair_error: str | None = None
         last_error: Exception | None = None
-        for _attempt in range(2):
+        for attempt in range(2):
             payload = await self.model_client.complete_exam(
                 settings=settings,
                 response_format=response_format,
@@ -153,6 +157,12 @@ class PracticeExamPlanner:
             except (ValidationError, PracticeExamValidationError) as exc:
                 last_error = exc
                 repair_error = str(exc)
+                logger.warning(
+                    "Practice exam candidate rejected; attempt=%s error_type=%s reason=%s",
+                    attempt + 1,
+                    type(exc).__name__,
+                    _safe_validation_reason(exc),
+                )
         detail = str(last_error) if last_error else "unknown validation error"
         raise PracticeExamPlanningError(
             f"Provider did not return a valid structured exam: {detail}"
@@ -195,3 +205,9 @@ def _source_revision(course_evidence: str, ppi_sources: dict[str, list[str]]) ->
 
 def _exam_output_token_budget(question_count: int) -> int:
     return max(20_000, question_count * 600)
+
+
+def _safe_validation_reason(error: ValidationError | PracticeExamValidationError) -> str:
+    if isinstance(error, PracticeExamValidationError):
+        return str(error)
+    return ",".join(sorted({item["type"] for item in error.errors()}))

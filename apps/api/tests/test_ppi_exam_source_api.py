@@ -104,6 +104,16 @@ def test_import_reports_no_tokens_and_allows_exact_deletion(tmp_path: Path) -> N
     assert deleted.json() == {"deleted": True}
 
 
+def test_import_reports_unsupported_archive_members_as_validation_errors(tmp_path: Path) -> None:
+    client, _store, factory = _client(tmp_path)
+    factory.client = _FakePpiClient(borrowed=True, archive=_archive("questions.exe"))
+
+    response = _import(client, confirm=False)
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "PPI archive contains an unsupported file type."
+
+
 def test_ppi_sources_deny_professors_and_require_course_enrollment(tmp_path: Path) -> None:
     client, _store, _factory = _client(tmp_path)
     professor = client.get("/courses/martius-ml/ppi-exam-sources", headers=professor_headers())
@@ -156,7 +166,12 @@ class _ClientFactory:
 
 class _FakePpiClient:
     def __init__(
-        self, *, borrowed: bool, tokens: int = 2, become_borrowed_on_recheck: bool = False
+        self,
+        *,
+        borrowed: bool,
+        tokens: int = 2,
+        become_borrowed_on_recheck: bool = False,
+        archive: bytes | None = None,
     ) -> None:
         self.borrowed = borrowed
         self.tokens = tokens
@@ -164,6 +179,7 @@ class _FakePpiClient:
         self.catalog_calls = 0
         self.borrow_calls = 0
         self.download_calls = 0
+        self.archive = archive or _archive()
 
     def fetch_lecture_catalog(self) -> "_Catalog":
         self.catalog_calls += 1
@@ -199,16 +215,16 @@ class _FakePpiClient:
 
     def download_lecture(self, lecture_id: int) -> "_Download":
         self.download_calls += 1
-        return _Download(lecture_id, "protocols.zip", "application/zip", _archive())
+        return _Download(lecture_id, "protocols.zip", "application/zip", self.archive)
 
     def close(self) -> None:
         return None
 
 
-def _archive() -> bytes:
+def _archive(filename: str = "questions.txt") -> bytes:
     content = BytesIO()
     with ZipFile(content, "w") as bundle:
-        bundle.writestr("questions.txt", "Explain empirical risk minimization.")
+        bundle.writestr(filename, "Explain empirical risk minimization.")
     return content.getvalue()
 
 

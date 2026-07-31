@@ -75,57 +75,10 @@ describe("PracticeExamPanel", () => {
     await user.click(screen.getByRole("button", { name: "Generate exam" }));
 
     const dialog = screen.getByRole("dialog", { name: "Generate practice exam" });
-    expect(
-      within(dialog).getByRole("checkbox", { name: /Machine Learning.*7 protocols/i }),
-    ).toBeInTheDocument();
+    expect(within(dialog).getByText("Ready for exam generation")).toBeInTheDocument();
+    expect(within(dialog).getByText(/Machine Learning.*7 protocols/i)).toBeInTheDocument();
+    expect(within(dialog).queryByRole("checkbox")).not.toBeInTheDocument();
     expect(within(dialog).queryByLabelText("PPI password")).not.toBeInTheDocument();
-  });
-
-  it("imports an already-borrowed PPI lecture without token confirmation", async () => {
-    const requests: Array<{ url: string; body?: Record<string, unknown> }> = [];
-    vi.stubGlobal("fetch", ppiFetch(requests, true));
-    const user = userEvent.setup();
-    renderPanel();
-    await screen.findByRole("heading", { name: "Practice exams" });
-    await user.click(screen.getByRole("button", { name: "Generate exam" }));
-    await user.click(screen.getByRole("button", { name: "Import from PPI" }));
-
-    expect(screen.getByText(/Use your PPI password/i)).toBeInTheDocument();
-    await user.type(screen.getByLabelText("PPI username"), "zxabc12");
-    await user.type(screen.getByLabelText("PPI password"), "ppi-secret");
-    await user.click(screen.getByRole("button", { name: "Load PPI courses" }));
-    await user.click(await screen.findByRole("button", { name: "Import without token" }));
-
-    await waitFor(() =>
-      expect(requests.find((item) => item.url.endsWith("/imports"))?.body).toMatchObject({
-        ppi_lecture_id: 42,
-        confirm_token_spend: false,
-      }),
-    );
-  });
-
-  it("requires an exact one-token confirmation before borrowing", async () => {
-    const requests: Array<{ url: string; body?: Record<string, unknown> }> = [];
-    vi.stubGlobal("fetch", ppiFetch(requests, false));
-    const user = userEvent.setup();
-    renderPanel();
-    await screen.findByRole("heading", { name: "Practice exams" });
-    await user.click(screen.getByRole("button", { name: "Generate exam" }));
-    await user.click(screen.getByRole("button", { name: "Import from PPI" }));
-    await user.type(screen.getByLabelText("PPI username"), "zxabc12");
-    await user.type(screen.getByLabelText("PPI password"), "ppi-secret");
-    await user.click(screen.getByRole("button", { name: "Load PPI courses" }));
-
-    const borrow = await screen.findByRole("button", { name: "Borrow and import" });
-    expect(borrow).toBeDisabled();
-    await user.click(screen.getByRole("checkbox", { name: /spend one PPI token/i }));
-    await user.click(borrow);
-
-    await waitFor(() =>
-      expect(requests.find((item) => item.url.endsWith("/imports"))?.body).toMatchObject({
-        confirm_token_spend: true,
-      }),
-    );
   });
 
   it("generates one online exam and keeps answers only in the tab draft", async () => {
@@ -202,37 +155,6 @@ function listFetch(exams: unknown[], sources: unknown[]) {
   return vi.fn(async (input: RequestInfo | URL) =>
     json(String(input).endsWith("/ppi-exam-sources") ? sources : exams),
   );
-}
-
-function ppiFetch(
-  requests: Array<{ url: string; body?: Record<string, unknown> }>,
-  borrowed: boolean,
-) {
-  return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = String(input);
-    const body = init?.body
-      ? (JSON.parse(String(init.body)) as Record<string, unknown>)
-      : undefined;
-    requests.push({ url, body });
-    if (url.endsWith("/catalog"))
-      return json({
-        tokens: 2,
-        cached_sources: [],
-        lectures: [
-          {
-            id: 42,
-            title: "Machine Learning",
-            protocol_count: 7,
-            borrowed,
-            can_borrow: !borrowed,
-            download_available: borrowed,
-          },
-        ],
-      });
-    if (url.endsWith("/imports"))
-      return json({ source: ppiSource(), reused: false, token_spent: !borrowed });
-    return json([]);
-  });
 }
 
 function generationFetch() {

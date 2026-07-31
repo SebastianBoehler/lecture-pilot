@@ -160,50 +160,23 @@ body:has(.practice-exam-dialog[open]) {
   margin: 12px 0;
 }
 
-.practice-source-list label,
-.practice-ppi-borrow label {
+.practice-source-list label {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.practice-ppi-import {
-  margin-top: 12px;
-  border-top: 1px solid var(--color-border-primary);
-  padding-top: 12px;
-}
-
-.practice-ppi-credentials {
-  align-items: end;
-  justify-content: flex-start;
-  margin-top: 12px;
-}
-
-.practice-ppi-credentials input {
-  min-height: 38px;
-  padding: 0 10px;
-}
-
-.practice-ppi-catalog {
+.practice-source-list button {
   display: grid;
-  gap: 0;
-  margin-top: 14px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
 }
 
-.practice-ppi-catalog article {
-  border-top: 1px solid var(--color-border-primary);
-  padding: 12px 0;
-}
-
-.practice-ppi-catalog article > div:first-child {
-  display: grid;
-  gap: 3px;
-}
-
-.practice-ppi-borrow {
-  display: grid;
-  justify-items: end;
-  gap: 6px;
+.practice-source-list button span:last-child {
+  color: var(--color-text-secondary);
+  font-size: 13px;
 }
 
 .practice-exam-error {
@@ -231,8 +204,7 @@ body:has(.practice-exam-dialog[open]) {
   }
 
   .practice-exam-settings,
-  .practice-ppi-credentials,
-  .practice-ppi-catalog article {
+  .practice-ppi-credentials {
     align-items: stretch;
     flex-direction: column;
   }
@@ -245,9 +217,5 @@ body:has(.practice-exam-dialog[open]) {
     align-items: flex-start;
     flex-direction: column;
     gap: 4px;
-  }
-
-  .practice-ppi-borrow {
-    justify-items: stretch;
   }
 }

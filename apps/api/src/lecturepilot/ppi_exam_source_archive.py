@@ -84,7 +84,7 @@ def _validate_members(
         seen.add(key)
         if stat.S_ISLNK(item.external_attr >> 16):
             raise PpiArchiveError("PPI archive contains a symbolic link.")
-        if path.suffix.casefold() not in {".pdf", ".txt"}:
+        if path.suffix.casefold() not in {".pdf", ".txt", ".md"}:
             raise PpiArchiveError("PPI archive contains an unsupported file type.")
 
 
@@ -111,7 +111,7 @@ def _normalize_member(bundle: ZipFile, item: ZipInfo, index: int) -> tuple[Norma
             text = content.decode("utf-8-sig")
         except UnicodeDecodeError as exc:
             raise PpiArchiveError("PPI text protocol is not valid UTF-8.") from exc
-        media_type = "text/plain"
+        media_type = "text/markdown" if path.suffix.casefold() == ".md" else "text/plain"
     text_path = f"normalized/{index + 1:03d}-{path.stem[:100]}.txt"
     return (
         NormalizedPpiFile(

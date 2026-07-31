@@ -10,16 +10,28 @@ import pytest
 from lecturepilot.ppi_exam_source_archive import PpiArchiveError, normalize_ppi_archive
 
 
-def test_archive_normalizes_valid_pdf_and_text(tmp_path: Path) -> None:
+def test_archive_normalizes_valid_pdf_text_and_markdown(tmp_path: Path) -> None:
     files = normalize_ppi_archive(
-        _zip({"exam.pdf": _pdf("What is Bayes risk?"), "notes/questions.txt": b"Kernel trick?"}),
+        _zip(
+            {
+                "exam.pdf": _pdf("What is Bayes risk?"),
+                "notes/questions.txt": b"Kernel trick?",
+                "README.md": b"# Exam protocols\n\nExaminer metadata",
+            }
+        ),
         output_root=tmp_path,
     )
 
-    assert [item.path for item in files] == ["exam.pdf", "notes/questions.txt"]
+    assert [item.path for item in files] == ["exam.pdf", "notes/questions.txt", "README.md"]
+    assert [item.media_type for item in files] == [
+        "application/pdf",
+        "text/plain",
+        "text/markdown",
+    ]
     assert all(len(item.sha256) == 64 for item in files)
     assert "Bayes risk" in (tmp_path / files[0].text_path).read_text(encoding="utf-8")
     assert "Kernel trick" in (tmp_path / files[1].text_path).read_text(encoding="utf-8")
+    assert "Examiner metadata" in (tmp_path / files[2].text_path).read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize(

@@ -60,7 +60,7 @@ class PracticeExam(BaseModel):
     total_points: int = Field(ge=1, le=2_500)
     source_revision: str = Field(pattern=r"^[0-9a-f]{64}$")
     source_ids: list[str] = Field(min_length=1, max_length=240)
-    ppi_source_ids: list[str] = Field(default_factory=list, max_length=8)
+    ppi_source_ids: list[str] = Field(default_factory=list, max_length=1)
     questions: list[PracticeExamQuestion] = Field(
         min_length=MIN_PRACTICE_EXAM_QUESTIONS,
         max_length=MAX_PRACTICE_EXAM_QUESTIONS,
@@ -73,8 +73,6 @@ class PracticeExam(BaseModel):
         question_ids = [question.id for question in self.questions]
         if len(question_ids) != len(set(question_ids)):
             raise ValueError("Practice exam question ids must be unique.")
-        if len(self.ppi_source_ids) != len(set(self.ppi_source_ids)):
-            raise ValueError("Practice exam PPI source ids must be unique.")
         return self
 
 
@@ -107,13 +105,7 @@ class PracticeExamGenerationInput(BaseModel):
         le=MAX_PRACTICE_EXAM_QUESTIONS,
     )
     duration_minutes: int = Field(default=90, ge=30, le=300)
-    ppi_source_ids: list[str] = Field(default_factory=list, max_length=8)
-
-    @model_validator(mode="after")
-    def require_unique_sources(self) -> "PracticeExamGenerationInput":
-        if len(self.ppi_source_ids) != len(set(self.ppi_source_ids)):
-            raise ValueError("PPI source ids cannot contain duplicate values.")
-        return self
+    ppi_source_ids: list[str] = Field(default_factory=list, max_length=1)
 
 
 def public_practice_exam(exam: PracticeExam) -> PracticeExamPublic:

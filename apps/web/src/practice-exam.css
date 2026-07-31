@@ -12,8 +12,7 @@
 .practice-exam-library > li,
 .practice-exam-view-actions,
 .practice-exam-settings,
-.practice-ppi-credentials,
-.practice-ppi-catalog article {
+.practice-ppi-credentials {
   display: flex;
   align-items: center;
   justify-content: space-between;

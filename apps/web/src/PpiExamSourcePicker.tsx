@@ -9,18 +9,29 @@ export function PpiExamSourcePicker({
   courseId,
   session,
   onImported,
+  onImportingChange,
 }: {
   courseId: string;
   session: LoginSession;
   onImported: (source: PpiExamSource) => void;
+  onImportingChange: (importing: boolean) => void;
 }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [credentials, setCredentials] = useState<PpiCredentials>({ username: "", password: "" });
   const [catalog, setCatalog] = useState<PpiCatalog | null>(null);
-  const [confirmed, setConfirmed] = useState<number[]>([]);
+  const [query, setQuery] = useState("");
   const [busy, setBusy] = useState<number | "catalog" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const normalizedQuery = normalizeSearchValue(query.trim());
+  const visibleLectures =
+    catalog?.lectures.filter((lecture) =>
+      normalizeSearchValue(lecture.title).includes(normalizedQuery),
+    ) ?? [];
+  const importingLecture =
+    typeof busy === "number"
+      ? (catalog?.lectures.find((lecture) => lecture.id === busy) ?? null)
+      : null;
 
   async function loadCatalog() {
     setBusy("catalog");
@@ -36,6 +47,7 @@ export function PpiExamSourcePicker({
 
   async function importLecture(lectureId: number, spendToken: boolean) {
     setBusy(lectureId);
+    onImportingChange(true);
     setError(null);
     try {
       onImported(await importPpiExamSource(courseId, credentials, lectureId, spendToken, session));
@@ -54,6 +66,7 @@ export function PpiExamSourcePicker({
       setError(caught instanceof Error ? caught.message : t("practice.ppi.importFailed"));
     } finally {
       setBusy(null);
+      onImportingChange(false);
     }
   }
 
@@ -62,6 +75,22 @@ export function PpiExamSourcePicker({
       <button type="button" onClick={() => setOpen(true)}>
         {t("practice.ppi.import")}
       </button>
+    );
+  }
+
+  if (importingLecture) {
+    return (
+      <div aria-busy="true" aria-live="polite" className="practice-ppi-import-progress">
+        <span aria-hidden="true" className="practice-button-spinner" />
+        <div>
+          <strong>{t("practice.ppi.importing")}</strong>
+          <span>
+            {importingLecture.title} ·{" "}
+            {t("practice.ppi.protocolCount", { count: importingLecture.protocol_count })}
+          </span>
+        </div>
+        <p>{t("practice.ppi.importingHelp")}</p>
+      </div>
     );
   }
 
@@ -79,6 +108,8 @@ export function PpiExamSourcePicker({
           <span>{t("practice.ppi.username")}</span>
           <input
             autoComplete="username"
+            name="ppi-username"
+            spellCheck={false}
             value={credentials.username}
             onChange={(event) =>
               setCredentials({ ...credentials, username: event.currentTarget.value })
@@ -89,6 +120,7 @@ export function PpiExamSourcePicker({
           <span>{t("practice.ppi.password")}</span>
           <input
             autoComplete="current-password"
+            name="ppi-password"
             type="password"
             value={credentials.password}
             onChange={(event) =>
@@ -106,56 +138,105 @@ export function PpiExamSourcePicker({
       </div>
       {catalog ? (
         <div className="practice-ppi-catalog">
-          <p>{t("practice.ppi.tokens", { count: catalog.tokens })}</p>
-          {catalog.lectures.map((lecture) => {
-            const needsToken = !lecture.download_available && !lecture.borrowed;
-            const tokenConfirmed = confirmed.includes(lecture.id);
-            return (
-              <article key={lecture.id}>
-                <div>
-                  <strong>{lecture.title}</strong>
-                  <span>{t("practice.ppi.protocolCount", { count: lecture.protocol_count })}</span>
-                </div>
-                {lecture.cached_source_id ? (
-                  <span>{t("practice.ppi.savedBadge")}</span>
-                ) : needsToken ? (
-                  <div className="practice-ppi-borrow">
-                    <label>
-                      <input
-                        checked={tokenConfirmed}
-                        type="checkbox"
-                        onChange={() =>
-                          setConfirmed((current) =>
-                            tokenConfirmed
-                              ? current.filter((id) => id !== lecture.id)
-                              : [...current, lecture.id],
-                          )
-                        }
-                      />
-                      <span>{t("practice.ppi.confirmToken")}</span>
-                    </label>
-                    <button
-                      disabled={!tokenConfirmed || busy !== null || !lecture.can_borrow}
-                      type="button"
-                      onClick={() => void importLecture(lecture.id, true)}
-                    >
-                      {t("practice.ppi.borrowImport")}
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    disabled={busy !== null}
-                    type="button"
-                    onClick={() => void importLecture(lecture.id, false)}
-                  >
-                    {t("practice.ppi.importBorrowed")}
-                  </button>
-                )}
-              </article>
-            );
-          })}
+          <div className="practice-ppi-catalog-tools">
+            <label className="practice-ppi-search">
+              <span>{t("practice.ppi.searchLabel")}</span>
+              <input
+                autoComplete="off"
+                placeholder={t("practice.ppi.searchPlaceholder")}
+                spellCheck={false}
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.currentTarget.value)}
+              />
+            </label>
+            <p className="practice-ppi-token-balance">
+              {t("practice.ppi.tokens", { count: catalog.tokens })}
+            </p>
+          </div>
+          <p aria-live="polite" className="practice-ppi-result-count" role="status">
+            {t("practice.ppi.resultCount", {
+              count: visibleLectures.length,
+              total: catalog.lectures.length,
+            })}
+          </p>
+          {visibleLectures.length ? (
+            <ul aria-label={t("practice.ppi.resultsLabel")} className="practice-ppi-catalog-list">
+              {visibleLectures.map((lecture) => {
+                const needsToken = !lecture.download_available && !lecture.borrowed;
+                const importing = busy === lecture.id;
+                return (
+                  <li className="practice-ppi-course" key={lecture.id}>
+                    <div className="practice-ppi-course-details">
+                      <strong>{lecture.title}</strong>
+                      <span>
+                        {t("practice.ppi.protocolCount", { count: lecture.protocol_count })}
+                      </span>
+                    </div>
+                    <div className="practice-ppi-course-action">
+                      {lecture.cached_source_id ? (
+                        <span className="practice-ppi-saved-badge">
+                          {t("practice.ppi.savedBadge")}
+                        </span>
+                      ) : needsToken ? (
+                        <button
+                          aria-label={
+                            importing
+                              ? t("practice.ppi.importingCourse", { course: lecture.title })
+                              : t("practice.ppi.borrowCourse", { course: lecture.title })
+                          }
+                          disabled={busy !== null || !lecture.can_borrow}
+                          type="button"
+                          onClick={() => void importLecture(lecture.id, true)}
+                        >
+                          {importing
+                            ? t("practice.ppi.importing")
+                            : t("practice.ppi.borrowForToken")}
+                        </button>
+                      ) : (
+                        <button
+                          aria-label={
+                            importing
+                              ? t("practice.ppi.importingCourse", { course: lecture.title })
+                              : t("practice.ppi.importCourse", { course: lecture.title })
+                          }
+                          disabled={busy !== null}
+                          type="button"
+                          onClick={() => void importLecture(lecture.id, false)}
+                        >
+                          {importing
+                            ? t("practice.ppi.importing")
+                            : t("practice.ppi.importBorrowed")}
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <div className="practice-ppi-no-results">
+              <p>
+                {query.trim()
+                  ? t("practice.ppi.noMatches", { query: query.trim() })
+                  : t("practice.ppi.noCourses")}
+              </p>
+              {query.trim() ? (
+                <button type="button" onClick={() => setQuery("")}>
+                  {t("practice.ppi.clearSearch")}
+                </button>
+              ) : null}
+            </div>
+          )}
         </div>
       ) : null}
     </div>
   );
+}
+
+function normalizeSearchValue(value: string) {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase();
 }
