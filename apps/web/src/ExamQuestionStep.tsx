@@ -24,7 +24,9 @@ export function ExamQuestionStep({
   return (
     <fieldset className="exam-question" aria-describedby={contextId}>
       <legend ref={legendRef} tabIndex={-1}>
-        <MathText highlightedText={null} text={question.prompt} />
+        <span className="exam-question-prompt">
+          <MathText highlightedText={null} text={question.prompt} />
+        </span>
       </legend>
       <p className="exam-question-context" id={contextId}>
         {question.lecture_title} <span aria-hidden="true">·</span> {question.section_title}

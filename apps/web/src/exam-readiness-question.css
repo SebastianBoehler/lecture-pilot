@@ -11,10 +11,22 @@
   width: 100%;
   padding: 0;
   color: var(--color-text-primary);
+}
+
+.exam-question .exam-question-prompt {
+  display: block;
   font-size: clamp(21px, 2.8vw, 27px);
   font-weight: 760;
   line-height: 1.28;
   letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.exam-question .exam-question-prompt > span {
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
 }
 
 .exam-question legend[tabindex="-1"]:focus {
@@ -89,7 +101,7 @@
 }
 
 @media (max-width: 620px) {
-  .exam-question legend {
+  .exam-question .exam-question-prompt {
     font-size: 21px;
   }
 
