@@ -152,10 +152,16 @@ def _authenticated_client(username: str, password: str):
         ) from exc
     try:
         client = PpiClient()
+    except Exception as exc:
+        _raise_service_error(exc)
+    try:
         client.login(username, password)
         return client
     except Exception as exc:
-        _raise_service_error(exc)
+        try:
+            client.close()
+        finally:
+            _raise_service_error(exc)
 
 
 def _raise_service_error(exc: Exception) -> None:

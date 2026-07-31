@@ -115,6 +115,9 @@ def register_practice_exam_routes(
             raise HTTPException(
                 status_code=502, detail="Practice exam generation failed validation. Please retry."
             ) from exc
+        except Exception:
+            _fail(store, job, context.user_id, request_key, "unexpected_error")
+            raise
 
     @app.get(
         "/courses/{course_id}/practice-exam-generations/status",

@@ -93,6 +93,25 @@ def test_generation_failure_is_recoverable_and_exposes_safe_status(tmp_path: Pat
     assert status.json()["error_code"] == "model_execution_error"
 
 
+def test_unexpected_generation_failure_releases_the_job_lease(tmp_path: Path) -> None:
+    client, planner = _client(tmp_path, raise_server_exceptions=False)
+    planner.error = RuntimeError("unexpected private provider detail")
+
+    response = _generate(client)
+    status = client.get(
+        "/courses/martius-ml/practice-exam-generations/status",
+        headers={
+            **student_headers("student-a"),
+            "Idempotency-Key": "practice-exam-key-0001",
+        },
+    )
+
+    assert response.status_code == 500
+    assert "private provider detail" not in response.text
+    assert status.json()["status"] == "failed"
+    assert status.json()["error_code"] == "unexpected_error"
+
+
 def test_exam_library_read_and_delete_are_learner_private(tmp_path: Path) -> None:
     client, _planner = _client(tmp_path)
     generated = _generate(client).json()
@@ -138,7 +157,9 @@ def _generate(
     )
 
 
-def _client(tmp_path: Path) -> tuple[TestClient, "_Planner"]:
+def _client(
+    tmp_path: Path, *, raise_server_exceptions: bool = True
+) -> tuple[TestClient, "_Planner"]:
     app = create_app()
     workspace = CanvasWorkspace(
         workspace_root=tmp_path / "workspaces", material_root=tmp_path / "materials"
@@ -152,7 +173,7 @@ def _client(tmp_path: Path) -> tuple[TestClient, "_Planner"]:
     app.state.ppi_exam_source_store = PpiExamSourceStore(workspace.layout)
     planner = _Planner()
     app.state.practice_exam_planner = planner
-    return TestClient(app), planner
+    return TestClient(app, raise_server_exceptions=raise_server_exceptions), planner
 
 
 class _Planner:

@@ -7,6 +7,7 @@ from lecturepilot.course_access import lecture_views_for_context, resolve_course
 from lecturepilot.model_usage import model_usage_scope
 from lecturepilot.models import Course, Lecture
 from lecturepilot.practice_exam_models import PracticeExam, PracticeExamGenerationInput
+from lecturepilot.practice_exam_prompt import MAX_PPI_EVIDENCE_CHARS
 from lecturepilot.tenancy import TenantContext
 
 
@@ -52,6 +53,7 @@ async def generate_practice_exam(
             detail="Publish and unlock at least one lecture canvas before generating an exam.",
         )
     ppi_sources: dict[str, list[str]] = {}
+    ppi_excerpt_limit = MAX_PPI_EVIDENCE_CHARS // max(1, len(input_data.ppi_source_ids))
     for source_id in input_data.ppi_source_ids:
         try:
             ppi_sources[source_id] = [
@@ -60,6 +62,7 @@ async def generate_practice_exam(
                     user_id=context.user_id,
                     course_id=course_id,
                     source_id=source_id,
+                    max_characters=ppi_excerpt_limit,
                 )
             ]
         except FileNotFoundError as exc:

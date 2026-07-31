@@ -90,14 +90,28 @@ class PpiExamSourceStore:
         return True
 
     def normalized_text(
-        self, *, user_id: str, course_id: str, source_id: str
+        self,
+        *,
+        user_id: str,
+        course_id: str,
+        source_id: str,
+        max_characters: int | None = None,
     ) -> list[tuple[str, str]]:
+        if max_characters is not None and max_characters < 0:
+            raise ValueError("PPI text limit cannot be negative.")
         manifest = self.read(user_id=user_id, course_id=course_id, source_id=source_id)
         root = self._source_dir(user_id, course_id, source_id)
-        return [
-            (item.path, (root / item.text_path).read_text(encoding="utf-8"))
-            for item in manifest.files
-        ]
+        remaining = max_characters
+        results = []
+        for item in manifest.files:
+            if remaining == 0:
+                break
+            with (root / item.text_path).open(encoding="utf-8") as handle:
+                text = handle.read() if remaining is None else handle.read(remaining)
+            results.append((item.path, text))
+            if remaining is not None:
+                remaining -= len(text)
+        return results
 
     def _source_dir(self, user_id: str, course_id: str, source_id: str) -> Path:
         if not _SOURCE_ID.fullmatch(source_id):
