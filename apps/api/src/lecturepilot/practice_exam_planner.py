@@ -34,7 +34,11 @@ class PracticeExamPlanningError(ValueError):
 
 class PracticeExamModelClient(Protocol):
     async def complete_exam(
-        self, *, settings: ProviderSettings, messages: list[dict[str, str]]
+        self,
+        *,
+        settings: ProviderSettings,
+        messages: list[dict[str, str]],
+        response_format: dict,
     ) -> dict:
         """Return a structured practice exam authoring payload."""
 
@@ -44,7 +48,11 @@ class LiteLLMPracticeExamClient:
         self.usage_recorder = usage_recorder
 
     async def complete_exam(
-        self, *, settings: ProviderSettings, messages: list[dict[str, str]]
+        self,
+        *,
+        settings: ProviderSettings,
+        messages: list[dict[str, str]],
+        response_format: dict,
     ) -> dict:
         try:
             from litellm import acompletion
@@ -58,7 +66,7 @@ class LiteLLMPracticeExamClient:
                 acompletion,
                 model=settings.model,
                 messages=messages,
-                response_format=practice_exam_response_format(),
+                response_format=response_format,
                 **completion_options(settings, temperature=0.2, max_tokens=20_000),
             )
         except Exception as exc:
@@ -97,11 +105,17 @@ class PracticeExamPlanner:
         )
         ppi_evidence = ppi_pattern_evidence(ppi_sources)
         ppi_texts = [text for texts in ppi_sources.values() for text in texts]
+        response_format = practice_exam_response_format(
+            question_count=question_count,
+            authoritative_source_ids=authoritative_ids,
+            selected_ppi_source_ids=set(ppi_sources),
+        )
         repair_error: str | None = None
         last_error: Exception | None = None
         for _attempt in range(2):
             payload = await self.model_client.complete_exam(
                 settings=settings,
+                response_format=response_format,
                 messages=practice_exam_messages(
                     course_title=course_title,
                     language=language,

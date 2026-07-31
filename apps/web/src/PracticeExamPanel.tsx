@@ -72,19 +72,26 @@ export function PracticeExamPanel({
       setActiveExam(exam);
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : t("practice.generateFailed");
+      let retainGenerationKey = false;
       if (message.includes("still running")) {
-        const status = await practiceExamGenerationStatus(course.id, generationKey, session);
-        if (status.status === "completed") {
-          const refreshed = await listPracticeExams(course.id, session);
-          const exam = refreshed.find((item) => item.id === status.exam_id);
-          if (exam) {
-            setExams(refreshed);
-            setSetupOpen(false);
-            setActiveExam(exam);
-            return;
+        try {
+          const status = await practiceExamGenerationStatus(course.id, generationKey, session);
+          if (status.status === "completed") {
+            const refreshed = await listPracticeExams(course.id, session);
+            const exam = refreshed.find((item) => item.id === status.exam_id);
+            if (exam) {
+              setExams(refreshed);
+              setSetupOpen(false);
+              setActiveExam(exam);
+              return;
+            }
           }
+          retainGenerationKey = status.status === "running";
+        } catch {
+          retainGenerationKey = true;
         }
       }
+      if (!retainGenerationKey) setGenerationKey(crypto.randomUUID());
       setError(message);
     } finally {
       setGenerating(false);

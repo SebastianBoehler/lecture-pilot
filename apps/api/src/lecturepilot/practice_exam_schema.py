@@ -3,7 +3,12 @@ from __future__ import annotations
 from typing import Any
 
 
-def practice_exam_response_format() -> dict[str, Any]:
+def practice_exam_response_format(
+    *,
+    question_count: int,
+    authoritative_source_ids: set[str],
+    selected_ppi_source_ids: set[str],
+) -> dict[str, Any]:
     return {
         "type": "json_schema",
         "json_schema": {
@@ -17,9 +22,12 @@ def practice_exam_response_format() -> dict[str, Any]:
                     "instructions": {"type": "array", "items": {"type": "string"}},
                     "questions": {
                         "type": "array",
-                        "minItems": 20,
-                        "maxItems": 30,
-                        "items": _question_schema(),
+                        "minItems": question_count,
+                        "maxItems": question_count,
+                        "items": _question_schema(
+                            authoritative_source_ids=authoritative_source_ids,
+                            selected_ppi_source_ids=selected_ppi_source_ids,
+                        ),
                     },
                 },
                 "required": ["title", "instructions", "questions"],
@@ -28,7 +36,9 @@ def practice_exam_response_format() -> dict[str, Any]:
     }
 
 
-def _question_schema() -> dict[str, Any]:
+def _question_schema(
+    *, authoritative_source_ids: set[str], selected_ppi_source_ids: set[str]
+) -> dict[str, Any]:
     properties: dict[str, Any] = {
         "id": {"type": "string"},
         "kind": {"type": "string", "enum": ["multiple_choice", "open_ended"]},
@@ -43,16 +53,22 @@ def _question_schema() -> dict[str, Any]:
         "rubric": {"type": "array", "items": {"type": "string"}, "maxItems": 8},
         "source_ids": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {"type": "string", "enum": sorted(authoritative_source_ids)},
             "minItems": 1,
             "maxItems": 8,
         },
         "ppi_pattern_ids": {
             "type": "array",
             "items": {"type": "string"},
-            "maxItems": 8,
+            "maxItems": 0,
         },
     }
+    if selected_ppi_source_ids:
+        properties["ppi_pattern_ids"] = {
+            "type": "array",
+            "items": {"type": "string", "enum": sorted(selected_ppi_source_ids)},
+            "maxItems": 8,
+        }
     return {
         "type": "object",
         "additionalProperties": False,

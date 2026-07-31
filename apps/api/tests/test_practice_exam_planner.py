@@ -96,12 +96,24 @@ async def test_planner_requires_unlocked_course_evidence() -> None:
 
 
 def test_provider_schema_is_strict_and_requires_authoring_fields() -> None:
-    response_format = practice_exam_response_format()
+    response_format = practice_exam_response_format(
+        question_count=25,
+        authoritative_source_ids={"lecture-02:tokens:definition", "lecture-01:nlp:definition"},
+        selected_ppi_source_ids=set(),
+    )
     schema = response_format["json_schema"]["schema"]
+    question_array = schema["properties"]["questions"]
+    question = question_array["items"]
 
     assert response_format["json_schema"]["strict"] is True
     assert schema["additionalProperties"] is False
     assert set(schema["required"]) == {"title", "instructions", "questions"}
+    assert question_array["minItems"] == question_array["maxItems"] == 25
+    assert question["properties"]["source_ids"]["items"]["enum"] == [
+        "lecture-01:nlp:definition",
+        "lecture-02:tokens:definition",
+    ]
+    assert question["properties"]["ppi_pattern_ids"]["maxItems"] == 0
 
 
 def _plan_args() -> dict:
@@ -181,9 +193,11 @@ class _ModelClient:
         self.responses = responses
         self.calls = 0
         self.messages: list[list[dict[str, str]]] = []
+        self.response_formats: list[dict] = []
 
-    async def complete_exam(self, *, settings, messages):
+    async def complete_exam(self, *, settings, messages, response_format):
         self.messages.append(deepcopy(messages))
+        self.response_formats.append(deepcopy(response_format))
         response = self.responses[self.calls]
         self.calls += 1
         if isinstance(response, Exception):
