@@ -10,7 +10,7 @@ from lecturepilot.source_bundle import SourceBundleFile
 
 
 COURSE_WIDE_RE = re.compile(
-    r"(?:^|[/_-])(syllabus|readme|module[-_ ]?handbook|course[-_ ]?(outline|overview|schedule))(?:\D|$)",
+    r"(?:^|[/_-])(syllabus|module[-_ ]?handbook|course[-_ ]?(outline|overview|schedule))(?:\D|$)",
     re.IGNORECASE,
 )
 
@@ -38,7 +38,7 @@ def select_lecture_source_files(
     target_number = _lecture_number(lecture_id)
     if target_number is not None:
         selected.update(item.path for item in files if _lecture_number(item.path) == target_number)
-    selected.update(item.path for item in files if COURSE_WIDE_RE.search(item.path))
+    selected.update(item.path for item in files if is_course_wide_source(item.path))
     selected.update(_metadata_sidecars(files, selected))
     return [item for item in files if item.path in selected]
 
@@ -52,6 +52,14 @@ def _is_unique_material_parent(parent: PurePosixPath, lectures: list[Lecture]) -
         if _path(lecture.material_path) is not None
     )
     return parents[parent] == 1
+
+
+def is_course_wide_source(value: str) -> bool:
+    path = PurePosixPath(value)
+    parts = path.parts[1:] if path.parts[:1] == ("uploads",) else path.parts
+    return bool(COURSE_WIDE_RE.search(value)) or (
+        len(parts) == 1 and PurePosixPath(*parts).stem.casefold() == "readme"
+    )
 
 
 def _metadata_sidecars(files: list[SourceBundleFile], selected: set[str]) -> set[str]:

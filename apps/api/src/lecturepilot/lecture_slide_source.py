@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 
-from lecturepilot.course_source_partition import COURSE_WIDE_RE
+from lecturepilot.course_source_partition import is_course_wide_source
 from lecturepilot.lecture_schedule import LECTURE_FILE_RE
 from lecturepilot.source_bundle import SourceBundleFile
 
@@ -45,7 +45,7 @@ def resolve_lecture_slide_source(
         return LectureSlideSource(scheduled.path, exact.path)
 
     preferred = [item for item in candidates if item.path in (preferred_pdf_paths or set())]
-    if len(preferred) == 1 and not COURSE_WIDE_RE.search(preferred[0].path):
+    if len(preferred) == 1 and not is_course_wide_source(preferred[0].path):
         return LectureSlideSource(scheduled.path, preferred[0].path)
 
     lecture_number = _lecture_number(scheduled.path) or _lecture_number(lecture_id)
@@ -58,7 +58,7 @@ def resolve_lecture_slide_source(
             primary.parent == PurePosixPath(".")
             or PurePosixPath(item.path).parent == primary.parent
         )
-        and not COURSE_WIDE_RE.search(item.path)
+        and not is_course_wide_source(item.path)
         and _looks_like_deck(PurePosixPath(item.path), primary)
     ]
     if numbered:
@@ -70,7 +70,7 @@ def resolve_lecture_slide_source(
         for item in candidates
         if primary.parent != PurePosixPath(".")
         and PurePosixPath(item.path).parent == primary.parent
-        and not COURSE_WIDE_RE.search(item.path)
+        and not is_course_wide_source(item.path)
         and _looks_like_deck(PurePosixPath(item.path), primary)
     ]
     selected = min(same_folder, key=lambda item: _pdf_rank(item.path, primary), default=None)
