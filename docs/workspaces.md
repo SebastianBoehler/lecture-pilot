@@ -34,6 +34,14 @@ volume.
       memory-trace.jsonl
     courses/<course-id>/
       progress.json
+      exam-sources/ppi/<ppi-lecture-id>/
+        manifest.json
+        source.zip
+        normalized/*.txt
+      practice-exam-generations/<request-key-hash>.json
+      practice-exams/<exam-id>/
+        exam.json
+        exam.pdf
       memories/
         course.md
         memory-trace.jsonl
@@ -113,6 +121,32 @@ cache, never the editable source of truth.
 The reader can import old `workspaces/students/.../canvas.json` or legacy asset
 paths for migration compatibility. It does not write new learner state there.
 Learner reset removes only the authenticated learner's selected course state.
+
+## Private practice exams and PPI sources
+
+Practice exams are a learner-owned layer beside, not inside, Exam Readiness.
+The API generates one immutable 20–30 question exam from currently unlocked,
+published canvases. Its private record includes answer keys, rubrics, and source
+provenance; browser and PDF responses use a public projection that omits those
+fields. Online answers are kept only in the active browser tab and are never
+submitted in this release.
+
+An enrolled learner may optionally connect a separate PPI account. Credentials
+exist only for the active catalog/import request. If the selected PPI lecture is
+already borrowed, LecturePilot downloads it without spending a token. A new
+borrow requires `confirm_token_spend=true` after a fresh entitlement and token
+check. ZIP input is bounded and rejects traversal, hidden paths, links,
+unsupported files, duplicate names, oversized expansion, and malformed PDFs.
+
+Validated PPI archives and normalized PDF/TXT content are retained privately
+and indefinitely for reuse. They are never shared across learners or exposed to
+professors. Deleting a source removes that import; resetting the learner course
+workspace removes all retained PPI sources, generation records, exams, and
+cached PDFs without touching shared course sources.
+
+PDFs are rendered from the same public exam projection as the online view. A
+fixed backend LaTeX template escapes all question text and compiles only in the
+isolated compiler service. A compiler failure leaves the online exam intact.
 
 ## Professor learner preview
 

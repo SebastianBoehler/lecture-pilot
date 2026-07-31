@@ -164,19 +164,20 @@ can be retried without regenerating questions.
 All routes require the current learner session, CSRF protection for mutations,
 and exact course access.
 
-- `GET /courses/{course}/exam-sources/ppi`: list retained private sources.
-- `POST /courses/{course}/exam-sources/ppi/catalog`: authenticate and inspect
+- `GET /courses/{course}/ppi-exam-sources`: list retained private sources.
+- `POST /courses/{course}/ppi-exam-sources/catalog`: authenticate and inspect
   bounded PPI metadata without mutation.
-- `POST /courses/{course}/exam-sources/ppi/import`: download an existing
+- `POST /courses/{course}/ppi-exam-sources/imports`: download an existing
   entitlement or explicitly confirm and perform a borrow before download.
-- `DELETE /courses/{course}/exam-sources/ppi/{source}`: delete one private
+- `DELETE /courses/{course}/ppi-exam-sources/{source}`: delete one private
   retained source.
 - `GET /courses/{course}/practice-exams`: list the learner's exams.
 - `POST /courses/{course}/practice-exam-generations`: generate an exam with an
   idempotency key, selected retained PPI source IDs, question count, and
   duration.
-- `GET /courses/{course}/practice-exam-generations/{generation}`: recover the
-  generation status and completed exam ID after an interrupted request.
+- `GET /courses/{course}/practice-exam-generations/status`: recover the
+  generation status and completed exam ID after an interrupted request by
+  supplying the same idempotency key.
 - `GET /courses/{course}/practice-exams/{exam}`: return the public exam.
 - `GET /courses/{course}/practice-exams/{exam}/pdf`: compile or return the
   cached authenticated PDF.

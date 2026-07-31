@@ -62,6 +62,9 @@ database authority in Postgres and files on the persisted `/app/storage` volume.
     memories/{global.md,preferences.json,memory-trace.jsonl}
     courses/<course-id>/
       progress.json
+      exam-sources/ppi/<ppi-lecture-id>/{manifest.json,source.zip,normalized/}
+      practice-exam-generations/<request-key-hash>.json
+      practice-exams/<exam-id>/{exam.json,exam.pdf}
       memories/{course.md,memory-trace.jsonl}
       lectures/<lecture-id>/
         {attendance.json,gates.json,tutor-state.json}
@@ -175,6 +178,11 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
 - Readiness analytics use task ids, attempt index, correctness, status, and
   source ids; do not treat raw time as primary or expose learner text in
   professor aggregates.
+- Practice exams remain separate from Exam Readiness: they are immutable,
+  source-grounded 20–30 question simulations with no submission or grading.
+  PPI protocols may inform question patterns only; every question must remain
+  anchored to unlocked published course evidence and must not copy protocol
+  wording.
 - Canvas commands may focus sections, highlight specific blocks or phrases, and
   append/update learner-specific Markdown sections.
 - Infographic requests may call the backend image-generation tool. Provider
@@ -207,6 +215,9 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
   internal-only compiler service; matching uploaded PDFs remain authoritative.
 - Never commit private professor material, real credentials, provider keys, or
   learner workspace data.
+- PPI credentials are request-only. Retained PPI archives and normalized text
+  remain private below the authenticated learner course root until the learner
+  deletes the source, resets that course workspace, or deletes the account.
 - Reject hidden paths, absolute paths, `..` traversal, unsupported extensions,
   and oversized files in backend file APIs.
 - Derive tenant/course/user authority from backend session/profile context, not

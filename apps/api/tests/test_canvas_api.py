@@ -115,6 +115,17 @@ def test_learner_workspace_reset_clears_selected_scopes(tmp_path: Path) -> None:
     (course_root / "progress.json").write_text(
         '{"attempts": [], "active_tasks": []}', encoding="utf-8"
     )
+    for private_path in (
+        course_root / "exam-sources" / "ppi" / "ppi-42" / "manifest.json",
+        course_root / "practice-exam-generations" / "request.json",
+        course_root / "practice-exams" / ("a" * 32) / "exam.json",
+        course_root / "practice-exams" / ("a" * 32) / "exam.pdf",
+    ):
+        private_path.parent.mkdir(parents=True, exist_ok=True)
+        private_path.write_text("private exam data", encoding="utf-8")
+    shared_source = layout.course_source_root("martius-ml") / "uploads" / "lecture.pdf"
+    shared_source.parent.mkdir(parents=True, exist_ok=True)
+    shared_source.write_text("shared professor source", encoding="utf-8")
 
     response = client.post(
         "/courses/martius-ml/learner-workspace/reset",
@@ -136,6 +147,11 @@ def test_learner_workspace_reset_clears_selected_scopes(tmp_path: Path) -> None:
     assert (course_root / "progress.json").exists()
     assert (lecture_root / "attendance.json").exists()
     assert (lecture_root / "gates.json").exists()
+    assert not (course_root / "exam-sources").exists()
+    assert not (course_root / "practice-exam-generations").exists()
+    assert not (course_root / "practice-exams").exists()
+    assert shared_source.exists()
+    assert response.json()["reset_practice_exams"] is True
 
     progress_response = client.post(
         "/courses/martius-ml/learner-workspace/reset",

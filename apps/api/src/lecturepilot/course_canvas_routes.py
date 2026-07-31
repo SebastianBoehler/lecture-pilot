@@ -218,6 +218,7 @@ def register_course_canvas_routes(
                 "reset_canvas": reset_request.reset_canvas,
                 "reset_course_memory": reset_request.reset_course_memory,
                 "reset_progress": reset_request.reset_progress,
+                "reset_practice_exams": reset_request.reset_practice_exams,
             },
         )
         return result

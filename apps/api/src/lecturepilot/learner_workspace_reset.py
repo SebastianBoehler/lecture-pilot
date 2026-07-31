@@ -15,6 +15,7 @@ class LearnerWorkspaceResetInput(BaseModel):
     reset_canvas: bool = True
     reset_course_memory: bool = True
     reset_progress: bool = False
+    reset_practice_exams: bool = True
 
 
 class LearnerWorkspaceResetResult(BaseModel):
@@ -23,6 +24,7 @@ class LearnerWorkspaceResetResult(BaseModel):
     reset_canvas: bool
     reset_course_memory: bool
     reset_progress: bool
+    reset_practice_exams: bool
     deleted_paths: int
 
 
@@ -46,6 +48,7 @@ def reset_learner_workspace(
         reset_canvas=request.reset_canvas,
         reset_course_memory=request.reset_course_memory,
         reset_progress=request.reset_progress,
+        reset_practice_exams=request.reset_practice_exams,
         deleted_paths=deleted_paths,
     )
 
@@ -62,6 +65,10 @@ def _reset_course_root(course_root: Path, request: LearnerWorkspaceResetInput) -
     deleted_paths = 0
     if request.reset_progress:
         deleted_paths += _delete_path(course_root / "progress.json")
+    if request.reset_practice_exams:
+        deleted_paths += _delete_path(course_root / "exam-sources")
+        deleted_paths += _delete_path(course_root / "practice-exam-generations")
+        deleted_paths += _delete_path(course_root / "practice-exams")
     lectures_root = course_root / "lectures"
     if not lectures_root.exists():
         return deleted_paths

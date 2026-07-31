@@ -15,6 +15,12 @@ Current responsibilities:
 - keep university credentials and provider sessions out of browser and
   LecturePilot persistence.
 
+Practice-exam enrichment uses the wrapper's `PpiClient` directly with a new,
+short-lived client for each learner request. PPI has a separate password from
+the university account. LecturePilot never stores either credential or the PPI
+session. Existing entitlements download without a token; new borrowing requires
+an explicit one-token confirmation and a fresh remote state check.
+
 The adapter code is in `apps/api/src/lecturepilot/tuebingen_adapter.py`; account
 and matching policy is documented in
 [`../../docs/tenancy-security.md`](../../docs/tenancy-security.md).
