@@ -272,7 +272,10 @@ def course_actor_access(
         is_owner=same_tenant
         and repository.is_owner(user_id=user_id, tenant_id=tenant_id, course_id=course_id),
         is_enrolled=same_tenant
-        and repository.is_enrolled(user_id=user_id, tenant_id=tenant_id, course_id=course_id),
+        and (
+            course_id in context.course_ids
+            or repository.is_enrolled(user_id=user_id, tenant_id=tenant_id, course_id=course_id)
+        ),
         same_tenant=same_tenant,
     )
 

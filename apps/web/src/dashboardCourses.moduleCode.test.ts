@@ -61,6 +61,35 @@ describe("course-title module-code matching", () => {
     expect(selected).toBeUndefined();
   });
 
+  it("prefers a newly bridged local workspace over an older database course", () => {
+    const nlpWorkspace: UniversityCourse = {
+      id: "info4193-natural-language-processing",
+      title: "INFO4193 Natural Language Processing",
+      professor: "Professor",
+      term: "Sommer 2026",
+    };
+    const softwareQualityCourse = {
+      ...workspaceCourse,
+      id: "ff714e9b-abab-5c1b-9527-35d6831380bc",
+    };
+
+    const selected = findUniversityWorkspaceCourse(
+      [softwareQualityCourse, nlpWorkspace],
+      [
+        ...(enrolledSession.university_courses ?? []),
+        {
+          source: "alma",
+          external_course_id: "title:nlp",
+          title: "INFO4193 Natural Language Processing",
+          term: "Sommer 2026",
+        },
+      ],
+      [softwareQualityCourse],
+    );
+
+    expect(selected).toEqual(nlpWorkspace);
+  });
+
   it("renders the enrolled Alma course as the local tutor workspace", () => {
     const groups = buildCourseGroups(enrolledSession, workspaceCourse, [lecture], [lecture.id], {
       aiTutorAvailable: "AI tutor available",

@@ -87,11 +87,18 @@ export function availableCourseLectures(lectures: Lecture[]) {
 export function findUniversityWorkspaceCourse(
   courses: UniversityCourse[],
   universityCourses: UniversityEnrollmentCourse[],
+  persistedCourses: UniversityCourse[] = [],
 ) {
   const enrolledKeys = new Set(
     universityCourses.map((course) => courseMatchKey(course.title, course.term)),
   );
-  return courses.find((course) => enrolledKeys.has(courseMatchKey(course.title, course.term)));
+  const persistedIds = new Set(persistedCourses.map((course) => course.id));
+  const matchesEnrollment = (course: UniversityCourse) =>
+    enrolledKeys.has(courseMatchKey(course.title, course.term));
+  return (
+    courses.find((course) => !persistedIds.has(course.id) && matchesEnrollment(course)) ??
+    courses.find(matchesEnrollment)
+  );
 }
 
 function buildEnrolledCourseGroup(

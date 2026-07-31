@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import Header, HTTPException, Request
 
 from lecturepilot.course_repository import CourseRepository
+from lecturepilot.demo_course_access import matched_created_course_ids_for_demo
 from lecturepilot.metadata_events import emit_metadata_event
 from lecturepilot.models import TenantRole
 from lecturepilot.session_auth import (
@@ -56,7 +57,13 @@ def request_context(
     request.state.session_principal = principal
     request.state.session_token = token
     request.state.auth_transport = "bearer" if header_token else "cookie"
-    return _context_from_principal(principal)
+    workspace_root = request.app.state.canvas_workspace.workspace_root
+    created_course_ids = matched_created_course_ids_for_demo(
+        principal.account.university_courses,
+        tenant_id=principal.account.tenant_id,
+        workspace_root=workspace_root,
+    )
+    return _context_from_principal(principal, created_course_ids=created_course_ids)
 
 
 def require_platform_admin(context: TenantContext) -> None:
@@ -133,13 +140,15 @@ def require_learner_workspace_access(
         )
 
 
-def _context_from_principal(principal: SessionPrincipal) -> TenantContext:
+def _context_from_principal(
+    principal: SessionPrincipal, *, created_course_ids: frozenset[str] = frozenset()
+) -> TenantContext:
     account = principal.account
     return TenantContext(
         tenant_id=account.tenant_id,
         user_id=str(account.user_id),
         roles=account.roles,
-        course_ids=account.course_ids,
+        course_ids=account.course_ids | created_course_ids,
         auth_mode="session",
     )
 

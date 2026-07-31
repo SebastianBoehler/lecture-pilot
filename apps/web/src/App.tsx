@@ -145,18 +145,20 @@ function App() {
   ) {
     try {
       const courses = await getCourses(activeSession);
-      const demoCourse = readDemoWorkspaceCourse();
+      const savedDemoCourse = readDemoWorkspaceCourse();
+      const demoCourse = courses.find((course) => course.id === savedDemoCourse?.id);
       const devCourse = developmentWorkspaceCourse();
       const preferredCourse = courses.find((course) => course.id === preferredCourseId);
       const universityWorkspaceCourse = findUniversityWorkspaceCourse(
         courses,
         activeSession.university_courses ?? [],
+        activeSession.courses,
       );
       const storedCourses = [...courses].reverse();
       const candidates = [
-        universityWorkspaceCourse,
-        demoCourse,
         preferredCourse,
+        demoCourse,
+        universityWorkspaceCourse,
         devCourse,
         ...storedCourses,
       ].filter(

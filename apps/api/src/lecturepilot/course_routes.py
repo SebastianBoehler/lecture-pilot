@@ -19,6 +19,7 @@ from lecturepilot.course_access import (
     resolve_course_lectures,
 )
 from lecturepilot.course_deletion import delete_course_files
+from lecturepilot.demo_course_access import include_created_workspaces_for_demo
 from lecturepilot.course_repository import CourseRepository, CourseRepositoryError
 from lecturepilot.course_schedule_store import (
     list_course_workspaces,
@@ -65,6 +66,11 @@ def register_course_routes(
                 else repository.list_owned(
                     user_id=UUID(context.user_id), tenant_id=course_tenant_id
                 )
+            )
+            candidates = include_created_workspaces_for_demo(
+                candidates,
+                tenant_id=course_tenant_id,
+                workspace_root=app.state.canvas_workspace.workspace_root,
             )
             return [
                 course.model_dump()
