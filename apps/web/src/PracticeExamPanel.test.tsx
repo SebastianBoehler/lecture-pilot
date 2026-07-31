@@ -8,6 +8,39 @@ import { renderWithI18n } from "./test/renderWithI18n";
 import type { LoginSession, UniversityCourse } from "./types";
 
 describe("PracticeExamPanel", () => {
+  it("opens the setup in the browser modal layer", async () => {
+    const originalShowModal = HTMLDialogElement.prototype.showModal;
+    const showModal = vi.fn(function (this: HTMLDialogElement) {
+      this.setAttribute("open", "");
+    });
+    Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
+      configurable: true,
+      value: showModal,
+    });
+
+    try {
+      vi.stubGlobal("fetch", listFetch([], []));
+      const user = userEvent.setup();
+      renderPanel();
+      await screen.findByRole("heading", { name: "Practice exams" });
+      await user.click(screen.getByRole("button", { name: "Generate exam" }));
+
+      expect(showModal).toHaveBeenCalledOnce();
+      expect(screen.getByRole("dialog", { name: "Generate practice exam" })).toHaveAttribute(
+        "open",
+      );
+    } finally {
+      if (originalShowModal) {
+        Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
+          configurable: true,
+          value: originalShowModal,
+        });
+      } else {
+        Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal");
+      }
+    }
+  });
+
   it("shows the empty state and 25 question / 90 minute defaults", async () => {
     vi.stubGlobal("fetch", listFetch([], []));
     const user = userEvent.setup();

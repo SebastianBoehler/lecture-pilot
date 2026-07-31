@@ -4,6 +4,7 @@ import { useI18n } from "./i18n";
 import { PpiExamSourcePicker } from "./PpiExamSourcePicker";
 import type { PpiExamSource, PracticeExamGenerationInput } from "./practiceExamTypes";
 import type { LoginSession, UniversityCourse } from "./types";
+import { useModalDialog } from "./useModalDialog";
 
 export function PracticeExamSetup({
   course,
@@ -28,6 +29,7 @@ export function PracticeExamSetup({
   const [questionCount, setQuestionCount] = useState(25);
   const [duration, setDuration] = useState(90);
   const [selected, setSelected] = useState<string[]>([]);
+  const dialogRef = useModalDialog();
 
   function toggleSource(sourceId: string) {
     setSelected((current) =>
@@ -38,7 +40,16 @@ export function PracticeExamSetup({
   }
 
   return (
-    <dialog aria-labelledby="practice-exam-setup-title" className="practice-exam-dialog" open>
+    <dialog
+      aria-labelledby="practice-exam-setup-title"
+      aria-modal="true"
+      className="practice-exam-dialog"
+      ref={dialogRef}
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
+    >
       <header>
         <div>
           <h2 id="practice-exam-setup-title">{t("practice.setup.title")}</h2>

@@ -89,7 +89,10 @@
 }
 
 .practice-exam-dialog {
+  position: fixed;
+  inset: 0;
   width: min(820px, calc(100vw - 40px));
+  height: min(760px, calc(100dvh - 40px));
   max-width: none;
   max-height: calc(100dvh - 40px);
   margin: auto;
@@ -99,6 +102,8 @@
   color: var(--color-text-primary);
   background: var(--color-bg-primary);
   box-shadow: 0 24px 72px color-mix(in srgb, #000 24%, transparent);
+  overflow: hidden;
+  overscroll-behavior: contain;
 }
 
 .practice-exam-dialog[open] {
@@ -137,11 +142,13 @@ body:has(.practice-exam-dialog[open]) {
 }
 
 .practice-exam-dialog-body {
+  flex: 1 1 auto;
   display: grid;
   gap: 22px;
   min-height: 0;
   padding: 22px;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .practice-exam-settings {

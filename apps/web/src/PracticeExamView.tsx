@@ -5,6 +5,7 @@ import { downloadPracticeExamPdf } from "./practiceExamApi";
 import { readPracticeExamDraft, savePracticeExamDraft } from "./practiceExamDraft";
 import type { PracticeExam, PracticeExamAnswers } from "./practiceExamTypes";
 import type { LoginSession } from "./types";
+import { useModalDialog } from "./useModalDialog";
 
 export function PracticeExamView({
   courseId,
@@ -23,6 +24,7 @@ export function PracticeExamView({
   );
   const [pdfBusy, setPdfBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const dialogRef = useModalDialog();
 
   function answer(questionId: string, value: PracticeExamAnswers[string]) {
     const next = { ...answers, [questionId]: value };
@@ -51,8 +53,13 @@ export function PracticeExamView({
   return (
     <dialog
       aria-labelledby="practice-exam-view-title"
+      aria-modal="true"
       className="practice-exam-dialog practice-exam-view"
-      open
+      ref={dialogRef}
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
     >
       <header>
         <div>
