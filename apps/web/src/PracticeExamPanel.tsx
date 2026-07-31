@@ -172,42 +172,44 @@ export function PracticeExamPanel({
                 </span>
               </div>
               <div className="practice-exam-library-actions">
-                <button
-                  className="practice-exam-open-button"
-                  type="button"
-                  onClick={() => setActiveExam(exam)}
-                >
-                  <Eye aria-hidden="true" size={16} />
-                  <span>{t("practice.open")}</span>
-                </button>
-                <button
-                  aria-label={
-                    pdfExamId === exam.id ? t("practice.pdfPreparing") : t("practice.pdf")
-                  }
-                  className="practice-exam-open-button"
-                  disabled={pdfExamId === exam.id}
-                  title={t("practice.pdf")}
-                  type="button"
-                  onClick={() => void downloadPdf(exam)}
-                >
-                  <Download aria-hidden="true" size={16} />
-                  <span>{t("practice.pdfShort")}</span>
-                </button>
-                <button
-                  aria-label={
-                    solutionPdfExamId === exam.id
-                      ? t("practice.solutions.pdfPreparing")
-                      : t("practice.solutions.pdf")
-                  }
-                  className="practice-exam-open-button"
-                  disabled={solutionPdfExamId === exam.id}
-                  title={t("practice.solutions.pdf")}
-                  type="button"
-                  onClick={() => void downloadSolutionPdf(exam)}
-                >
-                  <FileCheck2 aria-hidden="true" size={16} />
-                  <span>{t("practice.solutions.pdfShort")}</span>
-                </button>
+                <div className="practice-exam-library-primary-actions">
+                  <button
+                    className="practice-exam-open-button"
+                    type="button"
+                    onClick={() => setActiveExam(exam)}
+                  >
+                    <Eye aria-hidden="true" size={16} />
+                    <span>{t("practice.open")}</span>
+                  </button>
+                  <button
+                    aria-label={
+                      pdfExamId === exam.id ? t("practice.pdfPreparing") : t("practice.pdf")
+                    }
+                    className="practice-exam-open-button"
+                    disabled={pdfExamId === exam.id}
+                    title={t("practice.pdf")}
+                    type="button"
+                    onClick={() => void downloadPdf(exam)}
+                  >
+                    <Download aria-hidden="true" size={16} />
+                    <span>{t("practice.pdfShort")}</span>
+                  </button>
+                  <button
+                    aria-label={
+                      solutionPdfExamId === exam.id
+                        ? t("practice.solutions.pdfPreparing")
+                        : t("practice.solutions.pdf")
+                    }
+                    className="practice-exam-open-button"
+                    disabled={solutionPdfExamId === exam.id}
+                    title={t("practice.solutions.pdf")}
+                    type="button"
+                    onClick={() => void downloadSolutionPdf(exam)}
+                  >
+                    <FileCheck2 aria-hidden="true" size={16} />
+                    <span>{t("practice.solutions.pdfShort")}</span>
+                  </button>
+                </div>
                 <button
                   aria-label={t("practice.delete")}
                   className="practice-exam-icon-button practice-exam-delete-button"

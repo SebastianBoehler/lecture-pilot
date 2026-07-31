@@ -61,6 +61,8 @@ describe("Dashboard supported course hierarchy", () => {
       name: `Open ${course.title} workspace`,
     });
     expect(courseCard).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("heading", { name: "Available workspaces" })).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Available workspaces" })).toBeInTheDocument();
 
     const tabs = within(workspace).getByRole("tablist", { name: "Study tools" });
     const lecturesTab = within(tabs).getByRole("tab", { name: "Lectures" });

@@ -114,12 +114,18 @@ describe("PracticeExamPanel", () => {
       name: "Download solutions PDF",
     });
     const deleteButton = within(examRow).getByRole("button", { name: "Delete exam" });
+    const actions = examRow.querySelector(".practice-exam-library-actions");
+    const primaryActions = examRow.querySelector(".practice-exam-library-primary-actions");
     expect(openButton).toHaveTextContent("Open");
     expect(pdfButton).toHaveTextContent("Exam PDF");
     expect(pdfButton).toHaveAttribute("title", "Download PDF");
     expect(solutionPdfButton).toHaveTextContent("Solutions PDF");
     expect(solutionPdfButton).toHaveAttribute("title", "Download solutions PDF");
     expect(deleteButton).toHaveAttribute("title", "Delete exam");
+    expect(primaryActions).toContainElement(openButton);
+    expect(primaryActions).toContainElement(pdfButton);
+    expect(primaryActions).toContainElement(solutionPdfButton);
+    expect(actions?.lastElementChild).toBe(deleteButton);
 
     await user.click(solutionPdfButton);
     expect(fetchMock).toHaveBeenCalledWith(

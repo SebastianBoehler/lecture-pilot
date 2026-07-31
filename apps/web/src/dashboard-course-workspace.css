@@ -15,19 +15,10 @@
   padding: 18px 20px 0;
 }
 
-.course-section-heading h3 {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 720;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
 .course-card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
   gap: 12px;
-  margin-top: 10px;
 }
 
 .course-card-grid > div {

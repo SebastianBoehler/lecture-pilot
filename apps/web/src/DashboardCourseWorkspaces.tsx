@@ -44,10 +44,7 @@ export function DashboardCourseWorkspaces({
   return (
     <>
       {availableGroups.length ? (
-        <section className="available-workspaces" aria-labelledby="available-workspaces-heading">
-          <div className="course-section-heading">
-            <h3 id="available-workspaces-heading">{t("dashboard.availableWorkspaces")}</h3>
-          </div>
+        <section aria-label={t("dashboard.availableWorkspaces")} className="available-workspaces">
           <div className="course-card-grid" role="list">
             {availableGroups.map((group) => {
               const selected = group.course.id === activeGroup?.course.id;

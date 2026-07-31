@@ -74,6 +74,8 @@
 }
 
 .practice-exam-library > li {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
   border-top: 1px solid var(--color-border-primary);
   padding: 10px 0;
 }
@@ -84,10 +86,19 @@
   min-width: 0;
 }
 .practice-exam-library-actions {
+  display: grid;
+  grid-template-columns: minmax(0, auto) auto;
+  align-items: center;
+  justify-content: end;
+  gap: 8px;
+  min-width: 0;
+}
+.practice-exam-library-primary-actions {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  overflow-x: auto;
 }
 .practice-exam-open-button,
 .practice-exam-icon-button {
@@ -96,7 +107,9 @@
   justify-content: center;
 }
 .practice-exam-open-button {
+  flex: 0 0 auto;
   gap: 6px;
+  white-space: nowrap;
 }
 .practice-exam-icon-button {
   width: var(--control-height);
@@ -123,15 +136,22 @@
   .practice-exams > header,
   .practice-exam-library > li {
     align-items: stretch;
+  }
+  .practice-exams > header {
     flex-direction: column;
+  }
+  .practice-exam-library > li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
   }
   .practice-exams > header > button {
     width: 100%;
   }
   .practice-exam-library-actions {
+    grid-template-columns: minmax(0, 1fr) auto;
     width: 100%;
   }
-  .practice-exam-open-button {
-    flex: 1;
+  .practice-exam-library-primary-actions {
+    padding-block-end: 2px;
   }
 }
