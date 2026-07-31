@@ -38,6 +38,21 @@ class StorageLayout:
     def user_course_memories_dir(self, user_id: str, course_id: str) -> Path:
         return self.user_course_root(user_id, course_id) / "memories"
 
+    def ppi_exam_sources_dir(self, user_id: str, course_id: str) -> Path:
+        return self.user_course_root(user_id, course_id) / "exam-sources" / "ppi"
+
+    def ppi_exam_source_dir(self, user_id: str, course_id: str, source_id: str) -> Path:
+        return self.ppi_exam_sources_dir(user_id, course_id) / safe_id(source_id)
+
+    def practice_exam_generations_dir(self, user_id: str, course_id: str) -> Path:
+        return self.user_course_root(user_id, course_id) / "practice-exam-generations"
+
+    def practice_exams_dir(self, user_id: str, course_id: str) -> Path:
+        return self.user_course_root(user_id, course_id) / "practice-exams"
+
+    def practice_exam_dir(self, user_id: str, course_id: str, exam_id: str) -> Path:
+        return self.practice_exams_dir(user_id, course_id) / safe_id(exam_id)
+
     def user_lecture_root(self, user_id: str, course_id: str, lecture_id: str) -> Path:
         return self.user_course_root(user_id, course_id) / "lectures" / safe_id(lecture_id)
 
