@@ -85,17 +85,16 @@ describe("Dashboard course workspace matching", () => {
   it("keeps real enrolled courses separate and exposes the local development workspace", () => {
     renderDashboard(realSession, true);
 
-    const nlpCourse = workspaceArticle("INFO4193 Natural Language Processing");
-    const workspaceArticleElement = workspaceArticle("Grundlagen des Maschinellen Lernens");
+    const nlpCourse = unavailableCourse("INFO4193 Natural Language Processing");
+    const workspaceCardElement = workspaceCard("Grundlagen des Maschinellen Lernens");
+    const workspace = studyWorkspace("Grundlagen des Maschinellen Lernens");
 
-    expect(within(nlpCourse).getByText("Not supported yet")).toBeInTheDocument();
+    expect(screen.getByText("Other enrolled courses")).toBeInTheDocument();
     expect(
       within(nlpCourse).queryByRole("button", { name: /open lecture/i }),
     ).not.toBeInTheDocument();
-    expect(within(workspaceArticleElement).getByText("AI tutor available")).toBeInTheDocument();
-    expect(
-      within(workspaceArticleElement).getByRole("button", { name: /open lecture 03/i }),
-    ).toBeInTheDocument();
+    expect(within(workspaceCardElement).queryByText("AI tutor available")).not.toBeInTheDocument();
+    expect(within(workspace).getByRole("button", { name: /open lecture 03/i })).toBeInTheDocument();
   });
 
   it("greets the learner by profile name instead of email or username", () => {
@@ -129,15 +128,14 @@ describe("Dashboard course workspace matching", () => {
     );
     renderDashboard(realSession, true);
 
-    const workspaceArticleElement = workspaceArticle("Grundlagen des Maschinellen Lernens");
+    const workspaceCardElement = workspaceCard("Grundlagen des Maschinellen Lernens");
+    const workspace = studyWorkspace("Grundlagen des Maschinellen Lernens");
 
-    expect(within(workspaceArticleElement).getByText("AI tutor available")).toBeInTheDocument();
+    expect(within(workspaceCardElement).queryByText("AI tutor available")).not.toBeInTheDocument();
     expect(
-      within(workspaceArticleElement).queryByText(/not part of your current alma enrollment/i),
+      within(workspaceCardElement).queryByText(/not part of your current alma enrollment/i),
     ).not.toBeInTheDocument();
-    expect(
-      within(workspaceArticleElement).getByRole("button", { name: /open lecture 03/i }),
-    ).toBeInTheDocument();
+    expect(within(workspace).getByRole("button", { name: /open lecture 03/i })).toBeInTheDocument();
   });
 
   it("does not duplicate the workspace course when the student is enrolled in the matched course", () => {
@@ -146,7 +144,7 @@ describe("Dashboard course workspace matching", () => {
     expect(
       screen.getAllByRole("heading", { name: "Grundlagen des Maschinellen Lernens" }),
     ).toHaveLength(1);
-    expect(screen.getByText("AI tutor available")).toBeInTheDocument();
+    expect(studyWorkspace("Grundlagen des Maschinellen Lernens")).toBeInTheDocument();
     expect(screen.queryByText(/not part of your current alma enrollment/i)).not.toBeInTheDocument();
   });
 
@@ -156,15 +154,15 @@ describe("Dashboard course workspace matching", () => {
     expect(
       screen.getAllByRole("heading", { name: "INFO4193 Natural Language Processing" }),
     ).toHaveLength(1);
-    const nlpCourse = workspaceArticle("INFO4193 Natural Language Processing");
-    expect(within(nlpCourse).getByText("Not supported yet")).toBeInTheDocument();
+    const nlpCourse = unavailableCourse("INFO4193 Natural Language Processing");
+    expect(screen.getByText("2 without a published workspace")).toBeInTheDocument();
     expect(within(nlpCourse).getByText("Alma")).toBeInTheDocument();
     expect(within(nlpCourse).getByText("ILIAS")).toBeInTheDocument();
     expect(within(nlpCourse).queryByText("Fachbereich Informatik")).not.toBeInTheDocument();
     expect(within(nlpCourse).queryByRole("button")).not.toBeInTheDocument();
     expect(within(nlpCourse).queryByText(/no matched lecturepilot/i)).not.toBeInTheDocument();
 
-    const dataEthicsCourse = workspaceArticle("Introduction to Data Ethics");
+    const dataEthicsCourse = unavailableCourse("Introduction to Data Ethics");
     expect(within(dataEthicsCourse).getByText("Alma")).toBeInTheDocument();
     expect(within(dataEthicsCourse).queryByText("ILIAS")).not.toBeInTheDocument();
   });
@@ -177,24 +175,18 @@ describe("Dashboard course workspace matching", () => {
       lectures.map((lecture) => lecture.id),
     );
 
-    const workspaceArticleElement = workspaceArticle("Grundlagen des Maschinellen Lernens");
+    const workspace = studyWorkspace("Grundlagen des Maschinellen Lernens");
+    expect(within(workspace).getByRole("button", { name: /open lecture 01/i })).toBeInTheDocument();
+    expect(within(workspace).getByRole("button", { name: /open lecture 02/i })).toBeInTheDocument();
     expect(
-      within(workspaceArticleElement).getByRole("button", { name: /open lecture 01/i }),
-    ).toBeInTheDocument();
-    expect(
-      within(workspaceArticleElement).getByRole("button", { name: /open lecture 02/i }),
-    ).toBeInTheDocument();
-    expect(
-      within(workspaceArticleElement).queryByRole("button", { name: /open lecture 03/i }),
+      within(workspace).queryByRole("button", { name: /open lecture 03/i }),
     ).not.toBeInTheDocument();
 
-    await user.click(within(workspaceArticleElement).getByRole("button", { name: /show all/i }));
+    await user.click(within(workspace).getByRole("button", { name: /show all/i }));
 
+    expect(within(workspace).getByRole("button", { name: /open lecture 03/i })).toBeInTheDocument();
     expect(
-      within(workspaceArticleElement).getByRole("button", { name: /open lecture 03/i }),
-    ).toBeInTheDocument();
-    expect(
-      within(workspaceArticleElement).getByRole("button", { name: /show first 2 lectures/i }),
+      within(workspace).getByRole("button", { name: /show first 2 lectures/i }),
     ).toBeInTheDocument();
   });
 
@@ -223,6 +215,7 @@ describe("Dashboard course workspace matching", () => {
     const onOpen = renderDashboard(matchedSession, true);
 
     expect(screen.queryByRole("dialog", { name: /exam readiness check/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: /exam check/i }));
     await user.click(screen.getByRole("button", { name: /start exam check/i }));
 
     const dialog = await screen.findByRole("dialog", { name: /exam readiness check/i });
@@ -320,10 +313,20 @@ function renderDashboard(
   return onOpen;
 }
 
-function workspaceArticle(title: string) {
-  const article = screen.getByRole("heading", { name: title }).closest("article");
-  expect(article).not.toBeNull();
-  return article as HTMLElement;
+function workspaceCard(title: string) {
+  const card = screen.getByRole("heading", { name: title }).closest("button");
+  expect(card).not.toBeNull();
+  return card as HTMLElement;
+}
+
+function unavailableCourse(title: string) {
+  const item = screen.getByRole("heading", { name: title }).closest("li");
+  expect(item).not.toBeNull();
+  return item as HTMLElement;
+}
+
+function studyWorkspace(title: string) {
+  return screen.getByRole("region", { name: `Study workspace for ${title}` });
 }
 
 function examReadinessPayload() {

@@ -56,12 +56,21 @@ export function PracticeExamSetup({
       }}
     >
       <header>
-        <div>
+        <div className="practice-exam-dialog-heading">
           <h2 id="practice-exam-setup-title">{t("practice.setup.title")}</h2>
-          <p>{t("practice.setup.help")}</p>
+          <p className="practice-exam-course">
+            {t("practice.setup.course", { course: course.title })}
+          </p>
         </div>
-        <button aria-label={t("practice.setup.close")} type="button" onClick={onClose}>
-          ×
+        <button
+          aria-label={t("practice.setup.close")}
+          className="practice-exam-dialog-close"
+          type="button"
+          onClick={onClose}
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path d="m6 6 12 12M18 6 6 18" />
+          </svg>
         </button>
       </header>
       <div className="practice-exam-dialog-body">
@@ -92,9 +101,12 @@ export function PracticeExamSetup({
             />
           </label>
         </div>
+        <p className="practice-exam-scope-help">{t("practice.setup.help")}</p>
         <section aria-labelledby="saved-ppi-sources">
-          <h3 id="saved-ppi-sources">{t("practice.ppi.saved")}</h3>
-          <p>{t("practice.ppi.savedHelp")}</p>
+          <div className="practice-exam-section-heading">
+            <h3 id="saved-ppi-sources">{t("practice.ppi.saved")}</h3>
+            <span>{t("practice.ppi.savedHelp")}</span>
+          </div>
           {sources.length ? (
             <div className="practice-source-list">
               {sources.map((source) => (

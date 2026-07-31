@@ -50,6 +50,7 @@ describe("NextStudyRecommendation", () => {
     expect(screen.getByText(course.title)).toBeInTheDocument();
     expect(screen.getByText("02 · Generalization")).toBeInTheDocument();
     expect(screen.getByText(/missed this lecture/i)).toBeInTheDocument();
+    expect(screen.getByText("Start learning")).toBeInTheDocument();
     await user.click(
       screen.getByRole("button", {
         name: `Start recommended lecture 02 in ${course.title}`,

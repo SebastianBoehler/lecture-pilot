@@ -44,11 +44,10 @@ describe("LecturePilot app shell", () => {
       .getByRole("heading", {
         name: /probabilistic machine learning/i,
       })
-      .closest("article");
+      .closest("li");
     expect(probabilisticCourse).not.toBeNull();
-    expect(
-      within(probabilisticCourse as HTMLElement).getByText(/not supported yet/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/other enrolled courses/i)).toBeInTheDocument();
+    expect(screen.getByText(/without a published workspace/i)).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: /grundlagen des maschinellen lernens/i }),
     ).not.toBeInTheDocument();
@@ -271,7 +270,8 @@ describe("LecturePilot app shell", () => {
       screen.queryByRole("heading", { name: /grundlagen des maschinellen lernens/i, level: 1 }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /course workspaces/i })).toBeInTheDocument();
-    expect(screen.getByText(/not supported yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/other enrolled courses/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 without a published workspace/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /open lecture 03/i })).not.toBeInTheDocument();
     expect(
       fetchMock.mock.calls.filter(([url]) => String(url).includes("/canvas/publication")),

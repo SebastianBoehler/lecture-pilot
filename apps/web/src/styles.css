@@ -3,7 +3,7 @@
 @import "./login.css";
 @import "./dashboard.css";
 @import "./dashboard-course-workspace.css";
-@import "./dashboard-responsive.css";
+@import "./dashboard-lecture-list.css";
 @import "./dashboard-course-status.css";
 @import "./course-sync.css";
 @import "./learner-profile.css";
@@ -13,6 +13,7 @@
 @import "./exam-readiness-question.css";
 @import "./exam-readiness-result.css";
 @import "./practice-exam.css";
+@import "./practice-exam-dialog.css";
 @import "./practice-exam-view.css";
 @import "./professor.css";
 @import "./professor-builder-shell.css";

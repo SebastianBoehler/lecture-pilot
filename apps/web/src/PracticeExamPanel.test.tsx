@@ -53,6 +53,11 @@ describe("PracticeExamPanel", () => {
     await user.click(screen.getByRole("button", { name: "Generate exam" }));
 
     const dialog = screen.getByRole("dialog", { name: "Generate practice exam" });
+    expect(within(dialog).getByText("Course · Machine Learning")).toBeInTheDocument();
+    expect(
+      within(dialog).getByText("20–30 for exam-length practice · 40–50 for broad course coverage"),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Close exam setup").querySelector("svg")).not.toBeNull();
     const questionInput = within(dialog).getByLabelText("Questions");
     expect(questionInput).toHaveValue(25);
     expect(questionInput).toHaveAttribute("max", "50");
@@ -85,7 +90,7 @@ describe("PracticeExamPanel", () => {
     await user.click(screen.getByRole("button", { name: "Generate exam" }));
     await user.click(screen.getByRole("button", { name: "Import from PPI" }));
 
-    expect(screen.getByText(/PPI uses a separate account password/i)).toBeInTheDocument();
+    expect(screen.getByText(/Use your PPI password/i)).toBeInTheDocument();
     await user.type(screen.getByLabelText("PPI username"), "zxabc12");
     await user.type(screen.getByLabelText("PPI password"), "ppi-secret");
     await user.click(screen.getByRole("button", { name: "Load PPI courses" }));

@@ -35,7 +35,7 @@ export function NextStudyRecommendation({
           type="button"
           onClick={() => onOpen(recommendation.lecture)}
         >
-          {t("dashboard.recommendation.open", { number: recommendation.lecture.number })}
+          {t("dashboard.recommendation.open")}
         </button>
       </div>
     </section>
