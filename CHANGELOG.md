@@ -4,6 +4,32 @@ A product-level history of improvements for students and lecturers. Technical de
 
 [View all GitHub Releases](https://github.com/SebastianBoehler/lecture-pilot/releases)
 
+## [0.4.0](https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.4.0) — Practice exams with solutions and more reliable course creation
+
+Released 2026-07-31
+
+LecturePilot now turns published course material into complete practice exams with printable solutions, gives lecturers control over source routing before generation, and makes interactive study workspaces easier to navigate.
+
+### What changed
+
+- **Practice exams with complete solution review** _(From feedback)_ — Students can answer source-grounded exams online or on paper, see local multiple-choice scoring and full-credit examples for open questions, and download separate exam and solution PDFs at any time. Attempts are not shown to course staff.
+- **A focused PPI protocol workflow** _(From feedback)_ — Students connect to PPI only when needed, search the available courses, import one protocol source for an exam, and get clear progress and validation feedback while unsupported files are ignored safely.
+- **Review sources before course generation** _(From feedback)_ — A new routing step shows which files become lectures, exam context, or excluded material before any canvas is generated, making varied folders and mixed material sets easier to correct on the first pass.
+- **Interactive and notation-rich learning** — Course canvases can render schema-driven charts and process explorers, while practice questions and answers support Markdown, code, and LaTeX without compromising readable print layouts.
+- **A focused course study workspace** _(From feedback)_ — Students choose one course workspace and move between lectures, readiness checks, and practice exams through compact study-tool tabs, with clearer profile and course-file views.
+
+### Deutsch
+
+**Übungsprüfungen mit Lösungen und zuverlässigere Kurserstellung**
+
+LecturePilot erstellt aus veröffentlichtem Kursmaterial jetzt vollständige Übungsprüfungen mit druckbaren Lösungen, gibt Lehrenden vor der Generierung Kontrolle über die Quellenzuordnung und macht interaktive Lernbereiche übersichtlicher.
+
+- **Übungsprüfungen mit vollständiger Lösungsauswertung** _(Aus Feedback)_ — Studierende können quellengestützte Prüfungen online oder auf Papier bearbeiten, eine lokale Multiple-Choice-Auswertung und Musterlösungen für offene Fragen ansehen und Prüfungs- sowie Lösungs-PDFs jederzeit getrennt herunterladen. Versuche werden Lehrenden nicht angezeigt.
+- **Ein fokussierter Ablauf für PPI-Protokolle** _(Aus Feedback)_ — Studierende verbinden sich nur bei Bedarf mit PPI, durchsuchen verfügbare Kurse, importieren genau eine Protokollquelle für eine Prüfung und erhalten klare Fortschritts- und Validierungshinweise; nicht unterstützte Dateien werden sicher ignoriert.
+- **Quellen vor der Kurserstellung prüfen** _(Aus Feedback)_ — Ein neuer Zuordnungsschritt zeigt vor jeder Canvas-Generierung, welche Dateien zu Vorlesungen, Prüfungskontext oder ausgeschlossenem Material werden. Unterschiedliche Ordner und gemischte Materialsammlungen lassen sich so schon im ersten Durchlauf korrigieren.
+- **Interaktives Lernen mit präziser Notation** — Kurs-Canvases können schemagesteuerte Diagramme und Prozessansichten darstellen; Übungsfragen und Antworten unterstützen Markdown, Code und LaTeX, ohne die Lesbarkeit gedruckter Prüfungen zu beeinträchtigen.
+- **Ein fokussierter Lernbereich pro Kurs** _(Aus Feedback)_ — Studierende wählen einen Kursarbeitsbereich und wechseln über kompakte Lernwerkzeug-Tabs zwischen Vorlesungen, Prüfungschecks und Übungsprüfungen; Profil- und Kursdateiansichten sind zugleich übersichtlicher.
+
 ## [0.3.0](https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.3.0) — Faster course creation and stronger learning feedback
 
 Released 2026-07-26
@@ -15,7 +41,6 @@ LecturePilot now generates course canvases faster and in the selected language, 
 - **Localized parallel course generation** — Lecturers choose the canvas language before generation, lecture sections are prepared concurrently, and generated guidance follows that language.
 - **More dependable recovery and course safety** _(From feedback)_ — Targeted repair now catches more malformed LaTeX and math cases, learning-map gates stay bounded, and deleting a course safely removes stale state.
 - **Evaluated exam-readiness practice** — Open answers are evaluated after an attempt with clear feedback and revision guidance, while lecturers can preview the same readiness checks without changing learner progress.
-- **Full practice exams online or on paper** _(From feedback)_ — Students can generate private, source-grounded practice exams with 20–50 questions, reuse their own retained PPI protocols as optional pattern evidence, answer in the browser, or download the same questions as a print-ready PDF. Larger exams distribute coverage across the available lectures and sections.
 - **A clearer learner account** _(From feedback)_ — Profiles show only learner-owned files, navigation is URL-backed, contextual feedback is easier to send, and restored sessions are validated before protected pages load.
 - **Clearer lecturer workflows** — Course setup includes clearer walkthrough guidance, readiness previews are easier to inspect, and updated tutor routing reduces response latency.
 
@@ -28,7 +53,6 @@ LecturePilot erstellt Kurs-Canvases jetzt schneller und in der gewählten Sprach
 - **Lokalisierte parallele Kurserstellung** — Lehrende wählen vor der Generierung die Canvas-Sprache; Vorlesungsabschnitte werden parallel erstellt und die generierten Lernhilfen folgen dieser Sprache.
 - **Zuverlässigere Wiederherstellung und Kurssicherheit** _(Aus Feedback)_ — Die gezielte Reparatur erkennt mehr fehlerhafte LaTeX- und Mathematikfälle, Lernpfad-Sperren bleiben begrenzt und beim Löschen eines Kurses werden veraltete Zustände sicher entfernt.
 - **Bewertete Übungen zur Prüfungsreife** — Offene Antworten werden nach einem Versuch mit klarem Feedback und Überarbeitungshinweisen bewertet; Lehrende können dieselben Prüfungsreife-Aufgaben ansehen, ohne den Lernfortschritt zu verändern.
-- **Vollständige Übungsprüfungen online oder auf Papier** _(Aus Feedback)_ — Studierende können private, quellengestützte Übungsprüfungen mit 20–50 Fragen erstellen, eigene gespeicherte PPI-Protokolle optional als Mustervorgabe verwenden, sie im Browser bearbeiten oder dieselben Fragen als druckfertiges PDF herunterladen. Größere Prüfungen verteilen die Abdeckung über die verfügbaren Vorlesungen und Abschnitte.
 - **Ein übersichtlicheres Lernkonto** _(Aus Feedback)_ — Profile zeigen nur Dateien der Lernenden, die Navigation ist URL-basiert, kontextbezogenes Feedback lässt sich leichter senden und wiederhergestellte Sitzungen werden vor dem Laden geschützter Seiten geprüft.
 - **Klarere Abläufe für Lehrende** — Die Kurseinrichtung bietet klarere Schritt-für-Schritt-Hinweise, Vorschauen zur Prüfungsreife lassen sich leichter prüfen und eine aktualisierte Tutor-Anbindung verkürzt die Antwortzeit.
 

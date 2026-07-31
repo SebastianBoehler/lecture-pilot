@@ -15,15 +15,17 @@ describe("ChangelogPage", () => {
     expect(
       latestRelease.getByRole("heading", {
         level: 2,
-        name: "Faster course creation and stronger learning feedback",
+        name: "Practice exams with solutions and more reliable course creation",
       }),
     ).toBeInTheDocument();
-    expect(latestRelease.getByText("26 July 2026")).toBeInTheDocument();
-    expect(latestRelease.getByRole("link", { name: /v0\.3\.0 on GitHub/i })).toHaveAttribute(
+    expect(latestRelease.getByText("31 July 2026")).toBeInTheDocument();
+    expect(latestRelease.getByRole("link", { name: /v0\.4\.0 on GitHub/i })).toHaveAttribute(
       "href",
-      "https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.3.0",
+      "https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.4.0",
     );
-    expect(latestRelease.getByText("Localized parallel course generation")).toBeInTheDocument();
+    expect(
+      latestRelease.getByText("Practice exams with complete solution review"),
+    ).toBeInTheDocument();
     expect(
       latestRelease.queryByText(/students and lecturers sign in through Alma/i),
     ).not.toBeInTheDocument();
@@ -39,8 +41,10 @@ describe("ChangelogPage", () => {
     renderWithI18n(<ChangelogPage />, { locale: "de" });
 
     expect(screen.getByRole("heading", { name: "Neu in LecturePilot" })).toBeInTheDocument();
-    expect(screen.getByText("26. Juli 2026")).toBeInTheDocument();
-    expect(screen.getByText("Lokalisierte parallele Kurserstellung")).toBeInTheDocument();
+    expect(screen.getByText("31. Juli 2026")).toBeInTheDocument();
+    expect(
+      screen.getByText("Übungsprüfungen mit vollständiger Lösungsauswertung"),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Aus Feedback")).not.toBeInTheDocument();
   });
 });
