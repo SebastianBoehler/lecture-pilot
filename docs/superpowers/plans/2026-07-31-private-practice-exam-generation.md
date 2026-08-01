@@ -1,5 +1,9 @@
 # Private Practice Exam Generation Implementation Plan
 
+> **Status:** Historical execution plan. The practice-exam flow is implemented
+> in repository version `0.4.0`; unchecked boxes below preserve the original
+> task sequence and are not an implementation-status tracker.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Let an enrolled learner generate one immutable, source-grounded practice exam, optionally enriched by privately retained PPI protocols, then complete it online or download the same questions as a print-ready PDF.

@@ -70,6 +70,7 @@ type AppRoutesProps = {
   view: View;
   workspaceCourse: UniversityCourse;
   workspaceCourseId: string;
+  workspaceLoadError: string | null;
   onLogout: () => void;
   onLogin: (session: LoginSession) => void;
   onNavigatePath: (path: string) => void;
@@ -136,6 +137,7 @@ export function AppRoutes(props: AppRoutesProps) {
         learnerProfileState={learnerProfileState}
         session={session}
         workspaceCourse={workspaceCourse}
+        workspaceLoadError={props.workspaceLoadError}
         onOpen={(lecture) => props.onOpenLecture(workspaceCourseId, lecture)}
         onSetAttendance={props.onSetAttendance}
       />

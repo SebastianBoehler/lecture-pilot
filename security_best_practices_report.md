@@ -1,8 +1,8 @@
 # LecturePilot pilot security status
 
-Review refreshed: 2026-07-20<br>
-Implementation baseline: release `0.2.1`, commit
-`a854cfa5c5a9c98fd33066bc756c73b3c9ad4e09`<br>
+Repository review refreshed: 2026-08-01<br>
+Implementation baseline: repository version `0.4.0`, including the reliability
+and security remediation from this review<br>
 Decision: **the live pilot is hardened, but broader production approval remains
 blocked by the operational and privacy gates below**
 
@@ -12,10 +12,12 @@ preserved as a historical record in
 
 ## Scope and evidence
 
-The refresh checked the FastAPI authorization/session/upload/workspace code and
-tests, React API/auth boundary, Alembic/Postgres models, production Compose and
-Dockerfiles, Caddy/nginx policy, Tectonic service, dependency locks, and current
-operator documentation.
+The repository refresh checked the FastAPI authorization, session, upload,
+workspace, persistence, processing, and analytics code; React API and auth
+boundaries; tests; Alembic/Postgres models; production Compose and Dockerfiles;
+Caddy/nginx policy; the Tectonic service; dependency locks; and current
+operator documentation. No new live deployment check was performed on
+2026-08-01.
 
 A point-in-time live check on 2026-07-20 confirmed:
 
@@ -92,10 +94,11 @@ path remains exact-title-and-term dependent.
   access, and hard-link rejection. Source, learner, preview, and builder write
   capabilities are separate.
 - Uploads stream to quarantine with request/per-type limits, SHA-256,
-  MIME/signature checks, active-SVG rejection, and atomic no-overwrite
-  promotion.
-- PDF extraction/rendering uses bounded processes with page, pixel, CPU,
-  memory, file, and timeout limits. Notebook/Python ingestion never executes
+  MIME/signature checks, full-payload active-SVG rejection, and atomic
+  no-overwrite promotion.
+- PDF extraction/rendering uses a fresh bounded worker per task so CPU limits
+  do not accumulate across unrelated uploads. Page, pixel, CPU, memory, file,
+  and timeout limits remain enforced. Notebook/Python ingestion never executes
   code.
 - Uploaded TeX never runs in the API. The internal Tectonic service is
   read-only, resource-limited, no-secret, external-network isolated, and uses a
@@ -109,6 +112,10 @@ path remains exact-title-and-term dependent.
 - Postgres atomically enforces daily turn/token/image and concurrent-turn
   quotas across workers and restarts. Request-body and route rate limits add a
   separate front-line bound.
+- File-backed learner gates, attendance, readiness, coaching, and memory use
+  locked read-modify-write transactions plus durable atomic replacement.
+- Analytics folds JSONL event logs as streams and reports lecture learner
+  counts from the union of quiz and gate participants.
 - Audit events cover identity sync, external-course binding, account disable,
   course lifecycle, uploads/updates, publication, aggregate analytics access,
   learner profile changes, and learner reset.

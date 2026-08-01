@@ -48,4 +48,4 @@ line-length = 100
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E9", "F"]
+select = ["ASYNC", "E9", "F"]

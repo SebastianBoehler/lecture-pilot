@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 
 from pydantic import BaseModel
 
@@ -34,14 +34,14 @@ def course_analytics_summary(
     *,
     course_id: str,
     lecture_ids: list[str],
-    read_events: Callable[[str], list[dict]],
+    read_events: Callable[[str], Iterable[dict]],
 ) -> CourseAnalyticsSummary:
     course_learners: set[str] = set()
     lectures: list[CourseLectureAnalytics] = []
     for lecture_id in lecture_ids:
-        events = read_events(lecture_id)
-        course_learners.update(_learner_keys(events))
-        lectures.append(_lecture_summary(lecture_id, events))
+        lecture, learners = _lecture_summary(lecture_id, read_events(lecture_id))
+        course_learners.update(learners)
+        lectures.append(lecture)
 
     quiz_attempts = sum(item.quiz_attempts for item in lectures)
     quiz_correct = sum(item.quiz_correct_attempts for item in lectures)
@@ -61,26 +61,37 @@ def course_analytics_summary(
     )
 
 
-def _lecture_summary(lecture_id: str, events: list[dict]) -> CourseLectureAnalytics:
-    quiz_events = [event for event in events if event.get("type") == "quiz_answer"]
-    gate_events = [event for event in events if event.get("type") == "gate_decision"]
-    quiz_correct = sum(event.get("correct") is True for event in quiz_events)
-    gate_passes = sum(event.get("status") == "passed" for event in gate_events)
-    return CourseLectureAnalytics(
+def _lecture_summary(
+    lecture_id: str, events: Iterable[dict]
+) -> tuple[CourseLectureAnalytics, set[str]]:
+    total_events = 0
+    learners: set[str] = set()
+    quiz_attempts = 0
+    quiz_correct = 0
+    gate_checks = 0
+    gate_passes = 0
+    for event in events:
+        total_events += 1
+        if event.get("user_key"):
+            learners.add(str(event["user_key"]))
+        if event.get("type") == "quiz_answer":
+            quiz_attempts += 1
+            quiz_correct += event.get("correct") is True
+        elif event.get("type") == "gate_decision":
+            gate_checks += 1
+            gate_passes += event.get("status") == "passed"
+    summary = CourseLectureAnalytics(
         lecture_id=lecture_id,
-        total_events=len(events),
-        unique_learners=len(_learner_keys(events)),
-        quiz_attempts=len(quiz_events),
+        total_events=total_events,
+        unique_learners=len(learners),
+        quiz_attempts=quiz_attempts,
         quiz_correct_attempts=quiz_correct,
-        quiz_rate=_rate(quiz_correct, len(quiz_events)),
-        gate_checks=len(gate_events),
+        quiz_rate=_rate(quiz_correct, quiz_attempts),
+        gate_checks=gate_checks,
         gate_passes=gate_passes,
-        gate_rate=_rate(gate_passes, len(gate_events)),
+        gate_rate=_rate(gate_passes, gate_checks),
     )
-
-
-def _learner_keys(events: list[dict]) -> set[str]:
-    return {str(event["user_key"]) for event in events if event.get("user_key")}
+    return summary, learners
 
 
 def _rate(numerator: int, denominator: int) -> float | None:

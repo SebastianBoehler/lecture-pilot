@@ -55,11 +55,7 @@ export function analyticsSignals(analytics: LectureAnalyticsSummary): AnalyticsS
   return {
     attendance,
     gateRate: checks ? passed / checks : null,
-    learners: Math.max(
-      0,
-      ...analytics.quizzes.map((quiz) => quiz.unique_learners),
-      ...analytics.gates.map((gate) => gate.unique_learners),
-    ),
+    learners: analytics.unique_learners,
     quizRate: attempts ? correct / attempts : null,
   };
 }

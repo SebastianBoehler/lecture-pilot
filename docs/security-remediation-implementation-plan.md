@@ -9,7 +9,8 @@
 
 Original baseline: `01608fe`<br>
 Implementation baseline at the end of this effort: `386a700`<br>
-Current reviewed product baseline: release `0.2.1` at `a854cfa`
+Final product baseline covered by this historical record: release `0.2.1` at
+`a854cfa`
 
 ## Why this work existed
 

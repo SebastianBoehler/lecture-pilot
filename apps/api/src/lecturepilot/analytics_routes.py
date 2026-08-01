@@ -117,7 +117,7 @@ def register_analytics_routes(
         summary = course_analytics_summary(
             course_id=course_id,
             lecture_ids=lecture_ids,
-            read_events=lambda lecture_id: store.events(
+            read_events=lambda lecture_id: store.iter_events(
                 course_id=course_id,
                 lecture_id=lecture_id,
             ),

@@ -9,6 +9,15 @@ const buildId = process.env.LECTUREPILOT_COMMIT_SHA?.trim() || "development";
 const appVersion = JSON.parse(readFileSync(resolve(repoRoot, "package.json"), "utf8")).version;
 
 export default defineConfig({
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "professor-tour": ["react-joyride"],
+        },
+      },
+    },
+  },
   define: {
     __LECTUREPILOT_APP_VERSION__: JSON.stringify(appVersion),
     __LECTUREPILOT_BUILD_ID__: JSON.stringify(buildId),

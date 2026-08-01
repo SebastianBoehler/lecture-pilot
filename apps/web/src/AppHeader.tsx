@@ -14,7 +14,7 @@ import {
 
 import { canManageCourses, isStudentAccount } from "./authz";
 import { useI18n } from "./i18n";
-import { requestProfessorWalkthrough } from "./ProfessorWalkthrough";
+import { requestProfessorWalkthrough } from "./professorWalkthroughState";
 import type { LoginSession, Theme, View } from "./types";
 
 export function AppHeader({

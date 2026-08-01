@@ -63,6 +63,26 @@ def test_upload_rejects_active_svg_content(tmp_path: Path) -> None:
     assert response.status_code == 400
 
 
+def test_upload_rejects_active_svg_content_after_signature_buffer(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    response = client.post(
+        "/admin/courses/martius-ml/materials",
+        headers=professor_headers(),
+        data={"path": "images/late-active.svg"},
+        files={
+            "file": (
+                "late-active.svg",
+                b"<svg>" + (b" " * 9000) + b"<script>alert(1)</script></svg>",
+                "image/svg+xml",
+            )
+        },
+    )
+
+    uploads = client.app.state.canvas_workspace.layout.course_uploads_dir("martius-ml")
+    assert response.status_code == 400
+    assert not (uploads / "images" / "late-active.svg").exists()
+
+
 def test_upload_accepts_legacy_encoded_latex_source(tmp_path: Path) -> None:
     client = _client(tmp_path)
     response = client.post(

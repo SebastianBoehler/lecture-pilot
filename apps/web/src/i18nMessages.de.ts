@@ -139,6 +139,7 @@ export const deMessages: Record<MessageKey, string> = {
   "dashboard.loadingCourses": "Deine Universitätskurse werden geladen...",
   "dashboard.courseSyncError":
     "Deine Universitätskurse konnten nicht geladen werden. Melde dich erneut an, um es noch einmal zu versuchen.",
+  "dashboard.workspaceLoadError": "Kursarbeitsbereiche konnten nicht geladen werden: {message}",
   "dashboard.noCourses": "Für dieses Semester sind keine Kurse verfügbar.",
   "dashboard.noTutor": "Noch nicht unterstützt",
   "dashboard.noMatchedTutor":

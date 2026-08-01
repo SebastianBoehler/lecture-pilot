@@ -74,6 +74,86 @@ describe("LecturePilot app shell", () => {
     );
   });
 
+  it("continues to a loadable course when an earlier workspace is stale", async () => {
+    const user = userEvent.setup();
+    const fallback = mockLoginFetch({ published: true });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/courses")) {
+        return jsonResponse([
+          {
+            access_policy: "public",
+            id: "valid-course",
+            professor: "Prof. Valid",
+            term: "Sommer 2026",
+            title: "Valid workspace",
+          },
+          {
+            access_policy: "public",
+            id: "martius-ml",
+            professor: "Prof. Stale",
+            term: "Sommer 2026",
+            title: "Stale workspace",
+          },
+        ]);
+      }
+      if (url.endsWith("/courses/martius-ml/lectures")) {
+        return jsonResponse({ detail: "Workspace missing" }, 404);
+      }
+      if (url.endsWith("/courses/valid-course/lectures")) {
+        return jsonResponse([
+          {
+            attendance: "unknown",
+            content_ready: true,
+            lecture: {
+              date: "2026-06-01",
+              id: "lecture-01",
+              title: "Loadable lecture",
+            },
+            release_status: "released",
+            unlocked: true,
+          },
+        ]);
+      }
+      return fallback(url, init);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+
+    await logIn(user);
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([url]) =>
+          String(url).endsWith("/courses/valid-course/lectures"),
+        ),
+      ).toBe(true);
+    });
+  });
+
+  it("shows a course-loading error instead of restoring sample lectures", async () => {
+    const user = userEvent.setup();
+    const fallback = mockLoginFetch({ published: true });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith("/courses")) {
+          return Promise.resolve(jsonResponse({ detail: "Course service unavailable" }, 503));
+        }
+        return fallback(url, init);
+      }),
+    );
+    render(<App />);
+
+    await logIn(user);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /course workspaces could not be loaded/i,
+    );
+    expect(screen.queryByRole("button", { name: /open lecture 03/i })).not.toBeInTheDocument();
+  });
+
   it("opens the app before course synchronization and refreshes the profile in place", async () => {
     const user = userEvent.setup();
     const fetchMock = vi.fn((input: RequestInfo | URL) => {

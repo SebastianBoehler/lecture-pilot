@@ -1,5 +1,9 @@
 # Private Practice Exam Generation
 
+> **Status:** Historical design record. The implemented contract is documented
+> by the current API, workspace, and security documentation for repository
+> version `0.4.0`.
+
 ## Goal
 
 Add a learner-only flow that generates one source-grounded practice exam and

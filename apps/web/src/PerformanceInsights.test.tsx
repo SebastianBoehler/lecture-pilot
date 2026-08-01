@@ -39,6 +39,7 @@ function analytics(): LectureAnalyticsSummary {
     course_id: "demo-course",
     lecture_id: "lecture-01",
     total_events: 4,
+    unique_learners: 2,
     quizzes: [],
     gates: [
       {
@@ -64,6 +65,7 @@ function quizAnalytics(): LectureAnalyticsSummary {
     course_id: "demo-course",
     lecture_id: "lecture-01",
     total_events: 4,
+    unique_learners: 2,
     gates: [],
     quizzes: [quiz("quiz-1", "First question", 0.5), quiz("quiz-2", "Second question", 1)],
   };

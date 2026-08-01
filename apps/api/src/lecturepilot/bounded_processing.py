@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from concurrent.futures import ProcessPoolExecutor, TimeoutError as FutureTimeoutError
+from concurrent.futures.process import BrokenProcessPool
 import os
 import sys
 from typing import Any, Callable
@@ -16,12 +17,15 @@ _executor: ProcessPoolExecutor | None = None
 def run_bounded(function: Callable[..., Any], *args: Any) -> Any:
     if not _enabled():
         return function(*args)
-    future = _pool().submit(function, *args)
     try:
+        future = _pool().submit(function, *args)
         return future.result(timeout=_positive_env("LECTUREPILOT_PROCESSING_TIMEOUT_SECONDS", 30))
     except FutureTimeoutError as exc:
         future.cancel()
         raise BoundedProcessingError("Course material processing timed out.") from exc
+    except BrokenProcessPool as exc:
+        _reset_pool()
+        raise BoundedProcessingError("Course material processing failed safely.") from exc
     except Exception as exc:
         raise BoundedProcessingError("Course material processing failed safely.") from exc
 
@@ -32,8 +36,17 @@ def _pool() -> ProcessPoolExecutor:
         _executor = ProcessPoolExecutor(
             max_workers=_positive_env("LECTUREPILOT_PROCESSING_WORKERS", 2),
             initializer=_apply_worker_limits,
+            max_tasks_per_child=1,
         )
     return _executor
+
+
+def _reset_pool() -> None:
+    global _executor
+    executor = _executor
+    _executor = None
+    if executor is not None:
+        executor.shutdown(wait=False, cancel_futures=True)
 
 
 def _apply_worker_limits() -> None:

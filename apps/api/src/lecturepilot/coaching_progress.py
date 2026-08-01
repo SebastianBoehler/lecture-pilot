@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 
 from pydantic import BaseModel, Field, ValidationError
 
+from lecturepilot.durable_files import atomic_write_json, exclusive_file_lock
 from lecturepilot.models import (
     AgentCoachingContext,
     QualityGateDecision,
@@ -116,43 +117,45 @@ class CoachingProgressStore:
     ) -> CoachingTurnEvent:
         current_time = now or datetime.now(UTC)
         created_at = current_time.isoformat()
-        progress = self.read(user_id=user_id, course_id=course_id, lecture_id=lecture_id)
-        progress.session_goal = (session_goal or context.session_goal).strip()
-        progress.goal_proposed = True
-        assessed_attempt = decision.status != QualityGateStatus.NOT_ASSESSED
-        assistance_level = (
-            "none" if decision.status == QualityGateStatus.PASSED else policy.assistance_level
-        )
-        event = CoachingTurnEvent(
-            created_at=created_at,
-            gate_id=decision.gate_id,
-            gate_status=decision.status,
-            support_profile=policy.profile,
-            process_label=policy.process_label,
-            independent_attempt=assessed_attempt and not context.support_before_attempt,
-            assistance_level=assistance_level,
-            support_before_attempt=context.support_before_attempt,
-            transfer_attempt=context.delayed_transfer_due and assessed_attempt,
-            evidence_ids=decision.evidence_ids,
-            missing_evidence_ids=decision.missing_evidence_ids,
-        )
-        progress.turns.append(event)
-        progress.turns = progress.turns[-MAX_TURN_EVENTS:]
-        if decision.status == QualityGateStatus.PASSED:
-            progress.delayed_transfer = _updated_transfer(
-                progress.delayed_transfer,
-                gate_id=decision.gate_id,
-                transfer_was_due=context.delayed_transfer_due,
-                now=current_time,
+        path = self._path(user_id=user_id, course_id=course_id, lecture_id=lecture_id)
+        with exclusive_file_lock(path):
+            progress = self.read(user_id=user_id, course_id=course_id, lecture_id=lecture_id)
+            progress.session_goal = (session_goal or context.session_goal).strip()
+            progress.goal_proposed = True
+            assessed_attempt = decision.status != QualityGateStatus.NOT_ASSESSED
+            assistance_level = (
+                "none" if decision.status == QualityGateStatus.PASSED else policy.assistance_level
             )
-        progress.updated_at = created_at
-        self._write(
-            user_id=user_id,
-            course_id=course_id,
-            lecture_id=lecture_id,
-            progress=progress,
-        )
-        return event
+            event = CoachingTurnEvent(
+                created_at=created_at,
+                gate_id=decision.gate_id,
+                gate_status=decision.status,
+                support_profile=policy.profile,
+                process_label=policy.process_label,
+                independent_attempt=assessed_attempt and not context.support_before_attempt,
+                assistance_level=assistance_level,
+                support_before_attempt=context.support_before_attempt,
+                transfer_attempt=context.delayed_transfer_due and assessed_attempt,
+                evidence_ids=decision.evidence_ids,
+                missing_evidence_ids=decision.missing_evidence_ids,
+            )
+            progress.turns.append(event)
+            progress.turns = progress.turns[-MAX_TURN_EVENTS:]
+            if decision.status == QualityGateStatus.PASSED:
+                progress.delayed_transfer = _updated_transfer(
+                    progress.delayed_transfer,
+                    gate_id=decision.gate_id,
+                    transfer_was_due=context.delayed_transfer_due,
+                    now=current_time,
+                )
+            progress.updated_at = created_at
+            self._write(
+                user_id=user_id,
+                course_id=course_id,
+                lecture_id=lecture_id,
+                progress=progress,
+            )
+            return event
 
     def _path(self, *, user_id: str, course_id: str, lecture_id: str):
         return self.layout.user_lecture_root(user_id, course_id, lecture_id) / "tutor-state.json"
@@ -166,11 +169,7 @@ class CoachingProgressStore:
         progress: CoachingProgress,
     ) -> None:
         path = self._path(user_id=user_id, course_id=course_id, lecture_id=lecture_id)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            json.dumps(progress.model_dump(mode="json"), indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
-        )
+        atomic_write_json(path, progress.model_dump(mode="json"))
 
 
 def _updated_transfer(

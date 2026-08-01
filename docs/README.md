@@ -1,8 +1,9 @@
 # Documentation map
 
 This index separates current operating documentation from historical design
-records. Current documents were checked against the implementation and deployed
-Compose topology on 2026-07-20.
+records. Current documents were checked against the implementation on
+2026-08-01. The last live deployed-Compose evidence remains the 2026-07-20
+snapshot identified in the security status report.
 
 ## Current product and engineering documentation
 
@@ -46,6 +47,8 @@ not runtime, setup, or security guidance.
 - [`superpowers/specs/2026-06-10-workspace-storage-redesign.md`](superpowers/specs/2026-06-10-workspace-storage-redesign.md)
 - [`superpowers/plans/2026-06-18-interleaved-slides.md`](superpowers/plans/2026-06-18-interleaved-slides.md)
 - [`superpowers/plans/2026-07-01-adaptive-exam-readiness.md`](superpowers/plans/2026-07-01-adaptive-exam-readiness.md)
+- [`superpowers/specs/2026-07-31-private-practice-exam-generation-design.md`](superpowers/specs/2026-07-31-private-practice-exam-generation-design.md)
+- [`superpowers/plans/2026-07-31-private-practice-exam-generation.md`](superpowers/plans/2026-07-31-private-practice-exam-generation.md)
 
 When behavior changes, update the current document that owns the contract in
 the same pull request. Do not revise historical records to describe a newer

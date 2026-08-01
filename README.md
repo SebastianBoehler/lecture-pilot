@@ -186,9 +186,10 @@ TeX-only slide previews require the isolated local compiler. See
 [docs/latex-compilation.md](docs/latex-compilation.md) for the run command and
 the PDF-first fallback contract.
 
-The full API suite requires a migrated PostgreSQL test database. CI provisions
-Postgres 16 automatically; local development may use any disposable Postgres
-instance at the exported URL.
+Pure targeted API tests do not connect to Postgres. The full API suite requires
+a migrated PostgreSQL test database and cleans it lazily on the first
+database-backed operation in each test. CI provisions Postgres 16 automatically;
+local development may use any disposable Postgres instance at the exported URL.
 
 Live Uni Tübingen login also needs the wrapper package in the API environment:
 
@@ -287,9 +288,8 @@ npm run verify:full
 
 `verify:api` and `verify:web` are the component commands used by CI. All verify
 commands enforce documentation links, formatting, zero lint warnings, and
-`git diff --check`; the
-full API suite requires the migrated disposable PostgreSQL database described
-above.
+`git diff --check`. Pure targeted API tests can run without Postgres; the full
+API suite requires the migrated disposable PostgreSQL database described above.
 
 Provider behavior is benchmarked separately from CI because real model calls are
 non-deterministic and depend on configured keys. To compare whether candidate

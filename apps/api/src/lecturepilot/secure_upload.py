@@ -86,7 +86,12 @@ async def stage_course_upload(
                     handle.write(chunk)
                 handle.flush()
                 os.fsync(handle.fileno())
-            _validate_content(relative.suffix.lower(), bytes(header), upload.content_type)
+            _validate_content(
+                relative.suffix.lower(),
+                bytes(header),
+                upload.content_type,
+                staged_path=quarantine_path,
+            )
         finally:
             await upload.close()
         return StagedCourseUpload(
@@ -141,10 +146,17 @@ def _promote_upload(root: Path, relative: PurePosixPath, source: Path) -> Path:
     return resolved.path
 
 
-def _validate_content(suffix: str, header: bytes, declared_type: str | None) -> None:
+def _validate_content(
+    suffix: str,
+    header: bytes,
+    declared_type: str | None,
+    *,
+    staged_path: Path | None = None,
+) -> None:
     if not header:
         raise WorkspacePolicyError("Empty course material files are not accepted.")
-    lowered = header.lower().lstrip()
+    checked_content = staged_path.read_bytes() if suffix == ".svg" and staged_path else header
+    lowered = checked_content.lower().lstrip()
     valid = _matches_signature(suffix, header, lowered)
     if not valid:
         raise WorkspacePolicyError("File contents do not match the requested file type.")

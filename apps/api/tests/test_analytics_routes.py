@@ -55,6 +55,7 @@ def test_quiz_answers_are_recorded_as_aggregate_lecture_analytics(tmp_path: Path
     assert summary.status_code == 200
     payload = summary.json()
     assert payload["total_events"] == 2
+    assert payload["unique_learners"] == 2
     quiz = payload["quizzes"][0]
     assert quiz["component_id"] == "risk-check"
     assert quiz["total_attempts"] == 2
@@ -68,6 +69,59 @@ def test_quiz_answers_are_recorded_as_aggregate_lecture_analytics(tmp_path: Path
     assert payload["learning_map"]["nodes"][0]["quiz_ids"] == ["risk-check"]
     assert payload["learning_map"]["nodes"][0]["gate_ids"] == ["risk-evidence-check"]
     assert payload["learning_map"]["gates"][0]["title"] == "Risk evidence gate"
+
+
+def test_lecture_analytics_counts_learners_across_quizzes_and_gates(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    block = _canvas_document(tmp_path).sections[0].blocks[0]
+    store = AnalyticsStore(client.app.state.canvas_workspace.layout)
+    store.record_quiz_answer(
+        course_id="demo-course",
+        lecture_id="lecture-01",
+        user_id="student-a",
+        attendance=AttendanceStatus.PRESENT,
+        block=block,
+        option_index=1,
+    )
+    store.record_quality_gate(
+        course_id="demo-course",
+        lecture_id="lecture-01",
+        user_id="student-b",
+        attendance=AttendanceStatus.ABSENT,
+        decision=QualityGateDecision(
+            gate_id="risk-gate",
+            status=QualityGateStatus.PASSED,
+            reason="test",
+        ),
+    )
+
+    assert store.summary(course_id="demo-course", lecture_id="lecture-01").unique_learners == 2
+
+
+def test_lecture_analytics_streams_the_event_log(tmp_path: Path, monkeypatch) -> None:
+    client = _client(tmp_path)
+    store = AnalyticsStore(client.app.state.canvas_workspace.layout)
+    block = _canvas_document(tmp_path).sections[0].blocks[0]
+    store.record_quiz_answer(
+        course_id="demo-course",
+        lecture_id="lecture-01",
+        user_id="student-a",
+        attendance=AttendanceStatus.PRESENT,
+        block=block,
+        option_index=1,
+    )
+    original_read_text = Path.read_text
+
+    def reject_whole_event_log_read(path: Path, *args, **kwargs) -> str:
+        if path.name == "events.jsonl":
+            raise AssertionError("analytics must stream the event log")
+        return original_read_text(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", reject_whole_event_log_read)
+
+    summary = store.summary(course_id="demo-course", lecture_id="lecture-01")
+
+    assert summary.total_events == 1
 
 
 def test_students_cannot_read_professor_analytics(tmp_path: Path) -> None:

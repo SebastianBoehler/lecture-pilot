@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from collections import Counter, defaultdict
+from collections import Counter
+from collections.abc import Iterable
+from dataclasses import dataclass, field
 
 from pydantic import BaseModel
 
@@ -21,49 +23,76 @@ class AnalyticsGateMetric(BaseModel):
     evidence_counts: dict[str, int]
 
 
-def gate_metrics(events: list[dict]) -> list[AnalyticsGateMetric]:
-    grouped: dict[str, list[dict]] = defaultdict(list)
+@dataclass
+class _GateState:
+    total_events: int = 0
+    learners: set[str] = field(default_factory=set)
+    latest_activity: str = ""
+    status: Counter[str] = field(default_factory=Counter)
+    attendance: Counter[str] = field(default_factory=Counter)
+    assistance: Counter[str] = field(default_factory=Counter)
+    evidence: Counter[str] = field(default_factory=Counter)
+    independent_attempts: int = 0
+    independent_passes: int = 0
+    supported_attempts: int = 0
+    transfer_attempts: int = 0
+    independent_transfer_passes: int = 0
+
+
+class GateMetricsAccumulator:
+    def __init__(self) -> None:
+        self._groups: dict[str, _GateState] = {}
+
+    def record(self, event: dict) -> None:
+        if event.get("type") != "gate_decision":
+            return
+        state = self._groups.setdefault(str(event.get("gate_id") or "gate"), _GateState())
+        state.total_events += 1
+        if event.get("user_key"):
+            state.learners.add(str(event["user_key"]))
+        state.latest_activity = max(state.latest_activity, str(event.get("created_at") or ""))
+        status = str(event.get("status") or "unknown")
+        state.status[status] += 1
+        state.attendance[str(event.get("attendance") or "unknown")] += 1
+        state.assistance[str(event.get("assistance_level") or "unknown")] += 1
+        state.evidence.update(_evidence_ids(event))
+        independent = event.get("independent_attempt") is True
+        transfer = event.get("transfer_attempt") is True
+        state.independent_attempts += independent
+        state.independent_passes += independent and status == "passed"
+        state.supported_attempts += (
+            status != "not_assessed" and event.get("support_before_attempt") is True
+        )
+        state.transfer_attempts += transfer
+        state.independent_transfer_passes += transfer and independent and status == "passed"
+
+    def metrics(self) -> list[AnalyticsGateMetric]:
+        return [self._metric(gate_id, self._groups[gate_id]) for gate_id in sorted(self._groups)]
+
+    @staticmethod
+    def _metric(gate_id: str, state: _GateState) -> AnalyticsGateMetric:
+        return AnalyticsGateMetric(
+            gate_id=gate_id,
+            total_events=state.total_events,
+            unique_learners=len(state.learners),
+            latest_activity=state.latest_activity or None,
+            status_counts=dict(sorted(state.status.items())),
+            attendance_split=dict(sorted(state.attendance.items())),
+            independent_attempts=state.independent_attempts,
+            independent_passes=state.independent_passes,
+            supported_attempts=state.supported_attempts,
+            transfer_attempts=state.transfer_attempts,
+            independent_transfer_passes=state.independent_transfer_passes,
+            assistance_level_counts=dict(sorted(state.assistance.items())),
+            evidence_counts=dict(sorted(state.evidence.items())),
+        )
+
+
+def gate_metrics(events: Iterable[dict]) -> list[AnalyticsGateMetric]:
+    accumulator = GateMetricsAccumulator()
     for event in events:
-        if event.get("type") == "gate_decision":
-            grouped[str(event.get("gate_id") or "gate")].append(event)
-    return [_gate_metric(gate_id, items) for gate_id, items in sorted(grouped.items())]
-
-
-def _gate_metric(gate_id: str, events: list[dict]) -> AnalyticsGateMetric:
-    latest = max(events, key=lambda item: str(item.get("created_at") or ""))
-    independent = [event for event in events if event.get("independent_attempt") is True]
-    transfers = [event for event in events if event.get("transfer_attempt") is True]
-    assessed = [event for event in events if event.get("status") != "not_assessed"]
-    return AnalyticsGateMetric(
-        gate_id=gate_id,
-        total_events=len(events),
-        unique_learners=len(
-            {str(event.get("user_key")) for event in events if event.get("user_key")}
-        ),
-        latest_activity=str(latest.get("created_at") or "") or None,
-        status_counts=_counts(events, "status"),
-        attendance_split=_counts(events, "attendance"),
-        independent_attempts=len(independent),
-        independent_passes=sum(event.get("status") == "passed" for event in independent),
-        supported_attempts=sum(event.get("support_before_attempt") is True for event in assessed),
-        transfer_attempts=len(transfers),
-        independent_transfer_passes=sum(
-            event.get("status") == "passed" and event.get("independent_attempt") is True
-            for event in transfers
-        ),
-        assistance_level_counts=_counts(events, "assistance_level"),
-        evidence_counts=dict(
-            sorted(
-                Counter(
-                    evidence_id for event in events for evidence_id in _evidence_ids(event)
-                ).items()
-            )
-        ),
-    )
-
-
-def _counts(events: list[dict], key: str) -> dict[str, int]:
-    return dict(sorted(Counter(str(event.get(key) or "unknown") for event in events).items()))
+        accumulator.record(event)
+    return accumulator.metrics()
 
 
 def _evidence_ids(event: dict) -> list[str]:

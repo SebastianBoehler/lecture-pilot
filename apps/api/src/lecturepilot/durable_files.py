@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
+import fcntl
 import json
 import os
 from pathlib import Path
@@ -43,12 +46,16 @@ def atomic_copy(source: Path, target: Path) -> None:
 
 
 def atomic_write_json(path: Path, value: object) -> None:
+    atomic_write_text(path, json.dumps(value, indent=2, sort_keys=True))
+
+
+def atomic_write_text(path: Path, value: str) -> None:
     ensure_durable_directory(path.parent)
     descriptor, temporary = tempfile.mkstemp(prefix=".course-update-recovery-", dir=path.parent)
     temporary_path = Path(temporary)
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            json.dump(value, handle, indent=2, sort_keys=True)
+            handle.write(value)
             handle.flush()
             os.fsync(handle.fileno())
         os.chmod(temporary_path, 0o600)
@@ -61,6 +68,19 @@ def atomic_write_json(path: Path, value: object) -> None:
             pass
         temporary_path.unlink(missing_ok=True)
         raise
+
+
+@contextmanager
+def exclusive_file_lock(path: Path) -> Iterator[None]:
+    ensure_durable_directory(path.parent)
+    lock_path = path.parent / f".{path.name}.lock"
+    descriptor = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        yield
+    finally:
+        fcntl.flock(descriptor, fcntl.LOCK_UN)
+        os.close(descriptor)
 
 
 def assert_single_link_regular(path: Path) -> None:

@@ -134,6 +134,7 @@ export const enMessages = {
   "dashboard.loadingCourses": "Loading your university courses...",
   "dashboard.courseSyncError":
     "Your university courses could not be loaded. Sign in again to retry.",
+  "dashboard.workspaceLoadError": "Course workspaces could not be loaded: {message}",
   "dashboard.noCourses": "No courses are available for this term.",
   "dashboard.noTutor": "Not supported yet",
   "dashboard.noMatchedTutor": "No matched LecturePilot workspace for this course yet.",

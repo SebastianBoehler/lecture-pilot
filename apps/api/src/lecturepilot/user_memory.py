@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from lecturepilot.durable_files import atomic_write_json, atomic_write_text, exclusive_file_lock
 from lecturepilot.models import UserMemoryContext
 from lecturepilot.storage_layout import StorageLayout
 
@@ -16,6 +17,21 @@ class UserMemoryStore:
         self.layout = layout
 
     def read_context(self, user_id: str, course_id: str | None = None) -> UserMemoryContext:
+        with exclusive_file_lock(self._lock_path(user_id)):
+            global_path, course_path = self._ensure_context_files(user_id, course_id)
+            return UserMemoryContext(
+                global_notes=global_path.read_text(encoding="utf-8")[:4000],
+                course_notes=(
+                    course_path.read_text(encoding="utf-8")[:4000] if course_path else ""
+                ),
+                preferences=_read_preferences(
+                    self.layout.user_memories_dir(user_id) / "preferences.json"
+                ),
+            )
+
+    def _ensure_context_files(
+        self, user_id: str, course_id: str | None
+    ) -> tuple[Path, Path | None]:
         root = self.layout.user_root(user_id)
         memories = self.layout.user_memories_dir(user_id)
         root.mkdir(parents=True, exist_ok=True)
@@ -34,28 +50,22 @@ class UserMemoryStore:
             course_trace_path = course_memories / "memory-trace.jsonl"
 
         if not profile_path.exists():
-            profile_path.write_text(
-                json.dumps(
-                    {"schema_version": 1, "user_key": self.layout.user_key(user_id)}, indent=2
-                ),
-                encoding="utf-8",
+            atomic_write_json(
+                profile_path,
+                {"schema_version": 1, "user_key": self.layout.user_key(user_id)},
             )
         if not preferences_path.exists():
-            preferences_path.write_text("{}\n", encoding="utf-8")
+            atomic_write_json(preferences_path, {})
         if not global_path.exists():
-            global_path.write_text("", encoding="utf-8")
+            atomic_write_text(global_path, "")
         if not global_trace_path.exists():
-            global_trace_path.write_text("", encoding="utf-8")
+            atomic_write_text(global_trace_path, "")
         if course_path and not course_path.exists():
-            course_path.write_text("", encoding="utf-8")
+            atomic_write_text(course_path, "")
         if course_trace_path and not course_trace_path.exists():
-            course_trace_path.write_text("", encoding="utf-8")
+            atomic_write_text(course_trace_path, "")
 
-        return UserMemoryContext(
-            global_notes=global_path.read_text(encoding="utf-8")[:4000],
-            course_notes=(course_path.read_text(encoding="utf-8")[:4000] if course_path else ""),
-            preferences=_read_preferences(preferences_path),
-        )
+        return global_path, course_path
 
     def remember(
         self,
@@ -72,52 +82,59 @@ class UserMemoryStore:
         if scope not in {"global", "course"}:
             raise ValueError("Memory scope must be global or course.")
 
-        self.read_context(user_id, course_id)
-        memories = (
-            self.layout.user_course_memories_dir(user_id, course_id)
-            if scope == "course"
-            else self.layout.user_memories_dir(user_id)
-        )
-        note = note.strip()
-        if note:
-            notes_path = memories / ("course.md" if scope == "course" else "global.md")
-            current = notes_path.read_text(encoding="utf-8") if notes_path.exists() else ""
-            notes_path.write_text((current.rstrip() + f"\n- {note}\n").lstrip(), encoding="utf-8")
-        if preference_key:
-            pref_path = self.layout.user_memories_dir(user_id) / "preferences.json"
-            prefs = _read_preferences(pref_path)
-            prefs[preference_key] = preference_value or ""
-            pref_path.write_text(json.dumps(prefs, indent=2), encoding="utf-8")
-        self._append_trace(
-            memories, scope, course_id, lecture_id, note, preference_key, preference_value
-        )
+        with exclusive_file_lock(self._lock_path(user_id)):
+            self._ensure_context_files(user_id, course_id)
+            memories = (
+                self.layout.user_course_memories_dir(user_id, course_id)
+                if scope == "course"
+                else self.layout.user_memories_dir(user_id)
+            )
+            note = note.strip()
+            if note:
+                notes_path = memories / ("course.md" if scope == "course" else "global.md")
+                current = notes_path.read_text(encoding="utf-8") if notes_path.exists() else ""
+                atomic_write_text(notes_path, (current.rstrip() + f"\n- {note}\n").lstrip())
+            if preference_key:
+                pref_path = self.layout.user_memories_dir(user_id) / "preferences.json"
+                prefs = _read_preferences(pref_path)
+                prefs[preference_key] = preference_value or ""
+                atomic_write_json(pref_path, prefs)
+            self._append_trace(
+                memories, scope, course_id, lecture_id, note, preference_key, preference_value
+            )
         return {"memory": "updated", "scope": scope}
 
     def update_preferences(self, user_id: str, updates: dict[str, Any]) -> dict[str, Any]:
-        self.read_context(user_id)
-        path = self.layout.user_memories_dir(user_id) / "preferences.json"
-        preferences = _read_preferences(path)
-        preferences.update(updates)
-        path.write_text(json.dumps(preferences, indent=2, sort_keys=True), encoding="utf-8")
-        return preferences
+        with exclusive_file_lock(self._lock_path(user_id)):
+            self._ensure_context_files(user_id, None)
+            path = self.layout.user_memories_dir(user_id) / "preferences.json"
+            preferences = _read_preferences(path)
+            preferences.update(updates)
+            atomic_write_json(path, preferences)
+            return preferences
 
     def delete_preference(self, user_id: str, key: str) -> None:
-        self.read_context(user_id)
-        path = self.layout.user_memories_dir(user_id) / "preferences.json"
-        preferences = _read_preferences(path)
-        preferences.pop(key, None)
-        path.write_text(json.dumps(preferences, indent=2, sort_keys=True), encoding="utf-8")
+        with exclusive_file_lock(self._lock_path(user_id)):
+            self._ensure_context_files(user_id, None)
+            path = self.layout.user_memories_dir(user_id) / "preferences.json"
+            preferences = _read_preferences(path)
+            preferences.pop(key, None)
+            atomic_write_json(path, preferences)
 
     def clear_notes(self, user_id: str, course_id: str | None = None) -> None:
-        self.read_context(user_id, course_id)
-        memories = (
-            self.layout.user_course_memories_dir(user_id, course_id)
-            if course_id
-            else self.layout.user_memories_dir(user_id)
-        )
-        note_path = memories / ("course.md" if course_id else "global.md")
-        note_path.write_text("", encoding="utf-8")
-        (memories / "memory-trace.jsonl").write_text("", encoding="utf-8")
+        with exclusive_file_lock(self._lock_path(user_id)):
+            self._ensure_context_files(user_id, course_id)
+            memories = (
+                self.layout.user_course_memories_dir(user_id, course_id)
+                if course_id
+                else self.layout.user_memories_dir(user_id)
+            )
+            note_path = memories / ("course.md" if course_id else "global.md")
+            atomic_write_text(note_path, "")
+            atomic_write_text(memories / "memory-trace.jsonl", "")
+
+    def _lock_path(self, user_id: str) -> Path:
+        return self.layout.user_root(user_id) / "memory-state"
 
     def _append_trace(
         self,
@@ -142,7 +159,7 @@ class UserMemoryStore:
         }
         trace_path = memories / "memory-trace.jsonl"
         current = trace_path.read_text(encoding="utf-8") if trace_path.exists() else ""
-        trace_path.write_text(f"{current}{json.dumps(trace, sort_keys=True)}\n", encoding="utf-8")
+        atomic_write_text(trace_path, f"{current}{json.dumps(trace, sort_keys=True)}\n")
 
 
 def _read_preferences(path: Path) -> dict[str, Any]:

@@ -1,20 +1,25 @@
 from __future__ import annotations
 
-import json
-from collections import Counter, defaultdict
-from dataclasses import dataclass
+from collections.abc import Iterator
 from datetime import UTC, datetime
+import json
+import os
 from pathlib import Path
-from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from lecturepilot.canvas_models import CanvasBlock
-from lecturepilot.coaching_analytics import AnalyticsGateMetric, gate_metrics
+from lecturepilot.coaching_analytics import AnalyticsGateMetric, GateMetricsAccumulator
 from lecturepilot.coaching_progress import CoachingTurnEvent
+from lecturepilot.durable_files import exclusive_file_lock
 from lecturepilot.learning_map import LearningMap
 from lecturepilot.models import AttendanceStatus, QualityGateDecision
 from lecturepilot.professor_preview import is_professor_preview_user_id
+from lecturepilot.quiz_analytics import (
+    AnalyticsOptionMetric as AnalyticsOptionMetric,
+    AnalyticsQuizMetric as AnalyticsQuizMetric,
+    QuizMetricsAccumulator,
+)
 from lecturepilot.storage_layout import StorageLayout, safe_id
 
 
@@ -34,40 +39,14 @@ class QuizAnswerResult(BaseModel):
     correct: bool | None
 
 
-class AnalyticsOptionMetric(BaseModel):
-    option_index: int
-    option_id: str | None = None
-    text: str
-    selections: int
-    correct: bool
-
-
-class AnalyticsQuizMetric(BaseModel):
-    component_id: str
-    component_type: str
-    title: str
-    question: str
-    total_attempts: int
-    unique_learners: int
-    correct_attempts: int
-    correct_rate: float | None
-    latest_activity: str | None
-    attendance_split: dict[str, int]
-    options: list[AnalyticsOptionMetric]
-
-
 class LectureAnalyticsSummary(BaseModel):
     course_id: str
     lecture_id: str
     total_events: int
+    unique_learners: int
     learning_map: LearningMap | None = None
     quizzes: list[AnalyticsQuizMetric]
     gates: list[AnalyticsGateMetric]
-
-
-@dataclass(frozen=True)
-class _Event:
-    payload: dict
 
 
 class AnalyticsStore:
@@ -161,39 +140,49 @@ class AnalyticsStore:
         )
 
     def summary(self, *, course_id: str, lecture_id: str) -> LectureAnalyticsSummary:
-        events = self.events(course_id=course_id, lecture_id=lecture_id)
+        quizzes = QuizMetricsAccumulator()
+        gates = GateMetricsAccumulator()
+        learners: set[str] = set()
+        total_events = 0
+        for event in self.iter_events(course_id=course_id, lecture_id=lecture_id):
+            total_events += 1
+            if event.get("user_key"):
+                learners.add(str(event["user_key"]))
+            quizzes.record(event)
+            gates.record(event)
         return LectureAnalyticsSummary(
             course_id=course_id,
             lecture_id=lecture_id,
-            total_events=len(events),
-            quizzes=_quiz_metrics(events),
-            gates=gate_metrics(events),
+            total_events=total_events,
+            unique_learners=len(learners),
+            quizzes=quizzes.metrics(),
+            gates=gates.metrics(),
         )
 
     def events(self, *, course_id: str, lecture_id: str) -> list[dict]:
-        return [event.payload for event in self._read(course_id, lecture_id)]
+        return list(self.iter_events(course_id=course_id, lecture_id=lecture_id))
+
+    def iter_events(self, *, course_id: str, lecture_id: str) -> Iterator[dict]:
+        path = self._events_path(course_id, lecture_id)
+        if not path.exists():
+            return
+        with exclusive_file_lock(path), path.open(encoding="utf-8") as handle:
+            for line in handle:
+                if not line.strip():
+                    continue
+                try:
+                    payload = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(payload, dict):
+                    yield payload
 
     def _append(self, course_id: str, lecture_id: str, payload: dict) -> None:
         path = self._events_path(course_id, lecture_id)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("a", encoding="utf-8") as handle:
+        with exclusive_file_lock(path), path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(payload, sort_keys=True) + "\n")
-
-    def _read(self, course_id: str, lecture_id: str) -> list[_Event]:
-        path = self._events_path(course_id, lecture_id)
-        if not path.exists():
-            return []
-        events = []
-        for line in path.read_text(encoding="utf-8").splitlines():
-            if not line.strip():
-                continue
-            try:
-                payload = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if isinstance(payload, dict):
-                events.append(_Event(payload))
-        return events
+            handle.flush()
+            os.fsync(handle.fileno())
 
     def _events_path(self, course_id: str, lecture_id: str) -> Path:
         return (
@@ -203,61 +192,6 @@ class AnalyticsStore:
             / safe_id(lecture_id)
             / "events.jsonl"
         )
-
-
-def _quiz_metrics(events: list[dict]) -> list[AnalyticsQuizMetric]:
-    grouped: dict[str, list[dict]] = defaultdict(list)
-    for event in events:
-        if event.get("type") == "quiz_answer":
-            grouped[str(event.get("component_id") or event.get("block_id"))].append(event)
-    return [_quiz_metric(component_id, items) for component_id, items in sorted(grouped.items())]
-
-
-def _quiz_metric(component_id: str, events: list[dict]) -> AnalyticsQuizMetric:
-    latest = max(events, key=lambda item: str(item.get("created_at") or ""))
-    correct_attempts = sum(1 for event in events if event.get("correct") is True)
-    return AnalyticsQuizMetric(
-        component_id=component_id,
-        component_type=str(latest.get("component_type") or "quiz"),
-        title=str(latest.get("title") or component_id),
-        question=str(latest.get("question") or ""),
-        total_attempts=len(events),
-        unique_learners=len(
-            {str(event.get("user_key")) for event in events if event.get("user_key")}
-        ),
-        correct_attempts=correct_attempts,
-        correct_rate=round(correct_attempts / len(events), 4) if events else None,
-        latest_activity=str(latest.get("created_at") or "") or None,
-        attendance_split=_count_values(events, "attendance"),
-        options=_option_metrics(events, latest),
-    )
-
-
-def _option_metrics(events: list[dict], latest: dict) -> list[AnalyticsOptionMetric]:
-    selections = Counter(int(event.get("option_index", -1)) for event in events)
-    options = latest.get("options") if isinstance(latest.get("options"), list) else []
-    correct_index = latest.get("correct_index")
-    metrics = []
-    for option in options:
-        if not isinstance(option, dict):
-            continue
-        index = int(option.get("option_index", -1))
-        metrics.append(
-            AnalyticsOptionMetric(
-                option_index=index,
-                option_id=option.get("option_id")
-                if isinstance(option.get("option_id"), str)
-                else None,
-                text=str(option.get("text") or ""),
-                selections=selections.get(index, 0),
-                correct=index == correct_index,
-            )
-        )
-    return metrics
-
-
-def _count_values(events: list[dict], key: Literal["attendance", "status"]) -> dict[str, int]:
-    return dict(sorted(Counter(str(event.get(key) or "unknown") for event in events).items()))
 
 
 def _options_snapshot(block: CanvasBlock) -> list[dict]:

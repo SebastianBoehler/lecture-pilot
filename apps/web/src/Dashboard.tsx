@@ -16,6 +16,7 @@ export function Dashboard({
   publishedLectureIds,
   session,
   workspaceCourse,
+  workspaceLoadError = null,
   learnerProfileState,
   onOpen,
   onSetAttendance,
@@ -24,6 +25,7 @@ export function Dashboard({
   publishedLectureIds: string[];
   session: LoginSession | null;
   workspaceCourse: UniversityCourse;
+  workspaceLoadError?: string | null;
   learnerProfileState?: LearnerProfileState;
   onOpen: (lecture: Lecture) => void;
   onSetAttendance: (lectureId: string, attendance: Attendance) => void;
@@ -53,6 +55,12 @@ export function Dashboard({
         </h1>
         <p>{t("dashboard.subtitle")}</p>
       </section>
+
+      {workspaceLoadError ? (
+        <p className="form-error" role="alert">
+          {t("dashboard.workspaceLoadError", { message: workspaceLoadError })}
+        </p>
+      ) : null}
 
       <NextStudyRecommendation
         course={workspaceCourse}

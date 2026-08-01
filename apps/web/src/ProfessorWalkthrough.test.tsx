@@ -2,12 +2,12 @@ import { act, render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider, type Locale } from "./i18n";
+import { ProfessorWalkthrough } from "./ProfessorWalkthrough";
 import {
   hasSeenProfessorWalkthrough,
-  ProfessorWalkthrough,
   requestProfessorWalkthrough,
   walkthroughStorageKey,
-} from "./ProfessorWalkthrough";
+} from "./professorWalkthroughState";
 
 const joyride = vi.hoisted(() => ({
   props: null as Record<string, unknown> | null,

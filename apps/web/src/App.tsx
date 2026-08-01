@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 
 import {
-  getCourses,
   getCourseLectures,
   getDraftLectureCanvas,
   getLectureCanvas,
@@ -26,13 +25,7 @@ import {
   localProfessorSession,
 } from "./appDefaults";
 import { canManageCourses } from "./authz";
-import {
-  clearDemoWorkspaceCourse,
-  readDemoWorkspaceCourse,
-  writeDemoWorkspaceCourse,
-} from "./demoWorkspaceAccess";
-import { findUniversityWorkspaceCourse } from "./dashboardCourses";
-import { developmentWorkspaceCourse } from "./devWorkspaceAccess";
+import { clearDemoWorkspaceCourse, writeDemoWorkspaceCourse } from "./demoWorkspaceAccess";
 import { I18nProvider, type Locale } from "./i18n";
 import { resetLearnerWorkspace } from "./learnerWorkspaceApi";
 import { readLocalePreference, writeLocalePreference } from "./localePreference";
@@ -47,6 +40,7 @@ import { useUniversityCourseSync } from "./useUniversityCourseSync";
 import { useFeedbackPrompt } from "./useFeedbackPrompt";
 import { useViewTransitionReset } from "./useViewTransitionReset";
 import { useVersionUpdateActivity } from "./VersionUpdateBoundary";
+import { findLoadableWorkspaceCourse } from "./workspaceCourseLoader";
 import type { WorkspaceResetSelection } from "./WorkspaceResetControl";
 import type {
   Attendance,
@@ -88,6 +82,7 @@ function App() {
   );
   const [canvasDocument, setCanvasDocument] = useState<CanvasDocument | null>(null);
   const [canvasError, setCanvasError] = useState<string | null>(null);
+  const [workspaceLoadError, setWorkspaceLoadError] = useState<string | null>(null);
   const [focusedSectionId, setFocusedSectionId] = useState("bayesian-decision-theory-the-aim");
   const [highlightedBlockId, setHighlightedBlockId] = useState<string | null>(null);
   const [highlightedText, setHighlightedText] = useState<string | null>(null);
@@ -145,41 +140,25 @@ function App() {
     preferredCourseId = workspaceCourseId,
   ) {
     try {
-      const courses = await getCourses(activeSession);
-      const savedDemoCourse = readDemoWorkspaceCourse();
-      const demoCourse = courses.find((course) => course.id === savedDemoCourse?.id);
-      const devCourse = developmentWorkspaceCourse();
-      const preferredCourse = courses.find((course) => course.id === preferredCourseId);
-      const universityWorkspaceCourse = findUniversityWorkspaceCourse(
-        courses,
-        activeSession.university_courses ?? [],
-        activeSession.courses,
-      );
-      const storedCourses = [...courses].reverse();
-      const candidates = [
-        preferredCourse,
-        demoCourse,
-        universityWorkspaceCourse,
-        devCourse,
-        ...storedCourses,
-      ].filter(
-        (course, index, list): course is UniversityCourse =>
-          Boolean(course) && list.findIndex((item) => item?.id === course?.id) === index,
-      );
-      for (const course of candidates) {
-        const nextLectures = await getCourseLectures(course.id, activeSession);
-        if (!nextLectures.length) continue;
-        setWorkspaceCourse(course);
-        setWorkspaceCourseId(course.id);
-        setSelectedCourseId(course.id);
-        setAvailableLectures(nextLectures);
-        setSelectedLecture(
-          (current) => nextLectures.find((lecture) => lecture.id === current.id) ?? nextLectures[0],
-        );
+      const loaded = await findLoadableWorkspaceCourse(activeSession, preferredCourseId);
+      setWorkspaceLoadError(null);
+      if (!loaded) {
+        setAvailableLectures([]);
         return;
       }
-    } catch {
-      setAvailableLectures(import.meta.env.DEV ? lectures : []);
+      setWorkspaceCourse(loaded.course);
+      setWorkspaceCourseId(loaded.course.id);
+      setSelectedCourseId(loaded.course.id);
+      setAvailableLectures(loaded.lectures);
+      setSelectedLecture(
+        (current) =>
+          loaded.lectures.find((lecture) => lecture.id === current.id) ?? loaded.lectures[0],
+      );
+    } catch (error) {
+      setAvailableLectures([]);
+      setWorkspaceLoadError(
+        error instanceof Error ? error.message : "Course workspace loading failed.",
+      );
     }
   }
 
@@ -278,6 +257,7 @@ function App() {
     setNavigationVersion((current) => current + 1);
     setCanvasDocument(null);
     setCanvasError(null);
+    setWorkspaceLoadError(null);
     setMessages(initialMessagesForAttendance(lectures[2].attendance));
     setLastTutorModel(null);
     setPassedGateIds([]);
@@ -470,7 +450,7 @@ function App() {
             onClose={feedback.close}
           />
         ) : null}
-        {courseManagerSession ? (
+        {courseManagerSession && view !== "lesson" ? (
           <ProfessorWalkthrough
             key={courseManagerSession.username}
             onViewChange={(nextView) => {
@@ -503,6 +483,7 @@ function App() {
           view={view}
           workspaceCourse={workspaceCourse}
           workspaceCourseId={workspaceCourseId}
+          workspaceLoadError={workspaceLoadError}
           onLogout={handleLogout}
           onLogin={(nextSession) => {
             setSession(nextSession);
@@ -539,6 +520,7 @@ function App() {
             }));
             writeDemoWorkspaceCourse(course);
             setWorkspaceCourse(course);
+            setWorkspaceLoadError(null);
             setWorkspaceCourseId(course.id);
             setSelectedCourseId(course.id);
             setAvailableLectures(publishedLectures);

@@ -42,6 +42,7 @@ export type LectureAnalyticsSummary = {
   course_id: string;
   lecture_id: string;
   total_events: number;
+  unique_learners: number;
   learning_map?: LearningMap | null;
   quizzes: AnalyticsQuizMetric[];
   gates: AnalyticsGateMetric[];

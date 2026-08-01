@@ -2,9 +2,12 @@ import { useEffect } from "react";
 import { EVENTS, STATUS, useJoyride, type EventData, type Step } from "react-joyride";
 
 import { useI18n } from "./i18n";
+import {
+  hasSeenProfessorWalkthrough,
+  PROFESSOR_WALKTHROUGH_EVENT,
+  walkthroughStorageKey,
+} from "./professorWalkthroughState";
 
-export const PROFESSOR_WALKTHROUGH_EVENT = "lecturepilot:start-professor-walkthrough";
-const PROFESSOR_WALKTHROUGH_VERSION = "v2";
 const TOUR_TARGET_WAIT_MS = 2500;
 
 type ProfessorWalkthroughView = "professor" | "course-management" | "performance";
@@ -85,18 +88,6 @@ export function ProfessorWalkthrough({
   }, [controls]);
 
   return Tour;
-}
-
-export function requestProfessorWalkthrough() {
-  window.dispatchEvent(new Event(PROFESSOR_WALKTHROUGH_EVENT));
-}
-
-export function hasSeenProfessorWalkthrough(username: string) {
-  return window.localStorage.getItem(walkthroughStorageKey(username)) === "seen";
-}
-
-export function walkthroughStorageKey(username: string) {
-  return `lecturepilot.professor-walkthrough.${PROFESSOR_WALKTHROUGH_VERSION}.${username}`;
 }
 
 function handleTourEvent(event: EventData, username: string) {

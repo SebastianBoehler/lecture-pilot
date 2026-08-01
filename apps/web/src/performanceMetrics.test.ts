@@ -16,13 +16,13 @@ describe("lectureSnapshot", () => {
     expect(analyticsSignals(analytics())).toEqual({
       attendance: { absent: 3, present: 9 },
       gateRate: 0.75,
-      learners: 6,
+      learners: 9,
       quizRate: 0.6,
     });
 
     expect(lectureSnapshot(lecture(), analytics())).toMatchObject({
       gateRate: "75%",
-      learners: 6,
+      learners: 9,
       quizRate: "60%",
     });
   });
@@ -59,6 +59,7 @@ function analytics() {
     course_id: "course-1",
     lecture_id: "lecture-01",
     total_events: 14,
+    unique_learners: 9,
     quizzes: [
       {
         attendance_split: { absent: 1, present: 4 },

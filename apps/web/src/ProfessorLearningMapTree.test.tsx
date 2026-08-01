@@ -41,6 +41,7 @@ function analytics(): LectureAnalyticsSummary {
     course_id: "demo-ml-course",
     lecture_id: "lecture-03",
     total_events: 1,
+    unique_learners: 1,
     quizzes: [],
     gates: [
       {

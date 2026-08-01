@@ -12,6 +12,7 @@ from test_analytics_routes import _canvas_document, _client
 
 def test_course_analytics_roll_up_published_lectures_without_double_counting_learners(
     tmp_path: Path,
+    monkeypatch,
 ) -> None:
     client = _client(tmp_path)
     _publish_second_lecture(client, tmp_path)
@@ -31,6 +32,14 @@ def test_course_analytics_roll_up_published_lectures_without_double_counting_lea
             block=block,
             option_index=option_index,
         )
+    original_read_text = Path.read_text
+
+    def reject_whole_event_log_read(path: Path, *args, **kwargs) -> str:
+        if path.name == "events.jsonl":
+            raise AssertionError("course analytics must stream event logs")
+        return original_read_text(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", reject_whole_event_log_read)
 
     response = client.get(
         "/admin/courses/demo-course/analytics",
