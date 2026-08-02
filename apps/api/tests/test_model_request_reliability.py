@@ -68,3 +68,34 @@ async def test_nontransient_provider_error_is_not_retried(monkeypatch) -> None:
         await complete_with_usage(None, completion, model="gemini/test-model")
 
     assert calls == 1
+
+
+@pytest.mark.asyncio
+async def test_exhausted_provider_credits_are_not_retried(monkeypatch) -> None:
+    calls = 0
+
+    async def completion(**_kwargs):
+        nonlocal calls
+        calls += 1
+        raise _QuotaError(
+            "You have no credits remaining.",
+            code="credit_balance_exhausted",
+        )
+
+    async def no_wait(_seconds: float) -> None:
+        raise AssertionError("exhausted credits cannot recover through an immediate retry")
+
+    monkeypatch.setattr("lecturepilot.model_usage.asyncio.sleep", no_wait)
+
+    with pytest.raises(_QuotaError):
+        await complete_with_usage(None, completion, model="openai/gpt-5.6-luna")
+
+    assert calls == 1
+
+
+class _QuotaError(RuntimeError):
+    status_code = 429
+
+    def __init__(self, message: str, *, code: str) -> None:
+        super().__init__(message)
+        self.code = code

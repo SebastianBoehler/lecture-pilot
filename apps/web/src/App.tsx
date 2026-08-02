@@ -164,10 +164,11 @@ function App() {
 
   async function handleTutorMessage(message: string) {
     const timestamp = Date.now();
+    const userMessageId = `user-${timestamp}`;
     const pendingMessageId = `agent-pending-${timestamp}`;
     setMessages((current) => [
       ...current,
-      { id: `user-${timestamp}`, role: "user", content: message },
+      { id: userMessageId, role: "user", content: message },
       pendingTutorMessage(pendingMessageId),
     ]);
 
@@ -190,7 +191,9 @@ function App() {
         },
       );
     } catch (error) {
-      setMessages((current) => current.filter((item) => item.id !== pendingMessageId));
+      setMessages((current) =>
+        current.filter((item) => item.id !== userMessageId && item.id !== pendingMessageId),
+      );
       throw error;
     }
     setLastTutorModel(result.model);

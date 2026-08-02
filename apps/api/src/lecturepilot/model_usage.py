@@ -12,6 +12,7 @@ from uuid import UUID, uuid4
 from lecturepilot.database import Database
 from lecturepilot.db_models import ModelUsageEventRecord
 from lecturepilot.logging_observability import current_operation_id
+from lecturepilot.model_provider_errors import is_retryable_provider_error
 from lecturepilot.model_request_options import MODEL_REQUEST_TIMEOUT_SECONDS
 
 
@@ -145,7 +146,7 @@ async def _complete_with_attempts(
                     attempt=attempt,
                     error_type=type(exc).__name__[:80],
                 )
-            if attempt >= MODEL_REQUEST_MAX_ATTEMPTS or not _is_retryable(exc):
+            if attempt >= MODEL_REQUEST_MAX_ATTEMPTS or not is_retryable_provider_error(exc):
                 raise
             await asyncio.sleep(MODEL_REQUEST_RETRY_DELAY_SECONDS)
             continue
@@ -183,25 +184,6 @@ def _empty_tokens() -> dict[str, int]:
         "cached_input_tokens": 0,
         "reasoning_tokens": 0,
     }
-
-
-def _is_retryable(exc: Exception) -> bool:
-    if isinstance(exc, (TimeoutError, ConnectionError)):
-        return True
-    status_code = getattr(exc, "status_code", None)
-    if status_code in {408, 409, 429, 500, 502, 503, 504}:
-        return True
-    name = type(exc).__name__.lower()
-    return any(
-        marker in name
-        for marker in (
-            "timeout",
-            "ratelimit",
-            "serviceunavailable",
-            "apiconnection",
-            "internalserver",
-        )
-    )
 
 
 def _value(value: Any, name: str) -> Any:

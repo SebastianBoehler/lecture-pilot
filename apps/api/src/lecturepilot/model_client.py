@@ -12,6 +12,7 @@ from lecturepilot.agent_response_schema import lecturepilot_response_format
 from lecturepilot.learning_gates import gate_rubric_context
 from lecturepilot.model_commands import canvas_context
 from lecturepilot.model_payload import agent_result_from_content
+from lecturepilot.model_provider_errors import model_provider_error_message
 from lecturepilot.model_request_options import completion_options
 from lecturepilot.model_usage import ModelUsageRecorder
 from lecturepilot.models import (
@@ -89,7 +90,7 @@ class LiteLLMModelClient:
             raise
         except Exception as exc:
             raise ModelExecutionError(
-                "Model request failed. Check the provider key and model configuration."
+                model_provider_error_message(exc, provider=settings.provider)
             ) from exc
         return agent_result_from_content(response.choices[0].message.content, turn, settings.model)
 

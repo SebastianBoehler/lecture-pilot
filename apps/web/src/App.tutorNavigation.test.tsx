@@ -85,6 +85,39 @@ describe("Tutor canvas navigation", () => {
     expect(scrollTargets).not.toContain("bayes-formula-list");
     expect(scrollTargets.at(-1)).toBe("student-soccer-bayes-example");
   });
+
+  it("restores a failed tutor turn without leaving a duplicate transcript message", async () => {
+    const baseFetch = mockLoginAndTutorFetch();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url.includes("/agent/turn/stream")) {
+          return {
+            ok: false,
+            json: async () => ({
+              detail:
+                "OpenAI API credits are exhausted. Add credits, then retry this tutor message.",
+            }),
+          };
+        }
+        return baseFetch(url, init);
+      }),
+    );
+    const user = userEvent.setup();
+    render(<App />);
+
+    await logIn(user);
+    await openLecture03FromDashboard(user);
+    const composer = screen.getByPlaceholderText(/ask about this lecture/i);
+    await user.type(composer, "Why does this prior matter?");
+    await user.click(screen.getByRole("button", { name: /send message/i }));
+
+    expect(await screen.findByText(/OpenAI API credits are exhausted/i)).toBeInTheDocument();
+    expect(composer).toHaveValue("Why does this prior matter?");
+    expect(document.querySelector(".message-list")).not.toHaveTextContent(
+      "Why does this prior matter?",
+    );
+  });
 });
 
 async function logIn(user: ReturnType<typeof userEvent.setup>) {

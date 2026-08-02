@@ -44,6 +44,7 @@ export function TutorDrawer({
     try {
       await onSendMessage(message);
     } catch (sendError) {
+      setDraft(message);
       setError(sendError instanceof Error ? sendError.message : "Tutor turn failed.");
     } finally {
       setIsSending(false);
@@ -89,6 +90,7 @@ export function TutorDrawer({
             <div className="chat-composer">
               <textarea
                 aria-label="Tutor message"
+                disabled={isSending}
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={handleDraftKeyDown}
                 placeholder="Ask about this lecture..."

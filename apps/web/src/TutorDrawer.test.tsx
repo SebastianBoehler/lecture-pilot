@@ -1,4 +1,5 @@
-import { screen, within } from "@testing-library/react";
+import { act, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 
 import { renderWithI18n } from "./test/renderWithI18n";
@@ -96,4 +97,32 @@ it("shows live activity tags while a tutor turn is pending", () => {
   ).toBeTruthy();
   expect(screen.getByText("read request")).toBeInTheDocument();
   expect(screen.getByText("call tutor model")).toBeInTheDocument();
+});
+
+it("restores a failed tutor message in the composer for retry", async () => {
+  const user = userEvent.setup();
+  let rejectTurn: (reason: Error) => void = () => undefined;
+  const onSendMessage = vi.fn(
+    () =>
+      new Promise<void>((_resolve, reject) => {
+        rejectTurn = reject;
+      }),
+  );
+  renderWithI18n(
+    <TutorDrawer messages={[]} model={null} onClose={vi.fn()} onSendMessage={onSendMessage} />,
+  );
+
+  const composer = screen.getByRole("textbox", { name: "Tutor message" });
+  await user.type(composer, "Why is this tokenization wrong?");
+  await user.click(screen.getByRole("button", { name: "Send message" }));
+
+  expect(composer).toBeDisabled();
+  await act(async () => {
+    rejectTurn(
+      new Error("OpenAI API credits are exhausted. Add credits, then retry this tutor message."),
+    );
+  });
+  expect(await screen.findByText(/OpenAI API credits are exhausted/i)).toBeInTheDocument();
+  expect(composer).toHaveValue("Why is this tokenization wrong?");
+  expect(composer).toBeEnabled();
 });

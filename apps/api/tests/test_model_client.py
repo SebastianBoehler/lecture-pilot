@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from lecturepilot.model_client import LiteLLMModelClient
+from lecturepilot.model_client import LiteLLMModelClient, ModelExecutionError
 from lecturepilot.models import AgentTurnInput, AttendanceStatus, CanvasState, ProviderSettings
 from lecturepilot.providers import ProviderConfigurationError
 
@@ -161,3 +161,43 @@ async def test_model_client_omits_temperature_for_openai_gpt5(
 
     assert "temperature" not in calls[0]
     assert calls[0]["reasoning_effort"] == "low"
+
+
+async def test_model_client_reports_exhausted_openai_credits(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_completion(**_kwargs):
+        raise _QuotaError(
+            "You have no credits remaining.",
+            code="credit_balance_exhausted",
+        )
+
+    monkeypatch.setitem(sys.modules, "litellm", SimpleNamespace(acompletion=fake_completion))
+
+    with pytest.raises(
+        ModelExecutionError,
+        match="OpenAI API credits are exhausted.*retry this tutor message",
+    ):
+        await LiteLLMModelClient().complete_turn(
+            settings=ProviderSettings(
+                provider="openai",
+                model="openai/gpt-5.6-luna",
+                api_key_env="OPENAI_API_KEY",
+                capabilities=set(),
+            ),
+            turn=AgentTurnInput(
+                user_id="u1",
+                course_id="course-1",
+                lecture_id="lecture-01",
+                attendance=AttendanceStatus.UNKNOWN,
+                message="Explain the topic.",
+            ),
+        )
+
+
+class _QuotaError(RuntimeError):
+    status_code = 429
+
+    def __init__(self, message: str, *, code: str) -> None:
+        super().__init__(message)
+        self.code = code
