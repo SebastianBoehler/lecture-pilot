@@ -1,19 +1,25 @@
 <div align="center">
   <h1>LecturePilot</h1>
-  <p><strong>A lightweight, text-first course tutor for university settings.</strong></p>
+  <p><strong>A lightweight, source-grounded course tutor for university teaching.</strong></p>
   <p>
     <a href="https://github.com/SebastianBoehler/lecture-pilot/actions/workflows/ci.yml">
       <img alt="CI" src="https://github.com/SebastianBoehler/lecture-pilot/actions/workflows/ci.yml/badge.svg" />
     </a>
-    <img alt="UI test suite: Vitest" src="https://img.shields.io/badge/UI%20test%20suite-Vitest-6E9FEE" />
-    <img alt="API test suite: pytest" src="https://img.shields.io/badge/API%20test%20suite-pytest-3776AB" />
-    <img alt="UI build: Vite" src="https://img.shields.io/badge/UI%20build-Vite-646CFF" />
+    <img alt="UI test suite: Vitest" src="https://img.shields.io/badge/UI%20tests-Vitest-6E9FEE" />
+    <img alt="API test suite: pytest" src="https://img.shields.io/badge/API%20tests-pytest-3776AB" />
     <img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-2F4858" />
   </p>
 </div>
 
-It combines a normal web app, a typed learner workspace, and a constrained agent
-harness. The current university integration is University of Tübingen via
+LecturePilot turns private course material into a focused learning workspace.
+Professors control the sources, schedule, and publication boundary. Students get
+only authorized, already-unlocked lectures, with a tutor that can explain,
+highlight, quiz, and create learner-owned notes without changing the official
+course material.
+
+The frontend never talks to model providers directly. Authentication, source
+access, model routing, workspace tools, quotas, and audit events stay behind the
+FastAPI backend. University of Tübingen integration is available through
 [`tue-api-wrapper`](https://github.com/SebastianBoehler/tue-api-wrapper).
 
 ## Preview
@@ -26,258 +32,127 @@ harness. The current university integration is University of Tübingen via
   />
 </p>
 
-## Product Flow
+## Product flow
 
-- Login through university credentials and synchronize the learner's own Alma
-  timetable and ILIAS memberships.
-- Let professors upload differently structured course folders, review/reorder a
-  proposed schedule, generate and repair private lecture drafts, then publish.
-- Show learners only authorized, published lectures whose access date passed.
-- Ask whether the learner attended, render source-backed slides and a focused
-  lesson canvas, then adapt the tutoring stance.
-- Let the constrained agent highlight, explain, quiz, generate learner-owned
-  study artifacts, and save progress/memory.
+1. A professor imports a course folder. LecturePilot indexes every source and
+   proposes where it belongs.
+2. The professor reviews the routing and schedule, generates or repairs lecture
+   canvases, and publishes them.
+3. A student signs in and sees only enrolled, published lectures whose access
+   date has passed.
+4. The lesson opens as a source-backed canvas. Attendance changes the tutoring
+   stance without changing the workspace schema.
+5. The tutor leads checks, records evidence, and saves learner-specific progress,
+   notes, preferences, and generated assets.
+6. Exam Readiness and immutable practice exams provide separate, attempt-first
+   ways to prepare and review solutions.
 
-## Current Slice
+## What is included
 
-This repository is intentionally small but runnable:
+- A React/Vite learning workspace with light and dark modes.
+- A FastAPI policy and agent layer with Postgres-backed identity, sessions,
+  enrollment evidence, course ownership, quotas, and audit events.
+- Professor workflows for source routing, lecture ordering, draft generation and
+  repair, publication, release notices, and learner-level aggregate insights.
+- A constrained tutor that works through typed, capability-scoped tools over
+  Markdown, YAML components, and learner assets. Backend policy—not the
+  prompt—enforces tenant access, lecture unlocks, safe paths, and immutable
+  official sources.
+- Source-backed checkpoints, quizzes, Exam Readiness, practice exams, persistent
+  learner memory, and in-canvas generated explanations or images.
+- PDF-first slide previews plus an isolated, no-secret TeX compiler for courses
+  that provide only source files.
+- A credential-free local UI preview. Real tutor turns fail clearly until a
+  supported provider key is configured.
 
-- FastAPI backend with health, course, lecture, and agent-turn endpoints.
-- Strict lecture unlock policy.
-- Typed workspace file policy.
-- Provider capability checks with Gemini Flash-Lite as the default text model.
-- Development-only credential-free demo that opens the course shell while
-  tutor turns use the configured provider model. Production builds do not
-  render demo access.
-- React/Vite frontend with dashboard and focused lesson workspace.
-- Unified TUE API login for students and professors, with the active
-  Alma role verified by the backend.
-- Login returns after role verification; lightweight Alma timetable and ILIAS
-  membership/profile data then synchronize in parallel behind the dashboard.
-- The active Alma `student` role grants learner access; any other verified Alma
-  role grants professor access. Browser-selected roles are never accepted.
-- Postgres-backed users, opaque sessions,
-  course ownership, Alma/ILIAS enrollment evidence, audit events, and durable
-  quotas.
-- Capability-scoped, symlink-safe learner and course-builder workspaces.
-- Uploaded lecture PDFs remain authoritative for slide previews. TeX-only
-  lectures are compiled into handout previews by an isolated, no-secret
-  service; failures keep the text canvas and surface a professor warning.
-- Light and dark mode.
-- Resumable/idempotent canvas generation with progress guidance, exact failed
-  block diagnostics, and targeted **Fix with AI** repair.
-- Professor course updates, lecture access scheduling, drag-and-drop lecture
-  order, learner preview, usage/performance aggregates, and release notices.
-- Backend and frontend tests.
-- CI, Dockerfiles, and Compose starter.
+## Small hosting footprint
 
-Provider-backed tutor turns intentionally fail with a clear error until a real
-API key is configured.
+LecturePilot is a CPU-only application control plane: model inference and image
+generation run at the configured providers, so the host needs no model weights
+or GPU. The checked-in Compose topology uses one shared host rather than a
+container per learner.
 
-## Agent Harness
+| Workload             | Runtime boundary                | Checked-in limit                                 |
+| -------------------- | ------------------------------- | ------------------------------------------------ |
+| Web and HTTPS        | Static Nginx site behind Caddy  | No model compute                                 |
+| API and agent tools  | FastAPI, shared by all learners | 2 vCPU, 2 GiB RAM, 256 processes                 |
+| TeX preview compiler | Isolated internal worker        | 1 vCPU, 1 GiB RAM, 64 processes                  |
+| State                | Postgres and named file volumes | Grows with accounts and uploaded course material |
+| Model inference      | External provider API           | No local GPU or inference server                 |
 
-LecturePilot is an agent harness for teaching, not a generic chatbot. The agent
-acts as a text-first tutor that can also build and revise the learning
-interface by operating on a constrained filesystem-like workspace.
+Five long-running containers provide the gateway, web app, API, compiler, and
+database. Preflight and migration are short-lived deployment jobs. On 2026-08-02,
+the locally built production-shaped images reported about **1.2 GB in total** by
+Docker's per-image sizes: API 490 MB, compiler 228 MB, Postgres 288 MB, gateway
+105 MB, and web 64 MB. Shared layers mean actual Docker disk use is not the sum
+of those figures.
 
-The tool model stays small and low-level with Pi-style Unix names where that
-fits the filesystem image. Tools are profile-scoped:
+The API and compiler limits are burst ceilings, not a measured host minimum; the
+gateway, web, and database remain uncapped. The topology is intended for a
+modest single-VM pilot, but cohort capacity and storage should be established
+with representative uploads and traffic. See the
+[self-hosting guide](docs/self-hosting.md) for deployment, backup, and open
+production gates.
 
-- default tutor: `pwd`, `ls`, `read`, `write`, `edit`, `focus`,
-  `highlight`, `record_gate`, `remember`, `generate_image`
-- evidence tutor: default tutor tools plus `find` and `grep` for exact
-  source/course-material search
-- course-builder/admin: `pwd`, `ls`, `find`, `grep`, `read`, `write`,
-  `edit`, `generate_image`, without learner-state tools such as
-  `record_gate` or `remember`
-
-High-level commands such as `append_section` and `update_section` are product
-conveniences over those workspace primitives. In the storage layer they become
-plain file operations: Markdown sections in `canvas/student/*.md`, interactive
-component definitions in `canvas/components/*.yaml`, and generated media under
-`canvas/student-assets/`. This keeps the model close to the same basic
-capabilities that make coding agents useful, while the backend still enforces
-tenant access, lecture unlocks, path safety, file-type limits, source
-immutability, and auditability.
-
-## Repository Layout
+## Architecture
 
 ```txt
-apps/api                 FastAPI backend and harness contracts
-apps/latex-compiler      Isolated, bounded TeX-to-PDF preview service
-apps/web                 React/Vite frontend
-services/agent           Reserved extraction boundary; runtime is currently in API
-packages/*               Reserved package boundaries; no runtime code yet
-integrations/tuebingen   Integration boundary notes; adapter code is in API
-docs                     Current architecture/operations docs and historical records
-deploy                   Docker and self-hosting files
+browser -> Caddy -> static web app
+                 -> FastAPI policy + agent harness -> model/image providers
+                                                    -> Postgres
+                                                    -> persisted workspaces
+                                                    -> isolated TeX compiler
 ```
 
-Start with the [documentation map](docs/README.md) to distinguish current
-operating guidance from dated design/implementation records.
-See [docs/media-discovery.md](docs/media-discovery.md) for the YouTube/media
-pre-asset contract.
-See [docs/course-ingestion-pipeline.md](docs/course-ingestion-pipeline.md) for
-the upload, canvas planning/repair, professor review, and publication pipeline.
-See [docs/workspaces.md](docs/workspaces.md) for filesystem-backed canvas and
-learner storage.
-See [docs/agent-tool-contracts.md](docs/agent-tool-contracts.md) for the
-profile-scoped tutor tool contracts and UI activity tags.
-See [docs/tenancy-security.md](docs/tenancy-security.md) for the tenant,
-profile, and secure course-material upload contract.
-See [docs/security-operations.md](docs/security-operations.md) for backup,
-restore, incident, and remaining retention requirements.
-See [security_best_practices_report.md](security_best_practices_report.md) for
-the current evidence-backed pilot status and open production-approval gates.
+The canvas is the editable learning surface. Official source material lives in
+a course-owned workspace; generated notes, quiz components, progress, and
+memory live in the learner workspace. See the
+[workspace contract](docs/workspaces.md),
+[agent tool contracts](docs/agent-tool-contracts.md), and
+[course ingestion pipeline](docs/course-ingestion-pipeline.md) for the detailed
+boundaries.
 
-## Product Changelog And Releases
+## Local development
 
-LecturePilot keeps user-facing release notes in
-[`apps/web/src/productChangelog.json`](apps/web/src/productChangelog.json). The
-same bilingual source powers the in-app **What's new** page, the repository
-[`CHANGELOG.md`](CHANGELOG.md), and GitHub Release notes. Entries describe what
-changed for students and lecturers rather than repeating commit messages.
-
-For a release:
-
-1. Add the new version at the top of `productChangelog.json` and update the
-   root, web, and API package versions.
-2. Run `npm run changelog:render` and `npm run changelog:check`.
-3. Merge the version change after CI passes, then tag that exact commit as
-   `vX.Y.Z` and push the tag.
-
-The tag-triggered release workflow validates that all versions and notes agree,
-then publishes the matching bilingual GitHub Release. Mark a change with
-`"feedbackDriven": true` when it directly implements user feedback.
-
-## Local Development
-
-Keep private professor/course files in `local-course-materials/`,
-`course-materials/`, `lecture-materials/`, or `content/private/`. These paths
-are gitignored on purpose; only sanitized examples and public fixtures should
-be committed.
-
-Course-material roots are intentionally private. By default, the API first
-checks the repo-local ignored course-material folder used by the bundled demo
-workspace. Set `LECTUREPILOT_COURSE_MATERIAL_ROOT` to point at another private
-course checkout or upload workspace.
-
-Backend:
+Requirements: Python 3.11+, Node.js with npm, and PostgreSQL.
 
 ```bash
+npm install
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e "apps/api[test,agent]"
-export DATABASE_URL=postgresql://lecturepilot:lecturepilot-test@127.0.0.1:55432/lecturepilot_test
-alembic -c apps/api/alembic.ini upgrade head
-uvicorn lecturepilot.app:app --app-dir apps/api/src --reload
+cp .env.local.example .env.local
 ```
 
-Run tests against a separate disposable database so their table cleanup cannot
-erase local login, course, or learner state:
+Add a provider key to `.env.local`, create and migrate the local databases named
+in that file, then start the API and web app together:
 
 ```bash
-export LECTUREPILOT_TEST_DATABASE_URL=postgresql://lecturepilot:lecturepilot-test@127.0.0.1:55432/lecturepilot_pytest
-DATABASE_URL="$LECTUREPILOT_TEST_DATABASE_URL" alembic -c apps/api/alembic.ini upgrade head
-pytest apps/api/tests
+alembic -c apps/api/alembic.ini upgrade head
+npm run dev:demo
 ```
 
-TeX-only slide previews require the isolated local compiler. See
-[docs/latex-compilation.md](docs/latex-compilation.md) for the run command and
-the PDF-first fallback contract.
+Open `http://127.0.0.1:5173` and select **Preview local demo**. Private course
+material belongs in a gitignored root such as `local-course-materials/`; use
+`LECTUREPILOT_COURSE_MATERIAL_ROOT` when the material lives elsewhere.
 
-Pure targeted API tests do not connect to Postgres. The full API suite requires
-a migrated PostgreSQL test database and cleans it lazily on the first
-database-backed operation in each test. CI provisions Postgres 16 automatically;
-local development may use any disposable Postgres instance at the exported URL.
-
-Live Uni Tübingen login also needs the wrapper package in the API environment:
+TeX-only previews also require the isolated compiler described in
+[the LaTeX guide](docs/latex-compilation.md). Live University of Tübingen login
+requires the optional integration:
 
 ```bash
 pip install -e "apps/api[tuebingen]"
 ```
 
-Published wrapper support is pinned to `tue-api-wrapper==0.3.0`, which requires
-the audited Pillow 12.3 security baseline. Local wrapper integration remains
-useful for redacted development checks.
+Local development reads only `.env.local`. Production reads only the ignored
+`.env.production` created from `.env.production.example`; there is no generic
+`.env` fallback. Provider selection and allowlisting remain server-side. See
+the [self-hosting guide](docs/self-hosting.md) for the production Compose and
+preflight sequence.
 
-When developing both repos locally, use the editable wrapper checkout instead:
+## Verification
 
-```bash
-pip install -e ../tue-api-wrapper/package
-```
-
-Frontend:
-
-```bash
-npm install
-npm run test --workspace apps/web
-npm run dev --workspace apps/web
-```
-
-## Try The Chat
-
-Run the API and web app in two terminals:
-
-```bash
-source .venv/bin/activate
-export OPENAI_API_KEY=...
-export LECTUREPILOT_MODEL=openai/gpt-5.6-luna
-uvicorn lecturepilot.app:app --app-dir apps/api/src --reload
-```
-
-```bash
-npm run dev --workspace apps/web
-```
-
-Open `http://127.0.0.1:5173`. In a development build, use **Preview local
-demo**, select lecture 03, click the speech-bubble button on the right rail,
-and ask for a Bayes concept check or a personalized example such as `Explain
-this with a soccer example`.
-The tutor calls the configured provider through the backend harness, marks the
-quality gate as pending or passed, and focuses the relevant canvas block.
-
-The deterministic `local-guided-preview` path remains available only as a
-backend fixture for `local-preview-user` tests.
-
-## Provider Setup
-
-Copy `.env.example` to `.env` and set one provider key.
-
-```bash
-OPENAI_API_KEY=...
-LECTUREPILOT_MODEL=openai/gpt-5.6-luna
-LECTUREPILOT_IMAGE_PROVIDER=auto
-GEMINI_IMAGE_MODEL=gemini-3.1-flash-image
-```
-
-The app is designed so provider routing sits behind the agent harness contract.
-The frontend never calls model providers directly.
-
-Infographic requests support Gemini, OpenRouter, and Hugging Face image
-providers. `auto` prefers Gemini, then OpenRouter, then Hugging Face, and writes
-the generated raster asset under the learner workspace. Without an image
-provider key, infographic requests fail clearly instead of generating local SVG
-placeholders.
-
-Professor-side YouTube discovery is optional. Set `YOUTUBE_API_KEY` to enable
-admin searches during course creation; approved selections are stored in the
-private course-material workspace and render as inline video blocks in the
-lesson canvas.
-
-## Observability
-
-Local tracing is disabled by default; production emits metadata-only JSON
-spans. Configuration and privacy boundaries are documented in
-[docs/observability.md](docs/observability.md).
-
-## Historical Design Source
-
-The original 2026-06-05 frontend direction is preserved in
-[docs/glm-5.1-ui-design.md](docs/glm-5.1-ui-design.md). It is historical input,
-not the current UI specification.
-
-## Testing
+Run the narrowest relevant check, or the full suite:
 
 ```bash
 npm run verify:fast
@@ -286,21 +161,23 @@ npm run verify:web
 npm run verify:full
 ```
 
-`verify:api` and `verify:web` are the component commands used by CI. All verify
-commands enforce documentation links, formatting, zero lint warnings, and
-`git diff --check`. Pure targeted API tests can run without Postgres; the full
-API suite requires the migrated disposable PostgreSQL database described above.
+`verify:api` and `verify:web` match the component checks used by CI. The full
+API suite needs the migrated disposable test database from `.env.local.example`;
+targeted unit tests do not all require Postgres. Provider benchmarks stay
+outside CI because they make real, non-deterministic model calls.
 
-Provider behavior is benchmarked separately from CI because real model calls are
-non-deterministic and depend on configured keys. To compare whether candidate
-models follow the tutor role, quality-gate policy, and structured output
-contract, run:
+## Documentation and status
 
-```bash
-python scripts/benchmark_gate_models.py \
-  --model openai/gpt-5.6-luna \
-  --model gemini/gemini-3.1-flash-lite
-```
+The [documentation map](docs/README.md) points to current architecture,
+security, operations, observability, and integration guidance while separating
+dated design records. User-facing changes are maintained in
+[`apps/web/src/productChangelog.json`](apps/web/src/productChangelog.json) and
+rendered into [`CHANGELOG.md`](CHANGELOG.md).
+
+LecturePilot has been deployed as a live pilot, but that is not blanket
+production-security approval. Review the
+[security status](security_best_practices_report.md) and
+[operations runbook](docs/security-operations.md) before expanding access.
 
 ## License
 
