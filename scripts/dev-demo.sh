@@ -5,7 +5,11 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 
 set -a
-[[ -f .env ]] && source .env
+if [[ ! -f .env.local ]]; then
+  echo "Missing ${root}/.env.local. Copy .env.local.example and add your local provider key." >&2
+  exit 1
+fi
+source .env.local
 set +a
 
 api_port="${LECTUREPILOT_API_PORT:-8001}"

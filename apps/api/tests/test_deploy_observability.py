@@ -73,3 +73,13 @@ def test_successful_deploy_discards_build_cache_but_retains_rollback_images() ->
     assert 'docker image prune -af --filter "until=${RETAIN_IMAGES_FOR}"' in deploy_script
     assert "docker builder prune -af >/dev/null" in deploy_script
     assert "docker builder prune -af --filter" not in deploy_script
+
+
+def test_production_runtime_uses_only_the_production_env_file() -> None:
+    compose = yaml.safe_load((REPO_ROOT / "deploy" / "compose.yml").read_text())
+    deploy_script = (REPO_ROOT / "scripts" / "deploy-production.sh").read_text()
+
+    assert compose["services"]["api"]["env_file"] == ["../.env.production"]
+    assert compose["services"]["preflight"]["env_file"] == ["../.env.production"]
+    assert 'readonly ENV_FILE="${REPOSITORY_ROOT}/.env.production"' in deploy_script
+    assert '--env-file "${ENV_FILE}"' in deploy_script

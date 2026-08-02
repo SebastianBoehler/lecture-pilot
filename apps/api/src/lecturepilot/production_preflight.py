@@ -76,7 +76,7 @@ def validate_production_environment(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Validate LecturePilot production configuration.")
-    parser.add_argument("--env-file", default=".env", type=Path)
+    parser.add_argument("--env-file", default=".env.production", type=Path)
     parser.add_argument("--require-build-identity", action="store_true")
     args = parser.parse_args()
     values = {

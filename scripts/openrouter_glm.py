@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run a GLM design prompt through OpenRouter using the repo-local .env key."""
+"""Run a GLM design prompt through OpenRouter using the repo-local .env.local key."""
 
 from __future__ import annotations
 
@@ -36,10 +36,10 @@ def dotenv_value(path: Path, target: str) -> str | None:
 
 
 def openrouter_key() -> str:
-    env_key = dotenv_value(repo_root() / ".env", "OPENROUTER_API_KEY")
+    env_key = dotenv_value(repo_root() / ".env.local", "OPENROUTER_API_KEY")
     key = env_key or os.getenv("OPENROUTER_API_KEY")
     if not key:
-        raise RuntimeError("OPENROUTER_API_KEY is not set in .env or the shell.")
+        raise RuntimeError("OPENROUTER_API_KEY is not set in .env.local or the shell.")
     return key
 
 

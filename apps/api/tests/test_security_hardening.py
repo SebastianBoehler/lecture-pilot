@@ -1,9 +1,12 @@
+import sys
+
 import pytest
 from fastapi.testclient import TestClient
 
 from lecturepilot.app import create_app
 from lecturepilot.csrf import allowed_origins
 from lecturepilot.database import DatabaseConfigurationError, DatabaseSettings
+from lecturepilot.production_preflight import main as production_preflight_main
 from lecturepilot.production_preflight import validate_production_environment
 from lecturepilot.security_headers import allowed_hosts, hsts_enabled, production_fastapi_kwargs
 from lecturepilot.session_auth import SessionAuthError, SessionAuthSettings
@@ -91,6 +94,15 @@ def test_local_http_keeps_secure_cookie_disabled_by_default(monkeypatch) -> None
     assert SessionAuthSettings.from_env().cookie_secure is False
 
 
+def test_session_absolute_lifetime_cannot_be_shorter_than_renewal_ttl(monkeypatch) -> None:
+    monkeypatch.setenv("LECTUREPILOT_ENV", "development")
+    monkeypatch.setenv("LECTUREPILOT_SESSION_TTL_MINUTES", "60")
+    monkeypatch.setenv("LECTUREPILOT_SESSION_MAX_LIFETIME_MINUTES", "30")
+
+    with pytest.raises(SessionAuthError, match="MAX_LIFETIME_MINUTES"):
+        SessionAuthSettings.from_env()
+
+
 def test_local_origins_include_vite_development_and_preview_ports(monkeypatch) -> None:
     monkeypatch.setenv("LECTUREPILOT_ENV", "development")
     monkeypatch.delenv("LECTUREPILOT_ALLOWED_ORIGINS", raising=False)
@@ -153,6 +165,42 @@ def test_production_preflight_accepts_complete_configuration() -> None:
     }
 
     assert validate_production_environment(configured) == []
+
+
+def test_production_preflight_defaults_to_production_env_file(
+    monkeypatch, tmp_path, capsys
+) -> None:
+    env_file = tmp_path / ".env.production"
+    env_file.write_text(
+        "\n".join(
+            [
+                "LECTUREPILOT_DOMAIN=lecturepilot.example.edu",
+                "LECTUREPILOT_POSTGRES_PASSWORD=safe_url_token_0123456789abcdef",
+                "LECTUREPILOT_MODEL=openai/gpt-5.6-luna",
+                "LECTUREPILOT_ALLOWED_MODELS=openai/gpt-5.6-luna",
+                "OPENAI_API_KEY=production-key",
+                "LECTUREPILOT_TRACE_CONTENT=metadata",
+                "LECTUREPILOT_COMMIT_SHA=b7f559d4a3c2",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    env_file.chmod(0o600)
+    for name in (
+        "LECTUREPILOT_DOMAIN",
+        "LECTUREPILOT_POSTGRES_PASSWORD",
+        "LECTUREPILOT_MODEL",
+        "LECTUREPILOT_ALLOWED_MODELS",
+        "OPENAI_API_KEY",
+        "LECTUREPILOT_TRACE_CONTENT",
+        "LECTUREPILOT_COMMIT_SHA",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["lecturepilot.production_preflight"])
+
+    assert production_preflight_main() == 0
+    assert capsys.readouterr().out == "Production preflight passed.\n"
 
 
 def test_production_preflight_rejects_stale_api_image_revision() -> None:

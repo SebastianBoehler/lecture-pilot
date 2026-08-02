@@ -38,13 +38,14 @@ Start from the checked-in template, keep the resulting file outside source contr
 permissions before adding real values:
 
 ```bash
-cp .env.example .env
-chmod 600 .env
+cp .env.production.example .env.production
+chmod 600 .env.production
 python3 -c 'import secrets; print(secrets.token_urlsafe(32))'
 ```
 
 Use the generated URL-safe value for `LECTUREPILOT_POSTGRES_PASSWORD`. Set
-`LECTUREPILOT_MODEL`, include it in `LECTUREPILOT_ALLOWED_MODELS`, and add the matching provider key.
+`LECTUREPILOT_MODEL`, optionally set `LECTUREPILOT_PRACTICE_EXAM_MODEL`, include every selected
+model in `LECTUREPILOT_ALLOWED_MODELS`, and add the matching provider key.
 Export the exact source revision before validating, building, or starting Compose:
 
 ```bash
@@ -66,7 +67,7 @@ The preflight reports missing setting names but never prints their values:
 
 ```bash
 source .venv/bin/activate
-python -m lecturepilot.production_preflight --env-file .env
+python -m lecturepilot.production_preflight --env-file .env.production
 ```
 
 Production forces database session auth, schema verification, trusted Host and Origin lists, HSTS,
@@ -85,8 +86,13 @@ Validate the Compose configuration without starting the live stack:
 
 ```bash
 export LECTUREPILOT_COMMIT_SHA="$(git rev-parse HEAD)"
-docker compose --env-file .env -f deploy/compose.yml config --quiet
+docker compose --env-file .env.production -f deploy/compose.yml config --quiet
 ```
+
+Production commands never read `.env.local` or a generic `.env`. Before the
+first deployment using this layout, copy the existing host configuration to
+`.env.production`, validate it with preflight, and then remove the stale
+generic file.
 
 Deploy a routine application update with:
 

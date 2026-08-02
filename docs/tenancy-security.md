@@ -77,6 +77,13 @@ enrollments are deactivated at that boundary; Alma timetable and ILIAS data then
 parallel, and only the current sync attempt may restore matched course access. The dashboard polls
 `GET /me` while this work is in progress and does not treat browser course data as authority.
 
+After login, canvas and tutor requests use the opaque LecturePilot database session rather than a
+live Alma client or upstream token. A valid cookie session is renewed once half of its configured
+lifetime remains, so continued authenticated learning activity can extend it without repeating the
+university login during a study day. A separate absolute lifetime bounds stale authorization and
+requires fresh university authentication at its configured limit, one day by default. An already
+expired, revoked, or disabled-account session remains rejected.
+
 ## Denial rules
 
 - An unrelated professor, tutor, or platform administrator cannot read or mutate another course.

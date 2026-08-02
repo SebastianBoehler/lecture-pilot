@@ -4,10 +4,13 @@ import os
 from pathlib import Path
 import subprocess
 
+from dotenv import dotenv_values
+
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PROVIDER_CHECK = REPO_ROOT / "scripts" / "check-provider-env.sh"
 DEV_DEMO = REPO_ROOT / "scripts" / "dev-demo.sh"
+LOCAL_ENV_EXAMPLE = REPO_ROOT / ".env.local.example"
 
 
 def test_provider_check_rejects_missing_selected_provider_key() -> None:
@@ -34,6 +37,16 @@ def test_dev_demo_has_no_sibling_key_or_model_override() -> None:
 
     assert "../sunderlabs" not in script
     assert "export LECTUREPILOT_MODEL" not in script
+    assert "source .env.local" in script
+    assert "source .env\n" not in script
+
+
+def test_local_env_example_separates_runtime_and_test_databases() -> None:
+    values = dotenv_values(LOCAL_ENV_EXAMPLE)
+
+    assert values["DATABASE_URL"].endswith("/lecturepilot_test")
+    assert values["LECTUREPILOT_TEST_DATABASE_URL"].endswith("/lecturepilot_pytest")
+    assert values["DATABASE_URL"] != values["LECTUREPILOT_TEST_DATABASE_URL"]
 
 
 def _run_check(**env: str) -> subprocess.CompletedProcess[str]:

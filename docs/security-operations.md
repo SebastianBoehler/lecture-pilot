@@ -10,7 +10,7 @@ restrict operator access, and record the migration revision and image digests. N
 into the repository.
 
 ```bash
-docker compose -f deploy/compose.yml exec -T db \
+docker compose --env-file .env.production -f deploy/compose.yml exec -T db \
   pg_dump -U lecturepilot -Fc lecturepilot > \
   "${LECTUREPILOT_BACKUP_DIR:?Set an encrypted external backup directory}/lecturepilot-db.dump"
 docker run --rm -v deploy_lecturepilot-storage:/source:ro \
@@ -35,6 +35,12 @@ Do not overwrite a live volume until the rehearsal and integrity checks pass.
 ## Account and session response
 
 - Disabling an account uses `POST /platform/users/{user_id}/disable` and revokes its sessions.
+- Alma verifies identity and course evidence during login and synchronization. Tutor and canvas
+  requests thereafter authenticate against the independent LecturePilot session; an upstream Alma
+  client expiring does not terminate that learning session.
+- Authenticated activity renews a valid LecturePilot session once half of its configured lifetime
+  remains. A separate absolute lifetime requires fresh university authentication at its configured
+  limit, which defaults to one day; expired or revoked sessions are never revived.
 - The active server-reported Alma role determines student/professor access on each synchronized
   identity snapshot. A role change takes effect through a new university login; disabling the
   LecturePilot account remains the immediate local revocation path.

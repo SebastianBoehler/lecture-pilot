@@ -27,9 +27,9 @@ also copy the same events into the container stdout stream; the rotating JSONL
 files are canonical. Inspect them without copying course content into logs:
 
 ```bash
-docker compose -f deploy/compose.yml exec -T api \
+docker compose --env-file .env.production -f deploy/compose.yml exec -T api \
   tail -n 200 /app/logs/api-metadata.jsonl
-docker compose -f deploy/compose.yml exec -T latex-compiler \
+docker compose --env-file .env.production -f deploy/compose.yml exec -T latex-compiler \
   tail -n 200 /app/logs/compiler-metadata.jsonl
 ```
 

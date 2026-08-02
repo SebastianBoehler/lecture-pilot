@@ -16,7 +16,14 @@ from auth_helpers import pending_university_login
 
 
 class _ExpiredSessionStore:
-    def authenticate(self, _token: str):
+    def authenticate(
+        self,
+        _token: str,
+        *,
+        ttl_minutes: int | None = None,
+        max_lifetime_minutes: int | None = None,
+    ):
+        del ttl_minutes, max_lifetime_minutes
         raise SessionStoreError(
             "Session has expired.",
             reason="expired",

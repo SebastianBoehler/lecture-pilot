@@ -32,6 +32,7 @@ class IssuedSession:
 class SessionPrincipal:
     session_id: UUID
     account: AccountView
+    refreshed: bool = False
 
 
 @dataclass(frozen=True)
@@ -61,7 +62,13 @@ class SessionStore:
             )
         return IssuedSession(token=token, csrf_token=csrf_token, expires_at=expires_at)
 
-    def authenticate(self, token: str) -> SessionPrincipal:
+    def authenticate(
+        self,
+        token: str,
+        *,
+        ttl_minutes: int | None = None,
+        max_lifetime_minutes: int | None = None,
+    ) -> SessionPrincipal:
         if not token:
             raise SessionStoreError("Authentication is required.", reason="missing_session")
         with self.database.session() as session:
@@ -77,15 +84,25 @@ class SessionStore:
                     duration_ms=_duration_ms(record.created_at, record.revoked_at),
                 )
             now = datetime.now(UTC)
-            if _aware(record.expires_at) <= now:
+            effective_expiry = _effective_expiry(
+                record,
+                max_lifetime_minutes=max_lifetime_minutes,
+            )
+            if effective_expiry <= now:
                 raise SessionStoreError(
                     "Session has expired.",
                     reason="expired",
-                    duration_ms=_duration_ms(record.created_at, record.expires_at),
+                    duration_ms=_duration_ms(record.created_at, effective_expiry),
                 )
             user = session.get(UserRecord, record.user_id)
             if user is None or not user.enabled:
                 raise SessionStoreError("Account is disabled.", reason="account_disabled")
+            refreshed = _refresh_if_needed(
+                record,
+                now=now,
+                ttl_minutes=ttl_minutes,
+                max_lifetime_minutes=max_lifetime_minutes,
+            )
             session_id = record.id
             user_id = record.user_id
             tenant_id = record.tenant_id
@@ -94,7 +111,7 @@ class SessionStore:
             raise SessionStoreError(
                 "Account membership is unavailable.", reason="membership_unavailable"
             )
-        return SessionPrincipal(session_id=session_id, account=account)
+        return SessionPrincipal(session_id=session_id, account=account, refreshed=refreshed)
 
     def verify_csrf(self, token: str, csrf_token: str | None) -> None:
         if not csrf_token:
@@ -143,3 +160,37 @@ def _aware(value: datetime) -> datetime:
 
 def _duration_ms(start: datetime, end: datetime) -> int:
     return max(0, round((_aware(end) - _aware(start)).total_seconds() * 1000))
+
+
+def _refresh_if_needed(
+    record: SessionRecord,
+    *,
+    now: datetime,
+    ttl_minutes: int | None,
+    max_lifetime_minutes: int | None,
+) -> bool:
+    if ttl_minutes is None:
+        return False
+    ttl = timedelta(minutes=ttl_minutes)
+    if _aware(record.expires_at) - now > ttl / 2:
+        return False
+    renewed_expiry = now + ttl
+    if max_lifetime_minutes is not None:
+        absolute_expiry = _aware(record.created_at) + timedelta(minutes=max_lifetime_minutes)
+        renewed_expiry = min(renewed_expiry, absolute_expiry)
+    if renewed_expiry <= _aware(record.expires_at):
+        return False
+    record.expires_at = renewed_expiry
+    return True
+
+
+def _effective_expiry(
+    record: SessionRecord,
+    *,
+    max_lifetime_minutes: int | None,
+) -> datetime:
+    expiry = _aware(record.expires_at)
+    if max_lifetime_minutes is None:
+        return expiry
+    absolute_expiry = _aware(record.created_at) + timedelta(minutes=max_lifetime_minutes)
+    return min(expiry, absolute_expiry)

@@ -76,6 +76,7 @@ from lecturepilot.security_headers import (
     production_fastapi_kwargs,
 )
 from lecturepilot.session_auth import SessionAuthSettings
+from lecturepilot.session_cookie_refresh import SessionCookieRefreshMiddleware
 from lecturepilot.session_store import SessionStore
 from lecturepilot.tuebingen_adapter import TuebingenCourseAdapter
 from lecturepilot.university_course_routes import register_university_course_routes
@@ -190,6 +191,7 @@ def create_app() -> FastAPI:
     app.add_middleware(CsrfProtectionMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RequestDiagnosticsMiddleware)
+    app.add_middleware(SessionCookieRefreshMiddleware)
 
     @app.get("/health")
     def health(response: Response) -> dict[str, str]:

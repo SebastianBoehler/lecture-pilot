@@ -55,7 +55,7 @@ services:
     image: *api-image
     build: *api-build
     env_file:
-      - ../.env
+      - ../.env.production
     environment: *api-environment
     expose: ["8000"]
     volumes:
@@ -140,7 +140,7 @@ services:
         --require-build-identity,
       ]
     env_file:
-      - ../.env
+      - ../.env.production
     environment:
       <<: *api-environment
       LECTUREPILOT_DOMAIN: ${LECTUREPILOT_DOMAIN:?Set the public HTTPS hostname}

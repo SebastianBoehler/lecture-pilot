@@ -45,7 +45,11 @@ def request_context(
     if not token:
         raise HTTPException(status_code=401, detail="Session cookie or bearer token is required.")
     try:
-        principal = request.app.state.session_store.authenticate(token)
+        principal = request.app.state.session_store.authenticate(
+            token,
+            ttl_minutes=settings.ttl_minutes,
+            max_lifetime_minutes=settings.max_lifetime_minutes,
+        )
     except SessionStoreError as exc:
         emit_metadata_event(
             "auth.session_rejected",
@@ -57,6 +61,8 @@ def request_context(
     request.state.session_principal = principal
     request.state.session_token = token
     request.state.auth_transport = "bearer" if header_token else "cookie"
+    if principal.refreshed and not header_token:
+        request.state.session_cookie_refresh_token = token
     workspace_root = request.app.state.canvas_workspace.workspace_root
     created_course_ids = matched_created_course_ids_for_demo(
         principal.account.university_courses,

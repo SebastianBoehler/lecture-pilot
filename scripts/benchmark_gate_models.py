@@ -86,7 +86,7 @@ SCENARIOS = (
 
 async def main() -> int:
     args = _parse_args()
-    _load_dotenv(ROOT / ".env")
+    _load_dotenv(ROOT / ".env.local")
     models = args.model or [os.getenv("LECTUREPILOT_MODEL") or DEFAULT_MODEL]
     rows = []
     for model in models:

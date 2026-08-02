@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 
 readonly REPOSITORY_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-readonly ENV_FILE="${REPOSITORY_ROOT}/.env"
+readonly ENV_FILE="${REPOSITORY_ROOT}/.env.production"
 readonly COMPOSE_FILE="${REPOSITORY_ROOT}/deploy/compose.yml"
 readonly MIN_FREE_KB=$((1024 * 1024))
 readonly RETAIN_IMAGES_FOR="168h"

@@ -27,6 +27,7 @@ npm install
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e "apps/api[test,agent]"
+cp .env.local.example .env.local
 ```
 
 Add Uni Tuebingen wrapper support only when working on live university login.

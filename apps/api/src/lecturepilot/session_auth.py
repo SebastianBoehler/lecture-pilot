@@ -17,6 +17,7 @@ class SessionAuthError(PermissionError):
 class SessionAuthSettings:
     mode: str
     ttl_minutes: int
+    max_lifetime_minutes: int
     cookie_secure: bool
     cookie_samesite: str
 
@@ -37,6 +38,22 @@ class SessionAuthSettings:
             raise SessionAuthError("LECTUREPILOT_SESSION_TTL_MINUTES must be an integer.") from exc
         if ttl < 1:
             raise SessionAuthError("LECTUREPILOT_SESSION_TTL_MINUTES must be positive.")
+        try:
+            max_lifetime = int(
+                os.getenv(
+                    "LECTUREPILOT_SESSION_MAX_LIFETIME_MINUTES",
+                    str(max(1_440, ttl)),
+                )
+            )
+        except ValueError as exc:
+            raise SessionAuthError(
+                "LECTUREPILOT_SESSION_MAX_LIFETIME_MINUTES must be an integer."
+            ) from exc
+        if max_lifetime < ttl:
+            raise SessionAuthError(
+                "LECTUREPILOT_SESSION_MAX_LIFETIME_MINUTES must be at least "
+                "LECTUREPILOT_SESSION_TTL_MINUTES."
+            )
         same_site = os.getenv("LECTUREPILOT_SESSION_COOKIE_SAMESITE", "lax").lower()
         if same_site not in {"lax", "strict", "none"}:
             raise SessionAuthError("Session cookie SameSite must be lax, strict, or none.")
@@ -48,6 +65,7 @@ class SessionAuthSettings:
         return cls(
             mode=mode,
             ttl_minutes=ttl,
+            max_lifetime_minutes=max_lifetime,
             cookie_secure=cookie_secure,
             cookie_samesite=same_site,
         )
