@@ -22,7 +22,7 @@ from lecturepilot.practice_exam_schema import practice_exam_response_format
 
 @pytest.mark.asyncio
 async def test_planner_generates_valid_grounded_exam() -> None:
-    client = _ModelClient([_payload()])
+    client = _ModelClient([_payload(), _review_payload()])
     planner = PracticeExamPlanner(provider_registry=_Registry(), model_client=client)
 
     exam = await planner.plan(
@@ -39,8 +39,9 @@ async def test_planner_generates_valid_grounded_exam() -> None:
     assert exam.ppi_source_ids == ["ppi-42"]
     assert exam.source_ids == ["lecture-01:risk:definition"]
     assert len(exam.source_revision) == 64
-    assert client.calls == 1
+    assert client.calls == 2
     assert "non-authoritative pattern evidence" in client.messages[0][1]["content"]
+    assert "independent correctness reviewer" in client.messages[1][0]["content"]
 
 
 @pytest.mark.asyncio
@@ -69,14 +70,33 @@ async def test_planner_rejects_malformed_payload() -> None:
 async def test_planner_repairs_duplicate_question_once() -> None:
     duplicate = _payload()
     duplicate["questions"][1]["prompt"] = duplicate["questions"][0]["prompt"]
-    client = _ModelClient([duplicate, _payload()])
+    client = _ModelClient([duplicate, _payload(), _review_payload()])
     planner = PracticeExamPlanner(provider_registry=_Registry(), model_client=client)
 
     exam = await planner.plan(**_plan_args())
 
     assert len(exam.questions) == 20
-    assert client.calls == 2
+    assert client.calls == 3
     assert "unique prompts" in client.messages[1][0]["content"]
+
+
+@pytest.mark.asyncio
+async def test_planner_regenerates_after_independent_answer_review_failure() -> None:
+    failed_review = _review_payload()
+    failed_review["reviews"][0] = {
+        "question_id": "q-01",
+        "verdict": "fail",
+        "issue": "The keyed option contradicts the cited definition.",
+        "source_ids": ["lecture-01:risk:definition"],
+    }
+    client = _ModelClient([_payload(), failed_review, _payload(), _review_payload()])
+    planner = PracticeExamPlanner(provider_registry=_Registry(), model_client=client)
+
+    exam = await planner.plan(**_plan_args())
+
+    assert len(exam.questions) == 20
+    assert client.calls == 4
+    assert "keyed option contradicts" in client.messages[2][0]["content"]
 
 
 @pytest.mark.asyncio
@@ -153,6 +173,32 @@ def test_authoritative_ids_include_only_evidence_visible_to_the_model() -> None:
     assert source_ids
     assert len(source_ids) == 4
     assert all(source_id in evidence for source_id in source_ids)
+
+
+def test_authoritative_evidence_excludes_sections_marked_ineligible() -> None:
+    document = _document()
+    document.sections.append(
+        CanvasSection(
+            id="exam-logistics",
+            title="Exam logistics",
+            practice_exam_eligible=False,
+            blocks=[CanvasBlock(id="date", type="paragraph", text="The exam is Monday.")],
+        )
+    )
+
+    evidence, source_ids = authoritative_canvas_evidence([document])
+
+    assert "The exam is Monday" not in evidence
+    assert "lecture-01:exam-logistics:date" not in source_ids
+
+
+def test_planner_uses_practice_exam_model_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LECTUREPILOT_MODEL", "openai/gpt-5.6-luna")
+    monkeypatch.setenv("LECTUREPILOT_PRACTICE_EXAM_MODEL", "openai/gpt-5.6-terra")
+
+    planner = PracticeExamPlanner(model_client=_ModelClient([]))
+
+    assert planner.provider_registry.model == "openai/gpt-5.6-terra"
 
 
 def test_authoritative_evidence_spreads_budget_across_lectures() -> None:
@@ -236,6 +282,20 @@ def _payload() -> dict:
         "title": "Machine Learning practice exam",
         "instructions": ["Answer every question."],
         "questions": questions,
+    }
+
+
+def _review_payload() -> dict:
+    return {
+        "reviews": [
+            {
+                "question_id": f"q-{index:02d}",
+                "verdict": "pass",
+                "issue": "",
+                "source_ids": ["lecture-01:risk:definition"],
+            }
+            for index in range(1, 21)
+        ]
     }
 
 

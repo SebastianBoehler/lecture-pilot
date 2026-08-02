@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from hashlib import sha256
 import json
 import logging
+import os
 from typing import Protocol
 from uuid import uuid4
 
@@ -24,11 +25,16 @@ from lecturepilot.practice_exam_prompt import (
     authoritative_canvas_evidence,
     ppi_pattern_evidence,
     practice_exam_messages,
+    practice_exam_review_messages,
 )
-from lecturepilot.practice_exam_schema import practice_exam_response_format
+from lecturepilot.practice_exam_schema import (
+    practice_exam_response_format,
+    practice_exam_review_response_format,
+)
 from lecturepilot.practice_exam_validation import (
     PracticeExamValidationError,
     validate_practice_exam,
+    validate_practice_exam_review,
 )
 from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
 
@@ -77,7 +83,12 @@ class LiteLLMPracticeExamClient:
                 model=settings.model,
                 messages=messages,
                 response_format=response_format,
-                **completion_options(settings, temperature=0.2, max_tokens=max_tokens),
+                **completion_options(
+                    settings,
+                    temperature=0.2,
+                    max_tokens=max_tokens,
+                    reasoning_effort="high",
+                ),
             )
         except Exception as exc:
             raise ModelExecutionError("Practice exam model request failed.") from exc
@@ -91,7 +102,9 @@ class PracticeExamPlanner:
         provider_registry: ProviderRegistry | None = None,
         model_client: PracticeExamModelClient | None = None,
     ) -> None:
-        self.provider_registry = provider_registry or ProviderRegistry.from_env()
+        self.provider_registry = provider_registry or ProviderRegistry.from_env(
+            model=os.getenv("LECTUREPILOT_PRACTICE_EXAM_MODEL") or None
+        )
         self.model_client = model_client or LiteLLMPracticeExamClient()
 
     async def plan(
@@ -153,6 +166,23 @@ class PracticeExamPlanner:
                     selected_ppi_source_ids=set(ppi_sources),
                     ppi_texts=ppi_texts,
                 )
+                review = await self.model_client.complete_exam(
+                    settings=settings,
+                    messages=practice_exam_review_messages(
+                        course_evidence=course_evidence,
+                        exam=exam,
+                    ),
+                    response_format=practice_exam_review_response_format(
+                        question_ids=[question.id for question in exam.questions],
+                        authoritative_source_ids=authoritative_ids,
+                    ),
+                    max_tokens=_exam_review_token_budget(question_count),
+                )
+                validate_practice_exam_review(
+                    review,
+                    exam=exam,
+                    authoritative_source_ids=authoritative_ids,
+                )
                 return exam
             except (ValidationError, PracticeExamValidationError) as exc:
                 last_error = exc
@@ -205,6 +235,10 @@ def _source_revision(course_evidence: str, ppi_sources: dict[str, list[str]]) ->
 
 def _exam_output_token_budget(question_count: int) -> int:
     return max(20_000, question_count * 600)
+
+
+def _exam_review_token_budget(question_count: int) -> int:
+    return max(6_000, question_count * 200)
 
 
 def _safe_validation_reason(error: ValidationError | PracticeExamValidationError) -> str:

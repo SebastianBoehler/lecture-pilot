@@ -98,6 +98,7 @@ def _section_to_markdown(section: CanvasSection) -> str:
             "id": section.id,
             "title": section.title,
             "source_ref": section.source_ref or "",
+            "practice_exam_eligible": section.practice_exam_eligible,
         }
     )
     blocks = [_block_to_markdown(block) for block in section.blocks]
@@ -121,6 +122,7 @@ def _read_section(path: Path, manifest: dict[str, str]) -> CanvasSection:
         id=section_id,
         title=_required(frontmatter, "title"),
         source_ref=frontmatter.get("source_ref") or None,
+        practice_exam_eligible=frontmatter.get("practice_exam_eligible") is not False,
         blocks=read_blocks(
             body,
             section_id=section_id,
@@ -230,7 +232,7 @@ def _parse_frontmatter(raw: str) -> dict[str, object]:
 
 
 def _parse_value(value: str) -> object:
-    if value.startswith(('"', "[", "{")):
+    if value.startswith(('"', "[", "{")) or value in {"true", "false", "null"}:
         return json.loads(value)
     return value
 

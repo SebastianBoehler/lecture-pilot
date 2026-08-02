@@ -52,7 +52,7 @@ export function PracticeExamSolutionSheet({
               <div className="practice-solution-prompt">
                 <MathText highlightedText={null} text={question.prompt} />
               </div>
-              {solution.kind === "multiple_choice" ? (
+              {solution.status === "invalid" ? null : solution.kind === "multiple_choice" ? (
                 <MultipleChoiceSolution
                   answerIndex={solution.answer_index}
                   options={question.options}
@@ -147,7 +147,9 @@ function SolutionValue({ label, value }: { label: string; value?: string | null 
 }
 
 function multipleChoiceScore(answers: PracticeExamAnswers, solutions: SolutionSheet) {
-  const questions = solutions.questions.filter((question) => question.kind === "multiple_choice");
+  const questions = solutions.questions.filter(
+    (question) => question.status !== "invalid" && question.kind === "multiple_choice",
+  );
   return questions.reduce(
     (score, question) => {
       if (answers[question.id]?.selected_index === question.answer_index) {

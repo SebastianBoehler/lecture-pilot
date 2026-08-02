@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from lecturepilot.canvas_models import CanvasDocument
+from lecturepilot.practice_exam_models import PracticeExam
 
 
 MAX_COURSE_EVIDENCE_CHARS = 60_000
@@ -25,6 +26,8 @@ def practice_exam_messages(
         f"{duration_minutes}-minute exam. Mix multiple-choice and open-ended questions, "
         "vary difficulty, assign sensible points, and include private answer keys or rubrics. "
         "Every question must cite at least one supplied authoritative course source id. "
+        "Administrative guidance, exam logistics, historical-exam commentary, and learning-strategy "
+        "instructions are not assessable course concepts and must never become questions. "
         "Cover every lecture represented in the evidence before repeating a lecture, then maximize "
         "section and concept breadth before adding variants of an already tested concept. "
         "PPI material is non-authoritative pattern evidence only: use it to infer style, topic "
@@ -34,6 +37,8 @@ def practice_exam_messages(
         "questions need an empty options list, null answer_index, concrete rubric criteria, and "
         "a concise reference_answer that would earn full points. Multiple-choice questions need "
         "a null reference_answer. "
+        "Before returning JSON, solve every question from the supplied evidence and verify that the "
+        "answer_index or full-credit answer is unambiguous and factually correct. "
         "Use stable ids q-01, q-02, and so on. Cite selected PPI ids only when their pattern "
         "materially influenced a question. Instructions must contain only learner actions: never "
         "repeat the duration, question count, total points, or answer-index conventions. "
@@ -49,6 +54,25 @@ def practice_exam_messages(
         f"{_trim(course_evidence, MAX_COURSE_EVIDENCE_CHARS)}\n\n"
         "Optional non-authoritative pattern evidence from private PPI imports:\n"
         f"{_trim(ppi_evidence, MAX_PPI_EVIDENCE_CHARS) if ppi_evidence else '(none)'}"
+    )
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def practice_exam_review_messages(
+    *, course_evidence: str, exam: PracticeExam
+) -> list[dict[str, str]]:
+    system = (
+        "Act as an independent correctness reviewer for a university practice exam. Review every "
+        "question by solving it from the supplied authoritative evidence. Fail a question if it is "
+        "administrative or meta-level rather than assessable course content, if the prompt or options "
+        "are ambiguous, if its keyed answer is wrong, or if its reference answer or rubric cannot earn "
+        "full credit. Cite the supplied source ids used for each verdict. Return strict JSON only."
+    )
+    user = (
+        "Authoritative eligible evidence:\n"
+        f"{_trim(course_evidence, MAX_COURSE_EVIDENCE_CHARS)}\n\n"
+        "Candidate exam with private answer data:\n"
+        f"{exam.model_dump_json()}"
     )
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
@@ -87,6 +111,8 @@ def authoritative_canvas_evidence(documents: list[CanvasDocument]) -> tuple[str,
 def _document_evidence_items(document: CanvasDocument) -> list[tuple[str, str]]:
     section_items: list[list[tuple[str, str]]] = []
     for section in document.sections:
+        if not section.practice_exam_eligible:
+            continue
         items: list[tuple[str, str]] = []
         for block in section.blocks:
             content = block.text or "\n".join(block.items)

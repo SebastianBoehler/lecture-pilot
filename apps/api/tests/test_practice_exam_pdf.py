@@ -83,6 +83,25 @@ def test_tex_renderer_escapes_mismatched_math_environments() -> None:
     assert r"\textbackslash{}begin\{matrix\}" in tex
 
 
+def test_tex_renderer_preserves_invalid_question_number_without_answer_space() -> None:
+    exam = _public_exam()
+    exam.questions[12] = PracticeExamPublicQuestion(
+        id="q-13",
+        kind="open_ended",
+        status="invalid",
+        prompt="INVALID QUESTION — DO NOT SCORE.",
+        points=0,
+        options=[],
+    )
+    exam.total_points -= 2
+
+    tex = render_practice_exam_tex(exam)
+    question = tex[tex.index("Question 13") : tex.index("Question 14")]
+
+    assert "INVALID QUESTION" in question
+    assert r"\hrule" not in question
+
+
 def test_generic_document_compiler_uses_content_fingerprint_cache(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

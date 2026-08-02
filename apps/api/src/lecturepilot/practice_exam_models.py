@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 PracticeExamQuestionKind = Literal["multiple_choice", "open_ended"]
 PracticeExamDifficulty = Literal["introductory", "standard", "advanced"]
+PracticeExamQuestionStatus = Literal["active", "invalid"]
 MIN_PRACTICE_EXAM_QUESTIONS = 20
 MAX_PRACTICE_EXAM_QUESTIONS = 50
 _ADMIN_INSTRUCTION = re.compile(
@@ -24,8 +25,9 @@ class PracticeExamQuestion(BaseModel):
 
     id: str = Field(min_length=1, max_length=120)
     kind: PracticeExamQuestionKind
+    status: PracticeExamQuestionStatus = "active"
     prompt: str = Field(min_length=1, max_length=2_000)
-    points: int = Field(ge=1, le=50)
+    points: int = Field(ge=0, le=50)
     difficulty: PracticeExamDifficulty
     options: list[str] = Field(default_factory=list, max_length=6)
     answer_index: int | None = Field(default=None, ge=0, le=5)
@@ -36,6 +38,14 @@ class PracticeExamQuestion(BaseModel):
 
     @model_validator(mode="after")
     def validate_question_shape(self) -> "PracticeExamQuestion":
+        if self.status == "invalid":
+            if self.points or self.options or self.answer_index is not None:
+                raise ValueError("Invalid questions must be zero-point placeholders.")
+            if self.rubric or self.reference_answer is not None:
+                raise ValueError("Invalid questions cannot contain private answer guidance.")
+            return self
+        if self.points < 1:
+            raise ValueError("Active questions must be worth at least one point.")
         if self.kind == "multiple_choice":
             if len(self.options) < 2:
                 raise ValueError("Multiple-choice questions require at least two options.")
@@ -84,6 +94,7 @@ class PracticeExam(BaseModel):
 class PracticeExamPublicQuestion(BaseModel):
     id: str
     kind: PracticeExamQuestionKind
+    status: PracticeExamQuestionStatus = "active"
     prompt: str
     points: int
     options: list[str] = Field(default_factory=list)
@@ -104,6 +115,7 @@ class PracticeExamPublic(BaseModel):
 class PracticeExamSolutionQuestion(BaseModel):
     id: str
     kind: PracticeExamQuestionKind
+    status: PracticeExamQuestionStatus = "active"
     points: int
     answer_index: int | None = None
     reference_answer: str | None = None
@@ -143,6 +155,7 @@ def public_practice_exam(exam: PracticeExam) -> PracticeExamPublic:
             PracticeExamPublicQuestion(
                 id=question.id,
                 kind=question.kind,
+                status=question.status,
                 prompt=question.prompt,
                 points=question.points,
                 options=question.options,
@@ -156,7 +169,9 @@ def practice_exam_solution_sheet(exam: PracticeExam) -> PracticeExamSolutionShee
     missing = [
         question.id
         for question in exam.questions
-        if question.kind == "open_ended" and not question.reference_answer
+        if question.status == "active"
+        and question.kind == "open_ended"
+        and not question.reference_answer
     ]
     if missing:
         raise ValueError("This practice exam predates full-credit reference answers.")
@@ -168,6 +183,7 @@ def practice_exam_solution_sheet(exam: PracticeExam) -> PracticeExamSolutionShee
             PracticeExamSolutionQuestion(
                 id=question.id,
                 kind=question.kind,
+                status=question.status,
                 points=question.points,
                 answer_index=question.answer_index,
                 reference_answer=question.reference_answer,

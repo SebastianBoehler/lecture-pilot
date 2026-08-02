@@ -160,7 +160,7 @@ export function PracticeExamView({
                     <span className="practice-question-points">
                       {t("practice.points", { count: question.points })}
                     </span>
-                    {question.kind === "multiple_choice" ? (
+                    {question.status === "invalid" ? null : question.kind === "multiple_choice" ? (
                       question.options.map((option, optionIndex) => (
                         <label key={option}>
                           <input

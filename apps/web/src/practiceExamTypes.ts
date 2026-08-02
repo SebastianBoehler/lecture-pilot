@@ -1,6 +1,7 @@
 export type PracticeExamQuestion = {
   id: string;
   kind: "multiple_choice" | "open_ended";
+  status?: "active" | "invalid";
   prompt: string;
   points: number;
   options: string[];
@@ -30,6 +31,7 @@ export type PracticeExamAnswers = Record<string, PracticeExamAnswer>;
 export type PracticeExamSolutionQuestion = {
   id: string;
   kind: "multiple_choice" | "open_ended";
+  status?: "active" | "invalid";
   points: number;
   answer_index: number | null;
   reference_answer: string | null;

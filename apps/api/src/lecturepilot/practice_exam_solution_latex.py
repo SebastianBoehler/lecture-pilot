@@ -28,7 +28,9 @@ def render_practice_exam_solution_tex(exam: PracticeExam) -> str:
                 render_exam_markup(question.prompt) + r"\par\vspace{0.55em}",
             ]
         )
-        if question.kind == "multiple_choice":
+        if question.status == "invalid":
+            lines.append(r"\textbf{Invalid question --- do not score.}\par")
+        elif question.kind == "multiple_choice":
             answer_index = question.answer_index
             if answer_index is None:
                 raise ValueError(f"Question {question.id} has no correct answer.")

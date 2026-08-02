@@ -36,6 +36,8 @@ def validate_practice_exam(
         )
     selected_ppi = selected_ppi_source_ids or set()
     for question in exam.questions:
+        if question.status != "active":
+            raise PracticeExamValidationError(f"Generated question {question.id} must be active.")
         course_sources = set(question.source_ids)
         if not course_sources or not course_sources.issubset(authoritative_source_ids):
             raise PracticeExamValidationError(
@@ -79,6 +81,32 @@ def validate_practice_exam(
             "Practice exam PPI source ids must match the selected retained sources."
         )
     _reject_protocol_copy(exam, ppi_texts or [])
+
+
+def validate_practice_exam_review(
+    payload: dict,
+    *,
+    exam: PracticeExam,
+    authoritative_source_ids: set[str],
+) -> None:
+    reviews = payload.get("reviews")
+    if not isinstance(reviews, list):
+        raise PracticeExamValidationError("Independent exam review is missing reviews.")
+    reviewed_ids = [item.get("question_id") for item in reviews if isinstance(item, dict)]
+    expected_ids = [question.id for question in exam.questions]
+    if len(reviewed_ids) != len(set(reviewed_ids)) or set(reviewed_ids) != set(expected_ids):
+        raise PracticeExamValidationError("Independent exam review must cover every question once.")
+    for item in reviews:
+        sources = set(item.get("source_ids") or [])
+        if not sources or not sources.issubset(authoritative_source_ids):
+            raise PracticeExamValidationError(
+                f"Independent exam review cited invalid sources for {item.get('question_id')}."
+            )
+        if item.get("verdict") != "pass":
+            issue = str(item.get("issue") or "answer correctness could not be verified").strip()
+            raise PracticeExamValidationError(
+                f"Independent answer review rejected {item.get('question_id')}: {issue}"
+            )
 
 
 def _reject_protocol_copy(exam: PracticeExam, protocol_texts: list[str]) -> None:

@@ -48,6 +48,28 @@ def test_solution_sheet_exposes_only_answer_key_and_full_credit_guidance() -> No
     assert "source_ids" not in sheet.model_dump_json()
 
 
+def test_invalid_question_keeps_position_but_is_not_scored() -> None:
+    exam = _exam()
+    exam.questions[12] = PracticeExamQuestion(
+        id=exam.questions[12].id,
+        kind="open_ended",
+        status="invalid",
+        prompt="INVALID QUESTION — DO NOT SCORE.",
+        points=0,
+        difficulty="standard",
+        source_ids=exam.questions[12].source_ids,
+    )
+    exam.total_points -= 2
+
+    public = public_practice_exam(exam)
+    sheet = practice_exam_solution_sheet(exam)
+
+    assert len(public.questions) == 20
+    assert public.questions[12].status == "invalid"
+    assert public.questions[12].points == 0
+    assert sheet.questions[12].status == "invalid"
+
+
 def test_generation_input_has_bounded_defaults_and_unique_sources() -> None:
     request = PracticeExamGenerationInput()
 

@@ -58,6 +58,36 @@ describe("PracticeExamView", () => {
     expect(answer.parentElement).toHaveProperty("tagName", "FIELDSET");
   });
 
+  it("preserves an invalid question number without rendering an answer control", () => {
+    const invalidExam: PracticeExam = {
+      ...exam,
+      questions: [
+        ...exam.questions,
+        {
+          id: "q-03",
+          kind: "open_ended",
+          status: "invalid",
+          prompt: "INVALID QUESTION — DO NOT SCORE.",
+          points: 0,
+          options: [],
+        },
+      ],
+    };
+
+    renderWithI18n(
+      <PracticeExamView
+        courseId="course-1"
+        exam={invalidExam}
+        session={session}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("3.")).toBeInTheDocument();
+    expect(screen.getByText("INVALID QUESTION — DO NOT SCORE.")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Your answer for question 3")).not.toBeInTheDocument();
+  });
+
   it("scores multiple choice locally and reveals full-credit open answers after finishing", async () => {
     const user = userEvent.setup();
     vi.stubGlobal(

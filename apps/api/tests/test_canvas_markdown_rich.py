@@ -298,3 +298,28 @@ def test_canvas_markdown_roundtrips_explanatory_asset_text(tmp_path: Path) -> No
     assert reloaded.sections[0].blocks[0].text == (
         "The two outgoing edges represent the true and false outcomes."
     )
+
+
+def test_canvas_markdown_roundtrips_practice_exam_eligibility(tmp_path: Path) -> None:
+    document = CanvasDocument(
+        id="demo-course-lecture-01",
+        course_id="demo-course",
+        lecture_id="lecture-01",
+        title="Demo",
+        source_kind="generated",
+        source_ref="source bundle",
+        workspace_path=str(tmp_path / "canvas" / "index.md"),
+        sections=[
+            CanvasSection(
+                id="exam-logistics",
+                title="Exam logistics",
+                practice_exam_eligible=False,
+                blocks=[CanvasBlock(id="date", type="paragraph", text="The exam is Monday.")],
+            )
+        ],
+    )
+
+    write_document_source(document, tmp_path / "canvas")
+    reloaded = read_document_source(tmp_path / "canvas")
+
+    assert reloaded.sections[0].practice_exam_eligible is False

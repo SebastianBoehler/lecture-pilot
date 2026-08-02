@@ -36,6 +36,49 @@ def practice_exam_response_format(
     }
 
 
+def practice_exam_review_response_format(
+    *, question_ids: list[str], authoritative_source_ids: set[str]
+) -> dict[str, Any]:
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "lecturepilot_practice_exam_review",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "reviews": {
+                        "type": "array",
+                        "minItems": len(question_ids),
+                        "maxItems": len(question_ids),
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "question_id": {"type": "string", "enum": question_ids},
+                                "verdict": {"type": "string", "enum": ["pass", "fail"]},
+                                "issue": {"type": "string"},
+                                "source_ids": {
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "maxItems": 8,
+                                    "items": {
+                                        "type": "string",
+                                        "enum": sorted(authoritative_source_ids),
+                                    },
+                                },
+                            },
+                            "required": ["question_id", "verdict", "issue", "source_ids"],
+                        },
+                    }
+                },
+                "required": ["reviews"],
+            },
+        },
+    }
+
+
 def _question_schema(
     *, authoritative_source_ids: set[str], selected_ppi_source_ids: set[str]
 ) -> dict[str, Any]:

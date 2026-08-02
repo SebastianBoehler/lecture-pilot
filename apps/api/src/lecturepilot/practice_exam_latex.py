@@ -139,7 +139,9 @@ def render_practice_exam_tex(exam: PracticeExamPublic) -> str:
                 r"\vspace{0.6em}",
             ]
         )
-        if question.kind == "multiple_choice":
+        if question.status == "invalid":
+            pass
+        elif question.kind == "multiple_choice":
             for option in question.options:
                 lines.append(rf"$\square$\quad {render_exam_markup(option)}\par\vspace{{0.35em}}")
         else:

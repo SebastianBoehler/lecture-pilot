@@ -72,6 +72,7 @@ class CanvasSection(BaseModel):
     id: str = Field(min_length=1, max_length=120)
     title: str = Field(min_length=1, max_length=200)
     source_ref: str | None = Field(default=None, max_length=MAX_SOURCE_REF_LENGTH)
+    practice_exam_eligible: bool = True
     blocks: list[CanvasBlock] = Field(default_factory=list)
 
 
