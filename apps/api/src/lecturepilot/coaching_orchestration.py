@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from fastapi import FastAPI
 
 from lecturepilot.agent_state_access import learner_state_store
+from lecturepilot.coaching_assistance import emitted_assistance_level
 from lecturepilot.coaching_episode import parse_time
 from lecturepilot.coaching_progress import CoachingProgressStore, CoachingTurnEvent
 from lecturepilot.coaching_state_models import CoachingProgress
@@ -156,6 +157,11 @@ def persist_coaching_turn(
         gate_id=result.quality_gate.gate_id,
         support_profile=turn.scaffold_policy.profile,
     ):
+        next_check_assistance_level = emitted_assistance_level(
+            message=result.message,
+            next_prompt=result.quality_gate.next_prompt,
+            assistance=result.next_check_assistance,
+        )
         return store.record_turn(
             user_id=turn.user_id,
             course_id=turn.course_id,
@@ -167,6 +173,7 @@ def persist_coaching_turn(
             user_message=turn.message,
             assistant_message=result.message,
             session_goal=result.session_goal,
+            next_check_assistance_level=next_check_assistance_level,
             review_after_days=turn.coaching_context.active_gate_review_after_days or 2,
         )
 

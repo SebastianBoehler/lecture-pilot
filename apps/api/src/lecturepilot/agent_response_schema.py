@@ -2,10 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from lecturepilot.component_response_schema import (
-    component_data_schema,
-    component_type_schema,
-)
+from lecturepilot import component_response_schema
+from lecturepilot.coaching_assistance import next_check_assistance_schema
 
 
 def lecturepilot_response_format() -> dict[str, Any]:
@@ -123,9 +121,16 @@ def _agent_turn_schema() -> dict[str, Any]:
                 "items": _canvas_command_schema(),
                 "description": "Canvas navigation or learner-owned canvas updates.",
             },
+            "next_check_assistance": next_check_assistance_schema(),
             "quality_gate": _quality_gate_schema(),
         },
-        "required": ["message", "session_goal", "canvas_commands", "quality_gate"],
+        "required": [
+            "message",
+            "session_goal",
+            "canvas_commands",
+            "next_check_assistance",
+            "quality_gate",
+        ],
     }
 
 
@@ -225,11 +230,11 @@ def _block_schema() -> dict[str, Any]:
                 ),
             },
             "component_id": _nullable_string("File-backed component id."),
-            "component_type": component_type_schema(),
+            "component_type": component_response_schema.component_type_schema(),
             "component_ref": _nullable_string("Component definition path."),
             "component_version": {"type": ["integer", "null"], "minimum": 1},
             "option_ids": {"type": "array", "items": {"type": "string"}},
-            "component_data": _nullable(component_data_schema()),
+            "component_data": _nullable(component_response_schema.component_data_schema()),
         },
         "required": [
             "id",

@@ -54,6 +54,7 @@ def test_bound_check_classifies_independent_then_supported_retry(tmp_path) -> No
             missing_evidence_ids=["held-out-evaluation"],
         ),
         gate_revision="revision-1",
+        next_check_assistance_level="cue",
     )
     retry_context = _context(CoachingProgressStore(store.layout))
     retry_event = store.record_turn(

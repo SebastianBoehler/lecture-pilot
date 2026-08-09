@@ -1,5 +1,7 @@
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 
+import pytest
 from fastapi.testclient import TestClient
 
 from auth_helpers import student_headers
@@ -7,13 +9,18 @@ from canvas_workspace_fixtures import published_course_canvas, write_course_sour
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock
 from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.coaching_assistance import NextCheckAssistance, emitted_assistance_level
+from lecturepilot.coaching_orchestration import persist_coaching_turn
 from lecturepilot.coaching_progress import CoachingProgressStore
 from lecturepilot.models import (
     AgentCoachingContext,
+    AgentTurnInput,
     AgentTurnResult,
+    AttendanceStatus,
     QualityGateDecision,
     QualityGateStatus,
 )
+from lecturepilot.observability import Observability
 from lecturepilot.scaffold_policy import scaffold_policy_for_tutor_turn
 from lecturepilot.storage_layout import StorageLayout
 
@@ -61,24 +68,26 @@ def test_failed_delayed_attempt_becomes_supported_retry(tmp_path) -> None:
         now=due_at,
     )
     delayed = _context(store, now=due_at + timedelta(minutes=5))
-    delayed_event = store.record_turn(
-        **IDS,
-        context=delayed,
-        policy=_policy(delayed),
-        decision=_decision(QualityGateStatus.NEEDS_EVIDENCE, next_prompt="Check the boundary."),
-        gate_revision="revision-1",
-        now=due_at + timedelta(minutes=5),
+    delayed_result = AgentTurnResult(
+        message="Compare the transfer boundary. Check the boundary.",
+        next_check_assistance=NextCheckAssistance(
+            level="cue", content="Compare the transfer boundary."
+        ),
+        quality_gate=_decision(QualityGateStatus.NEEDS_EVIDENCE, next_prompt="Check the boundary."),
+        model="test-model",
     )
+    delayed_event = _persist_result(store, delayed, delayed_result)
 
     retry = _context(store, now=due_at + timedelta(minutes=6))
     retry_policy = _policy(retry)
-    retry_event = store.record_turn(
-        **IDS,
-        context=retry,
-        policy=retry_policy,
-        decision=_decision(QualityGateStatus.PASSED),
-        gate_revision="revision-1",
-        now=due_at + timedelta(minutes=6),
+    retry_event = _persist_result(
+        store,
+        retry,
+        AgentTurnResult(
+            message="That answer supplies the required evidence.",
+            quality_gate=_decision(QualityGateStatus.PASSED),
+            model="test-model",
+        ),
     )
 
     review = store.read(**IDS).delayed_reviews["gate-1"]
@@ -90,6 +99,59 @@ def test_failed_delayed_attempt_becomes_supported_retry(tmp_path) -> None:
     assert retry_event.attempt_kind == "supported_retry"
     assert review.attempted_at is not None
     assert review.completed_at is not None
+
+
+def test_declared_assistance_must_precede_the_exact_check() -> None:
+    assistance = NextCheckAssistance(level="cue", content="Compare the boundary.")
+
+    with pytest.raises(ValueError, match="not present"):
+        emitted_assistance_level(
+            message="Try case B again.",
+            next_prompt="Try case B again.",
+            assistance=assistance,
+        )
+
+
+def test_failed_delayed_attempt_without_emitted_support_stays_independent(tmp_path) -> None:
+    started = datetime(2026, 7, 13, 9, 0, tzinfo=UTC)
+    store = CoachingProgressStore(StorageLayout(tmp_path))
+    _pass_gate(store, started)
+    due_at = started + timedelta(days=3)
+    due = _context(store, now=due_at)
+    store.record_turn(
+        **IDS,
+        context=due,
+        policy=_policy(due),
+        decision=_decision(QualityGateStatus.NOT_ASSESSED, next_prompt="Apply it to case B."),
+        gate_revision="revision-1",
+        now=due_at,
+    )
+    delayed = _context(store, now=due_at + timedelta(minutes=5))
+    _persist_result(
+        store,
+        delayed,
+        AgentTurnResult(
+            message="Try case B again.",
+            quality_gate=_decision(
+                QualityGateStatus.NEEDS_EVIDENCE, next_prompt="Try case B again."
+            ),
+            model="test-model",
+        ),
+    )
+
+    retry = _context(store, now=due_at + timedelta(minutes=6))
+    retry_event = _persist_result(
+        store,
+        retry,
+        AgentTurnResult(
+            message="That answer supplies the required evidence.",
+            quality_gate=_decision(QualityGateStatus.PASSED),
+            model="test-model",
+        ),
+    )
+
+    assert retry.last_assistance_level == "none"
+    assert retry_event.attempt_kind == "independent"
 
 
 def test_absent_attendance_is_only_the_initial_lecture_prior(tmp_path) -> None:
@@ -164,6 +226,25 @@ def _decision(status, *, next_prompt=None):
         reason="test",
         next_prompt=next_prompt,
     )
+
+
+def _persist_result(store, context, result):
+    app = SimpleNamespace(
+        state=SimpleNamespace(canvas_workspace=SimpleNamespace(layout=store.layout))
+    )
+    turn = AgentTurnInput(
+        **IDS,
+        attendance=AttendanceStatus.PRESENT,
+        message="Learner response.",
+        coaching_context=context.model_copy(
+            update={
+                "active_gate_revision": "revision-1",
+                "active_gate_review_after_days": 3,
+            }
+        ),
+        scaffold_policy=_policy(context),
+    )
+    return persist_coaching_turn(app, turn, result, lambda _message: None, Observability())
 
 
 def _two_gate_workspace(tmp_path) -> CanvasWorkspace:

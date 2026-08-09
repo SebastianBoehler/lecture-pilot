@@ -32,7 +32,7 @@ from lecturepilot.models import (
     QualityGateDecision,
     QualityGateStatus,
 )
-from lecturepilot.scaffold_policy import TutorScaffoldPolicy, scaffold_policy_for_tutor_turn
+from lecturepilot.scaffold_policy import AssistanceLevel, TutorScaffoldPolicy
 from lecturepilot.storage_layout import StorageLayout
 
 
@@ -118,6 +118,7 @@ class CoachingProgressStore:
         user_message: str | None = None,
         assistant_message: str | None = None,
         session_goal: str | None = None,
+        next_check_assistance_level: AssistanceLevel = "none",
         review_after_days: int = 2,
         now: datetime | None = None,
     ) -> CoachingTurnEvent:
@@ -180,22 +181,10 @@ class CoachingProgressStore:
                     review_after_days=review_after_days,
                     now=current_time,
                 )
-            next_assistance_level = policy.assistance_level
-            if (
-                event_attempt_kind == "delayed_transfer"
-                and decision.status == QualityGateStatus.NEEDS_EVIDENCE
-            ):
-                next_assistance_level = scaffold_policy_for_tutor_turn(
-                    attendance="present",
-                    delayed_transfer_due=False,
-                    last_gate_status=decision.status.value,
-                    needs_evidence_count=context.needs_evidence_count + 1,
-                    prior_assistance=True,
-                ).assistance_level
             progress.pending_check = next_pending_check(
                 decision,
                 gate_revision=gate_revision,
-                assistance_level=next_assistance_level,
+                assistance_level=next_check_assistance_level,
                 delayed_transfer_due=(
                     context.delayed_transfer_due and event_attempt_kind == "none"
                 ),

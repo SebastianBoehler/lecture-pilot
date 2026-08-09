@@ -38,6 +38,8 @@ def test_model_prompt_requires_guided_quality_gate_turns() -> None:
     assert "next similar task without lecturepilot" in system_prompt
     assert "never ask the learner to select a learning style" in system_prompt
     assert "delayed independent transfer check" in system_prompt
+    assert "support actually contained in message" in system_prompt
+    assert "post-attempt corrective cue" in system_prompt
     assert "highlight_span" in system_prompt
 
 

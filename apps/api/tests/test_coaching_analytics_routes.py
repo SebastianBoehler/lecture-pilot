@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from auth_helpers import professor_headers, student_headers
+from lecturepilot.coaching_assistance import NextCheckAssistance
 from lecturepilot.models import AgentTurnResult, QualityGateDecision, QualityGateStatus
 from test_analytics_routes import _client
 
@@ -49,8 +50,18 @@ class _GateHarness:
         self.calls += 1
         first = self.calls == 1
         return AgentTurnResult(
-            message="Answer the risk check." if first else "Gate passed.",
+            message=(
+                "Consider posterior and loss together. "
+                "Explain how posterior and loss select an action."
+                if first
+                else "Gate passed."
+            ),
             model="test-harness",
+            next_check_assistance=(
+                NextCheckAssistance(level="prompt", content="Consider posterior and loss together.")
+                if first
+                else NextCheckAssistance()
+            ),
             quality_gate=QualityGateDecision(
                 gate_id="risk-gate",
                 status=QualityGateStatus.NOT_ASSESSED if first else QualityGateStatus.PASSED,

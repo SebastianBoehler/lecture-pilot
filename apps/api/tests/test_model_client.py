@@ -23,7 +23,10 @@ async def test_model_client_requests_structured_json(monkeypatch: pytest.MonkeyP
                     message=SimpleNamespace(
                         content=json.dumps(
                             {
-                                "message": "Structured response.",
+                                "message": (
+                                    "Remember that likelihood conditions on the hypothesis. "
+                                    "Explain the likelihood term."
+                                ),
                                 "session_goal": "Apply Bayes to a new decision.",
                                 "canvas_commands": [
                                     {
@@ -35,6 +38,10 @@ async def test_model_client_requests_structured_json(monkeypatch: pytest.MonkeyP
                                         "section": None,
                                     }
                                 ],
+                                "next_check_assistance": {
+                                    "level": "cue",
+                                    "content": "Remember that likelihood conditions on the hypothesis.",
+                                },
                                 "quality_gate": {
                                     "gate_id": "bayes-decision-check",
                                     "status": "needs_evidence",
@@ -64,15 +71,34 @@ async def test_model_client_requests_structured_json(monkeypatch: pytest.MonkeyP
             attendance=AttendanceStatus.PRESENT,
             message="Explain Bayes.",
             canvas_state=CanvasState(focused_section_id="bayes-formula"),
+            active_gate=LearningMapGate(
+                id="bayes-decision-check",
+                concept_id="bayes-decision",
+                title="Bayes decision",
+                prompt="Explain the likelihood term.",
+                section_id="bayes-formula",
+            ),
         ),
     )
 
-    assert result.message == "Structured response."
+    assert result.message == (
+        "Remember that likelihood conditions on the hypothesis. Explain the likelihood term."
+    )
     assert result.session_goal == "Apply Bayes to a new decision."
+    assert result.model_dump().get("next_check_assistance") == {
+        "level": "cue",
+        "content": "Remember that likelihood conditions on the hypothesis.",
+    }
     assert calls[0]["response_format"]["type"] == "json_schema"
     schema = calls[0]["response_format"]["json_schema"]["schema"]
     assert calls[0]["response_format"]["json_schema"]["strict"] is True
-    assert schema["required"] == ["message", "session_goal", "canvas_commands", "quality_gate"]
+    assert schema["required"] == [
+        "message",
+        "session_goal",
+        "canvas_commands",
+        "next_check_assistance",
+        "quality_gate",
+    ]
     block_schema = schema["properties"]["canvas_commands"]["items"]["properties"]["section"][
         "properties"
     ]["blocks"]["items"]

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 
+from lecturepilot.coaching_assistance import NextCheckAssistance, emitted_assistance_level
 from lecturepilot.model_commands import read_canvas_commands, read_quality_gate
 from lecturepilot.models import AgentTurnInput, AgentTurnResult
 from lecturepilot.providers import ProviderConfigurationError
@@ -13,13 +14,25 @@ def agent_result_from_content(
     model: str,
 ) -> AgentTurnResult:
     payload = parse_model_payload(content)
-    return AgentTurnResult(
+    result = AgentTurnResult(
         message=read_message(payload),
         session_goal=read_session_goal(payload),
         canvas_commands=read_canvas_commands(payload, turn),
+        next_check_assistance=NextCheckAssistance.model_validate(
+            payload.get("next_check_assistance", {})
+        ),
         quality_gate=read_quality_gate(payload, turn),
         model=model,
     )
+    try:
+        emitted_assistance_level(
+            message=result.message,
+            next_prompt=(result.quality_gate.next_prompt if result.quality_gate else None),
+            assistance=result.next_check_assistance,
+        )
+    except ValueError as exc:
+        raise ProviderConfigurationError(f"Invalid next-check assistance: {exc}.") from exc
+    return result
 
 
 def parse_model_payload(content: str | None) -> dict:
