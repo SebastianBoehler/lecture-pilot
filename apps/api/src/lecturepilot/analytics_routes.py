@@ -14,6 +14,7 @@ from lecturepilot.course_access import require_lecture_id_access
 from lecturepilot.course_canvas_context import (
     AnalyticsPublicationContext,
     InvalidPublishedCanvasContextError,
+    StalePublishedCanvasVersionError,
 )
 from lecturepilot.course_analytics import (
     CourseAnalyticsSummary,
@@ -66,7 +67,16 @@ def register_analytics_routes(
             snapshot = app.state.canvas_workspace.course_canvas_store.read_published_snapshot(
                 course_id=course_id,
                 lecture_id=lecture_id,
+                expected_version=answer.publication_version,
             )
+        except StalePublishedCanvasVersionError as exc:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "stale_quiz_publication",
+                    "message": "This quiz belongs to an older publication. Reload the lecture.",
+                },
+            ) from exc
         except InvalidPublishedCanvasContextError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         if snapshot is None:

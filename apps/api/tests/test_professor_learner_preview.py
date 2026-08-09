@@ -42,6 +42,7 @@ def test_professor_preview_persists_private_quiz_state_without_analytics(
             "attempt_id": "preview-risk-quiz-1",
             "block_id": "risk-quiz",
             "option_index": 1,
+            "publication_version": 1,
         },
     )
     analytics = client.get(
@@ -82,6 +83,7 @@ def test_professor_preview_reset_only_clears_the_professor_sandbox(tmp_path: Pat
             "attempt_id": "preview-risk-quiz-1",
             "block_id": "risk-quiz",
             "option_index": 1,
+            "publication_version": 1,
         },
     )
     assert quiz.status_code == 200

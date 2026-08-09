@@ -56,6 +56,7 @@ class LearnerDueGateReview(BaseModel):
 class LearnerLessonState(BaseModel):
     course_id: str
     lecture_id: str
+    publication_version: int = Field(strict=True, ge=1)
     gate_statuses: dict[str, QualityGateStatus] = Field(default_factory=dict)
     quiz_states: dict[str, LearnerQuizState] = Field(default_factory=dict)
     active_session_goal: str | None = None

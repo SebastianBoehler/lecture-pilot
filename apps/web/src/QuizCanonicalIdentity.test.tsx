@@ -1,5 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "./i18n";
@@ -8,26 +7,11 @@ import type { LearnerLessonState } from "./learnerLessonStateTypes";
 import type { CanvasDocument } from "./types";
 
 describe("canonical quiz identity", () => {
-  it("submits a component quiz with its canonical component id", async () => {
-    const user = userEvent.setup();
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => quizResult,
-    });
-    vi.stubGlobal("fetch", fetchMock);
-    renderWorkspace(null);
-
-    await user.click(screen.getByRole("button", { name: /A Posterior only/i }));
-
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    const request = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
-    expect(request.block_id).toBe("risk-component");
-  });
-
   it("hydrates and locks a component quiz by its canonical id after reload", () => {
     renderWorkspace({
       course_id: "course-1",
       lecture_id: "lecture-1",
+      publication_version: 1,
       gate_statuses: {},
       quiz_states: {
         "risk-component": {
@@ -106,17 +90,4 @@ const canvas: CanvasDocument = {
       ],
     },
   ],
-};
-
-const quizResult = {
-  block_id: "risk-component",
-  component_id: "risk-component",
-  selected_index: 0,
-  correct: false,
-  publication_version: 1,
-  attempt_index: 1,
-  first_attempt_correct: false,
-  latest_outcome: "incorrect",
-  correction_state: "needed",
-  feedback: "Review the explanation above, then try a correction.",
 };

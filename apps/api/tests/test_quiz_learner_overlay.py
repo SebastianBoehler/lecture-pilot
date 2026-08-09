@@ -143,6 +143,7 @@ def _submit(
             "attempt_id": attempt_id,
             "block_id": quiz_id,
             "option_index": option_index,
+            "publication_version": 1,
         },
     )
 

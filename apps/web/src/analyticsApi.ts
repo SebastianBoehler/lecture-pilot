@@ -20,6 +20,16 @@ export type LearnerQuizAnswerResult = {
   feedback: string;
 };
 
+export class StaleQuizPublicationError extends Error {}
+
+type QuizAnswerPayloadInput = {
+  attendance: Attendance;
+  attemptId: string;
+  blockId: string;
+  optionIndex: number;
+  publicationVersion: number;
+};
+
 export async function getCourseAnalytics(
   courseId: string,
   session: LoginSession,
@@ -40,6 +50,7 @@ export async function recordQuizAnswer(input: {
   attemptId: string;
   blockId: string;
   optionIndex: number;
+  publicationVersion: number;
   session: LoginSession;
   mode?: LearnerWorkspaceMode;
 }) {
@@ -48,17 +59,36 @@ export async function recordQuizAnswer(input: {
     learnerRequestInit(input.session, input.mode ?? "learner", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        attendance: input.attendance,
-        attempt_id: input.attemptId,
-        block_id: input.blockId,
-        option_index: input.optionIndex,
-      }),
+      body: JSON.stringify(quizAnswerPayload(input)),
     }),
   );
   const payload = await response.json();
-  if (!response.ok) throw new Error(readApiError(payload, "Quiz analytics recording failed."));
+  if (!response.ok) throw quizSubmissionError(response.status, payload);
   return payload as LearnerQuizAnswerResult;
+}
+
+export function quizAnswerPayload(input: QuizAnswerPayloadInput) {
+  return {
+    attendance: input.attendance,
+    attempt_id: input.attemptId,
+    block_id: input.blockId,
+    option_index: input.optionIndex,
+    publication_version: input.publicationVersion,
+  };
+}
+
+export function quizSubmissionError(status: number, payload: unknown): Error {
+  const detail = (payload as { detail?: unknown })?.detail;
+  if (
+    status === 409 &&
+    detail &&
+    typeof detail === "object" &&
+    (detail as { code?: unknown }).code === "stale_quiz_publication" &&
+    typeof (detail as { message?: unknown }).message === "string"
+  ) {
+    return new StaleQuizPublicationError((detail as { message: string }).message);
+  }
+  return new Error(readApiError(payload, "Quiz analytics recording failed."));
 }
 
 export async function getLectureAnalytics(

@@ -164,3 +164,54 @@ The Task 7 added-line audit again found no `monkeypatch`, `mock`, `fake`, `stub`
 `fallback`, or `test double` additions. `analytics.py` is 298 lines; all new review code and tests
 remain below 300 lines. The size scan continues to report only pre-existing oversized modules,
 catalogs, stylesheets, and older test files.
+
+## Review fix round 2
+
+- Outcome records now validate their full semantics at the typed log boundary. Quiz option indices
+  are canonical and unique, authored option IDs are unique, the selected ID and correctness must
+  match the indexed option snapshot, first-attempt evidence and correction state must agree, and
+  gate/quiz event IDs must equal the server-derived immutable attempt identity. The containing
+  course and lecture log path must also match the embedded event.
+- The event identity excludes mutable request/result metadata. Replaying one attempt with changed
+  attendance returns the original persisted answer and keeps one outcome; changing the selected
+  answer is rejected and still cannot append a second outcome.
+- Quiz submission requires the positive publication version hydrated with learner lesson state.
+  The course canvas store compares it with publication metadata under the same snapshot lock,
+  before overlay/state lookup or scoring. A stale request receives the typed
+  `stale_quiz_publication` 409 and cannot bind an old attempt ID to a new publication.
+- The web contract carries the captured publication version through the canvas renderer and answer
+  request. Quiz controls remain locked before hydration; the typed stale response reloads the
+  lecture and clears the in-memory attempt ID. No learner data enters professor aggregates.
+- The quiz renderer and event-integrity regression suite were extracted into focused modules; all
+  new production and test files remain below 300 lines.
+
+Review RED evidence:
+
+```text
+backend semantic/publication contract: 8 failed / 8 tests
+  forged/inconsistent events counted; wrong log path accepted; stale publication was not typed;
+  attempt ID could be rebound after republish
+immutable replay contract: 1 failed / 1 test
+  changed request attendance appended a second outcome
+web publication contract: 2 failed / 2 tests
+  learner state and quiz request did not require/carry publication version
+```
+
+Focused GREEN evidence:
+
+```text
+semantic/publication/retry backend matrix: 26 passed
+broader focused backend matrix before the size-only extraction: 48 passed
+quiz publication web matrix: 4 files, 15 tests passed
+```
+
+Final post-extraction verification passed 767 API tests, 22 compiler tests, and the complete web
+suite (98 files, 298 tests). Static web checks, TypeScript, the Vite production build,
+`verify:fast`, and `git diff --check` passed. Four obsolete simulated quiz-boundary tests were
+removed instead of being adapted to the new publication contract; the replacement contract tests
+are pure and the backend coverage uses real stores, publication flow, API routes, locks, and
+filesystem failures. The round-two and full Task 7 code/test added-line audits both found zero
+prohibited monkeypatch, mock, fake, stub, legacy, fallback, or test-double constructs. The sole
+touched file still above 300 lines is `App.canvas.test.tsx`, reduced from its pre-existing 383 lines
+to 330 by removal of simulated quiz tests; no oversized production or newly expanded test module
+remains.

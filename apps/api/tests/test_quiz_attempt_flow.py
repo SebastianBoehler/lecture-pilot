@@ -55,6 +55,7 @@ def test_wrong_then_correct_is_one_first_attempt_plus_one_correction(tmp_path: P
             "attempt_id": "attempt-wrong",
             "block_id": "risk-quiz",
             "option_index": 0,
+            "publication_version": 1,
         },
     )
     duplicate = client.post(
@@ -65,6 +66,7 @@ def test_wrong_then_correct_is_one_first_attempt_plus_one_correction(tmp_path: P
             "attempt_id": "attempt-wrong",
             "block_id": "risk-quiz",
             "option_index": 0,
+            "publication_version": 1,
         },
     )
     corrected = client.post(
@@ -75,6 +77,7 @@ def test_wrong_then_correct_is_one_first_attempt_plus_one_correction(tmp_path: P
             "attempt_id": "attempt-correction",
             "block_id": "risk-quiz",
             "option_index": 1,
+            "publication_version": 1,
         },
     )
 
@@ -129,6 +132,7 @@ def test_concurrent_transport_replay_accepts_one_first_attempt(tmp_path: Path) -
         "attempt_id": "attempt-concurrent-replay",
         "block_id": "risk-quiz",
         "option_index": 0,
+        "publication_version": 1,
     }
 
     with ThreadPoolExecutor(max_workers=2) as pool:
@@ -141,6 +145,39 @@ def test_concurrent_transport_replay_accepts_one_first_attempt(tmp_path: Path) -
     events = client.app.state.analytics_store.events(course_id=COURSE_ID, lecture_id=LECTURE_ID)
     assert len(events) == 1
     assert events[0]["attempt_index"] == 1
+
+
+def test_attempt_replay_cannot_change_persisted_answer_or_duplicate_outcome(
+    tmp_path: Path,
+) -> None:
+    client = _client(tmp_path)
+    headers = student_headers("student-a", course_ids=[COURSE_ID])
+    original = {
+        "attendance": "present",
+        "attempt_id": "attempt-immutable-replay",
+        "block_id": "risk-quiz",
+        "option_index": 0,
+        "publication_version": 1,
+    }
+    first = client.post(QUIZ_URL, headers=headers, json=original)
+    changed_attendance = client.post(
+        QUIZ_URL,
+        headers=headers,
+        json={**original, "attendance": "absent"},
+    )
+    changed_answer = client.post(
+        QUIZ_URL,
+        headers=headers,
+        json={**original, "option_index": 1},
+    )
+
+    assert first.status_code == changed_attendance.status_code == 200
+    assert changed_attendance.json() == first.json()
+    assert changed_answer.status_code == 409
+    events = client.app.state.analytics_store.events(course_id=COURSE_ID, lecture_id=LECTURE_ID)
+    assert len(events) == 1
+    assert events[0]["attendance"] == "present"
+    assert events[0]["option_index"] == 0
 
 
 def _client(tmp_path: Path) -> TestClient:

@@ -45,18 +45,29 @@ def test_quiz_submission_scores_document_and_version_from_one_published_snapshot
             end_round.wait()
 
     observed: list[tuple[int, bool | None]] = []
+    stale_responses = 0
     with ThreadPoolExecutor(max_workers=1) as executor:
         publication = executor.submit(publish_all)
         for attempt, _document in enumerate(documents, start=1):
+            version = _publication_version(client)
             start_round.wait()
-            response = _submit(client, f"snapshot-attempt-{attempt}", 0)
+            response = _submit(
+                client,
+                f"snapshot-attempt-{attempt}",
+                0,
+                publication_version=version,
+            )
             end_round.wait()
-            assert response.status_code == 200
-            payload = response.json()
-            observed.append((payload["publication_version"], payload["correct"]))
+            assert response.status_code in {200, 409}
+            if response.status_code == 409:
+                stale_responses += 1
+                assert response.json()["detail"]["code"] == "stale_quiz_publication"
+            else:
+                payload = response.json()
+                observed.append((payload["publication_version"], payload["correct"]))
         publication.result(timeout=20)
 
-    assert observed
+    assert observed or stale_responses
     assert all(correct is (version % 2 == 1) for version, correct in observed)
 
 
@@ -89,6 +100,7 @@ def _submit(
     attempt_id: str,
     option_index: int,
     *,
+    publication_version: int,
     quiz_id: str = "risk-quiz",
 ):
     return client.post(
@@ -99,8 +111,18 @@ def _submit(
             "attempt_id": attempt_id,
             "block_id": quiz_id,
             "option_index": option_index,
+            "publication_version": publication_version,
         },
     )
+
+
+def _publication_version(client: TestClient) -> int:
+    response = client.get(
+        f"/courses/{COURSE_ID}/lectures/{LECTURE_ID}/learner-state",
+        headers=student_headers("student-a", course_ids=[COURSE_ID]),
+    )
+    assert response.status_code == 200
+    return response.json()["publication_version"]
 
 
 def _client(tmp_path: Path, document: CanvasDocument) -> TestClient:

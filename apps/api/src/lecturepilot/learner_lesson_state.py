@@ -36,6 +36,7 @@ def lesson_state_snapshot(
     return LearnerLessonState(
         course_id=course_id,
         lecture_id=lecture_id,
+        publication_version=publication_version,
         gate_statuses={gate_id: decision.status for gate_id, decision in sorted(decisions.items())},
         quiz_states=learner_store.latest_quiz_states(
             user_id=user_id,

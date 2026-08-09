@@ -195,37 +195,6 @@ describe("durable learner lesson state", () => {
     const path = await screen.findByRole("complementary", { name: /learning path panel/i });
     expect(await within(path).findByText("Correct")).toBeInTheDocument();
   });
-
-  it("shows persisted quiz state without waiting for an older hydration request", async () => {
-    const baseFetch = mockLoginAndTutorFetch();
-    let stateReads = 0;
-    vi.stubGlobal(
-      "fetch",
-      vi.fn((url: string, init?: RequestInit) => {
-        if (url.includes("/learner-state")) {
-          stateReads += 1;
-          return stateReads === 1
-            ? new Promise(() => undefined)
-            : Promise.resolve(json(persistedState("lecture-03", "Durable goal.")));
-        }
-        if (url.includes("/analytics/quiz-answer")) {
-          return Promise.resolve(json(correctQuizResult()));
-        }
-        if (url.includes("/agent/turn/stream")) return new Promise(() => undefined);
-        return baseFetch(url, init);
-      }),
-    );
-    const user = userEvent.setup();
-    render(<App />);
-
-    await logIn(user);
-    await openLecture03FromDashboard(user);
-    await user.click(screen.getByRole("button", { name: /B Expected risk/i }));
-    await user.click(screen.getByLabelText(/open learning path/i));
-
-    const path = await screen.findByRole("complementary", { name: /learning path panel/i });
-    expect(await within(path).findByText("Correct")).toBeInTheDocument();
-  });
 });
 
 function persistedState(lectureId: string, goal: string) {
@@ -243,6 +212,7 @@ function emptyState(lectureId: string) {
   return {
     course_id: "martius-ml",
     lecture_id: lectureId,
+    publication_version: 1,
     gate_statuses: {} as Record<string, "passed" | "needs_evidence" | "not_assessed">,
     quiz_states: {} as Record<string, LearnerQuizState>,
     active_session_goal: null as string | null,

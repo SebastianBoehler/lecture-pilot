@@ -109,7 +109,7 @@ def test_republication_hides_old_state_and_restarts_attempt_index(tmp_path: Path
     _publish(client, version_two=True)
 
     assert _state(client) == {}
-    current = _submit(client, "risk-quiz", "version-two-attempt", 1)
+    current = _submit(client, "risk-quiz", "version-two-attempt", 1, publication_version=2)
     assert current.status_code == 200
     assert current.json()["attempt_index"] == 1
     assert current.json()["publication_version"] == 2
@@ -124,7 +124,63 @@ def test_republication_hides_old_state_and_restarts_attempt_index(tmp_path: Path
     }
 
 
-def _submit(client: TestClient, quiz_id: str, attempt_id: str, option_index: int):
+def test_stale_publication_retry_is_rejected_without_v2_state_or_outcome(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    first = _submit(
+        client,
+        "risk-quiz",
+        "publication-bound-attempt",
+        0,
+        publication_version=1,
+    )
+    assert first.status_code == 200
+    _publish(client, version_two=True)
+
+    stale = _submit(
+        client,
+        "risk-quiz",
+        "publication-bound-attempt",
+        0,
+        publication_version=1,
+    )
+
+    assert stale.status_code == 409
+    assert stale.json() == {
+        "detail": {
+            "code": "stale_quiz_publication",
+            "message": "This quiz belongs to an older publication. Reload the lecture.",
+        }
+    }
+    assert _state(client) == {}
+    events = client.app.state.analytics_store.events(course_id=COURSE_ID, lecture_id=LECTURE_ID)
+    assert [(event["publication_version"], event["attempt_index"]) for event in events] == [(1, 1)]
+
+
+def test_attempt_id_cannot_be_rebound_to_a_new_publication(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    first = _submit(client, "risk-quiz", "globally-bound-attempt", 0, publication_version=1)
+    assert first.status_code == 200
+    _publish(client, version_two=True)
+
+    rebound = _submit(client, "risk-quiz", "globally-bound-attempt", 1, publication_version=2)
+
+    assert rebound.status_code == 409
+    assert rebound.json()["detail"] == "Quiz attempt ID is already bound to another publication."
+    assert _state(client) == {}
+    assert (
+        len(client.app.state.analytics_store.events(course_id=COURSE_ID, lecture_id=LECTURE_ID))
+        == 1
+    )
+
+
+def _submit(
+    client: TestClient,
+    quiz_id: str,
+    attempt_id: str,
+    option_index: int,
+    *,
+    publication_version: int = 1,
+):
     return client.post(
         QUIZ_URL,
         headers=student_headers("student-a", course_ids=[COURSE_ID]),
@@ -133,6 +189,7 @@ def _submit(client: TestClient, quiz_id: str, attempt_id: str, option_index: int
             "attempt_id": attempt_id,
             "block_id": quiz_id,
             "option_index": option_index,
+            "publication_version": publication_version,
         },
     )
 

@@ -12,12 +12,14 @@ export type ComponentRendererProps = {
   block: CanvasBlock;
   className: string;
   sourceMarker: ReactNode;
+  publicationVersion?: number | null;
   quizState?: LearnerQuizState;
   onSubmitAnswer: (
     block: CanvasBlock,
     answer: string,
     optionIndex: number,
     attemptId: string,
+    publicationVersion: number,
   ) => Promise<LearnerQuizAnswerResult>;
 };
 
@@ -31,6 +33,7 @@ export function ComponentBlock({
   block,
   className,
   onSubmitAnswer,
+  publicationVersion,
   quizState,
   sourceMarker,
 }: ComponentRendererProps) {
@@ -42,6 +45,7 @@ export function ComponentBlock({
         block={block}
         className={className}
         sourceMarker={sourceMarker}
+        publicationVersion={publicationVersion}
         quizState={quizState}
         onSubmitAnswer={onSubmitAnswer}
       />
@@ -58,13 +62,20 @@ export function ComponentBlock({
   );
 }
 
-function SingleChoiceQuiz({ block, className, onSubmitAnswer, quizState }: ComponentRendererProps) {
+function SingleChoiceQuiz({
+  block,
+  className,
+  onSubmitAnswer,
+  publicationVersion,
+  quizState,
+}: ComponentRendererProps) {
   return (
     <QuizBlock
       block={block}
       className={`${className} canvas-component`}
       highlightedText={null}
       sourceMarker={null}
+      publicationVersion={publicationVersion}
       quizState={quizState}
       onSubmitAnswer={onSubmitAnswer}
     />

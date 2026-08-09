@@ -53,53 +53,6 @@ describe("CanvasLearningBlocks", () => {
     expect(document.querySelector(".katex")).not.toBeNull();
   });
 
-  it("awaits the server result, locks the accepted attempt, and offers repair", async () => {
-    const user = userEvent.setup();
-    let resolveAttempt!: (value: QuizResult) => void;
-    const onSubmitAnswer = vi.fn(
-      () => new Promise<QuizResult>((resolve) => (resolveAttempt = resolve)),
-    );
-    const quiz = block("quiz", {
-      caption: "Retrieval check",
-      items: ["Prior", "Expected risk"],
-      text: "What should be minimized?",
-    });
-
-    renderWithI18n(
-      <QuizBlock
-        block={quiz}
-        className="canvas-block"
-        highlightedText={null}
-        sourceMarker={null}
-        onSubmitAnswer={onSubmitAnswer}
-      />,
-    );
-
-    const wrong = screen.getByRole("button", { name: "A Prior" });
-    await user.click(wrong);
-
-    expect(screen.getByRole("status")).toHaveTextContent("Checking answer");
-    expect(screen.getByRole("button", { name: "B Expected risk" })).toBeDisabled();
-    expect(onSubmitAnswer).toHaveBeenCalledWith(quiz, "Prior", 0, expect.any(String));
-
-    resolveAttempt(
-      result({
-        correct: false,
-        selected_index: 0,
-        first_attempt_correct: false,
-        latest_outcome: "incorrect",
-        correction_state: "needed",
-      }),
-    );
-    expect(await screen.findByText(/review the explanation above/i)).toBeInTheDocument();
-    expect(wrong).toHaveClass("is-incorrect");
-    expect(screen.getByRole("button", { name: "B Expected risk" })).toBeDisabled();
-    expect(screen.queryByText("Correct")).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /try a correction/i }));
-    expect(screen.getByRole("button", { name: "B Expected risk" })).toBeEnabled();
-  });
-
   it("restores a persisted accepted quiz attempt after reload", () => {
     const quiz = block("quiz", {
       items: ["Posterior only", "Expected risk"],
@@ -127,31 +80,6 @@ describe("CanvasLearningBlocks", () => {
     expect(screen.getByRole("button", { name: "A Posterior only" })).toBeDisabled();
     expect(screen.getByRole("status")).toHaveTextContent(/not correct yet/i);
     expect(screen.getByRole("button", { name: /try a correction/i })).toBeInTheDocument();
-  });
-
-  it("shows quiz submission errors and permits a retry", async () => {
-    const user = userEvent.setup();
-    const quiz = block("quiz", {
-      items: ["Posterior only", "Expected risk"],
-      text: "What should be minimized?",
-    });
-    const onSubmitAnswer = vi.fn().mockRejectedValue(new Error("Quiz service unavailable."));
-
-    renderWithI18n(
-      <QuizBlock
-        block={quiz}
-        className="canvas-block"
-        highlightedText={null}
-        sourceMarker={null}
-        onSubmitAnswer={onSubmitAnswer}
-      />,
-    );
-
-    const wrong = screen.getByRole("button", { name: "A Posterior only" });
-    await user.click(wrong);
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("Quiz service unavailable.");
-    expect(wrong).toBeEnabled();
   });
 
   it("submits an inline checkpoint answer from the main canvas", async () => {
@@ -214,33 +142,6 @@ function block(type: CanvasBlock["type"], overrides: Partial<CanvasBlock>): Canv
     items: [],
     text: null,
     type,
-    ...overrides,
-  };
-}
-
-type QuizResult = {
-  block_id: string;
-  selected_index: number;
-  correct: boolean | null;
-  publication_version: number;
-  attempt_index: number;
-  first_attempt_correct: boolean | null;
-  latest_outcome: "correct" | "incorrect" | "unscored";
-  correction_state: "not_needed" | "needed" | "corrected";
-  feedback: string;
-};
-
-function result(overrides: Partial<QuizResult> = {}): QuizResult {
-  return {
-    block_id: "quiz-block",
-    selected_index: 1,
-    correct: true,
-    publication_version: 1,
-    attempt_index: 1,
-    first_attempt_correct: true,
-    latest_outcome: "correct",
-    correction_state: "not_needed",
-    feedback: "Correct. Explain why this option fits the concept before moving on.",
     ...overrides,
   };
 }

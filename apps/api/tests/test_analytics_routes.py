@@ -27,6 +27,7 @@ def test_quiz_answers_are_recorded_as_aggregate_lecture_analytics(tmp_path: Path
             "attempt_id": "student-a-risk-check-1",
             "block_id": "risk-check",
             "option_index": 1,
+            "publication_version": 1,
         },
     )
     assert response.status_code == 200
@@ -40,6 +41,7 @@ def test_quiz_answers_are_recorded_as_aggregate_lecture_analytics(tmp_path: Path
             "attempt_id": "student-b-risk-check-1",
             "block_id": "risk-check",
             "option_index": 0,
+            "publication_version": 1,
         },
     )
     assert second.status_code == 200

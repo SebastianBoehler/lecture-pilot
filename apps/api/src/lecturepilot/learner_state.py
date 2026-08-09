@@ -105,15 +105,16 @@ class LearnerStateStore:
             block_attempts = (
                 attempts.get(quiz_id) if isinstance(attempts.get(quiz_id), dict) else {}
             )
+            bound_quiz_id, bound_state = _bound_attempt(attempts, attempt_id)
+            if bound_state is not None and bound_quiz_id != quiz_id:
+                raise ValueError("Quiz attempt ID is already bound to another quiz.")
             if attempt_id in block_attempts:
                 prior = LearnerQuizState.model_validate(block_attempts[attempt_id])
-                if (
-                    prior.publication_version == publication_version
-                    and prior.selected_index != selected_index
-                ):
+                if prior.publication_version != publication_version:
+                    raise ValueError("Quiz attempt ID is already bound to another publication.")
+                if prior.selected_index != selected_index:
                     raise ValueError("Quiz attempt ID was already used for a different answer.")
-                if prior.publication_version == publication_version:
-                    return prior, False
+                return prior, False
             previous = _current_quiz_state(quizzes.get(quiz_id), publication_version)
             if previous is not None and previous.correct is True:
                 return previous, False
@@ -192,6 +193,15 @@ def _current_quiz_state(value, publication_version: int) -> LearnerQuizState | N
     except ValidationError:
         return None
     return state if state.publication_version == publication_version else None
+
+
+def _bound_attempt(attempts: dict, attempt_id: str) -> tuple[str | None, dict | None]:
+    for quiz_id, quiz_attempts in attempts.items():
+        if isinstance(quiz_id, str) and isinstance(quiz_attempts, dict):
+            state = quiz_attempts.get(attempt_id)
+            if isinstance(state, dict):
+                return quiz_id, state
+    return None, None
 
 
 def _correction_state(

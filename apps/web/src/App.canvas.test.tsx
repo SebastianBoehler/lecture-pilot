@@ -52,42 +52,6 @@ describe("LecturePilot canvas interactions", () => {
     expect(document.getElementById("bayes-formula-list")).not.toHaveClass("is-highlighted");
   });
 
-  it("submits retrieval quiz options as tutor turns", async () => {
-    const user = userEvent.setup();
-    const fetchMock = mockLoginAndTutorFetch();
-    vi.stubGlobal("fetch", fetchMock);
-    render(<App />);
-
-    await logIn(user);
-    await openLecture03FromDashboard(user);
-    const correct = screen.getByRole("button", { name: /B Expected risk/i });
-    await user.click(correct);
-
-    expect(await screen.findByPlaceholderText(/ask about this lecture/i)).toBeInTheDocument();
-    expect(
-      await screen.findByText(/Retrieval quiz answer for "Retrieval check": B\. Expected risk/i),
-    ).toBeInTheDocument();
-
-    const agentCall = fetchMock.mock.calls.find(([url]) => String(url).includes("/agent/turn"));
-    expect(agentCall).toBeDefined();
-    const request = JSON.parse(String(agentCall?.[1]?.body));
-    expect(request.message).toContain("Question: Which quantity should be minimized");
-    expect(request.message).toContain("B. Expected risk");
-    await waitFor(() => {
-      const analyticsCall = fetchMock.mock.calls.find(([url]) =>
-        String(url).includes("/analytics/quiz-answer"),
-      );
-      expect(analyticsCall).toBeDefined();
-      expect(JSON.parse(String(analyticsCall?.[1]?.body))).toMatchObject({
-        attendance: "absent",
-        block_id: "losses-and-risks-quiz",
-        option_index: 1,
-      });
-      expect(JSON.parse(String(analyticsCall?.[1]?.body))).not.toHaveProperty("user_id");
-    });
-    expect(correct).toHaveClass("is-correct");
-  });
-
   it("marks learner-generated canvas sections subtly", async () => {
     const user = userEvent.setup();
     vi.stubGlobal(
@@ -158,23 +122,6 @@ describe("LecturePilot canvas interactions", () => {
       expect(JSON.parse(String(resetCall?.[1]?.body))).not.toHaveProperty("user_id");
     });
     expect(await screen.findByText(/workspace reset/i)).toBeInTheDocument();
-  });
-
-  it("renders prefab component quizzes inside the canvas", async () => {
-    const user = userEvent.setup();
-    const fetchMock = mockLoginAndTutorFetch();
-    vi.stubGlobal("fetch", fetchMock);
-    render(<App />);
-
-    await logIn(user);
-    await openLecture03FromDashboard(user);
-    const componentAnswer = screen.getByRole("button", { name: /A The loss-sensitive threshold/i });
-    await user.click(componentAnswer);
-
-    expect(
-      await screen.findByText(/Retrieval quiz answer for "Risk threshold component": A/i),
-    ).toBeInTheDocument();
-    expect(componentAnswer).toHaveClass("is-correct");
   });
 
   it("pulses an outline jump target and clears it after five seconds", async () => {

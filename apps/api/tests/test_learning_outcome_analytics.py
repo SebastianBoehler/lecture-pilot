@@ -126,6 +126,11 @@ def test_course_rollup_weights_current_first_attempts_by_learner(tmp_path: Path)
 
 
 def _answer(client, user_id: str, attempt_index: int, option_index: int) -> None:
+    state = client.get(
+        "/courses/demo-course/lectures/lecture-01/learner-state",
+        headers=student_headers(user_id),
+    )
+    assert state.status_code == 200
     response = client.post(
         "/courses/demo-course/lectures/lecture-01/analytics/quiz-answer",
         headers=student_headers(user_id),
@@ -134,6 +139,7 @@ def _answer(client, user_id: str, attempt_index: int, option_index: int) -> None
             "attempt_id": f"{user_id}-attempt-{attempt_index}",
             "block_id": "risk-check",
             "option_index": option_index,
+            "publication_version": state.json()["publication_version"],
         },
     )
     assert response.status_code == 200

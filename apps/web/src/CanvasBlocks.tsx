@@ -51,6 +51,7 @@ export function CanvasBlocks({
   onOpenResource,
   onSubmitCheckpoint,
   onSubmitQuizAnswer,
+  publicationVersion,
   quizStates,
 }: CanvasBlocksProps) {
   return renderBlocks(section.blocks, {
@@ -62,6 +63,7 @@ export function CanvasBlocks({
     onOpenResource,
     onSubmitCheckpoint,
     onSubmitQuizAnswer,
+    publicationVersion,
     quizStates,
     sourceLabel: section.title,
     sectionId: section.id,
@@ -135,6 +137,7 @@ function renderBlockWithOptions(block: CanvasBlock, options: RenderBlockOptions)
     onOpenResource: options.onOpenResource,
     onSubmitQuizAnswer: options.onSubmitQuizAnswer,
     onSubmitCheckpoint: options.onSubmitCheckpoint,
+    publicationVersion: options.publicationVersion,
     quizStates: options.quizStates,
     showSourceMarker: shouldShowSourceMarker(block, options.keySourceBlockId),
     sourceLabel: options.sourceLabel,
@@ -157,6 +160,7 @@ function renderBlock(
     sourceReference,
     onSubmitQuizAnswer,
     onSubmitCheckpoint,
+    publicationVersion,
     quizStates,
     session,
   }: {
@@ -246,6 +250,7 @@ function renderBlock(
         className={className}
         highlightedText={phrase}
         key={block.id}
+        publicationVersion={publicationVersion}
         quizState={quizStates[canonicalQuizId(block)]}
         sourceMarker={sourceMarker}
         onSubmitAnswer={onSubmitQuizAnswer}
@@ -271,6 +276,7 @@ function renderBlock(
         block={block}
         className={className}
         key={block.id}
+        publicationVersion={publicationVersion}
         quizState={quizStates[canonicalQuizId(block)]}
         sourceMarker={sourceMarker}
         onSubmitAnswer={onSubmitQuizAnswer}

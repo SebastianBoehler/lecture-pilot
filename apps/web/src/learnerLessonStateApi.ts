@@ -21,7 +21,7 @@ export async function getLearnerLessonState(
   return payload;
 }
 
-function isLearnerLessonState(
+export function isLearnerLessonState(
   payload: unknown,
   courseId: string,
   lectureId: string,
@@ -31,6 +31,8 @@ function isLearnerLessonState(
   return (
     state.course_id === courseId &&
     state.lecture_id === lectureId &&
+    Number.isInteger(state.publication_version) &&
+    Number(state.publication_version) >= 1 &&
     isRecord(state.gate_statuses) &&
     isRecord(state.quiz_states) &&
     (typeof state.active_session_goal === "string" || state.active_session_goal === null) &&

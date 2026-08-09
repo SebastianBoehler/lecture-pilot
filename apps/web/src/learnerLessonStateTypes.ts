@@ -13,6 +13,7 @@ export type LearnerQuizState = {
 export type LearnerLessonState = {
   course_id: string;
   lecture_id: string;
+  publication_version: number;
   gate_statuses: Record<string, LearnerGateStatus>;
   quiz_states: Record<string, LearnerQuizState>;
   active_session_goal: string | null;

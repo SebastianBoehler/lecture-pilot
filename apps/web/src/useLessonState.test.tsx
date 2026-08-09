@@ -223,6 +223,7 @@ function lessonState(
   return {
     course_id: "course-a",
     lecture_id: lectureId,
+    publication_version: 1,
     gate_statuses: {},
     quiz_states: {},
     active_session_goal: goal,

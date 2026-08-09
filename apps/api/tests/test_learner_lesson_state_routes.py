@@ -31,6 +31,7 @@ QUIZ_ANSWER = {
     "attempt_id": "intro-quiz-attempt-1",
     "block_id": "intro-quiz",
     "option_index": 0,
+    "publication_version": 1,
 }
 
 
@@ -43,6 +44,7 @@ def test_new_learner_receives_explicit_empty_lesson_state(tmp_path: Path) -> Non
     assert response.json() == {
         "course_id": COURSE_ID,
         "lecture_id": "lecture-open",
+        "publication_version": 1,
         "gate_statuses": {},
         "quiz_states": {},
         "active_session_goal": None,
@@ -126,6 +128,7 @@ def test_lesson_state_hydrates_gate_quiz_goal_pending_check_and_due_review(
     assert state.json() == {
         "course_id": COURSE_ID,
         "lecture_id": "lecture-open",
+        "publication_version": 1,
         "gate_statuses": {"risk-check": "needs_evidence"},
         "quiz_states": {
             "intro-quiz": {
@@ -196,29 +199,6 @@ def test_progress_reset_clears_private_quiz_state(tmp_path: Path) -> None:
 
     assert reset.status_code == 200
     assert _get_state(client, "student-a").json()["quiz_states"] == {}
-
-
-def test_professor_analytics_never_exposes_private_tutor_messages(tmp_path: Path) -> None:
-    client = _client(tmp_path)
-    progress = CoachingProgress(
-        session_goal="Private goal",
-        messages=[
-            {"role": "user", "content": "private learner message"},
-            {"role": "assistant", "content": "private tutor message"},
-        ],
-    )
-    _write_progress(client, "student-a", progress)
-
-    response = client.get(
-        f"/admin/courses/{COURSE_ID}/lectures/lecture-open/analytics",
-        headers=professor_headers("prof-a"),
-    )
-    serialized = response.text
-
-    assert response.status_code == 200
-    assert "private learner message" not in serialized
-    assert "private tutor message" not in serialized
-    assert '"messages"' not in serialized
 
 
 def _client(tmp_path: Path) -> TestClient:

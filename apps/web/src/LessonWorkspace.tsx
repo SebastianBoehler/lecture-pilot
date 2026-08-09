@@ -153,6 +153,7 @@ export function LessonWorkspace({
             outlinePulseVersion={outlinePulse?.version ?? 0}
             session={session}
             quizStates={learnerState?.quiz_states ?? {}}
+            publicationVersion={learnerState?.publication_version ?? null}
             onOpenResource={openWorkspaceResource}
             onSubmitCheckpoint={learningAttempts.submitCheckpoint}
             onSubmitQuizAnswer={learningAttempts.submitQuiz}

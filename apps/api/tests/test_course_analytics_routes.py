@@ -28,6 +28,7 @@ def test_course_analytics_roll_up_published_lectures_without_double_counting_lea
                 "attempt_id": f"{user_id}-{lecture_id}-1",
                 "block_id": "risk-check",
                 "option_index": option_index,
+                "publication_version": 1,
             },
         )
         assert response.status_code == 200

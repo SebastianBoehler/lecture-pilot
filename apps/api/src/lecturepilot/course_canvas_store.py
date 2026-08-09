@@ -194,9 +194,11 @@ class CourseCanvasStore:
             return read_publication(published_dir)
 
     def read_published_snapshot(
-        self, *, course_id: str, lecture_id: str
+        self, *, course_id: str, lecture_id: str, expected_version: int
     ) -> PublishedCanvasSnapshot | None:
-        return read_published_snapshot(self.path(course_id, lecture_id))
+        return read_published_snapshot(
+            self.path(course_id, lecture_id), expected_version=expected_version
+        )
 
     def read_analytics_context(
         self, *, course_id: str, lecture_id: str

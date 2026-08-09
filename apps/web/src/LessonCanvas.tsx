@@ -24,6 +24,7 @@ export function LessonCanvas({
   onOpenResource,
   onSubmitCheckpoint,
   onSubmitQuizAnswer,
+  publicationVersion,
   quizStates,
   session,
 }: {
@@ -75,6 +76,7 @@ export function LessonCanvas({
           onOpenResource,
           onSubmitCheckpoint,
           onSubmitQuizAnswer,
+          publicationVersion,
           quizStates,
           session,
           navigationVersion,
@@ -95,6 +97,7 @@ function renderSection({
   onOpenResource,
   onSubmitCheckpoint,
   onSubmitQuizAnswer,
+  publicationVersion,
   quizStates,
   session,
   navigationVersion,
@@ -141,6 +144,7 @@ function renderSection({
         onOpenResource={onOpenResource}
         onSubmitCheckpoint={onSubmitCheckpoint}
         onSubmitQuizAnswer={onSubmitQuizAnswer}
+        publicationVersion={publicationVersion}
       />
       <SectionSources
         canvasDocument={canvasDocument}
