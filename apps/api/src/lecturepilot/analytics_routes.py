@@ -71,7 +71,15 @@ def register_analytics_routes(
         )
         if snapshot is None:
             raise HTTPException(status_code=404, detail="Canvas has not been published.")
-        block = _quiz_block(snapshot.document, answer.block_id)
+        overlay_sections = app.state.canvas_workspace.read_learner_overlay_sections(
+            course_id=course_id,
+            lecture_id=lecture_id,
+            user_id=access.user_id,
+        )
+        document = snapshot.document.model_copy(
+            update={"sections": [*snapshot.document.sections, *overlay_sections]}
+        )
+        block = _quiz_block(document, answer.block_id)
         quiz_id = canonical_quiz_id(block)
         if answer.option_index >= len(block.items):
             raise HTTPException(status_code=400, detail="Quiz option does not exist.")
