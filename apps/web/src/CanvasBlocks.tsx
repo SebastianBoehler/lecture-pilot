@@ -4,6 +4,7 @@ import { renderAssetBlock, renderVideoBlock } from "./CanvasMediaBlocks";
 import { DisplayMath, MathText } from "./MathText";
 import { SourceMarker } from "./SourceMarker";
 import { findKeySourceBlockId, shouldShowSourceMarker } from "./canvasBlockSourceRules";
+import type { CanvasLearningActions } from "./canvasLearningActions";
 import { blockSourceReference, sectionSourceReferences } from "./sourceReferences";
 import type {
   CanvasBlock,
@@ -23,8 +24,7 @@ type CanvasBlocksProps = {
   outlinePulseVersion: number;
   session: LoginSession;
   onOpenResource: (resource: WorkspaceResource) => void;
-  onSubmitQuizAnswer: (block: CanvasBlock, answer: string, optionIndex: number) => void;
-};
+} & CanvasLearningActions;
 
 type RenderBlockOptions = {
   highlightedBlockId: string | null;
@@ -33,11 +33,11 @@ type RenderBlockOptions = {
   outlinePulseVersion: number;
   session: LoginSession;
   onOpenResource: (resource: WorkspaceResource) => void;
-  onSubmitQuizAnswer: (block: CanvasBlock, answer: string, optionIndex: number) => void;
   sourceLabel: string;
+  sectionId: string;
   sourceReferences: ReturnType<typeof sectionSourceReferences>;
   keySourceBlockId: string | null;
-};
+} & CanvasLearningActions;
 
 export function CanvasBlocks({
   canvasDocument,
@@ -48,7 +48,9 @@ export function CanvasBlocks({
   outlinePulseVersion,
   session,
   onOpenResource,
+  onSubmitCheckpoint,
   onSubmitQuizAnswer,
+  quizStates,
 }: CanvasBlocksProps) {
   return renderBlocks(section.blocks, {
     highlightedBlockId,
@@ -57,8 +59,11 @@ export function CanvasBlocks({
     outlinePulseVersion,
     session,
     onOpenResource,
+    onSubmitCheckpoint,
     onSubmitQuizAnswer,
+    quizStates,
     sourceLabel: section.title,
+    sectionId: section.id,
     sourceReferences: sectionSourceReferences(canvasDocument, section),
     keySourceBlockId: findKeySourceBlockId(section.blocks),
   });
@@ -128,8 +133,11 @@ function renderBlockWithOptions(block: CanvasBlock, options: RenderBlockOptions)
     session: options.session,
     onOpenResource: options.onOpenResource,
     onSubmitQuizAnswer: options.onSubmitQuizAnswer,
+    onSubmitCheckpoint: options.onSubmitCheckpoint,
+    quizStates: options.quizStates,
     showSourceMarker: shouldShowSourceMarker(block, options.keySourceBlockId),
     sourceLabel: options.sourceLabel,
+    sectionId: options.sectionId,
     sourceReference: blockSourceReference(options.sourceReferences, block),
   });
 }
@@ -144,8 +152,11 @@ function renderBlock(
     onOpenResource,
     showSourceMarker,
     sourceLabel,
+    sectionId,
     sourceReference,
     onSubmitQuizAnswer,
+    onSubmitCheckpoint,
+    quizStates,
     session,
   }: {
     isHighlighted: boolean;
@@ -153,12 +164,12 @@ function renderBlock(
     highlightedText: string | null;
     outlinePulseVersion: number;
     onOpenResource: (resource: WorkspaceResource) => void;
-    onSubmitQuizAnswer: (block: CanvasBlock, answer: string, optionIndex: number) => void;
     session: LoginSession;
     showSourceMarker: boolean;
     sourceLabel: string;
+    sectionId: string;
     sourceReference: ReturnType<typeof sectionSourceReferences>[number];
-  },
+  } & CanvasLearningActions,
 ) {
   const canHighlightBlock = block.type !== "quiz";
   const className = [
@@ -220,7 +231,9 @@ function renderBlock(
         className={className}
         highlightedText={phrase}
         key={block.id}
+        sectionId={sectionId}
         sourceMarker={sourceMarker}
+        onSubmitCheckpoint={onSubmitCheckpoint}
       />
     );
   }
@@ -232,6 +245,7 @@ function renderBlock(
         className={className}
         highlightedText={phrase}
         key={block.id}
+        quizState={quizStates[block.component_id || block.id]}
         sourceMarker={sourceMarker}
         onSubmitAnswer={onSubmitQuizAnswer}
       />
@@ -256,6 +270,7 @@ function renderBlock(
         block={block}
         className={className}
         key={block.id}
+        quizState={quizStates[block.component_id || block.id]}
         sourceMarker={sourceMarker}
         onSubmitAnswer={onSubmitQuizAnswer}
       />

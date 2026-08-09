@@ -76,23 +76,46 @@ def register_analytics_routes(
         block = _quiz_block(document, answer.block_id)
         if answer.option_index >= len(block.items):
             raise HTTPException(status_code=400, detail="Quiz option does not exist.")
-        result = _analytics_store(app).record_quiz_answer(
-            course_id=course_id,
-            lecture_id=lecture_id,
-            user_id=access.user_id,
-            attendance=answer.attendance,
-            block=block,
-            option_index=answer.option_index,
+        correct = (
+            answer.option_index == block.answer_index
+            if isinstance(block.answer_index, int)
+            else None
         )
-        learner_state_store(app).record_quiz_answer(
-            course_id=course_id,
-            lecture_id=lecture_id,
-            user_id=access.user_id,
-            block_id=result.block_id,
-            selected_index=result.selected_index,
-            correct=result.correct,
+        try:
+            state, created = learner_state_store(app).record_quiz_answer(
+                course_id=course_id,
+                lecture_id=lecture_id,
+                user_id=access.user_id,
+                block_id=block.id,
+                attempt_id=answer.attempt_id,
+                selected_index=answer.option_index,
+                correct=correct,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        if created:
+            _analytics_store(app).record_quiz_answer(
+                course_id=course_id,
+                lecture_id=lecture_id,
+                user_id=access.user_id,
+                attendance=answer.attendance,
+                block=block,
+                option_index=answer.option_index,
+                attempt_index=state.attempt_index,
+                first_attempt_correct=state.first_attempt_correct,
+                correction_state=state.correction_state,
+            )
+        return QuizAnswerResult(
+            block_id=block.id,
+            component_id=block.component_id or block.id,
+            selected_index=state.selected_index,
+            correct=state.correct,
+            attempt_index=state.attempt_index,
+            first_attempt_correct=state.first_attempt_correct,
+            latest_outcome=state.latest_outcome,
+            correction_state=state.correction_state,
+            feedback=_quiz_feedback(state.correct),
         )
-        return result
 
     @app.get(
         "/admin/courses/{course_id}/analytics",
@@ -216,6 +239,17 @@ def _analytics_store(app: FastAPI) -> AnalyticsStore:
         store = AnalyticsStore(layout)
         app.state.analytics_store = store
     return store
+
+
+def _quiz_feedback(correct: bool | None) -> str:
+    if correct is True:
+        return "Correct. Explain why this option fits the concept before moving on."
+    if correct is False:
+        return (
+            "Review the explanation above, explain why your choice does not fit, "
+            "then try a correction."
+        )
+    return "Your answer was stored. Discuss the reasoning with the tutor."
 
 
 def _learning_map(app: FastAPI, course_id: str, lecture_id: str) -> LearningMap | None:

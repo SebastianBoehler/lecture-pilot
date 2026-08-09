@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import App from "./App";
+import type { LearnerQuizState } from "./learnerLessonStateTypes";
 import { openLecture03FromDashboard } from "./testLessonActions";
 import { mockLoginAndTutorFetch, mockLoginFetch } from "./testFixtures";
 
@@ -171,24 +172,13 @@ describe("durable learner lesson state", () => {
         if (url.includes("/learner-state")) {
           const state = emptyState("lecture-03");
           if (quizPersisted) {
-            state.quiz_states["losses-and-risks-quiz"] = {
-              selected_index: 1,
-              correct: true,
-            };
+            state.quiz_states["losses-and-risks-quiz"] = correctQuizState();
           }
           return Promise.resolve(json(state));
         }
         if (url.includes("/analytics/quiz-answer")) {
           quizPersisted = true;
-          return Promise.resolve(
-            json({
-              block_id: "losses-and-risks-quiz",
-              component_id: "losses-and-risks-quiz",
-              selected_index: 1,
-              correct_index: 1,
-              correct: true,
-            }),
-          );
+          return Promise.resolve(json(correctQuizResult()));
         }
         if (url.includes("/agent/turn/stream")) return new Promise(() => undefined);
         return baseFetch(url, init);
@@ -219,15 +209,7 @@ describe("durable learner lesson state", () => {
             : Promise.resolve(json(persistedState("lecture-03", "Durable goal.")));
         }
         if (url.includes("/analytics/quiz-answer")) {
-          return Promise.resolve(
-            json({
-              block_id: "losses-and-risks-quiz",
-              component_id: "losses-and-risks-quiz",
-              selected_index: 1,
-              correct_index: 1,
-              correct: true,
-            }),
-          );
+          return Promise.resolve(json(correctQuizResult()));
         }
         if (url.includes("/agent/turn/stream")) return new Promise(() => undefined);
         return baseFetch(url, init);
@@ -251,7 +233,7 @@ function persistedState(lectureId: string, goal: string) {
     ...emptyState(lectureId),
     gate_statuses: { "bayes-decision-check": "passed" },
     quiz_states: {
-      "losses-and-risks-quiz": { selected_index: 1, correct: true },
+      "losses-and-risks-quiz": correctQuizState(),
     },
     active_session_goal: goal,
   };
@@ -262,10 +244,30 @@ function emptyState(lectureId: string) {
     course_id: "martius-ml",
     lecture_id: lectureId,
     gate_statuses: {} as Record<string, "passed" | "needs_evidence" | "not_assessed">,
-    quiz_states: {} as Record<string, { selected_index: number; correct: boolean | null }>,
+    quiz_states: {} as Record<string, LearnerQuizState>,
     active_session_goal: null as string | null,
     pending_check: null,
     due_gate_reviews: [],
+  };
+}
+
+function correctQuizState(): LearnerQuizState {
+  return {
+    selected_index: 1,
+    correct: true,
+    attempt_index: 1,
+    first_attempt_correct: true,
+    latest_outcome: "correct",
+    correction_state: "not_needed",
+  };
+}
+
+function correctQuizResult() {
+  return {
+    block_id: "losses-and-risks-quiz",
+    component_id: "losses-and-risks-quiz",
+    ...correctQuizState(),
+    feedback: "Correct.",
   };
 }
 

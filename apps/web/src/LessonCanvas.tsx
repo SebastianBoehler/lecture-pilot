@@ -3,13 +3,13 @@ import { useEffect, useRef } from "react";
 import { CanvasBlocks } from "./CanvasBlocks";
 import { SectionSources } from "./SectionSources";
 import { isLearnerGeneratedSection } from "./canvasSectionOrigin";
+import type { CanvasLearningActions } from "./canvasLearningActions";
 import type {
   CanvasDocument,
   CanvasSection,
   DocumentAnchorId,
   LoginSession,
   WorkspaceResource,
-  CanvasBlock,
 } from "./types";
 
 export function LessonCanvas({
@@ -22,7 +22,9 @@ export function LessonCanvas({
   outlinePulseId,
   outlinePulseVersion,
   onOpenResource,
+  onSubmitCheckpoint,
   onSubmitQuizAnswer,
+  quizStates,
   session,
 }: {
   canvasDocument: CanvasDocument;
@@ -34,9 +36,8 @@ export function LessonCanvas({
   outlinePulseId: DocumentAnchorId | null;
   outlinePulseVersion: number;
   onOpenResource: (resource: WorkspaceResource) => void;
-  onSubmitQuizAnswer: (block: CanvasBlock, answer: string, optionIndex: number) => void;
   session: LoginSession;
-}) {
+} & CanvasLearningActions) {
   const initialNavigationVersion = useRef(navigationVersion);
 
   useEffect(() => {
@@ -72,7 +73,9 @@ export function LessonCanvas({
           outlinePulseId,
           outlinePulseVersion,
           onOpenResource,
+          onSubmitCheckpoint,
           onSubmitQuizAnswer,
+          quizStates,
           session,
           navigationVersion,
         }),
@@ -90,7 +93,9 @@ function renderSection({
   outlinePulseId,
   outlinePulseVersion,
   onOpenResource,
+  onSubmitCheckpoint,
   onSubmitQuizAnswer,
+  quizStates,
   session,
   navigationVersion,
 }: {
@@ -102,10 +107,9 @@ function renderSection({
   outlinePulseId: DocumentAnchorId | null;
   outlinePulseVersion: number;
   onOpenResource: (resource: WorkspaceResource) => void;
-  onSubmitQuizAnswer: (block: CanvasBlock, answer: string, optionIndex: number) => void;
   session: LoginSession;
   navigationVersion: number;
-}) {
+} & CanvasLearningActions) {
   const className = [
     "canvas-section",
     isFocused ? "is-focused" : "",
@@ -133,7 +137,9 @@ function renderSection({
         outlinePulseId={outlinePulseId}
         outlinePulseVersion={outlinePulseVersion}
         session={session}
+        quizStates={quizStates}
         onOpenResource={onOpenResource}
+        onSubmitCheckpoint={onSubmitCheckpoint}
         onSubmitQuizAnswer={onSubmitQuizAnswer}
       />
       <SectionSources

@@ -12,6 +12,11 @@ export type LearnerQuizAnswerResult = {
   block_id: string;
   selected_index: number;
   correct: boolean | null;
+  attempt_index: number;
+  first_attempt_correct: boolean | null;
+  latest_outcome: "correct" | "incorrect" | "unscored";
+  correction_state: "not_needed" | "needed" | "corrected";
+  feedback: string;
 };
 
 export async function getCourseAnalytics(
@@ -31,6 +36,7 @@ export async function recordQuizAnswer(input: {
   courseId: string;
   lectureId: string;
   attendance: Attendance;
+  attemptId: string;
   blockId: string;
   optionIndex: number;
   session: LoginSession;
@@ -43,6 +49,7 @@ export async function recordQuizAnswer(input: {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         attendance: input.attendance,
+        attempt_id: input.attemptId,
         block_id: input.blockId,
         option_index: input.optionIndex,
       }),

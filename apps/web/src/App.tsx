@@ -17,6 +17,7 @@ import { AppFooter } from "./AppFooter";
 import { AppHeader } from "./AppHeader";
 import { AppRoutes } from "./AppRoutes";
 import { lessonPath, pathForView, requiresSession, type AppRoute } from "./appRoute";
+import type { TutorMessageOptions } from "./canvasLearningActions";
 import { FeedbackDialog } from "./FeedbackDialog";
 import { ProfessorWalkthrough } from "./ProfessorWalkthrough";
 import {
@@ -167,8 +168,7 @@ function App() {
       );
     }
   }
-
-  async function handleTutorMessage(message: string) {
+  async function handleTutorMessage(message: string, options: TutorMessageOptions = {}) {
     const timestamp = Date.now();
     const userMessageId = `user-${timestamp}`;
     const pendingMessageId = `agent-pending-${timestamp}`;
@@ -177,7 +177,6 @@ function App() {
       { id: userMessageId, role: "user", content: message },
       pendingTutorMessage(pendingMessageId),
     ]);
-
     let result;
     try {
       result = await sendAgentTurnStream(
@@ -186,7 +185,8 @@ function App() {
           lecture_id: selectedLecture.id,
           attendance: selectedLecture.attendance,
           message,
-          canvas_state: { focused_section_id: focusedSectionId },
+          checkpoint_gate_id: options.checkpointGateId,
+          canvas_state: { focused_section_id: options.focusedSectionId ?? focusedSectionId },
         },
         session ?? localDemoSession,
         {

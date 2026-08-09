@@ -9,7 +9,16 @@ import type { CanvasBlock } from "./types";
 describe("CanvasInteractiveComponents", () => {
   it("renders single-choice quiz components through the prefab registry", async () => {
     const user = userEvent.setup();
-    const onSubmitAnswer = vi.fn();
+    const onSubmitAnswer = vi.fn().mockResolvedValue({
+      block_id: "risk-threshold-check",
+      selected_index: 0,
+      correct: true,
+      attempt_index: 1,
+      first_attempt_correct: true,
+      latest_outcome: "correct",
+      correction_state: "not_needed",
+      feedback: "Correct.",
+    });
     const block: CanvasBlock = {
       id: "risk-threshold-check",
       type: "component",
@@ -21,7 +30,6 @@ describe("CanvasInteractiveComponents", () => {
       text: "Which action should minimize cost-sensitive risk?",
       items: ["Choose the lowest expected risk", "Always choose the highest posterior"],
       option_ids: ["lowest-risk", "highest-posterior"],
-      answer_index: 0,
     };
 
     renderWithI18n(
@@ -38,7 +46,12 @@ describe("CanvasInteractiveComponents", () => {
     const correct = screen.getByRole("button", { name: /A Choose the lowest expected risk/i });
     await user.click(correct);
 
-    expect(onSubmitAnswer).toHaveBeenCalledWith(block, "Choose the lowest expected risk", 0);
+    expect(onSubmitAnswer).toHaveBeenCalledWith(
+      block,
+      "Choose the lowest expected risk",
+      0,
+      expect.any(String),
+    );
     expect(correct).toHaveClass("is-correct");
   });
 

@@ -13,6 +13,7 @@ from lecturepilot.coaching_analytics import AnalyticsGateMetric, GateMetricsAccu
 from lecturepilot.coaching_progress import CoachingTurnEvent
 from lecturepilot.durable_files import exclusive_file_lock
 from lecturepilot.learning_map import LearningMap
+from lecturepilot.learner_lesson_state_models import QuizCorrectionState, QuizOutcome
 from lecturepilot.models import AttendanceStatus, QualityGateDecision
 from lecturepilot.professor_preview import is_professor_preview_user_id
 from lecturepilot.quiz_analytics import (
@@ -27,6 +28,7 @@ class QuizAnswerInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     attendance: AttendanceStatus
+    attempt_id: str = Field(min_length=8, max_length=160, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]+$")
     block_id: str = Field(min_length=1, max_length=160)
     option_index: int = Field(ge=0, le=25)
 
@@ -35,8 +37,12 @@ class QuizAnswerResult(BaseModel):
     block_id: str
     component_id: str
     selected_index: int
-    correct_index: int | None
     correct: bool | None
+    attempt_index: int = Field(ge=1)
+    first_attempt_correct: bool | None
+    latest_outcome: QuizOutcome
+    correction_state: QuizCorrectionState
+    feedback: str = Field(min_length=1, max_length=500)
 
 
 class LectureAnalyticsSummary(BaseModel):
@@ -62,7 +68,10 @@ class AnalyticsStore:
         attendance: AttendanceStatus,
         block: CanvasBlock,
         option_index: int,
-    ) -> QuizAnswerResult:
+        attempt_index: int = 1,
+        first_attempt_correct: bool | None = None,
+        correction_state: QuizCorrectionState = "not_needed",
+    ) -> None:
         option_text = block.items[option_index] if option_index < len(block.items) else ""
         option_ids = block.option_ids or []
         option_id = option_ids[option_index] if option_index < len(option_ids) else None
@@ -89,17 +98,13 @@ class AnalyticsStore:
                     "option_text": option_text,
                     "correct_index": correct_index,
                     "correct": correct,
+                    "attempt_index": attempt_index,
+                    "first_attempt_correct": first_attempt_correct,
+                    "correction_state": correction_state,
                     "options": _options_snapshot(block),
                     "created_at": _now(),
                 },
             )
-        return QuizAnswerResult(
-            block_id=block.id,
-            component_id=component_id,
-            selected_index=option_index,
-            correct_index=correct_index,
-            correct=correct,
-        )
 
     def record_quality_gate(
         self,

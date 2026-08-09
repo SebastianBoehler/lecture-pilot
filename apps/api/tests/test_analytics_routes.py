@@ -27,6 +27,7 @@ def test_quiz_answers_are_recorded_as_aggregate_lecture_analytics(tmp_path: Path
         headers=student_headers("student-a"),
         json={
             "attendance": "present",
+            "attempt_id": "student-a-risk-check-1",
             "block_id": "risk-check",
             "option_index": 1,
         },
@@ -39,6 +40,7 @@ def test_quiz_answers_are_recorded_as_aggregate_lecture_analytics(tmp_path: Path
         headers=student_headers("student-b"),
         json={
             "attendance": "absent",
+            "attempt_id": "student-b-risk-check-1",
             "block_id": "risk-check",
             "option_index": 0,
         },

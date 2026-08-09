@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from lecturepilot.coaching_state_models import (
     CoachingProgress,
     CoachingTurnEvent,
+    PendingCheck,
 )
 from lecturepilot.coaching_episode import (
     attempt_kind,
@@ -104,6 +105,35 @@ class CoachingProgressStore:
             ),
             missing_evidence_ids=(latest_turn.missing_evidence_ids if latest_turn else []),
         )
+
+    def bind_inline_checkpoint(
+        self,
+        *,
+        user_id: str,
+        course_id: str,
+        lecture_id: str,
+        gate_id: str,
+        gate_revision: str | None,
+        published_prompt: str,
+        now: datetime | None = None,
+    ) -> None:
+        path = self._path(user_id=user_id, course_id=course_id, lecture_id=lecture_id)
+        with exclusive_file_lock(path):
+            progress = self.read(user_id=user_id, course_id=course_id, lecture_id=lecture_id)
+            progress.pending_check = PendingCheck(
+                gate_id=gate_id,
+                gate_revision=gate_revision,
+                prompt=published_prompt,
+                assistance_level="none",
+                kind="standard",
+                issued_at=(now or datetime.now(UTC)).isoformat(),
+            )
+            self._write(
+                user_id=user_id,
+                course_id=course_id,
+                lecture_id=lecture_id,
+                progress=progress,
+            )
 
     def record_turn(
         self,

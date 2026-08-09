@@ -7,7 +7,7 @@ import json
 from pydantic import ValidationError
 
 from lecturepilot.durable_files import atomic_write_json, exclusive_file_lock
-from lecturepilot.learner_lesson_state_models import LearnerQuizState
+from lecturepilot.learner_lesson_state_models import LearnerQuizState, QuizCorrectionState
 from lecturepilot.models import AttendanceStatus, QualityGateDecision
 from lecturepilot.storage_layout import StorageLayout
 
@@ -92,17 +92,43 @@ class LearnerStateStore:
         lecture_id: str,
         user_id: str,
         block_id: str,
+        attempt_id: str,
         selected_index: int,
         correct: bool | None,
-    ) -> None:
+    ) -> tuple[LearnerQuizState, bool]:
         path = self.layout.user_lecture_root(user_id, course_id, lecture_id) / "quizzes.json"
         with exclusive_file_lock(path):
             payload = _read_json(path)
             quizzes = payload.get("quizzes") if isinstance(payload.get("quizzes"), dict) else {}
-            quizzes[block_id] = LearnerQuizState(
+            attempts = payload.get("attempts") if isinstance(payload.get("attempts"), dict) else {}
+            block_attempts = (
+                attempts.get(block_id) if isinstance(attempts.get(block_id), dict) else {}
+            )
+            if attempt_id in block_attempts:
+                prior = LearnerQuizState.model_validate(block_attempts[attempt_id])
+                if prior.selected_index != selected_index:
+                    raise ValueError("Quiz attempt ID was already used for a different answer.")
+                return prior, False
+            previous = _validated_quiz_state(quizzes.get(block_id))
+            attempt_index = (previous.attempt_index if previous else 0) + 1
+            first_correct = correct if previous is None else previous.first_attempt_correct
+            state = LearnerQuizState(
                 selected_index=selected_index,
                 correct=correct,
-            ).model_dump(mode="json")
+                attempt_index=attempt_index,
+                first_attempt_correct=first_correct,
+                latest_outcome=(
+                    "correct"
+                    if correct is True
+                    else "incorrect"
+                    if correct is False
+                    else "unscored"
+                ),
+                correction_state=_correction_state(previous, correct),
+            )
+            quizzes[block_id] = state.model_dump(mode="json")
+            block_attempts[attempt_id] = state.model_dump(mode="json")
+            attempts[block_id] = block_attempts
             _write_json(
                 path,
                 {
@@ -110,8 +136,10 @@ class LearnerStateStore:
                     "lecture_id": lecture_id,
                     "updated_at": _now(),
                     "quizzes": quizzes,
+                    "attempts": attempts,
                 },
             )
+            return state, True
 
     def latest_quiz_states(
         self,
@@ -143,6 +171,25 @@ def _read_json(path: Path) -> dict:
     except json.JSONDecodeError:
         return {}
     return payload if isinstance(payload, dict) else {}
+
+
+def _validated_quiz_state(value) -> LearnerQuizState | None:
+    if not isinstance(value, dict):
+        return None
+    try:
+        return LearnerQuizState.model_validate(value)
+    except ValidationError:
+        return None
+
+
+def _correction_state(
+    previous: LearnerQuizState | None, correct: bool | None
+) -> QuizCorrectionState:
+    if correct is not True:
+        return "needed"
+    if previous is not None and previous.first_attempt_correct is False:
+        return "corrected"
+    return "not_needed"
 
 
 def _write_json(path: Path, payload: dict) -> None:

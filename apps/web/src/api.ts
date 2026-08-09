@@ -60,6 +60,7 @@ export type AgentTurnInput = {
   lecture_id: string;
   attendance: Attendance;
   message: string;
+  checkpoint_gate_id?: string;
   canvas_state: {
     focused_section_id: string;
   };

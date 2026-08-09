@@ -4,13 +4,21 @@ import { InteractiveChart } from "./CanvasInteractiveChart";
 import { QuizBlock } from "./CanvasLearningBlocks";
 import { ProcessExplorer } from "./CanvasProcessExplorer";
 import { useI18n } from "./i18n";
+import type { LearnerQuizAnswerResult } from "./analyticsApi";
+import type { LearnerQuizState } from "./learnerLessonStateTypes";
 import type { CanvasBlock } from "./types";
 
 export type ComponentRendererProps = {
   block: CanvasBlock;
   className: string;
   sourceMarker: ReactNode;
-  onSubmitAnswer: (block: CanvasBlock, answer: string, optionIndex: number) => void;
+  quizState?: LearnerQuizState;
+  onSubmitAnswer: (
+    block: CanvasBlock,
+    answer: string,
+    optionIndex: number,
+    attemptId: string,
+  ) => Promise<LearnerQuizAnswerResult>;
 };
 
 const componentRegistry: Record<string, ComponentType<ComponentRendererProps>> = {
@@ -23,6 +31,7 @@ export function ComponentBlock({
   block,
   className,
   onSubmitAnswer,
+  quizState,
   sourceMarker,
 }: ComponentRendererProps) {
   const { t } = useI18n();
@@ -33,6 +42,7 @@ export function ComponentBlock({
         block={block}
         className={className}
         sourceMarker={sourceMarker}
+        quizState={quizState}
         onSubmitAnswer={onSubmitAnswer}
       />
     );
@@ -48,13 +58,14 @@ export function ComponentBlock({
   );
 }
 
-function SingleChoiceQuiz({ block, className, onSubmitAnswer }: ComponentRendererProps) {
+function SingleChoiceQuiz({ block, className, onSubmitAnswer, quizState }: ComponentRendererProps) {
   return (
     <QuizBlock
       block={block}
       className={`${className} canvas-component`}
       highlightedText={null}
       sourceMarker={null}
+      quizState={quizState}
       onSubmitAnswer={onSubmitAnswer}
     />
   );

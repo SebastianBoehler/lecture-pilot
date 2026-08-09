@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, datetime
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 
 from lecturepilot.agent_state_access import learner_state_store
 from lecturepilot.coaching_assistance import emitted_assistance_level
@@ -57,16 +57,43 @@ def prepare_coaching_turn(
             course_id=turn.course_id,
             lecture_id=turn.lecture_id,
         )
-        active_gate = select_due_review_gate(learning_map, progress) or (
-            select_active_gate(
+        if turn.checkpoint_gate_id is not None:
+            _validate_requested_gate(
                 learning_map,
-                requested_gate_id=turn.requested_gate_id,
+                requested_gate_id=turn.checkpoint_gate_id,
                 focused_section_id=turn.canvas_state.focused_section_id,
-                latest_decisions=decisions,
+                require_focused_section=True,
             )
-            if learning_map is not None
-            else None
-        )
+            active_gate = next(
+                gate for gate in learning_map.gates if gate.id == turn.checkpoint_gate_id
+            )
+            store.bind_inline_checkpoint(
+                user_id=turn.user_id,
+                course_id=turn.course_id,
+                lecture_id=turn.lecture_id,
+                gate_id=active_gate.id,
+                gate_revision=active_gate.revision or None,
+                published_prompt=(
+                    active_gate.prompt or active_gate.evidence_required or active_gate.title
+                ),
+            )
+        else:
+            if turn.requested_gate_id is not None:
+                _validate_requested_gate(
+                    learning_map,
+                    requested_gate_id=turn.requested_gate_id,
+                    focused_section_id=turn.canvas_state.focused_section_id,
+                )
+            active_gate = select_due_review_gate(learning_map, progress) or (
+                select_active_gate(
+                    learning_map,
+                    requested_gate_id=turn.requested_gate_id,
+                    focused_section_id=turn.canvas_state.focused_section_id,
+                    latest_decisions=decisions,
+                )
+                if learning_map is not None
+                else None
+            )
         if active_gate is None:
             context = AgentCoachingContext(attendance_prior_used=progress.attendance_prior_used)
         else:
@@ -132,6 +159,35 @@ def select_due_review_gate(
         except ValueError:
             continue
     return None
+
+
+def _validate_requested_gate(
+    learning_map: LearningMap | None,
+    *,
+    requested_gate_id: str,
+    focused_section_id: str | None,
+    require_focused_section: bool = False,
+) -> None:
+    gate = (
+        next(
+            (gate for gate in learning_map.gates if gate.id == requested_gate_id),
+            None,
+        )
+        if learning_map is not None
+        else None
+    )
+    if gate is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Requested checkpoint is not in the published learning map.",
+        )
+    if (require_focused_section or focused_section_id is not None) and (
+        focused_section_id != gate.section_id
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Requested checkpoint does not belong to the focused section.",
+        )
 
 
 def persist_coaching_turn(

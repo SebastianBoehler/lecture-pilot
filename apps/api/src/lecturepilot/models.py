@@ -219,6 +219,7 @@ class AgentTurnInput(BaseModel):
     attendance: AttendanceStatus
     message: str = Field(min_length=1, max_length=4000)
     requested_gate_id: str | None = Field(default=None, min_length=1, max_length=160)
+    checkpoint_gate_id: str | None = Field(default=None, min_length=1, max_length=160)
     model: str | None = Field(default=None, min_length=3, max_length=200)
     canvas_state: CanvasState = Field(default_factory=CanvasState)
     canvas_context: CanvasDocument | None = None
@@ -238,6 +239,7 @@ class AgentTurnRequest(BaseModel):
     attendance: AttendanceStatus
     message: str = Field(min_length=1, max_length=4000)
     requested_gate_id: str | None = Field(default=None, min_length=1, max_length=160)
+    checkpoint_gate_id: str | None = Field(default=None, min_length=1, max_length=160)
     canvas_state: CanvasState = Field(default_factory=CanvasState)
     canvas_context: CanvasDocument | None = None
     user_memory: UserMemoryContext = Field(default_factory=UserMemoryContext)

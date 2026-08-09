@@ -6,14 +6,15 @@ import { LessonCanvas } from "./LessonCanvas";
 import { LearningPathPanel } from "./LearningPathPanel";
 import { ProfessorLearnerPreviewBanner } from "./ProfessorLearnerPreviewBanner";
 import { NotesPanel, OutlinePanel } from "./LessonSidePanels";
-import { recordQuizAnswer, type LearnerQuizAnswerResult } from "./analyticsApi";
+import type { LearnerQuizAnswerResult } from "./analyticsApi";
+import type { TutorMessageOptions } from "./canvasLearningActions";
 import type { LearnerLessonState } from "./learnerLessonStateTypes";
 import { TutorDrawer } from "./TutorDrawer";
 import { WorkspaceFilesPanel } from "./WorkspaceFilesPanel";
 import { WorkspaceResetControl, type WorkspaceResetSelection } from "./WorkspaceResetControl";
+import { useCanvasLearningAttempts } from "./useCanvasLearningAttempts";
 import type {
   CanvasDocument,
-  CanvasBlock,
   ChatMessage,
   DocumentAnchorId,
   Lecture,
@@ -61,8 +62,8 @@ export function LessonWorkspace({
   tutorModel: string | null;
   previewMode?: boolean;
   workspaceMode?: LearnerWorkspaceMode;
-  onSendMessage: (message: string) => Promise<void>;
-  onPracticeSubmitted: (result: LearnerQuizAnswerResult) => void;
+  onSendMessage: (message: string, options?: TutorMessageOptions) => Promise<void>;
+  onPracticeSubmitted: (result: LearnerQuizAnswerResult) => void | Promise<void>;
   onTogglePanel: (mode: LessonPanelMode) => void;
   onResetWorkspace: (options: WorkspaceResetSelection) => Promise<void>;
 }) {
@@ -74,6 +75,15 @@ export function LessonWorkspace({
     version: number;
   } | null>(null);
   const [selectedResource, setSelectedResource] = useState<WorkspaceResource | null>(null);
+  const learningAttempts = useCanvasLearningAttempts({
+    courseId,
+    lecture,
+    session,
+    workspaceMode,
+    openChat: () => panelMode !== "chat" && onTogglePanel("chat"),
+    onPracticeSubmitted,
+    onSendMessage,
+  });
 
   useEffect(() => {
     if (!outlinePulse) {
@@ -111,24 +121,6 @@ export function LessonWorkspace({
     }
   }
 
-  function submitQuizAnswer(block: CanvasBlock, answer: string, optionIndex: number) {
-    if (panelMode !== "chat") {
-      onTogglePanel("chat");
-    }
-    void recordQuizAnswer({
-      courseId,
-      lectureId: lecture.id,
-      attendance: lecture.attendance,
-      blockId: block.id,
-      optionIndex,
-      session,
-      mode: workspaceMode,
-    })
-      .then(onPracticeSubmitted)
-      .catch(() => undefined);
-    void onSendMessage(quizAnswerMessage(block, answer, optionIndex));
-  }
-
   return (
     <main className={layoutClass}>
       <section className="lesson-main">
@@ -141,6 +133,11 @@ export function LessonWorkspace({
         </div>
         {canvasError ? <p className="form-error">{canvasError}</p> : null}
         {learnerStateError ? <p className="form-error">{learnerStateError}</p> : null}
+        {learningAttempts.coachingError ? (
+          <p className="form-error" role="alert">
+            {learningAttempts.coachingError}
+          </p>
+        ) : null}
         {!canvasDocument && !canvasError ? (
           <p className="drawer-note">{t("lesson.loadingCanvas")}</p>
         ) : null}
@@ -155,8 +152,10 @@ export function LessonWorkspace({
             outlinePulseId={outlinePulse?.id ?? null}
             outlinePulseVersion={outlinePulse?.version ?? 0}
             session={session}
+            quizStates={learnerState?.quiz_states ?? {}}
             onOpenResource={openWorkspaceResource}
-            onSubmitQuizAnswer={submitQuizAnswer}
+            onSubmitCheckpoint={learningAttempts.submitCheckpoint}
+            onSubmitQuizAnswer={learningAttempts.submitQuiz}
           />
         ) : null}
       </section>
@@ -267,16 +266,4 @@ export function LessonWorkspace({
       ) : null}
     </main>
   );
-}
-
-function quizAnswerMessage(block: CanvasBlock, answer: string, optionIndex: number) {
-  const letter = String.fromCharCode(65 + optionIndex);
-  const prompt = block.text?.trim();
-  const title = block.caption?.trim() || "retrieval quiz";
-  return [
-    `Retrieval quiz answer for "${title}": ${letter}. ${answer}`,
-    prompt ? `Question: ${prompt}` : "",
-  ]
-    .filter(Boolean)
-    .join("\n");
 }

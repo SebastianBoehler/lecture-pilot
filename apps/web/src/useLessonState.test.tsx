@@ -108,7 +108,16 @@ describe("useLessonState", () => {
       let resolveInitial: ((response: Response) => void) | undefined;
       const durable = lessonState("Durable goal", {
         gate_statuses: { gate: "passed" },
-        quiz_states: { quiz: { selected_index: 1, correct: true } },
+        quiz_states: {
+          quiz: {
+            selected_index: 1,
+            correct: true,
+            attempt_index: 1,
+            first_attempt_correct: true,
+            latest_outcome: "correct",
+            correction_state: "not_needed",
+          },
+        },
         due_gate_reviews: [dueReview("gate")],
       });
       let reads = 0;
@@ -237,7 +246,16 @@ function tutorResult() {
 }
 
 function quizResult() {
-  return { block_id: "quiz", selected_index: 1, correct: true };
+  return {
+    block_id: "quiz",
+    selected_index: 1,
+    correct: true,
+    attempt_index: 1,
+    first_attempt_correct: true,
+    latest_outcome: "correct" as const,
+    correction_state: "not_needed" as const,
+    feedback: "Correct.",
+  };
 }
 
 function pendingCheck(gateId: string) {

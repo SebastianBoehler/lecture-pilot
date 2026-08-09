@@ -10,6 +10,7 @@ from lecturepilot.api_auth import (
 )
 from lecturepilot.audit import record_audit_event
 from lecturepilot.canvas_models import CanvasDocument
+from lecturepilot.canvas_response import learner_canvas_payload
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.course_access import require_course_id_access, require_lecture_id_access
 from lecturepilot.course_canvas_draft_routes import register_course_canvas_draft_routes
@@ -22,7 +23,10 @@ from lecturepilot.learner_workspace_reset import (
 )
 from lecturepilot.learning_map import LearningMap, write_learning_map
 from lecturepilot.models import CanvasPublicationResult, Course, Lecture
-from lecturepilot.professor_preview import resolve_learner_workspace_access
+from lecturepilot.professor_preview import (
+    is_professor_preview_user_id,
+    resolve_learner_workspace_access,
+)
 from lecturepilot.tenancy import TenantContext
 
 
@@ -143,7 +147,9 @@ def register_course_canvas_routes(
             )
         except CanvasWorkspaceError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
-        return document.model_dump(exclude={"workspace_path"})
+        if is_professor_preview_user_id(access.user_id):
+            return document.model_dump(exclude={"workspace_path"})
+        return learner_canvas_payload(document)
 
     @app.get(
         "/courses/{course_id}/lectures/{lecture_id}/learning-map",

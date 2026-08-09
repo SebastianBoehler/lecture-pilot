@@ -22,6 +22,12 @@ COURSE_ID = "learner-state-course"
 PAST = date(2020, 1, 1)
 FUTURE = date(2099, 1, 1)
 PREVIEW = {"X-LecturePilot-Learner-Preview": "professor"}
+QUIZ_ANSWER = {
+    "attendance": "present",
+    "attempt_id": "intro-quiz-attempt-1",
+    "block_id": "intro-quiz",
+    "option_index": 0,
+}
 
 
 def test_new_learner_receives_explicit_empty_lesson_state(tmp_path: Path) -> None:
@@ -81,7 +87,7 @@ def test_lesson_state_hydrates_gate_quiz_goal_pending_check_and_due_review(
     quiz = client.post(
         f"/courses/{COURSE_ID}/lectures/lecture-open/analytics/quiz-answer",
         headers=student_headers(user_id, course_ids=[COURSE_ID]),
-        json={"attendance": "present", "block_id": "intro-quiz", "option_index": 0},
+        json=QUIZ_ANSWER,
     )
     now = datetime.now(UTC)
     progress = CoachingProgress(
@@ -118,7 +124,14 @@ def test_lesson_state_hydrates_gate_quiz_goal_pending_check_and_due_review(
         "lecture_id": "lecture-open",
         "gate_statuses": {"risk-check": "needs_evidence"},
         "quiz_states": {
-            "intro-quiz": {"selected_index": 0, "correct": True},
+            "intro-quiz": {
+                "selected_index": 0,
+                "correct": True,
+                "attempt_index": 1,
+                "first_attempt_correct": True,
+                "latest_outcome": "correct",
+                "correction_state": "not_needed",
+            },
         },
         "active_session_goal": "Compare posterior risk on an unfamiliar case.",
         "pending_check": {
@@ -165,7 +178,7 @@ def test_progress_reset_clears_private_quiz_state(tmp_path: Path) -> None:
         client.post(
             quiz_url,
             headers=headers,
-            json={"attendance": "present", "block_id": "intro-quiz", "option_index": 0},
+            json=QUIZ_ANSWER,
         ).status_code
         == 200
     )

@@ -3,6 +3,7 @@ import { enMessages } from "./i18nMessages.en";
 import { courseAccessMessages } from "./courseAccessMessages";
 import { interactiveComponentMessages } from "./interactiveComponentMessages";
 import { learnerStateMessages } from "./learnerStateMessages";
+import { learningAttemptMessages } from "./learningAttemptMessages";
 
 export const messages = {
   en: {
@@ -10,12 +11,14 @@ export const messages = {
     ...courseAccessMessages.en,
     ...interactiveComponentMessages.en,
     ...learnerStateMessages.en,
+    ...learningAttemptMessages.en,
   },
   de: {
     ...deMessages,
     ...courseAccessMessages.de,
     ...interactiveComponentMessages.de,
     ...learnerStateMessages.de,
+    ...learningAttemptMessages.de,
   },
 } as const;
 

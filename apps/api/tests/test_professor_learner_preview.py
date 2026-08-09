@@ -63,7 +63,12 @@ def test_professor_preview_persists_private_learner_state_without_analytics(
     quiz = client.post(
         "/courses/demo-course/lectures/lecture-01/analytics/quiz-answer",
         headers=professor,
-        json={"attendance": "present", "block_id": "risk-quiz", "option_index": 1},
+        json={
+            "attendance": "present",
+            "attempt_id": "preview-risk-quiz-1",
+            "block_id": "risk-quiz",
+            "option_index": 1,
+        },
     )
     analytics = client.get(
         "/admin/courses/demo-course/lectures/lecture-01/analytics",

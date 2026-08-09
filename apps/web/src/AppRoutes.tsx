@@ -2,6 +2,7 @@ import { lazy, Suspense, type ReactNode } from "react";
 
 import { courseUpdatePath, type AppRoute } from "./appRoute";
 import type { LearnerQuizAnswerResult } from "./analyticsApi";
+import type { TutorMessageOptions } from "./canvasLearningActions";
 import { CourseManagementAccessRequired } from "./CourseManagementAccessRequired";
 import { Dashboard } from "./Dashboard";
 import { draftPreviewUrl } from "./draftPreviewUrl";
@@ -81,10 +82,10 @@ type AppRoutesProps = {
   onOpenLecture: (courseId: string, lecture: Lecture) => void;
   onPreviewLecture: (courseId: string, lecture: Lecture) => void;
   onOpenProfessorDemo: () => void;
-  onPracticeSubmitted: (result: LearnerQuizAnswerResult) => void;
+  onPracticeSubmitted: (result: LearnerQuizAnswerResult) => void | Promise<void>;
   onPublishWorkspace: (courseId: string, lectureId: string) => Promise<CanvasPublicationResult>;
   onResetWorkspace: (options: WorkspaceResetSelection) => Promise<void>;
-  onSendMessage: (message: string) => Promise<void>;
+  onSendMessage: (message: string, options?: TutorMessageOptions) => Promise<void>;
   onSetAttendance: (lectureId: string, attendance: Attendance) => void;
   onTogglePanel: (mode: LessonPanelMode) => void;
   onViewChange: (view: View) => void;

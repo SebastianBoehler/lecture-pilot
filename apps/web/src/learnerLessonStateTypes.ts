@@ -3,6 +3,10 @@ export type LearnerGateStatus = "passed" | "needs_evidence" | "not_assessed";
 export type LearnerQuizState = {
   selected_index: number;
   correct: boolean | null;
+  attempt_index: number;
+  first_attempt_correct: boolean | null;
+  latest_outcome: "correct" | "incorrect" | "unscored";
+  correction_state: "not_needed" | "needed" | "corrected";
 };
 
 export type LearnerLessonState = {
