@@ -13,7 +13,6 @@ from lecturepilot.model_commands import (
 from lecturepilot.models import (
     AgentTurnInput,
     AgentTurnResult,
-    CanvasCommand,
     QualityGateDecision,
     QualityGateStatus,
 )
@@ -33,10 +32,7 @@ def agent_result_from_content(
         raise ProviderConfigurationError(
             "Model response violates the tutor result contract."
         ) from exc
-    commands = [
-        CanvasCommand.model_validate(command.model_dump(mode="json"))
-        for command in provider_result.canvas_commands
-    ]
+    commands = [command.to_domain() for command in provider_result.canvas_commands]
     validate_provider_canvas_commands(commands, turn)
     decision = (
         QualityGateDecision(

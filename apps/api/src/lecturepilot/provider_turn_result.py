@@ -4,9 +4,12 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from lecturepilot.canvas_models import CanvasSection
 from lecturepilot.coaching_assistance import NextCheck
-from lecturepilot.models import CanvasSectionPlacement
+from lecturepilot.models import CanvasCommand
+from lecturepilot.provider_canvas_models import (
+    ProviderCanvasSection,
+    ProviderCanvasSectionPlacement,
+)
 
 
 class ProviderCanvasCommand(BaseModel):
@@ -23,8 +26,19 @@ class ProviderCanvasCommand(BaseModel):
     span_id: str | None
     highlight_text: str | None = Field(max_length=160)
     artifact_id: str | None
-    section: CanvasSection | None
-    placement: CanvasSectionPlacement | None
+    section: ProviderCanvasSection | None
+    placement: ProviderCanvasSectionPlacement | None
+
+    def to_domain(self) -> CanvasCommand:
+        return CanvasCommand(
+            type=self.type,
+            section_id=self.section_id,
+            span_id=self.span_id,
+            highlight_text=self.highlight_text,
+            artifact_id=self.artifact_id,
+            section=(self.section.to_domain() if self.section else None),
+            placement=(self.placement.to_domain() if self.placement else None),
+        )
 
 
 class ProviderQualityGateDecision(BaseModel):

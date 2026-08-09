@@ -4,7 +4,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from auth_helpers import student_headers
-from test_learner_lesson_state_routes import COURSE_ID, QUIZ_ANSWER, _client, _state_url
+from test_learner_lesson_state_routes import COURSE_ID, QUIZ_ANSWER, STATE_URL, _client
 
 
 def test_malformed_persisted_quiz_state_fails_read_and_write_without_replacement(
@@ -43,7 +43,7 @@ def test_malformed_persisted_quiz_state_fails_read_and_write_without_replacement
     original = path.read_bytes()
     headers = student_headers(user_id, course_ids=[COURSE_ID])
 
-    state = client.get(_state_url(), headers=headers)
+    state = client.get(STATE_URL, headers=headers)
     submit = client.post(
         f"/courses/{COURSE_ID}/lectures/lecture-open/analytics/quiz-answer",
         headers=headers,
@@ -81,7 +81,7 @@ def test_quiz_store_rejects_extra_root_fields(tmp_path: Path) -> None:
     )
 
     response = client.get(
-        _state_url(),
+        STATE_URL,
         headers=student_headers(user_id, course_ids=[COURSE_ID]),
     )
 
@@ -104,7 +104,7 @@ def test_non_utf8_quiz_state_rejects_read_and_submit_without_writes(tmp_path: Pa
     original = path.read_bytes()
     headers = student_headers(user_id, course_ids=[COURSE_ID])
 
-    state = client.get(_state_url(), headers=headers)
+    state = client.get(STATE_URL, headers=headers)
     submit = client.post(
         f"/courses/{COURSE_ID}/lectures/lecture-open/analytics/quiz-answer",
         headers=headers,

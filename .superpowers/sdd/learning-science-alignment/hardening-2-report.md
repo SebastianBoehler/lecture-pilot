@@ -90,3 +90,22 @@ QA/docs/browser work. Gate outcomes and coaching episode metadata remain separat
 a crash-atomic multi-file transaction boundary is not introduced here. The current path validates
 both stores before streaming and never repairs partial state, but a future storage consolidation can
 eliminate that remaining cross-file transaction window.
+
+## Sanity-review fixes
+
+The bounded review round closed two strict-boundary gaps:
+
+- Stream preflight now holds one published-canvas snapshot lock while reading learner state and
+  verifies the pending check plus every delayed review against that exact gate revision. Missing,
+  republished, or contract-mismatched references return the sanitized JSON 409 before the stream.
+- Provider canvas sections, blocks, component data, frames, points, steps, and placements now use
+  recursively extra-forbid provider DTOs. The advertised provider fields are converted explicitly
+  into domain canvas models; domain-only fields such as `practice_exam_eligible` cannot enter through
+  provider output.
+
+Focused RED was 4 failures: both stale-state cases returned 200 and both malformed nested payloads
+were accepted. The same slice reached 20 passed, and the adjacent parser/store/queue slice reached
+38 passed. Final `verify:api` passed Ruff format/check, 761 API tests, 22 compiler tests, and diff
+checks with 6 existing deprecation warnings. Web contracts were unchanged, so `verify:web` was not
+rerun. The verifier also exposed one test-only stale `_state_url` import left by the original H2
+fixture reduction; its three calls now use the existing `STATE_URL` constant (3 focused tests passed).

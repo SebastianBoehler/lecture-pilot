@@ -118,6 +118,40 @@ def _payload() -> dict:
     }
 
 
+def _append_section_command() -> dict:
+    return {
+        "type": "append_section",
+        "section_id": "generated-example",
+        "span_id": None,
+        "highlight_text": None,
+        "artifact_id": None,
+        "section": {
+            "id": "generated-example",
+            "title": "Generated example",
+            "source_ref": "student workspace",
+            "blocks": [
+                {
+                    "id": "generated-example-text",
+                    "type": "paragraph",
+                    "text": "A changed example.",
+                    "items": [],
+                    "asset_path": None,
+                    "asset_url": None,
+                    "caption": None,
+                    "answer_index": None,
+                    "component_id": None,
+                    "component_type": None,
+                    "component_ref": None,
+                    "component_version": None,
+                    "option_ids": [],
+                    "component_data": None,
+                }
+            ],
+        },
+        "placement": {"mode": "after_section", "section_id": "mechanism"},
+    }
+
+
 def _parse(payload: dict, *, active_gate: bool = True):
     return agent_result_from_content(json.dumps(payload), _turn(active_gate=active_gate), "model")
 
@@ -140,6 +174,26 @@ def test_provider_payload_rejects_extra_fields_and_code_fences() -> None:
     fenced = f"```json\n{json.dumps(_payload())}\n```"
     with pytest.raises(ProviderConfigurationError):
         agent_result_from_content(fenced, _turn(), "model")
+
+
+def test_provider_payload_rejects_non_provider_section_fields() -> None:
+    payload = _payload()
+    command = _append_section_command()
+    command["section"]["practice_exam_eligible"] = False
+    payload["canvas_commands"].append(command)
+
+    with pytest.raises(ProviderConfigurationError):
+        _parse(payload)
+
+
+def test_provider_payload_rejects_unknown_nested_block_fields() -> None:
+    payload = _payload()
+    command = _append_section_command()
+    command["section"]["blocks"][0]["unexpected"] = "discarded today"
+    payload["canvas_commands"].append(command)
+
+    with pytest.raises(ProviderConfigurationError):
+        _parse(payload)
 
 
 @pytest.mark.parametrize(

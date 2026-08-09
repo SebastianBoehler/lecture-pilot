@@ -10,6 +10,7 @@ from lecturepilot.api_auth import request_context
 from lecturepilot.models import AgentTurnRequest, AgentTurnResult, Course, Lecture
 from lecturepilot.coaching_progress import CoachingProgressStore, InvalidCoachingStateError
 from lecturepilot.learner_state import InvalidLearnerGateStateError
+from lecturepilot.learning_state_preflight import validate_coaching_bindings
 from lecturepilot.professor_preview import resolve_learner_workspace_access
 from lecturepilot.tenancy import TenantContext
 
@@ -74,14 +75,18 @@ def register_agent_routes(
 
 def _preflight_learning_state(app: FastAPI, user_id: str, course_id: str, lecture_id: str) -> None:
     try:
-        app.state.canvas_workspace.course_canvas_store.read_analytics_context(
+        canvas_store = app.state.canvas_workspace.course_canvas_store
+        with canvas_store.locked_published_learning_map(
             course_id=course_id, lecture_id=lecture_id
-        )
-        CoachingProgressStore(app.state.canvas_workspace.layout).read(
-            user_id=user_id, course_id=course_id, lecture_id=lecture_id
-        )
-        learner_state_store(app).latest_gate_decisions(
-            user_id=user_id, course_id=course_id, lecture_id=lecture_id
-        )
+        ) as learning_map:
+            if learning_map is None:
+                raise InvalidCoachingStateError("Published learning map is missing.")
+            progress = CoachingProgressStore(app.state.canvas_workspace.layout).read(
+                user_id=user_id, course_id=course_id, lecture_id=lecture_id
+            )
+            learner_state_store(app).latest_gate_decisions(
+                user_id=user_id, course_id=course_id, lecture_id=lecture_id
+            )
+            validate_coaching_bindings(progress, learning_map)
     except (InvalidCoachingStateError, InvalidLearnerGateStateError) as exc:
         raise HTTPException(status_code=409, detail="Persisted learning state is invalid.") from exc
