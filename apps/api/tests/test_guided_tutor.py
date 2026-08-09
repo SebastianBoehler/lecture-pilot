@@ -1,16 +1,14 @@
 from lecturepilot.harness import LecturePilotHarness
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.model_client import _messages
+from lecturepilot.learning_map import LearningMapGate
 from lecturepilot.model_commands import read_canvas_commands
 from lecturepilot.models import (
-    AgentCoachingContext,
     AgentTurnInput,
     AttendanceStatus,
     CanvasCommand,
     CanvasState,
     QualityGateStatus,
 )
-from lecturepilot.scaffold_policy import scaffold_policy_for_tutor_turn
 
 
 async def test_local_preview_tutor_runs_without_provider_key(monkeypatch) -> None:
@@ -140,74 +138,6 @@ async def test_local_preview_tutor_routes_risk_questions_to_risk_section(monkeyp
     assert result.canvas_commands[1].highlight_text == "costly"
 
 
-def test_model_prompt_requires_guided_quality_gate_turns() -> None:
-    messages = _messages(
-        AgentTurnInput(
-            user_id="student01",
-            course_id="martius-ml",
-            lecture_id="lecture-03",
-            attendance=AttendanceStatus.UNKNOWN,
-            message="hello",
-            canvas_state=CanvasState(focused_section_id="bayes-formula"),
-        )
-    )
-
-    system_prompt = messages[0]["content"].lower()
-    assert "do not ask open-ended" in system_prompt
-    assert "quality_gate" in system_prompt
-    assert "passed" in system_prompt
-    assert "needs_evidence" in system_prompt
-    assert "do not mark a gate passed from keywords" in system_prompt
-    assert "definition, mechanism, computation, and transfer" in system_prompt
-    assert "attendance selects the tutor stance" in system_prompt
-    assert "examiner and coach" in system_prompt
-    assert "teacher for an absent student" in system_prompt
-    assert "next similar task without lecturepilot" in system_prompt
-    assert "least support" in system_prompt
-    assert "never ask the learner to select a learning style" in system_prompt
-    assert "one short reflection" in system_prompt
-    assert "delayed independent transfer check" in system_prompt
-    assert "canvas_commands" in system_prompt
-    assert "highlight_span" in system_prompt
-
-
-def test_model_prompt_includes_canvas_targets() -> None:
-    messages = _messages(_contextual_turn())
-
-    user_prompt = messages[1]["content"]
-    assert "Canvas title: Bayesian Decision Theory" in user_prompt
-    assert "Active quality gate: bayes-decision-check" in user_prompt
-    assert "posterior from evidence" in user_prompt
-    assert "section_id=bayes-formula" in user_prompt
-    assert "span_id=bayes-formula-list" in user_prompt
-    assert "Posterior" in user_prompt
-
-
-def test_model_prompt_includes_derived_coaching_goal_and_support_policy() -> None:
-    turn = _contextual_turn().model_copy(
-        update={
-            "coaching_context": AgentCoachingContext(
-                session_goal="Explain Bayesian risk and transfer it to a new decision.",
-                goal_is_new=True,
-            ),
-            "scaffold_policy": scaffold_policy_for_tutor_turn(
-                attendance="present",
-                delayed_transfer_due=False,
-                last_gate_status=None,
-                needs_evidence_count=0,
-                prior_assistance=False,
-            ),
-        }
-    )
-
-    user_prompt = _messages(turn)[1]["content"]
-
-    assert "Explain Bayesian risk and transfer it to a new decision." in user_prompt
-    assert "goal_status: proposed" in user_prompt
-    assert "profile: self_explanation" in user_prompt
-    assert "Ask for the learner's own attempt" in user_prompt
-
-
 def test_model_parser_accepts_focus_and_highlight_commands() -> None:
     commands = read_canvas_commands(
         {
@@ -306,6 +236,7 @@ def _contextual_turn() -> AgentTurnInput:
         attendance=AttendanceStatus.UNKNOWN,
         message="hello",
         canvas_state=CanvasState(focused_section_id="bayes-formula"),
+        active_gate=_bayes_gate(),
         canvas_context=CanvasDocument(
             id="martius-ml-lecture-03",
             course_id="martius-ml",
@@ -328,4 +259,15 @@ def _contextual_turn() -> AgentTurnInput:
                 )
             ],
         ),
+    )
+
+
+def _bayes_gate() -> LearningMapGate:
+    return LearningMapGate(
+        id="bayes-decision-check",
+        concept_id="bayes-formula",
+        title="Bayesian decision theory",
+        prompt="Explain how evidence changes the posterior decision.",
+        evidence_criteria=[{"id": "posterior", "description": "posterior from evidence"}],
+        section_id="bayes-formula",
     )

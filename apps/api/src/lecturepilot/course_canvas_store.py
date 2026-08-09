@@ -16,7 +16,7 @@ from lecturepilot.canvas_markdown import (
     write_document_source,
 )
 from lecturepilot.canvas_models import CanvasDocument
-from lecturepilot.learning_map import write_learning_map
+from lecturepilot.learning_map import LearningMap, read_learning_map, write_learning_map
 from lecturepilot.storage_layout import StorageLayout
 
 
@@ -134,6 +134,15 @@ class CourseCanvasStore:
         with locked_canvas_paths(published_dir):
             return _read_publication(published_dir)
 
+    def learning_map(
+        self, *, course_id: str, lecture_id: str, draft: bool = False
+    ) -> LearningMap | None:
+        canvas_dir = (
+            self.draft_path(course_id, lecture_id) if draft else self.path(course_id, lecture_id)
+        )
+        with locked_canvas_paths(canvas_dir):
+            return read_learning_map(canvas_dir)
+
     def path(self, course_id: str, lecture_id: str) -> Path:
         return self.layout.course_canvas_dir(course_id, lecture_id)
 
@@ -179,7 +188,9 @@ def _publication_path(canvas_dir: Path) -> Path:
 
 def _write_validated_draft(document: CanvasDocument, staging: Path) -> CanvasDocument:
     write_document_source(document, staging)
-    return normalize_learning_support(read_document_source(staging))
+    normalized = normalize_learning_support(read_document_source(staging))
+    write_learning_map(normalized, staging)
+    return normalized
 
 
 def _write_validated_canvas(

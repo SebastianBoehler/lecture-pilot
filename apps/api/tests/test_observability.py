@@ -93,12 +93,9 @@ def test_agent_turn_records_workflow_spans(monkeypatch, tmp_path) -> None:
         "read_canvas",
         "read_user_memory",
         "write_attendance",
-        "read_coaching_progress",
         "call_tutor_model",
         "prepare_canvas_update",
         "write_canvas_update",
-        "record_quality_gate",
-        "write_coaching_progress",
     ]
     assert any(output["quality_gate"] == "needs_evidence" for output in recording.outputs)
 
@@ -178,10 +175,14 @@ class _RecordingObservability(Observability):
 class _CanvasWorkspace:
     def __init__(self, layout: object) -> None:
         self.layout = layout
+        self.course_canvas_store = self
         self.applied: list[CanvasSection] = []
 
     def has_published_course_canvas(self, *, course_id: str, lecture_id: str) -> bool:
         return course_id == "martius-ml" and lecture_id == "lecture-03"
+
+    def learning_map(self, **_kwargs: Any):
+        return None
 
     def read_document(self, **kwargs: Any) -> CanvasDocument:
         return CanvasDocument(
@@ -218,6 +219,9 @@ class _LearnerState:
 
     def write_attendance(self, **kwargs: Any) -> None:
         return None
+
+    def latest_gate_decisions(self, **_kwargs: Any) -> dict:
+        return {}
 
     def record_quality_gate(self, **kwargs: Any) -> None:
         return None

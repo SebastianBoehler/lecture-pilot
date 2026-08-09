@@ -51,22 +51,65 @@ def read_canvas_commands(payload: dict, turn: AgentTurnInput) -> list[CanvasComm
     )
 
 
-def read_quality_gate(payload: dict, turn: AgentTurnInput) -> QualityGateDecision:
-    expected_gate_id = (
-        "bayes-decision-check"
-        if turn.lecture_id == "lecture-03"
-        else "lecture-learning-outcome-check"
-    )
+def read_quality_gate(payload: dict, turn: AgentTurnInput) -> QualityGateDecision | None:
+    active_gate = turn.active_gate
+    if active_gate is None:
+        return None
     raw_gate = payload.get("quality_gate")
     if not isinstance(raw_gate, dict):
         return QualityGateDecision(
-            gate_id=expected_gate_id,
+            gate_id=active_gate.id,
             status=QualityGateStatus.NOT_ASSESSED,
             reason="The model did not return a quality gate decision.",
-            next_prompt="Answer the current skill check in one sentence.",
+            next_prompt=active_gate.prompt or None,
         )
     gate = QualityGateDecision.model_validate(raw_gate)
-    return gate.model_copy(update={"gate_id": expected_gate_id})
+    return validate_quality_gate_decision(gate, turn)
+
+
+def validate_quality_gate_decision(
+    decision: QualityGateDecision | None,
+    turn: AgentTurnInput,
+) -> QualityGateDecision | None:
+    active_gate = turn.active_gate
+    if active_gate is None or decision is None:
+        return None
+    allowed = {criterion.id for criterion in active_gate.evidence_criteria}
+    required = [criterion.id for criterion in active_gate.evidence_criteria if criterion.required]
+    evidence = _known_ids(decision.evidence_ids, allowed)
+    missing = [evidence_id for evidence_id in required if evidence_id not in evidence]
+    if decision.status == QualityGateStatus.NOT_ASSESSED:
+        evidence = []
+        missing = []
+    update: dict[str, object] = {
+        "gate_id": active_gate.id,
+        "evidence_ids": evidence,
+        "missing_evidence_ids": missing,
+    }
+    if decision.status == QualityGateStatus.PASSED and missing:
+        update.update(
+            {
+                "status": QualityGateStatus.NEEDS_EVIDENCE,
+                "reason": f"Required evidence is still missing: {', '.join(missing)}.",
+                "next_prompt": _criterion_prompt(active_gate, missing[0]),
+            }
+        )
+    return decision.model_copy(update=update)
+
+
+def _known_ids(values: list[str], allowed: set[str]) -> list[str]:
+    return list(dict.fromkeys(value for value in values if value in allowed))
+
+
+def _criterion_prompt(active_gate, evidence_id: str) -> str | None:
+    return next(
+        (
+            criterion.description
+            for criterion in active_gate.evidence_criteria
+            if criterion.id == evidence_id
+        ),
+        active_gate.prompt or None,
+    )
 
 
 def _read_command(raw_command: dict, turn: AgentTurnInput) -> CanvasCommand:

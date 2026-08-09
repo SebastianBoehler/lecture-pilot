@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from lecturepilot.learning_map import LearningMapGate
 from lecturepilot.model_client import LiteLLMModelClient, ModelExecutionError
 from lecturepilot.models import AgentTurnInput, AttendanceStatus, CanvasState, ProviderSettings
 from lecturepilot.providers import ProviderConfigurationError
@@ -193,6 +194,72 @@ async def test_model_client_reports_exhausted_openai_credits(
                 message="Explain the topic.",
             ),
         )
+
+
+async def test_model_client_uses_selected_learning_map_gate_contract(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = []
+
+    async def fake_completion(**kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(
+                        content=json.dumps(
+                            {
+                                "message": "Try the transfer boundary.",
+                                "session_goal": None,
+                                "canvas_commands": [],
+                                "quality_gate": {
+                                    "gate_id": "causal-transfer-check",
+                                    "status": "not_assessed",
+                                    "reason": "No answer yet.",
+                                    "next_prompt": "Name the transfer boundary.",
+                                    "evidence_ids": [],
+                                    "missing_evidence_ids": [],
+                                },
+                            }
+                        )
+                    )
+                )
+            ]
+        )
+
+    monkeypatch.setitem(sys.modules, "litellm", SimpleNamespace(acompletion=fake_completion))
+    gate = LearningMapGate(
+        id="causal-transfer-check",
+        concept_id="causal-transfer",
+        title="Causal transfer",
+        prompt="Explain when the conclusion transfers.",
+        evidence_criteria=[{"id": "boundary", "description": "Name a transfer boundary."}],
+        transfer_prompt="Apply this to an unfamiliar hospital setting.",
+        section_id="causal-transfer",
+    )
+
+    await LiteLLMModelClient().complete_turn(
+        settings=ProviderSettings(
+            provider="gemini",
+            model="gemini/test-model",
+            api_key_env="GEMINI_API_KEY",
+            capabilities=set(),
+        ),
+        turn=AgentTurnInput(
+            user_id="u1",
+            course_id="course-1",
+            lecture_id="lecture-14",
+            attendance=AttendanceStatus.PRESENT,
+            message="Help me check transfer.",
+            active_gate=gate,
+        ),
+    )
+
+    prompt = "\n".join(message["content"] for message in calls[0]["messages"])
+    assert "Active quality gate: causal-transfer-check (Causal transfer)" in prompt
+    assert "boundary: Name a transfer boundary." in prompt
+    assert "Apply this to an unfamiliar hospital setting." in prompt
+    assert "definition, mechanism, computation" not in prompt
 
 
 class _QuotaError(RuntimeError):

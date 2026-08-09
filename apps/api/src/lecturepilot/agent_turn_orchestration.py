@@ -7,18 +7,19 @@ from collections.abc import Callable
 from fastapi import FastAPI, HTTPException
 
 from lecturepilot.agent_state_access import (
-    analytics_store as app_analytics_store,
     learner_state_store,
     observability as app_observability,
     user_memory_store,
 )
+from lecturepilot.agent_gate_persistence import persist_quality_gate
 from lecturepilot.agent_command_utils import (
+    enforce_active_gate_contract,
     merge_tool_outputs,
     without_generated_section_commands,
 )
 from lecturepilot.agent_tool_executor import AgentToolExecutor
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
-from lecturepilot.coaching_orchestration import persist_coaching_turn, prepare_coaching_turn
+from lecturepilot.coaching_orchestration import prepare_coaching_turn
 from lecturepilot.gate_policy import keep_canvas_actions_from_passing_gate
 from lecturepilot.image_generation import ImageGenerationError
 from lecturepilot.model_client import ModelExecutionError
@@ -232,30 +233,11 @@ def _persist_agent_turn_result(
         )
     if tool_executor is not None:
         result = merge_tool_outputs(result, tool_executor)
+    result = enforce_active_gate_contract(result, turn)
     result = keep_canvas_actions_from_passing_gate(result, turn.message)
-    if result.quality_gate is not None and turn.course_id:
-        activity("save quality gate")
-        with observability.tool_span(
-            "record_quality_gate",
-            gate_id=result.quality_gate.gate_id,
-            status=result.quality_gate.status.value,
-        ):
-            learner_state_store(app).record_quality_gate(
-                course_id=turn.course_id,
-                lecture_id=turn.lecture_id,
-                user_id=turn.user_id,
-                decision=result.quality_gate,
-            )
-            coaching_event = persist_coaching_turn(app, turn, result, activity, observability)
-            if (analytics_store := app_analytics_store(app)) is not None:
-                analytics_store.record_quality_gate(
-                    course_id=turn.course_id,
-                    lecture_id=turn.lecture_id,
-                    user_id=turn.user_id,
-                    attendance=turn.attendance,
-                    decision=result.quality_gate,
-                    coaching_event=coaching_event,
-                )
+    persist_quality_gate(
+        app, turn=turn, result=result, activity=activity, observability=observability
+    )
     return result
 
 

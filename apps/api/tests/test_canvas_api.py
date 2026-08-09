@@ -251,11 +251,30 @@ Bayesian decision theory connects evidence, posterior probabilities, and decisio
         workspace_root=tmp_path / "workspaces",
         material_root=material_root,
     )
-    workspace.write_course_canvas(
-        workspace.source_document(
-            course_id="martius-ml",
-            lecture_id="lecture-03",
-            workspace_path=str(tmp_path / "published" / "index.md"),
-        )
+    document = workspace.source_document(
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        workspace_path=str(tmp_path / "published" / "index.md"),
     )
+    section = document.sections[0]
+    document = document.model_copy(
+        update={
+            "sections": [
+                section.model_copy(
+                    update={
+                        "blocks": [
+                            *section.blocks,
+                            CanvasBlock(
+                                id="demo-gate",
+                                type="checkpoint",
+                                text="Explain one concrete Bayesian decision.",
+                            ),
+                        ]
+                    }
+                ),
+                *document.sections[1:],
+            ]
+        }
+    )
+    workspace.write_course_canvas(document)
     return workspace

@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from lecturepilot.models import AgentTurnResult, CanvasCommand
+from lecturepilot.guided_tutor import LOCAL_PREVIEW_USER_ID
+from lecturepilot.model_commands import validate_quality_gate_decision
+from lecturepilot.models import AgentTurnInput, AgentTurnResult, CanvasCommand
 
 if TYPE_CHECKING:
     from lecturepilot.agent_tool_executor import AgentToolExecutor
@@ -36,3 +38,11 @@ def merge_tool_outputs(
     commands = dedupe_commands([*result.canvas_commands, *tool_executor.canvas_update_commands()])
     gate = tool_executor.gate or result.quality_gate
     return result.model_copy(update={"canvas_commands": commands, "quality_gate": gate})
+
+
+def enforce_active_gate_contract(result: AgentTurnResult, turn: AgentTurnInput) -> AgentTurnResult:
+    if turn.user_id == LOCAL_PREVIEW_USER_ID:
+        return result
+    return result.model_copy(
+        update={"quality_gate": validate_quality_gate_decision(result.quality_gate, turn)}
+    )

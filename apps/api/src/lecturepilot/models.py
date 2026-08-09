@@ -6,6 +6,11 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from lecturepilot.agent_context_models import (
+    AgentCoachingContext,
+    AgentReadinessTask,
+    UserMemoryContext,
+)
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
 from lecturepilot.lecture_access_models import (
     CourseAccessPolicy,
@@ -13,11 +18,12 @@ from lecturepilot.lecture_access_models import (
     LectureReleaseStatus,
     PublicationMode,
 )
+from lecturepilot.learning_map import LearningMapGate
 from lecturepilot.quality_gate_models import (
     QualityGateDecision,
     QualityGateStatus as QualityGateStatus,
 )
-from lecturepilot.scaffold_policy import AssistanceLevel, TutorScaffoldPolicy
+from lecturepilot.scaffold_policy import TutorScaffoldPolicy
 
 
 class AttendanceStatus(StrEnum):
@@ -204,38 +210,13 @@ class CanvasSectionPlacement(BaseModel):
     section_id: str = Field(min_length=1, max_length=120)
 
 
-class UserMemoryContext(BaseModel):
-    global_notes: str = Field(default="", max_length=4000)
-    course_notes: str = Field(default="", max_length=4000)
-    preferences: dict[str, Any] = Field(default_factory=dict)
-
-
-class AgentReadinessTask(BaseModel):
-    id: str = Field(min_length=1, max_length=220)
-    source_ref: str | None = Field(default=None, max_length=500)
-    expected_evidence: str = Field(min_length=1, max_length=1000)
-    scaffold_policy: TutorScaffoldPolicy
-
-
-class AgentCoachingContext(BaseModel):
-    session_goal: str = Field(default="", max_length=500)
-    goal_is_new: bool = False
-    prior_assistance: bool = False
-    needs_evidence_count: int = Field(default=0, ge=0)
-    last_gate_status: Literal["passed", "needs_evidence", "not_assessed"] | None = None
-    delayed_transfer_due: bool = False
-    support_before_attempt: bool = False
-    last_assistance_level: AssistanceLevel = "none"
-    evidence_ids: list[str] = Field(default_factory=list, max_length=40)
-    missing_evidence_ids: list[str] = Field(default_factory=list, max_length=40)
-
-
 class AgentTurnInput(BaseModel):
     user_id: str = Field(min_length=1)
     course_id: str = Field(min_length=1)
     lecture_id: str = Field(min_length=1)
     attendance: AttendanceStatus
     message: str = Field(min_length=1, max_length=4000)
+    requested_gate_id: str | None = Field(default=None, min_length=1, max_length=160)
     model: str | None = Field(default=None, min_length=3, max_length=200)
     canvas_state: CanvasState = Field(default_factory=CanvasState)
     canvas_context: CanvasDocument | None = None
@@ -243,6 +224,7 @@ class AgentTurnInput(BaseModel):
     readiness_task: AgentReadinessTask | None = None
     scaffold_policy: TutorScaffoldPolicy | None = None
     coaching_context: AgentCoachingContext = Field(default_factory=AgentCoachingContext)
+    active_gate: LearningMapGate | None = None
 
 
 class AgentTurnRequest(BaseModel):
@@ -252,6 +234,7 @@ class AgentTurnRequest(BaseModel):
     lecture_id: str = Field(min_length=1)
     attendance: AttendanceStatus
     message: str = Field(min_length=1, max_length=4000)
+    requested_gate_id: str | None = Field(default=None, min_length=1, max_length=160)
     canvas_state: CanvasState = Field(default_factory=CanvasState)
     canvas_context: CanvasDocument | None = None
     user_memory: UserMemoryContext = Field(default_factory=UserMemoryContext)

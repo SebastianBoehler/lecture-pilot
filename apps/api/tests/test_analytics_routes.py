@@ -192,7 +192,7 @@ def test_quality_gate_turns_are_recorded_in_analytics(tmp_path: Path) -> None:
             "canvas_state": {"focused_section_id": "risk"},
         },
     )
-    assert response.status_code == 200
+    assert response.json()["quality_gate"]["gate_id"] == "risk-evidence-check"
 
     summary = client.get(
         "/admin/courses/demo-course/lectures/lecture-01/analytics",
@@ -201,7 +201,7 @@ def test_quality_gate_turns_are_recorded_in_analytics(tmp_path: Path) -> None:
 
     assert summary.status_code == 200
     gate = summary.json()["gates"][0]
-    assert gate["gate_id"] == "risk-gate"
+    assert gate["gate_id"] == "risk-evidence-check"
     assert gate["status_counts"] == {"passed": 1}
     assert gate["attendance_split"] == {"present": 1}
     assert gate["unique_learners"] == 1
@@ -211,7 +211,7 @@ def test_quality_gate_turns_are_recorded_in_analytics(tmp_path: Path) -> None:
     assert gate["transfer_attempts"] == 0
     assert gate["independent_transfer_passes"] == 0
     assert gate["assistance_level_counts"] == {"none": 1}
-    assert gate["evidence_counts"] == {"posterior": 1, "risk": 1}
+    assert gate["evidence_counts"] == {"risk-evidence-check": 1}
 
 
 def _client(tmp_path: Path) -> TestClient:
@@ -295,6 +295,6 @@ class _GateHarness:
                 gate_id="risk-gate",
                 status=QualityGateStatus.PASSED,
                 reason="Student connected posterior and risk.",
-                evidence_ids=["posterior", "risk"],
+                evidence_ids=["risk-evidence-check", "invented-evidence"],
             ),
         )

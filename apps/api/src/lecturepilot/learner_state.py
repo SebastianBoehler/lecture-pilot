@@ -4,6 +4,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 import json
 
+from pydantic import ValidationError
+
 from lecturepilot.durable_files import atomic_write_json, exclusive_file_lock
 from lecturepilot.models import AttendanceStatus, QualityGateDecision
 from lecturepilot.storage_layout import StorageLayout
@@ -57,6 +59,30 @@ class LearnerStateStore:
                     "gates": gates,
                 },
             )
+
+    def latest_gate_decisions(
+        self,
+        *,
+        course_id: str,
+        lecture_id: str,
+        user_id: str,
+    ) -> dict[str, QualityGateDecision]:
+        path = self.layout.user_lecture_root(user_id, course_id, lecture_id) / "gates.json"
+        payload = _read_json(path)
+        raw_gates = payload.get("gates")
+        if not isinstance(raw_gates, dict):
+            return {}
+        decisions: dict[str, QualityGateDecision] = {}
+        for gate_id, raw_decision in raw_gates.items():
+            if not isinstance(gate_id, str) or not isinstance(raw_decision, dict):
+                continue
+            try:
+                decision = QualityGateDecision.model_validate(raw_decision)
+            except ValidationError:
+                continue
+            if decision.gate_id == gate_id:
+                decisions[gate_id] = decision
+        return decisions
 
 
 def _read_json(path: Path) -> dict:

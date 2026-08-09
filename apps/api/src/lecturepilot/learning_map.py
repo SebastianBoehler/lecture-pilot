@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from pathlib import Path
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.learning_gates import gate_spec_for_lecture
+
+
+class LearningMapEvidenceCriterion(BaseModel):
+    id: str = Field(min_length=1, max_length=160)
+    description: str = Field(min_length=1, max_length=1000)
+    required: bool = True
 
 
 class LearningMapGate(BaseModel):
@@ -14,8 +21,25 @@ class LearningMapGate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     prompt: str = Field(default="", max_length=1000)
     evidence_required: str = Field(default="", max_length=1000)
+    evidence_criteria: list[LearningMapEvidenceCriterion] = Field(
+        default_factory=list, max_length=40
+    )
+    transfer_prompt: str | None = Field(default=None, max_length=1000)
+    review_after_days: int = Field(default=2, ge=1, le=365)
+    revision: str = Field(default="", max_length=64)
     section_id: str = Field(min_length=1, max_length=160)
     source_ref: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def derive_contract_fields(self) -> LearningMapGate:
+        if not self.evidence_criteria:
+            description = self.evidence_required or self.prompt
+            if description:
+                self.evidence_criteria = [
+                    LearningMapEvidenceCriterion(id=self.id, description=description)
+                ]
+        self.revision = _digest(self, "revision")
+        return self
 
 
 class LearningMapNode(BaseModel):
@@ -33,8 +57,14 @@ class LearningMap(BaseModel):
     course_id: str = Field(min_length=1, max_length=120)
     lecture_id: str = Field(min_length=1, max_length=120)
     title: str = Field(min_length=1, max_length=200)
+    revision: str = Field(default="", max_length=64)
     nodes: list[LearningMapNode] = Field(default_factory=list)
     gates: list[LearningMapGate] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def derive_revision(self) -> LearningMap:
+        self.revision = _digest(self, "revision")
+        return self
 
 
 def build_learning_map(document: CanvasDocument) -> LearningMap:
@@ -73,18 +103,23 @@ def write_learning_map(document: CanvasDocument, canvas_dir: Path) -> LearningMa
     return learning_map
 
 
+def read_learning_map(canvas_dir: Path) -> LearningMap | None:
+    path = learning_map_path(canvas_dir)
+    if not path.exists():
+        return None
+    return LearningMap.model_validate_json(path.read_text(encoding="utf-8"))
+
+
 def learning_map_path(canvas_dir: Path) -> Path:
     return canvas_dir / "learning-map.json"
 
 
 def _section_gates(document: CanvasDocument, section: CanvasSection) -> list[LearningMapGate]:
-    gates = [
+    return [
         _checkpoint_gate(document, section, block)
         for block in section.blocks
         if block.type == "checkpoint"
     ]
-    lecture_gate = _lecture_gate_for_section(document, section)
-    return [*gates, *([lecture_gate] if lecture_gate else [])]
 
 
 def _checkpoint_gate(
@@ -92,37 +127,14 @@ def _checkpoint_gate(
     section: CanvasSection,
     block: CanvasBlock,
 ) -> LearningMapGate:
+    prompt = (block.text or block.caption or section.title)[:1000]
     return LearningMapGate(
         id=block.id,
         concept_id=section.id,
         title=(block.caption or section.title)[:200],
-        prompt=(block.text or "")[:1000],
-        evidence_required="Student explains the checkpoint evidence in their own words.",
-        section_id=section.id,
-        source_ref=section.source_ref or document.source_ref,
-    )
-
-
-def _lecture_gate_for_section(
-    document: CanvasDocument,
-    section: CanvasSection,
-) -> LearningMapGate | None:
-    spec = gate_spec_for_lecture(document.lecture_id)
-    if spec.lecture_id != document.lecture_id:
-        return None
-    target_section_id = spec.pending_target.section_id
-    section_ids = {candidate.id for candidate in document.sections}
-    if target_section_id not in section_ids:
-        target_section_id = spec.passed_target.section_id
-    if section.id != target_section_id:
-        return None
-    evidence = "; ".join(rule.label for rule in spec.rules)
-    return LearningMapGate(
-        id=spec.gate_id,
-        concept_id=section.id,
-        title=spec.title,
-        prompt=f"Demonstrate the learning outcome for {spec.title}.",
-        evidence_required=evidence,
+        prompt=prompt,
+        evidence_required=prompt,
+        evidence_criteria=[LearningMapEvidenceCriterion(id=block.id, description=prompt)],
         section_id=section.id,
         source_ref=section.source_ref or document.source_ref,
     )
@@ -135,3 +147,9 @@ def _quiz_ids(blocks: list[CanvasBlock]) -> list[str]:
         if block.type == "quiz"
         or (block.type == "component" and block.component_type == "single_choice_quiz")
     ]
+
+
+def _digest(model: BaseModel, excluded_field: str) -> str:
+    payload = model.model_dump(mode="json", exclude={excluded_field})
+    canonical = json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()

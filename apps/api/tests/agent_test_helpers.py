@@ -9,9 +9,13 @@ from lecturepilot.storage_layout import StorageLayout
 class CanvasContextWorkspace:
     def __init__(self, root) -> None:
         self.layout = StorageLayout(root)
+        self.course_canvas_store = self
 
     def has_published_course_canvas(self, *, course_id: str, lecture_id: str) -> bool:
         return course_id == "martius-ml" and lecture_id == "lecture-03"
+
+    def learning_map(self, **_kwargs):
+        return None
 
     def read_document(self, *, course_id: str, lecture_id: str, user_id: str) -> CanvasDocument:
         return CanvasDocument(
@@ -29,9 +33,13 @@ class CanvasContextWorkspace:
 class _PublishedCanvasAccessStub:
     def __init__(self, layout: StorageLayout) -> None:
         self.layout = layout
+        self.course_canvas_store = self
 
     def has_published_course_canvas(self, *, course_id: str, lecture_id: str) -> bool:
         return course_id == "martius-ml" and lecture_id == "lecture-01"
+
+    def learning_map(self, **_kwargs):
+        return None
 
     def read_document(self, *, course_id: str, lecture_id: str, user_id: str) -> CanvasDocument:
         raise CanvasWorkspaceError("Canvas loading is outside these harness tests.")

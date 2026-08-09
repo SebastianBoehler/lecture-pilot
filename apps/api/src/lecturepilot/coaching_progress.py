@@ -14,7 +14,6 @@ from lecturepilot.models import (
 from lecturepilot.scaffold_policy import AssistanceLevel, TutorScaffoldPolicy
 from lecturepilot.storage_layout import StorageLayout
 
-TRANSFER_DELAY = timedelta(days=2)
 MAX_TURN_EVENTS = 200
 
 
@@ -113,6 +112,7 @@ class CoachingProgressStore:
         policy: TutorScaffoldPolicy,
         decision: QualityGateDecision,
         session_goal: str | None = None,
+        review_after_days: int = 2,
         now: datetime | None = None,
     ) -> CoachingTurnEvent:
         current_time = now or datetime.now(UTC)
@@ -146,6 +146,7 @@ class CoachingProgressStore:
                     progress.delayed_transfer,
                     gate_id=decision.gate_id,
                     transfer_was_due=context.delayed_transfer_due,
+                    review_after_days=review_after_days,
                     now=current_time,
                 )
             progress.updated_at = created_at
@@ -177,13 +178,16 @@ def _updated_transfer(
     *,
     gate_id: str,
     transfer_was_due: bool,
+    review_after_days: int,
     now: datetime,
 ) -> DelayedTransferCheck:
     if current and current.gate_id == gate_id and current.completed_at is None:
         if transfer_was_due:
             return current.model_copy(update={"completed_at": now.isoformat()})
         return current
-    return DelayedTransferCheck(gate_id=gate_id, due_at=(now + TRANSFER_DELAY).isoformat())
+    return DelayedTransferCheck(
+        gate_id=gate_id, due_at=(now + timedelta(days=review_after_days)).isoformat()
+    )
 
 
 def _default_goal(gate_title: str) -> str:

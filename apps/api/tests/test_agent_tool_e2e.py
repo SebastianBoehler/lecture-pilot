@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from canvas_workspace_fixtures import write_course_source
 from lecturepilot.agent_tool_loop import complete_tool_turn
 from lecturepilot.app import create_app
+from lecturepilot.canvas_models import CanvasBlock
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.models import AgentTurnInput, AgentTurnResult, ProviderSettings
 from lecturepilot.observability import Observability
@@ -71,7 +72,9 @@ def test_streamed_tool_turn_persists_canvas_memory_and_gate(tmp_path, monkeypatc
     )
     assert '"scope": "course"' in course_trace.read_text(encoding="utf-8")
     assert '"lecture_id": "lecture-03"' in course_trace.read_text(encoding="utf-8")
-    assert "tool-loop-gate" in (lecture_root / "gates.json").read_text(encoding="utf-8")
+    gate_state = (lecture_root / "gates.json").read_text(encoding="utf-8")
+    assert "tool-loop-gate" in gate_state
+    assert "invented-evidence" not in gate_state
 
     canvas_response = client.get(
         "/courses/martius-ml/lectures/lecture-03/canvas",
@@ -196,6 +199,7 @@ def _tool_calls() -> list[dict[str, Any]]:
                 "status": "needs_evidence",
                 "reason": "Student needs one more worked risk example.",
                 "next_prompt": "Compute one expected-risk comparison.",
+                "evidence_ids": ["tool-loop-gate", "invented-evidence"],
             },
         ),
         _tool_call("focus", {"section_id": "student-tool-loop-note"}),
@@ -232,11 +236,30 @@ def _published_workspace(tmp_path: Path) -> CanvasWorkspace:
         workspace_root=tmp_path / "workspaces",
         material_root=write_course_source(tmp_path),
     )
-    workspace.write_course_canvas(
-        workspace.source_document(
-            course_id="martius-ml",
-            lecture_id="lecture-03",
-            workspace_path=str(tmp_path / "published" / "index.md"),
-        )
+    document = workspace.source_document(
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        workspace_path=str(tmp_path / "published" / "index.md"),
     )
+    section = document.sections[0]
+    document = document.model_copy(
+        update={
+            "sections": [
+                section.model_copy(
+                    update={
+                        "blocks": [
+                            *section.blocks,
+                            CanvasBlock(
+                                id="tool-loop-gate",
+                                type="checkpoint",
+                                text="Explain one worked risk comparison.",
+                            ),
+                        ]
+                    }
+                ),
+                *document.sections[1:],
+            ]
+        }
+    )
+    workspace.write_course_canvas(document)
     return workspace

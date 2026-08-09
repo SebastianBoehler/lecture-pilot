@@ -80,3 +80,31 @@ def test_quality_gate_update_keeps_previous_file_when_atomic_replace_fails(
         )
 
     assert path.read_bytes() == original
+
+
+def test_latest_gate_decisions_reads_only_valid_persisted_decisions(tmp_path: Path) -> None:
+    store = LearnerStateStore(StorageLayout(tmp_path))
+    path = store.layout.user_lecture_root("student-1", "course-1", "lecture-1") / "gates.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        json.dumps(
+            {
+                "gates": {
+                    "gate-1": {
+                        "gate_id": "gate-1",
+                        "status": "passed",
+                        "reason": "Complete evidence.",
+                    },
+                    "broken": {"status": "passed"},
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    decisions = store.latest_gate_decisions(
+        course_id="course-1", lecture_id="lecture-1", user_id="student-1"
+    )
+
+    assert list(decisions) == ["gate-1"]
+    assert decisions["gate-1"].status == QualityGateStatus.PASSED
