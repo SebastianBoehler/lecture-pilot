@@ -196,7 +196,7 @@ def _read_quiz_payload(path: Path, *, course_id: str, lecture_id: str) -> Learne
         )
     try:
         payload = LearnerQuizStorePayload.model_validate_json(path.read_text(encoding="utf-8"))
-    except (OSError, ValidationError) as exc:
+    except (OSError, UnicodeDecodeError, ValidationError) as exc:
         raise InvalidLearnerQuizStateError("Persisted learner quiz state is invalid.") from exc
     if payload.course_id != course_id or payload.lecture_id != lecture_id:
         raise InvalidLearnerQuizStateError("Persisted learner quiz state is invalid.")

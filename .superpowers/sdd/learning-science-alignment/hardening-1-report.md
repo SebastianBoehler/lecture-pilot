@@ -117,3 +117,31 @@ npm run verify:api:
   compiler: 22 passed
   git diff --check: passed
 ```
+
+## Review fix round 2
+
+Malformed non-UTF8 persisted quiz bytes now cross the same typed corruption boundary as malformed
+JSON. `_read_quiz_payload` translates `UnicodeDecodeError` to the existing sanitized
+`InvalidLearnerQuizStateError`; it neither recovers, replaces, nor exposes the codec failure.
+
+The real-byte regression writes `b'\xff\xfe\x80not-utf8'` and exercises learner-state GET and quiz
+submission. RED was an HTTP 500 on GET while submit reached the route's raw `ValueError` handling.
+After the minimal store fix, both routes return the identical exact 409 detail, expose no codec,
+path, or raw payload text, leave the original bytes unchanged, and write no analytics outcome.
+
+```text
+focused non-UTF8 regression: 1 passed
+learner/quiz state owner slice: 34 passed, 6 existing deprecation warnings
+npm run verify:api:
+  Ruff format/check: passed (477 files)
+  API: 795 passed, 6 existing deprecation warnings
+  compiler: 22 passed
+  git diff --check: passed
+```
+
+The quiz-file read audit found one store boundary: both quiz GET and submission call
+`learner_state._read_quiz_payload`; the only other `quizzes.json` production reference deletes the
+file during an explicit learner-workspace reset. No broad exception, recovery path, fallback,
+test double, compatibility path, or authority bypass was added. Both round-2 touched code/test
+files remain below 300 lines (239 and 128); the repository size guard still reports 24 pre-existing
+oversized files outside this fix.
