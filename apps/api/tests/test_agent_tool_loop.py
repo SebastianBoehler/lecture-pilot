@@ -4,19 +4,15 @@ import json
 from types import SimpleNamespace
 from typing import Any
 
-from canvas_workspace_fixtures import write_course_source
+from canvas_workspace_fixtures import published_martius_workspace
 from lecturepilot.agent_tool_executor import AgentToolExecutor
 from lecturepilot.agent_tool_loop import complete_tool_turn
-from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.models import AgentTurnInput, ProviderSettings
 from lecturepilot.observability import Observability
 
 
 async def test_tool_loop_repairs_plain_text_first_answer(tmp_path) -> None:
-    workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=write_course_source(tmp_path),
-    )
+    workspace = published_martius_workspace(tmp_path)
     workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="u1")
     executor = AgentToolExecutor(
         canvas_workspace=workspace,
@@ -75,10 +71,7 @@ async def test_tool_loop_repairs_plain_text_first_answer(tmp_path) -> None:
 
 
 async def test_tool_loop_omits_temperature_for_openai_gpt5(tmp_path) -> None:
-    workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=write_course_source(tmp_path),
-    )
+    workspace = published_martius_workspace(tmp_path)
     workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="u1")
     calls: list[dict[str, Any]] = []
 

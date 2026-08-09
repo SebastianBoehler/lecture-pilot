@@ -3,13 +3,15 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from canvas_workspace_fixtures import published_course_canvas
+from canvas_workspace_fixtures import published_course_canvas, write_canvas_draft
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.coaching_progress import CoachingProgressStore
 from lecturepilot.coaching_state_models import CoachingProgress, DelayedReview
 from lecturepilot.course_schedule_store import write_course_workspace
+from lecturepilot.course_learning_design_models import LearningDesignUpdate
+from lecturepilot.course_learning_design_store import CourseLearningDesignStore
 from lecturepilot.durable_files import atomic_write_json
 from lecturepilot.exam_revision_plan import ExamRevisionTask
 from lecturepilot.models import Course, CourseWorkspaceResult, Lecture
@@ -59,19 +61,50 @@ def review_client(tmp_path: Path) -> TestClient:
                 "blocks": blocks,
             }
         )
-        app.state.canvas_workspace.write_course_canvas(document)
-        path = app.state.canvas_workspace.course_canvas_store.path(COURSE_ID, lecture_id)
-        learning_map = app.state.canvas_workspace.course_canvas_store.learning_map(
-            course_id=COURSE_ID, lecture_id=lecture_id
+        write_canvas_draft(app.state.canvas_workspace, document)
+        reviews = CourseLearningDesignStore(app.state.canvas_workspace.layout)
+        review = reviews.read(course_id=COURSE_ID, lecture_id=lecture_id)
+        changed = reviews.update(
+            course_id=COURSE_ID,
+            lecture_id=lecture_id,
+            update=LearningDesignUpdate(
+                draft_digest=review.draft_digest,
+                source_revision=review.source_revision,
+                learning_map_revision=review.learning_map.revision,
+                objective=review.learning_map.objective,
+                gates=[
+                    {
+                        "id": gate.id,
+                        "prompt": gate.prompt,
+                        "evidence_criteria": gate.evidence_criteria,
+                        "transfer_prompt": (
+                            f"Apply {'C' if gate.id == 'gate-c' else label} to an unfamiliar case."
+                        ),
+                        "review_after_days": gate.review_after_days,
+                    }
+                    for gate in review.learning_map.gates
+                ],
+                prerequisites=[
+                    {
+                        "section_id": node.section_id,
+                        "prerequisite_ids": node.prerequisites,
+                    }
+                    for node in review.learning_map.nodes
+                ],
+            ),
         )
-        assert learning_map is not None
-        for index, gate in enumerate(learning_map.gates):
-            gate_label = "C" if gate.id == "gate-c" else label
-            learning_map.gates[index] = gate.model_copy(
-                update={"transfer_prompt": f"Apply {gate_label} to an unfamiliar case."}
-            )
-        (path / "learning-map.json").write_text(
-            learning_map.model_dump_json(indent=2), encoding="utf-8"
+        reviews.approve(
+            course_id=COURSE_ID,
+            lecture_id=lecture_id,
+            draft_digest=changed.draft_digest,
+            source_revision=changed.source_revision,
+            learning_map_revision=changed.learning_map.revision,
+            approved_by="professor",
+        )
+        app.state.canvas_workspace.publish_course_canvas_draft(
+            course_id=COURSE_ID,
+            lecture_id=lecture_id,
+            published_by="professor",
         )
     return TestClient(app)
 

@@ -4,7 +4,7 @@ import json
 from types import SimpleNamespace
 from typing import Any
 
-from canvas_workspace_fixtures import write_course_source
+from canvas_workspace_fixtures import published_martius_workspace
 from lecturepilot.agent_tool_executor import AgentToolExecutor
 from lecturepilot.agent_tool_loop import complete_tool_turn
 from lecturepilot.agent_tool_schemas import (
@@ -12,7 +12,6 @@ from lecturepilot.agent_tool_schemas import (
     agent_tool_schemas,
     tutor_tool_profile_for_message,
 )
-from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.models import AgentTurnInput, ProviderSettings
 from lecturepilot.observability import Observability
 from lecturepilot.providers import DEFAULT_MODEL
@@ -43,9 +42,7 @@ def test_agent_tool_profiles_expose_minimal_expected_tools() -> None:
 
 
 async def test_tool_loop_default_profile_rejects_search_tool_calls(tmp_path) -> None:
-    workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces", material_root=write_course_source(tmp_path)
-    )
+    workspace = published_martius_workspace(tmp_path)
     workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="u1")
     executor = AgentToolExecutor(
         canvas_workspace=workspace,
@@ -65,9 +62,7 @@ async def test_tool_loop_default_profile_rejects_search_tool_calls(tmp_path) -> 
                         "type": "function",
                         "function": {
                             "name": "grep",
-                            "arguments": json.dumps(
-                                {"path": "/lecture/canvas", "pattern": "Bayes"}
-                            ),
+                            "arguments": json.dumps({"path": "/course/canvas", "pattern": "Bayes"}),
                         },
                     }
                 ]

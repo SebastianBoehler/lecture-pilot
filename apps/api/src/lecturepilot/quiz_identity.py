@@ -29,16 +29,3 @@ def validate_unique_quiz_ids(document: CanvasDocument) -> None:
             if quiz_id in seen:
                 raise DuplicateCanonicalQuizIdError(quiz_id)
             seen.add(quiz_id)
-
-
-def publication_version(publication: object) -> int:
-    version = publication.get("version") if isinstance(publication, dict) else None
-    return version if isinstance(version, int) and version >= 1 else 1
-
-
-def published_canvas_version(workspace, *, course_id: str, lecture_id: str) -> int:
-    publication = workspace.course_canvas_publication(
-        course_id=course_id,
-        lecture_id=lecture_id,
-    )
-    return publication_version(publication)

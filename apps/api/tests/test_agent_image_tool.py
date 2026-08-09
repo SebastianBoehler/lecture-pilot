@@ -1,16 +1,12 @@
 from __future__ import annotations
 
-from canvas_workspace_fixtures import write_course_source
+from canvas_workspace_fixtures import published_martius_workspace
 from lecturepilot.agent_tool_executor import AgentToolExecutor
-from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.image_generation import GeneratedImage
 
 
 def test_generate_image_does_not_append_a_generic_section_without_a_target(tmp_path) -> None:
-    workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=write_course_source(tmp_path),
-    )
+    workspace = published_martius_workspace(tmp_path)
     workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="u1")
     executor = AgentToolExecutor(
         canvas_workspace=workspace,
@@ -41,10 +37,7 @@ def test_generate_image_does_not_append_a_generic_section_without_a_target(tmp_p
 
 
 def test_generate_image_semantically_targets_an_existing_learner_section(tmp_path) -> None:
-    workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=write_course_source(tmp_path),
-    )
+    workspace = published_martius_workspace(tmp_path)
     workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="u1")
     setup = AgentToolExecutor(
         canvas_workspace=workspace,
@@ -106,10 +99,7 @@ def test_generate_image_semantically_targets_an_existing_learner_section(tmp_pat
 
 
 def test_generate_image_targets_existing_section_for_explicit_edit(tmp_path) -> None:
-    workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=write_course_source(tmp_path),
-    )
+    workspace = published_martius_workspace(tmp_path)
     workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="u1")
     setup = AgentToolExecutor(
         canvas_workspace=workspace,
@@ -179,10 +169,7 @@ def test_generate_image_targets_existing_section_for_explicit_edit(tmp_path) -> 
 
 
 def test_pending_image_requires_edit_and_dedupes_insert(tmp_path) -> None:
-    workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=write_course_source(tmp_path),
-    )
+    workspace = published_martius_workspace(tmp_path)
     workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="u1")
     setup = AgentToolExecutor(
         canvas_workspace=workspace,

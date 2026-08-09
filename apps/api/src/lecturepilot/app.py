@@ -25,6 +25,7 @@ from lecturepilot.client_contract import (
 )
 from lecturepilot.course_builder_source import course_builder_source_document
 from lecturepilot.course_canvas_routes import register_course_canvas_routes
+from lecturepilot.course_canvas_context import InvalidPublishedCanvasContextError
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner, LiteLLMCoursePlanClient
 from lecturepilot.course_canvas_quality import CanvasQualityReviewer, LiteLLMCanvasQualityClient
 from lecturepilot.course_deletion import register_course_deletion_routes
@@ -117,6 +118,12 @@ def create_app() -> FastAPI:
             content={"code": CLIENT_UPDATE_REQUIRED_CODE, "detail": str(exc)},
             headers={CLIENT_CONTRACT_HEADER: CLIENT_CONTRACT_VERSION},
         )
+
+    @app.exception_handler(InvalidPublishedCanvasContextError)
+    async def invalid_published_canvas(
+        _request: Request, exc: InvalidPublishedCanvasContextError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
 
     app.state.database = Database()
     app.state.runtime_readiness = RuntimeReadiness(app.state.database)

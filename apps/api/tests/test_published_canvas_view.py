@@ -110,7 +110,7 @@ def test_concurrent_published_gets_are_coherent_and_never_mutate_learner_canvas(
                     workspace,
                     _document(version_two=version % 2 == 0),
                 )
-                assert published["version"] == version
+                assert published.version == version
             finally:
                 rendezvous.wait()
 

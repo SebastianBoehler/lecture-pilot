@@ -19,7 +19,7 @@ from lecturepilot.agent_tool_utils import (
     required_str,
 )
 from lecturepilot.learner_canvas_locking import serialized_canvas_write
-from lecturepilot.canvas_markdown import CanvasMarkdownError, read_document_source
+from lecturepilot.canvas_markdown import CanvasMarkdownError, read_student_sections
 from lecturepilot.canvas_signatures import is_student_section
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.models import CanvasCommand, QualityGateDecision
@@ -112,7 +112,7 @@ class AgentToolExecutor(AgentSideEffectTools):
 
     def _execute(self, name: str, args: dict[str, Any]) -> dict[str, Any]:
         if name == "pwd":
-            return {"roots": self._roots()}
+            return {"roots": self.workspace_fs.logical_roots()}
         if name == "ls":
             return self._ls(required_str(args, "path", "/"))
         if name == "find":
@@ -155,7 +155,8 @@ class AgentToolExecutor(AgentSideEffectTools):
 
     def _ls(self, logical_path: str) -> dict[str, Any]:
         if logical_path == "/":
-            return {"entries": [{"path": root, "type": "dir"} for root in self._roots()]}
+            roots = self.workspace_fs.logical_roots()
+            return {"entries": [{"path": root, "type": "dir"} for root in roots]}
         resolved = self._resolve(logical_path)
         if not resolved.path.exists():
             return {"entries": []}
@@ -274,10 +275,12 @@ class AgentToolExecutor(AgentSideEffectTools):
         if not resolved.logical.startswith("/lecture/canvas/"):
             return
         try:
-            read_document_source(
+            read_student_sections(
                 self.canvas_workspace.layout.user_canvas_dir(
                     self.user_id, self.course_id, self.lecture_id
-                )
+                ),
+                course_id=self.course_id,
+                lecture_id=self.lecture_id,
             )
         except Exception:
             if previous is None:
@@ -292,9 +295,6 @@ class AgentToolExecutor(AgentSideEffectTools):
             return self.workspace_fs.resolve(logical_path, for_write=for_write)
         except ValueError as exc:
             raise AgentToolError(str(exc)) from exc
-
-    def _roots(self) -> list[str]:
-        return self.workspace_fs.logical_roots()
 
     def _logical_for(self, path: Path) -> str:
         return self.workspace_fs.logical_for(path)

@@ -129,6 +129,68 @@ def read_learning_map(canvas_dir: Path) -> LearningMap | None:
     return LearningMap.model_validate_json(path.read_text(encoding="utf-8"))
 
 
+def read_strict_published_learning_map(canvas_dir: Path) -> LearningMap | None:
+    path = learning_map_path(canvas_dir)
+    if not path.exists():
+        return None
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    _require_exact_fields(
+        payload,
+        {"course_id", "lecture_id", "title", "objective", "revision", "nodes", "gates"},
+        "learning map",
+    )
+    for node in payload["nodes"]:
+        _require_exact_fields(
+            node,
+            {
+                "id",
+                "title",
+                "lecture_id",
+                "section_id",
+                "source_ref",
+                "prerequisites",
+                "gate_ids",
+                "quiz_ids",
+            },
+            "learning-map node",
+        )
+    for gate in payload["gates"]:
+        _require_exact_fields(
+            gate,
+            {
+                "id",
+                "concept_id",
+                "title",
+                "prompt",
+                "evidence_required",
+                "evidence_criteria",
+                "transfer_prompt",
+                "review_after_days",
+                "revision",
+                "section_id",
+                "source_ref",
+            },
+            "learning-map gate",
+        )
+        if not gate["prompt"] or not gate["evidence_criteria"]:
+            raise ValueError("Published learning-map gates require prompts and evidence criteria.")
+        for criterion in gate["evidence_criteria"]:
+            _require_exact_fields(
+                criterion,
+                {"id", "description", "required"},
+                "learning-map evidence criterion",
+            )
+    if not payload["objective"]:
+        raise ValueError("Published learning maps require an objective.")
+    learning_map = LearningMap.model_validate(payload, strict=True)
+    if payload["revision"] != learning_map.revision:
+        raise ValueError("Published learning-map revision is invalid.")
+    revisions = {gate.id: gate.revision for gate in learning_map.gates}
+    if any(gate["revision"] != revisions[gate["id"]] for gate in payload["gates"]):
+        raise ValueError("Published learning-map gate revision is invalid.")
+    return learning_map
+
+
 def learning_map_path(canvas_dir: Path) -> Path:
     return canvas_dir / "learning-map.json"
 
@@ -188,3 +250,8 @@ def _require_unique_ids(ids: Iterable[str], label: str) -> None:
         if identifier in seen:
             raise ValueError(f"Duplicate {label} ID '{identifier}'.")
         seen.add(identifier)
+
+
+def _require_exact_fields(payload: object, expected: set[str], label: str) -> None:
+    if not isinstance(payload, dict) or set(payload) != expected:
+        raise ValueError(f"Published {label} contract is incomplete or contains extra fields.")

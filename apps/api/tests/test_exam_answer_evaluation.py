@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from auth_helpers import professor_headers, student_headers
+from canvas_workspace_fixtures import publish_course_canvas
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
@@ -168,7 +169,7 @@ def test_evaluation_failure_returns_retryable_response_without_persisting(tmp_pa
         },
         headers=professor_headers(),
     )
-    workspace.write_course_canvas(_route_document())
+    publish_course_canvas(workspace, _route_document())
 
     response = browser.post(
         "/courses/demo-ml-course/exam-readiness/attempts",

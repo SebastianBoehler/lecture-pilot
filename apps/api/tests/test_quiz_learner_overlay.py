@@ -170,7 +170,7 @@ def _install_overlay(client: TestClient, user_id: str, sections: list[CanvasSect
 
 def _write_stale_overlay(client: TestClient, user_id: str) -> None:
     layout = client.app.state.canvas_workspace.layout
-    path = layout.compiled_canvas_path(user_id, COURSE_ID, LECTURE_ID)
+    path = layout.user_lecture_root(user_id, COURSE_ID, LECTURE_ID) / "canvas.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         _document([_overlay_section("shared", "hidden-stale-quiz")]).model_dump_json(),

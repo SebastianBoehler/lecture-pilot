@@ -16,6 +16,7 @@ from lecturepilot.course_access import require_course_id_access, require_lecture
 from lecturepilot.course_canvas_draft_routes import register_course_canvas_draft_routes
 from lecturepilot.course_canvas_repair_routes import register_course_canvas_repair_routes
 from lecturepilot.course_canvas_store import InvalidCanvasDraftError
+from lecturepilot.course_canvas_publication import CanvasPublicationMetadata
 from lecturepilot.course_learning_design_routes import register_course_learning_design_routes
 from lecturepilot.course_learning_design_store import LearningDesignError
 from lecturepilot.learner_workspace_reset import (
@@ -110,11 +111,6 @@ def register_course_canvas_routes(
             course_id=course_id,
             lecture_id=lecture_id,
         )
-        if metadata is None and app.state.canvas_workspace.has_published_course_canvas(
-            course_id=course_id,
-            lecture_id=lecture_id,
-        ):
-            metadata = {}
         return _publication_result(course_id, lecture_id, metadata)
 
     @app.get("/courses/{course_id}/lectures/{lecture_id}/canvas")
@@ -174,11 +170,6 @@ def register_course_canvas_routes(
             seeded_course=seeded_course,
             seeded_lectures=lectures,
         )
-        if not app.state.canvas_workspace.has_published_course_canvas(
-            course_id=course_id,
-            lecture_id=lecture_id,
-        ):
-            raise HTTPException(status_code=404, detail="Canvas has not been published.")
         with app.state.canvas_workspace.course_canvas_store.locked_published_learning_map(
             course_id=course_id,
             lecture_id=lecture_id,
@@ -236,14 +227,14 @@ def register_course_canvas_routes(
 def _publication_result(
     course_id: str,
     lecture_id: str,
-    metadata: dict | None,
+    metadata: CanvasPublicationMetadata | None,
 ) -> CanvasPublicationResult:
     return CanvasPublicationResult(
         course_id=course_id,
         lecture_id=lecture_id,
         published=metadata is not None,
-        version=metadata.get("version") if metadata else None,
-        published_at=metadata.get("published_at") if metadata else None,
+        version=metadata.version if metadata else None,
+        published_at=metadata.published_at.isoformat() if metadata else None,
     )
 
 

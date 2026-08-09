@@ -1,19 +1,31 @@
 from pathlib import Path
 
+from canvas_workspace_fixtures import publish_course_canvas
 from lecturepilot.canvas_workspace import CanvasWorkspace
 
 
-def test_imports_all_available_demo_lecture_sources(tmp_path: Path) -> None:
+def test_publishes_all_available_demo_lecture_sources(tmp_path: Path) -> None:
     material_root = _write_materials(tmp_path)
     workspace = CanvasWorkspace(
         workspace_root=tmp_path / "workspaces",
         material_root=material_root,
     )
 
-    documents = [
-        workspace.read_document(course_id="martius-ml", lecture_id=lecture_id, user_id="student01")
-        for lecture_id in ("lecture-01", "lecture-02", "lecture-03")
-    ]
+    documents = []
+    for lecture_id in ("lecture-01", "lecture-02", "lecture-03"):
+        source = workspace.source_document(
+            course_id="martius-ml",
+            lecture_id=lecture_id,
+            workspace_path="course/index.md",
+        )
+        publish_course_canvas(workspace, source)
+        documents.append(
+            workspace.read_document(
+                course_id="martius-ml",
+                lecture_id=lecture_id,
+                user_id="student01",
+            )
+        )
 
     assert [document.source_ref for document in documents] == [
         "Lecture01-eng.tex",

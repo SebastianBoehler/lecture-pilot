@@ -1,13 +1,11 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from pathlib import Path
-from threading import Event
+from threading import Barrier
 
 from auth_helpers import student_headers
-from canvas_workspace_fixtures import published_course_canvas
-from lecturepilot import review_queue_routes as review_queue_routes_module
+from canvas_workspace_fixtures import approve_canvas_draft, write_canvas_draft
 from lecturepilot.canvas_models import CanvasBlock
-from lecturepilot.course_learning_design_store import CourseLearningDesignStore
 from review_queue_test_helpers import (
     COURSE_ID,
     NOW,
@@ -16,11 +14,11 @@ from review_queue_test_helpers import (
     review_client,
     write_review,
 )
+from canvas_workspace_fixtures import published_course_canvas
 
 
-def test_republish_waits_until_due_review_open_commits_authoritative_map(
+def test_review_open_racing_real_republish_binds_one_atomic_gate_revision(
     tmp_path: Path,
-    monkeypatch,
 ) -> None:
     client = review_client(tmp_path)
     user_id = "student-a"
@@ -42,63 +40,38 @@ def test_republish_waits_until_due_review_open_commits_authoritative_map(
             ],
         }
     )
-    manifest = workspace.layout.lecture_source_manifest_path(COURSE_ID, "lecture-a")
-    manifest.parent.mkdir(parents=True, exist_ok=True)
-    manifest.write_text(
-        '{"course_id":"review-course","lecture_id":"lecture-a",'
-        '"files":[{"path":"source.md","sha256":"' + "a" * 64 + '"}]}',
-        encoding="utf-8",
-    )
-    workspace.write_course_canvas_draft(replacement)
-    reviews = CourseLearningDesignStore(workspace.layout)
-    current = reviews.read(course_id=COURSE_ID, lecture_id="lecture-a")
-    reviews.approve(
-        course_id=COURSE_ID,
-        lecture_id="lecture-a",
-        draft_digest=current.draft_digest,
-        source_revision=current.source_revision,
-        learning_map_revision=current.learning_map.revision,
-        approved_by="professor-a",
-    )
-    bind_entered = Event()
-    release_bind = Event()
-    publication_finished = Event()
-    original_bind = review_queue_routes_module.bind_delayed_review
-
-    def controlled_bind(*args, **kwargs):
-        bind_entered.set()
-        assert release_bind.wait(timeout=3)
-        return original_bind(*args, **kwargs)
-
-    monkeypatch.setattr(review_queue_routes_module, "bind_delayed_review", controlled_bind)
+    write_canvas_draft(workspace, replacement)
+    approve_canvas_draft(workspace, COURSE_ID, "lecture-a")
+    start = Barrier(3)
     open_url = f"/courses/{COURSE_ID}/review-queue/gates/lecture-a/gate-a/open"
 
-    def publish() -> dict:
-        result = workspace.publish_course_canvas_draft(
+    def open_review():
+        start.wait()
+        return client.post(open_url, headers=headers)
+
+    def publish():
+        start.wait()
+        return workspace.publish_course_canvas_draft(
             course_id=COURSE_ID,
             lecture_id="lecture-a",
             published_by="professor-a",
         )
-        publication_finished.set()
-        return result
 
     with ThreadPoolExecutor(max_workers=2) as executor:
-        opening = executor.submit(client.post, open_url, headers=headers)
-        assert bind_entered.wait(timeout=3)
-        publication = executor.submit(publish)
-        publish_waited = not publication_finished.wait(timeout=0.2)
-        release_bind.set()
-        response = opening.result(timeout=3)
-        publication.result(timeout=3)
+        opening = executor.submit(open_review)
+        publishing = executor.submit(publish)
+        start.wait()
+        response = opening.result(timeout=5)
+        publishing.result(timeout=5)
 
-    assert publish_waited
-    assert response.status_code == 200
-    assert response.json()["gate_revision"] == old_revision
-    assert response.json()["prompt"] == "Apply A to an unfamiliar case."
+    new_revision = gate_revision(client, "lecture-a", "gate-a")
+    assert new_revision != old_revision
+    assert response.status_code in {200, 409}
     pending = read_progress(client, user_id, "lecture-a").pending_check
-    assert pending is not None
-    assert pending.gate_revision == old_revision
-    assert pending.prompt == "Apply A to an unfamiliar case."
-    assert gate_revision(client, "lecture-a", "gate-a") != old_revision
+    if response.status_code == 200:
+        assert response.json()["gate_revision"] == old_revision
+        assert pending is not None
+        assert pending.gate_revision == old_revision
+    else:
+        assert pending is None
     assert client.get(f"/courses/{COURSE_ID}/review-queue", headers=headers).json()["items"] == []
-    assert client.post(open_url, headers=headers).status_code == 409

@@ -40,7 +40,7 @@ def test_unix_named_tools_search_read_and_write_canvas(tmp_path) -> None:
     )
 
     assert executor.execute("ls", {"path": "/"})["entries"]
-    matches = executor.execute("grep", {"path": "/lecture/canvas", "pattern": "Bayes"})
+    matches = executor.execute("grep", {"path": "/course/canvas", "pattern": "Bayes"})
     assert matches["ok"] is True
     assert matches["matches"]
 
@@ -144,9 +144,7 @@ async def test_tool_loop_executes_grep_before_final_answer(tmp_path) -> None:
                         "type": "function",
                         "function": {
                             "name": "grep",
-                            "arguments": json.dumps(
-                                {"path": "/lecture/canvas", "pattern": "Bayes"}
-                            ),
+                            "arguments": json.dumps({"path": "/course/canvas", "pattern": "Bayes"}),
                         },
                     }
                 ]
@@ -214,7 +212,7 @@ async def test_tool_loop_recovers_from_empty_post_tool_message(tmp_path) -> None
                         "type": "function",
                         "function": {
                             "name": "find",
-                            "arguments": json.dumps({"path": "/lecture/canvas"}),
+                            "arguments": json.dumps({"path": "/course/canvas"}),
                         },
                     }
                 ]

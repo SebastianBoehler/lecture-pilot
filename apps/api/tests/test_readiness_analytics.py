@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from auth_helpers import professor_headers, student_headers
+from canvas_workspace_fixtures import publish_course_canvas
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
@@ -96,7 +97,8 @@ def _create_course(client: TestClient) -> None:
         },
         headers=professor_headers(),
     )
-    client.app.state.canvas_workspace.write_course_canvas(
+    publish_course_canvas(
+        client.app.state.canvas_workspace,
         CanvasDocument(
             id="demo-ml-course-lecture-03",
             course_id="demo-ml-course",
@@ -129,5 +131,5 @@ def _create_course(client: TestClient) -> None:
                     ],
                 )
             ],
-        )
+        ),
     )

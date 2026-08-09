@@ -8,15 +8,17 @@ from fastapi.testclient import TestClient
 
 from auth_helpers import student_headers
 from lecturepilot.app import create_app
-from lecturepilot.canvas_markdown import write_document_source
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.course_canvas_store import CourseCanvasStore, InvalidCanvasDraftError
+from lecturepilot.course_canvas_store import InvalidCanvasDraftError
 from lecturepilot.course_schedule_store import write_course_workspace
 from lecturepilot.learning_map import build_learning_map
 from lecturepilot.models import Course, CourseWorkspaceResult, Lecture
-from canvas_workspace_fixtures import configure_canvas_workspace, publish_course_canvas
-from lecturepilot.storage_layout import StorageLayout
+from canvas_workspace_fixtures import (
+    configure_canvas_workspace,
+    publish_course_canvas,
+    write_canvas_draft,
+)
 
 
 COURSE_ID = "quiz-snapshot"
@@ -79,20 +81,12 @@ def test_duplicate_canonical_quiz_ids_are_rejected_by_all_canvas_writes(
     with pytest.raises(ValueError, match="Duplicate canonical quiz ID 'shared-quiz'"):
         build_learning_map(document)
 
-    store = CourseCanvasStore(StorageLayout(tmp_path / "workspaces"))
-    with pytest.raises(ValueError, match="Duplicate canonical quiz ID 'shared-quiz'"):
-        store.write(document)
+    workspace = CanvasWorkspace(
+        workspace_root=tmp_path / "workspaces",
+        material_root=tmp_path / "materials",
+    )
     with pytest.raises(InvalidCanvasDraftError, match="invalid and was not saved"):
-        store.write_draft(document)
-
-    draft_dir = store.draft_path(COURSE_ID, LECTURE_ID)
-    write_document_source(document, draft_dir)
-    with pytest.raises(InvalidCanvasDraftError, match="Stored canvas draft is invalid"):
-        store.publish_draft(
-            course_id=COURSE_ID,
-            lecture_id=LECTURE_ID,
-            published_by="professor",
-        )
+        write_canvas_draft(workspace, document)
 
 
 def _submit(

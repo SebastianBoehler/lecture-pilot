@@ -5,6 +5,8 @@ from pathlib import Path
 import re
 from typing import Any, Callable
 
+from lecturepilot.canvas_models import CanvasDocument
+
 from lecturepilot.agent_image_targets import resolve_image_section_target
 from lecturepilot.agent_image_tool import AgentImageToolError, generate_workspace_image
 from lecturepilot.agent_tool_utils import required_str
@@ -40,6 +42,7 @@ class AgentImagePlacement:
         course_id: str,
         lecture_id: str,
         logical_for: Callable[[Path], str],
+        read_document: Callable[[], CanvasDocument],
         focused_section_id: str | None = None,
     ) -> None:
         self.layout = layout
@@ -47,6 +50,7 @@ class AgentImagePlacement:
         self.course_id = course_id
         self.lecture_id = lecture_id
         self.logical_for = logical_for
+        self.read_document = read_document
         self.focused_section_id = focused_section_id
         self.pending: PendingImageInsert | None = None
 
@@ -62,6 +66,7 @@ class AgentImagePlacement:
         canvas_dir = self.layout.user_canvas_dir(self.user_id, self.course_id, self.lecture_id)
         target = resolve_image_section_target(
             canvas_dir,
+            sections=self.read_document().sections,
             requested_section_id=requested_id,
             focused_section_id=self.focused_section_id,
             prompt=prompt,

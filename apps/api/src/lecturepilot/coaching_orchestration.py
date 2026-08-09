@@ -10,9 +10,7 @@ from lecturepilot.coaching_assistance import emitted_assistance_level
 from lecturepilot.coaching_episode import parse_time
 from lecturepilot.coaching_progress import CoachingProgressStore, CoachingTurnEvent
 from lecturepilot.coaching_state_models import CoachingProgress
-from lecturepilot.guided_tutor import LOCAL_PREVIEW_USER_ID
 from lecturepilot.learning_gate_selector import select_active_gate
-from lecturepilot.learning_gates import gate_spec_for_lecture
 from lecturepilot.learning_map import LearningMap, LearningMapGate
 from lecturepilot.models import (
     AgentCoachingContext,
@@ -38,84 +36,69 @@ def prepare_coaching_turn(
         course_id=turn.course_id,
         lecture_id=turn.lecture_id,
     )
-    if turn.user_id == LOCAL_PREVIEW_USER_ID:
-        spec = gate_spec_for_lecture(turn.lecture_id)
-        with observability.tool_span("read_coaching_progress", gate_id=spec.gate_id):
+    analytics_context = app.state.canvas_workspace.course_canvas_store.read_analytics_context(
+        course_id=turn.course_id, lecture_id=turn.lecture_id
+    )
+    learning_map = analytics_context.learning_map
+    turn_analytics = AgentAnalyticsContext(
+        publication_version=analytics_context.publication_version,
+        learning_map_revision=analytics_context.learning_map_revision,
+    )
+    decisions = learner_state_store(app).latest_gate_decisions(
+        user_id=turn.user_id,
+        course_id=turn.course_id,
+        lecture_id=turn.lecture_id,
+    )
+    if turn.checkpoint_gate_id is not None:
+        _validate_requested_gate(
+            learning_map,
+            requested_gate_id=turn.checkpoint_gate_id,
+            focused_section_id=turn.canvas_state.focused_section_id,
+            require_focused_section=True,
+        )
+        active_gate = next(
+            gate for gate in learning_map.gates if gate.id == turn.checkpoint_gate_id
+        )
+        store.bind_inline_checkpoint(
+            user_id=turn.user_id,
+            course_id=turn.course_id,
+            lecture_id=turn.lecture_id,
+            gate_id=active_gate.id,
+            gate_revision=active_gate.revision,
+            published_prompt=(active_gate.prompt or active_gate.evidence_required),
+        )
+    else:
+        if turn.requested_gate_id is not None:
+            _validate_requested_gate(
+                learning_map,
+                requested_gate_id=turn.requested_gate_id,
+                focused_section_id=turn.canvas_state.focused_section_id,
+            )
+        active_gate = select_due_review_gate(learning_map, progress) or select_active_gate(
+            learning_map,
+            requested_gate_id=turn.requested_gate_id,
+            focused_section_id=turn.canvas_state.focused_section_id,
+            latest_decisions=decisions,
+        )
+    if active_gate is None:
+        context = AgentCoachingContext(attendance_prior_used=progress.attendance_prior_used)
+    else:
+        with observability.tool_span("read_coaching_progress", gate_id=active_gate.id):
             context = store.context(
                 user_id=turn.user_id,
                 course_id=turn.course_id,
                 lecture_id=turn.lecture_id,
-                gate_id=spec.gate_id,
-                gate_title=spec.title,
-            )
-        active_gate = None
-        turn_analytics = None
-    else:
-        analytics_context = app.state.canvas_workspace.course_canvas_store.read_analytics_context(
-            course_id=turn.course_id, lecture_id=turn.lecture_id
-        )
-        learning_map = analytics_context.learning_map
-        turn_analytics = AgentAnalyticsContext(
-            publication_version=analytics_context.publication_version,
-            learning_map_revision=analytics_context.learning_map_revision,
-        )
-        decisions = learner_state_store(app).latest_gate_decisions(
-            user_id=turn.user_id,
-            course_id=turn.course_id,
-            lecture_id=turn.lecture_id,
-        )
-        if turn.checkpoint_gate_id is not None:
-            _validate_requested_gate(
-                learning_map,
-                requested_gate_id=turn.checkpoint_gate_id,
-                focused_section_id=turn.canvas_state.focused_section_id,
-                require_focused_section=True,
-            )
-            active_gate = next(
-                gate for gate in learning_map.gates if gate.id == turn.checkpoint_gate_id
-            )
-            store.bind_inline_checkpoint(
-                user_id=turn.user_id,
-                course_id=turn.course_id,
-                lecture_id=turn.lecture_id,
                 gate_id=active_gate.id,
+                gate_title=active_gate.title,
                 gate_revision=active_gate.revision,
-                published_prompt=(
-                    active_gate.prompt or active_gate.evidence_required or active_gate.title
-                ),
             )
-        else:
-            if turn.requested_gate_id is not None:
-                _validate_requested_gate(
-                    learning_map,
-                    requested_gate_id=turn.requested_gate_id,
-                    focused_section_id=turn.canvas_state.focused_section_id,
-                )
-            active_gate = select_due_review_gate(learning_map, progress) or select_active_gate(
-                learning_map,
-                requested_gate_id=turn.requested_gate_id,
-                focused_section_id=turn.canvas_state.focused_section_id,
-                latest_decisions=decisions,
-            )
-        if active_gate is None:
-            context = AgentCoachingContext(attendance_prior_used=progress.attendance_prior_used)
-        else:
-            with observability.tool_span("read_coaching_progress", gate_id=active_gate.id):
-                context = store.context(
-                    user_id=turn.user_id,
-                    course_id=turn.course_id,
-                    lecture_id=turn.lecture_id,
-                    gate_id=active_gate.id,
-                    gate_title=active_gate.title,
-                    gate_revision=active_gate.revision,
-                )
-            context = context.model_copy(
-                update={
-                    "active_gate_id": active_gate.id,
-                    "active_gate_revision": active_gate.revision,
-                    "active_gate_review_after_days": active_gate.review_after_days,
-                }
-            )
+        context = context.model_copy(
+            update={
+                "active_gate_id": active_gate.id,
+                "active_gate_revision": active_gate.revision,
+                "active_gate_review_after_days": active_gate.review_after_days,
+            }
+        )
     policy = (
         turn.readiness_task.scaffold_policy
         if turn.readiness_task is not None

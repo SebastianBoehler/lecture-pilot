@@ -7,6 +7,7 @@ from auth_helpers import professor_headers
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.course_canvas_repairs import lecture_source_revision
 
 
 def test_professor_edits_approves_and_publishes_the_exact_learning_design(tmp_path: Path) -> None:
@@ -83,7 +84,7 @@ def test_professor_edits_approves_and_publishes_the_exact_learning_design(tmp_pa
     assert metadata["draft_digest"] == approved.json()["draft_digest"]
     assert metadata["source_revision"] == approved.json()["source_revision"]
     assert metadata["learning_map_revision"] == learning_map["revision"]
-    assert metadata["learning_design_approved_by"] == "prof01"
+    assert metadata["published_by"] == "prof01"
     assert not (published_dir / "learning-design.json").exists()
 
 
@@ -186,7 +187,10 @@ def test_regeneration_and_source_change_invalidate_approval(tmp_path: Path) -> N
     assert approved.status_code == 200
 
     workspace = client.app.state.canvas_workspace
-    workspace.write_course_canvas_draft(_document(title="Regenerated draft"))
+    workspace.write_course_canvas_draft(
+        _document(title="Regenerated draft"),
+        expected_source_revision=_source_revision(workspace),
+    )
     regenerated = client.get(_review_path(), headers=professor_headers())
     blocked = client.post(_publish_path(), headers=professor_headers())
     assert regenerated.status_code == 200
@@ -217,7 +221,10 @@ def _client_with_draft(tmp_path: Path) -> TestClient:
         material_root=tmp_path / "materials",
     )
     _write_source_manifest(app.state.canvas_workspace)
-    app.state.canvas_workspace.write_course_canvas_draft(_document())
+    app.state.canvas_workspace.write_course_canvas_draft(
+        _document(),
+        expected_source_revision=_source_revision(app.state.canvas_workspace),
+    )
     return TestClient(app)
 
 
@@ -234,6 +241,16 @@ def _write_source_manifest(workspace: CanvasWorkspace, *, source_sha: str = "a" 
         ),
         encoding="utf-8",
     )
+
+
+def _source_revision(workspace: CanvasWorkspace) -> str:
+    revision = lecture_source_revision(
+        workspace.layout,
+        course_id="design-course",
+        lecture_id="lecture-01",
+    )
+    assert revision is not None
+    return revision
 
 
 def _document(*, title: str = "Learning design") -> CanvasDocument:

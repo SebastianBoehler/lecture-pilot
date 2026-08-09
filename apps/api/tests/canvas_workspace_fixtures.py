@@ -7,6 +7,8 @@ from fastapi import FastAPI
 from lecturepilot.analytics import AnalyticsStore
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.course_canvas_publication import CanvasPublicationMetadata
+from lecturepilot.course_canvas_repairs import lecture_source_revision
 from lecturepilot.course_learning_design_store import CourseLearningDesignStore
 from lecturepilot.latex_canvas_importer import CANVAS_IMPORT_VERSION
 from lecturepilot.learner_state import LearnerStateStore
@@ -76,7 +78,33 @@ def published_course_canvas(course_id: str, lecture_id: str) -> CanvasDocument:
     )
 
 
-def publish_course_canvas(workspace: CanvasWorkspace, document: CanvasDocument) -> dict:
+def publish_course_canvas(
+    workspace: CanvasWorkspace, document: CanvasDocument
+) -> CanvasPublicationMetadata:
+    write_canvas_draft(workspace, document)
+    approve_canvas_draft(workspace, document.course_id, document.lecture_id)
+    return workspace.publish_course_canvas_draft(
+        course_id=document.course_id,
+        lecture_id=document.lecture_id,
+        published_by="professor",
+    )
+
+
+def published_martius_workspace(tmp_path: Path) -> CanvasWorkspace:
+    workspace = CanvasWorkspace(
+        workspace_root=tmp_path / "workspaces",
+        material_root=write_course_source(tmp_path),
+    )
+    document = workspace.source_document(
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        workspace_path="course/index.md",
+    )
+    publish_course_canvas(workspace, document)
+    return workspace
+
+
+def write_canvas_draft(workspace: CanvasWorkspace, document: CanvasDocument) -> CanvasDocument:
     source_index = CourseSourceIndex(
         course_id=document.course_id,
         files=[
@@ -105,21 +133,34 @@ def publish_course_canvas(workspace: CanvasWorkspace, document: CanvasDocument) 
             ],
         }
     )
-    workspace.write_course_canvas_draft(sourced_document)
-    reviews = CourseLearningDesignStore(workspace.layout)
-    current = reviews.read(course_id=document.course_id, lecture_id=document.lecture_id)
-    reviews.approve(
+    revision = lecture_source_revision(
+        workspace.layout,
         course_id=document.course_id,
         lecture_id=document.lecture_id,
+    )
+    assert revision is not None
+    workspace.write_course_canvas_draft(
+        sourced_document,
+        expected_source_revision=revision,
+    )
+
+    return sourced_document
+
+
+def approve_canvas_draft(
+    workspace: CanvasWorkspace,
+    course_id: str,
+    lecture_id: str,
+) -> None:
+    reviews = CourseLearningDesignStore(workspace.layout)
+    current = reviews.read(course_id=course_id, lecture_id=lecture_id)
+    reviews.approve(
+        course_id=course_id,
+        lecture_id=lecture_id,
         draft_digest=current.draft_digest,
         source_revision=current.source_revision,
         learning_map_revision=current.learning_map.revision,
         approved_by="professor",
-    )
-    return workspace.publish_course_canvas_draft(
-        course_id=document.course_id,
-        lecture_id=document.lecture_id,
-        published_by="professor",
     )
 
 

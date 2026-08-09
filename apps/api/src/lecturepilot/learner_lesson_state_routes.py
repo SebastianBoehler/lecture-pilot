@@ -10,7 +10,6 @@ from lecturepilot.learner_lesson_state import lesson_state_snapshot
 from lecturepilot.learner_lesson_state_models import LearnerLessonState
 from lecturepilot.models import Course, Lecture
 from lecturepilot.professor_preview import resolve_learner_workspace_access
-from lecturepilot.quiz_identity import published_canvas_version
 from lecturepilot.tenancy import TenantContext
 
 
@@ -46,10 +45,11 @@ def register_learner_lesson_state_routes(
             seeded_course=seeded_course,
             seeded_lectures=seeded_lectures,
         )
-        if not app.state.canvas_workspace.has_published_course_canvas(
+        snapshot = app.state.canvas_workspace.course_canvas_store.read_current_published_snapshot(
             course_id=course_id,
             lecture_id=lecture_id,
-        ):
+        )
+        if snapshot is None:
             raise HTTPException(status_code=404, detail="Canvas has not been published.")
         layout = app.state.canvas_workspace.layout
         return lesson_state_snapshot(
@@ -58,9 +58,5 @@ def register_learner_lesson_state_routes(
             user_id=access.user_id,
             course_id=course_id,
             lecture_id=lecture_id,
-            publication_version=published_canvas_version(
-                app.state.canvas_workspace,
-                course_id=course_id,
-                lecture_id=lecture_id,
-            ),
+            publication_version=snapshot.version,
         )

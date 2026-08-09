@@ -229,7 +229,6 @@ def _client(tmp_path: Path) -> TestClient:
         ],
     )
     publish_course_canvas(app.state.canvas_workspace, document)
-    app.state.canvas_workspace.write_course_canvas_draft(document)
     return TestClient(app)
 
 

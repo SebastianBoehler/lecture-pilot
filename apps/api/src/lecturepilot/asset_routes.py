@@ -144,12 +144,11 @@ def _require_published_canvas_asset(
     lecture_id: str,
     asset_path: str,
 ) -> None:
-    document = app.state.canvas_workspace.course_canvas_store.read(
+    snapshot = app.state.canvas_workspace.course_canvas_store.read_current_published_snapshot(
         course_id=course_id,
         lecture_id=lecture_id,
-        workspace_path="asset-authorization/index.md",
     )
-    if document is None or asset_path not in _referenced_course_assets(document):
+    if snapshot is None or asset_path not in _referenced_course_assets(snapshot.document):
         raise HTTPException(status_code=404, detail="Canvas asset was not found.")
 
 

@@ -9,13 +9,15 @@ from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_schedule_store import write_course_workspace
 from lecturepilot.models import Course, CourseWorkspaceResult, Lecture
 from auth_helpers import professor_headers, student_headers
+from canvas_workspace_fixtures import publish_course_canvas
 
 
 def test_created_course_requires_enrollment(tmp_path: Path) -> None:
     client = _client(tmp_path)
     _write_workspace(client, course_id="restricted-course")
-    client.app.state.canvas_workspace.write_course_canvas(
-        _document("restricted-course", "lecture-01")
+    publish_course_canvas(
+        client.app.state.canvas_workspace,
+        _document("restricted-course", "lecture-01"),
     )
 
     visible = client.get("/courses", headers=student_headers(course_ids=("martius-ml",)))
@@ -39,7 +41,10 @@ def test_created_course_requires_enrollment(tmp_path: Path) -> None:
 def test_future_dynamic_lecture_is_locked_for_enrolled_student(tmp_path: Path) -> None:
     client = _client(tmp_path)
     _write_workspace(client, course_id="future-course", lecture_date=date(2099, 1, 1))
-    client.app.state.canvas_workspace.write_course_canvas(_document("future-course", "lecture-01"))
+    publish_course_canvas(
+        client.app.state.canvas_workspace,
+        _document("future-course", "lecture-01"),
+    )
     student = student_headers(course_ids=("future-course",))
 
     lectures = client.get("/courses/future-course/lectures", headers=student)

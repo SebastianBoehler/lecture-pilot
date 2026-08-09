@@ -8,6 +8,7 @@ from zipfile import ZipFile
 from fastapi.testclient import TestClient
 
 from auth_helpers import professor_headers, student_headers
+from canvas_workspace_fixtures import publish_course_canvas
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
@@ -203,7 +204,7 @@ def _client(
     workspace = CanvasWorkspace(
         workspace_root=tmp_path / "workspaces", material_root=tmp_path / "materials"
     )
-    workspace.write_course_canvas(_document())
+    publish_course_canvas(workspace, _document())
     app.state.canvas_workspace = workspace
     app.state.practice_exam_store = PracticeExamStore(workspace.layout)
     app.state.practice_exam_generation_store = PracticeExamGenerationStore(

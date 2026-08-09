@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from canvas_workspace_fixtures import write_canvas_draft
 from lecturepilot.canvas_learning_support import (
     normalize_learning_support,
     support_check_prompt,
@@ -7,8 +8,7 @@ from lecturepilot.canvas_learning_support import (
     support_why_text,
 )
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.course_canvas_store import CourseCanvasStore
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.canvas_workspace import CanvasWorkspace
 
 
 def test_normalizes_legacy_learning_support_copy() -> None:
@@ -61,7 +61,10 @@ def test_normalizes_legacy_learning_support_copy() -> None:
 
 
 def test_course_canvas_store_writes_clean_learning_support(tmp_path: Path) -> None:
-    store = CourseCanvasStore(StorageLayout(tmp_path / "workspaces"))
+    workspace = CanvasWorkspace(
+        workspace_root=tmp_path / "workspaces",
+        material_root=tmp_path / "materials",
+    )
     document = _document(
         [
             CanvasBlock(
@@ -76,8 +79,13 @@ def test_course_canvas_store_writes_clean_learning_support(tmp_path: Path) -> No
         ]
     )
 
-    written = store.write(document)
-    section_path = next(store.path("martius-ml", "lecture-02").joinpath("sections").glob("*.md"))
+    write_canvas_draft(workspace, document)
+    written = workspace.read_course_canvas_draft(course_id="martius-ml", lecture_id="lecture-02")
+    section_path = next(
+        workspace.course_canvas_store.draft_path("martius-ml", "lecture-02")
+        .joinpath("sections")
+        .glob("*.md")
+    )
 
     assert written.sections[0].blocks[0].text == support_check_prompt(
         "Measuring Binary Classifier Performance"

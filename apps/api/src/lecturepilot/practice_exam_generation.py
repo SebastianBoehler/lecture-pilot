@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException
 
-from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.course_access import lecture_views_for_context, resolve_course_lectures
 from lecturepilot.model_usage import model_usage_scope
 from lecturepilot.models import Course, Lecture
@@ -37,16 +36,12 @@ async def generate_practice_exam(
     for view in views:
         if not view.unlocked or not view.content_ready:
             continue
-        try:
-            document = app.state.canvas_workspace.course_canvas_store.read(
-                course_id=course_id,
-                lecture_id=view.lecture.id,
-                workspace_path=f"practice-exams/{view.lecture.id}/index.md",
-            )
-        except CanvasWorkspaceError:
-            continue
-        if document is not None:
-            documents.append(document)
+        snapshot = app.state.canvas_workspace.course_canvas_store.read_current_published_snapshot(
+            course_id=course_id,
+            lecture_id=view.lecture.id,
+        )
+        if snapshot is not None:
+            documents.append(snapshot.document)
     if not documents:
         raise HTTPException(
             status_code=404,

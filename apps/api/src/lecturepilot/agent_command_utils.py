@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from lecturepilot.guided_tutor import LOCAL_PREVIEW_USER_ID
 from lecturepilot.model_commands import validate_quality_gate_decision
 from lecturepilot.models import AgentTurnInput, AgentTurnResult, CanvasCommand
 
@@ -41,8 +40,6 @@ def merge_tool_outputs(
 
 
 def enforce_active_gate_contract(result: AgentTurnResult, turn: AgentTurnInput) -> AgentTurnResult:
-    if turn.user_id == LOCAL_PREVIEW_USER_ID:
-        return result
     return result.model_copy(
         update={"quality_gate": validate_quality_gate_decision(result.quality_gate, turn)}
     )

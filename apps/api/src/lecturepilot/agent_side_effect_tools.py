@@ -87,6 +87,11 @@ class AgentSideEffectTools:
                 course_id=self.course_id,
                 lecture_id=self.lecture_id,
                 logical_for=self._logical_for,
+                read_document=lambda: self.canvas_workspace.read_document(
+                    course_id=self.course_id,
+                    lecture_id=self.lecture_id,
+                    user_id=self.user_id,
+                ),
                 focused_section_id=self.focus_section_id or self.initial_focus_section_id,
             )
         return self.image_placement

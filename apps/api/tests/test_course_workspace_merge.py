@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from auth_helpers import professor_headers, student_headers
-from canvas_workspace_fixtures import published_course_canvas
+from canvas_workspace_fixtures import publish_course_canvas, published_course_canvas
 from lecturepilot.app import create_app
 from lecturepilot.canvas_workspace import CanvasWorkspace
 
@@ -42,8 +42,9 @@ def test_single_lecture_workspace_update_keeps_existing_course_schedule(tmp_path
     assert payload["lectures"][0]["title"] == "Updated Overview"
     assert payload["lectures"][1]["title"] == "Generalization"
     for lecture_id in ("lecture-01", "lecture-02"):
-        client.app.state.canvas_workspace.write_course_canvas(
-            published_course_canvas("demo-ml-course", lecture_id)
+        publish_course_canvas(
+            client.app.state.canvas_workspace,
+            published_course_canvas("demo-ml-course", lecture_id),
         )
 
     lectures = client.get("/courses/demo-ml-course/lectures", headers=student_headers())

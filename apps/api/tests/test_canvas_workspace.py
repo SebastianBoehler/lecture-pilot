@@ -2,100 +2,33 @@ from pathlib import Path
 
 import pytest
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from canvas_workspace_fixtures import course_canvas, publish_course_canvas
+from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace, CanvasWorkspaceError
-from lecturepilot.latex_canvas_importer import CANVAS_IMPORT_VERSION
 from lecturepilot.models import CanvasSectionPlacement
-from canvas_workspace_fixtures import course_canvas, write_course_source
 
 
-def test_imports_latex_canvas_into_pseudonymous_student_workspace(tmp_path: Path) -> None:
-    material_root = write_course_source(tmp_path)
-    workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=material_root,
-    )
+def test_published_canvas_reads_do_not_materialize_learner_copies(tmp_path: Path) -> None:
+    workspace = _workspace(tmp_path)
+    learner_root = workspace.layout.user_lecture_root("alice", "martius-ml", "lecture-03")
 
     document = workspace.read_document(
         course_id="martius-ml",
         lecture_id="lecture-03",
-        user_id="student01",
+        user_id="alice",
     )
 
-    assert document.title == "Bayesian Decision Theory"
-    assert [section.id for section in document.sections] == [
-        "bayesian-decision-theory-the-aim",
-        "bayes-formula",
-        "bayes-rule-to-sum-up",
-        "naive-bayes-classifiers",
-        "losses-and-risks",
-    ]
-    assert any(
-        block.asset_url == "/course-assets/martius-ml/lecture-03/Ch3/spam-DALL-E.jpg"
-        for block in document.sections[0].blocks
-    )
-    assert any(block.type == "math" for block in document.sections[1].blocks)
-    assert "student01" not in document.workspace_path
-    assert Path(document.workspace_path).exists()
-    assert Path(document.workspace_path).name == "index.md"
-    assert "users" in Path(document.workspace_path).parts
-    assert "students" not in Path(document.workspace_path).parts
-    canvas_dir = Path(document.workspace_path).parent
-    assert (canvas_dir / "sections" / "02-bayes-formula.md").exists()
-    assert (canvas_dir.parent / "canvas.json").exists()
-
-
-def test_reads_canvas_from_markdown_section_directory(tmp_path: Path) -> None:
-    material_root = write_course_source(tmp_path)
-    workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=material_root,
-    )
-    document = workspace.read_document(
-        course_id="martius-ml",
-        lecture_id="lecture-03",
-        user_id="student01",
-    )
-    section_path = Path(document.workspace_path).parent / "sections" / "02-bayes-formula.md"
-    section_path.write_text(
-        section_path.read_text(encoding="utf-8")
-        + '\n\n<!-- block id="bayes-formula-p-extra" type="paragraph" -->\n'
-        + "This handwritten Markdown addition should appear in the canvas.\n",
-        encoding="utf-8",
-    )
-
-    updated = workspace.read_document(
-        course_id="martius-ml",
-        lecture_id="lecture-03",
-        user_id="student01",
-    )
-
-    assert any(
-        block.id == "bayes-formula-p-extra"
-        and block.text == "This handwritten Markdown addition should appear in the canvas."
-        for section in updated.sections
-        if section.id == "bayes-formula"
-        for block in section.blocks
+    assert [section.id for section in document.sections] == ["bayes-formula"]
+    assert not (learner_root / "canvas").exists()
+    assert not (learner_root / "canvas.json").exists()
+    assert document.workspace_path == str(
+        workspace.layout.course_canvas_dir("martius-ml", "lecture-03") / "index.md"
     )
 
 
-def test_student_canvas_sections_are_isolated(tmp_path: Path) -> None:
-    material_root = write_course_source(tmp_path)
-    workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=material_root,
-    )
-    section = CanvasSection(
-        id="student-soccer-bayes-example",
-        title="Soccer scouting example",
-        blocks=[
-            CanvasBlock(
-                id="student-soccer-bayes-example-p-1",
-                type="paragraph",
-                text="A student-specific transfer example.",
-            )
-        ],
-    )
+def test_current_markdown_sections_are_isolated_and_persisted(tmp_path: Path) -> None:
+    workspace = _workspace(tmp_path)
+    section = _student_section("student-soccer", "A student-specific transfer example.")
 
     alice = workspace.apply_sections(
         course_id="martius-ml",
@@ -111,291 +44,97 @@ def test_student_canvas_sections_are_isolated(tmp_path: Path) -> None:
 
     assert any(item.id == section.id for item in alice.sections)
     assert all(item.id != section.id for item in bob.sections)
-    alice_canvas_dir = Path(alice.workspace_path).parent
-    student_section = alice_canvas_dir / "student" / "90-student-soccer-bayes-example.md"
-    assert student_section.exists()
-    assert "A student-specific transfer example." in student_section.read_text(encoding="utf-8")
-
-
-def test_student_canvas_sections_keep_persisted_placement(tmp_path: Path) -> None:
-    material_root = write_course_source(tmp_path)
-    workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=material_root,
+    path = (
+        workspace.layout.user_canvas_dir("alice", "martius-ml", "lecture-03")
+        / "student"
+        / "90-student-soccer.md"
     )
-    section = CanvasSection(
-        id="student-posterior-example",
-        title="Posterior example",
-        blocks=[
-            CanvasBlock(
-                id="student-posterior-example-p-1",
-                type="paragraph",
-                text="A placed student-specific example.",
-            )
-        ],
-    )
-    second_section = CanvasSection(
-        id="student-risk-example",
-        title="Risk example",
-        blocks=[
-            CanvasBlock(
-                id="student-risk-example-p-1",
-                type="paragraph",
-                text="A second placed student-specific example.",
-            )
-        ],
-    )
-
-    document = workspace.apply_sections(
-        course_id="martius-ml",
-        lecture_id="lecture-03",
-        user_id="alice",
-        sections=[section, second_section],
-        placements={
-            section.id: CanvasSectionPlacement(section_id="bayes-formula"),
-            second_section.id: CanvasSectionPlacement(section_id="bayes-formula"),
-        },
-    )
-    reloaded = workspace.read_document(
-        course_id="martius-ml", lecture_id="lecture-03", user_id="alice"
-    )
-
-    assert _next_section_id(document, "bayes-formula") == section.id
-    assert _next_section_id(document, section.id) == second_section.id
-    assert _next_section_id(reloaded, "bayes-formula") == section.id
-    assert _next_section_id(reloaded, section.id) == second_section.id
-    assert "student-posterior-example" in (
-        Path(document.workspace_path).parent / "placement.json"
-    ).read_text(encoding="utf-8")
+    assert path.exists()
 
 
-def test_student_asset_logical_paths_resolve_to_workspace_assets(tmp_path: Path) -> None:
-    material_root = write_course_source(tmp_path)
-    workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=material_root,
-    )
-    document = workspace.read_document(
-        course_id="martius-ml", lecture_id="lecture-03", user_id="alice"
-    )
-    canvas_dir = Path(document.workspace_path).parent
-    (canvas_dir / "student-assets").mkdir()
-    (canvas_dir / "student-assets" / "regression_visual.jpg").write_bytes(b"jpg")
-    student_dir = canvas_dir / "student"
-    student_dir.mkdir()
-    (student_dir / "90-student-regression-visual.md").write_text(
-        """---
-id: "student-regression-visual"
-title: "Regression visual"
-source_ref: "student workspace"
----
-<!-- block id="student-regression-visual-asset" type="asset" -->
-![Regression Concept](/lecture/canvas/student-assets/regression_visual.jpg)
-""",
-        encoding="utf-8",
-    )
+def test_student_section_placement_survives_reload(tmp_path: Path) -> None:
+    workspace = _workspace(tmp_path)
+    first = _student_section("student-posterior", "Posterior note.")
+    second = _student_section("student-risk", "Risk note.")
 
-    updated = workspace.read_document(
-        course_id="martius-ml", lecture_id="lecture-03", user_id="alice"
-    )
-
-    section = next(item for item in updated.sections if item.id == "student-regression-visual")
-    asset = section.blocks[0]
-    assert asset.asset_path == "student-assets/regression_visual.jpg"
-    assert asset.asset_url.startswith("/workspace-assets/martius-ml/lecture-03/")
-    assert asset.asset_url.endswith("/student-assets/regression_visual.jpg")
-
-
-def test_migrates_existing_compiled_student_sections_to_overlay(tmp_path: Path) -> None:
-    material_root = write_course_source(tmp_path)
-    workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=material_root,
-    )
-    compiled_path = workspace.layout.legacy_compiled_canvas_path(
-        "alice", "martius-ml", "lecture-03"
-    )
-    compiled_path.parent.mkdir(parents=True)
-    compiled_path.write_text(
-        CanvasDocument(
-            id="martius-ml-lecture-03",
-            import_version=2,
-            course_id="martius-ml",
-            lecture_id="lecture-03",
-            title="Bayesian Decision Theory",
-            source_kind="latex",
-            source_ref="Lecture03-eng.tex",
-            workspace_path=str(compiled_path),
-            sections=[
-                CanvasSection(
-                    id="bayes-formula",
-                    title="Bayes formula",
-                    source_ref="frames 6, 7, 8, 9",
-                    blocks=[
-                        CanvasBlock(id="bayes-formula-p-1", type="paragraph", text="Official.")
-                    ],
-                ),
-                CanvasSection(
-                    id="student-soccer-bayes-example",
-                    title="Soccer scouting example",
-                    source_ref="student workspace",
-                    blocks=[
-                        CanvasBlock(
-                            id="student-soccer-bayes-example-p-1",
-                            type="paragraph",
-                            text="Student overlay.",
-                        )
-                    ],
-                ),
-            ],
-        ).model_dump_json(),
-        encoding="utf-8",
-    )
-
-    document = workspace.read_document(
-        course_id="martius-ml", lecture_id="lecture-03", user_id="alice"
-    )
-
-    canvas_dir = Path(document.workspace_path).parent
-    assert next((canvas_dir / "sections").glob("*-bayes-formula.md"), None) is not None
-    assert not (canvas_dir / "sections" / "02-student-soccer-bayes-example.md").exists()
-    assert (canvas_dir / "student" / "90-student-soccer-bayes-example.md").exists()
-
-
-def test_refreshes_stale_markdown_canvas_and_keeps_student_overlay(tmp_path: Path) -> None:
-    material_root = write_course_source(tmp_path)
-    workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=material_root,
-    )
-    document = workspace.apply_sections(
-        course_id="martius-ml",
-        lecture_id="lecture-03",
-        user_id="alice",
-        sections=[
-            CanvasSection(
-                id="student-transfer-example",
-                title="Student transfer example",
-                source_ref="student workspace",
-                blocks=[
-                    CanvasBlock(
-                        id="student-transfer-example-p-1", type="paragraph", text="Personal note."
-                    )
-                ],
-            )
-        ],
-    )
-    canvas_dir = Path(document.workspace_path).parent
-    manifest_path = canvas_dir / "index.md"
-    manifest_path.write_text(
-        manifest_path.read_text(encoding="utf-8").replace(
-            f"import_version: {CANVAS_IMPORT_VERSION}", "import_version: 1"
-        ),
-        encoding="utf-8",
-    )
-    stale_section = canvas_dir / "sections" / "04-naive-bayes-classifiers.md"
-    stale_section.write_text(
-        stale_section.read_text(encoding="utf-8") + "\nRaw stale official text.\n"
-    )
-
-    refreshed = workspace.read_document(
-        course_id="martius-ml", lecture_id="lecture-03", user_id="alice"
-    )
-    naive_section = next(
-        section for section in refreshed.sections if section.id == "naive-bayes-classifiers"
-    )
-    naive_items = [
-        item for block in naive_section.blocks if block.type == "list" for item in block.items
-    ]
-
-    assert refreshed.import_version == CANVAS_IMPORT_VERSION
-    assert "Raw stale official text." not in stale_section.read_text(encoding="utf-8")
-    assert any("likelihood term" in item for item in naive_items)
-    assert all(r"\[" not in item and r"\]" not in item for item in naive_items)
-    assert all(r"\\" not in item for item in naive_items)
-    assert any(section.id == "student-transfer-example" for section in refreshed.sections)
-
-
-def test_stale_canvas_refresh_tolerates_concurrent_section_cleanup(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    material_root = write_course_source(tmp_path)
-    workspace = CanvasWorkspace(workspace_root=tmp_path / "workspaces", material_root=material_root)
-    document = workspace.read_document(
-        course_id="martius-ml", lecture_id="lecture-03", user_id="alice"
-    )
-    canvas_dir = Path(document.workspace_path).parent
-    manifest_path = canvas_dir / "index.md"
-    manifest_path.write_text(
-        manifest_path.read_text(encoding="utf-8").replace(
-            f"import_version: {CANVAS_IMPORT_VERSION}", "import_version: 1"
-        ),
-        encoding="utf-8",
-    )
-    original_unlink = Path.unlink
-    removed = False
-
-    def remove_first_matching_section(path: Path, missing_ok: bool = False) -> None:
-        nonlocal removed
-        if path.name == "04-naive-bayes-classifiers.md" and not removed:
-            original_unlink(path)
-            removed = True
-        original_unlink(path, missing_ok=missing_ok)
-
-    monkeypatch.setattr(Path, "unlink", remove_first_matching_section)
-
-    refreshed = workspace.read_document(
-        course_id="martius-ml", lecture_id="lecture-03", user_id="alice"
-    )
-
-    assert refreshed.import_version == CANVAS_IMPORT_VERSION
-    assert removed is True
-
-
-def test_refreshes_user_canvas_when_course_base_changes(tmp_path: Path) -> None:
-    material_root = write_course_source(tmp_path)
-    workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=material_root,
-    )
-    workspace.write_course_canvas(course_canvas("old-course-section", "Old course section"))
     workspace.apply_sections(
         course_id="martius-ml",
         lecture_id="lecture-03",
         user_id="alice",
-        sections=[
-            CanvasSection(
-                id="student-transfer-example",
-                title="Student transfer example",
-                source_ref="student workspace",
-                blocks=[
-                    CanvasBlock(
-                        id="student-transfer-example-p-1", type="paragraph", text="Personal note."
-                    )
-                ],
+        sections=[first, second],
+        placements={
+            first.id: CanvasSectionPlacement(section_id="bayes-formula"),
+            second.id: CanvasSectionPlacement(section_id="bayes-formula"),
+        },
+    )
+    reloaded = workspace.read_document(
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        user_id="alice",
+    )
+
+    assert [section.id for section in reloaded.sections] == [
+        "bayes-formula",
+        first.id,
+        second.id,
+    ]
+
+
+def test_student_asset_logical_path_resolves_from_current_canvas(tmp_path: Path) -> None:
+    workspace = _workspace(tmp_path)
+    canvas_dir = workspace.layout.user_canvas_dir("alice", "martius-ml", "lecture-03")
+    asset = canvas_dir / "student-assets" / "regression.jpg"
+    asset.parent.mkdir(parents=True)
+    asset.write_bytes(b"jpg")
+    section = CanvasSection(
+        id="student-visual",
+        title="Visual",
+        source_ref="student workspace",
+        blocks=[
+            CanvasBlock(
+                id="student-visual-asset",
+                type="asset",
+                asset_path="student-assets/regression.jpg",
             )
         ],
     )
 
-    workspace.write_course_canvas(course_canvas("new-course-section", "New course section"))
-    refreshed = workspace.read_document(
-        course_id="martius-ml", lecture_id="lecture-03", user_id="alice"
+    document = workspace.apply_sections(
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        user_id="alice",
+        sections=[section],
     )
 
-    section_ids = {section.id for section in refreshed.sections}
-    assert "new-course-section" in section_ids
-    assert "old-course-section" not in section_ids
-    assert "student-transfer-example" in section_ids
+    block = next(item for item in document.sections if item.id == section.id).blocks[0]
+    assert block.asset_url is not None
+    assert block.asset_url.startswith("/workspace-assets/martius-ml/lecture-03/")
+
+
+def test_real_republish_replaces_official_markdown_and_keeps_learner_markdown(
+    tmp_path: Path,
+) -> None:
+    workspace = _workspace(tmp_path)
+    workspace.apply_sections(
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        user_id="alice",
+        sections=[_student_section("student-note", "Personal note.")],
+    )
+    publish_course_canvas(workspace, course_canvas("losses", "Losses"))
+
+    refreshed = workspace.read_document(
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        user_id="alice",
+    )
+
+    assert {section.id for section in refreshed.sections} == {"losses", "student-note"}
 
 
 @pytest.mark.parametrize("asset_path", ["../secret.png", "/tmp/image.png", "notes.pdf"])
 def test_asset_paths_stay_inside_browser_image_allowlist(tmp_path: Path, asset_path: str) -> None:
-    material_root = write_course_source(tmp_path)
-    workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=material_root,
-    )
+    workspace = _workspace(tmp_path)
 
     with pytest.raises(CanvasWorkspaceError):
         workspace.asset_path(
@@ -405,7 +144,19 @@ def test_asset_paths_stay_inside_browser_image_allowlist(tmp_path: Path, asset_p
         )
 
 
-def _next_section_id(document: CanvasDocument, section_id: str) -> str | None:
-    ids = [section.id for section in document.sections]
-    index = ids.index(section_id)
-    return ids[index + 1] if index + 1 < len(ids) else None
+def _workspace(tmp_path: Path) -> CanvasWorkspace:
+    workspace = CanvasWorkspace(
+        workspace_root=tmp_path / "workspaces",
+        material_root=tmp_path / "materials",
+    )
+    publish_course_canvas(workspace, course_canvas("bayes-formula", "Bayes formula"))
+    return workspace
+
+
+def _student_section(section_id: str, text: str) -> CanvasSection:
+    return CanvasSection(
+        id=section_id,
+        title="Learner section",
+        source_ref="student workspace",
+        blocks=[CanvasBlock(id=f"{section_id}-p", type="paragraph", text=text)],
+    )

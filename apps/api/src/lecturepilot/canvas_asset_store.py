@@ -78,7 +78,6 @@ class CanvasAssetStore:
                 ),
                 asset_path,
             ),
-            (self.layout.legacy_canvas_dir_by_key(student_key, course_id, lecture_id), asset_path),
         ]
         for root, relative in candidates:
             candidate = _safe_candidate(root, relative)

@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -6,6 +5,7 @@ from fastapi.testclient import TestClient
 from lecturepilot.app import create_app
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from security_db_helpers import FakeUniversityAdapter, login, mutation_headers
+from canvas_workspace_fixtures import write_canvas_draft
 
 from test_learning_design_review_routes import _document, _update_payload
 
@@ -32,22 +32,9 @@ def test_learning_design_review_is_private_to_the_owner_professor(tmp_path: Path
     )
     assert created.status_code == 200
     course_id = created.json()["course"]["id"]
-    manifest = app.state.canvas_workspace.layout.lecture_source_manifest_path(
-        course_id, "lecture-01"
-    )
-    manifest.parent.mkdir(parents=True, exist_ok=True)
-    manifest.write_text(
-        json.dumps(
-            {
-                "course_id": course_id,
-                "lecture_id": "lecture-01",
-                "files": [{"path": "lecture.md", "sha256": "a" * 64}],
-            }
-        ),
-        encoding="utf-8",
-    )
-    app.state.canvas_workspace.write_course_canvas_draft(
-        _document().model_copy(update={"course_id": course_id, "id": f"{course_id}-lecture-01"})
+    write_canvas_draft(
+        app.state.canvas_workspace,
+        _document().model_copy(update={"course_id": course_id, "id": f"{course_id}-lecture-01"}),
     )
     owner_review = owner_client.get(
         f"/admin/courses/{course_id}/lectures/lecture-01/canvas/learning-design"

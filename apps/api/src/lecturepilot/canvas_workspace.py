@@ -15,6 +15,7 @@ from lecturepilot.canvas_workspace_config import (
 )
 from lecturepilot.course_canvas_store import CourseCanvasStore
 from lecturepilot.course_canvas_context import PublishedCanvasSnapshot
+from lecturepilot.course_canvas_publication import CanvasPublicationMetadata
 from lecturepilot.course_update_recovery import locked_course_state
 from lecturepilot.course_media import apply_course_media
 from lecturepilot.generated_infographics import materialize_infographic_sections
@@ -40,10 +41,7 @@ class CanvasWorkspace(CanvasLearnerWorkspaceMixin):
         self.workspace_root = workspace_root or _default_workspace_root()
         self.material_root = material_root or _default_material_root()
         self.layout = StorageLayout(self.workspace_root, tenant_id=tenant_id)
-        self.course_canvas_store = CourseCanvasStore(
-            self.layout,
-            legacy_material_root=self.material_root,
-        )
+        self.course_canvas_store = CourseCanvasStore(self.layout)
         self.asset_store = CanvasAssetStore(layout=self.layout, material_root=self.material_root)
 
     def prepare_generated_sections(
@@ -136,22 +134,6 @@ class CanvasWorkspace(CanvasLearnerWorkspaceMixin):
             root for index, root in enumerate(roots) if root.exists() and root not in roots[:index]
         ]
 
-    def _initial_document(self, *, course_id: str, lecture_id: str, user_id: str) -> CanvasDocument:
-        canvas_dir = self._canvas_dir(course_id, lecture_id, user_id)
-        if base_document := self.course_canvas_store.read(
-            course_id=course_id,
-            lecture_id=lecture_id,
-            workspace_path=str(canvas_dir / "index.md"),
-        ):
-            return base_document
-        if self._has_course_uploads(course_id):
-            raise CanvasWorkspaceError("Canvas has not been published.")
-        return self.source_document(
-            course_id=course_id,
-            lecture_id=lecture_id,
-            workspace_path=str(canvas_dir / "index.md"),
-        )
-
     def source_document(
         self,
         *,
@@ -167,9 +149,6 @@ class CanvasWorkspace(CanvasLearnerWorkspaceMixin):
             lecture_id=lecture_id,
             workspace_path=workspace_path,
         )
-
-    def write_course_canvas(self, document: CanvasDocument) -> CanvasDocument:
-        return self.course_canvas_store.write(document)
 
     def read_published_canvas_view(
         self,
@@ -203,7 +182,7 @@ class CanvasWorkspace(CanvasLearnerWorkspaceMixin):
         self,
         document: CanvasDocument,
         *,
-        expected_source_revision: str | None = None,
+        expected_source_revision: str,
     ) -> CanvasDocument:
         return self.course_canvas_store.write_draft(
             document,
@@ -216,7 +195,7 @@ class CanvasWorkspace(CanvasLearnerWorkspaceMixin):
         course_id: str,
         lecture_id: str,
         published_by: str,
-    ) -> dict:
+    ) -> CanvasPublicationMetadata:
         try:
             with locked_course_state(self.course_media_root(course_id)):
                 return self.course_canvas_store.publish_draft(
@@ -227,11 +206,19 @@ class CanvasWorkspace(CanvasLearnerWorkspaceMixin):
         except FileNotFoundError as exc:
             raise CanvasWorkspaceError(str(exc)) from exc
 
-    def course_canvas_publication(self, *, course_id: str, lecture_id: str) -> dict | None:
+    def course_canvas_publication(
+        self, *, course_id: str, lecture_id: str
+    ) -> CanvasPublicationMetadata | None:
         return self.course_canvas_store.publication(course_id=course_id, lecture_id=lecture_id)
 
     def has_published_course_canvas(self, *, course_id: str, lecture_id: str) -> bool:
-        return (self.course_canvas_store.path(course_id, lecture_id) / "index.md").exists()
+        return (
+            self.course_canvas_store.read_current_published_snapshot(
+                course_id=course_id,
+                lecture_id=lecture_id,
+            )
+            is not None
+        )
 
     def _source_path(self, course_id: str, lecture_id: str) -> Path:
         source_name = lecture_source_name(lecture_id)
@@ -253,10 +240,3 @@ class CanvasWorkspace(CanvasLearnerWorkspaceMixin):
                 if candidate := safe_path(root, source_path):
                     return candidate
         raise CanvasWorkspaceError(f"No LaTeX source found for {course_id}/{lecture_id}.")
-
-    def _has_course_uploads(self, course_id: str) -> bool:
-        uploads_dir = self.layout.course_uploads_dir(course_id)
-        try:
-            return bool(safe_files(uploads_dir))
-        except WorkspaceFSError as exc:
-            raise CanvasWorkspaceError("Course source contains an unsafe symbolic link.") from exc

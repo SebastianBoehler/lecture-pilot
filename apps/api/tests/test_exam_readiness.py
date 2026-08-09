@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from auth_helpers import professor_headers, student_headers
+from canvas_workspace_fixtures import publish_course_canvas
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
@@ -24,10 +25,14 @@ def test_exam_readiness_uses_published_course_canvases(tmp_path: Path) -> None:
         headers=professor_headers(),
     )
     workspace: CanvasWorkspace = client.app.state.canvas_workspace
-    workspace.write_course_canvas(
-        _document("lecture-03", "Bayesian Decision Theory", with_quiz=True)
+    publish_course_canvas(
+        workspace,
+        _document("lecture-03", "Bayesian Decision Theory", with_quiz=True),
     )
-    workspace.write_course_canvas(_document("lecture-04", "Linear Models", with_quiz=False))
+    publish_course_canvas(
+        workspace,
+        _document("lecture-04", "Linear Models", with_quiz=False),
+    )
 
     response = client.get("/courses/demo-ml-course/exam-readiness", headers=student_headers())
 
@@ -90,8 +95,9 @@ def test_exam_readiness_filters_admin_sections_and_limits_mc_dominance(tmp_path:
     )
     workspace: CanvasWorkspace = client.app.state.canvas_workspace
     for index in range(1, 5):
-        workspace.write_course_canvas(
-            _document(f"lecture-{index:02d}", f"Lecture {index}", with_quiz=True)
+        publish_course_canvas(
+            workspace,
+            _document(f"lecture-{index:02d}", f"Lecture {index}", with_quiz=True),
         )
 
     response = client.get("/courses/demo-ml-course/exam-readiness", headers=student_headers())
@@ -119,8 +125,9 @@ def test_exam_readiness_attempt_is_persisted_in_learner_progress(tmp_path: Path)
         headers=professor_headers(),
     )
     workspace: CanvasWorkspace = client.app.state.canvas_workspace
-    workspace.write_course_canvas(
-        _document("lecture-03", "Bayesian Decision Theory", with_quiz=True)
+    publish_course_canvas(
+        workspace,
+        _document("lecture-03", "Bayesian Decision Theory", with_quiz=True),
     )
 
     response = client.post(
@@ -178,8 +185,9 @@ def test_exam_readiness_rejects_out_of_range_mc_before_open_answer_evaluation(
         headers=professor_headers(),
     )
     workspace: CanvasWorkspace = client.app.state.canvas_workspace
-    workspace.write_course_canvas(
-        _document("lecture-03", "Bayesian Decision Theory", with_quiz=True)
+    publish_course_canvas(
+        workspace,
+        _document("lecture-03", "Bayesian Decision Theory", with_quiz=True),
     )
 
     response = client.post(
@@ -225,8 +233,9 @@ def test_exam_readiness_attempts_are_user_isolated(tmp_path: Path) -> None:
         headers=professor_headers(),
     )
     workspace: CanvasWorkspace = client.app.state.canvas_workspace
-    workspace.write_course_canvas(
-        _document("lecture-03", "Bayesian Decision Theory", with_quiz=True)
+    publish_course_canvas(
+        workspace,
+        _document("lecture-03", "Bayesian Decision Theory", with_quiz=True),
     )
 
     for user_id in ("student-a", "student-b"):

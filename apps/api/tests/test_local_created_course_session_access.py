@@ -3,7 +3,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from canvas_workspace_fixtures import published_course_canvas
+from canvas_workspace_fixtures import publish_course_canvas, published_course_canvas
 from lecturepilot.app import create_app
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_schedule_store import write_course_workspace
@@ -65,4 +65,4 @@ def _write_workspace(workspace: CanvasWorkspace, course_id: str) -> None:
         active_lecture_id="lecture-01",
     )
     write_course_workspace(workspace.course_media_root(course_id), result)
-    workspace.write_course_canvas(published_course_canvas(course_id, "lecture-01"))
+    publish_course_canvas(workspace, published_course_canvas(course_id, "lecture-01"))

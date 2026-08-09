@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -6,6 +5,7 @@ from fastapi.testclient import TestClient
 from auth_helpers import professor_headers, student_headers
 from lecturepilot.app import create_app
 from lecturepilot.canvas_workspace import CanvasWorkspace
+from canvas_workspace_fixtures import write_canvas_draft
 
 from test_learning_design_review_routes import _document, _update_payload
 
@@ -18,27 +18,13 @@ def test_learning_map_get_reads_the_approved_published_snapshot_without_rewritin
         workspace_root=tmp_path / "workspaces",
         material_root=tmp_path / "materials",
     )
-    manifest = app.state.canvas_workspace.layout.lecture_source_manifest_path(
-        "martius-ml", "lecture-01"
-    )
-    manifest.parent.mkdir(parents=True, exist_ok=True)
-    manifest.write_text(
-        json.dumps(
-            {
-                "course_id": "martius-ml",
-                "lecture_id": "lecture-01",
-                "files": [{"path": "lecture.md", "sha256": "a" * 64}],
-            }
-        ),
-        encoding="utf-8",
-    )
     document = _document().model_copy(
         update={
             "id": "martius-ml-lecture-01",
             "course_id": "martius-ml",
         }
     )
-    app.state.canvas_workspace.write_course_canvas_draft(document)
+    write_canvas_draft(app.state.canvas_workspace, document)
     client = TestClient(app)
     path = "/admin/courses/martius-ml/lectures/lecture-01/canvas/learning-design"
     review = client.get(path, headers=professor_headers()).json()

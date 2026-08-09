@@ -4,7 +4,6 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from pydantic import ValidationError
 
 from lecturepilot.api_auth import request_context
-from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.course_access import (
     course_actor_access,
     require_course_id_access,
@@ -154,16 +153,12 @@ def _readiness_check(
             lecture_id=lecture.id,
         ):
             continue
-        try:
-            document = app.state.canvas_workspace.course_canvas_store.read(
-                course_id=course_id,
-                lecture_id=lecture.id,
-                workspace_path=f"exam-readiness/{lecture.id}/index.md",
-            )
-        except CanvasWorkspaceError:
-            continue
-        if document is not None:
-            documents.append(document)
+        snapshot = app.state.canvas_workspace.course_canvas_store.read_current_published_snapshot(
+            course_id=course_id,
+            lecture_id=lecture.id,
+        )
+        if snapshot is not None:
+            documents.append(snapshot.document)
     if not documents:
         raise HTTPException(
             status_code=404,

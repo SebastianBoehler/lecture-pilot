@@ -1,107 +1,127 @@
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from threading import Event
+from threading import Barrier
 
-from auth_helpers import professor_headers
-from lecturepilot import course_canvas_store as course_canvas_store_module
-from lecturepilot import course_learning_design_store as learning_design_store_module
-from lecturepilot.course_learning_design_store import CourseLearningDesignStore
-from lecturepilot.course_update_recovery import locked_course_state
+from canvas_workspace_fixtures import publish_course_canvas, published_course_canvas
+from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.course_canvas_repairs import lecture_source_revision
+from lecturepilot.course_learning_design_store import (
+    CourseLearningDesignStore,
+    LearningDesignApprovalRequiredError,
+    LearningDesignStaleError,
+)
 
-from test_learning_design_review_routes import _client_with_draft, _review_path
 
-
-def test_publish_holds_course_source_and_canvas_snapshot_until_commit(
+def test_republish_racing_real_regeneration_never_publishes_unapproved_draft(
     tmp_path: Path,
-    monkeypatch,
 ) -> None:
-    client = _client_with_draft(tmp_path)
-    review = client.get(_review_path(), headers=professor_headers()).json()
-    approved = client.post(
-        f"{_review_path()}/approve",
-        headers=professor_headers(),
-        json={
-            "draft_digest": review["draft_digest"],
-            "source_revision": review["source_revision"],
-            "learning_map_revision": review["learning_map"]["revision"],
-        },
+    workspace = _workspace(tmp_path)
+    replacement = published_course_canvas("design-course", "lecture-01").model_copy(
+        update={"title": "Regenerated draft"}
     )
-    assert approved.status_code == 200
-    workspace = client.app.state.canvas_workspace
-    original = course_canvas_store_module._write_validated_publication
-    publish_entered = Event()
-    release_publish = Event()
-    source_mutation_entered = Event()
+    revision = _revision(workspace)
+    start = Barrier(3)
 
-    def paused_publish(**kwargs):
-        publish_entered.set()
-        assert release_publish.wait(timeout=2)
-        return original(**kwargs)
+    def publish():
+        start.wait()
+        try:
+            return workspace.publish_course_canvas_draft(
+                course_id="design-course",
+                lecture_id="lecture-01",
+                published_by="professor",
+            )
+        except LearningDesignApprovalRequiredError:
+            return None
 
-    def mutate_source() -> None:
-        with locked_course_state(workspace.course_media_root("design-course")):
-            source_mutation_entered.set()
-
-    monkeypatch.setattr(
-        course_canvas_store_module,
-        "_write_validated_publication",
-        paused_publish,
-    )
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        publishing = executor.submit(
-            workspace.publish_course_canvas_draft,
-            course_id="design-course",
-            lecture_id="lecture-01",
-            published_by="prof01",
+    def regenerate():
+        start.wait()
+        return workspace.write_course_canvas_draft(
+            replacement,
+            expected_source_revision=revision,
         )
-        assert publish_entered.wait(timeout=2)
-        mutation = executor.submit(mutate_source)
-        assert not source_mutation_entered.wait(timeout=0.2)
-        release_publish.set()
-        assert publishing.result(timeout=2)["version"] == 1
-        mutation.result(timeout=2)
 
-    assert source_mutation_entered.is_set()
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        publishing = executor.submit(publish)
+        regenerating = executor.submit(regenerate)
+        start.wait()
+        publication = publishing.result(timeout=5)
+        regenerating.result(timeout=5)
+
+    snapshot = workspace.course_canvas_store.read_current_published_snapshot(
+        course_id="design-course",
+        lecture_id="lecture-01",
+    )
+    assert snapshot is not None
+    assert snapshot.document.title == "Published lecture"
+    assert snapshot.version == (2 if publication is not None else 1)
+    review = CourseLearningDesignStore(workspace.layout).read(
+        course_id="design-course",
+        lecture_id="lecture-01",
+    )
+    assert review.approval is None
 
 
-def test_approval_holds_course_source_state_until_artifact_commit(
+def test_approval_racing_real_regeneration_cannot_approve_different_draft(
     tmp_path: Path,
-    monkeypatch,
 ) -> None:
-    client = _client_with_draft(tmp_path)
-    workspace = client.app.state.canvas_workspace
+    workspace = _workspace(tmp_path)
     reviews = CourseLearningDesignStore(workspace.layout)
-    review = reviews.read(course_id="design-course", lecture_id="lecture-01")
-    original = learning_design_store_module._write_review
-    approval_entered = Event()
-    release_approval = Event()
-    source_mutation_entered = Event()
+    current = reviews.read(course_id="design-course", lecture_id="lecture-01")
+    replacement = published_course_canvas("design-course", "lecture-01").model_copy(
+        update={"title": "Different draft"}
+    )
+    start = Barrier(3)
 
-    def paused_write(path, changed):
-        approval_entered.set()
-        assert release_approval.wait(timeout=2)
-        original(path, changed)
+    def approve():
+        start.wait()
+        try:
+            return reviews.approve(
+                course_id="design-course",
+                lecture_id="lecture-01",
+                draft_digest=current.draft_digest,
+                source_revision=current.source_revision,
+                learning_map_revision=current.learning_map.revision,
+                approved_by="professor",
+            )
+        except LearningDesignStaleError:
+            return None
 
-    def mutate_source() -> None:
-        with locked_course_state(workspace.course_media_root("design-course")):
-            source_mutation_entered.set()
-
-    monkeypatch.setattr(learning_design_store_module, "_write_review", paused_write)
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        approving = executor.submit(
-            reviews.approve,
-            course_id="design-course",
-            lecture_id="lecture-01",
-            draft_digest=review.draft_digest,
-            source_revision=review.source_revision,
-            learning_map_revision=review.learning_map.revision,
-            approved_by="prof01",
+    def regenerate():
+        start.wait()
+        return workspace.write_course_canvas_draft(
+            replacement,
+            expected_source_revision=_revision(workspace),
         )
-        assert approval_entered.wait(timeout=2)
-        mutation = executor.submit(mutate_source)
-        assert not source_mutation_entered.wait(timeout=0.2)
-        release_approval.set()
-        assert approving.result(timeout=2).approval is not None
-        mutation.result(timeout=2)
 
-    assert source_mutation_entered.is_set()
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        approving = executor.submit(approve)
+        regenerating = executor.submit(regenerate)
+        start.wait()
+        approving.result(timeout=5)
+        regenerating.result(timeout=5)
+
+    changed = reviews.read(course_id="design-course", lecture_id="lecture-01")
+    assert changed.draft_digest != current.draft_digest
+    assert changed.approval is None
+
+
+def _workspace(tmp_path: Path) -> CanvasWorkspace:
+    workspace = CanvasWorkspace(
+        workspace_root=tmp_path / "workspaces",
+        material_root=tmp_path / "materials",
+    )
+    publish_course_canvas(
+        workspace,
+        published_course_canvas("design-course", "lecture-01"),
+    )
+    return workspace
+
+
+def _revision(workspace: CanvasWorkspace) -> str:
+    revision = lecture_source_revision(
+        workspace.layout,
+        course_id="design-course",
+        lecture_id="lecture-01",
+    )
+    assert revision is not None
+    return revision

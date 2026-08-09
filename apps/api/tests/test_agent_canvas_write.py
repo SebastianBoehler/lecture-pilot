@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from canvas_workspace_fixtures import write_course_source
+from canvas_workspace_fixtures import published_martius_workspace
 from lecturepilot.agent_canvas_write import normalize_student_canvas_markdown
 from lecturepilot.agent_turn_orchestration import _apply_generated_sections
 from lecturepilot.agent_tool_executor import AgentToolExecutor
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
-from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.models import AgentTurnInput, AgentTurnResult, CanvasCommand
 from lecturepilot.observability import Observability
 from test_analytics_routes import _client
@@ -179,10 +178,7 @@ def test_student_canvas_write_normalizes_loose_quiz_blocks() -> None:
 
 
 def test_ordered_student_path_does_not_leak_into_section_id(tmp_path) -> None:
-    workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=write_course_source(tmp_path),
-    )
+    workspace = published_martius_workspace(tmp_path)
     workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="u1")
     executor = AgentToolExecutor(
         canvas_workspace=workspace,

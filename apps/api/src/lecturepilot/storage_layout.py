@@ -86,37 +86,6 @@ class StorageLayout:
             / "canvas"
         )
 
-    def compiled_canvas_path(self, user_id: str, course_id: str, lecture_id: str) -> Path:
-        return self.user_lecture_root(user_id, course_id, lecture_id) / "canvas.json"
-
-    def legacy_user_lecture_root(self, user_id: str, course_id: str, lecture_id: str) -> Path:
-        return (
-            self.root
-            / "workspaces"
-            / "students"
-            / self.user_key(user_id)
-            / "courses"
-            / safe_id(course_id)
-            / "lectures"
-            / safe_id(lecture_id)
-        )
-
-    def legacy_compiled_canvas_path(self, user_id: str, course_id: str, lecture_id: str) -> Path:
-        return self.legacy_user_lecture_root(user_id, course_id, lecture_id) / "canvas.json"
-
-    def legacy_canvas_dir_by_key(self, user_key: str, course_id: str, lecture_id: str) -> Path:
-        return (
-            self.root
-            / "workspaces"
-            / "students"
-            / user_key
-            / "courses"
-            / safe_id(course_id)
-            / "lectures"
-            / safe_id(lecture_id)
-            / "canvas"
-        )
-
     def course_root(self, course_id: str) -> Path:
         return self.root / "courses" / safe_id(self.tenant_id) / safe_id(course_id)
 

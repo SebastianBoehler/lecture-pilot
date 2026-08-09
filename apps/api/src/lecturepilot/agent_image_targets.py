@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 
 from lecturepilot.agent_canvas_write import find_student_canvas_section_path
-from lecturepilot.canvas_markdown import read_document_source, read_student_section_placements
+from lecturepilot.canvas_markdown import read_student_section_placements
 from lecturepilot.canvas_models import CanvasSection
 from lecturepilot.canvas_signatures import is_student_section
 
@@ -44,15 +44,15 @@ class ImageSectionTarget:
 def resolve_image_section_target(
     canvas_dir: Path,
     *,
+    sections: list[CanvasSection],
     requested_section_id: str | None,
     focused_section_id: str | None,
     prompt: str,
 ) -> ImageSectionTarget | None:
-    document = read_document_source(canvas_dir)
     student_dir = canvas_dir / "student"
     candidates = [
         ImageSectionTarget(section=section, path=path)
-        for section in document.sections
+        for section in sections
         if is_student_section(section)
         if (path := find_student_canvas_section_path(student_dir, section.id)) is not None
     ]
@@ -78,7 +78,7 @@ def resolve_image_section_target(
                 anchored,
                 prompt=prompt,
                 requested_section_id=requested_section_id,
-                focused_section=_section_by_id(document.sections, focused_section_id),
+                focused_section=_section_by_id(sections, focused_section_id),
             )
         ):
             return match
@@ -87,7 +87,7 @@ def resolve_image_section_target(
         candidates,
         prompt=prompt,
         requested_section_id=requested_section_id,
-        focused_section=_section_by_id(document.sections, focused_section_id),
+        focused_section=_section_by_id(sections, focused_section_id),
     )
 
 

@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from auth_helpers import professor_headers, student_headers
+from canvas_workspace_fixtures import publish_course_canvas
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
@@ -30,8 +31,9 @@ def test_normalized_course_asset_requires_authentication(tmp_path: Path) -> None
     )
     asset_path.parent.mkdir(parents=True)
     asset_path.write_bytes(b"\x89PNG\r\n")
-    app.state.canvas_workspace.write_course_canvas(
-        _document("martius-ml", "lecture-03", asset_path="generated-slides/risk.png")
+    publish_course_canvas(
+        app.state.canvas_workspace,
+        _document("martius-ml", "lecture-03", asset_path="generated-slides/risk.png"),
     )
     client = TestClient(app)
     url = "/course-assets/martius-ml/lecture-03/generated-slides/risk.png"
@@ -59,7 +61,10 @@ def test_professor_preview_asset_is_private_to_its_owner(tmp_path: Path) -> None
     )
     asset.parent.mkdir(parents=True)
     asset.write_bytes(b"\x89PNG\r\n")
-    app.state.canvas_workspace.write_course_canvas(_document("martius-ml", "lecture-01"))
+    publish_course_canvas(
+        app.state.canvas_workspace,
+        _document("martius-ml", "lecture-01"),
+    )
     client = TestClient(app)
     url = f"/workspace-assets/martius-ml/lecture-01/{preview_key}/student-assets/preview.png"
 
@@ -118,12 +123,13 @@ def test_course_asset_uses_scheduled_source_directory(tmp_path: Path) -> None:
             active_lecture_id="lecture-01",
         ),
     )
-    app.state.canvas_workspace.write_course_canvas(
+    publish_course_canvas(
+        app.state.canvas_workspace,
         _document(
             "martius-ml",
             "lecture-01",
             asset_path=relative_slide,
-        )
+        ),
     )
     client = TestClient(app)
 
@@ -177,12 +183,13 @@ def test_course_asset_resolves_legacy_graphicspath_reference(tmp_path: Path, mon
             active_lecture_id="lecture-02",
         ),
     )
-    app.state.canvas_workspace.write_course_canvas(
+    publish_course_canvas(
+        app.state.canvas_workspace,
         _document(
             "martius-ml",
             "lecture-02",
             asset_path="examples/mnistExamples.png",
-        )
+        ),
     )
 
     def reject_recursive_scan(*_args, **_kwargs):
@@ -240,11 +247,13 @@ def test_course_asset_must_be_referenced_by_the_authorized_lecture(tmp_path: Pat
             active_lecture_id="lecture-released",
         ),
     )
-    app.state.canvas_workspace.write_course_canvas(
-        _document(course_id, "lecture-released", asset_path="released.png")
+    publish_course_canvas(
+        app.state.canvas_workspace,
+        _document(course_id, "lecture-released", asset_path="released.png"),
     )
-    app.state.canvas_workspace.write_course_canvas(
-        _document(course_id, "lecture-private", asset_path="private.png")
+    publish_course_canvas(
+        app.state.canvas_workspace,
+        _document(course_id, "lecture-private", asset_path="private.png"),
     )
     client = TestClient(app)
     student = student_headers("student01", course_ids=[course_id])

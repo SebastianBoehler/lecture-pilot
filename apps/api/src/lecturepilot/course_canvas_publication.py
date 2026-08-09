@@ -1,18 +1,32 @@
 from __future__ import annotations
 
-import json
-import re
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Literal
+
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, PositiveInt, ValidationError
 
 from lecturepilot.canvas_learning_support import normalize_learning_support
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.course_learning_design_models import LearningDesignReview
 
 
-def legacy_safe_id(value: str) -> str:
-    safe = re.sub(r"[^a-zA-Z0-9_-]+", "-", value).strip("-")
-    return (safe or "canvas")[:120]
+class CanvasPublicationMetadata(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    schema_version: Literal[1]
+    course_id: str = Field(min_length=1, max_length=120)
+    lecture_id: str = Field(min_length=1, max_length=120)
+    version: PositiveInt
+    source_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
+    draft_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
+    learning_map_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
+    published_at: AwareDatetime
+    published_by: str = Field(min_length=1, max_length=160)
+
+
+class InvalidCanvasPublicationMetadataError(ValueError):
+    pass
 
 
 def clear_sections(canvas_dir: Path) -> None:
@@ -34,11 +48,16 @@ def publication_path(canvas_dir: Path) -> Path:
     return canvas_dir / "publication.json"
 
 
-def read_publication(published_dir: Path) -> dict | None:
+def read_publication(published_dir: Path) -> CanvasPublicationMetadata | None:
     path = publication_path(published_dir)
     if not path.exists():
         return None
-    return json.loads(path.read_text(encoding="utf-8"))
+    try:
+        return CanvasPublicationMetadata.model_validate_json(path.read_text(encoding="utf-8"))
+    except (OSError, ValidationError) as exc:
+        raise InvalidCanvasPublicationMetadataError(
+            "Published canvas metadata is invalid. Publish the canvas again."
+        ) from exc
 
 
 def publication_metadata(
@@ -47,24 +66,18 @@ def publication_metadata(
     lecture_id: str,
     published_by: str,
     version: int,
-    draft_dir: Path,
-    published_dir: Path,
     review: LearningDesignReview,
-) -> dict:
+) -> CanvasPublicationMetadata:
     approval = review.approval
     assert approval is not None
-    return {
-        "schema_version": 1,
-        "course_id": course_id,
-        "lecture_id": lecture_id,
-        "version": version,
-        "published_at": datetime.now(UTC).isoformat(),
-        "published_by": published_by,
-        "source_draft_path": str(draft_dir / "index.md"),
-        "published_path": str(published_dir / "index.md"),
-        "draft_digest": review.draft_digest,
-        "source_revision": review.source_revision,
-        "learning_map_revision": review.learning_map.revision,
-        "learning_design_approved_by": approval.approved_by,
-        "learning_design_approved_at": approval.approved_at.isoformat(),
-    }
+    return CanvasPublicationMetadata(
+        schema_version=1,
+        course_id=course_id,
+        lecture_id=lecture_id,
+        version=version,
+        published_at=datetime.now(UTC),
+        published_by=published_by,
+        draft_digest=review.draft_digest,
+        source_revision=review.source_revision,
+        learning_map_revision=review.learning_map.revision,
+    )
