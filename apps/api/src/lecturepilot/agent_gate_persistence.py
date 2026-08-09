@@ -5,7 +5,7 @@ from collections.abc import Callable
 from fastapi import FastAPI
 
 from lecturepilot.agent_state_access import analytics_store, learner_state_store
-from lecturepilot.coaching_orchestration import persist_coaching_turn
+from lecturepilot.coaching_progress import CoachingTurnEvent
 from lecturepilot.models import AgentTurnInput, AgentTurnResult
 from lecturepilot.observability import Observability
 
@@ -17,9 +17,15 @@ def persist_quality_gate(
     result: AgentTurnResult,
     activity: Callable[[str], None],
     observability: Observability,
+    coaching_event: CoachingTurnEvent | None,
 ) -> None:
     decision = result.quality_gate
-    if decision is None or not turn.course_id:
+    if (
+        decision is None
+        or not turn.course_id
+        or coaching_event is None
+        or coaching_event.attempt_kind == "none"
+    ):
         return
     activity("save quality gate")
     with observability.tool_span(
@@ -31,7 +37,6 @@ def persist_quality_gate(
             user_id=turn.user_id,
             decision=decision,
         )
-        coaching_event = persist_coaching_turn(app, turn, result, activity, observability)
         if (store := analytics_store(app)) is not None:
             store.record_quality_gate(
                 course_id=turn.course_id,

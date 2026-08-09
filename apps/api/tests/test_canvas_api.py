@@ -87,7 +87,8 @@ def test_agent_appended_canvas_section_persists_for_same_student(tmp_path: Path)
     assert (user_root / "courses" / "martius-ml" / "memories" / "course.md").exists()
     assert (user_root / "courses" / "martius-ml" / "memories" / "memory-trace.jsonl").exists()
     assert '"attendance": "absent"' in (lecture_root / "attendance.json").read_text()
-    assert "demo-gate" in (lecture_root / "gates.json").read_text()
+    assert "demo-gate" in (lecture_root / "tutor-state.json").read_text()
+    assert not (lecture_root / "gates.json").exists()
     component_file = lecture_root / "canvas" / "components" / "student-risk-check.yaml"
     assert component_file.exists()
     assert "id: posterior-risk" in component_file.read_text(encoding="utf-8")
@@ -147,7 +148,7 @@ def test_learner_workspace_reset_clears_selected_scopes(tmp_path: Path) -> None:
     assert not (course_root / "memories").exists()
     assert (course_root / "progress.json").exists()
     assert (lecture_root / "attendance.json").exists()
-    assert (lecture_root / "gates.json").exists()
+    assert (lecture_root / "tutor-state.json").exists()
     assert not (course_root / "exam-sources").exists()
     assert not (course_root / "practice-exam-generations").exists()
     assert not (course_root / "practice-exams").exists()
@@ -220,6 +221,7 @@ class _AppendingHarness:
                 gate_id="demo-gate",
                 status=QualityGateStatus.NEEDS_EVIDENCE,
                 reason="The student still needs one concrete explanation.",
+                next_prompt="Explain one concrete posterior-weighted loss decision.",
             ),
             model="local-guided-preview",
         )

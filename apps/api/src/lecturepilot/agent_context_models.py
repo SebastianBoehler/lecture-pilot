@@ -13,6 +13,11 @@ class UserMemoryContext(BaseModel):
     preferences: dict[str, Any] = Field(default_factory=dict)
 
 
+class AgentConversationMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=4000)
+
+
 class AgentReadinessTask(BaseModel):
     id: str = Field(min_length=1, max_length=220)
     source_ref: str | None = Field(default=None, max_length=500)
@@ -32,5 +37,10 @@ class AgentCoachingContext(BaseModel):
     delayed_transfer_due: bool = False
     support_before_attempt: bool = False
     last_assistance_level: AssistanceLevel = "none"
+    pending_check_gate_id: str | None = Field(default=None, max_length=160)
+    pending_check_gate_revision: str | None = Field(default=None, max_length=64)
+    pending_check_kind: Literal["standard", "delayed_transfer"] | None = None
+    pending_check_issued_at: str | None = Field(default=None, max_length=80)
+    pending_check_prompt: str | None = Field(default=None, max_length=500)
     evidence_ids: list[str] = Field(default_factory=list, max_length=40)
     missing_evidence_ids: list[str] = Field(default_factory=list, max_length=40)

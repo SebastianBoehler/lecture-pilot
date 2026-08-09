@@ -50,7 +50,7 @@ def test_streamed_tool_turn_persists_canvas_memory_and_gate(tmp_path, monkeypatc
     assert "highlight: student-tool-loop-note-p-1" in activity_tags
     result = events[-1]["result"]
     assert result["quality_gate"]["gate_id"] == "tool-loop-gate"
-    assert result["quality_gate"]["status"] == "needs_evidence"
+    assert result["quality_gate"]["status"] == "not_assessed"
     assert any(
         command["section_id"] == "student-tool-loop-note" for command in result["canvas_commands"]
     )
@@ -72,10 +72,6 @@ def test_streamed_tool_turn_persists_canvas_memory_and_gate(tmp_path, monkeypatc
     )
     assert '"scope": "course"' in course_trace.read_text(encoding="utf-8")
     assert '"lecture_id": "lecture-03"' in course_trace.read_text(encoding="utf-8")
-    gate_state = (lecture_root / "gates.json").read_text(encoding="utf-8")
-    assert "tool-loop-gate" in gate_state
-    assert "invented-evidence" not in gate_state
-
     canvas_response = client.get(
         "/courses/martius-ml/lectures/lecture-03/canvas",
         headers=student_headers("student01"),
@@ -101,6 +97,9 @@ def test_streamed_tool_turn_persists_canvas_memory_and_gate(tmp_path, monkeypatc
     assert second.status_code == 200
     assert second.json()["message"] == "Loaded durable soccer preference."
     assert app.state.agent_harness.seen_memory_preferences == {"analogy": "soccer"}
+    gate_state = (lecture_root / "gates.json").read_text(encoding="utf-8")
+    assert "tool-loop-gate" in gate_state
+    assert "invented-evidence" not in gate_state
 
 
 class _ToolLoopHarness:
@@ -116,7 +115,16 @@ class _ToolLoopHarness:
             self.seen_memory_preferences = dict(turn.user_memory.preferences)
             assert "soccer analogies" in turn.user_memory.global_notes
             assert "Bayes risk comparisons need worked examples" in turn.user_memory.course_notes
-            return AgentTurnResult(message="Loaded durable soccer preference.", model=DEFAULT_MODEL)
+            return AgentTurnResult(
+                message="Loaded durable soccer preference.",
+                model=DEFAULT_MODEL,
+                quality_gate={
+                    "gate_id": "tool-loop-gate",
+                    "status": "needs_evidence",
+                    "reason": "The expected-risk calculation is still missing.",
+                    "evidence_ids": ["tool-loop-gate", "invented-evidence"],
+                },
+            )
         return await complete_tool_turn(
             acompletion=_ToolCallingModel(),
             settings=ProviderSettings(

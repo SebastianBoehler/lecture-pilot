@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from lecturepilot.agent_context_models import (
     AgentCoachingContext,
+    AgentConversationMessage,
     AgentReadinessTask,
     UserMemoryContext,
 )
@@ -225,6 +226,7 @@ class AgentTurnInput(BaseModel):
     scaffold_policy: TutorScaffoldPolicy | None = None
     coaching_context: AgentCoachingContext = Field(default_factory=AgentCoachingContext)
     active_gate: LearningMapGate | None = None
+    recent_messages: list[AgentConversationMessage] = Field(default_factory=list, max_length=8)
 
 
 class AgentTurnRequest(BaseModel):

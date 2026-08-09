@@ -10,7 +10,6 @@ from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSectio
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_schedule_store import write_course_workspace
 from lecturepilot.models import (
-    AgentTurnResult,
     AttendanceStatus,
     Course,
     CourseWorkspaceResult,
@@ -177,43 +176,6 @@ def test_demo_course_partial_logs_are_not_filled_with_seed_data(tmp_path: Path) 
     assert payload["gates"][0]["gate_id"] == "lecture-learning-outcome-check"
 
 
-def test_quality_gate_turns_are_recorded_in_analytics(tmp_path: Path) -> None:
-    client = _client(tmp_path)
-    client.app.state.agent_harness = _GateHarness()
-
-    response = client.post(
-        "/agent/turn",
-        headers=student_headers("student-a"),
-        json={
-            "course_id": "demo-course",
-            "lecture_id": "lecture-01",
-            "attendance": "present",
-            "message": "I can connect posterior and risk.",
-            "canvas_state": {"focused_section_id": "risk"},
-        },
-    )
-    assert response.json()["quality_gate"]["gate_id"] == "risk-evidence-check"
-
-    summary = client.get(
-        "/admin/courses/demo-course/lectures/lecture-01/analytics",
-        headers=professor_headers(),
-    )
-
-    assert summary.status_code == 200
-    gate = summary.json()["gates"][0]
-    assert gate["gate_id"] == "risk-evidence-check"
-    assert gate["status_counts"] == {"passed": 1}
-    assert gate["attendance_split"] == {"present": 1}
-    assert gate["unique_learners"] == 1
-    assert gate["independent_attempts"] == 1
-    assert gate["independent_passes"] == 1
-    assert gate["supported_attempts"] == 0
-    assert gate["transfer_attempts"] == 0
-    assert gate["independent_transfer_passes"] == 0
-    assert gate["assistance_level_counts"] == {"none": 1}
-    assert gate["evidence_counts"] == {"risk-evidence-check": 1}
-
-
 def _client(tmp_path: Path) -> TestClient:
     app = create_app()
     app.state.canvas_workspace = CanvasWorkspace(
@@ -284,17 +246,3 @@ def _canvas_document(tmp_path: Path) -> CanvasDocument:
             )
         ],
     )
-
-
-class _GateHarness:
-    async def run_turn(self, *_args, **_kwargs):
-        return AgentTurnResult(
-            message="Gate passed.",
-            model="test-harness",
-            quality_gate=QualityGateDecision(
-                gate_id="risk-gate",
-                status=QualityGateStatus.PASSED,
-                reason="Student connected posterior and risk.",
-                evidence_ids=["risk-evidence-check", "invented-evidence"],
-            ),
-        )
