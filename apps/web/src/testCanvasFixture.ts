@@ -170,3 +170,17 @@ export function canvasPayload() {
     ],
   };
 }
+
+export function publishedCanvasViewPayload(courseId = "martius-ml", lectureId = "lecture-03") {
+  const document = canvasPayload();
+  return {
+    document: {
+      ...document,
+      id: `${courseId}-${lectureId}`,
+      course_id: courseId,
+      lecture_id: lectureId,
+    },
+    publication_version: 1,
+    learning_map_revision: "a".repeat(64),
+  };
+}

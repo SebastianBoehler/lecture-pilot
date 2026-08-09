@@ -176,25 +176,6 @@ function readAgentTurnStreamLine(line: string, onActivity?: (tag: string) => voi
   return event.result;
 }
 
-export async function getLectureCanvas(
-  courseId: string,
-  lectureId: string,
-  session: LoginSession,
-  mode: LearnerWorkspaceMode = "learner",
-): Promise<CanvasDocument> {
-  const response = await fetch(
-    apiUrl(`/courses/${courseId}/lectures/${lectureId}/canvas`),
-    learnerRequestInit(session, mode),
-  );
-  const payload = await response.json();
-  if (!response.ok) {
-    const detail = typeof payload.detail === "string" ? payload.detail : "Canvas loading failed.";
-    throw new Error(detail);
-  }
-
-  return payload as CanvasDocument;
-}
-
 export async function getDraftLectureCanvas(
   courseId: string,
   lectureId: string,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
@@ -13,6 +14,7 @@ from lecturepilot.canvas_workspace_config import (
     SEEDED_COURSE_ID,
 )
 from lecturepilot.course_canvas_store import CourseCanvasStore
+from lecturepilot.course_canvas_context import PublishedCanvasSnapshot
 from lecturepilot.course_update_recovery import locked_course_state
 from lecturepilot.course_media import apply_course_media
 from lecturepilot.generated_infographics import materialize_infographic_sections
@@ -168,6 +170,27 @@ class CanvasWorkspace(CanvasLearnerWorkspaceMixin):
 
     def write_course_canvas(self, document: CanvasDocument) -> CanvasDocument:
         return self.course_canvas_store.write(document)
+
+    def read_published_canvas_view(
+        self,
+        *,
+        course_id: str,
+        lecture_id: str,
+        user_id: str,
+    ) -> PublishedCanvasSnapshot | None:
+        snapshot = self.course_canvas_store.read_current_published_snapshot(
+            course_id=course_id,
+            lecture_id=lecture_id,
+        )
+        if snapshot is None:
+            return None
+        document = self.read_document_from_published(
+            snapshot.document,
+            course_id=course_id,
+            lecture_id=lecture_id,
+            user_id=user_id,
+        )
+        return replace(snapshot, document=document)
 
     def read_course_canvas_draft(self, *, course_id: str, lecture_id: str) -> CanvasDocument:
         document = self.course_canvas_store.read_draft(course_id=course_id, lecture_id=lecture_id)

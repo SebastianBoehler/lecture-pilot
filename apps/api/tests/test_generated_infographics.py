@@ -57,14 +57,14 @@ def test_agent_turn_materializes_infographic_asset(monkeypatch, tmp_path: Path) 
     reloaded = client.get(
         "/courses/martius-ml/lectures/lecture-03/canvas",
         headers=student_headers("student01"),
-    ).json()
+    ).json()["document"]
     student_section = next(item for item in reloaded["sections"] if item["id"] == section["id"])
     assert student_section["blocks"][0]["asset_url"] == asset["asset_url"]
 
     other_student = client.get(
         "/courses/martius-ml/lectures/lecture-03/canvas",
         headers=student_headers("student02"),
-    ).json()
+    ).json()["document"]
     assert all(item["id"] != section["id"] for item in other_student["sections"])
 
 

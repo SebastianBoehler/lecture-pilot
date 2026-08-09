@@ -29,6 +29,7 @@ from lecturepilot.course_canvas_context import (
     AnalyticsPublicationContext,
     PublishedCanvasSnapshot,
     read_analytics_context,
+    read_current_published_snapshot,
     read_published_snapshot,
 )
 from lecturepilot.course_canvas_repairs import lecture_source_revision
@@ -199,6 +200,11 @@ class CourseCanvasStore:
         return read_published_snapshot(
             self.path(course_id, lecture_id), expected_version=expected_version
         )
+
+    def read_current_published_snapshot(
+        self, *, course_id: str, lecture_id: str
+    ) -> PublishedCanvasSnapshot | None:
+        return read_current_published_snapshot(self.path(course_id, lecture_id))
 
     def read_analytics_context(
         self, *, course_id: str, lecture_id: str

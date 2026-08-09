@@ -59,6 +59,7 @@ function LessonWorkspaceHarness() {
     <I18nProvider locale="en" setLocale={vi.fn()}>
       <LessonWorkspace
         canvasDocument={null}
+        publishedCanvasView={null}
         canvasError={null}
         courseId="course-1"
         focusedSectionId="section-1"

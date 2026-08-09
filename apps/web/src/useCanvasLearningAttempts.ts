@@ -1,10 +1,6 @@
 import { useState } from "react";
 
-import {
-  recordQuizAnswer,
-  StaleQuizPublicationError,
-  type LearnerQuizAnswerResult,
-} from "./analyticsApi";
+import { recordQuizAnswer, type LearnerQuizAnswerResult } from "./analyticsApi";
 import type { TutorMessageOptions } from "./canvasLearningActions";
 import { useI18n } from "./i18n";
 import { canonicalQuizId } from "./quizIdentity";
@@ -37,23 +33,17 @@ export function useCanvasLearningAttempts({
     attemptId: string,
     publicationVersion: number,
   ) {
-    let result;
-    try {
-      result = await recordQuizAnswer({
-        courseId,
-        lectureId: lecture.id,
-        attendance: lecture.attendance,
-        attemptId,
-        blockId: canonicalQuizId(block),
-        optionIndex,
-        publicationVersion,
-        session,
-        mode: workspaceMode,
-      });
-    } catch (reason) {
-      if (reason instanceof StaleQuizPublicationError) window.location.reload();
-      throw reason;
-    }
+    const result = await recordQuizAnswer({
+      courseId,
+      lectureId: lecture.id,
+      attendance: lecture.attendance,
+      attemptId,
+      blockId: canonicalQuizId(block),
+      optionIndex,
+      publicationVersion,
+      session,
+      mode: workspaceMode,
+    });
     await onPracticeSubmitted(result);
     openChat();
     setCoachingError(null);

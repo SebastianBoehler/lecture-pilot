@@ -29,10 +29,12 @@ def test_canvas_endpoint_loads_private_course_source_for_student(tmp_path: Path)
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["title"] == "Bayesian Decision Theory"
-    assert payload["source_ref"] == "Lecture03-eng.tex"
-    assert payload["sections"][0]["id"] == "bayesian-decision-theory-the-aim"
-    assert "workspace_path" not in payload
+    assert payload["publication_version"] == 1
+    assert payload["learning_map_revision"]
+    assert payload["document"]["title"] == "Bayesian Decision Theory"
+    assert payload["document"]["source_ref"] == "Lecture03-eng.tex"
+    assert payload["document"]["sections"][0]["id"] == "bayesian-decision-theory-the-aim"
+    assert "workspace_path" not in payload["document"]
 
 
 def test_agent_appended_canvas_section_persists_for_same_student(tmp_path: Path) -> None:
@@ -229,7 +231,7 @@ class _AppendingHarness:
 
 
 def _section_ids(payload: dict) -> list[str]:
-    return [section["id"] for section in payload["sections"]]
+    return [section["id"] for section in payload["document"]["sections"]]
 
 
 def _next_section_id(payload: dict, section_id: str) -> str | None:

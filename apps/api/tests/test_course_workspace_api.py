@@ -11,7 +11,7 @@ from auth_helpers import (
     professor_headers,
     student_headers,
 )
-from canvas_workspace_fixtures import published_course_canvas
+from canvas_workspace_fixtures import publish_course_canvas, published_course_canvas
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
@@ -118,8 +118,8 @@ def test_created_course_workspace_persists_lecture_schedule(tmp_path: Path) -> N
     )
     assert response.status_code == 200
     for lecture_id in ("lecture-01", "lecture-02"):
-        client.app.state.canvas_workspace.write_course_canvas(
-            published_course_canvas("demo-ml-course", lecture_id)
+        publish_course_canvas(
+            client.app.state.canvas_workspace, published_course_canvas("demo-ml-course", lecture_id)
         )
 
     lectures = client.get("/courses/demo-ml-course/lectures", headers=student_headers("student01"))
@@ -279,7 +279,7 @@ def test_dynamic_course_workspace_uses_uploaded_source(tmp_path: Path) -> None:
         headers=student_headers("student01"),
     )
     assert student.status_code == 200
-    assert student.json()["sections"][0]["title"] == "Planner summary"
+    assert student.json()["document"]["sections"][0]["title"] == "Planner summary"
 
 
 def test_full_course_draft_uses_matching_lecture_source(tmp_path: Path) -> None:

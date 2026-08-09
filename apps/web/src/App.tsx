@@ -1,12 +1,6 @@
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 
-import {
-  getCourseLectures,
-  getDraftLectureCanvas,
-  getLectureCanvas,
-  publishLectureCanvas,
-  sendAgentTurnStream,
-} from "./api";
+import { getCourseLectures, publishLectureCanvas, sendAgentTurnStream } from "./api";
 import {
   appendLiveToolTag,
   applyCanvasSection,
@@ -20,6 +14,7 @@ import { lessonKey, lessonPath, pathForView, requiresSession, type AppRoute } fr
 import type { TutorMessageOptions } from "./canvasLearningActions";
 import { FeedbackDialog } from "./FeedbackDialog";
 import { ProfessorWalkthrough } from "./ProfessorWalkthrough";
+import * as publishedCanvas from "./publishedCanvasView";
 import {
   initialMessagesForAttendance,
   localDemoSession,
@@ -84,6 +79,8 @@ function App() {
     route.view === "lesson" ? "chat" : null,
   );
   const [canvasDocument, setCanvasDocument] = useState<CanvasDocument | null>(null);
+  const [publishedCanvasView, setPublishedCanvasView] =
+    useState<publishedCanvas.PublishedCanvasView | null>(null);
   const [canvasError, setCanvasError] = useState<string | null>(null);
   const [workspaceLoadError, setWorkspaceLoadError] = useState<string | null>(null);
   const [focusedSectionId, setFocusedSectionId] = useState("bayesian-decision-theory-the-aim");
@@ -259,6 +256,7 @@ function App() {
     setHighlightedText(null);
     setNavigationVersion((current) => current + 1);
     setCanvasDocument(null);
+    setPublishedCanvasView(null);
     setCanvasError(null);
     setWorkspaceLoadError(null);
     setMessages(initialMessagesForAttendance(lectures[2].attendance));
@@ -280,6 +278,7 @@ function App() {
       setLessonMode(mode);
       setPanelMode("chat");
       setCanvasDocument(null);
+      setPublishedCanvasView(null);
       setCanvasError(null);
       setFocusedSectionId(review?.section_id ?? "bayesian-decision-theory-the-aim");
       setHighlightedBlockId(review?.gate_id ?? null);
@@ -289,16 +288,13 @@ function App() {
       setLastTutorModel(null);
 
       try {
-        const activeSession = session ?? localDemoSession;
-        const document =
-          mode === "draft" && session
-            ? await getDraftLectureCanvas(courseId, lecture.id, session)
-            : await getLectureCanvas(
-                courseId,
-                lecture.id,
-                activeSession,
-                mode === "professor-preview" ? "professor-preview" : "learner",
-              );
+        const { document, publishedView } = await publishedCanvas.loadCanvasForMode(
+          courseId,
+          lecture.id,
+          session,
+          mode,
+        );
+        setPublishedCanvasView(publishedView);
         setCanvasDocument(document);
         setFocusedSectionId(
           review?.section_id ?? document.sections[0]?.id ?? "bayesian-decision-theory-the-aim",
@@ -373,12 +369,14 @@ function App() {
       );
       setSelectedLecture((current) => ({ ...current, attendance: "unknown" }));
     }
-    const document = await getLectureCanvas(
+    const publishedView = await publishedCanvas.getPublishedCanvasView(
       selectedCourseId,
       selectedLecture.id,
       activeSession,
       workspaceMode,
     );
+    const document = publishedView.document;
+    setPublishedCanvasView(publishedView);
     setCanvasDocument(document);
     setCanvasError(null);
     setFocusedSectionId(document.sections[0]?.id ?? "bayesian-decision-theory-the-aim");
@@ -468,6 +466,7 @@ function App() {
         <AppRoutes
           availableLectures={availableLectures}
           canvasDocument={canvasDocument}
+          publishedCanvasView={publishedCanvasView}
           canvasError={canvasError}
           courseManagerSession={courseManagerSession}
           focusedSectionId={focusedSectionId}

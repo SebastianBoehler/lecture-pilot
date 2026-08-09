@@ -39,7 +39,7 @@ def test_learner_canvas_redacts_quiz_key_but_authorized_previews_retain_it(tmp_p
 
     assert learner.status_code == 200
     assert "answer_index" not in learner.text
-    assert _quiz(preview.json())["answer_index"] == 1
+    assert _quiz(preview.json()["document"])["answer_index"] == 1
     assert _quiz(draft.json())["answer_index"] == 1
 
 

@@ -10,7 +10,7 @@ from lecturepilot.api_auth import (
 )
 from lecturepilot.audit import record_audit_event
 from lecturepilot.canvas_models import CanvasDocument
-from lecturepilot.canvas_response import learner_canvas_payload
+from lecturepilot.canvas_response import published_canvas_payload
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.course_access import require_course_id_access, require_lecture_id_access
 from lecturepilot.course_canvas_draft_routes import register_course_canvas_draft_routes
@@ -139,22 +139,22 @@ def register_course_canvas_routes(
             seeded_course=seeded_course,
             seeded_lectures=lectures,
         )
-        if not app.state.canvas_workspace.has_published_course_canvas(
-            course_id=course_id,
-            lecture_id=lecture_id,
-        ):
-            raise HTTPException(status_code=404, detail="Canvas has not been published.")
         try:
-            document = app.state.canvas_workspace.read_document(
+            snapshot = app.state.canvas_workspace.read_published_canvas_view(
                 course_id=course_id,
                 lecture_id=lecture_id,
                 user_id=access.user_id,
             )
         except CanvasWorkspaceError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
-        if is_professor_preview_user_id(access.user_id):
-            return document.model_dump(exclude={"workspace_path"})
-        return learner_canvas_payload(document)
+        if snapshot is None:
+            raise HTTPException(status_code=404, detail="Canvas has not been published.")
+        return published_canvas_payload(
+            snapshot.document,
+            publication_version=snapshot.version,
+            learning_map_revision=snapshot.learning_map_revision,
+            include_answers=is_professor_preview_user_id(access.user_id),
+        )
 
     @app.get(
         "/courses/{course_id}/lectures/{lecture_id}/learning-map",

@@ -5,6 +5,7 @@ import { useI18n } from "./i18n";
 import { LessonCanvas } from "./LessonCanvas";
 import { LearningPathPanel } from "./LearningPathPanel";
 import { ProfessorLearnerPreviewBanner } from "./ProfessorLearnerPreviewBanner";
+import { reconcileCanvasLearnerState, type PublishedCanvasView } from "./publishedCanvasView";
 import { NotesPanel, OutlinePanel } from "./LessonSidePanels";
 import type { LearnerQuizAnswerResult } from "./analyticsApi";
 import type { TutorMessageOptions } from "./canvasLearningActions";
@@ -29,6 +30,7 @@ export function LessonWorkspace({
   courseId,
   session,
   canvasDocument,
+  publishedCanvasView,
   canvasError,
   focusedSectionId,
   highlightedBlockId,
@@ -50,6 +52,7 @@ export function LessonWorkspace({
   courseId: string;
   session: LoginSession;
   canvasDocument: CanvasDocument | null;
+  publishedCanvasView: PublishedCanvasView | null;
   canvasError: string | null;
   focusedSectionId: string;
   highlightedBlockId: string | null;
@@ -84,6 +87,7 @@ export function LessonWorkspace({
     onPracticeSubmitted,
     onSendMessage,
   });
+  const canvasLearnerState = reconcileCanvasLearnerState(publishedCanvasView, learnerState);
 
   useEffect(() => {
     if (!outlinePulse) {
@@ -133,6 +137,14 @@ export function LessonWorkspace({
         </div>
         {canvasError ? <p className="form-error">{canvasError}</p> : null}
         {learnerStateError ? <p className="form-error">{learnerStateError}</p> : null}
+        {canvasLearnerState.requiresReconciliation ? (
+          <div className="form-error" role="alert">
+            <p>{t("quiz.publicationChanged")}</p>
+            <button type="button" onClick={() => window.location.reload()}>
+              {t("quiz.reloadLecture")}
+            </button>
+          </div>
+        ) : null}
         {learningAttempts.coachingError ? (
           <p className="form-error" role="alert">
             {learningAttempts.coachingError}
@@ -152,8 +164,8 @@ export function LessonWorkspace({
             outlinePulseId={outlinePulse?.id ?? null}
             outlinePulseVersion={outlinePulse?.version ?? 0}
             session={session}
-            quizStates={learnerState?.quiz_states ?? {}}
-            publicationVersion={learnerState?.publication_version ?? null}
+            quizStates={canvasLearnerState.quizStates}
+            publicationVersion={canvasLearnerState.publicationVersion}
             onOpenResource={openWorkspaceResource}
             onSubmitCheckpoint={learningAttempts.submitCheckpoint}
             onSubmitQuizAnswer={learningAttempts.submitQuiz}
@@ -228,7 +240,7 @@ export function LessonWorkspace({
         <TutorDrawer
           messages={messages}
           model={tutorModel}
-          sessionGoal={learnerState?.active_session_goal ?? null}
+          sessionGoal={canvasLearnerState.currentLearnerState?.active_session_goal ?? null}
           onClose={() => onTogglePanel("chat")}
           onSendMessage={onSendMessage}
         />
@@ -247,7 +259,7 @@ export function LessonWorkspace({
           courseId={courseId}
           focusedSectionId={focusedSectionId}
           lecture={lecture}
-          learnerState={learnerState}
+          learnerState={canvasLearnerState.currentLearnerState}
           session={session}
           onClose={() => onTogglePanel("path")}
           onJumpAnchor={jumpToAnchor}

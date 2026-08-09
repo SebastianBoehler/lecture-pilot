@@ -1,6 +1,6 @@
 import { vi } from "vitest";
 
-import { canvasPayload } from "./testCanvasFixture";
+import { publishedCanvasViewPayload } from "./testCanvasFixture";
 import { learningMapPayload } from "./testLearningMapFixture";
 import { quizAttemptResponse } from "./testQuizAttemptFixture";
 
@@ -30,7 +30,7 @@ export function mockLoginFetch({ published = false }: { published?: boolean } = 
     }
     return {
       ok: true,
-      json: async () => canvasPayload(),
+      json: async () => publishedCanvasViewPayload(...canvasIds(url)),
     };
   });
 }
@@ -72,7 +72,7 @@ export function mockLoginAndTutorFetch({
     if (url.includes("/canvas")) {
       return {
         ok: true,
-        json: async () => canvasPayload(),
+        json: async () => publishedCanvasViewPayload(...canvasIds(url)),
       };
     }
 
@@ -143,6 +143,11 @@ function publicationPayload(url: string, published: boolean) {
     version: published ? 1 : null,
     published_at: published ? "2026-06-12T10:00:00Z" : null,
   };
+}
+
+function canvasIds(url: string): [string, string] {
+  const match = url.match(/courses\/([^/]+)\/lectures\/([^/]+)\/canvas/);
+  return [match?.[1] ?? "martius-ml", match?.[2] ?? "lecture-03"];
 }
 
 function emptyReviewQueue(url: string) {

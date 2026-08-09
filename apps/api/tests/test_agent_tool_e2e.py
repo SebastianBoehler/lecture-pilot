@@ -81,7 +81,7 @@ def test_streamed_tool_turn_persists_canvas_memory_and_gate(tmp_path, monkeypatc
         headers=student_headers("student01"),
     )
     assert canvas_response.status_code == 200, canvas_response.json()
-    canvas = canvas_response.json()
+    canvas = canvas_response.json()["document"]
     student_section = next(
         section for section in canvas["sections"] if section["id"] == "student-tool-loop-note"
     )

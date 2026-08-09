@@ -13,6 +13,8 @@ export const learningAttemptMessages = {
     "quiz.tryCorrection": "Try a correction",
     "quiz.review": "Review",
     "quiz.coachingFailed": "The quiz was stored, but tutor feedback failed.",
+    "quiz.publicationChanged": "The lecture changed while learner progress was loading.",
+    "quiz.reloadLecture": "Reload lecture",
     "checkpoint.label": "Checkpoint",
     "checkpoint.answer": "Your checkpoint answer",
     "checkpoint.answerPlaceholder": "Explain your reasoning in your own words…",
@@ -34,6 +36,9 @@ export const learningAttemptMessages = {
     "quiz.tryCorrection": "Korrektur versuchen",
     "quiz.review": "Prüfen",
     "quiz.coachingFailed": "Das Quiz wurde gespeichert, aber das Tutorfeedback ist fehlgeschlagen.",
+    "quiz.publicationChanged":
+      "Die Vorlesung wurde geändert, während der Lernfortschritt geladen wurde.",
+    "quiz.reloadLecture": "Vorlesung neu laden",
     "checkpoint.label": "Lernzielkontrolle",
     "checkpoint.answer": "Deine Antwort zur Lernzielkontrolle",
     "checkpoint.answerPlaceholder": "Erkläre deine Begründung in eigenen Worten…",

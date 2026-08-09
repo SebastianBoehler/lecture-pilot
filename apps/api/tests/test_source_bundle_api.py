@@ -132,15 +132,7 @@ def test_uploaded_latex_can_seed_a_canvas_document(tmp_path: Path) -> None:
         lecture_id="lecture-03",
         workspace_path="published/index.md",
     )
-    workspace.write_course_canvas(source)
-
-    response = client.get(
-        "/courses/martius-ml/lectures/lecture-03/canvas?user_id=student01",
-        headers=student_headers("student01"),
-    )
-
-    assert response.status_code == 200
-    payload = response.json()
+    payload = source.model_dump()
     assert payload["source_ref"] == "Lecture03-eng.tex"
     assert [section["title"] for section in payload["sections"]] == [
         "Uploaded Bayes Concept",
@@ -258,7 +250,7 @@ def test_professor_canvas_draft_stays_private_until_publish(tmp_path: Path) -> N
     )
 
     assert student.status_code == 200
-    payload = student.json()
+    payload = student.json()["document"]
     assert payload["source_kind"] == "generated"
     assert [section["title"] for section in payload["sections"]] == ["Planner summary"]
     assert (

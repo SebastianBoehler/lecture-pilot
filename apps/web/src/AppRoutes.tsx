@@ -9,6 +9,7 @@ import { draftPreviewUrl } from "./draftPreviewUrl";
 import { LoginView } from "./LoginView";
 import { localDemoSession } from "./appDefaults";
 import { ProfileView } from "./ProfileView";
+import type { PublishedCanvasView } from "./publishedCanvasView";
 import { useI18n } from "./i18n";
 import type { LearnerLessonState } from "./learnerLessonStateTypes";
 import type { GateReviewOpening } from "./reviewQueueTypes";
@@ -54,6 +55,7 @@ const ProfessorUsage = lazy(() =>
 type AppRoutesProps = {
   availableLectures: Lecture[];
   canvasDocument: CanvasDocument | null;
+  publishedCanvasView: PublishedCanvasView | null;
   canvasError: string | null;
   courseManagerSession: LoginSession | null;
   focusedSectionId: string;
@@ -223,6 +225,7 @@ export function AppRoutes(props: AppRoutesProps) {
   return deferred(
     <LessonWorkspace
       canvasDocument={canvasDocument}
+      publishedCanvasView={props.publishedCanvasView}
       canvasError={canvasError}
       courseId={selectedCourseId}
       focusedSectionId={focusedSectionId}

@@ -90,7 +90,9 @@ def test_current_markdown_overlay_controls_visible_quiz_scoring(tmp_path: Path) 
     )
 
     block_ids = {
-        block["id"] for section in canvas.json()["sections"] for block in section["blocks"]
+        block["id"]
+        for section in canvas.json()["document"]["sections"]
+        for block in section["blocks"]
     }
     assert "visible-overlay-quiz" in block_ids
     assert "hidden-stale-quiz" not in block_ids
@@ -249,7 +251,7 @@ def _document(sections: list[CanvasSection]) -> CanvasDocument:
 def _canvas_block(payload: dict, block_id: str) -> dict:
     return next(
         block
-        for section in payload["sections"]
+        for section in payload["document"]["sections"]
         for block in section["blocks"]
         if block["id"] == block_id
     )

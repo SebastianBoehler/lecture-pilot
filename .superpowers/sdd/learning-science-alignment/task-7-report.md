@@ -215,3 +215,50 @@ prohibited monkeypatch, mock, fake, stub, legacy, fallback, or test-double const
 touched file still above 300 lines is `App.canvas.test.tsx`, reduced from its pre-existing 383 lines
 to 330 by removal of simulated quiz tests; no oversized production or newly expanded test module
 remains.
+
+## Review fix round 3
+
+- The learner canvas endpoint now returns a strict `PublishedCanvasView`: the rendered document,
+  positive publication version, and canonical learning-map revision are captured from one locked
+  published snapshot. The route no longer performs separate publication-existence and document
+  reads.
+- Learner materialization receives that captured document directly. A concurrent republish cannot
+  relabel a rendered document with newer publication metadata.
+- The web app retains the complete published view beside the rendered document. Quiz submissions
+  use the rendered view's publication version only; learner lesson state is applied only when its
+  version matches the view. A mismatch exposes an explicit reload action and contributes no quiz
+  locks, learning-path status, or session goal.
+- A typed stale-publication response clears the in-memory attempt identity before reloading the
+  page, which refreshes both the canvas and learner state. There is no version guess or
+  independently hydrated submission authority.
+- The real API race regression renders v1, publishes v2 through the real publication workflow,
+  observes v2 learner state, and submits the rendered v1 version. The server returns the typed 409
+  and persists neither learner quiz state nor an outcome event. The pure view-state contract proves
+  a v1 canvas plus v2 state cannot apply v2 locks or submit with v2 authority.
+
+Review RED evidence:
+
+```text
+backend atomic canvas contract: 1 failed / 1 test (response omitted publication context)
+web view-state contract: module missing / 3 tests blocked
+```
+
+Focused GREEN evidence:
+
+```text
+atomic snapshot, stale-submit, and canvas/quiz backend matrix: 27 passed
+published-view, rendered-version, hydration, App, and preview web matrix: 22 passed
+```
+
+Final verification used the repository virtual environment. `verify:api` passed 768 API tests and
+22 compiler tests, plus Ruff formatting/lint and `git diff --check`. `verify:web` passed changelog,
+docs, Prettier, ESLint with zero warnings, Knip, 99 Vitest files with 301 tests, TypeScript, and the
+Vite production build. `verify:fast` also passed. The existing Vite large-main-chunk advisory
+remains. No manual browser session was run.
+
+The round-three added-line audit found zero monkeypatch, mock, fake, stub, legacy, or fallback
+constructs. New regressions use the real API/store/publication path and a pure deterministic
+view-state contract. All changed production modules other than the pre-existing oversized
+`App.tsx` remain below 300 lines; the loading decision, parsing, and reconciliation live in the new
+109-line module, leaving `App.tsx` one line shorter than its prior 583-line baseline. The report
+remains below the 300-line documentation limit.

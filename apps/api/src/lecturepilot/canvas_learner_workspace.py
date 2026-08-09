@@ -19,6 +19,40 @@ from lecturepilot.student_asset_refs import resolve_student_asset_refs
 
 
 class CanvasLearnerWorkspaceMixin:
+    def read_document_from_published(
+        self,
+        published: CanvasDocument,
+        *,
+        course_id: str,
+        lecture_id: str,
+        user_id: str,
+    ) -> CanvasDocument:
+        canvas_dir = self._canvas_dir(course_id, lecture_id, user_id)
+        manifest_path = canvas_dir / "index.md"
+        published = published.model_copy(update={"workspace_path": str(manifest_path)})
+        if not manifest_path.exists() or self._is_stale_against(manifest_path, published):
+            student_placements = read_student_section_placements(canvas_dir)
+            student_sections = self.read_learner_overlay_sections(
+                course_id=course_id,
+                lecture_id=lecture_id,
+                user_id=user_id,
+            )
+            if student_sections:
+                published = published.model_copy(
+                    update={"sections": merge_sections([*published.sections, *student_sections])}
+                )
+            self._write_initial_source(
+                published,
+                canvas_dir,
+                student_placements=student_placements,
+            )
+        return self._read_materialized_document(
+            canvas_dir=canvas_dir,
+            course_id=course_id,
+            lecture_id=lecture_id,
+            user_id=user_id,
+        )
+
     def read_document(
         self,
         *,
@@ -46,20 +80,12 @@ class CanvasLearnerWorkspaceMixin:
                 )
             self._write_initial_source(document, canvas_dir, student_placements=student_placements)
 
-        document = apply_course_media(
-            normalize_learning_support(read_document_source(canvas_dir)), self.material_root
-        )
-        document = apply_course_media(document, self.course_media_root(course_id))
-        document = resolve_student_asset_refs(
-            document,
+        return self._read_materialized_document(
             canvas_dir=canvas_dir,
             course_id=course_id,
             lecture_id=lecture_id,
-            layout=self.layout,
             user_id=user_id,
         )
-        self._write_compiled_document(document, course_id, lecture_id, user_id)
-        return document
 
     def apply_sections(
         self,
@@ -118,9 +144,38 @@ class CanvasLearnerWorkspaceMixin:
         )
         if base is None:
             return False
-        if document.source_kind != "generated":
-            return True
-        return official_canvas_signature(document) != official_canvas_signature(base)
+        return self._is_stale_against(manifest_path, base)
+
+    def _is_stale_against(self, manifest_path: Path, published: CanvasDocument) -> bool:
+        document = read_document_source(manifest_path.parent)
+        return (
+            document.import_version != CANVAS_IMPORT_VERSION
+            or document.source_kind != "generated"
+            or official_canvas_signature(document) != official_canvas_signature(published)
+        )
+
+    def _read_materialized_document(
+        self,
+        *,
+        canvas_dir: Path,
+        course_id: str,
+        lecture_id: str,
+        user_id: str,
+    ) -> CanvasDocument:
+        document = apply_course_media(
+            normalize_learning_support(read_document_source(canvas_dir)), self.material_root
+        )
+        document = apply_course_media(document, self.course_media_root(course_id))
+        document = resolve_student_asset_refs(
+            document,
+            canvas_dir=canvas_dir,
+            course_id=course_id,
+            lecture_id=lecture_id,
+            layout=self.layout,
+            user_id=user_id,
+        )
+        self._write_compiled_document(document, course_id, lecture_id, user_id)
+        return document
 
     def _write_compiled_document(
         self,

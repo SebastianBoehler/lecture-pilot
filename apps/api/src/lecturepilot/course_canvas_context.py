@@ -38,26 +38,15 @@ def read_published_snapshot(
     published_dir: Path, *, expected_version: int
 ) -> PublishedCanvasSnapshot | None:
     with locked_canvas_paths(published_dir):
-        if not (published_dir / "index.md").exists():
-            return None
-        publication = read_publication(published_dir)
-        if publication is None:
-            raise InvalidPublishedCanvasContextError(
-                "Published canvas is missing publication metadata. Publish it again."
-            )
-        version = _required_publication_version(publication)
-        if version != expected_version:
+        snapshot = _read_published_snapshot_locked(published_dir)
+        if snapshot is not None and snapshot.version != expected_version:
             raise StalePublishedCanvasVersionError
-        learning_map = _required_learning_map(published_dir, publication)
-        document = normalize_learning_support(read_document_source(published_dir)).model_copy(
-            update={"workspace_path": str(published_dir / "index.md")}
-        )
-        return PublishedCanvasSnapshot(
-            document=document,
-            publication=publication,
-            version=version,
-            learning_map_revision=learning_map.revision,
-        )
+        return snapshot
+
+
+def read_current_published_snapshot(published_dir: Path) -> PublishedCanvasSnapshot | None:
+    with locked_canvas_paths(published_dir):
+        return _read_published_snapshot_locked(published_dir)
 
 
 def read_analytics_context(published_dir: Path) -> AnalyticsPublicationContext:
@@ -91,6 +80,27 @@ def _required_learning_map(published_dir: Path, publication: dict) -> learning_m
             "Published canvas contains an unversioned gate. Publish it again."
         )
     return learning_map
+
+
+def _read_published_snapshot_locked(published_dir: Path) -> PublishedCanvasSnapshot | None:
+    if not (published_dir / "index.md").exists():
+        return None
+    publication = read_publication(published_dir)
+    if publication is None:
+        raise InvalidPublishedCanvasContextError(
+            "Published canvas is missing publication metadata. Publish it again."
+        )
+    version = _required_publication_version(publication)
+    learning_map = _required_learning_map(published_dir, publication)
+    document = normalize_learning_support(read_document_source(published_dir)).model_copy(
+        update={"workspace_path": str(published_dir / "index.md")}
+    )
+    return PublishedCanvasSnapshot(
+        document=document,
+        publication=publication,
+        version=version,
+        learning_map_revision=learning_map.revision,
+    )
 
 
 def _required_publication_version(publication: dict) -> int:

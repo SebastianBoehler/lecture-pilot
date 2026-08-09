@@ -61,9 +61,11 @@ export function QuizBlock({
       setResult(accepted);
       attemptId.current = null;
     } catch (reason) {
-      if (reason instanceof StaleQuizPublicationError) attemptId.current = null;
+      const stalePublication = reason instanceof StaleQuizPublicationError;
+      if (stalePublication) attemptId.current = null;
       setSelectedIndex(null);
       setError(errorMessage(reason, t("attempt.failed")));
+      if (stalePublication) window.location.reload();
     } finally {
       setChecking(false);
     }

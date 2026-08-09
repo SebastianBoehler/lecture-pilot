@@ -39,6 +39,11 @@ function renderWorkspace(learnerState: LearnerLessonState | null) {
     <I18nProvider locale="en" setLocale={vi.fn()}>
       <LessonWorkspace
         canvasDocument={canvas}
+        publishedCanvasView={{
+          document: canvas,
+          publication_version: 1,
+          learning_map_revision: "a".repeat(64),
+        }}
         canvasError={null}
         courseId="course-1"
         focusedSectionId="risk"

@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from auth_helpers import professor_headers, student_headers
-from canvas_workspace_fixtures import published_course_canvas
+from canvas_workspace_fixtures import publish_course_canvas, published_course_canvas
 from lecturepilot.app import create_app
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_schedule_store import write_course_workspace
@@ -247,8 +247,8 @@ def _seed_course(client: TestClient, lectures: list[tuple[str, date]]) -> None:
 
 
 def _publish_canvas(client: TestClient, lecture_id: str) -> None:
-    client.app.state.canvas_workspace.write_course_canvas(
-        published_course_canvas(COURSE_ID, lecture_id)
+    publish_course_canvas(
+        client.app.state.canvas_workspace, published_course_canvas(COURSE_ID, lecture_id)
     )
 
 

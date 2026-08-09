@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from "vitest";
 
 import App from "./App";
 import { localProfessorSession } from "./appDefaults";
+import { publishedCanvasViewPayload } from "./testCanvasFixture";
 
 afterEach(() => {
   window.localStorage.clear();
@@ -120,7 +121,11 @@ async function handleRequest(input: RequestInfo | URL, _init?: RequestInit) {
     return json({ course_id: "demo-course", lecture_id: "lecture-01", published: true });
   }
   if (url.includes("/courses/demo-course/lectures/lecture-01/canvas")) {
-    return json(canvas());
+    const view = publishedCanvasViewPayload();
+    return json({
+      ...view,
+      document: canvas(),
+    });
   }
   if (url.endsWith("/courses/demo-course/lectures")) {
     return json([{ lecture: lecture(), unlocked: true, attendance: "unknown" }]);
