@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from lecturepilot.course_source_evidence import source_file_excerpt
+from lecturepilot.course_source_evidence import selection_detail_files, source_file_excerpt
 from lecturepilot.course_source_routing_client import (
     LiteLLMSourceRoutingClient,
     SourceRoutingModelClient,
@@ -14,9 +14,6 @@ from lecturepilot.course_source_routing_review import (
 from lecturepilot.models import Lecture, ProviderCapability, ProviderSettings
 from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
 from lecturepilot.source_index_models import IndexedSourceFile
-
-
-MAX_FILES_PER_REQUEST = 24
 
 
 class CourseSourceRoutingPlanner:
@@ -41,16 +38,12 @@ class CourseSourceRoutingPlanner:
         settings = self.provider_registry.require_ready(
             [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
         )
-        proposed: dict[str, CourseSourceRoute] = {}
-        for batch in source_route_batches(files):
-            routes = await self._propose_batch(
-                settings=settings,
-                messages=_routing_messages(course_id, batch, lectures, roots, inventory=files),
-                files=batch,
-                lectures=lectures,
-            )
-            proposed.update({route.path: route for route in routes})
-        ordered = [proposed[item.path] for item in files]
+        ordered = await self._propose_selection(
+            settings=settings,
+            messages=_routing_messages(course_id, files, lectures, roots),
+            files=files,
+            lectures=lectures,
+        )
         return await self._review_complete_manifest(
             settings=settings,
             messages=routing_review_messages(course_id, files, lectures, roots, ordered),
@@ -72,7 +65,12 @@ class CourseSourceRoutingPlanner:
                 payload = await self.model_client.review_routing(
                     settings=settings, messages=messages
                 )
-                return apply_review_corrections(payload, routes, lectures)
+                return apply_review_corrections(
+                    payload,
+                    routes,
+                    lectures,
+                    protected_paths=_primary_paths(lectures),
+                )
             except ProviderConfigurationError as exc:
                 last_error = exc
                 messages = [*messages, _review_repair_message(str(exc))]
@@ -80,7 +78,7 @@ class CourseSourceRoutingPlanner:
             "Source-routing review agent returned no usable corrections."
         )
 
-    async def _propose_batch(
+    async def _propose_selection(
         self,
         *,
         settings: ProviderSettings,
@@ -94,20 +92,13 @@ class CourseSourceRoutingPlanner:
                 payload = await self.model_client.complete_routing(
                     settings=settings, messages=messages
                 )
-                return _read_routes(payload, files, lectures)
+                return _read_selected_routes(payload, files, lectures)
             except ProviderConfigurationError as exc:
                 last_error = exc
                 messages = [*messages, _repair_message(str(exc))]
         raise last_error or ProviderConfigurationError(
-            "Source-routing agent returned no usable assignments."
+            "Source-routing agent returned no usable selection."
         )
-
-
-def source_route_batches(files: list[IndexedSourceFile]) -> list[list[IndexedSourceFile]]:
-    return [
-        files[offset : offset + MAX_FILES_PER_REQUEST]
-        for offset in range(0, len(files), MAX_FILES_PER_REQUEST)
-    ]
 
 
 def _routing_messages(
@@ -115,32 +106,27 @@ def _routing_messages(
     files: list[IndexedSourceFile],
     lectures: list[Lecture],
     roots: list[Path],
-    *,
-    inventory: list[IndexedSourceFile],
 ) -> list[dict[str, str]]:
     return [
         {
             "role": "system",
             "content": (
-                "You are the LecturePilot source-routing agent. Semantically assign every "
-                "listed file exactly once before a professor reviews the proposal. Use lecture "
-                "for material needed by one lecture, course_wide for material needed by every "
-                "lecture, and excluded only when a file must never enter Canvas generation "
-                "because it is unrelated, a build artifact, a submission, an answer key, or a "
-                "duplicate. Do not exclude a file merely because its name is ambiguous; inspect "
-                "its content evidence and choose the best lecture. Use only the listed paths and "
-                "lecture ids. Treat derived conversions as duplicates when the inventory contains "
-                "their original source. Student submissions, answer keys, grading schemes, and "
-                "temporary render artifacts must be excluded. When primary lecture material exists, "
-                "exclude assignment sheets, assignment slides, graded reports, and derived text "
-                "conversions of those artifacts; they must not shape the lecture Canvas. Also exclude "
-                "derived text conversions of primary PDFs when the original PDF is present and "
-                "readable. A lecture route requires lecture_id; other roles require null."
+                "You are the LecturePilot source-selection agent. The professor-reviewed lecture "
+                "schedule already identifies each lecture's authoritative primary source. Return "
+                "only additional selected sources that are genuinely needed for one lecture or "
+                "the whole course; all omitted files stay excluded. Infer semantically from content "
+                "and hierarchy without requiring a naming or folder convention. Never select "
+                "assignment sheets, assignment slides, submissions, solutions, answer keys, grading "
+                "material, exam-preparation guidance, exam protocols, temporary artifacts, or derived "
+                "text conversions when an original is present. Use course_wide only for foundational "
+                "teaching material applicable to every lecture, such as a syllabus or shared glossary. "
+                "Do not return a primary source again. Use only listed paths and lecture ids. Lecture "
+                "selections require lecture_id; course_wide selections require null."
             ),
         },
         {
             "role": "user",
-            "content": _routing_evidence(course_id, files, lectures, roots, inventory=inventory),
+            "content": _routing_evidence(course_id, files, lectures, roots),
         },
     ]
 
@@ -150,8 +136,6 @@ def _routing_evidence(
     files: list[IndexedSourceFile],
     lectures: list[Lecture],
     roots: list[Path],
-    *,
-    inventory: list[IndexedSourceFile],
 ) -> str:
     lines = [f"Course id: {course_id}", "Lectures:"]
     for lecture in lectures:
@@ -159,12 +143,12 @@ def _routing_evidence(
             f"- id={lecture.id}; title={lecture.title}; date={lecture.date}; "
             f"primary_path={lecture.material_path or 'none'}"
         )
-    lines.append(f"\nComplete course inventory ({len(inventory)} files), for context only:")
-    for item in inventory:
-        lines.append(f"- path={item.path}; kind={item.kind}; size={item.size_bytes}")
-    noun = "file" if len(files) == 1 else "files"
-    lines.append(f"\nFiles to assign in this response ({len(files)} {noun}), exactly once:")
+    lines.append(f"\nComplete course inventory ({len(files)} files):")
     for item in files:
+        lines.append(f"- path={item.path}; kind={item.kind}; size={item.size_bytes}")
+    details = selection_detail_files(files, _primary_paths(lectures))
+    lines.append(f"\nCandidate content evidence ({len(details)} representative files):")
+    for item in details:
         lines.append(
             f"- path={item.path}; kind={item.kind}; size={item.size_bytes}\n"
             f"  content={source_file_excerpt(item, roots)}"
@@ -172,14 +156,19 @@ def _routing_evidence(
     return "\n".join(lines)
 
 
-def _read_routes(
+def _read_selected_routes(
     payload: dict, files: list[IndexedSourceFile], lectures: list[Lecture]
 ) -> list[CourseSourceRoute]:
-    raw_routes = payload.get("routes") if isinstance(payload, dict) else None
+    raw_routes = payload.get("selections") if isinstance(payload, dict) else None
     if not isinstance(raw_routes, list):
-        raise ProviderConfigurationError("Source-routing JSON must include a routes array.")
+        raise ProviderConfigurationError("Source-routing JSON must include a selections array.")
     indexed = {item.path: item for item in files}
     lecture_ids = {lecture.id for lecture in lectures}
+    primary = {
+        lecture.material_path: lecture.id
+        for lecture in lectures
+        if lecture.material_path is not None
+    }
     parsed: dict[str, CourseSourceRoute] = {}
     for raw in raw_routes:
         if not isinstance(raw, dict) or not isinstance(raw.get("path"), str):
@@ -189,10 +178,16 @@ def _read_routes(
             raise ProviderConfigurationError(f"Unknown source path returned: {path}")
         if path in parsed:
             raise ProviderConfigurationError(f"Duplicate source path returned: {path}")
+        if path in primary:
+            raise ProviderConfigurationError(
+                f"Do not reselect professor-reviewed primary source: {path}"
+            )
         try:
             role = SourceRouteRole(raw.get("role"))
         except ValueError as exc:
             raise ProviderConfigurationError("Use a supported source-routing role.") from exc
+        if role == SourceRouteRole.EXCLUDED:
+            raise ProviderConfigurationError("Omit excluded sources from the selection.")
         lecture_id = raw.get("lecture_id")
         if role == SourceRouteRole.LECTURE and lecture_id not in lecture_ids:
             raise ProviderConfigurationError("Lecture routes must use a known lecture id.")
@@ -206,12 +201,21 @@ def _read_routes(
             role=role,
             lecture_id=lecture_id,
         )
-    if parsed.keys() != indexed.keys():
-        missing = [item.path for item in files if item.path not in parsed]
-        raise ProviderConfigurationError(
-            "Assign every listed path exactly once. Missing paths: " + ", ".join(missing)
+    routes = []
+    for item in files:
+        routes.append(
+            parsed.get(item.path)
+            or CourseSourceRoute(
+                path=item.path,
+                kind=item.kind,
+                sha256=item.sha256,
+                role=(
+                    SourceRouteRole.LECTURE if item.path in primary else SourceRouteRole.EXCLUDED
+                ),
+                lecture_id=primary.get(item.path),
+            )
         )
-    return [parsed[item.path] for item in files]
+    return routes
 
 
 def _repair_message(error: str) -> dict[str, str]:
@@ -219,7 +223,7 @@ def _repair_message(error: str) -> dict[str, str]:
         "role": "user",
         "content": (
             f"The proposal violated the routing contract: {error} "
-            "Assign every listed path exactly once using only lecture, course_wide, or excluded."
+            "Return only necessary additional lecture or course_wide selections."
         ),
     }
 
@@ -232,3 +236,7 @@ def _review_repair_message(error: str) -> dict[str, str]:
             "Return only unique corrections for listed paths."
         ),
     }
+
+
+def _primary_paths(lectures: list[Lecture]) -> set[str]:
+    return {lecture.material_path for lecture in lectures if lecture.material_path}

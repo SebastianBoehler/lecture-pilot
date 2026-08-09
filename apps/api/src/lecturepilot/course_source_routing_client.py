@@ -18,7 +18,7 @@ class SourceRoutingModelClient(Protocol):
     async def complete_routing(
         self, *, settings: ProviderSettings, messages: list[dict[str, str]]
     ) -> dict:
-        """Return one validated source assignment per listed file."""
+        """Return selected non-primary sources for the complete inventory."""
 
     async def review_routing(
         self, *, settings: ProviderSettings, messages: list[dict[str, str]]

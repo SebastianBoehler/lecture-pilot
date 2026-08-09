@@ -46,10 +46,8 @@ class ProviderQualityGateDecision(BaseModel):
 
     gate_id: str = Field(min_length=1, max_length=160)
     gate_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
-    status: Literal["passed", "needs_evidence"]
     reason: str = Field(min_length=1, max_length=500)
     evidence_ids: list[str] = Field(max_length=40)
-    missing_evidence_ids: list[str] = Field(max_length=40)
 
 
 class ProviderAgentTurnResult(BaseModel):

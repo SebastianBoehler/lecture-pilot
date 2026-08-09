@@ -3,16 +3,22 @@ from __future__ import annotations
 from typing import Any
 
 from lecturepilot import component_response_schema
+from lecturepilot.learning_map import LearningMapGate
+from lecturepilot.model_commands import assessment_required
+from lecturepilot.models import AgentTurnInput
 from lecturepilot.provider_turn_schema import assessment_schema, next_check_schema
 
 
-def lecturepilot_response_format() -> dict[str, Any]:
+def lecturepilot_response_format(turn: AgentTurnInput) -> dict[str, Any]:
     return {
         "type": "json_schema",
         "json_schema": {
             "name": "lecturepilot_agent_turn",
             "strict": True,
-            "schema": _agent_turn_schema(),
+            "schema": _agent_turn_schema(
+                assessment_gate=(turn.active_gate if assessment_required(turn) else None),
+                next_check_gate=turn.active_gate,
+            ),
         },
     }
 
@@ -79,12 +85,16 @@ def source_routing_response_format() -> dict[str, Any]:
                 "type": "object",
                 "additionalProperties": False,
                 "properties": {
-                    "routes": {
+                    "selections": {
                         "type": "array",
-                        "items": {"anyOf": [_source_route_schema(role) for role in _ROUTE_ROLES]},
+                        "items": {
+                            "anyOf": [
+                                _source_route_schema(role) for role in ("lecture", "course_wide")
+                            ]
+                        },
                     },
                 },
-                "required": ["routes"],
+                "required": ["selections"],
             },
         },
     }
@@ -102,16 +112,18 @@ def source_routing_review_response_format() -> dict[str, Any]:
                 "properties": {
                     "corrections": {
                         "type": "array",
-                        "items": {"anyOf": [_source_route_schema(role) for role in _ROUTE_ROLES]},
+                        "items": {
+                            "anyOf": [
+                                _source_route_schema(role)
+                                for role in ("lecture", "course_wide", "excluded")
+                            ]
+                        },
                     },
                 },
                 "required": ["corrections"],
             },
         },
     }
-
-
-_ROUTE_ROLES = ("lecture", "course_wide", "excluded")
 
 
 def _source_route_schema(role: str) -> dict[str, Any]:
@@ -128,15 +140,14 @@ def _source_route_schema(role: str) -> dict[str, Any]:
     }
 
 
-def _agent_turn_schema() -> dict[str, Any]:
+def _agent_turn_schema(
+    *, assessment_gate: LearningMapGate | None, next_check_gate: LearningMapGate | None
+) -> dict[str, Any]:
     return {
         "type": "object",
         "additionalProperties": False,
         "properties": {
-            "message": {
-                "type": "string",
-                "description": "Student-facing tutor response.",
-            },
+            "message": {"type": "string"},
             "session_goal": _nullable_string(
                 "Active session goal, including a learner correction when provided."
             ),
@@ -145,8 +156,8 @@ def _agent_turn_schema() -> dict[str, Any]:
                 "items": _canvas_command_schema(),
                 "description": "Canvas navigation or learner-owned canvas updates.",
             },
-            "assessment": assessment_schema(),
-            "next_check": next_check_schema(),
+            "assessment": assessment_schema(assessment_gate),
+            "next_check": next_check_schema(next_check_gate),
         },
         "required": [
             "message",
@@ -173,7 +184,7 @@ def _canvas_command_schema() -> dict[str, Any]:
                     "update_section",
                 ],
             },
-            "section_id": _nullable_string("Existing or generated section id."),
+            "section_id": _nullable_string("Section to focus; highlight parents are resolved."),
             "span_id": _nullable_string("Existing canvas block id for precise highlight."),
             "highlight_text": _nullable_string("Short phrase from the highlighted block."),
             "artifact_id": _nullable_string("Artifact id for open_artifact commands."),

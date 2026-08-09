@@ -41,18 +41,23 @@ def read_quality_gate(payload: dict, turn: AgentTurnInput) -> QualityGateDecisio
     return validate_quality_gate_decision(gate, turn)
 
 
-def validate_quality_gate_decision(
-    decision: QualityGateDecision | None,
-    turn: AgentTurnInput,
-) -> QualityGateDecision | None:
+def assessment_required(turn: AgentTurnInput) -> bool:
     active_gate = turn.active_gate
     context = turn.coaching_context
-    bound = (
+    return (
         active_gate is not None
         and context.pending_check_gate_id == active_gate.id
         and context.pending_check_gate_revision == active_gate.revision
         and context.pending_check_issued_at is not None
     )
+
+
+def validate_quality_gate_decision(
+    decision: QualityGateDecision | None,
+    turn: AgentTurnInput,
+) -> QualityGateDecision | None:
+    active_gate = turn.active_gate
+    bound = assessment_required(turn)
     if active_gate is None:
         if decision is not None:
             raise ProviderConfigurationError(
@@ -94,7 +99,9 @@ def validate_next_check(next_check: NextCheck | None, turn: AgentTurnInput) -> N
         raise ProviderConfigurationError("Model next check does not match the active contract.")
 
 
-def validate_provider_canvas_commands(commands: list[CanvasCommand], turn: AgentTurnInput) -> None:
+def resolve_provider_canvas_commands(
+    commands: list[CanvasCommand], turn: AgentTurnInput
+) -> list[CanvasCommand]:
     focus = [command for command in commands if command.type == "focus_section"]
     highlights = [command for command in commands if command.type == "highlight_span"]
     if len(focus) != 1 or len(highlights) != 1:
@@ -111,10 +118,12 @@ def validate_provider_canvas_commands(commands: list[CanvasCommand], turn: Agent
     if highlight.span_id not in allowed_spans:
         raise ProviderConfigurationError("Model highlight target is not in the canvas context.")
     expected_section = _section_for_span(turn, highlight.span_id or "")
-    if highlight.section_id != expected_section:
-        raise ProviderConfigurationError(
-            "Model highlight section does not contain the target span."
-        )
+    return [
+        command.model_copy(update={"section_id": expected_section})
+        if command is highlight
+        else command
+        for command in commands
+    ]
 
 
 def _allowed_section_ids(turn: AgentTurnInput) -> set[str]:

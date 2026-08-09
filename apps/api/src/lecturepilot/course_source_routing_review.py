@@ -21,15 +21,18 @@ def routing_review_messages(
             "role": "system",
             "content": (
                 "You are the global LecturePilot source-routing reviewer. Review the complete "
-                "proposal across all batches before a professor sees it. Return only corrections. "
+                "least-privilege proposal before a professor sees it. Return only corrections. "
                 "Judge files semantically from their content, hierarchy, the full manifest, and "
                 "the lecture plan; never require a naming convention. Exclude student submissions, "
                 "assignments when primary teaching material exists, answer keys, grading material, "
-                "temporary artifacts, and derived copies when their original source is present and "
-                "readable. Ensure each lecture keeps its authoritative teaching material. Use only "
-                "listed paths and lecture ids. Lecture corrections require a lecture_id; course_wide "
-                "and excluded corrections require null. An empty corrections array means the complete "
-                "proposal is semantically coherent. The professor remains the final authority."
+                "exam-preparation guidance, exam protocols, temporary artifacts, and derived copies "
+                "when their original source is present and readable. Reserve course_wide for "
+                "foundational teaching material applicable to every lecture, such as a syllabus or "
+                "shared glossary. Ensure each lecture keeps its authoritative teaching material. Use "
+                "only listed paths and lecture ids. Lecture corrections require a lecture_id; "
+                "course_wide and excluded corrections require null. An empty corrections array means "
+                "the complete proposal is semantically coherent. The professor remains the final "
+                "authority."
             ),
         },
         {
@@ -75,6 +78,8 @@ def apply_review_corrections(
     payload: dict,
     routes: list[CourseSourceRoute],
     lectures: list[Lecture],
+    *,
+    protected_paths: set[str] | None = None,
 ) -> list[CourseSourceRoute]:
     raw_corrections = payload.get("corrections") if isinstance(payload, dict) else None
     if not isinstance(raw_corrections, list):
@@ -92,6 +97,10 @@ def apply_review_corrections(
             raise ProviderConfigurationError(f"Unknown correction path returned: {path}")
         if path in seen:
             raise ProviderConfigurationError(f"Duplicate correction path returned: {path}")
+        if path in (protected_paths or set()):
+            raise ProviderConfigurationError(
+                f"Do not change professor-reviewed primary source: {path}"
+            )
         seen.add(path)
         try:
             role = SourceRouteRole(raw.get("role"))

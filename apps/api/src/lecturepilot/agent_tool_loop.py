@@ -137,7 +137,7 @@ async def _final_json_response(
                 ),
             },
         ],
-        response_format=lecturepilot_response_format(),
+        response_format=lecturepilot_response_format(turn),
         **completion_options(settings, temperature=0.3, reasoning_effort="low"),
     )
     return agent_result_from_content(

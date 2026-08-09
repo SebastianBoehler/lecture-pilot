@@ -3,10 +3,9 @@ from datetime import date
 import pytest
 
 from lecturepilot.course_source_routing_planner import (
-    _read_routes,
+    _read_selected_routes,
     _routing_evidence,
     _routing_messages,
-    source_route_batches,
 )
 from lecturepilot.agent_response_schema import source_routing_response_format
 from lecturepilot.course_source_routing_models import CourseSourceRoute, SourceRouteRole
@@ -19,46 +18,40 @@ from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.source_index_models import IndexedSourceFile
 
 
-def test_source_routing_batches_large_course_without_losing_paths() -> None:
-    files = [_indexed_file(number) for number in range(139)]
-
-    batches = source_route_batches(files)
-
-    assert max(map(len, batches)) <= 24
-    assert [item.path for batch in batches for item in batch] == [item.path for item in files]
-
-
-def test_source_routing_repair_identifies_exact_missing_paths() -> None:
-    files = [_indexed_file(number) for number in range(3)]
+def test_source_selection_builds_complete_least_privilege_manifest() -> None:
+    files = [_indexed_file(number) for number in range(1525)]
     lecture = Lecture(
         id="lecture-01",
         course_id="course",
         title="Introduction",
         date=date(2026, 4, 13),
+        material_path=files[0].path,
     )
 
-    with pytest.raises(ProviderConfigurationError) as error:
-        _read_routes(
-            {
-                "routes": [
-                    {
-                        "path": files[0].path,
-                        "role": "lecture",
-                        "lecture_id": lecture.id,
-                    }
-                ]
-            },
-            files,
-            [lecture],
-        )
+    routes = _read_selected_routes(
+        {
+            "selections": [
+                {
+                    "path": files[1].path,
+                    "role": "course_wide",
+                    "lecture_id": None,
+                }
+            ]
+        },
+        files,
+        [lecture],
+    )
 
-    assert files[1].path in str(error.value)
-    assert files[2].path in str(error.value)
+    assert len(routes) == len(files)
+    assert routes[0].role == SourceRouteRole.LECTURE
+    assert routes[0].lecture_id == lecture.id
+    assert routes[1].role == SourceRouteRole.COURSE_WIDE
+    assert all(route.role == SourceRouteRole.EXCLUDED for route in routes[2:])
 
 
 def test_source_routing_schema_binds_role_to_lecture_id_shape() -> None:
     schema = source_routing_response_format()["json_schema"]["schema"]
-    variants = schema["properties"]["routes"]["items"]["anyOf"]
+    variants = schema["properties"]["selections"]["items"]["anyOf"]
 
     by_role = {
         variant["properties"]["role"]["const"]: variant["properties"]["lecture_id"]
@@ -66,10 +59,10 @@ def test_source_routing_schema_binds_role_to_lecture_id_shape() -> None:
     }
     assert by_role["lecture"]["type"] == "string"
     assert by_role["course_wide"] == {"type": "null"}
-    assert by_role["excluded"] == {"type": "null"}
+    assert "excluded" not in by_role
 
 
-def test_source_routing_batch_sees_complete_inventory_for_duplicate_context() -> None:
+def test_source_selection_sees_complete_inventory_and_bounded_detail() -> None:
     files = [_indexed_file(number) for number in range(3)]
     lecture = Lecture(
         id="lecture-01",
@@ -78,10 +71,10 @@ def test_source_routing_batch_sees_complete_inventory_for_duplicate_context() ->
         date=date(2026, 4, 13),
     )
 
-    evidence = _routing_evidence("course", files[:1], [lecture], [], inventory=files)
+    evidence = _routing_evidence("course", files, [lecture], [])
 
     assert "Complete course inventory (3 files)" in evidence
-    assert "Files to assign in this response (1 file)" in evidence
+    assert "Candidate content evidence" in evidence
     for item in files:
         assert item.path in evidence
 
@@ -95,11 +88,39 @@ def test_source_routing_agent_excludes_assignments_when_lecture_material_exists(
         date=date(2026, 4, 13),
     )
 
-    messages = _routing_messages("course", files, [lecture], [], inventory=files)
+    messages = _routing_messages("course", files, [lecture], [])
 
-    assert "When primary lecture material exists" in messages[0]["content"]
+    assert "Return only additional selected sources" in messages[0]["content"]
     assert "assignment sheets" in messages[0]["content"]
+    assert "exam-preparation guidance" in messages[0]["content"]
+    assert "applicable to every lecture" in messages[0]["content"]
     assert "derived text conversions" in messages[0]["content"]
+
+
+def test_source_selection_rejects_primary_reassignment() -> None:
+    files = [_indexed_file(0)]
+    lecture = Lecture(
+        id="lecture-01",
+        course_id="course",
+        title="Introduction",
+        date=date(2026, 4, 13),
+        material_path=files[0].path,
+    )
+
+    with pytest.raises(ProviderConfigurationError, match="primary source"):
+        _read_selected_routes(
+            {
+                "selections": [
+                    {
+                        "path": files[0].path,
+                        "role": "course_wide",
+                        "lecture_id": None,
+                    }
+                ]
+            },
+            files,
+            [lecture],
+        )
 
 
 def test_global_reviewer_sees_every_proposal_and_selected_side_source(tmp_path) -> None:
@@ -126,10 +147,11 @@ def test_global_reviewer_sees_every_proposal_and_selected_side_source(tmp_path) 
     messages = routing_review_messages("course", files, [lecture], [tmp_path], routes)
     evidence = messages[1]["content"]
 
+    assert "exam protocols" in messages[0]["content"]
+    assert "applicable to every lecture" in messages[0]["content"]
     assert primary.name in evidence
     assert side.name in evidence
     assert "Submit your graded answers" in evidence
-    assert "Review the complete proposal across all batches" in messages[0]["content"]
 
 
 def test_global_reviewer_applies_only_known_unique_corrections() -> None:

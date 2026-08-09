@@ -104,10 +104,8 @@ def _payload() -> dict:
         "assessment": {
             "gate_id": gate.id,
             "gate_revision": gate.revision,
-            "status": "needs_evidence",
             "reason": "The boundary is missing.",
             "evidence_ids": ["causal-link"],
-            "missing_evidence_ids": ["boundary"],
         },
         "next_check": {
             "gate_id": gate.id,
@@ -202,7 +200,6 @@ def test_provider_payload_rejects_unknown_nested_block_fields() -> None:
         ("gate_id", "invented-gate"),
         ("gate_revision", "f" * 64),
         ("evidence_ids", ["invented-evidence"]),
-        ("missing_evidence_ids", ["invented-evidence"]),
     ],
 )
 def test_provider_payload_rejects_gate_contract_mismatches(field: str, value: object) -> None:
@@ -252,9 +249,48 @@ def test_provider_payload_accepts_one_complete_strict_contract() -> None:
     ]
 
 
+def test_provider_payload_derives_the_gate_outcome_from_evidence() -> None:
+    payload = _payload()
+
+    result = _parse(payload)
+
+    assert result.quality_gate.status.value == "needs_evidence"
+    assert result.quality_gate.missing_evidence_ids == ["boundary"]
+
+
+def test_provider_payload_resolves_highlight_section_from_the_block() -> None:
+    turn = _turn().model_copy(deep=True)
+    turn.canvas_context.sections.append(
+        CanvasSection(
+            id="application",
+            title="Application",
+            blocks=[CanvasBlock(id="application-text", type="paragraph", text="Apply it here.")],
+        )
+    )
+    payload = _payload()
+    payload["canvas_commands"][1]["span_id"] = "application-text"
+
+    result = agent_result_from_content(json.dumps(payload), turn, "model")
+
+    assert result.canvas_commands[1].section_id == "application"
+
+
 def test_provider_schema_requires_gate_revision() -> None:
-    schema = lecturepilot_response_format()["json_schema"]["schema"]
+    schema = lecturepilot_response_format(_turn())["json_schema"]["schema"]
     gate_schema = schema["properties"]["assessment"]
 
     assert "gate_revision" in gate_schema["properties"]
     assert "gate_revision" in gate_schema["required"]
+    assert gate_schema["properties"]["gate_id"] == {"type": "string", "const": _gate().id}
+    assert gate_schema["properties"]["gate_revision"] == {
+        "type": "string",
+        "const": _gate().revision,
+    }
+
+
+def test_provider_schema_binds_assessment_presence_to_the_pending_check() -> None:
+    required = lecturepilot_response_format(_turn())["json_schema"]["schema"]
+    prohibited = lecturepilot_response_format(_turn(bound_check=False))["json_schema"]["schema"]
+
+    assert required["properties"]["assessment"]["type"] == "object"
+    assert prohibited["properties"]["assessment"] == {"type": "null"}

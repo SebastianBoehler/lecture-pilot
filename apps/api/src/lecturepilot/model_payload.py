@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from lecturepilot.coaching_assistance import emitted_assistance_level
 from lecturepilot.model_commands import (
-    validate_provider_canvas_commands,
+    resolve_provider_canvas_commands,
     validate_next_check,
     validate_quality_gate_decision,
 )
@@ -16,7 +16,7 @@ from lecturepilot.models import (
     QualityGateDecision,
     QualityGateStatus,
 )
-from lecturepilot.provider_turn_result import ProviderAgentTurnResult
+from lecturepilot.provider_turn_result import ProviderAgentTurnResult, ProviderQualityGateDecision
 from lecturepilot.providers import ProviderConfigurationError
 
 
@@ -32,16 +32,10 @@ def agent_result_from_content(
         raise ProviderConfigurationError(
             "Model response violates the tutor result contract."
         ) from exc
-    commands = [command.to_domain() for command in provider_result.canvas_commands]
-    validate_provider_canvas_commands(commands, turn)
-    decision = (
-        QualityGateDecision(
-            **provider_result.assessment.model_dump(mode="json", exclude={"status"}),
-            status=QualityGateStatus(provider_result.assessment.status),
-        )
-        if provider_result.assessment is not None
-        else None
+    commands = resolve_provider_canvas_commands(
+        [command.to_domain() for command in provider_result.canvas_commands], turn
     )
+    decision = _quality_gate_decision(provider_result.assessment, turn)
     decision = validate_quality_gate_decision(decision, turn)
     validate_next_check(provider_result.next_check, turn)
     result = AgentTurnResult(
@@ -64,6 +58,26 @@ def agent_result_from_content(
     except ValueError as exc:
         raise ProviderConfigurationError(f"Invalid next-check assistance: {exc}.") from exc
     return result
+
+
+def _quality_gate_decision(
+    assessment: ProviderQualityGateDecision | None, turn: AgentTurnInput
+) -> QualityGateDecision | None:
+    if assessment is None:
+        return None
+    required = [
+        criterion.id
+        for criterion in (turn.active_gate.evidence_criteria if turn.active_gate else [])
+        if criterion.required
+    ]
+    missing = [
+        evidence_id for evidence_id in required if evidence_id not in assessment.evidence_ids
+    ]
+    return QualityGateDecision(
+        **assessment.model_dump(mode="json"),
+        status=(QualityGateStatus.NEEDS_EVIDENCE if missing else QualityGateStatus.PASSED),
+        missing_evidence_ids=missing,
+    )
 
 
 def parse_model_payload(content: str | None) -> dict:
