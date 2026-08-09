@@ -8,7 +8,7 @@ from lecturepilot.canvas_component_blocks import component_to_markdown, read_com
 from lecturepilot.canvas_models import CanvasBlock
 
 
-def block_to_markdown(block: CanvasBlock) -> str:
+def block_to_markdown(block: CanvasBlock, *, inline_components: bool = False) -> str:
     header = f'<!-- block id="{block.id}" type="{block.type}" -->'
     if block.type == "asset":
         target = asset_markdown_target(block)
@@ -29,7 +29,7 @@ def block_to_markdown(block: CanvasBlock) -> str:
     if block.type == "table":
         return f"{header}\n{block.text or ''}"
     if block.type == "component":
-        return f"{header}\n{component_to_markdown(block)}"
+        return f"{header}\n{component_to_markdown(block, inline=inline_components)}"
     if block.type == "callout":
         return f"{header}\n" + "\n".join(f"> {line}" for line in (block.text or "").splitlines())
     return f"{header}\n{block.text or ''}"

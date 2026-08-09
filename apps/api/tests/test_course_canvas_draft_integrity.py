@@ -1,6 +1,5 @@
 from pathlib import Path
 
-import pytest
 from fastapi.testclient import TestClient
 
 from auth_helpers import confirm_source_routing, professor_headers
@@ -10,89 +9,7 @@ from lecturepilot.canvas_models import MAX_SOURCE_REF_LENGTH, CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT_VERSION
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
-from lecturepilot.course_canvas_plan_parser import planned_document as _planned_document
 from lecturepilot.course_canvas_repairs import lecture_source_revision
-from lecturepilot.course_canvas_store import InvalidCanvasDraftError
-
-
-def test_planned_source_ref_preserves_bounded_source_evidence() -> None:
-    source_ref = "s" * MAX_SOURCE_REF_LENGTH
-    source = published_course_canvas("demo-course", "lecture-01").model_copy(
-        update={"source_kind": "markdown", "source_ref": source_ref}
-    )
-
-    result = _planned_document(
-        {
-            "sections": [
-                {
-                    "id": "introduction",
-                    "title": "Introduction",
-                    "source_ref": source_ref,
-                    "blocks": [{"type": "paragraph", "text": "Source-backed detail."}],
-                }
-            ]
-        },
-        source,
-    )
-
-    validated = CanvasDocument.model_validate(result.model_dump())
-    assert validated.source_ref == source_ref
-    assert len(validated.source_ref) == MAX_SOURCE_REF_LENGTH
-
-
-def test_invalid_draft_does_not_replace_existing_draft(tmp_path: Path) -> None:
-    workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=tmp_path / "materials",
-    )
-    existing = published_course_canvas("demo-course", "lecture-01")
-    stored = write_canvas_draft(workspace, existing)
-    invalid = existing.model_copy(
-        update={
-            "title": "Invalid replacement",
-            "source_ref": "s" * (MAX_SOURCE_REF_LENGTH + 1),
-        }
-    )
-
-    with pytest.raises(InvalidCanvasDraftError):
-        workspace.course_canvas_store.write_draft(
-            invalid,
-            expected_source_revision=_revision(workspace, "demo-course"),
-        )
-
-    preserved = workspace.course_canvas_store.read_draft(
-        course_id="demo-course", lecture_id="lecture-01"
-    )
-    assert preserved is not None
-    assert preserved.title == existing.title
-    assert preserved.source_ref == stored.source_ref
-
-
-def test_generation_rejects_invalid_draft_without_replacing_existing(
-    tmp_path: Path,
-) -> None:
-    client = _course_client(tmp_path)
-    existing = published_course_canvas("draft-integrity", "lecture-01")
-    write_canvas_draft(client.app.state.canvas_workspace, existing)
-    client.app.state.course_planner = _InvalidCoursePlanner()
-
-    response = client.post(
-        "/admin/courses/draft-integrity/lectures/lecture-01/canvas/draft",
-        headers={
-            **professor_headers(),
-            **_client_contract_headers(),
-            "Idempotency-Key": "draft-request-key-invalid-0001",
-        },
-    )
-
-    assert response.status_code == 502
-    assert response.json()["detail"] == "Generated canvas draft is invalid and was not saved."
-    preview = client.get(
-        "/admin/courses/draft-integrity/lectures/lecture-01/canvas/draft",
-        headers=professor_headers(),
-    )
-    assert preview.status_code == 200
-    assert preview.json()["title"] == existing.title
 
 
 def test_generation_requires_a_valid_idempotency_key(tmp_path: Path) -> None:

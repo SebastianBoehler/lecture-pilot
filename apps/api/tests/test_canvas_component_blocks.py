@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from lecturepilot.canvas_component_blocks import read_component_block
 
 
@@ -30,3 +32,17 @@ data:
 
     assert block.caption == "LLM history"
     assert block.caption != block.component_ref
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        '{"id": "inline", "version": 1}',
+        '{"type": "single_choice_quiz", "version": 1}',
+        '{"id": "inline", "type": "single_choice_quiz"}',
+        '{"id": "inline", "type": "single_choice_quiz", "version": true}',
+    ],
+)
+def test_inline_component_requires_complete_strict_identity(body: str) -> None:
+    with pytest.raises(ValueError, match="complete id, type, and integer version"):
+        read_component_block("inline-block", None, body)

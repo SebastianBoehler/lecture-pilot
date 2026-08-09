@@ -1,22 +1,11 @@
 from fastapi import HTTPException
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument
-from lecturepilot.quiz_identity import (
-    DuplicateCanonicalQuizIdError,
-    canonical_quiz_id,
-    is_quiz_block,
-    validate_unique_quiz_ids,
-)
+from lecturepilot.quiz_identity import canonical_quiz_id, is_quiz_block, validate_unique_quiz_ids
 
 
 def quiz_block(document: CanvasDocument, block_id: str) -> CanvasBlock:
-    try:
-        validate_unique_quiz_ids(document)
-    except DuplicateCanonicalQuizIdError as exc:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Published canvas has duplicate quiz ID '{exc.quiz_id}'.",
-        ) from exc
+    validate_unique_quiz_ids(document)
     matches = [
         block
         for section in document.sections

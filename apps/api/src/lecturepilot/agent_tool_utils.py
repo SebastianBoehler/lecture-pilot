@@ -41,6 +41,23 @@ def relative_write_path(logical: str) -> str:
     )
 
 
+def require_current_canvas_write_path(logical_path: str) -> None:
+    if not logical_path.startswith("/lecture/canvas/"):
+        return
+    if logical_path.startswith(("/lecture/canvas/student/", "/lecture/canvas/student-assets/")):
+        return
+    raise AgentToolArgumentError("This workspace root is read-only.")
+
+
+def resolve_tool_path(workspace_fs: Any, logical_path: str, *, for_write: bool) -> ToolPath:
+    try:
+        if for_write:
+            require_current_canvas_write_path(logical_path)
+        return workspace_fs.resolve(logical_path, for_write=for_write)
+    except ValueError as exc:
+        raise AgentToolArgumentError(str(exc)) from exc
+
+
 def required_str(args: dict[str, Any], name: str, default: str | None = None) -> str:
     value = args.get(name, default)
     if not isinstance(value, str) or (default is None and not value.strip()):

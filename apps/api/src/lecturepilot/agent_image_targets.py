@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 
 from lecturepilot.agent_canvas_write import find_student_canvas_section_path
-from lecturepilot.canvas_markdown import read_student_section_placements
+from lecturepilot.learner_canvas_markdown import read_student_section_placements
 from lecturepilot.canvas_models import CanvasSection
 from lecturepilot.canvas_signatures import is_student_section
 

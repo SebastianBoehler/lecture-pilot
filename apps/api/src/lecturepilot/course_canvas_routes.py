@@ -30,6 +30,7 @@ from lecturepilot.professor_preview import (
     is_professor_preview_user_id,
     resolve_learner_workspace_access,
 )
+from lecturepilot.quiz_identity import validate_unique_quiz_ids
 from lecturepilot.tenancy import TenantContext
 
 
@@ -145,6 +146,7 @@ def register_course_canvas_routes(
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         if snapshot is None:
             raise HTTPException(status_code=404, detail="Canvas has not been published.")
+        validate_unique_quiz_ids(snapshot.document)
         return published_canvas_payload(
             snapshot.document,
             publication_version=snapshot.version,

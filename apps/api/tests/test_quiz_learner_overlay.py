@@ -121,9 +121,15 @@ def test_learner_overlay_quiz_collision_fails_before_state_or_analytics(
     _install_overlay(client, "student-a", sections)
     headers = student_headers("student-a", course_ids=[COURSE_ID])
 
+    canvas = client.get(
+        f"/courses/{COURSE_ID}/lectures/{LECTURE_ID}/canvas",
+        headers=headers,
+    )
     response = _submit(client, headers, "collision-attempt", "risk-quiz", 1)
 
     expected_id = "risk-quiz" if collision == "official" else "shared-overlay-quiz"
+    assert canvas.status_code == 409
+    assert canvas.json()["detail"] == (f"Published canvas has duplicate quiz ID '{expected_id}'.")
     assert response.status_code == 409
     assert response.json()["detail"] == (f"Published canvas has duplicate quiz ID '{expected_id}'.")
     assert _state(client, headers) == {}

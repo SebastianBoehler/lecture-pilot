@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from lecturepilot.canvas_markdown import (
+from lecturepilot.canvas_markdown import CanvasMarkdownError
+from lecturepilot.learner_canvas_markdown import (
     place_student_sections,
     read_student_section_placements,
     read_student_sections,
@@ -89,11 +90,14 @@ class CanvasLearnerWorkspaceMixin:
     ) -> list[CanvasSection]:
         canvas_dir = self._canvas_dir(course_id, lecture_id, user_id)
         with locked_canvas_access(canvas_dir):
-            return read_student_sections(
-                canvas_dir,
-                course_id=course_id,
-                lecture_id=lecture_id,
-            )
+            try:
+                return read_student_sections(
+                    canvas_dir,
+                    course_id=course_id,
+                    lecture_id=lecture_id,
+                )
+            except (CanvasMarkdownError, OSError, TypeError, ValueError) as exc:
+                raise InvalidLearnerCanvasError(str(exc)) from exc
 
     def _merge_learner_markdown(
         self,
@@ -104,19 +108,22 @@ class CanvasLearnerWorkspaceMixin:
         lecture_id: str,
         user_id: str,
     ) -> CanvasDocument:
-        document = published.model_copy(
-            update={
-                "sections": place_student_sections(
-                    published.sections,
-                    read_student_sections(
-                        canvas_dir,
-                        course_id=course_id,
-                        lecture_id=lecture_id,
-                    ),
-                    read_student_section_placements(canvas_dir),
-                )
-            }
-        )
+        try:
+            document = published.model_copy(
+                update={
+                    "sections": place_student_sections(
+                        published.sections,
+                        read_student_sections(
+                            canvas_dir,
+                            course_id=course_id,
+                            lecture_id=lecture_id,
+                        ),
+                        read_student_section_placements(canvas_dir),
+                    )
+                }
+            )
+        except (CanvasMarkdownError, OSError, TypeError, ValueError) as exc:
+            raise InvalidLearnerCanvasError(str(exc)) from exc
         document = apply_course_media(document, self.material_root)
         document = apply_course_media(document, self.course_media_root(course_id))
         return resolve_student_asset_refs(
@@ -133,3 +140,7 @@ class CanvasLearnerWorkspaceMixin:
 
     def _canvas_dir(self, course_id: str, lecture_id: str, user_id: str) -> Path:
         return self._lecture_workspace_dir(course_id, lecture_id, user_id) / "canvas"
+
+
+class InvalidLearnerCanvasError(RuntimeError):
+    pass

@@ -93,8 +93,11 @@ def test_agent_appended_canvas_section_persists_for_same_student(tmp_path: Path)
     assert "demo-gate" in (lecture_root / "tutor-state.json").read_text()
     assert not (lecture_root / "gates.json").exists()
     component_file = lecture_root / "canvas" / "components" / "student-risk-check.yaml"
-    assert component_file.exists()
-    assert "id: posterior-risk" in component_file.read_text(encoding="utf-8")
+    assert not component_file.exists()
+    learner_markdown = next((lecture_root / "canvas" / "student").glob("*.md")).read_text(
+        encoding="utf-8"
+    )
+    assert '"id": "posterior-risk"' in learner_markdown
 
 
 def test_learner_workspace_reset_clears_selected_scopes(tmp_path: Path) -> None:

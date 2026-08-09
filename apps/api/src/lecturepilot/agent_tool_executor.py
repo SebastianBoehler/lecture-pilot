@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 from fnmatch import fnmatch
-from pathlib import Path
 from typing import Any
 
 from lecturepilot.agent_canvas_write import prepare_student_canvas_write
@@ -16,10 +15,12 @@ from lecturepilot.agent_tool_utils import (
     int_arg,
     is_text_file,
     relative_write_path,
+    resolve_tool_path,
     required_str,
 )
 from lecturepilot.learner_canvas_locking import serialized_canvas_write
-from lecturepilot.canvas_markdown import CanvasMarkdownError, read_student_sections
+from lecturepilot.canvas_markdown import CanvasMarkdownError
+from lecturepilot.learner_canvas_markdown import read_student_sections
 from lecturepilot.canvas_signatures import is_student_section
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.models import CanvasCommand, QualityGateDecision
@@ -291,10 +292,7 @@ class AgentToolExecutor(AgentSideEffectTools):
         self.canvas_changed = True
 
     def _resolve(self, logical_path: str, *, for_write: bool = False) -> ToolPath:
-        try:
-            return self.workspace_fs.resolve(logical_path, for_write=for_write)
-        except ValueError as exc:
-            raise AgentToolError(str(exc)) from exc
+        return resolve_tool_path(self.workspace_fs, logical_path, for_write=for_write)
 
-    def _logical_for(self, path: Path) -> str:
+    def _logical_for(self, path) -> str:
         return self.workspace_fs.logical_for(path)

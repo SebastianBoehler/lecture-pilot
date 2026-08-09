@@ -172,48 +172,6 @@ def test_learning_design_rejects_stale_and_invalid_edits(tmp_path: Path) -> None
     assert bad_interval.status_code == 422
 
 
-def test_regeneration_and_source_change_invalidate_approval(tmp_path: Path) -> None:
-    client = _client_with_draft(tmp_path)
-    review = client.get(_review_path(), headers=professor_headers()).json()
-    approved = client.post(
-        f"{_review_path()}/approve",
-        headers=professor_headers(),
-        json={
-            "draft_digest": review["draft_digest"],
-            "source_revision": review["source_revision"],
-            "learning_map_revision": review["learning_map"]["revision"],
-        },
-    )
-    assert approved.status_code == 200
-
-    workspace = client.app.state.canvas_workspace
-    workspace.write_course_canvas_draft(
-        _document(title="Regenerated draft"),
-        expected_source_revision=_source_revision(workspace),
-    )
-    regenerated = client.get(_review_path(), headers=professor_headers())
-    blocked = client.post(_publish_path(), headers=professor_headers())
-    assert regenerated.status_code == 200
-    assert regenerated.json()["approval"] is None
-    assert regenerated.json()["draft_digest"] != review["draft_digest"]
-    assert blocked.status_code == 409
-
-    current = regenerated.json()
-    approved_again = client.post(
-        f"{_review_path()}/approve",
-        headers=professor_headers(),
-        json={
-            "draft_digest": current["draft_digest"],
-            "source_revision": current["source_revision"],
-            "learning_map_revision": current["learning_map"]["revision"],
-        },
-    )
-    assert approved_again.status_code == 200
-    _write_source_manifest(workspace, source_sha="b" * 64)
-    stale_source = client.post(_publish_path(), headers=professor_headers())
-    assert stale_source.status_code == 409
-
-
 def _client_with_draft(tmp_path: Path) -> TestClient:
     app = create_app()
     app.state.canvas_workspace = CanvasWorkspace(

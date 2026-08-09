@@ -2,30 +2,24 @@ from __future__ import annotations
 
 import os
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi import Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from starlette.responses import JSONResponse
 
 from lecturepilot.account_admin_routes import register_account_admin_routes
 from lecturepilot.admin_media_routes import register_admin_media_routes
 from lecturepilot.analytics import AnalyticsStore
 from lecturepilot.analytics_routes import register_analytics_routes
+from lecturepilot.app_exception_handlers import register_exception_handlers
 from lecturepilot.asset_routes import register_asset_routes
 from lecturepilot.agent_routes import register_agent_routes
 from lecturepilot.auth_routes import register_auth_routes
 from lecturepilot.body_limits import RequestBodyLimitMiddleware
 from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.client_contract import (
-    CLIENT_CONTRACT_HEADER,
-    CLIENT_CONTRACT_VERSION,
-    CLIENT_UPDATE_REQUIRED_CODE,
-    ClientUpdateRequiredError,
-)
+from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER
 from lecturepilot.course_builder_source import course_builder_source_document
 from lecturepilot.course_canvas_routes import register_course_canvas_routes
-from lecturepilot.course_canvas_context import InvalidPublishedCanvasContextError
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner, LiteLLMCoursePlanClient
 from lecturepilot.course_canvas_quality import CanvasQualityReviewer, LiteLLMCanvasQualityClient
 from lecturepilot.course_deletion import register_course_deletion_routes
@@ -36,7 +30,6 @@ from lecturepilot.course_source_routing_planner import (
     LiteLLMSourceRoutingClient,
 )
 from lecturepilot.course_update_routes import register_course_update_routes
-from lecturepilot.course_update_storage import CourseUpdateRecoveryError
 from lecturepilot.csrf import CsrfProtectionMiddleware, allowed_origins
 from lecturepilot.database import Database
 from lecturepilot.exam_readiness_routes import register_exam_readiness_routes
@@ -103,27 +96,7 @@ def create_app() -> FastAPI:
         **production_fastapi_kwargs(),
     )
 
-    @app.exception_handler(CourseUpdateRecoveryError)
-    async def course_update_recovery_error(
-        _request: Request, exc: CourseUpdateRecoveryError
-    ) -> JSONResponse:
-        return JSONResponse(status_code=500, content={"detail": str(exc)})
-
-    @app.exception_handler(ClientUpdateRequiredError)
-    async def client_update_required(
-        _request: Request, exc: ClientUpdateRequiredError
-    ) -> JSONResponse:
-        return JSONResponse(
-            status_code=409,
-            content={"code": CLIENT_UPDATE_REQUIRED_CODE, "detail": str(exc)},
-            headers={CLIENT_CONTRACT_HEADER: CLIENT_CONTRACT_VERSION},
-        )
-
-    @app.exception_handler(InvalidPublishedCanvasContextError)
-    async def invalid_published_canvas(
-        _request: Request, exc: InvalidPublishedCanvasContextError
-    ) -> JSONResponse:
-        return JSONResponse(status_code=409, content={"detail": str(exc)})
+    register_exception_handlers(app)
 
     app.state.database = Database()
     app.state.runtime_readiness = RuntimeReadiness(app.state.database)

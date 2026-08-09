@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from lecturepilot.coaching_state_models import PendingCheckKind
 from lecturepilot.quality_gate_models import QualityGateStatus
@@ -13,30 +13,25 @@ QuizCorrectionState = Literal["not_needed", "needed", "corrected"]
 
 
 class LearnerQuizState(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", strict=True)
 
     selected_index: int = Field(ge=0, le=25)
-    correct: bool | None = None
-    publication_version: int = Field(default=1, ge=1)
-    attempt_index: int = Field(default=1, ge=1)
-    first_attempt_correct: bool | None = None
-    latest_outcome: QuizOutcome = "unscored"
-    correction_state: QuizCorrectionState = "not_needed"
+    correct: bool | None
+    publication_version: int = Field(ge=1)
+    attempt_index: int = Field(ge=1)
+    first_attempt_correct: bool | None
+    latest_outcome: QuizOutcome
+    correction_state: QuizCorrectionState
 
-    @model_validator(mode="before")
-    @classmethod
-    def migrate_legacy_state(cls, value):
-        if not isinstance(value, dict):
-            return value
-        migrated = dict(value)
-        correct = migrated.get("correct")
-        migrated.setdefault("first_attempt_correct", correct)
-        migrated.setdefault(
-            "latest_outcome",
-            "correct" if correct is True else "incorrect" if correct is False else "unscored",
-        )
-        migrated.setdefault("correction_state", "needed" if correct is False else "not_needed")
-        return migrated
+
+class LearnerQuizStorePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    course_id: str = Field(min_length=1, max_length=120)
+    lecture_id: str = Field(min_length=1, max_length=120)
+    updated_at: AwareDatetime
+    quizzes: dict[str, LearnerQuizState]
+    attempts: dict[str, dict[str, LearnerQuizState]]
 
 
 class LearnerPendingCheck(BaseModel):

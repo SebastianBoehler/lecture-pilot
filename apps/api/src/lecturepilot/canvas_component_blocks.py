@@ -10,7 +10,10 @@ from lecturepilot.canvas_component_catalog import component_data_from_payload
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 
 
-def component_to_markdown(block: CanvasBlock) -> str:
+def component_to_markdown(block: CanvasBlock, *, inline: bool = False) -> str:
+    if inline:
+        payload = json.dumps(_block_payload(block), indent=2, sort_keys=True)
+        return f":::component\n{payload}\n:::"
     ref = block.component_ref or _default_component_ref(block)
     return f":::component {ref}\n:::"
 
@@ -42,14 +45,14 @@ def read_component_block(
     payload, component_ref = _component_payload(label, body, components_dir)
     options = payload.get("options") if isinstance(payload.get("options"), list) else []
     items, option_ids, answer_index = _component_options(options)
-    component_id = str(payload.get("id") or label or block_id)[:120]
+    component_id = str(payload["id"])[:120]
     return CanvasBlock(
         id=block_id,
         type="component",
         component_id=component_id,
-        component_type=str(payload.get("type") or "unknown")[:120],
+        component_type=str(payload["type"])[:120],
         component_ref=component_ref or _default_ref_for_id(component_id),
-        component_version=_component_version(payload.get("version")),
+        component_version=int(payload["version"]),
         caption=str(payload.get("title") or _component_title(component_id))[:500],
         text=str(payload.get("prompt") or payload.get("text") or "").strip() or None,
         items=items,
@@ -69,7 +72,11 @@ def _component_payload(
     if label and components_dir:
         path = _resolve_component_path(components_dir, label)
         return _load_component_file(path), path.relative_to(components_dir).as_posix()
-    return {"type": "unknown", "text": body.strip()}, label
+    if label:
+        raise ValueError(
+            "Learner component blocks must contain their complete payload in Markdown."
+        )
+    raise ValueError("Canvas component block is missing its payload.")
 
 
 def _inline_payload(body: str) -> dict:
@@ -77,7 +84,9 @@ def _inline_payload(body: str) -> dict:
         payload = json.loads(body)
     except json.JSONDecodeError:
         payload = yaml.safe_load(body)
-    return payload if isinstance(payload, dict) else {"type": "unknown"}
+    if not isinstance(payload, dict):
+        raise ValueError("Canvas component payload must be an object.")
+    return _validated_component_payload(payload)
 
 
 def _load_component_file(path: Path) -> dict:
@@ -85,7 +94,27 @@ def _load_component_file(path: Path) -> dict:
         payload = json.loads(path.read_text(encoding="utf-8"))
     else:
         payload = yaml.safe_load(path.read_text(encoding="utf-8"))
-    return payload if isinstance(payload, dict) else {"type": "unknown"}
+    if not isinstance(payload, dict):
+        raise ValueError("Canvas component payload must be an object.")
+    return _validated_component_payload(payload)
+
+
+def _validated_component_payload(payload: dict) -> dict:
+    component_id = payload.get("id")
+    component_type = payload.get("type")
+    version = payload.get("version")
+    if (
+        not isinstance(component_id, str)
+        or not component_id.strip()
+        or not isinstance(component_type, str)
+        or not component_type.strip()
+        or type(version) is not int
+        or version < 1
+    ):
+        raise ValueError(
+            "Canvas component payload requires complete id, type, and integer version."
+        )
+    return payload
 
 
 def _component_options(options: list[object]) -> tuple[list[str], list[str], int | None]:
@@ -174,12 +203,3 @@ def _component_title(component_id: str) -> str:
         for index, word in enumerate(words)
     )
     return title or "Interactive component"
-
-
-def _component_version(value: object) -> int | None:
-    if value is None:
-        return None
-    try:
-        return max(1, int(value))
-    except (TypeError, ValueError):
-        return None

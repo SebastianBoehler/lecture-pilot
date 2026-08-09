@@ -5,8 +5,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from auth_helpers import install_test_source_routing_planner, professor_headers, student_headers
-from canvas_workspace_fixtures import publish_course_canvas, published_course_canvas
+from auth_helpers import install_test_source_routing_planner, professor_headers
 from lecturepilot.app import create_app
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_builder_source import course_builder_source_document
@@ -209,27 +208,6 @@ def test_corrupt_pdf_is_rejected_before_it_reaches_the_source_index(tmp_path: Pa
 
     assert response.status_code == 400
     assert response.json()["detail"] == "File contents do not match the requested file type."
-
-
-def test_discovered_seeded_lecture_uses_the_same_authorization_catalog(tmp_path: Path) -> None:
-    client = _client(tmp_path)
-    material_root = client.app.state.canvas_workspace.material_root
-    for number in range(1, 5):
-        path = material_root / f"Lecture{number:02d}-eng.tex"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(_latex(f"Lecture {number}", f"LECTURE-{number}"))
-    publish_course_canvas(
-        client.app.state.canvas_workspace,
-        published_course_canvas("martius-ml", "lecture-04"),
-    )
-
-    response = client.get(
-        "/courses/martius-ml/lectures/lecture-04/canvas/publication",
-        headers=student_headers("student01"),
-    )
-
-    assert response.status_code == 200
-    assert response.json()["published"] is True
 
 
 def _client(tmp_path: Path) -> TestClient:

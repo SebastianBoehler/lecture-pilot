@@ -7,7 +7,11 @@ import json
 from pydantic import ValidationError
 
 from lecturepilot.durable_files import atomic_write_json, exclusive_file_lock
-from lecturepilot.learner_lesson_state_models import LearnerQuizState, QuizCorrectionState
+from lecturepilot.learner_lesson_state_models import (
+    LearnerQuizState,
+    LearnerQuizStorePayload,
+    QuizCorrectionState,
+)
 from lecturepilot.models import AttendanceStatus, QualityGateDecision
 from lecturepilot.storage_layout import StorageLayout
 
@@ -99,17 +103,18 @@ class LearnerStateStore:
     ) -> tuple[LearnerQuizState, bool]:
         path = self.layout.user_lecture_root(user_id, course_id, lecture_id) / "quizzes.json"
         with exclusive_file_lock(path):
-            payload = _read_json(path)
-            quizzes = payload.get("quizzes") if isinstance(payload.get("quizzes"), dict) else {}
-            attempts = payload.get("attempts") if isinstance(payload.get("attempts"), dict) else {}
-            block_attempts = (
-                attempts.get(quiz_id) if isinstance(attempts.get(quiz_id), dict) else {}
-            )
+            payload = _read_quiz_payload(path, course_id=course_id, lecture_id=lecture_id)
+            quizzes = dict(payload.quizzes)
+            attempts = {
+                stored_quiz_id: dict(stored_attempts)
+                for stored_quiz_id, stored_attempts in payload.attempts.items()
+            }
+            block_attempts = dict(attempts.get(quiz_id, {}))
             bound_quiz_id, bound_state = _bound_attempt(attempts, attempt_id)
             if bound_state is not None and bound_quiz_id != quiz_id:
                 raise ValueError("Quiz attempt ID is already bound to another quiz.")
             if attempt_id in block_attempts:
-                prior = LearnerQuizState.model_validate(block_attempts[attempt_id])
+                prior = block_attempts[attempt_id]
                 if prior.publication_version != publication_version:
                     raise ValueError("Quiz attempt ID is already bound to another publication.")
                 if prior.selected_index != selected_index:
@@ -135,19 +140,17 @@ class LearnerStateStore:
                 ),
                 correction_state=_correction_state(previous, correct),
             )
-            quizzes[quiz_id] = state.model_dump(mode="json")
-            block_attempts[attempt_id] = state.model_dump(mode="json")
+            quizzes[quiz_id] = state
+            block_attempts[attempt_id] = state
             attempts[quiz_id] = block_attempts
-            _write_json(
-                path,
-                {
-                    "course_id": course_id,
-                    "lecture_id": lecture_id,
-                    "updated_at": _now(),
-                    "quizzes": quizzes,
-                    "attempts": attempts,
-                },
+            stored = LearnerQuizStorePayload(
+                course_id=course_id,
+                lecture_id=lecture_id,
+                updated_at=datetime.now(UTC),
+                quizzes=quizzes,
+                attempts=attempts,
             )
+            _write_json(path, stored.model_dump(mode="json"))
             return state, True
 
     def latest_quiz_states(
@@ -159,20 +162,17 @@ class LearnerStateStore:
         publication_version: int,
     ) -> dict[str, LearnerQuizState]:
         path = self.layout.user_lecture_root(user_id, course_id, lecture_id) / "quizzes.json"
-        raw_quizzes = _read_json(path).get("quizzes")
-        if not isinstance(raw_quizzes, dict):
-            return {}
-        quizzes = {}
-        for block_id, raw_state in raw_quizzes.items():
-            if not isinstance(block_id, str) or not isinstance(raw_state, dict):
-                continue
-            try:
-                state = LearnerQuizState.model_validate(raw_state)
-            except ValidationError:
-                continue
-            if state.publication_version == publication_version:
-                quizzes[block_id] = state
+        payload = _read_quiz_payload(path, course_id=course_id, lecture_id=lecture_id)
+        quizzes = {
+            block_id: state
+            for block_id, state in payload.quizzes.items()
+            if state.publication_version == publication_version
+        }
         return dict(sorted(quizzes.items()))
+
+
+class InvalidLearnerQuizStateError(ValueError):
+    pass
 
 
 def _read_json(path: Path) -> dict:
@@ -185,22 +185,37 @@ def _read_json(path: Path) -> dict:
     return payload if isinstance(payload, dict) else {}
 
 
-def _current_quiz_state(value, publication_version: int) -> LearnerQuizState | None:
-    if not isinstance(value, dict):
-        return None
+def _read_quiz_payload(path: Path, *, course_id: str, lecture_id: str) -> LearnerQuizStorePayload:
+    if not path.exists():
+        return LearnerQuizStorePayload(
+            course_id=course_id,
+            lecture_id=lecture_id,
+            updated_at=datetime.now(UTC),
+            quizzes={},
+            attempts={},
+        )
     try:
-        state = LearnerQuizState.model_validate(value)
-    except ValidationError:
-        return None
-    return state if state.publication_version == publication_version else None
+        payload = LearnerQuizStorePayload.model_validate_json(path.read_text(encoding="utf-8"))
+    except (OSError, ValidationError) as exc:
+        raise InvalidLearnerQuizStateError("Persisted learner quiz state is invalid.") from exc
+    if payload.course_id != course_id or payload.lecture_id != lecture_id:
+        raise InvalidLearnerQuizStateError("Persisted learner quiz state is invalid.")
+    return payload
 
 
-def _bound_attempt(attempts: dict, attempt_id: str) -> tuple[str | None, dict | None]:
+def _current_quiz_state(
+    state: LearnerQuizState | None, publication_version: int
+) -> LearnerQuizState | None:
+    return state if state is not None and state.publication_version == publication_version else None
+
+
+def _bound_attempt(
+    attempts: dict[str, dict[str, LearnerQuizState]], attempt_id: str
+) -> tuple[str | None, LearnerQuizState | None]:
     for quiz_id, quiz_attempts in attempts.items():
-        if isinstance(quiz_id, str) and isinstance(quiz_attempts, dict):
-            state = quiz_attempts.get(attempt_id)
-            if isinstance(state, dict):
-                return quiz_id, state
+        state = quiz_attempts.get(attempt_id)
+        if state is not None:
+            return quiz_id, state
     return None, None
 
 

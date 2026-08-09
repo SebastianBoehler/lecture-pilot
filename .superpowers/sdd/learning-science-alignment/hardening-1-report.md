@@ -78,7 +78,42 @@ repository-wide size guard still reports pre-existing oversized modules and test
 not split unrelated ownership while converting their setup to reviewed publication fixtures.
 
 The complete initiative-baseline audit also identifies known later-gate work intentionally left
-untouched here: coaching-state migration behavior and the learner quiz-state default belong to
-Hardening 2, while provider/harness doubles and demo/runtime cleanup belong to Hardening 4. This
-report claims H1 canvas/publication/overlay authority only, not branch-wide completion of those
-later hardening gates.
+untouched here: coaching-state payload migrations belong to Hardening 2, while provider/harness
+doubles and demo/runtime cleanup belong to Hardening 4. This report claims H1
+canvas/publication/overlay authority only, not branch-wide completion of those later hardening
+gates.
+
+## Review fix round 1
+
+Five follow-up review findings are closed:
+
+- Persisted quiz files now use one strict, extra-forbid typed schema. Every nested outcome field,
+  real publication version, attempt index, file identity, and timestamp is required. Missing,
+  malformed, coercible, or extra data returns a shared 409 and is never skipped, migrated,
+  overwritten, or reported as current state.
+- Learner components and placement are self-contained in `canvas/student/*.md`: complete component
+  JSON is inline and placement is section frontmatter. External learner component files and
+  `placement.json` cannot change rendering, order, or scoring; label-only external component
+  references fail explicitly, and learner tools cannot write external canvas authority files.
+- The same canonical quiz-ID validator now guards merged learner canvas GET and quiz submission.
+  Published/learner or learner/learner collisions return the same 409 before rendering, scoring,
+  state writes, or analytics.
+- Publication `schema_version` accepts only the exact integer `1`; booleans, floats, strings, and
+  extra metadata are rejected.
+- The six reviewer-listed oversized touched tests were split by ownership without removing their
+  assertions. Their final sizes are 229, 274, 280, 293, 283, and 252 lines. The app exception
+  handlers and learner Markdown codec were also separated so every H1-touched authored file is at
+  or below 300 lines.
+
+Review RED was `16 failed, 6 passed`; the focused review GREEN was `22 passed`. Additional strict
+component and learner-tool RED tests established the no-unknown and no-external-write boundaries.
+The final repository verification used the repository `.venv` and the existing isolated PostgreSQL
+16 container on `127.0.0.1:55432`:
+
+```text
+npm run verify:api:
+  Ruff format/check: passed (477 files)
+  API: 794 passed, 6 existing deprecation warnings
+  compiler: 22 passed
+  git diff --check: passed
+```

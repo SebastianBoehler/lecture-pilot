@@ -113,7 +113,7 @@ def _all_tool_schemas() -> list[dict]:
             "Create or overwrite a permitted learner file. Canvas Markdown under /lecture/canvas/student is append-ordered and returns the actual path plus section_id.",
             {
                 "path": _string(
-                    "Writable file path under /lecture/canvas/student, /lecture/canvas/components, /lecture/canvas/student-assets, /user/memories, or /user/course/memories."
+                    "Writable file path under /lecture/canvas/student, /lecture/canvas/student-assets, /user/memories, or /user/course/memories."
                 ),
                 "content": _string("Complete file content."),
             },

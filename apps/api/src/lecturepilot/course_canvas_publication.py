@@ -2,9 +2,15 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Literal
-
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, PositiveInt, ValidationError
+from pydantic import (
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    Field,
+    PositiveInt,
+    ValidationError,
+    field_validator,
+)
 
 from lecturepilot.canvas_learning_support import normalize_learning_support
 from lecturepilot.canvas_models import CanvasDocument
@@ -14,7 +20,7 @@ from lecturepilot.course_learning_design_models import LearningDesignReview
 class CanvasPublicationMetadata(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
 
-    schema_version: Literal[1]
+    schema_version: int
     course_id: str = Field(min_length=1, max_length=120)
     lecture_id: str = Field(min_length=1, max_length=120)
     version: PositiveInt
@@ -23,6 +29,13 @@ class CanvasPublicationMetadata(BaseModel):
     learning_map_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     published_at: AwareDatetime
     published_by: str = Field(min_length=1, max_length=160)
+
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def require_current_schema_version(cls, value: object) -> int:
+        if type(value) is not int or value != 1:
+            raise ValueError("schema_version must be the integer 1")
+        return value
 
 
 class InvalidCanvasPublicationMetadataError(ValueError):
