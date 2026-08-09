@@ -73,6 +73,7 @@ def register_course_learning_design_routes(
                 lecture_id=lecture_id,
                 draft_digest=approval.draft_digest,
                 source_revision=approval.source_revision,
+                learning_map_revision=approval.learning_map_revision,
                 approved_by=context.user_id,
             )
         )

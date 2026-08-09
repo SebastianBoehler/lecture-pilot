@@ -107,6 +107,7 @@ def approve_learning_design(
         json={
             "draft_digest": review["draft_digest"],
             "source_revision": review["source_revision"],
+            "learning_map_revision": review["learning_map"]["revision"],
         },
     )
     assert approved.status_code == 200, approved.json()

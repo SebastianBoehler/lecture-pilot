@@ -718,6 +718,8 @@ export const enMessages = {
   "builder.learningDesign.prerequisites": "Semantic prerequisites",
   "builder.learningDesign.warnings": "Assessment coverage warnings",
   "builder.learningDesign.save": "Save learning design",
+  "builder.learningDesign.saveBeforeApprove":
+    "Save these changes before approving this learning design.",
   "builder.learningDesign.approve": "Approve learning design",
   "builder.learningDesign.approved": "Learning design approved",
   "professor.tabs.scope": "Course scope",

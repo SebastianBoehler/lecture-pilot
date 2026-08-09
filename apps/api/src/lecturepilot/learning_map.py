@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable
 from pathlib import Path
 
 from pydantic import BaseModel, Field, model_validator
@@ -69,6 +70,14 @@ class LearningMap(BaseModel):
 
     @model_validator(mode="after")
     def derive_revision(self) -> LearningMap:
+        _require_unique_ids((node.id for node in self.nodes), "node")
+        _require_unique_ids((node.section_id for node in self.nodes), "section")
+        _require_unique_ids((gate.id for gate in self.gates), "gate")
+        for gate in self.gates:
+            _require_unique_ids(
+                (criterion.id for criterion in gate.evidence_criteria),
+                f"evidence criterion for gate '{gate.id}'",
+            )
         if not self.objective:
             self.objective = self.title
         self.revision = _digest(self, "revision")
@@ -77,6 +86,7 @@ class LearningMap(BaseModel):
 
 def build_learning_map(document: CanvasDocument) -> LearningMap:
     validate_unique_quiz_ids(document)
+    validate_learning_contract_ids(document)
     nodes: list[LearningMapNode] = []
     gates: list[LearningMapGate] = []
     previous_id: str | None = None
@@ -123,6 +133,19 @@ def learning_map_path(canvas_dir: Path) -> Path:
     return canvas_dir / "learning-map.json"
 
 
+def validate_learning_contract_ids(document: CanvasDocument) -> None:
+    _require_unique_ids((section.id for section in document.sections), "section")
+    _require_unique_ids(
+        (
+            block.id
+            for section in document.sections
+            for block in section.blocks
+            if block.type == "checkpoint"
+        ),
+        "checkpoint",
+    )
+
+
 def _section_gates(document: CanvasDocument, section: CanvasSection) -> list[LearningMapGate]:
     return [
         _checkpoint_gate(document, section, block)
@@ -157,3 +180,11 @@ def _digest(model: BaseModel, excluded_field: str) -> str:
     payload = model.model_dump(mode="json", exclude={excluded_field})
     canonical = json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _require_unique_ids(ids: Iterable[str], label: str) -> None:
+    seen: set[str] = set()
+    for identifier in ids:
+        if identifier in seen:
+            raise ValueError(f"Duplicate {label} ID '{identifier}'.")
+        seen.add(identifier)

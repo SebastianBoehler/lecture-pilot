@@ -58,6 +58,7 @@ it("loads, edits, approves, and refreshes draft-bound reviews per lecture", asyn
     result.current.save("lecture-01", {
       draft_digest: serverReview.draft_digest,
       source_revision: serverReview.source_revision,
+      learning_map_revision: serverReview.learning_map.revision,
       objective: "Edited objective",
       gates: [],
       prerequisites: [],
@@ -73,6 +74,92 @@ it("loads, edits, approves, and refreshes draft-bound reviews per lecture", asyn
     expect(result.current.reviews["lecture-01"].draft_digest).toBe("e".repeat(64)),
   );
   expect(result.current.allApproved).toBe(false);
+});
+
+it.each(["resolve", "reject"] as const)(
+  "ignores an old GET %s after switching courses with the same lecture ids",
+  async (outcome) => {
+    const oldGet = deferred<Response>();
+    const newGet = deferred<Response>();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => (url.includes("course-old") ? oldGet.promise : newGet.promise)),
+    );
+    const { result, rerender } = renderHook(
+      ({ courseId }) =>
+        useProfessorLearningDesignReviews({
+          courseId,
+          lectureIds: ["lecture-01"],
+          revisionKey: "generation-1",
+          session,
+        }),
+      { initialProps: { courseId: "course-old" } },
+    );
+
+    rerender({ courseId: "course-new" });
+    await act(() =>
+      outcome === "resolve"
+        ? oldGet.resolve(response(review("a", "professor-demo")) as Response)
+        : oldGet.reject(new Error("old load failed")),
+    );
+    expect(result.current.reviews).toEqual({});
+    expect(result.current.allApproved).toBe(false);
+    expect(result.current.error).toBeNull();
+
+    await act(() => newGet.resolve(response(review("b", null)) as Response));
+    await waitFor(() =>
+      expect(result.current.reviews["lecture-01"].draft_digest).toBe("b".repeat(64)),
+    );
+    expect(result.current.allApproved).toBe(false);
+  },
+);
+
+it.each([
+  ["save", "resolve"],
+  ["save", "reject"],
+  ["approve", "resolve"],
+  ["approve", "reject"],
+] as const)("ignores an old %s %s after a revision switch", async (operation, outcome) => {
+  const mutation = deferred<Response>();
+  let getCount = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((_url: string, init?: RequestInit) => {
+      if (init?.method === "PUT" || init?.method === "POST") return mutation.promise;
+      getCount += 1;
+      return Promise.resolve(response(review(getCount === 1 ? "a" : "b", null)));
+    }),
+  );
+  const { result, rerender } = renderHook(
+    ({ revisionKey }) =>
+      useProfessorLearningDesignReviews({
+        courseId: "course-1",
+        lectureIds: ["lecture-01"],
+        revisionKey,
+        session,
+      }),
+    { initialProps: { revisionKey: "generation-1" } },
+  );
+  await waitFor(() => expect(result.current.reviews["lecture-01"]).toBeDefined());
+
+  if (operation === "save") {
+    void result.current.save("lecture-01", updateFor(result.current.reviews["lecture-01"]));
+  } else {
+    void result.current.approve("lecture-01");
+  }
+  rerender({ revisionKey: "generation-2" });
+  await waitFor(() =>
+    expect(result.current.reviews["lecture-01"].draft_digest).toBe("b".repeat(64)),
+  );
+
+  await act(() =>
+    outcome === "resolve"
+      ? mutation.resolve(response(review("a", "professor-demo")) as Response)
+      : mutation.reject(new Error(`old ${operation} failed`)),
+  );
+  expect(result.current.reviews["lecture-01"].draft_digest).toBe("b".repeat(64));
+  expect(result.current.allApproved).toBe(false);
+  expect(result.current.error).toBeNull();
 });
 
 function review(digest: string, approvedBy: string | null): LearningDesignReview {
@@ -103,6 +190,27 @@ function review(digest: string, approvedBy: string | null): LearningDesignReview
       gates: [],
     },
   };
+}
+
+function updateFor(current: LearningDesignReview) {
+  return {
+    draft_digest: current.draft_digest,
+    source_revision: current.source_revision,
+    learning_map_revision: current.learning_map.revision,
+    objective: current.learning_map.objective,
+    gates: [],
+    prerequisites: [],
+  };
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((onResolve, onReject) => {
+    resolve = onResolve;
+    reject = onReject;
+  });
+  return { promise, reject, resolve };
 }
 
 function response(payload: unknown) {

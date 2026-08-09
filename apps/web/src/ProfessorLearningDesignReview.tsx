@@ -21,6 +21,7 @@ export function ProfessorLearningDesignReview({
   const { t } = useI18n();
   const [update, setUpdate] = useState(() => editableReview(review));
   useEffect(() => setUpdate(editableReview(review)), [review]);
+  const dirty = JSON.stringify(update) !== JSON.stringify(editableReview(review));
   return (
     <section className="learning-design-review">
       <h3>{t("builder.learningDesign.title")}</h3>
@@ -128,7 +129,7 @@ export function ProfessorLearningDesignReview({
               {t("builder.learningDesign.save")}
             </button>
             <button
-              disabled={saving || Boolean(review.approval)}
+              disabled={saving || dirty || Boolean(review.approval)}
               type="button"
               onClick={() => onApprove(lectureId)}
             >
@@ -137,6 +138,7 @@ export function ProfessorLearningDesignReview({
                 : t("builder.learningDesign.approve")}
             </button>
           </div>
+          {dirty ? <p role="status">{t("builder.learningDesign.saveBeforeApprove")}</p> : null}
         </div>
       </div>
     </section>
@@ -193,6 +195,7 @@ function editableReview(review: LearningDesignReview): LearningDesignUpdate {
   return {
     draft_digest: review.draft_digest,
     source_revision: review.source_revision,
+    learning_map_revision: review.learning_map.revision,
     objective: review.learning_map.objective,
     gates: review.learning_map.gates.map((gate) => ({
       id: gate.id,

@@ -740,6 +740,8 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.learningDesign.prerequisites": "Semantische Voraussetzungen",
   "builder.learningDesign.warnings": "Warnungen zur Prüfungsabdeckung",
   "builder.learningDesign.save": "Lerndesign speichern",
+  "builder.learningDesign.saveBeforeApprove":
+    "Speichern Sie diese Änderungen, bevor Sie dieses Lerndesign freigeben.",
   "builder.learningDesign.approve": "Lerndesign freigeben",
   "builder.learningDesign.approved": "Lerndesign freigegeben",
   "professor.tabs.scope": "Kursumfang",

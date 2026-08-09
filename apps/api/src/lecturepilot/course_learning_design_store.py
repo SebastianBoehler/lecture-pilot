@@ -20,6 +20,7 @@ from lecturepilot.course_learning_design_models import (
     LearningDesignReview,
     LearningDesignUpdate,
 )
+from lecturepilot.course_learning_design_update import apply_learning_design_update
 from lecturepilot.durable_files import ensure_durable_directory, fsync_directory
 from lecturepilot.learning_map import LearningMap, build_learning_map
 from lecturepilot.storage_layout import StorageLayout
@@ -59,8 +60,16 @@ class CourseLearningDesignStore:
     ) -> LearningDesignReview:
         with self._locked_draft(course_id, lecture_id) as draft_dir:
             current = _current_review(self.layout, draft_dir, course_id, lecture_id)
-            _require_request_version(current, update.draft_digest, update.source_revision)
-            learning_map = _apply_update(current.learning_map, update)
+            _require_request_version(
+                current,
+                update.draft_digest,
+                update.source_revision,
+                update.learning_map_revision,
+            )
+            try:
+                learning_map = apply_learning_design_update(current.learning_map, update)
+            except ValueError as exc:
+                raise LearningDesignError(str(exc)) from exc
             changed = current.model_copy(
                 update={
                     "learning_map": learning_map,
@@ -78,11 +87,17 @@ class CourseLearningDesignStore:
         lecture_id: str,
         draft_digest: str,
         source_revision: str,
+        learning_map_revision: str,
         approved_by: str,
     ) -> LearningDesignReview:
         with self._locked_draft(course_id, lecture_id) as draft_dir:
             current = _current_review(self.layout, draft_dir, course_id, lecture_id)
-            _require_request_version(current, draft_digest, source_revision)
+            _require_request_version(
+                current,
+                draft_digest,
+                source_revision,
+                learning_map_revision,
+            )
             approval = LearningDesignApproval(
                 approved_by=approved_by,
                 approved_at=datetime.now(UTC),
@@ -197,61 +212,17 @@ def _current_review(
     return stored
 
 
-def _apply_update(current: LearningMap, update: LearningDesignUpdate) -> LearningMap:
-    gate_inputs = {gate.id: gate for gate in update.gates}
-    node_inputs = {item.section_id: item for item in update.prerequisites}
-    current_gate_ids = {gate.id for gate in current.gates}
-    current_node_ids = {node.section_id for node in current.nodes}
-    if len(gate_inputs) != len(update.gates) or set(gate_inputs) != current_gate_ids:
-        raise LearningDesignError("Learning-design gate IDs must match the current draft.")
-    if len(node_inputs) != len(update.prerequisites) or set(node_inputs) != current_node_ids:
-        raise LearningDesignError("Learning-design section IDs must match the current draft.")
-    graph = {section_id: item.prerequisite_ids for section_id, item in node_inputs.items()}
-    _validate_prerequisites(graph, current_node_ids)
-    payload = current.model_dump(mode="json", exclude={"revision"})
-    payload["objective"] = update.objective
-    for gate in payload["gates"]:
-        changed = gate_inputs[gate["id"]]
-        gate.update(
-            prompt=changed.prompt,
-            evidence_required=" ".join(item.description for item in changed.evidence_criteria),
-            evidence_criteria=[item.model_dump(mode="json") for item in changed.evidence_criteria],
-            transfer_prompt=changed.transfer_prompt,
-            review_after_days=changed.review_after_days,
-        )
-    for node in payload["nodes"]:
-        node["prerequisites"] = graph[node["section_id"]]
-    return LearningMap.model_validate(payload)
-
-
-def _validate_prerequisites(graph: dict[str, list[str]], valid_ids: set[str]) -> None:
-    for section_id, prerequisites in graph.items():
-        if len(set(prerequisites)) != len(prerequisites):
-            raise LearningDesignError("Prerequisites cannot contain duplicates.")
-        if section_id in prerequisites:
-            raise LearningDesignError("A section cannot be its own prerequisite.")
-        if not set(prerequisites) <= valid_ids:
-            raise LearningDesignError("Prerequisites must reference current draft sections.")
-    visiting: set[str] = set()
-    visited: set[str] = set()
-
-    def visit(section_id: str) -> None:
-        if section_id in visiting:
-            raise LearningDesignError("Prerequisites must not contain a cycle.")
-        if section_id in visited:
-            return
-        visiting.add(section_id)
-        for prerequisite in graph[section_id]:
-            visit(prerequisite)
-        visiting.remove(section_id)
-        visited.add(section_id)
-
-    for section_id in graph:
-        visit(section_id)
-
-
-def _require_request_version(review: LearningDesignReview, digest: str, revision: str) -> None:
-    if review.draft_digest != digest or review.source_revision != revision:
+def _require_request_version(
+    review: LearningDesignReview,
+    digest: str,
+    source_revision: str,
+    learning_map_revision: str,
+) -> None:
+    if (
+        review.draft_digest != digest
+        or review.source_revision != source_revision
+        or review.learning_map.revision != learning_map_revision
+    ):
         raise LearningDesignStaleError(
             "The draft or its source revision changed. Reload the learning design."
         )

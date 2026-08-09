@@ -28,6 +28,7 @@ def test_professor_edits_approves_and_publishes_the_exact_learning_design(tmp_pa
         json={
             "draft_digest": review["draft_digest"],
             "source_revision": review["source_revision"],
+            "learning_map_revision": review["learning_map"]["revision"],
             "objective": "Explain the mechanism and transfer it to a changed case.",
             "gates": [
                 {
@@ -35,7 +36,7 @@ def test_professor_edits_approves_and_publishes_the_exact_learning_design(tmp_pa
                     "prompt": "Explain the mechanism without using the example wording.",
                     "evidence_criteria": [
                         {
-                            "id": "mechanism",
+                            "id": "intro-check",
                             "description": "Names the cause and the resulting effect.",
                             "required": True,
                         }
@@ -63,6 +64,7 @@ def test_professor_edits_approves_and_publishes_the_exact_learning_design(tmp_pa
         json={
             "draft_digest": edited["draft_digest"],
             "source_revision": edited["source_revision"],
+            "learning_map_revision": edited["learning_map"]["revision"],
         },
     )
     assert approved.status_code == 200, approved.json()
@@ -178,6 +180,7 @@ def test_regeneration_and_source_change_invalidate_approval(tmp_path: Path) -> N
         json={
             "draft_digest": review["draft_digest"],
             "source_revision": review["source_revision"],
+            "learning_map_revision": review["learning_map"]["revision"],
         },
     )
     assert approved.status_code == 200
@@ -198,6 +201,7 @@ def test_regeneration_and_source_change_invalidate_approval(tmp_path: Path) -> N
         json={
             "draft_digest": current["draft_digest"],
             "source_revision": current["source_revision"],
+            "learning_map_revision": current["learning_map"]["revision"],
         },
     )
     assert approved_again.status_code == 200
@@ -268,6 +272,7 @@ def _update_payload(review: dict) -> dict:
     return {
         "draft_digest": review["draft_digest"],
         "source_revision": review["source_revision"],
+        "learning_map_revision": review["learning_map"]["revision"],
         "objective": review["learning_map"]["objective"],
         "gates": [
             {

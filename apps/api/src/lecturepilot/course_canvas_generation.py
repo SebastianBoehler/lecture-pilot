@@ -1,8 +1,6 @@
-from __future__ import annotations
-
+from collections.abc import Callable
 from hashlib import sha256
 
-from collections.abc import Callable
 from fastapi import FastAPI
 from starlette.concurrency import run_in_threadpool
 
@@ -10,11 +8,11 @@ from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.course_content_filter import filter_source_document_for_planning
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_generation_jobs import CanvasGenerationJob
+from lecturepilot import course_canvas_generation_ownership as ownership_store
 from lecturepilot.course_canvas_repairs import (
     lecture_source_revision,
     matching_repair_guidance,
     persist_repair_guidance,
-    resolve_source_with_revision,
 )
 from lecturepilot.course_canvas_store import InvalidCanvasDraftError
 from lecturepilot.course_update_recovery import locked_course_state
@@ -60,13 +58,15 @@ async def generate_course_canvas_draft(
         ) as generation_span,
     ):
         with observability.tool_span("course_canvas_generation", stage="source_resolve", **common):
-            source, source_revision = await run_in_threadpool(
-                resolve_source_with_revision,
+            source, source_revision, ownership = await run_in_threadpool(
+                ownership_store.begin_owned_generation_source,
                 app.state.canvas_workspace.layout,
                 app.state.canvas_workspace.course_media_root(course_id),
                 source_document,
-                course_id,
-                lecture_id,
+                course_id=course_id,
+                lecture_id=lecture_id,
+                generation_id=generation_id,
+                attempt=attempt,
             )
             if source_revision is None:
                 raise InvalidCanvasDraftError("Draft source provenance is unavailable.")
@@ -115,6 +115,7 @@ async def generate_course_canvas_draft(
                 app,
                 document,
                 expected_source_revision=source_revision,
+                ownership=ownership,
             )
         if repair_failure_code and repair_failure_detail:
             persist_repair_guidance(
@@ -164,13 +165,15 @@ async def repair_targeted_course_canvas_draft(
             **common,
         ) as repair_span,
     ):
-        source, source_revision = await run_in_threadpool(
-            resolve_source_with_revision,
+        source, source_revision, ownership = await run_in_threadpool(
+            ownership_store.begin_owned_generation_source,
             app.state.canvas_workspace.layout,
             app.state.canvas_workspace.course_media_root(course_id),
             source_document,
-            course_id,
-            lecture_id,
+            course_id=course_id,
+            lecture_id=lecture_id,
+            generation_id=generation_id,
+            attempt=attempt,
         )
         if source_revision is None:
             raise InvalidCanvasDraftError("Draft source provenance is unavailable.")
@@ -202,6 +205,7 @@ async def repair_targeted_course_canvas_draft(
             app,
             document,
             expected_source_revision=source_revision,
+            ownership=ownership,
         )
         persist_repair_guidance(
             app.state.canvas_workspace.layout,
@@ -279,9 +283,16 @@ def _write_current_draft(
     document: CanvasDocument,
     *,
     expected_source_revision: str,
+    ownership: ownership_store.CanvasGenerationOwnership,
 ) -> CanvasDocument:
     course_root = app.state.canvas_workspace.course_media_root(document.course_id)
     with locked_course_state(course_root):
+        try:
+            ownership_store.require_generation_ownership(
+                app.state.canvas_workspace.layout, ownership
+            )
+        except ownership_store.CanvasGenerationOwnershipError as exc:
+            raise InvalidCanvasDraftError(str(exc)) from exc
         return app.state.canvas_workspace.write_course_canvas_draft(
             document,
             expected_source_revision=expected_source_revision,

@@ -1,6 +1,10 @@
 import { apiUrl, readApiError } from "./api";
 import { authRequestInit } from "./authz";
-import type { LearningDesignReview, LearningDesignUpdate } from "./learningDesignTypes";
+import type {
+  LearningDesignApprovalInput,
+  LearningDesignReview,
+  LearningDesignUpdate,
+} from "./learningDesignTypes";
 import type { LoginSession } from "./types";
 
 function path(courseId: string, lectureId: string) {
@@ -34,13 +38,15 @@ export async function approveLearningDesignReview(
   session: LoginSession,
   review: LearningDesignReview,
 ): Promise<LearningDesignReview> {
+  const approval: LearningDesignApprovalInput = {
+    draft_digest: review.draft_digest,
+    source_revision: review.source_revision,
+    learning_map_revision: review.learning_map.revision,
+  };
   return request(`${path(courseId, lectureId)}/approve`, session, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      draft_digest: review.draft_digest,
-      source_revision: review.source_revision,
-    }),
+    body: JSON.stringify(approval),
   });
 }
 

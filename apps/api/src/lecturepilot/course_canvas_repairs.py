@@ -4,17 +4,14 @@ from datetime import UTC, datetime
 from hashlib import sha256
 import json
 import os
-from collections.abc import Callable
 from pathlib import Path
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, ValidationError
 
-from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.durable_files import ensure_durable_directory, fsync_directory
 from lecturepilot.course_schedule_store import read_course_workspace
 from lecturepilot.course_source_routing import read_source_routing
-from lecturepilot.course_update_recovery import locked_course_state
 from lecturepilot.lecture_source_manifest import read_lecture_source_manifest
 from lecturepilot.source_index_models import CourseSourceIndex
 from lecturepilot.storage_layout import StorageLayout
@@ -29,19 +26,6 @@ class CanvasRepairRecord(BaseModel):
     failure_detail: str = Field(min_length=1, max_length=1_000)
     repaired_generation_id: str = Field(min_length=32, max_length=32)
     repaired_at: datetime
-
-
-def resolve_source_with_revision(
-    layout: StorageLayout,
-    course_root: Path,
-    source_document: Callable[[str, str], CanvasDocument],
-    course_id: str,
-    lecture_id: str,
-) -> tuple[CanvasDocument, str | None]:
-    with locked_course_state(course_root):
-        source = source_document(course_id, lecture_id)
-        revision = lecture_source_revision(layout, course_id=course_id, lecture_id=lecture_id)
-        return source, revision
 
 
 def matching_repair_guidance(

@@ -9,6 +9,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from lecturepilot import learning_map as learning_maps
 from lecturepilot.canvas_snapshot import locked_canvas_paths, replace_canvas_snapshot
 from lecturepilot.canvas_learning_support import normalize_learning_support
 from lecturepilot.canvas_markdown import (
@@ -32,7 +33,6 @@ from lecturepilot.course_learning_design_store import (
     approved_learning_design,
     initialize_learning_design,
 )
-from lecturepilot.learning_map import LearningMap, read_learning_map, write_learning_map
 from lecturepilot.learning_map import learning_map_path
 from lecturepilot.quiz_identity import publication_version, validate_unique_quiz_ids
 from lecturepilot.storage_layout import StorageLayout
@@ -121,6 +121,7 @@ class CourseCanvasStore:
                 "Course sources changed during generation. Generate this draft again."
             )
         try:
+            learning_maps.validate_learning_contract_ids(document)
             document = prepared_document(document, draft_dir)
         except (CanvasMarkdownError, ValidationError, ValueError) as exc:
             raise InvalidCanvasDraftError(
@@ -149,6 +150,7 @@ class CourseCanvasStore:
             try:
                 draft = read_document_source(draft_dir)
                 validate_unique_quiz_ids(draft)
+                learning_maps.validate_learning_contract_ids(draft)
                 review = approved_learning_design(
                     self.layout,
                     draft_dir=draft_dir,
@@ -212,20 +214,20 @@ class CourseCanvasStore:
 
     def learning_map(
         self, *, course_id: str, lecture_id: str, draft: bool = False
-    ) -> LearningMap | None:
+    ) -> learning_maps.LearningMap | None:
         canvas_dir = (
             self.draft_path(course_id, lecture_id) if draft else self.path(course_id, lecture_id)
         )
         with locked_canvas_paths(canvas_dir):
-            return read_learning_map(canvas_dir)
+            return learning_maps.read_learning_map(canvas_dir)
 
     @contextmanager
     def locked_published_learning_map(
         self, *, course_id: str, lecture_id: str
-    ) -> Iterator[LearningMap | None]:
+    ) -> Iterator[learning_maps.LearningMap | None]:
         published_dir = self.path(course_id, lecture_id)
         with locked_canvas_paths(published_dir):
-            yield read_learning_map(published_dir)
+            yield learning_maps.read_learning_map(published_dir)
 
     def path(self, course_id: str, lecture_id: str) -> Path:
         return self.layout.course_canvas_dir(course_id, lecture_id)
@@ -253,7 +255,7 @@ def _write_validated_draft(
 ) -> CanvasDocument:
     write_document_source(document, staging)
     normalized = normalize_learning_support(read_document_source(staging))
-    write_learning_map(normalized, staging)
+    learning_maps.write_learning_map(normalized, staging)
     if source_revision is not None:
         initialize_learning_design(normalized, staging, source_revision)
     return normalized
@@ -270,7 +272,7 @@ def _write_validated_canvas(
     clear_sections(staging)
     write_document_source(document, staging)
     normalized = normalize_learning_support(read_document_source(staging))
-    write_learning_map(normalized, staging)
+    learning_maps.write_learning_map(normalized, staging)
     return normalized
 
 

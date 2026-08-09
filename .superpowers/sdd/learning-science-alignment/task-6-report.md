@@ -118,3 +118,54 @@ large-main-chunk advisory.
 - No manual browser session was run. The review UI, actual preview iframe binding, approval gate,
   invalidation, and production build are covered by focused integration tests.
 - Existing non-failing dependency deprecation warnings remain in API tests.
+
+## Review fix round 1
+
+Addressed all five Important review findings from base `717d5db`.
+
+- PUT and approve now require the expected learning-map revision in addition to the canvas digest
+  and source revision. The store compares all three while holding the existing course-to-draft lock
+  and returns `409` for stale edits or approvals.
+- The professor editor detects unsaved local changes, disables approval until the exact edit is
+  saved, and exposes an accessible save-first status.
+- Review state is keyed by tenant, user, course, ordered lecture ids, and builder revision. An active
+  identity epoch and latest-operation token prevent old GET, save, or approve results and errors
+  from crossing an identity switch.
+- Each generation or targeted repair registers a private, durable per-lecture ownership record
+  before model planning while holding the course lock. The record contains a server UUID token,
+  monotonic sequence, generation id, and attempt. Draft commit rechecks the exact owner under the
+  course lock, so an older request cannot overwrite a newer request even when it finishes last.
+- Shared learning-contract validation rejects duplicate section, node, checkpoint, and gate ids.
+  Learning-design updates must preserve the exact current evidence-criterion id set for every gate;
+  unknown or duplicate criterion ids fail closed. Draft writes and legacy publication validate
+  these identifiers before committing.
+
+Review-fix TDD evidence:
+
+```text
+map revision RED: stale PUT returned 200; GREEN: stale PUT and approval return 409
+dirty editor RED: approval remained enabled after an edit; GREEN: 5 component tests passed
+identity race RED: an old save overwrote the new revision; GREEN: 3 hook race tests passed
+generation race RED: older A overwrote newer B; GREEN: deterministic A/B interleave passed
+identifier RED: 4 regressions failed; GREEN: 4 regressions passed
+focused backend: 31 tests passed
+focused web: 18 tests passed
+```
+
+Final verification:
+
+```text
+verify:api: Ruff format/lint passed; 758 API tests and 22 compiler tests passed
+web static checks: changelog, docs, Prettier, ESLint (zero warnings), and Knip passed
+full Vitest serialized: 96 files, 299 tests passed
+production TypeScript/Vite build passed; git diff --check passed
+```
+
+Before the expanded race matrix, the standard parallel Vitest run passed 95 of 96 files and 294 of
+295 tests; the sole failure was the existing `App.tutorNavigation` five-second timing timeout. That
+file immediately passed in isolation (2 tests), and the final 299-test one-worker run passed. Vite
+retains its existing large-main-chunk advisory.
+
+All new review-fix modules and all touched production modules other than the pre-existing i18n
+catalogs are at or below 300 lines. `course_canvas_generation.py` and `course_canvas_store.py` are
+the largest at 299 lines. The learning plan and progress ledger were not edited.

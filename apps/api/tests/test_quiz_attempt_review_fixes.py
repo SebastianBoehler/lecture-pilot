@@ -185,6 +185,7 @@ def _publish(client: TestClient, *, version_two: bool = False) -> None:
         lecture_id=LECTURE_ID,
         draft_digest=current.draft_digest,
         source_revision=current.source_revision,
+        learning_map_revision=current.learning_map.revision,
         approved_by="professor",
     )
     workspace.publish_course_canvas_draft(

@@ -43,6 +43,7 @@ class LearningDesignPrerequisiteInput(BaseModel):
 class LearningDesignUpdate(BaseModel):
     draft_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
     source_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
+    learning_map_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     objective: str = Field(min_length=1, max_length=1_000)
     gates: list[LearningDesignGateInput] = Field(default_factory=list, max_length=100)
     prerequisites: list[LearningDesignPrerequisiteInput] = Field(
@@ -53,3 +54,4 @@ class LearningDesignUpdate(BaseModel):
 class LearningDesignApprovalInput(BaseModel):
     draft_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
     source_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
+    learning_map_revision: str = Field(pattern=r"^[a-f0-9]{64}$")

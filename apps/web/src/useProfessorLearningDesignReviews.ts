@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 
 import {
   approveLearningDesignReview,
@@ -7,6 +7,11 @@ import {
 } from "./learningDesignApi";
 import type { LearningDesignReview, LearningDesignUpdate } from "./learningDesignTypes";
 import type { LoginSession } from "./types";
+
+type OperationToken = { epoch: number; key: string; operation: number };
+type KeyedReviews = { key: string; values: Record<string, LearningDesignReview> };
+type KeyedError = { key: string; message: string | null };
+type KeyedPending = { count: number; key: string };
 
 export function useProfessorLearningDesignReviews({
   courseId,
@@ -19,21 +24,31 @@ export function useProfessorLearningDesignReviews({
   revisionKey: string;
   session: LoginSession;
 }) {
-  const [reviews, setReviews] = useState<Record<string, LearningDesignReview>>({});
-  const [savingCount, setSavingCount] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-  const lectureKey = lectureIds.join("|");
+  const lectureKey = JSON.stringify(lectureIds);
+  const identityKey = courseId
+    ? JSON.stringify([session.tenant_id ?? "", session.username, courseId, lectureIds, revisionKey])
+    : "";
+  const active = useRef({ epoch: 0, key: identityKey, operation: 0 });
+  const [reviewState, setReviewState] = useState<KeyedReviews>({ key: "", values: {} });
+  const [errorState, setErrorState] = useState<KeyedError>({ key: "", message: null });
+  const [pending, setPending] = useState<KeyedPending>({ count: 0, key: "" });
+  const reviews = reviewState.key === identityKey ? reviewState.values : {};
+
+  useLayoutEffect(() => {
+    if (active.current.key !== identityKey) {
+      active.current = {
+        epoch: active.current.epoch + 1,
+        key: identityKey,
+        operation: 0,
+      };
+    }
+  }, [identityKey]);
 
   useEffect(() => {
-    let cancelled = false;
-    if (!courseId || !lectureKey) {
-      setReviews({});
-      setError(null);
-      return;
-    }
-    setReviews({});
-    setError(null);
-    const activeLectureIds = lectureKey.split("|");
+    if (!courseId || !identityKey) return;
+    const token = beginOperation(active, identityKey);
+    const activeLectureIds = JSON.parse(lectureKey) as string[];
+    setErrorState({ key: identityKey, message: null });
     void Promise.all(
       activeLectureIds.map(
         async (lectureId) =>
@@ -41,54 +56,94 @@ export function useProfessorLearningDesignReviews({
       ),
     )
       .then((entries) => {
-        if (!cancelled) setReviews(Object.fromEntries(entries));
+        if (isCurrent(active, token)) {
+          setReviewState({ key: identityKey, values: Object.fromEntries(entries) });
+        }
       })
       .catch((loadError) => {
-        if (!cancelled)
-          setError(
-            loadError instanceof Error ? loadError.message : "Learning-design review failed.",
-          );
+        if (isCurrent(active, token)) {
+          setErrorState({ key: identityKey, message: errorMessage(loadError) });
+        }
       });
-    return () => {
-      cancelled = true;
-    };
-  }, [courseId, lectureKey, revisionKey, session]);
+  }, [courseId, identityKey, lectureKey, session]);
 
   async function save(lectureId: string, update: LearningDesignUpdate) {
-    if (!courseId) return;
+    if (!courseId || !identityKey) return;
     await mutate(() => saveLearningDesignReview(courseId, lectureId, session, update));
   }
 
   async function approve(lectureId: string) {
-    if (!courseId) return;
+    if (!courseId || !identityKey) return;
     const review = reviews[lectureId];
     if (!review) return;
     await mutate(() => approveLearningDesignReview(courseId, lectureId, session, review));
   }
 
   async function mutate(operation: () => Promise<LearningDesignReview>) {
-    setSavingCount((count) => count + 1);
-    setError(null);
+    const token = beginOperation(active, identityKey);
+    setPending((current) => ({
+      count: current.key === identityKey ? current.count + 1 : 1,
+      key: identityKey,
+    }));
+    setErrorState({ key: identityKey, message: null });
     try {
       const changed = await operation();
-      setReviews((current) => ({ ...current, [changed.lecture_id]: changed }));
+      if (isCurrent(active, token)) {
+        setReviewState((current) => ({
+          key: identityKey,
+          values: {
+            ...(current.key === identityKey ? current.values : {}),
+            [changed.lecture_id]: changed,
+          },
+        }));
+      }
     } catch (mutationError) {
-      setError(
-        mutationError instanceof Error ? mutationError.message : "Learning-design review failed.",
-      );
+      if (isCurrent(active, token)) {
+        setErrorState({ key: identityKey, message: errorMessage(mutationError) });
+      }
     } finally {
-      setSavingCount((count) => count - 1);
+      setPending((current) =>
+        current.key === identityKey
+          ? { key: identityKey, count: Math.max(0, current.count - 1) }
+          : current,
+      );
     }
   }
 
   const allApproved =
-    Boolean(lectureKey) && lectureKey.split("|").every((lectureId) => reviews[lectureId]?.approval);
+    Boolean(identityKey) &&
+    reviewState.key === identityKey &&
+    lectureIds.length > 0 &&
+    lectureIds.every((lectureId) => reviewState.values[lectureId]?.approval);
   return {
     allApproved,
     approve,
-    error,
+    error: errorState.key === identityKey ? errorState.message : null,
     reviews,
     save,
-    saving: savingCount > 0,
+    saving: pending.key === identityKey && pending.count > 0,
   };
+}
+
+function beginOperation(
+  active: RefObject<{ epoch: number; key: string; operation: number }>,
+  key: string,
+): OperationToken {
+  active.current.operation += 1;
+  return { epoch: active.current.epoch, key, operation: active.current.operation };
+}
+
+function isCurrent(
+  active: RefObject<{ epoch: number; key: string; operation: number }>,
+  token: OperationToken,
+): boolean {
+  return (
+    active.current.key === token.key &&
+    active.current.epoch === token.epoch &&
+    active.current.operation === token.operation
+  );
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Learning-design review failed.";
 }

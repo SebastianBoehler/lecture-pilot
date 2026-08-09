@@ -58,6 +58,7 @@ export type LearningDesignReview = {
 export type LearningDesignUpdate = {
   draft_digest: string;
   source_revision: string;
+  learning_map_revision: string;
   objective: string;
   gates: Pick<
     LearningDesignGate,
@@ -65,3 +66,8 @@ export type LearningDesignUpdate = {
   >[];
   prerequisites: { section_id: string; prerequisite_ids: string[] }[];
 };
+
+export type LearningDesignApprovalInput = Pick<
+  LearningDesignUpdate,
+  "draft_digest" | "source_revision" | "learning_map_revision"
+>;

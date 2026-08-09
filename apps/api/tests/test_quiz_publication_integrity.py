@@ -189,6 +189,7 @@ def _publish(client: TestClient, document: CanvasDocument) -> dict:
         lecture_id=LECTURE_ID,
         draft_digest=current.draft_digest,
         source_revision=current.source_revision,
+        learning_map_revision=current.learning_map.revision,
         approved_by="professor",
     )
     return workspace.publish_course_canvas_draft(

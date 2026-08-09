@@ -132,6 +132,7 @@ def _publish(store: CourseCanvasStore, published_by: str) -> dict:
         lecture_id="lecture-01",
         draft_digest=current.draft_digest,
         source_revision=current.source_revision,
+        learning_map_revision=current.learning_map.revision,
         approved_by=published_by,
     )
     return store.publish_draft(

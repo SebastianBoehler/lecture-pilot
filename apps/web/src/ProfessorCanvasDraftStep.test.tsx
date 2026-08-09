@@ -73,6 +73,16 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
         gates: [expect.objectContaining({ id: "intro-check", review_after_days: 5 })],
       }),
     );
+    const savedReview = learningDesignReview(null);
+    savedReview.learning_map.objective = "Explain and transfer the mechanism.";
+    savedReview.learning_map.gates[0].review_after_days = 5;
+    rerender(
+      step(savedReview, {
+        onApproveLearningDesign,
+        onContinueToPublish,
+        onSaveLearningDesign,
+      }),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Approve learning design" }));
     expect(onApproveLearningDesign).toHaveBeenCalledWith("lecture-01");
 
@@ -85,6 +95,28 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Continue to publishing" }));
     expect(onContinueToPublish).toHaveBeenCalledOnce();
+  });
+
+  it("does not approve local edits until the exact changes are saved", () => {
+    const onApproveLearningDesign = vi.fn();
+    renderStep({
+      isFullCourse: false,
+      totalCount: 1,
+      onApproveLearningDesign,
+      review: learningDesignReview(null),
+    });
+
+    fireEvent.change(screen.getByLabelText("Learning objective"), {
+      target: { value: "Unsaved changed objective." },
+    });
+
+    const approve = screen.getByRole("button", { name: "Approve learning design" });
+    expect(approve).toBeDisabled();
+    expect(
+      screen.getByText("Save these changes before approving this learning design."),
+    ).toHaveAttribute("role", "status");
+    fireEvent.click(approve);
+    expect(onApproveLearningDesign).not.toHaveBeenCalled();
   });
 });
 

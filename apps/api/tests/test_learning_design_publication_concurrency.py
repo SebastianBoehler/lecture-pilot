@@ -23,6 +23,7 @@ def test_publish_holds_course_source_and_canvas_snapshot_until_commit(
         json={
             "draft_digest": review["draft_digest"],
             "source_revision": review["source_revision"],
+            "learning_map_revision": review["learning_map"]["revision"],
         },
     )
     assert approved.status_code == 200
@@ -93,6 +94,7 @@ def test_approval_holds_course_source_state_until_artifact_commit(
             lecture_id="lecture-01",
             draft_digest=review.draft_digest,
             source_revision=review.source_revision,
+            learning_map_revision=review.learning_map.revision,
             approved_by="prof01",
         )
         assert approval_entered.wait(timeout=2)

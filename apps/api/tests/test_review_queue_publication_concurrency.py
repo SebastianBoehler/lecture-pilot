@@ -57,6 +57,7 @@ def test_republish_waits_until_due_review_open_commits_authoritative_map(
         lecture_id="lecture-a",
         draft_digest=current.draft_digest,
         source_revision=current.source_revision,
+        learning_map_revision=current.learning_map.revision,
         approved_by="professor-a",
     )
     bind_entered = Event()
