@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from datetime import date
 from pathlib import Path
 from typing import Protocol
@@ -9,9 +8,7 @@ from pydantic import ValidationError
 
 from lecturepilot.agent_response_schema import lecture_schedule_response_format
 from lecturepilot.course_canvas_json import parse_model_json
-from lecturepilot.lecture_date_extraction import extract_source_date
-from lecturepilot.lecture_schedule import propose_lecture_schedule
-from lecturepilot.lecture_schedule_completion import complete_source_schedule
+from lecturepilot.lecture_schedule_evidence import build_schedule_evidence
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_request_options import completion_options
 from lecturepilot.model_usage import ModelUsageRecorder, complete_with_usage
@@ -23,9 +20,6 @@ from lecturepilot.models import (
 )
 from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
 from lecturepilot.source_bundle import SourceBundleFile
-
-MAX_EVIDENCE_FILES = 80
-MAX_EXCERPT_CHARS = 2400
 
 
 class LectureScheduleModelClient(Protocol):
@@ -90,12 +84,10 @@ class LectureSchedulePlanner:
                 payload = await self.model_client.complete_schedule(
                     settings=settings, messages=messages
                 )
-                return complete_source_schedule(
-                    _read_proposal(payload, course_id, files),
-                    course_id=course_id,
-                    files=files,
-                    roots=roots,
-                    first_lecture_date=first_lecture_date,
+                return _read_proposal(
+                    payload,
+                    course_id,
+                    files,
                     requested_count=requested_count,
                 )
             except ProviderConfigurationError as exc:
@@ -119,13 +111,19 @@ def _schedule_messages(
             "content": (
                 "You are the LecturePilot course-builder scheduling agent. Infer the "
                 "course lecture structure from an uploaded source bundle. Use file names, "
-                "LaTeX sections, Markdown headings, text excerpts, and media metadata as "
-                "evidence. Return exactly one structured schedule with a top-level lectures "
+                "directory relationships, LaTeX sections, Markdown headings, PDF text, text "
+                "excerpts, and media metadata as evidence. Treat the complete inventory as "
+                "authority; the selected excerpts are supporting evidence, not a complete "
+                "file list. Infer lecture units semantically instead of requiring any naming "
+                "pattern such as Lecture01. Distinguish primary teaching material from "
+                "assignments, solutions, submissions, exam records, and generated artifacts. "
+                "Return exactly one structured schedule with a top-level lectures "
                 "array. Each lecture needs "
                 "number, title, date, and material_path. Prefer concise real lecture topic "
                 "titles over housekeeping frames such as plan, recap, feedback, note, or "
                 "course thread. If a requested lecture count is absent, infer the count from "
                 "the materials. Prefer explicit date cues from current-semester source files. "
+                "When a requested lecture count is provided, return exactly that many rows. "
                 "When dates are missing, use weekly dates starting from the provided first lecture date. "
                 "Set material_path to null when no single source file belongs to the lecture."
             ),
@@ -151,102 +149,14 @@ def _repair_message(error: str) -> dict[str, str]:
     }
 
 
-def _source_evidence(
-    course_id: str,
-    files: list[SourceBundleFile],
-    roots: list[Path],
-    first_lecture_date: date | None,
-    requested_count: int | None,
-) -> str:
-    seed = propose_lecture_schedule(
-        course_id=course_id,
-        files=files,
-        roots=roots,
-        first_lecture_date=first_lecture_date,
-        requested_count=requested_count,
-    )
-    lines = [
-        f"Course id: {course_id}",
-        f"First lecture date: {first_lecture_date.isoformat() if first_lecture_date else date.today().isoformat()}",
-        f"Requested count: {requested_count or 'infer from materials'}",
-        "Deterministic file candidates, for reference only:",
-    ]
-    for lecture in seed.lectures:
-        lines.append(
-            f"- {lecture.number}: path={lecture.material_path}; "
-            f"rough_title={lecture.title}; date={lecture.date}"
-        )
-    lines.append("\nSource bundle files and excerpts:")
-    for item in sorted(files, key=_file_priority)[:MAX_EVIDENCE_FILES]:
-        lines.append(_file_evidence(item, roots))
-    return "\n".join(lines)
-
-
-def _file_evidence(item: SourceBundleFile, roots: list[Path]) -> str:
-    base = f"- path={item.path}; kind={item.kind}; size={item.size_bytes}"
-    path = _resolve_source(item.path, roots)
-    if not path:
-        return base
-    date_cue = extract_source_date(path)
-    if item.kind not in {"latex", "markdown", "text", "json"}:
-        return f"{base}\n  date cue: {date_cue.isoformat() if date_cue else 'none detected'}"
-    text = path.read_text(encoding="utf-8", errors="ignore")
-    return (
-        f"{base}\n"
-        f"  date cue: {date_cue.isoformat() if date_cue else 'none detected'}\n"
-        f"  outline: {_outline(text, item.kind)}\n"
-        f"  excerpt: {_compact_excerpt(text[:MAX_EXCERPT_CHARS])}"
-    )
-
-
-def _file_priority(item: SourceBundleFile) -> tuple[int, str]:
-    kind_priority = {"latex": 0, "markdown": 1, "text": 2, "json": 3, "pdf": 4}.get(item.kind, 5)
-    return (kind_priority, item.path.casefold())
-
-
-def _resolve_source(relative_path: str, roots: list[Path]) -> Path | None:
-    for root in roots:
-        candidate = root / relative_path
-        if candidate.exists() and candidate.is_file():
-            return candidate
-    return None
-
-
-def _compact_excerpt(text: str) -> str:
-    return " ".join(line.strip() for line in text.splitlines() if line.strip())[:MAX_EXCERPT_CHARS]
-
-
-def _outline(text: str, kind: str) -> str:
-    if kind == "latex":
-        titles = [
-            _clean_title(match.group(1))
-            for pattern in (
-                r"\\section\{([^{}]+)\}",
-                r"\\begin\{frame\}\{([^{}]+)\}",
-                r"\\frametitle\{([^{}]+)\}",
-            )
-            for match in re.finditer(pattern, text)
-        ]
-    elif kind == "markdown":
-        titles = [
-            _clean_title(match.group(1))
-            for match in re.finditer(r"^#{1,3}\s+(.+)$", text, re.MULTILINE)
-        ]
-    else:
-        titles = []
-    unique = []
-    for title in titles:
-        if title and title.casefold() not in {item.casefold() for item in unique}:
-            unique.append(title)
-    return "; ".join(unique[:24]) or "no structured outline detected"
-
-
-def _clean_title(value: str) -> str:
-    return re.sub(r"\s+", " ", value.replace("\\\\", " ")).strip(" -")
+_source_evidence = build_schedule_evidence
 
 
 def _read_proposal(
-    payload: dict, course_id: str, files: list[SourceBundleFile]
+    payload: dict,
+    course_id: str,
+    files: list[SourceBundleFile],
+    requested_count: int | None = None,
 ) -> LectureScheduleProposal:
     raw_lectures = payload.get("lectures")
     if not isinstance(raw_lectures, list) or not raw_lectures:
@@ -257,8 +167,12 @@ def _read_proposal(
         if not isinstance(raw, dict):
             continue
         material_path = raw.get("material_path")
-        if material_path and material_path not in known_paths:
-            material_path = None
+        if material_path is not None and (
+            not isinstance(material_path, str) or material_path not in known_paths
+        ):
+            raise ProviderConfigurationError(
+                "Lecture material_path must be null or an exact listed source path."
+            )
         try:
             lectures.append(
                 LectureScheduleItem(
@@ -274,6 +188,13 @@ def _read_proposal(
             ) from exc
     if not lectures:
         raise ProviderConfigurationError("Lecture schedule planner returned no usable lectures.")
+    numbers = [lecture.number for lecture in lectures]
+    if len(set(numbers)) != len(numbers):
+        raise ProviderConfigurationError("Every schedule row needs a unique lecture number.")
+    if requested_count is not None and len(lectures) != requested_count:
+        raise ProviderConfigurationError(
+            "Lecture schedule planner must return the requested lecture count."
+        )
     return LectureScheduleProposal(
         course_id=course_id,
         lectures=lectures,
@@ -282,5 +203,7 @@ def _read_proposal(
 
 
 def _schedule_number(number: str) -> str:
+    import re
+
     digits = re.sub(r"\D+", "", number)
     return f"{int(digits):02d}" if digits else number.strip()

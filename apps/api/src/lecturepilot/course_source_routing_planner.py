@@ -1,58 +1,22 @@
 from __future__ import annotations
 
-import re
 from pathlib import Path
-from typing import Protocol
-
-from lecturepilot.agent_response_schema import source_routing_response_format
-from lecturepilot.course_canvas_json import parse_model_json
+from lecturepilot.course_source_evidence import source_file_excerpt
+from lecturepilot.course_source_routing_client import (
+    LiteLLMSourceRoutingClient,
+    SourceRoutingModelClient,
+)
 from lecturepilot.course_source_routing_models import CourseSourceRoute, SourceRouteRole
-from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.model_request_options import completion_options
-from lecturepilot.model_usage import ModelUsageRecorder, complete_with_usage
+from lecturepilot.course_source_routing_review import (
+    apply_review_corrections,
+    routing_review_messages,
+)
 from lecturepilot.models import Lecture, ProviderCapability, ProviderSettings
-from lecturepilot.pdf_extract import read_pdf_text
 from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
 from lecturepilot.source_index_models import IndexedSourceFile
 
 
-MAX_FILES_PER_REQUEST = 50
-MAX_EXCERPT_CHARS = 900
-TEXT_KINDS = {"json", "latex", "markdown", "notebook", "python", "text"}
-
-
-class SourceRoutingModelClient(Protocol):
-    async def complete_routing(
-        self, *, settings: ProviderSettings, messages: list[dict[str, str]]
-    ) -> dict:
-        """Return one validated source assignment per listed file."""
-
-
-class LiteLLMSourceRoutingClient:
-    def __init__(self, usage_recorder: ModelUsageRecorder | None = None) -> None:
-        self.usage_recorder = usage_recorder
-
-    async def complete_routing(
-        self, *, settings: ProviderSettings, messages: list[dict[str, str]]
-    ) -> dict:
-        try:
-            from litellm import acompletion
-        except ImportError as exc:
-            raise ProviderConfigurationError(
-                'litellm is not installed. Install the backend with the "agent" extra.'
-            ) from exc
-        try:
-            response = await complete_with_usage(
-                self.usage_recorder,
-                acompletion,
-                model=settings.model,
-                messages=messages,
-                response_format=source_routing_response_format(),
-                **completion_options(settings, temperature=0.1, max_tokens=8000),
-            )
-        except Exception as exc:
-            raise ModelExecutionError("Source-routing model request failed.") from exc
-        return parse_model_json(response.choices[0].message.content)
+MAX_FILES_PER_REQUEST = 24
 
 
 class CourseSourceRoutingPlanner:
@@ -78,16 +42,43 @@ class CourseSourceRoutingPlanner:
             [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
         )
         proposed: dict[str, CourseSourceRoute] = {}
-        for offset in range(0, len(files), MAX_FILES_PER_REQUEST):
-            batch = files[offset : offset + MAX_FILES_PER_REQUEST]
+        for batch in source_route_batches(files):
             routes = await self._propose_batch(
                 settings=settings,
-                messages=_routing_messages(course_id, batch, lectures, roots),
+                messages=_routing_messages(course_id, batch, lectures, roots, inventory=files),
                 files=batch,
                 lectures=lectures,
             )
             proposed.update({route.path: route for route in routes})
-        return [proposed[item.path] for item in files]
+        ordered = [proposed[item.path] for item in files]
+        return await self._review_complete_manifest(
+            settings=settings,
+            messages=routing_review_messages(course_id, files, lectures, roots, ordered),
+            routes=ordered,
+            lectures=lectures,
+        )
+
+    async def _review_complete_manifest(
+        self,
+        *,
+        settings: ProviderSettings,
+        messages: list[dict[str, str]],
+        routes: list[CourseSourceRoute],
+        lectures: list[Lecture],
+    ) -> list[CourseSourceRoute]:
+        last_error: ProviderConfigurationError | None = None
+        for _ in range(2):
+            try:
+                payload = await self.model_client.review_routing(
+                    settings=settings, messages=messages
+                )
+                return apply_review_corrections(payload, routes, lectures)
+            except ProviderConfigurationError as exc:
+                last_error = exc
+                messages = [*messages, _review_repair_message(str(exc))]
+        raise last_error or ProviderConfigurationError(
+            "Source-routing review agent returned no usable corrections."
+        )
 
     async def _propose_batch(
         self,
@@ -112,11 +103,20 @@ class CourseSourceRoutingPlanner:
         )
 
 
+def source_route_batches(files: list[IndexedSourceFile]) -> list[list[IndexedSourceFile]]:
+    return [
+        files[offset : offset + MAX_FILES_PER_REQUEST]
+        for offset in range(0, len(files), MAX_FILES_PER_REQUEST)
+    ]
+
+
 def _routing_messages(
     course_id: str,
     files: list[IndexedSourceFile],
     lectures: list[Lecture],
     roots: list[Path],
+    *,
+    inventory: list[IndexedSourceFile],
 ) -> list[dict[str, str]]:
     return [
         {
@@ -129,12 +129,18 @@ def _routing_messages(
                 "because it is unrelated, a build artifact, a submission, an answer key, or a "
                 "duplicate. Do not exclude a file merely because its name is ambiguous; inspect "
                 "its content evidence and choose the best lecture. Use only the listed paths and "
-                "lecture ids. A lecture route requires lecture_id; other roles require null."
+                "lecture ids. Treat derived conversions as duplicates when the inventory contains "
+                "their original source. Student submissions, answer keys, grading schemes, and "
+                "temporary render artifacts must be excluded. When primary lecture material exists, "
+                "exclude assignment sheets, assignment slides, graded reports, and derived text "
+                "conversions of those artifacts; they must not shape the lecture Canvas. Also exclude "
+                "derived text conversions of primary PDFs when the original PDF is present and "
+                "readable. A lecture route requires lecture_id; other roles require null."
             ),
         },
         {
             "role": "user",
-            "content": _routing_evidence(course_id, files, lectures, roots),
+            "content": _routing_evidence(course_id, files, lectures, roots, inventory=inventory),
         },
     ]
 
@@ -144,6 +150,8 @@ def _routing_evidence(
     files: list[IndexedSourceFile],
     lectures: list[Lecture],
     roots: list[Path],
+    *,
+    inventory: list[IndexedSourceFile],
 ) -> str:
     lines = [f"Course id: {course_id}", "Lectures:"]
     for lecture in lectures:
@@ -151,28 +159,17 @@ def _routing_evidence(
             f"- id={lecture.id}; title={lecture.title}; date={lecture.date}; "
             f"primary_path={lecture.material_path or 'none'}"
         )
-    lines.append("\nFiles to assign exactly once:")
+    lines.append(f"\nComplete course inventory ({len(inventory)} files), for context only:")
+    for item in inventory:
+        lines.append(f"- path={item.path}; kind={item.kind}; size={item.size_bytes}")
+    noun = "file" if len(files) == 1 else "files"
+    lines.append(f"\nFiles to assign in this response ({len(files)} {noun}), exactly once:")
     for item in files:
         lines.append(
             f"- path={item.path}; kind={item.kind}; size={item.size_bytes}\n"
-            f"  content={_file_excerpt(item, roots)}"
+            f"  content={source_file_excerpt(item, roots)}"
         )
     return "\n".join(lines)
-
-
-def _file_excerpt(item: IndexedSourceFile, roots: list[Path]) -> str:
-    path = _resolve_source(item.path, roots)
-    if path is None:
-        return "file contents unavailable"
-    try:
-        if item.kind == "pdf":
-            return _compact(read_pdf_text(str(path), max_pages=3, max_chars=MAX_EXCERPT_CHARS))
-        if item.kind in TEXT_KINDS:
-            with path.open("r", encoding="utf-8", errors="ignore") as handle:
-                return _compact(handle.read(MAX_EXCERPT_CHARS * 2))
-    except (OSError, RuntimeError, ValueError):
-        return "text extraction unavailable; use path and file metadata"
-    return "binary asset; use path and surrounding course structure"
 
 
 def _read_routes(
@@ -188,8 +185,10 @@ def _read_routes(
         if not isinstance(raw, dict) or not isinstance(raw.get("path"), str):
             raise ProviderConfigurationError("Every source route needs an exact path.")
         path = raw["path"]
-        if path not in indexed or path in parsed:
-            raise ProviderConfigurationError("Use every listed source path exactly once.")
+        if path not in indexed:
+            raise ProviderConfigurationError(f"Unknown source path returned: {path}")
+        if path in parsed:
+            raise ProviderConfigurationError(f"Duplicate source path returned: {path}")
         try:
             role = SourceRouteRole(raw.get("role"))
         except ValueError as exc:
@@ -208,7 +207,10 @@ def _read_routes(
             lecture_id=lecture_id,
         )
     if parsed.keys() != indexed.keys():
-        raise ProviderConfigurationError("Assign every listed path exactly once.")
+        missing = [item.path for item in files if item.path not in parsed]
+        raise ProviderConfigurationError(
+            "Assign every listed path exactly once. Missing paths: " + ", ".join(missing)
+        )
     return [parsed[item.path] for item in files]
 
 
@@ -222,13 +224,11 @@ def _repair_message(error: str) -> dict[str, str]:
     }
 
 
-def _resolve_source(relative_path: str, roots: list[Path]) -> Path | None:
-    for root in roots:
-        candidate = root / relative_path
-        if candidate.exists() and candidate.is_file():
-            return candidate
-    return None
-
-
-def _compact(text: str) -> str:
-    return re.sub(r"\s+", " ", text).strip()[:MAX_EXCERPT_CHARS] or "no text extracted"
+def _review_repair_message(error: str) -> dict[str, str]:
+    return {
+        "role": "user",
+        "content": (
+            f"The global review violated the correction contract: {error} "
+            "Return only unique corrections for listed paths."
+        ),
+    }

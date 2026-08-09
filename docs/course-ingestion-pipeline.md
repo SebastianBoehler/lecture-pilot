@@ -10,7 +10,7 @@ create owned course
   -> upload files/folder tree
   -> index paths, types, sizes, and hashes
   -> infer and review lecture schedule
-  -> assign source evidence per lecture
+  -> agent-assign and professor-confirm source evidence per lecture
   -> generate private drafts
   -> repair, retry, and preview
   -> explicitly publish
@@ -66,22 +66,27 @@ rsync -a --exclude '.git/' "$OVERLEAF_CHECKOUT/" \
 
 ## Schedule and lecture ownership
 
-The server proposes a schedule from indexed filenames and content plus an
-optional first date/count. The professor can rename, remove, add, and drag
-lectures into the intended order before saving.
+The scheduling agent receives the complete indexed inventory plus bounded
+content evidence and an optional first date/count. It infers lecture units
+semantically; professors do not need to rename files or convert an upload into
+a prescribed folder scheme. The professor can then rename, remove, add, and
+drag lectures into the intended order before saving.
 
-Folder and filename structure is evidence, not authority. Draft generation
-selects files in this order:
+Folder and filename structure is evidence, not authority. A source-routing
+agent assigns every indexed file exactly once as lecture-specific, course-wide,
+or excluded. Large uploads are evaluated in bounded groups, followed by a
+global semantic review of the complete proposed manifest and the content of
+selected non-primary sources. This second pass catches cross-group duplicates,
+derived conversions, submissions, answer keys, grading material, and temporary
+artifacts while retaining authoritative teaching material. The professor sees
+and may edit all assignments; Canvas generation remains blocked until that
+exact source revision is confirmed.
 
-1. saved per-lecture source-manifest paths;
-2. the lecture's exact `material_path` and descendants of a unique lecture
-   folder;
-3. unambiguous lecture numbers in paths; and
-4. recognized course-wide files such as a syllabus.
-
-Same-named files in different lecture folders remain isolated. If nothing can
-be assigned to a lecture, generation fails clearly rather than sending the
-entire course to the model.
+Draft generation uses only the confirmed lecture-specific and course-wide
+routes. Same-named files in different folders remain distinct. If the agent
+cannot form a complete typed proposal, or a lecture has no usable routed
+evidence, the workflow fails clearly instead of guessing from a naming rule or
+sending the entire course to the model.
 
 ## Deterministic evidence adapters
 

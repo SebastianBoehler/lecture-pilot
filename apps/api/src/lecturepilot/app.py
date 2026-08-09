@@ -25,10 +25,8 @@ from lecturepilot.course_canvas_quality import CanvasQualityReviewer, LiteLLMCan
 from lecturepilot.course_deletion import register_course_deletion_routes
 from lecturepilot.course_routes import register_course_routes
 from lecturepilot.course_source_routing_routes import register_course_source_routing_routes
-from lecturepilot.course_source_routing_planner import (
-    CourseSourceRoutingPlanner,
-    LiteLLMSourceRoutingClient,
-)
+from lecturepilot.course_source_routing_client import LiteLLMSourceRoutingClient
+from lecturepilot.course_source_routing_planner import CourseSourceRoutingPlanner
 from lecturepilot.course_update_routes import register_course_update_routes
 from lecturepilot.csrf import CsrfProtectionMiddleware, allowed_origins
 from lecturepilot.database import Database

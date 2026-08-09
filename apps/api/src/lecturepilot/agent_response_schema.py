@@ -81,26 +81,50 @@ def source_routing_response_format() -> dict[str, Any]:
                 "properties": {
                     "routes": {
                         "type": "array",
-                        "items": {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "properties": {
-                                "path": {"type": "string"},
-                                "role": {
-                                    "type": "string",
-                                    "enum": ["lecture", "course_wide", "excluded"],
-                                },
-                                "lecture_id": _nullable_string(
-                                    "Required for lecture-specific sources; null otherwise."
-                                ),
-                            },
-                            "required": ["path", "role", "lecture_id"],
-                        },
+                        "items": {"anyOf": [_source_route_schema(role) for role in _ROUTE_ROLES]},
                     },
                 },
                 "required": ["routes"],
             },
         },
+    }
+
+
+def source_routing_review_response_format() -> dict[str, Any]:
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "lecturepilot_source_routing_review",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "corrections": {
+                        "type": "array",
+                        "items": {"anyOf": [_source_route_schema(role) for role in _ROUTE_ROLES]},
+                    },
+                },
+                "required": ["corrections"],
+            },
+        },
+    }
+
+
+_ROUTE_ROLES = ("lecture", "course_wide", "excluded")
+
+
+def _source_route_schema(role: str) -> dict[str, Any]:
+    lecture_id = {"type": "string"} if role == "lecture" else {"type": "null"}
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "path": {"type": "string"},
+            "role": {"type": "string", "const": role},
+            "lecture_id": lecture_id,
+        },
+        "required": ["path", "role", "lecture_id"],
     }
 
 
