@@ -8,6 +8,7 @@ export function quizAttemptResponse(init?: RequestInit) {
     component_id: request.block_id,
     selected_index: request.option_index,
     correct,
+    publication_version: 1,
     attempt_index: 1,
     first_attempt_correct: correct,
     latest_outcome: correct ? "correct" : "incorrect",

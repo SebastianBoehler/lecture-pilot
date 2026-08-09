@@ -5,6 +5,7 @@ import { DisplayMath, MathText } from "./MathText";
 import { SourceMarker } from "./SourceMarker";
 import { findKeySourceBlockId, shouldShowSourceMarker } from "./canvasBlockSourceRules";
 import type { CanvasLearningActions } from "./canvasLearningActions";
+import { canonicalQuizId } from "./quizIdentity";
 import { blockSourceReference, sectionSourceReferences } from "./sourceReferences";
 import type {
   CanvasBlock,
@@ -245,7 +246,7 @@ function renderBlock(
         className={className}
         highlightedText={phrase}
         key={block.id}
-        quizState={quizStates[block.component_id || block.id]}
+        quizState={quizStates[canonicalQuizId(block)]}
         sourceMarker={sourceMarker}
         onSubmitAnswer={onSubmitQuizAnswer}
       />
@@ -270,7 +271,7 @@ function renderBlock(
         block={block}
         className={className}
         key={block.id}
-        quizState={quizStates[block.component_id || block.id]}
+        quizState={quizStates[canonicalQuizId(block)]}
         sourceMarker={sourceMarker}
         onSubmitAnswer={onSubmitQuizAnswer}
       />

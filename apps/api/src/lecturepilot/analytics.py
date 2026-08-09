@@ -16,6 +16,7 @@ from lecturepilot.learning_map import LearningMap
 from lecturepilot.learner_lesson_state_models import QuizCorrectionState, QuizOutcome
 from lecturepilot.models import AttendanceStatus, QualityGateDecision
 from lecturepilot.professor_preview import is_professor_preview_user_id
+from lecturepilot.quiz_identity import canonical_quiz_id
 from lecturepilot.quiz_analytics import (
     AnalyticsOptionMetric as AnalyticsOptionMetric,
     AnalyticsQuizMetric as AnalyticsQuizMetric,
@@ -38,6 +39,7 @@ class QuizAnswerResult(BaseModel):
     component_id: str
     selected_index: int
     correct: bool | None
+    publication_version: int = Field(ge=1)
     attempt_index: int = Field(ge=1)
     first_attempt_correct: bool | None
     latest_outcome: QuizOutcome
@@ -77,7 +79,7 @@ class AnalyticsStore:
         option_id = option_ids[option_index] if option_index < len(option_ids) else None
         correct_index = block.answer_index if isinstance(block.answer_index, int) else None
         correct = option_index == correct_index if correct_index is not None else None
-        component_id = block.component_id or block.id
+        component_id = canonical_quiz_id(block)
         if not is_professor_preview_user_id(user_id):
             self._append(
                 course_id,
@@ -90,7 +92,7 @@ class AnalyticsStore:
                     "attendance": attendance.value,
                     "component_id": component_id,
                     "component_type": block.component_type or block.type,
-                    "block_id": block.id,
+                    "block_id": component_id,
                     "title": block.caption or "Retrieval check",
                     "question": block.text or "",
                     "option_index": option_index,

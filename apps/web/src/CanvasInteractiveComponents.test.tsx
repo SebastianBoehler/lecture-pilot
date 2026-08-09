@@ -13,6 +13,7 @@ describe("CanvasInteractiveComponents", () => {
       block_id: "risk-threshold-check",
       selected_index: 0,
       correct: true,
+      publication_version: 1,
       attempt_index: 1,
       first_attempt_correct: true,
       latest_outcome: "correct",

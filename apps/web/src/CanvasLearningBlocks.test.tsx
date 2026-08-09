@@ -114,6 +114,7 @@ describe("CanvasLearningBlocks", () => {
         quizState={{
           selected_index: 0,
           correct: false,
+          publication_version: 1,
           attempt_index: 1,
           first_attempt_correct: false,
           latest_outcome: "incorrect",
@@ -221,6 +222,7 @@ type QuizResult = {
   block_id: string;
   selected_index: number;
   correct: boolean | null;
+  publication_version: number;
   attempt_index: number;
   first_attempt_correct: boolean | null;
   latest_outcome: "correct" | "incorrect" | "unscored";
@@ -233,6 +235,7 @@ function result(overrides: Partial<QuizResult> = {}): QuizResult {
     block_id: "quiz-block",
     selected_index: 1,
     correct: true,
+    publication_version: 1,
     attempt_index: 1,
     first_attempt_correct: true,
     latest_outcome: "correct",

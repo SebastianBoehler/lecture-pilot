@@ -84,6 +84,7 @@ def test_wrong_then_correct_is_one_first_attempt_plus_one_correction(tmp_path: P
         "component_id": "risk-quiz",
         "selected_index": 0,
         "correct": False,
+        "publication_version": 1,
         "attempt_index": 1,
         "first_attempt_correct": False,
         "latest_outcome": "incorrect",
@@ -106,6 +107,7 @@ def test_wrong_then_correct_is_one_first_attempt_plus_one_correction(tmp_path: P
     assert state == {
         "selected_index": 1,
         "correct": True,
+        "publication_version": 1,
         "attempt_index": 2,
         "first_attempt_correct": False,
         "latest_outcome": "correct",

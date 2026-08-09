@@ -3,6 +3,7 @@ import { useState } from "react";
 import { recordQuizAnswer, type LearnerQuizAnswerResult } from "./analyticsApi";
 import type { TutorMessageOptions } from "./canvasLearningActions";
 import { useI18n } from "./i18n";
+import { canonicalQuizId } from "./quizIdentity";
 import type { CanvasBlock, LearnerWorkspaceMode, LoginSession, Lecture } from "./types";
 
 export function useCanvasLearningAttempts({
@@ -36,7 +37,7 @@ export function useCanvasLearningAttempts({
       lectureId: lecture.id,
       attendance: lecture.attendance,
       attemptId,
-      blockId: block.id,
+      blockId: canonicalQuizId(block),
       optionIndex,
       session,
       mode: workspaceMode,

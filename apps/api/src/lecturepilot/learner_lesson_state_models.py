@@ -17,6 +17,7 @@ class LearnerQuizState(BaseModel):
 
     selected_index: int = Field(ge=0, le=25)
     correct: bool | None = None
+    publication_version: int = Field(default=1, ge=1)
     attempt_index: int = Field(default=1, ge=1)
     first_attempt_correct: bool | None = None
     latest_outcome: QuizOutcome = "unscored"

@@ -12,6 +12,7 @@ export type LearnerQuizAnswerResult = {
   block_id: string;
   selected_index: number;
   correct: boolean | null;
+  publication_version: number;
   attempt_index: number;
   first_attempt_correct: boolean | null;
   latest_outcome: "correct" | "incorrect" | "unscored";

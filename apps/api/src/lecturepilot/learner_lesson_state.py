@@ -19,6 +19,7 @@ def lesson_state_snapshot(
     user_id: str,
     course_id: str,
     lecture_id: str,
+    publication_version: int,
     now: datetime | None = None,
 ) -> LearnerLessonState:
     progress = coaching_store.read(
@@ -40,6 +41,7 @@ def lesson_state_snapshot(
             user_id=user_id,
             course_id=course_id,
             lecture_id=lecture_id,
+            publication_version=publication_version,
         ),
         active_session_goal=progress.session_goal.strip() or None,
         pending_check=(

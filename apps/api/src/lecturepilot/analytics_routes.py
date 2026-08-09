@@ -24,6 +24,11 @@ from lecturepilot.models import Course, Lecture
 from lecturepilot.readiness_analytics import CourseReadinessSummary, course_readiness_summary
 from lecturepilot.readiness_progress import ReadinessProgressStore
 from lecturepilot.professor_preview import resolve_learner_workspace_access
+from lecturepilot.quiz_identity import (
+    canonical_quiz_id,
+    is_quiz_block,
+    published_canvas_version,
+)
 from lecturepilot.tenancy import TenantContext
 
 
@@ -74,6 +79,12 @@ def register_analytics_routes(
         except CanvasWorkspaceError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         block = _quiz_block(document, answer.block_id)
+        quiz_id = canonical_quiz_id(block)
+        publication_version = published_canvas_version(
+            app.state.canvas_workspace,
+            course_id=course_id,
+            lecture_id=lecture_id,
+        )
         if answer.option_index >= len(block.items):
             raise HTTPException(status_code=400, detail="Quiz option does not exist.")
         correct = (
@@ -86,7 +97,8 @@ def register_analytics_routes(
                 course_id=course_id,
                 lecture_id=lecture_id,
                 user_id=access.user_id,
-                block_id=block.id,
+                quiz_id=quiz_id,
+                publication_version=publication_version,
                 attempt_id=answer.attempt_id,
                 selected_index=answer.option_index,
                 correct=correct,
@@ -106,10 +118,11 @@ def register_analytics_routes(
                 correction_state=state.correction_state,
             )
         return QuizAnswerResult(
-            block_id=block.id,
-            component_id=block.component_id or block.id,
+            block_id=quiz_id,
+            component_id=quiz_id,
             selected_index=state.selected_index,
             correct=state.correct,
+            publication_version=state.publication_version,
             attempt_index=state.attempt_index,
             first_attempt_correct=state.first_attempt_correct,
             latest_outcome=state.latest_outcome,
@@ -224,9 +237,9 @@ def register_analytics_routes(
 def _quiz_block(document: CanvasDocument, block_id: str) -> CanvasBlock:
     for section in document.sections:
         for block in section.blocks:
-            if block.id != block_id:
+            if canonical_quiz_id(block) != block_id:
                 continue
-            if block.type not in {"quiz", "component"}:
+            if not is_quiz_block(block):
                 raise HTTPException(status_code=400, detail="Canvas block is not a quiz component.")
             return block
     raise HTTPException(status_code=404, detail="Quiz block not found.")

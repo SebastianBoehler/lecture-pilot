@@ -7,6 +7,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field, model_validator
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.quiz_identity import canonical_quiz_id, is_quiz_block
 
 
 class LearningMapEvidenceCriterion(BaseModel):
@@ -141,12 +142,7 @@ def _checkpoint_gate(
 
 
 def _quiz_ids(blocks: list[CanvasBlock]) -> list[str]:
-    return [
-        block.component_id or block.id
-        for block in blocks
-        if block.type == "quiz"
-        or (block.type == "component" and block.component_type == "single_choice_quiz")
-    ]
+    return [canonical_quiz_id(block) for block in blocks if is_quiz_block(block)]
 
 
 def _digest(model: BaseModel, excluded_field: str) -> str:

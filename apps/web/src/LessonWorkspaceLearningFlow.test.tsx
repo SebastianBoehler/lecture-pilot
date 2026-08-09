@@ -50,6 +50,7 @@ describe("LessonWorkspace learning attempts", () => {
         component_id: "risk-quiz",
         selected_index: 0,
         correct: false,
+        publication_version: 1,
         attempt_index: 1,
         first_attempt_correct: false,
         latest_outcome: "incorrect",

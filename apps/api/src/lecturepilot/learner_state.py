@@ -91,7 +91,8 @@ class LearnerStateStore:
         course_id: str,
         lecture_id: str,
         user_id: str,
-        block_id: str,
+        quiz_id: str,
+        publication_version: int,
         attempt_id: str,
         selected_index: int,
         correct: bool | None,
@@ -102,19 +103,26 @@ class LearnerStateStore:
             quizzes = payload.get("quizzes") if isinstance(payload.get("quizzes"), dict) else {}
             attempts = payload.get("attempts") if isinstance(payload.get("attempts"), dict) else {}
             block_attempts = (
-                attempts.get(block_id) if isinstance(attempts.get(block_id), dict) else {}
+                attempts.get(quiz_id) if isinstance(attempts.get(quiz_id), dict) else {}
             )
             if attempt_id in block_attempts:
                 prior = LearnerQuizState.model_validate(block_attempts[attempt_id])
-                if prior.selected_index != selected_index:
+                if (
+                    prior.publication_version == publication_version
+                    and prior.selected_index != selected_index
+                ):
                     raise ValueError("Quiz attempt ID was already used for a different answer.")
-                return prior, False
-            previous = _validated_quiz_state(quizzes.get(block_id))
+                if prior.publication_version == publication_version:
+                    return prior, False
+            previous = _current_quiz_state(quizzes.get(quiz_id), publication_version)
+            if previous is not None and previous.correct is True:
+                return previous, False
             attempt_index = (previous.attempt_index if previous else 0) + 1
             first_correct = correct if previous is None else previous.first_attempt_correct
             state = LearnerQuizState(
                 selected_index=selected_index,
                 correct=correct,
+                publication_version=publication_version,
                 attempt_index=attempt_index,
                 first_attempt_correct=first_correct,
                 latest_outcome=(
@@ -126,9 +134,9 @@ class LearnerStateStore:
                 ),
                 correction_state=_correction_state(previous, correct),
             )
-            quizzes[block_id] = state.model_dump(mode="json")
+            quizzes[quiz_id] = state.model_dump(mode="json")
             block_attempts[attempt_id] = state.model_dump(mode="json")
-            attempts[block_id] = block_attempts
+            attempts[quiz_id] = block_attempts
             _write_json(
                 path,
                 {
@@ -147,6 +155,7 @@ class LearnerStateStore:
         course_id: str,
         lecture_id: str,
         user_id: str,
+        publication_version: int,
     ) -> dict[str, LearnerQuizState]:
         path = self.layout.user_lecture_root(user_id, course_id, lecture_id) / "quizzes.json"
         raw_quizzes = _read_json(path).get("quizzes")
@@ -157,9 +166,11 @@ class LearnerStateStore:
             if not isinstance(block_id, str) or not isinstance(raw_state, dict):
                 continue
             try:
-                quizzes[block_id] = LearnerQuizState.model_validate(raw_state)
+                state = LearnerQuizState.model_validate(raw_state)
             except ValidationError:
                 continue
+            if state.publication_version == publication_version:
+                quizzes[block_id] = state
         return dict(sorted(quizzes.items()))
 
 
@@ -173,19 +184,22 @@ def _read_json(path: Path) -> dict:
     return payload if isinstance(payload, dict) else {}
 
 
-def _validated_quiz_state(value) -> LearnerQuizState | None:
+def _current_quiz_state(value, publication_version: int) -> LearnerQuizState | None:
     if not isinstance(value, dict):
         return None
     try:
-        return LearnerQuizState.model_validate(value)
+        state = LearnerQuizState.model_validate(value)
     except ValidationError:
         return None
+    return state if state.publication_version == publication_version else None
 
 
 def _correction_state(
     previous: LearnerQuizState | None, correct: bool | None
 ) -> QuizCorrectionState:
-    if correct is not True:
+    if correct is None:
+        return "not_needed"
+    if correct is False:
         return "needed"
     if previous is not None and previous.first_attempt_correct is False:
         return "corrected"

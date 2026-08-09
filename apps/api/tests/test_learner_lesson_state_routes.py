@@ -127,6 +127,7 @@ def test_lesson_state_hydrates_gate_quiz_goal_pending_check_and_due_review(
             "intro-quiz": {
                 "selected_index": 0,
                 "correct": True,
+                "publication_version": 1,
                 "attempt_index": 1,
                 "first_attempt_correct": True,
                 "latest_outcome": "correct",

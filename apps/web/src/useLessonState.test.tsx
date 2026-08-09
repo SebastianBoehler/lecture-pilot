@@ -112,6 +112,7 @@ describe("useLessonState", () => {
           quiz: {
             selected_index: 1,
             correct: true,
+            publication_version: 1,
             attempt_index: 1,
             first_attempt_correct: true,
             latest_outcome: "correct",
@@ -250,6 +251,7 @@ function quizResult() {
     block_id: "quiz",
     selected_index: 1,
     correct: true,
+    publication_version: 1,
     attempt_index: 1,
     first_attempt_correct: true,
     latest_outcome: "correct" as const,
