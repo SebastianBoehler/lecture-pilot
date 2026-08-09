@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 import json
-import re
 import shutil
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -19,13 +17,29 @@ from lecturepilot.canvas_markdown import (
     write_document_source,
 )
 from lecturepilot.canvas_models import CanvasDocument
+from lecturepilot.course_canvas_publication import (
+    clear_sections,
+    legacy_safe_id,
+    publication_metadata,
+    publication_path,
+    prepared_document,
+    read_publication,
+)
+from lecturepilot.course_canvas_repairs import lecture_source_revision
+from lecturepilot.course_learning_design_models import LearningDesignReview
+from lecturepilot.course_learning_design_store import (
+    LearningDesignError,
+    approved_learning_design,
+    initialize_learning_design,
+)
 from lecturepilot.learning_map import LearningMap, read_learning_map, write_learning_map
+from lecturepilot.learning_map import learning_map_path
 from lecturepilot.quiz_identity import publication_version, validate_unique_quiz_ids
 from lecturepilot.storage_layout import StorageLayout
 
 
 class InvalidCanvasDraftError(RuntimeError):
-    """Raised when a generated or stored draft violates the canvas contract."""
+    pass
 
 
 @dataclass(frozen=True)
@@ -63,7 +77,7 @@ class CourseCanvasStore:
     def write(self, document: CanvasDocument) -> CanvasDocument:
         canvas_dir = self.path(document.course_id, document.lecture_id)
         with locked_canvas_paths(canvas_dir):
-            document = _prepared_document(document, canvas_dir)
+            document = prepared_document(document, canvas_dir)
             written = replace_canvas_snapshot(
                 canvas_dir,
                 lambda staging: _write_validated_canvas(
@@ -81,17 +95,33 @@ class CourseCanvasStore:
                 return None
             try:
                 document = normalize_learning_support(read_document_source(draft_dir))
-                write_learning_map(document, draft_dir)
                 return document
             except (CanvasMarkdownError, ValidationError, ValueError) as exc:
                 raise InvalidCanvasDraftError(
                     "Stored canvas draft is invalid. Retry generation for this lecture."
                 ) from exc
 
-    def write_draft(self, document: CanvasDocument) -> CanvasDocument:
+    def write_draft(
+        self,
+        document: CanvasDocument,
+        *,
+        expected_source_revision: str | None = None,
+    ) -> CanvasDocument:
         draft_dir = self.draft_path(document.course_id, document.lecture_id)
+        current_source_revision = lecture_source_revision(
+            self.layout,
+            course_id=document.course_id,
+            lecture_id=document.lecture_id,
+        )
+        if (
+            expected_source_revision is not None
+            and current_source_revision != expected_source_revision
+        ):
+            raise InvalidCanvasDraftError(
+                "Course sources changed during generation. Generate this draft again."
+            )
         try:
-            document = _prepared_document(document, draft_dir)
+            document = prepared_document(document, draft_dir)
         except (CanvasMarkdownError, ValidationError, ValueError) as exc:
             raise InvalidCanvasDraftError(
                 "Generated canvas draft is invalid and was not saved."
@@ -100,7 +130,9 @@ class CourseCanvasStore:
             try:
                 written = replace_canvas_snapshot(
                     draft_dir,
-                    lambda staging: _write_validated_draft(document, staging),
+                    lambda staging: _write_validated_draft(
+                        document, staging, current_source_revision
+                    ),
                 )
             except (CanvasMarkdownError, ValidationError, ValueError) as exc:
                 raise InvalidCanvasDraftError(
@@ -115,20 +147,30 @@ class CourseCanvasStore:
             if not (draft_dir / "index.md").exists():
                 raise FileNotFoundError("No canvas draft exists for this lecture.")
             try:
-                validate_unique_quiz_ids(read_document_source(draft_dir))
+                draft = read_document_source(draft_dir)
+                validate_unique_quiz_ids(draft)
+                review = approved_learning_design(
+                    self.layout,
+                    draft_dir=draft_dir,
+                    course_id=course_id,
+                    lecture_id=lecture_id,
+                )
+            except LearningDesignError:
+                raise
             except (CanvasMarkdownError, ValidationError, ValueError) as exc:
                 raise InvalidCanvasDraftError(
                     "Stored canvas draft is invalid. Retry generation for this lecture."
                 ) from exc
-            previous = _read_publication(published_dir)
+            previous = read_publication(published_dir)
             version = int(previous.get("version", 0)) + 1 if previous else 1
-            metadata = _publication_metadata(
+            metadata = publication_metadata(
                 course_id=course_id,
                 lecture_id=lecture_id,
                 published_by=published_by,
                 version=version,
                 draft_dir=draft_dir,
                 published_dir=published_dir,
+                review=review,
             )
             try:
                 return replace_canvas_snapshot(
@@ -138,6 +180,7 @@ class CourseCanvasStore:
                         staging=staging,
                         published_dir=published_dir,
                         metadata=metadata,
+                        review=review,
                     ),
                 )
             except (CanvasMarkdownError, ValidationError, ValueError) as exc:
@@ -148,7 +191,7 @@ class CourseCanvasStore:
     def publication(self, *, course_id: str, lecture_id: str) -> dict | None:
         published_dir = self.path(course_id, lecture_id)
         with locked_canvas_paths(published_dir):
-            return _read_publication(published_dir)
+            return read_publication(published_dir)
 
     def read_published_snapshot(
         self, *, course_id: str, lecture_id: str
@@ -160,7 +203,7 @@ class CourseCanvasStore:
             document = normalize_learning_support(read_document_source(published_dir)).model_copy(
                 update={"workspace_path": str(published_dir / "index.md")}
             )
-            publication = _read_publication(published_dir)
+            publication = read_publication(published_dir)
             return PublishedCanvasSnapshot(
                 document=document,
                 publication=publication,
@@ -197,40 +240,22 @@ class CourseCanvasStore:
             self.legacy_material_root
             / "canvas"
             / "lectures"
-            / _safe_id(course_id)
-            / _safe_id(lecture_id)
+            / legacy_safe_id(course_id)
+            / legacy_safe_id(lecture_id)
         )
         return legacy if (legacy / "index.md").exists() else None
 
 
-def _safe_id(value: str) -> str:
-    safe = re.sub(r"[^a-zA-Z0-9_-]+", "-", value).strip("-")
-    return (safe or "canvas")[:120]
-
-
-def _prepared_document(document: CanvasDocument, canvas_dir: Path) -> CanvasDocument:
-    normalized = normalize_learning_support(document).model_copy(
-        update={"workspace_path": str(canvas_dir / "index.md")}
-    )
-    return CanvasDocument.model_validate(normalized.model_dump())
-
-
-def _clear_sections(canvas_dir: Path) -> None:
-    sections_dir = canvas_dir / "sections"
-    if not sections_dir.exists():
-        return
-    for path in sections_dir.glob("*.md"):
-        path.unlink()
-
-
-def _publication_path(canvas_dir: Path) -> Path:
-    return canvas_dir / "publication.json"
-
-
-def _write_validated_draft(document: CanvasDocument, staging: Path) -> CanvasDocument:
+def _write_validated_draft(
+    document: CanvasDocument,
+    staging: Path,
+    source_revision: str | None,
+) -> CanvasDocument:
     write_document_source(document, staging)
     normalized = normalize_learning_support(read_document_source(staging))
     write_learning_map(normalized, staging)
+    if source_revision is not None:
+        initialize_learning_design(normalized, staging, source_revision)
     return normalized
 
 
@@ -242,7 +267,7 @@ def _write_validated_canvas(
 ) -> CanvasDocument:
     if current.exists():
         shutil.copytree(current, staging, dirs_exist_ok=True)
-    _clear_sections(staging)
+    clear_sections(staging)
     write_document_source(document, staging)
     normalized = normalize_learning_support(read_document_source(staging))
     write_learning_map(normalized, staging)
@@ -255,42 +280,18 @@ def _write_validated_publication(
     staging: Path,
     published_dir: Path,
     metadata: dict,
+    review: LearningDesignReview,
 ) -> dict:
     shutil.copytree(draft_dir, staging, dirs_exist_ok=True)
+    (staging / "learning-design.json").unlink(missing_ok=True)
     document = normalize_learning_support(read_document_source(staging))
     write_document_source(
         document.model_copy(update={"workspace_path": str(published_dir / "index.md")}),
         staging,
     )
-    write_learning_map(document, staging)
-    _publication_path(staging).write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+    learning_map_path(staging).write_text(
+        review.learning_map.model_dump_json(indent=2), encoding="utf-8"
+    )
+    publication_path(staging).write_text(json.dumps(metadata, indent=2), encoding="utf-8")
     normalize_learning_support(read_document_source(staging))
-    return json.loads(_publication_path(staging).read_text(encoding="utf-8"))
-
-
-def _read_publication(published_dir: Path) -> dict | None:
-    path = _publication_path(published_dir)
-    if not path.exists():
-        return None
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
-def _publication_metadata(
-    *,
-    course_id: str,
-    lecture_id: str,
-    published_by: str,
-    version: int,
-    draft_dir: Path,
-    published_dir: Path,
-) -> dict:
-    return {
-        "schema_version": 1,
-        "course_id": course_id,
-        "lecture_id": lecture_id,
-        "version": version,
-        "published_at": datetime.now(UTC).isoformat(),
-        "published_by": published_by,
-        "source_draft_path": str(draft_dir / "index.md"),
-        "published_path": str(published_dir / "index.md"),
-    }
+    return read_publication(staging) or {}

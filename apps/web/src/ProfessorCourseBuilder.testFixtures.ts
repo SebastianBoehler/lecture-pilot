@@ -5,6 +5,7 @@ export function professorFetchMock() {
   const deletedCourses = new Set<string>();
   const selectedMedia = new Map<string, { video: ReturnType<typeof youtubeCandidate> }>();
   let routing = sourceRouting(false);
+  const learningDesignApprovals = new Set<string>();
   return vi.fn(async (url: string, init?: RequestInit) => {
     const path = new URL(url, "http://localhost").pathname;
     if (path === "/admin/courses") {
@@ -37,6 +38,12 @@ export function professorFetchMock() {
       return json(courseAnalyticsPayload());
     }
     if (url.includes("/analytics")) return json(analyticsPayload());
+    if (url.includes("/canvas/learning-design")) {
+      const { courseId, lectureId } = courseAndLectureFromUrl(url);
+      const key = `${courseId}:${lectureId}`;
+      if (init?.method === "POST") learningDesignApprovals.add(key);
+      return json(learningDesignPayload(courseId, lectureId, learningDesignApprovals.has(key)));
+    }
     if (url.includes("/canvas/publication"))
       return json(publicationPayload(url, publishedLectures));
     if (url.includes("/canvas/publish")) return json(publishPayload(url, publishedLectures));
@@ -95,6 +102,36 @@ function publishPayload(url: string, publishedLectures: Set<string>) {
     published: true,
     version: 1,
     published_at: "2026-06-12T10:00:00Z",
+  };
+}
+
+function learningDesignPayload(courseId: string, lectureId: string, approved: boolean) {
+  return {
+    schema_version: 1,
+    course_id: courseId,
+    lecture_id: lectureId,
+    draft_digest: "d".repeat(64),
+    source_revision: "s".repeat(64),
+    factual_quality_separate: true,
+    warnings: ["Decision making has no assessment."],
+    approval: approved
+      ? {
+          approved_by: "professor-demo",
+          approved_at: "2026-08-09T12:00:00Z",
+          draft_digest: "d".repeat(64),
+          source_revision: "s".repeat(64),
+          learning_map_revision: "m".repeat(64),
+        }
+      : null,
+    learning_map: {
+      course_id: courseId,
+      lecture_id: lectureId,
+      title: "Bayesian Decision Theory",
+      objective: "Explain Bayesian decisions from source evidence.",
+      revision: "m".repeat(64),
+      nodes: [],
+      gates: [],
+    },
   };
 }
 

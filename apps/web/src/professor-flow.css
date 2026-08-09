@@ -126,6 +126,62 @@
   padding-top: 10px;
 }
 
+.learning-design-review {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 14px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+}
+
+.learning-design-review h3,
+.learning-design-review p {
+  margin: 0;
+}
+
+.learning-design-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(280px, 1fr);
+  gap: 14px;
+}
+
+.learning-design-grid iframe {
+  width: 100%;
+  min-height: 520px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 6px;
+  background: var(--color-bg-primary);
+}
+
+.learning-design-fields,
+.learning-design-fields label,
+.learning-design-fields fieldset {
+  display: grid;
+  gap: 7px;
+}
+
+.learning-design-fields fieldset {
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--color-border-primary);
+}
+
+.learning-design-fields textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.learning-design-fields select[multiple] {
+  min-height: 72px;
+}
+
+.learning-design-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .published-lecture-list {
   display: grid;
   gap: 8px;
@@ -166,6 +222,10 @@
 }
 
 @media (max-width: 860px) {
+  .learning-design-grid {
+    grid-template-columns: 1fr;
+  }
+
   .published-lecture-row {
     grid-template-columns: 1fr;
   }

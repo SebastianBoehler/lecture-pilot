@@ -62,12 +62,15 @@ class LearningMap(BaseModel):
     course_id: str = Field(min_length=1, max_length=120)
     lecture_id: str = Field(min_length=1, max_length=120)
     title: str = Field(min_length=1, max_length=200)
+    objective: str = Field(default="", max_length=1_000)
     revision: str = Field(default="", max_length=64)
     nodes: list[LearningMapNode] = Field(default_factory=list)
     gates: list[LearningMapGate] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def derive_revision(self) -> LearningMap:
+        if not self.objective:
+            self.objective = self.title
         self.revision = _digest(self, "revision")
         return self
 

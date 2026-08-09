@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 from threading import current_thread
 from types import SimpleNamespace
 
 import pytest
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner
 from lecturepilot.course_canvas_section_planner import plan_sections_individually
 from lecturepilot.course_canvas_generation import generate_course_canvas_draft
@@ -25,8 +27,17 @@ from lecturepilot.tenancy import TenantContext
 
 async def test_source_resolution_failure_logs_generation_stage_without_content(
     caplog,
+    tmp_path: Path,
 ) -> None:
-    app = SimpleNamespace(state=SimpleNamespace(observability=LoggingObservability()))
+    app = SimpleNamespace(
+        state=SimpleNamespace(
+            observability=LoggingObservability(),
+            canvas_workspace=CanvasWorkspace(
+                workspace_root=tmp_path / "workspaces",
+                material_root=tmp_path / "materials",
+            ),
+        )
+    )
     context = TenantContext(
         tenant_id="tenant-tuebingen",
         user_id="professor-1",

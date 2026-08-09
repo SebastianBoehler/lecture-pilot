@@ -743,13 +743,7 @@ export function useProfessorCourseBuilder({
             : [activeWorkspace.lectureId];
         const published = [];
         for (const lectureId of lectureIds) {
-          try {
-            published.push(await onPublishWorkspace(activeWorkspace.courseId, lectureId));
-          } catch (error) {
-            if (setup.target !== "full-course") throw error;
-            await draftLectureCanvas(activeWorkspace.courseId, lectureId, session);
-            published.push(await onPublishWorkspace(activeWorkspace.courseId, lectureId));
-          }
+          published.push(await onPublishWorkspace(activeWorkspace.courseId, lectureId));
         }
         onWorkspacePublished(
           workspaceCourse ?? courseFromSetup(activeWorkspace.courseId, setup, session),

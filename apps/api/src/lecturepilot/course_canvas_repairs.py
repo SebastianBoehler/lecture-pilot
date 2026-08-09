@@ -2,14 +2,21 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from hashlib import sha256
+import json
 import os
+from collections.abc import Callable
 from pathlib import Path
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, ValidationError
 
+from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.durable_files import ensure_durable_directory, fsync_directory
+from lecturepilot.course_schedule_store import read_course_workspace
+from lecturepilot.course_source_routing import read_source_routing
+from lecturepilot.course_update_recovery import locked_course_state
 from lecturepilot.lecture_source_manifest import read_lecture_source_manifest
+from lecturepilot.source_index_models import CourseSourceIndex
 from lecturepilot.storage_layout import StorageLayout
 
 
@@ -22,6 +29,19 @@ class CanvasRepairRecord(BaseModel):
     failure_detail: str = Field(min_length=1, max_length=1_000)
     repaired_generation_id: str = Field(min_length=32, max_length=32)
     repaired_at: datetime
+
+
+def resolve_source_with_revision(
+    layout: StorageLayout,
+    course_root: Path,
+    source_document: Callable[[str, str], CanvasDocument],
+    course_id: str,
+    lecture_id: str,
+) -> tuple[CanvasDocument, str | None]:
+    with locked_course_state(course_root):
+        source = source_document(course_id, lecture_id)
+        revision = lecture_source_revision(layout, course_id=course_id, lecture_id=lecture_id)
+        return source, revision
 
 
 def matching_repair_guidance(
@@ -83,7 +103,50 @@ def lecture_source_revision(
     material = "\n".join(
         f"{item.path}\0{item.sha256}" for item in sorted(manifest.files, key=lambda item: item.path)
     )
+    provenance = _course_provenance(layout, course_id)
+    if provenance is not None:
+        material = f"{material}\n{provenance}"
     return sha256(material.encode()).hexdigest()
+
+
+def _course_provenance(layout: StorageLayout, course_id: str) -> str | None:
+    payload: dict[str, object] = {}
+    workspace = read_course_workspace(layout.course_root(course_id), course_id)
+    if workspace is not None:
+        payload["lectures"] = [
+            {
+                "id": lecture.id,
+                "title": lecture.title,
+                "date": lecture.date.isoformat(),
+                "material_path": lecture.material_path,
+            }
+            for lecture in sorted(workspace.lectures, key=lambda item: item.id)
+        ]
+
+    index_path = layout.course_source_index_path(course_id)
+    if index_path.exists():
+        try:
+            index = CourseSourceIndex.model_validate_json(index_path.read_text(encoding="utf-8"))
+        except (OSError, ValidationError):
+            return None
+        payload["source_index"] = [
+            {"path": item.path, "kind": item.kind, "sha256": item.sha256}
+            for item in sorted(index.files, key=lambda item: item.path)
+        ]
+
+    routing = read_source_routing(layout.course_source_routing_path(course_id), course_id)
+    if routing is not None:
+        payload["routing"] = {
+            "confirmed": routing.confirmed,
+            "source_revision": routing.source_revision,
+            "routes": [
+                route.model_dump(mode="json")
+                for route in sorted(routing.routes, key=lambda item: item.path)
+            ],
+        }
+    if not payload:
+        return None
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
 
 def _read_record(path: Path) -> CanvasRepairRecord | None:

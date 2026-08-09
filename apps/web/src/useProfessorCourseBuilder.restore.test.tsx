@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { professorFetchMock } from "./ProfessorCourseBuilder.testFixtures";
@@ -58,6 +58,28 @@ describe("Professor course builder restoration", () => {
       }),
     ]);
     expect(result.current.steps.find((step) => step.id === "sources")?.available).toBe(true);
+  });
+
+  it("keeps an approved draft for review when full-course publishing fails", async () => {
+    saveRestorableFullCourse();
+    const baseFetch = professorFetchMock();
+    const fetchMock = vi.fn(baseFetch);
+    vi.stubGlobal("fetch", fetchMock);
+    const onPublishWorkspace = vi.fn().mockRejectedValue(new Error("Publish rejected."));
+    const { result } = renderHook(() =>
+      useProfessorCourseBuilder({ ...hookProps, onPublishWorkspace }),
+    );
+    await waitFor(() => expect(result.current.isRestoring).toBe(false));
+
+    await act(async () => result.current.publishStep.onPublish());
+
+    expect(result.current.error).toBe("Publish rejected.");
+    expect(
+      fetchMock.mock.calls.filter(
+        ([url, init]) => String(url).includes("/canvas/draft") && init?.method === "POST",
+      ),
+    ).toHaveLength(0);
+    expect(onPublishWorkspace).toHaveBeenCalledOnce();
   });
 });
 

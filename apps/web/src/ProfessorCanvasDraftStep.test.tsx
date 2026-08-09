@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "./i18n";
@@ -21,24 +21,195 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
       "about 30–45 minutes for 7 lectures (up to 3 at once)",
     );
   });
+
+  it("keeps publishing blocked while the exact draft learning design is unapproved", () => {
+    const onContinueToPublish = vi.fn();
+    renderStep({
+      isFullCourse: false,
+      totalCount: 1,
+      onContinueToPublish,
+      review: learningDesignReview(null),
+    });
+
+    expect(screen.getByRole("heading", { name: "Learning design review" })).toBeInTheDocument();
+    expect(screen.getByTitle("Learner draft preview")).toHaveAttribute(
+      "src",
+      "http://localhost/draft/lecture-01",
+    );
+    expect(screen.getByLabelText("Learning objective")).toHaveValue(
+      "Explain the source-backed mechanism.",
+    );
+    expect(screen.getByText("lecture.md#mechanism")).toBeInTheDocument();
+    expect(screen.getByText("Practice has no assessment.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue to publishing" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Continue to publishing" }));
+    expect(onContinueToPublish).not.toHaveBeenCalled();
+  });
+
+  it("edits and approves a per-lecture gate contract before continuing", () => {
+    const onApproveLearningDesign = vi.fn();
+    const onSaveLearningDesign = vi.fn();
+    const onContinueToPublish = vi.fn();
+    const { rerender } = renderStep({
+      isFullCourse: false,
+      totalCount: 1,
+      onApproveLearningDesign,
+      onContinueToPublish,
+      onSaveLearningDesign,
+      review: learningDesignReview(null),
+    });
+
+    fireEvent.change(screen.getByLabelText("Learning objective"), {
+      target: { value: "Explain and transfer the mechanism." },
+    });
+    fireEvent.change(screen.getByLabelText("Review interval (days)"), {
+      target: { value: "5" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save learning design" }));
+    expect(onSaveLearningDesign).toHaveBeenCalledWith(
+      "lecture-01",
+      expect.objectContaining({
+        objective: "Explain and transfer the mechanism.",
+        gates: [expect.objectContaining({ id: "intro-check", review_after_days: 5 })],
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Approve learning design" }));
+    expect(onApproveLearningDesign).toHaveBeenCalledWith("lecture-01");
+
+    rerender(
+      step(learningDesignReview("prof01"), {
+        onApproveLearningDesign,
+        onContinueToPublish,
+        onSaveLearningDesign,
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Continue to publishing" }));
+    expect(onContinueToPublish).toHaveBeenCalledOnce();
+  });
 });
 
-function renderStep({ isFullCourse, totalCount }: { isFullCourse: boolean; totalCount: number }) {
-  render(
+function renderStep({
+  isFullCourse,
+  totalCount,
+  onApproveLearningDesign = vi.fn(),
+  onContinueToPublish = vi.fn(),
+  onSaveLearningDesign = vi.fn(),
+  review = null,
+}: {
+  isFullCourse: boolean;
+  totalCount: number;
+  onApproveLearningDesign?: (lectureId: string) => void;
+  onContinueToPublish?: () => void;
+  onSaveLearningDesign?: (lectureId: string, update: unknown) => void;
+  review?: ReturnType<typeof learningDesignReview> | null;
+}) {
+  return render(
+    step(
+      review,
+      { onApproveLearningDesign, onContinueToPublish, onSaveLearningDesign },
+      {
+        isFullCourse,
+        totalCount,
+      },
+    ),
+  );
+}
+
+function step(
+  review: ReturnType<typeof learningDesignReview> | null,
+  actions: {
+    onApproveLearningDesign: (lectureId: string) => void;
+    onContinueToPublish: () => void;
+    onSaveLearningDesign: (lectureId: string, update: unknown) => void;
+  },
+  overrides: { isFullCourse?: boolean; totalCount?: number } = {},
+) {
+  return (
     <I18nProvider locale="en" setLocale={vi.fn()}>
       <ProfessorCanvasDraftStep
-        canvas={null}
+        canvas={review ? ({ sections: [] } as never) : null}
         canGenerate
         generatedCount={0}
         generationProgress={[]}
-        isFullCourse={isFullCourse}
+        isFullCourse={overrides.isFullCourse ?? false}
         isGenerating={false}
-        onContinueToPublish={vi.fn()}
+        learningDesignReviews={review ? { "lecture-01": review } : {}}
+        learningDesignSaving={false}
+        onApproveLearningDesign={actions.onApproveLearningDesign}
+        onContinueToPublish={actions.onContinueToPublish}
         onGenerate={vi.fn()}
         onRetry={vi.fn()}
-        previewLectures={[]}
-        totalCount={totalCount}
+        onSaveLearningDesign={actions.onSaveLearningDesign}
+        previewLectures={
+          review
+            ? [
+                {
+                  id: "lecture-01",
+                  label: "Lecture 01 · Mechanism",
+                  previewHref: "http://localhost/draft/lecture-01",
+                },
+              ]
+            : []
+        }
+        totalCount={overrides.totalCount ?? 1}
       />
-    </I18nProvider>,
+    </I18nProvider>
   );
+}
+
+function learningDesignReview(approvedBy: string | null) {
+  return {
+    schema_version: 1,
+    course_id: "course-1",
+    lecture_id: "lecture-01",
+    draft_digest: "d".repeat(64),
+    source_revision: "s".repeat(64),
+    factual_quality_separate: true,
+    warnings: ["Practice has no assessment."],
+    approval: approvedBy
+      ? {
+          approved_by: approvedBy,
+          approved_at: "2026-08-09T12:00:00Z",
+          draft_digest: "d".repeat(64),
+          source_revision: "s".repeat(64),
+          learning_map_revision: "m".repeat(64),
+        }
+      : null,
+    learning_map: {
+      course_id: "course-1",
+      lecture_id: "lecture-01",
+      title: "Mechanism",
+      objective: "Explain the source-backed mechanism.",
+      revision: "m".repeat(64),
+      nodes: [
+        {
+          id: "intro",
+          title: "Mechanism",
+          lecture_id: "lecture-01",
+          section_id: "intro",
+          source_ref: "lecture.md#mechanism",
+          prerequisites: [],
+          gate_ids: ["intro-check"],
+          quiz_ids: [],
+        },
+      ],
+      gates: [
+        {
+          id: "intro-check",
+          concept_id: "intro",
+          title: "Mechanism check",
+          prompt: "Explain the mechanism.",
+          evidence_required: "Explain the mechanism.",
+          evidence_criteria: [
+            { id: "mechanism", description: "Names the mechanism.", required: true },
+          ],
+          transfer_prompt: "Apply it elsewhere.",
+          review_after_days: 2,
+          revision: "g".repeat(64),
+          section_id: "intro",
+          source_ref: "lecture.md#mechanism",
+        },
+      ],
+    },
+  };
 }

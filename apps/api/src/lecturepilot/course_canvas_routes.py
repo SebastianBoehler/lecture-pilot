@@ -16,12 +16,14 @@ from lecturepilot.course_access import require_course_id_access, require_lecture
 from lecturepilot.course_canvas_draft_routes import register_course_canvas_draft_routes
 from lecturepilot.course_canvas_repair_routes import register_course_canvas_repair_routes
 from lecturepilot.course_canvas_store import InvalidCanvasDraftError
+from lecturepilot.course_learning_design_routes import register_course_learning_design_routes
+from lecturepilot.course_learning_design_store import LearningDesignError
 from lecturepilot.learner_workspace_reset import (
     LearnerWorkspaceResetInput,
     LearnerWorkspaceResetResult,
     reset_learner_workspace,
 )
-from lecturepilot.learning_map import LearningMap, write_learning_map
+from lecturepilot.learning_map import LearningMap
 from lecturepilot.models import CanvasPublicationResult, Course, Lecture
 from lecturepilot.professor_preview import (
     is_professor_preview_user_id,
@@ -48,6 +50,7 @@ def register_course_canvas_routes(
         course_tenant_id=course_tenant_id,
         source_document=source_document,
     )
+    register_course_learning_design_routes(app, course_tenant_id=course_tenant_id)
 
     @app.post(
         "/admin/courses/{course_id}/lectures/{lecture_id}/canvas/publish",
@@ -76,6 +79,8 @@ def register_course_canvas_routes(
             return _publication_result(course_id, lecture_id, metadata)
         except InvalidCanvasDraftError as exc:
             raise HTTPException(status_code=500, detail=str(exc)) from exc
+        except LearningDesignError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
         except CanvasWorkspaceError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -174,15 +179,13 @@ def register_course_canvas_routes(
             lecture_id=lecture_id,
         ):
             raise HTTPException(status_code=404, detail="Canvas has not been published.")
-        canvas_dir = app.state.canvas_workspace.course_canvas_store.path(course_id, lecture_id)
-        document = app.state.canvas_workspace.course_canvas_store.read(
+        with app.state.canvas_workspace.course_canvas_store.locked_published_learning_map(
             course_id=course_id,
             lecture_id=lecture_id,
-            workspace_path=str(canvas_dir / "index.md"),
-        )
-        if document is None:
-            raise HTTPException(status_code=404, detail="Canvas has not been published.")
-        return write_learning_map(document, canvas_dir)
+        ) as learning_map:
+            if learning_map is None:
+                raise HTTPException(status_code=404, detail="Canvas has not been published.")
+            return learning_map
 
     @app.post(
         "/courses/{course_id}/learner-workspace/reset",

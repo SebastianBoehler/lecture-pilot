@@ -7,6 +7,7 @@ from auth_helpers import student_headers
 from canvas_workspace_fixtures import published_course_canvas
 from lecturepilot import review_queue_routes as review_queue_routes_module
 from lecturepilot.canvas_models import CanvasBlock
+from lecturepilot.course_learning_design_store import CourseLearningDesignStore
 from review_queue_test_helpers import (
     COURSE_ID,
     NOW,
@@ -41,7 +42,23 @@ def test_republish_waits_until_due_review_open_commits_authoritative_map(
             ],
         }
     )
+    manifest = workspace.layout.lecture_source_manifest_path(COURSE_ID, "lecture-a")
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_text(
+        '{"course_id":"review-course","lecture_id":"lecture-a",'
+        '"files":[{"path":"source.md","sha256":"' + "a" * 64 + '"}]}',
+        encoding="utf-8",
+    )
     workspace.write_course_canvas_draft(replacement)
+    reviews = CourseLearningDesignStore(workspace.layout)
+    current = reviews.read(course_id=COURSE_ID, lecture_id="lecture-a")
+    reviews.approve(
+        course_id=COURSE_ID,
+        lecture_id="lecture-a",
+        draft_digest=current.draft_digest,
+        source_revision=current.source_revision,
+        approved_by="professor-a",
+    )
     bind_entered = Event()
     release_bind = Event()
     publication_finished = Event()

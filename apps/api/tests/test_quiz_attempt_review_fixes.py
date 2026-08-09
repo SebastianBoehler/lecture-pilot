@@ -9,6 +9,7 @@ from auth_helpers import student_headers
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.course_learning_design_store import CourseLearningDesignStore
 from lecturepilot.course_schedule_store import write_course_workspace
 from lecturepilot.models import Course, CourseWorkspaceResult, Lecture
 
@@ -168,8 +169,25 @@ def _client(tmp_path: Path) -> TestClient:
 
 def _publish(client: TestClient, *, version_two: bool = False) -> None:
     document = _document(version_two=version_two)
-    client.app.state.canvas_workspace.write_course_canvas_draft(document)
-    client.app.state.canvas_workspace.publish_course_canvas_draft(
+    workspace = client.app.state.canvas_workspace
+    manifest = workspace.layout.lecture_source_manifest_path(COURSE_ID, LECTURE_ID)
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_text(
+        '{"course_id":"quiz-review","lecture_id":"lecture-01",'
+        '"files":[{"path":"source.md","sha256":"' + "a" * 64 + '"}]}',
+        encoding="utf-8",
+    )
+    workspace.write_course_canvas_draft(document)
+    reviews = CourseLearningDesignStore(workspace.layout)
+    current = reviews.read(course_id=COURSE_ID, lecture_id=LECTURE_ID)
+    reviews.approve(
+        course_id=COURSE_ID,
+        lecture_id=LECTURE_ID,
+        draft_digest=current.draft_digest,
+        source_revision=current.source_revision,
+        approved_by="professor",
+    )
+    workspace.publish_course_canvas_draft(
         course_id=COURSE_ID,
         lecture_id=LECTURE_ID,
         published_by="professor",

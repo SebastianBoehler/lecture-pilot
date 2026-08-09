@@ -18,7 +18,7 @@ from lecturepilot.canvas_models import CanvasBlock, CanvasDocument
 from lecturepilot.course_access import require_lecture_id_access
 from lecturepilot.course_analytics import CourseAnalyticsSummary, course_analytics_summary
 from lecturepilot.course_schedule_store import read_course_workspace
-from lecturepilot.learning_map import LearningMap, write_learning_map
+from lecturepilot.learning_map import LearningMap
 from lecturepilot.models import Course, Lecture
 from lecturepilot.readiness_analytics import CourseReadinessSummary, course_readiness_summary
 from lecturepilot.readiness_progress import ReadinessProgressStore
@@ -278,10 +278,7 @@ def _learning_map(app: FastAPI, course_id: str, lecture_id: str) -> LearningMap 
         lecture_id=lecture_id,
     ):
         return None
-    canvas_dir = app.state.canvas_workspace.course_canvas_store.path(course_id, lecture_id)
-    document = app.state.canvas_workspace.course_canvas_store.read(
+    return app.state.canvas_workspace.course_canvas_store.learning_map(
         course_id=course_id,
         lecture_id=lecture_id,
-        workspace_path=str(canvas_dir / "index.md"),
     )
-    return write_learning_map(document, canvas_dir) if document else None

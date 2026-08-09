@@ -14,7 +14,10 @@ from lecturepilot.course_canvas_repairs import (
     lecture_source_revision,
     matching_repair_guidance,
     persist_repair_guidance,
+    resolve_source_with_revision,
 )
+from lecturepilot.course_canvas_store import InvalidCanvasDraftError
+from lecturepilot.course_update_recovery import locked_course_state
 from lecturepilot.course_media import apply_course_media, course_media_evidence
 from lecturepilot.course_canvas_validation import validate_planned_document
 from lecturepilot.course_schedule_store import read_course_workspace
@@ -57,7 +60,16 @@ async def generate_course_canvas_draft(
         ) as generation_span,
     ):
         with observability.tool_span("course_canvas_generation", stage="source_resolve", **common):
-            source = await run_in_threadpool(source_document, course_id, lecture_id)
+            source, source_revision = await run_in_threadpool(
+                resolve_source_with_revision,
+                app.state.canvas_workspace.layout,
+                app.state.canvas_workspace.course_media_root(course_id),
+                source_document,
+                course_id,
+                lecture_id,
+            )
+            if source_revision is None:
+                raise InvalidCanvasDraftError("Draft source provenance is unavailable.")
         with observability.tool_span("course_canvas_generation", stage="source_media", **common):
             media_root = app.state.canvas_workspace.course_media_root(course_id)
             source = course_media_evidence(source, media_root)
@@ -99,7 +111,11 @@ async def generate_course_canvas_draft(
         with observability.tool_span("course_canvas_generation", stage="output_media", **common):
             document = apply_course_media(document, media_root)
         with observability.tool_span("course_canvas_generation", stage="draft_persist", **common):
-            document = app.state.canvas_workspace.write_course_canvas_draft(document)
+            document = _write_current_draft(
+                app,
+                document,
+                expected_source_revision=source_revision,
+            )
         if repair_failure_code and repair_failure_detail:
             persist_repair_guidance(
                 app.state.canvas_workspace.layout,
@@ -148,7 +164,16 @@ async def repair_targeted_course_canvas_draft(
             **common,
         ) as repair_span,
     ):
-        source = await run_in_threadpool(source_document, course_id, lecture_id)
+        source, source_revision = await run_in_threadpool(
+            resolve_source_with_revision,
+            app.state.canvas_workspace.layout,
+            app.state.canvas_workspace.course_media_root(course_id),
+            source_document,
+            course_id,
+            lecture_id,
+        )
+        if source_revision is None:
+            raise InvalidCanvasDraftError("Draft source provenance is unavailable.")
         media_root = app.state.canvas_workspace.course_media_root(course_id)
         source = course_media_evidence(source, media_root)
         source = filter_source_document_for_planning(source)
@@ -173,7 +198,11 @@ async def repair_targeted_course_canvas_draft(
                 exc.with_candidate(candidate)
             raise exc.with_source_revision(repair.source_revision)
         document = apply_course_media(document, media_root)
-        document = app.state.canvas_workspace.write_course_canvas_draft(document)
+        document = _write_current_draft(
+            app,
+            document,
+            expected_source_revision=source_revision,
+        )
         persist_repair_guidance(
             app.state.canvas_workspace.layout,
             course_id=course_id,
@@ -243,3 +272,17 @@ def _canvas_language(app: FastAPI, course_id: str) -> str:
         course_id,
     )
     return workspace.course.canvas_language if workspace else "en"
+
+
+def _write_current_draft(
+    app: FastAPI,
+    document: CanvasDocument,
+    *,
+    expected_source_revision: str,
+) -> CanvasDocument:
+    course_root = app.state.canvas_workspace.course_media_root(document.course_id)
+    with locked_course_state(course_root):
+        return app.state.canvas_workspace.write_course_canvas_draft(
+            document,
+            expected_source_revision=expected_source_revision,
+        )

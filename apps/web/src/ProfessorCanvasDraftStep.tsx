@@ -1,4 +1,6 @@
 import { useI18n } from "./i18n";
+import type { LearningDesignReview, LearningDesignUpdate } from "./learningDesignTypes";
+import { ProfessorLearningDesignReview } from "./ProfessorLearningDesignReview";
 import { PendingStatus, StepHeader } from "./ProfessorCourseBuilderParts";
 import {
   CANVAS_DRAFT_CONCURRENCY,
@@ -13,9 +15,13 @@ export function ProfessorCanvasDraftStep({
   generatedCount,
   isFullCourse,
   isGenerating,
+  learningDesignReviews,
+  learningDesignSaving,
+  onApproveLearningDesign,
   onContinueToPublish,
   onGenerate,
   onRetry,
+  onSaveLearningDesign,
   previewLectures,
   totalCount,
 }: {
@@ -25,9 +31,13 @@ export function ProfessorCanvasDraftStep({
   generatedCount: number;
   isFullCourse: boolean;
   isGenerating: boolean;
+  learningDesignReviews: Record<string, LearningDesignReview>;
+  learningDesignSaving: boolean;
+  onApproveLearningDesign: (lectureId: string) => void;
   onContinueToPublish: () => void;
   onGenerate: () => void;
   onRetry: (lectureId: string) => void;
+  onSaveLearningDesign: (lectureId: string, update: LearningDesignUpdate) => void;
   previewLectures: {
     id: string;
     label: string;
@@ -92,9 +102,17 @@ export function ProfessorCanvasDraftStep({
       ) : null}
       {hasDraft ? (
         <DraftReview
-          canContinue={allDraftsReady}
+          canContinue={
+            allDraftsReady &&
+            previewLectures.length > 0 &&
+            previewLectures.every((lecture) => Boolean(learningDesignReviews[lecture.id]?.approval))
+          }
           lectures={previewLectures}
+          learningDesignReviews={learningDesignReviews}
+          learningDesignSaving={learningDesignSaving}
+          onApproveLearningDesign={onApproveLearningDesign}
           onContinueToPublish={onContinueToPublish}
+          onSaveLearningDesign={onSaveLearningDesign}
         />
       ) : null}
     </section>
@@ -104,11 +122,19 @@ export function ProfessorCanvasDraftStep({
 function DraftReview({
   canContinue,
   lectures,
+  learningDesignReviews,
+  learningDesignSaving,
+  onApproveLearningDesign,
   onContinueToPublish,
+  onSaveLearningDesign,
 }: {
   canContinue: boolean;
   lectures: { id: string; label: string; previewHref: string }[];
+  learningDesignReviews: Record<string, LearningDesignReview>;
+  learningDesignSaving: boolean;
+  onApproveLearningDesign: (lectureId: string) => void;
   onContinueToPublish: () => void;
+  onSaveLearningDesign: (lectureId: string, update: LearningDesignUpdate) => void;
 }) {
   const { t } = useI18n();
   return (
@@ -118,14 +144,36 @@ function DraftReview({
         <span>{t("builder.generate.reviewHelp")}</span>
       </header>
       <div className="draft-review-list">
-        {lectures.map((lecture) => (
-          <div className="draft-review-row" key={lecture.id}>
-            <span>{lecture.label}</span>
-            <a className="button-link" href={lecture.previewHref} rel="noreferrer" target="_blank">
-              {t("builder.generate.preview")}
-            </a>
-          </div>
-        ))}
+        {lectures.map((lecture) => {
+          const review = learningDesignReviews[lecture.id];
+          return (
+            <div key={lecture.id}>
+              <div className="draft-review-row">
+                <span>{lecture.label}</span>
+                <a
+                  className="button-link"
+                  href={lecture.previewHref}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  {t("builder.generate.preview")}
+                </a>
+              </div>
+              {review ? (
+                <ProfessorLearningDesignReview
+                  lectureId={lecture.id}
+                  previewHref={lecture.previewHref}
+                  review={review}
+                  saving={learningDesignSaving}
+                  onApprove={onApproveLearningDesign}
+                  onSave={onSaveLearningDesign}
+                />
+              ) : (
+                <p role="status">{t("builder.learningDesign.loading")}</p>
+              )}
+            </div>
+          );
+        })}
       </div>
       <button
         className="primary-action"

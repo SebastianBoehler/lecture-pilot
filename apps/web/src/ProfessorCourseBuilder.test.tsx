@@ -159,6 +159,12 @@ describe("Professor course builder", () => {
       "href",
       expect.stringContaining("/professor/courses/demo-ml-course/lectures/lecture-03/draft"),
     );
+    expect(
+      await screen.findByRole("heading", { name: /learning design review/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /continue to publishing/i })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: /approve learning design/i }));
+    expect(await screen.findByRole("button", { name: /learning design approved/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /06 publish/i })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: /continue to publishing/i }));
     expect(screen.getByRole("heading", { name: /publish tutor workspace/i })).toBeInTheDocument();
@@ -318,6 +324,11 @@ describe("Professor course builder", () => {
     await openProfessorDemo(user);
 
     expect(await screen.findByText(/2 lecture canvases ready to review/i)).toBeInTheDocument();
+    const approvals = await screen.findAllByRole("button", { name: /approve learning design/i });
+    for (const approval of approvals) await user.click(approval);
+    await waitFor(() =>
+      expect(screen.getAllByRole("button", { name: /learning design approved/i })).toHaveLength(2),
+    );
     expect(screen.getByRole("button", { name: /06 publish/i })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: /continue to publishing/i }));
     expect(await screen.findByText(/0 of 2 lecture workspaces published/i)).toBeInTheDocument();

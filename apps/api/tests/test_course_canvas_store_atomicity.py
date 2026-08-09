@@ -8,6 +8,7 @@ from canvas_workspace_fixtures import published_course_canvas
 from lecturepilot import course_canvas_store as course_canvas_store_module
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.course_canvas_store import CourseCanvasStore
+from lecturepilot.course_learning_design_store import CourseLearningDesignStore
 from lecturepilot.storage_layout import StorageLayout
 
 
@@ -53,7 +54,7 @@ def test_failed_publish_preserves_document_and_version(tmp_path: Path, monkeypat
     def fail_learning_map(*_args, **_kwargs) -> None:
         raise OSError("injected publication write failure")
 
-    monkeypatch.setattr(course_canvas_store_module, "write_learning_map", fail_learning_map)
+    monkeypatch.setattr(course_canvas_store_module, "learning_map_path", fail_learning_map)
 
     with pytest.raises(OSError, match="injected publication write failure"):
         _publish(store, "professor")
@@ -112,10 +113,27 @@ def test_concurrent_publishes_are_serialized_and_increment_versions(
 
 
 def _store(tmp_path: Path) -> CourseCanvasStore:
-    return CourseCanvasStore(StorageLayout(tmp_path / "workspaces"))
+    store = CourseCanvasStore(StorageLayout(tmp_path / "workspaces"))
+    manifest = store.layout.lecture_source_manifest_path("demo-course", "lecture-01")
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_text(
+        '{"course_id":"demo-course","lecture_id":"lecture-01",'
+        '"files":[{"path":"source.md","sha256":"' + "a" * 64 + '"}]}',
+        encoding="utf-8",
+    )
+    return store
 
 
 def _publish(store: CourseCanvasStore, published_by: str) -> dict:
+    reviews = CourseLearningDesignStore(store.layout)
+    current = reviews.read(course_id="demo-course", lecture_id="lecture-01")
+    reviews.approve(
+        course_id="demo-course",
+        lecture_id="lecture-01",
+        draft_digest=current.draft_digest,
+        source_revision=current.source_revision,
+        approved_by=published_by,
+    )
     return store.publish_draft(
         course_id="demo-course",
         lecture_id="lecture-01",

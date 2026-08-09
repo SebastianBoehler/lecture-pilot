@@ -6,7 +6,12 @@ from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT_VERSION
-from auth_helpers import install_test_source_routing_planner, professor_headers, student_headers
+from auth_helpers import (
+    approve_learning_design,
+    install_test_source_routing_planner,
+    professor_headers,
+    student_headers,
+)
 
 
 def test_source_bundle_endpoint_lists_only_uploaded_materials(tmp_path: Path) -> None:
@@ -231,6 +236,12 @@ def test_professor_canvas_draft_stays_private_until_publish(tmp_path: Path) -> N
     )
     assert student.status_code == 404
 
+    approve_learning_design(
+        client,
+        "martius-ml",
+        "lecture-03",
+        headers=_professor_headers(),
+    )
     publish = client.post(
         "/admin/courses/martius-ml/lectures/lecture-03/canvas/publish",
         headers=_professor_headers(),

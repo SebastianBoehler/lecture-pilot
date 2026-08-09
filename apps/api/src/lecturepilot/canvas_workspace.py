@@ -13,6 +13,7 @@ from lecturepilot.canvas_workspace_config import (
     SEEDED_COURSE_ID,
 )
 from lecturepilot.course_canvas_store import CourseCanvasStore
+from lecturepilot.course_update_recovery import locked_course_state
 from lecturepilot.course_media import apply_course_media
 from lecturepilot.generated_infographics import materialize_infographic_sections
 from lecturepilot.latex_canvas_importer import import_latex_canvas
@@ -175,8 +176,16 @@ class CanvasWorkspace(CanvasLearnerWorkspaceMixin):
         document = apply_course_media(normalize_learning_support(document), self.material_root)
         return apply_course_media(document, self.course_media_root(course_id))
 
-    def write_course_canvas_draft(self, document: CanvasDocument) -> CanvasDocument:
-        return self.course_canvas_store.write_draft(document)
+    def write_course_canvas_draft(
+        self,
+        document: CanvasDocument,
+        *,
+        expected_source_revision: str | None = None,
+    ) -> CanvasDocument:
+        return self.course_canvas_store.write_draft(
+            document,
+            expected_source_revision=expected_source_revision,
+        )
 
     def publish_course_canvas_draft(
         self,
@@ -186,11 +195,12 @@ class CanvasWorkspace(CanvasLearnerWorkspaceMixin):
         published_by: str,
     ) -> dict:
         try:
-            return self.course_canvas_store.publish_draft(
-                course_id=course_id,
-                lecture_id=lecture_id,
-                published_by=published_by,
-            )
+            with locked_course_state(self.course_media_root(course_id)):
+                return self.course_canvas_store.publish_draft(
+                    course_id=course_id,
+                    lecture_id=lecture_id,
+                    published_by=published_by,
+                )
         except FileNotFoundError as exc:
             raise CanvasWorkspaceError(str(exc)) from exc
 

@@ -89,6 +89,30 @@ def install_test_source_routing_planner(client) -> None:
     client.app.state.source_routing_planner = DeterministicTestSourceRoutingPlanner()
 
 
+def approve_learning_design(
+    client,
+    course_id: str,
+    lecture_id: str,
+    *,
+    headers: dict[str, str] | None = None,
+) -> dict:
+    request_headers = headers or professor_headers()
+    path = f"/admin/courses/{course_id}/lectures/{lecture_id}/canvas/learning-design"
+    current = client.get(path, headers=request_headers)
+    assert current.status_code == 200, current.json()
+    review = current.json()
+    approved = client.post(
+        f"{path}/approve",
+        headers=request_headers,
+        json={
+            "draft_digest": review["draft_digest"],
+            "source_revision": review["source_revision"],
+        },
+    )
+    assert approved.status_code == 200, approved.json()
+    return approved.json()
+
+
 class DeterministicTestSourceRoutingPlanner:
     async def propose_routes(self, *, files, lectures, **_kwargs):
         bundle_files = [item.as_bundle_file() for item in files]

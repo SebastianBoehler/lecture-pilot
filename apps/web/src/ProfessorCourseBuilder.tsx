@@ -15,11 +15,22 @@ import {
   useProfessorCourseBuilder,
   type ProfessorCourseBuilderProps,
 } from "./useProfessorCourseBuilder";
+import { useProfessorLearningDesignReviews } from "./useProfessorLearningDesignReviews";
 import { useVersionUpdateActivity } from "./VersionUpdateBoundary";
 
 export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
   const { t } = useI18n();
   const builder = useProfessorCourseBuilder(props);
+  const reviewLectureIds = builder.generateStep.previewLectures.map((lecture) => lecture.id);
+  const learningDesign = useProfessorLearningDesignReviews({
+    courseId: builder.workspace?.courseId ?? null,
+    lectureIds: reviewLectureIds,
+    revisionKey: JSON.stringify([
+      builder.generateStep.canvas,
+      builder.generateStep.generationProgress,
+    ]),
+    session: props.session,
+  });
   useVersionUpdateActivity(
     builder.isRestoring ||
       builder.uploadStep.pendingAction !== null ||
@@ -65,15 +76,27 @@ export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
               <ProfessorSourceRoutingStep {...builder.routingStep} />
             ) : null}
             {builder.activeStep === "generate" ? (
-              <ProfessorCanvasDraftStep {...builder.generateStep} />
+              <ProfessorCanvasDraftStep
+                {...builder.generateStep}
+                learningDesignReviews={learningDesign.reviews}
+                learningDesignSaving={learningDesign.saving}
+                onApproveLearningDesign={(lectureId) => void learningDesign.approve(lectureId)}
+                onSaveLearningDesign={(lectureId, update) =>
+                  void learningDesign.save(lectureId, update)
+                }
+              />
             ) : null}
             {builder.activeStep === "publish" ? (
-              <ProfessorPublishStep {...builder.publishStep} />
+              <ProfessorPublishStep
+                {...builder.publishStep}
+                canPublish={builder.publishStep.canPublish && learningDesign.allApproved}
+              />
             ) : null}
           </div>
           <ProfessorGenerationWarnings warnings={builder.generationWarnings} />
           {builder.notice ? <p className="form-success">{builder.notice}</p> : null}
           {builder.error ? <p className="form-error">{builder.error}</p> : null}
+          {learningDesign.error ? <p className="form-error">{learningDesign.error}</p> : null}
         </div>
       </div>
     </main>
