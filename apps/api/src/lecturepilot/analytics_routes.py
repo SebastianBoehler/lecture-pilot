@@ -8,6 +8,7 @@ from lecturepilot.analytics import (
     QuizAnswerInput,
     QuizAnswerResult,
 )
+from lecturepilot.agent_state_access import learner_state_store
 from lecturepilot.api_auth import (
     request_context,
     require_course_manager,
@@ -75,7 +76,7 @@ def register_analytics_routes(
         block = _quiz_block(document, answer.block_id)
         if answer.option_index >= len(block.items):
             raise HTTPException(status_code=400, detail="Quiz option does not exist.")
-        return _analytics_store(app).record_quiz_answer(
+        result = _analytics_store(app).record_quiz_answer(
             course_id=course_id,
             lecture_id=lecture_id,
             user_id=access.user_id,
@@ -83,6 +84,15 @@ def register_analytics_routes(
             block=block,
             option_index=answer.option_index,
         )
+        learner_state_store(app).record_quiz_answer(
+            course_id=course_id,
+            lecture_id=lecture_id,
+            user_id=access.user_id,
+            block_id=result.block_id,
+            selected_index=result.selected_index,
+            correct=result.correct,
+        )
+        return result
 
     @app.get(
         "/admin/courses/{course_id}/analytics",

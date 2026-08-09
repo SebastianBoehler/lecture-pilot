@@ -8,6 +8,12 @@ import type {
   LoginSession,
 } from "./types";
 
+export type LearnerQuizAnswerResult = {
+  block_id: string;
+  selected_index: number;
+  correct: boolean | null;
+};
+
 export async function getCourseAnalytics(
   courseId: string,
   session: LoginSession,
@@ -44,7 +50,7 @@ export async function recordQuizAnswer(input: {
   );
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Quiz analytics recording failed."));
-  return payload as { correct: boolean | null };
+  return payload as LearnerQuizAnswerResult;
 }
 
 export async function getLectureAnalytics(

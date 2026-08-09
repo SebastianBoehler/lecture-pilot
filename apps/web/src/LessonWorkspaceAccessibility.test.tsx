@@ -74,10 +74,12 @@ function LessonWorkspaceHarness() {
         messages={[]}
         navigationVersion={0}
         panelMode={panelMode}
-        passedGateIds={[]}
+        learnerState={null}
+        learnerStateError={null}
         session={{ username: "student", term: "Summer 2026", courses: [] }}
         tutorModel={null}
         onResetWorkspace={vi.fn(async () => undefined)}
+        onPracticeSubmitted={vi.fn(async () => undefined)}
         onSendMessage={vi.fn(async () => undefined)}
         onTogglePanel={(mode) => setPanelMode((current) => (current === mode ? null : mode))}
       />

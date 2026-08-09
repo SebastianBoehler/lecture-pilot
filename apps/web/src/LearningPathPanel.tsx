@@ -7,6 +7,7 @@ import { LessonDrawerClose } from "./LessonDrawerClose";
 import { getLectureLearningMap } from "./learningMapApi";
 import { buildLearningTree, type LearningTreeBranch } from "./learningTree";
 import type { LearningMap, LearningMapGate, LearningMapNode } from "./learningMapTypes";
+import type { LearnerLessonState } from "./learnerLessonStateTypes";
 import type { DocumentAnchorId, Lecture, LoginSession } from "./types";
 
 type PathStatus = "current" | "available";
@@ -17,7 +18,7 @@ export function LearningPathPanel({
   courseId,
   focusedSectionId,
   lecture,
-  passedGateIds,
+  learnerState,
   session,
   onClose,
   onJumpAnchor,
@@ -26,7 +27,7 @@ export function LearningPathPanel({
   courseId: string;
   focusedSectionId: string;
   lecture: Lecture;
-  passedGateIds: string[];
+  learnerState: LearnerLessonState | null;
   session: LoginSession;
   onClose: () => void;
   onJumpAnchor: (anchorId: DocumentAnchorId) => void;
@@ -34,7 +35,6 @@ export function LearningPathPanel({
   const { t } = useI18n();
   const [learningMap, setLearningMap] = useState<LearningMap | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const passedGates = useMemo(() => new Set(passedGateIds), [passedGateIds]);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,7 +91,7 @@ export function LearningPathPanel({
                 gateLookup={gatesById}
                 indexById={indexById}
                 key={branch.node.id}
-                passedGateIds={passedGates}
+                learnerState={learnerState}
                 t={t}
                 titlesById={titlesById}
                 onJumpAnchor={onJumpAnchor}
@@ -110,7 +110,7 @@ function PathBranch({
   focusedSectionId,
   gateLookup,
   indexById,
-  passedGateIds,
+  learnerState,
   t,
   titlesById,
   onJumpAnchor,
@@ -120,7 +120,7 @@ function PathBranch({
   focusedSectionId: string;
   gateLookup: Map<string, LearningMapGate>;
   indexById: Map<string, number>;
-  passedGateIds: Set<string>;
+  learnerState: LearnerLessonState | null;
   t: Translator;
   titlesById: Map<string, string>;
   onJumpAnchor: (anchorId: DocumentAnchorId) => void;
@@ -167,18 +167,16 @@ function PathBranch({
             <PathCheck
               key={gateId}
               label={gateLookup.get(gateId)?.title ?? gateId}
-              passed={passedGateIds.has(gateId)}
-              statusLabel={
-                passedGateIds.has(gateId) ? t("path.check.passed") : t("path.check.gate")
-              }
+              state={gateCheckState(learnerState?.gate_statuses[gateId])}
+              t={t}
             />
           ))}
           {node.quiz_ids.map((quizId) => (
             <PathCheck
               key={quizId}
               label={quizId}
-              passed={false}
-              statusLabel={t("path.check.quiz")}
+              state={quizCheckState(learnerState?.quiz_states[quizId])}
+              t={t}
             />
           ))}
         </div>
@@ -196,7 +194,7 @@ function PathBranch({
               gateLookup={gateLookup}
               indexById={indexById}
               key={child.node.id}
-              passedGateIds={passedGateIds}
+              learnerState={learnerState}
               t={t}
               titlesById={titlesById}
               onJumpAnchor={onJumpAnchor}
@@ -210,13 +208,14 @@ function PathBranch({
 
 function PathCheck({
   label,
-  passed,
-  statusLabel,
+  state,
+  t,
 }: {
   label: string;
-  passed: boolean;
-  statusLabel: string;
+  state: "passed" | "needs_evidence" | "gate" | "correct" | "attempted" | "quiz";
+  t: Translator;
 }) {
+  const passed = state === "passed" || state === "correct";
   return (
     <span className={passed ? "student-path-check is-passed" : "student-path-check"}>
       {passed ? (
@@ -224,10 +223,20 @@ function PathCheck({
       ) : (
         <Circle aria-hidden="true" size={13} />
       )}
-      <span>{statusLabel}</span>
+      <span>{t(`path.check.${state}` as MessageKey)}</span>
       <strong>{label}</strong>
     </span>
   );
+}
+
+function gateCheckState(status?: string) {
+  if (status === "passed" || status === "needs_evidence") return status;
+  return "gate" as const;
+}
+
+function quizCheckState(state?: { correct: boolean | null }) {
+  if (state?.correct === true) return "correct" as const;
+  return state ? ("attempted" as const) : ("quiz" as const);
 }
 
 function StatusIcon({ status }: { status: PathStatus }) {

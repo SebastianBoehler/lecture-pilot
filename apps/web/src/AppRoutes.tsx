@@ -1,6 +1,7 @@
 import { lazy, Suspense, type ReactNode } from "react";
 
 import { courseUpdatePath, type AppRoute } from "./appRoute";
+import type { LearnerQuizAnswerResult } from "./analyticsApi";
 import { CourseManagementAccessRequired } from "./CourseManagementAccessRequired";
 import { Dashboard } from "./Dashboard";
 import { draftPreviewUrl } from "./draftPreviewUrl";
@@ -8,6 +9,7 @@ import { LoginView } from "./LoginView";
 import { localDemoSession } from "./appDefaults";
 import { ProfileView } from "./ProfileView";
 import { useI18n } from "./i18n";
+import type { LearnerLessonState } from "./learnerLessonStateTypes";
 import { useLearnerProfile } from "./useLearnerProfile";
 import type { WorkspaceResetSelection } from "./WorkspaceResetControl";
 import type {
@@ -60,7 +62,8 @@ type AppRoutesProps = {
   messages: ChatMessage[];
   navigationVersion: number;
   panelMode: LessonPanelMode | null;
-  passedGateIds: string[];
+  learnerState: LearnerLessonState | null;
+  learnerStateError: string | null;
   publishedLectureIds: string[];
   restoringSession: boolean;
   selectedCourseId: string;
@@ -78,6 +81,7 @@ type AppRoutesProps = {
   onOpenLecture: (courseId: string, lecture: Lecture) => void;
   onPreviewLecture: (courseId: string, lecture: Lecture) => void;
   onOpenProfessorDemo: () => void;
+  onPracticeSubmitted: (result: LearnerQuizAnswerResult) => void;
   onPublishWorkspace: (courseId: string, lectureId: string) => Promise<CanvasPublicationResult>;
   onResetWorkspace: (options: WorkspaceResetSelection) => Promise<void>;
   onSendMessage: (message: string) => Promise<void>;
@@ -228,10 +232,12 @@ export function AppRoutes(props: AppRoutesProps) {
       tutorModel={lastTutorModel}
       navigationVersion={navigationVersion}
       panelMode={panelMode}
-      passedGateIds={props.passedGateIds}
+      learnerState={props.learnerState}
+      learnerStateError={props.learnerStateError}
       previewMode={lessonMode === "professor-preview"}
       workspaceMode={lessonMode === "professor-preview" ? "professor-preview" : "learner"}
       onSendMessage={props.onSendMessage}
+      onPracticeSubmitted={props.onPracticeSubmitted}
       onResetWorkspace={props.onResetWorkspace}
       onTogglePanel={props.onTogglePanel}
     />,

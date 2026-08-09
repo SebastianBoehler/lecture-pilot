@@ -6,7 +6,8 @@ import { LessonCanvas } from "./LessonCanvas";
 import { LearningPathPanel } from "./LearningPathPanel";
 import { ProfessorLearnerPreviewBanner } from "./ProfessorLearnerPreviewBanner";
 import { NotesPanel, OutlinePanel } from "./LessonSidePanels";
-import { recordQuizAnswer } from "./analyticsApi";
+import { recordQuizAnswer, type LearnerQuizAnswerResult } from "./analyticsApi";
+import type { LearnerLessonState } from "./learnerLessonStateTypes";
 import { TutorDrawer } from "./TutorDrawer";
 import { WorkspaceFilesPanel } from "./WorkspaceFilesPanel";
 import { WorkspaceResetControl, type WorkspaceResetSelection } from "./WorkspaceResetControl";
@@ -34,11 +35,13 @@ export function LessonWorkspace({
   messages,
   navigationVersion,
   panelMode,
-  passedGateIds,
+  learnerState,
+  learnerStateError,
   tutorModel,
   previewMode = false,
   workspaceMode = "learner",
   onSendMessage,
+  onPracticeSubmitted,
   onTogglePanel,
   onResetWorkspace,
 }: {
@@ -53,11 +56,13 @@ export function LessonWorkspace({
   messages: ChatMessage[];
   navigationVersion: number;
   panelMode: LessonPanelMode | null;
-  passedGateIds: string[];
+  learnerState: LearnerLessonState | null;
+  learnerStateError: string | null;
   tutorModel: string | null;
   previewMode?: boolean;
   workspaceMode?: LearnerWorkspaceMode;
   onSendMessage: (message: string) => Promise<void>;
+  onPracticeSubmitted: (result: LearnerQuizAnswerResult) => void;
   onTogglePanel: (mode: LessonPanelMode) => void;
   onResetWorkspace: (options: WorkspaceResetSelection) => Promise<void>;
 }) {
@@ -118,7 +123,9 @@ export function LessonWorkspace({
       optionIndex,
       session,
       mode: workspaceMode,
-    }).catch(() => undefined);
+    })
+      .then(onPracticeSubmitted)
+      .catch(() => undefined);
     void onSendMessage(quizAnswerMessage(block, answer, optionIndex));
   }
 
@@ -133,6 +140,7 @@ export function LessonWorkspace({
           <span>{lecture.date}</span>
         </div>
         {canvasError ? <p className="form-error">{canvasError}</p> : null}
+        {learnerStateError ? <p className="form-error">{learnerStateError}</p> : null}
         {!canvasDocument && !canvasError ? (
           <p className="drawer-note">{t("lesson.loadingCanvas")}</p>
         ) : null}
@@ -220,6 +228,7 @@ export function LessonWorkspace({
         <TutorDrawer
           messages={messages}
           model={tutorModel}
+          sessionGoal={learnerState?.active_session_goal ?? null}
           onClose={() => onTogglePanel("chat")}
           onSendMessage={onSendMessage}
         />
@@ -238,7 +247,7 @@ export function LessonWorkspace({
           courseId={courseId}
           focusedSectionId={focusedSectionId}
           lecture={lecture}
-          passedGateIds={passedGateIds}
+          learnerState={learnerState}
           session={session}
           onClose={() => onTogglePanel("path")}
           onJumpAnchor={jumpToAnchor}

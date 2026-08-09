@@ -3,20 +3,24 @@ import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import { MathText } from "./MathText";
 import { LessonDrawerClose } from "./LessonDrawerClose";
+import { useI18n } from "./i18n";
 import type { ChatMessage } from "./types";
 import { useVersionUpdateActivity } from "./VersionUpdateBoundary";
 
 export function TutorDrawer({
   messages,
   model,
+  sessionGoal = null,
   onClose,
   onSendMessage,
 }: {
   messages: ChatMessage[];
   model: string | null;
+  sessionGoal?: string | null;
   onClose: () => void;
   onSendMessage: (message: string) => Promise<void>;
 }) {
+  const { t } = useI18n();
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
@@ -62,11 +66,19 @@ export function TutorDrawer({
   return (
     <aside className="drawer tutor-drawer" id="lesson-panel" aria-label="Tutor drawer">
       <LessonDrawerClose returnFocusId="lesson-panel-trigger-chat" onClose={onClose} />
-      <div className="drawer-section tutor-drawer-section">
+      <div
+        className={`drawer-section tutor-drawer-section ${sessionGoal ? "has-session-goal" : ""}`}
+      >
         <div className="tutor-heading">
           <h2>Tutor</h2>
           <span className="tutor-status">{hasPendingTurn ? "Working..." : tutorStatus(model)}</span>
         </div>
+        {sessionGoal ? (
+          <section className="tutor-session-goal" aria-label={t("tutor.sessionGoal")}>
+            <span>{t("tutor.sessionGoal")}</span>
+            <p>{sessionGoal}</p>
+          </section>
+        ) : null}
         <div className="message-list" aria-live="polite" ref={messageListRef}>
           {messages.map((message) => (
             <div className={`chat-turn ${message.role}`} key={message.id}>

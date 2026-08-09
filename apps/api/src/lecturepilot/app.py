@@ -50,6 +50,7 @@ from lecturepilot.lecture_access_routes import register_lecture_access_routes
 from lecturepilot.model_client import LiteLLMModelClient
 from lecturepilot.model_usage import ModelUsageRecorder
 from lecturepilot.learner_state import LearnerStateStore
+from lecturepilot.learner_lesson_state_routes import register_learner_lesson_state_routes
 from lecturepilot.learner_profile_routes import register_learner_profile_routes
 from lecturepilot.metadata_events import configure_metadata_file_logging, emit_metadata_event
 from lecturepilot.observability import observability_from_env
@@ -238,6 +239,7 @@ def create_app() -> FastAPI:
     }
     register_agent_routes(app, **seeded_route_args)
     register_analytics_routes(app, **seeded_route_args)
+    register_learner_lesson_state_routes(app, **seeded_route_args)
     register_professor_usage_routes(app, course_tenant_id=COURSE_TENANT_ID)
     register_course_canvas_routes(
         app,

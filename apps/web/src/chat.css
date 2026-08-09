@@ -10,6 +10,29 @@
   min-height: calc(100vh - 92px);
 }
 
+.tutor-drawer-section.has-session-goal {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+
+.tutor-session-goal {
+  margin: 8px 0 10px;
+  border-left: 2px solid var(--color-accent-primary);
+  padding: 2px 0 2px 9px;
+}
+
+.tutor-session-goal span {
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.tutor-session-goal p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 .tutor-heading {
   display: flex;
   align-items: baseline;

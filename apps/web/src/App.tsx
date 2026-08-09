@@ -29,6 +29,7 @@ import { clearDemoWorkspaceCourse, writeDemoWorkspaceCourse } from "./demoWorksp
 import { I18nProvider, type Locale } from "./i18n";
 import { resetLearnerWorkspace } from "./learnerWorkspaceApi";
 import { readLocalePreference, writeLocalePreference } from "./localePreference";
+import { useLessonState } from "./useLessonState";
 import { clearSavedFlow } from "./professorBuilderState";
 import { useStoredLoginSession } from "./loginSessionStorage";
 import { lectures } from "./sampleData";
@@ -92,10 +93,15 @@ function App() {
   );
   useVersionUpdateActivity(messages.some((message) => Boolean(message.isPending)));
   const [lastTutorModel, setLastTutorModel] = useState<string | null>(null);
-  const [passedGateIds, setPassedGateIds] = useState<string[]>([]);
+  const lessonState = useLessonState({
+    courseId: selectedCourseId,
+    lectureId: selectedLecture.id,
+    session,
+    mode: lessonMode,
+    enabled: view === "lesson",
+  });
   const [publishedLectureIds, setPublishedLectureIds] = usePublishedLectures(availableLectures);
   useUniversityCourseSync(session, setSession);
-
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
@@ -197,7 +203,6 @@ function App() {
       throw error;
     }
     setLastTutorModel(result.model);
-
     let nextFocusSectionId: string | null = null;
     let nextHighlightBlockId: string | null = null;
     let nextHighlightSectionId: string | null = null;
@@ -237,13 +242,7 @@ function App() {
     }
 
     setMessages((current) => completePendingTutorMessage(current, pendingMessageId, result));
-    const passedGateId =
-      result.quality_gate?.status === "passed" ? result.quality_gate.gate_id : null;
-    if (passedGateId) {
-      setPassedGateIds((current) =>
-        current.includes(passedGateId) ? current : [...current, passedGateId],
-      );
-    }
+    lessonState.applyTutorResult(result);
     feedback.recordSuccessfulTutorTurn();
   }
 
@@ -263,7 +262,6 @@ function App() {
     setWorkspaceLoadError(null);
     setMessages(initialMessagesForAttendance(lectures[2].attendance));
     setLastTutorModel(null);
-    setPassedGateIds([]);
   }
 
   const handleOpenLecture = useCallback(
@@ -287,7 +285,6 @@ function App() {
       setNavigationVersion((current) => current + 1);
       setMessages(initialMessagesForAttendance(lecture.attendance));
       setLastTutorModel(null);
-      setPassedGateIds([]);
 
       try {
         const activeSession = session ?? localDemoSession;
@@ -387,6 +384,7 @@ function App() {
       initialMessagesForAttendance(options.reset_progress ? "unknown" : selectedLecture.attendance),
     );
     setLastTutorModel(null);
+    await lessonState.refresh();
     setNavigationVersion((current) => current + 1);
   }
 
@@ -476,7 +474,8 @@ function App() {
           messages={messages}
           navigationVersion={navigationVersion}
           panelMode={panelMode}
-          passedGateIds={passedGateIds}
+          learnerState={lessonState.state}
+          learnerStateError={lessonState.error}
           publishedLectureIds={publishedLectureIds}
           restoringSession={restoringSession}
           selectedCourseId={selectedCourseId}
@@ -537,6 +536,7 @@ function App() {
           onWorkspaceDeleted={handleWorkspaceDeleted}
           onViewChange={changeView}
           onSendMessage={handleTutorMessage}
+          onPracticeSubmitted={lessonState.applyQuizResult}
           onResetWorkspace={handleResetWorkspace}
           onTogglePanel={(mode) => {
             setPanelMode((current) => (current === mode ? null : mode));

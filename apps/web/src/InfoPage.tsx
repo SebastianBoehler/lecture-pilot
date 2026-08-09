@@ -61,7 +61,7 @@ const PRIVACY_CONTENT: NoticeContent = {
     {
       title: "AI tutor and model requests",
       paragraphs: [
-        "When you ask the tutor a question, LecturePilot sends the AI model your request and the lecture context needed to answer it. Depending on the task, this can include selected source excerpts, the current canvas section, attendance mode, recent tutor messages, and the amount of guidance you should receive.",
+        "When you ask the tutor a question, LecturePilot sends the AI model your request and the lecture context needed to answer it. Depending on the task, this can include selected source excerpts, the current canvas section, attendance mode, up to eight recent learner and tutor messages from this lecture, and the amount of guidance you should receive. This bounded conversation context is stored in your private learner workspace.",
         "If image generation is enabled, the request can include your prompt and the educational context needed to create the visual explanation. Provider API keys remain on the LecturePilot service and are never exposed to your browser.",
       ],
     },
@@ -69,7 +69,7 @@ const PRIVACY_CONTENT: NoticeContent = {
       title: "Analytics and professor view",
       paragraphs: [
         "Professor analytics show course-level learning signals such as published lectures, readiness attempts, quiz outcomes, weak topics, and progress. Course staff can use these signals to improve teaching and identify where students need support.",
-        "Course staff do not see your ordinary private chat transcripts or personal canvas in course analytics. If a course adds review, moderation, or research logging beyond these aggregates, you must be told separately before it begins.",
+        "Course staff do not see your ordinary private chat messages or personal canvas in course analytics. If a course adds review, moderation, or research logging beyond these aggregates, you must be told separately before it begins.",
       ],
     },
     {
