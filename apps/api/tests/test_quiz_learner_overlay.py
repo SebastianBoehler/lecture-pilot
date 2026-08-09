@@ -9,6 +9,7 @@ from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_schedule_store import write_course_workspace
+from lecturepilot.latex_canvas_importer import CANVAS_IMPORT_VERSION
 from lecturepilot.models import Course, CourseWorkspaceResult, Lecture
 
 
@@ -87,6 +88,48 @@ def test_legacy_compiled_learner_overlay_quiz_remains_assessable(tmp_path: Path)
     assert response.json()["block_id"] == "legacy-overlay-quiz"
 
 
+@pytest.mark.parametrize("stale_source", ["current_compiled", "legacy_compiled"])
+def test_current_markdown_overlay_controls_visible_quiz_scoring(
+    tmp_path: Path,
+    stale_source: str,
+) -> None:
+    client = _client(tmp_path)
+    _install_overlay(client, "student-a", [_overlay_section("shared", "visible-overlay-quiz")])
+    _write_stale_overlay(client, "student-a", stale_source)
+    headers = student_headers("student-a", course_ids=[COURSE_ID])
+
+    hidden = _submit(
+        client,
+        headers,
+        "hidden-stale-attempt",
+        "hidden-stale-quiz",
+        0,
+    )
+    visible = _submit(
+        client,
+        headers,
+        "visible-current-attempt",
+        "visible-overlay-quiz",
+        1,
+    )
+    canvas = client.get(
+        f"/courses/{COURSE_ID}/lectures/{LECTURE_ID}/canvas",
+        headers=headers,
+    )
+
+    block_ids = {
+        block["id"] for section in canvas.json()["sections"] for block in section["blocks"]
+    }
+    assert "visible-overlay-quiz" in block_ids
+    assert "hidden-stale-quiz" not in block_ids
+    assert hidden.status_code == 404
+    assert visible.status_code == 200
+    assert visible.json()["correct"] is True
+    assert set(_state(client, headers)) == {"visible-overlay-quiz"}
+    events = client.app.state.analytics_store.events(course_id=COURSE_ID, lecture_id=LECTURE_ID)
+    assert [event["block_id"] for event in events] == ["visible-overlay-quiz"]
+
+
 @pytest.mark.parametrize("collision", ["official", "overlay"])
 def test_learner_overlay_quiz_collision_fails_before_state_or_analytics(
     tmp_path: Path,
@@ -150,6 +193,20 @@ def _install_overlay(client: TestClient, user_id: str, sections: list[CanvasSect
     )
 
 
+def _write_stale_overlay(client: TestClient, user_id: str, source: str) -> None:
+    layout = client.app.state.canvas_workspace.layout
+    path = (
+        layout.compiled_canvas_path(user_id, COURSE_ID, LECTURE_ID)
+        if source == "current_compiled"
+        else layout.legacy_compiled_canvas_path(user_id, COURSE_ID, LECTURE_ID)
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        _document([_overlay_section("shared", "hidden-stale-quiz")]).model_dump_json(),
+        encoding="utf-8",
+    )
+
+
 def _client(tmp_path: Path) -> TestClient:
     app = create_app()
     app.state.canvas_workspace = CanvasWorkspace(
@@ -206,6 +263,7 @@ def _overlay_section(section_id: str, quiz_id: str) -> CanvasSection:
 def _document(sections: list[CanvasSection]) -> CanvasDocument:
     return CanvasDocument(
         id=f"{COURSE_ID}-{LECTURE_ID}",
+        import_version=CANVAS_IMPORT_VERSION,
         course_id=COURSE_ID,
         lecture_id=LECTURE_ID,
         title="Risk",

@@ -86,27 +86,26 @@ class CanvasLearnerWorkspaceMixin:
         user_id: str,
     ) -> list[CanvasSection]:
         canvas_dir = self._canvas_dir(course_id, lecture_id, user_id)
-        sections: list[CanvasSection] = []
+        current_markdown: list[CanvasSection] = []
         if (canvas_dir / "index.md").exists():
-            sections.extend(
+            current_markdown.extend(
                 section
                 for section in read_document_source(canvas_dir).sections
                 if is_student_section(section)
             )
-        compiled_paths = [
-            self._compiled_path(course_id, lecture_id, user_id),
-            self.layout.legacy_compiled_canvas_path(user_id, course_id, lecture_id),
-        ]
-        for compiled_path in compiled_paths:
-            if not compiled_path.exists():
-                continue
-            payload = json.loads(compiled_path.read_text(encoding="utf-8"))
-            sections.extend(
-                section
-                for section in CanvasDocument.model_validate(payload).sections
-                if is_student_section(section)
-            )
-        return merge_sections(sections)
+        current_compiled = _compiled_student_sections(
+            self._compiled_path(course_id, lecture_id, user_id)
+        )
+        legacy_compiled = _compiled_student_sections(
+            self.layout.legacy_compiled_canvas_path(user_id, course_id, lecture_id)
+        )
+        # Resolve low to high authority explicitly: legacy is fallback, current compiled fills
+        # missing sections, and current Markdown matches what the learner canvas renders.
+        by_id: dict[str, CanvasSection] = {}
+        for source in (legacy_compiled, current_compiled, current_markdown):
+            for section in source:
+                by_id[section.id] = section
+        return list(by_id.values())
 
     def _is_stale_canvas_manifest(self, manifest_path: Path) -> bool:
         document = read_document_source(manifest_path.parent)
@@ -161,3 +160,14 @@ class CanvasLearnerWorkspaceMixin:
 
     def _compiled_path(self, course_id: str, lecture_id: str, user_id: str) -> Path:
         return self._lecture_workspace_dir(course_id, lecture_id, user_id) / "canvas.json"
+
+
+def _compiled_student_sections(path: Path) -> list[CanvasSection]:
+    if not path.exists():
+        return []
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    return [
+        section
+        for section in CanvasDocument.model_validate(payload).sections
+        if is_student_section(section)
+    ]
