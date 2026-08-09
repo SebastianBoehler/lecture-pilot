@@ -108,6 +108,8 @@ def approve_learning_design(
             "draft_digest": review["draft_digest"],
             "source_revision": review["source_revision"],
             "learning_map_revision": review["learning_map"]["revision"],
+            "report_revision": review["report"]["report_revision"],
+            "acknowledged_warning_ids": [item["id"] for item in review["report"]["diagnostics"]],
         },
     )
     assert approved.status_code == 200, approved.json()

@@ -116,6 +116,11 @@ def test_gate_outcome_requires_exact_publication_map_and_gate_revisions(
     client = _client(tmp_path)
     context, gate, store = _record_gate(client)
 
+    event = store.events(course_id="demo-course", lecture_id="lecture-01")[0]
+    assert event["assistance_before_attempt"] == "none"
+    assert event["planned_delay_seconds"] is None
+    assert event["observed_delay_seconds"] is None
+
     for publication_version, map_revision, gate_revision in (
         (context.publication_version + 1, context.learning_map_revision, gate.revision),
         (context.publication_version, "f" * 64, gate.revision),

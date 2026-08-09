@@ -53,7 +53,8 @@ FastAPI backend. University of Tübingen integration is available through
 - A FastAPI policy and agent layer with Postgres-backed identity, sessions,
   enrollment evidence, course ownership, quotas, and audit events.
 - Professor workflows for source routing, lecture ordering, draft generation and
-  repair, publication, release notices, and learner-level aggregate insights.
+  repair, exact-draft learning-design acknowledgement, publication, release
+  notices, and learner-level aggregate insights.
 - A constrained tutor that works through typed, capability-scoped tools over
   Markdown, YAML components, and learner assets. Backend policy—not the
   prompt—enforces tenant access, lecture unlocks, safe paths, and immutable
@@ -111,6 +112,11 @@ memory live in the learner workspace. See the
 [agent tool contracts](docs/agent-tool-contracts.md), and
 [course ingestion pipeline](docs/course-ingestion-pipeline.md) for the detailed
 boundaries.
+
+The [evaluation contract](docs/evaluation-contract.md) defines the private
+draft report, revision-bound outcome metadata, and the limits on future study
+claims. These controls do not themselves establish learning efficacy or approve
+a human study, ethics review, or production rollout.
 
 ## Local development
 
@@ -178,6 +184,8 @@ LecturePilot has been deployed as a live pilot, but that is not blanket
 production-security approval. Review the
 [security status](security_best_practices_report.md) and
 [operations runbook](docs/security-operations.md) before expanding access.
+The 0.5.0 evaluation workflow was validated locally with synthetic data; it was
+not itself a production deployment.
 
 ## License
 

@@ -15,17 +15,15 @@ describe("ChangelogPage", () => {
     expect(
       latestRelease.getByRole("heading", {
         level: 2,
-        name: "Practice exams with solutions and more reliable course creation",
+        name: "A reviewable learning loop from draft to follow-up",
       }),
     ).toBeInTheDocument();
-    expect(latestRelease.getByText("31 July 2026")).toBeInTheDocument();
-    expect(latestRelease.getByRole("link", { name: /v0\.4\.0 on GitHub/i })).toHaveAttribute(
+    expect(latestRelease.getByText("9 August 2026")).toBeInTheDocument();
+    expect(latestRelease.getByRole("link", { name: /v0\.5\.0 on GitHub/i })).toHaveAttribute(
       "href",
-      "https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.4.0",
+      "https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.5.0",
     );
-    expect(
-      latestRelease.getByText("Practice exams with complete solution review"),
-    ).toBeInTheDocument();
+    expect(latestRelease.getByText("Exact-draft learning-design review")).toBeInTheDocument();
     expect(
       latestRelease.queryByText(/students and lecturers sign in through Alma/i),
     ).not.toBeInTheDocument();
@@ -41,10 +39,8 @@ describe("ChangelogPage", () => {
     renderWithI18n(<ChangelogPage />, { locale: "de" });
 
     expect(screen.getByRole("heading", { name: "Neu in LecturePilot" })).toBeInTheDocument();
-    expect(screen.getByText("31. Juli 2026")).toBeInTheDocument();
-    expect(
-      screen.getByText("Übungsprüfungen mit vollständiger Lösungsauswertung"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("9. August 2026")).toBeInTheDocument();
+    expect(screen.getByText("Lerndesign-Prüfung für den exakten Entwurf")).toBeInTheDocument();
     expect(screen.queryByText("Aus Feedback")).not.toBeInTheDocument();
   });
 });

@@ -191,6 +191,10 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
   every indexed course file exactly once as lecture-specific, course-wide, or
   not used. Professors review and may edit this complete proposal; generation
   remains blocked until they confirm the current source revision.
+- Before publication, a professor must acknowledge every diagnostic in the
+  private learning-design report for the exact draft, source, and learning-map
+  revisions. Saving invalidates acknowledgement; publication revalidates it.
+  The report is not learner content and acknowledgement makes no efficacy claim.
 - Canvas commands may focus sections, highlight specific blocks or phrases, and
   append/update learner-specific Markdown sections.
 - Infographic requests may call the backend image-generation tool. Provider
@@ -231,6 +235,9 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
 - Derive tenant/course/user authority from backend session/profile context, not
   browser-controlled ids.
 - Keep raw user identifiers out of filesystem paths; use hashed prefixes.
+- Keep outcome events categorical and revision-bound. Gate outcomes may copy
+  assistance and planned/observed delay only from the exact stored coaching
+  turn; do not add learner text, conditions, randomization, or browser timing.
 - Production already has durable quotas and audit events. Preserve the path
   toward approved retention/deletion plus object storage and signed URLs if
   protected files move off authenticated API routes.

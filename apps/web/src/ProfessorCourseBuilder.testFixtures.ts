@@ -1,4 +1,5 @@
 import { vi } from "vitest";
+import { learningDesignPayload } from "./testLearningDesignReviewFixture";
 
 export function professorFetchMock() {
   const publishedLectures = new Set<string>();
@@ -102,36 +103,6 @@ function publishPayload(url: string, publishedLectures: Set<string>) {
     published: true,
     version: 1,
     published_at: "2026-06-12T10:00:00Z",
-  };
-}
-
-function learningDesignPayload(courseId: string, lectureId: string, approved: boolean) {
-  return {
-    schema_version: 1,
-    course_id: courseId,
-    lecture_id: lectureId,
-    draft_digest: "d".repeat(64),
-    source_revision: "s".repeat(64),
-    factual_quality_separate: true,
-    warnings: ["Decision making has no assessment."],
-    approval: approved
-      ? {
-          approved_by: "professor-demo",
-          approved_at: "2026-08-09T12:00:00Z",
-          draft_digest: "d".repeat(64),
-          source_revision: "s".repeat(64),
-          learning_map_revision: "m".repeat(64),
-        }
-      : null,
-    learning_map: {
-      course_id: courseId,
-      lecture_id: lectureId,
-      title: "Bayesian Decision Theory",
-      objective: "Explain Bayesian decisions from source evidence.",
-      revision: "m".repeat(64),
-      nodes: [],
-      gates: [],
-    },
   };
 }
 

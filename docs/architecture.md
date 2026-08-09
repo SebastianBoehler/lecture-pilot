@@ -75,6 +75,7 @@ create owned course
   -> assign evidence per lecture
   -> generate private canvas drafts
   -> repair a failed draft or exact invalid block when actionable
+  -> review and acknowledge the exact draft's learning-design report
   -> preview and explicitly publish
 ```
 
@@ -90,6 +91,13 @@ loss, a stale lease can be claimed for another attempt. Repair validates that
 the failed draft still refers to the current source revision and uses a
 surgical block replacement when the failure contains an exact target. See
 [course-ingestion-pipeline.md](course-ingestion-pipeline.md).
+
+The private learning-design review record binds a deterministic report and any
+professor acknowledgement to the exact draft digest, source revision, and
+learning-map revision. A save or revision change requires a new acknowledgement;
+publication revalidates the binding. Neither the report nor its acknowledgement
+is copied into the published canvas. See
+[evaluation-contract.md](evaluation-contract.md).
 
 ## Canvas and agent runtime
 
@@ -129,6 +137,13 @@ Production records metadata-only request, auth, generation, model, and tool
 events in rotating JSONL logs. Prompt, response, source, filename, credential,
 and raw learner content are excluded. Optional MLflow tracing is for explicitly
 configured private environments.
+
+Revision-bound quiz and gate outcomes are separate learner-workspace records.
+Gate outcomes include the assistance level and planned/observed delay from the
+exact stored coaching turn; they exclude learner text, messages, conditions,
+randomization, and browser timing. Preview is excluded and professor aggregates
+require at least five learners. These records support a future evaluation
+contract but do not demonstrate efficacy or constitute an approved study.
 
 Postgres and `/app/storage` form one recovery unit. Operators must back up and
 restore matching versions together. The implementation does not replace the

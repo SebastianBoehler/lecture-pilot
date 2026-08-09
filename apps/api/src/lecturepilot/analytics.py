@@ -170,6 +170,9 @@ class AnalyticsStore:
             "status": decision.status,
             "attempt_kind": coaching_event.attempt_kind,
             "attempt_index": coaching_event.attempt_index,
+            "assistance_before_attempt": coaching_event.assistance_level,
+            "planned_delay_seconds": coaching_event.planned_delay_seconds,
+            "observed_delay_seconds": coaching_event.observed_delay_seconds,
             "created_at": _now(),
         }
         self._append_once(

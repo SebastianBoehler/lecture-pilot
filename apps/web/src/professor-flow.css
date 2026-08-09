@@ -182,6 +182,53 @@
   gap: 8px;
 }
 
+.learning-design-report {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border-primary);
+}
+
+.learning-design-report h4 {
+  margin: 0;
+}
+
+.learning-design-coverage {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+}
+
+.learning-design-diagnostics {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.learning-design-diagnostics li {
+  padding: 9px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 6px;
+}
+
+.learning-design-diagnostics label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+}
+
+.learning-design-diagnostics label span {
+  display: grid;
+  gap: 4px;
+}
+
+.learning-design-diagnostics small {
+  color: var(--color-text-tertiary);
+}
+
 .published-lecture-list {
   display: grid;
   gap: 8px;

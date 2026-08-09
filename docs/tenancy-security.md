@@ -59,6 +59,10 @@ course updates compare server-computed hashes, never interpret missing upload pa
 and do not mutate published canvases. The class returns aggregate analytics only and never accepts
 or returns learner identifiers.
 
+Learning-design reports and their acknowledgements are private course-builder state. Approval binds
+the exact report revision and diagnostic ID set to the current draft, source, and learning-map
+revisions; publication revalidates that binding and never copies the report to learner content.
+
 ## University matching
 
 LecturePilot cannot enumerate an Alma or ILIAS catalog. A professor creates a platform course using
@@ -91,6 +95,9 @@ expired, revoked, or disabled-account session remains rejected.
   the active professor; they never expose learner text or another professor's course activity.
 - No professor or administrator can access a learner canvas, chat, memory, files, readiness history,
   reset, or agent turn.
+- Outcome events exclude learner answer text, tutor messages, conditions, randomization, and browser
+  timing. Professor preview produces no learner outcome event, and aggregates remain hidden below
+  five unique learners.
 - Public and pre-attempt DTOs omit storage paths, staff identity, readiness answers, and rubrics.
 - Practice-exam DTOs and PDFs omit answer keys, rubrics, course-source IDs, and PPI-source IDs.
 - PPI credentials, cookies, raw protocol text, and model prompts are not logged or persisted in

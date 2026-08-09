@@ -3,6 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "./i18n";
 import { ProfessorCanvasDraftStep } from "./ProfessorCanvasDraftStep";
+import {
+  learningDesignDiagnosticFixture,
+  learningDesignReportFixture,
+} from "./testLearningDesignReportFixture";
 
 describe("ProfessorCanvasDraftStep generation timing", () => {
   it("sets expectations before a single-lecture generation starts", () => {
@@ -40,7 +44,7 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
       "Explain the source-backed mechanism.",
     );
     expect(screen.getByText("lecture.md#mechanism")).toBeInTheDocument();
-    expect(screen.getByText("Practice has no assessment.")).toBeInTheDocument();
+    expect(screen.getByText("Practice has no checkpoint or quiz.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continue to publishing" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Continue to publishing" }));
     expect(onContinueToPublish).not.toHaveBeenCalled();
@@ -83,8 +87,11 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
         onSaveLearningDesign,
       }),
     );
+    fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "Approve learning design" }));
-    expect(onApproveLearningDesign).toHaveBeenCalledWith("lecture-01");
+    expect(onApproveLearningDesign).toHaveBeenCalledWith("lecture-01", [
+      `concept_without_assessment:${"a".repeat(64)}`,
+    ]);
 
     rerender(
       step(learningDesignReview("prof01"), {
@@ -166,6 +173,7 @@ function step(
         isFullCourse={overrides.isFullCourse ?? false}
         isGenerating={false}
         learningDesignReviews={review ? { "lecture-01": review } : {}}
+        learningDesignAcknowledgementKey="professor:course-1:0"
         learningDesignSaving={false}
         onApproveLearningDesign={actions.onApproveLearningDesign}
         onContinueToPublish={actions.onContinueToPublish}
@@ -191,13 +199,23 @@ function step(
 
 function learningDesignReview(approvedBy: string | null) {
   return {
-    schema_version: 1,
+    schema_version: 2,
     course_id: "course-1",
     lecture_id: "lecture-01",
     draft_digest: "d".repeat(64),
     source_revision: "s".repeat(64),
     factual_quality_separate: true,
-    warnings: ["Practice has no assessment."],
+    report: learningDesignReportFixture({
+      draftDigest: "d".repeat(64),
+      sourceRevision: "s".repeat(64),
+      learningMapRevision: "m".repeat(64),
+      diagnostics: [
+        learningDesignDiagnosticFixture({
+          message: "Practice has no checkpoint or quiz.",
+          sectionId: "practice",
+        }),
+      ],
+    }),
     approval: approvedBy
       ? {
           approved_by: approvedBy,
@@ -205,6 +223,8 @@ function learningDesignReview(approvedBy: string | null) {
           draft_digest: "d".repeat(64),
           source_revision: "s".repeat(64),
           learning_map_revision: "m".repeat(64),
+          report_revision: "r".repeat(64),
+          acknowledged_warning_ids: [`concept_without_assessment:${"a".repeat(64)}`],
         }
       : null,
     learning_map: {

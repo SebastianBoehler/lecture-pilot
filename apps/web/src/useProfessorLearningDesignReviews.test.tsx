@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import type { LearningDesignReview } from "./learningDesignTypes";
 import type { LoginSession } from "./types";
 import { useProfessorLearningDesignReviews } from "./useProfessorLearningDesignReviews";
+import { learningDesignReportFixture } from "./testLearningDesignReportFixture";
 
 const session = {
   account_type: "professor",
@@ -35,6 +36,8 @@ it("loads, edits, approves, and refreshes draft-bound reviews per lecture", asyn
           draft_digest: serverReview.draft_digest,
           source_revision: serverReview.source_revision,
           learning_map_revision: serverReview.learning_map.revision,
+          report_revision: serverReview.report.report_revision,
+          acknowledged_warning_ids: [],
         },
       };
     }
@@ -65,7 +68,7 @@ it("loads, edits, approves, and refreshes draft-bound reviews per lecture", asyn
     }),
   );
   expect(result.current.reviews["lecture-01"].learning_map.objective).toBe("Edited objective");
-  await act(() => result.current.approve("lecture-01"));
+  await act(() => result.current.approve("lecture-01", []));
   expect(result.current.allApproved).toBe(true);
 
   serverReview = review("e", null);
@@ -145,7 +148,7 @@ it.each([
   if (operation === "save") {
     void result.current.save("lecture-01", updateFor(result.current.reviews["lecture-01"]));
   } else {
-    void result.current.approve("lecture-01");
+    void result.current.approve("lecture-01", []);
   }
   rerender({ revisionKey: "generation-2" });
   await waitFor(() =>
@@ -164,13 +167,17 @@ it.each([
 
 function review(digest: string, approvedBy: string | null): LearningDesignReview {
   return {
-    schema_version: 1,
+    schema_version: 2,
     course_id: "course-1",
     lecture_id: "lecture-01",
     draft_digest: digest.repeat(64),
     source_revision: "s".repeat(64),
     factual_quality_separate: true,
-    warnings: [],
+    report: learningDesignReportFixture({
+      draftDigest: digest.repeat(64),
+      sourceRevision: "s".repeat(64),
+      learningMapRevision: "m".repeat(64),
+    }),
     approval: approvedBy
       ? {
           approved_by: approvedBy,
@@ -178,6 +185,8 @@ function review(digest: string, approvedBy: string | null): LearningDesignReview
           draft_digest: digest.repeat(64),
           source_revision: "s".repeat(64),
           learning_map_revision: "m".repeat(64),
+          report_revision: "r".repeat(64),
+          acknowledged_warning_ids: [],
         }
       : null,
     learning_map: {

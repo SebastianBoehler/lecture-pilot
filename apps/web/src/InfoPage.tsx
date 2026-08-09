@@ -69,7 +69,9 @@ const PRIVACY_CONTENT: NoticeContent = {
       title: "Analytics and professor view",
       paragraphs: [
         "Professor analytics show course-level learning signals such as published lectures, readiness attempts, quiz outcomes, weak topics, and progress. Course staff can use these signals to improve teaching and identify where students need support.",
+        "Versioned outcome records for checkpoints contain the publication, learning-map and gate revisions, attempt kind and index, assistance before the attempt, and any planned and observed delay. They do not contain your answer text, ordinary tutor messages, research conditions, or browser timing. Professor preview activity is excluded, and cohort percentages are hidden when fewer than five learners contribute.",
         "Course staff do not see your ordinary private chat messages or personal canvas in course analytics. If a course adds review, moderation, or research logging beyond these aggregates, you must be told separately before it begins.",
+        "These records support later evaluation planning. Their existence does not show that LecturePilot is effective or that a research study, ethics approval, or production deployment has occurred. Any later human study needs separate notice, consent, retention rules, and institutional approval.",
       ],
     },
     {

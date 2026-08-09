@@ -2,7 +2,7 @@
 
 This index separates current operating documentation from historical design
 records. Current documents were checked against the implementation on
-2026-08-01. The last live deployed-Compose evidence remains the 2026-07-20
+2026-08-09. The last live deployed-Compose evidence remains the 2026-07-20
 snapshot identified in the security status report.
 
 ## Current product and engineering documentation
@@ -12,6 +12,7 @@ snapshot identified in the security status report.
 | [`../README.md`](../README.md)                                                 | Product overview, setup, releases, and verification               |
 | [`architecture.md`](architecture.md)                                           | Deployed services, trust boundaries, storage, and agent runtime   |
 | [`course-ingestion-pipeline.md`](course-ingestion-pipeline.md)                 | Course creation, updates, generation, repair, and publication     |
+| [`evaluation-contract.md`](evaluation-contract.md)                             | Draft review and future learning-evaluation boundaries            |
 | [`workspaces.md`](workspaces.md)                                               | Course, learner, preview, and legacy storage paths                |
 | [`agent-tool-contracts.md`](agent-tool-contracts.md)                           | Tool profiles, logical roots, and side effects                    |
 | [`latex-compilation.md`](latex-compilation.md)                                 | Isolated Tectonic setup and compatibility boundary                |

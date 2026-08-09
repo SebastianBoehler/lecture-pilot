@@ -21,7 +21,7 @@ def test_professor_edits_approves_and_publishes_the_exact_learning_design(tmp_pa
     assert len(review["source_revision"]) == 64
     assert review["approval"] is None
     assert review["factual_quality_separate"] is True
-    assert review["warnings"]
+    assert review["report"]["diagnostics"]
 
     changed = client.put(
         path,
@@ -66,6 +66,8 @@ def test_professor_edits_approves_and_publishes_the_exact_learning_design(tmp_pa
             "draft_digest": edited["draft_digest"],
             "source_revision": edited["source_revision"],
             "learning_map_revision": edited["learning_map"]["revision"],
+            "report_revision": edited["report"]["report_revision"],
+            "acknowledged_warning_ids": [item["id"] for item in edited["report"]["diagnostics"]],
         },
     )
     assert approved.status_code == 200, approved.json()

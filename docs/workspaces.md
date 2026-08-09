@@ -19,12 +19,14 @@ volume.
       publication.json
       learning-map.json
     canvas-drafts/lectures/<lecture-id>/latest/
+      learning-design.json
     builder/
       generations/<lecture-id>/*.json
       repairs/<lecture-id>.json
       source-manifests/<lecture-id>.json
       source-routing.json
       updates/<update-id>/
+    analytics/lectures/<lecture-id>/outcome-events.jsonl
     canvas/media/
     course.json
 
@@ -102,12 +104,14 @@ Private builder state includes:
 - staged incremental updates and their analysis;
 - idempotent generation records with actor and request-key hashes;
 - targeted-repair provenance tied to a source revision; and
-- the latest private draft for each lecture.
+- the latest private draft for each lecture; and
+- a deterministic learning-design report and exact-draft acknowledgement.
 
 Publication atomically copies a valid draft into the shared course canvas and
 increments `publication.json`. Original source files remain immutable evidence.
-Students never read drafts, staged updates, generation errors, or repair
-records.
+Students never read drafts, staged updates, generation errors, repair records,
+or learning-design reports. Publication excludes the private report and
+acknowledgement record.
 
 Local sanitized demos may set `LECTUREPILOT_COURSE_MATERIAL_ROOT`; the seeded
 course can read that legacy source/canvas layout. Uploaded production courses
@@ -176,6 +180,13 @@ owner and course.
 Preview state is excluded from learner/cohort analytics. Model and image usage
 still belongs to the professor account. Resetting a preview cannot address or
 delete a real learner workspace.
+
+Course outcome logs contain only revision-bound categorical quiz and gate
+metadata. Gate outcomes copy assistance and planned/observed delay from the
+exact stored coaching turn; they do not add answer text, tutor messages,
+conditions, randomization, browser timing, or research exports. Professor
+aggregates require at least five unique learners. See
+[evaluation-contract.md](evaluation-contract.md).
 
 ## Canvas Markdown
 

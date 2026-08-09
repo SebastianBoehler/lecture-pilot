@@ -72,11 +72,13 @@ export function useProfessorLearningDesignReviews({
     await mutate(() => saveLearningDesignReview(courseId, lectureId, session, update));
   }
 
-  async function approve(lectureId: string) {
+  async function approve(lectureId: string, acknowledgedWarningIds: string[]) {
     if (!courseId || !identityKey) return;
     const review = reviews[lectureId];
     if (!review) return;
-    await mutate(() => approveLearningDesignReview(courseId, lectureId, session, review));
+    await mutate(() =>
+      approveLearningDesignReview(courseId, lectureId, session, review, acknowledgedWarningIds),
+    );
   }
 
   async function mutate(operation: () => Promise<LearningDesignReview>) {

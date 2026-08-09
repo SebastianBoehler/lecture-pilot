@@ -16,6 +16,7 @@ export function ProfessorCanvasDraftStep({
   isFullCourse,
   isGenerating,
   learningDesignReviews,
+  learningDesignAcknowledgementKey,
   learningDesignSaving,
   onApproveLearningDesign,
   onContinueToPublish,
@@ -32,8 +33,9 @@ export function ProfessorCanvasDraftStep({
   isFullCourse: boolean;
   isGenerating: boolean;
   learningDesignReviews: Record<string, LearningDesignReview>;
+  learningDesignAcknowledgementKey: string;
   learningDesignSaving: boolean;
-  onApproveLearningDesign: (lectureId: string) => void;
+  onApproveLearningDesign: (lectureId: string, acknowledgedWarningIds: string[]) => void;
   onContinueToPublish: () => void;
   onGenerate: () => void;
   onRetry: (lectureId: string) => void;
@@ -109,6 +111,7 @@ export function ProfessorCanvasDraftStep({
           }
           lectures={previewLectures}
           learningDesignReviews={learningDesignReviews}
+          learningDesignAcknowledgementKey={learningDesignAcknowledgementKey}
           learningDesignSaving={learningDesignSaving}
           onApproveLearningDesign={onApproveLearningDesign}
           onContinueToPublish={onContinueToPublish}
@@ -123,6 +126,7 @@ function DraftReview({
   canContinue,
   lectures,
   learningDesignReviews,
+  learningDesignAcknowledgementKey,
   learningDesignSaving,
   onApproveLearningDesign,
   onContinueToPublish,
@@ -131,8 +135,9 @@ function DraftReview({
   canContinue: boolean;
   lectures: { id: string; label: string; previewHref: string }[];
   learningDesignReviews: Record<string, LearningDesignReview>;
+  learningDesignAcknowledgementKey: string;
   learningDesignSaving: boolean;
-  onApproveLearningDesign: (lectureId: string) => void;
+  onApproveLearningDesign: (lectureId: string, acknowledgedWarningIds: string[]) => void;
   onContinueToPublish: () => void;
   onSaveLearningDesign: (lectureId: string, update: LearningDesignUpdate) => void;
 }) {
@@ -161,6 +166,7 @@ function DraftReview({
               </div>
               {review ? (
                 <ProfessorLearningDesignReview
+                  acknowledgementResetKey={learningDesignAcknowledgementKey}
                   lectureId={lecture.id}
                   previewHref={lecture.previewHref}
                   review={review}

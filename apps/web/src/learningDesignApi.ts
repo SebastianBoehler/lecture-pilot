@@ -37,11 +37,14 @@ export async function approveLearningDesignReview(
   lectureId: string,
   session: LoginSession,
   review: LearningDesignReview,
+  acknowledgedWarningIds: string[],
 ): Promise<LearningDesignReview> {
   const approval: LearningDesignApprovalInput = {
     draft_digest: review.draft_digest,
     source_revision: review.source_revision,
     learning_map_revision: review.learning_map.revision,
+    report_revision: review.report.report_revision,
+    acknowledged_warning_ids: acknowledgedWarningIds,
   };
   return request(`${path(courseId, lectureId)}/approve`, session, {
     method: "POST",

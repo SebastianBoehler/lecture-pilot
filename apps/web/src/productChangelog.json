@@ -2,6 +2,50 @@
   "repositoryUrl": "https://github.com/SebastianBoehler/lecture-pilot",
   "releases": [
     {
+      "version": "0.5.0",
+      "date": "2026-08-09",
+      "title": {
+        "en": "A reviewable learning loop from draft to follow-up",
+        "de": "Ein prüfbarer Lernablauf vom Entwurf bis zur Wiederholung"
+      },
+      "summary": {
+        "en": "LecturePilot now helps lecturers inspect and acknowledge concrete learning-design gaps before publication, while revision-bound learner outcomes make later, separately approved evaluation possible without exposing learner text.",
+        "de": "LecturePilot hilft Lehrenden jetzt, konkrete Lücken im Lerndesign vor der Veröffentlichung zu prüfen und zu bestätigen. Versionsgebundene Lernergebnisse ermöglichen eine spätere, separat genehmigte Evaluation, ohne Texte von Lernenden offenzulegen."
+      },
+      "changes": [
+        {
+          "title": {
+            "en": "Exact-draft learning-design review",
+            "de": "Lerndesign-Prüfung für den exakten Entwurf"
+          },
+          "description": {
+            "en": "Before publishing, lecturers see source, assessment, checkpoint, worked-example, transfer, and prerequisite coverage for the current draft. Every diagnostic must be acknowledged for that exact version; saving resets the acknowledgement.",
+            "de": "Vor der Veröffentlichung sehen Lehrende die Quellen-, Aufgaben-, Checkpoint-, Beispiel-, Transfer- und Voraussetzung-Abdeckung des aktuellen Entwurfs. Jeder Hinweis muss für genau diese Version bestätigt werden; Speichern setzt die Bestätigung zurück."
+          }
+        },
+        {
+          "title": {
+            "en": "Revision-bound follow-up records",
+            "de": "Versionsgebundene Wiederholungsdaten"
+          },
+          "description": {
+            "en": "Quiz and checkpoint outcomes retain the publication, learning-map, attempt, assistance, and planned-versus-observed follow-up context needed to separate independent work from supported recovery. Preview activity and learner answer text remain excluded.",
+            "de": "Quiz- und Checkpoint-Ergebnisse behalten den Veröffentlichungs-, Lernpfad-, Versuchs-, Unterstützungs- und Wiederholungskontext, um selbstständiges Arbeiten von unterstützter Erholung zu trennen. Vorschauaktivitäten und Antworttexte bleiben ausgeschlossen."
+          }
+        },
+        {
+          "title": {
+            "en": "An explicit evaluation boundary",
+            "de": "Eine klare Evaluationsgrenze"
+          },
+          "description": {
+            "en": "The documented contract defines delayed changed-task performance as a possible future primary measure and preserves small-cohort privacy. This release makes no efficacy claim and is not a completed study, ethics approval, or production deployment.",
+            "de": "Der dokumentierte Vertrag beschreibt verzögerte Leistung bei einer veränderten Aufgabe als mögliches zukünftiges Primärmaß und schützt kleine Kohorten. Dieses Release ist kein Wirksamkeitsnachweis, keine abgeschlossene Studie, keine Ethikfreigabe und kein Produktionseinsatz."
+          }
+        }
+      ]
+    },
+    {
       "version": "0.4.0",
       "date": "2026-07-31",
       "title": {

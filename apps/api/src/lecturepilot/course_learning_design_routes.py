@@ -74,6 +74,8 @@ def register_course_learning_design_routes(
                 draft_digest=approval.draft_digest,
                 source_revision=approval.source_revision,
                 learning_map_revision=approval.learning_map_revision,
+                report_revision=approval.report_revision,
+                acknowledged_warning_ids=approval.acknowledged_warning_ids,
                 approved_by=context.user_id,
             )
         )

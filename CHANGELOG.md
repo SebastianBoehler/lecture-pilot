@@ -4,6 +4,28 @@ A product-level history of improvements for students and lecturers. Technical de
 
 [View all GitHub Releases](https://github.com/SebastianBoehler/lecture-pilot/releases)
 
+## [0.5.0](https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.5.0) — A reviewable learning loop from draft to follow-up
+
+Released 2026-08-09
+
+LecturePilot now helps lecturers inspect and acknowledge concrete learning-design gaps before publication, while revision-bound learner outcomes make later, separately approved evaluation possible without exposing learner text.
+
+### What changed
+
+- **Exact-draft learning-design review** — Before publishing, lecturers see source, assessment, checkpoint, worked-example, transfer, and prerequisite coverage for the current draft. Every diagnostic must be acknowledged for that exact version; saving resets the acknowledgement.
+- **Revision-bound follow-up records** — Quiz and checkpoint outcomes retain the publication, learning-map, attempt, assistance, and planned-versus-observed follow-up context needed to separate independent work from supported recovery. Preview activity and learner answer text remain excluded.
+- **An explicit evaluation boundary** — The documented contract defines delayed changed-task performance as a possible future primary measure and preserves small-cohort privacy. This release makes no efficacy claim and is not a completed study, ethics approval, or production deployment.
+
+### Deutsch
+
+**Ein prüfbarer Lernablauf vom Entwurf bis zur Wiederholung**
+
+LecturePilot hilft Lehrenden jetzt, konkrete Lücken im Lerndesign vor der Veröffentlichung zu prüfen und zu bestätigen. Versionsgebundene Lernergebnisse ermöglichen eine spätere, separat genehmigte Evaluation, ohne Texte von Lernenden offenzulegen.
+
+- **Lerndesign-Prüfung für den exakten Entwurf** — Vor der Veröffentlichung sehen Lehrende die Quellen-, Aufgaben-, Checkpoint-, Beispiel-, Transfer- und Voraussetzung-Abdeckung des aktuellen Entwurfs. Jeder Hinweis muss für genau diese Version bestätigt werden; Speichern setzt die Bestätigung zurück.
+- **Versionsgebundene Wiederholungsdaten** — Quiz- und Checkpoint-Ergebnisse behalten den Veröffentlichungs-, Lernpfad-, Versuchs-, Unterstützungs- und Wiederholungskontext, um selbstständiges Arbeiten von unterstützter Erholung zu trennen. Vorschauaktivitäten und Antworttexte bleiben ausgeschlossen.
+- **Eine klare Evaluationsgrenze** — Der dokumentierte Vertrag beschreibt verzögerte Leistung bei einer veränderten Aufgabe als mögliches zukünftiges Primärmaß und schützt kleine Kohorten. Dieses Release ist kein Wirksamkeitsnachweis, keine abgeschlossene Studie, keine Ethikfreigabe und kein Produktionseinsatz.
+
 ## [0.4.0](https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.4.0) — Practice exams with solutions and more reliable course creation
 
 Released 2026-07-31

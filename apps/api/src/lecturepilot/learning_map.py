@@ -5,7 +5,7 @@ import json
 from collections.abc import Iterable
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.quiz_identity import (
@@ -36,6 +36,13 @@ class LearningMapGate(BaseModel):
     revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     section_id: str = Field(min_length=1, max_length=160)
     source_ref: str | None = Field(default=None, max_length=500)
+
+    @field_validator("transfer_prompt")
+    @classmethod
+    def require_nonblank_transfer_prompt(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("transfer_prompt must not be blank")
+        return value
 
     @model_validator(mode="after")
     def validate_contract(self, info: ValidationInfo) -> LearningMapGate:

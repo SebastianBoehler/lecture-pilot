@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 
 import { useI18n } from "./i18n";
 import type { LearningDesignReview, LearningDesignUpdate } from "./learningDesignTypes";
+import { ProfessorLearningDesignReport } from "./ProfessorLearningDesignReport";
 
 export function ProfessorLearningDesignReview({
   lectureId,
+  acknowledgementResetKey,
   previewHref,
   review,
   saving,
@@ -12,14 +14,16 @@ export function ProfessorLearningDesignReview({
   onSave,
 }: {
   lectureId: string;
+  acknowledgementResetKey: string;
   previewHref: string;
   review: LearningDesignReview;
   saving: boolean;
-  onApprove: (lectureId: string) => void;
+  onApprove: (lectureId: string, acknowledgedWarningIds: string[]) => void;
   onSave: (lectureId: string, update: LearningDesignUpdate) => void;
 }) {
   const { t } = useI18n();
   const [update, setUpdate] = useState(() => editableReview(review));
+  const [saveEpoch, setSaveEpoch] = useState(0);
   useEffect(() => setUpdate(editableReview(review)), [review]);
   const dirty = JSON.stringify(update) !== JSON.stringify(editableReview(review));
   return (
@@ -114,30 +118,27 @@ export function ProfessorLearningDesignReview({
             );
           })}
           <Prerequisites review={review} update={update} onChange={setUpdate} />
-          {review.warnings.length ? (
-            <div role="status">
-              <strong>{t("builder.learningDesign.warnings")}</strong>
-              <ul>
-                {review.warnings.map((warning) => (
-                  <li key={warning}>{warning}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
           <div className="learning-design-actions">
-            <button disabled={saving} type="button" onClick={() => onSave(lectureId, update)}>
+            <button
+              disabled={saving}
+              type="button"
+              onClick={() => {
+                setSaveEpoch((current) => current + 1);
+                onSave(lectureId, update);
+              }}
+            >
               {t("builder.learningDesign.save")}
             </button>
-            <button
-              disabled={saving || dirty || Boolean(review.approval)}
-              type="button"
-              onClick={() => onApprove(lectureId)}
-            >
-              {review.approval
-                ? t("builder.learningDesign.approved")
-                : t("builder.learningDesign.approve")}
-            </button>
           </div>
+          <ProfessorLearningDesignReport
+            acknowledgementResetKey={`${acknowledgementResetKey}:${saveEpoch}`}
+            approved={Boolean(review.approval)}
+            dirty={dirty}
+            lectureId={lectureId}
+            report={review.report}
+            saving={saving}
+            onApprove={onApprove}
+          />
           {dirty ? <p role="status">{t("builder.learningDesign.saveBeforeApprove")}</p> : null}
         </div>
       </div>
