@@ -8,8 +8,10 @@ import { useI18n } from "./i18n";
 import type { Attendance, Lecture, LoginSession, UniversityCourse } from "./types";
 import { LearnerOnboarding } from "./LearnerOnboarding";
 import { NextStudyRecommendation } from "./NextStudyRecommendation";
+import type { GateReviewOpening, GateReviewQueueItem } from "./reviewQueueTypes";
 import { CourseSyncEmpty, CourseSyncSkeleton } from "./CourseSyncState";
 import type { LearnerProfileState } from "./useLearnerProfile";
+import { useReviewQueue } from "./useReviewQueue";
 
 export function Dashboard({
   lectures,
@@ -27,7 +29,7 @@ export function Dashboard({
   workspaceCourse: UniversityCourse;
   workspaceLoadError?: string | null;
   learnerProfileState?: LearnerProfileState;
-  onOpen: (lecture: Lecture) => void;
+  onOpen: (lecture: Lecture, review?: GateReviewOpening) => void;
   onSetAttendance: (lectureId: string, attendance: Attendance) => void;
 }) {
   const { t } = useI18n();
@@ -44,6 +46,13 @@ export function Dashboard({
   const courseProfile = learnerProfileState?.profile?.courses?.find(
     (course) => course.course_id === workspaceCourse.id,
   );
+  const reviewQueue = useReviewQueue(workspaceCourse.id, session);
+
+  async function openGateReview(item: GateReviewQueueItem) {
+    const opening = await reviewQueue.open(item);
+    const lecture = lectures.find((candidate) => candidate.id === item.lecture_id);
+    if (opening && lecture) onOpen(lecture, opening);
+  }
 
   return (
     <main className="dashboard">
@@ -66,8 +75,16 @@ export function Dashboard({
         course={workspaceCourse}
         lectures={workspaceLectures}
         passedLectureIds={courseProfile?.passed_lecture_ids ?? []}
+        reviewQueue={reviewQueue.queue}
         onOpen={onOpen}
+        onOpenGateReview={(item) => void openGateReview(item)}
       />
+
+      {reviewQueue.error ? (
+        <p className="form-error" role="alert">
+          {reviewQueue.error}
+        </p>
+      ) : null}
 
       <section className="course-panel" aria-labelledby="course-workspaces">
         <div className="panel-heading course-panel-heading">
@@ -86,6 +103,7 @@ export function Dashboard({
               courseGroups={visibleCourseGroups}
               session={session}
               onOpen={onOpen}
+              onProgress={reviewQueue.refresh}
               onSetAttendance={onSetAttendance}
             />
           ) : null}

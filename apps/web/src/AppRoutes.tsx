@@ -11,6 +11,7 @@ import { localDemoSession } from "./appDefaults";
 import { ProfileView } from "./ProfileView";
 import { useI18n } from "./i18n";
 import type { LearnerLessonState } from "./learnerLessonStateTypes";
+import type { GateReviewOpening } from "./reviewQueueTypes";
 import { useLearnerProfile } from "./useLearnerProfile";
 import type { WorkspaceResetSelection } from "./WorkspaceResetControl";
 import type {
@@ -79,7 +80,7 @@ type AppRoutesProps = {
   onLogin: (session: LoginSession) => void;
   onNavigatePath: (path: string) => void;
   onOpenDemo: () => void;
-  onOpenLecture: (courseId: string, lecture: Lecture) => void;
+  onOpenLecture: (courseId: string, lecture: Lecture, review?: GateReviewOpening) => void;
   onPreviewLecture: (courseId: string, lecture: Lecture) => void;
   onOpenProfessorDemo: () => void;
   onPracticeSubmitted: (result: LearnerQuizAnswerResult) => void | Promise<void>;
@@ -143,7 +144,7 @@ export function AppRoutes(props: AppRoutesProps) {
         session={session}
         workspaceCourse={workspaceCourse}
         workspaceLoadError={props.workspaceLoadError}
-        onOpen={(lecture) => props.onOpenLecture(workspaceCourseId, lecture)}
+        onOpen={(lecture, review) => props.onOpenLecture(workspaceCourseId, lecture, review)}
         onSetAttendance={props.onSetAttendance}
       />
     );

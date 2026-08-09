@@ -80,6 +80,10 @@ export function lessonPath(courseId: string, lectureId: string, mode: LessonMode
   }`;
 }
 
+export function lessonKey(courseId: string, lectureId: string, mode: LessonMode) {
+  return `${mode}:${courseId}:${lectureId}`;
+}
+
 export function courseUpdatePath(courseId: string) {
   return `/professor/courses/${encodeURIComponent(courseId)}/update`;
 }

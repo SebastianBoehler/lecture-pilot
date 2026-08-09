@@ -144,6 +144,7 @@ def select_due_review_gate(
     if learning_map is None:
         return None
     current_time = now or datetime.now(UTC)
+    candidates: list[tuple[datetime, LearningMapGate]] = []
     for gate in learning_map.gates:
         review = progress.delayed_reviews.get(gate.id)
         if (
@@ -154,11 +155,24 @@ def select_due_review_gate(
         ):
             continue
         try:
-            if parse_time(review.due_at) <= current_time:
-                return gate
+            due_at = parse_time(review.due_at)
         except ValueError:
             continue
-    return None
+        if due_at <= current_time:
+            candidates.append((due_at, gate))
+    pending = progress.pending_check
+    if pending is not None and pending.kind == "delayed_transfer":
+        opened = next(
+            (
+                gate
+                for _, gate in candidates
+                if gate.id == pending.gate_id and gate.revision == pending.gate_revision
+            ),
+            None,
+        )
+        if opened is not None:
+            return opened
+    return min(candidates, key=lambda item: (item[0], item[1].id))[1] if candidates else None
 
 
 def _validate_requested_gate(

@@ -19,6 +19,7 @@ export function ExamReadinessPanel({
   lectures,
   mode = "learner",
   onOpenLecture,
+  onProgress,
   session,
   compact = false,
 }: {
@@ -27,6 +28,7 @@ export function ExamReadinessPanel({
   lectures: Lecture[];
   mode?: LearnerWorkspaceMode;
   onOpenLecture: (lecture: Lecture) => void;
+  onProgress?: () => void | Promise<void>;
   session: LoginSession | null;
 }) {
   const { t } = useI18n();
@@ -75,9 +77,14 @@ export function ExamReadinessPanel({
     setSubmitting(true);
     setError(null);
     try {
-      setAttemptResult(
-        await submitExamReadinessAttempt(course.id, answersForCheck(check, answers), session, mode),
+      const result = await submitExamReadinessAttempt(
+        course.id,
+        answersForCheck(check, answers),
+        session,
+        mode,
       );
+      setAttemptResult(result);
+      await onProgress?.();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : t("exam.submitFailed"));
     } finally {

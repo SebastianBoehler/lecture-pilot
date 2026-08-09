@@ -20,11 +20,13 @@ export function DashboardCourseWorkspaces({
   courseGroups,
   session,
   onOpen,
+  onProgress,
   onSetAttendance,
 }: {
   courseGroups: CourseWorkspaceGroup[];
   session: LoginSession | null;
   onOpen: (lecture: Lecture) => void;
+  onProgress: () => void | Promise<void>;
   onSetAttendance: (lectureId: string, attendance: Attendance) => void;
 }) {
   const { t } = useI18n();
@@ -85,6 +87,7 @@ export function DashboardCourseWorkspaces({
           session={session}
           onActiveToolChange={setActiveTool}
           onOpen={onOpen}
+          onProgress={onProgress}
           onSetAttendance={onSetAttendance}
           onToggleLectures={() =>
             setExpandedLectureLists((current) => ({
@@ -107,6 +110,7 @@ function ActiveWorkspace({
   session,
   onActiveToolChange,
   onOpen,
+  onProgress,
   onSetAttendance,
   onToggleLectures,
 }: {
@@ -116,6 +120,7 @@ function ActiveWorkspace({
   session: LoginSession | null;
   onActiveToolChange: (tool: CourseWorkspaceTool) => void;
   onOpen: (lecture: Lecture) => void;
+  onProgress: () => void | Promise<void>;
   onSetAttendance: (lectureId: string, attendance: Attendance) => void;
   onToggleLectures: () => void;
 }) {
@@ -181,6 +186,7 @@ function ActiveWorkspace({
           lectures={availableCourseLectures(group.courseLectures)}
           session={session}
           onOpenLecture={onOpen}
+          onProgress={onProgress}
         />
       </div>
 

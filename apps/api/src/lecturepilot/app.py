@@ -69,6 +69,7 @@ from lecturepilot.rate_limit import RateLimitMiddleware
 from lecturepilot.release_info import release_info
 from lecturepilot.request_diagnostics import RequestDiagnosticsMiddleware
 from lecturepilot.runtime_readiness import RuntimeReadiness
+from lecturepilot.review_queue_routes import register_review_queue_routes
 from lecturepilot.runtime_env import load_project_env
 from lecturepilot.sample_data import COURSE, LECTURES
 from lecturepilot.security_headers import (
@@ -240,6 +241,7 @@ def create_app() -> FastAPI:
     register_agent_routes(app, **seeded_route_args)
     register_analytics_routes(app, **seeded_route_args)
     register_learner_lesson_state_routes(app, **seeded_route_args)
+    register_review_queue_routes(app, **seeded_route_args)
     register_professor_usage_routes(app, course_tenant_id=COURSE_TENANT_ID)
     register_course_canvas_routes(
         app,

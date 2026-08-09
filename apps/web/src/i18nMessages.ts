@@ -4,6 +4,7 @@ import { courseAccessMessages } from "./courseAccessMessages";
 import { interactiveComponentMessages } from "./interactiveComponentMessages";
 import { learnerStateMessages } from "./learnerStateMessages";
 import { learningAttemptMessages } from "./learningAttemptMessages";
+import { reviewQueueMessages } from "./reviewQueueMessages";
 
 export const messages = {
   en: {
@@ -12,6 +13,7 @@ export const messages = {
     ...interactiveComponentMessages.en,
     ...learnerStateMessages.en,
     ...learningAttemptMessages.en,
+    ...reviewQueueMessages.en,
   },
   de: {
     ...deMessages,
@@ -19,6 +21,7 @@ export const messages = {
     ...interactiveComponentMessages.de,
     ...learnerStateMessages.de,
     ...learningAttemptMessages.de,
+    ...reviewQueueMessages.de,
   },
 } as const;
 

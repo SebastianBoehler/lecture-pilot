@@ -16,7 +16,7 @@ import {
 import { AppFooter } from "./AppFooter";
 import { AppHeader } from "./AppHeader";
 import { AppRoutes } from "./AppRoutes";
-import { lessonPath, pathForView, requiresSession, type AppRoute } from "./appRoute";
+import { lessonKey, lessonPath, pathForView, requiresSession, type AppRoute } from "./appRoute";
 import type { TutorMessageOptions } from "./canvasLearningActions";
 import { FeedbackDialog } from "./FeedbackDialog";
 import { ProfessorWalkthrough } from "./ProfessorWalkthrough";
@@ -25,6 +25,7 @@ import {
   localDemoSession,
   localProfessorSession,
 } from "./appDefaults";
+import type { GateReviewOpening } from "./reviewQueueTypes";
 import { canManageCourses } from "./authz";
 import { clearDemoWorkspaceCourse, writeDemoWorkspaceCourse } from "./demoWorkspaceAccess";
 import { I18nProvider, type Locale } from "./i18n";
@@ -270,8 +271,9 @@ function App() {
       lecture: Lecture,
       mode: LessonMode = "learner",
       updateRoute = true,
+      review?: GateReviewOpening,
     ) => {
-      loadedLessonRoute.current = lessonRouteKey(courseId, lecture.id, mode);
+      loadedLessonRoute.current = lessonKey(courseId, lecture.id, mode);
       if (updateRoute) navigate(lessonPath(courseId, lecture.id, mode));
       setSelectedCourseId(courseId);
       setSelectedLecture(lecture);
@@ -279,11 +281,11 @@ function App() {
       setPanelMode("chat");
       setCanvasDocument(null);
       setCanvasError(null);
-      setFocusedSectionId("bayesian-decision-theory-the-aim");
-      setHighlightedBlockId(null);
+      setFocusedSectionId(review?.section_id ?? "bayesian-decision-theory-the-aim");
+      setHighlightedBlockId(review?.gate_id ?? null);
       setHighlightedText(null);
       setNavigationVersion((current) => current + 1);
-      setMessages(initialMessagesForAttendance(lecture.attendance));
+      setMessages(initialMessagesForAttendance(lecture.attendance, review));
       setLastTutorModel(null);
 
       try {
@@ -298,7 +300,9 @@ function App() {
                 mode === "professor-preview" ? "professor-preview" : "learner",
               );
         setCanvasDocument(document);
-        setFocusedSectionId(document.sections[0]?.id ?? "bayesian-decision-theory-the-aim");
+        setFocusedSectionId(
+          review?.section_id ?? document.sections[0]?.id ?? "bayesian-decision-theory-the-aim",
+        );
       } catch (error) {
         setCanvasError(error instanceof Error ? error.message : "Canvas loading failed.");
       }
@@ -333,7 +337,7 @@ function App() {
 
   useEffect(() => {
     if (route.view !== "lesson" || !session) return;
-    const key = lessonRouteKey(route.courseId, route.lectureId, route.lessonMode);
+    const key = lessonKey(route.courseId, route.lectureId, route.lessonMode);
     if (loadedLessonRoute.current === key) return;
     loadedLessonRoute.current = key;
     void restoreLessonRoute(route);
@@ -499,8 +503,8 @@ function App() {
             setSession(localProfessorSession);
             if (route.view === "login") changeView("professor", true);
           }}
-          onOpenLecture={(courseId, lecture) => {
-            void handleOpenLecture(courseId, lecture);
+          onOpenLecture={(courseId, lecture, review) => {
+            void handleOpenLecture(courseId, lecture, "learner", true, review);
           }}
           onPreviewLecture={(courseId, lecture) => {
             void handleOpenLecture(courseId, lecture, "professor-preview");
@@ -576,8 +580,4 @@ function initialLecture(route: AppRoute) {
       attendance: "unknown" as Attendance,
     }
   );
-}
-
-function lessonRouteKey(courseId: string, lectureId: string, mode: LessonMode) {
-  return `${mode}:${courseId}:${lectureId}`;
 }

@@ -58,4 +58,90 @@ describe("NextStudyRecommendation", () => {
     );
     expect(onOpen).toHaveBeenCalledWith(candidateLectures[1]);
   });
+
+  it("prioritizes a due gate review over readiness and attendance continuation", async () => {
+    const user = userEvent.setup();
+    const onOpen = vi.fn();
+    const onOpenGateReview = vi.fn();
+    renderWithI18n(
+      <NextStudyRecommendation
+        course={course}
+        lectures={candidateLectures}
+        passedLectureIds={[]}
+        reviewQueue={{
+          course_id: course.id,
+          items: [
+            {
+              id: "gate:lecture-03:risk-check",
+              kind: "gate_review",
+              course_id: course.id,
+              lecture_id: "lecture-03",
+              lecture_title: "Bayes",
+              section_id: "risk",
+              section_title: "Risk transfer",
+              gate_id: "risk-check",
+              gate_revision: "revision-1",
+              due_at: "2026-08-08T10:00:00+00:00",
+            },
+            {
+              id: "readiness:repair-risk",
+              kind: "readiness_repair",
+              course_id: course.id,
+              lecture_id: "lecture-02",
+              lecture_title: "Generalization",
+              section_id: "bounds",
+              section_title: "Bounds",
+              task_id: "repair-risk",
+              next_action: "Revisit the generalization bound.",
+            },
+          ],
+        }}
+        onOpen={onOpen}
+        onOpenGateReview={onOpenGateReview}
+      />,
+    );
+
+    expect(screen.getByText("Risk transfer")).toBeInTheDocument();
+    expect(screen.getByText(/delayed transfer check is due/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /open due review/i }));
+    expect(onOpenGateReview).toHaveBeenCalledWith(
+      expect.objectContaining({ gate_id: "risk-check", lecture_id: "lecture-03" }),
+    );
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+
+  it("shows a readiness task's evidence-driven next action before attendance continuation", async () => {
+    const user = userEvent.setup();
+    const onOpen = vi.fn();
+    renderWithI18n(
+      <NextStudyRecommendation
+        course={course}
+        lectures={candidateLectures}
+        passedLectureIds={[]}
+        reviewQueue={{
+          course_id: course.id,
+          items: [
+            {
+              id: "readiness:repair-risk",
+              kind: "readiness_repair",
+              course_id: course.id,
+              lecture_id: "lecture-02",
+              lecture_title: "Generalization",
+              section_id: "bounds",
+              section_title: "Bounds",
+              task_id: "repair-risk",
+              next_action: "Revisit the generalization bound and explain the weak point.",
+            },
+          ],
+        }}
+        onOpen={onOpen}
+      />,
+    );
+
+    expect(
+      screen.getByText("Revisit the generalization bound and explain the weak point."),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /open readiness repair/i }));
+    expect(onOpen).toHaveBeenCalledWith(candidateLectures[1]);
+  });
 });

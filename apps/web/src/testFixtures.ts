@@ -20,6 +20,7 @@ export function mockLoginFetch({ published = false }: { published?: boolean } = 
     }
     if (url.endsWith("/courses")) return json(courseListPayload());
     if (/\/courses\/[^/]+\/lectures$/.test(url)) return json(lectureListPayload(published));
+    if (url.endsWith("/review-queue")) return json(emptyReviewQueue(url));
     if (url.includes("/analytics/quiz-answer")) return json(quizAttemptResponse(init));
     if (url.includes("/learning-map")) {
       return {
@@ -58,6 +59,7 @@ export function mockLoginAndTutorFetch({
 
     if (url.endsWith("/courses")) return json(courseListPayload());
     if (/\/courses\/[^/]+\/lectures$/.test(url)) return json(lectureListPayload(published));
+    if (url.endsWith("/review-queue")) return json(emptyReviewQueue(url));
     if (url.includes("/analytics/quiz-answer")) return json(quizAttemptResponse(_init));
 
     if (url.includes("/learning-map")) {
@@ -140,6 +142,13 @@ function publicationPayload(url: string, published: boolean) {
     published,
     version: published ? 1 : null,
     published_at: published ? "2026-06-12T10:00:00Z" : null,
+  };
+}
+
+function emptyReviewQueue(url: string) {
+  return {
+    course_id: url.match(/courses\/([^/]+)\/review-queue$/)?.[1] ?? "martius-ml",
+    items: [],
   };
 }
 

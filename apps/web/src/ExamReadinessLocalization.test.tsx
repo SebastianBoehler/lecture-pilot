@@ -13,6 +13,7 @@ describe("Exam readiness localization", () => {
 
   it("keeps course text intact inside evaluated German open-answer feedback", async () => {
     const user = userEvent.setup();
+    const onProgress = vi.fn();
     vi.stubGlobal(
       "fetch",
       vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) =>
@@ -25,6 +26,7 @@ describe("Exam readiness localization", () => {
         lectures={[lecture]}
         session={session}
         onOpenLecture={vi.fn()}
+        onProgress={onProgress}
       />,
       { locale: "de" },
     );
@@ -52,6 +54,7 @@ describe("Exam readiness localization", () => {
     expect(within(dialog).getByRole("list", { name: "Ergebnisübersicht" })).toHaveTextContent(
       "0 Prioritäten",
     );
+    expect(onProgress).toHaveBeenCalledOnce();
   });
 
   it("explains that loading selects existing source-backed questions", async () => {

@@ -1,6 +1,20 @@
+import type { GateReviewOpening } from "./reviewQueueTypes";
 import type { Attendance, ChatMessage, LoginSession } from "./types";
 
-export function initialMessagesForAttendance(attendance: Attendance): ChatMessage[] {
+export function initialMessagesForAttendance(
+  attendance: Attendance,
+  review?: GateReviewOpening,
+): ChatMessage[] {
+  if (review) {
+    return [
+      {
+        id: `agent-review-${review.gate_id}`,
+        role: "agent",
+        content: review.prompt,
+        toolTags: [review.stage === "due" ? "delayed transfer" : "review repair"],
+      },
+    ];
+  }
   return [
     {
       id: "agent-welcome",

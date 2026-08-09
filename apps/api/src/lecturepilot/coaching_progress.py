@@ -5,11 +5,8 @@ from datetime import UTC, datetime
 
 from pydantic import ValidationError
 
-from lecturepilot.coaching_state_models import (
-    CoachingProgress,
-    CoachingTurnEvent,
-    PendingCheck,
-)
+from lecturepilot.coaching_check_binding import bind_inline_checkpoint
+from lecturepilot.coaching_state_models import CoachingProgress, CoachingTurnEvent
 from lecturepilot.coaching_episode import (
     attempt_kind,
     bound_pending,
@@ -117,23 +114,16 @@ class CoachingProgressStore:
         published_prompt: str,
         now: datetime | None = None,
     ) -> None:
-        path = self._path(user_id=user_id, course_id=course_id, lecture_id=lecture_id)
-        with exclusive_file_lock(path):
-            progress = self.read(user_id=user_id, course_id=course_id, lecture_id=lecture_id)
-            progress.pending_check = PendingCheck(
-                gate_id=gate_id,
-                gate_revision=gate_revision,
-                prompt=published_prompt,
-                assistance_level="none",
-                kind="standard",
-                issued_at=(now or datetime.now(UTC)).isoformat(),
-            )
-            self._write(
-                user_id=user_id,
-                course_id=course_id,
-                lecture_id=lecture_id,
-                progress=progress,
-            )
+        bind_inline_checkpoint(
+            self,
+            user_id=user_id,
+            course_id=course_id,
+            lecture_id=lecture_id,
+            gate_id=gate_id,
+            gate_revision=gate_revision,
+            published_prompt=published_prompt,
+            now=now,
+        )
 
     def record_turn(
         self,
@@ -211,7 +201,7 @@ class CoachingProgressStore:
                     review_after_days=review_after_days,
                     now=current_time,
                 )
-            progress.pending_check = next_pending_check(
+            next_check = next_pending_check(
                 decision,
                 gate_revision=gate_revision,
                 assistance_level=next_check_assistance_level,
@@ -220,6 +210,20 @@ class CoachingProgressStore:
                 ),
                 now=current_time,
             )
+            if (
+                next_check is None
+                and assessed_attempt
+                and decision.status == QualityGateStatus.NEEDS_EVIDENCE
+                and pending is not None
+            ):
+                next_check = pending.model_copy(
+                    update={
+                        "assistance_level": "none",
+                        "kind": "standard",
+                        "issued_at": created_at,
+                    }
+                )
+            progress.pending_check = next_check
             if user_message and assistant_message:
                 progress.messages.extend(
                     [
