@@ -36,9 +36,14 @@ export function noActivityAnalytics() {
     course_id: "demo-ml-course",
     current_learning_map_revision: "map-1",
     current_publication_version: 1,
+    correction_after_feedback: cell("correction_after_feedback", 0, null),
+    delayed_transfer: cell("delayed_transfer", 0, null),
     gates: [],
+    independent_first_pass: cell("independent_first_pass", 0, null),
     lecture_id: "lecture-01",
     quizzes: [],
+    quiz_first_attempt: cell("quiz_first_attempt", 0, null),
+    supported_retry: cell("supported_retry", 0, null),
     activity_events: 0,
     unique_learners: 0,
   };
@@ -55,6 +60,7 @@ export function noActivityCourse() {
       {
         activity_events: 0,
         correction_after_feedback: cell("correction_after_feedback", 0, null),
+        current_learning_map_revision: "map-1",
         current_publication_version: 1,
         delayed_transfer: cell("delayed_transfer", 0, null),
         independent_first_pass: cell("independent_first_pass", 0, null),
@@ -76,7 +82,10 @@ export function activityAnalytics(lectureId: string) {
     course_id: "demo-ml-course",
     current_learning_map_revision: "map-1",
     current_publication_version: 1,
+    correction_after_feedback: cell("correction_after_feedback", 2, null),
+    delayed_transfer: cell("delayed_transfer", 0, null),
     gates: [],
+    independent_first_pass: cell("independent_first_pass", 0, null),
     lecture_id: lectureId,
     quizzes: [
       {
@@ -85,6 +94,7 @@ export function activityAnalytics(lectureId: string) {
         component_type: "quiz",
         correction_after_feedback: cell("correction_after_feedback", 2, null),
         first_attempt: cell("quiz_first_attempt", 5, rate),
+        learning_map_revision: "map-1",
         options: [],
         publication_version: 1,
         question: "Question",
@@ -94,6 +104,8 @@ export function activityAnalytics(lectureId: string) {
       },
     ],
     activity_events: 5,
+    quiz_first_attempt: cell("quiz_first_attempt", 5, rate),
+    supported_retry: cell("supported_retry", 0, null),
     unique_learners: 5,
   };
 }
@@ -109,6 +121,7 @@ export function courseActivityAnalytics() {
       {
         activity_events: 5,
         correction_after_feedback: cell("correction_after_feedback", 2, null),
+        current_learning_map_revision: "map-1",
         current_publication_version: 1,
         delayed_transfer: cell("delayed_transfer", 0, null),
         independent_first_pass: cell("independent_first_pass", 0, null),
@@ -120,6 +133,7 @@ export function courseActivityAnalytics() {
       {
         activity_events: 5,
         correction_after_feedback: cell("correction_after_feedback", 1, null),
+        current_learning_map_revision: "map-1",
         current_publication_version: 1,
         delayed_transfer: cell("delayed_transfer", 0, null),
         independent_first_pass: cell("independent_first_pass", 0, null),

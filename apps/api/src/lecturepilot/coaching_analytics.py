@@ -20,6 +20,7 @@ class AnalyticsGateMetric(BaseModel):
     gate_id: str
     gate_revision: str
     publication_version: int
+    learning_map_revision: str
     version_status: AnalyticsVersionStatus
     activity_events: int
     unique_learners: int
@@ -38,6 +39,7 @@ class _LearnerAttempt:
 class _GateState:
     gate_revision: str
     publication_version: int
+    learning_map_revision: str
     activity_events: int = 0
     learners: set[str] = field(default_factory=set)
     outcomes: dict[str, dict[str, _LearnerAttempt]] = field(
@@ -50,35 +52,35 @@ class GateMetricsAccumulator:
         self,
         *,
         current_publication_version: int,
+        current_learning_map_revision: str,
         current_gate_revisions: dict[str, str],
     ) -> None:
         self.current_publication_version = current_publication_version
+        self.current_learning_map_revision = current_learning_map_revision
         self.current_gate_revisions = current_gate_revisions
-        self._groups: dict[tuple[str, str, int], _GateState] = {}
+        self._groups: dict[tuple[str, str, int, str], _GateState] = {}
 
     def record(self, event: dict) -> None:
-        if event.get("type") != "gate_decision":
+        if event["type"] != "gate_decision":
             return
-        gate_id = str(event["gate_id"])
-        gate_revision = str(event["gate_revision"])
+        gate_id = event["gate_id"]
+        gate_revision = event["gate_revision"]
         publication_version = _publication_version(event)
-        key = gate_id, gate_revision, publication_version
+        learning_map_revision = event["learning_map_revision"]
+        key = gate_id, gate_revision, publication_version, learning_map_revision
         state = self._groups.setdefault(
             key,
             _GateState(
                 gate_revision=gate_revision,
                 publication_version=publication_version,
+                learning_map_revision=learning_map_revision,
             ),
         )
         state.activity_events += 1
-        learner_key = str(event["user_key"])
+        learner_key = event["user_key"]
         state.learners.add(learner_key)
-        kind = str(event["attempt_kind"])
-        if kind not in _OUTCOME_KINDS:
-            return
+        kind = event["attempt_kind"]
         attempt_index = event["attempt_index"]
-        if not isinstance(attempt_index, int) or attempt_index < 1:
-            return
         if kind == "independent" and attempt_index != 1:
             return
         attempt = _LearnerAttempt(
@@ -105,13 +107,15 @@ class GateMetricsAccumulator:
             self.current_publication_version,
         )
         if status == "current" and (
-            self.current_gate_revisions.get(gate_id) != state.gate_revision
+            state.learning_map_revision != self.current_learning_map_revision
+            or self.current_gate_revisions.get(gate_id) != state.gate_revision
         ):
             status = "historical"
         return AnalyticsGateMetric(
             gate_id=gate_id,
             gate_revision=state.gate_revision,
             publication_version=state.publication_version,
+            learning_map_revision=state.learning_map_revision,
             version_status=status,
             activity_events=state.activity_events,
             unique_learners=len(state.learners),
@@ -125,10 +129,12 @@ def gate_metrics(
     events: Iterable[dict],
     *,
     current_publication_version: int,
+    current_learning_map_revision: str,
     current_gate_revisions: dict[str, str],
 ) -> list[AnalyticsGateMetric]:
     accumulator = GateMetricsAccumulator(
         current_publication_version=current_publication_version,
+        current_learning_map_revision=current_learning_map_revision,
         current_gate_revisions=current_gate_revisions,
     )
     for event in events:
@@ -144,4 +150,4 @@ def _cell(evidence_type: str, attempts: dict[str, _LearnerAttempt]) -> Analytics
 
 
 def _publication_version(event: dict) -> int:
-    return int(event["publication_version"])
+    return event["publication_version"]

@@ -44,7 +44,12 @@ function analytics(): LectureAnalyticsSummary {
     unique_learners: 5,
     current_publication_version: 1,
     current_learning_map_revision: "map-1",
+    correction_after_feedback: cell("correction_after_feedback", 0, null),
+    delayed_transfer: cell("delayed_transfer", 0, null),
+    independent_first_pass: cell("independent_first_pass", 5, 0.6),
     quizzes: [],
+    quiz_first_attempt: cell("quiz_first_attempt", 0, null),
+    supported_retry: cell("supported_retry", 0, null),
     gates: [
       {
         gate_id: "risk-gate",
@@ -52,6 +57,7 @@ function analytics(): LectureAnalyticsSummary {
         unique_learners: 5,
         publication_version: 1,
         gate_revision: "revision-1",
+        learning_map_revision: "map-1",
         version_status: "current",
         independent_first_pass: {
           evidence_type: "independent_first_pass",
@@ -121,5 +127,14 @@ function analytics(): LectureAnalyticsSummary {
         },
       ],
     },
+  };
+}
+
+function cell(evidenceType: string, sampleSize: number, rate: number | null) {
+  return {
+    data_status: rate === null ? ("insufficient_data" as const) : ("available" as const),
+    evidence_type: evidenceType,
+    rate,
+    sample_size: sampleSize,
   };
 }

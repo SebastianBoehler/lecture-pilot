@@ -22,6 +22,7 @@ _EVIDENCE_TYPES = (
 @dataclass(frozen=True)
 class CurrentLectureAnalyticsContract:
     publication_version: int
+    learning_map_revision: str
     gate_revisions: dict[str, str]
 
 
@@ -30,6 +31,7 @@ class CourseLectureAnalytics(BaseModel):
     activity_events: int
     unique_learners: int
     current_publication_version: int
+    current_learning_map_revision: str
     quiz_first_attempt: AnalyticsOutcomeCell
     correction_after_feedback: AnalyticsOutcomeCell
     independent_first_pass: AnalyticsOutcomeCell
@@ -75,13 +77,16 @@ class _Aggregate:
         self, lecture_id: str, event: dict, contract: CurrentLectureAnalyticsContract
     ) -> None:
         self.activity_events += 1
-        user_key = str(event["user_key"])
+        user_key = event["user_key"]
         self.learners.add(user_key)
-        if not user_key or event["publication_version"] != contract.publication_version:
+        if (
+            event["publication_version"] != contract.publication_version
+            or event["learning_map_revision"] != contract.learning_map_revision
+        ):
             return
-        if event.get("type") == "quiz_answer":
+        if event["type"] == "quiz_answer":
             self._record_quiz(lecture_id, user_key, event)
-        elif event.get("type") == "gate_decision":
+        elif event["type"] == "gate_decision":
             self._record_gate(lecture_id, user_key, event, contract)
 
     def cells(self) -> dict[str, AnalyticsOutcomeCell]:
@@ -111,9 +116,9 @@ class _Aggregate:
         }
 
     def _record_quiz(self, lecture_id: str, learner: str, event: dict) -> None:
-        correct = event.get("correct")
-        index = event.get("attempt_index")
-        if not isinstance(correct, bool) or not isinstance(index, int) or index < 1:
+        correct = event["correct"]
+        index = event["attempt_index"]
+        if correct is None:
             return
         item = f"{lecture_id}:{event['component_id']}"
         attempts = self.quiz.setdefault(learner, {})
@@ -134,18 +139,16 @@ class _Aggregate:
         event: dict,
         contract: CurrentLectureAnalyticsContract,
     ) -> None:
-        gate_id = str(event["gate_id"])
-        if not gate_id or event.get("gate_revision") != contract.gate_revisions.get(gate_id):
+        gate_id = event["gate_id"]
+        if event["gate_revision"] != contract.gate_revisions.get(gate_id):
             return
-        kind = str(event["attempt_kind"])
+        kind = event["attempt_kind"]
         evidence_type = {
             "independent": "independent_first_pass",
             "supported_retry": "supported_retry",
             "delayed_transfer": "delayed_transfer",
-        }.get(kind)
+        }[kind]
         index = event["attempt_index"]
-        if evidence_type is None or not isinstance(index, int) or index < 1:
-            return
         if evidence_type == "independent_first_pass" and index != 1:
             return
         item = f"{lecture_id}:{gate_id}"
@@ -176,6 +179,7 @@ def course_analytics_summary(
                 activity_events=lecture.activity_events,
                 unique_learners=len(lecture.learners),
                 current_publication_version=contract.publication_version,
+                current_learning_map_revision=contract.learning_map_revision,
                 **lecture.cells(),
             )
         )
@@ -186,6 +190,18 @@ def course_analytics_summary(
         lectures=lectures,
         **course.cells(),
     )
+
+
+def lecture_outcome_cells(
+    *,
+    lecture_id: str,
+    events: Iterable[dict],
+    current_contract: CurrentLectureAnalyticsContract,
+) -> dict[str, AnalyticsOutcomeCell]:
+    aggregate = _Aggregate()
+    for event in events:
+        aggregate.record(lecture_id, event, current_contract)
+    return aggregate.cells()
 
 
 def _score_cell(evidence_type: str, scores: dict[str, dict[str, bool]]) -> AnalyticsOutcomeCell:

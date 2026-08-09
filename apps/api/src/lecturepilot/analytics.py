@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from datetime import UTC, datetime
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -16,6 +17,10 @@ from lecturepilot.analytics_events import (
 )
 from lecturepilot.coaching_analytics import AnalyticsGateMetric, GateMetricsAccumulator
 from lecturepilot.coaching_progress import CoachingTurnEvent
+from lecturepilot.course_analytics import (
+    CurrentLectureAnalyticsContract,
+    lecture_outcome_cells,
+)
 from lecturepilot.durable_files import exclusive_file_lock
 from lecturepilot.learning_map import LearningMap
 from lecturepilot.learner_lesson_state_models import QuizCorrectionState, QuizOutcome
@@ -27,6 +32,7 @@ from lecturepilot.quiz_analytics import (
     AnalyticsQuizMetric as AnalyticsQuizMetric,
     QuizMetricsAccumulator,
 )
+from lecturepilot.analytics_outcomes import AnalyticsOutcomeCell
 from lecturepilot.storage_layout import StorageLayout, safe_id
 
 
@@ -59,6 +65,11 @@ class LectureAnalyticsSummary(BaseModel):
     unique_learners: int
     current_publication_version: int
     current_learning_map_revision: str
+    quiz_first_attempt: AnalyticsOutcomeCell
+    correction_after_feedback: AnalyticsOutcomeCell
+    independent_first_pass: AnalyticsOutcomeCell
+    supported_retry: AnalyticsOutcomeCell
+    delayed_transfer: AnalyticsOutcomeCell
     learning_map: LearningMap | None = None
     quizzes: list[AnalyticsQuizMetric]
     gates: list[AnalyticsGateMetric]
@@ -78,40 +89,54 @@ class AnalyticsStore:
         block: CanvasBlock,
         option_index: int,
         publication_version: int,
+        learning_map_revision: str,
         attempt_index: int,
         first_attempt_correct: bool | None = None,
         correction_state: QuizCorrectionState = "not_needed",
     ) -> None:
+        if is_professor_preview_user_id(user_id):
+            return
         option_ids = block.option_ids or []
         option_id = option_ids[option_index] if option_index < len(option_ids) else None
         correct_index = block.answer_index if isinstance(block.answer_index, int) else None
         correct = option_index == correct_index if correct_index is not None else None
         component_id = canonical_quiz_id(block)
-        if not is_professor_preview_user_id(user_id):
-            self._append(
-                course_id,
-                lecture_id,
-                QuizOutcomeEvent(
-                    course_id=course_id,
-                    lecture_id=lecture_id,
-                    user_key=self.layout.user_key(user_id),
-                    attendance=attendance,
-                    component_id=component_id,
-                    component_type=block.component_type or block.type,
-                    title=block.caption or "Retrieval check",
-                    question=block.text or "",
-                    option_index=option_index,
-                    option_id=option_id,
-                    correct_index=correct_index,
-                    correct=correct,
-                    publication_version=publication_version,
-                    attempt_index=attempt_index,
-                    first_attempt_correct=first_attempt_correct,
-                    correction_state=correction_state,
-                    options=_options_snapshot(block),
-                    created_at=_now(),
+        user_key = self.layout.user_key(user_id)
+        self._append_once(
+            course_id,
+            lecture_id,
+            QuizOutcomeEvent(
+                event_id=_event_id(
+                    "quiz_answer",
+                    course_id,
+                    lecture_id,
+                    user_key,
+                    component_id,
+                    publication_version,
+                    learning_map_revision,
+                    attempt_index,
                 ),
-            )
+                course_id=course_id,
+                lecture_id=lecture_id,
+                user_key=user_key,
+                attendance=attendance,
+                component_id=component_id,
+                component_type=block.component_type or block.type,
+                title=block.caption or "Retrieval check",
+                question=block.text or "",
+                option_index=option_index,
+                option_id=option_id,
+                correct_index=correct_index,
+                correct=correct,
+                publication_version=publication_version,
+                learning_map_revision=learning_map_revision,
+                attempt_index=attempt_index,
+                first_attempt_correct=first_attempt_correct,
+                correction_state=correction_state,
+                options=_options_snapshot(block),
+                created_at=_now(),
+            ),
+        )
 
     def record_quality_gate(
         self,
@@ -135,13 +160,26 @@ class AnalyticsStore:
             or coaching_event.attempt_index is None
         ):
             raise ValueError("Gate analytics requires a versioned assessed attempt.")
-        self._append(
+        user_key = self.layout.user_key(user_id)
+        self._append_once(
             course_id,
             lecture_id,
             GateOutcomeEvent(
+                event_id=_event_id(
+                    "gate_decision",
+                    course_id,
+                    lecture_id,
+                    user_key,
+                    coaching_event.gate_id,
+                    coaching_event.gate_revision,
+                    publication_version,
+                    learning_map_revision,
+                    coaching_event.attempt_kind,
+                    coaching_event.attempt_index,
+                ),
                 course_id=course_id,
                 lecture_id=lecture_id,
-                user_key=self.layout.user_key(user_id),
+                user_key=user_key,
                 attendance=attendance,
                 gate_id=decision.gate_id,
                 gate_revision=coaching_event.gate_revision,
@@ -163,17 +201,21 @@ class AnalyticsStore:
         current_gate_revisions: dict[str, str],
         current_learning_map_revision: str,
     ) -> LectureAnalyticsSummary:
-        quizzes = QuizMetricsAccumulator(current_publication_version=current_publication_version)
+        quizzes = QuizMetricsAccumulator(
+            current_publication_version=current_publication_version,
+            current_learning_map_revision=current_learning_map_revision,
+        )
         gates = GateMetricsAccumulator(
             current_publication_version=current_publication_version,
+            current_learning_map_revision=current_learning_map_revision,
             current_gate_revisions=current_gate_revisions,
         )
         learners: set[str] = set()
         activity_events = 0
-        for event in self.iter_events(course_id=course_id, lecture_id=lecture_id):
+        events = list(self.iter_events(course_id=course_id, lecture_id=lecture_id))
+        for event in events:
             activity_events += 1
-            if event.get("user_key"):
-                learners.add(str(event["user_key"]))
+            learners.add(event["user_key"])
             quizzes.record(event)
             gates.record(event)
         return LectureAnalyticsSummary(
@@ -185,6 +227,15 @@ class AnalyticsStore:
             current_learning_map_revision=current_learning_map_revision,
             quizzes=quizzes.metrics(),
             gates=gates.metrics(),
+            **lecture_outcome_cells(
+                lecture_id=lecture_id,
+                events=events,
+                current_contract=CurrentLectureAnalyticsContract(
+                    publication_version=current_publication_version,
+                    learning_map_revision=current_learning_map_revision,
+                    gate_revisions=current_gate_revisions,
+                ),
+            ),
         )
 
     def events(self, *, course_id: str, lecture_id: str) -> list[dict]:
@@ -200,11 +251,19 @@ class AnalyticsStore:
                     continue
                 yield parse_analytics_event(line).model_dump(mode="json")
 
-    def _append(
+    def _append_once(
         self, course_id: str, lecture_id: str, payload: QuizOutcomeEvent | GateOutcomeEvent
     ) -> None:
         path = self._events_path(course_id, lecture_id)
-        with exclusive_file_lock(path), path.open("a", encoding="utf-8") as handle:
+        with exclusive_file_lock(path), path.open("a+", encoding="utf-8") as handle:
+            handle.seek(0)
+            if any(
+                parse_analytics_event(line).event_id == payload.event_id
+                for line in handle
+                if line.strip()
+            ):
+                return
+            handle.seek(0, os.SEEK_END)
             handle.write(json.dumps(payload.model_dump(mode="json"), sort_keys=True) + "\n")
             handle.flush()
             os.fsync(handle.fileno())
@@ -230,5 +289,10 @@ def _options_snapshot(block: CanvasBlock) -> list[dict]:
     ]
 
 
-def _now() -> str:
-    return datetime.now(UTC).isoformat()
+def _event_id(*identity: object) -> str:
+    encoded = json.dumps(identity, separators=(",", ":"), ensure_ascii=True).encode()
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _now() -> datetime:
+    return datetime.now(UTC)

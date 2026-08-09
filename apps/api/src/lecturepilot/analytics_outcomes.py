@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 MIN_OUTCOME_CELL_SIZE = 5
 
@@ -11,10 +11,18 @@ AnalyticsVersionStatus = Literal["current", "historical"]
 
 
 class AnalyticsOutcomeCell(BaseModel):
-    evidence_type: str
-    sample_size: int = Field(ge=0)
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    evidence_type: Literal[
+        "quiz_first_attempt",
+        "correction_after_feedback",
+        "independent_first_pass",
+        "supported_retry",
+        "delayed_transfer",
+    ]
+    sample_size: int = Field(strict=True, ge=0)
     data_status: AnalyticsDataStatus
-    rate: float | None = Field(default=None, ge=0, le=1)
+    rate: float | None = Field(default=None, strict=True, ge=0, le=1)
 
 
 def outcome_cell(evidence_type: str, outcomes: dict[str, bool]) -> AnalyticsOutcomeCell:

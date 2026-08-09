@@ -9,8 +9,12 @@ export type EvidenceStatus = "available" | "insufficient-data" | "historical-onl
 
 export type LectureSnapshot = {
   events: number;
+  gateEvidence: AnalyticsOutcomeCell | null;
   gateRate: string;
   learners: number;
+  learningMapRevision: string | null;
+  publicationVersion: number | null;
+  quizEvidence: AnalyticsOutcomeCell | null;
   quizRate: string;
   status: EvidenceStatus;
 };
@@ -26,29 +30,27 @@ export function lectureSnapshot(
   _lecture: Lecture,
   analytics: LectureAnalyticsSummary | null,
 ): LectureSnapshot {
-  if (!analytics?.activity_events) return emptySnapshot();
+  if (!analytics) return emptySnapshot();
   const signals = analyticsSignals(analytics);
   return {
     events: analytics.activity_events,
+    gateEvidence: analytics.independent_first_pass,
     gateRate: percent(signals.gateRate),
     learners: analytics.unique_learners,
+    learningMapRevision: analytics.current_learning_map_revision,
+    publicationVersion: analytics.current_publication_version,
+    quizEvidence: analytics.quiz_first_attempt,
     quizRate: percent(signals.quizRate),
     status: signals.status,
   };
 }
 
 export function analyticsSignals(analytics: LectureAnalyticsSummary): AnalyticsSignals {
-  const quizCells = analytics.quizzes
-    .filter((quiz) => quiz.version_status === "current")
-    .map((quiz) => quiz.first_attempt);
-  const gateCells = analytics.gates
-    .filter((gate) => gate.version_status === "current")
-    .map((gate) => gate.independent_first_pass);
-  const currentCells = [...quizCells, ...gateCells];
+  const currentCells = [analytics.quiz_first_attempt, analytics.independent_first_pass];
   return {
-    gateRate: weightedRate(gateCells),
+    gateRate: analytics.independent_first_pass.rate,
     learners: analytics.unique_learners,
-    quizRate: weightedRate(quizCells),
+    quizRate: analytics.quiz_first_attempt.rate,
     status: evidenceStatus(analytics.activity_events, currentCells),
   };
 }
@@ -57,8 +59,12 @@ export function courseLectureSnapshot(analytics: CourseLectureAnalytics): Lectur
   const cells = [analytics.quiz_first_attempt, analytics.independent_first_pass];
   return {
     events: analytics.activity_events,
+    gateEvidence: analytics.independent_first_pass,
     gateRate: percent(analytics.independent_first_pass.rate),
     learners: analytics.unique_learners,
+    learningMapRevision: analytics.current_learning_map_revision,
+    publicationVersion: analytics.current_publication_version,
+    quizEvidence: analytics.quiz_first_attempt,
     quizRate: percent(analytics.quiz_first_attempt.rate),
     status: evidenceStatus(analytics.activity_events, cells),
   };
@@ -66,15 +72,6 @@ export function courseLectureSnapshot(analytics: CourseLectureAnalytics): Lectur
 
 export function percent(value: number | null) {
   return value === null ? "n/a" : `${Math.round(value * 100)}%`;
-}
-
-function weightedRate(cells: AnalyticsOutcomeCell[]) {
-  const available = cells.filter(
-    (cell): cell is AnalyticsOutcomeCell & { rate: number } => cell.rate !== null,
-  );
-  const denominator = available.reduce((sum, cell) => sum + cell.sample_size, 0);
-  if (!denominator) return null;
-  return available.reduce((sum, cell) => sum + cell.rate * cell.sample_size, 0) / denominator;
 }
 
 function evidenceStatus(activityEvents: number, cells: AnalyticsOutcomeCell[]): EvidenceStatus {
@@ -85,5 +82,15 @@ function evidenceStatus(activityEvents: number, cells: AnalyticsOutcomeCell[]): 
 }
 
 function emptySnapshot(): LectureSnapshot {
-  return { events: 0, gateRate: "n/a", learners: 0, quizRate: "n/a", status: "no-data" };
+  return {
+    events: 0,
+    gateEvidence: null,
+    gateRate: "n/a",
+    learners: 0,
+    learningMapRevision: null,
+    publicationVersion: null,
+    quizEvidence: null,
+    quizRate: "n/a",
+    status: "no-data",
+  };
 }

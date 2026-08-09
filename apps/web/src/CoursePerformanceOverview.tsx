@@ -27,8 +27,12 @@ export function CoursePerformanceOverview({
         label={t("analytics.courseOverviewMetrics")}
         snapshot={{
           events: analytics.activity_events,
+          gateEvidence: analytics.independent_first_pass,
           gateRate: percent(analytics.independent_first_pass.rate),
           learners: analytics.unique_learners,
+          learningMapRevision: null,
+          publicationVersion: null,
+          quizEvidence: analytics.quiz_first_attempt,
           quizRate: percent(analytics.quiz_first_attempt.rate),
           status: evidenceStatus(analytics),
         }}
@@ -45,7 +49,7 @@ export function CoursePerformanceOverview({
           <section className="attention-queue">
             <h4>{t("analytics.publishedLectureEvidence")}</h4>
             <div className="attention-lecture-list">
-              {rows.map(({ lecture, snapshot }) => (
+              {rows.map(({ analytics: lectureAnalytics, lecture, snapshot }) => (
                 <button key={lecture.id} type="button" onClick={() => onSelectLecture(lecture)}>
                   <span className="attention-lecture-number">{lecture.number}</span>
                   <span>
@@ -57,6 +61,17 @@ export function CoursePerformanceOverview({
                         quiz: snapshot.quizRate,
                       })}
                     </small>
+                    {lectureAnalytics ? (
+                      <small>
+                        {t("analytics.publicationCurrent", {
+                          version: lectureAnalytics.current_publication_version,
+                        })}
+                        {" · "}
+                        {t("analytics.learningMapRevision", {
+                          revision: lectureAnalytics.current_learning_map_revision,
+                        })}
+                      </small>
+                    ) : null}
                   </span>
                   <span className={`lecture-status is-${snapshot.status}`}>
                     {statusLabel(snapshot.status, t)}
@@ -97,12 +112,26 @@ function CoverageRow({ label, value }: { label: string; value: number }) {
 
 function lectureRows(analytics: CourseAnalyticsSummary, lectures: Lecture[]) {
   const byId = new Map(analytics.lectures.map((lecture) => [lecture.lecture_id, lecture]));
-  return lectures.map((lecture) => ({
-    lecture,
-    snapshot: byId.has(lecture.id)
-      ? courseLectureSnapshot(byId.get(lecture.id)!)
-      : ({ events: 0, gateRate: "n/a", learners: 0, quizRate: "n/a", status: "no-data" } as const),
-  }));
+  return lectures.map((lecture) => {
+    const lectureAnalytics = byId.get(lecture.id);
+    return {
+      analytics: lectureAnalytics,
+      lecture,
+      snapshot: lectureAnalytics
+        ? courseLectureSnapshot(lectureAnalytics)
+        : ({
+            events: 0,
+            gateEvidence: null,
+            gateRate: "n/a",
+            learners: 0,
+            learningMapRevision: null,
+            publicationVersion: null,
+            quizEvidence: null,
+            quizRate: "n/a",
+            status: "no-data",
+          } as const),
+    };
+  });
 }
 
 function evidenceStatus(analytics: CourseAnalyticsSummary): LectureSnapshot["status"] {

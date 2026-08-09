@@ -1,8 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date
-import json
 from pathlib import Path
-import shutil
 from threading import Barrier
 
 import pytest
@@ -86,24 +84,6 @@ def test_duplicate_canonical_quiz_ids_are_rejected_by_all_canvas_writes(
         )
 
 
-def test_duplicate_legacy_quiz_ids_fail_closed_without_state_or_analytics(
-    tmp_path: Path,
-) -> None:
-    client = _client(tmp_path, _quiz_document(answer_index=0, question="Initial"))
-    store = client.app.state.canvas_workspace.course_canvas_store
-    published_dir = store.path(COURSE_ID, LECTURE_ID)
-    shutil.rmtree(published_dir)
-    write_document_source(_duplicate_quiz_document(), published_dir)
-    (published_dir / "publication.json").write_text(json.dumps({"version": 1}), encoding="utf-8")
-
-    response = _submit(client, "ambiguous-attempt", 0)
-
-    assert response.status_code == 409
-    assert response.json()["detail"] == "Published canvas has duplicate quiz ID 'shared-quiz'."
-    assert _state(client) == {}
-    assert client.app.state.analytics_store.events(course_id=COURSE_ID, lecture_id=LECTURE_ID) == []
-
-
 def _submit(
     client: TestClient,
     attempt_id: str,
@@ -121,15 +101,6 @@ def _submit(
             "option_index": option_index,
         },
     )
-
-
-def _state(client: TestClient) -> dict:
-    response = client.get(
-        f"/courses/{COURSE_ID}/lectures/{LECTURE_ID}/learner-state",
-        headers=student_headers("student-a", course_ids=[COURSE_ID]),
-    )
-    assert response.status_code == 200
-    return response.json()["quiz_states"]
 
 
 def _client(tmp_path: Path, document: CanvasDocument) -> TestClient:

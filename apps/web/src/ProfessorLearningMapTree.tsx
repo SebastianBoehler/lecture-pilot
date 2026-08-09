@@ -188,8 +188,36 @@ function GateRate({
         {metric?.unique_learners ? (
           <span>{t("analytics.learners", { count: metric.unique_learners })}</span>
         ) : null}
+        {metric ? (
+          <>
+            <span>
+              {t("analytics.publicationVersion", {
+                status: t(`analytics.version.${metric.version_status}`),
+                version: metric.publication_version,
+              })}
+            </span>
+            <span>
+              {t("analytics.learningMapRevision", {
+                revision: metric.learning_map_revision,
+              })}
+            </span>
+            <span>{t("analytics.gateRevision", { revision: metric.gate_revision })}</span>
+          </>
+        ) : null}
       </div>
-      {cell ? <span>{t("analytics.sampleSize", { count: cell.sample_size })}</span> : null}
+      {cell ? (
+        <span>
+          {t("analytics.evidenceDenominator", {
+            count: cell.sample_size,
+            evidence: t("analytics.independentFirstPass"),
+            status: t(
+              cell.data_status === "available"
+                ? "analytics.dataStatus.available"
+                : "analytics.dataStatus.insufficient",
+            ),
+          })}
+        </span>
+      ) : null}
     </article>
   );
 }

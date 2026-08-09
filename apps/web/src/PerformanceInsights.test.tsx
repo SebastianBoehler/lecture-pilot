@@ -35,10 +35,15 @@ function analytics(): LectureAnalyticsSummary {
     course_id: "demo-course",
     current_learning_map_revision: "map-1",
     current_publication_version: 1,
+    correction_after_feedback: outcome("correction_after_feedback", 0.5),
+    delayed_transfer: outcome("delayed_transfer", 0.8),
+    independent_first_pass: outcome("independent_first_pass", 0.6),
     lecture_id: "lecture-01",
     activity_events: 15,
     unique_learners: 5,
     quizzes: [],
+    quiz_first_attempt: outcome("quiz_first_attempt", 0.6),
+    supported_retry: outcome("supported_retry", 0.8),
     gates: [
       {
         activity_events: 15,
@@ -46,6 +51,7 @@ function analytics(): LectureAnalyticsSummary {
         gate_id: "risk-gate",
         gate_revision: "revision-1",
         independent_first_pass: outcome("independent_first_pass", 0.6),
+        learning_map_revision: "map-1",
         publication_version: 1,
         supported_retry: outcome("supported_retry", 0.8),
         unique_learners: 5,
@@ -70,6 +76,7 @@ function quiz(componentId: string, question: string, rate: number) {
     component_type: "quiz",
     correction_after_feedback: outcome("correction_after_feedback", 0.5),
     first_attempt: outcome("quiz_first_attempt", rate),
+    learning_map_revision: "map-1",
     options: [
       { correct: true, option_index: 0, selections: 3, text: "Correct answer" },
       { correct: false, option_index: 1, selections: 2, text: "Distractor" },

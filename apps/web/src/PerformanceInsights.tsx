@@ -71,6 +71,11 @@ function QuizBrowser({
           <span>{selected.title}</span>
           <h3>{selected.question}</h3>
           <VersionLabel version={selected.publication_version} status={selected.version_status} />
+          <p>
+            {t("analytics.learningMapRevision", {
+              revision: selected.learning_map_revision,
+            })}
+          </p>
           <p>{t("analytics.activityEvents", { count: selected.activity_events })}</p>
         </header>
         <div className="analytics-insight-grid">
@@ -120,6 +125,11 @@ function GateBrowser({
           <span>{t("analytics.gateEvidence")}</span>
           <h3>{selected.gate_id}</h3>
           <VersionLabel version={selected.publication_version} status={selected.version_status} />
+          <p>
+            {t("analytics.learningMapRevision", {
+              revision: selected.learning_map_revision,
+            })}
+          </p>
           {selected.gate_revision ? (
             <p>{t("analytics.gateRevision", { revision: selected.gate_revision })}</p>
           ) : null}
@@ -215,11 +225,11 @@ function versionStatusLabel(status: AnalyticsVersionStatus, t: ReturnType<typeof
 }
 
 function quizKey(quiz: AnalyticsQuizMetric) {
-  return `${quiz.component_id}:${quiz.publication_version}`;
+  return `${quiz.component_id}:${quiz.publication_version}:${quiz.learning_map_revision}`;
 }
 
 function gateKey(gate: AnalyticsGateMetric) {
-  return `${gate.gate_id}:${gate.gate_revision}:${gate.publication_version}`;
+  return `${gate.gate_id}:${gate.gate_revision}:${gate.publication_version}:${gate.learning_map_revision}`;
 }
 
 function barStyle(value: number, total: number): CSSProperties {

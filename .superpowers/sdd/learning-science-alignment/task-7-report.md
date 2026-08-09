@@ -110,3 +110,57 @@ npm run verify:fast
 - The current learning-design store exposes exact draft, source, and map revisions but no warning-ID
   acknowledgement or report-revision field. Tests use the complete real approval contract currently
   available; no unsupported authority field was invented.
+
+## Review fix round 1
+
+The review findings were addressed without compatibility behavior or injected test boundaries.
+
+- Lecture headline cells now use the same learner-first reducer as course analytics. Each learner's
+  current version-bound assessment outcomes are averaged first, then the unique learner means are
+  combined. An adversarial five-learner case gives one learner's ten quizzes the same learner weight
+  as each peer's single quiz (`0.02`), and the lecture and course payloads agree.
+- Quiz and gate records now require a strict event identity, canonical non-empty identifiers, strict
+  positive/non-negative integers, timezone-aware datetimes, and no extra fields. Quiz records also
+  carry the learning-map revision captured with the document and publication under the same canvas
+  lock. Publication, learning-map, and gate-revision mismatches are always historical and never
+  enter current headline cells.
+- Quiz outcomes are append-if-absent under the real outcome-log lock. Their identity is derived from
+  the persisted server attempt index plus course, lecture, learner, component, publication, and map
+  revision. The route ensures the outcome for both new and replayed learner state. A real filesystem
+  failure with the outcome path temporarily occupying a directory proves repair-and-retry produces
+  one learner attempt and one outcome; repeating a successful request also remains one outcome.
+- Lecture and course overview cards consume backend headline cells directly. Overview and
+  learning-map surfaces display evidence lane, denominator, availability, publication version,
+  learning-map revision, and gate revision where applicable. Insufficient cells retain `n` and no
+  percentage.
+- The obsolete hand-written legacy-publication test was removed. A published quiz snapshot now
+  requires the real learning map and matching publication metadata; no legacy presentation or
+  incomplete publication path remains.
+
+Review RED evidence:
+
+```text
+backend review contract: 3 failed / 3 tests
+  missing lecture headline, missing strict event identity/map binding,
+  and repaired replay produced zero outcomes
+web review contract: 4 failed / 9 tests
+  detail-derived headline rates and missing gate/overview version metadata
+```
+
+Review GREEN and full verification:
+
+```text
+focused backend review contract: 4 passed
+focused analytics/publication matrix: 15 passed
+focused retry/terminal-state matrix: 9 passed
+focused professor analytics web: 2 files, 9 tests passed
+npm run verify:api: 756 API tests and 22 compiler tests passed
+npm run verify:web: 97 files, 305 tests, static checks, TypeScript, and Vite build passed
+npm run verify:fast: passed
+git diff --check: passed
+```
+
+The Task 7 added-line audit again found no `monkeypatch`, `mock`, `fake`, `stub`, `legacy`,
+`fallback`, or `test double` additions. `analytics.py` is 298 lines; all new review code and tests
+remain below 300 lines. The size scan continues to report only pre-existing oversized modules,
+catalogs, stylesheets, and older test files.

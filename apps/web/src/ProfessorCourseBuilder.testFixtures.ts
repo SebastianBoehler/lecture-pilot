@@ -249,6 +249,11 @@ function analyticsPayload() {
     unique_learners: 5,
     current_publication_version: 1,
     current_learning_map_revision: "map-1",
+    correction_after_feedback: analyticsCell("correction_after_feedback", 2, null),
+    delayed_transfer: analyticsCell("delayed_transfer", 0, null),
+    independent_first_pass: analyticsCell("independent_first_pass", 5, 0.6),
+    quiz_first_attempt: analyticsCell("quiz_first_attempt", 5, 0.6),
+    supported_retry: analyticsCell("supported_retry", 2, null),
     quizzes: [
       {
         component_id: "risk-check",
@@ -258,6 +263,7 @@ function analyticsPayload() {
         activity_events: 5,
         unique_learners: 5,
         publication_version: 1,
+        learning_map_revision: "map-1",
         version_status: "current",
         first_attempt: analyticsCell("quiz_first_attempt", 5, 0.6),
         correction_after_feedback: analyticsCell("correction_after_feedback", 2, null),
@@ -286,6 +292,7 @@ function analyticsPayload() {
         unique_learners: 5,
         publication_version: 1,
         gate_revision: "revision-1",
+        learning_map_revision: "map-1",
         version_status: "current",
         independent_first_pass: analyticsCell("independent_first_pass", 5, 0.6),
         supported_retry: analyticsCell("supported_retry", 2, null),
@@ -344,6 +351,7 @@ function courseAnalyticsPayload() {
       {
         activity_events: 10,
         correction_after_feedback: analyticsCell("correction_after_feedback", 2, null),
+        current_learning_map_revision: "map-1",
         current_publication_version: 1,
         delayed_transfer: analyticsCell("delayed_transfer", 0, null),
         independent_first_pass: analyticsCell("independent_first_pass", 5, 0.6),

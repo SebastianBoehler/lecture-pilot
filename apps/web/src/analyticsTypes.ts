@@ -23,6 +23,7 @@ export type AnalyticsQuizMetric = {
   title: string;
   question: string;
   publication_version: number;
+  learning_map_revision: string;
   version_status: AnalyticsVersionStatus;
   activity_events: number;
   unique_learners: number;
@@ -35,6 +36,7 @@ export type AnalyticsGateMetric = {
   gate_id: string;
   gate_revision: string;
   publication_version: number;
+  learning_map_revision: string;
   version_status: AnalyticsVersionStatus;
   activity_events: number;
   unique_learners: number;
@@ -50,6 +52,11 @@ export type LectureAnalyticsSummary = {
   unique_learners: number;
   current_publication_version: number;
   current_learning_map_revision: string;
+  quiz_first_attempt: AnalyticsOutcomeCell;
+  correction_after_feedback: AnalyticsOutcomeCell;
+  independent_first_pass: AnalyticsOutcomeCell;
+  supported_retry: AnalyticsOutcomeCell;
+  delayed_transfer: AnalyticsOutcomeCell;
   learning_map?: LearningMap | null;
   quizzes: AnalyticsQuizMetric[];
   gates: AnalyticsGateMetric[];
@@ -60,6 +67,7 @@ export type CourseLectureAnalytics = {
   activity_events: number;
   unique_learners: number;
   current_publication_version: number;
+  current_learning_map_revision: string;
   quiz_first_attempt: AnalyticsOutcomeCell;
   correction_after_feedback: AnalyticsOutcomeCell;
   independent_first_pass: AnalyticsOutcomeCell;

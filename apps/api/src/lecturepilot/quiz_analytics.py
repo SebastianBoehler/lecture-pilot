@@ -28,6 +28,7 @@ class AnalyticsQuizMetric(BaseModel):
     title: str
     question: str
     publication_version: int
+    learning_map_revision: str
     version_status: AnalyticsVersionStatus
     activity_events: int
     unique_learners: int
@@ -47,27 +48,36 @@ class _LearnerQuizState:
 class _QuizState:
     reference: dict
     publication_version: int
+    learning_map_revision: str
     activity_events: int = 0
     learners: dict[str, _LearnerQuizState] = field(default_factory=dict)
 
 
 class QuizMetricsAccumulator:
-    def __init__(self, *, current_publication_version: int) -> None:
+    def __init__(
+        self, *, current_publication_version: int, current_learning_map_revision: str
+    ) -> None:
         self.current_publication_version = current_publication_version
-        self._groups: dict[tuple[str, int], _QuizState] = {}
+        self.current_learning_map_revision = current_learning_map_revision
+        self._groups: dict[tuple[str, int, str], _QuizState] = {}
 
     def record(self, event: dict) -> None:
-        if event.get("type") != "quiz_answer":
+        if event["type"] != "quiz_answer":
             return
         publication_version = _publication_version(event)
-        component_id = str(event["component_id"])
-        key = component_id, publication_version
+        learning_map_revision = event["learning_map_revision"]
+        component_id = event["component_id"]
+        key = component_id, publication_version, learning_map_revision
         state = self._groups.setdefault(
             key,
-            _QuizState(reference=event, publication_version=publication_version),
+            _QuizState(
+                reference=event,
+                publication_version=publication_version,
+                learning_map_revision=learning_map_revision,
+            ),
         )
         state.activity_events += 1
-        learner_key = str(event["user_key"])
+        learner_key = event["user_key"]
         attempt_index = _attempt_index(event)
         learner = state.learners.get(learner_key)
         if learner is None:
@@ -77,7 +87,7 @@ class QuizMetricsAccumulator:
                 corrected=event["correction_state"] == "corrected",
             )
         elif attempt_index < learner.first_index:
-            learner.corrected = learner.corrected or learner.first.get("correct") is True
+            learner.corrected = learner.corrected or learner.first["correct"] is True
             learner.first = event
             learner.first_index = attempt_index
         elif attempt_index > learner.first_index and event["correct"] is True:
@@ -96,25 +106,28 @@ class QuizMetricsAccumulator:
     def _metric(self, component_id: str, state: _QuizState) -> AnalyticsQuizMetric:
         reference = state.reference
         first_outcomes = {
-            learner_key: learner.first.get("correct") is True
+            learner_key: learner.first["correct"] is True
             for learner_key, learner in state.learners.items()
-            if isinstance(learner.first.get("correct"), bool)
+            if learner.first["correct"] is not None
         }
         correction_outcomes = {
             learner_key: learner.corrected
             for learner_key, learner in state.learners.items()
-            if learner.first.get("correct") is False
+            if learner.first["correct"] is False
         }
         first_attempt = outcome_cell("quiz_first_attempt", first_outcomes)
         return AnalyticsQuizMetric(
             component_id=component_id,
-            component_type=str(reference["component_type"]),
-            title=str(reference["title"]),
-            question=str(reference["question"]),
+            component_type=reference["component_type"],
+            title=reference["title"],
+            question=reference["question"],
             publication_version=state.publication_version,
-            version_status=version_status(
+            learning_map_revision=state.learning_map_revision,
+            version_status=_version_status(
                 state.publication_version,
                 self.current_publication_version,
+                state.learning_map_revision,
+                self.current_learning_map_revision,
             ),
             activity_events=state.activity_events,
             unique_learners=len(state.learners),
@@ -132,18 +145,18 @@ def _option_metrics(state: _QuizState) -> list[AnalyticsOptionMetric] | None:
     correct_index = reference["correct_index"]
     selections: dict[int, int] = {}
     for learner in state.learners.values():
-        index = int(learner.first["option_index"])
+        index = learner.first["option_index"]
         selections[index] = selections.get(index, 0) + 1
     if any(0 < count < MIN_OUTCOME_CELL_SIZE for count in selections.values()):
         return None
     metrics = []
     for option in options:
-        index = int(option["option_index"])
+        index = option["option_index"]
         metrics.append(
             AnalyticsOptionMetric(
                 option_index=index,
                 option_id=option["option_id"],
-                text=str(option["text"]),
+                text=option["text"],
                 selections=selections.get(index, 0),
                 correct=index == correct_index,
             )
@@ -152,8 +165,20 @@ def _option_metrics(state: _QuizState) -> list[AnalyticsOptionMetric] | None:
 
 
 def _publication_version(event: dict) -> int:
-    return int(event["publication_version"])
+    return event["publication_version"]
 
 
 def _attempt_index(event: dict) -> int:
-    return int(event["attempt_index"])
+    return event["attempt_index"]
+
+
+def _version_status(
+    publication_version: int,
+    current_publication_version: int,
+    learning_map_revision: str,
+    current_learning_map_revision: str,
+) -> AnalyticsVersionStatus:
+    status = version_status(publication_version, current_publication_version)
+    if status == "current" and learning_map_revision != current_learning_map_revision:
+        return "historical"
+    return status

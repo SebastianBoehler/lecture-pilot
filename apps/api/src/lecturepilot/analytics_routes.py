@@ -89,7 +89,7 @@ def register_analytics_routes(
             else None
         )
         try:
-            state, created = learner_state_store(app).record_quiz_answer(
+            state, _ = learner_state_store(app).record_quiz_answer(
                 course_id=course_id,
                 lecture_id=lecture_id,
                 user_id=access.user_id,
@@ -101,19 +101,19 @@ def register_analytics_routes(
             )
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
-        if created:
-            analytics_store(app).record_quiz_answer(
-                course_id=course_id,
-                lecture_id=lecture_id,
-                user_id=access.user_id,
-                attendance=answer.attendance,
-                block=block,
-                option_index=answer.option_index,
-                publication_version=snapshot.version,
-                attempt_index=state.attempt_index,
-                first_attempt_correct=state.first_attempt_correct,
-                correction_state=state.correction_state,
-            )
+        analytics_store(app).record_quiz_answer(
+            course_id=course_id,
+            lecture_id=lecture_id,
+            user_id=access.user_id,
+            attendance=answer.attendance,
+            block=block,
+            option_index=state.selected_index,
+            publication_version=snapshot.version,
+            learning_map_revision=snapshot.learning_map_revision,
+            attempt_index=state.attempt_index,
+            first_attempt_correct=state.first_attempt_correct,
+            correction_state=state.correction_state,
+        )
         return QuizAnswerResult(
             block_id=quiz_id,
             component_id=quiz_id,
@@ -163,6 +163,7 @@ def register_analytics_routes(
             learning_map = analytics_context.learning_map
             current_contracts[lecture_id] = CurrentLectureAnalyticsContract(
                 publication_version=analytics_context.publication_version,
+                learning_map_revision=analytics_context.learning_map_revision,
                 gate_revisions={gate.id: gate.revision for gate in learning_map.gates},
             )
         summary = course_analytics_summary(

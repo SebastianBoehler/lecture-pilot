@@ -1,9 +1,11 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { PerformanceInsights } from "./PerformanceInsights";
+import { CoursePerformanceOverview } from "./CoursePerformanceOverview";
+import { PerformanceOverview } from "./PerformanceOverview";
 import { ProfessorLearningMapTree } from "./ProfessorLearningMapTree";
-import { courseLectureSnapshot } from "./performanceMetrics";
+import { courseLectureSnapshot, lectureSnapshot } from "./performanceMetrics";
 import { renderWithI18n } from "./test/renderWithI18n";
 import type { LectureAnalyticsSummary } from "./types";
 
@@ -34,6 +36,7 @@ describe("professor learner-level outcomes", () => {
     const snapshot = courseLectureSnapshot({
       activity_events: 12,
       correction_after_feedback: outcome("correction_after_feedback", 0, null),
+      current_learning_map_revision: "map-revision-2",
       current_publication_version: 2,
       delayed_transfer: outcome("delayed_transfer", 0, null),
       independent_first_pass: outcome("independent_first_pass", 4, null),
@@ -52,21 +55,81 @@ describe("professor learner-level outcomes", () => {
     analytics.learning_map = learningMap();
     renderWithI18n(<ProfessorLearningMapTree analytics={analytics} />);
 
+    const concept = screen.getByRole("button", { name: /decision making.*insufficient data/i });
+    expect(concept).toBeVisible();
+    fireEvent.click(concept);
+    expect(screen.getByText("Publication v2 · current")).toBeInTheDocument();
+    expect(screen.getByText("Learning map revision map-revision-2")).toBeInTheDocument();
+    expect(screen.getByText("Gate revision revision-2")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /decision making.*insufficient data/i }),
-    ).toBeVisible();
+      screen.getByText("Independent first pass · Insufficient data · n=4"),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/100% passed/i)).not.toBeInTheDocument();
     expect(document.querySelector(".is-healthy, .is-watch, .is-attention")).toBeNull();
   });
+
+  it("labels the lecture overview with its captured versions, evidence and denominators", () => {
+    const analytics = gateAnalytics(5);
+    renderWithI18n(<PerformanceOverview snapshot={lectureSnapshot(lecture(), analytics)} />);
+
+    expect(screen.getByText("Publication v2")).toBeInTheDocument();
+    expect(screen.getByText("Learning map revision map-revision-2")).toBeInTheDocument();
+    expect(
+      screen.getByText("First-attempt correctness · Insufficient data · n=0"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Independent first pass · Available · n=5")).toBeInTheDocument();
+  });
+
+  it("shows each course lecture's publication and map revision", () => {
+    const analytics = gateAnalytics(5);
+    renderWithI18n(
+      <CoursePerformanceOverview
+        analytics={{
+          ...analytics,
+          lectures: [
+            {
+              ...analytics,
+              current_learning_map_revision: analytics.current_learning_map_revision,
+              lecture_id: analytics.lecture_id,
+            },
+          ],
+        }}
+        lectures={[lecture()]}
+        onSelectLecture={() => undefined}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        (_, element) =>
+          element?.tagName === "SMALL" &&
+          element.textContent === "Publication v2 · Learning map revision map-revision-2",
+      ),
+    ).toBeInTheDocument();
+  });
 });
+
+function lecture() {
+  return {
+    attendance: "unknown" as const,
+    date: "2026-06-01",
+    id: "lecture-01",
+    number: "01",
+    title: "Risk lecture",
+  };
+}
 
 function smallQuizAnalytics(): LectureAnalyticsSummary {
   return {
     course_id: "demo-course",
+    correction_after_feedback: outcome("correction_after_feedback", 2, null),
     current_learning_map_revision: "map-revision-2",
     current_publication_version: 2,
+    delayed_transfer: outcome("delayed_transfer", 0, null),
     gates: [],
     lecture_id: "lecture-01",
+    independent_first_pass: outcome("independent_first_pass", 0, null),
+    quiz_first_attempt: outcome("quiz_first_attempt", 4, null),
     quizzes: [
       {
         activity_events: 10,
@@ -74,6 +137,7 @@ function smallQuizAnalytics(): LectureAnalyticsSummary {
         component_type: "single_choice_quiz",
         correction_after_feedback: outcome("correction_after_feedback", 2, null),
         first_attempt: outcome("quiz_first_attempt", 4, null),
+        learning_map_revision: "map-revision-2",
         options: null,
         publication_version: 2,
         question: "Which action minimizes expected risk?",
@@ -83,6 +147,7 @@ function smallQuizAnalytics(): LectureAnalyticsSummary {
       },
     ],
     activity_events: 10,
+    supported_retry: outcome("supported_retry", 0, null),
     unique_learners: 4,
   };
 }
@@ -90,6 +155,7 @@ function smallQuizAnalytics(): LectureAnalyticsSummary {
 function gateAnalytics(sampleSize: number): LectureAnalyticsSummary {
   return {
     course_id: "demo-course",
+    correction_after_feedback: outcome("correction_after_feedback", 0, null),
     current_learning_map_revision: "map-revision-2",
     current_publication_version: 2,
     gates: [
@@ -103,6 +169,7 @@ function gateAnalytics(sampleSize: number): LectureAnalyticsSummary {
           sampleSize,
           sampleSize === 5 ? 0.6 : null,
         ),
+        learning_map_revision: "map-revision-2",
         publication_version: 2,
         supported_retry: outcome("supported_retry", sampleSize, sampleSize === 5 ? 0.8 : null),
         unique_learners: sampleSize,
@@ -110,8 +177,16 @@ function gateAnalytics(sampleSize: number): LectureAnalyticsSummary {
       },
     ],
     lecture_id: "lecture-01",
+    independent_first_pass: outcome(
+      "independent_first_pass",
+      sampleSize,
+      sampleSize === 5 ? 0.6 : null,
+    ),
+    quiz_first_attempt: outcome("quiz_first_attempt", 0, null),
     quizzes: [],
     activity_events: sampleSize,
+    delayed_transfer: outcome("delayed_transfer", sampleSize, sampleSize === 5 ? 0.8 : null),
+    supported_retry: outcome("supported_retry", sampleSize, sampleSize === 5 ? 0.8 : null),
     unique_learners: sampleSize,
   };
 }
