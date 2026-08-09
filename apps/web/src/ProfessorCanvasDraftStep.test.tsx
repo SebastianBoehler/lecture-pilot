@@ -231,7 +231,6 @@ function learningDesignReview(approvedBy: string | null) {
           concept_id: "intro",
           title: "Mechanism check",
           prompt: "Explain the mechanism.",
-          evidence_required: "Explain the mechanism.",
           evidence_criteria: [
             { id: "mechanism", description: "Names the mechanism.", required: true },
           ],

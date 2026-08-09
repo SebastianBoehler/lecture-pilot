@@ -74,4 +74,5 @@ def test_review_open_racing_real_republish_binds_one_atomic_gate_revision(
         assert pending.gate_revision == old_revision
     else:
         assert pending is None
-    assert client.get(f"/courses/{COURSE_ID}/review-queue", headers=headers).json()["items"] == []
+    queue = client.get(f"/courses/{COURSE_ID}/review-queue", headers=headers)
+    assert queue.status_code == 409

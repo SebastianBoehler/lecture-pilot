@@ -34,7 +34,7 @@ class AgentCoachingContext(BaseModel):
     prior_assistance: bool = False
     attendance_prior_used: bool = False
     needs_evidence_count: int = Field(default=0, ge=0)
-    last_gate_status: Literal["passed", "needs_evidence", "not_assessed"] | None = None
+    last_gate_status: Literal["passed", "needs_evidence"] | None = None
     delayed_transfer_due: bool = False
     support_before_attempt: bool = False
     last_assistance_level: AssistanceLevel = "none"

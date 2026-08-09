@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -157,11 +158,13 @@ def _record_gate(client):
             gate_revision=gate.revision,
             status=QualityGateStatus.PASSED,
             reason="The learner supplied sufficient private evidence.",
+            evidence_ids=[gate.id],
+            missing_evidence_ids=[],
         ),
         publication_version=context.publication_version,
         learning_map_revision=context.learning_map_revision,
         coaching_event=CoachingTurnEvent(
-            created_at="2026-08-09T12:00:00+00:00",
+            created_at=datetime(2026, 8, 9, 12, tzinfo=UTC),
             gate_id=gate.id,
             gate_revision=gate.revision,
             gate_status=QualityGateStatus.PASSED,
@@ -169,6 +172,11 @@ def _record_gate(client):
             process_label="check",
             attempt_kind="independent",
             attempt_index=1,
+            assistance_level="none",
+            planned_delay_seconds=None,
+            observed_delay_seconds=None,
+            evidence_ids=[gate.id],
+            missing_evidence_ids=[],
         ),
     )
     return context, gate, store

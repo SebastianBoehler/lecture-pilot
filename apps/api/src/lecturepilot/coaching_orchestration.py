@@ -6,10 +6,8 @@ from datetime import UTC, datetime
 from fastapi import FastAPI, HTTPException
 
 from lecturepilot.agent_state_access import learner_state_store
-from lecturepilot.coaching_assistance import emitted_assistance_level
-from lecturepilot.coaching_episode import parse_time
 from lecturepilot.coaching_progress import CoachingProgressStore, CoachingTurnEvent
-from lecturepilot.coaching_state_models import CoachingProgress
+from lecturepilot.coaching_state_models import CoachingProgress, review_key
 from lecturepilot.learning_gate_selector import select_active_gate
 from lecturepilot.learning_map import LearningMap, LearningMapGate
 from lecturepilot.models import (
@@ -17,7 +15,6 @@ from lecturepilot.models import (
     AgentAnalyticsContext,
     AgentTurnInput,
     AgentTurnResult,
-    QualityGateStatus,
 )
 from lecturepilot.observability import Observability
 from lecturepilot.scaffold_policy import scaffold_policy_for_tutor_turn
@@ -65,7 +62,7 @@ def prepare_coaching_turn(
             lecture_id=turn.lecture_id,
             gate_id=active_gate.id,
             gate_revision=active_gate.revision,
-            published_prompt=(active_gate.prompt or active_gate.evidence_required),
+            published_prompt=active_gate.prompt,
         )
     else:
         if turn.requested_gate_id is not None:
@@ -89,8 +86,8 @@ def prepare_coaching_turn(
                 course_id=turn.course_id,
                 lecture_id=turn.lecture_id,
                 gate_id=active_gate.id,
-                gate_title=active_gate.title,
                 gate_revision=active_gate.revision,
+                learning_objective=learning_map.objective,
             )
         context = context.model_copy(
             update={
@@ -133,18 +130,10 @@ def select_due_review_gate(
     current_time = now or datetime.now(UTC)
     candidates: list[tuple[datetime, LearningMapGate]] = []
     for gate in learning_map.gates:
-        review = progress.delayed_reviews.get(gate.id)
-        if (
-            review is None
-            or review.completed_at is not None
-            or review.attempted_at is not None
-            or review.gate_revision != gate.revision
-        ):
+        review = progress.delayed_reviews.get(review_key(gate.id, gate.revision))
+        if review is None or review.completed_at is not None or review.attempted_at is not None:
             continue
-        try:
-            due_at = parse_time(review.due_at)
-        except ValueError:
-            continue
+        due_at = review.due_at
         if due_at <= current_time:
             candidates.append((due_at, gate))
     pending = progress.pending_check
@@ -206,6 +195,7 @@ def persist_coaching_turn(
             lecture_id=turn.lecture_id,
             user_message=turn.message,
             assistant_message=result.message,
+            next_check=result.next_check,
             session_goal=result.session_goal,
         )
         return None
@@ -215,11 +205,9 @@ def persist_coaching_turn(
         gate_id=result.quality_gate.gate_id,
         support_profile=turn.scaffold_policy.profile,
     ):
-        next_check_assistance_level = emitted_assistance_level(
-            message=result.message,
-            next_prompt=result.quality_gate.next_prompt,
-            assistance=result.next_check_assistance,
-        )
+        active_gate = turn.active_gate
+        if active_gate is None:
+            raise ValueError("Assessment requires an active published gate.")
         return store.record_turn(
             user_id=turn.user_id,
             course_id=turn.course_id,
@@ -227,39 +215,11 @@ def persist_coaching_turn(
             context=turn.coaching_context,
             policy=turn.scaffold_policy,
             decision=result.quality_gate,
-            gate_revision=turn.coaching_context.active_gate_revision,
+            next_check=result.next_check,
+            gate_section_id=active_gate.section_id,
+            transfer_prompt=active_gate.transfer_prompt,
+            review_after_days=active_gate.review_after_days,
             user_message=turn.message,
             assistant_message=result.message,
             session_goal=result.session_goal,
-            next_check_assistance_level=next_check_assistance_level,
-            review_after_days=turn.coaching_context.active_gate_review_after_days or 2,
         )
-
-
-def enforce_bound_attempt(result: AgentTurnResult, turn: AgentTurnInput) -> AgentTurnResult:
-    decision = result.quality_gate
-    context = turn.coaching_context
-    if (
-        decision is None
-        or decision.status == QualityGateStatus.NOT_ASSESSED
-        or (
-            context.pending_check_gate_id == decision.gate_id
-            and context.pending_check_gate_revision == decision.gate_revision
-            and context.pending_check_issued_at is not None
-        )
-    ):
-        return result
-    return result.model_copy(
-        update={
-            "quality_gate": decision.model_copy(
-                update={
-                    "status": QualityGateStatus.NOT_ASSESSED,
-                    "reason": "The learner message was not an answer to the persisted active check.",
-                    "evidence_ids": [],
-                    "missing_evidence_ids": [],
-                    "next_prompt": decision.next_prompt
-                    or "Answer the current check in your own words.",
-                }
-            )
-        }
-    )

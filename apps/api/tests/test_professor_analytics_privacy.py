@@ -1,19 +1,19 @@
 from pathlib import Path
 
 from auth_helpers import professor_headers
+from lecturepilot.agent_context_models import AgentConversationMessage
 from lecturepilot.coaching_state_models import CoachingProgress
 from test_learner_lesson_state_routes import COURSE_ID, _client, _write_progress
 
 
 def test_professor_analytics_never_exposes_private_tutor_messages(tmp_path: Path) -> None:
     client = _client(tmp_path)
-    progress = CoachingProgress(
-        session_goal="Private goal",
-        messages=[
-            {"role": "user", "content": "private learner message"},
-            {"role": "assistant", "content": "private tutor message"},
-        ],
-    )
+    progress = CoachingProgress.empty(course_id=COURSE_ID, lecture_id="lecture-open")
+    progress.session_goal = "Private goal"
+    progress.messages = [
+        AgentConversationMessage(role="user", content="private learner message"),
+        AgentConversationMessage(role="assistant", content="private tutor message"),
+    ]
     _write_progress(client, "student-a", progress)
 
     response = client.get(

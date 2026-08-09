@@ -5,7 +5,7 @@ import json
 from collections.abc import Iterable
 from pathlib import Path
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, model_validator
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.quiz_identity import (
@@ -16,72 +16,96 @@ from lecturepilot.quiz_identity import (
 
 
 class LearningMapEvidenceCriterion(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
     id: str = Field(min_length=1, max_length=160)
     description: str = Field(min_length=1, max_length=1000)
     required: bool = True
 
 
 class LearningMapGate(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
     id: str = Field(min_length=1, max_length=160)
     concept_id: str = Field(min_length=1, max_length=160)
     title: str = Field(min_length=1, max_length=200)
-    prompt: str = Field(default="", max_length=1000)
-    evidence_required: str = Field(default="", max_length=1000)
-    evidence_criteria: list[LearningMapEvidenceCriterion] = Field(
-        default_factory=list, max_length=40
-    )
-    transfer_prompt: str | None = Field(default=None, max_length=1000)
-    review_after_days: int = Field(default=2, ge=1, le=365)
-    revision: str = Field(default="", max_length=64)
+    prompt: str = Field(min_length=1, max_length=1000)
+    evidence_criteria: list[LearningMapEvidenceCriterion] = Field(min_length=1, max_length=40)
+    transfer_prompt: str = Field(min_length=1, max_length=1000)
+    review_after_days: int = Field(ge=1, le=365)
+    revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     section_id: str = Field(min_length=1, max_length=160)
     source_ref: str | None = Field(default=None, max_length=500)
 
     @model_validator(mode="after")
-    def derive_contract_fields(self) -> LearningMapGate:
-        if not self.evidence_criteria:
-            description = self.evidence_required or self.prompt
-            if description:
-                self.evidence_criteria = [
-                    LearningMapEvidenceCriterion(id=self.id, description=description)
-                ]
-        self.revision = _digest(self, "revision")
+    def validate_contract(self, info: ValidationInfo) -> LearningMapGate:
+        _require_unique_ids(
+            (criterion.id for criterion in self.evidence_criteria),
+            f"evidence criterion for gate '{self.id}'",
+        )
+        if not (info.context or {}).get("build_revision") and self.revision != _digest(
+            self, "revision"
+        ):
+            raise ValueError("Learning-map gate revision is invalid.")
         return self
+
+    @classmethod
+    def create(cls, **values: object) -> LearningMapGate:
+        proposal = cls.model_validate(
+            {**values, "revision": "0" * 64}, context={"build_revision": True}
+        )
+        payload = proposal.model_dump(mode="json", exclude={"revision"})
+        return cls.model_validate({**payload, "revision": _digest_payload(payload)})
 
 
 class LearningMapNode(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
     id: str = Field(min_length=1, max_length=160)
     title: str = Field(min_length=1, max_length=200)
     lecture_id: str = Field(min_length=1, max_length=120)
     section_id: str = Field(min_length=1, max_length=160)
     source_ref: str | None = Field(default=None, max_length=500)
-    prerequisites: list[str] = Field(default_factory=list, max_length=20)
-    gate_ids: list[str] = Field(default_factory=list, max_length=20)
-    quiz_ids: list[str] = Field(default_factory=list, max_length=30)
+    prerequisites: list[str] = Field(max_length=20)
+    gate_ids: list[str] = Field(max_length=20)
+    quiz_ids: list[str] = Field(max_length=30)
 
 
 class LearningMap(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
     course_id: str = Field(min_length=1, max_length=120)
     lecture_id: str = Field(min_length=1, max_length=120)
     title: str = Field(min_length=1, max_length=200)
-    objective: str = Field(default="", max_length=1_000)
-    revision: str = Field(default="", max_length=64)
-    nodes: list[LearningMapNode] = Field(default_factory=list)
-    gates: list[LearningMapGate] = Field(default_factory=list)
+    objective: str = Field(min_length=1, max_length=1_000)
+    revision: str = Field(pattern=r"^[a-f0-9]{64}$")
+    nodes: list[LearningMapNode]
+    gates: list[LearningMapGate]
 
     @model_validator(mode="after")
-    def derive_revision(self) -> LearningMap:
+    def validate_contract(self, info: ValidationInfo) -> LearningMap:
         _require_unique_ids((node.id for node in self.nodes), "node")
         _require_unique_ids((node.section_id for node in self.nodes), "section")
         _require_unique_ids((gate.id for gate in self.gates), "gate")
-        for gate in self.gates:
-            _require_unique_ids(
-                (criterion.id for criterion in gate.evidence_criteria),
-                f"evidence criterion for gate '{gate.id}'",
-            )
-        if not self.objective:
-            self.objective = self.title
-        self.revision = _digest(self, "revision")
+        gate_ids = {gate.id for gate in self.gates}
+        section_ids = {node.section_id for node in self.nodes}
+        if any(set(node.gate_ids) - gate_ids for node in self.nodes):
+            raise ValueError("Learning-map nodes reference unknown gates.")
+        if any(gate.section_id not in section_ids for gate in self.gates):
+            raise ValueError("Learning-map gates reference unknown sections.")
+        if not (info.context or {}).get("build_revision") and self.revision != _digest(
+            self, "revision"
+        ):
+            raise ValueError("Learning-map revision is invalid.")
         return self
+
+    @classmethod
+    def create(cls, **values: object) -> LearningMap:
+        proposal = cls.model_validate(
+            {**values, "revision": "0" * 64}, context={"build_revision": True}
+        )
+        payload = proposal.model_dump(mode="json", exclude={"revision"})
+        return cls.model_validate({**payload, "revision": _digest_payload(payload)})
 
 
 def build_learning_map(document: CanvasDocument) -> LearningMap:
@@ -106,10 +130,11 @@ def build_learning_map(document: CanvasDocument) -> LearningMap:
             )
         )
         previous_id = section.id
-    return LearningMap(
+    return LearningMap.create(
         course_id=document.course_id,
         lecture_id=document.lecture_id,
         title=document.title,
+        objective=f"Explain and apply {document.title} independently.",
         nodes=nodes,
         gates=gates,
     )
@@ -133,62 +158,7 @@ def read_strict_published_learning_map(canvas_dir: Path) -> LearningMap | None:
     path = learning_map_path(canvas_dir)
     if not path.exists():
         return None
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    _require_exact_fields(
-        payload,
-        {"course_id", "lecture_id", "title", "objective", "revision", "nodes", "gates"},
-        "learning map",
-    )
-    for node in payload["nodes"]:
-        _require_exact_fields(
-            node,
-            {
-                "id",
-                "title",
-                "lecture_id",
-                "section_id",
-                "source_ref",
-                "prerequisites",
-                "gate_ids",
-                "quiz_ids",
-            },
-            "learning-map node",
-        )
-    for gate in payload["gates"]:
-        _require_exact_fields(
-            gate,
-            {
-                "id",
-                "concept_id",
-                "title",
-                "prompt",
-                "evidence_required",
-                "evidence_criteria",
-                "transfer_prompt",
-                "review_after_days",
-                "revision",
-                "section_id",
-                "source_ref",
-            },
-            "learning-map gate",
-        )
-        if not gate["prompt"] or not gate["evidence_criteria"]:
-            raise ValueError("Published learning-map gates require prompts and evidence criteria.")
-        for criterion in gate["evidence_criteria"]:
-            _require_exact_fields(
-                criterion,
-                {"id", "description", "required"},
-                "learning-map evidence criterion",
-            )
-    if not payload["objective"]:
-        raise ValueError("Published learning maps require an objective.")
-    learning_map = LearningMap.model_validate(payload, strict=True)
-    if payload["revision"] != learning_map.revision:
-        raise ValueError("Published learning-map revision is invalid.")
-    revisions = {gate.id: gate.revision for gate in learning_map.gates}
-    if any(gate["revision"] != revisions[gate["id"]] for gate in payload["gates"]):
-        raise ValueError("Published learning-map gate revision is invalid.")
-    return learning_map
+    return LearningMap.model_validate_json(path.read_text(encoding="utf-8"), strict=True)
 
 
 def learning_map_path(canvas_dir: Path) -> Path:
@@ -222,13 +192,16 @@ def _checkpoint_gate(
     block: CanvasBlock,
 ) -> LearningMapGate:
     prompt = (block.text or block.caption or section.title)[:1000]
-    return LearningMapGate(
+    return LearningMapGate.create(
         id=block.id,
         concept_id=section.id,
         title=(block.caption or section.title)[:200],
         prompt=prompt,
-        evidence_required=prompt,
         evidence_criteria=[LearningMapEvidenceCriterion(id=block.id, description=prompt)],
+        transfer_prompt=(
+            "Apply the same reasoning to a changed case not used in the lecture: " + prompt
+        )[:1000],
+        review_after_days=2,
         section_id=section.id,
         source_ref=section.source_ref or document.source_ref,
     )
@@ -244,14 +217,24 @@ def _digest(model: BaseModel, excluded_field: str) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def _digest_payload(payload: dict[str, object]) -> str:
+    serializable = {
+        key: value.model_dump(mode="json") if isinstance(value, BaseModel) else value
+        for key, value in payload.items()
+    }
+    for key, value in serializable.items():
+        if isinstance(value, list):
+            serializable[key] = [
+                item.model_dump(mode="json") if isinstance(item, BaseModel) else item
+                for item in value
+            ]
+    canonical = json.dumps(serializable, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 def _require_unique_ids(ids: Iterable[str], label: str) -> None:
     seen: set[str] = set()
     for identifier in ids:
         if identifier in seen:
             raise ValueError(f"Duplicate {label} ID '{identifier}'.")
         seen.add(identifier)
-
-
-def _require_exact_fields(payload: object, expected: set[str], label: str) -> None:
-    if not isinstance(payload, dict) or set(payload) != expected:
-        raise ValueError(f"Published {label} contract is incomplete or contains extra fields.")

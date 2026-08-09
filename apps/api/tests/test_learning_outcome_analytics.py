@@ -1,4 +1,5 @@
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 from auth_helpers import professor_headers, student_headers
@@ -179,9 +180,11 @@ def _persist_gate(
         gate_revision=prepared.active_gate.revision,
         status=status,
         reason="Private assessment reason.",
+        evidence_ids=[prepared.active_gate.id] if passed else [],
+        missing_evidence_ids=[] if passed else [prepared.active_gate.id],
     )
     event = CoachingTurnEvent(
-        created_at="2026-08-09T12:00:00+00:00",
+        created_at=datetime(2026, 8, 9, 12, tzinfo=UTC),
         gate_id=prepared.active_gate.id,
         gate_revision=prepared.active_gate.revision,
         gate_status=status,
@@ -189,6 +192,11 @@ def _persist_gate(
         process_label="check",
         attempt_kind=attempt_kind,
         attempt_index=attempt_index,
+        assistance_level="none",
+        planned_delay_seconds=None,
+        observed_delay_seconds=None,
+        evidence_ids=decision.evidence_ids,
+        missing_evidence_ids=decision.missing_evidence_ids,
     )
     persist_quality_gate(
         app,

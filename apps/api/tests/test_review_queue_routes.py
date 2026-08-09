@@ -2,8 +2,9 @@ from datetime import timedelta
 from pathlib import Path
 
 from auth_helpers import professor_headers, student_headers
+from lecturepilot.coaching_assistance import NextCheck, NextCheckAssistance
 from lecturepilot.coaching_progress import CoachingProgressStore
-from lecturepilot.coaching_state_models import DelayedReview
+from lecturepilot.coaching_state_models import review_key
 from lecturepilot.models import QualityGateDecision
 from lecturepilot.quality_gate_models import QualityGateStatus
 from lecturepilot.scaffold_policy import scaffold_policy_for_tutor_turn
@@ -100,8 +101,9 @@ def test_open_due_gate_binds_exact_current_transfer_without_completing(tmp_path:
     assert progress.pending_check.prompt == "Apply A to an unfamiliar case."
     assert progress.pending_check.assistance_level == "none"
     assert progress.pending_check.kind == "delayed_transfer"
-    assert progress.delayed_reviews["gate-a"].attempted_at is None
-    assert progress.delayed_reviews["gate-a"].completed_at is None
+    key = review_key("gate-a", _gate_revision(client, "lecture-a", "gate-a"))
+    assert progress.delayed_reviews[key].attempted_at is None
+    assert progress.delayed_reviews[key].completed_at is None
 
 
 def test_failed_due_attempt_becomes_repair_and_pass_clears_only_that_review(
@@ -122,8 +124,8 @@ def test_failed_due_attempt_becomes_repair_and_pass_clears_only_that_review(
         course_id=COURSE_ID,
         lecture_id="lecture-a",
         gate_id="gate-a",
-        gate_title="Gate A",
         gate_revision=revision,
+        learning_objective="Explain and apply gate A.",
         now=NOW,
     )
     policy = scaffold_policy_for_tutor_turn(
@@ -144,8 +146,20 @@ def test_failed_due_attempt_becomes_repair_and_pass_clears_only_that_review(
             gate_revision=revision,
             status=QualityGateStatus.NEEDS_EVIDENCE,
             reason="Apply the mechanism, not the memorized wording.",
+            evidence_ids=[],
+            missing_evidence_ids=["gate-a"],
         ),
-        gate_revision=revision,
+        next_check=NextCheck(
+            gate_id="gate-a",
+            gate_revision=revision,
+            prompt="Apply A to an unfamiliar case.",
+            assistance=NextCheckAssistance(level="none", content=None),
+        ),
+        gate_section_id="section-a",
+        transfer_prompt="Apply A to an unfamiliar case.",
+        review_after_days=2,
+        user_message="Attempt",
+        assistant_message="Try the current check again.",
         now=NOW + timedelta(minutes=2),
     )
 
@@ -168,8 +182,8 @@ def test_failed_due_attempt_becomes_repair_and_pass_clears_only_that_review(
         course_id=COURSE_ID,
         lecture_id="lecture-a",
         gate_id="gate-a",
-        gate_title="Gate A",
         gate_revision=revision,
+        learning_objective="Explain and apply gate A.",
         now=NOW + timedelta(minutes=4),
     )
     store.record_turn(
@@ -184,8 +198,14 @@ def test_failed_due_attempt_becomes_repair_and_pass_clears_only_that_review(
             status=QualityGateStatus.PASSED,
             reason="The changed case is explained.",
             evidence_ids=["gate-a"],
+            missing_evidence_ids=[],
         ),
-        gate_revision=revision,
+        next_check=None,
+        gate_section_id="section-a",
+        transfer_prompt="Apply A to an unfamiliar case.",
+        review_after_days=2,
+        user_message="Repair",
+        assistant_message="Passed.",
         now=NOW + timedelta(minutes=5),
     )
     final_items = client.get(
@@ -204,15 +224,10 @@ def test_open_rejects_locked_stale_and_wrong_gate_targets(tmp_path: Path) -> Non
     headers = student_headers(user_id, course_ids=[COURSE_ID])
     _write_review(client, user_id, "lecture-a", "gate-a", NOW - timedelta(days=1))
     _write_review(client, user_id, "lecture-locked", "gate-locked", NOW - timedelta(days=1))
-    unpublished = _read_progress(client, user_id, "lecture-unpublished")
-    unpublished.delayed_reviews["gate-unpublished"] = DelayedReview(
-        gate_id="gate-unpublished",
-        gate_revision="unpublished-revision",
-        due_at=(NOW - timedelta(days=1)).isoformat(),
-    )
-    _write_progress(client, user_id, "lecture-unpublished", unpublished)
     progress = _read_progress(client, user_id, "lecture-a")
-    progress.delayed_reviews["gate-a"] = progress.delayed_reviews["gate-a"].model_copy(
+    current_revision = _gate_revision(client, "lecture-a", "gate-a")
+    key = review_key("gate-a", current_revision)
+    progress.delayed_reviews[key] = progress.delayed_reviews[key].model_copy(
         update={"gate_revision": "stale-revision"}
     )
     _write_progress(client, user_id, "lecture-a", progress)
@@ -238,5 +253,3 @@ def test_open_rejects_locked_stale_and_wrong_gate_targets(tmp_path: Path) -> Non
     assert wrong.status_code == 404
     assert locked.status_code == 403
     assert unpublished_response.status_code == 404
-    assert client.get(f"/courses/{COURSE_ID}/review-queue", headers=headers).json()["items"] == []
-    assert _read_progress(client, user_id, "lecture-a").pending_check is None

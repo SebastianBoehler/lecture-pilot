@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
 from pathlib import Path
 from threading import Barrier, Event
 
@@ -89,9 +90,10 @@ def test_gate_persistence_keeps_context_captured_before_real_republication(tmp_p
         status=QualityGateStatus.PASSED,
         reason="This reason must remain private.",
         evidence_ids=[captured.active_gate.id],
+        missing_evidence_ids=[],
     )
     coaching_event = CoachingTurnEvent(
-        created_at="2026-08-09T12:00:00+00:00",
+        created_at=datetime(2026, 8, 9, 12, tzinfo=UTC),
         gate_id=captured.active_gate.id,
         gate_revision=captured.active_gate.revision,
         gate_status=QualityGateStatus.PASSED,
@@ -100,9 +102,10 @@ def test_gate_persistence_keeps_context_captured_before_real_republication(tmp_p
         attempt_kind="independent",
         attempt_index=1,
         assistance_level="none",
-        independent_attempt=True,
-        support_before_attempt=False,
-        transfer_attempt=False,
+        planned_delay_seconds=None,
+        observed_delay_seconds=None,
+        evidence_ids=[captured.active_gate.id],
+        missing_evidence_ids=[],
     )
     persist_quality_gate(
         app,

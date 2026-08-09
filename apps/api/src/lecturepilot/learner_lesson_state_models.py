@@ -35,17 +35,21 @@ class LearnerQuizStorePayload(BaseModel):
 
 
 class LearnerPendingCheck(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
     gate_id: str
-    gate_revision: str | None = None
+    gate_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     prompt: str
     assistance_level: AssistanceLevel
     kind: PendingCheckKind
 
 
 class LearnerDueGateReview(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
     gate_id: str
-    gate_revision: str | None = None
-    due_at: str
+    gate_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
+    due_at: AwareDatetime
 
 
 class LearnerLessonState(BaseModel):

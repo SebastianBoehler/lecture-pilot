@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from lecturepilot import component_response_schema
-from lecturepilot.coaching_assistance import next_check_assistance_schema
+from lecturepilot.provider_turn_schema import assessment_schema, next_check_schema
 
 
 def lecturepilot_response_format() -> dict[str, Any]:
@@ -121,15 +121,15 @@ def _agent_turn_schema() -> dict[str, Any]:
                 "items": _canvas_command_schema(),
                 "description": "Canvas navigation or learner-owned canvas updates.",
             },
-            "next_check_assistance": next_check_assistance_schema(),
-            "quality_gate": _quality_gate_schema(),
+            "assessment": assessment_schema(),
+            "next_check": next_check_schema(),
         },
         "required": [
             "message",
             "session_goal",
             "canvas_commands",
-            "next_check_assistance",
-            "quality_gate",
+            "assessment",
+            "next_check",
         ],
     }
 
@@ -253,39 +253,6 @@ def _block_schema() -> dict[str, Any]:
             "component_data",
         ],
     }
-
-
-def _quality_gate_schema() -> dict[str, Any]:
-    return _nullable(
-        {
-            "type": "object",
-            "additionalProperties": False,
-            "properties": {
-                "gate_id": {"type": "string"},
-                "status": {"type": "string", "enum": ["passed", "needs_evidence", "not_assessed"]},
-                "reason": {"type": "string"},
-                "next_prompt": _nullable_string("Concrete next evidence request."),
-                "evidence_ids": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Contract evidence IDs explicitly demonstrated by the learner.",
-                },
-                "missing_evidence_ids": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Required contract evidence IDs still missing from the response.",
-                },
-            },
-            "required": [
-                "gate_id",
-                "status",
-                "reason",
-                "next_prompt",
-                "evidence_ids",
-                "missing_evidence_ids",
-            ],
-        }
-    )
 
 
 def _nullable(schema: dict[str, Any]) -> dict[str, Any]:

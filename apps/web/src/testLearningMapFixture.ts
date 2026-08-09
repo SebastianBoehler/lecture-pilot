@@ -3,6 +3,8 @@ export function learningMapPayload() {
     course_id: "martius-ml",
     lecture_id: "lecture-03",
     title: "Bayesian Decision Theory",
+    objective: "Explain and apply Bayesian decision theory.",
+    revision: "b".repeat(64),
     nodes: [
       {
         id: "bayesian-decision-theory-the-aim",
@@ -41,8 +43,16 @@ export function learningMapPayload() {
         concept_id: "bayesian-decision-theory-the-aim",
         title: "Bayesian decision theory",
         prompt: "Demonstrate the learning outcome for Bayesian decision theory.",
-        evidence_required:
-          "posterior from evidence; prior, likelihood, and evidence; classifier decision; risk or cost",
+        evidence_criteria: [
+          {
+            id: "posterior",
+            description: "Connect posterior, evidence, and decision.",
+            required: true,
+          },
+        ],
+        transfer_prompt: "Apply the decision rule to a changed case.",
+        review_after_days: 2,
+        revision: "a".repeat(64),
         section_id: "bayesian-decision-theory-the-aim",
         source_ref: "frames 3, 4, 5",
       },

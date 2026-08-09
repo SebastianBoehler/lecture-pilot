@@ -9,7 +9,7 @@ from canvas_workspace_fixtures import publish_course_canvas
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.coaching_orchestration import prepare_coaching_turn
 from lecturepilot.course_canvas_context import InvalidPublishedCanvasContextError
-from lecturepilot.guided_tutor import LOCAL_PREVIEW_USER_ID
+from lecturepilot.harness import LOCAL_PREVIEW_USER_ID
 from lecturepilot.models import AgentTurnInput, AttendanceStatus
 from lecturepilot.observability import Observability
 from test_quiz_learner_overlay import (

@@ -6,7 +6,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 
 from lecturepilot.api_auth import request_context
 from lecturepilot.coaching_check_binding import bind_delayed_review
-from lecturepilot.coaching_progress import CoachingProgressStore
+from lecturepilot.coaching_progress import CoachingProgressStore, InvalidCoachingStateError
 from lecturepilot.course_access import (
     lecture_views_for_context,
     require_course_id_access,
@@ -73,11 +73,14 @@ def register_review_queue_routes(
                         learning_map=learning_map,
                     )
                 )
-        return ReviewQueueStore(app.state.canvas_workspace.layout).read_course(
-            user_id=user_id,
-            course_id=course_id,
-            lectures=accessible,
-        )
+        try:
+            return ReviewQueueStore(app.state.canvas_workspace.layout).read_course(
+                user_id=user_id,
+                course_id=course_id,
+                lectures=accessible,
+            )
+        except InvalidCoachingStateError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     @app.post(
         "/courses/{course_id}/review-queue/gates/{lecture_id}/{gate_id}/open",
@@ -115,8 +118,6 @@ def register_review_queue_routes(
             )
             if gate is None:
                 raise HTTPException(status_code=404, detail="Gate review is not available.")
-            if not gate.transfer_prompt:
-                raise HTTPException(status_code=409, detail="Gate has no delayed transfer prompt.")
             store = CoachingProgressStore(app.state.canvas_workspace.layout)
             try:
                 pending = bind_delayed_review(
@@ -126,7 +127,6 @@ def register_review_queue_routes(
                     lecture_id=lecture.id,
                     gate_id=gate.id,
                     gate_revision=gate.revision,
-                    transfer_prompt=gate.transfer_prompt,
                     now=datetime.now(UTC),
                 )
             except ValueError as exc:

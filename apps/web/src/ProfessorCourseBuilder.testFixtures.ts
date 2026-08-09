@@ -331,7 +331,6 @@ function analyticsPayload() {
           concept_id: "aim",
           title: "Risk evidence gate",
           prompt: "Explain expected risk.",
-          evidence_required: "Connect posterior and loss.",
           section_id: "aim",
           source_ref: "Lecture03-eng.tex#aim",
         },

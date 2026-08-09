@@ -8,7 +8,7 @@ from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.coaching_progress import CoachingProgressStore
-from lecturepilot.coaching_state_models import CoachingProgress, DelayedReview
+from lecturepilot.coaching_state_models import CoachingProgress, DelayedReview, review_key
 from lecturepilot.course_schedule_store import write_course_workspace
 from lecturepilot.course_learning_design_models import LearningDesignUpdate
 from lecturepilot.course_learning_design_store import CourseLearningDesignStore
@@ -113,11 +113,22 @@ def write_review(
     client: TestClient, user_id: str, lecture_id: str, gate_id: str, due_at: datetime
 ) -> None:
     progress = read_progress(client, user_id, lecture_id)
-    progress.delayed_reviews[gate_id] = DelayedReview(
+    learning_map = client.app.state.canvas_workspace.course_canvas_store.learning_map(
+        course_id=COURSE_ID, lecture_id=lecture_id
+    )
+    assert learning_map is not None
+    gate = next(item for item in learning_map.gates if item.id == gate_id)
+    progress.delayed_reviews[review_key(gate_id, gate.revision)] = DelayedReview(
         gate_id=gate_id,
-        gate_revision=gate_revision(client, lecture_id, gate_id),
-        scheduled_at=(due_at - timedelta(days=2)).isoformat(),
-        due_at=due_at.isoformat(),
+        gate_revision=gate.revision,
+        section_id=gate.section_id,
+        transfer_prompt=gate.transfer_prompt,
+        scheduled_at=due_at - timedelta(days=2),
+        due_at=due_at,
+        planned_delay_seconds=172800,
+        attempted_at=None,
+        completed_at=None,
+        observed_delay_seconds=None,
     )
     write_progress(client, user_id, lecture_id, progress)
 

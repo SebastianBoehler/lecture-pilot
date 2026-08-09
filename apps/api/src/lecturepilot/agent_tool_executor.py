@@ -23,7 +23,7 @@ from lecturepilot.canvas_markdown import CanvasMarkdownError
 from lecturepilot.learner_canvas_markdown import read_student_sections
 from lecturepilot.canvas_signatures import is_student_section
 from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.models import CanvasCommand, QualityGateDecision
+from lecturepilot.models import CanvasCommand
 from lecturepilot.storage_layout import safe_id
 from lecturepilot.usage_quota import UsageQuota, UsageQuotaExceeded
 from lecturepilot.workspace import WorkspacePolicy, WorkspacePolicyError
@@ -71,7 +71,6 @@ class AgentToolExecutor(AgentSideEffectTools):
         self.policy = WorkspacePolicy()
         self.focus_section_id: str | None = None
         self.highlight_command: CanvasCommand | None = None
-        self.gate: QualityGateDecision | None = None
         self.canvas_changed = False
         self.latest_written_section_id: str | None = None
         self.image_placement: AgentImagePlacement | None = None
@@ -145,9 +144,6 @@ class AgentToolExecutor(AgentSideEffectTools):
             return self._highlight(
                 required_str(args, "span_id"), required_str(args, "highlight_text", "")
             )
-        if name == "record_gate":
-            self.gate = QualityGateDecision.model_validate(args)
-            return {"gate_id": self.gate.gate_id, "status": self.gate.status.value}
         if name == "remember":
             return self._remember(args)
         if name == "generate_image":

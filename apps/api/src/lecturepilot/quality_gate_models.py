@@ -2,20 +2,20 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class QualityGateStatus(StrEnum):
     PASSED = "passed"
     NEEDS_EVIDENCE = "needs_evidence"
-    NOT_ASSESSED = "not_assessed"
 
 
 class QualityGateDecision(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
     gate_id: str = Field(min_length=1, max_length=120)
-    gate_revision: str | None = Field(default=None, min_length=1, max_length=64)
+    gate_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     status: QualityGateStatus
     reason: str = Field(min_length=1, max_length=500)
-    next_prompt: str | None = Field(default=None, max_length=500)
-    evidence_ids: list[str] = Field(default_factory=list, max_length=40)
-    missing_evidence_ids: list[str] = Field(default_factory=list, max_length=40)
+    evidence_ids: list[str] = Field(max_length=40)
+    missing_evidence_ids: list[str] = Field(max_length=40)

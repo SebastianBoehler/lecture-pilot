@@ -1,45 +1,52 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
+from lecturepilot.coaching_assistance import NextCheck
 from lecturepilot.coaching_state_models import (
     AttemptKind,
     CoachingProgress,
     DelayedReview,
     PendingCheck,
+    review_key,
 )
 from lecturepilot.models import AgentCoachingContext, QualityGateDecision
-from lecturepilot.scaffold_policy import AssistanceLevel
 
 
 def record_passed_review(
     progress: CoachingProgress,
     *,
     gate_id: str,
-    gate_revision: str | None,
+    gate_revision: str,
+    section_id: str,
+    transfer_prompt: str,
     delayed_attempt: bool,
     review_after_days: int,
     now: datetime,
 ) -> None:
-    current = progress.delayed_reviews.get(gate_id)
-    same_revision = current is not None and current.gate_revision == gate_revision
+    key = review_key(gate_id, gate_revision)
+    current = progress.delayed_reviews.get(key)
     if (
-        current
-        and same_revision
+        current is not None
         and current.completed_at is None
         and (delayed_attempt or current.attempted_at is not None)
     ):
-        progress.delayed_reviews[gate_id] = current.model_copy(
-            update={"completed_at": now.isoformat()}
-        )
+        progress.delayed_reviews[key] = current.model_copy(update={"completed_at": now})
         return
-    if current and same_revision and current.completed_at is None:
+    if current is not None:
         return
-    progress.delayed_reviews[gate_id] = DelayedReview(
+    planned_seconds = review_after_days * 24 * 60 * 60
+    progress.delayed_reviews[key] = DelayedReview(
         gate_id=gate_id,
         gate_revision=gate_revision,
-        scheduled_at=now.isoformat(),
-        due_at=(now + timedelta(days=review_after_days)).isoformat(),
+        section_id=section_id,
+        transfer_prompt=transfer_prompt,
+        scheduled_at=now,
+        due_at=now + timedelta(seconds=planned_seconds),
+        planned_delay_seconds=planned_seconds,
+        attempted_at=None,
+        completed_at=None,
+        observed_delay_seconds=None,
     )
 
 
@@ -47,33 +54,35 @@ def record_review_attempt(
     progress: CoachingProgress,
     *,
     gate_id: str,
-    gate_revision: str | None,
+    gate_revision: str,
     now: datetime,
-) -> None:
-    current = progress.delayed_reviews.get(gate_id)
-    if current and current.gate_revision == gate_revision and current.completed_at is None:
-        progress.delayed_reviews[gate_id] = current.model_copy(
-            update={"attempted_at": now.isoformat()}
-        )
+) -> DelayedReview | None:
+    key = review_key(gate_id, gate_revision)
+    current = progress.delayed_reviews.get(key)
+    if current is None or current.completed_at is not None:
+        return None
+    observed = int((now - current.scheduled_at).total_seconds())
+    if observed < 0:
+        raise ValueError("Delayed-review attempt precedes its schedule.")
+    updated = current.model_copy(update={"attempted_at": now, "observed_delay_seconds": observed})
+    progress.delayed_reviews[key] = updated
+    return updated
 
 
-def next_pending_check(
-    decision: QualityGateDecision,
+def pending_from_next_check(
+    next_check: NextCheck | None,
     *,
-    gate_revision: str | None,
-    assistance_level: AssistanceLevel,
-    delayed_transfer_due: bool,
     now: datetime,
 ) -> PendingCheck | None:
-    if not decision.next_prompt or not decision.next_prompt.strip():
+    if next_check is None:
         return None
     return PendingCheck(
-        gate_id=decision.gate_id,
-        gate_revision=gate_revision,
-        prompt=decision.next_prompt.strip(),
-        assistance_level=assistance_level,
-        kind="delayed_transfer" if delayed_transfer_due else "standard",
-        issued_at=now.isoformat(),
+        gate_id=next_check.gate_id,
+        gate_revision=next_check.gate_revision,
+        prompt=next_check.prompt,
+        assistance_level=next_check.assistance.level,
+        kind="standard",
+        issued_at=now,
     )
 
 
@@ -81,9 +90,9 @@ def bound_pending(
     pending: PendingCheck | None,
     context: AgentCoachingContext,
     decision: QualityGateDecision,
-    gate_revision: str | None,
+    gate_revision: str,
 ) -> PendingCheck | None:
-    if pending is None or context.pending_check_issued_at != pending.issued_at:
+    if pending is None or context.pending_check_issued_at != pending.issued_at.isoformat():
         return None
     return pending if matching_pending(pending, decision.gate_id, gate_revision) else None
 
@@ -91,15 +100,11 @@ def bound_pending(
 def matching_pending(
     pending: PendingCheck | None,
     gate_id: str,
-    gate_revision: str | None,
+    gate_revision: str,
 ) -> PendingCheck | None:
-    if pending is None or pending.gate_id != gate_id:
+    if pending is None or pending.gate_id != gate_id or pending.gate_revision != gate_revision:
         return None
-    return pending if revision_matches(pending.gate_revision, gate_revision) else None
-
-
-def revision_matches(stored: str | None, active: str | None) -> bool:
-    return stored == active
+    return pending
 
 
 def attempt_kind(pending: PendingCheck | None, assessed: bool) -> AttemptKind:
@@ -110,15 +115,8 @@ def attempt_kind(pending: PendingCheck | None, assessed: bool) -> AttemptKind:
     return "independent" if pending.assistance_level in {"none", "prompt"} else "supported_retry"
 
 
-def delay_seconds(review: DelayedReview | None, now: datetime) -> int | None:
-    if review is None or review.scheduled_at is None:
-        return None
-    try:
-        return max(0, int((now - parse_time(review.scheduled_at)).total_seconds()))
-    except ValueError:
-        return None
-
-
 def parse_time(value: str) -> datetime:
     parsed = datetime.fromisoformat(value)
-    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+    if parsed.tzinfo is None:
+        raise ValueError("Persisted timestamp requires a timezone.")
+    return parsed

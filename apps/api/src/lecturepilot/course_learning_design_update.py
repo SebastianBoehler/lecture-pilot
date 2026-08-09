@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from lecturepilot.course_learning_design_models import LearningDesignUpdate
-from lecturepilot.learning_map import LearningMap
+from lecturepilot.learning_map import LearningMap, LearningMapGate
 
 
 def apply_learning_design_update(
@@ -30,14 +30,15 @@ def apply_learning_design_update(
             raise ValueError("Evidence-criterion IDs must match the current learning-design gate.")
         gate.update(
             prompt=changed.prompt,
-            evidence_required=" ".join(item.description for item in changed.evidence_criteria),
             evidence_criteria=[item.model_dump(mode="json") for item in changed.evidence_criteria],
             transfer_prompt=changed.transfer_prompt,
             review_after_days=changed.review_after_days,
         )
+        gate.pop("revision")
+        gate["revision"] = LearningMapGate.create(**gate).revision
     for node in payload["nodes"]:
         node["prerequisites"] = graph[node["section_id"]]
-    return LearningMap.model_validate(payload)
+    return LearningMap.create(**payload)
 
 
 def _validate_prerequisites(graph: dict[str, list[str]], valid_ids: set[str]) -> None:

@@ -17,13 +17,16 @@ def _turn() -> AgentTurnInput:
         attendance=AttendanceStatus.UNKNOWN,
         message="hello",
         canvas_state=CanvasState(focused_section_id="causal-transfer"),
-        active_gate=LearningMapGate(
+        active_gate=LearningMapGate.create(
             id="causal-transfer-check",
             concept_id="causal-transfer",
             title="Causal transfer",
             prompt="Explain when the conclusion transfers.",
             evidence_criteria=[{"id": "boundary", "description": "Name a transfer boundary."}],
+            transfer_prompt="Apply the conclusion to an unfamiliar setting.",
+            review_after_days=3,
             section_id="causal-transfer",
+            source_ref=None,
         ),
     )
 
@@ -38,7 +41,7 @@ def test_model_prompt_requires_guided_quality_gate_turns() -> None:
     assert "next similar task without lecturepilot" in system_prompt
     assert "never ask the learner to select a learning style" in system_prompt
     assert "delayed independent transfer check" in system_prompt
-    assert "support actually contained in message" in system_prompt
+    assert "assistance actually contained in message" in system_prompt
     assert "post-attempt corrective cue" in system_prompt
     assert "highlight_span" in system_prompt
 

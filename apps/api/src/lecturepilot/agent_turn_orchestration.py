@@ -20,11 +20,9 @@ from lecturepilot.agent_command_utils import (
 from lecturepilot.agent_tool_executor import AgentToolExecutor
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.coaching_orchestration import (
-    enforce_bound_attempt,
     persist_coaching_turn,
     prepare_coaching_turn,
 )
-from lecturepilot.gate_policy import keep_canvas_actions_from_passing_gate
 from lecturepilot.image_generation import ImageGenerationError
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_usage import model_usage_scope
@@ -238,8 +236,6 @@ def _persist_agent_turn_result(
     if tool_executor is not None:
         result = merge_tool_outputs(result, tool_executor)
     result = enforce_active_gate_contract(result, turn)
-    result = keep_canvas_actions_from_passing_gate(result, turn.message)
-    result = enforce_bound_attempt(result, turn)
     coaching_event = persist_coaching_turn(app, turn, result, activity, observability)
     persist_quality_gate(
         app,

@@ -83,6 +83,8 @@ function analytics(): LectureAnalyticsSummary {
       course_id: "demo-ml-course",
       lecture_id: "lecture-03",
       title: "Bayesian Decision Theory",
+      objective: "Explain and apply Bayesian decision theory.",
+      revision: "b".repeat(64),
       nodes: [
         {
           id: "aim",
@@ -121,7 +123,12 @@ function analytics(): LectureAnalyticsSummary {
           concept_id: "aim",
           title: "Risk evidence gate",
           prompt: "Explain expected risk.",
-          evidence_required: "Connect posterior and loss.",
+          evidence_criteria: [
+            { id: "risk", description: "Connect posterior and loss.", required: true },
+          ],
+          transfer_prompt: "Apply expected risk to a changed case.",
+          review_after_days: 2,
+          revision: "a".repeat(64),
           section_id: "aim",
           source_ref: "Lecture03-eng.tex#aim",
         },

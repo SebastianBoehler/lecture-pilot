@@ -1,5 +1,5 @@
 from lecturepilot.agent_tool_executor import AgentToolExecutor
-from test_agent_tools import _workspace
+from test_canvas_api import _workspace
 
 
 def test_unix_named_tools_search_read_and_write_canvas(tmp_path) -> None:

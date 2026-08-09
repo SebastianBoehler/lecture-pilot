@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
-import json
-
 from pydantic import ValidationError
 
 from lecturepilot.durable_files import atomic_write_json, exclusive_file_lock
@@ -12,6 +10,7 @@ from lecturepilot.learner_lesson_state_models import (
     LearnerQuizStorePayload,
     QuizCorrectionState,
 )
+from lecturepilot.learner_gate_state_models import LearnerGateStorePayload
 from lecturepilot.models import AttendanceStatus, QualityGateDecision
 from lecturepilot.storage_layout import StorageLayout
 
@@ -52,18 +51,17 @@ class LearnerStateStore:
     ) -> None:
         path = self.layout.user_lecture_root(user_id, course_id, lecture_id) / "gates.json"
         with exclusive_file_lock(path):
-            payload = _read_json(path)
-            gates = payload.get("gates") if isinstance(payload.get("gates"), dict) else {}
-            gates[decision.gate_id] = decision.model_dump(mode="json")
-            _write_json(
-                path,
-                {
-                    "course_id": course_id,
-                    "lecture_id": lecture_id,
-                    "updated_at": _now(),
-                    "gates": gates,
-                },
+            payload = _read_gate_payload(path, course_id=course_id, lecture_id=lecture_id)
+            gates = dict(payload.gates)
+            gates[decision.gate_id] = decision
+            stored = LearnerGateStorePayload(
+                schema_version=1,
+                course_id=course_id,
+                lecture_id=lecture_id,
+                updated_at=datetime.now(UTC),
+                gates=gates,
             )
+            _write_json(path, stored.model_dump(mode="json"))
 
     def latest_gate_decisions(
         self,
@@ -73,21 +71,7 @@ class LearnerStateStore:
         user_id: str,
     ) -> dict[str, QualityGateDecision]:
         path = self.layout.user_lecture_root(user_id, course_id, lecture_id) / "gates.json"
-        payload = _read_json(path)
-        raw_gates = payload.get("gates")
-        if not isinstance(raw_gates, dict):
-            return {}
-        decisions: dict[str, QualityGateDecision] = {}
-        for gate_id, raw_decision in raw_gates.items():
-            if not isinstance(gate_id, str) or not isinstance(raw_decision, dict):
-                continue
-            try:
-                decision = QualityGateDecision.model_validate(raw_decision)
-            except ValidationError:
-                continue
-            if decision.gate_id == gate_id:
-                decisions[gate_id] = decision
-        return decisions
+        return dict(_read_gate_payload(path, course_id=course_id, lecture_id=lecture_id).gates)
 
     def record_quiz_answer(
         self,
@@ -175,14 +159,24 @@ class InvalidLearnerQuizStateError(ValueError):
     pass
 
 
-def _read_json(path: Path) -> dict:
+class InvalidLearnerGateStateError(ValueError):
+    pass
+
+
+def _read_gate_payload(path: Path, *, course_id: str, lecture_id: str) -> LearnerGateStorePayload:
     if not path.exists():
-        return {}
+        return LearnerGateStorePayload.empty(
+            course_id=course_id,
+            lecture_id=lecture_id,
+            updated_at=datetime.now(UTC),
+        )
     try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return {}
-    return payload if isinstance(payload, dict) else {}
+        payload = LearnerGateStorePayload.model_validate_json(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, ValidationError) as exc:
+        raise InvalidLearnerGateStateError("Persisted learner gate state is invalid.") from exc
+    if payload.course_id != course_id or payload.lecture_id != lecture_id:
+        raise InvalidLearnerGateStateError("Persisted learner gate state is invalid.")
+    return payload
 
 
 def _read_quiz_payload(path: Path, *, course_id: str, lecture_id: str) -> LearnerQuizStorePayload:

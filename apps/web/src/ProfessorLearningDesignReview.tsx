@@ -80,13 +80,13 @@ export function ProfessorLearningDesignReview({
                 <label>
                   {t("builder.learningDesign.transfer")}
                   <textarea
-                    value={gate.transfer_prompt ?? ""}
+                    value={gate.transfer_prompt}
                     onChange={(event) =>
                       setUpdate({
                         ...update,
                         gates: replaceAt(update.gates, gateIndex, {
                           ...gate,
-                          transfer_prompt: event.target.value || null,
+                          transfer_prompt: event.target.value,
                         }),
                       })
                     }

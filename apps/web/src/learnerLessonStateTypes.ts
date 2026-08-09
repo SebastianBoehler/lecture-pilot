@@ -1,4 +1,4 @@
-export type LearnerGateStatus = "passed" | "needs_evidence" | "not_assessed";
+export type LearnerGateStatus = "passed" | "needs_evidence";
 
 export type LearnerQuizState = {
   selected_index: number;
@@ -19,14 +19,14 @@ export type LearnerLessonState = {
   active_session_goal: string | null;
   pending_check: {
     gate_id: string;
-    gate_revision: string | null;
+    gate_revision: string;
     prompt: string;
     assistance_level: "none" | "prompt" | "hint" | "worked_step" | "worked_example";
     kind: "standard" | "delayed_transfer";
   } | null;
   due_gate_reviews: Array<{
     gate_id: string;
-    gate_revision: string | null;
+    gate_revision: string;
     due_at: string;
   }>;
 };

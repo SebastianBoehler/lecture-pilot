@@ -1,12 +1,15 @@
 from __future__ import annotations
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from lecturepilot.agent_authorization import authorize_agent_turn
+from lecturepilot.agent_state_access import learner_state_store
 from lecturepilot.agent_turn_orchestration import agent_turn_events, complete_agent_turn
 from lecturepilot.api_auth import request_context
 from lecturepilot.models import AgentTurnRequest, AgentTurnResult, Course, Lecture
+from lecturepilot.coaching_progress import CoachingProgressStore, InvalidCoachingStateError
+from lecturepilot.learner_state import InvalidLearnerGateStateError
 from lecturepilot.professor_preview import resolve_learner_workspace_access
 from lecturepilot.tenancy import TenantContext
 
@@ -62,7 +65,23 @@ def register_agent_routes(
             seeded_lectures=seeded_lectures,
             turn=turn,
         )
+        _preflight_learning_state(app, turn.user_id, turn.course_id, turn.lecture_id)
         return StreamingResponse(
             agent_turn_events(app, turn=turn, actor_user_id=access.actor_user_id),
             media_type="application/x-ndjson",
         )
+
+
+def _preflight_learning_state(app: FastAPI, user_id: str, course_id: str, lecture_id: str) -> None:
+    try:
+        app.state.canvas_workspace.course_canvas_store.read_analytics_context(
+            course_id=course_id, lecture_id=lecture_id
+        )
+        CoachingProgressStore(app.state.canvas_workspace.layout).read(
+            user_id=user_id, course_id=course_id, lecture_id=lecture_id
+        )
+        learner_state_store(app).latest_gate_decisions(
+            user_id=user_id, course_id=course_id, lecture_id=lecture_id
+        )
+    except (InvalidCoachingStateError, InvalidLearnerGateStateError) as exc:
+        raise HTTPException(status_code=409, detail="Persisted learning state is invalid.") from exc

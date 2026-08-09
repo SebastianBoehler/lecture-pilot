@@ -16,7 +16,7 @@ type TutorStateUpdate = {
   session_goal?: string | null;
   quality_gate?: {
     gate_id: string;
-    status: "passed" | "needs_evidence" | "not_assessed";
+    status: "passed" | "needs_evidence";
   } | null;
 };
 

@@ -14,7 +14,6 @@ _PROFILE_TOOLS: dict[AgentToolProfile, tuple[str, ...]] = {
         "edit",
         "focus",
         "highlight",
-        "record_gate",
         "remember",
         "generate_image",
     ),
@@ -28,7 +27,6 @@ _PROFILE_TOOLS: dict[AgentToolProfile, tuple[str, ...]] = {
         "edit",
         "focus",
         "highlight",
-        "record_gate",
         "remember",
         "generate_image",
     ),
@@ -143,20 +141,6 @@ def _all_tool_schemas() -> list[dict]:
                 "highlight_text": _string("Short phrase to highlight, if useful."),
             },
             ["span_id"],
-        ),
-        _tool(
-            "record_gate",
-            "Record the current learning-gate decision.",
-            {
-                "gate_id": _string("Stable gate id."),
-                "status": {
-                    "type": "string",
-                    "enum": ["passed", "needs_evidence", "not_assessed"],
-                },
-                "reason": _string("Concise evidence-based reason."),
-                "next_prompt": _string("Next concrete student check, if needed."),
-            },
-            ["gate_id", "status", "reason"],
         ),
         _tool(
             "remember",

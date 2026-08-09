@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from lecturepilot.coaching_episode import matching_pending, parse_time
-from lecturepilot.coaching_progress import CoachingProgressStore
+from lecturepilot.coaching_episode import matching_pending
+from lecturepilot.coaching_progress import CoachingProgressStore, InvalidCoachingStateError
 from lecturepilot.learning_map import LearningMap
 from lecturepilot.readiness_progress import ReadinessProgressStore
 from lecturepilot.review_queue_models import (
@@ -50,17 +50,15 @@ class ReviewQueueStore:
             sections = {node.section_id: node.title for node in lecture.learning_map.nodes}
             for review in progress.delayed_reviews.values():
                 gate = gates.get(review.gate_id)
-                if (
-                    gate is None
-                    or not gate.transfer_prompt
-                    or review.gate_revision != gate.revision
-                    or review.completed_at is not None
-                ):
+                if gate is None or review.gate_revision != gate.revision:
+                    raise InvalidCoachingStateError(
+                        "Persisted delayed review does not match the published learning map."
+                    )
+                if review.section_id not in sections or review.section_id != gate.section_id:
+                    raise InvalidCoachingStateError("Persisted delayed review section is invalid.")
+                if review.completed_at is not None:
                     continue
-                try:
-                    due_at = parse_time(review.due_at)
-                except ValueError:
-                    continue
+                due_at = review.due_at
                 item = GateReviewQueueItem(
                     id=(
                         f"gate:{lecture.id}:{gate.id}"
@@ -71,11 +69,11 @@ class ReviewQueueStore:
                     course_id=course_id,
                     lecture_id=lecture.id,
                     lecture_title=lecture.title,
-                    section_id=gate.section_id,
-                    section_title=sections.get(gate.section_id, gate.title),
+                    section_id=review.section_id,
+                    section_title=sections[review.section_id],
                     gate_id=gate.id,
                     gate_revision=gate.revision,
-                    due_at=review.due_at,
+                    due_at=review.due_at.isoformat(),
                 )
                 if review.attempted_at is None and due_at <= current_time:
                     due.append((due_at, item))

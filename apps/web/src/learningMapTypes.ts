@@ -3,7 +3,10 @@ export type LearningMapGate = {
   concept_id: string;
   title: string;
   prompt: string;
-  evidence_required: string;
+  evidence_criteria: Array<{ id: string; description: string; required: boolean }>;
+  transfer_prompt: string;
+  review_after_days: number;
+  revision: string;
   section_id: string;
   source_ref?: string | null;
 };
@@ -23,6 +26,8 @@ export type LearningMap = {
   course_id: string;
   lecture_id: string;
   title: string;
+  objective: string;
+  revision: string;
   nodes: LearningMapNode[];
   gates: LearningMapGate[];
 };

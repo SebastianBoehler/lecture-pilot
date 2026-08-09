@@ -9,9 +9,8 @@ export type LearningDesignGate = {
   concept_id: string;
   title: string;
   prompt: string;
-  evidence_required: string;
   evidence_criteria: LearningDesignEvidenceCriterion[];
-  transfer_prompt: string | null;
+  transfer_prompt: string;
   review_after_days: number;
   revision: string;
   section_id: string;

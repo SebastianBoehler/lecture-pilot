@@ -1,19 +1,13 @@
 from __future__ import annotations
 
-import re
-
-from lecturepilot.model_section_commands import (
-    read_generated_section,
-)
 from lecturepilot.models import (
     AgentTurnInput,
     CanvasCommand,
-    CanvasSectionPlacement,
     QualityGateDecision,
     QualityGateStatus,
 )
-
-_SAFE_ID_RE = re.compile(r"[a-z0-9][a-z0-9-]{0,119}")
+from lecturepilot.coaching_assistance import NextCheck
+from lecturepilot.providers import ProviderConfigurationError
 
 
 def canvas_context(turn: AgentTurnInput) -> str:
@@ -36,33 +30,13 @@ def canvas_context(turn: AgentTurnInput) -> str:
     return _trim_text("\n".join(lines), 9000)
 
 
-def read_canvas_commands(payload: dict, turn: AgentTurnInput) -> list[CanvasCommand]:
-    commands: list[CanvasCommand] = []
-    raw_commands = payload.get("canvas_commands")
-    if isinstance(raw_commands, list):
-        commands.extend(
-            _read_command(item, turn) for item in raw_commands if isinstance(item, dict)
-        )
-    focus_id = _default_section_id(turn)
-    if not any(command.type == "focus_section" for command in commands):
-        commands.insert(0, CanvasCommand(type="focus_section", section_id=focus_id))
-    return _normalize_commands(
-        [command for command in commands if command.section_id], focus_id, turn
-    )
-
-
 def read_quality_gate(payload: dict, turn: AgentTurnInput) -> QualityGateDecision | None:
     active_gate = turn.active_gate
     if active_gate is None:
         return None
     raw_gate = payload.get("quality_gate")
     if not isinstance(raw_gate, dict):
-        return QualityGateDecision(
-            gate_id=active_gate.id,
-            status=QualityGateStatus.NOT_ASSESSED,
-            reason="The model did not return a quality gate decision.",
-            next_prompt=active_gate.prompt or None,
-        )
+        raise ProviderConfigurationError("Model omitted the active quality-gate decision.")
     gate = QualityGateDecision.model_validate(raw_gate)
     return validate_quality_gate_decision(gate, turn)
 
@@ -72,161 +46,75 @@ def validate_quality_gate_decision(
     turn: AgentTurnInput,
 ) -> QualityGateDecision | None:
     active_gate = turn.active_gate
-    if active_gate is None or decision is None:
+    context = turn.coaching_context
+    bound = (
+        active_gate is not None
+        and context.pending_check_gate_id == active_gate.id
+        and context.pending_check_gate_revision == active_gate.revision
+        and context.pending_check_issued_at is not None
+    )
+    if active_gate is None:
+        if decision is not None:
+            raise ProviderConfigurationError(
+                "Model returned a quality gate without an active gate."
+            )
         return None
+    if not bound:
+        if decision is not None:
+            raise ProviderConfigurationError("Model assessed a turn without a bound pending check.")
+        return None
+    if decision is None:
+        raise ProviderConfigurationError("Model omitted the bound quality-gate assessment.")
+    if decision.gate_id != active_gate.id or decision.gate_revision != active_gate.revision:
+        raise ProviderConfigurationError("Model quality gate does not match the active contract.")
     allowed = {criterion.id for criterion in active_gate.evidence_criteria}
     required = [criterion.id for criterion in active_gate.evidence_criteria if criterion.required]
-    evidence = _known_ids(decision.evidence_ids, allowed)
+    if len(set(decision.evidence_ids)) != len(decision.evidence_ids) or len(
+        set(decision.missing_evidence_ids)
+    ) != len(decision.missing_evidence_ids):
+        raise ProviderConfigurationError("Model quality-gate evidence IDs must be unique.")
+    if not set(decision.evidence_ids + decision.missing_evidence_ids) <= allowed:
+        raise ProviderConfigurationError("Model returned unknown quality-gate evidence IDs.")
+    evidence = decision.evidence_ids
     missing = [evidence_id for evidence_id in required if evidence_id not in evidence]
-    if decision.status == QualityGateStatus.NOT_ASSESSED:
-        evidence = []
-        missing = []
-    update: dict[str, object] = {
-        "gate_id": active_gate.id,
-        "gate_revision": active_gate.revision,
-        "evidence_ids": evidence,
-        "missing_evidence_ids": missing,
-    }
+    if decision.missing_evidence_ids != missing:
+        raise ProviderConfigurationError("Model missing-evidence IDs do not match the gate rubric.")
     if decision.status == QualityGateStatus.PASSED and missing:
-        update.update(
-            {
-                "status": QualityGateStatus.NEEDS_EVIDENCE,
-                "reason": f"Required evidence is still missing: {', '.join(missing)}.",
-                "next_prompt": _criterion_prompt(active_gate, missing[0]),
-            }
+        raise ProviderConfigurationError("Model passed a gate without all required evidence.")
+    return decision
+
+
+def validate_next_check(next_check: NextCheck | None, turn: AgentTurnInput) -> None:
+    gate = turn.active_gate
+    if next_check is None:
+        return
+    if gate is None:
+        raise ProviderConfigurationError("Model returned a next check without an active gate.")
+    if next_check.gate_id != gate.id or next_check.gate_revision != gate.revision:
+        raise ProviderConfigurationError("Model next check does not match the active contract.")
+
+
+def validate_provider_canvas_commands(commands: list[CanvasCommand], turn: AgentTurnInput) -> None:
+    focus = [command for command in commands if command.type == "focus_section"]
+    highlights = [command for command in commands if command.type == "highlight_span"]
+    if len(focus) != 1 or len(highlights) != 1:
+        raise ProviderConfigurationError(
+            "Model response requires exactly one focus and one highlight command."
         )
-    return decision.model_copy(update=update)
-
-
-def _known_ids(values: list[str], allowed: set[str]) -> list[str]:
-    return list(dict.fromkeys(value for value in values if value in allowed))
-
-
-def _criterion_prompt(active_gate, evidence_id: str) -> str | None:
-    return next(
-        (
-            criterion.description
-            for criterion in active_gate.evidence_criteria
-            if criterion.id == evidence_id
-        ),
-        active_gate.prompt or None,
-    )
-
-
-def _read_command(raw_command: dict, turn: AgentTurnInput) -> CanvasCommand:
-    command_type = raw_command.get("type")
-    if command_type == "highlight_span":
-        return _read_highlight_command(raw_command, turn) or _fallback_focus(turn)
-    if command_type in {"append_section", "update_section"}:
-        section = read_generated_section(raw_command)
-        if section is not None:
-            placement = _read_placement(
-                raw_command, turn, default_to_focus=command_type == "append_section"
-            )
-            return CanvasCommand(
-                type=command_type, section_id=section.id, section=section, placement=placement
-            )
-    return CanvasCommand(
-        type="focus_section", section_id=_read_section_id(raw_command.get("section_id"), turn)
-    )
-
-
-def _read_highlight_command(raw_command: dict, turn: AgentTurnInput) -> CanvasCommand | None:
-    span_id = raw_command.get("span_id")
-    if not isinstance(span_id, str) or not _is_valid_span_id(span_id, turn):
-        return None
-    inferred_section = _section_for_span(turn, span_id)
-    section_id = inferred_section or _read_section_id(raw_command.get("section_id"), turn)
-    highlight_text = raw_command.get("highlight_text")
-    return CanvasCommand(
-        type="highlight_span",
-        section_id=section_id,
-        span_id=span_id,
-        highlight_text=_trim_text(highlight_text, 160) if isinstance(highlight_text, str) else None,
-    )
-
-
-def _read_section_id(requested: object, turn: AgentTurnInput) -> str:
-    if isinstance(requested, str) and _SAFE_ID_RE.fullmatch(requested):
-        allowed = _allowed_section_ids(turn)
-        if not allowed or requested in allowed:
-            return requested
-    return _default_section_id(turn)
-
-
-def _read_placement(
-    raw_command: dict,
-    turn: AgentTurnInput,
-    *,
-    default_to_focus: bool,
-) -> CanvasSectionPlacement | None:
-    raw_placement = raw_command.get("placement")
-    mode = "after_section"
-    requested = None
-    if isinstance(raw_placement, dict):
-        requested = raw_placement.get("section_id")
-        if raw_placement.get("mode") in {"after_section", "before_section"}:
-            mode = str(raw_placement["mode"])
-    if requested is None:
-        requested = raw_command.get("anchor_section_id")
-    if requested is None and default_to_focus:
-        requested = turn.canvas_state.focused_section_id
-    section_id = _read_section_id(requested, turn)
-    if section_id == _default_section_id(turn) and requested != section_id and not default_to_focus:
-        return None
-    return CanvasSectionPlacement(mode=mode, section_id=section_id)
-
-
-def _default_section_id(turn: AgentTurnInput) -> str:
-    current = turn.canvas_state.focused_section_id
-    if current and _SAFE_ID_RE.fullmatch(current):
-        allowed = _allowed_section_ids(turn)
-        if not allowed or current in allowed:
-            return current
-    if turn.canvas_context and turn.canvas_context.sections:
-        return turn.canvas_context.sections[0].id
-    return "bayesian-decision-theory-the-aim"
-
-
-def _normalize_commands(
-    commands: list[CanvasCommand], fallback_focus_id: str, turn: AgentTurnInput
-) -> list[CanvasCommand]:
-    clean = _dedupe_commands(commands)
-    generated = [
-        command for command in clean if command.type in {"append_section", "update_section"}
-    ]
-    focus = next((command for command in clean if command.type == "focus_section"), None)
-    if generated:
-        focus = CanvasCommand(type="focus_section", section_id=generated[0].section_id)
-    focus = focus or CanvasCommand(type="focus_section", section_id=fallback_focus_id)
-    highlights = [command for command in clean if command.type == "highlight_span"]
-    if not highlights:
-        fallback_highlight = _fallback_highlight(turn, focus.section_id or fallback_focus_id)
-        if fallback_highlight is not None:
-            highlights.append(fallback_highlight)
-    return [*generated[:1], focus, *highlights[:1]]
-
-
-def _fallback_focus(turn: AgentTurnInput) -> CanvasCommand:
-    return CanvasCommand(type="focus_section", section_id=_default_section_id(turn))
-
-
-def _fallback_highlight(turn: AgentTurnInput, section_id: str) -> CanvasCommand | None:
-    if turn.canvas_context is None:
-        return None
-    for section in turn.canvas_context.sections:
-        if section.id != section_id:
-            continue
-        for block in section.blocks:
-            if block.type in {"paragraph", "list", "math", "callout"}:
-                source_text = block.items[0] if block.items else block.text
-                return CanvasCommand(
-                    type="highlight_span",
-                    section_id=section.id,
-                    span_id=block.id,
-                    highlight_text=_trim_text(source_text or "", 100) or None,
-                )
-    return None
+    allowed_sections = _allowed_section_ids(turn)
+    allowed_spans = _allowed_span_ids(turn)
+    if not allowed_sections or not allowed_spans:
+        raise ProviderConfigurationError("Canvas navigation cannot be validated without context.")
+    if focus[0].section_id not in allowed_sections:
+        raise ProviderConfigurationError("Model focus target is not in the canvas context.")
+    highlight = highlights[0]
+    if highlight.span_id not in allowed_spans:
+        raise ProviderConfigurationError("Model highlight target is not in the canvas context.")
+    expected_section = _section_for_span(turn, highlight.span_id or "")
+    if highlight.section_id != expected_section:
+        raise ProviderConfigurationError(
+            "Model highlight section does not contain the target span."
+        )
 
 
 def _allowed_section_ids(turn: AgentTurnInput) -> set[str]:
@@ -241,13 +129,6 @@ def _allowed_span_ids(turn: AgentTurnInput) -> set[str]:
     return {block.id for section in turn.canvas_context.sections for block in section.blocks}
 
 
-def _is_valid_span_id(span_id: str, turn: AgentTurnInput) -> bool:
-    if not _SAFE_ID_RE.fullmatch(span_id):
-        return False
-    allowed = _allowed_span_ids(turn)
-    return not allowed or span_id in allowed
-
-
 def _section_for_span(turn: AgentTurnInput, span_id: str) -> str | None:
     if turn.canvas_context is None:
         return None
@@ -255,18 +136,6 @@ def _section_for_span(turn: AgentTurnInput, span_id: str) -> str | None:
         if any(block.id == span_id for block in section.blocks):
             return section.id
     return None
-
-
-def _dedupe_commands(commands: list[CanvasCommand]) -> list[CanvasCommand]:
-    result: list[CanvasCommand] = []
-    seen: set[tuple[str, str | None, str | None]] = set()
-    for command in commands:
-        key = (command.type, command.section_id, command.span_id)
-        if key in seen:
-            continue
-        seen.add(key)
-        result.append(command)
-    return result
 
 
 def _block_excerpt(

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from lecturepilot.coaching_episode import parse_time
 from lecturepilot.coaching_progress import CoachingProgressStore
 from lecturepilot.learner_lesson_state_models import (
     LearnerDueGateReview,
@@ -44,7 +43,7 @@ def lesson_state_snapshot(
             lecture_id=lecture_id,
             publication_version=publication_version,
         ),
-        active_session_goal=progress.session_goal.strip() or None,
+        active_session_goal=(progress.session_goal.strip() if progress.session_goal else None),
         pending_check=(
             LearnerPendingCheck(
                 gate_id=pending.gate_id,
@@ -65,11 +64,7 @@ def _due_reviews(reviews, now: datetime) -> list[LearnerDueGateReview]:
     for review in reviews:
         if review.completed_at is not None or review.attempted_at is not None:
             continue
-        try:
-            is_due = parse_time(review.due_at) <= now
-        except ValueError:
-            continue
-        if is_due:
+        if review.due_at <= now:
             due.append(
                 LearnerDueGateReview(
                     gate_id=review.gate_id,

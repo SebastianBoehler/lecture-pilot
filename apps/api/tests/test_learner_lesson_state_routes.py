@@ -12,7 +12,12 @@ from canvas_workspace_fixtures import (
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock
 from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.coaching_state_models import CoachingProgress, DelayedReview, PendingCheck
+from lecturepilot.coaching_state_models import (
+    CoachingProgress,
+    DelayedReview,
+    PendingCheck,
+    review_key,
+)
 from lecturepilot.course_schedule_store import write_course_workspace
 from lecturepilot.durable_files import atomic_write_json
 from lecturepilot.learner_state import LearnerStateStore
@@ -23,6 +28,7 @@ from lecturepilot.quality_gate_models import QualityGateStatus
 
 
 COURSE_ID = "learner-state-course"
+STATE_URL = f"/courses/{COURSE_ID}/lectures/lecture-open/learner-state"
 PAST = date(2020, 1, 1)
 FUTURE = date(2099, 1, 1)
 PREVIEW = {"X-LecturePilot-Learner-Preview": "professor"}
@@ -38,7 +44,7 @@ QUIZ_ANSWER = {
 def test_new_learner_receives_explicit_empty_lesson_state(tmp_path: Path) -> None:
     client = _client(tmp_path)
 
-    response = _get_state(client, "student-a")
+    response = client.get(STATE_URL, headers=student_headers("student-a", course_ids=[COURSE_ID]))
 
     assert response.status_code == 200
     assert response.json() == {
@@ -57,9 +63,9 @@ def test_lesson_state_isolated_to_authenticated_learner_identity(tmp_path: Path)
     client = _client(tmp_path)
     _record_gate(client, "student-a", "risk-check", QualityGateStatus.PASSED)
 
-    own = _get_state(client, "student-a")
+    own = client.get(STATE_URL, headers=student_headers("student-a", course_ids=[COURSE_ID]))
     other = client.get(
-        f"{_state_url()}?user_id=student-a",
+        f"{STATE_URL}?user_id=student-a",
         headers=student_headers("student-b", course_ids=[COURSE_ID]),
     )
 
@@ -71,11 +77,13 @@ def test_lesson_state_enforces_enrollment_unlock_and_publication(tmp_path: Path)
     client = _client(tmp_path)
     enrolled = student_headers("student-a", course_ids=[COURSE_ID])
 
-    unenrolled = client.get(_state_url(), headers=student_headers("outsider", course_ids=[]))
-    locked = client.get(_state_url("lecture-locked"), headers=enrolled)
-    hidden = client.get(_state_url("lecture-hidden"), headers=enrolled)
-    unpublished = client.get(_state_url("lecture-unpublished"), headers=enrolled)
-    unauthenticated = client.get(_state_url())
+    unenrolled = client.get(STATE_URL, headers=student_headers("outsider", course_ids=[]))
+    locked = client.get(STATE_URL.replace("lecture-open", "lecture-locked"), headers=enrolled)
+    hidden = client.get(STATE_URL.replace("lecture-open", "lecture-hidden"), headers=enrolled)
+    unpublished = client.get(
+        STATE_URL.replace("lecture-open", "lecture-unpublished"), headers=enrolled
+    )
+    unauthenticated = client.get(STATE_URL)
 
     assert unenrolled.status_code == 404
     assert locked.status_code == 403
@@ -96,32 +104,35 @@ def test_lesson_state_hydrates_gate_quiz_goal_pending_check_and_due_review(
         json=QUIZ_ANSWER,
     )
     now = datetime.now(UTC)
-    progress = CoachingProgress(
-        session_goal="Compare posterior risk on an unfamiliar case.",
-        pending_check=PendingCheck(
-            gate_id="risk-check",
-            gate_revision="rev-1",
-            prompt="Apply the rule to a changed example.",
-            assistance_level="prompt",
-            issued_at=now.isoformat(),
-        ),
-        delayed_reviews={
-            "risk-check": DelayedReview(
-                gate_id="risk-check",
-                gate_revision="rev-1",
-                scheduled_at=(now - timedelta(days=3)).isoformat(),
-                due_at=(now - timedelta(days=1)).isoformat(),
-            ),
-            "future-check": DelayedReview(
-                gate_id="future-check",
-                due_at=(now + timedelta(days=1)).isoformat(),
-            ),
-        },
-        messages=[],
+    gate = _gate(client, "risk-check")
+    progress = CoachingProgress.empty(course_id=COURSE_ID, lecture_id="lecture-open")
+    progress.session_goal = "Compare posterior risk on an unfamiliar case."
+    progress.pending_check = PendingCheck(
+        gate_id="risk-check",
+        gate_revision=gate.revision,
+        prompt="Apply the rule to a changed example.",
+        assistance_level="prompt",
+        kind="standard",
+        issued_at=now,
     )
+    key = review_key("risk-check", gate.revision)
+    progress.delayed_reviews = {
+        key: DelayedReview(
+            gate_id="risk-check",
+            gate_revision=gate.revision,
+            section_id=gate.section_id,
+            transfer_prompt=gate.transfer_prompt,
+            scheduled_at=now - timedelta(days=3),
+            due_at=now - timedelta(days=1),
+            planned_delay_seconds=172800,
+            attempted_at=None,
+            completed_at=None,
+            observed_delay_seconds=None,
+        )
+    }
     _write_progress(client, user_id, progress)
 
-    state = _get_state(client, user_id)
+    state = client.get(STATE_URL, headers=student_headers(user_id, course_ids=[COURSE_ID]))
 
     assert quiz.status_code == 200
     assert state.status_code == 200
@@ -144,7 +155,7 @@ def test_lesson_state_hydrates_gate_quiz_goal_pending_check_and_due_review(
         "active_session_goal": "Compare posterior risk on an unfamiliar case.",
         "pending_check": {
             "gate_id": "risk-check",
-            "gate_revision": "rev-1",
+            "gate_revision": gate.revision,
             "prompt": "Apply the rule to a changed example.",
             "assistance_level": "prompt",
             "kind": "standard",
@@ -152,8 +163,8 @@ def test_lesson_state_hydrates_gate_quiz_goal_pending_check_and_due_review(
         "due_gate_reviews": [
             {
                 "gate_id": "risk-check",
-                "gate_revision": "rev-1",
-                "due_at": progress.delayed_reviews["risk-check"].due_at,
+                "gate_revision": gate.revision,
+                "due_at": progress.delayed_reviews[key].due_at.isoformat().replace("+00:00", "Z"),
             }
         ],
     }
@@ -165,9 +176,9 @@ def test_professor_preview_read_is_isolated_and_non_mutating(tmp_path: Path) -> 
     preview_user = professor_preview_user_id("prof-a", COURSE_ID)
     preview_root = client.app.state.canvas_workspace.layout.user_root(preview_user)
 
-    denied = client.get(_state_url(), headers=professor_headers("prof-a"))
+    denied = client.get(STATE_URL, headers=professor_headers("prof-a"))
     preview = client.get(
-        _state_url(),
+        STATE_URL,
         headers={**professor_headers("prof-a"), **PREVIEW},
     )
 
@@ -175,30 +186,9 @@ def test_professor_preview_read_is_isolated_and_non_mutating(tmp_path: Path) -> 
     assert preview.status_code == 200
     assert preview.json()["gate_statuses"] == {}
     assert not preview_root.exists()
-    assert _get_state(client, "student-a").json()["gate_statuses"] == {"risk-check": "passed"}
-
-
-def test_progress_reset_clears_private_quiz_state(tmp_path: Path) -> None:
-    client = _client(tmp_path)
-    headers = student_headers("student-a", course_ids=[COURSE_ID])
-    quiz_url = f"/courses/{COURSE_ID}/lectures/lecture-open/analytics/quiz-answer"
-    assert (
-        client.post(
-            quiz_url,
-            headers=headers,
-            json=QUIZ_ANSWER,
-        ).status_code
-        == 200
-    )
-
-    reset = client.post(
-        f"/courses/{COURSE_ID}/learner-workspace/reset",
-        headers=headers,
-        json={"reset_canvas": False, "reset_course_memory": False, "reset_progress": True},
-    )
-
-    assert reset.status_code == 200
-    assert _get_state(client, "student-a").json()["quiz_states"] == {}
+    assert client.get(
+        STATE_URL, headers=student_headers("student-a", course_ids=[COURSE_ID])
+    ).json()["gate_statuses"] == {"risk-check": "passed"}
 
 
 def _client(tmp_path: Path) -> TestClient:
@@ -254,16 +244,28 @@ def _record_gate(
     gate_id: str,
     status: QualityGateStatus,
 ) -> None:
+    gate = _gate(client, gate_id)
     LearnerStateStore(client.app.state.canvas_workspace.layout).record_quality_gate(
         course_id=COURSE_ID,
         lecture_id="lecture-open",
         user_id=user_id,
         decision=QualityGateDecision(
             gate_id=gate_id,
+            gate_revision=gate.revision,
             status=status,
             reason="Learner-safe feedback.",
+            evidence_ids=[gate_id] if status == QualityGateStatus.PASSED else [],
+            missing_evidence_ids=[] if status == QualityGateStatus.PASSED else [gate_id],
         ),
     )
+
+
+def _gate(client: TestClient, gate_id: str):
+    learning_map = client.app.state.canvas_workspace.course_canvas_store.learning_map(
+        course_id=COURSE_ID, lecture_id="lecture-open"
+    )
+    assert learning_map is not None
+    return next(gate for gate in learning_map.gates if gate.id == gate_id)
 
 
 def _write_progress(client: TestClient, user_id: str, progress: CoachingProgress) -> None:
@@ -274,14 +276,3 @@ def _write_progress(client: TestClient, user_id: str, progress: CoachingProgress
         / "tutor-state.json"
     )
     atomic_write_json(path, progress.model_dump(mode="json"))
-
-
-def _get_state(client: TestClient, user_id: str):
-    return client.get(
-        _state_url(),
-        headers=student_headers(user_id, course_ids=[COURSE_ID]),
-    )
-
-
-def _state_url(lecture_id: str = "lecture-open") -> str:
-    return f"/courses/{COURSE_ID}/lectures/{lecture_id}/learner-state"

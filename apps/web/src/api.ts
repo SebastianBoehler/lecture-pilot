@@ -48,9 +48,11 @@ export type AgentTurnResult = {
   canvas_commands: CanvasCommand[];
   quality_gate?: {
     gate_id: string;
-    status: "passed" | "needs_evidence" | "not_assessed";
+    gate_revision: string;
+    status: "passed" | "needs_evidence";
     reason: string;
-    next_prompt?: string | null;
+    evidence_ids: string[];
+    missing_evidence_ids: string[];
   } | null;
   model: string;
 };

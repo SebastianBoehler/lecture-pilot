@@ -13,7 +13,7 @@ from lecturepilot.agent_context_models import (
     UserMemoryContext,
 )
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
-from lecturepilot.coaching_assistance import NextCheckAssistance
+from lecturepilot.coaching_assistance import NextCheck
 from lecturepilot.lecture_access_models import (
     CourseAccessPolicy,
     LectureAccessRule,
@@ -286,7 +286,7 @@ class AgentTurnResult(BaseModel):
     session_goal: str | None = Field(default=None, max_length=500)
     canvas_commands: list[CanvasCommand] = Field(default_factory=list)
     artifacts: list[ArtifactCommand] = Field(default_factory=list)
-    next_check_assistance: NextCheckAssistance = Field(default_factory=NextCheckAssistance)
+    next_check: NextCheck | None = None
     quality_gate: QualityGateDecision | None = None
     model: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

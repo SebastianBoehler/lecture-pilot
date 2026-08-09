@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from lecturepilot.guided_tutor import LOCAL_PREVIEW_USER_ID, run_local_preview_turn
 from lecturepilot.agent_tool_executor import AgentToolExecutor
 from lecturepilot.model_client import LiteLLMModelClient, ModelClient
 from lecturepilot.models import AgentTurnInput, AgentTurnResult, ProviderCapability
 from lecturepilot.observability import Observability
 from lecturepilot.providers import ProviderRegistry
+
+LOCAL_PREVIEW_USER_ID = "local-preview-user"
 
 
 class LecturePilotHarness:
@@ -27,9 +28,6 @@ class LecturePilotHarness:
         observability: Observability | None = None,
         emit=None,
     ) -> AgentTurnResult:
-        if turn.user_id == LOCAL_PREVIEW_USER_ID:
-            return run_local_preview_turn(turn)
-
         required = [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
         if tool_executor is not None:
             required.append(ProviderCapability.TOOL_CALLS)

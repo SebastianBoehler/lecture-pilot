@@ -203,12 +203,19 @@ function outcome(evidenceType: string, sampleSize: number, rate: number | null) 
 function learningMap() {
   return {
     course_id: "demo-course",
+    objective: "Explain and apply expected risk.",
+    revision: "b".repeat(64),
     gates: [
       {
         concept_id: "aim",
-        evidence_required: "Connect posterior and loss.",
+        evidence_criteria: [
+          { id: "risk", description: "Connect posterior and loss.", required: true },
+        ],
         id: "risk-gate",
         prompt: "Explain expected risk.",
+        transfer_prompt: "Apply expected risk to a changed case.",
+        review_after_days: 2,
+        revision: "a".repeat(64),
         section_id: "aim",
         source_ref: "Lecture03-eng.tex#aim",
         title: "Risk evidence gate",

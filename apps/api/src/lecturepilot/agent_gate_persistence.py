@@ -6,7 +6,7 @@ from fastapi import FastAPI
 
 from lecturepilot.agent_state_access import analytics_store, learner_state_store
 from lecturepilot.coaching_progress import CoachingTurnEvent
-from lecturepilot.guided_tutor import LOCAL_PREVIEW_USER_ID
+from lecturepilot.harness import LOCAL_PREVIEW_USER_ID
 from lecturepilot.models import AssessedAgentTurnInput, AgentTurnInput, AgentTurnResult
 from lecturepilot.observability import Observability
 from lecturepilot.professor_preview import is_professor_preview_user_id

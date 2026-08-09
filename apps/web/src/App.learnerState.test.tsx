@@ -213,7 +213,7 @@ function emptyState(lectureId: string) {
     course_id: "martius-ml",
     lecture_id: lectureId,
     publication_version: 1,
-    gate_statuses: {} as Record<string, "passed" | "needs_evidence" | "not_assessed">,
+    gate_statuses: {} as Record<string, "passed" | "needs_evidence">,
     quiz_states: {} as Record<string, LearnerQuizState>,
     active_session_goal: null as string | null,
     pending_check: null,

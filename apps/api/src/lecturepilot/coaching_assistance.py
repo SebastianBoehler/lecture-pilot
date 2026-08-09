@@ -2,14 +2,16 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from lecturepilot.scaffold_policy import AssistanceLevel
 
 
 class NextCheckAssistance(BaseModel):
-    level: AssistanceLevel = "none"
-    content: str | None = Field(default=None, max_length=500)
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    level: AssistanceLevel
+    content: str | None = Field(max_length=500)
 
     @model_validator(mode="after")
     def validate_content(self) -> "NextCheckAssistance":
@@ -20,16 +22,25 @@ class NextCheckAssistance(BaseModel):
         return self
 
 
+class NextCheck(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    gate_id: str = Field(min_length=1, max_length=160)
+    gate_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
+    prompt: str = Field(min_length=1, max_length=500)
+    assistance: NextCheckAssistance
+
+
 def emitted_assistance_level(
     *,
     message: str,
-    next_prompt: str | None,
+    prompt: str,
     assistance: NextCheckAssistance,
 ) -> AssistanceLevel:
     if assistance.level == "none":
         return "none"
     content = (assistance.content or "").strip()
-    prompt = (next_prompt or "").strip()
+    prompt = prompt.strip()
     content_at = message.find(content)
     prompt_at = message.find(prompt) if prompt else -1
     if content_at < 0:

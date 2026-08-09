@@ -35,8 +35,7 @@ def merge_tool_outputs(
     tool_executor: AgentToolExecutor,
 ) -> AgentTurnResult:
     commands = dedupe_commands([*result.canvas_commands, *tool_executor.canvas_update_commands()])
-    gate = tool_executor.gate or result.quality_gate
-    return result.model_copy(update={"canvas_commands": commands, "quality_gate": gate})
+    return result.model_copy(update={"canvas_commands": commands})
 
 
 def enforce_active_gate_contract(result: AgentTurnResult, turn: AgentTurnInput) -> AgentTurnResult:

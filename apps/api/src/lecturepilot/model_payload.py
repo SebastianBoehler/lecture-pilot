@@ -2,9 +2,22 @@ from __future__ import annotations
 
 import json
 
-from lecturepilot.coaching_assistance import NextCheckAssistance, emitted_assistance_level
-from lecturepilot.model_commands import read_canvas_commands, read_quality_gate
-from lecturepilot.models import AgentTurnInput, AgentTurnResult
+from pydantic import ValidationError
+
+from lecturepilot.coaching_assistance import emitted_assistance_level
+from lecturepilot.model_commands import (
+    validate_provider_canvas_commands,
+    validate_next_check,
+    validate_quality_gate_decision,
+)
+from lecturepilot.models import (
+    AgentTurnInput,
+    AgentTurnResult,
+    CanvasCommand,
+    QualityGateDecision,
+    QualityGateStatus,
+)
+from lecturepilot.provider_turn_result import ProviderAgentTurnResult
 from lecturepilot.providers import ProviderConfigurationError
 
 
@@ -14,22 +27,44 @@ def agent_result_from_content(
     model: str,
 ) -> AgentTurnResult:
     payload = parse_model_payload(content)
+    try:
+        provider_result = ProviderAgentTurnResult.model_validate(payload)
+    except ValidationError as exc:
+        raise ProviderConfigurationError(
+            "Model response violates the tutor result contract."
+        ) from exc
+    commands = [
+        CanvasCommand.model_validate(command.model_dump(mode="json"))
+        for command in provider_result.canvas_commands
+    ]
+    validate_provider_canvas_commands(commands, turn)
+    decision = (
+        QualityGateDecision(
+            **provider_result.assessment.model_dump(mode="json", exclude={"status"}),
+            status=QualityGateStatus(provider_result.assessment.status),
+        )
+        if provider_result.assessment is not None
+        else None
+    )
+    decision = validate_quality_gate_decision(decision, turn)
+    validate_next_check(provider_result.next_check, turn)
     result = AgentTurnResult(
-        message=read_message(payload),
-        session_goal=read_session_goal(payload),
-        canvas_commands=read_canvas_commands(payload, turn),
-        next_check_assistance=NextCheckAssistance.model_validate(
-            payload.get("next_check_assistance", {})
+        message=provider_result.message.strip(),
+        session_goal=(
+            provider_result.session_goal.strip() if provider_result.session_goal else None
         ),
-        quality_gate=read_quality_gate(payload, turn),
+        canvas_commands=commands,
+        next_check=provider_result.next_check,
+        quality_gate=decision,
         model=model,
     )
     try:
-        emitted_assistance_level(
-            message=result.message,
-            next_prompt=(result.quality_gate.next_prompt if result.quality_gate else None),
-            assistance=result.next_check_assistance,
-        )
+        if result.next_check is not None:
+            emitted_assistance_level(
+                message=result.message,
+                prompt=result.next_check.prompt,
+                assistance=result.next_check.assistance,
+            )
     except ValueError as exc:
         raise ProviderConfigurationError(f"Invalid next-check assistance: {exc}.") from exc
     return result
@@ -40,7 +75,7 @@ def parse_model_payload(content: str | None) -> dict:
         raise ProviderConfigurationError("Model returned an empty response.")
     cleaned = content.strip()
     if cleaned.startswith("```"):
-        cleaned = cleaned.strip("`").removeprefix("json").strip()
+        raise ProviderConfigurationError("Model JSON must be a plain object without code fences.")
     try:
         payload = json.loads(cleaned)
     except json.JSONDecodeError as exc:
@@ -48,15 +83,3 @@ def parse_model_payload(content: str | None) -> dict:
     if not isinstance(payload, dict):
         raise ProviderConfigurationError("Model JSON must be an object.")
     return payload
-
-
-def read_message(payload: dict) -> str:
-    message = payload.get("message")
-    if not isinstance(message, str) or not message.strip():
-        raise ProviderConfigurationError("Model JSON must include a non-empty message.")
-    return message.strip()
-
-
-def read_session_goal(payload: dict) -> str | None:
-    goal = payload.get("session_goal")
-    return goal.strip() if isinstance(goal, str) and goal.strip() else None
