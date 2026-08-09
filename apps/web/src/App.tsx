@@ -242,7 +242,7 @@ function App() {
     }
 
     setMessages((current) => completePendingTutorMessage(current, pendingMessageId, result));
-    lessonState.applyTutorResult(result);
+    await lessonState.applyTutorResult(result);
     feedback.recordSuccessfulTutorTurn();
   }
 

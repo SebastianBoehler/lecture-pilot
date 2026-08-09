@@ -127,11 +127,18 @@ describe("durable learner lesson state", () => {
         model: "test/model",
       },
     });
+    let stateReads = 0;
     let resolveHydration: ((value: ReturnType<typeof json>) => void) | undefined;
     vi.stubGlobal(
       "fetch",
       vi.fn((url: string, init?: RequestInit) => {
         if (url.includes("/learner-state")) {
+          stateReads += 1;
+          if (stateReads > 1) {
+            return Promise.resolve(
+              json(persistedState("lecture-03", "Use the repaired strategy independently.")),
+            );
+          }
           return new Promise((resolve) => {
             resolveHydration = resolve;
           });
@@ -151,10 +158,8 @@ describe("durable learner lesson state", () => {
     await act(async () => {
       resolveHydration?.(json(persistedState("lecture-03", "Older goal.")));
     });
-    await waitFor(() => {
-      expect(screen.queryByText("Older goal.")).not.toBeInTheDocument();
-      expect(screen.getByText("Use the repaired strategy independently.")).toBeInTheDocument();
-    });
+    expect(screen.queryByText("Older goal.")).not.toBeInTheDocument();
+    expect(screen.getByText("Use the repaired strategy independently.")).toBeInTheDocument();
   });
 
   it("updates quiz state after practice persistence succeeds", async () => {
@@ -203,10 +208,16 @@ describe("durable learner lesson state", () => {
 
   it("shows persisted quiz state without waiting for an older hydration request", async () => {
     const baseFetch = mockLoginAndTutorFetch();
+    let stateReads = 0;
     vi.stubGlobal(
       "fetch",
       vi.fn((url: string, init?: RequestInit) => {
-        if (url.includes("/learner-state")) return new Promise(() => undefined);
+        if (url.includes("/learner-state")) {
+          stateReads += 1;
+          return stateReads === 1
+            ? new Promise(() => undefined)
+            : Promise.resolve(json(persistedState("lecture-03", "Durable goal.")));
+        }
         if (url.includes("/analytics/quiz-answer")) {
           return Promise.resolve(
             json({

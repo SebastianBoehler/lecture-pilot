@@ -90,6 +90,43 @@ def test_agent_turn_uses_persisted_history_across_requests_and_rejects_browser_h
     assert rejected.status_code == 422
 
 
+def test_null_gate_turn_persists_session_goal_for_lesson_state_reload(
+    monkeypatch, tmp_path
+) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
+    app = create_app()
+    app.state.canvas_workspace = CanvasWorkspace(
+        workspace_root=tmp_path / "workspaces",
+        material_root=write_course_source(tmp_path),
+    )
+    app.state.canvas_workspace.write_course_canvas(
+        published_course_canvas("martius-ml", "lecture-01")
+    )
+    app.state.agent_harness = _GoalOnlyHarness()
+    client = TestClient(app)
+    headers = student_headers("u1")
+
+    turn = client.post(
+        "/agent/turn/stream",
+        headers=headers,
+        json={
+            "course_id": "martius-ml",
+            "lecture_id": "lecture-01",
+            "attendance": "present",
+            "message": "Set a goal without assessing a gate.",
+        },
+    )
+    reloaded = client.get(
+        "/courses/martius-ml/lectures/lecture-01/learner-state",
+        headers=headers,
+    )
+
+    assert turn.status_code == 200
+    assert reloaded.status_code == 200
+    assert reloaded.json()["active_session_goal"] == "Compare two fresh validation cases."
+
+
 class _FakeHarness:
     async def run_turn(self, turn: AgentTurnInput) -> AgentTurnResult:
         return AgentTurnResult(
@@ -107,5 +144,15 @@ class _HistoryHarness:
         self.turns.append(turn)
         return AgentTurnResult(
             message="Use a held-out set so evaluation stays independent.",
+            model=DEFAULT_MODEL,
+        )
+
+
+class _GoalOnlyHarness:
+    async def run_turn(self, turn: AgentTurnInput) -> AgentTurnResult:
+        return AgentTurnResult(
+            message="We will use that goal next.",
+            session_goal="Compare two fresh validation cases.",
+            quality_gate=None,
             model=DEFAULT_MODEL,
         )

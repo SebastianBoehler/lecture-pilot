@@ -149,6 +149,7 @@ def persist_coaching_turn(
             lecture_id=turn.lecture_id,
             user_message=turn.message,
             assistant_message=result.message,
+            session_goal=result.session_goal,
         )
         return None
     activity("save coaching progress")

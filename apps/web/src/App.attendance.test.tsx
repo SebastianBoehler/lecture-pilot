@@ -96,7 +96,8 @@ describe("LecturePilot attendance tutor intro", () => {
       "true",
     );
 
-    const agentRequest = JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body));
+    const agentCall = fetchMock.mock.calls.find(([url]) => String(url).includes("/agent/turn"));
+    const agentRequest = JSON.parse(String(agentCall?.[1]?.body));
     expect(agentRequest).toMatchObject({
       attendance: "absent",
       canvas_state: { focused_section_id: "bayesian-decision-theory-the-aim" },

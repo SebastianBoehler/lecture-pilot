@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { getLearnerLessonState } from "./learnerLessonStateApi";
 import type { LearnerQuizAnswerResult } from "./analyticsApi";
@@ -43,14 +43,21 @@ export function useLessonState({
     loading: false,
     error: null,
   });
-  const requestVersion = useRef(0);
+  const activeKey = useRef(key);
+  const requestVersions = useRef(new Map<string, number>());
+
+  useLayoutEffect(() => {
+    activeKey.current = key;
+  }, [key]);
 
   const refresh = useCallback(async () => {
-    const version = ++requestVersion.current;
+    if (activeKey.current !== key) return;
     if (!key || !session || mode === "draft") {
       setSnapshot({ key, data: null, loading: false, error: null });
       return;
     }
+    const version = (requestVersions.current.get(key) ?? 0) + 1;
+    requestVersions.current.set(key, version);
     setSnapshot((current) => ({
       key,
       data: current.key === key ? current.data : null,
@@ -59,11 +66,11 @@ export function useLessonState({
     }));
     try {
       const data = await getLearnerLessonState(courseId, lectureId, session, mode);
-      if (requestVersion.current === version) {
+      if (activeKey.current === key && requestVersions.current.get(key) === version) {
         setSnapshot({ key, data, loading: false, error: null });
       }
     } catch (error) {
-      if (requestVersion.current === version) {
+      if (activeKey.current === key && requestVersions.current.get(key) === version) {
         setSnapshot({
           key,
           data: null,
@@ -75,70 +82,18 @@ export function useLessonState({
   }, [courseId, key, lectureId, mode, session]);
 
   useEffect(() => {
+    const versions = requestVersions.current;
     void refresh();
     return () => {
-      requestVersion.current += 1;
+      if (key) versions.set(key, (versions.get(key) ?? 0) + 1);
     };
-  }, [refresh]);
+  }, [key, refresh]);
 
-  const applyTutorResult = useCallback(
-    (result: TutorStateUpdate) => {
-      if (!key) return;
-      requestVersion.current += 1;
-      setSnapshot((current) => {
-        const data = current.key === key ? current.data : null;
-        const gate = result.quality_gate;
-        return {
-          key,
-          loading: false,
-          error: null,
-          data: {
-            course_id: courseId,
-            lecture_id: lectureId,
-            gate_statuses: {
-              ...(data?.gate_statuses ?? {}),
-              ...(gate ? { [gate.gate_id]: gate.status } : {}),
-            },
-            quiz_states: data?.quiz_states ?? {},
-            active_session_goal: result.session_goal ?? data?.active_session_goal ?? null,
-            pending_check: data?.pending_check ?? null,
-            due_gate_reviews: data?.due_gate_reviews ?? [],
-          },
-        };
-      });
-    },
-    [courseId, key, lectureId],
-  );
+  const applyTutorResult = useCallback(async (_result: TutorStateUpdate) => refresh(), [refresh]);
 
   const applyQuizResult = useCallback(
-    (result: LearnerQuizAnswerResult) => {
-      if (!key) return;
-      requestVersion.current += 1;
-      setSnapshot((current) => {
-        const data = current.key === key ? current.data : null;
-        return {
-          key,
-          loading: false,
-          error: null,
-          data: {
-            course_id: courseId,
-            lecture_id: lectureId,
-            gate_statuses: data?.gate_statuses ?? {},
-            quiz_states: {
-              ...(data?.quiz_states ?? {}),
-              [result.block_id]: {
-                selected_index: result.selected_index,
-                correct: result.correct,
-              },
-            },
-            active_session_goal: data?.active_session_goal ?? null,
-            pending_check: data?.pending_check ?? null,
-            due_gate_reviews: data?.due_gate_reviews ?? [],
-          },
-        };
-      });
-    },
-    [courseId, key, lectureId],
+    async (_result: LearnerQuizAnswerResult) => refresh(),
+    [refresh],
   );
 
   return useMemo(

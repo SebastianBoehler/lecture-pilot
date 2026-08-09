@@ -519,7 +519,6 @@ describe("LecturePilot app shell", () => {
 
     expect(document.documentElement.dataset.theme).toBe("dark");
   });
-
   it("sends a tutor message and applies canvas focus commands", async () => {
     const user = userEvent.setup();
     const fetchMock = mockLoginAndTutorFetch();
@@ -544,7 +543,8 @@ describe("LecturePilot app shell", () => {
     expect(
       screen.getByRole("region", { name: /bayes formula and conditional probability/i }),
     ).toHaveAttribute("aria-current", "true");
-    const agentRequest = JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body));
+    const agentCall = fetchMock.mock.calls.find(([url]) => String(url).includes("/agent/turn"));
+    const agentRequest = JSON.parse(String(agentCall?.[1]?.body));
     expect(agentRequest).not.toHaveProperty("user_id");
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/agent/turn"),

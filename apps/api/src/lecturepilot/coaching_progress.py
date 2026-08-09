@@ -215,11 +215,15 @@ class CoachingProgressStore:
         lecture_id: str,
         user_message: str,
         assistant_message: str,
+        session_goal: str | None = None,
         now: datetime | None = None,
     ) -> None:
         path = self._path(user_id=user_id, course_id=course_id, lecture_id=lecture_id)
         with exclusive_file_lock(path):
             progress = self.read(user_id=user_id, course_id=course_id, lecture_id=lecture_id)
+            if session_goal:
+                progress.session_goal = session_goal.strip()
+                progress.goal_proposed = True
             progress.attendance_prior_used = True
             progress.messages.extend(
                 [
