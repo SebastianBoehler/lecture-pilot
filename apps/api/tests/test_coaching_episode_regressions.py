@@ -5,7 +5,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 from auth_helpers import student_headers
-from canvas_workspace_fixtures import published_course_canvas, write_course_source
+from canvas_workspace_fixtures import (
+    configure_canvas_workspace,
+    publish_course_canvas,
+    published_course_canvas,
+    write_course_source,
+)
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock
 from lecturepilot.canvas_workspace import CanvasWorkspace
@@ -156,7 +161,7 @@ def test_failed_delayed_attempt_without_emitted_support_stays_independent(tmp_pa
 
 def test_absent_attendance_is_only_the_initial_lecture_prior(tmp_path) -> None:
     app = create_app()
-    app.state.canvas_workspace = _two_gate_workspace(tmp_path)
+    configure_canvas_workspace(app, _two_gate_workspace(tmp_path))
     harness = _PolicyHarness()
     app.state.agent_harness = harness
     client = TestClient(app)
@@ -263,7 +268,7 @@ def _two_gate_workspace(tmp_path) -> CanvasWorkspace:
             ]
         }
     )
-    workspace.write_course_canvas(document)
+    publish_course_canvas(workspace, document)
     return workspace
 
 

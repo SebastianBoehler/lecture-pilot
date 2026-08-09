@@ -3,22 +3,21 @@ from datetime import date
 import json
 from pathlib import Path
 import shutil
-from threading import Event
+from threading import Barrier
 
 import pytest
 from fastapi.testclient import TestClient
 
 from auth_helpers import student_headers
-from lecturepilot import course_canvas_store as course_canvas_store_module
 from lecturepilot.app import create_app
 from lecturepilot.canvas_markdown import write_document_source
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_canvas_store import CourseCanvasStore, InvalidCanvasDraftError
-from lecturepilot.course_learning_design_store import CourseLearningDesignStore
 from lecturepilot.course_schedule_store import write_course_workspace
 from lecturepilot.learning_map import build_learning_map
 from lecturepilot.models import Course, CourseWorkspaceResult, Lecture
+from canvas_workspace_fixtures import configure_canvas_workspace, publish_course_canvas
 from lecturepilot.storage_layout import StorageLayout
 
 
@@ -28,57 +27,39 @@ QUIZ_URL = f"/courses/{COURSE_ID}/lectures/{LECTURE_ID}/analytics/quiz-answer"
 
 
 def test_quiz_submission_scores_document_and_version_from_one_published_snapshot(
-    tmp_path: Path, monkeypatch
+    tmp_path: Path,
 ) -> None:
     client = _client(tmp_path, _quiz_document(answer_index=0, question="Version one"))
-    store = client.app.state.canvas_workspace.course_canvas_store
-    published_dir = store.path(COURSE_ID, LECTURE_ID)
-    original_read = course_canvas_store_module.read_document_source
-    document_read = Event()
-    release_read = Event()
-    publication_finished = Event()
-
-    def controlled_read(path: Path) -> CanvasDocument:
-        document = original_read(path)
-        if path.resolve() == published_dir.resolve():
-            document_read.set()
-            assert release_read.wait(timeout=3)
-        return document
-
-    original_publication = client.app.state.canvas_workspace.course_canvas_publication
-
-    def publication_after_republish(**kwargs):
-        assert publication_finished.wait(timeout=3)
-        return original_publication(**kwargs)
-
-    monkeypatch.setattr(course_canvas_store_module, "read_document_source", controlled_read)
-    monkeypatch.setattr(
-        client.app.state.canvas_workspace,
-        "course_canvas_publication",
-        publication_after_republish,
-    )
-
-    def republish() -> dict:
-        result = _publish(
-            client,
-            _quiz_document(answer_index=1, question="Version two"),
+    documents = [
+        _quiz_document(
+            answer_index=0 if version % 2 else 1,
+            question=f"Version {version}",
         )
-        publication_finished.set()
-        return result
+        for version in range(2, 10)
+    ]
+    start_round = Barrier(2)
+    end_round = Barrier(2)
 
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        answer = executor.submit(_submit, client, "snapshot-attempt", 0)
-        assert document_read.wait(timeout=3)
-        publication = executor.submit(republish)
-        assert not publication_finished.wait(timeout=0.2)
-        release_read.set()
-        response = answer.result(timeout=3)
-        assert publication.result(timeout=3)["version"] == 2
+    def publish_all() -> None:
+        for document in documents:
+            start_round.wait()
+            _publish(client, document)
+            end_round.wait()
 
-    assert response.status_code == 200
-    assert response.json()["correct"] is True
-    assert response.json()["publication_version"] == 1
-    assert _state(client) == {}
+    observed: list[tuple[int, bool | None]] = []
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        publication = executor.submit(publish_all)
+        for attempt, _document in enumerate(documents, start=1):
+            start_round.wait()
+            response = _submit(client, f"snapshot-attempt-{attempt}", 0)
+            end_round.wait()
+            assert response.status_code == 200
+            payload = response.json()
+            observed.append((payload["publication_version"], payload["correct"]))
+        publication.result(timeout=20)
+
+    assert observed
+    assert all(correct is (version % 2 == 1) for version, correct in observed)
 
 
 def test_duplicate_canonical_quiz_ids_are_rejected_by_all_canvas_writes(
@@ -153,9 +134,12 @@ def _state(client: TestClient) -> dict:
 
 def _client(tmp_path: Path, document: CanvasDocument) -> TestClient:
     app = create_app()
-    app.state.canvas_workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=tmp_path / "materials",
+    configure_canvas_workspace(
+        app,
+        CanvasWorkspace(
+            workspace_root=tmp_path / "workspaces",
+            material_root=tmp_path / "materials",
+        ),
     )
     write_course_workspace(
         app.state.canvas_workspace.course_media_root(COURSE_ID),
@@ -173,30 +157,7 @@ def _client(tmp_path: Path, document: CanvasDocument) -> TestClient:
 
 
 def _publish(client: TestClient, document: CanvasDocument) -> dict:
-    workspace = client.app.state.canvas_workspace
-    manifest = workspace.layout.lecture_source_manifest_path(COURSE_ID, LECTURE_ID)
-    manifest.parent.mkdir(parents=True, exist_ok=True)
-    manifest.write_text(
-        '{"course_id":"quiz-snapshot","lecture_id":"lecture-01",'
-        '"files":[{"path":"source.md","sha256":"' + "a" * 64 + '"}]}',
-        encoding="utf-8",
-    )
-    workspace.write_course_canvas_draft(document)
-    reviews = CourseLearningDesignStore(workspace.layout)
-    current = reviews.read(course_id=COURSE_ID, lecture_id=LECTURE_ID)
-    reviews.approve(
-        course_id=COURSE_ID,
-        lecture_id=LECTURE_ID,
-        draft_digest=current.draft_digest,
-        source_revision=current.source_revision,
-        learning_map_revision=current.learning_map.revision,
-        approved_by="professor",
-    )
-    return workspace.publish_course_canvas_draft(
-        course_id=COURSE_ID,
-        lecture_id=LECTURE_ID,
-        published_by="professor",
-    )
+    return publish_course_canvas(client.app.state.canvas_workspace, document)
 
 
 def _quiz_document(*, answer_index: int, question: str) -> CanvasDocument:

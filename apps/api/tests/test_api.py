@@ -1,18 +1,10 @@
 from fastapi.testclient import TestClient
 
 from lecturepilot.app import create_app
-from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.models import (
-    AgentTurnInput,
-    AgentTurnResult,
-    CanvasCommand,
-)
-from lecturepilot.providers import DEFAULT_MODEL
 from lecturepilot.session_auth import SESSION_COOKIE_NAME
 from lecturepilot.tuebingen_adapter import TuebingenIntegrationUnavailable
 from lecturepilot.university_models import ExternalCourseCandidate, UniversityLoginResult
-from agent_test_helpers import CanvasContextWorkspace, agent_client
-from auth_helpers import pending_university_login, student_headers
+from auth_helpers import pending_university_login
 
 
 def test_tuebingen_login_returns_courses_without_echoing_password(monkeypatch) -> None:
@@ -83,144 +75,6 @@ def test_tuebingen_login_reports_missing_wrapper_dependency() -> None:
     assert "tue-api-wrapper" in response.json()["detail"]
 
 
-def test_agent_turn_focuses_bayes_section(monkeypatch) -> None:
-    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
-    client = agent_client(
-        _FakeHarness(
-            message="A real model can answer this as a conversation.",
-            section_id="bayes-formula",
-        )
-    )
-
-    response = client.post(
-        "/agent/turn",
-        headers=student_headers("u1"),
-        json={
-            "course_id": "martius-ml",
-            "lecture_id": "lecture-01",
-            "attendance": "absent",
-            "message": "Can you explain Bayes formula?",
-            "canvas_state": {"focused_section_id": "bayesian-decision-theory-the-aim"},
-        },
-    )
-
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["model"] == DEFAULT_MODEL
-    assert payload["canvas_commands"][0] == {
-        "type": "focus_section",
-        "section_id": "bayes-formula",
-        "span_id": None,
-        "highlight_text": None,
-        "artifact_id": None,
-        "section": None,
-        "placement": None,
-    }
-    assert "real model" in payload["message"].lower()
-
-
-def test_agent_turn_focuses_learning_goals(monkeypatch) -> None:
-    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
-    client = agent_client(
-        _FakeHarness(
-            message="The Bayes formula section came from the model client.",
-            section_id="bayes-formula",
-        )
-    )
-
-    response = client.post(
-        "/agent/turn",
-        headers=student_headers("u1"),
-        json={
-            "course_id": "martius-ml",
-            "lecture_id": "lecture-01",
-            "attendance": "absent",
-            "message": "Explain Bayes formula from the lecture.",
-            "canvas_state": {"focused_section_id": "bayesian-decision-theory-the-aim"},
-        },
-    )
-
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["canvas_commands"][0]["section_id"] == "bayes-formula"
-    assert "model client" in payload["message"].lower()
-
-
-def test_agent_turn_focuses_skill_check(monkeypatch) -> None:
-    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
-    client = agent_client(
-        _FakeHarness(
-            message="The model selected the skill check.",
-            section_id="bayes-rule-to-sum-up",
-        )
-    )
-
-    response = client.post(
-        "/agent/turn",
-        headers=student_headers("u1"),
-        json={
-            "course_id": "martius-ml",
-            "lecture_id": "lecture-01",
-            "attendance": "present",
-            "message": "Test whether I understood the Bayes decision rule.",
-            "canvas_state": {"focused_section_id": "bayes-formula"},
-        },
-    )
-
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["canvas_commands"][0]["section_id"] == "bayes-rule-to-sum-up"
-    assert "model selected" in payload["message"].lower()
-
-
-def test_agent_turn_reports_model_execution_error(monkeypatch) -> None:
-    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
-    client = agent_client(_FailingHarness())
-
-    response = client.post(
-        "/agent/turn",
-        headers=student_headers("u1"),
-        json={
-            "course_id": "martius-ml",
-            "lecture_id": "lecture-01",
-            "attendance": "present",
-            "message": "hello",
-            "canvas_state": {"focused_section_id": "bayes-formula"},
-        },
-    )
-
-    assert response.status_code == 502
-    assert "Model request failed" in response.json()["detail"]
-
-
-def test_agent_turn_enriches_harness_with_canvas_context(monkeypatch, tmp_path) -> None:
-    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
-    app = create_app()
-    app.state.canvas_workspace = CanvasContextWorkspace(tmp_path)
-    app.state.agent_harness = _ContextHarness()
-    client = TestClient(app)
-
-    response = client.post(
-        "/agent/turn",
-        headers=student_headers("u1"),
-        json={
-            "course_id": "martius-ml",
-            "lecture_id": "lecture-03",
-            "attendance": "present",
-            "message": "verify this",
-            "canvas_state": {"focused_section_id": "bayes-formula"},
-        },
-    )
-
-    assert response.status_code == 200
-    assert response.json()["message"] == "Saw Bayesian Decision Theory."
-
-
 class _FakeTuebingenAdapter:
     def authenticate(self, *, username: str, password: str, term: str):
         assert password == "very-secret-password"
@@ -246,34 +100,3 @@ class _FakeTuebingenAdapter:
 class _UnavailableTuebingenAdapter:
     def authenticate(self, *, username: str, password: str, term: str):
         raise TuebingenIntegrationUnavailable("tue-api-wrapper is not installed.")
-
-
-class _FakeHarness:
-    def __init__(self, *, message: str, section_id: str) -> None:
-        self.message = message
-        self.section_id = section_id
-
-    async def run_turn(self, turn: AgentTurnInput) -> AgentTurnResult:
-        return AgentTurnResult(
-            message=self.message,
-            canvas_commands=[CanvasCommand(type="focus_section", section_id=self.section_id)],
-            model=DEFAULT_MODEL,
-        )
-
-
-class _ContextHarness:
-    async def run_turn(self, turn: AgentTurnInput) -> AgentTurnResult:
-        assert turn.canvas_context is not None
-        assert turn.canvas_context.title == "Bayesian Decision Theory"
-        return AgentTurnResult(
-            message="Saw Bayesian Decision Theory.",
-            canvas_commands=[CanvasCommand(type="focus_section", section_id="bayes-formula")],
-            model=DEFAULT_MODEL,
-        )
-
-
-class _FailingHarness:
-    async def run_turn(self, turn: AgentTurnInput) -> AgentTurnResult:
-        raise ModelExecutionError(
-            "Model request failed. Check the provider key and model configuration."
-        )

@@ -7,19 +7,27 @@ from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.models import AgentTurnInput, AgentTurnResult, CanvasCommand
 from lecturepilot.providers import DEFAULT_MODEL
 from auth_helpers import student_headers
-from canvas_workspace_fixtures import published_course_canvas, write_course_source
+from canvas_workspace_fixtures import (
+    configure_canvas_workspace,
+    publish_course_canvas,
+    published_course_canvas,
+    write_course_source,
+)
 
 
 def test_agent_turn_stream_emits_activity_and_result(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
     app = create_app()
-    app.state.canvas_workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=write_course_source(tmp_path),
+    configure_canvas_workspace(
+        app,
+        CanvasWorkspace(
+            workspace_root=tmp_path / "workspaces",
+            material_root=write_course_source(tmp_path),
+        ),
     )
-    app.state.canvas_workspace.write_course_canvas(
-        published_course_canvas("martius-ml", "lecture-01")
+    publish_course_canvas(
+        app.state.canvas_workspace, published_course_canvas("martius-ml", "lecture-01")
     )
     app.state.agent_harness = _FakeHarness()
     client = TestClient(app)
@@ -56,12 +64,15 @@ def test_agent_turn_uses_persisted_history_across_requests_and_rejects_browser_h
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
     app = create_app()
-    app.state.canvas_workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=write_course_source(tmp_path),
+    configure_canvas_workspace(
+        app,
+        CanvasWorkspace(
+            workspace_root=tmp_path / "workspaces",
+            material_root=write_course_source(tmp_path),
+        ),
     )
-    app.state.canvas_workspace.write_course_canvas(
-        published_course_canvas("martius-ml", "lecture-01")
+    publish_course_canvas(
+        app.state.canvas_workspace, published_course_canvas("martius-ml", "lecture-01")
     )
     harness = _HistoryHarness()
     app.state.agent_harness = harness
@@ -96,12 +107,15 @@ def test_null_gate_turn_persists_session_goal_for_lesson_state_reload(
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
     app = create_app()
-    app.state.canvas_workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=write_course_source(tmp_path),
+    configure_canvas_workspace(
+        app,
+        CanvasWorkspace(
+            workspace_root=tmp_path / "workspaces",
+            material_root=write_course_source(tmp_path),
+        ),
     )
-    app.state.canvas_workspace.write_course_canvas(
-        published_course_canvas("martius-ml", "lecture-01")
+    publish_course_canvas(
+        app.state.canvas_workspace, published_course_canvas("martius-ml", "lecture-01")
     )
     app.state.agent_harness = _GoalOnlyHarness()
     client = TestClient(app)

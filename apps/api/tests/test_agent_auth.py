@@ -11,7 +11,11 @@ from lecturepilot.university_models import UniversityLoginResult
 from lecturepilot.providers import DEFAULT_MODEL
 from lecturepilot.session_auth import SESSION_COOKIE_NAME, SessionAuthError
 from auth_helpers import student_headers
-from canvas_workspace_fixtures import published_course_canvas
+from canvas_workspace_fixtures import (
+    configure_canvas_workspace,
+    publish_course_canvas,
+    published_course_canvas,
+)
 
 
 def test_auth_defaults_fail_closed_without_local_env(monkeypatch) -> None:
@@ -197,8 +201,8 @@ def _client(tmp_path) -> TestClient:
         workspace_root=tmp_path / "workspaces",
         material_root=tmp_path / "materials",
     )
-    workspace.write_course_canvas(published_course_canvas("martius-ml", "lecture-03"))
-    app.state.canvas_workspace = workspace
+    publish_course_canvas(workspace, published_course_canvas("martius-ml", "lecture-03"))
+    configure_canvas_workspace(app, workspace)
     return TestClient(app)
 
 
@@ -210,9 +214,12 @@ def _session_client(monkeypatch, tmp_path) -> tuple[TestClient, str, str]:
     monkeypatch.setenv("LECTUREPILOT_ALLOWED_ORIGINS", "https://lecturepilot.test")
     monkeypatch.setenv("LECTUREPILOT_SESSION_COOKIE_SECURE", "true")
     app = create_app()
-    app.state.canvas_workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=tmp_path / "materials",
+    configure_canvas_workspace(
+        app,
+        CanvasWorkspace(
+            workspace_root=tmp_path / "workspaces",
+            material_root=tmp_path / "materials",
+        ),
     )
     with app.state.database.session() as session:
         session.execute(

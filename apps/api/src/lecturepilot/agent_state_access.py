@@ -26,15 +26,8 @@ def learner_state_store(app: FastAPI) -> LearnerStateStore:
     return store
 
 
-def analytics_store(app: FastAPI) -> AnalyticsStore | None:
-    store = app.state.analytics_store
-    layout = getattr(app.state.canvas_workspace, "layout", None)
-    if not (hasattr(layout, "course_root") and hasattr(layout, "user_key")):
-        return None
-    if layout is not None and store.layout is not layout:
-        store = AnalyticsStore(layout)
-        app.state.analytics_store = store
-    return store
+def analytics_store(app: FastAPI) -> AnalyticsStore:
+    return app.state.analytics_store
 
 
 def observability(app: FastAPI) -> Observability:

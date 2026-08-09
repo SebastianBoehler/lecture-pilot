@@ -1,5 +1,5 @@
-import { AlertTriangle, CheckCircle2, ChevronDown, Circle, GitBranch } from "lucide-react";
-import { useId, useState, type CSSProperties } from "react";
+import { CheckCircle2, ChevronDown, Circle, GitBranch } from "lucide-react";
+import { useId, useState } from "react";
 
 import { useI18n } from "./i18n";
 import type { MessageKey } from "./i18nMessages";
@@ -10,7 +10,7 @@ import type { AnalyticsGateMetric, LectureAnalyticsSummary } from "./types";
 
 type Translator = (key: MessageKey, params?: Record<string, string | number>) => string;
 type ConceptState = {
-  kind: "healthy" | "watch" | "attention" | "empty";
+  kind: "available" | "insufficient" | "historical" | "empty";
   label: string;
 };
 
@@ -20,7 +20,11 @@ export function ProfessorLearningMapTree({ analytics }: { analytics: LectureAnal
   if (!learningMap?.nodes.length) return null;
 
   const gatesById = new Map(learningMap.gates.map((gate) => [gate.id, gate]));
-  const metricsById = new Map(analytics.gates.map((gate) => [gate.gate_id, gate]));
+  const metricsById = new Map<string, AnalyticsGateMetric>();
+  for (const gate of analytics.gates) {
+    const current = metricsById.get(gate.gate_id);
+    if (!current || gate.version_status === "current") metricsById.set(gate.gate_id, gate);
+  }
   const titlesById = new Map(learningMap.nodes.map((node) => [node.id, node.title]));
   const tree = buildLearningTree(learningMap.nodes);
 
@@ -161,13 +165,9 @@ function GateRate({
   t: Translator;
   title: string;
 }) {
-  const total = metric?.total_events ?? 0;
-  const passed = metric?.status_counts.passed ?? 0;
-  const passRate = total ? passed / total : null;
-  const kind = total === 0 ? "empty" : passed === total ? "healthy" : "attention";
-  const label = total
-    ? t("analytics.passed", { rate: percent(passRate) })
-    : t("analytics.noAttempts");
+  const cell = metric?.independent_first_pass;
+  const kind = metricState(metric);
+  const label = outcomeLabel(cell, t);
 
   return (
     <article className={`learning-map-gate is-${kind}`}>
@@ -181,15 +181,15 @@ function GateRate({
       <div className="learning-map-gate-meta">
         <span>{gateId}</span>
         <span>
-          {total ? t("analytics.checkCount", { passed, total }) : t("analytics.zeroChecks")}
+          {metric
+            ? t("analytics.activityEvents", { count: metric.activity_events })
+            : t("analytics.noAttempts")}
         </span>
         {metric?.unique_learners ? (
           <span>{t("analytics.learners", { count: metric.unique_learners })}</span>
         ) : null}
       </div>
-      <div className="learning-map-gate-track" aria-hidden="true">
-        <div className="learning-map-gate-fill" style={gateFillStyle(passRate)} />
-      </div>
+      {cell ? <span>{t("analytics.sampleSize", { count: cell.sample_size })}</span> : null}
     </article>
   );
 }
@@ -203,23 +203,35 @@ function conceptState(
     return { kind: "empty", label: t("analytics.noGateAttached") };
   }
   const metrics = node.gate_ids.map((id) => metricsById.get(id));
-  const total = metrics.reduce((sum, metric) => sum + (metric?.total_events ?? 0), 0);
-  const passed = metrics.reduce((sum, metric) => sum + (metric?.status_counts.passed ?? 0), 0);
-  if (!total) return { kind: "empty", label: t("analytics.noAttempts") };
-  const kind = passed === total ? "healthy" : passed ? "watch" : "attention";
-  return { kind, label: t("analytics.passed", { rate: percent(passed / total) }) };
+  if (metrics.some((metric) => metricState(metric) === "available")) {
+    return { kind: "available", label: t("analytics.status.available") };
+  }
+  if (metrics.some((metric) => metricState(metric) === "insufficient")) {
+    return { kind: "insufficient", label: t("analytics.insufficientData") };
+  }
+  if (metrics.some((metric) => metricState(metric) === "historical")) {
+    return { kind: "historical", label: t("analytics.status.historical") };
+  }
+  return { kind: "empty", label: t("analytics.noAttempts") };
 }
 
 function ConceptStateIcon({ kind, size = 16 }: { kind: ConceptState["kind"]; size?: number }) {
-  if (kind === "healthy") return <CheckCircle2 aria-hidden="true" size={size} />;
-  if (kind === "watch" || kind === "attention") {
-    return <AlertTriangle aria-hidden="true" size={size} />;
-  }
+  if (kind === "available") return <CheckCircle2 aria-hidden="true" size={size} />;
   return <Circle aria-hidden="true" size={size} />;
 }
 
-function gateFillStyle(value: number | null): CSSProperties {
-  return {
-    "--learning-map-gate-rate": `${value === null ? 0 : Math.round(value * 100)}%`,
-  } as CSSProperties;
+function metricState(metric?: AnalyticsGateMetric): ConceptState["kind"] {
+  if (!metric) return "empty";
+  if (metric.version_status !== "current") return "historical";
+  return metric.independent_first_pass.data_status === "available" ? "available" : "insufficient";
+}
+
+function outcomeLabel(
+  cell: AnalyticsGateMetric["independent_first_pass"] | undefined,
+  t: Translator,
+) {
+  if (!cell) return t("analytics.noAttempts");
+  return cell.rate === null
+    ? t("analytics.insufficientData")
+    : t("analytics.independentRate", { rate: percent(cell.rate) });
 }

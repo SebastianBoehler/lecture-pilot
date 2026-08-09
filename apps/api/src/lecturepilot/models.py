@@ -212,6 +212,11 @@ class CanvasSectionPlacement(BaseModel):
     section_id: str = Field(min_length=1, max_length=120)
 
 
+class AgentAnalyticsContext(BaseModel):
+    publication_version: int = Field(ge=1)
+    learning_map_revision: str = Field(min_length=1, max_length=64)
+
+
 class AgentTurnInput(BaseModel):
     user_id: str = Field(min_length=1)
     course_id: str = Field(min_length=1)
@@ -228,7 +233,12 @@ class AgentTurnInput(BaseModel):
     scaffold_policy: TutorScaffoldPolicy | None = None
     coaching_context: AgentCoachingContext = Field(default_factory=AgentCoachingContext)
     active_gate: LearningMapGate | None = None
+    analytics_context: AgentAnalyticsContext | None = None
     recent_messages: list[AgentConversationMessage] = Field(default_factory=list, max_length=8)
+
+
+class AssessedAgentTurnInput(AgentTurnInput):
+    analytics_context: AgentAnalyticsContext
 
 
 class AgentTurnRequest(BaseModel):

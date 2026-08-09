@@ -4,22 +4,12 @@ import sys
 from types import SimpleNamespace
 from typing import Any
 
-from fastapi.testclient import TestClient
-
-from lecturepilot.app import create_app
-from lecturepilot.canvas_models import CanvasDocument, CanvasSection
 from lecturepilot.models import (
     AgentTurnInput,
     AgentTurnResult,
-    CanvasCommand,
-    QualityGateDecision,
-    QualityGateStatus,
-    UserMemoryContext,
 )
-from lecturepilot.observability import Observability, observability_from_env
+from lecturepilot.observability import observability_from_env
 from lecturepilot.providers import DEFAULT_MODEL
-from lecturepilot.storage_layout import StorageLayout
-from auth_helpers import student_headers
 
 
 def test_observability_is_disabled_by_default(monkeypatch) -> None:
@@ -64,42 +54,6 @@ def test_mlflow_observability_redacts_turn_content(monkeypatch) -> None:
     assert recorded.span.outputs["message_sha256"]
 
 
-def test_agent_turn_records_workflow_spans(monkeypatch, tmp_path) -> None:
-    monkeypatch.setenv("LECTUREPILOT_OBSERVABILITY", "none")
-    app = create_app()
-    recording = _RecordingObservability()
-    layout = StorageLayout(tmp_path)
-    app.state.observability = recording
-    app.state.canvas_workspace = _CanvasWorkspace(layout)
-    app.state.user_memory_store = _UserMemoryStore(layout)
-    app.state.learner_state = _LearnerState(layout)
-    app.state.agent_harness = _GeneratedSectionHarness()
-    client = TestClient(app)
-
-    response = client.post(
-        "/agent/turn",
-        headers=student_headers("u1"),
-        json={
-            "course_id": "martius-ml",
-            "lecture_id": "lecture-03",
-            "attendance": "absent",
-            "message": "Create a loss section.",
-        },
-    )
-
-    assert response.status_code == 200
-    assert recording.names == [
-        "agent_turn",
-        "read_canvas",
-        "read_user_memory",
-        "write_attendance",
-        "call_tutor_model",
-        "prepare_canvas_update",
-        "write_canvas_update",
-    ]
-    assert any(output["quality_gate"] == "needs_evidence" for output in recording.outputs)
-
-
 class _FakeSpan:
     def __init__(self) -> None:
         self.inputs: dict[str, Any] = {}
@@ -139,106 +93,3 @@ class _FakeMlflow:
         record = SimpleNamespace(span=_FakeSpan(), **kwargs)
         self.started.append(record)
         return _FakeSpanContext(record)
-
-
-class _RecordingSpan:
-    def __init__(self, observability: "_RecordingObservability", name: str) -> None:
-        self.observability = observability
-        self.name = name
-
-    def __enter__(self) -> "_RecordingSpan":
-        self.observability.names.append(self.name)
-        return self
-
-    def __exit__(self, *args: object) -> bool:
-        return False
-
-    def set_outputs(self, value: dict[str, Any]) -> None:
-        self.observability.outputs.append(value)
-
-
-class _RecordingObservability(Observability):
-    def __init__(self) -> None:
-        self.names: list[str] = []
-        self.outputs: list[dict[str, Any]] = []
-
-    def agent_turn_span(self, turn: AgentTurnInput) -> _RecordingSpan:
-        return _RecordingSpan(self, "agent_turn")
-
-    def tool_span(self, name: str, **attributes: Any) -> _RecordingSpan:
-        return _RecordingSpan(self, name)
-
-    def model_span(self, **attributes: Any) -> _RecordingSpan:
-        return _RecordingSpan(self, "call_tutor_model")
-
-
-class _CanvasWorkspace:
-    def __init__(self, layout: object) -> None:
-        self.layout = layout
-        self.course_canvas_store = self
-        self.applied: list[CanvasSection] = []
-
-    def has_published_course_canvas(self, *, course_id: str, lecture_id: str) -> bool:
-        return course_id == "martius-ml" and lecture_id == "lecture-03"
-
-    def learning_map(self, **_kwargs: Any):
-        return None
-
-    def read_document(self, **kwargs: Any) -> CanvasDocument:
-        return CanvasDocument(
-            id="lecture-03-canvas",
-            course_id="martius-ml",
-            lecture_id="lecture-03",
-            title="Bayesian Decision Theory",
-            source_kind="generated",
-            source_ref="test",
-            workspace_path="canvas/index.md",
-        )
-
-    def prepare_generated_sections(self, **kwargs: Any) -> list[CanvasSection]:
-        return kwargs["sections"]
-
-    def apply_sections(self, **kwargs: Any) -> None:
-        self.applied.extend(kwargs["sections"])
-
-
-class _UserMemoryStore:
-    def __init__(self, layout: object) -> None:
-        self.layout = layout
-
-    def read_context(self, user_id: str, course_id: str | None = None) -> UserMemoryContext:
-        return UserMemoryContext(
-            global_notes="Prefers concrete examples.",
-            course_notes="Needs Bayes risk practice." if course_id else "",
-        )
-
-
-class _LearnerState:
-    def __init__(self, layout: object) -> None:
-        self.layout = layout
-
-    def write_attendance(self, **kwargs: Any) -> None:
-        return None
-
-    def latest_gate_decisions(self, **_kwargs: Any) -> dict:
-        return {}
-
-    def record_quality_gate(self, **kwargs: Any) -> None:
-        return None
-
-
-class _GeneratedSectionHarness:
-    async def run_turn(self, turn: AgentTurnInput) -> AgentTurnResult:
-        section = CanvasSection(id="generated-loss-note", title="Generated Loss Note")
-        return AgentTurnResult(
-            message="I added a generated section and kept the gate open.",
-            canvas_commands=[
-                CanvasCommand(type="append_section", section_id=section.id, section=section)
-            ],
-            quality_gate=QualityGateDecision(
-                gate_id="loss-risk-check",
-                status=QualityGateStatus.NEEDS_EVIDENCE,
-                reason="Needs a worked explanation.",
-            ),
-            model=DEFAULT_MODEL,
-        )

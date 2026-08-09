@@ -1,9 +1,17 @@
 from __future__ import annotations
 
-from collections import Counter
 from dataclasses import dataclass, field
 
 from pydantic import BaseModel
+
+from lecturepilot.analytics_outcomes import (
+    AnalyticsOutcomeCell,
+    AnalyticsVersionStatus,
+    MIN_OUTCOME_CELL_SIZE,
+    outcome_cell,
+    version_sort_key,
+    version_status,
+)
 
 
 class AnalyticsOptionMetric(BaseModel):
@@ -19,84 +27,133 @@ class AnalyticsQuizMetric(BaseModel):
     component_type: str
     title: str
     question: str
-    total_attempts: int
+    publication_version: int
+    version_status: AnalyticsVersionStatus
+    activity_events: int
     unique_learners: int
-    correct_attempts: int
-    correct_rate: float | None
-    latest_activity: str | None
-    attendance_split: dict[str, int]
-    options: list[AnalyticsOptionMetric]
+    first_attempt: AnalyticsOutcomeCell
+    correction_after_feedback: AnalyticsOutcomeCell
+    options: list[AnalyticsOptionMetric] | None
+
+
+@dataclass
+class _LearnerQuizState:
+    first: dict
+    first_index: int
+    corrected: bool = False
 
 
 @dataclass
 class _QuizState:
-    latest: dict
-    total_attempts: int = 0
-    learners: set[str] = field(default_factory=set)
-    correct_attempts: int = 0
-    attendance: Counter[str] = field(default_factory=Counter)
-    selections: Counter[int] = field(default_factory=Counter)
+    reference: dict
+    publication_version: int
+    activity_events: int = 0
+    learners: dict[str, _LearnerQuizState] = field(default_factory=dict)
 
 
 class QuizMetricsAccumulator:
-    def __init__(self) -> None:
-        self._groups: dict[str, _QuizState] = {}
+    def __init__(self, *, current_publication_version: int) -> None:
+        self.current_publication_version = current_publication_version
+        self._groups: dict[tuple[str, int], _QuizState] = {}
 
     def record(self, event: dict) -> None:
         if event.get("type") != "quiz_answer":
             return
-        component_id = str(event.get("component_id") or event.get("block_id"))
-        state = self._groups.setdefault(component_id, _QuizState(latest=event))
-        state.total_attempts += 1
-        if event.get("user_key"):
-            state.learners.add(str(event["user_key"]))
-        state.correct_attempts += event.get("correct") is True
-        state.attendance[str(event.get("attendance") or "unknown")] += 1
-        state.selections[int(event.get("option_index", -1))] += 1
-        if str(event.get("created_at") or "") >= str(state.latest.get("created_at") or ""):
-            state.latest = event
+        publication_version = _publication_version(event)
+        component_id = str(event["component_id"])
+        key = component_id, publication_version
+        state = self._groups.setdefault(
+            key,
+            _QuizState(reference=event, publication_version=publication_version),
+        )
+        state.activity_events += 1
+        learner_key = str(event["user_key"])
+        attempt_index = _attempt_index(event)
+        learner = state.learners.get(learner_key)
+        if learner is None:
+            state.learners[learner_key] = _LearnerQuizState(
+                first=event,
+                first_index=attempt_index,
+                corrected=event["correction_state"] == "corrected",
+            )
+        elif attempt_index < learner.first_index:
+            learner.corrected = learner.corrected or learner.first.get("correct") is True
+            learner.first = event
+            learner.first_index = attempt_index
+        elif attempt_index > learner.first_index and event["correct"] is True:
+            learner.corrected = True
 
     def metrics(self) -> list[AnalyticsQuizMetric]:
-        return [
-            self._metric(component_id, self._groups[component_id])
-            for component_id in sorted(self._groups)
-        ]
+        metrics = [self._metric(key[0], state) for key, state in self._groups.items()]
+        return sorted(
+            metrics,
+            key=lambda item: (
+                item.component_id,
+                version_sort_key(item.publication_version, item.version_status),
+            ),
+        )
 
     def _metric(self, component_id: str, state: _QuizState) -> AnalyticsQuizMetric:
-        latest = state.latest
+        reference = state.reference
+        first_outcomes = {
+            learner_key: learner.first.get("correct") is True
+            for learner_key, learner in state.learners.items()
+            if isinstance(learner.first.get("correct"), bool)
+        }
+        correction_outcomes = {
+            learner_key: learner.corrected
+            for learner_key, learner in state.learners.items()
+            if learner.first.get("correct") is False
+        }
+        first_attempt = outcome_cell("quiz_first_attempt", first_outcomes)
         return AnalyticsQuizMetric(
             component_id=component_id,
-            component_type=str(latest.get("component_type") or "quiz"),
-            title=str(latest.get("title") or component_id),
-            question=str(latest.get("question") or ""),
-            total_attempts=state.total_attempts,
+            component_type=str(reference["component_type"]),
+            title=str(reference["title"]),
+            question=str(reference["question"]),
+            publication_version=state.publication_version,
+            version_status=version_status(
+                state.publication_version,
+                self.current_publication_version,
+            ),
+            activity_events=state.activity_events,
             unique_learners=len(state.learners),
-            correct_attempts=state.correct_attempts,
-            correct_rate=round(state.correct_attempts / state.total_attempts, 4),
-            latest_activity=str(latest.get("created_at") or "") or None,
-            attendance_split=dict(sorted(state.attendance.items())),
-            options=_option_metrics(state),
+            first_attempt=first_attempt,
+            correction_after_feedback=outcome_cell(
+                "correction_after_feedback", correction_outcomes
+            ),
+            options=_option_metrics(state) if first_attempt.data_status == "available" else None,
         )
 
 
-def _option_metrics(state: _QuizState) -> list[AnalyticsOptionMetric]:
-    latest = state.latest
-    options = latest.get("options") if isinstance(latest.get("options"), list) else []
-    correct_index = latest.get("correct_index")
+def _option_metrics(state: _QuizState) -> list[AnalyticsOptionMetric] | None:
+    reference = state.reference
+    options = reference["options"]
+    correct_index = reference["correct_index"]
+    selections: dict[int, int] = {}
+    for learner in state.learners.values():
+        index = int(learner.first["option_index"])
+        selections[index] = selections.get(index, 0) + 1
+    if any(0 < count < MIN_OUTCOME_CELL_SIZE for count in selections.values()):
+        return None
     metrics = []
     for option in options:
-        if not isinstance(option, dict):
-            continue
-        index = int(option.get("option_index", -1))
+        index = int(option["option_index"])
         metrics.append(
             AnalyticsOptionMetric(
                 option_index=index,
-                option_id=option.get("option_id")
-                if isinstance(option.get("option_id"), str)
-                else None,
-                text=str(option.get("text") or ""),
-                selections=state.selections.get(index, 0),
+                option_id=option["option_id"],
+                text=str(option["text"]),
+                selections=selections.get(index, 0),
                 correct=index == correct_index,
             )
         )
     return metrics
+
+
+def _publication_version(event: dict) -> int:
+    return int(event["publication_version"])
+
+
+def _attempt_index(event: dict) -> int:
+    return int(event["attempt_index"])

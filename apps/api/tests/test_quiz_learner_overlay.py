@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from auth_helpers import professor_headers, student_headers
+from canvas_workspace_fixtures import configure_canvas_workspace, publish_course_canvas
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
@@ -58,44 +59,15 @@ def test_learner_overlay_quiz_is_visible_assessed_durable_and_isolated(tmp_path:
     assert student_b.status_code == preview.status_code == 404
     assert _state(client, student_headers("student-b", course_ids=[COURSE_ID])) == {}
     events = client.app.state.analytics_store.events(course_id=COURSE_ID, lecture_id=LECTURE_ID)
-    assert [(event["block_id"], event["attempt_index"]) for event in events] == [
+    assert [(event["component_id"], event["attempt_index"]) for event in events] == [
         ("overlay-quiz", 1)
     ]
 
 
-def test_legacy_compiled_learner_overlay_quiz_remains_assessable(tmp_path: Path) -> None:
-    client = _client(tmp_path)
-    workspace = client.app.state.canvas_workspace
-    compiled_path = workspace.layout.legacy_compiled_canvas_path(
-        "legacy-student", COURSE_ID, LECTURE_ID
-    )
-    compiled_path.parent.mkdir(parents=True)
-    compiled_path.write_text(
-        _document([_overlay_section("legacy-overlay", "legacy-overlay-quiz")]).model_dump_json(),
-        encoding="utf-8",
-    )
-
-    response = _submit(
-        client,
-        student_headers("legacy-student", course_ids=[COURSE_ID]),
-        "legacy-overlay-attempt",
-        "legacy-overlay-quiz",
-        1,
-    )
-
-    assert response.status_code == 200
-    assert response.json()["correct"] is True
-    assert response.json()["block_id"] == "legacy-overlay-quiz"
-
-
-@pytest.mark.parametrize("stale_source", ["current_compiled", "legacy_compiled"])
-def test_current_markdown_overlay_controls_visible_quiz_scoring(
-    tmp_path: Path,
-    stale_source: str,
-) -> None:
+def test_current_markdown_overlay_controls_visible_quiz_scoring(tmp_path: Path) -> None:
     client = _client(tmp_path)
     _install_overlay(client, "student-a", [_overlay_section("shared", "visible-overlay-quiz")])
-    _write_stale_overlay(client, "student-a", stale_source)
+    _write_stale_overlay(client, "student-a")
     headers = student_headers("student-a", course_ids=[COURSE_ID])
 
     hidden = _submit(
@@ -127,7 +99,7 @@ def test_current_markdown_overlay_controls_visible_quiz_scoring(
     assert visible.json()["correct"] is True
     assert set(_state(client, headers)) == {"visible-overlay-quiz"}
     events = client.app.state.analytics_store.events(course_id=COURSE_ID, lecture_id=LECTURE_ID)
-    assert [event["block_id"] for event in events] == ["visible-overlay-quiz"]
+    assert [event["component_id"] for event in events] == ["visible-overlay-quiz"]
 
 
 @pytest.mark.parametrize("collision", ["official", "overlay"])
@@ -193,13 +165,9 @@ def _install_overlay(client: TestClient, user_id: str, sections: list[CanvasSect
     )
 
 
-def _write_stale_overlay(client: TestClient, user_id: str, source: str) -> None:
+def _write_stale_overlay(client: TestClient, user_id: str) -> None:
     layout = client.app.state.canvas_workspace.layout
-    path = (
-        layout.compiled_canvas_path(user_id, COURSE_ID, LECTURE_ID)
-        if source == "current_compiled"
-        else layout.legacy_compiled_canvas_path(user_id, COURSE_ID, LECTURE_ID)
-    )
+    path = layout.compiled_canvas_path(user_id, COURSE_ID, LECTURE_ID)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         _document([_overlay_section("shared", "hidden-stale-quiz")]).model_dump_json(),
@@ -209,9 +177,12 @@ def _write_stale_overlay(client: TestClient, user_id: str, source: str) -> None:
 
 def _client(tmp_path: Path) -> TestClient:
     app = create_app()
-    app.state.canvas_workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=tmp_path / "materials",
+    configure_canvas_workspace(
+        app,
+        CanvasWorkspace(
+            workspace_root=tmp_path / "workspaces",
+            material_root=tmp_path / "materials",
+        ),
     )
     write_course_workspace(
         app.state.canvas_workspace.course_media_root(COURSE_ID),
@@ -223,7 +194,7 @@ def _client(tmp_path: Path) -> TestClient:
             active_lecture_id=LECTURE_ID,
         ),
     )
-    app.state.canvas_workspace.write_course_canvas(_document([_official_section()]))
+    publish_course_canvas(app.state.canvas_workspace, _document([_official_section()]))
     return TestClient(app)
 
 

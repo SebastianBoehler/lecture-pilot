@@ -7,17 +7,13 @@ import { renderWithI18n } from "./test/renderWithI18n";
 import type { LectureAnalyticsSummary } from "./types";
 
 describe("PerformanceInsights", () => {
-  it("shows independent learning, scaffold use, and demonstrated evidence", () => {
+  it("shows independent, supported and delayed learner-level evidence", () => {
     renderWithI18n(<PerformanceInsights analytics={analytics()} view="gates" />);
 
-    expect(screen.getByRole("heading", { name: "Independent learning" })).toBeInTheDocument();
-    expect(screen.getByText("Independent attempts")).toBeInTheDocument();
-    expect(screen.getByText("Supported attempts")).toBeInTheDocument();
-    expect(screen.getByText("Independent transfer passes")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Scaffolds used" })).toBeInTheDocument();
-    expect(screen.getByText("worked step")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Demonstrated evidence" })).toBeInTheDocument();
-    expect(screen.getByText("risk calculation")).toBeInTheDocument();
+    expect(screen.getByText("Independent first pass")).toBeInTheDocument();
+    expect(screen.getByText("Supported retry")).toBeInTheDocument();
+    expect(screen.getByText("Delayed transfer")).toBeInTheDocument();
+    expect(screen.getByText("Gate revision revision-1")).toBeInTheDocument();
   });
 
   it("shows one full-size quiz detail at a time", async () => {
@@ -37,24 +33,23 @@ describe("PerformanceInsights", () => {
 function analytics(): LectureAnalyticsSummary {
   return {
     course_id: "demo-course",
+    current_learning_map_revision: "map-1",
+    current_publication_version: 1,
     lecture_id: "lecture-01",
-    total_events: 4,
-    unique_learners: 2,
+    activity_events: 15,
+    unique_learners: 5,
     quizzes: [],
     gates: [
       {
+        activity_events: 15,
+        delayed_transfer: outcome("delayed_transfer", 0.8),
         gate_id: "risk-gate",
-        total_events: 4,
-        unique_learners: 2,
-        status_counts: { needs_evidence: 2, passed: 2 },
-        attendance_split: { present: 4 },
-        independent_attempts: 2,
-        independent_passes: 1,
-        supported_attempts: 2,
-        transfer_attempts: 1,
-        independent_transfer_passes: 1,
-        assistance_level_counts: { none: 2, worked_step: 2 },
-        evidence_counts: { risk_calculation: 2 },
+        gate_revision: "revision-1",
+        independent_first_pass: outcome("independent_first_pass", 0.6),
+        publication_version: 1,
+        supported_retry: outcome("supported_retry", 0.8),
+        unique_learners: 5,
+        version_status: "current",
       },
     ],
   };
@@ -62,29 +57,31 @@ function analytics(): LectureAnalyticsSummary {
 
 function quizAnalytics(): LectureAnalyticsSummary {
   return {
-    course_id: "demo-course",
-    lecture_id: "lecture-01",
-    total_events: 4,
-    unique_learners: 2,
+    ...analytics(),
     gates: [],
-    quizzes: [quiz("quiz-1", "First question", 0.5), quiz("quiz-2", "Second question", 1)],
+    quizzes: [quiz("quiz-1", "First question", 0.6), quiz("quiz-2", "Second question", 1)],
   };
 }
 
-function quiz(componentId: string, question: string, correctRate: number) {
+function quiz(componentId: string, question: string, rate: number) {
   return {
-    attendance_split: { present: 2 },
+    activity_events: 5,
     component_id: componentId,
-    component_type: "quiz" as const,
-    correct_attempts: correctRate === 1 ? 2 : 1,
-    correct_rate: correctRate,
+    component_type: "quiz",
+    correction_after_feedback: outcome("correction_after_feedback", 0.5),
+    first_attempt: outcome("quiz_first_attempt", rate),
     options: [
-      { correct: true, option_index: 0, selections: 1, text: "Correct answer" },
-      { correct: false, option_index: 1, selections: 1, text: "Distractor" },
+      { correct: true, option_index: 0, selections: 3, text: "Correct answer" },
+      { correct: false, option_index: 1, selections: 2, text: "Distractor" },
     ],
+    publication_version: 1,
     question,
     title: "Checkpoint quiz",
-    total_attempts: 2,
-    unique_learners: 2,
+    unique_learners: 5,
+    version_status: "current" as const,
   };
+}
+
+function outcome(evidenceType: string, rate: number) {
+  return { data_status: "available" as const, evidence_type: evidenceType, rate, sample_size: 5 };
 }

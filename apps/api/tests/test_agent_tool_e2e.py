@@ -7,7 +7,11 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
-from canvas_workspace_fixtures import write_course_source
+from canvas_workspace_fixtures import (
+    configure_canvas_workspace,
+    publish_course_canvas,
+    write_course_source,
+)
 from lecturepilot.agent_tool_loop import complete_tool_turn
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock
@@ -21,7 +25,7 @@ from auth_helpers import student_headers
 def test_streamed_tool_turn_persists_canvas_memory_and_gate(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("LECTUREPILOT_OBSERVABILITY", "none")
     app = create_app()
-    app.state.canvas_workspace = _published_workspace(tmp_path)
+    configure_canvas_workspace(app, _published_workspace(tmp_path))
     app.state.agent_harness = _ToolLoopHarness()
     client = TestClient(app)
 
@@ -269,5 +273,5 @@ def _published_workspace(tmp_path: Path) -> CanvasWorkspace:
             ]
         }
     )
-    workspace.write_course_canvas(document)
+    publish_course_canvas(workspace, document)
     return workspace

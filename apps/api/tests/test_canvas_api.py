@@ -2,6 +2,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from canvas_workspace_fixtures import configure_canvas_workspace, publish_course_canvas
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
@@ -18,7 +19,7 @@ from auth_helpers import professor_headers, student_headers
 
 def test_canvas_endpoint_loads_private_course_source_for_student(tmp_path: Path) -> None:
     app = create_app()
-    app.state.canvas_workspace = _workspace(tmp_path)
+    configure_canvas_workspace(app, _workspace(tmp_path))
     client = TestClient(app)
 
     response = client.get(
@@ -36,7 +37,7 @@ def test_canvas_endpoint_loads_private_course_source_for_student(tmp_path: Path)
 
 def test_agent_appended_canvas_section_persists_for_same_student(tmp_path: Path) -> None:
     app = create_app()
-    app.state.canvas_workspace = _workspace(tmp_path)
+    configure_canvas_workspace(app, _workspace(tmp_path))
     app.state.agent_harness = _AppendingHarness()
     client = TestClient(app)
 
@@ -96,7 +97,7 @@ def test_agent_appended_canvas_section_persists_for_same_student(tmp_path: Path)
 
 def test_learner_workspace_reset_clears_selected_scopes(tmp_path: Path) -> None:
     app = create_app()
-    app.state.canvas_workspace = _workspace(tmp_path)
+    configure_canvas_workspace(app, _workspace(tmp_path))
     app.state.agent_harness = _AppendingHarness()
     client = TestClient(app)
     client.post(
@@ -173,7 +174,7 @@ def test_learner_workspace_reset_clears_selected_scopes(tmp_path: Path) -> None:
 
 def test_canvas_endpoint_requires_authenticated_learner_identity(tmp_path: Path) -> None:
     app = create_app()
-    app.state.canvas_workspace = _workspace(tmp_path)
+    configure_canvas_workspace(app, _workspace(tmp_path))
     client = TestClient(app)
 
     response = client.get("/courses/martius-ml/lectures/lecture-03/canvas?user_id=student01")
@@ -278,5 +279,5 @@ Bayesian decision theory connects evidence, posterior probabilities, and decisio
             ]
         }
     )
-    workspace.write_course_canvas(document)
+    publish_course_canvas(workspace, document)
     return workspace

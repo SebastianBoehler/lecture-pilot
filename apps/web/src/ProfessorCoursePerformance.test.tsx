@@ -42,7 +42,7 @@ describe("ProfessorCoursePerformance", () => {
     );
 
     expect(await screen.findByRole("heading", { name: /course overview/i })).toBeInTheDocument();
-    expect(screen.getByText("3", { selector: ".analytics-kpi strong" })).toBeInTheDocument();
+    expect(screen.getByText("10", { selector: ".analytics-kpi strong" })).toBeInTheDocument();
     await user.click(lectureButton(/introduction/i));
     expect(await screen.findByRole("heading", { name: "Introduction" })).toBeInTheDocument();
   });
@@ -99,7 +99,7 @@ describe("ProfessorCoursePerformance", () => {
     await screen.findByRole("heading", { name: /course overview/i });
     await user.click(lectureButton(/introduction/i));
     await user.click(lectureButton(/second lecture/i));
-    expect(await screen.findAllByText("50%")).not.toHaveLength(0);
+    expect(await screen.findAllByText("80%")).not.toHaveLength(0);
     await act(async () => {
       rejectStaleRequest(new TypeError("Failed to fetch"));
       await Promise.resolve();
@@ -135,15 +135,15 @@ describe("ProfessorCoursePerformance", () => {
 
     await screen.findByRole("heading", { name: /course overview/i });
     await user.click(lectureButton(/introduction/i));
-    expect(await screen.findAllByText("50%")).not.toHaveLength(0);
+    expect(await screen.findAllByText("60%")).not.toHaveLength(0);
     await user.click(lectureButton(/second lecture/i));
-    expect(screen.queryAllByText("50%")).toHaveLength(0);
+    expect(screen.queryAllByText("60%")).toHaveLength(0);
 
     await act(async () => {
       rejectNextRequest(new TypeError("Failed to fetch"));
     });
     expect(await screen.findByText(/cannot reach the local LecturePilot API/i)).toBeInTheDocument();
-    expect(screen.queryAllByText("50%")).toHaveLength(0);
+    expect(screen.queryAllByText("60%")).toHaveLength(0);
   });
 
   it("keeps lecture selection and evidence views explicit", async () => {

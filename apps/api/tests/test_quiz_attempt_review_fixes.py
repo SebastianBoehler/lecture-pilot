@@ -9,9 +9,9 @@ from auth_helpers import student_headers
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.course_learning_design_store import CourseLearningDesignStore
 from lecturepilot.course_schedule_store import write_course_workspace
 from lecturepilot.models import Course, CourseWorkspaceResult, Lecture
+from canvas_workspace_fixtures import configure_canvas_workspace, publish_course_canvas
 
 
 COURSE_ID = "quiz-review"
@@ -39,7 +39,7 @@ def test_component_quiz_uses_canonical_id_in_result_storage_and_hydration(tmp_pa
     stored = json.loads(quiz_path.read_text(encoding="utf-8"))
     assert set(stored["attempts"]) == {"risk-component"}
     events = client.app.state.analytics_store.events(course_id=COURSE_ID, lecture_id=LECTURE_ID)
-    assert events[0]["block_id"] == "risk-component"
+    assert events[0]["component_id"] == "risk-component"
 
 
 @pytest.mark.parametrize(
@@ -148,9 +148,12 @@ def _state(client: TestClient) -> dict:
 
 def _client(tmp_path: Path) -> TestClient:
     app = create_app()
-    app.state.canvas_workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=tmp_path / "materials",
+    configure_canvas_workspace(
+        app,
+        CanvasWorkspace(
+            workspace_root=tmp_path / "workspaces",
+            material_root=tmp_path / "materials",
+        ),
     )
     write_course_workspace(
         app.state.canvas_workspace.course_media_root(COURSE_ID),
@@ -168,30 +171,9 @@ def _client(tmp_path: Path) -> TestClient:
 
 
 def _publish(client: TestClient, *, version_two: bool = False) -> None:
-    document = _document(version_two=version_two)
-    workspace = client.app.state.canvas_workspace
-    manifest = workspace.layout.lecture_source_manifest_path(COURSE_ID, LECTURE_ID)
-    manifest.parent.mkdir(parents=True, exist_ok=True)
-    manifest.write_text(
-        '{"course_id":"quiz-review","lecture_id":"lecture-01",'
-        '"files":[{"path":"source.md","sha256":"' + "a" * 64 + '"}]}',
-        encoding="utf-8",
-    )
-    workspace.write_course_canvas_draft(document)
-    reviews = CourseLearningDesignStore(workspace.layout)
-    current = reviews.read(course_id=COURSE_ID, lecture_id=LECTURE_ID)
-    reviews.approve(
-        course_id=COURSE_ID,
-        lecture_id=LECTURE_ID,
-        draft_digest=current.draft_digest,
-        source_revision=current.source_revision,
-        learning_map_revision=current.learning_map.revision,
-        approved_by="professor",
-    )
-    workspace.publish_course_canvas_draft(
-        course_id=COURSE_ID,
-        lecture_id=LECTURE_ID,
-        published_by="professor",
+    publish_course_canvas(
+        client.app.state.canvas_workspace,
+        _document(version_two=version_two),
     )
 
 

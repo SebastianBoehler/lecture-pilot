@@ -21,7 +21,7 @@ export function PerformanceOverview({
       />
       <MetricCard
         icon={<CheckCircle2 size={18} />}
-        label={t("analytics.quizSuccess")}
+        label={t("analytics.quizFirstAttempt")}
         value={snapshot.quizRate}
       />
       <MetricCard
@@ -31,7 +31,7 @@ export function PerformanceOverview({
       />
       <MetricCard
         icon={<AlertTriangle size={18} />}
-        label={t("analytics.gatePassRate")}
+        label={t("analytics.independentFirstPass")}
         value={snapshot.gateRate}
       />
     </div>

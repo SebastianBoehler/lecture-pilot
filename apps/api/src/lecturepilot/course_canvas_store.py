@@ -4,7 +4,6 @@ import json
 import shutil
 from collections.abc import Iterator
 from contextlib import contextmanager
-from dataclasses import dataclass
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -26,6 +25,12 @@ from lecturepilot.course_canvas_publication import (
     prepared_document,
     read_publication,
 )
+from lecturepilot.course_canvas_context import (
+    AnalyticsPublicationContext,
+    PublishedCanvasSnapshot,
+    read_analytics_context,
+    read_published_snapshot,
+)
 from lecturepilot.course_canvas_repairs import lecture_source_revision
 from lecturepilot.course_learning_design_models import LearningDesignReview
 from lecturepilot.course_learning_design_store import (
@@ -34,19 +39,12 @@ from lecturepilot.course_learning_design_store import (
     initialize_learning_design,
 )
 from lecturepilot.learning_map import learning_map_path
-from lecturepilot.quiz_identity import publication_version, validate_unique_quiz_ids
+from lecturepilot.quiz_identity import validate_unique_quiz_ids
 from lecturepilot.storage_layout import StorageLayout
 
 
 class InvalidCanvasDraftError(RuntimeError):
     pass
-
-
-@dataclass(frozen=True)
-class PublishedCanvasSnapshot:
-    document: CanvasDocument
-    publication: dict | None
-    version: int
 
 
 class CourseCanvasStore:
@@ -198,19 +196,12 @@ class CourseCanvasStore:
     def read_published_snapshot(
         self, *, course_id: str, lecture_id: str
     ) -> PublishedCanvasSnapshot | None:
-        published_dir = self.path(course_id, lecture_id)
-        with locked_canvas_paths(published_dir):
-            if not (published_dir / "index.md").exists():
-                return None
-            document = normalize_learning_support(read_document_source(published_dir)).model_copy(
-                update={"workspace_path": str(published_dir / "index.md")}
-            )
-            publication = read_publication(published_dir)
-            return PublishedCanvasSnapshot(
-                document=document,
-                publication=publication,
-                version=publication_version(publication),
-            )
+        return read_published_snapshot(self.path(course_id, lecture_id))
+
+    def read_analytics_context(
+        self, *, course_id: str, lecture_id: str
+    ) -> AnalyticsPublicationContext:
+        return read_analytics_context(self.path(course_id, lecture_id))
 
     def learning_map(
         self, *, course_id: str, lecture_id: str, draft: bool = False

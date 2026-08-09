@@ -2,33 +2,30 @@ from __future__ import annotations
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 
-from lecturepilot.analytics import (
-    AnalyticsStore,
-    LectureAnalyticsSummary,
-    QuizAnswerInput,
-    QuizAnswerResult,
-)
-from lecturepilot.agent_state_access import learner_state_store
+from lecturepilot.analytics import LectureAnalyticsSummary, QuizAnswerInput, QuizAnswerResult
+from lecturepilot.agent_state_access import analytics_store, learner_state_store
 from lecturepilot.api_auth import (
     request_context,
     require_course_manager,
 )
 from lecturepilot.audit import record_audit_event
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument
+from lecturepilot.analytics_quiz_submission import quiz_block, quiz_feedback
 from lecturepilot.course_access import require_lecture_id_access
-from lecturepilot.course_analytics import CourseAnalyticsSummary, course_analytics_summary
+from lecturepilot.course_canvas_context import (
+    AnalyticsPublicationContext,
+    InvalidPublishedCanvasContextError,
+)
+from lecturepilot.course_analytics import (
+    CourseAnalyticsSummary,
+    CurrentLectureAnalyticsContract,
+    course_analytics_summary,
+)
 from lecturepilot.course_schedule_store import read_course_workspace
-from lecturepilot.learning_map import LearningMap
 from lecturepilot.models import Course, Lecture
 from lecturepilot.readiness_analytics import CourseReadinessSummary, course_readiness_summary
 from lecturepilot.readiness_progress import ReadinessProgressStore
 from lecturepilot.professor_preview import resolve_learner_workspace_access
-from lecturepilot.quiz_identity import (
-    DuplicateCanonicalQuizIdError,
-    canonical_quiz_id,
-    is_quiz_block,
-    validate_unique_quiz_ids,
-)
+from lecturepilot.quiz_identity import canonical_quiz_id
 from lecturepilot.tenancy import TenantContext
 
 
@@ -65,10 +62,13 @@ def register_analytics_routes(
             seeded_course=seeded_course,
             seeded_lectures=seeded_lectures,
         )
-        snapshot = app.state.canvas_workspace.course_canvas_store.read_published_snapshot(
-            course_id=course_id,
-            lecture_id=lecture_id,
-        )
+        try:
+            snapshot = app.state.canvas_workspace.course_canvas_store.read_published_snapshot(
+                course_id=course_id,
+                lecture_id=lecture_id,
+            )
+        except InvalidPublishedCanvasContextError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
         if snapshot is None:
             raise HTTPException(status_code=404, detail="Canvas has not been published.")
         overlay_sections = app.state.canvas_workspace.read_learner_overlay_sections(
@@ -79,7 +79,7 @@ def register_analytics_routes(
         document = snapshot.document.model_copy(
             update={"sections": [*snapshot.document.sections, *overlay_sections]}
         )
-        block = _quiz_block(document, answer.block_id)
+        block = quiz_block(document, answer.block_id)
         quiz_id = canonical_quiz_id(block)
         if answer.option_index >= len(block.items):
             raise HTTPException(status_code=400, detail="Quiz option does not exist.")
@@ -102,13 +102,14 @@ def register_analytics_routes(
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         if created:
-            _analytics_store(app).record_quiz_answer(
+            analytics_store(app).record_quiz_answer(
                 course_id=course_id,
                 lecture_id=lecture_id,
                 user_id=access.user_id,
                 attendance=answer.attendance,
                 block=block,
                 option_index=answer.option_index,
+                publication_version=snapshot.version,
                 attempt_index=state.attempt_index,
                 first_attempt_correct=state.first_attempt_correct,
                 correction_state=state.correction_state,
@@ -123,7 +124,7 @@ def register_analytics_routes(
             first_attempt_correct=state.first_attempt_correct,
             latest_outcome=state.latest_outcome,
             correction_state=state.correction_state,
-            feedback=_quiz_feedback(state.correct),
+            feedback=quiz_feedback(state.correct),
         )
 
     @app.get(
@@ -155,7 +156,15 @@ def register_analytics_routes(
                 lecture_id=lecture.id,
             )
         ]
-        store = _analytics_store(app)
+        store = analytics_store(app)
+        current_contracts = {}
+        for lecture_id in lecture_ids:
+            analytics_context = _analytics_context(app, course_id, lecture_id)
+            learning_map = analytics_context.learning_map
+            current_contracts[lecture_id] = CurrentLectureAnalyticsContract(
+                publication_version=analytics_context.publication_version,
+                gate_revisions={gate.id: gate.revision for gate in learning_map.gates},
+            )
         summary = course_analytics_summary(
             course_id=course_id,
             lecture_ids=lecture_ids,
@@ -163,6 +172,7 @@ def register_analytics_routes(
                 course_id=course_id,
                 lecture_id=lecture_id,
             ),
+            current_contracts=current_contracts,
         )
         record_audit_event(
             app.state.database,
@@ -189,7 +199,15 @@ def register_analytics_routes(
             request=request,
             course_id=course_id,
         )
-        summary = _analytics_store(app).summary(course_id=course_id, lecture_id=lecture_id)
+        analytics_context = _analytics_context(app, course_id, lecture_id)
+        learning_map = analytics_context.learning_map
+        summary = analytics_store(app).summary(
+            course_id=course_id,
+            lecture_id=lecture_id,
+            current_publication_version=analytics_context.publication_version,
+            current_gate_revisions={gate.id: gate.revision for gate in learning_map.gates},
+            current_learning_map_revision=analytics_context.learning_map_revision,
+        )
         record_audit_event(
             app.state.database,
             context,
@@ -197,9 +215,7 @@ def register_analytics_routes(
             target_type="lecture",
             target_id=f"{course_id}:{lecture_id}",
         )
-        return summary.model_copy(
-            update={"learning_map": _learning_map(app, course_id, lecture_id)}
-        )
+        return summary.model_copy(update={"learning_map": learning_map})
 
     @app.get(
         "/admin/courses/{course_id}/exam-readiness/summary",
@@ -230,55 +246,13 @@ def register_analytics_routes(
         return summary
 
 
-def _quiz_block(document: CanvasDocument, block_id: str) -> CanvasBlock:
+def _analytics_context(
+    app: FastAPI, course_id: str, lecture_id: str
+) -> AnalyticsPublicationContext:
     try:
-        validate_unique_quiz_ids(document)
-    except DuplicateCanonicalQuizIdError as exc:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Published canvas has duplicate quiz ID '{exc.quiz_id}'.",
-        ) from exc
-    matches = [
-        block
-        for section in document.sections
-        for block in section.blocks
-        if canonical_quiz_id(block) == block_id
-    ]
-    quizzes = [block for block in matches if is_quiz_block(block)]
-    if quizzes:
-        return quizzes[0]
-    if matches:
-        raise HTTPException(status_code=400, detail="Canvas block is not a quiz component.")
-    raise HTTPException(status_code=404, detail="Quiz block not found.")
-
-
-def _analytics_store(app: FastAPI) -> AnalyticsStore:
-    store = app.state.analytics_store
-    layout = getattr(app.state.canvas_workspace, "layout", None)
-    if layout is not None and store.layout is not layout:
-        store = AnalyticsStore(layout)
-        app.state.analytics_store = store
-    return store
-
-
-def _quiz_feedback(correct: bool | None) -> str:
-    if correct is True:
-        return "Correct. Explain why this option fits the concept before moving on."
-    if correct is False:
-        return (
-            "Review the explanation above, explain why your choice does not fit, "
-            "then try a correction."
+        return app.state.canvas_workspace.course_canvas_store.read_analytics_context(
+            course_id=course_id,
+            lecture_id=lecture_id,
         )
-    return "Your answer was stored. Discuss the reasoning with the tutor."
-
-
-def _learning_map(app: FastAPI, course_id: str, lecture_id: str) -> LearningMap | None:
-    if not app.state.canvas_workspace.has_published_course_canvas(
-        course_id=course_id,
-        lecture_id=lecture_id,
-    ):
-        return None
-    return app.state.canvas_workspace.course_canvas_store.learning_map(
-        course_id=course_id,
-        lecture_id=lecture_id,
-    )
+    except InvalidPublishedCanvasContextError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc

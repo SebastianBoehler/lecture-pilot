@@ -6,8 +6,10 @@ from fastapi import FastAPI
 
 from lecturepilot.agent_state_access import analytics_store, learner_state_store
 from lecturepilot.coaching_progress import CoachingTurnEvent
-from lecturepilot.models import AgentTurnInput, AgentTurnResult
+from lecturepilot.guided_tutor import LOCAL_PREVIEW_USER_ID
+from lecturepilot.models import AssessedAgentTurnInput, AgentTurnInput, AgentTurnResult
 from lecturepilot.observability import Observability
+from lecturepilot.professor_preview import is_professor_preview_user_id
 
 
 def persist_quality_gate(
@@ -37,12 +39,17 @@ def persist_quality_gate(
             user_id=turn.user_id,
             decision=decision,
         )
-        if (store := analytics_store(app)) is not None:
-            store.record_quality_gate(
-                course_id=turn.course_id,
-                lecture_id=turn.lecture_id,
-                user_id=turn.user_id,
-                attendance=turn.attendance,
-                decision=decision,
-                coaching_event=coaching_event,
-            )
+        if turn.user_id == LOCAL_PREVIEW_USER_ID or is_professor_preview_user_id(turn.user_id):
+            return
+        assessed_turn = AssessedAgentTurnInput.model_validate(turn.model_dump())
+        store = analytics_store(app)
+        store.record_quality_gate(
+            course_id=assessed_turn.course_id,
+            lecture_id=assessed_turn.lecture_id,
+            user_id=assessed_turn.user_id,
+            attendance=assessed_turn.attendance,
+            decision=decision,
+            publication_version=assessed_turn.analytics_context.publication_version,
+            learning_map_revision=assessed_turn.analytics_context.learning_map_revision,
+            coaching_event=coaching_event,
+        )

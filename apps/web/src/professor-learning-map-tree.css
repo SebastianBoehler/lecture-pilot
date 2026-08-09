@@ -86,19 +86,6 @@
   background: var(--color-bg-primary);
 }
 
-.learning-map-node.is-healthy > .learning-map-node-toggle .learning-map-node-marker {
-  border-color: #18864b;
-  color: #18864b;
-}
-
-.learning-map-node.is-watch > .learning-map-node-toggle .learning-map-node-marker {
-  color: #b26900;
-}
-
-.learning-map-node.is-attention > .learning-map-node-toggle .learning-map-node-marker {
-  color: var(--color-danger);
-}
-
 .learning-map-node-copy {
   display: grid;
   gap: 2px;
@@ -227,14 +214,6 @@
   color: var(--color-text-secondary);
   font-size: 12px;
   font-weight: 800;
-}
-
-.learning-map-gate.is-healthy .learning-map-gate-header span {
-  color: #18864b;
-}
-
-.learning-map-gate.is-attention .learning-map-gate-header span {
-  color: var(--color-danger);
 }
 
 .learning-map-gate-meta {

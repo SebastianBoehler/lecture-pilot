@@ -1,33 +1,158 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
+from dataclasses import dataclass, field
 
 from pydantic import BaseModel
+
+from lecturepilot.analytics_outcomes import (
+    AnalyticsOutcomeCell,
+    MIN_OUTCOME_CELL_SIZE,
+)
+
+_EVIDENCE_TYPES = (
+    "quiz_first_attempt",
+    "correction_after_feedback",
+    "independent_first_pass",
+    "supported_retry",
+    "delayed_transfer",
+)
+
+
+@dataclass(frozen=True)
+class CurrentLectureAnalyticsContract:
+    publication_version: int
+    gate_revisions: dict[str, str]
 
 
 class CourseLectureAnalytics(BaseModel):
     lecture_id: str
-    total_events: int
+    activity_events: int
     unique_learners: int
-    quiz_attempts: int
-    quiz_correct_attempts: int
-    quiz_rate: float | None
-    gate_checks: int
-    gate_passes: int
-    gate_rate: float | None
+    current_publication_version: int
+    quiz_first_attempt: AnalyticsOutcomeCell
+    correction_after_feedback: AnalyticsOutcomeCell
+    independent_first_pass: AnalyticsOutcomeCell
+    supported_retry: AnalyticsOutcomeCell
+    delayed_transfer: AnalyticsOutcomeCell
 
 
 class CourseAnalyticsSummary(BaseModel):
     course_id: str
-    total_events: int
+    activity_events: int
     unique_learners: int
-    quiz_attempts: int
-    quiz_correct_attempts: int
-    quiz_rate: float | None
-    gate_checks: int
-    gate_passes: int
-    gate_rate: float | None
+    quiz_first_attempt: AnalyticsOutcomeCell
+    correction_after_feedback: AnalyticsOutcomeCell
+    independent_first_pass: AnalyticsOutcomeCell
+    supported_retry: AnalyticsOutcomeCell
+    delayed_transfer: AnalyticsOutcomeCell
     lectures: list[CourseLectureAnalytics]
+
+
+@dataclass
+class _Attempt:
+    index: int
+    passed: bool
+
+
+@dataclass
+class _QuizAttempt:
+    index: int
+    correct: bool
+    corrected: bool = False
+
+
+@dataclass
+class _Aggregate:
+    activity_events: int = 0
+    learners: set[str] = field(default_factory=set)
+    quiz: dict[str, dict[str, _QuizAttempt]] = field(default_factory=dict)
+    attempts: dict[str, dict[str, dict[str, _Attempt]]] = field(
+        default_factory=lambda: {kind: {} for kind in _EVIDENCE_TYPES[2:]}
+    )
+
+    def record(
+        self, lecture_id: str, event: dict, contract: CurrentLectureAnalyticsContract
+    ) -> None:
+        self.activity_events += 1
+        user_key = str(event["user_key"])
+        self.learners.add(user_key)
+        if not user_key or event["publication_version"] != contract.publication_version:
+            return
+        if event.get("type") == "quiz_answer":
+            self._record_quiz(lecture_id, user_key, event)
+        elif event.get("type") == "gate_decision":
+            self._record_gate(lecture_id, user_key, event, contract)
+
+    def cells(self) -> dict[str, AnalyticsOutcomeCell]:
+        quiz_first = {
+            learner: {item: attempt.correct for item, attempt in items.items()}
+            for learner, items in self.quiz.items()
+        }
+        corrections = {
+            learner: {
+                item: attempt.corrected for item, attempt in items.items() if not attempt.correct
+            }
+            for learner, items in self.quiz.items()
+        }
+        return {
+            "quiz_first_attempt": _score_cell("quiz_first_attempt", quiz_first),
+            "correction_after_feedback": _score_cell("correction_after_feedback", corrections),
+            **{
+                kind: _score_cell(
+                    kind,
+                    {
+                        learner: {item: attempt.passed for item, attempt in items.items()}
+                        for learner, items in self.attempts[kind].items()
+                    },
+                )
+                for kind in _EVIDENCE_TYPES[2:]
+            },
+        }
+
+    def _record_quiz(self, lecture_id: str, learner: str, event: dict) -> None:
+        correct = event.get("correct")
+        index = event.get("attempt_index")
+        if not isinstance(correct, bool) or not isinstance(index, int) or index < 1:
+            return
+        item = f"{lecture_id}:{event['component_id']}"
+        attempts = self.quiz.setdefault(learner, {})
+        current = attempts.get(item)
+        if current is None or index < current.index:
+            attempts[item] = _QuizAttempt(
+                index=index,
+                correct=correct,
+                corrected=(current.corrected or current.correct) if current else False,
+            )
+        elif index > current.index and correct:
+            current.corrected = True
+
+    def _record_gate(
+        self,
+        lecture_id: str,
+        learner: str,
+        event: dict,
+        contract: CurrentLectureAnalyticsContract,
+    ) -> None:
+        gate_id = str(event["gate_id"])
+        if not gate_id or event.get("gate_revision") != contract.gate_revisions.get(gate_id):
+            return
+        kind = str(event["attempt_kind"])
+        evidence_type = {
+            "independent": "independent_first_pass",
+            "supported_retry": "supported_retry",
+            "delayed_transfer": "delayed_transfer",
+        }.get(kind)
+        index = event["attempt_index"]
+        if evidence_type is None or not isinstance(index, int) or index < 1:
+            return
+        if evidence_type == "independent_first_pass" and index != 1:
+            return
+        item = f"{lecture_id}:{gate_id}"
+        attempts = self.attempts[evidence_type].setdefault(learner, {})
+        current = attempts.get(item)
+        if current is None or index < current.index:
+            attempts[item] = _Attempt(index=index, passed=event["status"] == "passed")
 
 
 def course_analytics_summary(
@@ -35,64 +160,40 @@ def course_analytics_summary(
     course_id: str,
     lecture_ids: list[str],
     read_events: Callable[[str], Iterable[dict]],
+    current_contracts: dict[str, CurrentLectureAnalyticsContract],
 ) -> CourseAnalyticsSummary:
-    course_learners: set[str] = set()
+    course = _Aggregate()
     lectures: list[CourseLectureAnalytics] = []
     for lecture_id in lecture_ids:
-        lecture, learners = _lecture_summary(lecture_id, read_events(lecture_id))
-        course_learners.update(learners)
-        lectures.append(lecture)
-
-    quiz_attempts = sum(item.quiz_attempts for item in lectures)
-    quiz_correct = sum(item.quiz_correct_attempts for item in lectures)
-    gate_checks = sum(item.gate_checks for item in lectures)
-    gate_passes = sum(item.gate_passes for item in lectures)
+        contract = current_contracts[lecture_id]
+        lecture = _Aggregate()
+        for event in read_events(lecture_id):
+            lecture.record(lecture_id, event, contract)
+            course.record(lecture_id, event, contract)
+        lectures.append(
+            CourseLectureAnalytics(
+                lecture_id=lecture_id,
+                activity_events=lecture.activity_events,
+                unique_learners=len(lecture.learners),
+                current_publication_version=contract.publication_version,
+                **lecture.cells(),
+            )
+        )
     return CourseAnalyticsSummary(
         course_id=course_id,
-        total_events=sum(item.total_events for item in lectures),
-        unique_learners=len(course_learners),
-        quiz_attempts=quiz_attempts,
-        quiz_correct_attempts=quiz_correct,
-        quiz_rate=_rate(quiz_correct, quiz_attempts),
-        gate_checks=gate_checks,
-        gate_passes=gate_passes,
-        gate_rate=_rate(gate_passes, gate_checks),
+        activity_events=course.activity_events,
+        unique_learners=len(course.learners),
         lectures=lectures,
+        **course.cells(),
     )
 
 
-def _lecture_summary(
-    lecture_id: str, events: Iterable[dict]
-) -> tuple[CourseLectureAnalytics, set[str]]:
-    total_events = 0
-    learners: set[str] = set()
-    quiz_attempts = 0
-    quiz_correct = 0
-    gate_checks = 0
-    gate_passes = 0
-    for event in events:
-        total_events += 1
-        if event.get("user_key"):
-            learners.add(str(event["user_key"]))
-        if event.get("type") == "quiz_answer":
-            quiz_attempts += 1
-            quiz_correct += event.get("correct") is True
-        elif event.get("type") == "gate_decision":
-            gate_checks += 1
-            gate_passes += event.get("status") == "passed"
-    summary = CourseLectureAnalytics(
-        lecture_id=lecture_id,
-        total_events=total_events,
-        unique_learners=len(learners),
-        quiz_attempts=quiz_attempts,
-        quiz_correct_attempts=quiz_correct,
-        quiz_rate=_rate(quiz_correct, quiz_attempts),
-        gate_checks=gate_checks,
-        gate_passes=gate_passes,
-        gate_rate=_rate(gate_passes, gate_checks),
+def _score_cell(evidence_type: str, scores: dict[str, dict[str, bool]]) -> AnalyticsOutcomeCell:
+    learner_scores = [sum(items.values()) / len(items) for items in scores.values() if items]
+    available = len(learner_scores) >= MIN_OUTCOME_CELL_SIZE
+    return AnalyticsOutcomeCell(
+        evidence_type=evidence_type,
+        sample_size=len(learner_scores),
+        data_status="available" if available else "insufficient_data",
+        rate=(round(sum(learner_scores) / len(learner_scores), 4) if available else None),
     )
-    return summary, learners
-
-
-def _rate(numerator: int, denominator: int) -> float | None:
-    return round(numerator / denominator, 4) if denominator else None

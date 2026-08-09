@@ -2,8 +2,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from fastapi import FastAPI
+
+from lecturepilot.analytics import AnalyticsStore
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.course_learning_design_store import CourseLearningDesignStore
 from lecturepilot.latex_canvas_importer import CANVAS_IMPORT_VERSION
+from lecturepilot.learner_state import LearnerStateStore
+from lecturepilot.lecture_source_manifest import write_lecture_source_manifest
+from lecturepilot.source_index_models import CourseSourceIndex, IndexedSourceFile
+from lecturepilot.user_memory import UserMemoryStore
 
 
 def write_course_source(tmp_path: Path) -> Path:
@@ -15,6 +24,13 @@ def write_course_source(tmp_path: Path) -> Path:
     (material_root / "Lecture02-eng.tex").write_text(_LECTURE_02, encoding="utf-8")
     (material_root / "Lecture03-eng.tex").write_text(_LECTURE_03, encoding="utf-8")
     return material_root
+
+
+def configure_canvas_workspace(app: FastAPI, workspace: CanvasWorkspace) -> None:
+    app.state.canvas_workspace = workspace
+    app.state.learner_state = LearnerStateStore(workspace.layout)
+    app.state.user_memory_store = UserMemoryStore(workspace.layout)
+    app.state.analytics_store = AnalyticsStore(workspace.layout)
 
 
 def course_canvas(section_id: str, title: str) -> CanvasDocument:
@@ -58,6 +74,59 @@ def published_course_canvas(course_id: str, lecture_id: str) -> CanvasDocument:
             )
         ],
     )
+
+
+def publish_course_canvas(workspace: CanvasWorkspace, document: CanvasDocument) -> dict:
+    source_index = CourseSourceIndex(
+        course_id=document.course_id,
+        files=[
+            IndexedSourceFile(
+                path="source.md",
+                kind="markdown",
+                size_bytes=1,
+                sha256="a" * 64,
+                modified_ns=1,
+            )
+        ],
+    )
+    write_lecture_source_manifest(
+        workspace.layout.lecture_source_manifest_path(document.course_id, document.lecture_id),
+        course_id=document.course_id,
+        lecture_id=document.lecture_id,
+        file_paths=["source.md"],
+        source_index=source_index,
+    )
+    sourced_document = document.model_copy(
+        update={
+            "source_ref": _concrete_source_ref(document.source_ref),
+            "sections": [
+                section.model_copy(update={"source_ref": _concrete_source_ref(section.source_ref)})
+                for section in document.sections
+            ],
+        }
+    )
+    workspace.write_course_canvas_draft(sourced_document)
+    reviews = CourseLearningDesignStore(workspace.layout)
+    current = reviews.read(course_id=document.course_id, lecture_id=document.lecture_id)
+    reviews.approve(
+        course_id=document.course_id,
+        lecture_id=document.lecture_id,
+        draft_digest=current.draft_digest,
+        source_revision=current.source_revision,
+        learning_map_revision=current.learning_map.revision,
+        approved_by="professor",
+    )
+    return workspace.publish_course_canvas_draft(
+        course_id=document.course_id,
+        lecture_id=document.lecture_id,
+        published_by="professor",
+    )
+
+
+def _concrete_source_ref(source_ref: str | None) -> str:
+    if source_ref and not source_ref.lower().startswith("test"):
+        return source_ref
+    return "source.md"
 
 
 _LECTURE_01 = r"""

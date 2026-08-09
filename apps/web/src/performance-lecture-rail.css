@@ -127,18 +127,8 @@
   width: 6px;
 }
 
-.lecture-status.is-healthy {
-  color: #18864b;
-}
-
-.lecture-status.is-watch {
-  color: #b26900;
-}
-
-.lecture-status.is-needs-attention {
-  color: #c93226;
-}
-
+.lecture-status.is-insufficient-data,
+.lecture-status.is-historical-only,
 .lecture-status.is-no-data,
 .lecture-status.is-unloaded {
   color: var(--color-text-tertiary);

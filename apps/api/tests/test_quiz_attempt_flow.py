@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from auth_helpers import professor_headers, student_headers
+from canvas_workspace_fixtures import configure_canvas_workspace, publish_course_canvas
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
@@ -144,9 +145,12 @@ def test_concurrent_transport_replay_accepts_one_first_attempt(tmp_path: Path) -
 
 def _client(tmp_path: Path) -> TestClient:
     app = create_app()
-    app.state.canvas_workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=tmp_path / "materials",
+    configure_canvas_workspace(
+        app,
+        CanvasWorkspace(
+            workspace_root=tmp_path / "workspaces",
+            material_root=tmp_path / "materials",
+        ),
     )
     write_course_workspace(
         app.state.canvas_workspace.course_media_root(COURSE_ID),
@@ -187,7 +191,7 @@ def _client(tmp_path: Path) -> TestClient:
             )
         ],
     )
-    app.state.canvas_workspace.write_course_canvas(document)
+    publish_course_canvas(app.state.canvas_workspace, document)
     app.state.canvas_workspace.write_course_canvas_draft(document)
     return TestClient(app)
 

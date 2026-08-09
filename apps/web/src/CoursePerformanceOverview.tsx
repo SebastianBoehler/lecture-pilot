@@ -16,12 +16,9 @@ export function CoursePerformanceOverview({
 }) {
   const { t } = useI18n();
   const rows = useMemo(() => lectureRows(analytics, lectures), [analytics, lectures]);
-  const attention = rows
-    .filter((row) => row.snapshot.status === "needs-attention" || row.snapshot.status === "watch")
-    .sort((left, right) => statusRank(left.snapshot.status) - statusRank(right.snapshot.status));
   const coverage = rows.reduce<Record<LectureSnapshot["status"], number>>(
     (counts, row) => ({ ...counts, [row.snapshot.status]: counts[row.snapshot.status] + 1 }),
-    { healthy: 0, "needs-attention": 0, "no-data": 0, watch: 0 },
+    { available: 0, "insufficient-data": 0, "historical-only": 0, "no-data": 0 },
   );
 
   return (
@@ -29,60 +26,57 @@ export function CoursePerformanceOverview({
       <PerformanceOverview
         label={t("analytics.courseOverviewMetrics")}
         snapshot={{
-          events: analytics.total_events,
-          gateRate: percent(analytics.gate_rate),
+          events: analytics.activity_events,
+          gateRate: percent(analytics.independent_first_pass.rate),
           learners: analytics.unique_learners,
-          quizRate: percent(analytics.quiz_rate),
-          status: "no-data",
+          quizRate: percent(analytics.quiz_first_attempt.rate),
+          status: evidenceStatus(analytics),
         }}
       />
       <section className="course-overview-panel">
         <header>
           <div>
-            <h3>{t("analytics.focusNext")}</h3>
-            <p>{t("analytics.focusNextHelp")}</p>
+            <h3>{t("analytics.evidenceCoverage")}</h3>
+            <p>{t("analytics.evidenceCoverageHelp")}</p>
           </div>
-          <span>
-            {t("analytics.lecturesWithSignals", { count: rows.length - coverage["no-data"] })}
-          </span>
+          <span>{t("analytics.lecturesWithEvidence", { count: coverage.available })}</span>
         </header>
         <div className="course-overview-grid">
           <section className="attention-queue">
-            <h4>{t("analytics.priorityLectures")}</h4>
-            {attention.length ? (
-              <div className="attention-lecture-list">
-                {attention.map(({ lecture, snapshot }) => (
-                  <button key={lecture.id} type="button" onClick={() => onSelectLecture(lecture)}>
-                    <span className="attention-lecture-number">{lecture.number}</span>
-                    <span>
-                      <strong>{lecture.title}</strong>
-                      <small>
-                        {t("analytics.lectureSignalSummary", {
-                          events: snapshot.events,
-                          gate: snapshot.gateRate,
-                          quiz: snapshot.quizRate,
-                        })}
-                      </small>
-                    </span>
-                    <span className={`lecture-status is-${snapshot.status}`}>
-                      {statusLabel(snapshot.status, t)}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="course-overview-empty">{t("analytics.noPriorityLectures")}</p>
-            )}
+            <h4>{t("analytics.publishedLectureEvidence")}</h4>
+            <div className="attention-lecture-list">
+              {rows.map(({ lecture, snapshot }) => (
+                <button key={lecture.id} type="button" onClick={() => onSelectLecture(lecture)}>
+                  <span className="attention-lecture-number">{lecture.number}</span>
+                  <span>
+                    <strong>{lecture.title}</strong>
+                    <small>
+                      {t("analytics.lectureEvidenceSummary", {
+                        events: snapshot.events,
+                        gate: snapshot.gateRate,
+                        quiz: snapshot.quizRate,
+                      })}
+                    </small>
+                  </span>
+                  <span className={`lecture-status is-${snapshot.status}`}>
+                    {statusLabel(snapshot.status, t)}
+                  </span>
+                </button>
+              ))}
+            </div>
           </section>
           <section className="signal-coverage">
-            <h4>{t("analytics.signalCoverage")}</h4>
+            <h4>{t("analytics.evidenceCoverage")}</h4>
             <dl>
+              <CoverageRow label={t("analytics.status.available")} value={coverage.available} />
               <CoverageRow
-                label={t("analytics.status.attention")}
-                value={coverage["needs-attention"]}
+                label={t("analytics.status.insufficient")}
+                value={coverage["insufficient-data"]}
               />
-              <CoverageRow label={t("analytics.status.watch")} value={coverage.watch} />
-              <CoverageRow label={t("analytics.status.healthy")} value={coverage.healthy} />
+              <CoverageRow
+                label={t("analytics.status.historical")}
+                value={coverage["historical-only"]}
+              />
               <CoverageRow label={t("analytics.status.noData")} value={coverage["no-data"]} />
             </dl>
           </section>
@@ -103,26 +97,29 @@ function CoverageRow({ label, value }: { label: string; value: number }) {
 
 function lectureRows(analytics: CourseAnalyticsSummary, lectures: Lecture[]) {
   const byId = new Map(analytics.lectures.map((lecture) => [lecture.lecture_id, lecture]));
-  return lectures.map((lecture) => {
-    const rollup = byId.get(lecture.id);
-    return {
-      lecture,
-      snapshot: rollup
-        ? courseLectureSnapshot(rollup)
-        : { events: 0, gateRate: "n/a", learners: 0, quizRate: "n/a", status: "no-data" as const },
-    };
-  });
+  return lectures.map((lecture) => ({
+    lecture,
+    snapshot: byId.has(lecture.id)
+      ? courseLectureSnapshot(byId.get(lecture.id)!)
+      : ({ events: 0, gateRate: "n/a", learners: 0, quizRate: "n/a", status: "no-data" } as const),
+  }));
 }
 
-function statusRank(status: LectureSnapshot["status"]) {
-  if (status === "needs-attention") return 0;
-  if (status === "watch") return 1;
-  return 2;
+function evidenceStatus(analytics: CourseAnalyticsSummary): LectureSnapshot["status"] {
+  if (!analytics.activity_events) return "no-data";
+  if (
+    analytics.quiz_first_attempt.data_status === "available" ||
+    analytics.independent_first_pass.data_status === "available"
+  )
+    return "available";
+  if (analytics.quiz_first_attempt.sample_size || analytics.independent_first_pass.sample_size)
+    return "insufficient-data";
+  return "historical-only";
 }
 
 function statusLabel(status: LectureSnapshot["status"], t: ReturnType<typeof useI18n>["t"]) {
-  if (status === "needs-attention") return t("analytics.status.attention");
-  if (status === "watch") return t("analytics.status.watch");
-  if (status === "healthy") return t("analytics.status.healthy");
+  if (status === "available") return t("analytics.status.available");
+  if (status === "insufficient-data") return t("analytics.status.insufficient");
+  if (status === "historical-only") return t("analytics.status.historical");
   return t("analytics.status.noData");
 }

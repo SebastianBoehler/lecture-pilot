@@ -16,6 +16,7 @@ from lecturepilot.learning_gates import gate_spec_for_lecture
 from lecturepilot.learning_map import LearningMap, LearningMapGate
 from lecturepilot.models import (
     AgentCoachingContext,
+    AgentAnalyticsContext,
     AgentTurnInput,
     AgentTurnResult,
     QualityGateStatus,
@@ -48,9 +49,15 @@ def prepare_coaching_turn(
                 gate_title=spec.title,
             )
         active_gate = None
+        turn_analytics = None
     else:
-        learning_map = app.state.canvas_workspace.course_canvas_store.learning_map(
+        analytics_context = app.state.canvas_workspace.course_canvas_store.read_analytics_context(
             course_id=turn.course_id, lecture_id=turn.lecture_id
+        )
+        learning_map = analytics_context.learning_map
+        turn_analytics = AgentAnalyticsContext(
+            publication_version=analytics_context.publication_version,
+            learning_map_revision=analytics_context.learning_map_revision,
         )
         decisions = learner_state_store(app).latest_gate_decisions(
             user_id=turn.user_id,
@@ -72,7 +79,7 @@ def prepare_coaching_turn(
                 course_id=turn.course_id,
                 lecture_id=turn.lecture_id,
                 gate_id=active_gate.id,
-                gate_revision=active_gate.revision or None,
+                gate_revision=active_gate.revision,
                 published_prompt=(
                     active_gate.prompt or active_gate.evidence_required or active_gate.title
                 ),
@@ -84,15 +91,11 @@ def prepare_coaching_turn(
                     requested_gate_id=turn.requested_gate_id,
                     focused_section_id=turn.canvas_state.focused_section_id,
                 )
-            active_gate = select_due_review_gate(learning_map, progress) or (
-                select_active_gate(
-                    learning_map,
-                    requested_gate_id=turn.requested_gate_id,
-                    focused_section_id=turn.canvas_state.focused_section_id,
-                    latest_decisions=decisions,
-                )
-                if learning_map is not None
-                else None
+            active_gate = select_due_review_gate(learning_map, progress) or select_active_gate(
+                learning_map,
+                requested_gate_id=turn.requested_gate_id,
+                focused_section_id=turn.canvas_state.focused_section_id,
+                latest_decisions=decisions,
             )
         if active_gate is None:
             context = AgentCoachingContext(attendance_prior_used=progress.attendance_prior_used)
@@ -104,12 +107,12 @@ def prepare_coaching_turn(
                     lecture_id=turn.lecture_id,
                     gate_id=active_gate.id,
                     gate_title=active_gate.title,
-                    gate_revision=active_gate.revision or None,
+                    gate_revision=active_gate.revision,
                 )
             context = context.model_copy(
                 update={
                     "active_gate_id": active_gate.id,
-                    "active_gate_revision": active_gate.revision or None,
+                    "active_gate_revision": active_gate.revision,
                     "active_gate_review_after_days": active_gate.review_after_days,
                 }
             )
@@ -127,6 +130,7 @@ def prepare_coaching_turn(
     return turn.model_copy(
         update={
             "active_gate": active_gate,
+            "analytics_context": turn_analytics,
             "coaching_context": context,
             "scaffold_policy": policy,
             "recent_messages": progress.messages,

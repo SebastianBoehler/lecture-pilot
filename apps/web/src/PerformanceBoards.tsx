@@ -149,7 +149,7 @@ export function LectureBoard({
         </p>
       ) : null}
       <PerformanceOverview snapshot={snapshot} />
-      {analytics?.total_events ? (
+      {analytics?.activity_events ? (
         <PerformanceAnalysisWorkspace analytics={analytics} />
       ) : (
         <AnalyticsEmptyState />

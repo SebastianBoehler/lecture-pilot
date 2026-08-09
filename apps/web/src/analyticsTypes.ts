@@ -1,5 +1,14 @@
 import type { LearningMap } from "./learningMapTypes";
 
+export type AnalyticsOutcomeCell = {
+  evidence_type: string;
+  sample_size: number;
+  data_status: "available" | "insufficient_data";
+  rate: number | null;
+};
+
+export type AnalyticsVersionStatus = "current" | "historical";
+
 export type AnalyticsOptionMetric = {
   option_index: number;
   option_id?: string | null;
@@ -13,36 +22,34 @@ export type AnalyticsQuizMetric = {
   component_type: string;
   title: string;
   question: string;
-  total_attempts: number;
+  publication_version: number;
+  version_status: AnalyticsVersionStatus;
+  activity_events: number;
   unique_learners: number;
-  correct_attempts: number;
-  correct_rate: number | null;
-  latest_activity?: string | null;
-  attendance_split: Record<string, number>;
-  options: AnalyticsOptionMetric[];
+  first_attempt: AnalyticsOutcomeCell;
+  correction_after_feedback: AnalyticsOutcomeCell;
+  options: AnalyticsOptionMetric[] | null;
 };
 
 export type AnalyticsGateMetric = {
   gate_id: string;
-  total_events: number;
+  gate_revision: string;
+  publication_version: number;
+  version_status: AnalyticsVersionStatus;
+  activity_events: number;
   unique_learners: number;
-  latest_activity?: string | null;
-  status_counts: Record<string, number>;
-  attendance_split: Record<string, number>;
-  independent_attempts: number;
-  independent_passes: number;
-  supported_attempts: number;
-  transfer_attempts: number;
-  independent_transfer_passes: number;
-  assistance_level_counts: Record<string, number>;
-  evidence_counts: Record<string, number>;
+  independent_first_pass: AnalyticsOutcomeCell;
+  supported_retry: AnalyticsOutcomeCell;
+  delayed_transfer: AnalyticsOutcomeCell;
 };
 
 export type LectureAnalyticsSummary = {
   course_id: string;
   lecture_id: string;
-  total_events: number;
+  activity_events: number;
   unique_learners: number;
+  current_publication_version: number;
+  current_learning_map_revision: string;
   learning_map?: LearningMap | null;
   quizzes: AnalyticsQuizMetric[];
   gates: AnalyticsGateMetric[];
@@ -50,25 +57,24 @@ export type LectureAnalyticsSummary = {
 
 export type CourseLectureAnalytics = {
   lecture_id: string;
-  total_events: number;
+  activity_events: number;
   unique_learners: number;
-  quiz_attempts: number;
-  quiz_correct_attempts: number;
-  quiz_rate: number | null;
-  gate_checks: number;
-  gate_passes: number;
-  gate_rate: number | null;
+  current_publication_version: number;
+  quiz_first_attempt: AnalyticsOutcomeCell;
+  correction_after_feedback: AnalyticsOutcomeCell;
+  independent_first_pass: AnalyticsOutcomeCell;
+  supported_retry: AnalyticsOutcomeCell;
+  delayed_transfer: AnalyticsOutcomeCell;
 };
 
 export type CourseAnalyticsSummary = {
   course_id: string;
-  total_events: number;
+  activity_events: number;
   unique_learners: number;
-  quiz_attempts: number;
-  quiz_correct_attempts: number;
-  quiz_rate: number | null;
-  gate_checks: number;
-  gate_passes: number;
-  gate_rate: number | null;
+  quiz_first_attempt: AnalyticsOutcomeCell;
+  correction_after_feedback: AnalyticsOutcomeCell;
+  independent_first_pass: AnalyticsOutcomeCell;
+  supported_retry: AnalyticsOutcomeCell;
+  delayed_transfer: AnalyticsOutcomeCell;
   lectures: CourseLectureAnalytics[];
 };

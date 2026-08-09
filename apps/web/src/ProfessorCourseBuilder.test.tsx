@@ -191,9 +191,9 @@ describe("Professor course builder", () => {
         { name: /bayesian decision theory/i },
       ),
     );
-    expect(await screen.findByText("Events")).toBeInTheDocument();
-    expect(screen.getAllByText("Quiz success").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("50%").length).toBeGreaterThan(0);
+    expect(await screen.findByText("Activity events")).toBeInTheDocument();
+    expect(screen.getAllByText("First-attempt correctness").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("60%").length).toBeGreaterThan(0);
     expect(screen.getByText(/answer distribution/i)).toBeInTheDocument();
     expect(screen.getByText(/posterior-weighted loss/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^course builder$/i }));

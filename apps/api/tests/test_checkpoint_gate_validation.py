@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from auth_helpers import student_headers
+from canvas_workspace_fixtures import configure_canvas_workspace, publish_course_canvas
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
@@ -166,9 +167,12 @@ def test_valid_inline_checkpoint_is_bound_as_an_independent_assessed_attempt(
 
 def _client(tmp_path: Path, harness=None) -> tuple[TestClient, "_Harness"]:
     app = create_app()
-    app.state.canvas_workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=tmp_path / "materials",
+    configure_canvas_workspace(
+        app,
+        CanvasWorkspace(
+            workspace_root=tmp_path / "workspaces",
+            material_root=tmp_path / "materials",
+        ),
     )
     write_course_workspace(
         app.state.canvas_workspace.course_media_root("checkpoint-course"),
@@ -187,7 +191,8 @@ def _client(tmp_path: Path, harness=None) -> tuple[TestClient, "_Harness"]:
             active_lecture_id="lecture-01",
         ),
     )
-    app.state.canvas_workspace.write_course_canvas(
+    publish_course_canvas(
+        app.state.canvas_workspace,
         CanvasDocument(
             id="checkpoint-course-lecture-01",
             course_id="checkpoint-course",
@@ -200,7 +205,7 @@ def _client(tmp_path: Path, harness=None) -> tuple[TestClient, "_Harness"]:
                 _section("concept-a", "concept-a-check"),
                 _section("concept-b", "concept-b-check"),
             ],
-        )
+        ),
     )
     harness = harness or _Harness()
     app.state.agent_harness = harness

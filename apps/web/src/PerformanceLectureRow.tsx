@@ -37,8 +37,8 @@ export function PerformanceLectureRow({
 }
 
 function statusLabel(status: LectureSnapshot["status"], t: ReturnType<typeof useI18n>["t"]) {
-  if (status === "healthy") return t("analytics.status.healthy");
-  if (status === "watch") return t("analytics.status.watch");
-  if (status === "needs-attention") return t("analytics.status.attention");
+  if (status === "available") return t("analytics.status.available");
+  if (status === "insufficient-data") return t("analytics.status.insufficient");
+  if (status === "historical-only") return t("analytics.status.historical");
   return t("analytics.status.noData");
 }

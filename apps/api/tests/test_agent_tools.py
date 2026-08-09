@@ -6,7 +6,12 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
-from canvas_workspace_fixtures import course_canvas, write_course_source
+from canvas_workspace_fixtures import (
+    configure_canvas_workspace,
+    course_canvas,
+    publish_course_canvas,
+    write_course_source,
+)
 from lecturepilot.agent_tool_executor import AgentToolExecutor
 from lecturepilot.agent_tool_loop import complete_tool_turn
 from lecturepilot.app import create_app
@@ -95,7 +100,7 @@ def test_unix_named_tools_search_read_and_write_canvas(tmp_path) -> None:
 def test_agent_route_merges_low_level_canvas_write(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("LECTUREPILOT_OBSERVABILITY", "none")
     app = create_app()
-    app.state.canvas_workspace = _workspace(tmp_path)
+    configure_canvas_workspace(app, _workspace(tmp_path))
     app.state.agent_harness = _ToolWritingHarness()
     client = TestClient(app)
 
@@ -299,7 +304,7 @@ def _workspace(tmp_path) -> CanvasWorkspace:
     workspace = CanvasWorkspace(
         workspace_root=tmp_path / "workspaces", material_root=write_course_source(tmp_path)
     )
-    workspace.write_course_canvas(course_canvas("bayes-formula", "Bayes formula"))
+    publish_course_canvas(workspace, course_canvas("bayes-formula", "Bayes formula"))
     return workspace
 
 

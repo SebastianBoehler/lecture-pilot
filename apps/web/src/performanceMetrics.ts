@@ -1,74 +1,66 @@
-import type { CourseLectureAnalytics, Lecture, LectureAnalyticsSummary } from "./types";
+import type {
+  AnalyticsOutcomeCell,
+  CourseLectureAnalytics,
+  Lecture,
+  LectureAnalyticsSummary,
+} from "./types";
+
+export type EvidenceStatus = "available" | "insufficient-data" | "historical-only" | "no-data";
 
 export type LectureSnapshot = {
   events: number;
   gateRate: string;
   learners: number;
   quizRate: string;
-  status: "healthy" | "watch" | "needs-attention" | "no-data";
+  status: EvidenceStatus;
 };
 
 export type AnalyticsSignals = {
-  attendance: Record<string, number>;
   gateRate: number | null;
   learners: number;
   quizRate: number | null;
+  status: EvidenceStatus;
 };
 
 export function lectureSnapshot(
-  lecture: Lecture,
+  _lecture: Lecture,
   analytics: LectureAnalyticsSummary | null,
 ): LectureSnapshot {
-  if (analytics?.total_events) {
-    const signals = analyticsSignals(analytics);
-    return {
-      events: analytics.total_events,
-      gateRate: percent(signals.gateRate),
-      learners: signals.learners,
-      quizRate: percent(signals.quizRate),
-      status: statusFor(signals.quizRate, signals.gateRate),
-    };
-  }
+  if (!analytics?.activity_events) return emptySnapshot();
+  const signals = analyticsSignals(analytics);
   return {
-    events: 0,
-    gateRate: "n/a",
-    learners: 0,
-    quizRate: "n/a",
-    status: "no-data",
+    events: analytics.activity_events,
+    gateRate: percent(signals.gateRate),
+    learners: analytics.unique_learners,
+    quizRate: percent(signals.quizRate),
+    status: signals.status,
   };
 }
 
 export function analyticsSignals(analytics: LectureAnalyticsSummary): AnalyticsSignals {
-  const attempts = analytics.quizzes.reduce((sum, quiz) => sum + quiz.total_attempts, 0);
-  const correct = analytics.quizzes.reduce((sum, quiz) => sum + quiz.correct_attempts, 0);
-  const passed = analytics.gates.reduce((sum, gate) => sum + (gate.status_counts.passed ?? 0), 0);
-  const checks = analytics.gates.reduce((sum, gate) => sum + gate.total_events, 0);
-  const attendance = [...analytics.quizzes, ...analytics.gates].reduce<Record<string, number>>(
-    (totals, item) => {
-      for (const [label, value] of Object.entries(item.attendance_split)) {
-        totals[label] = (totals[label] ?? 0) + value;
-      }
-      return totals;
-    },
-    {},
-  );
+  const quizCells = analytics.quizzes
+    .filter((quiz) => quiz.version_status === "current")
+    .map((quiz) => quiz.first_attempt);
+  const gateCells = analytics.gates
+    .filter((gate) => gate.version_status === "current")
+    .map((gate) => gate.independent_first_pass);
+  const currentCells = [...quizCells, ...gateCells];
   return {
-    attendance,
-    gateRate: checks ? passed / checks : null,
+    gateRate: weightedRate(gateCells),
     learners: analytics.unique_learners,
-    quizRate: attempts ? correct / attempts : null,
+    quizRate: weightedRate(quizCells),
+    status: evidenceStatus(analytics.activity_events, currentCells),
   };
 }
 
 export function courseLectureSnapshot(analytics: CourseLectureAnalytics): LectureSnapshot {
+  const cells = [analytics.quiz_first_attempt, analytics.independent_first_pass];
   return {
-    events: analytics.total_events,
-    gateRate: percent(analytics.gate_rate),
+    events: analytics.activity_events,
+    gateRate: percent(analytics.independent_first_pass.rate),
     learners: analytics.unique_learners,
-    quizRate: percent(analytics.quiz_rate),
-    status: analytics.total_events
-      ? statusFor(analytics.quiz_rate, analytics.gate_rate)
-      : "no-data",
+    quizRate: percent(analytics.quiz_first_attempt.rate),
+    status: evidenceStatus(analytics.activity_events, cells),
   };
 }
 
@@ -76,21 +68,22 @@ export function percent(value: number | null) {
   return value === null ? "n/a" : `${Math.round(value * 100)}%`;
 }
 
-export function splitBars(values: Record<string, number>) {
-  const total = Object.values(values).reduce((sum, value) => sum + value, 0);
-  return Object.entries(values).map(([label, value]) => ({
-    label: label.replaceAll("_", " "),
-    total,
-    value,
-  }));
+function weightedRate(cells: AnalyticsOutcomeCell[]) {
+  const available = cells.filter(
+    (cell): cell is AnalyticsOutcomeCell & { rate: number } => cell.rate !== null,
+  );
+  const denominator = available.reduce((sum, cell) => sum + cell.sample_size, 0);
+  if (!denominator) return null;
+  return available.reduce((sum, cell) => sum + cell.rate * cell.sample_size, 0) / denominator;
 }
 
-function statusFor(quizRate: number | null, gateRate: number | null): LectureSnapshot["status"] {
-  if ((quizRate !== null && quizRate < 0.58) || (gateRate !== null && gateRate < 0.6)) {
-    return "needs-attention";
-  }
-  if ((quizRate !== null && quizRate < 0.72) || (gateRate !== null && gateRate < 0.72)) {
-    return "watch";
-  }
-  return "healthy";
+function evidenceStatus(activityEvents: number, cells: AnalyticsOutcomeCell[]): EvidenceStatus {
+  if (!activityEvents) return "no-data";
+  if (cells.some((cell) => cell.data_status === "available")) return "available";
+  if (cells.some((cell) => cell.sample_size > 0)) return "insufficient-data";
+  return "historical-only";
+}
+
+function emptySnapshot(): LectureSnapshot {
+  return { events: 0, gateRate: "n/a", learners: 0, quizRate: "n/a", status: "no-data" };
 }

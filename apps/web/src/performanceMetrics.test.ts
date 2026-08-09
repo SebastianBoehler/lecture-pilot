@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { analyticsSignals, courseLectureSnapshot, lectureSnapshot } from "./performanceMetrics";
 
 describe("lectureSnapshot", () => {
-  it("labels missing learner activity as no data rather than a warning state", () => {
+  it("labels missing learner activity as no data", () => {
     expect(lectureSnapshot(lecture(), null)).toMatchObject({
       events: 0,
       gateRate: "n/a",
@@ -12,35 +12,35 @@ describe("lectureSnapshot", () => {
     });
   });
 
-  it("aggregates every quiz and gate for the overview and signal charts", () => {
+  it("uses current learner-level outcome cells instead of raw events", () => {
     expect(analyticsSignals(analytics())).toEqual({
-      attendance: { absent: 3, present: 9 },
-      gateRate: 0.75,
+      gateRate: 0.6,
       learners: 9,
-      quizRate: 0.6,
+      quizRate: 0.8,
+      status: "available",
     });
-
     expect(lectureSnapshot(lecture(), analytics())).toMatchObject({
-      gateRate: "75%",
+      gateRate: "60%",
       learners: 9,
-      quizRate: "60%",
+      quizRate: "80%",
+      status: "available",
     });
   });
 
-  it("does not turn a strong quiz signal into an alert when no gate evidence exists", () => {
-    expect(
-      courseLectureSnapshot({
-        gate_checks: 0,
-        gate_passes: 0,
-        gate_rate: null,
-        lecture_id: "lecture-01",
-        quiz_attempts: 3,
-        quiz_correct_attempts: 3,
-        quiz_rate: 1,
-        total_events: 3,
-        unique_learners: 2,
-      }).status,
-    ).toBe("healthy");
+  it("reports insufficient coverage without a threshold-derived warning", () => {
+    const snapshot = courseLectureSnapshot({
+      activity_events: 3,
+      correction_after_feedback: cell("correction_after_feedback", 1, null),
+      current_publication_version: 2,
+      delayed_transfer: cell("delayed_transfer", 0, null),
+      independent_first_pass: cell("independent_first_pass", 0, null),
+      lecture_id: "lecture-01",
+      quiz_first_attempt: cell("quiz_first_attempt", 3, null),
+      supported_retry: cell("supported_retry", 0, null),
+      unique_learners: 3,
+    });
+    expect(snapshot.status).toBe("insufficient-data");
+    expect(snapshot.quizRate).toBe("n/a");
   });
 });
 
@@ -57,50 +57,47 @@ function lecture() {
 function analytics() {
   return {
     course_id: "course-1",
-    lecture_id: "lecture-01",
-    total_events: 14,
-    unique_learners: 9,
-    quizzes: [
-      {
-        attendance_split: { absent: 1, present: 4 },
-        component_id: "quiz-1",
-        component_type: "quiz",
-        correct_attempts: 2,
-        correct_rate: 0.4,
-        options: [],
-        question: "One",
-        title: "One",
-        total_attempts: 5,
-        unique_learners: 5,
-      },
-      {
-        attendance_split: { absent: 1, present: 4 },
-        component_id: "quiz-2",
-        component_type: "quiz",
-        correct_attempts: 4,
-        correct_rate: 0.8,
-        options: [],
-        question: "Two",
-        title: "Two",
-        total_attempts: 5,
-        unique_learners: 6,
-      },
-    ],
+    current_learning_map_revision: "map-2",
+    current_publication_version: 2,
     gates: [
       {
-        attendance_split: { absent: 1, present: 1 },
+        activity_events: 12,
+        delayed_transfer: cell("delayed_transfer", 5, 0.8),
         gate_id: "gate-1",
-        status_counts: { failed: 1, passed: 3 },
-        total_events: 4,
-        unique_learners: 4,
-        independent_attempts: 2,
-        independent_passes: 2,
-        supported_attempts: 2,
-        transfer_attempts: 1,
-        independent_transfer_passes: 1,
-        assistance_level_counts: { none: 2, prompt: 2 },
-        evidence_counts: {},
+        gate_revision: "revision-2",
+        independent_first_pass: cell("independent_first_pass", 5, 0.6),
+        publication_version: 2,
+        supported_retry: cell("supported_retry", 5, 0.8),
+        unique_learners: 5,
+        version_status: "current" as const,
       },
     ],
+    lecture_id: "lecture-01",
+    quizzes: [
+      {
+        activity_events: 10,
+        component_id: "quiz-1",
+        component_type: "quiz",
+        correction_after_feedback: cell("correction_after_feedback", 3, null),
+        first_attempt: cell("quiz_first_attempt", 5, 0.8),
+        options: [],
+        publication_version: 2,
+        question: "One",
+        title: "One",
+        unique_learners: 5,
+        version_status: "current" as const,
+      },
+    ],
+    activity_events: 22,
+    unique_learners: 9,
+  };
+}
+
+function cell(evidenceType: string, sampleSize: number, rate: number | null) {
+  return {
+    data_status: rate === null ? ("insufficient_data" as const) : ("available" as const),
+    evidence_type: evidenceType,
+    rate,
+    sample_size: sampleSize,
   };
 }

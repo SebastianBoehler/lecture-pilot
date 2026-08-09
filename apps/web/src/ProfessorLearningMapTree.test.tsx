@@ -16,7 +16,7 @@ describe("ProfessorLearningMapTree", () => {
       name: /bayesian decision theory learning path gates/i,
     });
     const rootToggle = within(tree).getByRole("button", {
-      name: /decision making.*100% passed/i,
+      name: /decision making.*evidence available/i,
     });
     expect(rootToggle).toHaveAttribute("aria-expanded", "false");
 
@@ -27,8 +27,8 @@ describe("ProfessorLearningMapTree", () => {
     await user.click(rootToggle);
     expect(rootToggle).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText(/risk evidence gate/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/100% passed/i)).toHaveLength(2);
-    expect(screen.getByText(/1\/1 checks/i)).toBeInTheDocument();
+    expect(screen.getByText(/60% independent first pass/i)).toBeInTheDocument();
+    expect(screen.getByText(/5 activity events/i)).toBeInTheDocument();
 
     const bayesToggle = within(tree).getByRole("button", { name: /bayes formula/i });
     await user.click(bayesToggle);
@@ -40,23 +40,37 @@ function analytics(): LectureAnalyticsSummary {
   return {
     course_id: "demo-ml-course",
     lecture_id: "lecture-03",
-    total_events: 1,
-    unique_learners: 1,
+    activity_events: 1,
+    unique_learners: 5,
+    current_publication_version: 1,
+    current_learning_map_revision: "map-1",
     quizzes: [],
     gates: [
       {
         gate_id: "risk-gate",
-        total_events: 1,
-        unique_learners: 1,
-        status_counts: { passed: 1 },
-        attendance_split: { present: 1 },
-        independent_attempts: 1,
-        independent_passes: 1,
-        supported_attempts: 0,
-        transfer_attempts: 0,
-        independent_transfer_passes: 0,
-        assistance_level_counts: { none: 1 },
-        evidence_counts: {},
+        activity_events: 5,
+        unique_learners: 5,
+        publication_version: 1,
+        gate_revision: "revision-1",
+        version_status: "current",
+        independent_first_pass: {
+          evidence_type: "independent_first_pass",
+          sample_size: 5,
+          data_status: "available",
+          rate: 0.6,
+        },
+        supported_retry: {
+          evidence_type: "supported_retry",
+          sample_size: 0,
+          data_status: "insufficient_data",
+          rate: null,
+        },
+        delayed_transfer: {
+          evidence_type: "delayed_transfer",
+          sample_size: 0,
+          data_status: "insufficient_data",
+          rate: null,
+        },
       },
     ],
     learning_map: {

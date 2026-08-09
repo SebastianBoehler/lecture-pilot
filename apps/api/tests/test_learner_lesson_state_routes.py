@@ -4,7 +4,11 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from auth_helpers import professor_headers, student_headers
-from canvas_workspace_fixtures import published_course_canvas
+from canvas_workspace_fixtures import (
+    configure_canvas_workspace,
+    publish_course_canvas,
+    published_course_canvas,
+)
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock
 from lecturepilot.canvas_workspace import CanvasWorkspace
@@ -219,9 +223,12 @@ def test_professor_analytics_never_exposes_private_tutor_messages(tmp_path: Path
 
 def _client(tmp_path: Path) -> TestClient:
     app = create_app()
-    app.state.canvas_workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=tmp_path / "materials",
+    configure_canvas_workspace(
+        app,
+        CanvasWorkspace(
+            workspace_root=tmp_path / "workspaces",
+            material_root=tmp_path / "materials",
+        ),
     )
     lectures = [
         Lecture(id="lecture-open", course_id=COURSE_ID, title="Open", date=PAST),
@@ -257,7 +264,7 @@ def _client(tmp_path: Path) -> TestClient:
                 ),
             ]
         )
-        app.state.canvas_workspace.write_course_canvas(document)
+        publish_course_canvas(app.state.canvas_workspace, document)
     return TestClient(app)
 
 

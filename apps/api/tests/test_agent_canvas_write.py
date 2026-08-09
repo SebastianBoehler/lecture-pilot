@@ -2,8 +2,65 @@ from __future__ import annotations
 
 from canvas_workspace_fixtures import write_course_source
 from lecturepilot.agent_canvas_write import normalize_student_canvas_markdown
+from lecturepilot.agent_turn_orchestration import _apply_generated_sections
 from lecturepilot.agent_tool_executor import AgentToolExecutor
+from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.models import AgentTurnInput, AgentTurnResult, CanvasCommand
+from lecturepilot.observability import Observability
+from test_analytics_routes import _client
+
+
+def test_concrete_agent_result_applies_to_published_workspace(tmp_path) -> None:
+    client = _client(tmp_path)
+    section = CanvasSection(
+        id="worked-risk-example",
+        title="Worked risk example",
+        blocks=[
+            CanvasBlock(
+                id="worked-risk-example-text",
+                type="paragraph",
+                text="A learner-specific comparison of the two decisions.",
+            )
+        ],
+    )
+    turn = AgentTurnInput(
+        user_id="student-a",
+        course_id="demo-course",
+        lecture_id="lecture-01",
+        attendance="present",
+        message="Add a worked risk example.",
+    )
+    result = AgentTurnResult(
+        message="The example is now on your canvas.",
+        model="contract-test",
+        canvas_commands=[
+            CanvasCommand(type="focus_section", section_id="risk"),
+            CanvasCommand(type="append_section", section_id=section.id, section=section),
+        ],
+    )
+
+    updated = _apply_generated_sections(
+        client.app,
+        turn=turn,
+        result=result,
+        sections=[section],
+        placements={},
+        activity=lambda _tag: None,
+        observability=Observability(),
+    )
+
+    document = client.app.state.canvas_workspace.read_document(
+        course_id="demo-course",
+        lecture_id="lecture-01",
+        user_id="student-a",
+    )
+    assert document.sections[-1].id == section.id
+    assert updated.canvas_commands[0] == CanvasCommand(type="focus_section", section_id="risk")
+    assert Observability().result_output(updated)["canvas_commands"] == [
+        "focus_section",
+        "append_section",
+    ]
 
 
 def test_student_canvas_write_normalizes_model_quiz_lines() -> None:

@@ -9,6 +9,11 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict, Field
 
 from lecturepilot.canvas_models import CanvasBlock
+from lecturepilot.analytics_events import (
+    GateOutcomeEvent,
+    QuizOutcomeEvent,
+    parse_analytics_event,
+)
 from lecturepilot.coaching_analytics import AnalyticsGateMetric, GateMetricsAccumulator
 from lecturepilot.coaching_progress import CoachingTurnEvent
 from lecturepilot.durable_files import exclusive_file_lock
@@ -50,8 +55,10 @@ class QuizAnswerResult(BaseModel):
 class LectureAnalyticsSummary(BaseModel):
     course_id: str
     lecture_id: str
-    total_events: int
+    activity_events: int
     unique_learners: int
+    current_publication_version: int
+    current_learning_map_revision: str
     learning_map: LearningMap | None = None
     quizzes: list[AnalyticsQuizMetric]
     gates: list[AnalyticsGateMetric]
@@ -70,11 +77,11 @@ class AnalyticsStore:
         attendance: AttendanceStatus,
         block: CanvasBlock,
         option_index: int,
-        attempt_index: int = 1,
+        publication_version: int,
+        attempt_index: int,
         first_attempt_correct: bool | None = None,
         correction_state: QuizCorrectionState = "not_needed",
     ) -> None:
-        option_text = block.items[option_index] if option_index < len(block.items) else ""
         option_ids = block.option_ids or []
         option_id = option_ids[option_index] if option_index < len(option_ids) else None
         correct_index = block.answer_index if isinstance(block.answer_index, int) else None
@@ -84,28 +91,26 @@ class AnalyticsStore:
             self._append(
                 course_id,
                 lecture_id,
-                {
-                    "type": "quiz_answer",
-                    "course_id": course_id,
-                    "lecture_id": lecture_id,
-                    "user_key": self.layout.user_key(user_id),
-                    "attendance": attendance.value,
-                    "component_id": component_id,
-                    "component_type": block.component_type or block.type,
-                    "block_id": component_id,
-                    "title": block.caption or "Retrieval check",
-                    "question": block.text or "",
-                    "option_index": option_index,
-                    "option_id": option_id,
-                    "option_text": option_text,
-                    "correct_index": correct_index,
-                    "correct": correct,
-                    "attempt_index": attempt_index,
-                    "first_attempt_correct": first_attempt_correct,
-                    "correction_state": correction_state,
-                    "options": _options_snapshot(block),
-                    "created_at": _now(),
-                },
+                QuizOutcomeEvent(
+                    course_id=course_id,
+                    lecture_id=lecture_id,
+                    user_key=self.layout.user_key(user_id),
+                    attendance=attendance,
+                    component_id=component_id,
+                    component_type=block.component_type or block.type,
+                    title=block.caption or "Retrieval check",
+                    question=block.text or "",
+                    option_index=option_index,
+                    option_id=option_id,
+                    correct_index=correct_index,
+                    correct=correct,
+                    publication_version=publication_version,
+                    attempt_index=attempt_index,
+                    first_attempt_correct=first_attempt_correct,
+                    correction_state=correction_state,
+                    options=_options_snapshot(block),
+                    created_at=_now(),
+                ),
             )
 
     def record_quality_gate(
@@ -116,46 +121,57 @@ class AnalyticsStore:
         user_id: str,
         attendance: AttendanceStatus,
         decision: QualityGateDecision,
-        coaching_event: CoachingTurnEvent | None = None,
+        publication_version: int,
+        learning_map_revision: str,
+        coaching_event: CoachingTurnEvent,
     ) -> None:
         if is_professor_preview_user_id(user_id):
             return
-        learning_evidence = (
-            coaching_event.model_dump(mode="json") if coaching_event is not None else {}
-        )
+        if coaching_event.gate_id != decision.gate_id:
+            raise ValueError("Gate analytics event does not match the quality-gate decision.")
+        if (
+            not coaching_event.gate_revision
+            or coaching_event.attempt_kind == "none"
+            or coaching_event.attempt_index is None
+        ):
+            raise ValueError("Gate analytics requires a versioned assessed attempt.")
         self._append(
             course_id,
             lecture_id,
-            {
-                "type": "gate_decision",
-                "course_id": course_id,
-                "lecture_id": lecture_id,
-                "user_key": self.layout.user_key(user_id),
-                "attendance": attendance.value,
-                "gate_id": decision.gate_id,
-                "status": decision.status.value,
-                "reason": decision.reason,
-                "assistance_level": learning_evidence.get("assistance_level", "unknown"),
-                "support_before_attempt": learning_evidence.get("support_before_attempt", False),
-                "independent_attempt": learning_evidence.get("independent_attempt", False),
-                "transfer_attempt": learning_evidence.get("transfer_attempt", False),
-                "attempt_kind": learning_evidence.get("attempt_kind", "none"),
-                "attempt_index": learning_evidence.get("attempt_index"),
-                "attempt_delay_seconds": learning_evidence.get("delay_seconds"),
-                "support_profile": learning_evidence.get("support_profile"),
-                "process_label": learning_evidence.get("process_label"),
-                "evidence_ids": decision.evidence_ids,
-                "created_at": _now(),
-            },
+            GateOutcomeEvent(
+                course_id=course_id,
+                lecture_id=lecture_id,
+                user_key=self.layout.user_key(user_id),
+                attendance=attendance,
+                gate_id=decision.gate_id,
+                gate_revision=coaching_event.gate_revision,
+                publication_version=publication_version,
+                learning_map_revision=learning_map_revision,
+                status=decision.status,
+                attempt_kind=coaching_event.attempt_kind,
+                attempt_index=coaching_event.attempt_index,
+                created_at=_now(),
+            ),
         )
 
-    def summary(self, *, course_id: str, lecture_id: str) -> LectureAnalyticsSummary:
-        quizzes = QuizMetricsAccumulator()
-        gates = GateMetricsAccumulator()
+    def summary(
+        self,
+        *,
+        course_id: str,
+        lecture_id: str,
+        current_publication_version: int,
+        current_gate_revisions: dict[str, str],
+        current_learning_map_revision: str,
+    ) -> LectureAnalyticsSummary:
+        quizzes = QuizMetricsAccumulator(current_publication_version=current_publication_version)
+        gates = GateMetricsAccumulator(
+            current_publication_version=current_publication_version,
+            current_gate_revisions=current_gate_revisions,
+        )
         learners: set[str] = set()
-        total_events = 0
+        activity_events = 0
         for event in self.iter_events(course_id=course_id, lecture_id=lecture_id):
-            total_events += 1
+            activity_events += 1
             if event.get("user_key"):
                 learners.add(str(event["user_key"]))
             quizzes.record(event)
@@ -163,8 +179,10 @@ class AnalyticsStore:
         return LectureAnalyticsSummary(
             course_id=course_id,
             lecture_id=lecture_id,
-            total_events=total_events,
+            activity_events=activity_events,
             unique_learners=len(learners),
+            current_publication_version=current_publication_version,
+            current_learning_map_revision=current_learning_map_revision,
             quizzes=quizzes.metrics(),
             gates=gates.metrics(),
         )
@@ -180,17 +198,14 @@ class AnalyticsStore:
             for line in handle:
                 if not line.strip():
                     continue
-                try:
-                    payload = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if isinstance(payload, dict):
-                    yield payload
+                yield parse_analytics_event(line).model_dump(mode="json")
 
-    def _append(self, course_id: str, lecture_id: str, payload: dict) -> None:
+    def _append(
+        self, course_id: str, lecture_id: str, payload: QuizOutcomeEvent | GateOutcomeEvent
+    ) -> None:
         path = self._events_path(course_id, lecture_id)
         with exclusive_file_lock(path), path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(payload, sort_keys=True) + "\n")
+            handle.write(json.dumps(payload.model_dump(mode="json"), sort_keys=True) + "\n")
             handle.flush()
             os.fsync(handle.fileno())
 
@@ -200,7 +215,7 @@ class AnalyticsStore:
             / "analytics"
             / "lectures"
             / safe_id(lecture_id)
-            / "events.jsonl"
+            / "outcome-events.jsonl"
         )
 
 

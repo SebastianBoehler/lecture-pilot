@@ -9,8 +9,10 @@ import type {
 
 export type {
   AnalyticsGateMetric,
+  AnalyticsOutcomeCell,
   AnalyticsOptionMetric,
   AnalyticsQuizMetric,
+  AnalyticsVersionStatus,
   CourseAnalyticsSummary,
   CourseLectureAnalytics,
   LectureAnalyticsSummary,

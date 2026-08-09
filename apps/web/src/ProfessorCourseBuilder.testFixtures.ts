@@ -245,18 +245,22 @@ function analyticsPayload() {
   return {
     course_id: "demo-ml-course",
     lecture_id: "lecture-03",
-    total_events: 3,
+    activity_events: 10,
+    unique_learners: 5,
+    current_publication_version: 1,
+    current_learning_map_revision: "map-1",
     quizzes: [
       {
         component_id: "risk-check",
         component_type: "single_choice_quiz",
         title: "Risk threshold check",
         question: "Which action minimizes expected risk?",
-        total_attempts: 2,
-        unique_learners: 2,
-        correct_attempts: 1,
-        correct_rate: 0.5,
-        attendance_split: { absent: 1, present: 1 },
+        activity_events: 5,
+        unique_learners: 5,
+        publication_version: 1,
+        version_status: "current",
+        first_attempt: analyticsCell("quiz_first_attempt", 5, 0.6),
+        correction_after_feedback: analyticsCell("correction_after_feedback", 2, null),
         options: [
           {
             option_index: 0,
@@ -278,17 +282,14 @@ function analyticsPayload() {
     gates: [
       {
         gate_id: "risk-gate",
-        total_events: 1,
-        unique_learners: 1,
-        status_counts: { passed: 1 },
-        attendance_split: { present: 1 },
-        independent_attempts: 1,
-        independent_passes: 1,
-        supported_attempts: 0,
-        transfer_attempts: 0,
-        independent_transfer_passes: 0,
-        assistance_level_counts: { none: 1 },
-        evidence_counts: { "posterior-and-risk": 1 },
+        activity_events: 5,
+        unique_learners: 5,
+        publication_version: 1,
+        gate_revision: "revision-1",
+        version_status: "current",
+        independent_first_pass: analyticsCell("independent_first_pass", 5, 0.6),
+        supported_retry: analyticsCell("supported_retry", 2, null),
+        delayed_transfer: analyticsCell("delayed_transfer", 0, null),
       },
     ],
     learning_map: {
@@ -334,28 +335,36 @@ function analyticsPayload() {
 
 function courseAnalyticsPayload() {
   return {
+    activity_events: 10,
+    correction_after_feedback: analyticsCell("correction_after_feedback", 2, null),
     course_id: "demo-ml-course",
-    gate_checks: 1,
-    gate_passes: 1,
-    gate_rate: 1,
+    delayed_transfer: analyticsCell("delayed_transfer", 0, null),
+    independent_first_pass: analyticsCell("independent_first_pass", 5, 0.6),
     lectures: [
       {
-        gate_checks: 1,
-        gate_passes: 1,
-        gate_rate: 1,
+        activity_events: 10,
+        correction_after_feedback: analyticsCell("correction_after_feedback", 2, null),
+        current_publication_version: 1,
+        delayed_transfer: analyticsCell("delayed_transfer", 0, null),
+        independent_first_pass: analyticsCell("independent_first_pass", 5, 0.6),
         lecture_id: "lecture-03",
-        quiz_attempts: 2,
-        quiz_correct_attempts: 1,
-        quiz_rate: 0.5,
-        total_events: 3,
-        unique_learners: 2,
+        quiz_first_attempt: analyticsCell("quiz_first_attempt", 5, 0.6),
+        supported_retry: analyticsCell("supported_retry", 2, null),
+        unique_learners: 5,
       },
     ],
-    quiz_attempts: 2,
-    quiz_correct_attempts: 1,
-    quiz_rate: 0.5,
-    total_events: 3,
-    unique_learners: 2,
+    quiz_first_attempt: analyticsCell("quiz_first_attempt", 5, 0.6),
+    supported_retry: analyticsCell("supported_retry", 2, null),
+    unique_learners: 5,
+  };
+}
+
+function analyticsCell(evidenceType: string, sampleSize: number, rate: number | null) {
+  return {
+    data_status: rate === null ? "insufficient_data" : "available",
+    evidence_type: evidenceType,
+    rate,
+    sample_size: sampleSize,
   };
 }
 

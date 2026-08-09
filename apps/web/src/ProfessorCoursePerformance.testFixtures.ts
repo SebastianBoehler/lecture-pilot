@@ -34,98 +34,113 @@ export function secondLecture() {
 export function noActivityAnalytics() {
   return {
     course_id: "demo-ml-course",
+    current_learning_map_revision: "map-1",
+    current_publication_version: 1,
     gates: [],
     lecture_id: "lecture-01",
     quizzes: [],
-    total_events: 0,
+    activity_events: 0,
+    unique_learners: 0,
   };
 }
 
 export function noActivityCourse() {
   return {
+    activity_events: 0,
+    correction_after_feedback: cell("correction_after_feedback", 0, null),
     course_id: "demo-ml-course",
-    gate_checks: 0,
-    gate_passes: 0,
-    gate_rate: null,
+    delayed_transfer: cell("delayed_transfer", 0, null),
+    independent_first_pass: cell("independent_first_pass", 0, null),
     lectures: [
       {
-        gate_checks: 0,
-        gate_passes: 0,
-        gate_rate: null,
+        activity_events: 0,
+        correction_after_feedback: cell("correction_after_feedback", 0, null),
+        current_publication_version: 1,
+        delayed_transfer: cell("delayed_transfer", 0, null),
+        independent_first_pass: cell("independent_first_pass", 0, null),
         lecture_id: "lecture-01",
-        quiz_attempts: 0,
-        quiz_correct_attempts: 0,
-        quiz_rate: null,
-        total_events: 0,
+        quiz_first_attempt: cell("quiz_first_attempt", 0, null),
+        supported_retry: cell("supported_retry", 0, null),
         unique_learners: 0,
       },
     ],
-    quiz_attempts: 0,
-    quiz_correct_attempts: 0,
-    quiz_rate: null,
-    total_events: 0,
+    quiz_first_attempt: cell("quiz_first_attempt", 0, null),
+    supported_retry: cell("supported_retry", 0, null),
     unique_learners: 0,
   };
 }
 
 export function activityAnalytics(lectureId: string) {
+  const rate = lectureId === "lecture-02" ? 0.8 : 0.6;
   return {
     course_id: "demo-ml-course",
+    current_learning_map_revision: "map-1",
+    current_publication_version: 1,
     gates: [],
     lecture_id: lectureId,
     quizzes: [
       {
-        attendance_split: { present: 2 },
+        activity_events: 5,
         component_id: "quiz-1",
         component_type: "quiz",
-        correct_attempts: 1,
-        correct_rate: 0.5,
+        correction_after_feedback: cell("correction_after_feedback", 2, null),
+        first_attempt: cell("quiz_first_attempt", 5, rate),
         options: [],
+        publication_version: 1,
         question: "Question",
         title: "Quiz",
-        total_attempts: 2,
-        unique_learners: 2,
+        unique_learners: 5,
+        version_status: "current",
       },
     ],
-    total_events: 2,
+    activity_events: 5,
+    unique_learners: 5,
   };
 }
 
 export function courseActivityAnalytics() {
   return {
+    activity_events: 10,
+    correction_after_feedback: cell("correction_after_feedback", 3, null),
     course_id: "demo-ml-course",
-    gate_checks: 0,
-    gate_passes: 0,
-    gate_rate: null,
+    delayed_transfer: cell("delayed_transfer", 0, null),
+    independent_first_pass: cell("independent_first_pass", 0, null),
     lectures: [
       {
-        gate_checks: 0,
-        gate_passes: 0,
-        gate_rate: null,
+        activity_events: 5,
+        correction_after_feedback: cell("correction_after_feedback", 2, null),
+        current_publication_version: 1,
+        delayed_transfer: cell("delayed_transfer", 0, null),
+        independent_first_pass: cell("independent_first_pass", 0, null),
         lecture_id: "lecture-01",
-        quiz_attempts: 2,
-        quiz_correct_attempts: 1,
-        quiz_rate: 0.5,
-        total_events: 2,
-        unique_learners: 2,
+        quiz_first_attempt: cell("quiz_first_attempt", 5, 0.6),
+        supported_retry: cell("supported_retry", 0, null),
+        unique_learners: 5,
       },
       {
-        gate_checks: 0,
-        gate_passes: 0,
-        gate_rate: null,
+        activity_events: 5,
+        correction_after_feedback: cell("correction_after_feedback", 1, null),
+        current_publication_version: 1,
+        delayed_transfer: cell("delayed_transfer", 0, null),
+        independent_first_pass: cell("independent_first_pass", 0, null),
         lecture_id: "lecture-02",
-        quiz_attempts: 1,
-        quiz_correct_attempts: 1,
-        quiz_rate: 1,
-        total_events: 1,
-        unique_learners: 1,
+        quiz_first_attempt: cell("quiz_first_attempt", 5, 0.8),
+        supported_retry: cell("supported_retry", 0, null),
+        unique_learners: 5,
       },
     ],
-    quiz_attempts: 3,
-    quiz_correct_attempts: 2,
-    quiz_rate: 0.6667,
-    total_events: 3,
-    unique_learners: 2,
+    quiz_first_attempt: cell("quiz_first_attempt", 5, 0.7),
+    supported_retry: cell("supported_retry", 0, null),
+    unique_learners: 5,
+  };
+}
+
+function cell(evidenceType: string, sampleSize: number, rate: number | null) {
+  return {
+    data_status: rate === null ? "insufficient_data" : "available",
+    evidence_type: evidenceType,
+    rate,
+    sample_size: sampleSize,
   };
 }
 
