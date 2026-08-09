@@ -262,3 +262,27 @@ view-state contract. All changed production modules other than the pre-existing 
 `App.tsx` remain below 300 lines; the loading decision, parsing, and reconciliation live in the new
 109-line module, leaving `App.tsx` one line shorter than its prior 583-line baseline. The report
 remains below the 300-line documentation limit.
+
+## Review fix round 4
+
+- Published-view GETs now capture and release the immutable course snapshot before taking the
+  learner-canvas lock. They read only current learner Markdown sections and placements, merge them
+  into the captured document, and resolve course media and learner asset references in memory.
+- GET no longer materializes, deletes, or rewrites learner `index.md`, section files, or
+  `canvas.json`. The obsolete `read_document_from_published` write path was removed.
+- Learner overlay reads use a non-recovering canvas access lock. Section application and typed
+  canvas write/edit operations use the corresponding write lock, so reads cannot observe partial
+  learner Markdown. The published and learner locks are never held together.
+- The real concurrency regression runs four same-user GET workers through eight real publication
+  operations. All 32 responses have matching document text, publication version, and map revision;
+  the learner overlay remains present and every tracked learner canvas byte remains unchanged.
+
+Review RED reproduced learner-file rewrites plus `FileNotFoundError`, `CanvasMarkdownError`, and
+`JSONDecodeError` failures during the real concurrent GET/publication run. Focused GREEN covered 28
+published-view, workspace, overlay, and typed tool-writer tests.
+
+Final verification passed 769 API tests, 22 compiler tests, and the complete web suite of 99 files
+and 301 tests, including the TypeScript/Vite build and all static checks. `verify:fast` also passed.
+The round-four added-line audit found no monkeypatch, mock, fake, stub, legacy, fallback, or test
+double constructs. Changed code and test modules are at or below 300 lines; the new lock helper is
+26 lines. No manual browser session was run.

@@ -184,7 +184,7 @@ class CanvasWorkspace(CanvasLearnerWorkspaceMixin):
         )
         if snapshot is None:
             return None
-        document = self.read_document_from_published(
+        document = self.read_published_document(
             snapshot.document,
             course_id=course_id,
             lecture_id=lecture_id,

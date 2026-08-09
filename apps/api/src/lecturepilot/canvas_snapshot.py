@@ -17,15 +17,23 @@ _LOCK_REGISTRY: dict[Path, RLock] = {}
 
 
 @contextmanager
-def locked_canvas_paths(*paths: Path) -> Iterator[None]:
-    """Serialize canvas access across threads and API worker processes."""
-
+def locked_canvas_access(*paths: Path) -> Iterator[None]:
+    """Serialize canvas access without changing the protected snapshot."""
     resolved = sorted({path.resolve() for path in paths}, key=str)
     with ExitStack() as stack:
         for path in resolved:
             stack.enter_context(_thread_lock(path))
         for path in resolved:
             stack.enter_context(_file_lock(path))
+        yield
+
+
+@contextmanager
+def locked_canvas_paths(*paths: Path) -> Iterator[None]:
+    """Serialize canvas writes and recover interrupted snapshot replacements."""
+
+    resolved = sorted({path.resolve() for path in paths}, key=str)
+    with locked_canvas_access(*resolved):
         for path in resolved:
             _recover_interrupted_replace(path)
         yield

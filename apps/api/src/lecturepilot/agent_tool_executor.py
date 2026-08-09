@@ -18,6 +18,7 @@ from lecturepilot.agent_tool_utils import (
     relative_write_path,
     required_str,
 )
+from lecturepilot.learner_canvas_locking import serialized_canvas_write
 from lecturepilot.canvas_markdown import CanvasMarkdownError, read_document_source
 from lecturepilot.canvas_signatures import is_student_section
 from lecturepilot.canvas_workspace import CanvasWorkspace
@@ -225,6 +226,7 @@ class AgentToolExecutor(AgentSideEffectTools):
             "truncated": len(text) > max_chars,
         }
 
+    @serialized_canvas_write
     def _write(self, logical_path: str, content: str) -> dict[str, Any]:
         resolved = self._resolve(logical_path, for_write=True)
         path, content, section_id = prepare_student_canvas_write(
@@ -250,6 +252,7 @@ class AgentToolExecutor(AgentSideEffectTools):
             "section_id": section_id,
         }
 
+    @serialized_canvas_write
     def _edit(self, logical_path: str, old_text: str, new_text: str) -> dict[str, Any]:
         resolved = self._resolve(logical_path, for_write=True)
         if not resolved.path.exists():

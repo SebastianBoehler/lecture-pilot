@@ -5,12 +5,15 @@ from pathlib import Path
 
 from lecturepilot.canvas_learning_support import normalize_learning_support
 from lecturepilot.canvas_markdown import (
+    place_student_sections,
     read_document_source,
     read_student_section_placements,
+    read_student_sections,
     write_document_source,
     write_student_sections,
 )
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
+from lecturepilot.canvas_snapshot import locked_canvas_access, locked_canvas_paths
 from lecturepilot.canvas_sections import merge_sections
 from lecturepilot.canvas_signatures import official_canvas_signature, is_student_section
 from lecturepilot.course_media import apply_course_media
@@ -19,7 +22,7 @@ from lecturepilot.student_asset_refs import resolve_student_asset_refs
 
 
 class CanvasLearnerWorkspaceMixin:
-    def read_document_from_published(
+    def read_published_document(
         self,
         published: CanvasDocument,
         *,
@@ -28,30 +31,30 @@ class CanvasLearnerWorkspaceMixin:
         user_id: str,
     ) -> CanvasDocument:
         canvas_dir = self._canvas_dir(course_id, lecture_id, user_id)
-        manifest_path = canvas_dir / "index.md"
-        published = published.model_copy(update={"workspace_path": str(manifest_path)})
-        if not manifest_path.exists() or self._is_stale_against(manifest_path, published):
-            student_placements = read_student_section_placements(canvas_dir)
-            student_sections = self.read_learner_overlay_sections(
+        with locked_canvas_access(canvas_dir):
+            document = published.model_copy(
+                update={
+                    "sections": place_student_sections(
+                        published.sections,
+                        read_student_sections(
+                            canvas_dir,
+                            course_id=course_id,
+                            lecture_id=lecture_id,
+                        ),
+                        read_student_section_placements(canvas_dir),
+                    )
+                }
+            )
+            document = apply_course_media(document, self.material_root)
+            document = apply_course_media(document, self.course_media_root(course_id))
+            return resolve_student_asset_refs(
+                document,
+                canvas_dir=canvas_dir,
                 course_id=course_id,
                 lecture_id=lecture_id,
+                layout=self.layout,
                 user_id=user_id,
             )
-            if student_sections:
-                published = published.model_copy(
-                    update={"sections": merge_sections([*published.sections, *student_sections])}
-                )
-            self._write_initial_source(
-                published,
-                canvas_dir,
-                student_placements=student_placements,
-            )
-        return self._read_materialized_document(
-            canvas_dir=canvas_dir,
-            course_id=course_id,
-            lecture_id=lecture_id,
-            user_id=user_id,
-        )
 
     def read_document(
         self,
@@ -96,13 +99,17 @@ class CanvasLearnerWorkspaceMixin:
         sections: list[CanvasSection],
         placements: dict[str, object] | None = None,
     ) -> CanvasDocument:
-        document = self.read_document(course_id=course_id, lecture_id=lecture_id, user_id=user_id)
-        write_student_sections(
-            Path(document.workspace_path).parent, sections, placements=placements
-        )
-        document = read_document_source(Path(document.workspace_path).parent)
-        self._write_compiled_document(document, course_id, lecture_id, user_id)
-        return document
+        canvas_dir = self._canvas_dir(course_id, lecture_id, user_id)
+        with locked_canvas_paths(canvas_dir):
+            document = self.read_document(
+                course_id=course_id,
+                lecture_id=lecture_id,
+                user_id=user_id,
+            )
+            write_student_sections(canvas_dir, sections, placements=placements)
+            document = read_document_source(canvas_dir)
+            self._write_compiled_document(document, course_id, lecture_id, user_id)
+            return document
 
     def read_learner_overlay_sections(
         self,

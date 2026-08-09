@@ -45,9 +45,21 @@ def read_student_section_placements(canvas_dir: Path) -> dict[str, dict[str, str
     return _read_section_placements(canvas_dir)
 
 
+def read_student_sections(
+    canvas_dir: Path,
+    *,
+    course_id: str,
+    lecture_id: str,
+) -> list[CanvasSection]:
+    return _read_section_dir(
+        canvas_dir / "student",
+        {"course_id": course_id, "lecture_id": lecture_id},
+    )
+
+
 def read_document_source(canvas_dir: Path) -> CanvasDocument:
     manifest = _read_frontmatter((canvas_dir / "index.md").read_text(encoding="utf-8"))[0]
-    sections = _placed_sections(
+    sections = place_student_sections(
         _read_section_dir(canvas_dir / "sections", manifest),
         _read_section_dir(canvas_dir / "student", manifest),
         _read_section_placements(canvas_dir),
@@ -178,7 +190,7 @@ def _placement_value(placement: object) -> dict[str, str] | None:
     return {"mode": str(mode), "section_id": section_id}
 
 
-def _placed_sections(
+def place_student_sections(
     base_sections: list[CanvasSection],
     student_sections: list[CanvasSection],
     placements: dict[str, dict[str, str]],
