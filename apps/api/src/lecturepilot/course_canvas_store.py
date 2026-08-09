@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import re
 import shutil
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -173,6 +175,14 @@ class CourseCanvasStore:
         )
         with locked_canvas_paths(canvas_dir):
             return read_learning_map(canvas_dir)
+
+    @contextmanager
+    def locked_published_learning_map(
+        self, *, course_id: str, lecture_id: str
+    ) -> Iterator[LearningMap | None]:
+        published_dir = self.path(course_id, lecture_id)
+        with locked_canvas_paths(published_dir):
+            yield read_learning_map(published_dir)
 
     def path(self, course_id: str, lecture_id: str) -> Path:
         return self.layout.course_canvas_dir(course_id, lecture_id)

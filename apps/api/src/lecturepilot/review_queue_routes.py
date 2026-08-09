@@ -100,45 +100,46 @@ def register_review_queue_routes(
             seeded_course=seeded_course,
             seeded_lectures=seeded_lectures,
         )
-        learning_map = app.state.canvas_workspace.course_canvas_store.learning_map(
+        canvas_store = app.state.canvas_workspace.course_canvas_store
+        with canvas_store.locked_published_learning_map(
             course_id=course_id,
             lecture_id=lecture.id,
-        )
-        gate = (
-            next(
-                (item for item in learning_map.gates if item.id == gate_id),
-                None,
+        ) as learning_map:
+            gate = (
+                next(
+                    (item for item in learning_map.gates if item.id == gate_id),
+                    None,
+                )
+                if learning_map is not None
+                else None
             )
-            if learning_map is not None
-            else None
-        )
-        if gate is None:
-            raise HTTPException(status_code=404, detail="Gate review is not available.")
-        if not gate.transfer_prompt:
-            raise HTTPException(status_code=409, detail="Gate has no delayed transfer prompt.")
-        store = CoachingProgressStore(app.state.canvas_workspace.layout)
-        try:
-            pending = bind_delayed_review(
-                store,
-                user_id=user_id,
+            if gate is None:
+                raise HTTPException(status_code=404, detail="Gate review is not available.")
+            if not gate.transfer_prompt:
+                raise HTTPException(status_code=409, detail="Gate has no delayed transfer prompt.")
+            store = CoachingProgressStore(app.state.canvas_workspace.layout)
+            try:
+                pending = bind_delayed_review(
+                    store,
+                    user_id=user_id,
+                    course_id=course_id,
+                    lecture_id=lecture.id,
+                    gate_id=gate.id,
+                    gate_revision=gate.revision,
+                    transfer_prompt=gate.transfer_prompt,
+                    now=datetime.now(UTC),
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
+            return GateReviewOpening(
                 course_id=course_id,
                 lecture_id=lecture.id,
+                section_id=gate.section_id,
                 gate_id=gate.id,
                 gate_revision=gate.revision,
-                transfer_prompt=gate.transfer_prompt,
-                now=datetime.now(UTC),
+                prompt=pending.prompt,
+                stage="due" if pending.kind == "delayed_transfer" else "repair",
             )
-        except ValueError as exc:
-            raise HTTPException(status_code=409, detail=str(exc)) from exc
-        return GateReviewOpening(
-            course_id=course_id,
-            lecture_id=lecture.id,
-            section_id=gate.section_id,
-            gate_id=gate.id,
-            gate_revision=gate.revision,
-            prompt=pending.prompt,
-            stage="due" if pending.kind == "delayed_transfer" else "repair",
-        )
 
 
 def _learner_user_id(
