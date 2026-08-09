@@ -26,6 +26,7 @@ class DelayedReview(BaseModel):
     gate_revision: str | None = Field(default=None, max_length=64)
     scheduled_at: str | None = None
     due_at: str
+    attempted_at: str | None = None
     completed_at: str | None = None
 
 
@@ -51,6 +52,8 @@ class CoachingProgress(BaseModel):
     session_goal: str = ""
     goal_proposed: bool = False
     turns: list[CoachingTurnEvent] = Field(default_factory=list)
+    attempt_counts: dict[str, int] = Field(default_factory=dict)
+    attendance_prior_used: bool = False
     messages: list[AgentConversationMessage] = Field(default_factory=list, max_length=8)
     pending_check: PendingCheck | None = None
     delayed_reviews: dict[str, DelayedReview] = Field(default_factory=dict)

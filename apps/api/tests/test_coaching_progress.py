@@ -124,6 +124,8 @@ def test_read_migrates_legacy_delayed_transfer_without_erasing_progress(tmp_path
 
     assert progress.session_goal == "Keep this goal."
     assert len(progress.turns) == 1
+    assert progress.attempt_counts == {"gate-1": 1}
+    assert progress.attendance_prior_used is True
     assert set(progress.delayed_reviews) == {"gate-1", "gate-2"}
     assert progress.delayed_reviews["gate-1"].due_at == "2026-07-15T09:00:00+00:00"
     store.record_exchange(**IDS, user_message="Continue.", assistant_message="Next check.")

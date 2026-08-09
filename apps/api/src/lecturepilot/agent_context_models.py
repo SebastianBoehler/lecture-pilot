@@ -32,6 +32,7 @@ class AgentCoachingContext(BaseModel):
     session_goal: str = Field(default="", max_length=500)
     goal_is_new: bool = False
     prior_assistance: bool = False
+    attendance_prior_used: bool = False
     needs_evidence_count: int = Field(default=0, ge=0)
     last_gate_status: Literal["passed", "needs_evidence", "not_assessed"] | None = None
     delayed_transfer_due: bool = False

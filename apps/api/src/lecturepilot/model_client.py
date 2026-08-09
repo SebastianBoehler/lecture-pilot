@@ -239,6 +239,7 @@ def _coaching_context(turn: AgentTurnInput) -> str:
         f"- session_goal: {context.session_goal or 'derive from the active quality gate'}\n"
         f"- goal_status: {'proposed' if context.goal_is_new else 'active'}\n"
         f"- prior_assistance: {str(context.prior_assistance).lower()}\n"
+        f"- attendance_prior_used: {str(context.attendance_prior_used).lower()}\n"
         f"- needs_evidence_count: {context.needs_evidence_count}\n"
         f"- last_gate_status: {context.last_gate_status or 'none'}\n"
         f"- delayed_transfer_due: {str(context.delayed_transfer_due).lower()}"

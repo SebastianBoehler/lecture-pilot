@@ -37,3 +37,15 @@ def test_due_review_reactivates_current_gate_contract() -> None:
     )
 
     assert selected == gate
+
+    progress.delayed_reviews["gate-1"] = progress.delayed_reviews["gate-1"].model_copy(
+        update={"attempted_at": "2026-07-16T00:00:00+00:00"}
+    )
+    assert (
+        select_due_review_gate(
+            learning_map,
+            progress,
+            now=datetime(2026, 7, 16, tzinfo=UTC),
+        )
+        is None
+    )

@@ -23,7 +23,12 @@ def record_passed_review(
 ) -> None:
     current = progress.delayed_reviews.get(gate_id)
     same_revision = current is not None and current.gate_revision == gate_revision
-    if delayed_attempt and current and same_revision and current.completed_at is None:
+    if (
+        current
+        and same_revision
+        and current.completed_at is None
+        and (delayed_attempt or current.attempted_at is not None)
+    ):
         progress.delayed_reviews[gate_id] = current.model_copy(
             update={"completed_at": now.isoformat()}
         )
@@ -36,6 +41,20 @@ def record_passed_review(
         scheduled_at=now.isoformat(),
         due_at=(now + timedelta(days=review_after_days)).isoformat(),
     )
+
+
+def record_review_attempt(
+    progress: CoachingProgress,
+    *,
+    gate_id: str,
+    gate_revision: str | None,
+    now: datetime,
+) -> None:
+    current = progress.delayed_reviews.get(gate_id)
+    if current and current.gate_revision == gate_revision and current.completed_at is None:
+        progress.delayed_reviews[gate_id] = current.model_copy(
+            update={"attempted_at": now.isoformat()}
+        )
 
 
 def next_pending_check(

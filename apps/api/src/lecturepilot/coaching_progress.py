@@ -17,6 +17,7 @@ from lecturepilot.coaching_episode import (
     next_pending_check,
     parse_time,
     record_passed_review,
+    record_review_attempt,
     revision_matches,
 )
 from lecturepilot.coaching_state_io import (
@@ -31,7 +32,7 @@ from lecturepilot.models import (
     QualityGateDecision,
     QualityGateStatus,
 )
-from lecturepilot.scaffold_policy import TutorScaffoldPolicy
+from lecturepilot.scaffold_policy import TutorScaffoldPolicy, scaffold_policy_for_tutor_turn
 from lecturepilot.storage_layout import StorageLayout
 
 
@@ -74,6 +75,7 @@ class CoachingProgressStore:
         if (
             transfer
             and transfer.completed_at is None
+            and transfer.attempted_at is None
             and revision_matches(transfer.gate_revision, gate_revision)
         ):
             try:
@@ -84,6 +86,7 @@ class CoachingProgressStore:
             session_goal=progress.session_goal or _default_goal(gate_title),
             goal_is_new=not progress.goal_proposed,
             prior_assistance=bool(gate_turns or pending),
+            attendance_prior_used=progress.attendance_prior_used,
             needs_evidence_count=sum(
                 turn.gate_status == QualityGateStatus.NEEDS_EVIDENCE for turn in attempt_turns
             ),
@@ -125,20 +128,17 @@ class CoachingProgressStore:
             progress = self.read(user_id=user_id, course_id=course_id, lecture_id=lecture_id)
             progress.session_goal = (session_goal or context.session_goal).strip()
             progress.goal_proposed = True
+            progress.attendance_prior_used = True
             pending = bound_pending(progress.pending_check, context, decision, gate_revision)
             assessed_attempt = (
                 pending is not None and decision.status != QualityGateStatus.NOT_ASSESSED
             )
             event_attempt_kind = attempt_kind(pending, assessed_attempt)
             attempt_index = (
-                1
-                + sum(
-                    turn.gate_id == decision.gate_id and turn.attempt_kind != "none"
-                    for turn in progress.turns
-                )
-                if assessed_attempt
-                else None
+                progress.attempt_counts.get(decision.gate_id, 0) + 1 if assessed_attempt else None
             )
+            if attempt_index is not None:
+                progress.attempt_counts[decision.gate_id] = attempt_index
             assistance_level = pending.assistance_level if assessed_attempt and pending else "none"
             observed_delay_seconds = (
                 delay_seconds(progress.delayed_reviews.get(decision.gate_id), current_time)
@@ -164,6 +164,13 @@ class CoachingProgressStore:
             )
             progress.turns.append(event)
             progress.turns = progress.turns[-MAX_TURN_EVENTS:]
+            if event_attempt_kind == "delayed_transfer":
+                record_review_attempt(
+                    progress,
+                    gate_id=decision.gate_id,
+                    gate_revision=gate_revision,
+                    now=current_time,
+                )
             if assessed_attempt and decision.status == QualityGateStatus.PASSED:
                 record_passed_review(
                     progress,
@@ -173,11 +180,25 @@ class CoachingProgressStore:
                     review_after_days=review_after_days,
                     now=current_time,
                 )
+            next_assistance_level = policy.assistance_level
+            if (
+                event_attempt_kind == "delayed_transfer"
+                and decision.status == QualityGateStatus.NEEDS_EVIDENCE
+            ):
+                next_assistance_level = scaffold_policy_for_tutor_turn(
+                    attendance="present",
+                    delayed_transfer_due=False,
+                    last_gate_status=decision.status.value,
+                    needs_evidence_count=context.needs_evidence_count + 1,
+                    prior_assistance=True,
+                ).assistance_level
             progress.pending_check = next_pending_check(
                 decision,
                 gate_revision=gate_revision,
-                assistance_level=policy.assistance_level,
-                delayed_transfer_due=context.delayed_transfer_due,
+                assistance_level=next_assistance_level,
+                delayed_transfer_due=(
+                    context.delayed_transfer_due and event_attempt_kind == "none"
+                ),
                 now=current_time,
             )
             if user_message and assistant_message:
@@ -210,6 +231,7 @@ class CoachingProgressStore:
         path = self._path(user_id=user_id, course_id=course_id, lecture_id=lecture_id)
         with exclusive_file_lock(path):
             progress = self.read(user_id=user_id, course_id=course_id, lecture_id=lecture_id)
+            progress.attendance_prior_used = True
             progress.messages.extend(
                 [
                     AgentConversationMessage(role="user", content=user_message),

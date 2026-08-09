@@ -18,6 +18,11 @@ def migrate_coaching_payload(raw) -> dict:
     turns = payload.get("turns")
     if isinstance(turns, list):
         payload["turns"] = [_migrate_turn(turn) for turn in turns[-MAX_TURN_EVENTS:]]
+    if "attendance_prior_used" not in payload:
+        payload["attendance_prior_used"] = bool(
+            payload.get("turns") or payload.get("messages") or payload.get("goal_proposed")
+        )
+    payload["attempt_counts"] = _attempt_counts(payload.get("attempt_counts"), payload.get("turns"))
     reviews = _valid_reviews(payload.get("delayed_reviews"))
     legacy = payload.pop("delayed_transfer", None)
     if isinstance(legacy, dict):
@@ -29,6 +34,33 @@ def migrate_coaching_payload(raw) -> dict:
             reviews.setdefault(review.gate_id, review.model_dump(mode="json"))
     payload["delayed_reviews"] = reviews
     return payload
+
+
+def _attempt_counts(raw, turns) -> dict[str, int]:
+    counts = (
+        {
+            gate_id: count
+            for gate_id, count in raw.items()
+            if isinstance(gate_id, str) and isinstance(count, int) and count >= 0
+        }
+        if isinstance(raw, dict)
+        else {}
+    )
+    inferred: dict[str, int] = {}
+    for turn in turns if isinstance(turns, list) else []:
+        if not isinstance(turn, dict) or turn.get("attempt_kind") == "none":
+            continue
+        gate_id = turn.get("gate_id")
+        if not isinstance(gate_id, str):
+            continue
+        index = turn.get("attempt_index")
+        inferred[gate_id] = max(
+            inferred.get(gate_id, 0) + (not isinstance(index, int)),
+            index if isinstance(index, int) else 0,
+        )
+    for gate_id, count in inferred.items():
+        counts[gate_id] = max(counts.get(gate_id, 0), count)
+    return counts
 
 
 def _valid_reviews(raw) -> dict:

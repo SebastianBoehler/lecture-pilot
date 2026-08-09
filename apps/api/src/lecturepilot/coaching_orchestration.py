@@ -67,7 +67,7 @@ def prepare_coaching_turn(
             else None
         )
         if active_gate is None:
-            context = AgentCoachingContext()
+            context = AgentCoachingContext(attendance_prior_used=progress.attendance_prior_used)
         else:
             with observability.tool_span("read_coaching_progress", gate_id=active_gate.id):
                 context = store.context(
@@ -93,7 +93,7 @@ def prepare_coaching_turn(
             delayed_transfer_due=context.delayed_transfer_due,
             last_gate_status=context.last_gate_status,
             needs_evidence_count=context.needs_evidence_count,
-            prior_assistance=context.prior_assistance,
+            prior_assistance=(context.prior_assistance or context.attendance_prior_used),
         )
     )
     return turn.model_copy(
@@ -121,6 +121,7 @@ def select_due_review_gate(
         if (
             review is None
             or review.completed_at is not None
+            or review.attempted_at is not None
             or review.gate_revision != gate.revision
         ):
             continue
