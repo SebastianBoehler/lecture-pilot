@@ -7,7 +7,11 @@ from pathlib import Path
 from pydantic import BaseModel, Field, model_validator
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.quiz_identity import canonical_quiz_id, is_quiz_block
+from lecturepilot.quiz_identity import (
+    canonical_quiz_id,
+    is_quiz_block,
+    validate_unique_quiz_ids,
+)
 
 
 class LearningMapEvidenceCriterion(BaseModel):
@@ -69,6 +73,7 @@ class LearningMap(BaseModel):
 
 
 def build_learning_map(document: CanvasDocument) -> LearningMap:
+    validate_unique_quiz_ids(document)
     nodes: list[LearningMapNode] = []
     gates: list[LearningMapGate] = []
     previous_id: str | None = None

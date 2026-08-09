@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -17,11 +18,19 @@ from lecturepilot.canvas_markdown import (
 )
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.learning_map import LearningMap, read_learning_map, write_learning_map
+from lecturepilot.quiz_identity import publication_version, validate_unique_quiz_ids
 from lecturepilot.storage_layout import StorageLayout
 
 
 class InvalidCanvasDraftError(RuntimeError):
     """Raised when a generated or stored draft violates the canvas contract."""
+
+
+@dataclass(frozen=True)
+class PublishedCanvasSnapshot:
+    document: CanvasDocument
+    publication: dict | None
+    version: int
 
 
 class CourseCanvasStore:
@@ -104,7 +113,7 @@ class CourseCanvasStore:
             if not (draft_dir / "index.md").exists():
                 raise FileNotFoundError("No canvas draft exists for this lecture.")
             try:
-                read_document_source(draft_dir)
+                validate_unique_quiz_ids(read_document_source(draft_dir))
             except (CanvasMarkdownError, ValidationError, ValueError) as exc:
                 raise InvalidCanvasDraftError(
                     "Stored canvas draft is invalid. Retry generation for this lecture."
@@ -119,20 +128,42 @@ class CourseCanvasStore:
                 draft_dir=draft_dir,
                 published_dir=published_dir,
             )
-            return replace_canvas_snapshot(
-                published_dir,
-                lambda staging: _write_validated_publication(
-                    draft_dir=draft_dir,
-                    staging=staging,
-                    published_dir=published_dir,
-                    metadata=metadata,
-                ),
-            )
+            try:
+                return replace_canvas_snapshot(
+                    published_dir,
+                    lambda staging: _write_validated_publication(
+                        draft_dir=draft_dir,
+                        staging=staging,
+                        published_dir=published_dir,
+                        metadata=metadata,
+                    ),
+                )
+            except (CanvasMarkdownError, ValidationError, ValueError) as exc:
+                raise InvalidCanvasDraftError(
+                    "Stored canvas draft is invalid. Retry generation for this lecture."
+                ) from exc
 
     def publication(self, *, course_id: str, lecture_id: str) -> dict | None:
         published_dir = self.path(course_id, lecture_id)
         with locked_canvas_paths(published_dir):
             return _read_publication(published_dir)
+
+    def read_published_snapshot(
+        self, *, course_id: str, lecture_id: str
+    ) -> PublishedCanvasSnapshot | None:
+        published_dir = self.path(course_id, lecture_id)
+        with locked_canvas_paths(published_dir):
+            if not (published_dir / "index.md").exists():
+                return None
+            document = normalize_learning_support(read_document_source(published_dir)).model_copy(
+                update={"workspace_path": str(published_dir / "index.md")}
+            )
+            publication = _read_publication(published_dir)
+            return PublishedCanvasSnapshot(
+                document=document,
+                publication=publication,
+                version=publication_version(publication),
+            )
 
     def learning_map(
         self, *, course_id: str, lecture_id: str, draft: bool = False

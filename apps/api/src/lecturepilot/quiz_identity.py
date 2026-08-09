@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from lecturepilot.canvas_models import CanvasBlock
+from lecturepilot.canvas_models import CanvasBlock, CanvasDocument
+
+
+class DuplicateCanonicalQuizIdError(ValueError):
+    def __init__(self, quiz_id: str) -> None:
+        self.quiz_id = quiz_id
+        super().__init__(f"Duplicate canonical quiz ID '{quiz_id}'.")
 
 
 def canonical_quiz_id(block: CanvasBlock) -> str:
@@ -13,10 +19,26 @@ def is_quiz_block(block: CanvasBlock) -> bool:
     )
 
 
+def validate_unique_quiz_ids(document: CanvasDocument) -> None:
+    seen: set[str] = set()
+    for section in document.sections:
+        for block in section.blocks:
+            if not is_quiz_block(block):
+                continue
+            quiz_id = canonical_quiz_id(block)
+            if quiz_id in seen:
+                raise DuplicateCanonicalQuizIdError(quiz_id)
+            seen.add(quiz_id)
+
+
+def publication_version(publication: object) -> int:
+    version = publication.get("version") if isinstance(publication, dict) else None
+    return version if isinstance(version, int) and version >= 1 else 1
+
+
 def published_canvas_version(workspace, *, course_id: str, lecture_id: str) -> int:
     publication = workspace.course_canvas_publication(
         course_id=course_id,
         lecture_id=lecture_id,
     )
-    version = publication.get("version") if isinstance(publication, dict) else None
-    return version if isinstance(version, int) and version >= 1 else 1
+    return publication_version(publication)

@@ -15,7 +15,6 @@ from lecturepilot.api_auth import (
 )
 from lecturepilot.audit import record_audit_event
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument
-from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.course_access import require_lecture_id_access
 from lecturepilot.course_analytics import CourseAnalyticsSummary, course_analytics_summary
 from lecturepilot.course_schedule_store import read_course_workspace
@@ -25,9 +24,10 @@ from lecturepilot.readiness_analytics import CourseReadinessSummary, course_read
 from lecturepilot.readiness_progress import ReadinessProgressStore
 from lecturepilot.professor_preview import resolve_learner_workspace_access
 from lecturepilot.quiz_identity import (
+    DuplicateCanonicalQuizIdError,
     canonical_quiz_id,
     is_quiz_block,
-    published_canvas_version,
+    validate_unique_quiz_ids,
 )
 from lecturepilot.tenancy import TenantContext
 
@@ -65,26 +65,14 @@ def register_analytics_routes(
             seeded_course=seeded_course,
             seeded_lectures=seeded_lectures,
         )
-        if not app.state.canvas_workspace.has_published_course_canvas(
-            course_id=course_id,
-            lecture_id=lecture_id,
-        ):
-            raise HTTPException(status_code=404, detail="Canvas has not been published.")
-        try:
-            document = app.state.canvas_workspace.read_document(
-                course_id=course_id,
-                lecture_id=lecture_id,
-                user_id=access.user_id,
-            )
-        except CanvasWorkspaceError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-        block = _quiz_block(document, answer.block_id)
-        quiz_id = canonical_quiz_id(block)
-        publication_version = published_canvas_version(
-            app.state.canvas_workspace,
+        snapshot = app.state.canvas_workspace.course_canvas_store.read_published_snapshot(
             course_id=course_id,
             lecture_id=lecture_id,
         )
+        if snapshot is None:
+            raise HTTPException(status_code=404, detail="Canvas has not been published.")
+        block = _quiz_block(snapshot.document, answer.block_id)
+        quiz_id = canonical_quiz_id(block)
         if answer.option_index >= len(block.items):
             raise HTTPException(status_code=400, detail="Quiz option does not exist.")
         correct = (
@@ -98,7 +86,7 @@ def register_analytics_routes(
                 lecture_id=lecture_id,
                 user_id=access.user_id,
                 quiz_id=quiz_id,
-                publication_version=publication_version,
+                publication_version=snapshot.version,
                 attempt_id=answer.attempt_id,
                 selected_index=answer.option_index,
                 correct=correct,
@@ -235,13 +223,24 @@ def register_analytics_routes(
 
 
 def _quiz_block(document: CanvasDocument, block_id: str) -> CanvasBlock:
-    for section in document.sections:
-        for block in section.blocks:
-            if canonical_quiz_id(block) != block_id:
-                continue
-            if not is_quiz_block(block):
-                raise HTTPException(status_code=400, detail="Canvas block is not a quiz component.")
-            return block
+    try:
+        validate_unique_quiz_ids(document)
+    except DuplicateCanonicalQuizIdError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Published canvas has duplicate quiz ID '{exc.quiz_id}'.",
+        ) from exc
+    matches = [
+        block
+        for section in document.sections
+        for block in section.blocks
+        if canonical_quiz_id(block) == block_id
+    ]
+    quizzes = [block for block in matches if is_quiz_block(block)]
+    if quizzes:
+        return quizzes[0]
+    if matches:
+        raise HTTPException(status_code=400, detail="Canvas block is not a quiz component.")
     raise HTTPException(status_code=404, detail="Quiz block not found.")
 
 
