@@ -4,7 +4,7 @@ from lecturepilot.learning_map import LearningMap, LearningMapGate, LearningMapN
 from lecturepilot.models import QualityGateDecision, QualityGateStatus
 
 
-def _map() -> LearningMap:
+def _map(first_criterion_description: str = "Explain the first concept.") -> LearningMap:
     return LearningMap(
         course_id="course",
         lecture_id="lecture-14",
@@ -32,7 +32,7 @@ def _map() -> LearningMap:
                 title="First check",
                 prompt="Explain the first concept.",
                 evidence_criteria=[
-                    {"id": "first-explanation", "description": "Explain the first concept."}
+                    {"id": "first-explanation", "description": first_criterion_description}
                 ],
                 section_id="first-section",
             ),
@@ -50,8 +50,10 @@ def _map() -> LearningMap:
     )
 
 
-def _select(**kwargs):
-    return import_module("lecturepilot.learning_gate_selector").select_active_gate(_map(), **kwargs)
+def _select(learning_map: LearningMap | None = None, **kwargs):
+    return import_module("lecturepilot.learning_gate_selector").select_active_gate(
+        learning_map or _map(), **kwargs
+    )
 
 
 def test_selector_preserves_later_lecture_checkpoint_id() -> None:
@@ -62,11 +64,14 @@ def test_selector_preserves_later_lecture_checkpoint_id() -> None:
 
 
 def test_selector_skips_passed_gate_and_selects_next_open_gate() -> None:
+    learning_map = _map()
     selected = _select(
+        learning_map,
         focused_section_id="first-section",
         latest_decisions={
             "lecture-14-first-check": QualityGateDecision(
                 gate_id="lecture-14-first-check",
+                gate_revision=learning_map.gates[0].revision,
                 status=QualityGateStatus.PASSED,
                 reason="Complete evidence.",
             )
@@ -75,6 +80,44 @@ def test_selector_skips_passed_gate_and_selects_next_open_gate() -> None:
 
     assert selected is not None
     assert selected.id == "lecture-14-focused-check"
+
+
+def test_selector_reopens_passed_gate_after_contract_revision_changes() -> None:
+    previous_map = _map()
+    revised_map = _map("Explain the first concept and name its boundary.")
+    assert previous_map.gates[0].revision != revised_map.gates[0].revision
+
+    selected = _select(
+        revised_map,
+        focused_section_id="first-section",
+        latest_decisions={
+            "lecture-14-first-check": QualityGateDecision(
+                gate_id="lecture-14-first-check",
+                gate_revision=previous_map.gates[0].revision,
+                status=QualityGateStatus.PASSED,
+                reason="Complete evidence for the old contract.",
+            )
+        },
+    )
+
+    assert selected is not None
+    assert selected.id == "lecture-14-first-check"
+
+
+def test_selector_reopens_legacy_revisionless_pass() -> None:
+    selected = _select(
+        focused_section_id="first-section",
+        latest_decisions={
+            "lecture-14-first-check": QualityGateDecision(
+                gate_id="lecture-14-first-check",
+                status=QualityGateStatus.PASSED,
+                reason="Legacy revisionless pass.",
+            )
+        },
+    )
+
+    assert selected is not None
+    assert selected.id == "lecture-14-first-check"
 
 
 def test_selector_prefers_valid_requested_gate_over_current_focus() -> None:

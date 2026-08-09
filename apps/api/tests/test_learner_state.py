@@ -108,3 +108,24 @@ def test_latest_gate_decisions_reads_only_valid_persisted_decisions(tmp_path: Pa
 
     assert list(decisions) == ["gate-1"]
     assert decisions["gate-1"].status == QualityGateStatus.PASSED
+
+
+def test_quality_gate_revision_survives_persistence(tmp_path: Path) -> None:
+    store = LearnerStateStore(StorageLayout(tmp_path))
+    store.record_quality_gate(
+        course_id="course-1",
+        lecture_id="lecture-1",
+        user_id="student-1",
+        decision=QualityGateDecision(
+            gate_id="gate-1",
+            gate_revision="a" * 64,
+            status=QualityGateStatus.PASSED,
+            reason="Complete evidence.",
+        ),
+    )
+
+    decisions = store.latest_gate_decisions(
+        course_id="course-1", lecture_id="lecture-1", user_id="student-1"
+    )
+
+    assert decisions["gate-1"].gate_revision == "a" * 64

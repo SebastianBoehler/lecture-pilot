@@ -20,6 +20,8 @@ def select_active_gate(
         gate_id
         for gate_id, decision in decisions.items()
         if decision.status == QualityGateStatus.PASSED
+        and (gate := gates.get(gate_id)) is not None
+        and decision.gate_revision == gate.revision
     }
 
     if requested_gate_id in gates and requested_gate_id not in passed:

@@ -83,6 +83,7 @@ def validate_quality_gate_decision(
         missing = []
     update: dict[str, object] = {
         "gate_id": active_gate.id,
+        "gate_revision": active_gate.revision,
         "evidence_ids": evidence,
         "missing_evidence_ids": missing,
     }

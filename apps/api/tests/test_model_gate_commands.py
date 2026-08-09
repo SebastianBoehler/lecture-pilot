@@ -30,6 +30,7 @@ def _gate() -> LearningMapGate:
 
 
 def test_quality_gate_preserves_selected_contract_id() -> None:
+    gate = _gate()
     decision = read_quality_gate(
         {
             "quality_gate": {
@@ -40,11 +41,12 @@ def test_quality_gate_preserves_selected_contract_id() -> None:
                 "missing_evidence_ids": ["boundary"],
             }
         },
-        _turn(_gate()),
+        _turn(gate),
     )
 
     assert decision is not None
     assert decision.gate_id == "causal-transfer-check"
+    assert decision.gate_revision == gate.revision
 
 
 def test_quality_gate_filters_unknown_evidence_ids() -> None:

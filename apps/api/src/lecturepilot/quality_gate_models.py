@@ -13,6 +13,7 @@ class QualityGateStatus(StrEnum):
 
 class QualityGateDecision(BaseModel):
     gate_id: str = Field(min_length=1, max_length=120)
+    gate_revision: str | None = Field(default=None, min_length=1, max_length=64)
     status: QualityGateStatus
     reason: str = Field(min_length=1, max_length=500)
     next_prompt: str | None = Field(default=None, max_length=500)
