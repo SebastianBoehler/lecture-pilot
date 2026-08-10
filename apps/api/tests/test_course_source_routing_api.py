@@ -1,4 +1,5 @@
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -102,6 +103,8 @@ def test_generation_requires_current_routing_and_uses_only_generation_sources(
 
 def test_professor_can_rebuild_a_confirmed_source_proposal(tmp_path: Path) -> None:
     client = _client(tmp_path)
+    planner = client.app.state.source_routing_planner
+    planner.propose_routes = AsyncMock(wraps=planner.propose_routes)
     _upload(client, "Lecture03.md", b"# Lecture 03\n\nBayes rule.")
     proposal = client.post(
         f"/admin/courses/{COURSE_ID}/source-routing/proposal",
@@ -113,17 +116,21 @@ def test_professor_can_rebuild_a_confirmed_source_proposal(tmp_path: Path) -> No
         headers=professor_headers(),
     )
     assert confirmed.json()["confirmed"] is True
+    assert planner.propose_routes.await_count == 1
 
     cached = client.post(
         f"/admin/courses/{COURSE_ID}/source-routing/proposal",
         headers=professor_headers(),
     )
+    assert cached.json()["confirmed"] is True
+    assert planner.propose_routes.await_count == 1
+
     rebuilt = client.post(
         f"/admin/courses/{COURSE_ID}/source-routing/proposal?refresh=true",
         headers=professor_headers(),
     )
 
-    assert cached.json()["confirmed"] is True
+    assert planner.propose_routes.await_count == 2
     assert rebuilt.status_code == 200
     assert rebuilt.json()["confirmed"] is False
 
