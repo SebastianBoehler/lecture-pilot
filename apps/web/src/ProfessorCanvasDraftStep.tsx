@@ -1,6 +1,6 @@
 import { useI18n } from "./i18n";
 import type { LearningDesignReview, LearningDesignUpdate } from "./learningDesignTypes";
-import { ProfessorLearningDesignReview } from "./ProfessorLearningDesignReview";
+import { ProfessorCanvasReviewWorkspace } from "./ProfessorCanvasReviewWorkspace";
 import { PendingStatus, StepHeader } from "./ProfessorCourseBuilderParts";
 import {
   CANVAS_DRAFT_CONCURRENCY,
@@ -103,7 +103,7 @@ export function ProfessorCanvasDraftStep({
         <p>{t("builder.generate.singleReady", { count: canvas.sections.length })}</p>
       ) : null}
       {hasDraft ? (
-        <DraftReview
+        <ProfessorCanvasReviewWorkspace
           canContinue={
             allDraftsReady &&
             previewLectures.length > 0 &&
@@ -118,77 +118,6 @@ export function ProfessorCanvasDraftStep({
           onSaveLearningDesign={onSaveLearningDesign}
         />
       ) : null}
-    </section>
-  );
-}
-
-function DraftReview({
-  canContinue,
-  lectures,
-  learningDesignReviews,
-  learningDesignAcknowledgementKey,
-  learningDesignSaving,
-  onApproveLearningDesign,
-  onContinueToPublish,
-  onSaveLearningDesign,
-}: {
-  canContinue: boolean;
-  lectures: { id: string; label: string; previewHref: string }[];
-  learningDesignReviews: Record<string, LearningDesignReview>;
-  learningDesignAcknowledgementKey: string;
-  learningDesignSaving: boolean;
-  onApproveLearningDesign: (lectureId: string, acknowledgedWarningIds: string[]) => void;
-  onContinueToPublish: () => void;
-  onSaveLearningDesign: (lectureId: string, update: LearningDesignUpdate) => void;
-}) {
-  const { t } = useI18n();
-  return (
-    <section className="draft-review" aria-label={t("builder.generate.review")}>
-      <header>
-        <strong>{t("builder.generate.review")}</strong>
-        <span>{t("builder.generate.reviewHelp")}</span>
-      </header>
-      <div className="draft-review-list">
-        {lectures.map((lecture) => {
-          const review = learningDesignReviews[lecture.id];
-          return (
-            <div key={lecture.id}>
-              <div className="draft-review-row">
-                <span>{lecture.label}</span>
-                <a
-                  className="button-link"
-                  href={lecture.previewHref}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  {t("builder.generate.preview")}
-                </a>
-              </div>
-              {review ? (
-                <ProfessorLearningDesignReview
-                  acknowledgementResetKey={learningDesignAcknowledgementKey}
-                  lectureId={lecture.id}
-                  previewHref={lecture.previewHref}
-                  review={review}
-                  saving={learningDesignSaving}
-                  onApprove={onApproveLearningDesign}
-                  onSave={onSaveLearningDesign}
-                />
-              ) : (
-                <p role="status">{t("builder.learningDesign.loading")}</p>
-              )}
-            </div>
-          );
-        })}
-      </div>
-      <button
-        className="primary-action"
-        disabled={!canContinue}
-        type="button"
-        onClick={onContinueToPublish}
-      >
-        {t("builder.generate.continueToPublish")}
-      </button>
     </section>
   );
 }

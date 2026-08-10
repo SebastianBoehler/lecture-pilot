@@ -7,7 +7,6 @@ import { ProfessorLearningDesignReport } from "./ProfessorLearningDesignReport";
 export function ProfessorLearningDesignReview({
   lectureId,
   acknowledgementResetKey,
-  previewHref,
   review,
   saving,
   onApprove,
@@ -15,7 +14,6 @@ export function ProfessorLearningDesignReview({
 }: {
   lectureId: string;
   acknowledgementResetKey: string;
-  previewHref: string;
   review: LearningDesignReview;
   saving: boolean;
   onApprove: (lectureId: string, acknowledgedWarningIds: string[]) => void;
@@ -30,22 +28,23 @@ export function ProfessorLearningDesignReview({
     <section className="learning-design-review">
       <h3>{t("builder.learningDesign.title")}</h3>
       <p>{t("builder.learningDesign.factualSeparate")}</p>
-      <div className="learning-design-grid">
-        <iframe src={previewHref} title={t("builder.learningDesign.preview")} />
-        <div className="learning-design-fields">
-          <label>
-            {t("builder.learningDesign.objective")}
-            <textarea
-              value={update.objective}
-              onChange={(event) => setUpdate({ ...update, objective: event.target.value })}
-            />
-          </label>
-          {update.gates.map((gate, gateIndex) => {
-            const source = review.learning_map.gates[gateIndex]?.source_ref;
-            return (
-              <fieldset key={gate.id}>
-                <legend>{review.learning_map.gates[gateIndex]?.title ?? gate.id}</legend>
+      <div className="learning-design-fields">
+        <label>
+          {t("builder.learningDesign.objective")}
+          <textarea
+            value={update.objective}
+            onChange={(event) => setUpdate({ ...update, objective: event.target.value })}
+          />
+        </label>
+        {update.gates.map((gate, gateIndex) => {
+          const source = review.learning_map.gates[gateIndex]?.source_ref;
+          return (
+            <details className="learning-design-disclosure" key={gate.id}>
+              <summary>
+                <span>{review.learning_map.gates[gateIndex]?.title ?? gate.id}</span>
                 {source ? <small>{source}</small> : null}
+              </summary>
+              <fieldset>
                 <label>
                   {t("builder.learningDesign.prompt")}
                   <textarea
@@ -115,32 +114,32 @@ export function ProfessorLearningDesignReview({
                   />
                 </label>
               </fieldset>
-            );
-          })}
-          <Prerequisites review={review} update={update} onChange={setUpdate} />
-          <div className="learning-design-actions">
-            <button
-              disabled={saving}
-              type="button"
-              onClick={() => {
-                setSaveEpoch((current) => current + 1);
-                onSave(lectureId, update);
-              }}
-            >
-              {t("builder.learningDesign.save")}
-            </button>
-          </div>
-          <ProfessorLearningDesignReport
-            acknowledgementResetKey={`${acknowledgementResetKey}:${saveEpoch}`}
-            approved={Boolean(review.approval)}
-            dirty={dirty}
-            lectureId={lectureId}
-            report={review.report}
-            saving={saving}
-            onApprove={onApprove}
-          />
-          {dirty ? <p role="status">{t("builder.learningDesign.saveBeforeApprove")}</p> : null}
+            </details>
+          );
+        })}
+        <Prerequisites review={review} update={update} onChange={setUpdate} />
+        <div className="learning-design-actions">
+          <button
+            disabled={saving}
+            type="button"
+            onClick={() => {
+              setSaveEpoch((current) => current + 1);
+              onSave(lectureId, update);
+            }}
+          >
+            {t("builder.learningDesign.save")}
+          </button>
         </div>
+        <ProfessorLearningDesignReport
+          acknowledgementResetKey={`${acknowledgementResetKey}:${saveEpoch}`}
+          approved={Boolean(review.approval)}
+          dirty={dirty}
+          lectureId={lectureId}
+          report={review.report}
+          saving={saving}
+          onApprove={onApprove}
+        />
+        {dirty ? <p role="status">{t("builder.learningDesign.saveBeforeApprove")}</p> : null}
       </div>
     </section>
   );
@@ -157,38 +156,40 @@ function Prerequisites({
 }) {
   const { t } = useI18n();
   return (
-    <fieldset>
-      <legend>{t("builder.learningDesign.prerequisites")}</legend>
-      {update.prerequisites.map((item, index) => (
-        <label key={item.section_id}>
-          {review.learning_map.nodes[index]?.title ?? item.section_id}
-          <select
-            multiple
-            value={item.prerequisite_ids}
-            onChange={(event) =>
-              onChange({
-                ...update,
-                prerequisites: replaceAt(update.prerequisites, index, {
-                  ...item,
-                  prerequisite_ids: Array.from(
-                    event.target.selectedOptions,
-                    (option) => option.value,
-                  ),
-                }),
-              })
-            }
-          >
-            {review.learning_map.nodes
-              .filter((node) => node.section_id !== item.section_id)
-              .map((node) => (
-                <option key={node.section_id} value={node.section_id}>
-                  {node.title}
-                </option>
-              ))}
-          </select>
-        </label>
-      ))}
-    </fieldset>
+    <details className="learning-design-disclosure">
+      <summary>{t("builder.learningDesign.prerequisites")}</summary>
+      <fieldset>
+        {update.prerequisites.map((item, index) => (
+          <label key={item.section_id}>
+            {review.learning_map.nodes[index]?.title ?? item.section_id}
+            <select
+              multiple
+              value={item.prerequisite_ids}
+              onChange={(event) =>
+                onChange({
+                  ...update,
+                  prerequisites: replaceAt(update.prerequisites, index, {
+                    ...item,
+                    prerequisite_ids: Array.from(
+                      event.target.selectedOptions,
+                      (option) => option.value,
+                    ),
+                  }),
+                })
+              }
+            >
+              {review.learning_map.nodes
+                .filter((node) => node.section_id !== item.section_id)
+                .map((node) => (
+                  <option key={node.section_id} value={node.section_id}>
+                    {node.title}
+                  </option>
+                ))}
+            </select>
+          </label>
+        ))}
+      </fieldset>
+    </details>
   );
 }
 

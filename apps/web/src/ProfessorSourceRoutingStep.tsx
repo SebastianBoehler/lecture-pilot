@@ -1,6 +1,15 @@
+import { useEffect, useMemo, useState } from "react";
+
 import { useI18n } from "./i18n";
 import { StepHeader } from "./ProfessorCourseBuilderParts";
 import { lectureIdFromNumber } from "./professorWorkspaceActivation";
+import {
+  filterSourceRoutes,
+  lectureRouteCounts,
+  SOURCE_ROUTE_PAGE_SIZE,
+  sourceRouteCounts,
+  type SourceRouteScope,
+} from "./sourceRoutingView";
 import type { CourseSourceRoutingManifest, LectureScheduleItem, SourceRouteRole } from "./types";
 
 const ROLES: SourceRouteRole[] = ["lecture", "course_wide", "excluded"];
@@ -23,6 +32,27 @@ export function ProfessorSourceRoutingStep({
     id: lectureIdFromNumber(lecture.number),
     label: `${lecture.number} · ${lecture.title}`,
   }));
+  const routes = useMemo(() => routing?.routes ?? [], [routing?.routes]);
+  const counts = useMemo(() => sourceRouteCounts(routes), [routes]);
+  const lectureCounts = useMemo(() => lectureRouteCounts(routes), [routes]);
+  const kinds = useMemo(
+    () => Array.from(new Set(routes.map((route) => route.kind))).sort(),
+    [routes],
+  );
+  const [scope, setScope] = useState<SourceRouteScope>("assigned");
+  const [query, setQuery] = useState("");
+  const [kind, setKind] = useState("");
+  const [lectureId, setLectureId] = useState("");
+  const [page, setPage] = useState(0);
+  const filteredRoutes = useMemo(
+    () => filterSourceRoutes(routes, { kind, lectureId, query, scope }),
+    [kind, lectureId, query, routes, scope],
+  );
+  const pageCount = Math.max(1, Math.ceil(filteredRoutes.length / SOURCE_ROUTE_PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const pageStart = safePage * SOURCE_ROUTE_PAGE_SIZE;
+  const visibleRoutes = filteredRoutes.slice(pageStart, pageStart + SOURCE_ROUTE_PAGE_SIZE);
+  useEffect(() => setPage(0), [kind, lectureId, query, scope]);
   return (
     <section className="flow-card">
       <StepHeader
@@ -49,6 +79,76 @@ export function ProfessorSourceRoutingStep({
           <span>{t("builder.sources.legend.excluded")}</span>
         </div>
       </div>
+      <div className="source-routing-summary">
+        <div aria-label={t("builder.sources.scopeLabel")} className="source-routing-scopes">
+          <ScopeButton
+            active={scope === "assigned"}
+            label={t("builder.sources.scope.assigned", { count: counts.assigned })}
+            onClick={() => setScope("assigned")}
+          />
+          <ScopeButton
+            active={scope === "excluded"}
+            label={t("builder.sources.scope.excluded", { count: counts.excluded })}
+            onClick={() => setScope("excluded")}
+          />
+          <ScopeButton
+            active={scope === "all"}
+            label={t("builder.sources.scope.all", { count: counts.total })}
+            onClick={() => setScope("all")}
+          />
+        </div>
+        <div className="source-routing-filters">
+          <label>
+            <span>{t("builder.sources.search")}</span>
+            <input
+              aria-label={t("builder.sources.search")}
+              placeholder={t("builder.sources.searchPlaceholder")}
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </label>
+          <label>
+            <span>{t("builder.sources.kind")}</span>
+            <select value={kind} onChange={(event) => setKind(event.target.value)}>
+              <option value="">{t("builder.sources.allKinds")}</option>
+              {kinds.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>{t("builder.sources.lectureFilter")}</span>
+            <select value={lectureId} onChange={(event) => setLectureId(event.target.value)}>
+              <option value="">{t("builder.sources.allLectures")}</option>
+              <option value="course_wide">{t("builder.sources.role.courseWide")}</option>
+              {lectureOptions.map((lecture) => (
+                <option key={lecture.id} value={lecture.id}>
+                  {lecture.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div aria-label={t("builder.sources.coverageLabel")} className="source-routing-coverage">
+          {lectureOptions.map((lecture) => (
+            <button
+              aria-pressed={lectureId === lecture.id}
+              key={lecture.id}
+              type="button"
+              onClick={() => {
+                setLectureId((current) => (current === lecture.id ? "" : lecture.id));
+                setScope("assigned");
+              }}
+            >
+              <span>{lecture.label}</span>
+              <strong>{lectureCounts.get(lecture.id) ?? 0}</strong>
+            </button>
+          ))}
+        </div>
+      </div>
       <div
         aria-label={t("builder.sources.tableLabel")}
         className="source-routing-list"
@@ -59,7 +159,7 @@ export function ProfessorSourceRoutingStep({
           <span role="columnheader">{t("builder.sources.column.use")}</span>
           <span role="columnheader">{t("builder.sources.column.lecture")}</span>
         </div>
-        {routing?.routes.map((route) => (
+        {visibleRoutes.map((route) => (
           <div className="source-routing-row" key={route.path} role="row">
             <div className="source-routing-file" role="cell">
               <span className="source-routing-name" title={route.path}>
@@ -122,6 +222,31 @@ export function ProfessorSourceRoutingStep({
           </div>
         ))}
       </div>
+      {filteredRoutes.length ? (
+        <div className="source-routing-pagination">
+          <span>
+            {t("builder.sources.showing", {
+              end: Math.min(pageStart + SOURCE_ROUTE_PAGE_SIZE, filteredRoutes.length),
+              start: pageStart + 1,
+              total: filteredRoutes.length,
+            })}
+          </span>
+          <div>
+            <button disabled={safePage === 0} type="button" onClick={() => setPage(safePage - 1)}>
+              {t("builder.sources.previous")}
+            </button>
+            <button
+              disabled={safePage >= pageCount - 1}
+              type="button"
+              onClick={() => setPage(safePage + 1)}
+            >
+              {t("builder.sources.next")}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p className="source-routing-empty-state">{t("builder.sources.noMatches")}</p>
+      )}
       <div className="flow-actions">
         <button
           className="primary-action"
@@ -133,6 +258,22 @@ export function ProfessorSourceRoutingStep({
         </button>
       </div>
     </section>
+  );
+}
+
+function ScopeButton({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button aria-pressed={active} type="button" onClick={onClick}>
+      {label}
+    </button>
   );
 }
 

@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 export async function showAllPublishedLectures(user: ReturnType<typeof userEvent.setup>) {
@@ -17,6 +17,19 @@ export async function openLecture03FromDashboard(user: ReturnType<typeof userEve
 export async function openProfessorDemo(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: /preview professor account/i }));
   await screen.findByRole("navigation", { name: /course builder progress/i });
+}
+
+export async function approveAllLearningDesigns(user: ReturnType<typeof userEvent.setup>) {
+  const selector = await screen.findByRole("navigation", { name: /lecture to review/i });
+  const lectureNames = within(selector)
+    .getAllByRole("button")
+    .map((button) => button.getAttribute("aria-label") ?? "");
+  for (const name of lectureNames) {
+    await user.click(within(selector).getByRole("button", { name }));
+    await user.click(screen.getByRole("button", { name: /review learning design/i }));
+    await user.click(await screen.findByRole("button", { name: /approve learning design/i }));
+    await screen.findByRole("button", { name: /learning design approved/i });
+  }
 }
 
 export function soccerCanvasSection() {

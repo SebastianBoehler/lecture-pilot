@@ -35,11 +35,8 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
       review: learningDesignReview(null),
     });
 
+    openLearningDesign();
     expect(screen.getByRole("heading", { name: "Learning design review" })).toBeInTheDocument();
-    expect(screen.getByTitle("Learner draft preview")).toHaveAttribute(
-      "src",
-      "http://localhost/draft/lecture-01",
-    );
     expect(screen.getByLabelText("Learning objective")).toHaveValue(
       "Explain the source-backed mechanism.",
     );
@@ -63,6 +60,7 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
       review: learningDesignReview(null),
     });
 
+    openLearningDesign();
     fireEvent.change(screen.getByLabelText("Learning objective"), {
       target: { value: "Explain and transfer the mechanism." },
     });
@@ -113,6 +111,7 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
       review: learningDesignReview(null),
     });
 
+    openLearningDesign();
     fireEvent.change(screen.getByLabelText("Learning objective"), {
       target: { value: "Unsaved changed objective." },
     });
@@ -126,6 +125,10 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
     expect(onApproveLearningDesign).not.toHaveBeenCalled();
   });
 });
+
+function openLearningDesign() {
+  fireEvent.click(screen.getByRole("button", { name: "Review learning design" }));
+}
 
 function renderStep({
   isFullCourse,

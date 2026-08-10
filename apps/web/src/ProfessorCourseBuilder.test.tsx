@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
 import { professorFetchMock } from "./ProfessorCourseBuilder.testFixtures";
-import { openProfessorDemo } from "./testLessonActions";
+import { approveAllLearningDesigns, openProfessorDemo } from "./testLessonActions";
 
 describe("Professor course builder", () => {
   afterEach(() => {
@@ -107,6 +107,7 @@ describe("Professor course builder", () => {
     expect((materialUploadCall?.[1]?.body as FormData).get("path")).toBe("uploads/supplement.md");
     expect((materialUploadCall?.[1]?.body as FormData).get("refresh_index")).toBe("false");
     expect(screen.getByRole("heading", { name: /review source assignments/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /not used/i }));
     expect(screen.getByLabelText(/route videos\/demo\.mp4/i)).toHaveValue("excluded");
     expect(screen.getByRole("button", { name: /04 media/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /05 generate/i })).toBeDisabled();
@@ -154,11 +155,12 @@ describe("Professor course builder", () => {
     expect(screen.getByText(/review needed/i)).toBeInTheDocument();
     expect(screen.getByText(/planner model finished with reason/i)).toBeInTheDocument();
     expect(await screen.findByText(/2 sections ready for review/i)).toBeInTheDocument();
-    const draftPreview = screen.getByRole("link", { name: /preview course workspace/i });
+    const draftPreview = screen.getByRole("link", { name: /open full learner view/i });
     expect(draftPreview).toHaveAttribute(
       "href",
       expect.stringContaining("/professor/courses/demo-ml-course/lectures/lecture-03/draft"),
     );
+    await user.click(screen.getByRole("button", { name: /review learning design/i }));
     expect(
       await screen.findByRole("heading", { name: /learning design review/i }),
     ).toBeInTheDocument();
@@ -198,7 +200,7 @@ describe("Professor course builder", () => {
     expect(screen.getByText(/posterior-weighted loss/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^course builder$/i }));
     await user.click(screen.getByRole("button", { name: /05 generate/i }));
-    const previewLink = screen.getByRole("link", { name: /preview course workspace/i });
+    const previewLink = screen.getByRole("link", { name: /open full learner view/i });
     expect(previewLink).toHaveAttribute("target", "_blank");
     expect(previewLink).toHaveAttribute(
       "href",
@@ -324,11 +326,8 @@ describe("Professor course builder", () => {
     await openProfessorDemo(user);
 
     expect(await screen.findByText(/2 lecture canvases ready to review/i)).toBeInTheDocument();
-    const approvals = await screen.findAllByRole("button", { name: /approve learning design/i });
-    for (const approval of approvals) await user.click(approval);
-    await waitFor(() =>
-      expect(screen.getAllByRole("button", { name: /learning design approved/i })).toHaveLength(2),
-    );
+    await approveAllLearningDesigns(user);
+    await waitFor(() => expect(screen.getByText(/2 of 2 approved/i)).toBeInTheDocument());
     expect(screen.getByRole("button", { name: /06 publish/i })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: /continue to publishing/i }));
     expect(await screen.findByText(/0 of 2 lecture workspaces published/i)).toBeInTheDocument();

@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
 import { professorFetchMock } from "./ProfessorCourseBuilder.testFixtures";
-import { openProfessorDemo } from "./testLessonActions";
+import { approveAllLearningDesigns, openProfessorDemo } from "./testLessonActions";
 
 describe("Professor course builder generation retry", () => {
   afterEach(() => {
@@ -76,8 +76,7 @@ describe("Professor course builder generation retry", () => {
     expect(await screen.findByText(/2 lecture canvases ready to review/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/lecture generation progress/i)).toHaveTextContent(/Lecture 02/i);
     expect(screen.getByLabelText(/lecture generation progress/i)).toHaveTextContent(/ready/i);
-    const approvals = await screen.findAllByRole("button", { name: /approve learning design/i });
-    for (const approval of approvals) await user.click(approval);
+    await approveAllLearningDesigns(user);
     expect(screen.getByRole("button", { name: /continue to publishing/i })).toBeEnabled();
   });
 });

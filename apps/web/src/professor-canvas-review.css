@@ -1,0 +1,269 @@
+.draft-review {
+  display: grid;
+  justify-self: center;
+  gap: 24px;
+  width: min(1180px, calc(100vw - 48px));
+  margin-block-start: 12px;
+  border-block-start: 1px solid var(--color-border-primary);
+  padding-block-start: 24px;
+}
+
+.draft-review-header,
+.draft-review-selected-header,
+.draft-review-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.draft-review-header > div,
+.draft-review-selected-header > div {
+  display: grid;
+  gap: 4px;
+}
+
+.draft-review-header span,
+.draft-review-selected-header small,
+.draft-review-footer span {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.draft-review-progress {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.draft-review-lectures {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-block-end: 4px;
+}
+
+.flow-card .draft-review-lectures button {
+  display: grid;
+  flex: 0 0 190px;
+  gap: 4px;
+  justify-content: initial;
+  min-height: 58px;
+  overflow: hidden;
+  text-align: start;
+  transition-property: color, background-color, border-color, scale;
+  transition-duration: 120ms;
+}
+
+.draft-review-lectures button span,
+.draft-review-lectures button small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.draft-review-lectures button small {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.flow-card .draft-review-lectures button[aria-pressed="true"] {
+  border-color: var(--color-accent-primary);
+  color: var(--color-accent-primary);
+  background: color-mix(in srgb, var(--color-accent-primary) 7%, var(--color-bg-primary));
+}
+
+.flow-card .draft-review-lectures button:active,
+.flow-card .draft-review-tabs button:active {
+  scale: 0.96;
+}
+
+.draft-review-workspace {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  padding: 20px;
+  border-radius: 12px;
+  background: var(--color-bg-primary);
+  box-shadow:
+    0 0 0 1px var(--color-border-primary),
+    0 12px 32px color-mix(in srgb, var(--color-text-primary) 7%, transparent);
+}
+
+.draft-review-selected-header h3 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.draft-review-tabs {
+  display: flex;
+  gap: 8px;
+  border-block-end: 1px solid var(--color-border-primary);
+  padding-block-end: 10px;
+}
+
+.flow-card .draft-review-tabs button {
+  border-color: transparent;
+  color: var(--color-text-secondary);
+  background: transparent;
+  transition-property: color, background-color, scale;
+  transition-duration: 120ms;
+}
+
+.flow-card .draft-review-tabs button[aria-pressed="true"] {
+  color: var(--color-text-primary);
+  background: var(--color-bg-secondary);
+}
+
+.learner-preview-frame {
+  display: grid;
+  gap: 12px;
+}
+
+.learner-preview-frame p {
+  max-width: 70ch;
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.learner-preview-frame iframe {
+  width: 100%;
+  min-height: 760px;
+  border: 0;
+  border-radius: 8px;
+  outline: 1px solid oklch(0 0 0 / 0.1);
+  background: var(--color-bg-primary);
+}
+
+[data-theme="dark"] .learner-preview-frame iframe {
+  outline-color: oklch(1 0 0 / 0.1);
+}
+
+.learning-design-review,
+.learning-design-fields,
+.learning-design-fields label,
+.learning-design-fields fieldset {
+  display: grid;
+  gap: 10px;
+}
+
+.learning-design-review {
+  max-width: 880px;
+  gap: 16px;
+}
+
+.learning-design-review h3,
+.learning-design-review p {
+  margin: 0;
+}
+
+.learning-design-fields fieldset {
+  margin: 0;
+  border: 0;
+  padding: 14px 0 0;
+}
+
+.learning-design-fields textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.learning-design-fields select[multiple] {
+  min-height: 96px;
+}
+
+.learning-design-disclosure {
+  border-block-start: 1px solid var(--color-border-primary);
+  padding-block: 14px 4px;
+}
+
+.learning-design-disclosure summary {
+  display: grid;
+  gap: 3px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.learning-design-disclosure summary small {
+  color: var(--color-text-tertiary);
+  font-weight: 400;
+}
+
+.learning-design-actions,
+.learning-design-coverage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.learning-design-report {
+  display: grid;
+  gap: 12px;
+  border-block-start: 1px solid var(--color-border-primary);
+  padding-block-start: 16px;
+}
+
+.learning-design-report h4 {
+  margin: 0;
+}
+
+.learning-design-diagnostics {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.learning-design-diagnostics li {
+  padding: 10px;
+  border-radius: 6px;
+  background: var(--color-bg-secondary);
+}
+
+.learning-design-diagnostics label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+}
+
+.learning-design-diagnostics label span {
+  display: grid;
+  gap: 4px;
+}
+
+.learning-design-diagnostics small {
+  color: var(--color-text-tertiary);
+}
+
+.draft-review-footer {
+  position: sticky;
+  z-index: 2;
+  bottom: 0;
+  padding-block: 14px;
+  background: color-mix(in srgb, var(--color-bg-primary) 94%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+@media (max-width: 760px) {
+  .draft-review {
+    width: 100%;
+  }
+
+  .draft-review-header,
+  .draft-review-selected-header,
+  .draft-review-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .draft-review-workspace {
+    padding: 16px;
+  }
+
+  .learner-preview-frame iframe {
+    min-height: 620px;
+  }
+}
