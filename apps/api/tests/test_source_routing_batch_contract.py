@@ -15,6 +15,7 @@ from lecturepilot.course_source_routing_review import (
 )
 from lecturepilot.models import Lecture
 from lecturepilot.providers import ProviderConfigurationError
+from lecturepilot.course_source_evidence import selection_detail_files
 from lecturepilot.source_index_models import IndexedSourceFile
 
 
@@ -95,6 +96,26 @@ def test_source_routing_agent_excludes_assignments_when_lecture_material_exists(
     assert "exam-preparation guidance" in messages[0]["content"]
     assert "applicable to every lecture" in messages[0]["content"]
     assert "derived text conversions" in messages[0]["content"]
+    assert (
+        "complementary examples, code demos, readings, or standalone diagrams"
+        in messages[0]["content"]
+    )
+    assert "generated slide-page images" in messages[0]["content"]
+
+
+def test_source_selection_detail_sample_represents_each_material_kind() -> None:
+    files = [_indexed_file(number) for number in range(60)]
+    files.extend(
+        [
+            _indexed_kind("deep/examples/demo.ipynb", "notebook", 1, "a"),
+            _indexed_kind("notes/overview.md", "markdown", 2, "b"),
+        ]
+    )
+
+    details = selection_detail_files(files, set())
+
+    assert len(details) == 60
+    assert {item.kind for item in details} >= {"pdf", "notebook", "markdown"}
 
 
 def test_source_selection_rejects_primary_reassignment() -> None:
@@ -215,6 +236,16 @@ def _indexed_path(path, kind: str, digest: str) -> IndexedSourceFile:
         size_bytes=path.stat().st_size,
         sha256=digest * 64,
         modified_ns=path.stat().st_mtime_ns,
+    )
+
+
+def _indexed_kind(path: str, kind: str, size: int, digest: str) -> IndexedSourceFile:
+    return IndexedSourceFile(
+        path=path,
+        kind=kind,
+        size_bytes=size,
+        sha256=digest * 64,
+        modified_ns=size,
     )
 
 

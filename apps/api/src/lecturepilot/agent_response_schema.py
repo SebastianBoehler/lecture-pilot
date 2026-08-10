@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from lecturepilot import component_response_schema
+from lecturepilot.course_canvas_response_schema import course_canvas_schema
 from lecturepilot.learning_map import LearningMapGate
 from lecturepilot.model_commands import assessment_required
 from lecturepilot.models import AgentTurnInput
@@ -29,15 +30,7 @@ def course_canvas_response_format() -> dict[str, Any]:
         "json_schema": {
             "name": "lecturepilot_course_canvas",
             "strict": True,
-            "schema": {
-                "type": "object",
-                "additionalProperties": False,
-                "properties": {
-                    "title": {"type": "string"},
-                    "sections": {"type": "array", "items": _section_schema()},
-                },
-                "required": ["title", "sections"],
-            },
+            "schema": course_canvas_schema(),
         },
     }
 

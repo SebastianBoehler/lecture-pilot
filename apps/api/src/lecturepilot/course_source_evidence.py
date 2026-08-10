@@ -35,7 +35,21 @@ def selection_detail_files(
     candidates = [
         item for item in files if item.path not in primary_paths and item.kind in DETAIL_KINDS
     ]
-    return sorted(candidates, key=_detail_priority)[:MAX_SELECTION_DETAILS]
+    by_kind: dict[str, list[IndexedSourceFile]] = {}
+    for item in sorted(candidates, key=_detail_priority):
+        by_kind.setdefault(item.kind, []).append(item)
+    selected: list[IndexedSourceFile] = []
+    kinds = sorted(by_kind)
+    while len(selected) < MAX_SELECTION_DETAILS and kinds:
+        remaining = []
+        for kind in kinds:
+            bucket = by_kind[kind]
+            if bucket and len(selected) < MAX_SELECTION_DETAILS:
+                selected.append(bucket.pop(0))
+            if bucket:
+                remaining.append(kind)
+        kinds = remaining
+    return selected
 
 
 def _detail_priority(item: IndexedSourceFile) -> tuple[int, int, str]:

@@ -120,6 +120,10 @@ def _routing_messages(
                 "material, exam-preparation guidance, exam protocols, temporary artifacts, or derived "
                 "text conversions when an original is present. Use course_wide only for foundational "
                 "teaching material applicable to every lecture, such as a syllabus or shared glossary. "
+                "Do not assume the primary deck supersedes complementary examples, code demos, "
+                "readings, or standalone diagrams; select them when they add teaching evidence or "
+                "reusable media beyond the rendered deck. Exclude generated slide-page images and "
+                "individual deck assets when they merely duplicate a selected deck. "
                 "Do not return a primary source again. Use only listed paths and lecture ids. Lecture "
                 "selections require lecture_id; course_wide selections require null."
             ),

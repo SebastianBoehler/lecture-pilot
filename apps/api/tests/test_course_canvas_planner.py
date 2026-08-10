@@ -5,7 +5,6 @@ import sys
 from types import SimpleNamespace
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner, LiteLLMCoursePlanClient
 from lecturepilot.providers import ProviderRegistry
 
@@ -38,40 +37,6 @@ async def test_litellm_course_plan_client_requests_canvas_schema(monkeypatch) ->
     assert calls[0]["response_format"]["json_schema"]["strict"] is True
     assert calls[0]["max_tokens"] == 6000
     assert schema["required"] == ["title", "sections"]
-
-
-async def test_course_planner_retries_structural_validation_with_feedback(monkeypatch) -> None:
-    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
-    source = _source_document()
-    repair_contexts = []
-    validation_calls = 0
-
-    async def fake_plan_sections(**kwargs):
-        repair_contexts.append(kwargs["repair_context"])
-        return source
-
-    def fake_validate(_document, _source) -> None:
-        nonlocal validation_calls
-        validation_calls += 1
-        if validation_calls == 1:
-            raise CanvasGenerationRepairableError("Assessment prompt is not standalone.")
-
-    monkeypatch.setattr(
-        "lecturepilot.course_canvas_planner.plan_sections_individually",
-        fake_plan_sections,
-    )
-    monkeypatch.setattr(
-        "lecturepilot.course_canvas_planner.validate_planned_document",
-        fake_validate,
-    )
-    planner = CourseCanvasPlanner(
-        provider_registry=ProviderRegistry.from_env("gemini/test-model"),
-        quality_reviewer=_NoIssuesQualityReviewer(),
-    )
-
-    await planner.plan_canvas(source)
-
-    assert repair_contexts == [None, "Assessment prompt is not standalone."]
 
 
 async def test_course_planner_restyles_source_evidence(monkeypatch) -> None:

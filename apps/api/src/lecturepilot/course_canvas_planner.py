@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from lecturepilot.agent_response_schema import course_canvas_response_format
 from lecturepilot.canvas_models import CanvasDocument
+from lecturepilot.course_canvas_auto_repair import repair_until_quality_valid
 from lecturepilot.course_content_filter import filter_source_document_for_planning
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_json import parse_model_json
@@ -101,49 +102,46 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
             "model": settings.model,
         }
         document: CanvasDocument | None = None
-        quality_feedback: str | None = None
         try:
-            for quality_attempt in range(1, 4):
-                active_repair = (
-                    "\n".join(value for value in (repair_context, quality_feedback) if value)
-                    or None
+            with self.observability.model_span(
+                stage="sectionwise_plan",
+                attempt=1,
+                **span_attributes,
+            ) as span:
+                document = await plan_sections_individually(
+                    model_client=self.model_client,
+                    settings=settings,
+                    source_document=source_document,
+                    output_language=output_language,
+                    repair_context=repair_context,
+                    observability=self.observability,
+                    span_attributes=span_attributes,
                 )
-                with self.observability.model_span(
-                    stage="sectionwise_plan",
-                    attempt=quality_attempt,
-                    **span_attributes,
-                ) as span:
-                    document = await plan_sections_individually(
-                        model_client=self.model_client,
-                        settings=settings,
-                        source_document=source_document,
-                        output_language=output_language,
-                        repair_context=active_repair,
-                        observability=self.observability,
-                        span_attributes=span_attributes,
-                    )
-                    document = interleave_original_slides(document, source_document)
-                    try:
-                        validate_planned_document(document, source_document)
-                        await self.validate_quality(source_document, document, settings=settings)
-                    except CanvasGenerationRepairableError as exc:
-                        exc.with_candidate(document)
-                        if quality_attempt == 3:
-                            raise
-                        quality_feedback = str(exc)
-                        continue
-                    span.set_outputs(
-                        {
-                            "section_count": len(document.sections),
-                            "warning_count": len(document.warnings),
-                        }
-                    )
-                    return document
+                document = interleave_original_slides(document, source_document)
+                validate_planned_document(document, source_document)
+                await self.validate_quality(source_document, document, settings=settings)
+                span.set_outputs(
+                    {
+                        "section_count": len(document.sections),
+                        "warning_count": len(document.warnings),
+                    }
+                )
+                return document
         except CanvasGenerationRepairableError as exc:
             candidate = exc.candidate or document
             if candidate is not None:
                 candidate = interleave_original_slides(candidate, source_document)
                 exc.with_candidate(candidate)
+            if candidate is not None and exc.section_id is not None:
+                return await repair_until_quality_valid(
+                    self,
+                    source=source_document,
+                    candidate=candidate,
+                    section_id=exc.section_id,
+                    block_id=exc.block_id,
+                    failure_context=str(exc),
+                    output_language=output_language,
+                )
             raise
 
     async def validate_quality(

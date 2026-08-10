@@ -121,26 +121,6 @@ async def test_quality_reviewer_targets_the_section_when_multiple_blocks_fail() 
     assert caught.value.block_id is None
 
 
-async def test_course_planner_regenerates_once_with_quality_feedback(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
-    model = _PlanClient()
-    quality = _SequencedQualityReviewer()
-    planner = CourseCanvasPlanner(
-        provider_registry=ProviderRegistry.from_env("gemini/test-model"),
-        model_client=model,
-        quality_reviewer=quality,
-    )
-
-    document = await planner.plan_canvas(_source_document())
-
-    assert document.sections[0].id == "learning-1-topic"
-    assert model.calls == 2
-    assert quality.calls == 2
-    assert "answer key is not supported" in model.repair_prompts[0]
-
-
 async def test_quality_failure_forces_a_source_grounded_patch_of_valid_structure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -186,60 +166,6 @@ class _QualityClient:
 
     async def complete_review(self, *, settings, source_document, candidate_document):
         return {"issues": self.issues}
-
-
-class _SequencedQualityReviewer:
-    def __init__(self) -> None:
-        self.calls = 0
-
-    async def validate(self, **_kwargs) -> None:
-        self.calls += 1
-        if self.calls == 1:
-            raise CanvasGenerationRepairableError(
-                "Canvas quality review failed: answer key is not supported.",
-                section_id="topic",
-                block_id="quiz",
-            )
-
-
-class _PlanClient:
-    def __init__(self) -> None:
-        self.calls = 0
-        self.repair_prompts: list[str] = []
-
-    async def complete_plan(self, *, settings, messages):
-        self.calls += 1
-        if len(messages) > 2:
-            self.repair_prompts.append(messages[-1]["content"])
-        return {
-            "title": "Lecture",
-            "sections": [
-                {
-                    "id": "topic",
-                    "title": "Topic",
-                    "source_ref": "lecture.pdf page 1",
-                    "blocks": [
-                        *[
-                            {
-                                "type": "paragraph",
-                                "text": (
-                                    "The lecture states the source-backed mechanism, explains "
-                                    "when it applies, and names a concrete failure mode. "
-                                )
-                                * 3,
-                            }
-                            for _ in range(4)
-                        ],
-                        {
-                            "type": "quiz",
-                            "text": "Which statement matches the lecture?",
-                            "items": ["Unsupported claim", "Source-backed statement"],
-                            "answer_index": 1,
-                        },
-                    ],
-                }
-            ],
-        }
 
 
 class _RepairClient:

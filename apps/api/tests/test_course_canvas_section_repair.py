@@ -133,7 +133,7 @@ async def test_section_repair_rejects_two_invalid_patches_without_mutating_candi
     assert candidate == snapshot
 
 
-async def test_full_planner_quarantines_the_invalid_candidate_with_block_coordinates(
+async def test_full_planner_automatically_repairs_an_invalid_generated_block(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
@@ -169,7 +169,8 @@ async def test_full_planner_quarantines_the_invalid_candidate_with_block_coordin
         {
             "intro": candidate.sections[0].model_dump(),
             "summary": candidate.sections[1].model_dump(),
-        }
+        },
+        repair_payload=_repair_payload([{"type": "math", "text": r"z=\mu+\epsilon"}]),
     )
     planner = CourseCanvasPlanner(
         provider_registry=ProviderRegistry.from_env("gemini/test-model"),
@@ -177,19 +178,18 @@ async def test_full_planner_quarantines_the_invalid_candidate_with_block_coordin
         quality_reviewer=_NoIssuesQualityReviewer(),
     )
 
-    with pytest.raises(CanvasGenerationRepairableError) as caught:
-        await planner.plan_canvas(source)
+    document = await planner.plan_canvas(source)
 
-    assert caught.value.candidate is not None
-    assert caught.value.section_id == "learning-optimization"
-    assert caught.value.block_id == "learning-optimization-math-1"
-    assert [section.id for section in caught.value.candidate.sections] == [
+    assert model.repair_calls == 1
+    assert [section.id for section in document.sections] == [
         "learning-optimization",
         "learning-summary",
     ]
+    repaired_math = document.sections[0].blocks[1]
+    assert repaired_math.id == "learning-optimization-math-1"
+    assert repaired_math.text == r"z=\mu+\epsilon"
     assert (
-        caught.value.candidate.sections[1].blocks[0].text
-        == (candidate.sections[1].blocks[0].text or "").strip()
+        document.sections[1].blocks[0].text == (candidate.sections[1].blocks[0].text or "").strip()
     )
 
 
@@ -260,10 +260,15 @@ class _NoIssuesQualityReviewer:
 
 
 class _SectionModel:
-    def __init__(self, sections: dict[str, dict]) -> None:
+    def __init__(self, sections: dict[str, dict], *, repair_payload: dict) -> None:
         self.sections = sections
+        self.repair_payload = repair_payload
+        self.repair_calls = 0
 
-    async def complete_plan(self, *, settings, messages):
+    async def complete_plan(self, *, settings, messages, temperature=0.2):
+        if temperature == 0.1:
+            self.repair_calls += 1
+            return self.repair_payload
         evidence = messages[1]["content"]
         source_id = evidence.split("Required section id: ", 1)[1].splitlines()[0]
         return {"title": "Candidate", "sections": [self.sections[source_id]]}
