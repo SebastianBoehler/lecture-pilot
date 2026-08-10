@@ -38,3 +38,41 @@ it("replaces a filename caption and balances a five-step process", () => {
   expect(screen.queryByText("llm-history-process.yaml")).not.toBeInTheDocument();
   expect(screen.getByRole("list")).toHaveClass("is-five-step");
 });
+
+it("renders LaTeX throughout a generated process", () => {
+  const { container } = renderWithI18n(
+    <ComponentBlock
+      block={{
+        id: "ridge-derivation",
+        type: "component",
+        component_type: "process_explorer",
+        caption: "Ridge regression derivation",
+        text: "Follow the objective \\(L(w)\\) through each step.",
+        items: [],
+        component_data: {
+          chart_type: null,
+          x_label: null,
+          y_label: null,
+          control_label: null,
+          labels: [],
+          frames: [],
+          steps: [
+            {
+              title: "Add \\(\\lambda I\\)",
+              text: "Obtain \\(\\left(\\Phi^{\\top}\\Phi + \\lambda I\\right)w = \\Phi^{\\top}Y\\).",
+            },
+            { title: "Solve", text: "Isolate \\(w\\)." },
+          ],
+        },
+      }}
+      className="canvas-block"
+      sourceMarker={null}
+      onSubmitAnswer={vi.fn()}
+    />,
+  );
+
+  expect(container.querySelector(".canvas-component-header .katex")).not.toBeNull();
+  expect(container.querySelector(".canvas-process-step-title .katex")).not.toBeNull();
+  expect(container.querySelector(".canvas-process-detail h4 .katex")).not.toBeNull();
+  expect(container.querySelector(".canvas-process-detail p .katex")).not.toBeNull();
+});

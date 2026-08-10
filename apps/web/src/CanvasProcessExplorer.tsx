@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 
 import { useI18n } from "./i18n";
+import { MathText } from "./MathText";
 import type { CanvasBlock } from "./types";
 
 type ProcessExplorerProps = {
@@ -29,7 +30,11 @@ export function ProcessExplorer({ block, className, sourceMarker }: ProcessExplo
     <section className={`${className} canvas-component canvas-process-explorer`} id={block.id}>
       <header className="canvas-component-header">
         <h3>{title}</h3>
-        {block.text ? <p>{block.text}</p> : null}
+        {block.text ? (
+          <p>
+            <MathText highlightedText={null} text={block.text} />
+          </p>
+        ) : null}
       </header>
       <ol className={`canvas-process-steps${steps.length === 5 ? " is-five-step" : ""}`}>
         {steps.map((step, index) => (
@@ -41,7 +46,9 @@ export function ProcessExplorer({ block, className, sourceMarker }: ProcessExplo
               type="button"
             >
               <span className="canvas-process-step-number">{index + 1}</span>
-              <span className="canvas-process-step-title">{step.title}</span>
+              <span className="canvas-process-step-title">
+                <MathText highlightedText={null} text={step.title} />
+              </span>
             </button>
           </li>
         ))}
@@ -53,8 +60,12 @@ export function ProcessExplorer({ block, className, sourceMarker }: ProcessExplo
             total: steps.length,
           })}
         </span>
-        <h4>{active.title}</h4>
-        <p>{active.text}</p>
+        <h4>
+          <MathText highlightedText={null} text={active.title} />
+        </h4>
+        <p>
+          <MathText highlightedText={null} text={active.text} />
+        </p>
       </div>
       {sourceMarker}
     </section>
