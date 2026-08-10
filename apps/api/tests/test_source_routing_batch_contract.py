@@ -100,6 +100,7 @@ def test_source_routing_agent_excludes_assignments_when_lecture_material_exists(
         "complementary examples, code demos, readings, or standalone diagrams"
         in messages[0]["content"]
     )
+    assert "Every listed notebook, code demo, or video" in messages[0]["content"]
     assert "generated slide-page images" in messages[0]["content"]
 
 
@@ -116,6 +117,32 @@ def test_source_selection_detail_sample_represents_each_material_kind() -> None:
 
     assert len(details) == 60
     assert {item.kind for item in details} >= {"pdf", "notebook", "markdown"}
+
+
+def test_source_selection_prioritizes_all_supplemental_details() -> None:
+    background = [
+        _indexed_kind(f"{kind}/material-{number}", kind, number + 1, "a")
+        for kind in ("json", "latex", "markdown", "pdf", "text")
+        for number in range(12)
+    ]
+    supplemental = [
+        *[
+            _indexed_kind(f"code/demo-{number}.py", "python", number + 1, "b")
+            for number in range(10)
+        ],
+        *[
+            _indexed_kind(f"notebooks/demo-{number}.ipynb", "notebook", number + 1, "c")
+            for number in range(11)
+        ],
+        *[
+            _indexed_kind(f"videos/demo-{number}.mp4", "video", number + 1, "d")
+            for number in range(7)
+        ],
+    ]
+
+    details = selection_detail_files([*background, *supplemental], set())
+
+    assert {item.path for item in supplemental} <= {item.path for item in details}
 
 
 def test_source_selection_rejects_primary_reassignment() -> None:
@@ -170,6 +197,7 @@ def test_global_reviewer_sees_every_proposal_and_selected_side_source(tmp_path) 
 
     assert "exam protocols" in messages[0]["content"]
     assert "applicable to every lecture" in messages[0]["content"]
+    assert "Never exclude a listed notebook, code demo, or video" in messages[0]["content"]
     assert primary.name in evidence
     assert side.name in evidence
     assert "Submit your graded answers" in evidence

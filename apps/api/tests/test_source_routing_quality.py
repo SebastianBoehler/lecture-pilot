@@ -21,14 +21,15 @@ def test_primary_only_proposal_is_rejected_when_supplemental_material_exists() -
         require_supplemental_coverage(routes)
 
 
-def test_proposal_passes_when_at_least_one_supplemental_source_is_assigned() -> None:
+def test_proposal_is_rejected_when_any_supplemental_source_is_unassigned() -> None:
     routes = [
         _route("Lecture01.pdf", "pdf", SourceRouteRole.LECTURE, "lecture-01"),
         _route("code/regression-demo.ipynb", "notebook", SourceRouteRole.LECTURE, "lecture-01"),
-        _route("videos/unrelated.mp4", "video", SourceRouteRole.EXCLUDED),
+        _route("videos/ridge-demo.mp4", "video", SourceRouteRole.EXCLUDED),
     ]
 
-    require_supplemental_coverage(routes)
+    with pytest.raises(ProviderConfigurationError, match="videos/ridge-demo.mp4"):
+        require_supplemental_coverage(routes)
 
 
 def test_non_teaching_artifacts_do_not_force_supplemental_assignment() -> None:
@@ -72,6 +73,7 @@ async def test_planner_repairs_a_primary_only_model_response(monkeypatch) -> Non
     assert model_client.selection_calls == 2
     assert model_client.review_calls == 1
     assert "supplemental teaching material" in model_client.selection_messages[-1][-1]["content"]
+    assert "selection for every listed path" in model_client.selection_messages[-1][-1]["content"]
     assert routes[1].role == SourceRouteRole.LECTURE
     assert routes[1].lecture_id == "lecture-01"
 

@@ -129,6 +129,9 @@ def _routing_messages(
                 "readings, or standalone diagrams; select them when they add teaching evidence or "
                 "reusable media beyond the rendered deck. Exclude generated slide-page images and "
                 "individual deck assets when they merely duplicate a selected deck. "
+                "Every listed notebook, code demo, or video that is not an assignment, solution, "
+                "submission, or generated artifact is supplemental teaching material: select it "
+                "for the most relevant lecture instead of omitting it. "
                 "Do not return a primary source again. Use only listed paths and lecture ids. Lecture "
                 "selections require lecture_id; course_wide selections require null."
             ),
@@ -232,7 +235,8 @@ def _repair_message(error: str) -> dict[str, str]:
         "role": "user",
         "content": (
             f"The proposal violated the routing contract: {error} "
-            "Return only necessary additional lecture or course_wide selections."
+            "Return a lecture or course_wide selection for every listed path in the error; do not "
+            "omit any of those required teaching sources."
         ),
     }
 
@@ -242,7 +246,8 @@ def _review_repair_message(error: str) -> dict[str, str]:
         "role": "user",
         "content": (
             f"The global review violated the correction contract: {error} "
-            "Return only unique corrections for listed paths."
+            "Return a lecture or course_wide correction for every listed path in the error; do not "
+            "leave any of those required teaching sources excluded."
         ),
     }
 

@@ -6,7 +6,7 @@ from lecturepilot.course_source_routing_models import CourseSourceRoute, SourceR
 from lecturepilot.providers import ProviderConfigurationError
 
 
-SUPPLEMENTAL_KINDS = {"code", "notebook", "video"}
+SUPPLEMENTAL_KINDS = {"code", "notebook", "python", "video"}
 NON_TEACHING_MARKERS = {
     "assignment",
     "build",
@@ -21,14 +21,17 @@ NON_TEACHING_MARKERS = {
 
 
 def require_supplemental_coverage(routes: list[CourseSourceRoute]) -> None:
-    candidates = [route for route in routes if _is_supplemental_candidate(route)]
-    if not candidates:
+    excluded = [
+        route
+        for route in routes
+        if _is_supplemental_candidate(route) and route.role == SourceRouteRole.EXCLUDED
+    ]
+    if not excluded:
         return
-    if any(route.role != SourceRouteRole.EXCLUDED for route in candidates):
-        return
+    paths = ", ".join(sorted(route.path for route in excluded))
     raise ProviderConfigurationError(
-        "The proposal excluded every supplemental teaching material candidate. Select relevant "
-        "code demos, notebooks, or videos for their lecture instead of relying only on primary decks."
+        "The proposal excluded supplemental teaching material that must be assigned to its relevant "
+        f"lecture instead of relying only on primary decks: {paths}"
     )
 
 

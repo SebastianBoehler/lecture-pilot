@@ -11,6 +11,7 @@ from lecturepilot.source_index_models import IndexedSourceFile
 MAX_EXCERPT_CHARS = 900
 TEXT_KINDS = {"json", "latex", "markdown", "notebook", "python", "text"}
 DETAIL_KINDS = {*TEXT_KINDS, "pdf", "video"}
+PRIORITY_DETAIL_KINDS = {"notebook", "python", "video"}
 MAX_SELECTION_DETAILS = 60
 
 
@@ -35,10 +36,17 @@ def selection_detail_files(
     candidates = [
         item for item in files if item.path not in primary_paths and item.kind in DETAIL_KINDS
     ]
+    prioritized = sorted(
+        (item for item in candidates if item.kind in PRIORITY_DETAIL_KINDS),
+        key=_detail_priority,
+    )[:MAX_SELECTION_DETAILS]
+    prioritized_paths = {item.path for item in prioritized}
     by_kind: dict[str, list[IndexedSourceFile]] = {}
     for item in sorted(candidates, key=_detail_priority):
+        if item.path in prioritized_paths:
+            continue
         by_kind.setdefault(item.kind, []).append(item)
-    selected: list[IndexedSourceFile] = []
+    selected = list(prioritized)
     kinds = sorted(by_kind)
     while len(selected) < MAX_SELECTION_DETAILS and kinds:
         remaining = []
