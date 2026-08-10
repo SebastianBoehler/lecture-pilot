@@ -8,6 +8,7 @@ export type BuilderAction =
   | "generate"
   | "include-videos"
   | "publish"
+  | "regenerate-routing"
   | "search"
   | "suggest-videos"
   | "upload";

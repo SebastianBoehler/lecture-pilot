@@ -61,6 +61,7 @@ def register_course_source_routing_routes(
     async def propose_course_source_routing(
         course_id: str,
         request: Request,
+        refresh: bool = False,
         context: TenantContext = Depends(request_context),
     ) -> CourseSourceRoutingManifest:
         _require_manager(context, request, course_id, course_tenant_id)
@@ -68,15 +69,17 @@ def register_course_source_routing_routes(
         with locked_course_state(layout.course_root(course_id)):
             index = _refresh_index(layout, course_id)
             lectures = _lectures(app, course_id)
-            try:
-                return review_source_routing(
-                    course_id=course_id,
-                    index=index,
-                    lectures=lectures,
-                    routing_path=layout.course_source_routing_path(course_id),
-                )
-            except SourceRoutingProposalRequired:
-                expected_revision = source_revision(index, lectures)
+            if not refresh:
+                try:
+                    return review_source_routing(
+                        course_id=course_id,
+                        index=index,
+                        lectures=lectures,
+                        routing_path=layout.course_source_routing_path(course_id),
+                    )
+                except SourceRoutingProposalRequired:
+                    pass
+            expected_revision = source_revision(index, lectures)
 
         try:
             with app.state.observability.tool_span(

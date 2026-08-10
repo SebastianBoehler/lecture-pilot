@@ -175,9 +175,9 @@ function sourceRouting(confirmed: boolean) {
       },
       {
         kind: "video",
-        lecture_id: null,
+        lecture_id: "lecture-03",
         path: "videos/demo.mp4",
-        role: "excluded",
+        role: "lecture",
         sha256: "d".repeat(64),
       },
     ],

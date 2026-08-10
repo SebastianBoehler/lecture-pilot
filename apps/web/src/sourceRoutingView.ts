@@ -10,6 +10,24 @@ export type SourceRouteFilters = {
   lectureId: string;
 };
 
+const SUPPLEMENTAL_KINDS = new Set(["code", "notebook", "video"]);
+const NON_TEACHING_MARKERS = new Set([
+  "assignment",
+  "build",
+  "exam",
+  "feedback",
+  "generated",
+  "grading",
+  "removed",
+  "solution",
+  "submission",
+]);
+
+export function hasSupplementalBlindSpot(routes: CourseSourceRoute[]): boolean {
+  const candidates = routes.filter(isSupplementalCandidate);
+  return candidates.length > 0 && candidates.every((route) => route.role === "excluded");
+}
+
 export function sourceRouteCounts(routes: CourseSourceRoute[]) {
   const lecture = routes.filter((route) => route.role === "lecture").length;
   const courseWide = routes.filter((route) => route.role === "course_wide").length;
@@ -57,4 +75,13 @@ function compareRoutes(left: CourseSourceRoute, right: CourseSourceRoute): numbe
     (left.lecture_id ?? "").localeCompare(right.lecture_id ?? "") ||
     left.path.localeCompare(right.path)
   );
+}
+
+function isSupplementalCandidate(route: CourseSourceRoute): boolean {
+  if (!SUPPLEMENTAL_KINDS.has(route.kind.toLocaleLowerCase())) return false;
+  const words = route.path
+    .toLocaleLowerCase()
+    .split("/")
+    .flatMap((part) => part.replaceAll("_", "-").replaceAll(".", "-").split("-"));
+  return !words.some((word) => NON_TEACHING_MARKERS.has(word));
 }

@@ -20,13 +20,12 @@ export async function openProfessorDemo(user: ReturnType<typeof userEvent.setup>
 }
 
 export async function approveAllLearningDesigns(user: ReturnType<typeof userEvent.setup>) {
-  const selector = await screen.findByRole("navigation", { name: /lecture to review/i });
-  const lectureNames = within(selector)
-    .getAllByRole("button")
+  const review = await screen.findByRole("region", { name: /review draft canvases/i });
+  const lectureNames = within(review)
+    .getAllByRole("button", { name: /review learning design for/i })
     .map((button) => button.getAttribute("aria-label") ?? "");
   for (const name of lectureNames) {
-    await user.click(within(selector).getByRole("button", { name }));
-    await user.click(screen.getByRole("button", { name: /review learning design/i }));
+    await user.click(within(review).getByRole("button", { name }));
     await user.click(await screen.findByRole("button", { name: /approve learning design/i }));
     await screen.findByRole("button", { name: /learning design approved/i });
   }

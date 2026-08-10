@@ -7,7 +7,7 @@ import { ProfessorCanvasDraftStep } from "./ProfessorCanvasDraftStep";
 import { learningDesignPayload } from "./testLearningDesignReviewFixture";
 
 describe("ProfessorCanvasDraftStep review workspace", () => {
-  it("reviews one lecture at a time without embedding every learner workspace", async () => {
+  it("opens each learner preview separately and reveals design review only on request", async () => {
     const user = userEvent.setup();
     const first = learningDesignPayload("course-1", "lecture-01", false);
     const second = learningDesignPayload("course-1", "lecture-02", true);
@@ -50,24 +50,18 @@ describe("ProfessorCanvasDraftStep review workspace", () => {
       </I18nProvider>,
     );
 
-    expect(screen.getAllByTitle("Learner draft preview")).toHaveLength(1);
-    expect(screen.getByRole("button", { name: "01 · Introduction" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    expect(screen.getByTitle("Learner draft preview")).toHaveAttribute(
-      "src",
-      "http://localhost/draft/lecture-01",
-    );
-
-    await user.click(screen.getByRole("button", { name: "02 · Translation" }));
-    expect(screen.getByTitle("Learner draft preview")).toHaveAttribute(
-      "src",
-      "http://localhost/draft/lecture-02",
-    );
-
-    await user.click(screen.getByRole("button", { name: "Review learning design" }));
     expect(screen.queryByTitle("Learner draft preview")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /open learner preview for 01 · introduction/i }),
+    ).toHaveAttribute("href", "http://localhost/draft/lecture-01");
+    expect(
+      screen.getByRole("link", { name: /open learner preview for 02 · translation/i }),
+    ).toHaveAttribute("target", "_blank");
+    expect(screen.queryByLabelText("Learning objective")).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: /review learning design for 02 · translation/i }),
+    );
     expect(screen.getByLabelText("Learning objective")).toHaveValue(
       "Transfer the translation mechanism.",
     );

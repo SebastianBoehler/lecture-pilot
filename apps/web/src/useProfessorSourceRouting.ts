@@ -17,6 +17,15 @@ export function useProfessorSourceRouting(session: LoginSession) {
 
   const reset = useCallback(() => setRouting(null), []);
 
+  const regenerate = useCallback(
+    async (courseId: string) => {
+      const result = await proposeSourceRouting(courseId, session, true);
+      setRouting(result);
+      return result;
+    },
+    [session],
+  );
+
   const updateRoute = useCallback(
     (path: string, role: SourceRouteRole, lectureId: string | null) => {
       setRouting((current) =>
@@ -46,5 +55,5 @@ export function useProfessorSourceRouting(session: LoginSession) {
     [routing, session],
   );
 
-  return { confirm, load, reset, routing, updateRoute };
+  return { confirm, load, regenerate, reset, routing, updateRoute };
 }

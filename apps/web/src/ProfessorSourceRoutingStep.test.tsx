@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "./i18n";
 import { ProfessorSourceRoutingStep } from "./ProfessorSourceRoutingStep";
@@ -43,7 +43,7 @@ const routing: CourseSourceRoutingManifest = {
 };
 
 describe("ProfessorSourceRoutingStep", () => {
-  it("makes every source route reviewable before confirmation", async () => {
+  it("makes continuing primary and keeps individual routes behind optional review", async () => {
     const user = userEvent.setup();
     const routeChanges: unknown[][] = [];
     let confirmations = 0;
@@ -56,6 +56,7 @@ describe("ProfessorSourceRoutingStep", () => {
             { date: "2026-05-08", number: "04", title: "Machine Translation" },
           ]}
           routing={routing}
+          onRegenerate={vi.fn()}
           onConfirm={() => {
             confirmations += 1;
           }}
@@ -64,8 +65,15 @@ describe("ProfessorSourceRoutingStep", () => {
       </I18nProvider>,
     );
 
-    expect(screen.getByRole("heading", { name: /review source assignments/i })).toBeInTheDocument();
-    expect(screen.getByText(/agent proposed a destination for every file/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /source assignments ready/i })).toBeInTheDocument();
+    expect(screen.getByText(/assigned every indexed file/i)).toBeInTheDocument();
+    expect(screen.getByText(/2 assigned/i)).toBeInTheDocument();
+    expect(screen.getByText(/2 not used/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 of 2 lectures covered/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /accept assignments and continue/i })).toBeVisible();
+    expect(screen.queryByRole("columnheader", { name: "File" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByText(/review source assignments/i));
     expect(screen.getByRole("columnheader", { name: "File" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Use in" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Lecture" })).toBeInTheDocument();
@@ -95,7 +103,41 @@ describe("ProfessorSourceRoutingStep", () => {
     await user.selectOptions(screen.getByLabelText(/route build\/cache\.json/i), "lecture");
     expect(routeChanges).toContainEqual(["build/cache.json", "lecture", "lecture-03"]);
 
-    await user.click(screen.getByRole("button", { name: /confirm assignments/i }));
+    await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
     expect(confirmations).toBe(1);
+  });
+
+  it("blocks trusting a primary-only proposal when supplemental teaching files exist", async () => {
+    const user = userEvent.setup();
+    const onRegenerate = vi.fn();
+    render(
+      <I18nProvider locale="en" setLocale={() => undefined}>
+        <ProfessorSourceRoutingStep
+          isSaving={false}
+          lectures={[{ date: "2026-05-01", number: "03", title: "Language Models" }]}
+          routing={{
+            ...routing,
+            routes: [
+              routing.routes[0],
+              {
+                kind: "notebook",
+                lecture_id: null,
+                path: "code/attention-demo.ipynb",
+                role: "excluded",
+                sha256: "f".repeat(64),
+              },
+            ],
+          }}
+          onConfirm={vi.fn()}
+          onRegenerate={onRegenerate}
+          onRouteChange={vi.fn()}
+        />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/supplemental teaching files/i);
+    expect(screen.getByRole("button", { name: /accept assignments and continue/i })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: /rebuild assignments/i }));
+    expect(onRegenerate).toHaveBeenCalledOnce();
   });
 });

@@ -127,7 +127,7 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
 });
 
 function openLearningDesign() {
-  fireEvent.click(screen.getByRole("button", { name: "Review learning design" }));
+  fireEvent.click(screen.getByRole("button", { name: /review learning design for/i }));
 }
 
 function renderStep({
@@ -137,6 +137,7 @@ function renderStep({
   onContinueToPublish = vi.fn(),
   onSaveLearningDesign = vi.fn(),
   review = null,
+  generationProgress = [],
 }: {
   isFullCourse: boolean;
   totalCount: number;
@@ -144,12 +145,18 @@ function renderStep({
   onContinueToPublish?: () => void;
   onSaveLearningDesign?: (lectureId: string, update: unknown) => void;
   review?: ReturnType<typeof learningDesignReview> | null;
+  generationProgress?: Array<{
+    lectureId: string;
+    message?: string;
+    status: "pending" | "generating" | "ready" | "error";
+  }>;
 }) {
   return render(
     step(
       review,
       { onApproveLearningDesign, onContinueToPublish, onSaveLearningDesign },
       {
+        generationProgress,
         isFullCourse,
         totalCount,
       },
@@ -164,7 +171,15 @@ function step(
     onContinueToPublish: () => void;
     onSaveLearningDesign: (lectureId: string, update: unknown) => void;
   },
-  overrides: { isFullCourse?: boolean; totalCount?: number } = {},
+  overrides: {
+    generationProgress?: Array<{
+      lectureId: string;
+      message?: string;
+      status: "pending" | "generating" | "ready" | "error";
+    }>;
+    isFullCourse?: boolean;
+    totalCount?: number;
+  } = {},
 ) {
   return (
     <I18nProvider locale="en" setLocale={vi.fn()}>
@@ -172,7 +187,7 @@ function step(
         canvas={review ? ({ sections: [] } as never) : null}
         canGenerate
         generatedCount={0}
-        generationProgress={[]}
+        generationProgress={overrides.generationProgress ?? []}
         isFullCourse={overrides.isFullCourse ?? false}
         isGenerating={false}
         learningDesignReviews={review ? { "lecture-01": review } : {}}

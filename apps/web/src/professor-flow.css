@@ -44,6 +44,12 @@
   gap: 8px;
 }
 
+.generation-progress-context {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
 .generation-progress-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
@@ -79,6 +85,25 @@
 .generation-progress-row small {
   grid-column: 1 / -1;
   color: var(--color-text-secondary);
+}
+
+.generation-error-details {
+  grid-column: 1 / -1;
+}
+
+.generation-error-details summary {
+  width: max-content;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.generation-error-details small {
+  display: block;
+  margin-block-start: 8px;
+  max-width: 90ch;
+  line-height: 1.5;
 }
 
 .generation-warnings {

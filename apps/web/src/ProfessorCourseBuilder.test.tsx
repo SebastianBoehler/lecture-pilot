@@ -106,12 +106,13 @@ describe("Professor course builder", () => {
     expect(materialUploadCall?.[1]?.body).toBeInstanceOf(FormData);
     expect((materialUploadCall?.[1]?.body as FormData).get("path")).toBe("uploads/supplement.md");
     expect((materialUploadCall?.[1]?.body as FormData).get("refresh_index")).toBe("false");
-    expect(screen.getByRole("heading", { name: /review source assignments/i })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /not used/i }));
-    expect(screen.getByLabelText(/route videos\/demo\.mp4/i)).toHaveValue("excluded");
+    expect(screen.getByRole("heading", { name: /source assignments ready/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/route videos\/demo\.mp4/i)).not.toBeInTheDocument();
+    await user.click(screen.getByText(/review source assignments/i));
+    expect(screen.getByLabelText(/route videos\/demo\.mp4/i)).toHaveValue("lecture");
     expect(screen.getByRole("button", { name: /04 media/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /05 generate/i })).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: /confirm assignments/i }));
+    await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
     expect(
       await screen.findByRole("heading", { name: /review youtube candidates/i }),
     ).toBeInTheDocument();
@@ -155,12 +156,12 @@ describe("Professor course builder", () => {
     expect(screen.getByText(/review needed/i)).toBeInTheDocument();
     expect(screen.getByText(/planner model finished with reason/i)).toBeInTheDocument();
     expect(await screen.findByText(/2 sections ready for review/i)).toBeInTheDocument();
-    const draftPreview = screen.getByRole("link", { name: /open full learner view/i });
+    const draftPreview = screen.getByRole("link", { name: /open learner preview for/i });
     expect(draftPreview).toHaveAttribute(
       "href",
       expect.stringContaining("/professor/courses/demo-ml-course/lectures/lecture-03/draft"),
     );
-    await user.click(screen.getByRole("button", { name: /review learning design/i }));
+    await user.click(screen.getByRole("button", { name: /review learning design for/i }));
     expect(
       await screen.findByRole("heading", { name: /learning design review/i }),
     ).toBeInTheDocument();
@@ -200,7 +201,7 @@ describe("Professor course builder", () => {
     expect(screen.getByText(/posterior-weighted loss/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^course builder$/i }));
     await user.click(screen.getByRole("button", { name: /05 generate/i }));
-    const previewLink = screen.getByRole("link", { name: /open full learner view/i });
+    const previewLink = screen.getByRole("link", { name: /open learner preview for/i });
     expect(previewLink).toHaveAttribute("target", "_blank");
     expect(previewLink).toHaveAttribute(
       "href",
@@ -280,7 +281,7 @@ describe("Professor course builder", () => {
     expect(
       await screen.findByText(/lecture schedule applied with 1 dated lectures/i),
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /review source assignments/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /source assignments ready/i })).toBeInTheDocument();
     const scheduleCall = fetchMock.mock.calls.find((call) => {
       if (typeof call[1]?.body !== "string") return false;
       const body = JSON.parse(call[1].body);
@@ -381,8 +382,8 @@ describe("Professor course builder", () => {
       new File(["# extra note"], "supplement.md", { type: "text/markdown" }),
     );
     await user.click(screen.getByRole("button", { name: /upload and process materials/i }));
-    await screen.findByRole("heading", { name: /review source assignments/i });
-    await user.click(screen.getByRole("button", { name: /confirm assignments/i }));
+    await screen.findByRole("heading", { name: /source assignments ready/i });
+    await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
     await screen.findByRole("heading", { name: /review youtube candidates/i });
     await user.click(screen.getByRole("button", { name: /continue to canvas draft/i }));
 

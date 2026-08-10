@@ -100,6 +100,34 @@ def test_generation_requires_current_routing_and_uses_only_generation_sources(
     assert "changed" in stale.json()["detail"]
 
 
+def test_professor_can_rebuild_a_confirmed_source_proposal(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    _upload(client, "Lecture03.md", b"# Lecture 03\n\nBayes rule.")
+    proposal = client.post(
+        f"/admin/courses/{COURSE_ID}/source-routing/proposal",
+        headers=professor_headers(),
+    ).json()
+    confirmed = client.put(
+        f"/admin/courses/{COURSE_ID}/source-routing",
+        json={"source_revision": proposal["source_revision"], "routes": proposal["routes"]},
+        headers=professor_headers(),
+    )
+    assert confirmed.json()["confirmed"] is True
+
+    cached = client.post(
+        f"/admin/courses/{COURSE_ID}/source-routing/proposal",
+        headers=professor_headers(),
+    )
+    rebuilt = client.post(
+        f"/admin/courses/{COURSE_ID}/source-routing/proposal?refresh=true",
+        headers=professor_headers(),
+    )
+
+    assert cached.json()["confirmed"] is True
+    assert rebuilt.status_code == 200
+    assert rebuilt.json()["confirmed"] is False
+
+
 def test_replacing_the_lecture_schedule_invalidates_confirmed_routing(tmp_path: Path) -> None:
     client = _client(tmp_path)
     _upload(client, "Lecture03.md", b"# Lecture 03\n\nBayes rule maps evidence into decisions.")

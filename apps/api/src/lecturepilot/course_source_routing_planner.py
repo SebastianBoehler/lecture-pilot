@@ -7,6 +7,7 @@ from lecturepilot.course_source_routing_client import (
     SourceRoutingModelClient,
 )
 from lecturepilot.course_source_routing_models import CourseSourceRoute, SourceRouteRole
+from lecturepilot.course_source_routing_quality import require_supplemental_coverage
 from lecturepilot.course_source_routing_review import (
     apply_review_corrections,
     routing_review_messages,
@@ -65,12 +66,14 @@ class CourseSourceRoutingPlanner:
                 payload = await self.model_client.review_routing(
                     settings=settings, messages=messages
                 )
-                return apply_review_corrections(
+                reviewed = apply_review_corrections(
                     payload,
                     routes,
                     lectures,
                     protected_paths=_primary_paths(lectures),
                 )
+                require_supplemental_coverage(reviewed)
+                return reviewed
             except ProviderConfigurationError as exc:
                 last_error = exc
                 messages = [*messages, _review_repair_message(str(exc))]
@@ -92,7 +95,9 @@ class CourseSourceRoutingPlanner:
                 payload = await self.model_client.complete_routing(
                     settings=settings, messages=messages
                 )
-                return _read_selected_routes(payload, files, lectures)
+                routes = _read_selected_routes(payload, files, lectures)
+                require_supplemental_coverage(routes)
+                return routes
             except ProviderConfigurationError as exc:
                 last_error = exc
                 messages = [*messages, _repair_message(str(exc))]

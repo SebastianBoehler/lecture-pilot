@@ -39,6 +39,7 @@ import { useProfessorSourceRouting } from "./useProfessorSourceRouting";
 import { lectureFromWorkspace, requireWorkspace } from "./professorWorkspaceView";
 import { uploadProfessorMaterials } from "./professorMaterialUpload";
 import { ignoredUploadNotice } from "./professorUpload";
+import { hasSupplementalBlindSpot } from "./sourceRoutingView";
 import {
   flattenVideoGroups,
   type YoutubeCandidateGroup,
@@ -136,7 +137,9 @@ export function useProfessorCourseBuilder({
   const mediaReady = mediaIncluded || selectedVideos.size > 0 || hasCanvasVideo(canvas);
   const reviewReady = mediaReady || mediaReviewed;
   const reviewAvailable = bundleReady && (setup.target !== "full-course" || scheduleApplied);
-  const routingReady = Boolean(sourceRouting.routing?.confirmed);
+  const routingReady = Boolean(
+    sourceRouting.routing?.confirmed && !hasSupplementalBlindSpot(sourceRouting.routing.routes),
+  );
   const scheduledLectureIds = lectureSchedule.map((lecture) => lectureIdFromNumber(lecture.number));
   const mediaTargetLectures = workspace
     ? setup.target === "full-course"
@@ -769,10 +772,16 @@ export function useProfessorCourseBuilder({
     ? lectureSchedule
     : workspaceLectures.map(scheduleItemFromLecture);
   const routingStep = {
-    isSaving: pendingAction === "confirm-routing",
+    isSaving: pendingAction === "confirm-routing" || pendingAction === "regenerate-routing",
     lectures: routingLectures,
     routing: sourceRouting.routing,
     onRouteChange: sourceRouting.updateRoute,
+    onRegenerate: () =>
+      run("regenerate-routing", async () => {
+        const activeWorkspace = requireWorkspace(workspace);
+        await sourceRouting.regenerate(activeWorkspace.courseId);
+        return "Source assignments rebuilt with supplemental-material checks.";
+      }),
     onConfirm: () =>
       run("confirm-routing", async () => {
         const activeWorkspace = requireWorkspace(workspace);

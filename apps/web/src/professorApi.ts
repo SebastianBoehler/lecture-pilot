@@ -112,9 +112,10 @@ export async function getSourceBundle(
 export async function proposeSourceRouting(
   courseId: string,
   session: LoginSession,
+  refresh = false,
 ): Promise<CourseSourceRoutingManifest> {
   const response = await fetch(
-    apiUrl(`/admin/courses/${courseId}/source-routing/proposal`),
+    apiUrl(`/admin/courses/${courseId}/source-routing/proposal${refresh ? "?refresh=true" : ""}`),
     authRequestInit(session, { method: "POST" }),
   );
   const payload = await response.json();

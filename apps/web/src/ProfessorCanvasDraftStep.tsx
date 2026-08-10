@@ -132,12 +132,16 @@ function GenerationProgressList({
   progress: CanvasGenerationProgress[];
 }) {
   const { t } = useI18n();
+  const hasErrors = progress.some((item) => item.status === "error");
   return (
     <div
       aria-label={t("builder.generate.progress")}
       aria-live="polite"
       className="generation-progress"
     >
+      {hasErrors ? (
+        <p className="generation-progress-context">{t("builder.generate.previousRunHelp")}</p>
+      ) : null}
       {progress.map((item) => {
         const lectureLabel = item.lectureId.replace("lecture-", "Lecture ");
         const canRepair = item.errorKind === "repair";
@@ -152,7 +156,7 @@ function GenerationProgressList({
         return (
           <div className={`generation-progress-row is-${item.status}`} key={item.lectureId}>
             <span>{lectureLabel}</span>
-            <strong>{item.status}</strong>
+            <strong>{t(`builder.generate.progressStatus.${item.status}`)}</strong>
             {item.status === "error" ? (
               <button
                 aria-label={t(
@@ -166,7 +170,14 @@ function GenerationProgressList({
                 {t(canRepair ? "builder.generate.repair" : "builder.generate.retry")}
               </button>
             ) : null}
-            {message ? <small>{message}</small> : null}
+            {message && item.status === "error" ? (
+              <details className="generation-error-details">
+                <summary>{t("builder.generate.failureDetails")}</summary>
+                <small>{message}</small>
+              </details>
+            ) : message ? (
+              <small>{message}</small>
+            ) : null}
           </div>
         );
       })}

@@ -1,3 +1,54 @@
+.source-routing-overview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.source-routing-overview span {
+  border: 1px solid var(--color-border-primary);
+  border-radius: 999px;
+  padding: 5px 10px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.source-routing-primary-action {
+  display: flex;
+}
+
+.source-routing-warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid color-mix(in srgb, var(--color-danger) 45%, var(--color-border-primary));
+  border-radius: 8px;
+  padding: 12px;
+  color: var(--color-text-secondary);
+  background: color-mix(in srgb, var(--color-danger) 5%, var(--color-bg-primary));
+}
+
+.source-routing-advanced {
+  border-block-start: 1px solid var(--color-border-primary);
+  padding-block-start: 16px;
+}
+
+.source-routing-advanced > summary {
+  display: grid;
+  gap: 3px;
+  cursor: pointer;
+}
+
+.source-routing-advanced > summary span {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.source-routing-editor {
+  padding-block-start: 16px;
+}
+
 .source-routing-legend {
   border-block: 1px solid var(--border);
   display: grid;
