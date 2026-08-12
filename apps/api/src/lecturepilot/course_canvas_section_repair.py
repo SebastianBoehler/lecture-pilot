@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from typing import Protocol
 
+from lecturepilot.assessment_prompts import assessment_generation_instruction
 from lecturepilot.canvas_component_catalog import component_catalog_instruction
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
@@ -25,7 +26,7 @@ class _RepairModel(Protocol):
         *,
         settings: ProviderSettings,
         messages: list[dict[str, str]],
-        temperature: float = 0.2,
+        temperature: float = 0.4,
     ) -> dict: ...
 
 
@@ -79,7 +80,7 @@ class CourseCanvasSectionRepairMixin:
                 payload = await self.model_client.complete_plan(
                     settings=settings,
                     messages=messages,
-                    temperature=0.1,
+                    temperature=0.4,
                 )
                 replacement = _read_section_payload(
                     payload,
@@ -157,6 +158,7 @@ def _repair_messages(
                 "option_ids, and component_data, using null or [] when a field does not apply. "
                 f"{component_catalog_instruction()} "
                 "Preserve the meaning and use only the supplied evidence. "
+                f"{assessment_generation_instruction()} "
                 f"{repair_failure_constraint(failure)} "
                 f"{generated_math_instructions()}"
             ),

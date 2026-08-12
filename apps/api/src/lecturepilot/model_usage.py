@@ -6,19 +6,21 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 import logging
+from random import uniform
 from typing import Any
 from uuid import UUID, uuid4
 
 from lecturepilot.database import Database
 from lecturepilot.db_models import ModelUsageEventRecord
 from lecturepilot.logging_observability import current_operation_id
+from lecturepilot.model_rate_limits import model_request_slot, observe_provider_response
 from lecturepilot.model_provider_errors import is_retryable_provider_error
 from lecturepilot.model_request_options import MODEL_REQUEST_TIMEOUT_SECONDS
 
 
 logger = logging.getLogger(__name__)
 MODEL_REQUEST_MAX_ATTEMPTS = 2
-MODEL_REQUEST_RETRY_DELAY_SECONDS = 0.5
+MODEL_REQUEST_RETRY_DELAY_SECONDS = 1.0
 
 
 @dataclass(frozen=True)
@@ -134,10 +136,12 @@ async def _complete_with_attempts(
 ) -> Any:
     request_id = uuid4().hex
     model = str(kwargs.get("model") or "unknown")
+    _enable_litellm_response_headers()
     for attempt in range(1, MODEL_REQUEST_MAX_ATTEMPTS + 1):
         try:
-            async with asyncio.timeout(MODEL_REQUEST_TIMEOUT_SECONDS + 5):
-                response = await completion(**kwargs)
+            async with model_request_slot(model):
+                async with asyncio.timeout(MODEL_REQUEST_TIMEOUT_SECONDS + 5):
+                    response = await completion(**kwargs)
         except Exception as exc:
             if recorder is not None:
                 recorder.record_failure(
@@ -148,8 +152,11 @@ async def _complete_with_attempts(
                 )
             if attempt >= MODEL_REQUEST_MAX_ATTEMPTS or not is_retryable_provider_error(exc):
                 raise
-            await asyncio.sleep(MODEL_REQUEST_RETRY_DELAY_SECONDS)
+            provider_delay = observe_provider_response(model, exc)
+            backoff = MODEL_REQUEST_RETRY_DELAY_SECONDS * (2 ** (attempt - 1))
+            await asyncio.sleep(max(backoff, provider_delay) + uniform(0.0, 0.25))
             continue
+        observe_provider_response(model, response)
         if recorder is not None:
             recorder.record_response(
                 response,
@@ -159,6 +166,14 @@ async def _complete_with_attempts(
             )
         return response
     raise RuntimeError("Model request attempts were exhausted.")
+
+
+def _enable_litellm_response_headers() -> None:
+    try:
+        import litellm
+    except ImportError:
+        return
+    litellm.return_response_headers = True
 
 
 def usage_tokens_from_response(response: Any) -> dict[str, int]:

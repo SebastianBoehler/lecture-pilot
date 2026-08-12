@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 
 import pytest
 
+from lecturepilot import model_rate_limits
 from lecturepilot.model_request_options import (
     MODEL_REQUEST_TIMEOUT_SECONDS,
     completion_options,
@@ -48,6 +50,112 @@ async def test_transient_timeout_retries_once_with_same_request(monkeypatch) -> 
         {"model": "gemini/test-model"},
         {"model": "gemini/test-model"},
     ]
+
+
+@pytest.mark.asyncio
+async def test_requests_for_one_model_share_a_concurrency_queue(monkeypatch) -> None:
+    monkeypatch.setattr(model_rate_limits, "_conditions", {})
+    monkeypatch.setattr(model_rate_limits, "_active_requests", {})
+    monkeypatch.setattr(model_rate_limits, "_concurrency_limits", {})
+    monkeypatch.setattr(model_rate_limits, "_blocked_until", {})
+    active = 0
+    peak_active = 0
+    max_requests_started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def completion(**_kwargs):
+        nonlocal active, peak_active
+        active += 1
+        peak_active = max(peak_active, active)
+        if active == model_rate_limits.MODEL_REQUEST_BOOTSTRAP_CONCURRENCY:
+            max_requests_started.set()
+        await release.wait()
+        active -= 1
+        return SimpleNamespace(usage=None)
+
+    tasks = [
+        asyncio.create_task(complete_with_usage(None, completion, model="openai/test-model"))
+        for _ in range(model_rate_limits.MODEL_REQUEST_BOOTSTRAP_CONCURRENCY + 1)
+    ]
+    await asyncio.wait_for(max_requests_started.wait(), timeout=1)
+
+    assert peak_active == model_rate_limits.MODEL_REQUEST_BOOTSTRAP_CONCURRENCY
+    release.set()
+    await asyncio.gather(*tasks)
+
+
+@pytest.mark.asyncio
+async def test_rate_limit_retry_waits_for_provider_retry_after(monkeypatch) -> None:
+    monkeypatch.setattr(model_rate_limits, "_conditions", {})
+    monkeypatch.setattr(model_rate_limits, "_active_requests", {})
+    monkeypatch.setattr(model_rate_limits, "_concurrency_limits", {})
+    monkeypatch.setattr(model_rate_limits, "_blocked_until", {})
+    waits: list[float] = []
+    calls = 0
+    now = 0.0
+
+    async def completion(**_kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise _RateLimitError()
+        return SimpleNamespace(usage=None)
+
+    async def record_wait(seconds: float) -> None:
+        nonlocal now
+        waits.append(seconds)
+        now += seconds
+
+    monkeypatch.setattr("lecturepilot.model_usage.asyncio.sleep", record_wait)
+    monkeypatch.setattr("lecturepilot.model_usage.uniform", lambda _low, _high: 0.0)
+    monkeypatch.setattr("lecturepilot.model_rate_limits.monotonic", lambda: now)
+
+    await complete_with_usage(None, completion, model="openai/test-model")
+
+    assert waits == [2.0]
+
+
+@pytest.mark.asyncio
+async def test_provider_headers_expand_concurrency_within_request_and_token_budgets(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(model_rate_limits, "_concurrency_limits", {})
+    monkeypatch.setattr(model_rate_limits, "_average_tokens", {})
+
+    model_rate_limits.observe_provider_response(
+        "openai/test-model",
+        SimpleNamespace(
+            usage=SimpleNamespace(total_tokens=20_000),
+            _hidden_params={
+                "additional_headers": {
+                    "x-ratelimit-remaining-requests": "4999",
+                    "x-ratelimit-remaining-tokens": "4000000",
+                }
+            },
+        ),
+    )
+
+    assert model_rate_limits.current_model_concurrency("openai/test-model") == 200
+
+
+@pytest.mark.asyncio
+async def test_rate_limit_reset_supports_project_token_budget(monkeypatch) -> None:
+    monkeypatch.setattr(model_rate_limits, "_blocked_until", {})
+    monkeypatch.setattr("lecturepilot.model_rate_limits.monotonic", lambda: 10.0)
+
+    delay = model_rate_limits.observe_provider_response(
+        "openai/test-model",
+        SimpleNamespace(
+            _hidden_params={
+                "additional_headers": {
+                    "x-ratelimit-remaining-project-tokens": "0",
+                    "x-ratelimit-reset-project-tokens": "1m30s",
+                }
+            }
+        ),
+    )
+
+    assert delay == 90.0
 
 
 @pytest.mark.asyncio
@@ -99,3 +207,8 @@ class _QuotaError(RuntimeError):
     def __init__(self, message: str, *, code: str) -> None:
         super().__init__(message)
         self.code = code
+
+
+class _RateLimitError(RuntimeError):
+    status_code = 429
+    headers = {"retry-after": "2", "x-ratelimit-reset-requests": "1s"}

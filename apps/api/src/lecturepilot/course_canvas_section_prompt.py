@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from lecturepilot.assessment_prompts import assessment_generation_instruction
 from lecturepilot.canvas_component_catalog import component_catalog_instruction
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_language import canvas_language_instruction
@@ -39,6 +40,7 @@ def section_messages(
                 "sheet, slide, source, section, or earlier question without restating its context. "
                 "Do not use generic 'explain the key mechanism' or 'as you would in an exam "
                 "answer' phrasing. Quiz text must be one direct question ending in a question mark. "
+                f"{assessment_generation_instruction()} "
                 "Use text as the question, items as possible answers, and the zero-based "
                 "answer_index of the correct option. Never guess an answer key. "
                 "Every block must include id, type, text, items, asset_path, caption, answer_index, "

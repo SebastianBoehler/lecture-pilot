@@ -30,7 +30,7 @@ class CoursePlanModelClient(Protocol):
         *,
         settings: ProviderSettings,
         messages: list[dict[str, str]],
-        temperature: float = 0.2,
+        temperature: float = 0.4,
     ) -> dict:
         """Return one source-grounded course canvas plan."""
 
@@ -44,7 +44,7 @@ class LiteLLMCoursePlanClient:
         *,
         settings: ProviderSettings,
         messages: list[dict[str, str]],
-        temperature: float = 0.2,
+        temperature: float = 0.4,
     ) -> dict:
         try:
             from litellm import acompletion

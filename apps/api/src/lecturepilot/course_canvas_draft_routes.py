@@ -13,7 +13,7 @@ from lecturepilot.client_contract import (
     require_current_client_contract,
 )
 from lecturepilot.course_canvas_generation import generate_course_canvas_draft
-from lecturepilot.course_canvas_generation_failures import find_latest_canvas_failure
+from lecturepilot.course_canvas_generation_failures import find_latest_canvas_generation
 from lecturepilot.course_canvas_generation_http import run_canvas_generation_request
 from lecturepilot.course_canvas_generation_jobs import CanvasGenerationStore
 from lecturepilot.course_canvas_generation_response import CanvasGenerationStatusResponse
@@ -120,21 +120,16 @@ def register_course_canvas_draft_routes(
         except InvalidCanvasDraftError as exc:
             raise HTTPException(status_code=500, detail=str(exc)) from exc
         except CanvasWorkspaceError as exc:
-            failure = find_latest_canvas_failure(
+            generation = find_latest_canvas_generation(
                 app.state.canvas_workspace.layout,
                 course_id=course_id,
                 lecture_id=lecture_id,
                 actor_user_id=context.user_id,
-                repairable_only=True,
             )
-            headers = (
-                {"X-Generation-Repairable": "true"}
-                if failure is not None and failure.error_detail
-                else None
-            )
-            detail = (
-                failure.error_detail if failure is not None and failure.error_detail else str(exc)
-            )
+            headers = {"X-Generation-Status": generation.status} if generation else {}
+            if generation and generation.error_code == "canvas_generation_repairable_error":
+                headers["X-Generation-Repairable"] = "true"
+            detail = generation.error_detail if generation and generation.error_detail else str(exc)
             raise HTTPException(status_code=404, detail=detail, headers=headers) from exc
 
 

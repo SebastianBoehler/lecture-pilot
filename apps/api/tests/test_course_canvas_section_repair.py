@@ -77,7 +77,7 @@ async def test_section_repair_retries_once_with_the_new_validation_error(
     assert "exactly this outer shape" in model.messages[0][0]["content"]
     assert '"same-section-id"' in model.messages[0][0]["content"]
     assert "unsupported or course-specific" in model.messages[1][-1]["content"]
-    assert model.temperatures == [0.1, 0.1]
+    assert model.temperatures == [0.4, 0.4]
     repaired_math = next(
         block for block in repaired.sections[0].blocks if block.id == "optimization-math"
     )
@@ -266,7 +266,7 @@ class _SectionModel:
         self.repair_calls = 0
 
     async def complete_plan(self, *, settings, messages, temperature=0.2):
-        if temperature == 0.1:
+        if temperature == 0.4:
             self.repair_calls += 1
             return self.repair_payload
         evidence = messages[1]["content"]

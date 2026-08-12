@@ -174,7 +174,7 @@ def create_app() -> FastAPI:
     app.add_middleware(SessionCookieRefreshMiddleware)
 
     @app.get("/health")
-    def health(response: Response) -> dict[str, str]:
+    async def health(response: Response) -> dict[str, str]:
         expected_commit = (os.getenv("LECTUREPILOT_COMMIT_SHA") or "").strip().lower()
         identity_matches = not expected_commit or expected_commit == release.commit_sha
         if not identity_matches:

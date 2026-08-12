@@ -35,6 +35,7 @@ async def test_litellm_course_plan_client_requests_canvas_schema(monkeypatch) ->
     assert calls[0]["response_format"]["type"] == "json_schema"
     schema = calls[0]["response_format"]["json_schema"]["schema"]
     assert calls[0]["response_format"]["json_schema"]["strict"] is True
+    assert calls[0]["temperature"] == 0.4
     assert calls[0]["max_tokens"] == 6000
     assert schema["required"] == ["title", "sections"]
 
@@ -98,6 +99,8 @@ class _FakePlanClient:
         system_prompt = messages[0]["content"]
         assert "source-backed assets" in system_prompt.lower()
         assert "exactly one object" in system_prompt.lower()
+        assert "valid checkpoint" in system_prompt.lower()
+        assert "invalid checkpoint" in system_prompt.lower()
         evidence = messages[1]["content"]
         source_id = evidence.split("Required section id: ", 1)[1].splitlines()[0]
         if source_id == "evidence-update-decision":

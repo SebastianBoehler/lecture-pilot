@@ -94,7 +94,7 @@ class CanvasQualityReviewer:
             candidate_document=candidate_document,
         )
         issues = _CanvasQualityPayload.model_validate(payload).issues
-        _validate_coordinates(issues, candidate_document)
+        issues = _normalize_coordinates(issues, candidate_document)
         if not issues:
             return
         first = issues[0]
@@ -153,12 +153,18 @@ def _quality_messages(
                 "not match. Plausible wrong distractors are allowed only inside quiz options and "
                 "must not be reported merely for being false. A checkpoint is an open-answer task "
                 "and does not need answer options, an answer key, or a selected answer when its "
-                "prompt asks a direct, determinate question or task. Report unsupported teaching claims, "
-                "altered code behavior, wrong formulas, and contradictions. Also report an "
+                "prompt asks a direct, determinate question or task. "
+                "A checkpoint that asks which statement, task, option, or example is correct is "
+                "not determinate unless those alternatives are restated in its text. "
+                "Report unsupported teaching claims, altered code behavior, wrong formulas, and "
+                "contradictions. Also report an "
                 "assessment whose task is generic or depends on an exercise sheet, slide, source, "
                 "section, or prior question that is not restated. Do not otherwise report style, "
                 "wording, missing enrichment, or harmless simplification. Use exact candidate "
-                "section and block ids. Return an empty issues array only when no material issue "
+                "section ids. For block_id, copy its id verbatim from GENERATED CANDIDATE JSON; "
+                "never construct an id from a section or source pattern. If the issue applies to "
+                "the section as a whole or no exact candidate block id applies, use null. Return "
+                "an empty issues array only when no material issue "
                 "remains."
             ),
         },
@@ -174,19 +180,20 @@ def _quality_messages(
     ]
 
 
-def _validate_coordinates(
+def _normalize_coordinates(
     issues: list[CanvasQualityIssue],
     document: CanvasDocument,
-) -> None:
+) -> list[CanvasQualityIssue]:
     blocks_by_section = {
         section.id: {block.id for block in section.blocks} for section in document.sections
     }
+    normalized: list[CanvasQualityIssue] = []
     for issue in issues:
         if issue.section_id not in blocks_by_section:
             raise ModelExecutionError(
                 f"Canvas quality review returned unknown section {issue.section_id}."
             )
         if issue.block_id is not None and issue.block_id not in blocks_by_section[issue.section_id]:
-            raise ModelExecutionError(
-                f"Canvas quality review returned unknown block {issue.block_id}."
-            )
+            issue = issue.model_copy(update={"block_id": None})
+        normalized.append(issue)
+    return normalized

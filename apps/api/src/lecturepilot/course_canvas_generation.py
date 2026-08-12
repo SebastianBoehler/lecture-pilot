@@ -1,7 +1,8 @@
 from collections.abc import Callable
+from functools import partial
 
+from anyio import CapacityLimiter, to_thread
 from fastapi import FastAPI
-from starlette.concurrency import run_in_threadpool
 
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.course_content_filter import filter_source_document_for_planning
@@ -21,6 +22,10 @@ from lecturepilot.course_schedule_store import read_course_workspace
 from lecturepilot.logging_observability import operation_scope
 from lecturepilot.model_usage import model_usage_scope
 from lecturepilot.tenancy import TenantContext
+
+
+SOURCE_PREP_CONCURRENCY = 4
+_source_prep_limiter = CapacityLimiter(SOURCE_PREP_CONCURRENCY)
 
 
 async def generate_course_canvas_draft(
@@ -57,15 +62,17 @@ async def generate_course_canvas_draft(
         ) as generation_span,
     ):
         with observability.tool_span("course_canvas_generation", stage="source_resolve", **common):
-            source, source_revision, ownership = await run_in_threadpool(
-                ownership_store.begin_owned_generation_source,
-                app.state.canvas_workspace.layout,
-                app.state.canvas_workspace.course_media_root(course_id),
-                source_document,
-                course_id=course_id,
-                lecture_id=lecture_id,
-                generation_id=generation_id,
-                attempt=attempt,
+            source, source_revision, ownership = await _run_source_prep(
+                partial(
+                    ownership_store.begin_owned_generation_source,
+                    app.state.canvas_workspace.layout,
+                    app.state.canvas_workspace.course_media_root(course_id),
+                    source_document,
+                    course_id=course_id,
+                    lecture_id=lecture_id,
+                    generation_id=generation_id,
+                    attempt=attempt,
+                )
             )
             if source_revision is None:
                 raise InvalidCanvasDraftError("Draft source provenance is unavailable.")
@@ -164,15 +171,17 @@ async def repair_targeted_course_canvas_draft(
             **common,
         ) as repair_span,
     ):
-        source, source_revision, ownership = await run_in_threadpool(
-            ownership_store.begin_owned_generation_source,
-            app.state.canvas_workspace.layout,
-            app.state.canvas_workspace.course_media_root(course_id),
-            source_document,
-            course_id=course_id,
-            lecture_id=lecture_id,
-            generation_id=generation_id,
-            attempt=attempt,
+        source, source_revision, ownership = await _run_source_prep(
+            partial(
+                ownership_store.begin_owned_generation_source,
+                app.state.canvas_workspace.layout,
+                app.state.canvas_workspace.course_media_root(course_id),
+                source_document,
+                course_id=course_id,
+                lecture_id=lecture_id,
+                generation_id=generation_id,
+                attempt=attempt,
+            )
         )
         if source_revision is None:
             raise InvalidCanvasDraftError("Draft source provenance is unavailable.")
@@ -218,6 +227,14 @@ async def repair_targeted_course_canvas_draft(
             {"section_count": len(document.sections), "warning_count": len(document.warnings)}
         )
         return document
+
+
+async def _run_source_prep(
+    operation: Callable[
+        [], tuple[CanvasDocument, str | None, ownership_store.CanvasGenerationOwnership]
+    ],
+) -> tuple[CanvasDocument, str | None, ownership_store.CanvasGenerationOwnership]:
+    return await to_thread.run_sync(operation, limiter=_source_prep_limiter)
 
 
 def _canvas_language(app: FastAPI, course_id: str) -> str:

@@ -13,7 +13,7 @@ from lecturepilot.models import ProviderSettings
 from lecturepilot.providers import ProviderRegistry
 
 
-async def test_section_planner_runs_three_calls_concurrently_and_keeps_source_order() -> None:
+async def test_section_planner_queues_every_source_section_and_keeps_source_order() -> None:
     client = _ConcurrentPlanClient()
 
     planned = await asyncio.wait_for(
@@ -25,7 +25,7 @@ async def test_section_planner_runs_three_calls_concurrently_and_keeps_source_or
         timeout=1,
     )
 
-    assert client.max_active == 3
+    assert client.max_active == 6
     assert [section.id for section in planned.sections] == [
         f"learning-source-{index}" for index in range(1, 7)
     ]
@@ -63,6 +63,21 @@ async def test_section_planner_retries_an_empty_model_response() -> None:
     assert planned.sections[0].id == "learning-source-1"
 
 
+async def test_section_planner_repairs_an_invalid_checkpoint_before_batch_validation() -> None:
+    client = _InvalidCheckpointClient()
+
+    planned = await plan_sections_individually(
+        model_client=client,
+        settings=_settings(),
+        source_document=_source_document(1),
+    )
+
+    assert client.calls == 2
+    assert "options that are not stated" in client.repair_message
+    checkpoint = next(block for block in planned.sections[0].blocks if block.type == "checkpoint")
+    assert checkpoint.text == "Explain why predicting a continuous target is a regression task."
+
+
 async def test_course_planner_starts_with_the_bounded_section_outline(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -90,7 +105,7 @@ class _ConcurrentPlanClient:
         source_id = _source_id(messages)
         self.active += 1
         self.max_active = max(self.max_active, self.active)
-        if self.active == 3:
+        if self.active == 6:
             self.release.set()
         await self.release.wait()
         self.active -= 1
@@ -128,6 +143,27 @@ class _TransientSectionPlanClient:
         if self.calls == 1:
             raise ModelExecutionError("Course planner returned an empty response.")
         return _section_payload(_source_id(messages))
+
+
+class _InvalidCheckpointClient:
+    def __init__(self) -> None:
+        self.calls = 0
+        self.repair_message = ""
+
+    async def complete_plan(self, *, settings, messages):
+        self.calls += 1
+        if self.calls == 1:
+            payload = _section_payload(_source_id(messages))
+            payload["sections"][0]["blocks"][-1]["text"] = (
+                "Which task is a regression problem because its target is continuous?"
+            )
+            return payload
+        self.repair_message = messages[-1]["content"]
+        payload = _section_payload(_source_id(messages))
+        payload["sections"][0]["blocks"][-1]["text"] = (
+            "Explain why predicting a continuous target is a regression task."
+        )
+        return payload
 
 
 def _source_id(messages: list[dict[str, str]]) -> str:

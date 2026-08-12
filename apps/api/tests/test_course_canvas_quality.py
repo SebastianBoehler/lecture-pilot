@@ -42,6 +42,8 @@ def test_quality_review_treats_checkpoints_as_open_answer_tasks() -> None:
 
     assert "A checkpoint is an open-answer task" in prompt
     assert "does not need answer options" in prompt
+    assert "copy its id verbatim" in prompt
+    assert "use null" in prompt
 
 
 async def test_quality_reviewer_rejects_unknown_issue_coordinates() -> None:
@@ -64,6 +66,32 @@ async def test_quality_reviewer_rejects_unknown_issue_coordinates() -> None:
             source_document=document,
             candidate_document=document,
         )
+
+
+async def test_quality_reviewer_falls_back_to_valid_section_for_unknown_block() -> None:
+    document = _source_document()
+    reviewer = CanvasQualityReviewer(
+        model_client=_QualityClient(
+            [
+                {
+                    "section_id": "topic",
+                    "block_id": "topic-checkpoint-that-does-not-exist",
+                    "reason": "The assessment answer is unsupported.",
+                }
+            ]
+        )
+    )
+
+    with pytest.raises(CanvasGenerationRepairableError) as caught:
+        await reviewer.validate(
+            settings=_settings(),
+            source_document=document,
+            candidate_document=document,
+        )
+
+    assert caught.value.section_id == "topic"
+    assert caught.value.block_id is None
+    assert "assessment answer is unsupported" in str(caught.value)
 
 
 async def test_quality_reviewer_preserves_detailed_issue_reasoning() -> None:

@@ -153,6 +153,7 @@ This revised source evidence changes the lecture fingerprint while remaining val
     assert failed.status_code == 503
     assert failed.headers["X-Generation-Repairable"] == "true"
     assert missing_draft.status_code == 404
+    assert missing_draft.headers["X-Generation-Status"] == "failed"
     assert missing_draft.headers["X-Generation-Repairable"] == "true"
     assert missing_draft.json()["detail"] == (
         "Math block risk-equation uses unsupported command \\P."

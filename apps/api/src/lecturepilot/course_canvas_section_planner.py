@@ -21,7 +21,10 @@ from lecturepilot.course_canvas_section_values import (
     block_items as _block_items,
     safe_section_id as _safe_id,
 )
-from lecturepilot.course_canvas_validation import source_topic_sections
+from lecturepilot.course_canvas_validation import (
+    source_topic_sections,
+    validate_section_assessments,
+)
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import ProviderSettings
 from lecturepilot.observability import Observability
@@ -106,6 +109,7 @@ async def _plan_section(
                 payload = await model_client.complete_plan(settings=settings, messages=messages)
                 section = _read_section_payload(payload, source_section, allowed_assets)
                 validate_section_math(section)
+                validate_section_assessments(section)
                 span.set_outputs({"section_count": 1})
                 return SectionPlanResult(section)
         except ModelExecutionError as exc:

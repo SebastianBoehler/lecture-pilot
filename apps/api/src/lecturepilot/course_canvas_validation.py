@@ -48,32 +48,40 @@ def practice_count(document: CanvasDocument) -> int:
 
 def _validate_quizzes(document: CanvasDocument) -> None:
     for section in document.sections:
-        for block in section.blocks:
-            if block.type not in {"checkpoint", "quiz"}:
-                continue
-            if issue := assessment_prompt_issue(block.text, block.type):
-                raise CanvasGenerationRepairableError(
-                    f"{block.type.title()} block {block.id} {issue}.",
-                    candidate=document,
-                    section_id=section.id,
-                    block_id=block.id,
-                )
-            if block.type != "quiz":
-                continue
-            if len(block.items) < 2:
-                raise CanvasGenerationRepairableError(
-                    f"Quiz block {block.id} needs at least 2 answer options.",
-                    candidate=document,
-                    section_id=section.id,
-                    block_id=block.id,
-                )
-            if block.answer_index is None or block.answer_index >= len(block.items):
-                raise CanvasGenerationRepairableError(
-                    f"Quiz block {block.id} needs an explicit valid answer_index.",
-                    candidate=document,
-                    section_id=section.id,
-                    block_id=block.id,
-                )
+        validate_section_assessments(section, candidate=document)
+
+
+def validate_section_assessments(
+    section: CanvasSection,
+    *,
+    candidate: CanvasDocument | None = None,
+) -> None:
+    for block in section.blocks:
+        if block.type not in {"checkpoint", "quiz"}:
+            continue
+        if issue := assessment_prompt_issue(block.text, block.type):
+            raise CanvasGenerationRepairableError(
+                f"{block.type.title()} block {block.id} {issue}.",
+                candidate=candidate,
+                section_id=section.id,
+                block_id=block.id,
+            )
+        if block.type != "quiz":
+            continue
+        if len(block.items) < 2:
+            raise CanvasGenerationRepairableError(
+                f"Quiz block {block.id} needs at least 2 answer options.",
+                candidate=candidate,
+                section_id=section.id,
+                block_id=block.id,
+            )
+        if block.answer_index is None or block.answer_index >= len(block.items):
+            raise CanvasGenerationRepairableError(
+                f"Quiz block {block.id} needs an explicit valid answer_index.",
+                candidate=candidate,
+                section_id=section.id,
+                block_id=block.id,
+            )
 
 
 def _validate_components(document: CanvasDocument) -> None:

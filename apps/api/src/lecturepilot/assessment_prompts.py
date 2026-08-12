@@ -112,6 +112,10 @@ _CONTEXTLESS_REFERENCE = re.compile(
     r"übungsblatt|aufgabe\s+\d+|die quelle|dieser abschnitt|diese folie)\b",
     re.I,
 )
+_UNSTATED_CHECKPOINT_CHOICES = re.compile(
+    r"^which\s+(?:statement|option|choice|task|example|probability assignment)\b",
+    re.I,
+)
 _GENERIC_SCAFFOLD = (
     "as you would in an exam answer",
     "name the key idea, when it applies",
@@ -123,6 +127,25 @@ _GENERIC_SCAFFOLD = (
 )
 
 
+def assessment_generation_instruction() -> str:
+    return (
+        "Assessment examples illustrate structure only; never copy their subject matter. "
+        'VALID checkpoint: {"type":"checkpoint","text":"Given f(x)=2x+1, compute '
+        'f(3) and show the substitution.","items":[],"caption":"Checkpoint",'
+        '"answer_index":null}. '
+        'VALID quiz: {"type":"quiz","text":"Which value equals f(3) when f(x)=2x+1?",'
+        '"items":["5","6","7","8"],"caption":"Quick check","answer_index":2}. '
+        'INVALID checkpoint text: "Checkpoint", "Check your understanding", or '
+        '"Reflect on this section"; these do not state what evidence the learner must produce. '
+        'Also invalid for a checkpoint: "Which statement/task/option is correct?" because '
+        "checkpoint blocks have no choices; rewrite it to ask the learner to state, explain, "
+        "calculate, or justify the source-backed answer. "
+        "Before returning JSON, verify every checkpoint starts with a direct question or an "
+        "imperative such as calculate, compare, derive, explain, identify, or justify; verify "
+        "every quiz ends in ? and has exactly one source-supported answer_index."
+    )
+
+
 def assessment_prompt_issue(text: str | None, kind: AssessmentKind) -> str | None:
     prompt = _normalize(text or "")
     if not prompt:
@@ -131,6 +154,8 @@ def assessment_prompt_issue(text: str | None, kind: AssessmentKind) -> str | Non
         return "must keep labels in caption and start text with the task"
     if any(fragment in prompt.casefold() for fragment in _GENERIC_SCAFFOLD):
         return "must ask a specific source-grounded task instead of generic assessment scaffolding"
+    if kind == "checkpoint" and _UNSTATED_CHECKPOINT_CHOICES.match(prompt):
+        return "must not ask the learner to choose from statements, tasks, or options that are not stated"
     if _CONTEXTLESS_REFERENCE.search(prompt):
         return (
             "must be understandable without an exercise sheet, slide, or prior-question reference"

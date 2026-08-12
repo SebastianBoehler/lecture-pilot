@@ -78,4 +78,19 @@ def repair_failure_constraint(failure: str) -> str:
             "determinate standalone assessment, replace the failed assessment with an accurate "
             "teaching paragraph instead of inventing data."
         )
+    if any(
+        marker in lowered
+        for marker in (
+            "direct question",
+            "concrete task",
+            "generic assessment scaffolding",
+            "labels in caption",
+            "options that are not stated",
+        )
+    ):
+        return (
+            "Rewrite the assessment text as one specific, standalone, source-grounded question "
+            "ending in ? or as one concrete imperative task. State exactly what answer, "
+            "calculation, comparison, derivation, or justification the learner must produce."
+        )
     return "Correct only the reported validation failure."
