@@ -7,22 +7,25 @@ import { ProfessorLearningDesignReview } from "./ProfessorLearningDesignReview";
 
 const ReviewComponent = ProfessorLearningDesignReview as ComponentType<Record<string, unknown>>;
 
-describe("professor deterministic learning-design report", () => {
-  it("shows structured coverage and exact diagnostic coordinates", () => {
+describe("professor learning-design findings", () => {
+  it("shows actionable findings without internal coverage or coordinates", () => {
     renderReview(reportReview());
 
+    expect(screen.getByRole("heading", { name: "Review findings" })).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "Deterministic learning-design report" }),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Open-answer checkpoint coverage: 1/2 concepts")).toBeInTheDocument();
-    expect(
-      screen.getByText("Source-backed assessment coverage: 1/2 assessments"),
+      screen.getByText(/these automatic checks flag possible gaps; they do not change the draft/i),
     ).toBeInTheDocument();
     expect(screen.getByText("Practice has no checkpoint or quiz.")).toBeInTheDocument();
     expect(
       screen.getByText("Add a source-backed checkpoint or quiz to this section."),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("Section practice · Assessment practice-quiz")).toHaveLength(2);
+    expect(
+      screen.getAllByRole("checkbox", { name: "I reviewed this finding in the learner preview." }),
+    ).toHaveLength(2);
+    expect(screen.queryByText(/open-answer checkpoint coverage/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Section practice · Assessment practice-quiz"),
+    ).not.toBeInTheDocument();
   });
 
   it("blocks approval until every exact warning is acknowledged and sends canonical IDs", () => {
@@ -40,7 +43,7 @@ describe("professor deterministic learning-design report", () => {
     expect(approve).toBeDisabled();
     fireEvent.click(acknowledgements[1]);
     expect(approve).toBeEnabled();
-    expect(screen.getByText("Acknowledged for this exact draft.")).toBeInTheDocument();
+    expect(screen.getByText("All findings reviewed for this exact draft.")).toBeInTheDocument();
     fireEvent.click(approve);
 
     expect(approval).toEqual({

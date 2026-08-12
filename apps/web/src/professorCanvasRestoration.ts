@@ -40,6 +40,17 @@ export async function restoreFullCourseCanvasDrafts({
 
 function restorationFailure(lectureId: string, error: unknown): CanvasGenerationProgress {
   const message = error instanceof Error ? error.message : "Canvas draft could not be restored.";
+  if (error instanceof CanvasDraftLoadError && error.generationStatus === "running") {
+    return { lectureId, status: "generating" };
+  }
+  if (
+    error instanceof CanvasDraftLoadError &&
+    error.status === 404 &&
+    !error.repairable &&
+    error.generationStatus === null
+  ) {
+    return { lectureId, status: "pending" };
+  }
   if (error instanceof TypeError) {
     return { errorKind: "network", lectureId, message, status: "error" };
   }

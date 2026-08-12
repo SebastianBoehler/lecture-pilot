@@ -27,23 +27,27 @@ export function ProfessorLearningDesignReview({
   return (
     <section className="learning-design-review">
       <h3>{t("builder.learningDesign.title")}</h3>
-      <p>{t("builder.learningDesign.factualSeparate")}</p>
+      <p>{t("builder.learningDesign.reviewIntro")}</p>
       <div className="learning-design-fields">
         <label>
           {t("builder.learningDesign.objective")}
           <textarea
+            aria-describedby="learning-design-objective-help"
             value={update.objective}
             onChange={(event) => setUpdate({ ...update, objective: event.target.value })}
           />
         </label>
-        {update.gates.map((gate, gateIndex) => {
-          const source = review.learning_map.gates[gateIndex]?.source_ref;
-          return (
+        <small id="learning-design-objective-help">
+          {t("builder.learningDesign.objectiveHelp")}
+        </small>
+        <details className="learning-design-disclosure">
+          <summary>
+            <span>{t("builder.learningDesign.editPlan")}</span>
+            <small>{t("builder.learningDesign.editPlanHelp")}</small>
+          </summary>
+          {update.gates.map((gate, gateIndex) => (
             <details className="learning-design-disclosure" key={gate.id}>
-              <summary>
-                <span>{review.learning_map.gates[gateIndex]?.title ?? gate.id}</span>
-                {source ? <small>{source}</small> : null}
-              </summary>
+              <summary>{review.learning_map.gates[gateIndex]?.title ?? gate.id}</summary>
               <fieldset>
                 <label>
                   {t("builder.learningDesign.prompt")}
@@ -115,9 +119,9 @@ export function ProfessorLearningDesignReview({
                 </label>
               </fieldset>
             </details>
-          );
-        })}
-        <Prerequisites review={review} update={update} onChange={setUpdate} />
+          ))}
+          <Prerequisites review={review} update={update} onChange={setUpdate} />
+        </details>
         <div className="learning-design-actions">
           <button
             disabled={saving}

@@ -1,3 +1,7 @@
+.canvas-process-explorer {
+  container: canvas-process / inline-size;
+}
+
 .canvas-process-steps {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -90,6 +94,25 @@
   margin: 6px 0 0;
   color: var(--color-text-secondary);
   line-height: 1.55;
+}
+
+@container canvas-process (max-width: 620px) {
+  .canvas-process-steps,
+  .canvas-process-steps.is-five-step {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .canvas-process-steps.is-five-step li,
+  .canvas-process-steps.is-five-step li:nth-last-child(-n + 2) {
+    grid-column: auto;
+  }
+}
+
+@container canvas-process (max-width: 360px) {
+  .canvas-process-steps,
+  .canvas-process-steps.is-five-step {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 620px) {

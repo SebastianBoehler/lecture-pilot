@@ -264,7 +264,7 @@ describe("Professor course builder", () => {
     expect(screen.getByRole("button", { name: /03 sources/i })).toBeDisabled();
     expect(screen.getByDisplayValue("Lecture 01")).toBeInTheDocument();
     expect(screen.getByDisplayValue("2026-05-13")).toBeInTheDocument();
-    expect(screen.getByText("Lecture01-eng.tex")).toHaveAttribute("title", "Lecture01-eng.tex");
+    expect(screen.queryByText("Lecture01-eng.tex")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /remove lecture 02 from schedule/i }));
     expect(confirm).toHaveBeenCalledWith(expect.stringContaining("Lecture 02"));

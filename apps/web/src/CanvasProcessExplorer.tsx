@@ -24,6 +24,7 @@ export function ProcessExplorer({ block, className, sourceMarker }: ProcessExplo
   }
   const safeIndex = Math.min(activeIndex, steps.length - 1);
   const active = steps[safeIndex];
+  const activeTitle = displayStepTitle(active.title);
   const title = processTitle(block, t("component.process.title"));
 
   return (
@@ -37,21 +38,24 @@ export function ProcessExplorer({ block, className, sourceMarker }: ProcessExplo
         ) : null}
       </header>
       <ol className={`canvas-process-steps${steps.length === 5 ? " is-five-step" : ""}`}>
-        {steps.map((step, index) => (
-          <li key={`${index}-${step.title}`}>
-            <button
-              aria-label={`${index + 1} ${step.title}`}
-              aria-current={index === safeIndex ? "step" : undefined}
-              onClick={() => setActiveIndex(index)}
-              type="button"
-            >
-              <span className="canvas-process-step-number">{index + 1}</span>
-              <span className="canvas-process-step-title">
-                <MathText highlightedText={null} text={step.title} />
-              </span>
-            </button>
-          </li>
-        ))}
+        {steps.map((step, index) => {
+          const stepTitle = displayStepTitle(step.title);
+          return (
+            <li key={`${index}-${step.title}`}>
+              <button
+                aria-label={`${index + 1} ${stepTitle}`}
+                aria-current={index === safeIndex ? "step" : undefined}
+                onClick={() => setActiveIndex(index)}
+                type="button"
+              >
+                <span className="canvas-process-step-number">{index + 1}</span>
+                <span className="canvas-process-step-title">
+                  <MathText highlightedText={null} text={stepTitle} />
+                </span>
+              </button>
+            </li>
+          );
+        })}
       </ol>
       <div className="canvas-process-detail" aria-live="polite">
         <span>
@@ -61,7 +65,7 @@ export function ProcessExplorer({ block, className, sourceMarker }: ProcessExplo
           })}
         </span>
         <h4>
-          <MathText highlightedText={null} text={active.title} />
+          <MathText highlightedText={null} text={activeTitle} />
         </h4>
         <p>
           <MathText highlightedText={null} text={active.text} />
@@ -70,6 +74,11 @@ export function ProcessExplorer({ block, className, sourceMarker }: ProcessExplo
       {sourceMarker}
     </section>
   );
+}
+
+function displayStepTitle(title: string): string {
+  const withoutGeneratedPrefix = title.replace(/^\s*\d+[.)]\s+/, "").trim();
+  return withoutGeneratedPrefix || title.trim();
 }
 
 function processTitle(block: CanvasBlock, fallback: string): string {

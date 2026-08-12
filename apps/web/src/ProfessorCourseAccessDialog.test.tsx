@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -7,6 +7,43 @@ import { renderWithI18n } from "./test/renderWithI18n";
 import type { ManagedCourseWorkspaceResult } from "./types";
 
 describe("ProfessorCourseAccessDialog", () => {
+  it("dismisses from the backdrop without rendering a redundant header close button", () => {
+    const onClose = vi.fn();
+    renderWithI18n(
+      <ProfessorCourseAccessDialog
+        error={null}
+        saving={false}
+        target={{ kind: "course", triggerId: "course-trigger", workspace: workspace() }}
+        onClose={onClose}
+        onSave={vi.fn()}
+      />,
+    );
+    const dialog = screen.getByRole("dialog", { name: "Default lecture access" });
+
+    expect(within(dialog).getAllByRole("button", { name: "Cancel" })).toHaveLength(1);
+    fireEvent.click(within(dialog).getByRole("heading", { name: "Default lecture access" }));
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.click(dialog);
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("does not dismiss from the backdrop while saving", () => {
+    const onClose = vi.fn();
+    renderWithI18n(
+      <ProfessorCourseAccessDialog
+        error={null}
+        saving
+        target={{ kind: "course", triggerId: "course-trigger", workspace: workspace() }}
+        onClose={onClose}
+        onSave={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("dialog", { name: "Default lecture access" }));
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("requires explicit confirmation for university-wide course access", async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();

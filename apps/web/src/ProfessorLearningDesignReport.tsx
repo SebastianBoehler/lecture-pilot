@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { useI18n } from "./i18n";
-import type { LearningDesignDiagnostic, LearningDesignReport } from "./learningDesignTypes";
+import type { LearningDesignReport } from "./learningDesignTypes";
 
 export function ProfessorLearningDesignReport({
   acknowledgementResetKey,
@@ -28,32 +28,13 @@ export function ProfessorLearningDesignReport({
   return (
     <section className="learning-design-report">
       <h4>{t("builder.learningDesign.reportTitle")}</h4>
-      <div className="learning-design-coverage">
-        <CoverageRow
-          label={t("builder.learningDesign.gateCoverage")}
-          coverage={report.coverage.gate_concepts}
-          unit={t("builder.learningDesign.conceptsUnit")}
-        />
-        <CoverageRow
-          label={t("builder.learningDesign.quizCoverage")}
-          coverage={report.coverage.quiz_concepts}
-          unit={t("builder.learningDesign.conceptsUnit")}
-        />
-        <CoverageRow
-          label={t("builder.learningDesign.sourceCoverage")}
-          coverage={report.coverage.source_backed_assessments}
-          unit={t("builder.learningDesign.assessmentsUnit")}
-        />
-        <CoverageRow
-          label={t("builder.learningDesign.transferCoverage")}
-          coverage={report.coverage.transfer_prompts}
-          unit={t("builder.learningDesign.gatesUnit")}
-        />
-      </div>
+      <p>{t("builder.learningDesign.reportHelp")}</p>
       {report.diagnostics.length ? (
         <ul className="learning-design-diagnostics">
           {report.diagnostics.map((diagnostic) => (
             <li key={diagnostic.id}>
+              <strong>{diagnostic.message}</strong>
+              <span>{diagnostic.action}</span>
               <label>
                 <input
                   checked={acknowledged.includes(diagnostic.id)}
@@ -66,11 +47,7 @@ export function ProfessorLearningDesignReport({
                     )
                   }
                 />
-                <span>
-                  <strong>{diagnostic.message}</strong>
-                  <span>{diagnostic.action}</span>
-                  <small>{coordinatesLabel(diagnostic, t)}</small>
-                </span>
+                {t("builder.learningDesign.acknowledgeFinding")}
               </label>
             </li>
           ))}
@@ -90,44 +67,4 @@ export function ProfessorLearningDesignReport({
       </button>
     </section>
   );
-}
-
-function CoverageRow({
-  coverage,
-  label,
-  unit,
-}: {
-  coverage: LearningDesignReport["coverage"][keyof LearningDesignReport["coverage"]];
-  label: string;
-  unit: string;
-}) {
-  const { t } = useI18n();
-  const value =
-    coverage.status === "not_applicable"
-      ? t("builder.learningDesign.notApplicable")
-      : `${coverage.covered}/${coverage.total} ${unit}`;
-  return <p>{`${label}: ${value}`}</p>;
-}
-
-function coordinatesLabel(
-  diagnostic: LearningDesignDiagnostic,
-  t: ReturnType<typeof useI18n>["t"],
-) {
-  const coordinates = diagnostic.coordinates;
-  return [
-    coordinates.section_id
-      ? `${t("builder.learningDesign.sectionCoordinate")} ${coordinates.section_id}`
-      : null,
-    coordinates.assessment_id
-      ? `${t("builder.learningDesign.assessmentCoordinate")} ${coordinates.assessment_id}`
-      : null,
-    coordinates.block_id
-      ? `${t("builder.learningDesign.blockCoordinate")} ${coordinates.block_id}`
-      : null,
-    coordinates.prerequisite_section_id
-      ? `${t("builder.learningDesign.prerequisiteCoordinate")} ${coordinates.prerequisite_section_id}`
-      : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
 }

@@ -2,6 +2,7 @@ import { ExternalLink, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { buildFeedbackMailto, type FeedbackCategory } from "./feedbackMailto";
+import { dismissDialogFromBackdrop } from "./dialogBackdrop";
 import { useI18n } from "./i18n";
 import type { FeedbackPromptSource } from "./useFeedbackPrompt";
 
@@ -63,6 +64,7 @@ export function FeedbackDialog({
       aria-labelledby="feedback-dialog-title"
       aria-modal="true"
       className="feedback-dialog"
+      onClick={(event) => dismissDialogFromBackdrop(event, onClose)}
       onCancel={(event) => {
         event.preventDefault();
         onClose();

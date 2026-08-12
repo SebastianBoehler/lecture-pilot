@@ -21,12 +21,19 @@ import { normalizeLectureList } from "./lectureMapping";
 export { readApiError } from "./apiError";
 
 export class CanvasDraftLoadError extends Error {
+  readonly generationStatus: "running" | "completed" | "failed" | null;
   readonly repairable: boolean;
   readonly status: number;
 
-  constructor(message: string, status: number, repairable = false) {
+  constructor(
+    message: string,
+    status: number,
+    repairable = false,
+    generationStatus: "running" | "completed" | "failed" | null = null,
+  ) {
     super(message);
     this.name = "CanvasDraftLoadError";
+    this.generationStatus = generationStatus;
     this.status = status;
     this.repairable = repairable;
   }
@@ -193,9 +200,14 @@ export async function getDraftLectureCanvas(
       readApiError(payload, "Canvas draft loading failed."),
       response.status,
       response.headers.get("X-Generation-Repairable") === "true",
+      readCanvasGenerationStatus(response.headers.get("X-Generation-Status")),
     );
   }
   return payload as CanvasDocument;
+}
+
+function readCanvasGenerationStatus(value: string | null) {
+  return value === "running" || value === "completed" || value === "failed" ? value : null;
 }
 
 export async function publishLectureCanvas(

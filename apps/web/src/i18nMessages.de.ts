@@ -621,6 +621,8 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.sources.overviewCoverage": "{covered} von {total} Vorlesungen abgedeckt",
   "builder.sources.reviewOptional": "Quellenzuordnungen prüfen",
   "builder.sources.reviewOptionalHelp": "Optional: Ziele einzelner Dateien prüfen oder ändern.",
+  "builder.sources.showReview": "Details anzeigen",
+  "builder.sources.hideReview": "Details ausblenden",
   "builder.sources.legendLabel": "Auswirkung der Quellenzuordnung auf die Canvas-Generierung",
   "builder.sources.legend.lecture":
     "Wird nur an die Canvas-Generierung der gewählten Vorlesung gesendet.",
@@ -668,14 +670,14 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.schedule.help": "{count} Vorlesungen aus dem Quellenbündel abgeleitet",
   "builder.schedule.helpOne": "{count} Vorlesung aus dem Quellenbündel abgeleitet",
   "builder.schedule.reorderHelp":
-    "Ziehe Zeilen in die richtige Reihenfolge. Die Nummern werden automatisch aktualisiert.",
+    "Ziehe am Griff, um die Reihenfolge zu ändern. Tastatur: Griff fokussieren und ↑ oder ↓ verwenden.",
   "builder.schedule.drag": "Vorlesung {number} zum Umsortieren ziehen",
-  "builder.schedule.moveUp": "Vorlesung {number} nach oben verschieben",
-  "builder.schedule.moveDown": "Vorlesung {number} nach unten verschieben",
-  "builder.schedule.number": "Nr.",
+  "builder.schedule.order": "Reihenfolge",
+  "builder.schedule.position": "Position von Vorlesung {number}",
+  "builder.schedule.positionValue": "{title}, Position {position} von {count}",
+  "builder.schedule.moved": "{title} wurde an Position {position} verschoben.",
   "builder.schedule.lectureTitle": "Titel",
   "builder.schedule.date": "Datum",
-  "builder.schedule.noMatch": "Kein direkter Materialtreffer",
   "builder.schedule.remove": "Vorlesung {number} aus dem Plan entfernen",
   "builder.schedule.removeLabel": "Entfernen",
   "builder.schedule.removeConfirm": "{title} aus diesem Vorlesungsplan entfernen?",
@@ -711,7 +713,7 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.generate.timingLabel": "Dauer der Erzeugung",
   "builder.generate.estimateSingle": "Geschätzte Dauer: etwa 10–15 Minuten.",
   "builder.generate.estimateAll":
-    "Geschätzte Dauer: etwa {min}–{max} Minuten für {count} Vorlesungen (bis zu {concurrency} gleichzeitig).",
+    "Alle {count} Vorlesungen werden sofort eingereiht und nutzen das verfügbare Rate-Limit des Anbieters.",
   "builder.generate.backgroundHelp":
     "Die Erzeugung läuft auf dem Server weiter. Du kannst diese Seite verlassen und später zurückkommen; mit Arbeitsbereich aktualisieren werden fertige Entwürfe geladen.",
   "builder.generate.fullReady": "{count} Vorlesungscanvases bereit zur Prüfung.",
@@ -782,14 +784,25 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.learningDesign.loading": "Entwurfsgebundenes Lerndesign wird geladen...",
   "builder.learningDesign.factualSeparate":
     "Diese Freigabe betrifft nur das Lerndesign. Quellen- und Faktenprüfung bleiben getrennt.",
+  "builder.learningDesign.reviewIntro":
+    "Öffnen Sie zuerst die Lernenden-Vorschau und bestätigen Sie dann das gewünschte Lernziel. Quellen- und Faktenprüfung bleiben getrennt.",
   "builder.learningDesign.objective": "Lernziel",
+  "builder.learningDesign.objectiveHelp":
+    "Was sollen Studierende nach dieser Vorlesung selbstständig können?",
+  "builder.learningDesign.editPlan": "Lernplan bearbeiten",
+  "builder.learningDesign.editPlanHelp":
+    "Optional: Checkpoints, Transferaufgaben oder Voraussetzungen verfeinern.",
   "builder.learningDesign.prompt": "Checkpoint-Aufgabe",
   "builder.learningDesign.evidence": "Evidenzkriterium",
   "builder.learningDesign.transfer": "Unbekannte Transferaufgabe",
   "builder.learningDesign.interval": "Wiederholungsintervall (Tage)",
   "builder.learningDesign.prerequisites": "Semantische Voraussetzungen",
   "builder.learningDesign.warnings": "Warnungen zur Prüfungsabdeckung",
-  "builder.learningDesign.reportTitle": "Deterministischer Lerndesign-Bericht",
+  "builder.learningDesign.reportTitle": "Prüfhinweise",
+  "builder.learningDesign.reportHelp":
+    "Diese automatischen Prüfungen markieren mögliche Lücken; sie ändern den Entwurf nicht. Prüfen Sie jeden Hinweis in der Lernenden-Vorschau vor der Freigabe.",
+  "builder.learningDesign.acknowledgeFinding":
+    "Ich habe diesen Hinweis in der Lernenden-Vorschau geprüft.",
   "builder.learningDesign.gateCoverage": "Abdeckung offener Checkpoints",
   "builder.learningDesign.quizCoverage": "Quizabdeckung",
   "builder.learningDesign.sourceCoverage": "Abdeckung quellenbasierter Prüfungen",
@@ -798,8 +811,9 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.learningDesign.assessmentsUnit": "Prüfungen",
   "builder.learningDesign.gatesUnit": "Checkpoints",
   "builder.learningDesign.notApplicable": "nicht anwendbar",
-  "builder.learningDesign.noWarnings": "Keine deterministischen Lerndesign-Warnungen.",
-  "builder.learningDesign.acknowledgedExactDraft": "Für genau diesen Entwurf bestätigt.",
+  "builder.learningDesign.noWarnings": "Für diesen Entwurf müssen keine Hinweise bestätigt werden.",
+  "builder.learningDesign.acknowledgedExactDraft":
+    "Alle Hinweise für genau diesen Entwurf geprüft.",
   "builder.learningDesign.sectionCoordinate": "Abschnitt",
   "builder.learningDesign.assessmentCoordinate": "Prüfung",
   "builder.learningDesign.blockCoordinate": "Block",

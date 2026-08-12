@@ -2,6 +2,7 @@ import { LoaderCircle, RotateCcw, X } from "lucide-react";
 import { useLayoutEffect, useRef } from "react";
 
 import { ExamQuestionStep } from "./ExamQuestionStep";
+import { dismissDialogFromBackdrop } from "./dialogBackdrop";
 import { answeredQuestionCount, isQuestionAnswered } from "./examReadinessState";
 import type { ExamAnswerMap } from "./examReadinessState";
 import { ExamReadinessResult } from "./ExamReadinessResult";
@@ -74,6 +75,7 @@ export function ExamReadinessModal({
       className={`exam-modal${loading && !check ? " exam-modal--loading" : ""}`}
       ref={dialogRef}
       role="dialog"
+      onClick={(event) => dismissDialogFromBackdrop(event, onClose)}
       onCancel={(event) => {
         event.preventDefault();
         onClose();

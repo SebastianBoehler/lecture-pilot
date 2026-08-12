@@ -18,12 +18,13 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
     expect(notice).toHaveTextContent("leave this page and come back later");
   });
 
-  it("estimates full-course duration from three concurrent lectures", () => {
+  it("explains that full-course generation uses the provider rate budget", () => {
     renderStep({ isFullCourse: true, totalCount: 7 });
 
     expect(screen.getByLabelText("Generation timing")).toHaveTextContent(
-      "about 30–45 minutes for 7 lectures (up to 3 at once)",
+      "All 7 lectures are queued immediately and use the provider's available rate budget",
     );
+    expect(screen.getByLabelText("Generation timing")).not.toHaveTextContent("up to 3");
   });
 
   it("keeps publishing blocked while the exact draft learning design is unapproved", () => {
@@ -40,7 +41,14 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
     expect(screen.getByLabelText("Learning objective")).toHaveValue(
       "Explain the source-backed mechanism.",
     );
-    expect(screen.getByText("lecture.md#mechanism")).toBeInTheDocument();
+    expect(
+      screen.getByText(/start with the learner preview, then confirm the intended outcome/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: "I reviewed this finding in the learner preview." }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("lecture.md#mechanism")).not.toBeInTheDocument();
+    expect(screen.queryByText(/open-answer checkpoint coverage/i)).not.toBeInTheDocument();
     expect(screen.getByText("Practice has no checkpoint or quiz.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continue to publishing" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Continue to publishing" }));
@@ -64,6 +72,7 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
     fireEvent.change(screen.getByLabelText("Learning objective"), {
       target: { value: "Explain and transfer the mechanism." },
     });
+    fireEvent.click(screen.getByText("Edit learning plan"));
     fireEvent.change(screen.getByLabelText("Review interval (days)"), {
       target: { value: "5" },
     });

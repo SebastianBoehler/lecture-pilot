@@ -39,7 +39,7 @@ export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
 
   return (
     <main className="professor-screen">
-      <section className="builder-masthead">
+      <section className="builder-masthead" data-tour="course-creation-workflow">
         <div>
           <h1>{builderStepLabel(builder.activeStep, t)}</h1>
           <p>{builderStageDescription(builder.activeStep, t)}</p>
@@ -55,7 +55,7 @@ export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
           </button>
         </div>
       </section>
-      <div className="builder-layout" data-tour="course-creation-workflow">
+      <div className="builder-layout">
         <ProfessorBuilderStepper
           activeStep={builder.activeStep}
           steps={builder.steps}

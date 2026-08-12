@@ -24,7 +24,7 @@ export function PerformancePageHeader({
 }) {
   const { t } = useI18n();
   return (
-    <section className="professor-page-header">
+    <section className="professor-page-header" data-tour="course-performance-workflow">
       <div>
         <h1>{t("professor.performance.title")}</h1>
         <p>{t("professor.performance.subtitle")}</p>

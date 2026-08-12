@@ -9,6 +9,29 @@ import {
 } from "./professorWalkthroughState";
 
 const TOUR_TARGET_WAIT_MS = 2500;
+const TOUR_VIEWPORT_INSET = 16;
+
+const viewportClampMiddleware = {
+  name: "lecturepilotViewportClamp",
+  fn({ x, y, rects }: ViewportClampState) {
+    const viewport = window.visualViewport;
+    const left = (viewport?.offsetLeft ?? 0) + TOUR_VIEWPORT_INSET;
+    const top = (viewport?.offsetTop ?? 0) + TOUR_VIEWPORT_INSET;
+    const right = (viewport?.offsetLeft ?? 0) + (viewport?.width ?? window.innerWidth);
+    const bottom = (viewport?.offsetTop ?? 0) + (viewport?.height ?? window.innerHeight);
+
+    return {
+      x: clamp(x, left, right - rects.floating.width - TOUR_VIEWPORT_INSET),
+      y: clamp(y, top, bottom - rects.floating.height - TOUR_VIEWPORT_INSET),
+    };
+  },
+};
+
+type ViewportClampState = {
+  rects: { floating: { height: number; width: number } };
+  x: number;
+  y: number;
+};
 
 type ProfessorWalkthroughView = "professor" | "course-management" | "performance";
 
@@ -72,7 +95,14 @@ export function ProfessorWalkthrough({
       floater: { filter: "drop-shadow(0 12px 22px rgb(0 0 0 / 0.18))" },
       tooltip: { borderRadius: 6, padding: 18 },
       tooltipContainer: { lineHeight: 1.5, textAlign: "left" },
-      tooltipContent: { fontSize: 14, paddingBottom: 16, paddingTop: 8 },
+      tooltipContent: {
+        fontSize: 14,
+        maxHeight: "min(40dvh, 240px)",
+        overflowY: "auto",
+        overscrollBehavior: "contain",
+        paddingBottom: 16,
+        paddingTop: 8,
+      },
       tooltipFooter: {
         borderTop: "1px solid color-mix(in srgb, var(--color-on-accent) 30%, transparent)",
         paddingTop: 12,
@@ -113,6 +143,13 @@ function walkthroughSteps(
     {
       before: openView("professor", '[data-tour="course-creation-workflow"]', onViewChange),
       content: t("tour.builder.content"),
+      floatingOptions: {
+        hideArrow: true,
+        middleware: [viewportClampMiddleware],
+        shiftOptions: { padding: TOUR_VIEWPORT_INSET },
+      },
+      isFixed: true,
+      placement: "auto",
       target: '[data-tour="course-creation-workflow"]',
       title: t("tour.builder.title"),
     },
@@ -123,12 +160,26 @@ function walkthroughSteps(
         onViewChange,
       ),
       content: t("tour.manage.content"),
+      floatingOptions: {
+        hideArrow: true,
+        middleware: [viewportClampMiddleware],
+        shiftOptions: { padding: TOUR_VIEWPORT_INSET },
+      },
+      isFixed: true,
+      placement: "auto",
       target: '[data-tour="course-management-workflow"]',
       title: t("tour.manage.title"),
     },
     {
       before: openView("performance", '[data-tour="course-performance-workflow"]', onViewChange),
       content: t("tour.performance.content"),
+      floatingOptions: {
+        hideArrow: true,
+        middleware: [viewportClampMiddleware],
+        shiftOptions: { padding: TOUR_VIEWPORT_INSET },
+      },
+      isFixed: true,
+      placement: "auto",
       target: '[data-tour="course-performance-workflow"]',
       title: t("tour.performance.title"),
     },
@@ -167,4 +218,8 @@ function waitForTourTarget(target: string) {
     }, TOUR_TARGET_WAIT_MS);
     observer.observe(document.body, { childList: true, subtree: true });
   });
+}
+
+function clamp(value: number, minimum: number, maximum: number) {
+  return Math.min(Math.max(value, minimum), Math.max(minimum, maximum));
 }

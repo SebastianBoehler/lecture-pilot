@@ -2,10 +2,7 @@ import { useI18n } from "./i18n";
 import type { LearningDesignReview, LearningDesignUpdate } from "./learningDesignTypes";
 import { ProfessorCanvasReviewWorkspace } from "./ProfessorCanvasReviewWorkspace";
 import { PendingStatus, StepHeader } from "./ProfessorCourseBuilderParts";
-import {
-  CANVAS_DRAFT_CONCURRENCY,
-  type CanvasGenerationProgress,
-} from "./professorCanvasGeneration";
+import type { CanvasGenerationProgress } from "./professorCanvasGeneration";
 import type { CanvasDocument } from "./types";
 
 export function ProfessorCanvasDraftStep({
@@ -60,13 +57,9 @@ export function ProfessorCanvasDraftStep({
   const hasDraft = Boolean(canvas);
   const allDraftsReady =
     generationProgress.length === 0 || generationProgress.every((item) => item.status === "ready");
-  const generationRounds = Math.max(1, Math.ceil(totalCount / CANVAS_DRAFT_CONCURRENCY));
   const timeEstimate = isFullCourse
     ? t("builder.generate.estimateAll", {
-        concurrency: CANVAS_DRAFT_CONCURRENCY,
         count: totalCount,
-        max: generationRounds * 15,
-        min: generationRounds * 10,
       })
     : t("builder.generate.estimateSingle");
   return (

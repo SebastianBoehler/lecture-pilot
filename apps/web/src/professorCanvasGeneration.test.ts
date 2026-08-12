@@ -89,4 +89,24 @@ describe("professor canvas generation", () => {
     expect(draft).toHaveBeenCalledTimes(2);
     vi.useRealTimers();
   });
+
+  it("submits every lecture immediately to the shared provider rate queue", async () => {
+    const releases: Array<() => void> = [];
+    const draft = vi.fn(
+      () =>
+        new Promise<CanvasDocument>((resolve) => {
+          releases.push(() => resolve(canvas));
+        }),
+    );
+
+    const generation = generateLectureCanvasDrafts({
+      draft,
+      lectureIds: ["lecture-01", "lecture-02", "lecture-03", "lecture-04"],
+    });
+    await Promise.resolve();
+
+    expect(draft).toHaveBeenCalledTimes(4);
+    releases.forEach((release) => release());
+    await expect(generation).resolves.toHaveLength(4);
+  });
 });

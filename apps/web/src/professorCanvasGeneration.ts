@@ -1,9 +1,7 @@
 import type { CanvasDocument } from "./types";
 import { CanvasDraftRequestError } from "./canvasDraftApi";
 
-export const CANVAS_DRAFT_CONCURRENCY = 3;
 const CANVAS_DRAFT_RETRY_DELAYS_MS = [1500, 3500];
-const CANVAS_DRAFT_WORKER_STAGGER_MS = 400;
 
 export type CanvasGenerationStatus = "pending" | "generating" | "ready" | "error";
 export type CanvasGenerationErrorKind = "network" | "repair" | "service";
@@ -105,28 +103,20 @@ export async function generateLectureCanvasDrafts({
 }) {
   const canvases = new Array<CanvasDocument>(lectureIds.length);
   const failures: CanvasGenerationProgress[] = [];
-  let nextIndex = 0;
-  const workerCount = Math.min(CANVAS_DRAFT_CONCURRENCY, lectureIds.length);
-  const workers = Array.from({ length: workerCount }, async (_, workerIndex) => {
-    if (workerIndex > 0) await wait(workerIndex * CANVAS_DRAFT_WORKER_STAGGER_MS);
-    while (nextIndex < lectureIds.length) {
-      const currentIndex = nextIndex;
-      nextIndex += 1;
-      const lectureId = lectureIds[currentIndex];
-      onProgress?.({ lectureId, status: "generating" });
-      try {
-        canvases[currentIndex] = await draftWithRetry(lectureId, draft, onProgress);
-        onDraftReady?.(lectureId, canvases[currentIndex]);
-        onProgress?.({ lectureId, status: "ready" });
-      } catch (error) {
-        const failure = {
-          lectureId,
-          status: "error",
-          ...describeCanvasGenerationError(error),
-        } satisfies CanvasGenerationProgress;
-        failures.push(failure);
-        onProgress?.(failure);
-      }
+  const workers = lectureIds.map(async (lectureId, currentIndex) => {
+    onProgress?.({ lectureId, status: "generating" });
+    try {
+      canvases[currentIndex] = await draftWithRetry(lectureId, draft, onProgress);
+      onDraftReady?.(lectureId, canvases[currentIndex]);
+      onProgress?.({ lectureId, status: "ready" });
+    } catch (error) {
+      const failure = {
+        lectureId,
+        status: "error",
+        ...describeCanvasGenerationError(error),
+      } satisfies CanvasGenerationProgress;
+      failures.push(failure);
+      onProgress?.(failure);
     }
   });
   await Promise.all(workers);

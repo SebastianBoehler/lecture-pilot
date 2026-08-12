@@ -112,7 +112,7 @@ export function ProfessorCoursePerformance({
     lectureAnalytics?.lecture_id === selectedLecture?.id ? lectureAnalytics : null;
 
   return (
-    <main className="professor-screen performance-page" data-tour="course-performance-workflow">
+    <main className="professor-screen performance-page">
       <PerformancePageHeader
         course={course}
         loading={loading}

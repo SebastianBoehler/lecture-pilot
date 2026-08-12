@@ -76,3 +76,36 @@ it("renders LaTeX throughout a generated process", () => {
   expect(container.querySelector(".canvas-process-detail h4 .katex")).not.toBeNull();
   expect(container.querySelector(".canvas-process-detail p .katex")).not.toBeNull();
 });
+
+it("renders generated numeric step prefixes only once", () => {
+  const { container } = renderWithI18n(
+    <ComponentBlock
+      block={{
+        id: "pca-process",
+        type: "component",
+        component_type: "process_explorer",
+        caption: "PCA process",
+        items: [],
+        component_data: {
+          chart_type: null,
+          x_label: null,
+          y_label: null,
+          control_label: null,
+          labels: [],
+          frames: [],
+          steps: [
+            { title: "1. Fit PCA", text: "Fit the model." },
+            { title: "2. Reduce dimensionality", text: "Project the data." },
+          ],
+        },
+      }}
+      className="canvas-block"
+      sourceMarker={null}
+      onSubmitAnswer={vi.fn()}
+    />,
+  );
+
+  expect(screen.getByRole("button", { name: "1 Fit PCA" })).toBeVisible();
+  expect(screen.getByRole("heading", { name: "Fit PCA" })).toBeVisible();
+  expect(container.querySelector(".canvas-process-step-title ol")).toBeNull();
+});

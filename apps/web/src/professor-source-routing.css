@@ -36,13 +36,50 @@
 
 .source-routing-advanced > summary {
   display: grid;
-  gap: 3px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding-block: 2px;
   cursor: pointer;
+  list-style: none;
 }
 
-.source-routing-advanced > summary span {
+.source-routing-advanced > summary::-webkit-details-marker {
+  display: none;
+}
+
+.source-routing-disclosure-copy {
+  display: grid;
+  gap: 3px;
+}
+
+.source-routing-disclosure-copy > span {
   color: var(--color-text-secondary);
   font-size: 13px;
+}
+
+.source-routing-disclosure-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-accent-primary);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.source-routing-disclosure-action svg {
+  transition: transform 120ms ease;
+}
+
+.source-routing-advanced[open] .source-routing-disclosure-action svg {
+  transform: rotate(180deg);
+}
+
+.source-routing-advanced > summary:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 4px;
 }
 
 .source-routing-editor {

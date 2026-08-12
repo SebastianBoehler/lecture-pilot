@@ -72,8 +72,13 @@ describe("ProfessorSourceRoutingStep", () => {
     expect(screen.getByText(/1 of 2 lectures covered/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /accept assignments and continue/i })).toBeVisible();
     expect(screen.queryByRole("columnheader", { name: "File" })).not.toBeInTheDocument();
+    const disclosure = screen.getByText(/review source assignments/i).closest("summary");
+    expect(disclosure).toHaveAttribute("aria-expanded", "false");
+    expect(disclosure).toHaveTextContent("Show details");
 
-    await user.click(screen.getByText(/review source assignments/i));
+    await user.click(disclosure!);
+    expect(disclosure).toHaveAttribute("aria-expanded", "true");
+    expect(disclosure).toHaveTextContent("Hide details");
     expect(screen.getByRole("columnheader", { name: "File" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Use in" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Lecture" })).toBeInTheDocument();

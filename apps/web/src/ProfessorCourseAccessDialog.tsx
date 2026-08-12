@@ -1,4 +1,3 @@
-import { X } from "lucide-react";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
 import { CourseAccessFields } from "./CourseAccessFields";
@@ -10,6 +9,7 @@ import {
   lectureAvailability,
   publicationAtFromLocal,
 } from "./courseAccessStatus";
+import { dismissDialogFromBackdrop } from "./dialogBackdrop";
 import { useI18n } from "./i18n";
 import type { CourseAccessRule, CourseAccessSaveInput } from "./courseAccessTypes";
 import type { Lecture, ManagedCourseWorkspaceResult } from "./types";
@@ -80,6 +80,7 @@ export function ProfessorCourseAccessDialog({
       aria-modal="true"
       className="course-access-dialog"
       ref={dialogRef}
+      onClick={(event) => dismissDialogFromBackdrop(event, closeDialog, saving)}
       onCancel={(event) => {
         event.preventDefault();
         if (!saving) closeDialog();
@@ -98,14 +99,6 @@ export function ProfessorCourseAccessDialog({
             <h2 id={titleId}>{title}</h2>
             <p id={descriptionId}>{description}</p>
           </div>
-          <button
-            aria-label={t("courseAccess.cancel")}
-            disabled={saving}
-            type="button"
-            onClick={closeDialog}
-          >
-            <X aria-hidden="true" size={18} />
-          </button>
         </header>
 
         <div className="course-access-dialog-body">

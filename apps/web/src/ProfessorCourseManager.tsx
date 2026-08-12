@@ -40,12 +40,8 @@ export function ProfessorCourseManager({
 }: ProfessorCourseManagerProps) {
   const { t } = useI18n();
   return (
-    <section
-      className="course-manager-panel"
-      aria-labelledby="created-courses-heading"
-      data-tour="course-management-workflow"
-    >
-      <div className="course-manager-header">
+    <section className="course-manager-panel" aria-labelledby="created-courses-heading">
+      <div className="course-manager-header" data-tour="course-management-workflow">
         <div>
           <h2 id="created-courses-heading">{t("professor.createdCourses")}</h2>
           <p>{t("professor.createdCoursesHelp")}</p>

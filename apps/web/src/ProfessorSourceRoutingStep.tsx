@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { ChevronDown } from "lucide-react";
 
 import { useI18n } from "./i18n";
 import { StepHeader } from "./ProfessorCourseBuilderParts";
@@ -90,13 +91,20 @@ export function ProfessorSourceRoutingStep({
       ) : null}
       <details className="source-routing-advanced" open={advancedOpen}>
         <summary
+          aria-expanded={advancedOpen}
           onClick={(event) => {
             event.preventDefault();
             setAdvancedOpen((current) => !current);
           }}
         >
-          <strong>{t("builder.sources.reviewOptional")}</strong>
-          <span>{t("builder.sources.reviewOptionalHelp")}</span>
+          <span className="source-routing-disclosure-copy">
+            <strong>{t("builder.sources.reviewOptional")}</strong>
+            <span>{t("builder.sources.reviewOptionalHelp")}</span>
+          </span>
+          <span className="source-routing-disclosure-action">
+            {t(advancedOpen ? "builder.sources.hideReview" : "builder.sources.showReview")}
+            <ChevronDown aria-hidden="true" size={16} />
+          </span>
         </summary>
         {advancedOpen ? (
           <ProfessorSourceRoutingEditor

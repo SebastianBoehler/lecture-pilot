@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { useI18n } from "./i18n";
+import { dismissDialogFromBackdrop } from "./dialogBackdrop";
 import { PpiExamSourcePicker } from "./PpiExamSourcePicker";
 import {
   DEFAULT_PRACTICE_EXAM_QUESTIONS,
@@ -45,6 +46,7 @@ export function PracticeExamSetup({
       aria-modal="true"
       className="practice-exam-dialog"
       ref={dialogRef}
+      onClick={(event) => dismissDialogFromBackdrop(event, onClose, importingSource)}
       onCancel={(event) => {
         event.preventDefault();
         if (!importingSource) onClose();

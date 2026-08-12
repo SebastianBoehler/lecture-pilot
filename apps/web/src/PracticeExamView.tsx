@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { useI18n } from "./i18n";
+import { dismissDialogFromBackdrop } from "./dialogBackdrop";
 import { MathText } from "./MathText";
 import { loadPracticeExamSolutions } from "./practiceExamApi";
 import { savePracticeExamPdf, savePracticeExamSolutionPdf } from "./practiceExamDownload";
@@ -84,6 +85,7 @@ export function PracticeExamView({
       aria-modal="true"
       className="practice-exam-dialog practice-exam-view"
       ref={dialogRef}
+      onClick={(event) => dismissDialogFromBackdrop(event, onClose)}
       onCancel={(event) => {
         event.preventDefault();
         onClose();

@@ -60,6 +60,34 @@ describe("Professor course builder restoration", () => {
     expect(result.current.steps.find((step) => step.id === "sources")?.available).toBe(true);
   });
 
+  it("keeps a still-running lecture out of the failed retry state after refresh", async () => {
+    saveRestorableFullCourse();
+    const baseFetch = professorFetchMock();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string, init?: RequestInit) => {
+        if (init?.method !== "POST" && url.includes("/lectures/lecture-02/canvas/draft")) {
+          return Promise.resolve(
+            new Response(JSON.stringify({ detail: "Canvas draft not found." }), {
+              status: 404,
+              headers: { "X-Generation-Status": "running" },
+            }),
+          );
+        }
+        return baseFetch(url, init);
+      }),
+    );
+
+    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps));
+
+    await waitFor(() => expect(result.current.isRestoring).toBe(false));
+
+    expect(result.current.generateStep.generationProgress).toEqual([
+      { lectureId: "lecture-01", status: "ready" },
+      { lectureId: "lecture-02", status: "generating" },
+    ]);
+  });
+
   it("keeps an approved draft for review when full-course publishing fails", async () => {
     saveRestorableFullCourse();
     const baseFetch = professorFetchMock();

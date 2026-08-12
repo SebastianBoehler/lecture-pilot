@@ -70,17 +70,49 @@ describe("ProfessorWalkthrough", () => {
 
     await (steps[1].before as () => Promise<void>)();
     expect(onViewChange).toHaveBeenLastCalledWith("professor");
-    expect(steps[1].target).toBe('[data-tour="course-creation-workflow"]');
+    expect(steps[1]).toMatchObject({
+      floatingOptions: { hideArrow: true, shiftOptions: { padding: 16 } },
+      isFixed: true,
+      placement: "auto",
+      target: '[data-tour="course-creation-workflow"]',
+    });
 
     await (steps[2].before as () => Promise<void>)();
     expect(onViewChange).toHaveBeenLastCalledWith("course-management");
-    expect(steps[2].target).toBe('[data-tour="course-management-workflow"]');
+    expect(steps[2]).toMatchObject({
+      floatingOptions: { hideArrow: true, shiftOptions: { padding: 16 } },
+      isFixed: true,
+      placement: "auto",
+      target: '[data-tour="course-management-workflow"]',
+    });
 
     await (steps[3].before as () => Promise<void>)();
     expect(onViewChange).toHaveBeenLastCalledWith("performance");
-    expect(steps[3].target).toBe('[data-tour="course-performance-workflow"]');
+    expect(steps[3]).toMatchObject({
+      floatingOptions: { hideArrow: true, shiftOptions: { padding: 16 } },
+      isFixed: true,
+      placement: "auto",
+      target: '[data-tour="course-performance-workflow"]',
+    });
 
     expect(steps[4].target).toBe('[data-tour="professor-support"]');
+
+    const floatingOptions = steps[3].floatingOptions as {
+      middleware: Array<{
+        fn: (state: {
+          rects: { floating: { height: number; width: number } };
+          x: number;
+          y: number;
+        }) => { x: number; y: number };
+      }>;
+    };
+    const constrained = floatingOptions.middleware[0].fn({
+      rects: { floating: { height: 220, width: 360 } },
+      x: window.innerWidth - 40,
+      y: window.innerHeight - 40,
+    });
+    expect(constrained.x).toBeLessThanOrEqual(window.innerWidth - 376);
+    expect(constrained.y).toBeLessThanOrEqual(window.innerHeight - 236);
   });
 
   it("uses compact action copy and keeps the progress action on one line", () => {
@@ -105,6 +137,10 @@ describe("ProfessorWalkthrough", () => {
       color: "var(--color-accent-primary)",
     });
     expect(styles.buttonBack.color).toBe("var(--color-on-accent)");
+    expect(styles.tooltipContent).toMatchObject({
+      maxHeight: "min(40dvh, 240px)",
+      overflowY: "auto",
+    });
   });
 });
 

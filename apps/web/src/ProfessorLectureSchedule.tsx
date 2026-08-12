@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowDown, ArrowUp, GripVertical, Trash2 } from "lucide-react";
+import { GripVertical, Trash2 } from "lucide-react";
 
 import { useI18n } from "./i18n";
 import { reorderLectureSchedule } from "./lectureScheduleReorder";
@@ -21,8 +21,15 @@ export function ProfessorLectureSchedule({
   const { t } = useI18n();
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
-  const moveLecture = (fromIndex: number, toIndex: number) =>
+  const [reorderAnnouncement, setReorderAnnouncement] = useState("");
+  const moveLecture = (fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= schedule.length || fromIndex === toIndex) return;
+    const lecture = schedule[fromIndex];
     onChange(reorderLectureSchedule(schedule, fromIndex, toIndex));
+    setReorderAnnouncement(
+      t("builder.schedule.moved", { title: lecture.title, position: toIndex + 1 }),
+    );
+  };
   if (!schedule.length) return null;
   return (
     <section className="lecture-schedule" aria-label={t("builder.schedule.title")}>
@@ -37,7 +44,16 @@ export function ProfessorLectureSchedule({
           <GripVertical aria-hidden="true" size={14} />
           {t("builder.schedule.reorderHelp")}
         </p>
+        <p className="visually-hidden" role="status" aria-live="polite">
+          {reorderAnnouncement}
+        </p>
       </header>
+      <div className="lecture-schedule-column-headings" aria-hidden="true">
+        <span>{t("builder.schedule.order")}</span>
+        <span>{t("builder.schedule.lectureTitle")}</span>
+        <span>{t("builder.schedule.date")}</span>
+        <span />
+      </div>
       <div className="lecture-schedule-list" role="list">
         {schedule.map((lecture, index) => (
           <div
@@ -57,13 +73,25 @@ export function ProfessorLectureSchedule({
           >
             <div className="lecture-schedule-fields">
               <div className="lecture-schedule-number-field">
-                <span>{t("builder.schedule.number")}</span>
+                <span className="lecture-schedule-row-label">{t("builder.schedule.order")}</span>
                 <div className="lecture-schedule-number-controls">
-                  <button
-                    aria-label={t("builder.schedule.drag", { number: lecture.number })}
+                  <div
+                    aria-disabled={disabled}
+                    aria-keyshortcuts="ArrowUp ArrowDown"
+                    aria-label={t("builder.schedule.position", { number: lecture.number })}
+                    aria-valuemax={schedule.length}
+                    aria-valuemin={1}
+                    aria-valuenow={index + 1}
+                    aria-valuetext={t("builder.schedule.positionValue", {
+                      title: lecture.title,
+                      position: index + 1,
+                      count: schedule.length,
+                    })}
                     className="lecture-schedule-drag-handle"
-                    disabled={disabled}
                     draggable={!disabled}
+                    role="spinbutton"
+                    tabIndex={disabled ? -1 : 0}
+                    title={t("builder.schedule.drag", { number: lecture.number })}
                     onDragEnd={() => {
                       setDraggedIndex(null);
                       setDropIndex(null);
@@ -73,39 +101,21 @@ export function ProfessorLectureSchedule({
                       event.dataTransfer.setData("text/plain", String(index));
                       setDraggedIndex(index);
                     }}
-                    type="button"
+                    onKeyDown={(event) => {
+                      if (disabled || !["ArrowUp", "ArrowDown"].includes(event.key)) return;
+                      event.preventDefault();
+                      moveLecture(index, index + (event.key === "ArrowUp" ? -1 : 1));
+                    }}
                   >
-                    <GripVertical aria-hidden="true" size={17} />
-                  </button>
-                  <input
-                    aria-label={t("builder.schedule.number")}
-                    value={lecture.number}
-                    onChange={(event) =>
-                      onChange(updateSchedule(schedule, index, "number", event.target.value))
-                    }
-                  />
-                  <div className="lecture-schedule-move-buttons">
-                    <button
-                      aria-label={t("builder.schedule.moveUp", { number: lecture.number })}
-                      disabled={disabled || index === 0}
-                      onClick={() => moveLecture(index, index - 1)}
-                      type="button"
-                    >
-                      <ArrowUp aria-hidden="true" size={12} />
-                    </button>
-                    <button
-                      aria-label={t("builder.schedule.moveDown", { number: lecture.number })}
-                      disabled={disabled || index === schedule.length - 1}
-                      onClick={() => moveLecture(index, index + 1)}
-                      type="button"
-                    >
-                      <ArrowDown aria-hidden="true" size={12} />
-                    </button>
+                    <GripVertical aria-hidden="true" size={18} />
                   </div>
+                  <span className="lecture-schedule-position-number">{lecture.number}</span>
                 </div>
               </div>
               <label>
-                {t("builder.schedule.lectureTitle")}
+                <span className="lecture-schedule-row-label">
+                  {t("builder.schedule.lectureTitle")}
+                </span>
                 <input
                   value={lecture.title}
                   onChange={(event) =>
@@ -114,7 +124,7 @@ export function ProfessorLectureSchedule({
                 />
               </label>
               <label>
-                {t("builder.schedule.date")}
+                <span className="lecture-schedule-row-label">{t("builder.schedule.date")}</span>
                 <input
                   type="date"
                   value={lecture.date}
@@ -139,9 +149,6 @@ export function ProfessorLectureSchedule({
                 <Trash2 aria-hidden="true" size={15} />
               </button>
             </div>
-            <small className="lecture-schedule-source" title={lecture.material_path ?? undefined}>
-              {lecture.material_path ?? t("builder.schedule.noMatch")}
-            </small>
           </div>
         ))}
       </div>
@@ -155,7 +162,7 @@ export function ProfessorLectureSchedule({
 function updateSchedule(
   schedule: LectureScheduleItem[],
   index: number,
-  key: "date" | "number" | "title",
+  key: "date" | "title",
   value: string,
 ) {
   return schedule.map((lecture, currentIndex) =>
