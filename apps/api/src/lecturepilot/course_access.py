@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 from uuid import UUID
 
 from fastapi import FastAPI, HTTPException
 
+from lecturepilot.course_publication_visibility import published_canvas_is_ready
 from lecturepilot.course_repository import CourseRepository
 from lecturepilot.course_schedule_store import read_course_workspace
+from lecturepilot.course_access_models import CourseActorAccess
 from lecturepilot.dev_seeded_course import discovered_seeded_lecture_views
 from lecturepilot.lecture_access_models import CourseAccessPolicy, LectureReleaseStatus
 from lecturepilot.lecture_access_policy import (
@@ -22,13 +23,6 @@ from lecturepilot.tenancy import TenantContext
 
 
 _COURSE_ACCESS_ROLES = frozenset({TenantRole.TENANT_ADMIN, TenantRole.PROFESSOR})
-
-
-@dataclass(frozen=True)
-class CourseActorAccess:
-    is_owner: bool
-    is_enrolled: bool
-    same_tenant: bool
 
 
 def filter_accessible_courses(
@@ -198,13 +192,16 @@ def lecture_views_for_context(
     lectures: list[Lecture],
     *,
     course_tenant_id: str,
+    invalid_publication_is_unavailable: bool = False,
 ) -> list[LectureView]:
     actor = course_actor_access(app, context, course.id, course_tenant_id)
     views = []
     for lecture in lectures:
-        ready = app.state.canvas_workspace.has_published_course_canvas(
+        ready = published_canvas_is_ready(
+            app,
             course_id=course.id,
             lecture_id=lecture.id,
+            invalid_as_unavailable=invalid_publication_is_unavailable,
         )
         if not can_list_lecture(course, lecture, content_ready=ready, **actor.__dict__):
             continue
@@ -249,6 +246,7 @@ def course_has_visible_lecture(
             course,
             lectures,
             course_tenant_id=course_tenant_id,
+            invalid_publication_is_unavailable=True,
         )
     )
 

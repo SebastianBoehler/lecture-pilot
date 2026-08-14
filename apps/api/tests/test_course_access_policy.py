@@ -1,4 +1,5 @@
 from datetime import date
+import logging
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -8,6 +9,7 @@ from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSectio
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_schedule_store import write_course_workspace
 from lecturepilot.models import Course, CourseWorkspaceResult, Lecture
+from lecturepilot.metadata_events import LOGGER_NAME
 from auth_helpers import professor_headers, student_headers
 from canvas_workspace_fixtures import publish_course_canvas
 
@@ -36,6 +38,43 @@ def test_created_course_requires_enrollment(tmp_path: Path) -> None:
     assert denied.json() == []
     assert enrolled.status_code == 200
     assert enrolled.json()[0]["lecture"]["id"] == "lecture-01"
+
+
+def test_invalid_publication_does_not_block_other_course_discovery(tmp_path: Path, caplog) -> None:
+    client = _client(tmp_path)
+    for course_id in ("healthy-course", "broken-course"):
+        _write_workspace(client, course_id=course_id)
+        publish_course_canvas(
+            client.app.state.canvas_workspace,
+            _document(course_id, "lecture-01"),
+        )
+    broken_index = (
+        client.app.state.canvas_workspace.course_canvas_store.path("broken-course", "lecture-01")
+        / "index.md"
+    )
+    broken_index.write_bytes(b"\xff\xfe")
+
+    student = student_headers(course_ids=("healthy-course", "broken-course"))
+    with caplog.at_level(logging.ERROR, logger=LOGGER_NAME):
+        response = client.get(
+            "/courses",
+            headers=student,
+        )
+
+    assert response.status_code == 200
+    assert {course["id"] for course in response.json()} == {"healthy-course"}
+    assert '"event":"canvas.publication_invalid"' in caplog.text
+
+    strict_responses = (
+        client.get("/courses/broken-course/lectures", headers=student),
+        client.get(
+            "/courses/broken-course/lectures/lecture-01/canvas?user_id=student01",
+            headers=student,
+        ),
+        client.get("/courses/broken-course/review-queue", headers=student),
+        client.get("/admin/courses/broken-course/analytics", headers=professor_headers()),
+    )
+    assert [item.status_code for item in strict_responses] == [409, 409, 409, 409]
 
 
 def test_future_dynamic_lecture_is_locked_for_enrolled_student(tmp_path: Path) -> None:
