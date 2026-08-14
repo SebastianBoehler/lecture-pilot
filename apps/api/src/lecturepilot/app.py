@@ -138,7 +138,6 @@ def create_app() -> FastAPI:
         model_client=LiteLLMPracticeExamClient(app.state.model_usage)
     )
     app.state.image_generator = image_generator_from_env()
-    app.state.canvas_workspace.image_generator = app.state.image_generator
     app.state.youtube_discovery = YoutubeDiscovery.from_env()
     app.add_middleware(
         CORSMiddleware,

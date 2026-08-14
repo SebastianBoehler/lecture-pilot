@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from lecturepilot.canvas_models import CanvasSection
-from lecturepilot.generated_infographics import _safe_slug
 from lecturepilot.image_generation import ImageGenerationError
 from lecturepilot.storage_layout import safe_id
 
@@ -47,3 +47,7 @@ def generate_workspace_image(
         "caption": generated.caption,
         "markdown": f"![{markdown_caption}]({asset_url})",
     }
+
+
+def _safe_slug(value: str) -> str:
+    return re.sub(r"[^a-zA-Z0-9_-]+", "-", value).strip("-")[:96] or "infographic"

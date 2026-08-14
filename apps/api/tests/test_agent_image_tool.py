@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from canvas_workspace_fixtures import published_martius_workspace
 from lecturepilot.agent_tool_executor import AgentToolExecutor
 from lecturepilot.image_generation import GeneratedImage
@@ -14,6 +16,7 @@ def test_generate_image_does_not_append_a_generic_section_without_a_target(tmp_p
         lecture_id="lecture-03",
         user_id="u1",
         image_generator=_FakeImageGenerator(),
+        user_message="Please give me an image of regression tasks.",
     )
 
     result = executor.execute(
@@ -61,6 +64,7 @@ def test_generate_image_semantically_targets_an_existing_learner_section(tmp_pat
         lecture_id="lecture-03",
         user_id="u1",
         image_generator=_FakeImageGenerator(),
+        user_message="Please create an image for the regression explanation.",
     )
 
     result = executor.execute(
@@ -126,6 +130,7 @@ def test_generate_image_targets_existing_section_for_explicit_edit(tmp_path) -> 
         lecture_id="lecture-03",
         user_id="u1",
         image_generator=_FakeImageGenerator(),
+        user_message="Please create an image for the prior explanation.",
     )
 
     result = executor.execute(
@@ -190,6 +195,7 @@ def test_pending_image_requires_edit_and_dedupes_insert(tmp_path) -> None:
         lecture_id="lecture-03",
         user_id="u1",
         image_generator=_FakeImageGenerator(),
+        user_message="Please create an image for the prior explanation.",
     )
     image = executor.execute(
         "generate_image",
@@ -233,6 +239,50 @@ def test_pending_image_requires_edit_and_dedupes_insert(tmp_path) -> None:
     ).read_text()
     assert raw.count(image["asset_url"]) == 1
     assert raw.index("Use it as the bridge") < raw.index(image["asset_url"])
+
+
+@pytest.mark.parametrize(
+    "user_message",
+    ["Generate a chart of PNG compression ratios.", None],
+)
+def test_generate_image_rejects_without_explicit_raster_intent(tmp_path, user_message) -> None:
+    workspace = published_martius_workspace(tmp_path)
+    workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="u1")
+    setup = AgentToolExecutor(
+        canvas_workspace=workspace,
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        user_id="u1",
+    )
+    section = setup.execute(
+        "write",
+        {
+            "path": "/lecture/canvas/student/compression-ratios.md",
+            "content": "# Compression ratios\n\nCompare the formats in one chart.",
+        },
+    )
+    executor = AgentToolExecutor(
+        canvas_workspace=workspace,
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        user_id="u1",
+        image_generator=_FakeImageGenerator(),
+        user_message=user_message,
+    )
+
+    result = executor.execute(
+        "generate_image",
+        {
+            "prompt": "Render PNG compression ratios.",
+            "section_id": section["section_id"],
+        },
+    )
+
+    assert result["ok"] is False
+    assert "explicit raster" in result["error"]
+    assert not (
+        workspace.layout.user_canvas_dir("u1", "martius-ml", "lecture-03") / "student-assets"
+    ).exists()
 
 
 class _FakeImageGenerator:

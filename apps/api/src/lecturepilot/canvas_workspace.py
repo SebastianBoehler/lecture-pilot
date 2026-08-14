@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from pathlib import Path
 
-from lecturepilot.canvas_models import CanvasDocument, CanvasSection
+from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.canvas_learner_workspace import CanvasLearnerWorkspaceMixin
 from lecturepilot.canvas_asset_store import CanvasAssetError, CanvasAssetStore
 from lecturepilot.canvas_learning_support import normalize_learning_support
@@ -18,10 +18,9 @@ from lecturepilot.course_canvas_context import PublishedCanvasSnapshot
 from lecturepilot.course_canvas_publication import CanvasPublicationMetadata
 from lecturepilot.course_update_recovery import locked_course_state
 from lecturepilot.course_media import apply_course_media
-from lecturepilot.generated_infographics import materialize_infographic_sections
 from lecturepilot.latex_canvas_importer import import_latex_canvas
 from lecturepilot.lecture_source_selection import lecture_source_candidates
-from lecturepilot.storage_layout import DEFAULT_TENANT_ID, StorageLayout, safe_id
+from lecturepilot.storage_layout import DEFAULT_TENANT_ID, StorageLayout
 from lecturepilot.safe_course_files import safe_files, safe_path
 from lecturepilot.workspace_fs import WorkspaceFSError
 
@@ -43,28 +42,6 @@ class CanvasWorkspace(CanvasLearnerWorkspaceMixin):
         self.layout = StorageLayout(self.workspace_root, tenant_id=tenant_id)
         self.course_canvas_store = CourseCanvasStore(self.layout)
         self.asset_store = CanvasAssetStore(layout=self.layout, material_root=self.material_root)
-
-    def prepare_generated_sections(
-        self,
-        *,
-        course_id: str,
-        lecture_id: str,
-        user_id: str,
-        prompt: str,
-        sections: list[CanvasSection],
-    ) -> list[CanvasSection]:
-        student_key = self.layout.user_key(user_id)
-        canvas_dir = self._canvas_dir(course_id, lecture_id, user_id)
-        return materialize_infographic_sections(
-            sections=sections,
-            prompt=prompt,
-            asset_dir=canvas_dir / "student-assets",
-            asset_url_prefix=(
-                f"/workspace-assets/{safe_id(course_id)}/{safe_id(lecture_id)}/"
-                f"{student_key}/student-assets"
-            ),
-            image_generator=getattr(self, "image_generator", None),
-        )
 
     def asset_path(
         self,

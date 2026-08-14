@@ -23,7 +23,6 @@ from lecturepilot.coaching_orchestration import (
     persist_coaching_turn,
     prepare_coaching_turn,
 )
-from lecturepilot.image_generation import ImageGenerationError
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_usage import model_usage_scope
 from lecturepilot.models import AgentTurnInput, AgentTurnResult
@@ -249,19 +248,6 @@ def _persist_agent_turn_result(
 
 
 def _apply_generated_sections(app, *, turn, result, sections, placements, activity, observability):
-    try:
-        activity("prepare canvas update")
-        with observability.tool_span("prepare_canvas_update", section_count=len(sections)):
-            sections = app.state.canvas_workspace.prepare_generated_sections(
-                course_id=turn.course_id,
-                lecture_id=turn.lecture_id,
-                user_id=turn.user_id,
-                prompt=turn.message,
-                sections=sections,
-            )
-    except ImageGenerationError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-    result = _replace_generated_sections(result, sections)
     activity("write canvas update")
     with observability.tool_span(
         "write_canvas_update",
@@ -276,14 +262,3 @@ def _apply_generated_sections(app, *, turn, result, sections, placements, activi
             placements=placements,
         )
     return result
-
-
-def _replace_generated_sections(result: AgentTurnResult, sections) -> AgentTurnResult:
-    sections_by_id = {section.id: section for section in sections}
-    commands = [
-        command.model_copy(update={"section": sections_by_id[command.section.id]})
-        if command.section and command.section.id in sections_by_id
-        else command
-        for command in result.canvas_commands
-    ]
-    return result.model_copy(update={"canvas_commands": commands})

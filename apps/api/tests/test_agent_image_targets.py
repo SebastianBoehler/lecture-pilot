@@ -37,6 +37,7 @@ def test_generate_image_prefers_the_focused_learner_section(tmp_path) -> None:
         lecture_id="lecture-03",
         user_id="u1",
         image_generator=_FakeImageGenerator(),
+        user_message="Please create an image for the focused concept.",
         initial_focus_section_id=focused["section_id"],
     )
 
@@ -83,6 +84,7 @@ def test_official_target_resolves_to_its_learner_extension_without_mutating_sour
         lecture_id="lecture-03",
         user_id="u1",
         image_generator=_FakeImageGenerator(),
+        user_message="Please create an image for the focused concept.",
         initial_focus_section_id=official.id,
     )
 

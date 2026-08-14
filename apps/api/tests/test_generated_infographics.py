@@ -3,7 +3,10 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import CanvasBlock, CanvasSection
+from lecturepilot.canvas_models import (
+    CanvasBlock,
+    CanvasSection,
+)
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.models import AgentTurnInput, AgentTurnResult, CanvasCommand
 from lecturepilot.providers import DEFAULT_MODEL
@@ -15,12 +18,13 @@ from canvas_workspace_fixtures import (
 )
 
 
-def test_agent_turn_materializes_infographic_asset(monkeypatch, tmp_path: Path) -> None:
+def test_agent_turn_does_not_materialize_an_image_without_a_tool_call(
+    monkeypatch, tmp_path: Path
+) -> None:
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.setenv("LECTUREPILOT_MODEL", DEFAULT_MODEL)
     app = create_app()
     configure_canvas_workspace(app, _published_workspace(tmp_path))
-    app.state.canvas_workspace.image_generator = _FakeImageGenerator()
     app.state.agent_harness = _InfographicHarness()
     client = TestClient(app)
 
@@ -38,28 +42,14 @@ def test_agent_turn_materializes_infographic_asset(monkeypatch, tmp_path: Path) 
 
     assert response.status_code == 200
     section = response.json()["canvas_commands"][0]["section"]
-    asset = section["blocks"][0]
-    assert asset["type"] == "asset"
-    assert asset["asset_path"].endswith(".png")
-    assert asset["asset_url"].startswith("/workspace-assets/martius-ml/lecture-03/")
-    assert asset["caption"] == "Generated with fake-image-model as a teaching infographic"
-
-    unauthenticated_asset_response = client.get(asset["asset_url"])
-    assert unauthenticated_asset_response.status_code == 401
-
-    asset_response = client.get(asset["asset_url"], headers=student_headers("student01"))
-    assert asset_response.status_code == 200
-    assert asset_response.content == b"fake-png"
-
-    denied_asset_response = client.get(asset["asset_url"], headers=student_headers("student02"))
-    assert denied_asset_response.status_code == 403
+    assert [block["type"] for block in section["blocks"]] == ["list"]
 
     reloaded = client.get(
         "/courses/martius-ml/lectures/lecture-03/canvas",
         headers=student_headers("student01"),
     ).json()["document"]
     student_section = next(item for item in reloaded["sections"] if item["id"] == section["id"])
-    assert student_section["blocks"][0]["asset_url"] == asset["asset_url"]
+    assert [block["type"] for block in student_section["blocks"]] == ["list"]
 
     other_student = client.get(
         "/courses/martius-ml/lectures/lecture-03/canvas",
@@ -68,7 +58,9 @@ def test_agent_turn_materializes_infographic_asset(monkeypatch, tmp_path: Path) 
     assert all(item["id"] != section["id"] for item in other_student["sections"])
 
 
-def test_agent_turn_requires_image_provider_for_infographics(monkeypatch, tmp_path: Path) -> None:
+def test_agent_turn_does_not_require_an_image_provider_without_a_tool_call(
+    monkeypatch, tmp_path: Path
+) -> None:
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     app = create_app()
     configure_canvas_workspace(app, _published_workspace(tmp_path))
@@ -87,8 +79,8 @@ def test_agent_turn_requires_image_provider_for_infographics(monkeypatch, tmp_pa
         },
     )
 
-    assert response.status_code == 502
-    assert "text-to-image provider" in response.json()["detail"]
+    assert response.status_code == 200
+    assert response.json()["canvas_commands"][0]["section"]["blocks"][0]["type"] == "list"
 
 
 def test_workspace_asset_route_rejects_invalid_student_key(tmp_path: Path) -> None:
@@ -133,22 +125,6 @@ class _InfographicHarness:
                 )
             ],
             model=DEFAULT_MODEL,
-        )
-
-
-class _FakeImageGenerator:
-    def generate_infographic(self, *, prompt: str, section: CanvasSection):
-        from lecturepilot.image_generation import GeneratedImage
-
-        assert "soccer scouting" in prompt
-        assert section.title == "Bayes soccer scouting flow"
-        return GeneratedImage(
-            content=b"fake-png",
-            mime_type="image/png",
-            extension="png",
-            caption="Generated with fake-image-model as a teaching infographic",
-            provider="fake",
-            model="fake-image-model",
         )
 
 

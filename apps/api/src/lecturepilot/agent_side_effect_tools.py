@@ -5,6 +5,7 @@ from typing import Any
 from lecturepilot.agent_highlight import highlight_command_for
 from lecturepilot.agent_image_placement import AgentImagePlacement
 from lecturepilot.agent_tool_utils import required_str
+from lecturepilot.raster_request_intent import is_explicit_raster_request
 from lecturepilot.user_memory import UserMemoryStore
 
 
@@ -48,9 +49,9 @@ class AgentSideEffectTools:
             raise AgentSideEffectError(str(exc)) from exc
 
     def _generate_image(self, args: dict[str, Any]) -> dict[str, Any]:
-        if self.user_message is not None and not _explicit_image_request(self.user_message):
+        if not is_explicit_raster_request(self.user_message or ""):
             raise AgentSideEffectError(
-                "Image generation requires an explicit request from the learner."
+                "Image generation requires an explicit raster image request from the learner."
             )
         if self.usage_quota and self.tenant_id:
             self.usage_quota.consume_image(
@@ -102,23 +103,4 @@ def _explicit_memory_request(message: str) -> bool:
     return any(
         phrase in normalized
         for phrase in ("remember", "save this preference", "always explain", "merke dir")
-    )
-
-
-def _explicit_image_request(message: str) -> bool:
-    normalized = message.casefold()
-    return any(
-        word in normalized
-        for word in (
-            "image",
-            "infographic",
-            "diagram",
-            "visual",
-            "plot",
-            "chart",
-            "graph",
-            "bild",
-            "grafik",
-            "diagramm",
-        )
     )

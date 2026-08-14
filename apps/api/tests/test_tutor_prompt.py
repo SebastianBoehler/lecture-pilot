@@ -46,6 +46,14 @@ def test_model_prompt_requires_guided_quality_gate_turns() -> None:
     assert "highlight_span" in system_prompt
 
 
+def test_model_prompt_uses_declarative_visuals_without_raster_fallback() -> None:
+    system_prompt = _messages(_turn())[0]["content"].lower()
+
+    assert "visual_artifact" in system_prompt
+    assert "flow, timeline, grid, or plot" in system_prompt
+    assert "never use image generation as a fallback" in system_prompt
+
+
 def test_model_prompt_includes_derived_coaching_goal_and_support_policy() -> None:
     turn = _turn().model_copy(
         update={
