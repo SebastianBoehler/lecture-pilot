@@ -1,4 +1,5 @@
 import type { CanvasBlock, CanvasDocument, CanvasSection, WorkspaceResource } from "./types";
+import { canvasSourcePaths } from "./sourceReferences";
 
 export type WorkspaceTreeNode = {
   id: string;
@@ -73,14 +74,15 @@ function addCanvasSections(
 }
 
 function addCourseSource(roots: WorkspaceTreeNode[], canvasDocument: CanvasDocument) {
-  const displayPath = `local-course-materials/${canvasDocument.course_id}/${canvasDocument.source_ref}`;
-  addFile(roots, `source/${canvasDocument.source_ref}`, {
-    id: "original-source",
-    kind: "source",
-    label: canvasDocument.source_ref,
-    path: canvasDocument.source_ref,
-    displayPath,
-  });
+  for (const sourcePath of canvasSourcePaths(canvasDocument)) {
+    addFile(roots, sourcePath, {
+      id: `original-source-${safeFilename(sourcePath)}`,
+      kind: "source",
+      label: sourcePath.split("/").at(-1) ?? sourcePath,
+      path: sourcePath,
+      displayPath: `local-course-materials/${canvasDocument.course_id}/${sourcePath}`,
+    });
+  }
 }
 
 function addCourseAssets(

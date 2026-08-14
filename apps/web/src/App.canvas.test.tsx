@@ -180,7 +180,7 @@ describe("LecturePilot canvas interactions", () => {
     ).toBeInTheDocument();
     expect(within(filePanel).queryByText(/section references/i)).not.toBeInTheDocument();
 
-    const tree = within(filePanel).getByRole("tree", { name: /workspace file tree/i });
+    const tree = within(filePanel).getByRole("navigation", { name: /workspace file tree/i });
     expect(
       within(tree).getByRole("button", { name: /collapse course source material/i }),
     ).toBeInTheDocument();
@@ -219,7 +219,7 @@ describe("LecturePilot canvas interactions", () => {
 
     await user.click(within(tree).getByRole("button", { name: /open Venn_C-X_1\.pdf/i }));
     expect(within(tree).getByRole("button", { name: /open Venn_C-X_1\.pdf/i })).toHaveAttribute(
-      "aria-pressed",
+      "aria-current",
       "true",
     );
     expect(bayesSection).not.toHaveAttribute("aria-current");
@@ -256,7 +256,7 @@ describe("LecturePilot canvas interactions", () => {
     expect(within(preview).getByText(/frames 6, 7, 8, 9/i)).toBeInTheDocument();
     expect(
       within(filePanel).getByRole("button", { name: /open Lecture03-eng\.tex/i }),
-    ).toHaveAttribute("aria-pressed", "true");
+    ).toHaveAttribute("aria-current", "true");
   });
 
   it("groups consecutive formulas into a compact derivation block", async () => {
@@ -319,7 +319,7 @@ describe("LecturePilot canvas interactions", () => {
     expect(within(filePanel).getByRole("img", { name: /spam-DALL-E\.jpg/i })).toBeInTheDocument();
     expect(
       within(filePanel).getByRole("button", { name: /open spam-DALL-E\.jpg/i }),
-    ).toHaveAttribute("aria-pressed", "true");
+    ).toHaveAttribute("aria-current", "true");
   });
 });
 

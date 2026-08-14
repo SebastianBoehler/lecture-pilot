@@ -38,19 +38,21 @@ export function WorkspaceFileTree({
   }
 
   return (
-    <div className="workspace-tree" role="tree" aria-label="Workspace file tree">
-      {nodes.map((node) => (
-        <TreeNode
-          depth={0}
-          expanded={expanded}
-          key={node.id}
-          node={node}
-          selectedResource={selectedResource}
-          onSelectResource={onSelectResource}
-          onToggle={toggle}
-        />
-      ))}
-    </div>
+    <nav className="workspace-tree" aria-label="Workspace file tree">
+      <ul className="workspace-tree-list">
+        {nodes.map((node) => (
+          <TreeNode
+            depth={0}
+            expanded={expanded}
+            key={node.id}
+            node={node}
+            selectedResource={selectedResource}
+            onSelectResource={onSelectResource}
+            onToggle={toggle}
+          />
+        ))}
+      </ul>
+    </nav>
   );
 }
 
@@ -70,23 +72,26 @@ function TreeNode({
   onToggle: (nodeId: string) => void;
 }) {
   if (node.type === "folder") {
-    const isExpanded = expanded.has(node.id);
+    const compactFolder = compactFolderChain(node);
+    const isExpanded = expanded.has(compactFolder.node.id);
     return (
-      <div role="group">
+      <li className="workspace-tree-item">
         <button
           aria-expanded={isExpanded}
-          aria-label={`${isExpanded ? "Collapse" : "Expand"} ${node.name}`}
+          aria-label={`${isExpanded ? "Collapse" : "Expand"} ${compactFolder.label}`}
           className={folderClassName(node)}
           style={depthStyle(depth)}
+          title={compactFolder.label}
           type="button"
-          onClick={() => onToggle(node.id)}
+          onClick={() => onToggle(compactFolder.node.id)}
         >
           {isExpanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
           <Folder size={15} />
-          <span>{node.name}</span>
+          <span>{compactFolder.label}</span>
         </button>
-        {isExpanded
-          ? node.children.map((child) => (
+        {isExpanded ? (
+          <ul>
+            {compactFolder.node.children.map((child) => (
               <TreeNode
                 depth={depth + 1}
                 expanded={expanded}
@@ -96,28 +101,42 @@ function TreeNode({
                 onSelectResource={onSelectResource}
                 onToggle={onToggle}
               />
-            ))
-          : null}
-      </div>
+            ))}
+          </ul>
+        ) : null}
+      </li>
     );
   }
 
   const isSelected = Boolean(node.resource && isSameResource(selectedResource, node.resource));
   return (
-    <button
-      aria-label={`Open ${node.name}`}
-      aria-pressed={isSelected}
-      className={
-        isSelected ? "workspace-tree-row is-file is-selected" : "workspace-tree-row is-file"
-      }
-      style={depthStyle(depth)}
-      type="button"
-      onClick={() => node.resource && onSelectResource(node.resource)}
-    >
-      {fileIcon(node.resource, node.name)}
-      <span>{node.name}</span>
-    </button>
+    <li className="workspace-tree-item">
+      <button
+        aria-current={isSelected ? "true" : undefined}
+        aria-label={`Open ${node.name}`}
+        className={
+          isSelected ? "workspace-tree-row is-file is-selected" : "workspace-tree-row is-file"
+        }
+        style={depthStyle(depth)}
+        title={node.resource?.displayPath ?? node.path}
+        type="button"
+        onClick={() => node.resource && onSelectResource(node.resource)}
+      >
+        {fileIcon(node.resource, node.name)}
+        <span>{node.name}</span>
+      </button>
+    </li>
   );
+}
+
+function compactFolderChain(node: WorkspaceTreeNode) {
+  const names = [node.name];
+  let compacted = node;
+  while (!node.tone && compacted.children.length === 1 && compacted.children[0].type === "folder") {
+    compacted = compacted.children[0];
+    names.push(compacted.name);
+  }
+  return { label: names.join(" / "), node: compacted };
 }
 
 function folderIds(nodes: WorkspaceTreeNode[]): string[] {

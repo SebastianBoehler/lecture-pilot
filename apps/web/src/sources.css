@@ -12,17 +12,25 @@
 }
 
 .workspace-tree {
-  display: grid;
-  gap: 2px;
   min-width: 0;
-  overflow: hidden;
+  overflow-x: clip;
   border: 1px solid var(--color-border-primary);
   border-radius: 8px;
   padding: 6px;
   background: var(--color-bg-secondary);
 }
 
-.workspace-tree > div {
+.workspace-tree-list,
+.workspace-tree-list ul {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workspace-tree-item {
   min-width: 0;
 }
 
@@ -34,27 +42,32 @@
   box-sizing: border-box;
   width: 100%;
   max-width: 100%;
-  min-height: 30px;
+  min-height: 32px;
   border: 0;
   border-radius: 5px;
-  padding: 5px 7px 5px calc(7px + var(--tree-depth, 0) * 14px);
+  padding-block: 5px;
+  padding-inline: 7px;
+  padding-inline-start: min(calc(7px + var(--tree-depth, 0) * 10px), 40px);
   color: var(--color-text-secondary);
   background: transparent;
-  text-align: left;
+  text-align: start;
   font: inherit;
   cursor: pointer;
+  transition-property: color, background-color, box-shadow;
+  transition-duration: 120ms;
+  transition-timing-function: ease-out;
 }
 
 .workspace-tree-row.is-file {
   grid-template-columns: auto minmax(0, 1fr);
-  padding-left: calc(28px + var(--tree-depth, 0) * 14px);
+  padding-inline-start: min(calc(27px + var(--tree-depth, 0) * 10px), 56px);
 }
 
 .workspace-tree-row.is-folder.is-course,
 .workspace-tree-row.is-folder.is-learner,
 .workspace-tree-row.is-folder.is-memory {
-  border-left: 3px solid var(--workspace-tree-accent, var(--color-border-primary));
-  padding-left: calc(6px + var(--tree-depth, 0) * 14px);
+  border-inline-start: 3px solid var(--workspace-tree-accent, var(--color-border-primary));
+  padding-inline-start: min(calc(6px + var(--tree-depth, 0) * 10px), 40px);
   color: var(--color-text-primary);
   background: color-mix(in srgb, var(--workspace-tree-accent) 8%, transparent);
   font-weight: 750;
@@ -79,6 +92,13 @@
   white-space: nowrap;
 }
 
+.workspace-tree-row.is-file span {
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+  text-overflow: clip;
+  white-space: normal;
+}
+
 .workspace-tree-row:hover,
 .workspace-tree-row:focus-visible,
 .workspace-tree-row.is-selected {
@@ -87,7 +107,16 @@
 }
 
 .workspace-tree-row.is-selected {
+  color: var(--color-accent-primary);
+  background: color-mix(in srgb, var(--color-accent-primary) 10%, var(--color-bg-primary));
   box-shadow: inset 0 0 0 1px var(--color-accent-primary);
+  font-weight: 700;
+}
+
+.workspace-tree-row:focus-visible {
+  z-index: 1;
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: -2px;
 }
 
 .workspace-preview {
@@ -124,8 +153,8 @@
   display: grid;
   gap: 3px;
   margin: 0;
-  border-left: 3px solid var(--color-accent-primary);
-  padding-left: 9px;
+  border-inline-start: 3px solid var(--color-accent-primary);
+  padding-inline-start: 9px;
 }
 
 .workspace-preview-trace strong {

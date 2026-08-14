@@ -45,6 +45,28 @@ describe("workspace tree", () => {
       blockId: "student-image",
     });
   });
+
+  it("keeps every published section source visible in its original hierarchy", () => {
+    const document = documentWithStudentSection();
+    document.sections[0].source_ref =
+      "slides/week-03/bayes.tex frames 1-3; readings/week-03/bayes-notes.pdf pages 2-4";
+
+    const sourceTree = buildWorkspaceTree(document)[0];
+
+    expect(nodePaths(sourceTree)).toEqual(
+      expect.arrayContaining(["slides/week-03/bayes.tex", "readings/week-03/bayes-notes.pdf"]),
+    );
+    expect(resourceFor([sourceTree], "slides/week-03/bayes.tex")).toMatchObject({
+      kind: "source",
+      label: "bayes.tex",
+      path: "slides/week-03/bayes.tex",
+    });
+    expect(resourceFor([sourceTree], "readings/week-03/bayes-notes.pdf")).toMatchObject({
+      kind: "source",
+      label: "bayes-notes.pdf",
+      path: "readings/week-03/bayes-notes.pdf",
+    });
+  });
 });
 
 function nodePaths(node: ReturnType<typeof buildWorkspaceTree>[number]): string[] {

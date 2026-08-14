@@ -5,6 +5,18 @@ export type SectionSourceReference = {
   resource: WorkspaceResource;
 };
 
+export function canvasSourcePaths(canvasDocument: CanvasDocument): string[] {
+  const paths = new Set(sourceFilePaths(canvasDocument.source_ref));
+  for (const section of canvasDocument.sections) {
+    for (const path of sourceFilePaths(section.source_ref ?? "")) paths.add(path);
+  }
+  if (!paths.size) {
+    const fallback = displaySourcePath(canvasDocument.source_ref);
+    if (fallback) paths.add(fallback);
+  }
+  return [...paths];
+}
+
 export function sectionSourceReferences(
   canvasDocument: CanvasDocument,
   section: CanvasSection,
@@ -80,6 +92,10 @@ function sourceEntries(sourceRef: string): { path: string; detail: string | null
       detail: cleanSourceDetail(value.slice(detailStart, detailEnd)),
     };
   });
+}
+
+function sourceFilePaths(sourceRef: string) {
+  return sourceEntries(sourceRef).map((entry) => entry.path);
 }
 
 function cleanSourceDetail(value: string): string | null {
