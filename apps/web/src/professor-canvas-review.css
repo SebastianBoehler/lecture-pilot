@@ -122,52 +122,10 @@
   font-weight: 400;
 }
 
-.learning-design-actions,
-.learning-design-coverage {
+.learning-design-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 16px;
-}
-
-.learning-design-report {
-  display: grid;
-  gap: 12px;
-  border-block-start: 1px solid var(--color-border-primary);
-  padding-block-start: 16px;
-}
-
-.learning-design-report h4 {
-  margin: 0;
-}
-
-.learning-design-diagnostics {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.learning-design-diagnostics li {
-  padding: 10px;
-  border-radius: 6px;
-  background: var(--color-bg-secondary);
-}
-
-.learning-design-diagnostics label {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
-  gap: 8px;
-}
-
-.learning-design-diagnostics label span {
-  display: grid;
-  gap: 4px;
-}
-
-.learning-design-diagnostics small {
-  color: var(--color-text-tertiary);
 }
 
 .draft-review-footer {

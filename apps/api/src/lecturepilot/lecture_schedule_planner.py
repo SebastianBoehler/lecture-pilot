@@ -10,6 +10,7 @@ from lecturepilot.agent_response_schema import lecture_schedule_response_format
 from lecturepilot.course_canvas_json import parse_model_json
 from lecturepilot.lecture_schedule_evidence import build_schedule_evidence
 from lecturepilot.model_client import ModelExecutionError
+from lecturepilot.model_provider_errors import model_provider_error_message
 from lecturepilot.model_request_options import completion_options
 from lecturepilot.model_usage import ModelUsageRecorder, complete_with_usage
 from lecturepilot.models import (
@@ -52,7 +53,9 @@ class LiteLLMScheduleClient:
                 **completion_options(settings, temperature=0.1, max_tokens=8000),
             )
         except Exception as exc:
-            raise ModelExecutionError("Lecture schedule model request failed.") from exc
+            raise ModelExecutionError(
+                model_provider_error_message(exc, provider=settings.provider)
+            ) from exc
         return parse_model_json(response.choices[0].message.content)
 
 

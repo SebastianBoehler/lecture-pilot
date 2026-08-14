@@ -18,7 +18,7 @@ class LearningDesignApproval(BaseModel):
     source_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     learning_map_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     report_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
-    acknowledged_warning_ids: list[str] = Field(max_length=200)
+    acknowledged_warning_ids: list[str] = Field(default_factory=list, max_length=200)
 
 
 class LearningDesignReview(BaseModel):
@@ -64,4 +64,3 @@ class LearningDesignApprovalInput(BaseModel):
     source_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     learning_map_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     report_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
-    acknowledged_warning_ids: list[str] = Field(max_length=200)

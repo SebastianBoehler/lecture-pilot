@@ -22,7 +22,6 @@ it("summarizes historical generation failures until their details are requested"
         ]}
         isFullCourse
         isGenerating={false}
-        learningDesignAcknowledgementKey="professor:course-1:0"
         learningDesignReviews={{}}
         learningDesignSaving={false}
         previewLectures={[]}

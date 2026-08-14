@@ -68,7 +68,7 @@ it("loads, edits, approves, and refreshes draft-bound reviews per lecture", asyn
     }),
   );
   expect(result.current.reviews["lecture-01"].learning_map.objective).toBe("Edited objective");
-  await act(() => result.current.approve("lecture-01", []));
+  await act(() => result.current.approve("lecture-01"));
   expect(result.current.allApproved).toBe(true);
 
   serverReview = review("e", null);
@@ -148,7 +148,7 @@ it.each([
   if (operation === "save") {
     void result.current.save("lecture-01", updateFor(result.current.reviews["lecture-01"]));
   } else {
-    void result.current.approve("lecture-01", []);
+    void result.current.approve("lecture-01");
   }
   rerender({ revisionKey: "generation-2" });
   await waitFor(() =>

@@ -56,9 +56,14 @@ def validate_section_assessments(
     *,
     candidate: CanvasDocument | None = None,
 ) -> None:
-    for block in section.blocks:
+    checkpoint_found = False
+    first_assessment_index: int | None = None
+    for index, block in enumerate(section.blocks):
         if block.type not in {"checkpoint", "quiz"}:
             continue
+        if first_assessment_index is None:
+            first_assessment_index = index
+        checkpoint_found = checkpoint_found or block.type == "checkpoint"
         if issue := assessment_prompt_issue(block.text, block.type):
             raise CanvasGenerationRepairableError(
                 f"{block.type.title()} block {block.id} {issue}.",
@@ -82,6 +87,29 @@ def validate_section_assessments(
                 section_id=section.id,
                 block_id=block.id,
             )
+    if not checkpoint_found:
+        raise CanvasGenerationRepairableError(
+            f"Section {section.id} needs at least one source-grounded open-response checkpoint.",
+            candidate=candidate,
+            section_id=section.id,
+        )
+    if first_assessment_index is None:
+        return
+    late_example = next(
+        (
+            block
+            for index, block in enumerate(section.blocks)
+            if index > first_assessment_index and block.id.startswith("worked-example-")
+        ),
+        None,
+    )
+    if late_example is not None:
+        raise CanvasGenerationRepairableError(
+            f"Worked example {late_example.id} must appear before the first assessment.",
+            candidate=candidate,
+            section_id=section.id,
+            block_id=late_example.id,
+        )
 
 
 def _validate_components(document: CanvasDocument) -> None:

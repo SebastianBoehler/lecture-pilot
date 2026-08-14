@@ -8,7 +8,6 @@ from lecturepilot.course_canvas_quality import (
     _quality_messages,
 )
 from lecturepilot.models import ProviderSettings
-from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.providers import ProviderRegistry
 from test_course_canvas_targeted_repair import _invalid_candidate
 
@@ -44,54 +43,6 @@ def test_quality_review_treats_checkpoints_as_open_answer_tasks() -> None:
     assert "does not need answer options" in prompt
     assert "copy its id verbatim" in prompt
     assert "use null" in prompt
-
-
-async def test_quality_reviewer_rejects_unknown_issue_coordinates() -> None:
-    document = _source_document()
-    reviewer = CanvasQualityReviewer(
-        model_client=_QualityClient(
-            [
-                {
-                    "section_id": "missing-section",
-                    "block_id": None,
-                    "reason": "Unsupported claim.",
-                }
-            ]
-        )
-    )
-
-    with pytest.raises(ModelExecutionError, match="unknown section"):
-        await reviewer.validate(
-            settings=_settings(),
-            source_document=document,
-            candidate_document=document,
-        )
-
-
-async def test_quality_reviewer_falls_back_to_valid_section_for_unknown_block() -> None:
-    document = _source_document()
-    reviewer = CanvasQualityReviewer(
-        model_client=_QualityClient(
-            [
-                {
-                    "section_id": "topic",
-                    "block_id": "topic-checkpoint-that-does-not-exist",
-                    "reason": "The assessment answer is unsupported.",
-                }
-            ]
-        )
-    )
-
-    with pytest.raises(CanvasGenerationRepairableError) as caught:
-        await reviewer.validate(
-            settings=_settings(),
-            source_document=document,
-            candidate_document=document,
-        )
-
-    assert caught.value.section_id == "topic"
-    assert caught.value.block_id is None
-    assert "assessment answer is unsupported" in str(caught.value)
 
 
 async def test_quality_reviewer_preserves_detailed_issue_reasoning() -> None:

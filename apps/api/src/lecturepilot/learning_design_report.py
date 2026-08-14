@@ -38,19 +38,16 @@ def build_learning_design_report(
     diagnostics: list[LearningDesignDiagnostic] = []
     source_backed_count = 0
     assessment_count = 0
-    previous_section_id: str | None = None
     for section in document.sections:
         node = nodes[section.id]
         concept, concept_diagnostics = _concept_report(
             section=section,
             node=node,
-            previous_section_id=previous_section_id,
         )
         concepts.append(concept)
         diagnostics.extend(concept_diagnostics)
         source_backed_count += len(concept.source_backed_assessment_ids)
         assessment_count += len(concept.gate_ids) + len(concept.quiz_ids)
-        previous_section_id = section.id
 
     if source_backed_count == 0:
         diagnostics.append(
@@ -89,7 +86,7 @@ def build_learning_design_report(
 
 
 def _concept_report(
-    *, section: CanvasSection, node: LearningMapNode, previous_section_id: str | None
+    *, section: CanvasSection, node: LearningMapNode
 ) -> tuple[LearningDesignConceptReport, list[LearningDesignDiagnostic]]:
     gate_ids = sorted(node.gate_ids)
     quiz_ids = sorted(node.quiz_ids)
@@ -127,16 +124,6 @@ def _concept_report(
             )
         )
     diagnostics.extend(_worked_example_diagnostics(section))
-    if previous_section_id and previous_section_id in node.prerequisites:
-        diagnostics.append(
-            _diagnostic(
-                "inferred_linear_prerequisite",
-                f"{section.title} initially depends on the preceding section.",
-                "Confirm that this inferred prerequisite reflects the intended concept sequence.",
-                section_id=section.id,
-                prerequisite_section_id=previous_section_id,
-            )
-        )
     return (
         LearningDesignConceptReport(
             section_id=section.id,

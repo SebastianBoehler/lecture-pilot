@@ -24,10 +24,12 @@ export async function approveAllLearningDesigns(user: ReturnType<typeof userEven
   const lectureNames = within(review)
     .getAllByRole("button", { name: /review learning design for/i })
     .map((button) => button.getAttribute("aria-label") ?? "");
-  for (const name of lectureNames) {
+  for (const [index, name] of lectureNames.entries()) {
     await user.click(within(review).getByRole("button", { name }));
     await user.click(await screen.findByRole("button", { name: /approve learning design/i }));
-    await screen.findByRole("button", { name: /learning design approved/i });
+    await within(review).findByText(
+      new RegExp(`${index + 1} of ${lectureNames.length} approved`, "i"),
+    );
   }
 }
 

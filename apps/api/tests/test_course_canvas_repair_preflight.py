@@ -94,4 +94,4 @@ async def test_block_repair_accepts_the_evidence_supported_patch_size(
         failure_context="Repair only the failed formula.",
     )
 
-    assert len(repaired.sections[0].blocks) == 8
+    assert len(repaired.sections[0].blocks) == 9

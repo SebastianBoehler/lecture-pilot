@@ -167,7 +167,10 @@ describe("Professor course builder", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /continue to publishing/i })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: /approve learning design/i }));
-    expect(await screen.findByRole("button", { name: /learning design approved/i })).toBeDisabled();
+    expect(await screen.findByText(/^approved$/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /learning design review/i }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /06 publish/i })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: /continue to publishing/i }));
     expect(screen.getByRole("heading", { name: /publish tutor workspace/i })).toBeInTheDocument();

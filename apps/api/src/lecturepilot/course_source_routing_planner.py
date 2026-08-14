@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from lecturepilot.course_source_evidence import selection_detail_files, source_file_excerpt
 from lecturepilot.course_source_routing_client import (
     LiteLLMSourceRoutingClient,
@@ -13,6 +13,8 @@ from lecturepilot.course_source_routing_review import (
     routing_review_messages,
 )
 from lecturepilot.models import Lecture, ProviderCapability, ProviderSettings
+from lecturepilot.model_client import ModelExecutionError
+from lecturepilot.model_provider_errors import is_retryable_provider_error
 from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
 from lecturepilot.source_index_models import IndexedSourceFile
 
@@ -60,8 +62,8 @@ class CourseSourceRoutingPlanner:
         routes: list[CourseSourceRoute],
         lectures: list[Lecture],
     ) -> list[CourseSourceRoute]:
-        last_error: ProviderConfigurationError | None = None
-        for _ in range(2):
+        last_error: ProviderConfigurationError | ModelExecutionError | None = None
+        for _ in range(3):
             try:
                 payload = await self.model_client.review_routing(
                     settings=settings, messages=messages
@@ -74,8 +76,14 @@ class CourseSourceRoutingPlanner:
                 )
                 require_supplemental_coverage(reviewed)
                 return reviewed
-            except ProviderConfigurationError as exc:
+            except (ProviderConfigurationError, ModelExecutionError) as exc:
                 last_error = exc
+                if (
+                    isinstance(exc, ModelExecutionError)
+                    and exc.__cause__ is not None
+                    and not is_retryable_provider_error(exc.__cause__)
+                ):
+                    raise
                 messages = [*messages, _review_repair_message(str(exc))]
         raise last_error or ProviderConfigurationError(
             "Source-routing review agent returned no usable corrections."
@@ -89,8 +97,8 @@ class CourseSourceRoutingPlanner:
         files: list[IndexedSourceFile],
         lectures: list[Lecture],
     ) -> list[CourseSourceRoute]:
-        last_error: ProviderConfigurationError | None = None
-        for _ in range(2):
+        last_error: ProviderConfigurationError | ModelExecutionError | None = None
+        for _ in range(3):
             try:
                 payload = await self.model_client.complete_routing(
                     settings=settings, messages=messages
@@ -98,8 +106,14 @@ class CourseSourceRoutingPlanner:
                 routes = _read_selected_routes(payload, files, lectures)
                 require_supplemental_coverage(routes)
                 return routes
-            except ProviderConfigurationError as exc:
+            except (ProviderConfigurationError, ModelExecutionError) as exc:
                 last_error = exc
+                if (
+                    isinstance(exc, ModelExecutionError)
+                    and exc.__cause__ is not None
+                    and not is_retryable_provider_error(exc.__cause__)
+                ):
+                    raise
                 messages = [*messages, _repair_message(str(exc))]
         raise last_error or ProviderConfigurationError(
             "Source-routing agent returned no usable selection."
@@ -185,11 +199,7 @@ def _read_selected_routes(
     for raw in raw_routes:
         if not isinstance(raw, dict) or not isinstance(raw.get("path"), str):
             raise ProviderConfigurationError("Every source route needs an exact path.")
-        path = raw["path"]
-        if path not in indexed:
-            raise ProviderConfigurationError(f"Unknown source path returned: {path}")
-        if path in parsed:
-            raise ProviderConfigurationError(f"Duplicate source path returned: {path}")
+        path = _resolve_selected_path(raw["path"], indexed)
         if path in primary:
             raise ProviderConfigurationError(
                 f"Do not reselect professor-reviewed primary source: {path}"
@@ -206,13 +216,18 @@ def _read_selected_routes(
         if role != SourceRouteRole.LECTURE and lecture_id is not None:
             raise ProviderConfigurationError("Only lecture routes may include a lecture id.")
         item = indexed[path]
-        parsed[path] = CourseSourceRoute(
+        route = CourseSourceRoute(
             path=path,
             kind=item.kind,
             sha256=item.sha256,
             role=role,
             lecture_id=lecture_id,
         )
+        if path in parsed:
+            if parsed[path] == route:
+                continue
+            raise ProviderConfigurationError(f"Duplicate source path returned: {path}")
+        parsed[path] = route
     routes = []
     for item in files:
         routes.append(
@@ -254,3 +269,13 @@ def _review_repair_message(error: str) -> dict[str, str]:
 
 def _primary_paths(lectures: list[Lecture]) -> set[str]:
     return {lecture.material_path for lecture in lectures if lecture.material_path}
+
+
+def _resolve_selected_path(returned_path: str, indexed: dict[str, IndexedSourceFile]) -> str:
+    if returned_path in indexed:
+        return returned_path
+    filename = PurePosixPath(returned_path).name
+    matches = [path for path in indexed if PurePosixPath(path).name == filename]
+    if len(matches) == 1:
+        return matches[0]
+    raise ProviderConfigurationError(f"Unknown source path returned: {returned_path}")

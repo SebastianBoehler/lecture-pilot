@@ -171,6 +171,72 @@ def test_source_selection_rejects_primary_reassignment() -> None:
         )
 
 
+def test_source_selection_resolves_a_uniquely_named_indexed_path() -> None:
+    indexed = _indexed_kind(
+        "uploads/course/images/dim-reduction/PCA-MNIST.ipynb",
+        "notebook",
+        10,
+        "a",
+    )
+    lecture = Lecture(
+        id="lecture-07",
+        course_id="course",
+        title="Dimensionality Reduction",
+        date=date(2026, 6, 2),
+    )
+
+    routes = _read_selected_routes(
+        {
+            "selections": [
+                {
+                    "path": "uploads/course/code/dim-reduction/PCA-MNIST.ipynb",
+                    "role": "lecture",
+                    "lecture_id": "lecture-07",
+                }
+            ]
+        },
+        [indexed],
+        [lecture],
+    )
+
+    assert routes == [_route(indexed, SourceRouteRole.LECTURE, "lecture-07")]
+
+
+def test_source_selection_deduplicates_an_exact_path_and_its_unique_alias() -> None:
+    indexed = _indexed_kind(
+        "uploads/course/images/dim-reduction/PCA-MNIST.ipynb",
+        "notebook",
+        10,
+        "a",
+    )
+    lecture = Lecture(
+        id="lecture-07",
+        course_id="course",
+        title="Dimensionality Reduction",
+        date=date(2026, 6, 2),
+    )
+    selection = {
+        "role": "lecture",
+        "lecture_id": "lecture-07",
+    }
+
+    routes = _read_selected_routes(
+        {
+            "selections": [
+                {"path": indexed.path, **selection},
+                {
+                    "path": "uploads/course/code/dim-reduction/PCA-MNIST.ipynb",
+                    **selection,
+                },
+            ]
+        },
+        [indexed],
+        [lecture],
+    )
+
+    assert routes == [_route(indexed, SourceRouteRole.LECTURE, "lecture-07")]
+
+
 def test_global_reviewer_sees_every_proposal_and_selected_side_source(tmp_path) -> None:
     primary = tmp_path / "lecture.pdf"
     primary.write_text("Primary lecture material", encoding="utf-8")

@@ -191,10 +191,11 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
   every indexed course file exactly once as lecture-specific, course-wide, or
   not used. Professors review and may edit this complete proposal; generation
   remains blocked until they confirm the current source revision.
-- Before publication, a professor must acknowledge every diagnostic in the
-  private learning-design report for the exact draft, source, and learning-map
-  revisions. Saving invalidates acknowledgement; publication revalidates it.
-  The report is not learner content and acknowledgement makes no efficacy claim.
+- A generated canvas may become ready only after deterministic learning-design
+  defects have passed validation or targeted repair. Professor approval confirms
+  the intended outcome and editable learning plan for the exact draft, source,
+  report, and learning-map revisions; professors do not acknowledge generator
+  diagnostics as a separate publication task.
 - Canvas commands may focus sections, highlight specific blocks or phrases, and
   append/update learner-specific Markdown sections.
 - Infographic requests may call the backend image-generation tool. Provider

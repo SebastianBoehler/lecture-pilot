@@ -226,17 +226,16 @@ def _generated_document(section_count: int) -> CanvasDocument:
             )
             for block_index in range(1, 5)
         ]
-        if index == 1:
-            blocks.append(
-                CanvasBlock(
-                    id="opening-check",
-                    type="checkpoint",
-                    text=(
-                        "Explain how evidence changes the posterior decision and identify "
-                        "one failure mode."
-                    ),
-                )
+        blocks.append(
+            CanvasBlock(
+                id=f"learning-{index}-check",
+                type="checkpoint",
+                text=(
+                    f"Explain how the mechanism for topic {index} follows from the evidence "
+                    "and identify one failure mode."
+                ),
             )
+        )
         if index == 2 or index == section_count:
             blocks.append(
                 CanvasBlock(
@@ -285,7 +284,14 @@ class _FallbackPlanClient:
                         {
                             "type": "paragraph",
                             "text": "A source-grounded explanation of this learning topic.",
-                        }
+                        },
+                        {
+                            "type": "checkpoint",
+                            "text": (
+                                "Explain how this learning topic follows from the evidence "
+                                "and identify one consequence."
+                            ),
+                        },
                     ],
                 }
             ]

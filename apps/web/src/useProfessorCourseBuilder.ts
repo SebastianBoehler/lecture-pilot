@@ -104,6 +104,7 @@ export function useProfessorCourseBuilder({
   const [draftReviewed, setDraftReviewed] = useState(false);
   const [generationProgress, setGenerationProgress] = useState<CanvasGenerationProgress[]>([]);
   const [generationWarnings, setGenerationWarnings] = useState<string[]>([]);
+  const [retryingLectureIds, setRetryingLectureIds] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState(savedFlow.query);
   const [videos, setVideos] = useState<YoutubeVideoCandidate[]>([]);
   const [suggestedVideoGroups, setSuggestedVideoGroups] = useState<YoutubeCandidateGroup[]>([]);
@@ -345,6 +346,7 @@ export function useProfessorCourseBuilder({
     setDraftReviewed(false);
     setGenerationProgress([]);
     setGenerationWarnings([]);
+    setRetryingLectureIds(new Set());
     setVideos([]);
     setSuggestedVideoGroups([]);
     suggestedSearchGeneration.current += 1;
@@ -426,6 +428,26 @@ export function useProfessorCourseBuilder({
     }
   }
 
+  async function retryCanvas(lectureId: string) {
+    if (retryingLectureIds.has(lectureId)) return;
+    setRetryingLectureIds((current) => new Set(current).add(lectureId));
+    setError(null);
+    try {
+      const activeWorkspace = requireWorkspace(workspace);
+      const repair =
+        generationProgress.find((item) => item.lectureId === lectureId)?.errorKind === "repair";
+      await generateCanvases(activeWorkspace.courseId, [lectureId], { repair });
+    } catch (retryError) {
+      setError(retryError instanceof Error ? retryError.message : "Canvas retry failed.");
+    } finally {
+      setRetryingLectureIds((current) => {
+        const next = new Set(current);
+        next.delete(lectureId);
+        return next;
+      });
+    }
+  }
+
   async function restoreFromBackend(
     targetWorkspace: { courseId: string; lectureId: string } | null,
     options: { quietDraftMiss?: boolean; skipWhenMissing?: boolean } = {},
@@ -440,7 +462,6 @@ export function useProfessorCourseBuilder({
       setBundle(restoredBundle);
       setSupportedUploads(restoredBundle.supported_uploads ?? []);
       const restoredLectures = await getCourseLectures(targetWorkspace.courseId, session);
-      const restoredRouting = await sourceRouting.load(targetWorkspace.courseId);
       setWorkspaceLectures(restoredLectures);
       setWorkspaceCourse(
         (current) => current ?? courseFromSetup(targetWorkspace.courseId, setup, session),
@@ -448,8 +469,20 @@ export function useProfessorCourseBuilder({
       if (setup.target === "full-course" && !lectureSchedule.length) {
         setLectureSchedule(restoredLectures.map(scheduleItemFromLecture));
       }
+      if (setup.target === "full-course") setScheduleApplied(restoredLectures.length > 0);
+      let restoredRouting;
+      try {
+        restoredRouting = await sourceRouting.load(targetWorkspace.courseId);
+      } catch (routingError) {
+        setActiveStep("sources");
+        setError(
+          routingError instanceof Error
+            ? routingError.message
+            : "Source assignments failed to load.",
+        );
+        return;
+      }
       if (setup.target === "full-course") {
-        setScheduleApplied(restoredLectures.length > 0);
         const restoredDrafts = await restoreFullCourseCanvasDrafts({
           courseId: targetWorkspace.courseId,
           lectureIds: restoredLectures.map((lecture) => lecture.id),
@@ -597,8 +630,8 @@ export function useProfessorCourseBuilder({
         setWorkspaceLectures(created.lectures);
         resetGeneratedState();
         setScheduleApplied(true);
-        await sourceRouting.load(created.course.id);
         setActiveStep("sources");
+        await sourceRouting.load(created.course.id);
         return `Lecture schedule applied with ${created.lectures.length} dated lectures.`;
       }),
   };
@@ -610,6 +643,7 @@ export function useProfessorCourseBuilder({
     generatedCount: generatedLectureIds.length,
     isFullCourse: setup.target === "full-course",
     isGenerating: pendingAction === "generate",
+    retryingLectureIds,
     onContinueToPublish: () => {
       setDraftReviewed(true);
       setActiveStep("publish");
@@ -629,15 +663,7 @@ export function useProfessorCourseBuilder({
             ]
           : [],
     totalCount: fullCourseLectureIds.length,
-    onRetry: (lectureId: string) =>
-      run("generate", async () => {
-        const activeWorkspace = requireWorkspace(workspace);
-        const repair =
-          generationProgress.find((item) => item.lectureId === lectureId)?.errorKind === "repair";
-        const canvases = await generateCanvases(activeWorkspace.courseId, [lectureId], { repair });
-        if (!canvases) return;
-        return `${lectureId.replace("lecture-", "Lecture ")} canvas is ready to review.`;
-      }),
+    onRetry: (lectureId: string) => void retryCanvas(lectureId),
     onGenerate: () =>
       run("generate", async () => {
         const activeWorkspace = requireWorkspace(workspace);

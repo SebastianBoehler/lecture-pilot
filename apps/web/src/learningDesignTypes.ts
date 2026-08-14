@@ -126,5 +126,4 @@ export type LearningDesignApprovalInput = Pick<
   "draft_digest" | "source_revision" | "learning_map_revision"
 > & {
   report_revision: string;
-  acknowledged_warning_ids: string[];
 };

@@ -32,7 +32,6 @@ def test_put_and_approve_reject_a_stale_learning_map_revision(tmp_path: Path) ->
             "source_revision": initial["source_revision"],
             "learning_map_revision": initial["learning_map"]["revision"],
             "report_revision": initial["report"]["report_revision"],
-            "acknowledged_warning_ids": [item["id"] for item in initial["report"]["diagnostics"]],
         },
     )
 

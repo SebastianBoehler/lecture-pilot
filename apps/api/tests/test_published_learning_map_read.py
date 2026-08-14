@@ -40,9 +40,6 @@ def test_learning_map_get_reads_the_approved_published_snapshot_without_rewritin
             "source_revision": changed.json()["source_revision"],
             "learning_map_revision": changed.json()["learning_map"]["revision"],
             "report_revision": changed.json()["report"]["report_revision"],
-            "acknowledged_warning_ids": [
-                item["id"] for item in changed.json()["report"]["diagnostics"]
-            ],
         },
     )
     assert approved.status_code == 200

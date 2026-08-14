@@ -73,11 +73,7 @@ async def test_course_planner_restyles_source_evidence(monkeypatch) -> None:
         for item in document.sections
         if any(block.type in {"checkpoint", "quiz"} for block in item.blocks)
     ]
-    assert assessment_sections == [
-        "bayes-decision-workflow",
-        "learning-topic-6",
-        "learning-topic-8",
-    ]
+    assert assessment_sections == [section.id for section in document.sections]
     authored_checkpoint = next(block for block in section.blocks if block.type == "checkpoint")
     assert authored_checkpoint.caption == "Decision workflow check"
     final_quiz = next(block for block in document.sections[-1].blocks if block.type == "quiz")
@@ -208,6 +204,13 @@ class _FakePlanClient:
                             "grounded in the source section and prepares a later quality gate."
                         ),
                     },
+                    {
+                        "type": "checkpoint",
+                        "text": (
+                            f"Explain how the mechanism in topic {index} changes the final "
+                            "decision and identify one failure case."
+                        ),
+                    },
                 ],
             }
             for index in range(2, 9)
@@ -251,6 +254,13 @@ class _FakePlanClient:
                         "A useful learner check is to take one short spam sentence and identify which "
                         "tokens remain after lowercasing, stemming, and stop-word removal. This connects "
                         "the source slides to the later probability estimates used by Naive Bayes."
+                    ),
+                },
+                {
+                    "type": "checkpoint",
+                    "text": (
+                        "Apply lowercasing, stemming, and stop-word removal to a short spam "
+                        "sentence and list the remaining tokens."
                     ),
                 },
             ],

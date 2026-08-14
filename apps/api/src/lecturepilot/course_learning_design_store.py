@@ -97,7 +97,6 @@ class CourseLearningDesignStore:
         source_revision: str,
         learning_map_revision: str,
         report_revision: str,
-        acknowledged_warning_ids: list[str],
         approved_by: str,
     ) -> LearningDesignReview:
         with self._locked_draft(course_id, lecture_id) as draft_dir:
@@ -108,12 +107,7 @@ class CourseLearningDesignStore:
                 source_revision,
                 learning_map_revision,
             )
-            _require_report_acknowledgements(
-                current,
-                report_revision=report_revision,
-                acknowledged_warning_ids=acknowledged_warning_ids,
-            )
-            warning_ids = [item.id for item in current.report.diagnostics]
+            _require_report_revision(current, report_revision=report_revision)
             approval = LearningDesignApproval(
                 approved_by=approved_by,
                 approved_at=datetime.now(UTC),
@@ -121,7 +115,7 @@ class CourseLearningDesignStore:
                 source_revision=current.source_revision,
                 learning_map_revision=current.learning_map.revision,
                 report_revision=current.report.report_revision,
-                acknowledged_warning_ids=warning_ids,
+                acknowledged_warning_ids=[],
             )
             approved = current.model_copy(update={"approval": approval})
             _write_review(review_path(draft_dir), approved)
@@ -175,7 +169,6 @@ def approved_learning_design(
         or approval.source_revision != current.source_revision
         or approval.learning_map_revision != current.learning_map.revision
         or approval.report_revision != current.report.report_revision
-        or approval.acknowledged_warning_ids != [item.id for item in current.report.diagnostics]
     ):
         raise LearningDesignApprovalRequiredError(
             "Approve the current learning design before publishing this draft."
@@ -243,20 +236,14 @@ def _require_request_version(
         )
 
 
-def _require_report_acknowledgements(
+def _require_report_revision(
     review: LearningDesignReview,
     *,
     report_revision: str,
-    acknowledged_warning_ids: list[str],
 ) -> None:
-    current_ids = [item.id for item in review.report.diagnostics]
-    if len(acknowledged_warning_ids) != len(set(acknowledged_warning_ids)):
-        raise LearningDesignStaleError("Warning acknowledgements contain duplicate IDs.")
-    if report_revision != review.report.report_revision or set(acknowledged_warning_ids) != set(
-        current_ids
-    ):
+    if report_revision != review.report.report_revision:
         raise LearningDesignStaleError(
-            "Acknowledge every current warning for this exact draft before approval."
+            "The learning-design report changed. Reload the current draft before approval."
         )
 
 

@@ -36,6 +36,7 @@ export function ProfessorSourceRoutingStep({
     label: `${lecture.number} · ${lecture.title}`,
   }));
   const routes = useMemo(() => routing?.routes ?? [], [routing?.routes]);
+  const routingMissing = routing === null;
   const counts = useMemo(() => sourceRouteCounts(routes), [routes]);
   const lectureCounts = useMemo(() => lectureRouteCounts(routes), [routes]);
   const coveredLectures = lectureOptions.filter(
@@ -69,16 +70,22 @@ export function ProfessorSourceRoutingStep({
         <button
           className="primary-action"
           disabled={
-            !routes.length || Boolean(routing?.confirmed) || isSaving || supplementalBlindSpot
+            isSaving ||
+            (!routingMissing &&
+              (!routes.length || Boolean(routing?.confirmed) || supplementalBlindSpot))
           }
           type="button"
-          onClick={onConfirm}
+          onClick={routingMissing ? onRegenerate : onConfirm}
         >
-          {routing?.confirmed
-            ? t("builder.sources.confirmed")
-            : isSaving
-              ? t("builder.sources.confirming")
-              : t("builder.sources.confirm")}
+          {routingMissing
+            ? isSaving
+              ? t("builder.sources.retrying")
+              : t("builder.sources.retry")
+            : routing?.confirmed
+              ? t("builder.sources.confirmed")
+              : isSaving
+                ? t("builder.sources.confirming")
+                : t("builder.sources.confirm")}
         </button>
       </div>
       {supplementalBlindSpot ? (

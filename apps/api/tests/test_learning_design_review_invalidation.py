@@ -22,7 +22,6 @@ def test_regeneration_and_source_change_invalidate_approval(tmp_path: Path) -> N
             "source_revision": review["source_revision"],
             "learning_map_revision": review["learning_map"]["revision"],
             "report_revision": review["report"]["report_revision"],
-            "acknowledged_warning_ids": [item["id"] for item in review["report"]["diagnostics"]],
         },
     )
     assert approved.status_code == 200
@@ -48,7 +47,6 @@ def test_regeneration_and_source_change_invalidate_approval(tmp_path: Path) -> N
             "source_revision": current["source_revision"],
             "learning_map_revision": current["learning_map"]["revision"],
             "report_revision": current["report"]["report_revision"],
-            "acknowledged_warning_ids": [item["id"] for item in current["report"]["diagnostics"]],
         },
     )
     assert approved_again.status_code == 200

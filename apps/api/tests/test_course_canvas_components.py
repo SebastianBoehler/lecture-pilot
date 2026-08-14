@@ -150,7 +150,13 @@ class _CatalogAwarePlanClient:
         if not all(term in instruction for term in ("interactive_chart", "scatter", "heatmap")):
             return {
                 "title": "Bayesian update",
-                "blocks": [{"type": "paragraph", "text": "No component catalogue received."}],
+                "blocks": [
+                    {"type": "paragraph", "text": "No component catalogue received."},
+                    {
+                        "type": "checkpoint",
+                        "text": "Explain how evidence changes the posterior probability.",
+                    },
+                ],
             }
         return {
             "title": "Bayesian update",
@@ -182,7 +188,11 @@ class _CatalogAwarePlanClient:
                         ],
                         "steps": [],
                     },
-                }
+                },
+                {
+                    "type": "checkpoint",
+                    "text": "Explain how stronger evidence changes the posterior probability.",
+                },
             ],
         }
 

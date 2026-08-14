@@ -7,82 +7,22 @@ import { ProfessorLearningDesignReview } from "./ProfessorLearningDesignReview";
 
 const ReviewComponent = ProfessorLearningDesignReview as ComponentType<Record<string, unknown>>;
 
-describe("professor learning-design findings", () => {
-  it("shows actionable findings without internal coverage or coordinates", () => {
-    renderReview(reportReview());
-
-    expect(screen.getByRole("heading", { name: "Review findings" })).toBeInTheDocument();
-    expect(
-      screen.getByText(/these automatic checks flag possible gaps; they do not change the draft/i),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Practice has no checkpoint or quiz.")).toBeInTheDocument();
-    expect(
-      screen.getByText("Add a source-backed checkpoint or quiz to this section."),
-    ).toBeInTheDocument();
-    expect(
-      screen.getAllByRole("checkbox", { name: "I reviewed this finding in the learner preview." }),
-    ).toHaveLength(2);
-    expect(screen.queryByText(/open-answer checkpoint coverage/i)).not.toBeInTheDocument();
-    expect(
-      screen.queryByText("Section practice · Assessment practice-quiz"),
-    ).not.toBeInTheDocument();
-  });
-
-  it("blocks approval until every exact warning is acknowledged and sends canonical IDs", () => {
-    let approval: { lectureId: string; warningIds: string[] } | null = null;
+describe("professor learning-design approval", () => {
+  it("keeps generator diagnostics out of the review and approves the exact design directly", () => {
+    let approvedLectureId = "";
     renderReview(reportReview(), {
-      onApprove: (lectureId: string, warningIds: string[]) => {
-        approval = { lectureId, warningIds };
-      },
+      onApprove: (lectureId: string) => (approvedLectureId = lectureId),
     });
     const approve = screen.getByRole("button", { name: "Approve learning design" });
-    const acknowledgements = screen.getAllByRole("checkbox");
 
-    expect(approve).toBeDisabled();
-    fireEvent.click(acknowledgements[0]);
-    expect(approve).toBeDisabled();
-    fireEvent.click(acknowledgements[1]);
+    expect(screen.queryByRole("heading", { name: "Review findings" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Practice has no checkpoint or quiz.")).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     expect(approve).toBeEnabled();
-    expect(screen.getByText("All findings reviewed for this exact draft.")).toBeInTheDocument();
     fireEvent.click(approve);
-
-    expect(approval).toEqual({
-      lectureId: "lecture-01",
-      warningIds: [
-        "concept_without_assessment:a".padEnd(91, "a"),
-        "assessment_section_source_missing:b".padEnd(101, "b"),
-      ],
-    });
-  });
-
-  it("resets acknowledgements on save, report, identity, and stale-operation changes", () => {
-    const initial = reportReview();
-    const view = renderReview(initial, { acknowledgementResetKey: "identity-a:0" });
-    acknowledgeAll();
-    expect(screen.getByRole("button", { name: "Approve learning design" })).toBeEnabled();
-
-    view.rerender(element(initial, { acknowledgementResetKey: "identity-a:1" }));
-    expect(screen.getByRole("button", { name: "Approve learning design" })).toBeDisabled();
-    acknowledgeAll();
-
-    const revised = reportReview();
-    revised.report.report_revision = "r".repeat(64);
-    view.rerender(element(revised, { acknowledgementResetKey: "identity-a:1" }));
-    expect(screen.getByRole("button", { name: "Approve learning design" })).toBeDisabled();
-    acknowledgeAll();
-
-    view.rerender(element(revised, { acknowledgementResetKey: "identity-b:0" }));
-    expect(screen.getByRole("button", { name: "Approve learning design" })).toBeDisabled();
-    acknowledgeAll();
-
-    view.rerender(element(revised, { acknowledgementResetKey: "identity-b:stale" }));
-    expect(screen.getByRole("button", { name: "Approve learning design" })).toBeDisabled();
+    expect(approvedLectureId).toBe("lecture-01");
   });
 });
-
-function acknowledgeAll() {
-  for (const checkbox of screen.getAllByRole("checkbox")) fireEvent.click(checkbox);
-}
 
 function renderReview(
   review: ReturnType<typeof reportReview>,

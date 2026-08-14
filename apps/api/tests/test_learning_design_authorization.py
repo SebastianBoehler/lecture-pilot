@@ -59,9 +59,6 @@ def test_learning_design_review_is_private_to_the_owner_professor(tmp_path: Path
             "source_revision": owner_review.json()["source_revision"],
             "learning_map_revision": owner_review.json()["learning_map"]["revision"],
             "report_revision": owner_review.json()["report"]["report_revision"],
-            "acknowledged_warning_ids": [
-                item["id"] for item in owner_review.json()["report"]["diagnostics"]
-            ],
         },
     )
 

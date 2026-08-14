@@ -16,6 +16,7 @@ from lecturepilot.course_canvas_validation import validate_planned_document
 from lecturepilot.course_slide_interleaving import interleave_original_slides
 from lecturepilot.course_planner_warnings import planned_payload
 from lecturepilot.model_client import ModelExecutionError
+from lecturepilot.model_provider_errors import model_provider_error_message
 from lecturepilot.model_request_options import completion_options
 from lecturepilot.model_usage import ModelUsageRecorder, complete_with_usage
 from lecturepilot.models import ProviderCapability, ProviderSettings
@@ -63,9 +64,17 @@ class LiteLLMCoursePlanClient:
                 **completion_options(settings, temperature=temperature, max_tokens=6000),
             )
         except Exception as exc:
-            raise ModelExecutionError("Course planner model request failed.") from exc
+            raise ModelExecutionError(
+                model_provider_error_message(exc, provider=settings.provider)
+            ) from exc
         content = response.choices[0].message.content
         finish_reason = str(getattr(response.choices[0], "finish_reason", "") or "")
+        if not content:
+            refusal = getattr(response.choices[0].message, "refusal", None)
+            detail = f"finish_reason={finish_reason or 'unknown'}"
+            if refusal:
+                detail += ", refusal=true"
+            raise ModelExecutionError(f"Course planner returned an empty response ({detail}).")
         return planned_payload(parse_model_json(content), finish_reason=finish_reason)
 
 

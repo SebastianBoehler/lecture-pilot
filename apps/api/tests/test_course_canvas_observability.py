@@ -174,7 +174,11 @@ class _RepairingSectionPlanClient:
                         {
                             "type": "paragraph",
                             "text": "A source-grounded explanation of risk.",
-                        }
+                        },
+                        {
+                            "type": "checkpoint",
+                            "text": "Explain how the risk mechanism changes the decision.",
+                        },
                     ],
                 }
             ]

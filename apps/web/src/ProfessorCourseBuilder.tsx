@@ -79,17 +79,8 @@ export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
               <ProfessorCanvasDraftStep
                 {...builder.generateStep}
                 learningDesignReviews={learningDesign.reviews}
-                learningDesignAcknowledgementKey={JSON.stringify([
-                  props.session.tenant_id ?? "",
-                  props.session.username,
-                  builder.workspace?.courseId ?? "",
-                  learningDesign.saving,
-                  learningDesign.error,
-                ])}
                 learningDesignSaving={learningDesign.saving}
-                onApproveLearningDesign={(lectureId, warningIds) =>
-                  void learningDesign.approve(lectureId, warningIds)
-                }
+                onApproveLearningDesign={(lectureId) => void learningDesign.approve(lectureId)}
                 onSaveLearningDesign={(lectureId, update) =>
                   void learningDesign.save(lectureId, update)
                 }

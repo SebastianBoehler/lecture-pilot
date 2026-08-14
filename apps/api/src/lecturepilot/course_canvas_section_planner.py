@@ -26,6 +26,7 @@ from lecturepilot.course_canvas_validation import (
     validate_section_assessments,
 )
 from lecturepilot.model_client import ModelExecutionError
+from lecturepilot.model_provider_errors import is_retryable_provider_error
 from lecturepilot.models import ProviderSettings
 from lecturepilot.observability import Observability
 from lecturepilot.providers import ProviderConfigurationError
@@ -114,7 +115,18 @@ async def _plan_section(
                 return SectionPlanResult(section)
         except ModelExecutionError as exc:
             last_error = exc
-            continue
+            if exc.__cause__ is not None and not is_retryable_provider_error(exc.__cause__):
+                raise
+            messages = [
+                *messages,
+                {
+                    "role": "user",
+                    "content": (
+                        f"The previous response failed: {exc} "
+                        "Return a non-empty JSON section matching the required schema."
+                    ),
+                },
+            ]
         except ProviderConfigurationError as exc:
             if section is not None or last_candidate is None:
                 last_error = exc

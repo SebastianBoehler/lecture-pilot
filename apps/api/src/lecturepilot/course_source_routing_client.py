@@ -8,6 +8,7 @@ from lecturepilot.agent_response_schema import (
 )
 from lecturepilot.course_canvas_json import parse_model_json
 from lecturepilot.model_client import ModelExecutionError
+from lecturepilot.model_provider_errors import model_provider_error_message
 from lecturepilot.model_request_options import completion_options
 from lecturepilot.model_usage import ModelUsageRecorder, complete_with_usage
 from lecturepilot.models import ProviderSettings
@@ -68,8 +69,10 @@ class LiteLLMSourceRoutingClient:
                 model=settings.model,
                 messages=messages,
                 response_format=response_format,
-                **completion_options(settings, temperature=0.1, max_tokens=8000),
+                **completion_options(settings, temperature=0.4, max_tokens=8000),
             )
         except Exception as exc:
-            raise ModelExecutionError("Source-routing model request failed.") from exc
+            raise ModelExecutionError(
+                model_provider_error_message(exc, provider=settings.provider)
+            ) from exc
         return parse_model_json(response.choices[0].message.content)

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useI18n } from "./i18n";
 import type { LearningDesignReview, LearningDesignUpdate } from "./learningDesignTypes";
@@ -10,7 +10,6 @@ export function ProfessorCanvasReviewWorkspace({
   canContinue,
   lectures,
   learningDesignReviews,
-  learningDesignAcknowledgementKey,
   learningDesignSaving,
   onApproveLearningDesign,
   onContinueToPublish,
@@ -19,18 +18,24 @@ export function ProfessorCanvasReviewWorkspace({
   canContinue: boolean;
   lectures: PreviewLecture[];
   learningDesignReviews: Record<string, LearningDesignReview>;
-  learningDesignAcknowledgementKey: string;
   learningDesignSaving: boolean;
-  onApproveLearningDesign: (lectureId: string, acknowledgedWarningIds: string[]) => void;
+  onApproveLearningDesign: (lectureId: string) => void;
   onContinueToPublish: () => void;
   onSaveLearningDesign: (lectureId: string, update: LearningDesignUpdate) => void;
 }) {
   const { t } = useI18n();
   const [openDesignId, setOpenDesignId] = useState("");
+  const pendingApprovalId = useRef("");
   const approvedCount = useMemo(
     () => lectures.filter((lecture) => learningDesignReviews[lecture.id]?.approval).length,
     [lectures, learningDesignReviews],
   );
+  useEffect(() => {
+    const lectureId = pendingApprovalId.current;
+    if (!lectureId || !learningDesignReviews[lectureId]?.approval) return;
+    setOpenDesignId((current) => (current === lectureId ? "" : current));
+    pendingApprovalId.current = "";
+  }, [learningDesignReviews]);
 
   return (
     <section className="draft-review" aria-label={t("builder.generate.review")}>
@@ -99,11 +104,13 @@ export function ProfessorCanvasReviewWorkspace({
                 <div className="draft-design-panel" id={panelId}>
                   {review ? (
                     <ProfessorLearningDesignReview
-                      acknowledgementResetKey={learningDesignAcknowledgementKey}
                       lectureId={lecture.id}
                       review={review}
                       saving={learningDesignSaving}
-                      onApprove={onApproveLearningDesign}
+                      onApprove={(lectureId) => {
+                        pendingApprovalId.current = lectureId;
+                        onApproveLearningDesign(lectureId);
+                      }}
                       onSave={onSaveLearningDesign}
                     />
                   ) : (

@@ -2,7 +2,13 @@ from datetime import date
 
 import pytest
 
-from lecturepilot.lecture_schedule_planner import _read_proposal, _source_evidence
+from lecturepilot.lecture_schedule_planner import (
+    LiteLLMScheduleClient,
+    _read_proposal,
+    _source_evidence,
+)
+from lecturepilot.model_client import ModelExecutionError
+from lecturepilot.models import ProviderCapability, ProviderSettings
 from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.source_bundle import SourceBundleFile
 
@@ -93,3 +99,37 @@ def test_schedule_contract_rejects_duplicate_lecture_numbers() -> None:
             "nlp",
             files,
         )
+
+
+@pytest.mark.asyncio
+async def test_schedule_client_reports_exhausted_provider_credits(monkeypatch) -> None:
+    async def completion(**_kwargs):
+        raise _QuotaError(
+            "You have no credits remaining.",
+            code="credit_balance_exhausted",
+        )
+
+    monkeypatch.setattr("litellm.acompletion", completion)
+    settings = ProviderSettings(
+        provider="openai",
+        model="openai/gpt-5.6-luna",
+        api_key_env="OPENAI_API_KEY",
+        capabilities={ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON},
+    )
+
+    with pytest.raises(
+        ModelExecutionError,
+        match=(
+            "OpenAI API credits are exhausted. Add credits to the configured "
+            "provider account, then retry this request."
+        ),
+    ):
+        await LiteLLMScheduleClient().complete_schedule(settings=settings, messages=[])
+
+
+class _QuotaError(RuntimeError):
+    status_code = 429
+
+    def __init__(self, message: str, *, code: str) -> None:
+        super().__init__(message)
+        self.code = code

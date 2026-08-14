@@ -27,6 +27,36 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
     expect(screen.getByLabelText("Generation timing")).not.toHaveTextContent("up to 3");
   });
 
+  it("keeps failed lectures retryable while other canvas work is running", () => {
+    renderStep({
+      generationProgress: [
+        { lectureId: "lecture-05", status: "error" },
+        { lectureId: "lecture-07", status: "error" },
+      ],
+      isFullCourse: true,
+      isGenerating: true,
+      totalCount: 14,
+    });
+
+    expect(screen.getByRole("button", { name: "Retry Lecture 05" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Retry Lecture 07" })).toBeEnabled();
+  });
+
+  it("disables only the lecture whose retry is being submitted", () => {
+    renderStep({
+      generationProgress: [
+        { lectureId: "lecture-05", status: "error" },
+        { lectureId: "lecture-07", status: "error" },
+      ],
+      isFullCourse: true,
+      retryingLectureIds: new Set(["lecture-05"]),
+      totalCount: 14,
+    });
+
+    expect(screen.getByRole("button", { name: "Retry Lecture 05" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Retry Lecture 07" })).toBeEnabled();
+  });
+
   it("keeps publishing blocked while the exact draft learning design is unapproved", () => {
     const onContinueToPublish = vi.fn();
     renderStep({
@@ -44,12 +74,10 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
     expect(
       screen.getByText(/start with the learner preview, then confirm the intended outcome/i),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("checkbox", { name: "I reviewed this finding in the learner preview." }),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     expect(screen.queryByText("lecture.md#mechanism")).not.toBeInTheDocument();
     expect(screen.queryByText(/open-answer checkpoint coverage/i)).not.toBeInTheDocument();
-    expect(screen.getByText("Practice has no checkpoint or quiz.")).toBeInTheDocument();
+    expect(screen.queryByText("Practice has no checkpoint or quiz.")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continue to publishing" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Continue to publishing" }));
     expect(onContinueToPublish).not.toHaveBeenCalled();
@@ -94,11 +122,8 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
         onSaveLearningDesign,
       }),
     );
-    fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "Approve learning design" }));
-    expect(onApproveLearningDesign).toHaveBeenCalledWith("lecture-01", [
-      `concept_without_assessment:${"a".repeat(64)}`,
-    ]);
+    expect(onApproveLearningDesign).toHaveBeenCalledWith("lecture-01");
 
     rerender(
       step(learningDesignReview("prof01"), {
@@ -109,6 +134,33 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Continue to publishing" }));
     expect(onContinueToPublish).toHaveBeenCalledOnce();
+  });
+
+  it("collapses a completed review and keeps the approved state when reopened", () => {
+    const onApproveLearningDesign = vi.fn();
+    const { rerender } = renderStep({
+      isFullCourse: false,
+      totalCount: 1,
+      onApproveLearningDesign,
+      review: learningDesignReview(null),
+    });
+
+    openLearningDesign();
+    fireEvent.click(screen.getByRole("button", { name: "Approve learning design" }));
+
+    rerender(
+      step(learningDesignReview("prof01"), {
+        onApproveLearningDesign,
+        onContinueToPublish: vi.fn(),
+        onSaveLearningDesign: vi.fn(),
+      }),
+    );
+
+    expect(
+      screen.queryByRole("heading", { name: "Learning design review" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /review learning design for/i }));
+    expect(screen.getByRole("button", { name: "Learning design approved" })).toBeDisabled();
   });
 
   it("does not approve local edits until the exact changes are saved", () => {
@@ -147,6 +199,8 @@ function renderStep({
   onSaveLearningDesign = vi.fn(),
   review = null,
   generationProgress = [],
+  isGenerating = false,
+  retryingLectureIds = new Set(),
 }: {
   isFullCourse: boolean;
   totalCount: number;
@@ -159,6 +213,8 @@ function renderStep({
     message?: string;
     status: "pending" | "generating" | "ready" | "error";
   }>;
+  isGenerating?: boolean;
+  retryingLectureIds?: ReadonlySet<string>;
 }) {
   return render(
     step(
@@ -167,6 +223,8 @@ function renderStep({
       {
         generationProgress,
         isFullCourse,
+        isGenerating,
+        retryingLectureIds,
         totalCount,
       },
     ),
@@ -187,6 +245,8 @@ function step(
       status: "pending" | "generating" | "ready" | "error";
     }>;
     isFullCourse?: boolean;
+    isGenerating?: boolean;
+    retryingLectureIds?: ReadonlySet<string>;
     totalCount?: number;
   } = {},
 ) {
@@ -198,14 +258,14 @@ function step(
         generatedCount={0}
         generationProgress={overrides.generationProgress ?? []}
         isFullCourse={overrides.isFullCourse ?? false}
-        isGenerating={false}
+        isGenerating={overrides.isGenerating ?? false}
         learningDesignReviews={review ? { "lecture-01": review } : {}}
-        learningDesignAcknowledgementKey="professor:course-1:0"
         learningDesignSaving={false}
         onApproveLearningDesign={actions.onApproveLearningDesign}
         onContinueToPublish={actions.onContinueToPublish}
         onGenerate={vi.fn()}
         onRetry={vi.fn()}
+        retryingLectureIds={overrides.retryingLectureIds ?? new Set()}
         onSaveLearningDesign={actions.onSaveLearningDesign}
         previewLectures={
           review

@@ -13,7 +13,6 @@ export function ProfessorCanvasDraftStep({
   isFullCourse,
   isGenerating,
   learningDesignReviews,
-  learningDesignAcknowledgementKey,
   learningDesignSaving,
   onApproveLearningDesign,
   onContinueToPublish,
@@ -21,6 +20,7 @@ export function ProfessorCanvasDraftStep({
   onRetry,
   onSaveLearningDesign,
   previewLectures,
+  retryingLectureIds = new Set(),
   totalCount,
 }: {
   canvas: CanvasDocument | null;
@@ -30,9 +30,8 @@ export function ProfessorCanvasDraftStep({
   isFullCourse: boolean;
   isGenerating: boolean;
   learningDesignReviews: Record<string, LearningDesignReview>;
-  learningDesignAcknowledgementKey: string;
   learningDesignSaving: boolean;
-  onApproveLearningDesign: (lectureId: string, acknowledgedWarningIds: string[]) => void;
+  onApproveLearningDesign: (lectureId: string) => void;
   onContinueToPublish: () => void;
   onGenerate: () => void;
   onRetry: (lectureId: string) => void;
@@ -42,6 +41,7 @@ export function ProfessorCanvasDraftStep({
     label: string;
     previewHref: string;
   }[];
+  retryingLectureIds?: ReadonlySet<string>;
   totalCount: number;
 }) {
   const { t } = useI18n();
@@ -84,9 +84,9 @@ export function ProfessorCanvasDraftStep({
       {isGenerating ? <PendingStatus label={statusLabel} /> : null}
       {generationProgress.length ? (
         <GenerationProgressList
-          isGenerating={isGenerating}
           onRetry={onRetry}
           progress={generationProgress}
+          retryingLectureIds={retryingLectureIds}
         />
       ) : null}
       {hasDraft && isFullCourse ? (
@@ -104,7 +104,6 @@ export function ProfessorCanvasDraftStep({
           }
           lectures={previewLectures}
           learningDesignReviews={learningDesignReviews}
-          learningDesignAcknowledgementKey={learningDesignAcknowledgementKey}
           learningDesignSaving={learningDesignSaving}
           onApproveLearningDesign={onApproveLearningDesign}
           onContinueToPublish={onContinueToPublish}
@@ -116,13 +115,13 @@ export function ProfessorCanvasDraftStep({
 }
 
 function GenerationProgressList({
-  isGenerating,
   onRetry,
   progress,
+  retryingLectureIds,
 }: {
-  isGenerating: boolean;
   onRetry: (lectureId: string) => void;
   progress: CanvasGenerationProgress[];
+  retryingLectureIds: ReadonlySet<string>;
 }) {
   const { t } = useI18n();
   const hasErrors = progress.some((item) => item.status === "error");
@@ -156,7 +155,7 @@ function GenerationProgressList({
                   canRepair ? "builder.generate.repairLecture" : "builder.generate.retryLecture",
                   { lecture: lectureLabel },
                 )}
-                disabled={isGenerating}
+                disabled={retryingLectureIds.has(item.lectureId)}
                 type="button"
                 onClick={() => onRetry(item.lectureId)}
               >

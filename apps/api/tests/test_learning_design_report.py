@@ -155,7 +155,7 @@ def test_document_source_does_not_mask_missing_local_assessment_sources() -> Non
     assert any(item.code == "no_source_backed_assessment" for item in report.diagnostics)
 
 
-def test_report_identifies_unassessed_concepts_late_examples_and_linear_prerequisites() -> None:
+def test_report_identifies_unassessed_concepts_and_late_examples_without_sequence_noise() -> None:
     document = _document(
         CanvasSection(
             id="first",
@@ -182,9 +182,7 @@ def test_report_identifies_unassessed_concepts_late_examples_and_linear_prerequi
         "worked-example-late"
     )
     assert by_code["worked_example_after_assessment"].coordinates.assessment_id == "second-check"
-    prerequisite = by_code["inferred_linear_prerequisite"]
-    assert prerequisite.coordinates.section_id == "second"
-    assert prerequisite.coordinates.prerequisite_section_id == "first"
+    assert "inferred_linear_prerequisite" not in by_code
     assert all(item.id.startswith(f"{item.code}:") for item in report.diagnostics)
 
 

@@ -9,38 +9,22 @@ from test_learning_design_review_routes import (
 )
 
 
-def test_approval_requires_the_exact_report_and_diagnostic_set(tmp_path: Path) -> None:
+def test_approval_requires_the_exact_report_without_diagnostic_acknowledgements(
+    tmp_path: Path,
+) -> None:
     client = _client_with_draft(tmp_path)
     review = client.get(_review_path(), headers=professor_headers()).json()
     assert "report" in review
     warning_ids = [item["id"] for item in review["report"]["diagnostics"]]
     assert warning_ids
 
-    payload = _approval_payload(review, warning_ids)
-    responses = [
-        client.post(
-            f"{_review_path()}/approve",
-            headers=professor_headers(),
-            json={**payload, "report_revision": "0" * 64},
-        ),
-        client.post(
-            f"{_review_path()}/approve",
-            headers=professor_headers(),
-            json={**payload, "acknowledged_warning_ids": warning_ids[:-1]},
-        ),
-        client.post(
-            f"{_review_path()}/approve",
-            headers=professor_headers(),
-            json={**payload, "acknowledged_warning_ids": [*warning_ids, "unknown-warning"]},
-        ),
-        client.post(
-            f"{_review_path()}/approve",
-            headers=professor_headers(),
-            json={**payload, "acknowledged_warning_ids": [*warning_ids, warning_ids[0]]},
-        ),
-    ]
-
-    assert [response.status_code for response in responses] == [409, 409, 409, 409]
+    payload = _approval_payload(review)
+    stale = client.post(
+        f"{_review_path()}/approve",
+        headers=professor_headers(),
+        json={**payload, "report_revision": "0" * 64},
+    )
+    assert stale.status_code == 409
     approved = client.post(
         f"{_review_path()}/approve",
         headers=professor_headers(),
@@ -49,7 +33,7 @@ def test_approval_requires_the_exact_report_and_diagnostic_set(tmp_path: Path) -
     assert approved.status_code == 200, approved.json()
     approval = approved.json()["approval"]
     assert approval["report_revision"] == review["report"]["report_revision"]
-    assert approval["acknowledged_warning_ids"] == warning_ids
+    assert approval["acknowledged_warning_ids"] == []
 
 
 def test_update_recomputes_the_report_and_publication_keeps_it_private(tmp_path: Path) -> None:
@@ -69,11 +53,10 @@ def test_update_recomputes_the_report_and_publication_keeps_it_private(tmp_path:
     assert current["report"]["learning_map_revision"] == current["learning_map"]["revision"]
     assert current["report"]["report_revision"] != initial["report"]["report_revision"]
 
-    warning_ids = [item["id"] for item in current["report"]["diagnostics"]]
     approved = client.post(
         f"{_review_path()}/approve",
         headers=professor_headers(),
-        json=_approval_payload(current, warning_ids),
+        json=_approval_payload(current),
     )
     assert approved.status_code == 200, approved.json()
     published = client.post(_publish_path(), headers=professor_headers())
@@ -84,11 +67,10 @@ def test_update_recomputes_the_report_and_publication_keeps_it_private(tmp_path:
     assert not (published_dir / "learning-design.json").exists()
 
 
-def _approval_payload(review: dict, warning_ids: list[str]) -> dict:
+def _approval_payload(review: dict) -> dict:
     return {
         "draft_digest": review["draft_digest"],
         "source_revision": review["source_revision"],
         "learning_map_revision": review["learning_map"]["revision"],
         "report_revision": review["report"]["report_revision"],
-        "acknowledged_warning_ids": warning_ids,
     }

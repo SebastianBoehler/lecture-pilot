@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -62,7 +63,7 @@ class LiteLLMCanvasQualityClient:
                 acompletion,
                 model=settings.model,
                 messages=_quality_messages(source_document, candidate_document),
-                response_format=canvas_quality_response_format(),
+                response_format=canvas_quality_response_format(candidate_document),
                 **completion_options(
                     settings,
                     temperature=0.0,
@@ -94,7 +95,7 @@ class CanvasQualityReviewer:
             candidate_document=candidate_document,
         )
         issues = _CanvasQualityPayload.model_validate(payload).issues
-        issues = _normalize_coordinates(issues, candidate_document)
+        issues = _normalize_coordinates(issues, source_document, candidate_document)
         if not issues:
             return
         first = issues[0]
@@ -108,7 +109,9 @@ class CanvasQualityReviewer:
         )
 
 
-def canvas_quality_response_format() -> dict[str, Any]:
+def canvas_quality_response_format(candidate_document: CanvasDocument) -> dict[str, Any]:
+    section_ids = [section.id for section in candidate_document.sections]
+    block_ids = [block.id for section in candidate_document.sections for block in section.blocks]
     return {
         "type": "json_schema",
         "json_schema": {
@@ -124,8 +127,11 @@ def canvas_quality_response_format() -> dict[str, Any]:
                             "type": "object",
                             "additionalProperties": False,
                             "properties": {
-                                "section_id": {"type": "string"},
-                                "block_id": {"type": ["string", "null"]},
+                                "section_id": {"type": "string", "enum": section_ids},
+                                "block_id": {
+                                    "type": ["string", "null"],
+                                    "enum": [None, *block_ids],
+                                },
                                 "reason": {"type": "string"},
                             },
                             "required": ["section_id", "block_id", "reason"],
@@ -182,18 +188,43 @@ def _quality_messages(
 
 def _normalize_coordinates(
     issues: list[CanvasQualityIssue],
-    document: CanvasDocument,
+    source_document: CanvasDocument,
+    candidate_document: CanvasDocument,
 ) -> list[CanvasQualityIssue]:
     blocks_by_section = {
-        section.id: {block.id for block in section.blocks} for section in document.sections
+        section.id: {block.id for block in section.blocks}
+        for section in candidate_document.sections
     }
+    section_aliases = _mirrored_section_aliases(source_document, candidate_document)
     normalized: list[CanvasQualityIssue] = []
     for issue in issues:
-        if issue.section_id not in blocks_by_section:
+        section_id = issue.section_id
+        if section_id not in blocks_by_section:
+            section_id = section_aliases.get(section_id, section_id)
+        if section_id not in blocks_by_section:
             raise ModelExecutionError(
                 f"Canvas quality review returned unknown section {issue.section_id}."
             )
-        if issue.block_id is not None and issue.block_id not in blocks_by_section[issue.section_id]:
-            issue = issue.model_copy(update={"block_id": None})
+        updates: dict[str, str | None] = {}
+        if section_id != issue.section_id:
+            updates["section_id"] = section_id
+        if issue.block_id is not None and issue.block_id not in blocks_by_section[section_id]:
+            updates["block_id"] = None
+        if updates:
+            issue = issue.model_copy(update=updates)
         normalized.append(issue)
     return normalized
+
+
+def _mirrored_section_aliases(
+    source_document: CanvasDocument,
+    candidate_document: CanvasDocument,
+) -> dict[str, str]:
+    candidate_ids = {section.id for section in candidate_document.sections}
+    aliases: dict[str, str] = {}
+    for source_section in source_document.sections:
+        pattern = re.compile(rf"^learning-\d+-{re.escape(source_section.id)}(?:-\d+)?$")
+        matches = [section_id for section_id in candidate_ids if pattern.fullmatch(section_id)]
+        if len(matches) == 1:
+            aliases[source_section.id] = matches[0]
+    return aliases

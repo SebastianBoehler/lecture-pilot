@@ -78,6 +78,20 @@ async def test_section_planner_repairs_an_invalid_checkpoint_before_batch_valida
     assert checkpoint.text == "Explain why predicting a continuous target is a regression task."
 
 
+async def test_section_planner_repairs_a_section_without_an_open_response_check() -> None:
+    client = _QuizOnlySectionClient()
+
+    planned = await plan_sections_individually(
+        model_client=client,
+        settings=_settings(),
+        source_document=_source_document(1),
+    )
+
+    assert client.calls == 2
+    assert "open-response checkpoint" in client.repair_message
+    assert any(block.type == "checkpoint" for block in planned.sections[0].blocks)
+
+
 async def test_course_planner_starts_with_the_bounded_section_outline(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -166,6 +180,26 @@ class _InvalidCheckpointClient:
         return payload
 
 
+class _QuizOnlySectionClient:
+    def __init__(self) -> None:
+        self.calls = 0
+        self.repair_message = ""
+
+    async def complete_plan(self, *, settings, messages):
+        self.calls += 1
+        payload = _section_payload(_source_id(messages))
+        if self.calls == 1:
+            payload["sections"][0]["blocks"][-1] = {
+                "type": "quiz",
+                "text": "Which description matches the posterior-risk mechanism?",
+                "items": ["An unrelated claim.", "The source-backed explanation."],
+                "answer_index": 1,
+            }
+            return payload
+        self.repair_message = messages[-1]["content"]
+        return payload
+
+
 def _source_id(messages: list[dict[str, str]]) -> str:
     evidence = messages[1]["content"]
     return evidence.split("Required section id: ", 1)[1].splitlines()[0]
@@ -183,16 +217,15 @@ def _section_payload(source_id: str, *, math: str | None = None) -> dict:
     ]
     if math:
         blocks.append({"type": "math", "text": math})
-    if source_id == "source-1":
-        blocks.append(
-            {
-                "type": "checkpoint",
-                "text": (
-                    "Explain how evidence changes posterior risk and identify one resulting "
-                    "failure mode."
-                ),
-            }
-        )
+    blocks.append(
+        {
+            "type": "checkpoint",
+            "text": (
+                f"Explain how the mechanism for {source_id} follows from the evidence and "
+                "identify one resulting failure mode."
+            ),
+        }
+    )
     if source_id in {"source-2", "source-4"}:
         blocks.append(
             {

@@ -67,7 +67,6 @@ def test_professor_edits_approves_and_publishes_the_exact_learning_design(tmp_pa
             "source_revision": edited["source_revision"],
             "learning_map_revision": edited["learning_map"]["revision"],
             "report_revision": edited["report"]["report_revision"],
-            "acknowledged_warning_ids": [item["id"] for item in edited["report"]["diagnostics"]],
         },
     )
     assert approved.status_code == 200, approved.json()

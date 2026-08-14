@@ -161,7 +161,6 @@ def approve_canvas_draft(
         source_revision=current.source_revision,
         learning_map_revision=current.learning_map.revision,
         report_revision=current.report.report_revision,
-        acknowledged_warning_ids=[item.id for item in current.report.diagnostics],
         approved_by="professor",
     )
 

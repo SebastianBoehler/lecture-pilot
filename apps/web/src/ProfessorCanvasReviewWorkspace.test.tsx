@@ -26,7 +26,6 @@ describe("ProfessorCanvasDraftStep review workspace", () => {
           isFullCourse
           isGenerating={false}
           learningDesignReviews={{ "lecture-01": first, "lecture-02": second }}
-          learningDesignAcknowledgementKey="professor:course-1:0"
           learningDesignSaving={false}
           previewLectures={[
             {

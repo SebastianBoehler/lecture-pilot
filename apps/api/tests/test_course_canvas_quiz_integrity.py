@@ -169,6 +169,11 @@ def _document(quiz: CanvasBlock) -> CanvasDocument:
         )
         for index in range(1, 5)
     ]
+    checkpoint = CanvasBlock(
+        id="topic-checkpoint",
+        type="checkpoint",
+        text="Explain how the mechanism produces its stated consequence.",
+    )
     return CanvasDocument(
         id="course-lecture",
         course_id="course",
@@ -182,7 +187,7 @@ def _document(quiz: CanvasBlock) -> CanvasDocument:
                 id="topic",
                 title="Topic",
                 source_ref="lecture.pdf page 1",
-                blocks=[*teaching, quiz],
+                blocks=[*teaching, checkpoint, quiz],
             )
         ],
     )

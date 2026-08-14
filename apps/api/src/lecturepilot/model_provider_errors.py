@@ -15,7 +15,7 @@ def model_provider_error_message(exc: Exception, *, provider: str) -> str:
     if _credits_exhausted(exc):
         return (
             f"{_provider_name(provider)} API credits are exhausted. "
-            "Add credits to the configured provider account, then retry this tutor message."
+            "Add credits to the configured provider account, then retry this request."
         )
     return "Model request failed. Check the provider key and model configuration."
 

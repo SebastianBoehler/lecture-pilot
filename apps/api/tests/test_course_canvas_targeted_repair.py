@@ -213,6 +213,11 @@ def _invalid_candidate(source_document: CanvasDocument) -> CanvasDocument:
             CanvasBlock(id="optimization-example", type="callout", text=detail * 2),
             CanvasBlock(id="optimization-steps", type="paragraph", text=detail * 2),
             CanvasBlock(
+                id="optimization-open-check",
+                type="checkpoint",
+                text="Explain how the transpose makes the score dimensionally valid.",
+            ),
+            CanvasBlock(
                 id="optimization-check",
                 type="quiz",
                 text="What does the transpose accomplish?",
@@ -230,6 +235,11 @@ def _invalid_candidate(source_document: CanvasDocument) -> CanvasDocument:
             CanvasBlock(id="summary-2", type="paragraph", text=detail * 2),
             CanvasBlock(id="summary-3", type="callout", text=detail * 2),
             CanvasBlock(id="summary-4", type="paragraph", text=detail * 2),
+            CanvasBlock(
+                id="summary-open-check",
+                type="checkpoint",
+                text="Explain which vector dimensions must align in the score expression.",
+            ),
             CanvasBlock(
                 id="summary-quiz",
                 type="quiz",

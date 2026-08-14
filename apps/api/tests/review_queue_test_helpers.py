@@ -100,7 +100,6 @@ def review_client(tmp_path: Path) -> TestClient:
             source_revision=changed.source_revision,
             learning_map_revision=changed.learning_map.revision,
             report_revision=changed.report.report_revision,
-            acknowledged_warning_ids=[item.id for item in changed.report.diagnostics],
             approved_by="professor",
         )
         app.state.canvas_workspace.publish_course_canvas_draft(
