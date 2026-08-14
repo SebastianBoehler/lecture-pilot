@@ -4,6 +4,30 @@ A product-level history of improvements for students and lecturers. Technical de
 
 [View all GitHub Releases](https://github.com/SebastianBoehler/lecture-pilot/releases)
 
+## [0.6.0](https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.6.0) — Mixed-format course material with faithful learning artifacts
+
+Released 2026-08-14
+
+LecturePilot now ingests common Office documents, code, notebooks, PDFs, and faculty-specific source trees through one reviewable pipeline. Original slides remain visible, spreadsheets become source-located tables, embedded links are retained safely, and scan-heavy pages are identified for selective OCR without blocking the rest of a course.
+
+### What changed
+
+- **Office, code, and arbitrary folder structures** _(From feedback)_ — Macro-free PowerPoint, Word, and Excel files join PDF, LaTeX, Markdown, notebooks, and common inert programming-language files. The browser rejects unsupported, unsafe, empty, duplicate, or oversized files before transfer while the server repeats every safety check.
+- **Slides, tables, and links stay inspectable** _(From feedback)_ — PowerPoint text, notes, and safe links are grouped with rendered original slides. Excel formulas stay separate from values and appear in sheet/range-located table artifacts; PDF and slide links are retained but never fetched automatically.
+- **Selective, capacity-gated OCR** — Scan-heavy PDF pages and image-only slides are detected deterministically and can use an isolated PaddleOCR-VL worker. Native text bypasses OCR; when no worker is available, LecturePilot preserves the page and reports OCR needed instead of inventing content. Production OCR stays disabled until private quality and host-capacity gates pass.
+- **Clear processing states and professor enablement** _(From feedback)_ — Source review labels files as converted, preserved, excluded, or OCR needed, and upload preflight names rejected files with a reason. A persistent bilingual walkthrough is paired with a repeatable 30-minute introduction and German/English recording plan for semester onboarding.
+
+### Deutsch
+
+**Gemischte Kursmaterialien als verlässliche Lernartefakte**
+
+LecturePilot verarbeitet jetzt gängige Office-Dokumente, Quellcode, Notebooks, PDFs und fachbereichsspezifische Ordnerstrukturen in einem prüfbaren Ablauf. Originalfolien bleiben sichtbar, Tabellen werden mit Quellenangabe dargestellt, eingebettete Links sicher erhalten und scanlastige Seiten für selektive OCR markiert, ohne den übrigen Kurs zu blockieren.
+
+- **Office, Quellcode und beliebige Ordnerstrukturen** _(Aus Feedback)_ — Makrofreie PowerPoint-, Word- und Excel-Dateien ergänzen PDF, LaTeX, Markdown, Notebooks und gängige inerte Programmiersprachen. Der Browser lehnt nicht unterstützte, unsichere, leere, doppelte oder zu große Dateien vor der Übertragung ab; der Server wiederholt jede Sicherheitsprüfung.
+- **Folien, Tabellen und Links bleiben prüfbar** _(Aus Feedback)_ — PowerPoint-Text, Notizen und sichere Links werden mit gerenderten Originalfolien gruppiert. Excel-Formeln bleiben von Werten getrennt und erscheinen in Tabellen mit Blatt- und Zellbereichsangabe; PDF- und Folienlinks bleiben erhalten, werden aber nie automatisch abgerufen.
+- **Selektive, kapazitätsgeprüfte OCR** — Scanlastige PDF-Seiten und reine Bildfolien werden deterministisch erkannt und können einen isolierten PaddleOCR-VL-Worker nutzen. Nativer Text umgeht OCR; ist kein Worker verfügbar, erhält LecturePilot die Seite und meldet den OCR-Bedarf, statt Inhalte zu erfinden. Produktions-OCR bleibt deaktiviert, bis private Qualitäts- und Host-Kapazitätsprüfungen bestanden sind.
+- **Klare Verarbeitungszustände und Einführung für Lehrende** _(Aus Feedback)_ — Die Quellenprüfung kennzeichnet Dateien als konvertiert, im Original erhalten, ausgeschlossen oder OCR-erforderlich; die Upload-Vorprüfung nennt abgelehnte Dateien mit Grund. Ein dauerhaft erreichbarer zweisprachiger Rundgang wird durch eine wiederholbare 30-minütige Einführung und einen deutsch-englischen Aufnahmeplan für den Semesterstart ergänzt.
+
 ## [0.5.0](https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.5.0) — More reliable course creation and reviewable learning
 
 Released 2026-08-14

@@ -15,9 +15,6 @@
 - Reject encrypted, malformed, oversized, unsupported, or incomplete conversion outputs explicitly; never silently omit a file.
 - Run conversion and OCR outside the API process with no secrets, read-only root filesystems, bounded temporary storage, CPU, memory, time, page count, pixels, and archive expansion.
 - Keep source references in-app and never automatically fetch extracted URLs.
-- Keep authored code files below the repository's 300-line soft limit.
-
----
 
 ### Task 1: Freeze the normalized-document contract
 
@@ -167,9 +164,6 @@ git commit -m "feat(ingestion): add isolated document converter"
 - Modify: `apps/api/src/lecturepilot/source_bundle.py`
 - Create: `apps/api/src/lecturepilot/source_bundle_normalized.py`
 - Modify: `apps/api/src/lecturepilot/source_bundle_canvas.py`
-- Test: `apps/api/tests/test_secure_upload.py`
-- Test: `apps/api/tests/test_source_bundle.py`
-- Test: `apps/api/tests/test_source_bundle_canvas.py`
 
 **Interfaces:**
 
@@ -264,7 +258,6 @@ git commit -m "feat(ingestion): add selective document OCR"
 - Test: `apps/web/src/ProfessorSourceRoutingEditor.test.tsx`
 - Test: `apps/web/src/App.canvas.test.tsx`
 - Modify: `docs/course-ingestion-pipeline.md`
-- Modify: `README.md`
 
 **Interfaces:**
 
