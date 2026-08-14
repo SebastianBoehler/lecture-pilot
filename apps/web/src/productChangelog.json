@@ -3,24 +3,46 @@
   "releases": [
     {
       "version": "0.5.0",
-      "date": "2026-08-09",
+      "date": "2026-08-14",
       "title": {
-        "en": "A reviewable learning loop from draft to follow-up",
-        "de": "Ein prüfbarer Lernablauf vom Entwurf bis zur Wiederholung"
+        "en": "More reliable course creation and reviewable learning",
+        "de": "Zuverlässigere Kurserstellung und prüfbares Lernen"
       },
       "summary": {
-        "en": "LecturePilot now helps lecturers inspect and acknowledge concrete learning-design gaps before publication, while revision-bound learner outcomes make later, separately approved evaluation possible without exposing learner text.",
-        "de": "LecturePilot hilft Lehrenden jetzt, konkrete Lücken im Lerndesign vor der Veröffentlichung zu prüfen und zu bestätigen. Versionsgebundene Lernergebnisse ermöglichen eine spätere, separat genehmigte Evaluation, ohne Texte von Lernenden offenzulegen."
+        "en": "LecturePilot now makes course sources easier to identify and ingest, recovers more cleanly from generation failures, and validates each learning draft before lecturers approve its editable design. Revision-bound learner outcomes support later, separately approved evaluation without exposing learner text.",
+        "de": "LecturePilot macht Kursquellen jetzt leichter erkennbar und einlesbar, erholt sich zuverlässiger von Generierungsfehlern und prüft jeden Lernentwurf, bevor Lehrende sein bearbeitbares Lerndesign freigeben. Versionsgebundene Lernergebnisse ermöglichen eine spätere, separat genehmigte Evaluation, ohne Texte von Lernenden offenzulegen."
       },
       "changes": [
         {
           "title": {
-            "en": "Exact-draft learning-design review",
-            "de": "Lerndesign-Prüfung für den exakten Entwurf"
+            "en": "Source-aware course setup",
+            "de": "Quellenbewusste Kurseinrichtung"
           },
           "description": {
-            "en": "Before publishing, lecturers see source, assessment, checkpoint, worked-example, transfer, and prerequisite coverage for the current draft. Every diagnostic must be acknowledged for that exact version; saving resets the acknowledgement.",
-            "de": "Vor der Veröffentlichung sehen Lehrende die Quellen-, Aufgaben-, Checkpoint-, Beispiel-, Transfer- und Voraussetzung-Abdeckung des aktuellen Entwurfs. Jeder Hinweis muss für genau diese Version bestätigt werden; Speichern setzt die Bestätigung zurück."
+            "en": "Course suggestions show whether they came from Alma or ILIAS and remain usable when one source is temporarily unavailable. Folder uploads exclude unsupported files before transfer, preserve the supported source tree, and retain safe links found in PDFs.",
+            "de": "Kursvorschläge zeigen, ob sie aus Alma oder ILIAS stammen, und bleiben nutzbar, wenn eine Quelle vorübergehend nicht erreichbar ist. Ordner-Uploads schließen nicht unterstützte Dateien vor der Übertragung aus, erhalten die unterstützte Quellstruktur und bewahren sichere Links aus PDFs."
+          },
+          "feedbackDriven": true
+        },
+        {
+          "title": {
+            "en": "Recoverable generation with stronger learning checks",
+            "de": "Wiederaufnehmbare Generierung mit stärkeren Lernprüfungen"
+          },
+          "description": {
+            "en": "Lecturers can retry source assignment without uploading again and retry one failed lecture while other work continues. Generated sections require a source-grounded open response, place worked examples before assessment, and use exact draft coordinates for targeted repair.",
+            "de": "Lehrende können die Quellenzuordnung ohne erneuten Upload wiederholen und eine fehlgeschlagene Vorlesung erneut starten, während andere Arbeit weiterläuft. Generierte Abschnitte benötigen eine quellengestützte offene Aufgabe, ordnen Beispiele vor Prüfungen an und verwenden exakte Entwurfspositionen für gezielte Reparaturen."
+          },
+          "feedbackDriven": true
+        },
+        {
+          "title": {
+            "en": "Exact-draft learning-design approval",
+            "de": "Lerndesign-Freigabe für den exakten Entwurf"
+          },
+          "description": {
+            "en": "Automated learning-design defects must pass validation or targeted repair before a canvas is ready. Lecturers then review and approve the intended outcome, assessments, transfer task, review timing, and prerequisites for that exact draft instead of acknowledging generator diagnostics as a separate task.",
+            "de": "Automatisch erkannte Lerndesign-Fehler müssen vor der Freigabe eines Canvas die Validierung oder gezielte Reparatur bestehen. Lehrende prüfen und bestätigen anschließend Lernziel, Aufgaben, Transferaufgabe, Wiederholungszeitpunkt und Voraussetzungen des exakten Entwurfs, statt Generatorhinweise separat abzuhaken."
           }
         },
         {

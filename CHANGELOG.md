@@ -4,25 +4,29 @@ A product-level history of improvements for students and lecturers. Technical de
 
 [View all GitHub Releases](https://github.com/SebastianBoehler/lecture-pilot/releases)
 
-## [0.5.0](https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.5.0) — A reviewable learning loop from draft to follow-up
+## [0.5.0](https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.5.0) — More reliable course creation and reviewable learning
 
-Released 2026-08-09
+Released 2026-08-14
 
-LecturePilot now helps lecturers inspect and acknowledge concrete learning-design gaps before publication, while revision-bound learner outcomes make later, separately approved evaluation possible without exposing learner text.
+LecturePilot now makes course sources easier to identify and ingest, recovers more cleanly from generation failures, and validates each learning draft before lecturers approve its editable design. Revision-bound learner outcomes support later, separately approved evaluation without exposing learner text.
 
 ### What changed
 
-- **Exact-draft learning-design review** — Before publishing, lecturers see source, assessment, checkpoint, worked-example, transfer, and prerequisite coverage for the current draft. Every diagnostic must be acknowledged for that exact version; saving resets the acknowledgement.
+- **Source-aware course setup** _(From feedback)_ — Course suggestions show whether they came from Alma or ILIAS and remain usable when one source is temporarily unavailable. Folder uploads exclude unsupported files before transfer, preserve the supported source tree, and retain safe links found in PDFs.
+- **Recoverable generation with stronger learning checks** _(From feedback)_ — Lecturers can retry source assignment without uploading again and retry one failed lecture while other work continues. Generated sections require a source-grounded open response, place worked examples before assessment, and use exact draft coordinates for targeted repair.
+- **Exact-draft learning-design approval** — Automated learning-design defects must pass validation or targeted repair before a canvas is ready. Lecturers then review and approve the intended outcome, assessments, transfer task, review timing, and prerequisites for that exact draft instead of acknowledging generator diagnostics as a separate task.
 - **Revision-bound follow-up records** — Quiz and checkpoint outcomes retain the publication, learning-map, attempt, assistance, and planned-versus-observed follow-up context needed to separate independent work from supported recovery. Preview activity and learner answer text remain excluded.
 - **An explicit evaluation boundary** — The documented contract defines delayed changed-task performance as a possible future primary measure and preserves small-cohort privacy. This release makes no efficacy claim and is not a completed study, ethics approval, or production deployment.
 
 ### Deutsch
 
-**Ein prüfbarer Lernablauf vom Entwurf bis zur Wiederholung**
+**Zuverlässigere Kurserstellung und prüfbares Lernen**
 
-LecturePilot hilft Lehrenden jetzt, konkrete Lücken im Lerndesign vor der Veröffentlichung zu prüfen und zu bestätigen. Versionsgebundene Lernergebnisse ermöglichen eine spätere, separat genehmigte Evaluation, ohne Texte von Lernenden offenzulegen.
+LecturePilot macht Kursquellen jetzt leichter erkennbar und einlesbar, erholt sich zuverlässiger von Generierungsfehlern und prüft jeden Lernentwurf, bevor Lehrende sein bearbeitbares Lerndesign freigeben. Versionsgebundene Lernergebnisse ermöglichen eine spätere, separat genehmigte Evaluation, ohne Texte von Lernenden offenzulegen.
 
-- **Lerndesign-Prüfung für den exakten Entwurf** — Vor der Veröffentlichung sehen Lehrende die Quellen-, Aufgaben-, Checkpoint-, Beispiel-, Transfer- und Voraussetzung-Abdeckung des aktuellen Entwurfs. Jeder Hinweis muss für genau diese Version bestätigt werden; Speichern setzt die Bestätigung zurück.
+- **Quellenbewusste Kurseinrichtung** _(Aus Feedback)_ — Kursvorschläge zeigen, ob sie aus Alma oder ILIAS stammen, und bleiben nutzbar, wenn eine Quelle vorübergehend nicht erreichbar ist. Ordner-Uploads schließen nicht unterstützte Dateien vor der Übertragung aus, erhalten die unterstützte Quellstruktur und bewahren sichere Links aus PDFs.
+- **Wiederaufnehmbare Generierung mit stärkeren Lernprüfungen** _(Aus Feedback)_ — Lehrende können die Quellenzuordnung ohne erneuten Upload wiederholen und eine fehlgeschlagene Vorlesung erneut starten, während andere Arbeit weiterläuft. Generierte Abschnitte benötigen eine quellengestützte offene Aufgabe, ordnen Beispiele vor Prüfungen an und verwenden exakte Entwurfspositionen für gezielte Reparaturen.
+- **Lerndesign-Freigabe für den exakten Entwurf** — Automatisch erkannte Lerndesign-Fehler müssen vor der Freigabe eines Canvas die Validierung oder gezielte Reparatur bestehen. Lehrende prüfen und bestätigen anschließend Lernziel, Aufgaben, Transferaufgabe, Wiederholungszeitpunkt und Voraussetzungen des exakten Entwurfs, statt Generatorhinweise separat abzuhaken.
 - **Versionsgebundene Wiederholungsdaten** — Quiz- und Checkpoint-Ergebnisse behalten den Veröffentlichungs-, Lernpfad-, Versuchs-, Unterstützungs- und Wiederholungskontext, um selbstständiges Arbeiten von unterstützter Erholung zu trennen. Vorschauaktivitäten und Antworttexte bleiben ausgeschlossen.
 - **Eine klare Evaluationsgrenze** — Der dokumentierte Vertrag beschreibt verzögerte Leistung bei einer veränderten Aufgabe als mögliches zukünftiges Primärmaß und schützt kleine Kohorten. Dieses Release ist kein Wirksamkeitsnachweis, keine abgeschlossene Studie, keine Ethikfreigabe und kein Produktionseinsatz.
 

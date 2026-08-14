@@ -15,15 +15,16 @@ describe("ChangelogPage", () => {
     expect(
       latestRelease.getByRole("heading", {
         level: 2,
-        name: "A reviewable learning loop from draft to follow-up",
+        name: "More reliable course creation and reviewable learning",
       }),
     ).toBeInTheDocument();
-    expect(latestRelease.getByText("9 August 2026")).toBeInTheDocument();
+    expect(latestRelease.getByText("14 August 2026")).toBeInTheDocument();
     expect(latestRelease.getByRole("link", { name: /v0\.5\.0 on GitHub/i })).toHaveAttribute(
       "href",
       "https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.5.0",
     );
-    expect(latestRelease.getByText("Exact-draft learning-design review")).toBeInTheDocument();
+    expect(latestRelease.getByText("Source-aware course setup")).toBeInTheDocument();
+    expect(latestRelease.getByText("Exact-draft learning-design approval")).toBeInTheDocument();
     expect(
       latestRelease.queryByText(/students and lecturers sign in through Alma/i),
     ).not.toBeInTheDocument();
@@ -39,8 +40,9 @@ describe("ChangelogPage", () => {
     renderWithI18n(<ChangelogPage />, { locale: "de" });
 
     expect(screen.getByRole("heading", { name: "Neu in LecturePilot" })).toBeInTheDocument();
-    expect(screen.getByText("9. August 2026")).toBeInTheDocument();
-    expect(screen.getByText("Lerndesign-Prüfung für den exakten Entwurf")).toBeInTheDocument();
+    expect(screen.getByText("14. August 2026")).toBeInTheDocument();
+    expect(screen.getByText("Quellenbewusste Kurseinrichtung")).toBeInTheDocument();
+    expect(screen.getByText("Lerndesign-Freigabe für den exakten Entwurf")).toBeInTheDocument();
     expect(screen.queryByText("Aus Feedback")).not.toBeInTheDocument();
   });
 });
