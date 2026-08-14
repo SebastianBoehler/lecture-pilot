@@ -9,7 +9,7 @@ import {
   sourceRouteCounts,
   type SourceRouteScope,
 } from "./sourceRoutingView";
-import type { CourseSourceRoute, SourceRouteRole } from "./types";
+import type { CourseSourceRoute, SourceProcessingStatus, SourceRouteRole } from "./types";
 
 const ROLES: SourceRouteRole[] = ["lecture", "course_wide", "excluded"];
 
@@ -145,6 +145,9 @@ export function ProfessorSourceRoutingEditor({
               </span>
               <span className="source-routing-meta">
                 <span>{route.kind}</span>
+                <span className={`source-processing-status is-${routeStatus(route)}`}>
+                  {statusLabel(routeStatus(route), t)}
+                </span>
                 {fileDirectory(route.path) ? (
                   <span className="source-routing-directory">{fileDirectory(route.path)}</span>
                 ) : null}
@@ -249,6 +252,20 @@ function roleLabel(role: SourceRouteRole, t: ReturnType<typeof useI18n>["t"]): s
   if (role === "lecture") return t("builder.sources.role.lecture");
   if (role === "course_wide") return t("builder.sources.role.courseWide");
   return t("builder.sources.role.excluded");
+}
+
+function routeStatus(route: CourseSourceRoute): SourceProcessingStatus | "excluded" {
+  return route.role === "excluded" ? "excluded" : (route.processing_status ?? "preserved");
+}
+
+function statusLabel(
+  status: SourceProcessingStatus | "excluded",
+  t: ReturnType<typeof useI18n>["t"],
+): string {
+  if (status === "converted") return t("builder.sources.status.converted");
+  if (status === "ocr_needed") return t("builder.sources.status.ocrNeeded");
+  if (status === "excluded") return t("builder.sources.status.excluded");
+  return t("builder.sources.status.preserved");
 }
 
 function fileName(path: string): string {

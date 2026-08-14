@@ -5,6 +5,7 @@ from zipfile import ZipFile
 
 import pytest
 
+from auth_helpers import professor_headers
 from lecturepilot.course_builder_source import course_builder_source_document
 from test_course_source_partitioning import (
     _client,
@@ -56,6 +57,13 @@ def test_powerpoint_flows_from_upload_through_routing_to_canvas(
         convert,
     )
     _confirm_routing(client)
+
+    routing = client.get(
+        "/admin/courses/partitioned-course/source-routing",
+        headers=professor_headers(),
+    )
+    assert routing.status_code == 200
+    assert routing.json()["routes"][0]["processing_status"] == "converted"
 
     document = course_builder_source_document(client.app, "partitioned-course", "lecture-01")
 

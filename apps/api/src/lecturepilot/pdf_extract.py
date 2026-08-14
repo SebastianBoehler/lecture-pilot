@@ -37,6 +37,10 @@ def pdf_page_count(path: str) -> int:
     return run_bounded(_pdf_page_count, path)
 
 
+def pdf_requires_ocr(path: str, *, max_pages: int = 20) -> bool:
+    return run_bounded(_pdf_requires_ocr, path, max_pages)
+
+
 def _read_pdf_text(path: str, max_pages: int, max_chars: int) -> str:
     import fitz
 
@@ -62,6 +66,20 @@ def _pdf_page_count(path: str) -> int:
     document = fitz.open(path)
     try:
         return len(document)
+    finally:
+        document.close()
+
+
+def _pdf_requires_ocr(path: str, max_pages: int) -> bool:
+    import fitz
+
+    document = fitz.open(path)
+    try:
+        return any(
+            _ocr_candidate(page.get_text("text"), _raster_ratio(page))
+            for index in evenly_sampled_indexes(len(document), max_pages)
+            if (page := document.load_page(index))
+        )
     finally:
         document.close()
 

@@ -12,12 +12,19 @@ class SourceRouteRole(StrEnum):
     EXCLUDED = "excluded"
 
 
+class SourceProcessingStatus(StrEnum):
+    CONVERTED = "converted"
+    OCR_NEEDED = "ocr_needed"
+    PRESERVED = "preserved"
+
+
 class CourseSourceRoute(BaseModel):
     path: str = Field(min_length=1, max_length=500)
     kind: str = Field(min_length=1, max_length=80)
     sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     role: SourceRouteRole
     lecture_id: str | None = Field(default=None, max_length=120)
+    processing_status: SourceProcessingStatus = SourceProcessingStatus.PRESERVED
 
     @model_validator(mode="after")
     def validate_lecture_assignment(self) -> "CourseSourceRoute":

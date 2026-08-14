@@ -88,12 +88,13 @@ describe("Professor course builder", () => {
     expect(screen.getByText(/^choose folder$/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/workspace folder/i)).not.toBeInTheDocument();
     expect(
-      screen.getByText(/build and system files are ignored automatically/i),
+      screen.getByText(/build and system files are rejected before transfer/i),
     ).toBeInTheDocument();
-    await user.upload(
-      screen.getByLabelText(/^choose files$/i),
+    await user.upload(screen.getByLabelText(/^choose files$/i), [
       new File(["# extra note"], "supplement.md", { type: "text/markdown" }),
-    );
+      new File(["unsafe"], "installer.exe", { type: "application/octet-stream" }),
+    ]);
+    expect(screen.getByText(/installer\.exe/i)).toHaveTextContent(/rejected.*unsupported/i);
     expect(screen.getByRole("button", { name: /upload and process materials/i })).toHaveClass(
       "primary-action",
     );

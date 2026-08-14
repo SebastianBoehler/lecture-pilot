@@ -101,11 +101,23 @@ export function ProfessorMaterialStep({
       <p className="material-format-note">{t("builder.upload.formats")}</p>
       <p className="material-selection-summary">{fileLabel}</p>
       {uploadFiles.length && supportedUploads.length ? (
-        <p className="material-preflight-summary">
-          {locale === "de"
-            ? `${preflight.accepted.length} zum Hochladen · ${preflight.excluded.length} vor dem Transfer ausgeschlossen`
-            : `${preflight.accepted.length} ready to upload · ${preflight.excluded.length} excluded before transfer`}
-        </p>
+        <>
+          <p className="material-preflight-summary">
+            {locale === "de"
+              ? `${preflight.accepted.length} zum Hochladen · ${preflight.excluded.length} vor dem Transfer abgelehnt`
+              : `${preflight.accepted.length} ready to upload · ${preflight.excluded.length} rejected before transfer`}
+          </p>
+          {preflight.excluded.length ? (
+            <ul aria-label={t("builder.upload.rejectedFiles")} className="material-rejection-list">
+              {preflight.excluded.slice(0, 5).map((item) => (
+                <li key={`${item.path}:${item.reason}`}>
+                  {item.path} · {t("builder.upload.rejected")} ·{" "}
+                  {t(`builder.upload.rejection.${item.reason}`)}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </>
       ) : null}
       <div className="flow-actions">
         <button

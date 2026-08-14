@@ -150,6 +150,10 @@ function sourceBundle() {
       { path: "videos/demo.mp4", kind: "video", size_bytes: 3000 },
     ],
     counts_by_kind: { latex: 1, pdf: 1, video: 1 },
+    supported_uploads: [
+      { suffix: ".md", kind: "markdown", max_bytes: 5 * 1024 * 1024 },
+      { suffix: ".tex", kind: "latex", max_bytes: 10 * 1024 * 1024 },
+    ],
   };
 }
 

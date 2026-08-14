@@ -169,9 +169,11 @@ export type SourceBundleManifest = {
 };
 
 export type SourceRouteRole = "lecture" | "course_wide" | "excluded";
+export type SourceProcessingStatus = "converted" | "ocr_needed" | "preserved";
 
 export type CourseSourceRoute = {
   path: string;
+  processing_status?: SourceProcessingStatus;
   kind: string;
   sha256: string;
   role: SourceRouteRole;

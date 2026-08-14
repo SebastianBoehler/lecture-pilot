@@ -24,6 +24,7 @@ from lecturepilot.model_usage import model_usage_scope
 from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.source_index import refresh_course_source_index
 from lecturepilot.source_document_normalization import normalize_selected_documents
+from lecturepilot.source_processing_status import with_processing_status
 from lecturepilot.tenancy import TenantContext
 
 
@@ -47,11 +48,15 @@ def register_course_source_routing_routes(
             with locked_course_state(layout.course_root(course_id)):
                 index = _refresh_index(layout, course_id)
                 lectures = _lectures(app, course_id)
-                return review_source_routing(
-                    course_id=course_id,
-                    index=index,
-                    lectures=lectures,
-                    routing_path=layout.course_source_routing_path(course_id),
+                return _processing_status(
+                    layout,
+                    course_id,
+                    review_source_routing(
+                        course_id=course_id,
+                        index=index,
+                        lectures=lectures,
+                        routing_path=layout.course_source_routing_path(course_id),
+                    ),
                 )
         except SourceRoutingProposalRequired as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -73,11 +78,15 @@ def register_course_source_routing_routes(
             lectures = _lectures(app, course_id)
             if not refresh:
                 try:
-                    return review_source_routing(
-                        course_id=course_id,
-                        index=index,
-                        lectures=lectures,
-                        routing_path=layout.course_source_routing_path(course_id),
+                    return _processing_status(
+                        layout,
+                        course_id,
+                        review_source_routing(
+                            course_id=course_id,
+                            index=index,
+                            lectures=lectures,
+                            routing_path=layout.course_source_routing_path(course_id),
+                        ),
                     )
                 except SourceRoutingProposalRequired:
                     pass
@@ -128,13 +137,14 @@ def register_course_source_routing_routes(
                     status_code=409,
                     detail="Course sources changed while the agent assigned them. Generate a new proposal.",
                 )
-            return save_source_routing_proposal(
+            manifest = save_source_routing_proposal(
                 course_id=course_id,
                 index=current_index,
                 lectures=current_lectures,
                 routing_path=layout.course_source_routing_path(course_id),
                 routes=routes,
             )
+            return _processing_status(layout, course_id, manifest)
 
     @app.put(
         "/admin/courses/{course_id}/source-routing",
@@ -150,13 +160,14 @@ def register_course_source_routing_routes(
         layout = app.state.canvas_workspace.layout
         try:
             with locked_course_state(layout.course_root(course_id)):
-                return confirm_source_routing(
+                manifest = confirm_source_routing(
                     course_id=course_id,
                     index=_refresh_index(layout, course_id),
                     lectures=_lectures(app, course_id),
                     routing_path=layout.course_source_routing_path(course_id),
                     routing=routing,
                 )
+                return _processing_status(layout, course_id, manifest)
         except StaleSourceRoutingError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         except SourceRoutingError as exc:
@@ -168,6 +179,14 @@ def _refresh_index(layout, course_id: str):
         course_id=course_id,
         uploads_dir=layout.course_uploads_dir(course_id),
         index_path=layout.course_source_index_path(course_id),
+    )
+
+
+def _processing_status(layout, course_id: str, manifest: CourseSourceRoutingManifest):
+    return with_processing_status(
+        manifest,
+        source_root=layout.course_uploads_dir(course_id),
+        normalized_root=layout.course_normalized_dir(course_id),
     )
 
 

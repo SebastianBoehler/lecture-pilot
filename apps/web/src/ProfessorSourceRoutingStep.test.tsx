@@ -15,6 +15,7 @@ const routing: CourseSourceRoutingManifest = {
       kind: "pdf",
       lecture_id: "lecture-03",
       path: "Lecture03.pdf",
+      processing_status: "ocr_needed",
       role: "lecture",
       sha256: "b".repeat(64),
     },
@@ -22,6 +23,7 @@ const routing: CourseSourceRoutingManifest = {
       kind: "markdown",
       lecture_id: null,
       path: "build/cache.json",
+      processing_status: "preserved",
       role: "excluded",
       sha256: "c".repeat(64),
     },
@@ -29,6 +31,7 @@ const routing: CourseSourceRoutingManifest = {
       kind: "text",
       lecture_id: null,
       path: "shared/glossary.txt",
+      processing_status: "preserved",
       role: "course_wide",
       sha256: "d".repeat(64),
     },
@@ -36,6 +39,7 @@ const routing: CourseSourceRoutingManifest = {
       kind: "image",
       lecture_id: null,
       path: "feedback/survey.png",
+      processing_status: "preserved",
       role: "excluded",
       sha256: "e".repeat(64),
     },
@@ -88,7 +92,9 @@ describe("ProfessorSourceRoutingStep", () => {
     );
     expect(screen.getByRole("button", { name: /not used 2/i })).toBeInTheDocument();
     expect(screen.getByText("Lecture03.pdf")).toBeInTheDocument();
+    expect(screen.getByText("OCR needed")).toBeInTheDocument();
     expect(screen.getByText("glossary.txt")).toBeInTheDocument();
+    expect(screen.getByText("Preserved")).toBeInTheDocument();
     expect(screen.queryByText("cache.json")).not.toBeInTheDocument();
     expect(screen.getByText(/sent only to the selected lecture/i)).toBeInTheDocument();
     expect(screen.getByText(/sent to every lecture/i)).toBeInTheDocument();
@@ -97,6 +103,7 @@ describe("ProfessorSourceRoutingStep", () => {
 
     await user.click(screen.getByRole("button", { name: /not used 2/i }));
     expect(screen.getByText("cache.json")).toHaveClass("source-routing-name");
+    expect(screen.getAllByText("Excluded").length).toBeGreaterThan(0);
     expect(screen.getByText("build/")).toHaveClass("source-routing-directory");
     expect(screen.getByLabelText(/route build\/cache\.json/i)).toHaveValue("excluded");
 

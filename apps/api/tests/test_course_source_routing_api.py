@@ -30,6 +30,7 @@ def test_professor_reviews_and_confirms_every_source_route(tmp_path: Path) -> No
     assert payload["confirmed"] is False
     routes = {item["path"]: item for item in payload["routes"]}
     assert routes["Lecture03.md"]["role"] == "lecture"
+    assert routes["Lecture03.md"]["processing_status"] == "preserved"
     assert routes["Lecture03.md"]["lecture_id"] == "lecture-03"
     assert routes["exam-protocols/README.md"]["role"] == "excluded"
     assert routes["exam-protocols/README.md"]["lecture_id"] is None
@@ -49,6 +50,21 @@ def test_professor_reviews_and_confirms_every_source_route(tmp_path: Path) -> No
     )
     assert confirmed.status_code == 200
     assert confirmed.json()["confirmed"] is True
+
+
+def test_source_routing_marks_scanned_pdf_as_needing_ocr(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    _upload(client, "Lecture03.md", b"# Lecture 03\n\nBayes rule.")
+    _upload(client, "scans/worksheet.pdf", _scanned_pdf())
+
+    response = client.post(
+        f"/admin/courses/{COURSE_ID}/source-routing/proposal",
+        headers=professor_headers(),
+    )
+
+    assert response.status_code == 200
+    routes = {item["path"]: item for item in response.json()["routes"]}
+    assert routes["scans/worksheet.pdf"]["processing_status"] == "ocr_needed"
 
 
 def test_generation_requires_current_routing_and_uses_only_generation_sources(
@@ -218,3 +234,19 @@ def _upload(client: TestClient, path: str, content: bytes) -> None:
         headers=professor_headers(),
     )
     assert response.status_code == 200
+
+
+def _scanned_pdf() -> bytes:
+    import fitz
+
+    native = fitz.open()
+    page = native.new_page(width=600, height=800)
+    page.insert_text((72, 100), "Image-only worksheet", fontsize=24)
+    png = page.get_pixmap(alpha=False).tobytes("png")
+    native.close()
+    scanned = fitz.open()
+    page = scanned.new_page(width=600, height=800)
+    page.insert_image(page.rect, stream=png)
+    payload = scanned.tobytes()
+    scanned.close()
+    return payload

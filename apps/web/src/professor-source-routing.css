@@ -239,6 +239,23 @@
   text-transform: capitalize;
 }
 
+.source-processing-status {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.08rem 0.4rem;
+  text-transform: none;
+}
+
+.source-processing-status.is-converted {
+  border-color: var(--color-border-focus);
+  color: var(--color-accent-primary);
+}
+
+.source-processing-status.is-ocr_needed {
+  border-color: var(--color-highlight-border);
+  color: var(--color-text-primary);
+}
+
 .source-routing-directory {
   max-width: 12rem;
   overflow: hidden;

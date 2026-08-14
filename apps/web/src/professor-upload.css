@@ -82,6 +82,13 @@
   font-size: 12px;
 }
 
+.material-rejection-list {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  margin: 0;
+  padding-inline-start: 1.1rem;
+}
+
 .bundle-summary {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
