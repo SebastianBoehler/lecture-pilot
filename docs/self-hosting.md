@@ -100,13 +100,14 @@ Deploy a routine application update with:
 scripts/deploy-production.sh
 ```
 
-The deployment script checks Docker's filesystem for at least 1 GiB of free space before building,
-then builds only the API and web images, one at a time. It does not rebuild the database, gateway, or
-LaTeX compiler during an application-only release. Preflight and migration run against the existing
-infrastructure before Compose recreates only the API and web services. If a build fails, incomplete
-BuildKit cache and dangling images are removed automatically; named volumes are never pruned. Old
-unused cache and images are retained for seven days after a successful release to keep one recent
-rollback path and useful dependency layers without allowing Docker storage to grow indefinitely.
+The deployment script checks Docker's filesystem for at least 4 GiB of free space before building,
+then builds the document converter, API, and web images one at a time. It does not rebuild the
+database, gateway, or LaTeX compiler during an application-only release. The converter starts and
+passes its healthcheck before preflight and migration run against the existing infrastructure;
+Compose then recreates the API and web services. If a build fails, incomplete BuildKit cache and
+dangling images are removed automatically; named volumes are never pruned. Old unused cache and
+images are retained for seven days after a successful release to keep one recent rollback path and
+useful dependency layers without allowing Docker storage to grow indefinitely.
 
 Compose runs the preflight as a one-shot service before database migration and API startup, with
 image-identity verification enabled. Missing or unsafe configuration and stale API images therefore
@@ -124,6 +125,13 @@ mode, and returns only a bounded PDF. The pinned Tectonic runtime uses a build-s
 `--only-cached --untrusted`; it cannot download packages or execute shell commands. The API
 preserves uploaded matching PDFs as authoritative and stores compiled PDFs and rendered pages only
 under the normalized source directory.
+
+DOCX, PPTX, and XLSX normalization runs in the separate `document-converter` service with no
+application secrets, a read-only root filesystem, dropped capabilities, bounded temporary storage,
+and explicit CPU/RAM/process limits. Selective OCR calls an additional worker only when
+`LECTUREPILOT_OCR_URL` is configured. Leave it unset until the private quality corpus and the
+worker's measured deployment envelope pass; the converter remains healthy and preserves page
+artifacts with an explicit warning when OCR is unavailable.
 
 ## Storage and recovery
 

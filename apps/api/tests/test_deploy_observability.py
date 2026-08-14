@@ -83,3 +83,13 @@ def test_production_runtime_uses_only_the_production_env_file() -> None:
     assert compose["services"]["preflight"]["env_file"] == ["../.env.production"]
     assert 'readonly ENV_FILE="${REPOSITORY_ROOT}/.env.production"' in deploy_script
     assert '--env-file "${ENV_FILE}"' in deploy_script
+
+
+def test_deploy_builds_and_starts_document_converter_before_api() -> None:
+    deploy_script = (REPO_ROOT / "scripts" / "deploy-production.sh").read_text()
+
+    converter_build = deploy_script.index("compose build document-converter")
+    api_build = deploy_script.index("compose build api")
+    converter_start = deploy_script.index("--wait document-converter")
+    api_start = deploy_script.index("compose up -d --no-deps --no-build api web")
+    assert converter_build < api_build < converter_start < api_start

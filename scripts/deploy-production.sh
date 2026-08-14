@@ -5,7 +5,7 @@ set -Eeuo pipefail
 readonly REPOSITORY_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly ENV_FILE="${REPOSITORY_ROOT}/.env.production"
 readonly COMPOSE_FILE="${REPOSITORY_ROOT}/deploy/compose.yml"
-readonly MIN_FREE_KB=$((1024 * 1024))
+readonly MIN_FREE_KB=$((4 * 1024 * 1024))
 readonly RETAIN_IMAGES_FOR="168h"
 
 compose() {
@@ -36,7 +36,7 @@ ensure_build_space() {
   docker image prune -af >/dev/null
   available_kb="$(available_docker_kb)"
   if ((available_kb < MIN_FREE_KB)); then
-    echo "Deployment stopped before building: Docker needs at least 1 GiB free." >&2
+    echo "Deployment stopped before building: Docker needs at least 4 GiB free." >&2
     echo "Available: $((available_kb / 1024)) MiB." >&2
     exit 1
   fi
@@ -68,10 +68,15 @@ main() {
   compose config --quiet
   ensure_build_space
 
+  echo "Building document converter ${LECTUREPILOT_COMMIT_SHA}..."
+  compose build document-converter
   echo "Building API ${LECTUREPILOT_COMMIT_SHA}..."
   compose build api
   echo "Building web ${LECTUREPILOT_COMMIT_SHA}..."
   compose build web
+
+  echo "Starting the document converter..."
+  compose up -d --no-deps --no-build --wait document-converter
 
   echo "Checking the application against the running infrastructure..."
   compose run --rm --no-deps preflight
