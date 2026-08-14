@@ -16,7 +16,12 @@ class IndexedSourceFile(BaseModel):
     status: Literal["indexed"] = "indexed"
 
     def as_bundle_file(self) -> SourceBundleFile:
-        return SourceBundleFile(path=self.path, kind=self.kind, size_bytes=self.size_bytes)
+        return SourceBundleFile(
+            path=self.path,
+            kind=self.kind,
+            size_bytes=self.size_bytes,
+            sha256=self.sha256,
+        )
 
 
 class CourseSourceIndex(BaseModel):

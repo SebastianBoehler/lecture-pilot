@@ -5,6 +5,10 @@ from datetime import date
 from pathlib import Path, PurePosixPath
 
 from lecturepilot.lecture_date_extraction import extract_source_date
+from lecturepilot.course_source_evidence import (
+    NORMALIZED_KINDS,
+    normalized_source_excerpt,
+)
 from lecturepilot.pdf_extract import read_pdf_text
 from lecturepilot.source_bundle import SourceBundleFile
 
@@ -12,7 +16,7 @@ from lecturepilot.source_bundle import SourceBundleFile
 MAX_DETAIL_FILES = 36
 MAX_EXCERPT_CHARS = 1200
 TEXT_KINDS = {"code", "json", "latex", "markdown", "notebook", "text"}
-DETAIL_KINDS = {*TEXT_KINDS, "pdf"}
+DETAIL_KINDS = {*TEXT_KINDS, *NORMALIZED_KINDS, "pdf"}
 
 
 def build_schedule_evidence(
@@ -54,7 +58,7 @@ def _file_detail(item: SourceBundleFile, roots: list[Path]) -> str:
         return base
     try:
         date_cue = extract_source_date(path)
-        text = _read_source_text(path, item.kind)
+        text = _read_source_text(path, item, roots)
     except (OSError, RuntimeError, ValueError):
         return f"{base}\n  content: unavailable"
     return (
@@ -65,8 +69,10 @@ def _file_detail(item: SourceBundleFile, roots: list[Path]) -> str:
     )
 
 
-def _read_source_text(path: Path, kind: str) -> str:
-    if kind == "pdf":
+def _read_source_text(path: Path, item: SourceBundleFile, roots: list[Path]) -> str:
+    if item.kind in NORMALIZED_KINDS:
+        return normalized_source_excerpt(item, roots, max_chars=MAX_EXCERPT_CHARS) or ""
+    if item.kind == "pdf":
         return read_pdf_text(str(path), max_pages=3, max_chars=MAX_EXCERPT_CHARS)
     return path.read_text(encoding="utf-8", errors="ignore")[:MAX_EXCERPT_CHARS]
 

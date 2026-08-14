@@ -15,6 +15,11 @@ def test_source_bundle_scans_professor_material_types(tmp_path: Path) -> None:
     _write(root / "videos" / "demo.mp4")
     _write(root / "code" / "notebook.ipynb")
     _write(root / "code" / "demo.py")
+    _write(root / "code" / "solver.cpp")
+    _write(root / "code" / "analysis.R")
+    _write(root / "slides" / "lecture.pptx")
+    _write(root / "notes" / "reader.docx")
+    _write(root / "data" / "results.xlsx")
     _write(root / "canvas" / "lectures" / "lecture-03" / "index.md")
     _write(root / ".git" / "HEAD")
     _write(root / ".lecturepilot-previews" / "preview.png")
@@ -25,10 +30,15 @@ def test_source_bundle_scans_professor_material_types(tmp_path: Path) -> None:
     assert [(item.path, item.kind) for item in files] == [
         ("Lecture03-eng.md", "markdown"),
         ("Lecture03-eng.tex", "latex"),
+        ("code/analysis.R", "code"),
         ("code/demo.py", "code"),
         ("code/notebook.ipynb", "notebook"),
+        ("code/solver.cpp", "code"),
+        ("data/results.xlsx", "spreadsheet"),
         ("images/Ch3/diagram.pdf", "pdf"),
         ("images/Ch3/figure.png", "image"),
+        ("notes/reader.docx", "document"),
+        ("slides/lecture.pptx", "presentation"),
         ("videos/demo.mp4", "video"),
     ]
 

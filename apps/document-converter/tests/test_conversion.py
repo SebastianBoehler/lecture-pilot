@@ -45,6 +45,7 @@ def test_pptx_conversion_preserves_slide_notes_and_shape_links(tmp_path: Path) -
     body = slide.placeholders[1].text_frame
     body.text = "Bayesian evidence"
     body.paragraphs[0].runs[0].hyperlink.address = "https://example.edu/evidence"
+    slide.shapes.title.click_action.hyperlink.address = "https://example.edu/course"
     slide.notes_slide.notes_text_frame.text = "Explain the prior before the likelihood."
     presentation.save(source)
 
@@ -61,6 +62,7 @@ def test_pptx_conversion_preserves_slide_notes_and_shape_links(tmp_path: Path) -
         for block in manifest["blocks"]
     )
     assert any(block.get("url") == "https://example.edu/evidence" for block in manifest["blocks"])
+    assert any(block.get("url") == "https://example.edu/course" for block in manifest["blocks"])
     rendered = tmp_path / "normalized" / SOURCE_SHA256 / "rendered.pdf"
     assert rendered.read_bytes().startswith(b"%PDF-")
 

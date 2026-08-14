@@ -29,6 +29,7 @@ class RuntimeReadiness:
     def check(self) -> ReadinessResult:
         checks = {
             "database": _database_status(self.database),
+            "document_converter": _service_status("LECTUREPILOT_DOCUMENT_CONVERTER_URL"),
             "latex_compiler": _compiler_status(),
         }
         return ReadinessResult(ready=all(value == "ok" for value in checks.values()), checks=checks)
@@ -43,7 +44,11 @@ def _database_status(database: Database) -> str:
 
 
 def _compiler_status() -> str:
-    configured = os.getenv("LECTUREPILOT_LATEX_COMPILER_URL", "").strip()
+    return _service_status("LECTUREPILOT_LATEX_COMPILER_URL")
+
+
+def _service_status(environment_variable: str) -> str:
+    configured = os.getenv(environment_variable, "").strip()
     try:
         endpoint = _health_endpoint(configured)
         request = Request(endpoint, headers={"Accept": "application/json"})

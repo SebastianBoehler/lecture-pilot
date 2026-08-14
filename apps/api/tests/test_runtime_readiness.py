@@ -27,6 +27,7 @@ class _Response(io.BytesIO):
 
 def test_runtime_readiness_checks_database_and_compiler(monkeypatch) -> None:
     monkeypatch.setenv("LECTUREPILOT_LATEX_COMPILER_URL", "http://compiler:8080")
+    monkeypatch.setenv("LECTUREPILOT_DOCUMENT_CONVERTER_URL", "http://converter:8080")
     monkeypatch.setattr(
         readiness_module,
         "urlopen",
@@ -36,13 +37,22 @@ def test_runtime_readiness_checks_database_and_compiler(monkeypatch) -> None:
     result = RuntimeReadiness(_Database()).check()
 
     assert result.ready
-    assert result.checks == {"database": "ok", "latex_compiler": "ok"}
+    assert result.checks == {
+        "database": "ok",
+        "document_converter": "ok",
+        "latex_compiler": "ok",
+    }
 
 
 def test_runtime_readiness_reports_only_dependency_state(monkeypatch) -> None:
     monkeypatch.delenv("LECTUREPILOT_LATEX_COMPILER_URL", raising=False)
+    monkeypatch.delenv("LECTUREPILOT_DOCUMENT_CONVERTER_URL", raising=False)
 
     result = RuntimeReadiness(_Database(fails=True)).check()
 
     assert not result.ready
-    assert result.checks == {"database": "error", "latex_compiler": "error"}
+    assert result.checks == {
+        "database": "error",
+        "document_converter": "error",
+        "latex_compiler": "error",
+    }

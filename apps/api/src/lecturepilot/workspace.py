@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 
+from lecturepilot.course_material_formats import COURSE_MATERIAL_UPLOADS
 from lecturepilot.tenancy import tenant_storage_prefix
 
 
@@ -33,31 +34,7 @@ class WorkspacePolicy:
         ".webp": ("image", 20 * 1024 * 1024),
         ".svg": ("svg", 2 * 1024 * 1024),
     }
-    allowed_course_material_uploads: dict[str, tuple[str, int]] = {
-        ".tex": ("latex", 10 * 1024 * 1024),
-        ".sty": ("latex-support", 10 * 1024 * 1024),
-        ".cls": ("latex-support", 10 * 1024 * 1024),
-        ".bib": ("latex-support", 10 * 1024 * 1024),
-        ".bst": ("latex-support", 10 * 1024 * 1024),
-        ".md": ("markdown", 5 * 1024 * 1024),
-        ".txt": ("text", 2 * 1024 * 1024),
-        ".csv": ("table", 5 * 1024 * 1024),
-        ".json": ("json", 2 * 1024 * 1024),
-        ".pdf": ("pdf", 100 * 1024 * 1024),
-        ".png": ("image", 20 * 1024 * 1024),
-        ".jpg": ("image", 20 * 1024 * 1024),
-        ".jpeg": ("image", 20 * 1024 * 1024),
-        ".webp": ("image", 20 * 1024 * 1024),
-        ".gif": ("image", 20 * 1024 * 1024),
-        ".svg": ("svg", 2 * 1024 * 1024),
-        ".mp4": ("video", 500 * 1024 * 1024),
-        ".webm": ("video", 500 * 1024 * 1024),
-        ".mov": ("video", 500 * 1024 * 1024),
-        ".mkv": ("video", 500 * 1024 * 1024),
-        ".avi": ("video", 500 * 1024 * 1024),
-        ".py": ("code", 5 * 1024 * 1024),
-        ".ipynb": ("notebook", 20 * 1024 * 1024),
-    }
+    allowed_course_material_uploads = COURSE_MATERIAL_UPLOADS
 
     def validate_write(self, path: str, size_bytes: int) -> CheckedWorkspaceFile:
         return self._validate_file(path, size_bytes, allowed=self.allowed_writes)

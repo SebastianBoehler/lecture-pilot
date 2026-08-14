@@ -142,7 +142,41 @@ def _code_fence(source: str, language: str) -> str:
 
 
 def _code_language(path: Path) -> str:
-    return {".py": "python"}.get(path.suffix.lower(), "text")
+    return {
+        ".c": "c",
+        ".cc": "cpp",
+        ".cpp": "cpp",
+        ".cs": "csharp",
+        ".css": "css",
+        ".go": "go",
+        ".h": "c",
+        ".hpp": "cpp",
+        ".html": "html",
+        ".java": "java",
+        ".json": "json",
+        ".jl": "julia",
+        ".js": "javascript",
+        ".jsx": "jsx",
+        ".kt": "kotlin",
+        ".kts": "kotlin",
+        ".m": "objective-c",
+        ".mm": "objective-cpp",
+        ".php": "php",
+        ".py": "python",
+        ".r": "r",
+        ".rb": "ruby",
+        ".rs": "rust",
+        ".scala": "scala",
+        ".sh": "bash",
+        ".sql": "sql",
+        ".swift": "swift",
+        ".toml": "toml",
+        ".ts": "typescript",
+        ".tsx": "tsx",
+        ".xml": "xml",
+        ".yaml": "yaml",
+        ".yml": "yaml",
+    }.get(path.suffix.lower(), "text")
 
 
 def _safe_language(value: str) -> str:

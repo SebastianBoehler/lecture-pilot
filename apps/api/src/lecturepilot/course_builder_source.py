@@ -7,6 +7,7 @@ from fastapi import FastAPI
 
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.compiled_slide_canvas import latex_preview_warning
+from lecturepilot.document_converter_client import DocumentConverterError
 from lecturepilot.course_schedule_store import read_course_workspace
 from lecturepilot.course_source_routing import SourceRoutingError, selected_routed_files
 from lecturepilot.course_update_recovery import locked_course_state
@@ -18,6 +19,7 @@ from lecturepilot.logging_observability import current_operation_id
 from lecturepilot.source_index import refresh_course_source_index
 from lecturepilot.source_bundle_canvas import SourceBundleCanvasError, import_source_bundle_canvas
 from lecturepilot.source_index_models import IndexedSourceFile
+from lecturepilot.source_document_normalization import normalize_selected_documents
 from lecturepilot.workspace_fs import WorkspaceFSError
 
 
@@ -72,6 +74,14 @@ def _course_builder_source_document_locked(
             preferred_pdf_paths=explicit_paths,
         )
         normalized = workspace.layout.course_normalized_dir(course_id)
+        try:
+            normalize_selected_documents(
+                files=selected,
+                source_root=uploads_dir,
+                normalized_root=normalized,
+            )
+        except DocumentConverterError as exc:
+            raise SourceBundleCanvasError(str(exc)) from exc
         compiler_inputs = (
             resolve_latex_compiler_inputs(
                 source_root=uploads_dir,

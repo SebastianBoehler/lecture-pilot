@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from lecturepilot.course_material_formats import SOURCE_SUFFIXES
 from lecturepilot.workspace_capability import CapabilityRoot, WorkspaceCapability
 from lecturepilot.workspace_fs import WorkspaceFS
 
@@ -12,6 +13,7 @@ class SourceBundleFile:
     path: str
     kind: str
     size_bytes: int
+    sha256: str | None = None
 
 
 def scan_source_bundle(root: Path) -> list[SourceBundleFile]:
@@ -33,33 +35,6 @@ def scan_source_bundle(root: Path) -> list[SourceBundleFile]:
                 )
             )
     return files
-
-
-SOURCE_SUFFIXES = {
-    ".tex": "latex",
-    ".sty": "latex-support",
-    ".cls": "latex-support",
-    ".bib": "latex-support",
-    ".bst": "latex-support",
-    ".md": "markdown",
-    ".txt": "text",
-    ".csv": "table",
-    ".json": "json",
-    ".pdf": "pdf",
-    ".png": "image",
-    ".jpg": "image",
-    ".jpeg": "image",
-    ".webp": "image",
-    ".gif": "image",
-    ".svg": "svg",
-    ".mp4": "video",
-    ".webm": "video",
-    ".mov": "video",
-    ".mkv": "video",
-    ".avi": "video",
-    ".py": "code",
-    ".ipynb": "notebook",
-}
 
 
 def _is_hidden(path: Path) -> bool:

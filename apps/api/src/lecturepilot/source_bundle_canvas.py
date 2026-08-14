@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
 from lecturepilot.compiled_slide_canvas import compiled_slide_preview
@@ -9,8 +9,10 @@ from lecturepilot.latex_canvas_text import BROWSER_ASSET_SUFFIXES, slug
 from lecturepilot.source_bundle import SourceBundleFile, scan_source_bundle
 from lecturepilot.source_bundle_latex import scoped_latex_sections, source_kind
 from lecturepilot.source_bundle_media import asset_section, video_section
+from lecturepilot.source_bundle_normalized import NormalizedCanvasError, normalized_sections
 from lecturepilot.source_bundle_pdf import PdfSourceError, pdf_sections
 from lecturepilot.source_bundle_text import heading, text_blocks
+from lecturepilot.source_bundle_table import SourceTableError, csv_section
 from lecturepilot.source_code_canvas import SourceCodeCanvasError, code_section, notebook_section
 
 
@@ -35,6 +37,7 @@ def import_source_bundle_canvas(
     warnings: list[str] | None = None,
 ) -> CanvasDocument:
     files = files if files is not None else scan_source_bundle(source_root)
+    source_paths = {file.path for file in files}
     derived_root = derived_root or source_root
     sections: list[CanvasSection] = []
     source_refs: list[str] = []
@@ -81,7 +84,7 @@ def import_source_bundle_canvas(
             if section:
                 sections.append(section)
                 source_refs.append(file.path)
-        elif file.kind == "code":
+        elif file.kind in {"code", "json"} and not _is_media_sidecar(file.path, source_paths):
             try:
                 section = code_section(path, file.path)
             except SourceCodeCanvasError as exc:
@@ -89,6 +92,28 @@ def import_source_bundle_canvas(
             if section:
                 sections.append(section)
                 source_refs.append(file.path)
+        elif file.kind == "table":
+            try:
+                section = csv_section(path, file.path)
+            except SourceTableError as exc:
+                raise SourceBundleCanvasError(str(exc)) from exc
+            if section:
+                sections.append(section)
+                source_refs.append(file.path)
+        elif file.kind in {"document", "presentation", "spreadsheet"}:
+            try:
+                imported_sections, normalized_warnings = normalized_sections(
+                    file=file,
+                    normalized_root=derived_root,
+                    course_id=course_id,
+                    lecture_id=lecture_id,
+                )
+            except NormalizedCanvasError as exc:
+                raise SourceBundleCanvasError(str(exc)) from exc
+            if imported_sections:
+                sections.extend(imported_sections)
+                source_refs.append(file.path)
+            document_warnings.extend(normalized_warnings)
         elif file.kind in {"image", "svg"} and path.suffix.lower() in BROWSER_ASSET_SUFFIXES:
             sections.append(asset_section(file.path, source_root, course_id, lecture_id))
         elif file.kind == "video" and path.suffix.lower() in VIDEO_SUFFIXES:
@@ -109,7 +134,8 @@ def import_source_bundle_canvas(
 
     if not any(_has_text(section) for section in sections):
         raise SourceBundleCanvasError(
-            "No readable LaTeX, Markdown, text, PDF, notebook, or code source material found."
+            "No readable document, slide, spreadsheet, LaTeX, Markdown, text, PDF, notebook, "
+            "or code source material found."
         )
     return CanvasDocument(
         id=f"{course_id}-{lecture_id}",
@@ -183,3 +209,16 @@ def _dedupe_sections(sections: list[CanvasSection]) -> list[CanvasSection]:
             )
         )
     return result
+
+
+def _is_media_sidecar(path: str, source_paths: set[str]) -> bool:
+    source = PurePosixPath(path)
+    if source.suffix.lower() != ".json":
+        return False
+    without_json = source.with_suffix("")
+    if without_json.as_posix() in source_paths:
+        return True
+    media_suffixes = {*BROWSER_ASSET_SUFFIXES, *VIDEO_SUFFIXES}
+    return any(
+        without_json.with_suffix(suffix).as_posix() in source_paths for suffix in media_suffixes
+    )

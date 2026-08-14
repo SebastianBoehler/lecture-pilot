@@ -26,18 +26,34 @@ def pptx_supplemental_blocks(path: Path) -> list[dict]:
 def _slide_links(slide, *, slide_number: int) -> list[dict]:
     blocks = []
     for shape in slide.shapes:
+        if address := shape.click_action.hyperlink.address:
+            blocks.append(
+                _link_block(
+                    address,
+                    label=(shape.text.strip() if shape.has_text_frame else ""),
+                    slide_number=slide_number,
+                )
+            )
         if not shape.has_text_frame:
             continue
         for paragraph in shape.text_frame.paragraphs:
             for run in paragraph.runs:
                 if address := run.hyperlink.address:
                     blocks.append(
-                        {
-                            "kind": "link",
-                            "text": run.text.strip() or address,
-                            "url": address,
-                            "locator": {"slide": slide_number},
-                            "extraction": "native",
-                        }
+                        _link_block(
+                            address,
+                            label=run.text.strip(),
+                            slide_number=slide_number,
+                        )
                     )
-    return blocks
+    return list({(block["url"], block["text"]): block for block in blocks}.values())
+
+
+def _link_block(address: str, *, label: str, slide_number: int) -> dict:
+    return {
+        "kind": "link",
+        "text": label or address,
+        "url": address,
+        "locator": {"slide": slide_number},
+        "extraction": "native",
+    }

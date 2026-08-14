@@ -5,17 +5,26 @@ from pathlib import Path
 from pathlib import PurePosixPath
 
 from lecturepilot.pdf_extract import read_pdf_text
+from lecturepilot.source_bundle import SourceBundleFile
 from lecturepilot.source_index_models import IndexedSourceFile
+from lecturepilot.source_normalization_store import (
+    SourceNormalizationError,
+    load_normalized_document,
+)
 
 
 MAX_EXCERPT_CHARS = 900
-TEXT_KINDS = {"json", "latex", "markdown", "notebook", "python", "text"}
-DETAIL_KINDS = {*TEXT_KINDS, "pdf", "video"}
-PRIORITY_DETAIL_KINDS = {"notebook", "python", "video"}
+TEXT_KINDS = {"code", "json", "latex", "markdown", "notebook", "python", "text"}
+NORMALIZED_KINDS = {"document", "presentation", "spreadsheet"}
+DETAIL_KINDS = {*TEXT_KINDS, *NORMALIZED_KINDS, "pdf", "video"}
+PRIORITY_DETAIL_KINDS = {"code", "notebook", "python", "video"}
 MAX_SELECTION_DETAILS = 60
 
 
 def source_file_excerpt(item: IndexedSourceFile, roots: list[Path]) -> str:
+    if item.kind in NORMALIZED_KINDS:
+        if excerpt := normalized_source_excerpt(item, roots, max_chars=MAX_EXCERPT_CHARS):
+            return excerpt
     path = _resolve_source(item.path, roots)
     if path is None:
         return "file contents unavailable"
@@ -28,6 +37,29 @@ def source_file_excerpt(item: IndexedSourceFile, roots: list[Path]) -> str:
     except (OSError, RuntimeError, ValueError):
         return "text extraction unavailable; use path and file metadata"
     return "binary asset; use path and surrounding course structure"
+
+
+def normalized_source_excerpt(
+    item: IndexedSourceFile | SourceBundleFile, roots: list[Path], *, max_chars: int
+) -> str | None:
+    if not item.sha256:
+        return None
+    for root in roots:
+        try:
+            document = load_normalized_document(root, item.sha256)
+        except SourceNormalizationError:
+            continue
+        values = []
+        for block in document.blocks:
+            if block.text:
+                values.append(block.text)
+            values.extend(
+                str(cell.value if cell.value is not None else cell.formula)
+                for cell in block.cells
+                if cell.value is not None or cell.formula
+            )
+        return _compact(" ".join(values))[:max_chars]
+    return None
 
 
 def selection_detail_files(

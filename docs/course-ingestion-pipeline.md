@@ -9,6 +9,7 @@ owner publishes it.
 create owned course
   -> upload files/folder tree
   -> index paths, types, sizes, and hashes
+  -> normalize structured documents by immutable source revision
   -> infer and review lecture schedule
   -> agent-assign and professor-confirm source evidence per lecture
   -> generate private drafts
@@ -43,11 +44,13 @@ Every uploaded file must finish ingestion in exactly one visible state:
 - unsupported or rejected with an explicit error.
 
 Accepted source kinds are LaTeX and its local support files, Markdown/text,
-CSV/JSON, PDF, browser images/SVG, videos, Python, and notebooks. The backend:
+CSV/JSON/YAML/TOML/XML, macro-free DOCX/PPTX/XLSX, PDF, browser images/SVG,
+videos, notebooks, and common inert source-code languages. The backend:
 
 - rejects absolute, hidden, traversal, unsupported, and oversized paths;
 - streams multipart bodies in 1 MiB chunks to a private quarantine file;
-- checks declared MIME and content signatures, including active-SVG rejection;
+- checks declared MIME and content signatures, including active-SVG rejection,
+  OOXML package/type verification, and embedded-macro rejection;
 - computes SHA-256 while streaming; and
 - atomically promotes without overwriting an existing target.
 
@@ -60,7 +63,8 @@ indexed first and semantic exclusion happens in the reviewable source-routing
 stage.
 
 The request ceiling defaults to 600 MiB. Per-file limits are 2–10 MiB for text
-formats, 20 MiB for images/notebooks, 100 MiB for PDF, and 500 MiB for video.
+formats, 20 MiB for images/notebooks, 100 MiB for PDF and Office documents,
+and 500 MiB for video.
 These are policy ceilings, not a claim that every maximum passed a production
 load test. Malware scanning is not implemented.
 
@@ -88,7 +92,9 @@ rsync -a --exclude '.git/' "$OVERLEAF_CHECKOUT/" \
 ## Schedule and lecture ownership
 
 The scheduling agent receives the complete indexed inventory plus bounded
-content evidence and an optional first date/count. It infers lecture units
+content evidence and an optional first date/count. Office files are normalized
+before this semantic stage, so native slide/document text and spreadsheet cells
+can inform scheduling and routing without relying on filenames. It infers lecture units
 semantically; professors do not need to rename files or convert an upload into
 a prescribed folder scheme. The professor can then rename, remove, add, and
 drag lectures into the intended order before saving.
@@ -111,14 +117,23 @@ sending the entire course to the model.
 
 ## Deterministic evidence adapters
 
-| Kind                     | Current handling                                                                                                               |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| LaTeX                    | Import text/structure; use an authoritative matching PDF or compile a bounded handout preview in the isolated Tectonic service |
-| Markdown/text            | Import bounded text and headings                                                                                               |
-| PDF                      | Extract bounded text plus safe HTTP(S) link annotations and render a representative sample of up to 20 pages                   |
-| Python/notebook          | Import inert ordered Markdown/code; never execute code or retain outputs                                                       |
-| Browser images/SVG/video | Preserve as source-backed media; optional JSON sidecars provide captions                                                       |
-| CSV/JSON                 | Validate and index; no dedicated semantic canvas adapter yet                                                                   |
+| Kind                       | Current handling                                                                                                               |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| LaTeX                      | Import text/structure; use an authoritative matching PDF or compile a bounded handout preview in the isolated Tectonic service |
+| Markdown/text              | Import bounded text and headings                                                                                               |
+| PDF                        | Extract bounded text plus safe HTTP(S) link annotations and render a representative sample of up to 20 pages                   |
+| DOCX                       | Preserve native heading and paragraph order in revision-bound normalized evidence                                              |
+| PPTX                       | Preserve native slide text, notes, run/shape links, and render faithful in-canvas slide images                                 |
+| XLSX/CSV                   | Preserve formulas separately from cached values and render bounded, sheet/range-located Markdown table artifacts               |
+| Source code/JSON/notebooks | Import language-aware inert code/Markdown; never execute code or retain notebook outputs                                       |
+| Browser images/SVG/video   | Preserve as source-backed media; optional JSON sidecars provide captions                                                       |
+
+The native document converter is a no-secret, internal-only Docling and
+LibreOffice service. It runs with a read-only root filesystem, dropped Linux
+capabilities, bounded CPU/RAM/processes/temp space, and accepts only DOCX, PPTX,
+and XLSX. Macro-enabled Office variants are not accepted. Originals remain
+authoritative; rendered PDFs and slide images are regeneratable visual artifacts,
+and rendered text is never duplicated as source evidence.
 
 Notebook import reads at most 120 cells and 60,000 characters, ignores execution
 counts, outputs, embedded image payloads, and remote images, and derives fenced

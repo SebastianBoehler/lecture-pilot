@@ -99,6 +99,28 @@ def test_python_source_imports_as_a_fenced_code_snippet(tmp_path: Path) -> None:
     )
 
 
+@pytest.mark.parametrize(
+    ("filename", "language"),
+    [("solver.cpp", "cpp"), ("analysis.R", "r"), ("model.rs", "rust")],
+)
+def test_inert_source_files_keep_language_aware_fences(
+    tmp_path: Path, filename: str, language: str
+) -> None:
+    root = tmp_path / "bundle"
+    source = root / filename
+    source.parent.mkdir(parents=True)
+    source.write_text("source code remains inert\n", encoding="utf-8")
+
+    document = import_source_bundle_canvas(
+        source_root=root,
+        course_id="technical-course",
+        lecture_id="lecture-01",
+        workspace_path="planner/source.json",
+    )
+
+    assert document.sections[0].blocks[0].text == (f"```{language}\nsource code remains inert\n```")
+
+
 def test_notebook_code_keeps_indentation_across_planner_boundaries(tmp_path: Path) -> None:
     root = tmp_path / "bundle"
     source = root / "Lecture01" / "linear_model.py"

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 
+from lecturepilot.document_converter_client import DocumentConverterError
 from lecturepilot.api_auth import request_context, require_course_manager
 from lecturepilot.course_schedule_store import read_course_workspace
 from lecturepilot.course_source_routing import (
@@ -22,6 +23,7 @@ from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_usage import model_usage_scope
 from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.source_index import refresh_course_source_index
+from lecturepilot.source_document_normalization import normalize_selected_documents
 from lecturepilot.tenancy import TenantContext
 
 
@@ -82,6 +84,12 @@ def register_course_source_routing_routes(
             expected_revision = source_revision(index, lectures)
 
         try:
+            normalized_root = layout.course_normalized_dir(course_id)
+            normalize_selected_documents(
+                files=[item.as_bundle_file() for item in index.files],
+                source_root=layout.course_uploads_dir(course_id),
+                normalized_root=normalized_root,
+            )
             with app.state.observability.tool_span(
                 "course_source_routing",
                 course_id=course_id,
@@ -97,17 +105,20 @@ def register_course_source_routing_routes(
                         course_id=course_id,
                         files=index.files,
                         lectures=lectures,
-                        roots=list(
-                            app.state.canvas_workspace.source_bundle_roots(
+                        roots=[
+                            *app.state.canvas_workspace.source_bundle_roots(
                                 course_id, include_seeded_materials=False
-                            )
-                        ),
+                            ),
+                            normalized_root,
+                        ],
                     )
                 span.set_outputs({"route_count": len(routes)})
         except ProviderConfigurationError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         except ModelExecutionError as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from exc
+        except DocumentConverterError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
 
         with locked_course_state(layout.course_root(course_id)):
             current_index = _refresh_index(layout, course_id)
