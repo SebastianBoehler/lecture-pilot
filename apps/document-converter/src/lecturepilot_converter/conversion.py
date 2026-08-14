@@ -7,6 +7,7 @@ from lecturepilot_converter.docling_blocks import docling_blocks
 from lecturepilot_converter.office_pptx import pptx_supplemental_blocks
 from lecturepilot_converter.office_render import render_office_pdf
 from lecturepilot_converter.office_xlsx import xlsx_table_blocks
+from lecturepilot_converter.presentation_ocr import ocr_presentation_pages
 
 
 MEDIA_TYPES = {
@@ -36,21 +37,26 @@ def convert_document(
         blocks.extend(pptx_supplemental_blocks(source))
     elif suffix == ".xlsx":
         blocks = xlsx_table_blocks(source)
+    warnings = []
+    revision_root = output_root / source_sha256
+    if suffix == ".pptx":
+        rendered = revision_root / "rendered.pdf"
+        render_office_pdf(source, rendered)
+        ocr_blocks, warnings = ocr_presentation_pages(rendered, blocks)
+        blocks.extend(ocr_blocks)
     manifest = {
         "schema_version": 1,
         "source_path": source_path,
         "source_sha256": source_sha256,
         "media_type": MEDIA_TYPES[suffix],
         "blocks": blocks,
-        "warnings": [],
+        "warnings": warnings,
     }
     _write_outputs(
-        output_root / source_sha256,
+        revision_root,
         manifest=manifest,
         markdown=document.export_to_markdown().strip(),
     )
-    if suffix == ".pptx":
-        render_office_pdf(source, output_root / source_sha256 / "rendered.pdf")
     return manifest
 
 

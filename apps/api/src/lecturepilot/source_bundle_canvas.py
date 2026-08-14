@@ -70,6 +70,7 @@ def import_source_bundle_canvas(
                     derived_root=derived_root,
                     course_id=course_id,
                     lecture_id=lecture_id,
+                    warnings=document_warnings,
                 )
             except PdfSourceError as exc:
                 raise SourceBundleCanvasError(str(exc)) from exc

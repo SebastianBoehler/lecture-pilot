@@ -18,6 +18,8 @@ from lecturepilot_converter.conversion import (
 )
 from lecturepilot_converter.office_render import OfficeRenderError
 from lecturepilot_converter.office_xlsx import SpreadsheetConversionError
+from lecturepilot_converter.ocr_client import MAX_OCR_IMAGE_BYTES, PaddleOcrError
+from lecturepilot_converter.ocr_page import OcrPageResult, process_ocr_page
 
 
 MAX_DOCUMENT_BYTES = 100 * 1024 * 1024
@@ -77,6 +79,31 @@ async def convert(
     except BaseException:
         temporary.cleanup()
         raise
+
+
+@app.post("/ocr-page", response_model=OcrPageResult)
+async def ocr_page(
+    file: Annotated[UploadFile, File()],
+    raster_ratio: Annotated[float, Form(ge=0, le=1)],
+    page: Annotated[int, Form(ge=1)],
+    width: Annotated[float, Form(gt=0, le=100_000)],
+    height: Annotated[float, Form(gt=0, le=100_000)],
+    native_text: Annotated[str, Form(max_length=60_000)] = "",
+) -> OcrPageResult:
+    image = await file.read(MAX_OCR_IMAGE_BYTES + 1)
+    await file.close()
+    try:
+        return await run_in_threadpool(
+            process_ocr_page,
+            image=image,
+            native_text=native_text,
+            raster_ratio=raster_ratio,
+            page=page,
+            width=width,
+            height=height,
+        )
+    except (PaddleOcrError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail="OCR page input is not accepted.") from exc
 
 
 def _validated_source_path(value: str) -> PurePosixPath:

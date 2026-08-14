@@ -2,7 +2,9 @@ from pathlib import Path
 
 from docx import Document
 from openpyxl import Workbook
+from PIL import Image
 from pptx import Presentation
+from pptx.util import Inches
 
 from lecturepilot_converter.conversion import convert_document
 
@@ -88,3 +90,29 @@ def test_xlsx_conversion_keeps_formulas_separate_from_cell_values(tmp_path: Path
     assert table["locator"] == {"sheet": "Regression", "cell_range": "A1:B3"}
     formula = next(cell for cell in table["cells"] if (cell["row"], cell["column"]) == (3, 2))
     assert formula == {"row": 3, "column": 2, "value": None, "formula": "=SUM(B2)"}
+
+
+def test_image_only_pptx_uses_selective_ocr(monkeypatch, tmp_path: Path) -> None:
+    image = tmp_path / "scan.png"
+    Image.new("RGB", (1200, 800), "white").save(image)
+    source = tmp_path / "scanned-slides.pptx"
+    presentation = Presentation()
+    slide = presentation.slides.add_slide(presentation.slide_layouts[6])
+    slide.shapes.add_picture(str(image), 0, 0, width=Inches(10))
+    presentation.save(source)
+    monkeypatch.setenv("LECTUREPILOT_OCR_URL", "http://ocr:8080")
+    monkeypatch.setattr(
+        "lecturepilot_converter.ocr_client.PaddleOcrClient.extract_markdown",
+        lambda _self, _image: "## Gescannte Folie\n\nBayes-Regel",
+    )
+
+    manifest = convert_document(
+        source,
+        source_path="slides/scanned-slides.pptx",
+        source_sha256=SOURCE_SHA256,
+        output_root=tmp_path / "normalized",
+    )
+
+    ocr = next(block for block in manifest["blocks"] if block["extraction"] == "ocr")
+    assert ocr["locator"]["slide"] == 1
+    assert "Bayes-Regel" in ocr["text"]

@@ -5,7 +5,7 @@ from pathlib import Path
 from lecturepilot.bounded_processing import BoundedProcessingError
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.latex_canvas_text import slug
-from lecturepilot.pdf_extract import pdf_page_count, read_pdf_page_range
+from lecturepilot.pdf_extract import PdfTextExtraction, pdf_page_count, read_pdf_page_range_result
 from lecturepilot.pdf_slide_assets import PdfSlideAssetError, render_pdf_slide_blocks
 from lecturepilot.source_bundle_media import media_caption
 from lecturepilot.source_bundle_text import MAX_TEXT_CHARS_PER_FILE, pdf_text_blocks
@@ -27,6 +27,7 @@ def pdf_sections(
     derived_root: Path,
     course_id: str,
     lecture_id: str,
+    warnings: list[str] | None = None,
 ) -> list[CanvasSection]:
     page_count = _page_count(path)
     ranges = page_ranges(page_count)
@@ -46,7 +47,10 @@ def pdf_sections(
     sections = []
     for index, (start, end) in enumerate(ranges, start=1):
         section_id = base_id if len(ranges) == 1 else f"{base_id}-pages-{start + 1}-{end}"
-        blocks = pdf_text_blocks(section_id, _page_text(path, start, end))
+        extraction = _page_text(path, start, end)
+        if warnings is not None:
+            warnings.extend(extraction.warnings)
+        blocks = pdf_text_blocks(section_id, extraction.text)
         if index == 1:
             blocks.append(
                 CanvasBlock(
@@ -96,9 +100,9 @@ def slide_number(block: CanvasBlock) -> int:
     return 0
 
 
-def _page_text(path: Path, start_page: int, end_page: int) -> str:
+def _page_text(path: Path, start_page: int, end_page: int) -> PdfTextExtraction:
     try:
-        return read_pdf_page_range(
+        return read_pdf_page_range_result(
             str(path),
             start_page=start_page,
             end_page=end_page,

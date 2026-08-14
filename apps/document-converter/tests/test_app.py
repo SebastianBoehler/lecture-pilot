@@ -89,3 +89,24 @@ def test_convert_reports_malformed_office_document_without_internal_error() -> N
 
     assert response.status_code == 422
     assert response.json() == {"detail": "Document contents could not be converted safely."}
+
+
+def test_ocr_page_warns_without_blocking_when_worker_is_unavailable(monkeypatch) -> None:
+    monkeypatch.delenv("LECTUREPILOT_OCR_URL", raising=False)
+
+    response = TestClient(app).post(
+        "/ocr-page",
+        data={
+            "native_text": "",
+            "raster_ratio": "1",
+            "page": "2",
+            "width": "1024",
+            "height": "768",
+        },
+        files={"file": ("page.png", b"\x89PNG\r\n\x1a\nscan", "image/png")},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["required"] is True
+    assert response.json()["extraction"] == "native"
+    assert response.json()["warning"].startswith("OCR required but unavailable for page 2")

@@ -56,6 +56,37 @@ def test_converter_client_rejects_traversing_archive_member(tmp_path: Path) -> N
     assert not (tmp_path / "escape").exists()
 
 
+def test_ocr_page_returns_source_located_ocr_text() -> None:
+    def response(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/ocr-page"
+        return httpx.Response(
+            200,
+            json={
+                "required": True,
+                "extraction": "ocr",
+                "text": "Bayes-Regel aus dem Scan",
+                "warning": None,
+                "locator": {"page": 3, "bbox": [0, 0, 1024, 768]},
+            },
+        )
+
+    result = DocumentConverterClient(
+        "http://converter:8080",
+        transport=httpx.MockTransport(response),
+    ).ocr_page(
+        image=b"\x89PNG\r\n\x1a\nscan",
+        native_text="",
+        raster_ratio=1.0,
+        page=3,
+        width=1024,
+        height=768,
+    )
+
+    assert result.extraction == "ocr"
+    assert result.locator.page == 3
+    assert result.text == "Bayes-Regel aus dem Scan"
+
+
 def _client(archive: bytes) -> DocumentConverterClient:
     def response(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, content=archive, headers={"content-type": "application/zip"})

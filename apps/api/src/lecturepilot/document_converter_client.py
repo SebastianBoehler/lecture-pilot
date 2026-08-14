@@ -4,11 +4,13 @@ from io import BytesIO
 import os
 from pathlib import Path, PurePosixPath
 from tempfile import TemporaryDirectory
+from typing import Literal
 from zipfile import BadZipFile, ZipFile
 
 import httpx
+from pydantic import BaseModel, Field, ValidationError
 
-from lecturepilot.source_normalization_models import NormalizedDocument
+from lecturepilot.source_normalization_models import NormalizedDocument, SourceLocator
 from lecturepilot.source_normalization_store import (
     SourceNormalizationError,
     load_normalized_document,
@@ -17,10 +19,20 @@ from lecturepilot.source_normalization_store import (
 
 MAX_ARCHIVE_BYTES = 256 * 1024 * 1024
 MAX_ARCHIVE_MEMBERS = 1_000
+MAX_OCR_IMAGE_BYTES = 20 * 1024 * 1024
+MAX_OCR_RESPONSE_BYTES = 128 * 1024
 
 
 class DocumentConverterError(RuntimeError):
     pass
+
+
+class OcrPageResult(BaseModel):
+    required: bool
+    extraction: Literal["native", "ocr"]
+    text: str = Field(max_length=60_000)
+    warning: str | None = Field(default=None, max_length=500)
+    locator: SourceLocator
 
 
 class DocumentConverterClient:
@@ -66,6 +78,51 @@ class DocumentConverterClient:
         if len(response.content) > MAX_ARCHIVE_BYTES:
             raise DocumentConverterError("Document converter response exceeds the size limit.")
         return response
+
+    def ocr_page(
+        self,
+        *,
+        image: bytes,
+        native_text: str,
+        raster_ratio: float,
+        page: int,
+        width: float,
+        height: float,
+    ) -> OcrPageResult:
+        if not image or len(image) > MAX_OCR_IMAGE_BYTES:
+            raise DocumentConverterError("OCR page image exceeds the size limit.")
+        try:
+            with httpx.Client(transport=self.transport, timeout=100) as client:
+                response = client.post(
+                    f"{self.base_url}/ocr-page",
+                    data={
+                        "native_text": native_text,
+                        "raster_ratio": str(raster_ratio),
+                        "page": str(page),
+                        "width": str(width),
+                        "height": str(height),
+                    },
+                    files={"file": (f"page-{page}.png", image, "image/png")},
+                )
+        except httpx.HTTPError as exc:
+            raise DocumentConverterError("Document OCR gateway is unavailable.") from exc
+        content_type = response.headers.get("content-type", "").split(";", 1)[0]
+        if (
+            response.status_code != 200
+            or content_type != "application/json"
+            or len(response.content) > MAX_OCR_RESPONSE_BYTES
+        ):
+            raise DocumentConverterError("Document OCR gateway rejected the page.")
+        try:
+            result = OcrPageResult.model_validate_json(response.content)
+        except ValidationError as exc:
+            raise DocumentConverterError(
+                "Document OCR gateway returned an invalid result."
+            ) from exc
+        expected_bbox = (0.0, 0.0, float(width), float(height))
+        if result.locator.page != page or result.locator.bbox != expected_bbox:
+            raise DocumentConverterError("Document OCR gateway returned the wrong page identity.")
+        return result
 
 
 def _store_archive(content: bytes, *, normalized_root: Path, sha256: str) -> None:
