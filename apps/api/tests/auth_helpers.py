@@ -19,7 +19,20 @@ class FakePendingUniversityLogin:
     initial_identity: UniversityLoginResult
     synchronized_identity: UniversityLoginResult
 
-    def synchronize(self) -> UniversityLoginResult:
+    def synchronize(self, on_source=None) -> UniversityLoginResult:
+        if on_source is not None:
+            for source in sorted(self.synchronized_identity.sources_checked, key=str):
+                courses = [
+                    course
+                    for course in self.synchronized_identity.courses
+                    if course.source == source
+                ]
+                on_source(
+                    source,
+                    self.synchronized_identity.model_copy(
+                        update={"courses": courses, "sources_checked": {source}}
+                    ),
+                )
         return self.synchronized_identity
 
 

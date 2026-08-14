@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { refreshSession } from "./sessionApi";
 import type { LoginSession } from "./types";
@@ -10,24 +10,35 @@ export function useUniversityCourseSync(
   session: LoginSession | null,
   setSession: (session: LoginSession | null) => void,
 ) {
-  useEffect(() => {
-    if (!session || session.university_course_sync_status !== "loading") return;
+  const sessionRef = useRef(session);
+  const syncStatus = session?.university_course_sync_status;
+  const username = session?.username;
 
-    const activeSession = session;
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
+
+  useEffect(() => {
+    const activeSession = sessionRef.current;
+    if (!activeSession || syncStatus !== "loading") return;
+    const pollingSession: LoginSession = activeSession;
+
     const controller = new AbortController();
     const deadline = Date.now() + SYNC_TIMEOUT_MS;
+    let latestSession = activeSession;
     let timer: ReturnType<typeof setTimeout> | undefined;
 
     async function poll() {
       if (Date.now() >= deadline) {
-        setSession({ ...activeSession, university_course_sync_status: "error" });
+        setSession({ ...latestSession, university_course_sync_status: "error" });
         return;
       }
       try {
-        const refreshed = await refreshSession(activeSession, controller.signal);
+        const refreshed = await refreshSession(pollingSession, controller.signal);
         if (controller.signal.aborted) return;
+        latestSession = refreshed;
+        setSession(refreshed);
         if (refreshed.university_course_sync_status !== "loading") {
-          setSession(refreshed);
           return;
         }
       } catch {
@@ -41,5 +52,5 @@ export function useUniversityCourseSync(
       controller.abort();
       if (timer) clearTimeout(timer);
     };
-  }, [session, setSession]);
+  }, [setSession, syncStatus, username]);
 }

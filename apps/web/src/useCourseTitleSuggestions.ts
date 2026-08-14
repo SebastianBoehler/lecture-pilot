@@ -1,32 +1,41 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { searchAlmaCourseTitles } from "./professorApi";
-import { mergeCourseTitles } from "./professorCourseSuggestions";
+import {
+  mergeCourseSuggestions,
+  personalCourseSuggestions,
+  type CourseTitleSuggestion,
+} from "./professorCourseSuggestions";
 import type { LoginSession } from "./types";
+import type { UniversityEnrollmentCourse } from "./universityCourseTypes";
 
 export const COURSE_SEARCH_DEBOUNCE_MS = 400;
 
 export function useCourseTitleSuggestions({
   enabled,
-  personalTitles,
+  personalCourses,
   query,
   session,
 }: {
   enabled: boolean;
-  personalTitles: string[];
+  personalCourses: UniversityEnrollmentCourse[];
   query: string;
   session: LoginSession;
 }) {
-  const [almaTitles, setAlmaTitles] = useState<string[]>([]);
+  const [catalogSuggestions, setCatalogSuggestions] = useState<CourseTitleSuggestion[]>([]);
   const [searchFailed, setSearchFailed] = useState(false);
-  const hasExactPersonalTitle = personalTitles.some(
-    (title) => title.localeCompare(query.trim(), "de-DE", { sensitivity: "base" }) === 0,
+  const personalSuggestions = useMemo(
+    () => personalCourseSuggestions(personalCourses, session.term),
+    [personalCourses, session.term],
+  );
+  const hasExactPersonalTitle = personalSuggestions.some(
+    (item) => item.title.localeCompare(query.trim(), "de-DE", { sensitivity: "base" }) === 0,
   );
 
   useEffect(() => {
     const normalizedQuery = query.trim();
     if (!enabled || normalizedQuery.length < 3 || hasExactPersonalTitle) {
-      setAlmaTitles([]);
+      setCatalogSuggestions([]);
       setSearchFailed(false);
       return;
     }
@@ -43,10 +52,17 @@ export function useCourseTitleSuggestions({
           controller.signal,
         );
         if (!active) return;
-        setAlmaTitles(suggestions.map((item) => item.title));
+        setCatalogSuggestions(
+          suggestions.map((item) => ({
+            title: item.title,
+            sources: ["alma_catalog"],
+            number: item.number,
+            instructor: item.instructor,
+          })),
+        );
       } catch (error) {
         if (!active || (error instanceof DOMException && error.name === "AbortError")) return;
-        setAlmaTitles([]);
+        setCatalogSuggestions([]);
         setSearchFailed(true);
       }
     }, COURSE_SEARCH_DEBOUNCE_MS);
@@ -60,8 +76,8 @@ export function useCourseTitleSuggestions({
 
   return {
     courseSuggestions: useMemo(
-      () => mergeCourseTitles(personalTitles, almaTitles),
-      [almaTitles, personalTitles],
+      () => mergeCourseSuggestions([...personalSuggestions, ...catalogSuggestions]),
+      [catalogSuggestions, personalSuggestions],
     ),
     courseSearchFailed: searchFailed,
   };

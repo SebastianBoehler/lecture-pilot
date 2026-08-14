@@ -41,9 +41,11 @@ def test_tuebingen_login_returns_courses_without_echoing_password(monkeypatch) -
         "courses": [],
         "university_courses": [],
         "university_course_sync_status": "loading",
+        "university_course_source_statuses": {"alma": "loading", "ilias": "loading"},
     }
     current = client.get("/me").json()
     assert current["university_course_sync_status"] == "ready"
+    assert current["university_course_source_statuses"] == {"alma": "ready", "ilias": "error"}
     assert current["university_courses"] == [
         {
             "source": "alma",

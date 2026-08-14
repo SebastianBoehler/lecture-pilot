@@ -1,11 +1,14 @@
 import { CourseNameField } from "./CourseNameField";
 import { useI18n } from "./i18n";
 import type { CourseSetup } from "./professorBuilderState";
+import type { CourseTitleSuggestion } from "./professorCourseSuggestions";
 import { PendingStatus, StepHeader } from "./ProfessorCourseBuilderParts";
+import type { LoginSession } from "./types";
 
 export function ProfessorCourseSetupStep({
   courseSearchFailed,
   courseSuggestions,
+  courseSourceStatuses,
   courseReady,
   isCreating,
   isReady,
@@ -14,7 +17,8 @@ export function ProfessorCourseSetupStep({
   setup,
 }: {
   courseSearchFailed: boolean;
-  courseSuggestions: string[];
+  courseSuggestions: CourseTitleSuggestion[];
+  courseSourceStatuses: LoginSession["university_course_source_statuses"];
   courseReady: boolean;
   isCreating: boolean;
   isReady: boolean;
@@ -29,6 +33,7 @@ export function ProfessorCourseSetupStep({
       <CourseNameField
         courseSearchFailed={courseSearchFailed}
         courseSuggestions={courseSuggestions}
+        sourceStatuses={courseSourceStatuses}
         value={setup.courseTitle}
         onChange={(courseTitle) => onSetupChange({ ...setup, courseTitle })}
       />

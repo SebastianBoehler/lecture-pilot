@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 
 import { getCourseLectures, getDraftLectureCanvas } from "./api";
 import { draftLectureCanvas, repairLectureCanvas } from "./canvasDraftApi";
@@ -32,7 +32,6 @@ import {
   scheduleItemFromLecture,
 } from "./professorWorkspaceActivation";
 import { publishLectureRows } from "./professorPublishRows";
-import { universityCourseTitles } from "./professorCourseSuggestions";
 import { useCourseTitleSuggestions } from "./useCourseTitleSuggestions";
 import { useProfessorWorkflowRun } from "./professorWorkflowRun";
 import { useProfessorSourceRouting } from "./useProfessorSourceRouting";
@@ -48,6 +47,7 @@ import {
 import type {
   CanvasDocument,
   CanvasPublicationResult,
+  CourseMaterialUploadType,
   LectureScheduleItem,
   LoginSession,
   SourceBundleManifest,
@@ -94,6 +94,7 @@ export function useProfessorCourseBuilder({
     }),
   );
   const [bundle, setBundle] = useState<SourceBundleManifest | null>(null);
+  const [supportedUploads, setSupportedUploads] = useState<CourseMaterialUploadType[]>([]);
   const [lectureSchedule, setLectureSchedule] = useState<LectureScheduleItem[]>(
     savedFlow.lectureSchedule,
   );
@@ -123,13 +124,9 @@ export function useProfessorCourseBuilder({
   const runAutomaticVideoSearch = useEffectEvent(searchSuggestedVideos);
 
   const setupReady = isCourseSetupReady(setup);
-  const personalCourseTitles = useMemo(
-    () => universityCourseTitles(session.university_courses ?? [], session.term),
-    [session.term, session.university_courses],
-  );
   const { courseSearchFailed, courseSuggestions } = useCourseTitleSuggestions({
     enabled: activeStep === "define" && !courseReady,
-    personalTitles: personalCourseTitles,
+    personalCourses: session.university_courses ?? [],
     query: setup.courseTitle,
     session,
   });
@@ -334,6 +331,7 @@ export function useProfessorCourseBuilder({
     setWorkspaceLectures([]);
     setCourseReady(false);
     setBundle(null);
+    setSupportedUploads([]);
     setLectureSchedule([]);
     setMediaLectureId("");
     setScheduleApplied(nextSetup.target !== "full-course");
@@ -440,6 +438,7 @@ export function useProfessorCourseBuilder({
     try {
       const restoredBundle = await getSourceBundle(targetWorkspace.courseId, session);
       setBundle(restoredBundle);
+      setSupportedUploads(restoredBundle.supported_uploads ?? []);
       const restoredLectures = await getCourseLectures(targetWorkspace.courseId, session);
       const restoredRouting = await sourceRouting.load(targetWorkspace.courseId);
       setWorkspaceLectures(restoredLectures);
@@ -508,6 +507,7 @@ export function useProfessorCourseBuilder({
   const defineStep = {
     courseSearchFailed,
     courseSuggestions,
+    courseSourceStatuses: session.university_course_source_statuses,
     courseReady,
     isCreating: pendingAction === "create",
     isReady: setupReady,
@@ -520,6 +520,8 @@ export function useProfessorCourseBuilder({
         setWorkspaceCourse(created.course);
         setWorkspaceLectures(created.lectures);
         resetGeneratedState();
+        const sourceBundle = await getSourceBundle(created.course.id, session);
+        setSupportedUploads(sourceBundle.supported_uploads ?? []);
         setScheduleApplied(setup.target !== "full-course");
         setCourseReady(true);
         setActiveStep("upload");
@@ -538,6 +540,7 @@ export function useProfessorCourseBuilder({
     pendingAction,
     setup,
     uploadFiles,
+    supportedUploads,
     workspaceReady: Boolean(workspace),
     onUploadFilesChange: setUploadFiles,
     onScheduleChange: setLectureSchedule,
@@ -548,8 +551,12 @@ export function useProfessorCourseBuilder({
           courseId: activeWorkspace.courseId,
           files: uploadFiles,
           session,
+          supportedUploads,
         });
-        if (result.bundle) setBundle(result.bundle);
+        if (result.bundle) {
+          setBundle(result.bundle);
+          setSupportedUploads(result.bundle.supported_uploads ?? supportedUploads);
+        }
         if (result.uploaded.length > 0 || result.mutationUncertain) {
           resetGeneratedState();
           if (setup.target === "full-course") setScheduleApplied(false);

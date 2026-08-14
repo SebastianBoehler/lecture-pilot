@@ -1,12 +1,13 @@
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
 
 import { useI18n } from "./i18n";
 import { materialFilesFromDrop } from "./materialDrop";
 import { materialSelectionSummary } from "./materialSelectionSummary";
+import { preflightMaterialFiles } from "./professorUpload";
 import { BundleSummary, PendingStatus, StepHeader } from "./ProfessorCourseBuilderParts";
 import { ProfessorLectureSchedule } from "./ProfessorLectureSchedule";
 import type { BuilderAction } from "./professorWorkflowRun";
-import type { LectureScheduleItem, SourceBundleManifest } from "./types";
+import type { CourseMaterialUploadType, LectureScheduleItem, SourceBundleManifest } from "./types";
 
 export function ProfessorMaterialStep({
   bundle,
@@ -18,6 +19,7 @@ export function ProfessorMaterialStep({
   onUploadFilesChange,
   pendingAction,
   uploadFiles,
+  supportedUploads,
   workspaceReady,
 }: {
   bundle: SourceBundleManifest | null;
@@ -29,15 +31,20 @@ export function ProfessorMaterialStep({
   onUpload: () => void;
   onUploadFilesChange: (files: File[]) => void;
   uploadFiles: File[];
+  supportedUploads: CourseMaterialUploadType[];
   workspaceReady: boolean;
 }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const fileInputId = useId();
   const folderInputId = useId();
   const [isDragOver, setIsDragOver] = useState(false);
   const isBusy = pendingAction !== null;
   const isUploading = pendingAction === "upload";
   const disabled = !courseReady || !workspaceReady || isBusy;
+  const preflight = useMemo(
+    () => preflightMaterialFiles(uploadFiles, supportedUploads),
+    [supportedUploads, uploadFiles],
+  );
   const fileLabel = materialSelectionSummary(uploadFiles, {
     folderSummary: (folder, count) => t("builder.upload.folderSummary", { count, folder }),
     noFilesSelected: t("builder.upload.noFilesSelected"),
@@ -93,10 +100,17 @@ export function ProfessorMaterialStep({
       </div>
       <p className="material-format-note">{t("builder.upload.formats")}</p>
       <p className="material-selection-summary">{fileLabel}</p>
+      {uploadFiles.length && supportedUploads.length ? (
+        <p className="material-preflight-summary">
+          {locale === "de"
+            ? `${preflight.accepted.length} zum Hochladen · ${preflight.excluded.length} vor dem Transfer ausgeschlossen`
+            : `${preflight.accepted.length} ready to upload · ${preflight.excluded.length} excluded before transfer`}
+        </p>
+      ) : null}
       <div className="flow-actions">
         <button
           className="primary-action"
-          disabled={disabled || !uploadFiles.length}
+          disabled={disabled || !preflight.accepted.length}
           type="button"
           onClick={onUpload}
         >

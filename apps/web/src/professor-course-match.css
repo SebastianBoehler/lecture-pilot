@@ -4,3 +4,63 @@
   font-weight: 450;
   line-height: 1.45;
 }
+
+.course-name-field {
+  position: relative;
+}
+
+.course-suggestion-list {
+  position: absolute;
+  z-index: 8;
+  top: 66px;
+  right: 0;
+  left: 0;
+  display: grid;
+  max-height: 280px;
+  overflow-y: auto;
+  margin: 0;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 6px;
+  padding: 4px;
+  background: var(--color-bg-primary);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--color-text-primary) 12%, transparent);
+  list-style: none;
+}
+
+.course-suggestion-list li[aria-selected="true"] button,
+.course-suggestion-list button:hover {
+  background: var(--color-bg-secondary);
+}
+
+.flow-card .course-suggestion-list button {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  gap: 16px;
+  border: 0;
+  padding: 8px;
+  text-align: left;
+}
+
+.course-suggestion-list button > span {
+  display: grid;
+  gap: 2px;
+}
+
+.course-suggestion-list small,
+.course-source-statuses small {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.course-suggestion-sources {
+  justify-items: end;
+  white-space: nowrap;
+}
+
+.course-source-statuses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+}

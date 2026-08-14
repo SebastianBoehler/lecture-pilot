@@ -1,12 +1,13 @@
+from threading import Event, Thread
 from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
 
 from lecturepilot.ilias_identity import parse_ilias_identity_profile
-from lecturepilot.tuebingen_adapter import TuebingenCourseAdapter
+from lecturepilot.tuebingen_adapter import PendingUniversityLogin, TuebingenCourseAdapter
 from lecturepilot.tuebingen_courses import _alma_courses, _ilias_courses
-from lecturepilot.university_models import UniversityLoginResult
+from lecturepilot.university_models import ExternalCourseCandidate, UniversityLoginResult
 
 
 def test_alma_timetable_courses_use_stable_title_ids_without_detail_pages() -> None:
@@ -129,6 +130,59 @@ def test_course_sync_preloads_identity_from_authenticated_ilias_profile(monkeypa
 
     assert result.display_name == "Daniel Example"
     assert result.email == "daniel@example.edu"
+
+
+def test_course_sync_reports_each_source_without_waiting_for_the_other(monkeypatch) -> None:
+    release_alma = Event()
+    ilias_reported = Event()
+    updates: list[UniversityLoginResult] = []
+
+    def load_alma(_api, _term):
+        release_alma.wait(timeout=2)
+        return [], False, ["Alma unavailable"]
+
+    def load_ilias(_api, term):
+        from lecturepilot.tuebingen_adapter import _IliasSync
+
+        return _IliasSync(
+            courses=[
+                ExternalCourseCandidate(
+                    source="ilias",
+                    external_course_id="crs:42",
+                    term=term,
+                    title="Reliable Systems",
+                )
+            ],
+            checked=True,
+            display_name="Prof. Example",
+            email="prof@example.edu",
+            warnings=[],
+        )
+
+    monkeypatch.setattr("lecturepilot.tuebingen_adapter._load_alma_courses", load_alma)
+    monkeypatch.setattr("lecturepilot.tuebingen_adapter._load_ilias_account", load_ilias)
+    client = SimpleNamespace(alma=object(), ilias=object(), close=lambda: None)
+    pending = PendingUniversityLogin(
+        client=client,
+        initial_identity=UniversityLoginResult(username="prof", term="Sommer 2026"),
+    )
+
+    def on_source(_source, identity: UniversityLoginResult) -> None:
+        updates.append(identity)
+        if identity.sources_checked == {"ilias"}:
+            ilias_reported.set()
+
+    thread = Thread(target=lambda: pending.synchronize(on_source=on_source))
+    thread.start()
+    try:
+        assert ilias_reported.wait(timeout=1)
+        assert thread.is_alive()
+        assert [course.title for course in updates[0].courses] == ["Reliable Systems"]
+    finally:
+        release_alma.set()
+        thread.join(timeout=2)
+
+    assert not thread.is_alive()
 
 
 def test_university_role_claims_are_bounded() -> None:

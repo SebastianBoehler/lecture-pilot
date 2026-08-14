@@ -18,20 +18,27 @@ from lecturepilot.db_models import (
 )
 from lecturepilot.external_course_sync import sync_external_courses
 from lecturepilot.external_course_views import latest_external_courses
+from lecturepilot.identity_course_sync import (
+    complete_course_sync,
+    fail_course_sync,
+    record_course_sync_source,
+    set_source_statuses,
+    source_statuses,
+)
 from lecturepilot.identity_roles import (
-    ALMA_AVAILABLE_ROLES_CLAIM,
-    ALMA_CURRENT_ROLE_CLAIM,
     alma_current_role,
-    identity_account_type,
+    is_professor_identity,
+    university_provider_claims,
 )
 from lecturepilot.identity_sync import (
     deactivate_external_enrollments,
-    locked_external_identity,
     record_login_audit,
 )
 from lecturepilot.models import Course, CourseAccessPolicy, TenantRole
 from lecturepilot.university_models import (
     ExternalCourseCandidate,
+    ExternalCourseSource,
+    UniversityCourseSourceStatuses,
     UniversityCourseSyncStatus,
     UniversityLoginResult,
 )
@@ -50,6 +57,7 @@ class AccountView:
     courses: tuple[Course, ...]
     university_courses: tuple[ExternalCourseCandidate, ...]
     university_course_sync_status: UniversityCourseSyncStatus
+    university_course_source_statuses: UniversityCourseSourceStatuses
 
     @property
     def course_ids(self) -> frozenset[str]:
@@ -73,6 +81,13 @@ class IdentityRepository:
             )
             external.course_sync_id = None
             external.course_sync_status = "ready"
+            set_source_statuses(
+                external,
+                {
+                    source: "ready" if source in identity.sources_checked else "error"
+                    for source in ExternalCourseSource
+                },
+            )
             record_login_audit(session, user.id, tenant_id, identity)
             return _account_view(session, user, external, membership)
 
@@ -88,10 +103,30 @@ class IdentityRepository:
             membership = _membership(session, user.id, tenant_id)
             external.course_sync_id = sync_id
             external.course_sync_status = "loading"
+            set_source_statuses(
+                external,
+                {source: "loading" for source in ExternalCourseSource},
+            )
             # A new session must never retain authority from a previous provider snapshot.
             deactivate_external_enrollments(session, user.id, tenant_id)
             record_login_audit(session, user.id, tenant_id, identity)
             return _account_view(session, user, external, membership)
+
+    def record_course_sync_source(
+        self,
+        identity: UniversityLoginResult,
+        *,
+        tenant_id: str,
+        sync_id: str,
+        source: ExternalCourseSource,
+    ) -> bool:
+        return record_course_sync_source(
+            self.database,
+            identity,
+            tenant_id=tenant_id,
+            sync_id=sync_id,
+            source=source,
+        )
 
     def complete_course_sync(
         self,
@@ -100,38 +135,15 @@ class IdentityRepository:
         tenant_id: str,
         sync_id: str,
     ) -> bool:
-        with self.database.session() as session:
-            external = locked_external_identity(session, identity.username)
-            if external is None or external.course_sync_id != sync_id:
-                return False
-            user = session.get(UserRecord, external.user_id)
-            membership = session.get(TenantMembershipRecord, (external.user_id, tenant_id))
-            if user is None or membership is None or not user.enabled:
-                return False
-            if identity.display_name is not None:
-                user.display_name = identity.display_name
-            if identity.email is not None:
-                external.email = identity.email
-            sync_external_courses(
-                session,
-                user_id=user.id,
-                tenant_id=tenant_id,
-                observations=identity.courses,
-                checked_sources={source.value for source in identity.sources_checked},
-            )
-            external.course_sync_status = "ready" if identity.sources_checked else "error"
-            external.course_sync_id = None
-            user.updated_at = datetime.now(UTC)
-            return True
+        return complete_course_sync(
+            self.database,
+            identity,
+            tenant_id=tenant_id,
+            sync_id=sync_id,
+        )
 
     def fail_course_sync(self, *, username: str, sync_id: str) -> bool:
-        with self.database.session() as session:
-            external = locked_external_identity(session, username)
-            if external is None or external.course_sync_id != sync_id:
-                return False
-            external.course_sync_status = "error"
-            external.course_sync_id = None
-            return True
+        return fail_course_sync(self.database, username=username, sync_id=sync_id)
 
     def account(self, *, user_id: UUID, tenant_id: str) -> AccountView | None:
         with self.database.session() as session:
@@ -169,7 +181,7 @@ def _upsert_identity(
             provider="tuebingen",
             subject=subject,
             email=identity.email,
-            provider_claims=_provider_claims(identity),
+            provider_claims=university_provider_claims(identity),
             last_login_at=now,
         )
         session.add(external)
@@ -182,7 +194,7 @@ def _upsert_identity(
         user.display_name = identity.display_name
     if identity.email is not None:
         external.email = identity.email
-    external.provider_claims = _provider_claims(identity)
+    external.provider_claims = university_provider_claims(identity)
     external.last_login_at = now
     user.updated_at = now
     return user, external
@@ -203,7 +215,7 @@ def _account_view(
     external: ExternalIdentityRecord,
     membership: TenantMembershipRecord,
 ) -> AccountView:
-    professor_account = _is_professor_account(external)
+    professor_account = is_professor_identity(external.provider, external.provider_claims)
     roles: set[TenantRole] = set()
     if professor_account:
         roles.add(TenantRole.PROFESSOR)
@@ -252,6 +264,7 @@ def _account_view(
             UniversityCourseSyncStatus,
             external.course_sync_status,
         ),
+        university_course_source_statuses=source_statuses(external),
         university_courses=latest_external_courses(
             session,
             user_id=user.id,
@@ -267,25 +280,6 @@ def _preferred_identity(session: Session, user_id: UUID) -> ExternalIdentityReco
         .order_by(ExternalIdentityRecord.created_at)
     ).all()
     return identities[0] if identities else None
-
-
-def _provider_claims(identity: UniversityLoginResult) -> dict[str, object]:
-    if identity.alma_current_role is None:
-        return {}
-    return {
-        ALMA_CURRENT_ROLE_CLAIM: identity.alma_current_role,
-        ALMA_AVAILABLE_ROLES_CLAIM: identity.alma_available_roles,
-    }
-
-
-def _is_professor_account(identity: ExternalIdentityRecord) -> bool:
-    return (
-        identity_account_type(
-            provider=identity.provider,
-            provider_claims=identity.provider_claims,
-        )
-        == "professor"
-    )
 
 
 def _course_view(course: CourseRecord) -> Course:

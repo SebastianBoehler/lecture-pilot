@@ -1,7 +1,11 @@
 import { runBoundedTasks } from "./boundedTaskPool";
 import { getSourceBundle, uploadCourseMaterial } from "./professorApi";
-import { isSkippableUploadError, uploadDestination } from "./professorUpload";
-import type { LoginSession, SourceBundleManifest } from "./types";
+import {
+  isSkippableUploadError,
+  preflightMaterialFiles,
+  uploadDestination,
+} from "./professorUpload";
+import type { CourseMaterialUploadType, LoginSession, SourceBundleManifest } from "./types";
 
 const MATERIAL_UPLOAD_CONCURRENCY = 4;
 
@@ -19,16 +23,21 @@ export async function uploadProfessorMaterials({
   courseId,
   files,
   session,
+  supportedUploads = [],
 }: {
   courseId: string;
   files: File[];
   session: LoginSession;
+  supportedUploads?: CourseMaterialUploadType[];
 }): Promise<ProfessorMaterialUploadResult> {
-  const outcomes = new Array<{ ignored?: string; uploaded?: UploadResult }>(files.length);
+  const preflight = preflightMaterialFiles(files, supportedUploads);
+  const outcomes = new Array<{ ignored?: string; uploaded?: UploadResult }>(
+    preflight.accepted.length,
+  );
   let uploadError: Error | null = null;
   let mutationUncertain = false;
   try {
-    await runBoundedTasks(files, MATERIAL_UPLOAD_CONCURRENCY, async (file, index) => {
+    await runBoundedTasks(preflight.accepted, MATERIAL_UPLOAD_CONCURRENCY, async (file, index) => {
       const path = uploadDestination(file);
       try {
         outcomes[index] = {
@@ -68,7 +77,10 @@ export async function uploadProfessorMaterials({
   return {
     bundle,
     error: uploadError,
-    ignored: outcomes.flatMap((outcome) => (outcome?.ignored ? [outcome.ignored] : [])),
+    ignored: [
+      ...preflight.excluded.map((item) => item.path),
+      ...outcomes.flatMap((outcome) => (outcome?.ignored ? [outcome.ignored] : [])),
+    ],
     mutationUncertain,
     uploaded: outcomes.flatMap((outcome) => (outcome?.uploaded ? [outcome.uploaded] : [])),
   };

@@ -155,10 +155,17 @@ export type SourceBundleEntry = {
   size_bytes: number;
 };
 
+export type CourseMaterialUploadType = {
+  suffix: string;
+  kind: string;
+  max_bytes: number;
+};
+
 export type SourceBundleManifest = {
   course_id: string;
   files: SourceBundleEntry[];
   counts_by_kind: Record<string, number>;
+  supported_uploads?: CourseMaterialUploadType[];
 };
 
 export type SourceRouteRole = "lecture" | "course_wide" | "excluded";
@@ -238,6 +245,9 @@ export type LoginSession = {
   courses: UniversityCourse[];
   university_courses?: UniversityEnrollmentCourse[];
   university_course_sync_status?: "loading" | "ready" | "error";
+  university_course_source_statuses?: Partial<
+    Record<"alma" | "ilias", "loading" | "ready" | "error">
+  >;
 };
 
 export type LearningGoal = "keep_up" | "understand_deeply" | "exam_preparation";

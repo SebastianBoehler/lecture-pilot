@@ -18,6 +18,9 @@ class ExternalCourseSource(StrEnum):
     ILIAS = "ilias"
 
 
+UniversityCourseSourceStatuses = dict[ExternalCourseSource, UniversityCourseSyncStatus]
+
+
 class ExternalCourseCandidate(BaseModel):
     source: ExternalCourseSource
     external_course_id: str = Field(min_length=1, max_length=240)

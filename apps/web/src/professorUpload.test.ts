@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { materialFilesFromDrop } from "./materialDrop";
-import { ignoredUploadNotice, isSkippableUploadError, uploadDestination } from "./professorUpload";
+import {
+  ignoredUploadNotice,
+  isSkippableUploadError,
+  preflightMaterialFiles,
+  uploadDestination,
+} from "./professorUpload";
 
 describe("professor material uploads", () => {
   it("keeps custom relative paths from dropped folders", async () => {
@@ -50,6 +55,33 @@ describe("professor material uploads", () => {
     expect(ignoredUploadNotice(["course/main.aux", "course/slides.log"])).toBe(
       " Ignored 2 files: main.aux, slides.log.",
     );
+  });
+
+  it("mirrors the advertised server policy before transferring folder files", () => {
+    const oversized = new File(["large"], "large.pdf");
+    const hidden = new File(["private"], "notes.md");
+    Object.defineProperty(hidden, "webkitRelativePath", { value: ".private/notes.md" });
+    const result = preflightMaterialFiles(
+      [
+        new File(["# Lecture"], "lecture.md"),
+        new File(["build"], "lecture.aux"),
+        new File([], "empty.md"),
+        oversized,
+        hidden,
+      ],
+      [
+        { suffix: ".md", kind: "markdown", max_bytes: 1024 },
+        { suffix: ".pdf", kind: "pdf", max_bytes: 2 },
+      ],
+    );
+
+    expect(result.accepted.map((file) => file.name)).toEqual(["lecture.md"]);
+    expect(result.excluded).toEqual([
+      { path: "uploads/lecture.aux", reason: "unsupported" },
+      { path: "uploads/empty.md", reason: "empty" },
+      { path: "uploads/large.pdf", reason: "oversized" },
+      { path: "uploads/.private/notes.md", reason: "unsafe_path" },
+    ]);
   });
 });
 

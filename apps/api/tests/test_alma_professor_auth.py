@@ -40,9 +40,11 @@ def test_alma_nonstudent_role_immediately_grants_professor_access_and_is_audited
 
     with app.state.database.session() as session:
         identity = _identity(session, "alma-professor")
-        assert identity.provider_claims == {
-            "alma_current_role": "lecturer",
-            "alma_available_roles": ["lecturer", "examiner"],
+        assert identity.provider_claims["alma_current_role"] == "lecturer"
+        assert identity.provider_claims["alma_available_roles"] == ["lecturer", "examiner"]
+        assert identity.provider_claims["course_sync_sources"] == {
+            "alma": "error",
+            "ilias": "error",
         }
         login_event = session.scalar(
             select(AuditEventRecord).where(

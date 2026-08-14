@@ -78,8 +78,10 @@ title and term. On student login, only that student's own upstream memberships a
 
 Authentication verifies the active Alma role before issuing a session. Previous Alma/ILIAS-derived
 enrollments are deactivated at that boundary; Alma timetable and ILIAS data then synchronize in
-parallel, and only the current sync attempt may restore matched course access. The dashboard polls
-`GET /me` while this work is in progress and does not treat browser course data as authority.
+parallel, and only the current sync attempt may restore matched course access. Each source commits
+its own result as soon as it completes, so an unavailable source does not suppress suggestions from
+the other one. The dashboard polls `GET /me` while this work is in progress, exposes the independent
+source statuses, and does not treat browser course data as authority.
 
 After login, canvas and tutor requests use the opaque LecturePilot database session rather than a
 live Alma client or upstream token. A valid cookie session is renewed once half of its configured

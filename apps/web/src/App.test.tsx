@@ -281,14 +281,12 @@ describe("LecturePilot app shell", () => {
       await screen.findByRole("navigation", { name: /course builder progress/i }),
     ).toBeInTheDocument();
     const courseName = screen.getByLabelText(/course name/i);
-    await waitFor(
-      () => {
-        const suggestions = document.getElementById(courseName.getAttribute("list") ?? "");
-        expect(
-          Array.from((suggestions as HTMLDataListElement).options).map((option) => option.value),
-        ).toEqual(["Advanced Systems", "Other Alma Course"]);
-      },
-      { timeout: 2_000 },
+    await user.click(courseName);
+    expect(await screen.findByRole("option", { name: /Advanced Systems/i })).toHaveTextContent(
+      "ILIAS membership",
+    );
+    expect(screen.getByRole("option", { name: /Other Alma Course/i })).toHaveTextContent(
+      "Alma timetable",
     );
     await user.type(courseName, "Advanced Systems");
 

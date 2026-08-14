@@ -105,7 +105,14 @@ def _complete_university_sync(
     repository = IdentityRepository(app.state.database)
     try:
         with app.state.observability.tool_span("university_course_sync") as span:
-            identity = pending.synchronize()
+            identity = pending.synchronize(
+                on_source=lambda source, source_identity: repository.record_course_sync_source(
+                    source_identity,
+                    tenant_id=tenant_id,
+                    sync_id=sync_id,
+                    source=source,
+                )
+            )
             applied = repository.complete_course_sync(
                 identity,
                 tenant_id=tenant_id,

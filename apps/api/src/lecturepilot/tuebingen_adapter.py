@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
+from collections.abc import Callable
+from concurrent.futures import as_completed, ThreadPoolExecutor
 from contextlib import suppress
 from dataclasses import dataclass
 from typing import Any
@@ -27,38 +28,48 @@ class PendingUniversityLogin:
     client: Any
     initial_identity: UniversityLoginResult
 
-    def synchronize(self) -> UniversityLoginResult:
+    def synchronize(
+        self,
+        on_source: Callable[[ExternalCourseSource, UniversityLoginResult], None] | None = None,
+    ) -> UniversityLoginResult:
         try:
-            # Alma and ILIAS use independent authenticated sessions, so neither blocks the other.
             with ThreadPoolExecutor(max_workers=2, thread_name_prefix="university-sync") as pool:
-                alma_future = pool.submit(
-                    _load_alma_courses,
-                    self.client.alma,
-                    self.initial_identity.term,
-                )
-                ilias_future = pool.submit(
-                    _load_ilias_account,
-                    self.client.ilias,
-                    self.initial_identity.term,
-                )
-                alma_courses, alma_checked, alma_warnings = alma_future.result()
-                ilias = ilias_future.result()
+                futures = {
+                    pool.submit(
+                        _load_alma_courses,
+                        self.client.alma,
+                        self.initial_identity.term,
+                    ): ExternalCourseSource.ALMA,
+                    pool.submit(
+                        _load_ilias_account,
+                        self.client.ilias,
+                        self.initial_identity.term,
+                    ): ExternalCourseSource.ILIAS,
+                }
+                updates: dict[ExternalCourseSource, UniversityLoginResult] = {}
+                for future in as_completed(futures):
+                    source = futures[future]
+                    update = (
+                        _alma_identity(self.initial_identity, future.result())
+                        if source == ExternalCourseSource.ALMA
+                        else _ilias_identity(self.initial_identity, future.result())
+                    )
+                    updates[source] = update
+                    if on_source is not None:
+                        on_source(source, update)
         finally:
             with suppress(Exception):
                 self.client.close()
 
-        checked: set[ExternalCourseSource] = set()
-        if alma_checked:
-            checked.add(ExternalCourseSource.ALMA)
-        if ilias.checked:
-            checked.add(ExternalCourseSource.ILIAS)
+        alma = updates[ExternalCourseSource.ALMA]
+        ilias = updates[ExternalCourseSource.ILIAS]
         result = self.initial_identity.model_copy(
             update={
                 "display_name": ilias.display_name,
                 "email": ilias.email,
-                "courses": _dedupe_courses([*alma_courses, *ilias.courses]),
-                "sources_checked": checked,
-                "warnings": [*alma_warnings, *ilias.warnings],
+                "courses": _dedupe_courses([*alma.courses, *ilias.courses]),
+                "sources_checked": alma.sources_checked | ilias.sources_checked,
+                "warnings": [*alma.warnings, *ilias.warnings],
             }
         )
         return result
@@ -71,6 +82,32 @@ class _IliasSync:
     display_name: str | None
     email: str | None
     warnings: list[str]
+
+
+def _alma_identity(
+    initial: UniversityLoginResult,
+    result: tuple[list[ExternalCourseCandidate], bool, list[str]],
+) -> UniversityLoginResult:
+    courses, checked, warnings = result
+    return initial.model_copy(
+        update={
+            "courses": courses,
+            "sources_checked": {ExternalCourseSource.ALMA} if checked else set(),
+            "warnings": warnings,
+        }
+    )
+
+
+def _ilias_identity(initial: UniversityLoginResult, result: _IliasSync) -> UniversityLoginResult:
+    return initial.model_copy(
+        update={
+            "display_name": result.display_name,
+            "email": result.email,
+            "courses": result.courses,
+            "sources_checked": {ExternalCourseSource.ILIAS} if result.checked else set(),
+            "warnings": result.warnings,
+        }
+    )
 
 
 class TuebingenCourseAdapter:

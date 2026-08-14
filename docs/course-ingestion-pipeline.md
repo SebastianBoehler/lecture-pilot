@@ -38,6 +38,14 @@ CSV/JSON, PDF, browser images/SVG, videos, Python, and notebooks. The backend:
 - computes SHA-256 while streaming; and
 - atomically promotes without overwriting an existing target.
 
+During initial course creation, the browser applies the same server-advertised
+suffix and per-file size limits and removes empty, duplicate, hidden, and unsafe
+paths before transfer. This deterministic preflight saves bandwidth for large
+folder selections; the backend repeats every check and remains authoritative.
+Content relevance is not guessed in the browser: the complete accepted tree is
+indexed first and semantic exclusion happens in the reviewable source-routing
+stage.
+
 The request ceiling defaults to 600 MiB. Per-file limits are 2–10 MiB for text
 formats, 20 MiB for images/notebooks, 100 MiB for PDF, and 500 MiB for video.
 These are policy ceilings, not a claim that every maximum passed a production
@@ -94,7 +102,7 @@ sending the entire course to the model.
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | LaTeX                    | Import text/structure; use an authoritative matching PDF or compile a bounded handout preview in the isolated Tectonic service |
 | Markdown/text            | Import bounded text and headings                                                                                               |
-| PDF                      | Extract bounded text and render a representative sample of up to 20 pages                                                      |
+| PDF                      | Extract bounded text plus safe HTTP(S) link annotations and render a representative sample of up to 20 pages                   |
 | Python/notebook          | Import inert ordered Markdown/code; never execute code or retain outputs                                                       |
 | Browser images/SVG/video | Preserve as source-backed media; optional JSON sidecars provide captions                                                       |
 | CSV/JSON                 | Validate and index; no dedicated semantic canvas adapter yet                                                                   |
