@@ -20,6 +20,7 @@ x-api-environment: &api-environment
   LECTUREPILOT_RATE_LIMIT_ENABLED: "true"
   LECTUREPILOT_BOUNDED_PROCESSING: "true"
   LECTUREPILOT_LATEX_COMPILER_URL: http://latex-compiler:8080
+  LECTUREPILOT_DOCUMENT_CONVERTER_URL: http://document-converter:8080
   LECTUREPILOT_MODEL: ${LECTUREPILOT_MODEL:?Set the production model}
   LECTUREPILOT_ALLOWED_MODELS: ${LECTUREPILOT_ALLOWED_MODELS:?Set the model allowlist}
   LECTUREPILOT_OBSERVABILITY: logging
@@ -62,12 +63,15 @@ services:
       - lecturepilot-api-logs:/app/logs
       - lecturepilot-storage:/app/storage
     depends_on:
+      document-converter:
+        condition: service_healthy
       latex-compiler:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
     networks:
       - default
+      - document-converter
       - latex-compiler
     healthcheck:
       test:
@@ -126,6 +130,34 @@ services:
     pids_limit: 64
     mem_limit: 1g
     cpus: 1
+
+  document-converter:
+    build:
+      context: ..
+      dockerfile: apps/document-converter/Dockerfile
+    expose: ["8080"]
+    networks:
+      - document-converter
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=2)
+      interval: 15s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=1g,mode=1777,noexec,nosuid,nodev
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    mem_limit: 3g
+    cpus: 2
 
   preflight:
     image: *api-image
@@ -218,5 +250,7 @@ volumes:
   lecturepilot-storage:
 
 networks:
+  document-converter:
+    internal: true
   latex-compiler:
     internal: true

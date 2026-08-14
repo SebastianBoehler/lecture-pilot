@@ -44,6 +44,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -c apps/api/requirements.lock -e "apps/api[test,agent,tuebingen]"
           pip install -e apps/latex-compiler
+          pip install uv==0.9.5
+      - name: Install document rendering dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libreoffice-impress
       - name: Verify database migrations
         run: |
           alembic -c apps/api/alembic.ini upgrade head

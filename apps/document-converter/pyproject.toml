@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lecturepilot-document-converter"
+version = "0.1.0"
+description = "Isolated document normalization service for LecturePilot."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "defusedxml==0.7.1",
+  "docling-slim[format-html,format-markdown,format-office,format-opendocument,format-pdf-pypdfium2]==2.119.0",
+  "fastapi==0.135.1",
+  "python-multipart==0.0.32",
+  "uvicorn[standard]==0.38.0",
+]
+
+[project.optional-dependencies]
+test = [
+  "httpx==0.28.1",
+  "pytest==9.1.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+filterwarnings = [
+  "ignore:Using `httpx` with `starlette.testclient` is deprecated:starlette.exceptions.StarletteDeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["ASYNC", "E9", "F"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
