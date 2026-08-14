@@ -121,7 +121,7 @@ sending the entire course to the model.
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | LaTeX                      | Import text/structure; use an authoritative matching PDF or compile a bounded handout preview in the isolated Tectonic service |
 | Markdown/text              | Import bounded text and headings                                                                                               |
-| PDF                        | Extract bounded text plus safe HTTP(S) link annotations and render a representative sample of up to 20 pages                   |
+| PDF                        | Extract native text and safe links, selectively OCR scan-heavy pages, and render a representative sample of up to 20 pages     |
 | DOCX                       | Preserve native heading and paragraph order in revision-bound normalized evidence                                              |
 | PPTX                       | Preserve native slide text, notes, run/shape links, and render faithful in-canvas slide images                                 |
 | XLSX/CSV                   | Preserve formulas separately from cached values and render bounded, sheet/range-located Markdown table artifacts               |
@@ -134,6 +134,17 @@ capabilities, bounded CPU/RAM/processes/temp space, and accepts only DOCX, PPTX,
 and XLSX. Macro-enabled Office variants are not accepted. Originals remain
 authoritative; rendered PDFs and slide images are regeneratable visual artifacts,
 and rendered text is never duplicated as source evidence.
+
+OCR is deterministic fallback work, not the default parser. A page or slide is
+sent through the converter's internal OCR gateway only when native text is
+missing, too sparse for a raster-dominant page, or visibly corrupt. The selected
+adapter uses the official PaddleOCR-VL layout-parsing API, marks returned text as
+`ocr`, and keeps a page/slide bounding locator. If no OCR worker is configured or
+the worker fails, ingestion keeps the rendered artifact and reports
+`OCR required but unavailable`; unrelated files continue. Production OCR remains
+disabled until the private six-stratum quality corpus and intended worker's
+RAM/VRAM and latency gates pass. See
+[`benchmarks/document-ocr/README.md`](../benchmarks/document-ocr/README.md).
 
 Notebook import reads at most 120 cells and 60,000 characters, ignores execution
 counts, outputs, embedded image payloads, and remote images, and derives fenced

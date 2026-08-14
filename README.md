@@ -113,6 +113,10 @@ memory live in the learner workspace. See the
 [course ingestion pipeline](docs/course-ingestion-pipeline.md) for the detailed
 boundaries.
 
+Professor adoption is supported by a persistent bilingual in-app walkthrough,
+a repeatable 30-minute introduction, and the German/English recording checklist
+in the [professor enablement guide](docs/professor-enablement.md).
+
 The [evaluation contract](docs/evaluation-contract.md) defines the private
 draft report, revision-bound outcome metadata, and the limits on future study
 claims. These controls do not themselves establish learning efficacy or approve

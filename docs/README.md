@@ -12,6 +12,7 @@ snapshot identified in the security status report.
 | [`../README.md`](../README.md)                                                 | Product overview, setup, releases, and verification               |
 | [`architecture.md`](architecture.md)                                           | Deployed services, trust boundaries, storage, and agent runtime   |
 | [`course-ingestion-pipeline.md`](course-ingestion-pipeline.md)                 | Course creation, updates, generation, repair, and publication     |
+| [`professor-enablement.md`](professor-enablement.md)                           | Live introduction, tutorial recordings, and maintenance ownership |
 | [`evaluation-contract.md`](evaluation-contract.md)                             | Draft review and future learning-evaluation boundaries            |
 | [`workspaces.md`](workspaces.md)                                               | Course, learner, preview, and legacy storage paths                |
 | [`agent-tool-contracts.md`](agent-tool-contracts.md)                           | Tool profiles, logical roots, and side effects                    |
