@@ -29,6 +29,19 @@ Derived PDFs, slide images, and other regeneratable artifacts live under
 `source/source-index.json` records relative path, kind, byte size, SHA-256,
 modification time, and status.
 
+Each normalized document is stored below its source SHA-256 revision. Its
+validated manifest retains the original source path and hash, extraction method,
+warnings, and page, slide, sheet/range, line, or bounding-box locators. Referenced
+assets must remain inside that exact revision directory. Markdown is a derived
+agent-readable view; it does not replace the original or the structured manifest.
+
+Every uploaded file must finish ingestion in exactly one visible state:
+
+- usable semantic evidence;
+- preserved supporting media;
+- intentionally excluded with a reason; or
+- unsupported or rejected with an explicit error.
+
 Accepted source kinds are LaTeX and its local support files, Markdown/text,
 CSV/JSON, PDF, browser images/SVG, videos, Python, and notebooks. The backend:
 
