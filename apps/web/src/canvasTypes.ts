@@ -21,6 +21,30 @@ export type CanvasComponentStep = {
   text: string;
 };
 
+export type CanvasVisualNode = {
+  id: string;
+  label: string;
+  detail: string;
+  value?: string | null;
+};
+
+export type CanvasVisualEdge = {
+  from_id: string;
+  to_id: string;
+  label?: string | null;
+};
+
+export type CanvasVisualSeries = {
+  label: string;
+  mark: "line" | "bar" | "point";
+  points: CanvasComponentPoint[];
+};
+
+export type CanvasVisualAnnotation = {
+  label: string;
+  target_id?: string | null;
+};
+
 export type CanvasComponentData = {
   chart_type: "bar" | "line" | "scatter" | "heatmap" | null;
   control_type?: "buttons" | "slider" | null;
@@ -31,6 +55,11 @@ export type CanvasComponentData = {
   row_labels?: string[];
   frames: CanvasComponentFrame[];
   steps: CanvasComponentStep[];
+  visual_layout?: "flow" | "timeline" | "grid" | "plot" | null;
+  visual_nodes?: CanvasVisualNode[];
+  visual_edges?: CanvasVisualEdge[];
+  visual_series?: CanvasVisualSeries[];
+  visual_annotations?: CanvasVisualAnnotation[];
 };
 
 export type CanvasBlock = {

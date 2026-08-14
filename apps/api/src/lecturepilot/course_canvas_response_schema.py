@@ -67,6 +67,7 @@ def _course_block_schema() -> dict[str, Any]:
             _single_choice_schema(),
             _data_component_schema("interactive_chart"),
             _data_component_schema("process_explorer"),
+            _data_component_schema("visual_artifact"),
         ]
     }
 

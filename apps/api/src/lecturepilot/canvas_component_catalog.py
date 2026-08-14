@@ -10,15 +10,21 @@ SUPPORTED_COMPONENT_TYPES = (
     "single_choice_quiz",
     "interactive_chart",
     "process_explorer",
+    "visual_artifact",
 )
 
 
 def component_catalog_instruction() -> str:
     return (
         "Use a component only when interacting with it improves understanding beyond reading. "
+        "Choose the smallest visual grammar that exposes the teaching mechanism: do not add "
+        "decorative metrics, controls, panels, or alternate views. Keep important comparisons "
+        "simultaneously visible, use shared scales, label quantities and units, and state the "
+        "causal takeaway next to the marks it explains. "
         "Supported component_type values are: single_choice_quiz for one checked answer; "
         "interactive_chart for exact source-supported numeric comparisons or parameter changes; "
-        "and process_explorer for an ordered mechanism or algorithm. "
+        "process_explorer for one ordered mechanism or algorithm; and visual_artifact for a "
+        "composable data-only visual using a flow, timeline, grid, or plot layout. "
         "Every component needs component_id, component_type, component_version=1, caption, prompt "
         "text, and component_data. For interactive_chart, component_data must contain chart_type "
         "(bar, line, scatter, or heatmap), x_label, y_label, control_label, control_type, and one "
@@ -30,7 +36,12 @@ def component_catalog_instruction() -> str:
         "Heatmaps use column labels, row_labels, and a rectangular numeric matrix per frame. "
         "Use empty arrays for unused values, points, matrix, row_labels, and steps. "
         "For process_explorer, component_data must contain at least two title/text steps and empty "
-        "chart arrays. For single_choice_quiz, use items for the answer text, "
+        "chart arrays. For visual_artifact, choose visual_layout flow, timeline, grid, or plot and "
+        "compose only the needed visual_nodes, visual_edges, visual_series, and visual_annotations. "
+        "Flow and timeline show relationships between referenced node ids; grid keeps concepts or "
+        "alternatives simultaneously visible; plot uses labeled axes and line, bar, or point series. "
+        "Keep unused visual arrays empty and visual_layout=null for other component types. "
+        "For single_choice_quiz, use items for the answer text, "
         "option_ids for stable answer ids, answer_index for the one correct answer, and empty "
         "component_data arrays. Use component_data=null for non-component blocks. Never output "
         "code, JSX, HTML, scripts, URLs, or arbitrary React components."
@@ -54,7 +65,7 @@ def component_block_from_payload(raw_block: dict, block_id: str) -> CanvasBlock:
         answer_index=answer_index,
         component_id=component_id,
         component_type=component_type,
-        component_ref=_component_ref(raw_block.get("component_ref"), component_id),
+        component_ref=_component_ref(block_id),
         component_version=_component_version(
             raw_block.get("component_version", raw_block.get("version"))
         ),
@@ -85,8 +96,46 @@ def component_spec_issue(block: CanvasBlock) -> str | None:
         return "needs valid component_data."
     if component_type == "interactive_chart":
         return _chart_spec_issue(data)
+    if component_type == "visual_artifact":
+        if block.component_version != 1:
+            return "uses unsupported visual_artifact component_version."
+        return _visual_artifact_issue(data)
     if len(data.steps) < 2:
         return "needs at least two ordered steps."
+    return None
+
+
+def _visual_artifact_issue(data: CanvasComponentData) -> str | None:
+    if data.visual_layout is None:
+        return "needs a flow, timeline, grid, or plot visual_layout."
+    node_ids = [node.id for node in data.visual_nodes]
+    if len(set(node_ids)) != len(node_ids):
+        return "needs unique visual node ids."
+    referenced_ids = {
+        node_id for edge in data.visual_edges for node_id in (edge.from_id, edge.to_id)
+    } | {
+        annotation.target_id
+        for annotation in data.visual_annotations
+        if annotation.target_id is not None
+    }
+    if not referenced_ids.issubset(node_ids):
+        return "references an unknown visual node."
+    if any(edge.from_id == edge.to_id for edge in data.visual_edges):
+        return "cannot connect a visual node to itself."
+    if data.visual_layout == "plot":
+        if not data.x_label or not data.y_label:
+            return "needs labeled axes for a visual plot."
+        if not data.visual_series or any(len(series.points) < 2 for series in data.visual_series):
+            return "needs at least two finite points in every visual series."
+        if data.visual_nodes or data.visual_edges:
+            return "uses series and annotations instead of nodes in a visual plot."
+        return None
+    if data.visual_series:
+        return "uses visual series only with the plot layout."
+    if len(data.visual_nodes) < 2:
+        return "needs at least two visual nodes."
+    if data.visual_layout == "grid" and data.visual_edges:
+        return "uses visual edges only with flow or timeline layouts."
     return None
 
 
@@ -160,13 +209,8 @@ def _schema_component_options(raw_block: dict) -> tuple[list[str], list[str], in
     return items, option_ids, answer_index
 
 
-def _component_ref(value: object, component_id: str) -> str:
-    ref = str(value or component_id).strip()
-    if not ref or ref.startswith("/") or ".." in ref.split("/"):
-        ref = component_id
-    if not ref.endswith((".yaml", ".yml", ".json")):
-        ref = f"{ref}.yaml"
-    return ref[:240]
+def _component_ref(block_id: str) -> str:
+    return f"{safe_generated_id(block_id)}.yaml"
 
 
 def _component_version(value: object) -> int:

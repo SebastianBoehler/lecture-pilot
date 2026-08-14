@@ -3,6 +3,7 @@ import type { ComponentType, ReactNode } from "react";
 import { InteractiveChart } from "./CanvasInteractiveChart";
 import { QuizBlock } from "./CanvasLearningBlocks";
 import { ProcessExplorer } from "./CanvasProcessExplorer";
+import { VisualArtifact } from "./CanvasVisualArtifact";
 import { useI18n } from "./i18n";
 import type { LearnerQuizAnswerResult } from "./analyticsApi";
 import type { LearnerQuizState } from "./learnerLessonStateTypes";
@@ -27,6 +28,7 @@ const componentRegistry: Record<string, ComponentType<ComponentRendererProps>> =
   single_choice_quiz: SingleChoiceQuiz,
   interactive_chart: InteractiveChart,
   process_explorer: ProcessExplorer,
+  visual_artifact: VisualArtifact,
 };
 
 export function ComponentBlock({

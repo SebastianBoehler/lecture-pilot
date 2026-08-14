@@ -36,10 +36,25 @@ def test_course_canvas_schema_requires_component_data_for_visual_components() ->
     schema = course_canvas_response_format()["json_schema"]["schema"]
     variants = schema["properties"]["sections"]["items"]["properties"]["blocks"]["items"]["anyOf"]
 
-    for component_type in ("interactive_chart", "process_explorer"):
+    for component_type in ("interactive_chart", "process_explorer", "visual_artifact"):
         variant = next(
             item
             for item in variants
             if item["properties"].get("component_type", {}).get("const") == component_type
         )
         assert variant["properties"]["component_data"]["type"] == "object"
+
+
+def test_course_canvas_schema_bounds_declarative_visual_artifacts() -> None:
+    schema = course_canvas_response_format()["json_schema"]["schema"]
+    variants = schema["properties"]["sections"]["items"]["properties"]["blocks"]["items"]["anyOf"]
+    visual = next(
+        item
+        for item in variants
+        if item["properties"].get("component_type", {}).get("const") == "visual_artifact"
+    )
+
+    data = visual["properties"]["component_data"]
+    assert data["properties"]["visual_nodes"]["maxItems"] == 12
+    assert data["properties"]["visual_series"]["maxItems"] == 6
+    assert data["additionalProperties"] is False

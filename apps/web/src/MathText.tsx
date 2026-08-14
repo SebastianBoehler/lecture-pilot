@@ -1,13 +1,5 @@
-import ReactMarkdown, { type Components } from "react-markdown";
-import {
-  Children,
-  isValidElement,
-  type ComponentProps,
-  type ReactNode,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import ReactMarkdown from "react-markdown";
+import { useLayoutEffect, useRef } from "react";
 import rehypeHighlight from "rehype-highlight";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
@@ -20,14 +12,17 @@ import { katexOptions } from "./courseLatexMacros";
 import { delimitedMathIsRenderable, segmentDisplayMath, tryRenderDisplayMath } from "./displayMath";
 import { formatLegacyFencedCode } from "./formatFencedCode";
 import { looseLatexPlugin } from "./looseLatex";
+import { markdownComponents } from "./markdownComponents";
 
 type MathTextMode = "inline" | "block";
 
 export function MathText({
+  allowLinks = true,
   highlightedText,
   mode = "inline",
   text,
 }: {
+  allowLinks?: boolean;
   highlightedText: string | null;
   mode?: MathTextMode;
   text: string;
@@ -41,7 +36,14 @@ export function MathText({
       highlightTarget(markdown, highlightedMarkdown) ??
       leadingTextBeforeMath(highlightedMarkdown))
     : null;
-  return <MarkdownRenderer highlightedText={target} mode={mode} text={markdown} />;
+  return (
+    <MarkdownRenderer
+      allowLinks={allowLinks}
+      highlightedText={target}
+      mode={mode}
+      text={markdown}
+    />
+  );
 }
 
 export function DisplayMath({ expression }: { expression: string }) {
@@ -86,10 +88,12 @@ function MathRenderFallback({ expression }: { expression: string }) {
 }
 
 function MarkdownRenderer({
+  allowLinks,
   highlightedText,
   mode,
   text,
 }: {
+  allowLinks: boolean;
   highlightedText?: string | null;
   mode: MathTextMode;
   text: string;
@@ -102,7 +106,7 @@ function MarkdownRenderer({
   }, [highlightedText, text]);
   const content = (
     <ReactMarkdown
-      components={mode === "inline" ? inlineComponents : blockComponents}
+      components={markdownComponents(mode, allowLinks)}
       rehypePlugins={[
         [rehypeKatex, katexOptions],
         [rehypeHighlight, { detect: false }],
@@ -113,74 +117,6 @@ function MarkdownRenderer({
     </ReactMarkdown>
   );
   return mode === "inline" ? <span ref={ref}>{content}</span> : <div ref={ref}>{content}</div>;
-}
-
-const inlineComponents: Components = {
-  a: SafeLink,
-  p: ({ children }) => <>{children}</>,
-};
-
-const blockComponents: Components = {
-  a: SafeLink,
-  pre: MarkdownCodeBlock,
-};
-
-function MarkdownCodeBlock({ children }: ComponentProps<"pre">) {
-  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
-  const language = codeLanguage(children);
-  const code = nodeText(children).replace(/\n$/, "");
-
-  async function copyCode() {
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopyState("copied");
-      window.setTimeout(() => setCopyState("idle"), 1600);
-    } catch {
-      setCopyState("failed");
-    }
-  }
-
-  return (
-    <div className="markdown-code-block">
-      <div className="markdown-code-toolbar">
-        <span>{language || "code"}</span>
-        <button type="button" onClick={() => void copyCode()}>
-          {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy"}
-        </button>
-      </div>
-      <pre>{children}</pre>
-    </div>
-  );
-}
-
-function codeLanguage(children: ReactNode) {
-  const child = Children.toArray(children).find(isValidElement);
-  if (!child || typeof child.props !== "object" || child.props === null) return "";
-  const className = "className" in child.props ? child.props.className : "";
-  const match = typeof className === "string" ? className.match(/(?:^|\s)language-([\w-]+)/) : null;
-  return match?.[1] ?? "";
-}
-
-function nodeText(node: ReactNode): string {
-  if (typeof node === "string" || typeof node === "number") return String(node);
-  if (Array.isArray(node)) return node.map(nodeText).join("");
-  if (!isValidElement(node)) return "";
-  return nodeText((node.props as { children?: ReactNode }).children);
-}
-
-function SafeLink({ children, href }: ComponentProps<"a">) {
-  const target = safeHref(href);
-  if (!target) return <>{children}</>;
-  return (
-    <a href={target} rel="noreferrer" target="_blank">
-      {children}
-    </a>
-  );
-}
-
-function safeHref(href: string | undefined) {
-  if (!href) return "";
-  return /^(https?:|mailto:|\/)/.test(href) ? href : "";
 }
 
 function highlightTarget(text: string, phrase: string) {

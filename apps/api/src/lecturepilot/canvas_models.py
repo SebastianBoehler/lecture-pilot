@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, FiniteFloat
 
 
 MAX_SOURCE_REF_LENGTH = 500
@@ -10,16 +10,16 @@ MAX_SOURCE_REF_LENGTH = 500
 
 class CanvasComponentPoint(BaseModel):
     label: str = Field(min_length=1, max_length=120)
-    x: float
-    y: float
+    x: FiniteFloat
+    y: FiniteFloat
     series: str | None = Field(default=None, max_length=120)
 
 
 class CanvasComponentFrame(BaseModel):
     label: str = Field(min_length=1, max_length=120)
-    values: list[float] = Field(default_factory=list, max_length=24)
+    values: list[FiniteFloat] = Field(default_factory=list, max_length=24)
     points: list[CanvasComponentPoint] = Field(default_factory=list, max_length=120)
-    matrix: list[list[float]] = Field(default_factory=list, max_length=12)
+    matrix: list[list[FiniteFloat]] = Field(default_factory=list, max_length=12)
     explanation: str = Field(min_length=1, max_length=500)
 
 
@@ -28,7 +28,33 @@ class CanvasComponentStep(BaseModel):
     text: str = Field(min_length=1, max_length=800)
 
 
+class CanvasVisualNode(BaseModel):
+    id: str = Field(min_length=1, max_length=80, pattern=r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
+    label: str = Field(min_length=1, max_length=120)
+    detail: str = Field(min_length=1, max_length=500)
+    value: str | None = Field(default=None, max_length=80)
+
+
+class CanvasVisualEdge(BaseModel):
+    from_id: str = Field(min_length=1, max_length=80)
+    to_id: str = Field(min_length=1, max_length=80)
+    label: str | None = Field(default=None, max_length=120)
+
+
+class CanvasVisualSeries(BaseModel):
+    label: str = Field(min_length=1, max_length=120)
+    mark: Literal["line", "bar", "point"]
+    points: list[CanvasComponentPoint] = Field(default_factory=list, max_length=24)
+
+
+class CanvasVisualAnnotation(BaseModel):
+    label: str = Field(min_length=1, max_length=300)
+    target_id: str | None = Field(default=None, max_length=80)
+
+
 class CanvasComponentData(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     chart_type: Literal["bar", "line", "scatter", "heatmap"] | None = None
     control_type: Literal["buttons", "slider"] | None = None
     x_label: str | None = Field(default=None, max_length=120)
@@ -38,6 +64,11 @@ class CanvasComponentData(BaseModel):
     row_labels: list[str] = Field(default_factory=list, max_length=12)
     frames: list[CanvasComponentFrame] = Field(default_factory=list, max_length=12)
     steps: list[CanvasComponentStep] = Field(default_factory=list, max_length=12)
+    visual_layout: Literal["flow", "timeline", "grid", "plot"] | None = None
+    visual_nodes: list[CanvasVisualNode] = Field(default_factory=list, max_length=12)
+    visual_edges: list[CanvasVisualEdge] = Field(default_factory=list, max_length=16)
+    visual_series: list[CanvasVisualSeries] = Field(default_factory=list, max_length=6)
+    visual_annotations: list[CanvasVisualAnnotation] = Field(default_factory=list, max_length=12)
 
 
 class CanvasBlock(BaseModel):

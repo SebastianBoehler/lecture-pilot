@@ -56,17 +56,7 @@ def component_data_schema() -> dict[str, Any]:
                         "points": {
                             "type": "array",
                             "maxItems": 120,
-                            "items": {
-                                "type": "object",
-                                "additionalProperties": False,
-                                "properties": {
-                                    "label": {"type": "string"},
-                                    "x": {"type": "number"},
-                                    "y": {"type": "number"},
-                                    "series": _nullable_string("Optional point series."),
-                                },
-                                "required": ["label", "x", "y", "series"],
-                            },
+                            "items": _point_schema(),
                         },
                         "matrix": {
                             "type": "array",
@@ -95,6 +85,30 @@ def component_data_schema() -> dict[str, Any]:
                     "required": ["title", "text"],
                 },
             },
+            "visual_layout": {
+                "type": ["string", "null"],
+                "enum": ["flow", "timeline", "grid", "plot", None],
+            },
+            "visual_nodes": {
+                "type": "array",
+                "maxItems": 12,
+                "items": _visual_node_schema(),
+            },
+            "visual_edges": {
+                "type": "array",
+                "maxItems": 16,
+                "items": _visual_edge_schema(),
+            },
+            "visual_series": {
+                "type": "array",
+                "maxItems": 6,
+                "items": _visual_series_schema(),
+            },
+            "visual_annotations": {
+                "type": "array",
+                "maxItems": 12,
+                "items": _visual_annotation_schema(),
+            },
         },
         "required": [
             "chart_type",
@@ -106,7 +120,78 @@ def component_data_schema() -> dict[str, Any]:
             "row_labels",
             "frames",
             "steps",
+            "visual_layout",
+            "visual_nodes",
+            "visual_edges",
+            "visual_series",
+            "visual_annotations",
         ],
+    }
+
+
+def _visual_node_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "id": {"type": "string"},
+            "label": {"type": "string"},
+            "detail": {"type": "string"},
+            "value": {"type": ["string", "null"]},
+        },
+        "required": ["id", "label", "detail", "value"],
+    }
+
+
+def _visual_edge_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "from_id": {"type": "string"},
+            "to_id": {"type": "string"},
+            "label": {"type": ["string", "null"]},
+        },
+        "required": ["from_id", "to_id", "label"],
+    }
+
+
+def _visual_series_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "label": {"type": "string"},
+            "mark": {"type": "string", "enum": ["line", "bar", "point"]},
+            "points": {"type": "array", "maxItems": 24, "items": _point_schema()},
+        },
+        "required": ["label", "mark", "points"],
+    }
+
+
+def _point_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "label": {"type": "string"},
+            "x": {"type": "number"},
+            "y": {"type": "number"},
+            "series": _nullable_string("Optional point series."),
+        },
+        "required": ["label", "x", "y", "series"],
+    }
+
+
+def _visual_annotation_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "label": {"type": "string"},
+            "target_id": {"type": ["string", "null"]},
+        },
+        "required": ["label", "target_id"],
     }
 
 
