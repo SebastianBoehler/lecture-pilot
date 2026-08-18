@@ -61,6 +61,7 @@ def _usable_statement(value: str | None) -> str | None:
     statement = _LABEL.sub("", statement).strip()
     statement = re.sub(r"\bthe source evidence\b", "the stated evidence", statement, flags=re.I)
     statement = re.sub(r"\bthe source\b", "the stated material", statement, flags=re.I)
+    statement = re.sub(r"\b(?:this|the) slide\b", "this statement", statement, flags=re.I)
     statement = re.sub(r"\bthis section\b", "this statement", statement, flags=re.I)
     if len(statement) < 20:
         return None

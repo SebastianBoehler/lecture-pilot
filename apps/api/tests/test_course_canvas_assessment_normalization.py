@@ -71,7 +71,7 @@ def test_section_repair_uses_original_evidence_when_patch_only_contains_math() -
     checkpoint = next(block for block in parsed.blocks if block.type == "checkpoint")
     assert checkpoint.text == (
         "Explain this statement and identify the relationship it describes: "
-        "the stated evidence explains how probability combines prior beliefs and observations."
+        "this statement summarizes how probability combines prior beliefs and observations."
     )
 
 
@@ -85,8 +85,7 @@ def _source_section() -> CanvasSection:
                 id="source",
                 type="paragraph",
                 text=(
-                    "The source evidence explains how probability combines prior beliefs and "
-                    "observations."
+                    "This slide summarizes how probability combines prior beliefs and observations."
                 ),
             )
         ],
