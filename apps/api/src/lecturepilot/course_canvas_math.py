@@ -213,11 +213,7 @@ def _combine_display_segments(value: str) -> str:
 
 def normalize_generated_math_block(value: str) -> tuple[str, str]:
     formula = normalize_generated_math(value)
-    block_type = (
-        "paragraph"
-        if _contains_plain_prose(formula) and not _looks_like_expression(formula)
-        else "math"
-    )
+    block_type = "paragraph" if _contains_plain_prose(formula) else "math"
     return block_type, formula
 
 

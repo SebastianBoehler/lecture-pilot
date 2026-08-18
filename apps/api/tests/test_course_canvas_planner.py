@@ -36,6 +36,7 @@ async def test_litellm_course_plan_client_requests_canvas_schema(monkeypatch) ->
     schema = calls[0]["response_format"]["json_schema"]["schema"]
     assert calls[0]["response_format"]["json_schema"]["strict"] is True
     assert calls[0]["temperature"] == 0.4
+    assert calls[0]["timeout"] == 60
     assert "max_tokens" not in calls[0]
     assert schema["required"] == ["title", "sections"]
 

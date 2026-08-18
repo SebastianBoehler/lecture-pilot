@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from lecturepilot.canvas_models import CanvasSection
 
 
@@ -32,6 +34,8 @@ def group_evidence_sections(
 def _qualified_ref(section: CanvasSection, document_source_ref: str | None) -> CanvasSection:
     section_ref = section.source_ref or ""
     if not document_source_ref or document_source_ref.casefold() in section_ref.casefold():
+        return section
+    if section_ref and re.search(r"\.[A-Za-z0-9]{1,8}\b", section_ref):
         return section
     return section.model_copy(update={"source_ref": f"{document_source_ref} {section_ref}".strip()})
 

@@ -17,7 +17,10 @@ from lecturepilot.course_slide_interleaving import interleave_original_slides
 from lecturepilot.course_planner_warnings import planned_payload
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_provider_errors import model_provider_error_message
-from lecturepilot.model_request_options import completion_options
+from lecturepilot.model_request_options import (
+    CANVAS_MODEL_REQUEST_TIMEOUT_SECONDS,
+    completion_options,
+)
 from lecturepilot.model_usage import ModelUsageRecorder, complete_with_usage
 from lecturepilot.models import ProviderCapability, ProviderSettings
 from lecturepilot.observability import Observability
@@ -62,7 +65,11 @@ class LiteLLMCoursePlanClient:
                 model=settings.model,
                 messages=messages,
                 response_format=course_canvas_response_format(),
-                **completion_options(settings, temperature=temperature),
+                **completion_options(
+                    settings,
+                    temperature=temperature,
+                    timeout_seconds=CANVAS_MODEL_REQUEST_TIMEOUT_SECONDS,
+                ),
             )
         except Exception as exc:
             raise ModelExecutionError(

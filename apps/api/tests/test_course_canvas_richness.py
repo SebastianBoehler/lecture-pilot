@@ -48,8 +48,9 @@ def test_section_parser_preserves_model_supported_depth_and_long_code() -> None:
         {},
     )
 
-    assert len(section.blocks) == 10
-    assert section.blocks[-1].text == code
+    assert len(section.blocks) == 11
+    assert section.blocks[-2].text == code
+    assert section.blocks[-1].type == "checkpoint"
 
 
 def test_single_topic_lecture_uses_coherent_assessment_requirements() -> None:

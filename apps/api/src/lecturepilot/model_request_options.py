@@ -6,6 +6,7 @@ from lecturepilot.models import ProviderSettings
 
 
 MODEL_REQUEST_TIMEOUT_SECONDS = 300
+CANVAS_MODEL_REQUEST_TIMEOUT_SECONDS = 60
 
 
 def completion_options(
@@ -14,9 +15,10 @@ def completion_options(
     temperature: float,
     max_tokens: int | None = None,
     reasoning_effort: str | None = None,
+    timeout_seconds: int = MODEL_REQUEST_TIMEOUT_SECONDS,
 ) -> dict[str, Any]:
     options: dict[str, Any] = {
-        "timeout": MODEL_REQUEST_TIMEOUT_SECONDS,
+        "timeout": timeout_seconds,
         "max_retries": 0,
     }
     if _is_openai_gpt5(settings):

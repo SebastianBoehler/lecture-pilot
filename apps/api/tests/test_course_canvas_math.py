@@ -168,6 +168,29 @@ def test_planner_reclassifies_plain_prose_mislabeled_as_math() -> None:
     assert document.sections[0].blocks[0].text == "Estimating word probabilities"
 
 
+def test_planner_reclassifies_a_math_task_with_explanatory_prose() -> None:
+    task = (
+        r"\text{Calculate }P(C \mid X) from P(C)=0.10 and P(X)=0.05, "
+        "then explain whether the result exceeds the prior."
+    )
+
+    document = _planned_document(
+        {
+            "sections": [
+                {
+                    "id": "bayes-task",
+                    "title": "Bayes task",
+                    "blocks": [{"type": "math", "text": task}],
+                }
+            ]
+        },
+        _source_document(),
+    )
+
+    assert document.sections[0].blocks[0].type == "paragraph"
+    assert document.sections[0].blocks[0].text == task
+
+
 @pytest.mark.parametrize(
     ("formula", "error"),
     [

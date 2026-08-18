@@ -29,8 +29,21 @@ def test_completion_options_disable_hidden_retries_and_allow_long_structured_out
     assert options["max_retries"] == 0
 
 
+def test_completion_options_allow_a_shorter_workload_circuit_breaker() -> None:
+    settings = ProviderSettings(
+        provider="openai",
+        model="openai/gpt-5.6-luna",
+        api_key_env="OPENAI_API_KEY",
+        capabilities={ProviderCapability.CHAT},
+    )
+
+    options = completion_options(settings, temperature=0.2, timeout_seconds=60)
+
+    assert options["timeout"] == 60
+
+
 @pytest.mark.asyncio
-async def test_timeout_is_not_automatically_duplicated(monkeypatch) -> None:
+async def test_timeout_retries_once_with_a_fresh_provider_request(monkeypatch) -> None:
     calls: list[dict] = []
 
     async def completion(**kwargs):
@@ -45,7 +58,35 @@ async def test_timeout_is_not_automatically_duplicated(monkeypatch) -> None:
     with pytest.raises(TimeoutError, match="provider timeout"):
         await complete_with_usage(None, completion, model="gemini/test-model")
 
-    assert calls == [{"model": "gemini/test-model"}]
+    assert calls == [
+        {"model": "gemini/test-model"},
+        {"model": "gemini/test-model"},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_usage_guard_follows_the_requested_provider_timeout(monkeypatch) -> None:
+    guarded: list[float] = []
+
+    class TimeoutGuard:
+        async def __aenter__(self):
+            return None
+
+        async def __aexit__(self, *_args):
+            return False
+
+    def timeout(seconds: float) -> TimeoutGuard:
+        guarded.append(seconds)
+        return TimeoutGuard()
+
+    async def completion(**_kwargs):
+        return SimpleNamespace(usage=None)
+
+    monkeypatch.setattr("lecturepilot.model_usage.asyncio.timeout", timeout)
+
+    await complete_with_usage(None, completion, model="openai/test-model", timeout=60)
+
+    assert guarded == [65]
 
 
 @pytest.mark.asyncio

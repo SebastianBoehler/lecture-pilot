@@ -39,6 +39,7 @@ async def test_quality_review_does_not_impose_an_output_token_cap(monkeypatch) -
     assert payload == {"issues": []}
     assert "max_tokens" not in calls[0]
     assert calls[0]["reasoning_effort"] == "low"
+    assert calls[0]["timeout"] == 60
 
 
 async def test_quality_review_retries_an_empty_truncated_response(monkeypatch) -> None:
@@ -132,7 +133,7 @@ async def test_quality_review_preserves_a_provider_timeout_message(monkeypatch) 
             candidate_document=document,
         )
 
-    assert calls == 1
+    assert calls == 2
 
 
 def test_quality_review_prompt_is_bounded_to_claims_and_relevant_evidence() -> None:

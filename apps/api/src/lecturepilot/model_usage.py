@@ -16,7 +16,7 @@ from lecturepilot.db_models import ModelUsageEventRecord
 from lecturepilot.logging_observability import current_operation_id
 from lecturepilot.metadata_events import emit_metadata_event
 from lecturepilot.model_rate_limits import model_request_slot, observe_provider_response
-from lecturepilot.model_provider_errors import is_provider_timeout, is_retryable_provider_error
+from lecturepilot.model_provider_errors import is_retryable_provider_error
 from lecturepilot.model_request_options import MODEL_REQUEST_TIMEOUT_SECONDS
 
 
@@ -149,6 +149,7 @@ async def _complete_with_attempts(
 ) -> Any:
     request_id = uuid4().hex
     model = str(kwargs.get("model") or "unknown")
+    timeout_seconds = float(kwargs.get("timeout") or MODEL_REQUEST_TIMEOUT_SECONDS)
     _enable_litellm_response_headers()
     for attempt in range(1, MODEL_REQUEST_MAX_ATTEMPTS + 1):
         started_at = perf_counter()
@@ -156,7 +157,7 @@ async def _complete_with_attempts(
         try:
             async with model_request_slot(model):
                 provider_started_at = perf_counter()
-                async with asyncio.timeout(MODEL_REQUEST_TIMEOUT_SECONDS + 5):
+                async with asyncio.timeout(timeout_seconds + 5):
                     response = await completion(**kwargs)
         except Exception as exc:
             _emit_request_event(
@@ -174,11 +175,7 @@ async def _complete_with_attempts(
                     attempt=attempt,
                     error_type=type(exc).__name__[:80],
                 )
-            if (
-                attempt >= MODEL_REQUEST_MAX_ATTEMPTS
-                or is_provider_timeout(exc)
-                or not is_retryable_provider_error(exc)
-            ):
+            if attempt >= MODEL_REQUEST_MAX_ATTEMPTS or not is_retryable_provider_error(exc):
                 logger.warning(
                     "Model request exhausted attempts model=%s attempts=%s error_type=%s status=%s",
                     model,

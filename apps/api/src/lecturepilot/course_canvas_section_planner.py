@@ -11,6 +11,7 @@ from lecturepilot.canvas_text_normalizer import (
     clean_canvas_items,
     clean_canvas_text,
 )
+from lecturepilot.course_canvas_assessment_normalizer import normalize_section_assessments
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_evidence_batches import group_evidence_sections
 from lecturepilot.course_canvas_math import normalize_generated_math_block, validate_section_math
@@ -137,7 +138,12 @@ async def _plan_section(
                 **span_attributes,
             ) as span:
                 payload = await model_client.complete_plan(settings=settings, messages=messages)
-                section = _read_section_payload(payload, source_section, allowed_assets)
+                section = _read_section_payload(
+                    payload,
+                    source_section,
+                    allowed_assets,
+                    output_language=output_language,
+                )
                 validate_section_math(section)
                 validate_section_assessments(section)
                 span.set_outputs({"section_count": 1})
@@ -172,6 +178,9 @@ def _read_section_payload(
     payload: dict,
     source_section: CanvasSection,
     allowed_assets: dict[str, str | None],
+    *,
+    output_language: str = "en",
+    require_checkpoint: bool = True,
 ) -> CanvasSection:
     payload = _section_payload(payload)
     section_id = _safe_id(
@@ -187,7 +196,11 @@ def _read_section_payload(
         source_ref=source_ref[:500],
         blocks=blocks,
     )
-    return section
+    return normalize_section_assessments(
+        section,
+        output_language=output_language,
+        require_checkpoint=require_checkpoint,
+    )
 
 
 def _read_blocks(

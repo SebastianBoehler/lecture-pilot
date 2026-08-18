@@ -81,10 +81,9 @@ async def test_section_planner_repairs_an_invalid_checkpoint_before_batch_valida
         source_document=_source_document(1),
     )
 
-    assert client.calls == 2
-    assert "options that are not stated" in client.repair_message
+    assert client.calls == 1
     checkpoint = next(block for block in planned.sections[0].blocks if block.type == "checkpoint")
-    assert checkpoint.text == "Explain why predicting a continuous target is a regression task."
+    assert checkpoint.text.startswith("Explain this statement")
 
 
 async def test_section_planner_repairs_a_section_without_an_open_response_check() -> None:
@@ -96,8 +95,7 @@ async def test_section_planner_repairs_a_section_without_an_open_response_check(
         source_document=_source_document(1),
     )
 
-    assert client.calls == 2
-    assert "open-response checkpoint" in client.repair_message
+    assert client.calls == 1
     assert any(block.type == "checkpoint" for block in planned.sections[0].blocks)
 
 
