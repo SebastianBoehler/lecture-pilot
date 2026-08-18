@@ -18,7 +18,7 @@ from lecturepilot.course_planner_warnings import planned_payload
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_provider_errors import model_provider_error_message
 from lecturepilot.model_request_options import (
-    CANVAS_MODEL_REQUEST_TIMEOUT_SECONDS,
+    CANVAS_PLAN_REQUEST_TIMEOUT_SECONDS,
     completion_options,
 )
 from lecturepilot.model_usage import ModelUsageRecorder, complete_with_usage
@@ -68,7 +68,7 @@ class LiteLLMCoursePlanClient:
                 **completion_options(
                     settings,
                     temperature=temperature,
-                    timeout_seconds=CANVAS_MODEL_REQUEST_TIMEOUT_SECONDS,
+                    timeout_seconds=CANVAS_PLAN_REQUEST_TIMEOUT_SECONDS,
                 ),
             )
         except Exception as exc:

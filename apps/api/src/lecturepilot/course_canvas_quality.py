@@ -18,7 +18,7 @@ from lecturepilot.course_canvas_quality_prompt import (
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_provider_errors import model_provider_error_message
 from lecturepilot.model_request_options import (
-    CANVAS_MODEL_REQUEST_TIMEOUT_SECONDS,
+    CANVAS_QUALITY_REQUEST_TIMEOUT_SECONDS,
     completion_options,
 )
 from lecturepilot.model_usage import ModelUsageRecorder, complete_with_usage
@@ -71,7 +71,7 @@ class LiteLLMCanvasQualityClient:
                         settings,
                         temperature=0.0,
                         reasoning_effort="low",
-                        timeout_seconds=CANVAS_MODEL_REQUEST_TIMEOUT_SECONDS,
+                        timeout_seconds=CANVAS_QUALITY_REQUEST_TIMEOUT_SECONDS,
                     ),
                 )
             except ProviderConfigurationError:
