@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.course_canvas_assessment_normalizer import (
+    grounded_checkpoint_text,
     normalize_section_assessments,
     retrieval_checkpoint_text,
     retrieval_checkpoint_text_for_block,
@@ -49,7 +50,9 @@ def normalize_repair_candidate(
         normalized_section = normalize_section_assessments(
             section.model_copy(
                 update={
-                    "blocks": [checkpoint if item.id == block_id else item for item in section.blocks]
+                    "blocks": [
+                        checkpoint if item.id == block_id else item for item in section.blocks
+                    ]
                 }
             ),
             output_language=output_language,
@@ -67,6 +70,8 @@ def normalize_repair_candidate(
     if target.type in {"quiz", "component"} and any(
         marker in lowered
         for marker in (
+            "both answer options are identical",
+            "duplicate answer options",
             "also supported",
             "both options are supported",
             "both options are materially correct",
@@ -81,7 +86,15 @@ def normalize_repair_candidate(
             "multiple correct answers",
         )
     ):
-        if text := retrieval_checkpoint_text_for_block(target, output_language=output_language):
+        duplicate_options = len({" ".join(item.split()).casefold() for item in target.items}) < len(
+            target.items
+        )
+        text = (
+            grounded_checkpoint_text(section, output_language=output_language)
+            if duplicate_options
+            else retrieval_checkpoint_text_for_block(target, output_language=output_language)
+        )
+        if text:
             checkpoint = target.model_copy(
                 update={
                     "type": "checkpoint",

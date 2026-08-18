@@ -6,6 +6,10 @@ from lecturepilot.canvas_component_catalog import normalize_component_identity
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_repair_preflight import normalize_repair_candidate
+from lecturepilot.course_canvas_repair_response import (
+    repair_patch_response_format,
+    replacement_blocks,
+)
 from lecturepilot.course_canvas_repair_prompt import (
     repair_messages,
     repair_retry_message,
@@ -27,6 +31,7 @@ class _RepairModel(Protocol):
         settings: ProviderSettings,
         messages: list[dict[str, str]],
         temperature: float = 0.4,
+        response_format: dict | None = None,
     ) -> dict: ...
 
 
@@ -84,7 +89,16 @@ class CourseCanvasSectionRepairMixin:
                     settings=settings,
                     messages=messages,
                     temperature=0.4,
+                    response_format=repair_patch_response_format() if target else None,
                 )
+                if target is not None:
+                    payload = {
+                        "blocks": replacement_blocks(
+                            payload,
+                            section_id=section.id,
+                            block_id=target.id,
+                        )
+                    }
                 replacement = _read_section_payload(
                     payload,
                     section,

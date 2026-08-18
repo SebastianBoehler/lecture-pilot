@@ -21,12 +21,12 @@ def _section_schema() -> dict[str, Any]:
     return _strict_object(
         {
             "title": {"type": "string"},
-            "blocks": {"type": "array", "items": _block_schema()},
+            "blocks": {"type": "array", "items": canvas_block_schema()},
         }
     )
 
 
-def _block_schema() -> dict[str, Any]:
+def canvas_block_schema() -> dict[str, Any]:
     return {
         "anyOf": [
             *(_text_block_schema(kind) for kind in ("paragraph", "callout", "math")),

@@ -65,6 +65,31 @@ async def test_timeout_retries_once_with_a_fresh_provider_request(monkeypatch) -
 
 
 @pytest.mark.asyncio
+async def test_long_request_can_disable_automatic_provider_retry(monkeypatch) -> None:
+    calls = 0
+
+    async def completion(**_kwargs):
+        nonlocal calls
+        calls += 1
+        raise TimeoutError("provider timeout")
+
+    async def no_wait(_seconds: float) -> None:
+        raise AssertionError("single-attempt requests must not back off")
+
+    monkeypatch.setattr("lecturepilot.model_usage.asyncio.sleep", no_wait)
+
+    with pytest.raises(TimeoutError, match="provider timeout"):
+        await complete_with_usage(
+            None,
+            completion,
+            model="gemini/test-model",
+            max_attempts=1,
+        )
+
+    assert calls == 1
+
+
+@pytest.mark.asyncio
 async def test_usage_guard_follows_the_requested_provider_timeout(monkeypatch) -> None:
     guarded: list[float] = []
 

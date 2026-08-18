@@ -9,7 +9,7 @@ from test_course_canvas_quality import _source_document
 from test_course_canvas_targeted_repair import _invalid_candidate
 
 
-async def test_quality_issues_in_one_section_are_repaired_in_one_batch() -> None:
+async def test_quality_issues_across_blocks_avoid_a_whole_section_rewrite() -> None:
     source, candidate = _documents()
     issues = [
         CanvasQualityIssue(
@@ -34,12 +34,12 @@ async def test_quality_issues_in_one_section_are_repaired_in_one_batch() -> None
 
     assert repaired == candidate
     assert planner.review_calls == 1
-    assert len(planner.repair_calls) == 1
-    section_id, block_id, failure = planner.repair_calls[0]
-    assert section_id == "learning-optimization"
-    assert block_id is None
-    assert failure.startswith("Canvas quality review failed:")
-    assert all(f"quality issue {index}" in failure for index in range(1, 6))
+    assert len(planner.repair_calls) == 5
+    assert [call[1] for call in planner.repair_calls] == [
+        f"optimization-issue-{index}" for index in range(1, 6)
+    ]
+    assert all(call[0] == "learning-optimization" for call in planner.repair_calls)
+    assert all(call[2].startswith("Canvas quality review failed:") for call in planner.repair_calls)
 
 
 async def test_batched_quality_repair_allows_one_bounded_follow_up_pass() -> None:
@@ -65,6 +65,41 @@ async def test_batched_quality_repair_allows_one_bounded_follow_up_pass() -> Non
     assert repaired == candidate
     assert planner.review_calls == 2
     assert len(planner.repair_calls) == 2
+
+
+async def test_multiple_issues_for_one_block_keep_the_surgical_repair_target() -> None:
+    source, candidate = _documents()
+    issues = [
+        CanvasQualityIssue(
+            section_id="learning-optimization",
+            block_id="optimization-intro",
+            reason="The claim is unsupported.",
+        ),
+        CanvasQualityIssue(
+            section_id="learning-optimization",
+            block_id="optimization-intro",
+            reason="The explanation is ambiguous.",
+        ),
+    ]
+    planner = _BatchPlanner(reviews=[[]])
+
+    await repair_until_quality_valid(
+        planner,
+        source=source,
+        candidate=candidate,
+        section_id=issues[0].section_id,
+        block_id=issues[0].block_id,
+        failure_context="Canvas quality review failed.",
+        output_language="en",
+        quality_issues=issues,
+    )
+
+    assert len(planner.repair_calls) == 1
+    section_id, block_id, failure = planner.repair_calls[0]
+    assert section_id == "learning-optimization"
+    assert block_id == "optimization-intro"
+    assert "unsupported" in failure
+    assert "ambiguous" in failure
 
 
 async def test_batched_quality_repair_stops_after_two_passes() -> None:
@@ -120,7 +155,9 @@ async def test_quality_issues_in_separate_sections_are_repaired_concurrently() -
     assert planner.review_calls == 1
 
 
-async def test_persisted_quality_failure_rediscovers_all_section_coordinates_before_repair() -> None:
+async def test_persisted_quality_failure_rediscovers_all_section_coordinates_before_repair() -> (
+    None
+):
     source, candidate = _documents()
     issues = [
         CanvasQualityIssue(

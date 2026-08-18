@@ -35,6 +35,7 @@ class CoursePlanModelClient(Protocol):
         settings: ProviderSettings,
         messages: list[dict[str, str]],
         temperature: float = 0.4,
+        response_format: dict | None = None,
     ) -> dict:
         """Return one source-grounded course canvas plan."""
 
@@ -49,6 +50,7 @@ class LiteLLMCoursePlanClient:
         settings: ProviderSettings,
         messages: list[dict[str, str]],
         temperature: float = 0.4,
+        response_format: dict | None = None,
     ) -> dict:
         try:
             from litellm import acompletion
@@ -62,9 +64,10 @@ class LiteLLMCoursePlanClient:
                 self.usage_recorder,
                 acompletion,
                 usage_stage="canvas_plan_or_repair",
+                max_attempts=1,
                 model=settings.model,
                 messages=messages,
-                response_format=course_canvas_response_format(),
+                response_format=response_format or course_canvas_response_format(),
                 **completion_options(
                     settings,
                     temperature=temperature,
@@ -83,7 +86,10 @@ class LiteLLMCoursePlanClient:
             if refusal:
                 detail += ", refusal=true"
             raise ModelExecutionError(f"Course planner returned an empty response ({detail}).")
-        return planned_payload(parse_model_json(content), finish_reason=finish_reason)
+        payload = parse_model_json(content)
+        if response_format is not None:
+            return payload
+        return planned_payload(payload, finish_reason=finish_reason)
 
 
 class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):

@@ -9,7 +9,10 @@ from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.course_canvas_assessment_normalizer import normalize_section_assessments
 from lecturepilot.course_canvas_math import normalize_generated_math, validate_section_math
 from lecturepilot.course_canvas_planner import LiteLLMCoursePlanClient
-from lecturepilot.course_canvas_repair_preflight import repair_failure_constraint
+from lecturepilot.course_canvas_repair_preflight import (
+    normalize_repair_candidate,
+    repair_failure_constraint,
+)
 from lecturepilot.providers import ProviderRegistry
 from test_course_canvas_section_repair import _planner, _repair_payload
 from test_course_canvas_math import _section_with_math
@@ -85,6 +88,53 @@ def test_assessment_only_section_builds_checkpoint_from_selected_grounded_answer
     assert "Hyperparameters; avg acc" in (checkpoint.text or "")
     assert "List the explicitly named elements" in (checkpoint.text or "")
     assert "relationship" not in (checkpoint.text or "")
+
+
+def test_duplicate_choice_options_become_a_grounded_checkpoint_without_model_repair() -> None:
+    candidate = published_course_canvas("duplicate-choice", "lecture-01")
+    section = candidate.sections[0]
+    section = section.model_copy(
+        update={
+            "blocks": [
+                section.blocks[0].model_copy(
+                    update={"text": "A grounded instructional statement with enough detail."}
+                )
+            ]
+        }
+    )
+    duplicate = CanvasBlock(
+        id="duplicate-choice",
+        type="component",
+        text="Which statement is correct?",
+        items=["A visibly truncated answer...", "A visibly truncated answer..."],
+        answer_index=0,
+        component_id="duplicate-choice",
+        component_type="single_choice_quiz",
+        component_ref="components/duplicate-choice.yaml",
+        component_version=1,
+        option_ids=["a", "b"],
+    )
+    candidate = candidate.model_copy(
+        update={
+            "sections": [
+                section.model_copy(update={"blocks": [*section.blocks, duplicate]}),
+                *candidate.sections[1:],
+            ]
+        }
+    )
+
+    normalized = normalize_repair_candidate(
+        candidate,
+        section.id,
+        duplicate.id,
+        "Both answer options are identical and visibly truncated.",
+    )
+
+    target = normalized.sections[0].blocks[-1]
+    assert target.type == "checkpoint"
+    assert "grounded instructional statement" in (target.text or "")
+    assert target.items == []
+    assert target.component_type is None
 
 
 async def test_course_plan_client_applies_repair_temperature(monkeypatch) -> None:

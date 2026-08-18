@@ -130,6 +130,7 @@ async def complete_with_usage(
     completion: Callable[..., Awaitable[Any]],
     *,
     usage_stage: str | None = None,
+    max_attempts: int = MODEL_REQUEST_MAX_ATTEMPTS,
     **kwargs: Any,
 ) -> Any:
     return await _complete_with_attempts(
@@ -137,6 +138,7 @@ async def complete_with_usage(
         completion,
         kwargs,
         usage_stage=usage_stage,
+        max_attempts=max(1, max_attempts),
     )
 
 
@@ -146,12 +148,13 @@ async def _complete_with_attempts(
     kwargs: dict[str, Any],
     *,
     usage_stage: str | None,
+    max_attempts: int = MODEL_REQUEST_MAX_ATTEMPTS,
 ) -> Any:
     request_id = uuid4().hex
     model = str(kwargs.get("model") or "unknown")
     timeout_seconds = float(kwargs.get("timeout") or MODEL_REQUEST_TIMEOUT_SECONDS)
     _enable_litellm_response_headers()
-    for attempt in range(1, MODEL_REQUEST_MAX_ATTEMPTS + 1):
+    for attempt in range(1, max_attempts + 1):
         started_at = perf_counter()
         provider_started_at: float | None = None
         try:
@@ -175,7 +178,7 @@ async def _complete_with_attempts(
                     attempt=attempt,
                     error_type=type(exc).__name__[:80],
                 )
-            if attempt >= MODEL_REQUEST_MAX_ATTEMPTS or not is_retryable_provider_error(exc):
+            if attempt >= max_attempts or not is_retryable_provider_error(exc):
                 logger.warning(
                     "Model request exhausted attempts model=%s attempts=%s error_type=%s status=%s",
                     model,

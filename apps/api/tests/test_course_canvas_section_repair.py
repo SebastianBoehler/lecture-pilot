@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from canvas_workspace_fixtures import published_course_canvas
@@ -75,7 +77,7 @@ async def test_section_repair_retries_once_with_the_new_validation_error(
         in model.messages[0][0]["content"]
     )
     assert "exactly this outer shape" in model.messages[0][0]["content"]
-    assert '"same-section-id"' in model.messages[0][0]["content"]
+    assert '"replace_block"' in model.messages[0][0]["content"]
     assert "unsupported or course-specific" in model.messages[1][-1]["content"]
     assert model.temperatures == [0.4, 0.4]
     repaired_math = next(
@@ -320,14 +322,14 @@ class _RepairModel:
         self.messages: list[list[dict[str, str]]] = []
         self.temperatures: list[float] = []
 
-    async def complete_plan(self, *, settings, messages, temperature=0.2):
+    async def complete_plan(self, *, settings, messages, temperature=0.2, response_format=None):
         assert settings.model == "gemini/test-model"
         self.messages.append(messages)
         self.temperatures.append(temperature)
         payload = self.payloads[len(self.messages) - 1]
         if isinstance(payload, Exception):
             raise payload
-        return payload
+        return _repair_patch(payload, messages) if response_format else payload
 
 
 class _NoIssuesQualityReviewer:
@@ -344,10 +346,10 @@ class _SectionModel:
         self.repair_payload = repair_payload
         self.repair_calls = 0
 
-    async def complete_plan(self, *, settings, messages, temperature=0.2):
+    async def complete_plan(self, *, settings, messages, temperature=0.2, response_format=None):
         if temperature == 0.4:
             self.repair_calls += 1
-            return self.repair_payload
+            return _repair_patch(self.repair_payload, messages)
         evidence = messages[1]["content"]
         source_id = evidence.split("Required section id: ", 1)[1].splitlines()[0]
         return {"title": "Candidate", "sections": [self.sections[source_id]]}
@@ -392,4 +394,26 @@ def _repair_payload(blocks: list[dict]) -> dict:
                 "blocks": normalized,
             }
         ],
+    }
+
+
+def _repair_patch(payload: dict, messages: list[dict[str, str]]) -> dict:
+    content = messages[1]["content"]
+    section = json.loads(
+        content.split("Failed section context:\n", 1)[1].split("\n\nFailed block:", 1)[0]
+    )
+    block = json.loads(
+        content.split("Failed block:\n", 1)[1].split("\n\nRelevant professor source evidence:", 1)[
+            0
+        ]
+    )
+    return {
+        "edits": [
+            {
+                "operation": "replace_block",
+                "section_id": section["id"],
+                "block_id": block["id"],
+                "blocks": payload["sections"][0]["blocks"],
+            }
+        ]
     }

@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner, LiteLLMCoursePlanClient
+from lecturepilot.course_canvas_repair_response import repair_patch_response_format
 from lecturepilot.providers import ProviderRegistry
 
 
@@ -39,6 +40,42 @@ async def test_litellm_course_plan_client_requests_canvas_schema(monkeypatch) ->
     assert calls[0]["timeout"] == 120
     assert "max_tokens" not in calls[0]
     assert schema["required"] == ["title", "sections"]
+
+
+async def test_litellm_course_plan_client_uses_compact_repair_patch_schema(monkeypatch) -> None:
+    calls = []
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    patch = {
+        "edits": [
+            {
+                "operation": "replace_block",
+                "section_id": "topic",
+                "block_id": "claim",
+                "blocks": [{"type": "paragraph", "text": "Corrected claim."}],
+            }
+        ]
+    }
+
+    async def fake_completion(**kwargs):
+        calls.append(kwargs)
+        choice = SimpleNamespace(
+            finish_reason="stop",
+            message=SimpleNamespace(content=json.dumps(patch)),
+        )
+        return SimpleNamespace(choices=[choice])
+
+    monkeypatch.setitem(sys.modules, "litellm", SimpleNamespace(acompletion=fake_completion))
+
+    payload = await LiteLLMCoursePlanClient().complete_plan(
+        settings=ProviderRegistry.from_env("gemini/test-model").require_ready([]),
+        messages=[{"role": "user", "content": "Repair"}],
+        response_format=repair_patch_response_format(),
+    )
+
+    assert payload == patch
+    response_format = calls[0]["response_format"]
+    assert response_format["json_schema"]["name"] == "lecturepilot_canvas_repair_patch"
+    assert response_format["json_schema"]["schema"]["required"] == ["edits"]
 
 
 async def test_course_planner_restyles_source_evidence(monkeypatch) -> None:

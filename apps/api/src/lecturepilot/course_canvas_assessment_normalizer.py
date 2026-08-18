@@ -57,21 +57,20 @@ def normalize_section_assessments(
 
 def retrieval_checkpoint_text(section: CanvasSection, *, output_language: str) -> str | None:
     statement = next(
-        (
-            value
-            for block in section.blocks
-            if (value := _selected_answer(block)) is not None
-        ),
+        (value for block in section.blocks if (value := _selected_answer(block)) is not None),
         None,
     )
     return _retrieval_task(statement, output_language) if statement else None
 
 
-def retrieval_checkpoint_text_for_block(
-    block: CanvasBlock, *, output_language: str
-) -> str | None:
+def retrieval_checkpoint_text_for_block(block: CanvasBlock, *, output_language: str) -> str | None:
     statement = _selected_answer(block)
     return _retrieval_task(statement, output_language) if statement else None
+
+
+def grounded_checkpoint_text(section: CanvasSection, *, output_language: str) -> str | None:
+    statement = _instructional_statement(section.blocks)
+    return _explanation_task(statement, output_language) if statement else None
 
 
 def _instructional_statement(blocks: list[CanvasBlock]) -> str | None:

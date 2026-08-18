@@ -154,16 +154,42 @@ async def _repair_issue_group(
         unresolved = issues
     if not unresolved:
         return active
+    block_groups = _issues_by_block(unresolved)
+    if len(block_groups) > 1 and all(group[0].block_id is not None for group in block_groups):
+        for group in block_groups:
+            active = await planner.repair_section(
+                source,
+                active,
+                section_id=group[0].section_id,
+                block_id=group[0].block_id,
+                failure_context=_quality_failure_context(group),
+                output_language=output_language,
+            )
+        return active
     return await planner.repair_section(
         source,
         active,
         section_id=unresolved[0].section_id,
-        block_id=unresolved[0].block_id if len(unresolved) == 1 else None,
+        block_id=_shared_block_id(unresolved),
         failure_context=(
             _quality_failure_context(unresolved) if quality_batch else unresolved[0].reason
         ),
         output_language=output_language,
     )
+
+
+def _shared_block_id(issues: list[CanvasQualityIssue]) -> str | None:
+    block_ids = {issue.block_id for issue in issues}
+    if len(block_ids) != 1:
+        return None
+    return next(iter(block_ids))
+
+
+def _issues_by_block(issues: list[CanvasQualityIssue]) -> list[list[CanvasQualityIssue]]:
+    grouped: dict[str | None, list[CanvasQualityIssue]] = {}
+    for issue in issues:
+        grouped.setdefault(issue.block_id, []).append(issue)
+    return list(grouped.values())
 
 
 def _section(document: CanvasDocument, section_id: str) -> CanvasSection:

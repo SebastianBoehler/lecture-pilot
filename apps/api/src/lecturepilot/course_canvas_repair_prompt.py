@@ -20,11 +20,18 @@ def repair_messages(
     output_language: str,
 ) -> list[dict[str, str]]:
     scope = (
-        "Return one section whose blocks array contains only replacement blocks for the failed "
-        "block. Do not repeat or rewrite unchanged blocks. You may replace one mixed prose/math "
-        "block with a paragraph or callout followed by a clean math block."
+        "Return exactly one replace_block edit for the failed block. Its blocks array contains "
+        "only replacement blocks; do not repeat or rewrite unchanged blocks. You may replace one "
+        "mixed prose/math block with a paragraph or callout followed by a clean math block."
         if target
         else "Return one complete replacement section without changing its topic."
+    )
+    outer_shape = (
+        '{"edits":[{"operation":"replace_block","section_id":"exact-section-id",'
+        '"block_id":"exact-block-id","blocks":[...]}]}'
+        if target
+        else '{"sections":[{"id":"same-section-id","title":"same title",'
+        '"source_ref":"same source reference","blocks":[...]}]}'
     )
     return [
         {
@@ -32,12 +39,8 @@ def repair_messages(
             "content": (
                 "You are applying a surgical patch to a generated LecturePilot canvas. "
                 f"{canvas_language_instruction(output_language)} "
-                f"{scope} Return JSON only, with exactly this outer shape: "
-                '{"sections":[{"id":"same-section-id","title":"same title",'
-                '"source_ref":"same source reference","blocks":[...]}]}. '
-                "Each replacement block must include type, text, items, asset_path, caption, "
-                "answer_index, component_id, component_type, component_ref, component_version, "
-                "option_ids, and component_data, using null or [] when a field does not apply. "
+                f"{scope} Return JSON only, with exactly this outer shape: {outer_shape}. "
+                "Each replacement block must match its strict block-type schema. "
                 f"{component_catalog_instruction()} "
                 "Preserve the meaning and use only the supplied evidence. "
                 f"{assessment_generation_instruction()} "
@@ -60,7 +63,7 @@ def repair_messages(
 
 
 def repair_retry_message(error: str, target: CanvasBlock | None) -> dict[str, str]:
-    scope = "only replacement blocks" if target else "one complete replacement section"
+    scope = "one replace_block edit" if target else "one complete replacement section"
     return {
         "role": "user",
         "content": (

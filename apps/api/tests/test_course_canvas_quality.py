@@ -208,14 +208,14 @@ class _RepairClient:
     def __init__(self) -> None:
         self.calls = 0
 
-    async def complete_plan(self, *, settings, messages, temperature=0.2):
+    async def complete_plan(self, *, settings, messages, temperature=0.2, response_format=None):
         self.calls += 1
         return {
-            "sections": [
+            "edits": [
                 {
-                    "id": "replacement",
-                    "title": "Corrected explanation",
-                    "source_ref": "lecture.pdf page 1",
+                    "operation": "replace_block",
+                    "section_id": "learning-optimization",
+                    "block_id": "optimization-intro",
                     "blocks": [
                         {
                             "type": "paragraph",

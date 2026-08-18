@@ -78,7 +78,7 @@ def test_quality_rejection_uses_one_bounded_follow_up_in_same_request(tmp_path: 
     assert "depends on an omitted exercise table" in planner.targeted_repair_calls[1][2]
 
 
-def test_repairs_all_reported_quality_issues_in_one_section_batch(tmp_path: Path) -> None:
+def test_repairs_all_reported_quality_issues_as_surgical_block_patches(tmp_path: Path) -> None:
     client = _course_client(tmp_path)
     planner = _ManyQualityRetryPlanner()
     client.app.state.course_planner = planner
@@ -102,9 +102,12 @@ def test_repairs_all_reported_quality_issues_in_one_section_batch(tmp_path: Path
     )
     assert failed.status_code == 503
     assert repaired.status_code == 200
-    assert len(planner.targeted_repair_calls) == 2
+    assert len(planner.targeted_repair_calls) == 5
     assert planner.quality_review_calls == 2
-    assert all(f"issue {index}" in planner.targeted_repair_calls[1][2] for index in range(1, 5))
+    assert [call[1] for call in planner.targeted_repair_calls[1:]] == [
+        f"optimization-issue-{index}" for index in range(1, 5)
+    ]
+    assert all(f"issue {index}" in planner.targeted_repair_calls[index][2] for index in range(1, 5))
 
 
 class _TransientRepairPlanner(_TargetedRepairPlanner):
