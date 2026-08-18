@@ -151,6 +151,66 @@ async def test_section_repair_normalizes_source_dependent_checkpoint_without_mod
     assert model.messages == []
 
 
+async def test_section_repair_converts_incomplete_choice_component_without_model_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    planner, model = _planner(monkeypatch, [])
+    source = published_course_canvas("targeted-repair", "lecture-01")
+    candidate = _invalid_candidate(source)
+    section = candidate.sections[0]
+    valid_math = section.blocks[1].model_copy(update={"text": r"w^\top x"})
+    target = section.blocks[4].model_copy(
+        update={
+            "id": "optimization-choice",
+            "type": "component",
+            "text": "Explain how the transpose aligns the vector dimensions.",
+            "items": [],
+            "answer_index": None,
+            "component_id": "optimization-choice",
+            "component_type": "single_choice_quiz",
+            "component_ref": "components/optimization-choice.yaml",
+            "component_version": 1,
+            "option_ids": [],
+        }
+    )
+    candidate = candidate.model_copy(
+        update={
+            "sections": [
+                section.model_copy(
+                    update={
+                        "blocks": [
+                            section.blocks[0],
+                            valid_math,
+                            *section.blocks[2:4],
+                            target,
+                            *section.blocks[5:],
+                        ]
+                    }
+                ),
+                *candidate.sections[1:],
+            ]
+        }
+    )
+
+    repaired = await planner.repair_section(
+        source,
+        candidate,
+        section_id=section.id,
+        block_id=target.id,
+        failure_context=(
+            "Component block optimization-choice needs at least two options and one explicit "
+            "correct answer."
+        ),
+    )
+
+    repaired_target = next(block for block in repaired.sections[0].blocks if block.id == target.id)
+    assert repaired_target.type == "checkpoint"
+    assert repaired_target.text == target.text
+    assert repaired_target.component_id is None
+    assert repaired_target.component_type is None
+    assert model.messages == []
+
+
 async def test_block_repair_accepts_the_evidence_supported_patch_size(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

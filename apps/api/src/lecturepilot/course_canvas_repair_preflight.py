@@ -23,6 +23,43 @@ def normalize_repair_candidate(
     target = next((item for item in section.blocks if item.id == block_id), None)
     if target is None:
         raise CanvasGenerationRepairableError("The failed block no longer exists.")
+    if (
+        target.type == "component"
+        and target.component_type == "single_choice_quiz"
+        and any(marker in lowered for marker in ("at least two options", "explicit correct answer"))
+    ):
+        checkpoint = target.model_copy(
+            update={
+                "type": "checkpoint",
+                "caption": "Checkpoint",
+                "items": [],
+                "answer_index": None,
+                "component_id": None,
+                "component_type": None,
+                "component_ref": None,
+                "component_version": None,
+                "option_ids": [],
+                "component_data": None,
+            }
+        )
+        normalized_section = normalize_section_assessments(
+            section.model_copy(
+                update={
+                    "blocks": [checkpoint if item.id == block_id else item for item in section.blocks]
+                }
+            ),
+            output_language=output_language,
+            require_checkpoint=False,
+            fallback_section=section,
+        )
+        return document.model_copy(
+            update={
+                "sections": [
+                    normalized_section if item.id == section_id else item
+                    for item in document.sections
+                ]
+            }
+        )
     if target.type == "checkpoint":
         normalized_section = normalize_section_assessments(
             section,
