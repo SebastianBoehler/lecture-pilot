@@ -138,6 +138,55 @@ async def test_section_repair_does_not_repeat_exhausted_provider_retries(
     assert len(model.messages) == 1
 
 
+async def test_checkpoint_repair_keeps_a_checkpoint_when_model_returns_only_prose(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    planner, model = _planner(
+        monkeypatch,
+        [
+            _repair_payload(
+                [
+                    {
+                        "type": "paragraph",
+                        "text": (
+                            "The transpose aligns the weight vector with the input vector "
+                            "before their scalar score is calculated."
+                        ),
+                    }
+                ]
+            )
+        ],
+    )
+    source = published_course_canvas("targeted-repair", "lecture-01")
+    candidate = _invalid_candidate(source)
+    section = candidate.sections[0]
+    valid_math = section.blocks[1].model_copy(update={"text": r"w^\top x"})
+    target = section.blocks[4]
+    candidate = candidate.model_copy(
+        update={
+            "sections": [
+                section.model_copy(
+                    update={"blocks": [section.blocks[0], valid_math, *section.blocks[2:]]}
+                ),
+                *candidate.sections[1:],
+            ]
+        }
+    )
+
+    repaired = await planner.repair_section(
+        source,
+        candidate,
+        section_id=section.id,
+        block_id=target.id,
+        failure_context="Canvas quality review failed: the checkpoint is unsupported.",
+    )
+
+    repaired_target = next(block for block in repaired.sections[0].blocks if block.id == target.id)
+    assert repaired_target.type == "checkpoint"
+    assert "transpose aligns" in (repaired_target.text or "")
+    assert len(model.messages) == 1
+
+
 async def test_section_repair_rejects_two_invalid_patches_without_mutating_candidate(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

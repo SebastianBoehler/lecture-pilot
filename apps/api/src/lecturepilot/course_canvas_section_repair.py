@@ -87,7 +87,7 @@ class CourseCanvasSectionRepairMixin:
                     section,
                     _allowed_assets(section),
                     output_language=output_language,
-                    require_checkpoint=target is None,
+                    require_checkpoint=target is None or target.type == "checkpoint",
                 )
                 repaired = _apply_replacement(
                     candidate_document,
