@@ -310,6 +310,43 @@ async def test_section_repair_rewrites_unsupported_relationship_as_retrieval_wit
     assert model.messages == []
 
 
+async def test_section_repair_downgrades_multi_correct_choice_without_model_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    planner, model = _planner(monkeypatch, [])
+    source = published_course_canvas("targeted-repair", "lecture-01")
+    candidate = _invalid_candidate(source)
+    section = candidate.sections[0]
+    valid_math = section.blocks[1].model_copy(update={"text": r"w^\top x"})
+    target = section.blocks[5]
+    candidate = candidate.model_copy(
+        update={
+            "sections": [
+                section.model_copy(
+                    update={"blocks": [section.blocks[0], valid_math, *section.blocks[2:]]}
+                ),
+                *candidate.sections[1:],
+            ]
+        }
+    )
+
+    repaired = await planner.repair_section(
+        source,
+        candidate,
+        section_id=section.id,
+        block_id=target.id,
+        failure_context=(
+            "Canvas quality review failed: the selected answer is supported, but the second "
+            "option is also supported and the answer is not uniquely correct."
+        ),
+    )
+
+    repaired_target = next(block for block in repaired.sections[0].blocks if block.id == target.id)
+    assert repaired_target.type == "checkpoint"
+    assert "List the explicitly named elements" in (repaired_target.text or "")
+    assert model.messages == []
+
+
 async def test_block_repair_accepts_the_evidence_supported_patch_size(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -7,6 +7,7 @@ from lecturepilot.canvas_component_catalog import normalize_document_component_i
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_quality import CanvasQualityIssue
+from lecturepilot.course_canvas_repair_preflight import normalize_repair_candidate
 from lecturepilot.course_canvas_validation import validate_planned_document
 
 
@@ -92,14 +93,12 @@ async def _repair_sections_once(
 ) -> CanvasDocument:
     tasks = [
         asyncio.create_task(
-            planner.repair_section(
-                source,
-                candidate,
-                section_id=issues[0].section_id,
-                block_id=issues[0].block_id if len(issues) == 1 else None,
-                failure_context=(
-                    _quality_failure_context(issues) if quality_batch else issues[0].reason
-                ),
+            _repair_issue_group(
+                planner,
+                source=source,
+                candidate=candidate,
+                issues=issues,
+                quality_batch=quality_batch,
                 output_language=output_language,
             )
         )
@@ -121,6 +120,49 @@ async def _repair_sections_once(
         update={
             "sections": [replacements.get(section.id, section) for section in candidate.sections]
         }
+    )
+
+
+async def _repair_issue_group(
+    planner: CanvasRepairPlanner,
+    *,
+    source: CanvasDocument,
+    candidate: CanvasDocument,
+    issues: list[CanvasQualityIssue],
+    quality_batch: bool,
+    output_language: str,
+) -> CanvasDocument:
+    active = candidate
+    unresolved: list[CanvasQualityIssue] = []
+    if quality_batch:
+        for issue in issues:
+            try:
+                normalized = normalize_repair_candidate(
+                    active,
+                    issue.section_id,
+                    issue.block_id,
+                    issue.reason,
+                    output_language=output_language,
+                )
+            except CanvasGenerationRepairableError:
+                unresolved.append(issue)
+                continue
+            if normalized == active:
+                unresolved.append(issue)
+            active = normalized
+    else:
+        unresolved = issues
+    if not unresolved:
+        return active
+    return await planner.repair_section(
+        source,
+        active,
+        section_id=unresolved[0].section_id,
+        block_id=unresolved[0].block_id if len(unresolved) == 1 else None,
+        failure_context=(
+            _quality_failure_context(unresolved) if quality_batch else unresolved[0].reason
+        ),
+        output_language=output_language,
     )
 
 

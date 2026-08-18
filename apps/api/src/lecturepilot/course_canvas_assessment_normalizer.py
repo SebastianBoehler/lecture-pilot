@@ -56,7 +56,21 @@ def normalize_section_assessments(
 
 
 def retrieval_checkpoint_text(section: CanvasSection, *, output_language: str) -> str | None:
-    statement = _selected_answer_statement(section.blocks)
+    statement = next(
+        (
+            value
+            for block in section.blocks
+            if (value := _selected_answer(block)) is not None
+        ),
+        None,
+    )
+    return _retrieval_task(statement, output_language) if statement else None
+
+
+def retrieval_checkpoint_text_for_block(
+    block: CanvasBlock, *, output_language: str
+) -> str | None:
+    statement = _selected_answer(block)
     return _retrieval_task(statement, output_language) if statement else None
 
 
@@ -72,13 +86,17 @@ def _instructional_statement(blocks: list[CanvasBlock]) -> str | None:
 
 def _selected_answer_statement(blocks: list[CanvasBlock]) -> str | None:
     for block in blocks:
-        if block.type not in {"quiz", "component"} or block.answer_index is None:
-            continue
-        if block.answer_index >= len(block.items):
-            continue
-        if statement := _usable_statement(block.items[block.answer_index]):
+        if statement := _selected_answer(block):
             return statement
     return None
+
+
+def _selected_answer(block: CanvasBlock) -> str | None:
+    if block.type not in {"quiz", "component"} or block.answer_index is None:
+        return None
+    if block.answer_index >= len(block.items):
+        return None
+    return _usable_statement(block.items[block.answer_index])
 
 
 def _usable_statement(value: str | None) -> str | None:

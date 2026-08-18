@@ -4,6 +4,7 @@ from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.course_canvas_assessment_normalizer import (
     normalize_section_assessments,
     retrieval_checkpoint_text,
+    retrieval_checkpoint_text_for_block,
 )
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_math import math_block_error, normalize_generated_math_block
@@ -63,6 +64,53 @@ def normalize_repair_candidate(
                 ]
             }
         )
+    if target.type in {"quiz", "component"} and any(
+        marker in lowered
+        for marker in (
+            "also supported",
+            "both options are supported",
+            "both options are materially correct",
+            "all listed options",
+            "all four options",
+            "all three options",
+            "all five listed options",
+            "not uniquely correct",
+            "not uniquely supported",
+        )
+    ):
+        if text := retrieval_checkpoint_text_for_block(target, output_language=output_language):
+            checkpoint = target.model_copy(
+                update={
+                    "type": "checkpoint",
+                    "text": text,
+                    "caption": "Checkpoint",
+                    "items": [],
+                    "answer_index": None,
+                    "component_id": None,
+                    "component_type": None,
+                    "component_ref": None,
+                    "component_version": None,
+                    "option_ids": [],
+                    "component_data": None,
+                }
+            )
+            return document.model_copy(
+                update={
+                    "sections": [
+                        section.model_copy(
+                            update={
+                                "blocks": [
+                                    checkpoint if item.id == block_id else item
+                                    for item in section.blocks
+                                ]
+                            }
+                        )
+                        if item.id == section_id
+                        else item
+                        for item in document.sections
+                    ]
+                }
+            )
     if target.type == "checkpoint" and (
         "unsupported interpretation" in lowered
         or "does not state or explain a relationship" in lowered
