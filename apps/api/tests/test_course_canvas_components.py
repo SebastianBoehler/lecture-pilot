@@ -1,4 +1,7 @@
-from lecturepilot.canvas_component_catalog import component_spec_issue
+from lecturepilot.canvas_component_catalog import (
+    component_spec_issue,
+    normalize_document_component_identities,
+)
 from lecturepilot.canvas_models import (
     CanvasBlock,
     CanvasComponentData,
@@ -26,10 +29,46 @@ async def test_section_planner_creates_catalogued_interactive_chart() -> None:
 
     component = planned.sections[0].blocks[0]
     assert component.type == "component"
+    assert component.component_id == component.id
+    assert component.component_ref == f"{component.id}.yaml"
     assert component.component_type == "interactive_chart"
     assert component.component_data is not None
     assert component.component_data.labels == ["Prior", "Posterior"]
     assert component.component_data.frames[1].values == [0.4, 0.6]
+
+
+def test_existing_component_ids_are_normalized_from_stable_block_ids() -> None:
+    document = _source_document().model_copy(
+        update={
+            "sections": [
+                section.model_copy(
+                    update={
+                        "blocks": [
+                            CanvasBlock(
+                                id=f"choice-{index}",
+                                type="component",
+                                text="Choose one.",
+                                items=["A", "B"],
+                                answer_index=0,
+                                component_id="duplicate-model-id",
+                                component_type="single_choice_quiz",
+                                component_ref="duplicate-model-id.yaml",
+                                component_version=1,
+                                option_ids=["a", "b"],
+                            )
+                        ]
+                    }
+                )
+                for index, section in enumerate(_source_document().sections, start=1)
+            ]
+        }
+    )
+
+    normalized = normalize_document_component_identities(document)
+    component = normalized.sections[0].blocks[0]
+
+    assert component.component_id == component.id == "choice-1"
+    assert component.component_ref == "choice-1.yaml"
 
 
 def test_component_catalog_accepts_scatter_and_heatmap_data() -> None:

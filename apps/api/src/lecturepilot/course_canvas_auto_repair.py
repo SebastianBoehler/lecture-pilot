@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from typing import Protocol
 
+from lecturepilot.canvas_component_catalog import normalize_document_component_identities
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_quality import CanvasQualityIssue
@@ -42,7 +43,7 @@ async def repair_until_quality_valid(
     output_language: str,
     quality_issues: list[CanvasQualityIssue] | None = None,
 ) -> CanvasDocument:
-    active_candidate = candidate
+    active_candidate = normalize_document_component_identities(candidate)
     quality_batch = quality_issues is not None
     if quality_issues is None and failure_context.startswith("Canvas quality review failed:"):
         pending = await planner.review_quality(source, active_candidate)

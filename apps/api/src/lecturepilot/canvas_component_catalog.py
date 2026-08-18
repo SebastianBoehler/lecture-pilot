@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pydantic import ValidationError
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasComponentData
+from lecturepilot.canvas_models import CanvasBlock, CanvasComponentData, CanvasDocument
 from lecturepilot.model_generated_ids import safe_generated_id, trim_generated_text
 
 
@@ -56,7 +56,7 @@ def component_block_from_payload(raw_block: dict, block_id: str) -> CanvasBlock:
     component_type = str(
         raw_block.get("component_type") or raw_block.get("kind") or "single_choice_quiz"
     )[:120]
-    component_id = safe_generated_id(str(raw_block.get("component_id") or block_id))
+    component_id = safe_generated_id(block_id)
     items, option_ids, answer_index = _component_options(raw_block)
     data = component_data_from_payload(raw_block.get("component_data", raw_block.get("data")))
     return CanvasBlock(
@@ -75,6 +75,35 @@ def component_block_from_payload(raw_block: dict, block_id: str) -> CanvasBlock:
         ),
         option_ids=option_ids,
         component_data=data,
+    )
+
+
+def normalize_component_identity(block: CanvasBlock, *, block_id: str | None = None) -> CanvasBlock:
+    stable_block_id = block_id or block.id
+    if block.type != "component":
+        return block.model_copy(update={"id": stable_block_id})
+    stable_id = safe_generated_id(stable_block_id)
+    return block.model_copy(
+        update={
+            "id": stable_block_id,
+            "component_id": stable_id,
+            "component_ref": _component_ref(stable_id),
+        }
+    )
+
+
+def normalize_document_component_identities(document: CanvasDocument) -> CanvasDocument:
+    return document.model_copy(
+        update={
+            "sections": [
+                section.model_copy(
+                    update={
+                        "blocks": [normalize_component_identity(block) for block in section.blocks]
+                    }
+                )
+                for section in document.sections
+            ]
+        }
     )
 
 

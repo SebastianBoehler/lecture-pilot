@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from lecturepilot.canvas_component_catalog import normalize_component_identity
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_repair_preflight import normalize_repair_candidate
@@ -191,7 +192,7 @@ def _stable_replacement_blocks(
             block_id = _unique_id(f"{target.id}-repair-{repair_index}", reserved)
             repair_index += 1
         reserved.add(block_id)
-        result.append(block.model_copy(update={"id": block_id}))
+        result.append(normalize_component_identity(block, block_id=block_id))
     return result
 
 
