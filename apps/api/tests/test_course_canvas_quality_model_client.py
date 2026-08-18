@@ -149,6 +149,40 @@ def test_quality_review_prompt_is_bounded_to_claims_and_relevant_evidence() -> N
     assert '"workspace_path"' not in prompt
 
 
+def test_quality_review_prompt_never_clips_a_candidate_line_mid_expression() -> None:
+    source = _document()
+    candidate = source.model_copy(
+        update={
+            "sections": [
+                source.sections[0].model_copy(
+                    update={
+                        "blocks": [
+                            *[
+                                CanvasBlock(
+                                    id=f"filler-{index}",
+                                    type="paragraph",
+                                    text="grounded detail " * 180,
+                                )
+                                for index in range(6)
+                            ],
+                            CanvasBlock(
+                                id="decision-rule",
+                                type="math",
+                                text=r"P(x\mid C=1)P(C=1) > P(x\mid C=0)P(C=0)",
+                            ),
+                        ]
+                    }
+                )
+            ]
+        }
+    )
+
+    prompt = _quality_messages(source, candidate)[1]["content"]
+
+    assert "P(x\\mid C=0)P(C\n" not in prompt
+    assert "P(x\\mid C=0)P(C=0)" in prompt or "decision-rule" not in prompt
+
+
 def _document() -> CanvasDocument:
     return CanvasDocument(
         id="course-lecture",

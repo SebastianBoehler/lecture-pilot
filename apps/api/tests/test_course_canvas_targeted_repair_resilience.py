@@ -49,7 +49,7 @@ def test_transient_repair_failure_keeps_the_surgical_candidate(tmp_path: Path) -
     assert planner.repair_attempts == 2
 
 
-def test_quality_rejection_retains_candidate_for_one_targeted_follow_up(tmp_path: Path) -> None:
+def test_quality_rejection_uses_one_bounded_follow_up_in_same_request(tmp_path: Path) -> None:
     client = _course_client(tmp_path)
     planner = _QualityRetryPlanner()
     client.app.state.course_planner = planner
@@ -63,7 +63,7 @@ def test_quality_rejection_retains_candidate_for_one_targeted_follow_up(tmp_path
             "Idempotency-Key": "targeted-quality-failure-0001",
         },
     )
-    retained = client.post(
+    repaired = client.post(
         f"{path}/repair",
         headers={
             **professor_headers(),
@@ -71,18 +71,7 @@ def test_quality_rejection_retains_candidate_for_one_targeted_follow_up(tmp_path
             "Idempotency-Key": "targeted-quality-success-0001",
         },
     )
-    repaired = client.post(
-        f"{path}/repair",
-        headers={
-            **professor_headers(),
-            **_client_contract_headers(),
-            "Idempotency-Key": "targeted-quality-success-0002",
-        },
-    )
-
     assert failed.status_code == 503
-    assert retained.status_code == 503
-    assert retained.headers["X-Generation-Repairable"] == "true"
     assert repaired.status_code == 200
     assert planner.quality_review_calls == 2
     assert len(planner.targeted_repair_calls) == 2
@@ -103,7 +92,7 @@ def test_repairs_all_reported_quality_issues_in_one_section_batch(tmp_path: Path
             "Idempotency-Key": "targeted-many-quality-failure-0001",
         },
     )
-    retained = client.post(
+    repaired = client.post(
         f"{path}/repair",
         headers={
             **professor_headers(),
@@ -111,17 +100,7 @@ def test_repairs_all_reported_quality_issues_in_one_section_batch(tmp_path: Path
             "Idempotency-Key": "targeted-many-quality-success-0001",
         },
     )
-    repaired = client.post(
-        f"{path}/repair",
-        headers={
-            **professor_headers(),
-            **_client_contract_headers(),
-            "Idempotency-Key": "targeted-many-quality-success-0002",
-        },
-    )
-
     assert failed.status_code == 503
-    assert retained.status_code == 503
     assert repaired.status_code == 200
     assert len(planner.targeted_repair_calls) == 2
     assert planner.quality_review_calls == 2

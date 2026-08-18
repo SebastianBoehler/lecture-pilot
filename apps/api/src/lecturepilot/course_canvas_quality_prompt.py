@@ -14,9 +14,41 @@ def compact_quality_evidence(
     sections = candidate_document.sections
     if not sections:
         return "No candidate sections."
+    complete = "\n\n".join(
+        _complete_section_unit(section, source_document.sections) for section in sections
+    )
+    if len(complete) <= MAX_QUALITY_PROMPT_CHARS:
+        return complete
     budget = max(1_000, MAX_QUALITY_PROMPT_CHARS // len(sections))
     units = [_section_unit(section, source_document.sections, budget) for section in sections]
     return "\n\n".join(units)[:MAX_QUALITY_PROMPT_CHARS]
+
+
+def quality_review_batches(
+    source_document: CanvasDocument,
+    candidate_document: CanvasDocument,
+) -> list[list[CanvasSection]]:
+    batches: list[list[CanvasSection]] = []
+    active: list[CanvasSection] = []
+    used = 0
+    for section in candidate_document.sections:
+        size = len(_complete_section_unit(section, source_document.sections))
+        if active and used + size + 2 > MAX_QUALITY_PROMPT_CHARS:
+            batches.append(active)
+            active = []
+            used = 0
+        active.append(section)
+        used += size + (2 if used else 0)
+    if active:
+        batches.append(active)
+    return batches
+
+
+def _complete_section_unit(
+    candidate: CanvasSection,
+    source_sections: list[CanvasSection],
+) -> str:
+    return _section_unit(candidate, source_sections, MAX_QUALITY_PROMPT_CHARS * 100)
 
 
 def _section_unit(
@@ -79,7 +111,8 @@ def _bounded_lines(lines: list[str], budget: int) -> str:
         remaining = budget - used
         if remaining <= 0:
             break
-        clipped = normalized[:remaining]
-        output.append(clipped)
-        used += len(clipped) + 1
+        if len(normalized) > remaining:
+            continue
+        output.append(normalized)
+        used += len(normalized) + 1
     return "\n".join(output)

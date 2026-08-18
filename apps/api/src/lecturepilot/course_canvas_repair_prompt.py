@@ -85,6 +85,13 @@ def _section_context(section: CanvasSection, target: CanvasBlock | None) -> str:
 
 
 def _source_evidence(source: CanvasDocument, target: CanvasSection) -> str:
+    matched = [
+        section
+        for section in source.sections
+        if section.source_ref and section.source_ref in (target.source_ref or "")
+    ]
+    if matched:
+        return "\n\n".join(section.model_dump_json() for section in matched)[:24_000]
     target_terms = _terms(f"{target.title} {target.source_ref or ''}")
     ranked = sorted(
         source.sections,

@@ -42,14 +42,39 @@ async def test_quality_issues_in_one_section_are_repaired_in_one_batch() -> None
     assert all(f"quality issue {index}" in failure for index in range(1, 6))
 
 
-async def test_batched_quality_repair_stops_after_one_pass() -> None:
+async def test_batched_quality_repair_allows_one_bounded_follow_up_pass() -> None:
     source, candidate = _documents()
     issue = CanvasQualityIssue(
         section_id="learning-optimization",
         block_id="optimization-intro",
         reason="The explanation remains unsupported.",
     )
-    planner = _BatchPlanner(reviews=[[issue]])
+    planner = _BatchPlanner(reviews=[[issue], []])
+
+    repaired = await repair_until_quality_valid(
+        planner,
+        source=source,
+        candidate=candidate,
+        section_id=issue.section_id,
+        block_id=issue.block_id,
+        failure_context="Canvas quality review failed.",
+        output_language="en",
+        quality_issues=[issue],
+    )
+
+    assert repaired == candidate
+    assert planner.review_calls == 2
+    assert len(planner.repair_calls) == 2
+
+
+async def test_batched_quality_repair_stops_after_two_passes() -> None:
+    source, candidate = _documents()
+    issue = CanvasQualityIssue(
+        section_id="learning-optimization",
+        block_id="optimization-intro",
+        reason="The explanation remains unsupported.",
+    )
+    planner = _BatchPlanner(reviews=[[issue], [issue]])
 
     with pytest.raises(CanvasGenerationRepairableError, match="remains unsupported") as caught:
         await repair_until_quality_valid(
@@ -64,8 +89,8 @@ async def test_batched_quality_repair_stops_after_one_pass() -> None:
         )
 
     assert caught.value.candidate == candidate
-    assert planner.review_calls == 1
-    assert len(planner.repair_calls) == 1
+    assert planner.review_calls == 2
+    assert len(planner.repair_calls) == 2
 
 
 async def test_quality_issues_in_separate_sections_are_repaired_concurrently() -> None:

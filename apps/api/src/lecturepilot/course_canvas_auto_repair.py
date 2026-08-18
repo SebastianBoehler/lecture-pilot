@@ -28,6 +28,9 @@ class CanvasRepairPlanner(Protocol):
     ) -> list[CanvasQualityIssue]: ...
 
 
+MAX_BATCHED_REPAIR_PASSES = 2
+
+
 async def repair_until_quality_valid(
     planner: CanvasRepairPlanner,
     *,
@@ -44,21 +47,23 @@ async def repair_until_quality_valid(
         CanvasQualityIssue(section_id=section_id, block_id=block_id, reason=failure_context)
     ]
     quality_batch = quality_issues is not None
-    try:
-        active_candidate = await _repair_sections_once(
-            planner,
-            source=source,
-            candidate=active_candidate,
-            issue_groups=_issues_by_section(pending),
-            quality_batch=quality_batch,
-            output_language=output_language,
-        )
-        validate_planned_document(active_candidate, source)
-    except CanvasGenerationRepairableError as exc:
-        raise exc.with_candidate(exc.candidate or active_candidate)
-    pending = await planner.review_quality(source, active_candidate)
-    if not pending:
-        return active_candidate
+    for _ in range(MAX_BATCHED_REPAIR_PASSES):
+        try:
+            active_candidate = await _repair_sections_once(
+                planner,
+                source=source,
+                candidate=active_candidate,
+                issue_groups=_issues_by_section(pending),
+                quality_batch=quality_batch,
+                output_language=output_language,
+            )
+            validate_planned_document(active_candidate, source)
+        except CanvasGenerationRepairableError as exc:
+            raise exc.with_candidate(exc.candidate or active_candidate)
+        pending = await planner.review_quality(source, active_candidate)
+        if not pending:
+            return active_candidate
+        quality_batch = True
     first = pending[0]
     raise CanvasGenerationRepairableError(
         _quality_failure_context(pending),

@@ -1,14 +1,20 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from typing import Any, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field
-
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
-from lecturepilot.course_canvas_quality_prompt import compact_quality_evidence
+from lecturepilot.course_canvas_quality_models import (
+    CanvasQualityIssue,
+    CanvasQualityPayload,
+)
+from lecturepilot.course_canvas_quality_prompt import (
+    compact_quality_evidence,
+    quality_review_batches,
+)
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_provider_errors import model_provider_error_message
 from lecturepilot.model_request_options import (
@@ -21,20 +27,6 @@ from lecturepilot.providers import ProviderConfigurationError
 
 
 QUALITY_RESPONSE_ATTEMPTS = 2
-
-
-class CanvasQualityIssue(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    section_id: str = Field(min_length=1, max_length=120)
-    block_id: str | None = Field(default=None, max_length=120)
-    reason: str = Field(min_length=1)
-
-
-class _CanvasQualityPayload(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    issues: list[CanvasQualityIssue] = Field(max_length=30)
 
 
 class CanvasQualityModelClient(Protocol):
@@ -109,12 +101,23 @@ class CanvasQualityReviewer:
         source_document: CanvasDocument,
         candidate_document: CanvasDocument,
     ) -> list[CanvasQualityIssue]:
-        payload = await self.model_client.complete_review(
-            settings=settings,
-            source_document=source_document,
-            candidate_document=candidate_document,
+        documents = [
+            candidate_document.model_copy(update={"sections": sections})
+            for sections in quality_review_batches(source_document, candidate_document)
+        ]
+        payloads = await asyncio.gather(
+            *[
+                self.model_client.complete_review(
+                    settings=settings, source_document=source_document, candidate_document=document
+                )
+                for document in documents
+            ]
         )
-        issues = _CanvasQualityPayload.model_validate(payload).issues
+        issues = [
+            issue
+            for payload in payloads
+            for issue in CanvasQualityPayload.model_validate(payload).issues
+        ]
         return _normalize_coordinates(issues, source_document, candidate_document)
 
     async def validate(
@@ -227,7 +230,7 @@ def _read_quality_response(
             f"Canvas quality review returned an empty response (finish_reason={finish_reason})."
         )
     try:
-        payload = _CanvasQualityPayload.model_validate(json.loads(content))
+        payload = CanvasQualityPayload.model_validate(json.loads(content))
     except (json.JSONDecodeError, ValueError) as exc:
         raise ModelExecutionError(
             "Canvas quality review returned invalid structured JSON."

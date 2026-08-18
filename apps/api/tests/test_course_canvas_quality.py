@@ -70,6 +70,52 @@ async def test_quality_reviewer_preserves_detailed_issue_reasoning() -> None:
     assert detailed_reason.strip() in str(caught.value)
 
 
+async def test_quality_reviewer_reviews_each_section_without_cross_section_truncation() -> None:
+    source = _source_document()
+    first = source.sections[0].model_copy(
+        update={
+            "blocks": [
+                CanvasBlock(
+                    id="large-first-claim",
+                    type="paragraph",
+                    text="First source-grounded claim. " * 350,
+                )
+            ]
+        }
+    )
+    second = source.sections[0].model_copy(
+        update={
+            "id": "second-topic",
+            "title": "Second topic",
+            "source_ref": "lecture.pdf page 2",
+            "blocks": [
+                CanvasBlock(
+                    id="complete-formula",
+                    type="math",
+                    text=(
+                        r"P(x\mid C=1)P(C=1) > P(x\mid C=0)P(C=0). "
+                        + "Second source-grounded derivation. " * 300
+                    ),
+                )
+            ],
+        }
+    )
+    source = source.model_copy(update={"sections": [first, second]})
+    client = _SectionIsolatedQualityClient()
+    reviewer = CanvasQualityReviewer(model_client=client)
+
+    assert (
+        await reviewer.review(
+            settings=_settings(),
+            source_document=source,
+            candidate_document=source,
+        )
+        == []
+    )
+
+    assert sorted(client.reviewed_sections) == [["second-topic"], ["topic"]]
+
+
 async def test_quality_reviewer_targets_the_section_when_multiple_blocks_fail() -> None:
     document = _source_document()
     reviewer = CanvasQualityReviewer(
@@ -145,6 +191,17 @@ class _QualityClient:
 
     async def complete_review(self, *, settings, source_document, candidate_document):
         return {"issues": self.issues}
+
+
+class _SectionIsolatedQualityClient:
+    def __init__(self) -> None:
+        self.reviewed_sections: list[list[str]] = []
+
+    async def complete_review(self, *, settings, source_document, candidate_document):
+        section_ids = [section.id for section in candidate_document.sections]
+        self.reviewed_sections.append(section_ids)
+        assert len(candidate_document.sections) == 1
+        return {"issues": []}
 
 
 class _RepairClient:
