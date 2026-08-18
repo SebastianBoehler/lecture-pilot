@@ -42,3 +42,46 @@ def test_evidence_batches_keep_specific_refs_for_quality_matching() -> None:
     assert grouped[0].source_ref == ("nested/material-1.pdf page 1 | nested/material-2.pdf page 2")
     assert "Distinct evidence 1." in prompt
     assert "Distinct evidence 2." in prompt
+
+
+def test_quality_evidence_keeps_component_options_and_selected_answer() -> None:
+    source = CanvasDocument(
+        id="course-lecture",
+        course_id="course",
+        lecture_id="lecture",
+        title="Lecture",
+        source_kind="markdown",
+        source_ref="arbitrary/nested/source.md",
+        workspace_path="source/index.md",
+        sections=[
+            CanvasSection(
+                id="source",
+                title="Source",
+                source_ref="arbitrary/nested/source.md",
+                blocks=[CanvasBlock(id="fact", type="paragraph", text="Precision uses TP + FP.")],
+            )
+        ],
+    )
+    component = CanvasBlock(
+        id="precision-choice",
+        type="component",
+        text="Which denominator defines precision?",
+        items=["TP + FP", "TP + FN"],
+        answer_index=0,
+        component_id="precision-choice",
+        component_type="single_choice_quiz",
+        component_ref="components/precision-choice.yaml",
+        component_version=1,
+        option_ids=["a", "b"],
+    )
+    candidate = source.model_copy(
+        update={
+            "source_kind": "generated",
+            "sections": [source.sections[0].model_copy(update={"blocks": [component]})],
+        }
+    )
+
+    prompt = compact_quality_evidence(source, candidate)
+
+    assert "options=['TP + FP', 'TP + FN']" in prompt
+    assert "selected=0" in prompt

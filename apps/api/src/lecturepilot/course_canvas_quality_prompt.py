@@ -87,7 +87,7 @@ def _matching_sources(
 
 def _candidate_line(block: CanvasBlock) -> str:
     prefix = f"CANDIDATE BLOCK {block.id} [{block.type}]"
-    if block.type in {"list", "quiz"}:
+    if block.type in {"list", "quiz"} or block.items:
         answer = f"; selected={block.answer_index}" if block.answer_index is not None else ""
         return f"{prefix}: {block.text or ''}; options={block.items}{answer}"
     if block.type in {"asset", "video"}:
