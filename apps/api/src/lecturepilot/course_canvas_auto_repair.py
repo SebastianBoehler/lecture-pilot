@@ -43,10 +43,17 @@ async def repair_until_quality_valid(
     quality_issues: list[CanvasQualityIssue] | None = None,
 ) -> CanvasDocument:
     active_candidate = candidate
-    pending = quality_issues or [
-        CanvasQualityIssue(section_id=section_id, block_id=block_id, reason=failure_context)
-    ]
     quality_batch = quality_issues is not None
+    if quality_issues is None and failure_context.startswith("Canvas quality review failed:"):
+        pending = await planner.review_quality(source, active_candidate)
+        quality_batch = True
+        if not pending:
+            validate_planned_document(active_candidate, source)
+            return active_candidate
+    else:
+        pending = quality_issues or [
+            CanvasQualityIssue(section_id=section_id, block_id=block_id, reason=failure_context)
+        ]
     for _ in range(MAX_BATCHED_REPAIR_PASSES):
         try:
             active_candidate = await _repair_sections_once(

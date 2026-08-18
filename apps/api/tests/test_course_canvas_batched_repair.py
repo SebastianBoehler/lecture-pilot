@@ -120,6 +120,39 @@ async def test_quality_issues_in_separate_sections_are_repaired_concurrently() -
     assert planner.review_calls == 1
 
 
+async def test_persisted_quality_failure_rediscovers_all_section_coordinates_before_repair() -> None:
+    source, candidate = _documents()
+    issues = [
+        CanvasQualityIssue(
+            section_id=section.id,
+            block_id=section.blocks[0].id,
+            reason=f"repair {section.id}",
+        )
+        for section in candidate.sections
+    ]
+    planner = _BatchPlanner(reviews=[issues, []])
+
+    await repair_until_quality_valid(
+        planner,
+        source=source,
+        candidate=candidate,
+        section_id=issues[0].section_id,
+        block_id=None,
+        failure_context=(
+            "Canvas quality review failed: fix every reported issue together:\n"
+            "- persisted cross-section issues"
+        ),
+        output_language="en",
+    )
+
+    assert planner.review_calls == 2
+    assert {call[0] for call in planner.repair_calls} == {
+        "learning-optimization",
+        "learning-summary",
+    }
+    assert len(planner.repair_calls) == 2
+
+
 class _BatchPlanner:
     def __init__(self, *, reviews: list[list[CanvasQualityIssue]]) -> None:
         self.reviews = reviews
