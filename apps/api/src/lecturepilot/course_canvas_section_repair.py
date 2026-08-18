@@ -45,16 +45,18 @@ class CourseCanvasSectionRepairMixin:
         failure_context: str,
         output_language: str = "en",
     ) -> CanvasDocument:
-        candidate_document = normalize_repair_candidate(
+        normalized_candidate = normalize_repair_candidate(
             candidate_document,
             section_id,
             block_id,
             failure_context,
             output_language=output_language,
         )
+        preflight_changed = normalized_candidate != candidate_document
+        candidate_document = normalized_candidate
         section = _section(candidate_document, section_id)
         target = _block(section, block_id) if block_id else None
-        if not failure_context.startswith("Canvas quality review failed:"):
+        if preflight_changed or not failure_context.startswith("Canvas quality review failed:"):
             try:
                 validate_planned_document(candidate_document, source_document)
                 return candidate_document

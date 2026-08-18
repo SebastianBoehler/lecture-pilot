@@ -83,6 +83,8 @@ def test_assessment_only_section_builds_checkpoint_from_selected_grounded_answer
     checkpoint = normalized.blocks[-1]
     assert checkpoint.type == "checkpoint"
     assert "Hyperparameters; avg acc" in (checkpoint.text or "")
+    assert "List the explicitly named elements" in (checkpoint.text or "")
+    assert "relationship" not in (checkpoint.text or "")
 
 
 async def test_course_plan_client_applies_repair_temperature(monkeypatch) -> None:
@@ -241,6 +243,70 @@ async def test_section_repair_converts_incomplete_choice_component_without_model
     assert repaired_target.text == target.text
     assert repaired_target.component_id is None
     assert repaired_target.component_type is None
+    assert model.messages == []
+
+
+async def test_section_repair_rewrites_unsupported_relationship_as_retrieval_without_model_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    planner, model = _planner(monkeypatch, [])
+    source = published_course_canvas("targeted-repair", "lecture-01")
+    candidate = _invalid_candidate(source)
+    section = candidate.sections[0]
+    valid_math = section.blocks[1].model_copy(update={"text": r"w^\top x"})
+    choice = CanvasBlock(
+        id="workflow-labels",
+        type="component",
+        text="Which labels are shown?",
+        items=[
+            "Hyperparameters; avg acc; acc1 acc2 acc3 acc4; retrain with all training data",
+            "Training; evaluation; deployment",
+        ],
+        answer_index=0,
+        component_id="workflow-labels",
+        component_type="single_choice_quiz",
+        component_ref="components/workflow-labels.yaml",
+        component_version=1,
+        option_ids=["a", "b"],
+    )
+    target = section.blocks[4].model_copy(
+        update={"text": "Explain the relationship among acc1, acc2, acc3, and retraining."}
+    )
+    candidate = candidate.model_copy(
+        update={
+            "sections": [
+                section.model_copy(
+                    update={
+                        "blocks": [
+                            section.blocks[0],
+                            valid_math,
+                            *section.blocks[2:4],
+                            choice,
+                            target,
+                            *section.blocks[5:],
+                        ]
+                    }
+                ),
+                *candidate.sections[1:],
+            ]
+        }
+    )
+
+    repaired = await planner.repair_section(
+        source,
+        candidate,
+        section_id=section.id,
+        block_id=target.id,
+        failure_context=(
+            "Canvas quality review failed: the source only displays the labels and does not "
+            "state or explain a relationship among them; the checkpoint asks for unsupported "
+            "interpretation."
+        ),
+    )
+
+    repaired_target = next(block for block in repaired.sections[0].blocks if block.id == target.id)
+    assert "List the explicitly named elements" in (repaired_target.text or "")
+    assert "relationship" not in (repaired_target.text or "")
     assert model.messages == []
 
 

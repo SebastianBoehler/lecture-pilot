@@ -21,6 +21,11 @@ def normalize_section_assessments(
     evidence = _instructional_statement(blocks)
     if evidence is None and fallback_section is not None:
         evidence = _instructional_statement(fallback_section.blocks)
+    retrieval = None
+    if evidence is None:
+        retrieval = _selected_answer_statement(blocks)
+    if evidence is None and retrieval is None and fallback_section is not None:
+        retrieval = _selected_answer_statement(fallback_section.blocks)
     checkpoint_found = False
     for index, block in enumerate(blocks):
         if block.type != "checkpoint":
@@ -34,16 +39,25 @@ def normalize_section_assessments(
             blocks[index] = block.model_copy(
                 update={"text": _explanation_task(statement, output_language)}
             )
-    if require_checkpoint and not checkpoint_found and evidence:
+    if require_checkpoint and not checkpoint_found and (evidence or retrieval):
         blocks.append(
             CanvasBlock(
                 id=_unique_checkpoint_id(section),
                 type="checkpoint",
                 caption="Checkpoint",
-                text=_explanation_task(evidence, output_language),
+                text=(
+                    _explanation_task(evidence, output_language)
+                    if evidence
+                    else _retrieval_task(retrieval or "", output_language)
+                ),
             )
         )
     return section.model_copy(update={"blocks": blocks})
+
+
+def retrieval_checkpoint_text(section: CanvasSection, *, output_language: str) -> str | None:
+    statement = _selected_answer_statement(section.blocks)
+    return _retrieval_task(statement, output_language) if statement else None
 
 
 def _instructional_statement(blocks: list[CanvasBlock]) -> str | None:
@@ -53,6 +67,10 @@ def _instructional_statement(blocks: list[CanvasBlock]) -> str | None:
         value = block.text or (block.items[0] if block.items else "")
         if statement := _usable_statement(value):
             return statement
+    return None
+
+
+def _selected_answer_statement(blocks: list[CanvasBlock]) -> str | None:
     for block in blocks:
         if block.type not in {"quiz", "component"} or block.answer_index is None:
             continue
@@ -80,6 +98,14 @@ def _explanation_task(statement: str, output_language: str) -> str:
         prefix = "Erkläre diese Aussage und benenne den beschriebenen Zusammenhang: "
     else:
         prefix = "Explain this statement and identify the relationship it describes: "
+    return f"{prefix}{statement}"
+
+
+def _retrieval_task(statement: str, output_language: str) -> str:
+    if output_language.casefold().startswith("de"):
+        prefix = "Liste die ausdrücklich genannten Elemente in diesem Text auf: "
+    else:
+        prefix = "List the explicitly named elements in this provided text: "
     return f"{prefix}{statement}"
 
 

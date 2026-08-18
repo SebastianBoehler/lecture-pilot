@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from lecturepilot.canvas_models import CanvasDocument
-from lecturepilot.course_canvas_assessment_normalizer import normalize_section_assessments
+from lecturepilot.course_canvas_assessment_normalizer import (
+    normalize_section_assessments,
+    retrieval_checkpoint_text,
+)
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_math import math_block_error, normalize_generated_math_block
 
@@ -60,6 +63,30 @@ def normalize_repair_candidate(
                 ]
             }
         )
+    if target.type == "checkpoint" and (
+        "unsupported interpretation" in lowered
+        or "does not state or explain a relationship" in lowered
+        or "does not explain a statement or identify a relationship" in lowered
+    ):
+        if text := retrieval_checkpoint_text(section, output_language=output_language):
+            normalized = target.model_copy(update={"text": text})
+            return document.model_copy(
+                update={
+                    "sections": [
+                        section.model_copy(
+                            update={
+                                "blocks": [
+                                    normalized if item.id == block_id else item
+                                    for item in section.blocks
+                                ]
+                            }
+                        )
+                        if item.id == section_id
+                        else item
+                        for item in document.sections
+                    ]
+                }
+            )
     if target.type == "checkpoint":
         normalized_section = normalize_section_assessments(
             section,
