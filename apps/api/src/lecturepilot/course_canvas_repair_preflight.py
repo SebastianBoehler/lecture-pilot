@@ -76,6 +76,9 @@ def normalize_repair_candidate(
             "all five listed options",
             "not uniquely correct",
             "not uniquely supported",
+            "more than one correct answer",
+            "multiple answer options are supported",
+            "multiple correct answers",
         )
     ):
         if text := retrieval_checkpoint_text_for_block(target, output_language=output_language):
