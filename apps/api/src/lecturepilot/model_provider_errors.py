@@ -11,13 +11,38 @@ _CREDIT_MARKERS = (
 )
 
 
-def model_provider_error_message(exc: Exception, *, provider: str) -> str:
+def model_provider_error_message(
+    exc: Exception,
+    *,
+    provider: str,
+    attempts: int = 2,
+) -> str:
+    name = _provider_name(provider)
     if _credits_exhausted(exc):
         return (
-            f"{_provider_name(provider)} API credits are exhausted. "
+            f"{name} API credits are exhausted. "
             "Add credits to the configured provider account, then retry this request."
         )
-    return "Model request failed. Check the provider key and model configuration."
+    status_code = getattr(exc, "status_code", None)
+    error_name = type(exc).__name__.casefold()
+    if is_provider_timeout(exc):
+        return (
+            f"{name} model request timed out before completing. "
+            "The request can be retried without regenerating completed lectures."
+        )
+    if status_code == 429 or "ratelimit" in error_name:
+        return (
+            f"{name} rate limit was still active after {attempts} attempts. "
+            "LecturePilot queued requests conservatively; retry this lecture after the reset."
+        )
+    if status_code in {500, 502, 503, 504}:
+        return (
+            f"{name} returned a temporary service error after {attempts} attempts. "
+            "Retry this lecture; completed lectures are preserved."
+        )
+    if status_code in {401, 403}:
+        return f"{name} rejected the configured API credentials. Check the provider key."
+    return f"{name} rejected the model request. Check the model configuration."
 
 
 def is_retryable_provider_error(exc: Exception) -> bool:
@@ -39,6 +64,12 @@ def is_retryable_provider_error(exc: Exception) -> bool:
             "internalserver",
         )
     )
+
+
+def is_provider_timeout(exc: Exception) -> bool:
+    if isinstance(exc, TimeoutError) or getattr(exc, "status_code", None) == 408:
+        return True
+    return "timeout" in type(exc).__name__.casefold()
 
 
 def _credits_exhausted(exc: Exception) -> bool:

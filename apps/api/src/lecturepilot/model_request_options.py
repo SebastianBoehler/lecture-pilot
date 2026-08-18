@@ -5,7 +5,7 @@ from typing import Any
 from lecturepilot.models import ProviderSettings
 
 
-MODEL_REQUEST_TIMEOUT_SECONDS = 120
+MODEL_REQUEST_TIMEOUT_SECONDS = 300
 
 
 def completion_options(

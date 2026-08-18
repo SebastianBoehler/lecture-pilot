@@ -45,5 +45,5 @@ async def test_source_routing_client_sends_structured_provider_requests(monkeypa
         assert call["messages"] == messages
         assert call["max_tokens"] == 8000
         assert call["max_retries"] == 0
-        assert call["timeout"] == 120
+        assert call["timeout"] == 300
         assert "temperature" not in call

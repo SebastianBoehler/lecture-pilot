@@ -140,6 +140,9 @@ def assessment_generation_instruction() -> str:
         'Also invalid for a checkpoint: "Which statement/task/option is correct?" because '
         "checkpoint blocks have no choices; rewrite it to ask the learner to state, explain, "
         "calculate, or justify the source-backed answer. "
+        "Every assessment must be standalone: it must be answerable from its own text without "
+        "reading preceding blocks or opening the source. Restate every required value, formula, "
+        "definition, table entry, and relevant code behavior inside the assessment text. "
         "Before returning JSON, verify every checkpoint starts with a direct question or an "
         "imperative such as calculate, compare, derive, explain, identify, or justify; verify "
         "every quiz ends in ? and has exactly one source-supported answer_index."

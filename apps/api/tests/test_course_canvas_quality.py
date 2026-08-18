@@ -174,6 +174,9 @@ class _RepairClient:
 
 
 class _AlwaysPassQualityReviewer:
+    async def review(self, **_kwargs) -> list:
+        return []
+
     async def validate(self, **_kwargs) -> None:
         return None
 

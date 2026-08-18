@@ -100,7 +100,8 @@ def test_source_routing_agent_excludes_assignments_when_lecture_material_exists(
         "complementary examples, code demos, readings, or standalone diagrams"
         in messages[0]["content"]
     )
-    assert "Every listed notebook, code demo, or video" in messages[0]["content"]
+    assert "only when its content materially extends" in messages[0]["content"]
+    assert "Omit environment setup" in messages[0]["content"]
     assert "generated slide-page images" in messages[0]["content"]
 
 

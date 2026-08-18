@@ -7,14 +7,16 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 import logging
 from random import uniform
+from time import perf_counter
 from typing import Any
 from uuid import UUID, uuid4
 
 from lecturepilot.database import Database
 from lecturepilot.db_models import ModelUsageEventRecord
 from lecturepilot.logging_observability import current_operation_id
+from lecturepilot.metadata_events import emit_metadata_event
 from lecturepilot.model_rate_limits import model_request_slot, observe_provider_response
-from lecturepilot.model_provider_errors import is_retryable_provider_error
+from lecturepilot.model_provider_errors import is_provider_timeout, is_retryable_provider_error
 from lecturepilot.model_request_options import MODEL_REQUEST_TIMEOUT_SECONDS
 
 
@@ -50,9 +52,11 @@ class ModelUsageRecorder:
     async def complete(
         self,
         completion: Callable[..., Awaitable[Any]],
+        *,
+        usage_stage: str | None = None,
         **kwargs: Any,
     ) -> Any:
-        return await _complete_with_attempts(self, completion, kwargs)
+        return await _complete_with_attempts(self, completion, kwargs, usage_stage=usage_stage)
 
     def record_response(
         self,
@@ -124,25 +128,45 @@ class ModelUsageRecorder:
 async def complete_with_usage(
     recorder: ModelUsageRecorder | None,
     completion: Callable[..., Awaitable[Any]],
+    *,
+    usage_stage: str | None = None,
     **kwargs: Any,
 ) -> Any:
-    return await _complete_with_attempts(recorder, completion, kwargs)
+    return await _complete_with_attempts(
+        recorder,
+        completion,
+        kwargs,
+        usage_stage=usage_stage,
+    )
 
 
 async def _complete_with_attempts(
     recorder: ModelUsageRecorder | None,
     completion: Callable[..., Awaitable[Any]],
     kwargs: dict[str, Any],
+    *,
+    usage_stage: str | None,
 ) -> Any:
     request_id = uuid4().hex
     model = str(kwargs.get("model") or "unknown")
     _enable_litellm_response_headers()
     for attempt in range(1, MODEL_REQUEST_MAX_ATTEMPTS + 1):
+        started_at = perf_counter()
+        provider_started_at: float | None = None
         try:
             async with model_request_slot(model):
+                provider_started_at = perf_counter()
                 async with asyncio.timeout(MODEL_REQUEST_TIMEOUT_SECONDS + 5):
                     response = await completion(**kwargs)
         except Exception as exc:
+            _emit_request_event(
+                model=model,
+                stage=usage_stage,
+                attempt=attempt,
+                started_at=started_at,
+                provider_started_at=provider_started_at,
+                error_type=type(exc).__name__[:80],
+            )
             if recorder is not None:
                 recorder.record_failure(
                     model=model,
@@ -150,13 +174,33 @@ async def _complete_with_attempts(
                     attempt=attempt,
                     error_type=type(exc).__name__[:80],
                 )
-            if attempt >= MODEL_REQUEST_MAX_ATTEMPTS or not is_retryable_provider_error(exc):
+            if (
+                attempt >= MODEL_REQUEST_MAX_ATTEMPTS
+                or is_provider_timeout(exc)
+                or not is_retryable_provider_error(exc)
+            ):
+                logger.warning(
+                    "Model request exhausted attempts model=%s attempts=%s error_type=%s status=%s",
+                    model,
+                    attempt,
+                    type(exc).__name__,
+                    getattr(exc, "status_code", None),
+                )
                 raise
             provider_delay = observe_provider_response(model, exc)
             backoff = MODEL_REQUEST_RETRY_DELAY_SECONDS * (2 ** (attempt - 1))
             await asyncio.sleep(max(backoff, provider_delay) + uniform(0.0, 0.25))
             continue
         observe_provider_response(model, response)
+        tokens = usage_tokens_from_response(response)
+        _emit_request_event(
+            model=model,
+            stage=usage_stage,
+            attempt=attempt,
+            started_at=started_at,
+            provider_started_at=provider_started_at,
+            tokens=tokens,
+        )
         if recorder is not None:
             recorder.record_response(
                 response,
@@ -166,6 +210,33 @@ async def _complete_with_attempts(
             )
         return response
     raise RuntimeError("Model request attempts were exhausted.")
+
+
+def _emit_request_event(
+    *,
+    model: str,
+    stage: str | None,
+    attempt: int,
+    started_at: float,
+    provider_started_at: float | None,
+    tokens: dict[str, int] | None = None,
+    error_type: str | None = None,
+) -> None:
+    finished_at = perf_counter()
+    provider_started_at = provider_started_at or finished_at
+    emit_metadata_event(
+        "model.request_finished",
+        error=error_type is not None,
+        model=model,
+        provider=model.split("/", 1)[0].lower() if "/" in model else "unknown",
+        stage=stage,
+        attempt=attempt,
+        status="failed" if error_type else "succeeded",
+        exception_type=error_type,
+        queue_wait_ms=round((provider_started_at - started_at) * 1000, 3),
+        latency_ms=round((finished_at - provider_started_at) * 1000, 3),
+        **(tokens or _empty_tokens()),
+    )
 
 
 def _enable_litellm_response_headers() -> None:

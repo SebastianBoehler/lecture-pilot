@@ -87,9 +87,16 @@ are not replaced until the professor publishes new drafts.
 Canvas generation uses idempotency keys, private job records, heartbeats, a
 bounded lease, and status polling. Closing the browser does not make the
 in-process generation task depend on the tab; after interruption or process
-loss, a stale lease can be claimed for another attempt. Repair validates that
-the failed draft still refers to the current source revision and uses a
-surgical block replacement when the failure contains an exact target. See
+loss, a stale lease can be claimed for another attempt. Dense source outlines
+are grouped into at most five pedagogical sections. Two lectures progress at a
+time, each with two section calls, while the provider-wide request budget stays
+at three. Completed sections are revision-bound checkpoints, so a retry resumes
+instead of regenerating them. Quality repair batches all reported issues into
+one pass and one compact re-review; any remaining candidate stays available for
+targeted repair. Metadata logs record stage, attempt, queue wait, provider
+latency, and actual token counts without source or learner content. Repair also
+validates that the failed draft still refers to the current source revision and
+uses a surgical block replacement when the failure contains an exact target. See
 [course-ingestion-pipeline.md](course-ingestion-pipeline.md).
 
 The private learning-design review record binds a deterministic report and any

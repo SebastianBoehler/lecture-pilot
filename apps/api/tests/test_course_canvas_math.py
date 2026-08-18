@@ -71,6 +71,15 @@ def test_generated_math_normalization_removes_outer_delimiters() -> None:
     validate_section_math(_section_with_math(normalized))
 
 
+def test_generated_math_normalization_removes_orphan_closing_environment() -> None:
+    formula = r"x=y\end{aligned}"
+
+    normalized = normalize_generated_math(formula)
+
+    assert normalized == "x=y"
+    validate_section_math(_section_with_math(normalized))
+
+
 def test_generated_math_normalization_expands_attention_symbols() -> None:
     formula = r"\Q=XW_Q,\K=XW_K,\V=XW_V"
 

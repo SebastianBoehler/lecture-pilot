@@ -9,7 +9,7 @@ from lecturepilot.course_canvas_auto_repair import repair_until_quality_valid
 from lecturepilot.course_content_filter import filter_source_document_for_planning
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_json import parse_model_json
-from lecturepilot.course_canvas_quality import CanvasQualityReviewer
+from lecturepilot.course_canvas_quality import CanvasQualityIssue, CanvasQualityReviewer
 from lecturepilot.course_canvas_section_planner import plan_sections_individually
 from lecturepilot.course_canvas_section_repair import CourseCanvasSectionRepairMixin
 from lecturepilot.course_canvas_validation import validate_planned_document
@@ -58,10 +58,11 @@ class LiteLLMCoursePlanClient:
             response = await complete_with_usage(
                 self.usage_recorder,
                 acompletion,
+                usage_stage="canvas_plan_or_repair",
                 model=settings.model,
                 messages=messages,
                 response_format=course_canvas_response_format(),
-                **completion_options(settings, temperature=temperature, max_tokens=6000),
+                **completion_options(settings, temperature=temperature),
             )
         except Exception as exc:
             raise ModelExecutionError(
@@ -128,7 +129,23 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
                 )
                 document = interleave_original_slides(document, source_document)
                 validate_planned_document(document, source_document)
-                await self.validate_quality(source_document, document, settings=settings)
+                quality_issues = await self.review_quality(
+                    source_document,
+                    document,
+                    settings=settings,
+                )
+                if quality_issues:
+                    first = quality_issues[0]
+                    return await repair_until_quality_valid(
+                        self,
+                        source=source_document,
+                        candidate=document,
+                        section_id=first.section_id,
+                        block_id=first.block_id,
+                        failure_context="Canvas quality review failed.",
+                        output_language=output_language,
+                        quality_issues=quality_issues,
+                    )
                 span.set_outputs(
                     {
                         "section_count": len(document.sections),
@@ -164,6 +181,22 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
             [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
         )
         await self.quality_reviewer.validate(
+            settings=active_settings,
+            source_document=source_document,
+            candidate_document=candidate_document,
+        )
+
+    async def review_quality(
+        self,
+        source_document: CanvasDocument,
+        candidate_document: CanvasDocument,
+        *,
+        settings: ProviderSettings | None = None,
+    ) -> list[CanvasQualityIssue]:
+        active_settings = settings or self.provider_registry.require_ready(
+            [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
+        )
+        return await self.quality_reviewer.review(
             settings=active_settings,
             source_document=source_document,
             candidate_document=candidate_document,

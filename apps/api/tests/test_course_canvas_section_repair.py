@@ -82,6 +82,10 @@ async def test_section_repair_retries_once_with_the_new_validation_error(
         block for block in repaired.sections[0].blocks if block.id == "optimization-math"
     )
     assert repaired_math.text == r"z=\mu+\epsilon"
+    first_prompt = model.messages[0][1]["content"]
+    assert "Failed section context:" in first_prompt
+    assert "optimization-intro" in first_prompt
+    assert "This source-grounded explanation connects the definition" not in first_prompt
 
 
 async def test_section_repair_retries_an_empty_model_response(
@@ -109,6 +113,29 @@ async def test_section_repair_retries_an_empty_model_response(
         block for block in repaired.sections[0].blocks if block.id == "optimization-math"
     )
     assert repaired_math.text == r"z=\mu+\epsilon"
+
+
+async def test_section_repair_does_not_repeat_exhausted_provider_retries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    try:
+        raise TimeoutError("provider timeout")
+    except TimeoutError as cause:
+        provider_error = ModelExecutionError("The model provider timed out.")
+        provider_error.__cause__ = cause
+    planner, model = _planner(monkeypatch, [provider_error])
+    source = published_course_canvas("targeted-repair", "lecture-01")
+
+    with pytest.raises(ModelExecutionError, match="timed out"):
+        await planner.repair_section(
+            source,
+            _invalid_candidate(source),
+            section_id="learning-optimization",
+            block_id="optimization-math",
+            failure_context="The formula is unsupported by the source.",
+        )
+
+    assert len(model.messages) == 1
 
 
 async def test_section_repair_rejects_two_invalid_patches_without_mutating_candidate(
@@ -255,6 +282,9 @@ class _RepairModel:
 
 
 class _NoIssuesQualityReviewer:
+    async def review(self, **_kwargs) -> list:
+        return []
+
     async def validate(self, **_kwargs) -> None:
         return None
 

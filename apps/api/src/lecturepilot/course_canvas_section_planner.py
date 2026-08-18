@@ -12,8 +12,14 @@ from lecturepilot.canvas_text_normalizer import (
     clean_canvas_text,
 )
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
+from lecturepilot.course_canvas_evidence_batches import group_evidence_sections
 from lecturepilot.course_canvas_math import normalize_generated_math_block, validate_section_math
 from lecturepilot.course_canvas_section_batch import SectionPlanResult, plan_section_batch
+from lecturepilot.course_canvas_section_checkpoints import (
+    SectionPlanCheckpointStore,
+    current_section_plan_checkpoint_store,
+)
+from lecturepilot.course_canvas_section_payload import section_payload as _section_payload
 from lecturepilot.course_canvas_section_prompt import section_messages as _section_messages
 from lecturepilot.course_canvas_section_values import (
     allowed_assets as _allowed_assets,
@@ -26,10 +32,12 @@ from lecturepilot.course_canvas_validation import (
     validate_section_assessments,
 )
 from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.model_provider_errors import is_retryable_provider_error
 from lecturepilot.models import ProviderSettings
 from lecturepilot.observability import Observability
 from lecturepilot.providers import ProviderConfigurationError
+
+
+SECTION_PLAN_ATTEMPTS = 2
 
 
 class SectionPlanModelClient(Protocol):
@@ -51,12 +59,25 @@ async def plan_sections_individually(
     repair_context: str | None = None,
     observability: Observability | None = None,
     span_attributes: dict[str, str] | None = None,
+    checkpoint_store: SectionPlanCheckpointStore | None = None,
 ) -> CanvasDocument:
-    source_sections = source_topic_sections(source_document) or source_document.sections
+    checkpoint_store = checkpoint_store or current_section_plan_checkpoint_store()
+    source_sections = group_evidence_sections(
+        source_topic_sections(source_document) or source_document.sections,
+        document_source_ref=source_document.source_ref,
+    )
     trace = observability or Observability()
 
     async def plan_one(section_index: int, source_section: CanvasSection) -> SectionPlanResult:
-        return await _plan_section(
+        if checkpoint_store is not None:
+            cached = checkpoint_store.read(
+                source_section,
+                model=settings.model,
+                output_language=output_language,
+            )
+            if cached is not None:
+                return SectionPlanResult(cached)
+        result = await _plan_section(
             model_client=model_client,
             settings=settings,
             source_document=source_document,
@@ -67,6 +88,14 @@ async def plan_sections_individually(
             span_attributes=span_attributes or {},
             section_index=section_index,
         )
+        if checkpoint_store is not None and result.error is None:
+            checkpoint_store.write(
+                source_section,
+                result.section,
+                model=settings.model,
+                output_language=output_language,
+            )
+        return result
 
     if not source_sections:
         raise CanvasGenerationRepairableError("Section planner returned no usable sections.")
@@ -97,7 +126,7 @@ async def _plan_section(
     allowed_assets = _allowed_assets(source_section)
     last_error: ProviderConfigurationError | ModelExecutionError | None = None
     last_candidate: CanvasSection | None = None
-    for attempt in range(1, 4):
+    for attempt in range(1, SECTION_PLAN_ATTEMPTS + 1):
         section: CanvasSection | None = None
         try:
             with observability.model_span(
@@ -115,7 +144,7 @@ async def _plan_section(
                 return SectionPlanResult(section)
         except ModelExecutionError as exc:
             last_error = exc
-            if exc.__cause__ is not None and not is_retryable_provider_error(exc.__cause__):
+            if exc.__cause__ is not None:
                 raise
             messages = [
                 *messages,
@@ -151,7 +180,7 @@ def _read_section_payload(
     blocks = _read_blocks(payload.get("blocks"), section_id, allowed_assets)
     if not blocks:
         raise CanvasGenerationRepairableError(f"{source_section.id} has no usable blocks.")
-    source_ref = str(payload.get("source_ref") or source_section.source_ref or "source evidence")
+    source_ref = str(source_section.source_ref or "source evidence")
     section = CanvasSection(
         id=section_id,
         title=str(payload.get("title") or source_section.title)[:200],
@@ -159,44 +188,6 @@ def _read_section_payload(
         blocks=blocks,
     )
     return section
-
-
-def _section_payload(payload: dict) -> dict:
-    if isinstance(payload.get("section"), dict):
-        payload = payload["section"]
-    elif isinstance(payload.get("sections"), list) and payload["sections"]:
-        first = payload["sections"][0]
-        if isinstance(first, dict):
-            payload = first
-    if isinstance(payload.get("blocks"), list):
-        return payload
-    blocks = _blocks_from_common_keys(payload)
-    return {**payload, "blocks": blocks}
-
-
-def _blocks_from_common_keys(payload: dict) -> list[dict]:
-    blocks: list[dict] = []
-    for key in ("summary", "content", "text", "paragraph"):
-        if isinstance(payload.get(key), str) and payload[key].strip():
-            blocks.append({"type": "paragraph", "text": payload[key]})
-            break
-    for key in ("key_points", "items", "bullets"):
-        if isinstance(payload.get(key), list):
-            blocks.append({"type": "list", "items": payload[key]})
-            break
-    for key in ("formula", "formulas", "math"):
-        value = payload.get(key)
-        if isinstance(value, str):
-            blocks.append({"type": "math", "text": value})
-        elif isinstance(value, list):
-            blocks.extend({"type": "math", "text": item} for item in value if isinstance(item, str))
-        if value:
-            break
-    for key in ("callout", "example", "infographic_brief"):
-        if isinstance(payload.get(key), str) and payload[key].strip():
-            blocks.append({"type": "callout", "text": payload[key]})
-            break
-    return blocks
 
 
 def _read_blocks(

@@ -36,7 +36,12 @@ def test_course_canvas_schema_requires_component_data_for_visual_components() ->
     schema = course_canvas_response_format()["json_schema"]["schema"]
     variants = schema["properties"]["sections"]["items"]["properties"]["blocks"]["items"]["anyOf"]
 
-    for component_type in ("interactive_chart", "process_explorer", "visual_artifact"):
+    for component_type in (
+        "interactive_chart",
+        "process_explorer",
+        "visual_artifact",
+        "mechanism_comparison",
+    ):
         variant = next(
             item
             for item in variants
@@ -58,3 +63,18 @@ def test_course_canvas_schema_bounds_declarative_visual_artifacts() -> None:
     assert data["properties"]["visual_nodes"]["maxItems"] == 12
     assert data["properties"]["visual_series"]["maxItems"] == 6
     assert data["additionalProperties"] is False
+
+
+def test_course_canvas_schema_does_not_require_null_placeholders() -> None:
+    schema = course_canvas_response_format()["json_schema"]["schema"]
+    section = schema["properties"]["sections"]["items"]
+    variants = section["properties"]["blocks"]["items"]["anyOf"]
+    paragraph = next(
+        variant
+        for variant in variants
+        if variant["properties"].get("type", {}).get("const") == "paragraph"
+    )
+
+    assert section["required"] == ["title", "blocks"]
+    assert paragraph["required"] == ["type", "text"]
+    assert set(paragraph["properties"]) == {"type", "text"}

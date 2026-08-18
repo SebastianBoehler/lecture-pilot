@@ -16,6 +16,10 @@ from lecturepilot.course_canvas_repairs import (
     persist_repair_guidance,
 )
 from lecturepilot.course_canvas_store import InvalidCanvasDraftError
+from lecturepilot.course_canvas_section_checkpoints import (
+    SectionPlanCheckpointStore,
+    section_plan_checkpoint_scope,
+)
 from lecturepilot.course_update_recovery import locked_course_state
 from lecturepilot.course_media import apply_course_media, course_media_evidence
 from lecturepilot.course_schedule_store import read_course_workspace
@@ -84,15 +88,26 @@ async def generate_course_canvas_draft(
             course_id=course_id,
             lecture_id=lecture_id,
         )
-        repair_context = repair_failure_detail or (
-            repair_record.failure_detail if repair_record else None
+        repair_context = _generation_repair_context(
+            repair_failure_code,
+            repair_failure_detail,
+            repair_record.failure_detail if repair_record else None,
         )
         output_language = _canvas_language(app, course_id)
+        checkpoints = SectionPlanCheckpointStore(
+            app.state.canvas_workspace.layout.lecture_canvas_section_checkpoints_path(
+                course_id, lecture_id
+            ),
+            source_revision=source_revision,
+        )
         with observability.tool_span("course_canvas_generation", stage="model_plan", **common):
-            with model_usage_scope(
-                actor_user_id=context.user_id,
-                course_id=course_id,
-                workload="course_canvas",
+            with (
+                model_usage_scope(
+                    actor_user_id=context.user_id,
+                    course_id=course_id,
+                    workload="course_canvas",
+                ),
+                section_plan_checkpoint_scope(checkpoints),
             ):
                 try:
                     if repair_context:
@@ -243,6 +258,18 @@ def _canvas_language(app: FastAPI, course_id: str) -> str:
         course_id,
     )
     return workspace.course.canvas_language if workspace else "en"
+
+
+def _generation_repair_context(
+    failure_code: str | None,
+    failure_detail: str | None,
+    persisted_content_issue: str | None,
+) -> str | None:
+    if failure_code is None:
+        return persisted_content_issue
+    if failure_code == "canvas_generation_repairable_error":
+        return failure_detail or persisted_content_issue
+    return None
 
 
 def _write_current_draft(

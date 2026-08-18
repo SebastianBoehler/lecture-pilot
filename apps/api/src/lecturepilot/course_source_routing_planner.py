@@ -7,7 +7,9 @@ from lecturepilot.course_source_routing_client import (
     SourceRoutingModelClient,
 )
 from lecturepilot.course_source_routing_models import CourseSourceRoute, SourceRouteRole
-from lecturepilot.course_source_routing_quality import require_supplemental_coverage
+from lecturepilot.course_source_routing_quality import (
+    is_project_metadata,
+)
 from lecturepilot.course_source_routing_review import (
     apply_review_corrections,
     routing_review_messages,
@@ -74,7 +76,7 @@ class CourseSourceRoutingPlanner:
                     lectures,
                     protected_paths=_primary_paths(lectures),
                 )
-                require_supplemental_coverage(reviewed)
+                reviewed = _exclude_project_metadata(reviewed, _primary_paths(lectures))
                 return reviewed
             except (ProviderConfigurationError, ModelExecutionError) as exc:
                 last_error = exc
@@ -104,7 +106,7 @@ class CourseSourceRoutingPlanner:
                     settings=settings, messages=messages
                 )
                 routes = _read_selected_routes(payload, files, lectures)
-                require_supplemental_coverage(routes)
+                routes = _exclude_project_metadata(routes, _primary_paths(lectures))
                 return routes
             except (ProviderConfigurationError, ModelExecutionError) as exc:
                 last_error = exc
@@ -143,9 +145,12 @@ def _routing_messages(
                 "readings, or standalone diagrams; select them when they add teaching evidence or "
                 "reusable media beyond the rendered deck. Exclude generated slide-page images and "
                 "individual deck assets when they merely duplicate a selected deck. "
-                "Every listed notebook, code demo, or video that is not an assignment, solution, "
-                "submission, or generated artifact is supplemental teaching material: select it "
-                "for the most relevant lecture instead of omitting it. "
+                "Keep project metadata such as pyproject.toml excluded; it is not a teaching "
+                "code demo. A professor can assign it later when environment setup is itself taught. "
+                "Select a notebook, code demo, or video only when its content materially extends "
+                "the primary lecture evidence and contributes to a concrete learning section. "
+                "Omit environment setup, helper files, exploratory artifacts, and examples with "
+                "no clear teaching contribution to the scheduled lectures. "
                 "Do not return a primary source again. Use only listed paths and lecture ids. Lecture "
                 "selections require lecture_id; course_wide selections require null."
             ),
@@ -250,8 +255,7 @@ def _repair_message(error: str) -> dict[str, str]:
         "role": "user",
         "content": (
             f"The proposal violated the routing contract: {error} "
-            "Return a lecture or course_wide selection for every listed path in the error; do not "
-            "omit any of those required teaching sources."
+            "Return one corrected selection payload matching the stated contract."
         ),
     }
 
@@ -261,14 +265,24 @@ def _review_repair_message(error: str) -> dict[str, str]:
         "role": "user",
         "content": (
             f"The global review violated the correction contract: {error} "
-            "Return a lecture or course_wide correction for every listed path in the error; do not "
-            "leave any of those required teaching sources excluded."
+            "Return one corrected corrections payload matching the stated contract."
         ),
     }
 
 
 def _primary_paths(lectures: list[Lecture]) -> set[str]:
     return {lecture.material_path for lecture in lectures if lecture.material_path}
+
+
+def _exclude_project_metadata(
+    routes: list[CourseSourceRoute], protected_paths: set[str]
+) -> list[CourseSourceRoute]:
+    return [
+        route
+        if route.path in protected_paths or not is_project_metadata(route.path)
+        else route.model_copy(update={"role": SourceRouteRole.EXCLUDED, "lecture_id": None})
+        for route in routes
+    ]
 
 
 def _resolve_selected_path(returned_path: str, indexed: dict[str, IndexedSourceFile]) -> str:

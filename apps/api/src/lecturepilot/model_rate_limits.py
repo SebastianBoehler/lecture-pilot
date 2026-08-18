@@ -8,8 +8,8 @@ from time import monotonic
 from typing import Any
 
 
-MODEL_REQUEST_BOOTSTRAP_CONCURRENCY = 12
-MODEL_REQUEST_MAX_CONCURRENCY = 256
+MODEL_REQUEST_BOOTSTRAP_CONCURRENCY = 3
+MODEL_REQUEST_MAX_CONCURRENCY = 3
 DEFAULT_REQUEST_TOKEN_ESTIMATE = 32_000
 _conditions: dict[tuple[int, str], asyncio.Condition] = {}
 _active_requests: dict[tuple[int, str], int] = {}

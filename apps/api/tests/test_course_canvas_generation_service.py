@@ -78,6 +78,23 @@ async def test_generation_survives_disconnected_waiter_and_can_reconnect(tmp_pat
 
 
 @pytest.mark.asyncio
+async def test_generation_has_no_total_wall_clock_deadline(tmp_path, monkeypatch) -> None:
+    app = SimpleNamespace(state=SimpleNamespace())
+    store = CanvasGenerationStore(
+        StorageLayout(tmp_path), lease_seconds=CANVAS_GENERATION_LEASE_SECONDS
+    )
+
+    def reject_total_timeout(_seconds: float):
+        raise AssertionError("canvas generation must not have a total wall-clock timeout")
+
+    monkeypatch.setattr(asyncio, "timeout", reject_total_timeout)
+
+    result = await _run(app, store, lambda _id, _attempt: _return_canvas())
+
+    assert result.job.status == "completed"
+
+
+@pytest.mark.asyncio
 async def test_running_job_is_reclaimed_after_its_lease_expires(tmp_path) -> None:
     layout = StorageLayout(tmp_path)
     store = CanvasGenerationStore(layout, lease_seconds=0)
@@ -145,6 +162,52 @@ async def test_failed_generation_is_replayed_without_paid_retry(tmp_path) -> Non
 
     assert calls == 1
     assert replay.value.error_code == "runtime_error"
+
+
+@pytest.mark.asyncio
+async def test_new_request_cancels_superseded_generation_for_same_lecture(tmp_path) -> None:
+    app = SimpleNamespace(state=SimpleNamespace())
+    store = CanvasGenerationStore(
+        StorageLayout(tmp_path), lease_seconds=CANVAS_GENERATION_LEASE_SECONDS
+    )
+    first_started = asyncio.Event()
+    first_cancelled = asyncio.Event()
+
+    async def first_generate(_generation_id: str, _attempt: int) -> CanvasDocument:
+        first_started.set()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            first_cancelled.set()
+            raise
+
+    first = asyncio.create_task(
+        run_idempotent_canvas_generation(
+            app=app,
+            store=store,
+            course_id="course-1",
+            lecture_id="lecture-01",
+            actor_user_id="professor-1",
+            request_key="request-key-older",
+            generate=first_generate,
+        )
+    )
+    await first_started.wait()
+
+    newer = await run_idempotent_canvas_generation(
+        app=app,
+        store=store,
+        course_id="course-1",
+        lecture_id="lecture-01",
+        actor_user_id="professor-1",
+        request_key="request-key-newer",
+        generate=lambda _id, _attempt: _return_canvas(),
+    )
+
+    await asyncio.wait_for(first_cancelled.wait(), timeout=1)
+    with pytest.raises(asyncio.CancelledError):
+        await first
+    assert newer.job.status == "completed"
 
 
 def _run(app, store, generate):

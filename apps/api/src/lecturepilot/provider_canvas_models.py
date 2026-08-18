@@ -163,6 +163,7 @@ class ProviderCanvasBlock(StrictProviderModel):
             "interactive_chart",
             "process_explorer",
             "visual_artifact",
+            "mechanism_comparison",
         ]
         | None
     )

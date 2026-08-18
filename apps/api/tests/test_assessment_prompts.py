@@ -1,4 +1,7 @@
-from lecturepilot.assessment_prompts import assessment_prompt_issue
+from lecturepilot.assessment_prompts import (
+    assessment_generation_instruction,
+    assessment_prompt_issue,
+)
 
 
 def test_checkpoint_accepts_create_as_a_concrete_task_after_context() -> None:
@@ -14,6 +17,14 @@ def test_contextual_task_detection_has_no_character_limit() -> None:
     prompt = f"Given {'a detailed source-backed premise ' * 30}, design a valid test case."
 
     assert assessment_prompt_issue(prompt, "checkpoint") is None
+
+
+def test_generation_instruction_requires_each_assessment_to_restate_its_context() -> None:
+    instruction = assessment_generation_instruction().casefold()
+
+    assert "standalone" in instruction
+    assert "preceding" in instruction
+    assert "restate" in instruction
 
 
 def test_checkpoint_rejects_observed_question_with_unstated_choices() -> None:

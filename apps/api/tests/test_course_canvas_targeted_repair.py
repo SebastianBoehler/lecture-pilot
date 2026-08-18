@@ -138,12 +138,13 @@ class _TargetedRepairPlanner:
         self.quality_review_calls = 0
         self.targeted_repair_calls: list[tuple[str, str | None, str]] = []
 
-    async def validate_quality(
+    async def review_quality(
         self,
         source_document: CanvasDocument,
         candidate_document: CanvasDocument,
-    ) -> None:
+    ) -> list:
         self.quality_review_calls += 1
+        return []
 
     async def plan_canvas(
         self,

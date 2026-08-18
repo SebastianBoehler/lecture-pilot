@@ -7,6 +7,7 @@ import pytest
 from canvas_workspace_fixtures import published_course_canvas
 from lecturepilot.course_canvas_math import normalize_generated_math, validate_section_math
 from lecturepilot.course_canvas_planner import LiteLLMCoursePlanClient
+from lecturepilot.course_canvas_repair_preflight import repair_failure_constraint
 from lecturepilot.providers import ProviderRegistry
 from test_course_canvas_section_repair import _planner, _repair_payload
 from test_course_canvas_math import _section_with_math
@@ -20,6 +21,35 @@ def test_generated_math_normalization_removes_stray_display_delimiters() -> None
 
     assert normalized == r"\begin{aligned}a &= b \\ c &= d\end{aligned}"
     validate_section_math(_section_with_math(normalized))
+
+
+def test_component_repair_constraint_requires_a_complete_schema_payload() -> None:
+    constraint = repair_failure_constraint(
+        "Component block chart-1 needs chart_type and at least one frame."
+    )
+
+    assert "component_data" in constraint
+    assert "chart_type" in constraint
+    assert "frame" in constraint
+
+
+def test_choice_component_repair_constraint_requires_explicit_answers() -> None:
+    constraint = repair_failure_constraint(
+        "Component block choice-1 needs at least two options and one explicit correct answer."
+    )
+
+    assert "at least two options" in constraint
+    assert "correct answer" in constraint
+
+
+def test_unsupported_factual_claim_uses_grounding_repair_not_math_repair() -> None:
+    constraint = repair_failure_constraint(
+        "The supplied source evidence does not establish the claimed four-way evaluation."
+    )
+
+    assert "remove" in constraint.casefold()
+    assert "claim" in constraint.casefold()
+    assert "portable KaTeX commands" not in constraint
 
 
 async def test_course_plan_client_applies_repair_temperature(monkeypatch) -> None:

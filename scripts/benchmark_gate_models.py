@@ -14,7 +14,13 @@ sys.path.insert(0, str(ROOT / "apps/api/src"))
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection  # noqa: E402
 from lecturepilot.harness import LecturePilotHarness  # noqa: E402
-from lecturepilot.models import AgentTurnInput, AttendanceStatus, CanvasState  # noqa: E402
+from lecturepilot.learning_map import LearningMapGate  # noqa: E402
+from lecturepilot.models import (  # noqa: E402
+    AgentCoachingContext,
+    AgentTurnInput,
+    AttendanceStatus,
+    CanvasState,
+)
 from lecturepilot.providers import DEFAULT_MODEL, ProviderRegistry  # noqa: E402
 
 
@@ -102,10 +108,16 @@ async def _benchmark_model(model: str) -> list[dict]:
     harness = LecturePilotHarness(provider_registry=ProviderRegistry.from_env(model))
     rows = []
     for scenario in SCENARIOS:
-        row = {"model": model, "scenario": scenario.label, "expected": scenario.expected_status}
+        row = {
+            "model": model,
+            "scenario": scenario.label,
+            "expected": scenario.expected_status,
+        }
         try:
             result = await harness.run_turn(_turn_for_scenario(scenario))
-            status = result.quality_gate.status.value if result.quality_gate else "missing"
+            status = (
+                result.quality_gate.status.value if result.quality_gate else "missing"
+            )
             row.update(
                 {
                     "actual": status,
@@ -121,14 +133,72 @@ async def _benchmark_model(model: str) -> list[dict]:
 
 
 def _turn_for_scenario(scenario: GateScenario) -> AgentTurnInput:
+    gate = _gate_for_lecture(scenario.lecture_id)
     return AgentTurnInput(
         user_id="provider-benchmark-user",
         course_id="martius-ml",
         lecture_id=scenario.lecture_id,
         attendance=scenario.attendance,
         message=scenario.message,
-        canvas_state=CanvasState(focused_section_id=_focused_section_id(scenario.lecture_id)),
+        canvas_state=CanvasState(
+            focused_section_id=_focused_section_id(scenario.lecture_id)
+        ),
         canvas_context=_canvas_for_lecture(scenario.lecture_id),
+        active_gate=gate,
+        coaching_context=AgentCoachingContext(
+            active_gate_id=gate.id,
+            active_gate_revision=gate.revision,
+            pending_check_gate_id=gate.id,
+            pending_check_gate_revision=gate.revision,
+            pending_check_issued_at="2026-08-18T08:00:00+00:00",
+            pending_check_prompt=gate.prompt,
+        ),
+    )
+
+
+def _gate_for_lecture(lecture_id: str) -> LearningMapGate:
+    section_id = _focused_section_id(lecture_id)
+    if lecture_id == "lecture-01":
+        criteria = [
+            {"id": "target", "description": "Identifies prediction of a target label."},
+            {"id": "loss", "description": "Explains model optimization using a loss."},
+            {
+                "id": "generalization",
+                "description": "Uses held-out validation or test data to check generalization.",
+            },
+        ]
+    elif lecture_id == "lecture-02":
+        criteria = [
+            {
+                "id": "held-out",
+                "description": "Distinguishes training from held-out generalization evaluation.",
+            },
+            {
+                "id": "threshold-errors",
+                "description": "Connects classifier threshold choice to an error rate.",
+            },
+        ]
+    else:
+        criteria = [
+            {
+                "id": "bayes-components",
+                "description": "Connects prior, likelihood, evidence, and posterior.",
+            },
+            {
+                "id": "risk-decision",
+                "description": "Connects loss or error cost to the decision threshold.",
+            },
+        ]
+    return LearningMapGate.create(
+        id=f"{section_id}-gate",
+        concept_id=section_id,
+        title=f"{section_id} evidence check",
+        prompt="Explain the concept using every required evidence item.",
+        evidence_criteria=criteria,
+        transfer_prompt="Apply the explanation to a changed example.",
+        review_after_days=3,
+        section_id=section_id,
+        source_ref="benchmark scenario",
     )
 
 
@@ -146,7 +216,9 @@ def _canvas_for_lecture(lecture_id: str) -> CanvasDocument:
             CanvasSection(
                 id=section_id,
                 title=title,
-                blocks=[CanvasBlock(id=f"{section_id}-p-1", type="paragraph", text=text)],
+                blocks=[
+                    CanvasBlock(id=f"{section_id}-p-1", type="paragraph", text=text)
+                ],
             )
         ],
     )
@@ -190,9 +262,15 @@ def _print_table(rows: list[dict]) -> None:
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Benchmark provider gate behavior outside CI.")
-    parser.add_argument("--model", action="append", help="Model slug, e.g. gemini/gemini-3.5-flash")
-    parser.add_argument("--json", action="store_true", help="Print machine-readable JSON.")
+    parser = argparse.ArgumentParser(
+        description="Benchmark provider gate behavior outside CI."
+    )
+    parser.add_argument(
+        "--model", action="append", help="Model slug, e.g. gemini/gemini-3.5-flash"
+    )
+    parser.add_argument(
+        "--json", action="store_true", help="Print machine-readable JSON."
+    )
     return parser.parse_args()
 
 

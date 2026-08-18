@@ -11,6 +11,7 @@ SUPPORTED_COMPONENT_TYPES = (
     "interactive_chart",
     "process_explorer",
     "visual_artifact",
+    "mechanism_comparison",
 )
 
 
@@ -24,7 +25,8 @@ def component_catalog_instruction() -> str:
         "Supported component_type values are: single_choice_quiz for one checked answer; "
         "interactive_chart for exact source-supported numeric comparisons or parameter changes; "
         "process_explorer for one ordered mechanism or algorithm; and visual_artifact for a "
-        "composable data-only visual using a flow, timeline, grid, or plot layout. "
+        "composable data-only visual using a flow, timeline, grid, or plot layout; and "
+        "mechanism_comparison when two to four approaches must stay visible together. "
         "Every component needs component_id, component_type, component_version=1, caption, prompt "
         "text, and component_data. For interactive_chart, component_data must contain chart_type "
         "(bar, line, scatter, or heatmap), x_label, y_label, control_label, control_type, and one "
@@ -41,6 +43,8 @@ def component_catalog_instruction() -> str:
         "Flow and timeline show relationships between referenced node ids; grid keeps concepts or "
         "alternatives simultaneously visible; plot uses labeled axes and line, bar, or point series. "
         "Keep unused visual arrays empty and visual_layout=null for other component types. "
+        "For mechanism_comparison, provide two to four frames with the same outcome labels and "
+        "exactly one value per label. Show every approach simultaneously without a frame control. "
         "For single_choice_quiz, use items for the answer text, "
         "option_ids for stable answer ids, answer_index for the one correct answer, and empty "
         "component_data arrays. Use component_data=null for non-component blocks. Never output "
@@ -100,6 +104,8 @@ def component_spec_issue(block: CanvasBlock) -> str | None:
         if block.component_version != 1:
             return "uses unsupported visual_artifact component_version."
         return _visual_artifact_issue(data)
+    if component_type == "mechanism_comparison":
+        return _mechanism_comparison_issue(data)
     if len(data.steps) < 2:
         return "needs at least two ordered steps."
     return None
@@ -136,6 +142,23 @@ def _visual_artifact_issue(data: CanvasComponentData) -> str | None:
         return "needs at least two visual nodes."
     if data.visual_layout == "grid" and data.visual_edges:
         return "uses visual edges only with flow or timeline layouts."
+    return None
+
+
+def _mechanism_comparison_issue(data: CanvasComponentData) -> str | None:
+    if not 2 <= len(data.frames) <= 4:
+        return "needs two to four mechanism frames."
+    if len(data.labels) < 2:
+        return "needs at least two shared outcome labels."
+    if any(len(frame.values) != len(data.labels) for frame in data.frames):
+        return "needs exactly one outcome value per label in every mechanism frame."
+    has_profiles = any(frame.points for frame in data.frames)
+    if has_profiles and (
+        not data.x_label or not data.y_label or any(len(frame.points) < 2 for frame in data.frames)
+    ):
+        return "needs labeled axes and at least two profile points in every mechanism frame."
+    if data.control_type is not None:
+        return "shows every mechanism simultaneously and cannot use a frame control."
     return None
 
 

@@ -14,10 +14,8 @@ from lecturepilot.course_canvas_generation_jobs import (
     CanvasGenerationStoreError,
 )
 from lecturepilot.course_canvas_generation_service import (
-    CanvasGenerationInProgressError,
     CanvasGenerationOutcome,
     CanvasGenerationReplayError,
-    CanvasGenerationTimeoutError,
     run_idempotent_canvas_generation,
 )
 from lecturepilot.course_canvas_store import InvalidCanvasDraftError
@@ -71,21 +69,6 @@ async def run_canvas_generation_request(
         raise _generation_error(503, str(exc), store, context, request_key, course_id, lecture_id)
     except ModelExecutionError as exc:
         raise _generation_error(502, str(exc), store, context, request_key, course_id, lecture_id)
-    except CanvasGenerationTimeoutError as exc:
-        raise _generation_error(
-            504, "Canvas generation timed out.", store, context, request_key, course_id, lecture_id
-        ) from exc
-    except CanvasGenerationInProgressError as exc:
-        raise _generation_error(
-            503,
-            "Canvas generation is still in progress.",
-            store,
-            context,
-            request_key,
-            course_id,
-            lecture_id,
-            headers={"Retry-After": "5"},
-        ) from exc
     except CanvasGenerationReplayError as exc:
         status = {
             "canvas_workspace_error": 404,

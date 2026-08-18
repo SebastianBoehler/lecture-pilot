@@ -87,6 +87,65 @@ def test_component_catalog_accepts_scatter_and_heatmap_data() -> None:
     assert component_spec_issue(heatmap) is None
 
 
+def test_component_catalog_accepts_simultaneous_mechanism_comparison() -> None:
+    comparison = CanvasBlock(
+        id="constraint-handling",
+        type="component",
+        component_type="mechanism_comparison",
+        component_data=CanvasComponentData(
+            chart_type="line",
+            x_label="Parameter index",
+            y_label="Normalized value",
+            labels=["Hard power", "Soft power", "Detector"],
+            frames=[
+                CanvasComponentFrame(
+                    label="Sigmoid movement",
+                    values=[100, 90, 85],
+                    points=[
+                        CanvasComponentPoint(label="Start", x=0, y=0.95),
+                        CanvasComponentPoint(label="Middle", x=1, y=0.05),
+                    ],
+                    explanation="Soft bounds preserve collective feasibility.",
+                ),
+                CanvasComponentFrame(
+                    label="Direct projection",
+                    values=[117, 104, 104],
+                    points=[
+                        CanvasComponentPoint(label="Start", x=0, y=1),
+                        CanvasComponentPoint(label="Middle", x=1, y=0),
+                    ],
+                    explanation="Independent clipping violates a shared constraint.",
+                ),
+            ],
+        ),
+    )
+
+    assert component_spec_issue(comparison) is None
+
+
+def test_component_catalog_rejects_single_mechanism_comparison() -> None:
+    comparison = CanvasBlock(
+        id="one-mechanism",
+        type="component",
+        component_type="mechanism_comparison",
+        component_data=CanvasComponentData(
+            chart_type="line",
+            x_label="Input",
+            y_label="Output",
+            labels=["Constraint A", "Constraint B"],
+            frames=[
+                CanvasComponentFrame(
+                    label="Only approach",
+                    values=[1, 2],
+                    explanation="There is nothing to compare this with.",
+                )
+            ],
+        ),
+    )
+
+    assert component_spec_issue(comparison) == "needs two to four mechanism frames."
+
+
 def test_component_response_schema_exposes_new_chart_shapes() -> None:
     schema = component_data_schema()
     chart_types = schema["properties"]["chart_type"]["enum"]

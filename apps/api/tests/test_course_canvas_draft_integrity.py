@@ -10,6 +10,7 @@ from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT_VERSION
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_repairs import lecture_source_revision
+from lecturepilot import course_canvas_generation
 
 
 def test_generation_requires_a_valid_idempotency_key(tmp_path: Path) -> None:
@@ -30,6 +31,21 @@ def test_generation_requires_a_valid_idempotency_key(tmp_path: Path) -> None:
     assert missing.json()["detail"] == "Idempotency-Key header is required."
     assert invalid.status_code == 400
     assert invalid.json()["detail"] == "Idempotency-Key must be 16-128 URL-safe characters."
+
+
+def test_provider_failures_are_not_added_to_content_repair_prompts() -> None:
+    assert (
+        course_canvas_generation._generation_repair_context(
+            "model_execution_error", "OpenAI request timed out", "older content issue"
+        )
+        is None
+    )
+    assert (
+        course_canvas_generation._generation_repair_context(
+            "canvas_generation_repairable_error", "Wrong answer key", None
+        )
+        == "Wrong answer key"
+    )
 
 
 def test_stale_client_is_rejected_before_generation_work(tmp_path: Path) -> None:

@@ -131,6 +131,7 @@ def normalize_generated_math(value: str) -> str:
         formula = _combine_display_segments(formula)
     formula = formula.replace(r"\[", "").replace(r"\]", "")
     formula = formula.replace(r"\(", "").replace(r"\)", "")
+    formula = _remove_orphan_closing_environments(formula)
     for pattern, replacement in _SOURCE_SHORTHANDS:
         formula = pattern.sub(replacement, formula)
     formula = _replace_boolean_literals(formula)
@@ -139,6 +140,29 @@ def normalize_generated_math(value: str) -> str:
         return formula
     label = match.group("label").replace("{", r"\{").replace("}", r"\}")
     return rf"\text{{{label}}}{match.group('formula')}"
+
+
+def _remove_orphan_closing_environments(formula: str) -> str:
+    environments: list[str] = []
+    orphaned: list[tuple[int, int]] = []
+    for match in _ENVIRONMENT_RE.finditer(formula):
+        command = match.group(0).split("{", 1)[0]
+        environment = match.group("environment")
+        if command == r"\begin":
+            environments.append(environment)
+        elif not environments:
+            orphaned.append(match.span())
+        elif environments[-1] == environment:
+            environments.pop()
+    if not orphaned:
+        return formula
+    parts: list[str] = []
+    cursor = 0
+    for start, end in orphaned:
+        parts.append(formula[cursor:start])
+        cursor = end
+    parts.append(formula[cursor:])
+    return "".join(parts).strip()
 
 
 def _replace_boolean_literals(formula: str) -> str:

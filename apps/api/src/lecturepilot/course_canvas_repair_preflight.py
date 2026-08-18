@@ -50,12 +50,56 @@ def normalize_repair_candidate(
 
 def repair_failure_constraint(failure: str) -> str:
     lowered = failure.casefold()
+    if "component block" in lowered and any(
+        marker in lowered
+        for marker in (
+            "chart_type",
+            "frame",
+            "component_data",
+            "numeric value",
+            "labeled axes",
+            "row_labels",
+            "matrix",
+        )
+    ):
+        return (
+            "Rebuild the failed component_data as one complete payload for its component_type. "
+            "For an interactive chart, include a supported chart_type and at least one frame, "
+            "plus every labels, values, points, matrix, row_labels, axes, and control field the "
+            "selected chart type requires. Use only numeric values present in the evidence."
+        )
+    if "component block" in lowered and any(
+        marker in lowered for marker in ("at least two options", "explicit correct answer")
+    ):
+        return (
+            "Rebuild the single-choice component with at least two options, stable option_ids, "
+            "and exactly one explicit correct answer whose answer_index matches the evidence."
+        )
     if "math delimiters" in lowered or "markdown fences" in lowered:
         return (
             r"For this repair, remove every display wrapper such as \[, \], \(, \), $, $$, "
             "```math, or ```latex; the math block itself already provides display context."
         )
-    if "unsupported" in lowered or "course-specific" in lowered:
+    if any(
+        marker in lowered
+        for marker in (
+            "source evidence does not establish",
+            "unsupported claim",
+            "claim is not supported",
+            "claim that is not supported",
+            "not supported by the supplied source",
+            "not stated in the supplied source",
+            "misattributes",
+        )
+    ):
+        return (
+            "Remove every unsupported factual claim identified by the reviewer. Only replace a "
+            "removed claim when the supplied evidence explicitly supports the replacement; do "
+            "not infer missing results or preserve a claim by merely qualifying its wording."
+        )
+    if ("unsupported" in lowered and "math block" in lowered) or any(
+        marker in lowered for marker in ("course-specific command", "course-specific macro")
+    ):
         return "Replace unsupported commands with portable KaTeX commands; do not preserve macros."
     if "explanatory prose" in lowered:
         return (

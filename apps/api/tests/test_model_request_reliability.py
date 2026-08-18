@@ -14,7 +14,7 @@ from lecturepilot.model_usage import complete_with_usage
 from lecturepilot.models import ProviderCapability, ProviderSettings
 
 
-def test_completion_options_disable_hidden_retries_and_bound_timeout() -> None:
+def test_completion_options_disable_hidden_retries_and_allow_long_structured_output() -> None:
     settings = ProviderSettings(
         provider="gemini",
         model="gemini/test-model",
@@ -25,31 +25,27 @@ def test_completion_options_disable_hidden_retries_and_bound_timeout() -> None:
     options = completion_options(settings, temperature=0.2, max_tokens=100)
 
     assert options["timeout"] == MODEL_REQUEST_TIMEOUT_SECONDS
+    assert options["timeout"] == 300
     assert options["max_retries"] == 0
 
 
 @pytest.mark.asyncio
-async def test_transient_timeout_retries_once_with_same_request(monkeypatch) -> None:
+async def test_timeout_is_not_automatically_duplicated(monkeypatch) -> None:
     calls: list[dict] = []
 
     async def completion(**kwargs):
         calls.append(kwargs)
-        if len(calls) == 1:
-            raise TimeoutError("provider timeout")
-        return SimpleNamespace(usage=None)
+        raise TimeoutError("provider timeout")
 
     async def no_wait(_seconds: float) -> None:
         return None
 
     monkeypatch.setattr("lecturepilot.model_usage.asyncio.sleep", no_wait)
 
-    result = await complete_with_usage(None, completion, model="gemini/test-model")
+    with pytest.raises(TimeoutError, match="provider timeout"):
+        await complete_with_usage(None, completion, model="gemini/test-model")
 
-    assert result.usage is None
-    assert calls == [
-        {"model": "gemini/test-model"},
-        {"model": "gemini/test-model"},
-    ]
+    assert calls == [{"model": "gemini/test-model"}]
 
 
 @pytest.mark.asyncio
@@ -135,7 +131,10 @@ async def test_provider_headers_expand_concurrency_within_request_and_token_budg
         ),
     )
 
-    assert model_rate_limits.current_model_concurrency("openai/test-model") == 200
+    assert (
+        model_rate_limits.current_model_concurrency("openai/test-model")
+        == model_rate_limits.MODEL_REQUEST_MAX_CONCURRENCY
+    )
 
 
 @pytest.mark.asyncio

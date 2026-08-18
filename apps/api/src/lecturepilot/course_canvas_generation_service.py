@@ -17,7 +17,6 @@ from lecturepilot.course_canvas_generation_jobs import (
 from lecturepilot.course_canvas_repair_target import CanvasGenerationRepairTarget
 
 
-CANVAS_GENERATION_TIMEOUT_SECONDS = 900
 CANVAS_GENERATION_LEASE_SECONDS = 45
 CANVAS_GENERATION_HEARTBEAT_SECONDS = 10
 _REQUEST_KEY = re.compile(r"^[A-Za-z0-9._:-]{16,128}$")
@@ -27,14 +26,6 @@ class CanvasGenerationReplayError(RuntimeError):
     def __init__(self, error_code: str | None) -> None:
         super().__init__("Previous canvas generation attempt failed.")
         self.error_code = error_code or "generation_failed"
-
-
-class CanvasGenerationInProgressError(RuntimeError):
-    pass
-
-
-class CanvasGenerationTimeoutError(RuntimeError):
-    pass
 
 
 @dataclass(frozen=True)
@@ -83,6 +74,14 @@ async def run_idempotent_canvas_generation(
         if not owns_attempt:
             return CanvasGenerationOutcome(job, _completed_canvas(job))
 
+    lecture_key = (course_id, lecture_id)
+    lecture_tasks = _lecture_tasks(app)
+    superseded = lecture_tasks.get(lecture_key)
+    if superseded is not None and not superseded.done():
+        superseded.cancel()
+        with suppress(asyncio.CancelledError):
+            await superseded
+
     task = asyncio.create_task(
         _execute(
             store,
@@ -94,8 +93,15 @@ async def run_idempotent_canvas_generation(
     )
     tasks = _background_tasks(app)
     tasks[job.generation_id] = task
+    lecture_tasks[lecture_key] = task
     task.add_done_callback(
-        lambda completed: _finish_background(tasks, job.generation_id, completed)
+        lambda completed: _finish_background(
+            tasks,
+            lecture_tasks,
+            lecture_key,
+            job.generation_id,
+            completed,
+        )
     )
     return await asyncio.shield(task)
 
@@ -117,8 +123,7 @@ async def _execute(
         )
     )
     try:
-        async with asyncio.timeout(CANVAS_GENERATION_TIMEOUT_SECONDS):
-            canvas = await generate(job.generation_id, job.attempt)
+        canvas = await generate(job.generation_id, job.attempt)
     except asyncio.CancelledError:
         store.fail(
             job,
@@ -127,14 +132,6 @@ async def _execute(
             error_code="interrupted",
         )
         raise
-    except TimeoutError as exc:
-        store.fail(
-            job,
-            actor_user_id=actor_user_id,
-            request_key=request_key,
-            error_code="timeout",
-        )
-        raise CanvasGenerationTimeoutError("Canvas generation timed out.") from exc
     except Exception as exc:
         repair = _repair_metadata(exc)
         store.fail(
@@ -183,8 +180,7 @@ async def _wait_for_existing_or_claim(
     actor_user_id: str,
     request_key: str,
 ) -> tuple[CanvasGenerationJob, bool]:
-    deadline = asyncio.get_running_loop().time() + CANVAS_GENERATION_TIMEOUT_SECONDS
-    while asyncio.get_running_loop().time() < deadline:
+    while True:
         await asyncio.sleep(0.25)
         job, owns_attempt = store.begin(
             course_id=course_id,
@@ -198,7 +194,6 @@ async def _wait_for_existing_or_claim(
             return job, False
         if job.status == "failed":
             raise CanvasGenerationReplayError(job.error_code)
-    raise CanvasGenerationInProgressError("Canvas generation is still running.")
 
 
 def _completed_canvas(job: CanvasGenerationJob) -> CanvasDocument:
@@ -215,13 +210,27 @@ def _background_tasks(app: Any) -> dict[str, asyncio.Task[CanvasGenerationOutcom
     return tasks
 
 
+def _lecture_tasks(
+    app: Any,
+) -> dict[tuple[str, str], asyncio.Task[CanvasGenerationOutcome]]:
+    tasks = getattr(app.state, "canvas_generation_lecture_tasks", None)
+    if tasks is None:
+        tasks = {}
+        app.state.canvas_generation_lecture_tasks = tasks
+    return tasks
+
+
 def _finish_background(
     tasks: dict[str, asyncio.Task[CanvasGenerationOutcome]],
+    lecture_tasks: dict[tuple[str, str], asyncio.Task[CanvasGenerationOutcome]],
+    lecture_key: tuple[str, str],
     generation_id: str,
     task: asyncio.Task[CanvasGenerationOutcome],
 ) -> None:
     if tasks.get(generation_id) is task:
         tasks.pop(generation_id, None)
+    if lecture_tasks.get(lecture_key) is task:
+        lecture_tasks.pop(lecture_key, None)
     if not task.cancelled():
         task.exception()
 

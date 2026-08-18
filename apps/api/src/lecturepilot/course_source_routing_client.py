@@ -66,6 +66,7 @@ class LiteLLMSourceRoutingClient:
             response = await complete_with_usage(
                 self.usage_recorder,
                 acompletion,
+                usage_stage="course_source_routing",
                 model=settings.model,
                 messages=messages,
                 response_format=response_format,

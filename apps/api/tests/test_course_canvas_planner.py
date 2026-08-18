@@ -36,7 +36,7 @@ async def test_litellm_course_plan_client_requests_canvas_schema(monkeypatch) ->
     schema = calls[0]["response_format"]["json_schema"]["schema"]
     assert calls[0]["response_format"]["json_schema"]["strict"] is True
     assert calls[0]["temperature"] == 0.4
-    assert calls[0]["max_tokens"] == 6000
+    assert "max_tokens" not in calls[0]
     assert schema["required"] == ["title", "sections"]
 
 
@@ -265,7 +265,7 @@ class _FakePlanClient:
                 },
             ],
         }
-        for section_index in (6, 8):
+        for section_index in (5, 6, 8):
             extra_sections[section_index - 2]["blocks"].append(
                 {
                     "type": "quiz",
@@ -285,6 +285,9 @@ class _FakePlanClient:
 
 
 class _NoIssuesQualityReviewer:
+    async def review(self, **_kwargs) -> list:
+        return []
+
     async def validate(self, **_kwargs) -> None:
         return None
 

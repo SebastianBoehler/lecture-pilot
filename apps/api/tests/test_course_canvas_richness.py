@@ -105,8 +105,9 @@ async def test_section_fallback_skips_asset_only_outline_sections() -> None:
         source_document=source,
     )
 
-    assert len(planned.sections) == 7
+    assert len(planned.sections) == 5
     assert "original-slides" not in client.source_ids
+    assert client.source_ids == [f"evidence-batch-{index}" for index in range(1, 6)]
 
 
 def test_planner_and_section_fallback_receive_materially_more_bounded_evidence() -> None:
