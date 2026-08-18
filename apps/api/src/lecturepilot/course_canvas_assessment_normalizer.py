@@ -53,6 +53,13 @@ def _instructional_statement(blocks: list[CanvasBlock]) -> str | None:
         value = block.text or (block.items[0] if block.items else "")
         if statement := _usable_statement(value):
             return statement
+    for block in blocks:
+        if block.type not in {"quiz", "component"} or block.answer_index is None:
+            continue
+        if block.answer_index >= len(block.items):
+            continue
+        if statement := _usable_statement(block.items[block.answer_index]):
+            return statement
     return None
 
 
