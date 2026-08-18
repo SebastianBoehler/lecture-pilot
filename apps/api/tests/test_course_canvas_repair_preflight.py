@@ -107,6 +107,50 @@ async def test_section_repair_normalizes_redundant_math_without_calling_the_mode
     assert model.messages == []
 
 
+async def test_section_repair_normalizes_source_dependent_checkpoint_without_model_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    planner, model = _planner(monkeypatch, [])
+    source = published_course_canvas("targeted-repair", "lecture-01")
+    candidate = _invalid_candidate(source)
+    section = candidate.sections[0]
+    valid_math = section.blocks[1].model_copy(update={"text": r"w^\top x"})
+    target = section.blocks[4].model_copy(
+        update={"text": "This slide summarizes the optimization workflow."}
+    )
+    candidate = candidate.model_copy(
+        update={
+            "sections": [
+                section.model_copy(
+                    update={
+                        "blocks": [
+                            section.blocks[0],
+                            valid_math,
+                            *section.blocks[2:4],
+                            target,
+                            *section.blocks[5:],
+                        ]
+                    }
+                ),
+                *candidate.sections[1:],
+            ]
+        }
+    )
+
+    repaired = await planner.repair_section(
+        source,
+        candidate,
+        section_id=section.id,
+        block_id=target.id,
+        failure_context="Checkpoint must be understandable without a slide reference.",
+    )
+
+    repaired_target = next(block for block in repaired.sections[0].blocks if block.id == target.id)
+    assert "slide" not in repaired_target.text.casefold()
+    assert "this statement" in repaired_target.text.casefold()
+    assert model.messages == []
+
+
 async def test_block_repair_accepts_the_evidence_supported_patch_size(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

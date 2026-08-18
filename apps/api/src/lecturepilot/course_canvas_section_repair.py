@@ -50,6 +50,7 @@ class CourseCanvasSectionRepairMixin:
             section_id,
             block_id,
             failure_context,
+            output_language=output_language,
         )
         section = _section(candidate_document, section_id)
         target = _block(section, block_id) if block_id else None

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from lecturepilot.canvas_models import CanvasDocument
+from lecturepilot.course_canvas_assessment_normalizer import normalize_section_assessments
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_math import math_block_error, normalize_generated_math_block
 
@@ -10,6 +11,8 @@ def normalize_repair_candidate(
     section_id: str,
     block_id: str | None,
     failure: str,
+    *,
+    output_language: str = "en",
 ) -> CanvasDocument:
     lowered = failure.casefold()
     if block_id is None:
@@ -20,6 +23,18 @@ def normalize_repair_candidate(
     target = next((item for item in section.blocks if item.id == block_id), None)
     if target is None:
         raise CanvasGenerationRepairableError("The failed block no longer exists.")
+    if target.type == "checkpoint":
+        normalized_section = normalize_section_assessments(
+            section,
+            output_language=output_language,
+            require_checkpoint=False,
+            fallback_section=section,
+        )
+        if normalized_section != section:
+            sections = [
+                normalized_section if item.id == section_id else item for item in document.sections
+            ]
+            return document.model_copy(update={"sections": sections})
     if target.type != "math" or not any(
         marker in lowered
         for marker in (
