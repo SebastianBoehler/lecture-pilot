@@ -653,8 +653,8 @@ export const enMessages = {
   "builder.sources.confirm": "Accept assignments and continue",
   "builder.sources.confirming": "Accepting assignments...",
   "builder.sources.confirmed": "Assignments accepted",
-  "builder.sources.supplementalWarning":
-    "No supplemental teaching files were assigned. Rebuild the proposal before trusting it.",
+  "builder.sources.noAssignedWarning":
+    "No teaching evidence is assigned. Rebuild the proposal before continuing.",
   "builder.sources.rebuild": "Rebuild assignments",
   "builder.sources.rebuilding": "Rebuilding assignments...",
   "builder.sources.retry": "Retry source assignments",

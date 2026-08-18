@@ -1,6 +1,8 @@
 import type { CanvasDocument } from "./types";
 import { CanvasDraftRequestError } from "./canvasDraftApi";
+import { runBoundedTasks } from "./boundedTaskPool";
 
+export const CANVAS_DRAFT_CONCURRENCY = 2;
 const CANVAS_DRAFT_RETRY_DELAYS_MS = [1500, 3500];
 
 export type CanvasGenerationStatus = "pending" | "generating" | "ready" | "error";
@@ -103,7 +105,7 @@ export async function generateLectureCanvasDrafts({
 }) {
   const canvases = new Array<CanvasDocument>(lectureIds.length);
   const failures: CanvasGenerationProgress[] = [];
-  const workers = lectureIds.map(async (lectureId, currentIndex) => {
+  await runBoundedTasks(lectureIds, CANVAS_DRAFT_CONCURRENCY, async (lectureId, currentIndex) => {
     onProgress?.({ lectureId, status: "generating" });
     try {
       canvases[currentIndex] = await draftWithRetry(lectureId, draft, onProgress);
@@ -119,7 +121,6 @@ export async function generateLectureCanvasDrafts({
       onProgress?.(failure);
     }
   });
-  await Promise.all(workers);
   if (failures.length > 0) {
     throw new CanvasGenerationBatchError(failures);
   }

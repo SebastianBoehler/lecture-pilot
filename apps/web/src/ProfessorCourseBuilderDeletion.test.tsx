@@ -26,6 +26,10 @@ describe("Professor course deletion", () => {
         term: "Sommer 2026",
       }),
     );
+    window.sessionStorage.setItem(
+      "lecturepilot.professor-builder.current",
+      JSON.stringify({ workspace: { courseId: "demo-ml-course", lectureId: "lecture-01" } }),
+    );
     vi.stubGlobal(
       "confirm",
       vi.fn(() => true),
@@ -49,6 +53,7 @@ describe("Professor course deletion", () => {
     expect(await screen.findByText(/course workspace demo-ml-course deleted/i)).toBeInTheDocument();
     expect(screen.getByText(/no created course workspaces yet/i)).toBeInTheDocument();
     expect(window.localStorage.getItem("lecturepilot.demo.workspaceCourse")).toBeNull();
+    expect(window.sessionStorage.getItem("lecturepilot.professor-builder.current")).toBeNull();
     await user.click(screen.getByRole("button", { name: /course performance/i }));
     expect(
       screen.queryByRole("button", { name: /grundlagen des maschinellen lernens/i }),

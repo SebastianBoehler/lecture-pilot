@@ -667,8 +667,8 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.sources.confirm": "Zuordnungen übernehmen und fortfahren",
   "builder.sources.confirming": "Zuordnungen werden übernommen...",
   "builder.sources.confirmed": "Zuordnungen übernommen",
-  "builder.sources.supplementalWarning":
-    "Es wurden keine ergänzenden Lehrmaterialien zugeordnet. Erzeuge den Vorschlag neu, bevor du ihn übernimmst.",
+  "builder.sources.noAssignedWarning":
+    "Es sind keine Lehrmaterialien zugeordnet. Erzeuge den Vorschlag neu, bevor du fortfährst.",
   "builder.sources.rebuild": "Zuordnungen neu erzeugen",
   "builder.sources.rebuilding": "Zuordnungen werden neu erzeugt...",
   "builder.sources.retry": "Quellenzuordnungen erneut versuchen",

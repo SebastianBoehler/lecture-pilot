@@ -90,7 +90,7 @@ describe("professor canvas generation", () => {
     vi.useRealTimers();
   });
 
-  it("submits every lecture immediately to the shared provider rate queue", async () => {
+  it("queues every lecture while running at most two drafts concurrently", async () => {
     const releases: Array<() => void> = [];
     const draft = vi.fn(
       () =>
@@ -105,8 +105,13 @@ describe("professor canvas generation", () => {
     });
     await Promise.resolve();
 
-    expect(draft).toHaveBeenCalledTimes(4);
-    releases.forEach((release) => release());
+    expect(draft).toHaveBeenCalledTimes(2);
+    releases[0]();
+    await vi.waitFor(() => expect(draft).toHaveBeenCalledTimes(3));
+    releases[1]();
+    await vi.waitFor(() => expect(draft).toHaveBeenCalledTimes(4));
+    releases[2]();
+    releases[3]();
     await expect(generation).resolves.toHaveLength(4);
   });
 });

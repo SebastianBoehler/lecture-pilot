@@ -119,8 +119,7 @@ describe("ProfessorSourceRoutingStep", () => {
     expect(confirmations).toBe(1);
   });
 
-  it("blocks trusting a primary-only proposal when supplemental teaching files exist", async () => {
-    const user = userEvent.setup();
+  it("allows primary-only routing when supplemental files are irrelevant", async () => {
     const onRegenerate = vi.fn();
     render(
       <I18nProvider locale="en" setLocale={() => undefined}>
@@ -147,9 +146,8 @@ describe("ProfessorSourceRoutingStep", () => {
       </I18nProvider>,
     );
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/supplemental teaching files/i);
-    expect(screen.getByRole("button", { name: /accept assignments and continue/i })).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: /rebuild assignments/i }));
-    expect(onRegenerate).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /accept assignments and continue/i })).toBeEnabled();
+    expect(onRegenerate).not.toHaveBeenCalled();
   });
 });

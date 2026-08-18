@@ -125,17 +125,31 @@
 
 .created-lecture-access-status {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: flex-end;
   gap: 12px;
+  margin: 0;
   white-space: nowrap;
 }
 
 .created-lecture-visibility,
 .created-lecture-availability {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.created-lecture-visibility > span,
+.created-lecture-availability > span {
+  margin: 0;
+}
+
+.created-lecture-visibility > svg,
+.created-lecture-availability > svg {
+  flex: none;
+  margin-block-start: 1px;
 }
 
 .created-lecture-visibility {

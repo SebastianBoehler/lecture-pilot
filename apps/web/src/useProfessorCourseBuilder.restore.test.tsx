@@ -60,6 +60,27 @@ describe("Professor course builder restoration", () => {
     expect(result.current.steps.find((step) => step.id === "sources")?.available).toBe(true);
   });
 
+  it("returns to a clean definition step when the saved workspace was deleted", async () => {
+    saveRestorableFullCourse();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => {
+        if (url.endsWith("/admin/courses")) return Promise.resolve(response([]));
+        throw new Error(`Unexpected request: ${url}`);
+      }),
+    );
+
+    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps));
+
+    await waitFor(() => expect(result.current.isRestoring).toBe(false));
+    await waitFor(() => expect(result.current.activeStep).toBe("define"));
+    expect(result.current.workspace).toBeNull();
+    expect(result.current.defineStep.setup.courseTitle).toBe("");
+    expect(
+      JSON.parse(window.sessionStorage.getItem("lecturepilot.professor-builder.current") ?? "{}"),
+    ).toMatchObject({ courseReady: false, workspace: null });
+  });
+
   it("keeps a still-running lecture out of the failed retry state after refresh", async () => {
     saveRestorableFullCourse();
     const baseFetch = professorFetchMock();
@@ -105,6 +126,12 @@ describe("Professor course builder restoration", () => {
     expect(
       fetchMock.mock.calls.filter(
         ([url, init]) => String(url).includes("/canvas/draft") && init?.method === "POST",
+      ),
+    ).toHaveLength(0);
+    expect(
+      fetchMock.mock.calls.filter(
+        ([url, init]) =>
+          String(url).includes("/source-routing/proposal") && init?.method === "POST",
       ),
     ).toHaveLength(0);
     expect(onPublishWorkspace).toHaveBeenCalledOnce();

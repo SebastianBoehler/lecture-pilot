@@ -350,6 +350,7 @@ function App() {
 
   function handleWorkspaceDeleted(courseId: string) {
     clearDemoWorkspaceCourse(courseId);
+    clearSavedFlow();
     setPublishedLectureIds([]);
     if (workspaceCourseId === courseId || selectedCourseId === courseId) {
       void loadWorkspaceCourse(

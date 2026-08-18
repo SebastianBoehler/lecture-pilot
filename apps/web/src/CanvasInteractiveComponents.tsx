@@ -1,6 +1,7 @@
 import type { ComponentType, ReactNode } from "react";
 
 import { InteractiveChart } from "./CanvasInteractiveChart";
+import { MechanismComparison } from "./CanvasMechanismComparison";
 import { QuizBlock } from "./CanvasLearningBlocks";
 import { ProcessExplorer } from "./CanvasProcessExplorer";
 import { VisualArtifact } from "./CanvasVisualArtifact";
@@ -29,6 +30,7 @@ const componentRegistry: Record<string, ComponentType<ComponentRendererProps>> =
   interactive_chart: InteractiveChart,
   process_explorer: ProcessExplorer,
   visual_artifact: VisualArtifact,
+  mechanism_comparison: MechanismComparison,
 };
 
 export function ComponentBlock({

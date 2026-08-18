@@ -106,11 +106,11 @@ describe("Professor course builder recovery", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((url: string, init?: RequestInit) => {
-        if (url.includes("/source-routing/proposal") && init?.method === "POST") {
+        if (url.endsWith("/source-routing") && init?.method !== "PUT") {
           return Promise.resolve(
             new Response(
               JSON.stringify({ detail: "Source assignment proposal is temporarily unavailable." }),
-              { status: 503 },
+              { status: 409 },
             ),
           );
         }

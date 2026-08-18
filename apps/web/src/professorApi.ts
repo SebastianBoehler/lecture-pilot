@@ -124,6 +124,19 @@ export async function proposeSourceRouting(
   return payload as CourseSourceRoutingManifest;
 }
 
+export async function getSourceRouting(
+  courseId: string,
+  session: LoginSession,
+): Promise<CourseSourceRoutingManifest> {
+  const response = await fetch(
+    apiUrl(`/admin/courses/${courseId}/source-routing`),
+    authRequestInit(session),
+  );
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "Source assignments are not ready."));
+  return payload as CourseSourceRoutingManifest;
+}
+
 export async function confirmSourceRouting(
   courseId: string,
   routing: CourseSourceRoutingManifest,

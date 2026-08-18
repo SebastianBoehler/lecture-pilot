@@ -9,6 +9,10 @@
   position: relative;
 }
 
+.course-name-field > input {
+  width: 100%;
+}
+
 .course-suggestion-list {
   position: absolute;
   z-index: 8;

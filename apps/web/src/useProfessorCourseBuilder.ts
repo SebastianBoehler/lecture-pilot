@@ -14,12 +14,14 @@ import {
   createCourseWorkspace,
   getSourceBundle,
   includeYoutubeMedia,
+  listCourseWorkspaces,
   listYoutubeMedia,
   proposeLectureSchedule,
   removeYoutubeMedia,
   searchYoutubeMedia,
 } from "./professorApi";
 import {
+  clearSavedFlow,
   isCourseSetupReady,
   readSavedFlow,
   writeSavedFlow,
@@ -38,7 +40,7 @@ import { useProfessorSourceRouting } from "./useProfessorSourceRouting";
 import { lectureFromWorkspace, requireWorkspace } from "./professorWorkspaceView";
 import { uploadProfessorMaterials } from "./professorMaterialUpload";
 import { ignoredUploadNotice } from "./professorUpload";
-import { hasSupplementalBlindSpot } from "./sourceRoutingView";
+import { hasNoAssignedEvidence } from "./sourceRoutingView";
 import {
   flattenVideoGroups,
   type YoutubeCandidateGroup,
@@ -136,7 +138,7 @@ export function useProfessorCourseBuilder({
   const reviewReady = mediaReady || mediaReviewed;
   const reviewAvailable = bundleReady && (setup.target !== "full-course" || scheduleApplied);
   const routingReady = Boolean(
-    sourceRouting.routing?.confirmed && !hasSupplementalBlindSpot(sourceRouting.routing.routes),
+    sourceRouting.routing?.confirmed && !hasNoAssignedEvidence(sourceRouting.routing.routes),
   );
   const scheduledLectureIds = lectureSchedule.map((lecture) => lectureIdFromNumber(lecture.number));
   const mediaTargetLectures = workspace
@@ -387,6 +389,15 @@ export function useProfessorCourseBuilder({
     return flattenVideoGroups(groups).length;
   }
 
+  async function requireConfirmedRouting(courseId: string) {
+    const current = await sourceRouting.load(courseId);
+    if (current.confirmed && !hasNoAssignedEvidence(current.routes)) return;
+    setActiveStep("sources");
+    throw new Error(
+      "Source assignments changed. Review and confirm source assignments again before generating canvases.",
+    );
+  }
+
   function updateGenerationItem(progress: CanvasGenerationProgress) {
     setGenerationProgress((current) =>
       current.map((item) =>
@@ -458,6 +469,24 @@ export function useProfessorCourseBuilder({
     }
     setIsRestoring(true);
     try {
+      if (options.skipWhenMissing) {
+        const savedWorkspaceExists = (await listCourseWorkspaces(session)).some(
+          (item) => item.course.id === targetWorkspace.courseId,
+        );
+        if (!savedWorkspaceExists) {
+          clearSavedFlow();
+          setQuery("");
+          updateSetup({
+            ...setup,
+            courseTitle: "",
+            firstLectureDate: "",
+            lectureCount: "",
+            lectureNumber: "",
+            lectureTitle: "",
+          });
+          return;
+        }
+      }
       const restoredBundle = await getSourceBundle(targetWorkspace.courseId, session);
       setBundle(restoredBundle);
       setSupportedUploads(restoredBundle.supported_uploads ?? []);
@@ -605,7 +634,7 @@ export function useProfessorCourseBuilder({
           setLectureSchedule(proposal.lectures);
         }
         if (setup.target !== "full-course") {
-          await sourceRouting.load(activeWorkspace.courseId);
+          await sourceRouting.propose(activeWorkspace.courseId);
           setActiveStep("sources");
         }
         setUploadFiles([]);
@@ -631,7 +660,7 @@ export function useProfessorCourseBuilder({
         resetGeneratedState();
         setScheduleApplied(true);
         setActiveStep("sources");
-        await sourceRouting.load(created.course.id);
+        await sourceRouting.propose(created.course.id);
         return `Lecture schedule applied with ${created.lectures.length} dated lectures.`;
       }),
   };
@@ -667,6 +696,7 @@ export function useProfessorCourseBuilder({
     onGenerate: () =>
       run("generate", async () => {
         const activeWorkspace = requireWorkspace(workspace);
+        await requireConfirmedRouting(activeWorkspace.courseId);
         const lectureIds =
           setup.target === "full-course" && fullCourseLectureIds.length
             ? fullCourseLectureIds
@@ -690,11 +720,14 @@ export function useProfessorCourseBuilder({
     canSearch: Boolean(setupReady && workspace),
     canSuggest: Boolean(suggestedQueries.length && setupReady && workspace),
     pendingAction,
-    onContinue: () => {
-      setAutoSuggesting(false);
-      setMediaReviewed(true);
-      setActiveStep("generate");
-    },
+    onContinue: () =>
+      void run("validate-routing", async () => {
+        const activeWorkspace = requireWorkspace(workspace);
+        await requireConfirmedRouting(activeWorkspace.courseId);
+        setAutoSuggesting(false);
+        setMediaReviewed(true);
+        setActiveStep("generate");
+      }),
     onQueryChange: setQuery,
     onSearch: () =>
       run("search", async () => {
@@ -749,9 +782,9 @@ export function useProfessorCourseBuilder({
         setGeneratedLectureIds([]);
         setGenerationProgress([]);
         setGenerationWarnings([]);
-        return wasSelected
-          ? `Removed video from lecture ${target.number}.`
-          : `Saved 1 approved video for lecture ${target.number}.`;
+        if (wasSelected) return `Removed video from lecture ${target.number}.`;
+        const selectedCount = nextSelected.size;
+        return `Saved ${selectedCount} approved ${selectedCount === 1 ? "video" : "videos"} for lecture ${target.number}.`;
       });
     },
     query,
@@ -813,7 +846,7 @@ export function useProfessorCourseBuilder({
       run("regenerate-routing", async () => {
         const activeWorkspace = requireWorkspace(workspace);
         await sourceRouting.regenerate(activeWorkspace.courseId);
-        return "Source assignments rebuilt with supplemental-material checks.";
+        return "Source assignments rebuilt from the indexed course evidence.";
       }),
     onConfirm: () =>
       run("confirm-routing", async () => {

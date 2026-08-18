@@ -5,11 +5,7 @@ import { useI18n } from "./i18n";
 import { StepHeader } from "./ProfessorCourseBuilderParts";
 import { ProfessorSourceRoutingEditor } from "./ProfessorSourceRoutingEditor";
 import { lectureIdFromNumber } from "./professorWorkspaceActivation";
-import {
-  hasSupplementalBlindSpot,
-  lectureRouteCounts,
-  sourceRouteCounts,
-} from "./sourceRoutingView";
+import { hasNoAssignedEvidence, lectureRouteCounts, sourceRouteCounts } from "./sourceRoutingView";
 import type { CourseSourceRoutingManifest, LectureScheduleItem, SourceRouteRole } from "./types";
 
 export type SourceRoutingLectureOption = { id: string; label: string };
@@ -42,14 +38,14 @@ export function ProfessorSourceRoutingStep({
   const coveredLectures = lectureOptions.filter(
     (lecture) => (lectureCounts.get(lecture.id) ?? 0) > 0,
   ).length;
-  const supplementalBlindSpot = hasSupplementalBlindSpot(routes);
+  const noAssignedEvidence = hasNoAssignedEvidence(routes);
 
   return (
     <section className="flow-card">
       <StepHeader
         number="03"
         title={t("builder.sources.title")}
-        done={Boolean(routing?.confirmed) && !supplementalBlindSpot}
+        done={Boolean(routing?.confirmed) && !noAssignedEvidence}
       />
       <p className="flow-help">{t("builder.sources.help")}</p>
       <div className="source-routing-overview" role="list">
@@ -72,7 +68,7 @@ export function ProfessorSourceRoutingStep({
           disabled={
             isSaving ||
             (!routingMissing &&
-              (!routes.length || Boolean(routing?.confirmed) || supplementalBlindSpot))
+              (!routes.length || Boolean(routing?.confirmed) || noAssignedEvidence))
           }
           type="button"
           onClick={routingMissing ? onRegenerate : onConfirm}
@@ -88,9 +84,9 @@ export function ProfessorSourceRoutingStep({
                 : t("builder.sources.confirm")}
         </button>
       </div>
-      {supplementalBlindSpot ? (
+      {noAssignedEvidence ? (
         <div className="source-routing-warning" role="alert">
-          <span>{t("builder.sources.supplementalWarning")}</span>
+          <span>{t("builder.sources.noAssignedWarning")}</span>
           <button disabled={isSaving} type="button" onClick={onRegenerate}>
             {isSaving ? t("builder.sources.rebuilding") : t("builder.sources.rebuild")}
           </button>

@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 
-import { confirmSourceRouting, proposeSourceRouting } from "./professorApi";
+import { confirmSourceRouting, getSourceRouting, proposeSourceRouting } from "./professorApi";
 import type { CourseSourceRoutingManifest, LoginSession, SourceRouteRole } from "./types";
 
 export function useProfessorSourceRouting(session: LoginSession) {
@@ -8,7 +8,7 @@ export function useProfessorSourceRouting(session: LoginSession) {
 
   const load = useCallback(
     async (courseId: string) => {
-      const result = await proposeSourceRouting(courseId, session);
+      const result = await getSourceRouting(courseId, session);
       setRouting(result);
       return result;
     },
@@ -20,6 +20,15 @@ export function useProfessorSourceRouting(session: LoginSession) {
   const regenerate = useCallback(
     async (courseId: string) => {
       const result = await proposeSourceRouting(courseId, session, true);
+      setRouting(result);
+      return result;
+    },
+    [session],
+  );
+
+  const propose = useCallback(
+    async (courseId: string) => {
+      const result = await proposeSourceRouting(courseId, session);
       setRouting(result);
       return result;
     },
@@ -55,5 +64,5 @@ export function useProfessorSourceRouting(session: LoginSession) {
     [routing, session],
   );
 
-  return { confirm, load, regenerate, reset, routing, updateRoute };
+  return { confirm, load, propose, regenerate, reset, routing, updateRoute };
 }

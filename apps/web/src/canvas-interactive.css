@@ -1,11 +1,102 @@
 .canvas-interactive-chart,
-.canvas-process-explorer {
+.canvas-process-explorer,
+.canvas-mechanism-comparison {
   overflow: hidden;
   margin: 20px 0;
   border: 1px solid var(--color-border-primary);
   border-radius: 12px;
   padding: 20px;
   background: var(--color-bg-primary);
+}
+
+.canvas-mechanism-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.canvas-mechanism {
+  min-width: 0;
+  border-top: 2px solid var(--color-accent-primary);
+  padding-top: 12px;
+}
+
+.canvas-mechanism h4,
+.canvas-mechanism p {
+  margin: 0;
+}
+
+.canvas-mechanism h4 {
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.canvas-mechanism p {
+  margin-top: 8px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.canvas-mechanism-profile {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-bg-secondary);
+}
+
+.canvas-mechanism-axes {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.canvas-mechanism-profile polyline {
+  fill: none;
+  stroke: var(--color-accent-primary);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+}
+
+.canvas-mechanism-profile circle {
+  fill: var(--color-accent-primary);
+}
+
+.canvas-mechanism-table {
+  overflow-x: auto;
+  margin-top: 20px;
+}
+
+.canvas-mechanism-table > strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.canvas-mechanism-table table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 13px;
+}
+
+.canvas-mechanism-table th,
+.canvas-mechanism-table td {
+  border-bottom: 1px solid var(--color-border-primary);
+  padding: 8px 4px;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.canvas-mechanism-table th:first-child {
+  width: 36%;
+  text-align: left;
 }
 
 .canvas-component-header {
@@ -183,7 +274,8 @@
 
 @media (max-width: 620px) {
   .canvas-interactive-chart,
-  .canvas-process-explorer {
+  .canvas-process-explorer,
+  .canvas-mechanism-comparison {
     padding: 16px;
   }
 

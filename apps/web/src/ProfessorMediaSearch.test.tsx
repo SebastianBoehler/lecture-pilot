@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { professorFetchMock } from "./ProfessorCourseBuilder.testFixtures";
 import { openProfessorDemo } from "./testLessonActions";
+import type { CourseSourceRoutingManifest, YoutubeVideoCandidate } from "./types";
 
 describe("Professor lecture media search", () => {
   afterEach(() => {
@@ -53,5 +54,93 @@ describe("Professor lecture media search", () => {
     await waitFor(() => {
       expect(screen.getByLabelText(/bayesian decision theory/i)).toBeChecked();
     });
+  });
+
+  it("reports the total persisted selection count after approving multiple videos", async () => {
+    const user = userEvent.setup();
+    const baseFetch = professorFetchMock();
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      const response = await baseFetch(url, init);
+      if (!url.includes("/media/youtube/search")) return response;
+      const payload = (await response.json()) as { items: YoutubeVideoCandidate[] };
+      const first = payload.items[0];
+      return {
+        ok: true,
+        json: async () => ({
+          items: [
+            first,
+            {
+              ...first,
+              video_id: "secondVideo1",
+              title: "A second machine-learning explanation",
+              url: "https://www.youtube.com/watch?v=secondVideo1",
+            },
+          ],
+        }),
+      };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+
+    await openProfessorDemo(user);
+    await user.type(screen.getByLabelText(/course name/i), "Demo ML Course");
+    await user.click(screen.getByRole("button", { name: /create course workspace/i }));
+    await user.upload(
+      await screen.findByLabelText(/^choose files$/i),
+      new File(["# lecture one"], "Lecture01-eng.tex", { type: "application/x-tex" }),
+    );
+    await user.click(screen.getByRole("button", { name: /upload and process materials/i }));
+    await user.click(await screen.findByRole("button", { name: /apply lecture schedule/i }));
+    await screen.findByRole("heading", { name: /source assignments ready/i });
+    await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
+
+    await user.click(await screen.findByLabelText(/bayesian decision theory/i));
+    await user.click(await screen.findByLabelText(/second machine-learning explanation/i));
+
+    expect(await screen.findByText(/saved 2 approved videos for lecture 01/i)).toBeInTheDocument();
+  });
+
+  it("returns to source review when routing is no longer confirmed", async () => {
+    const user = userEvent.setup();
+    const baseFetch = professorFetchMock();
+    let routingInvalidated = false;
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      const response = await baseFetch(url, init);
+      const path = new URL(url, "http://localhost").pathname;
+      if (routingInvalidated && path.endsWith("/source-routing") && !init?.method) {
+        const payload = (await response.json()) as CourseSourceRoutingManifest;
+        return { ok: true, json: async () => ({ ...payload, confirmed: false }) };
+      }
+      return response;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+
+    await openProfessorDemo(user);
+    await user.type(screen.getByLabelText(/course name/i), "Demo ML Course");
+    await user.click(screen.getByRole("button", { name: /create course workspace/i }));
+    await user.upload(
+      await screen.findByLabelText(/^choose files$/i),
+      new File(["# lecture one"], "Lecture01-eng.tex", { type: "application/x-tex" }),
+    );
+    await user.click(screen.getByRole("button", { name: /upload and process materials/i }));
+    await user.click(await screen.findByRole("button", { name: /apply lecture schedule/i }));
+    await screen.findByRole("heading", { name: /source assignments ready/i });
+    await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
+    await screen.findByRole("heading", { name: /review youtube candidates/i });
+
+    routingInvalidated = true;
+    await user.click(screen.getByRole("button", { name: /continue to canvas draft/i }));
+
+    expect(await screen.findByRole("heading", { name: /source assignments ready/i })).toBeVisible();
+    expect(
+      screen.queryByRole("heading", { name: /generate canvas draft/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(/review and confirm source assignments again/i)).toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) => String(url).includes("/canvas/draft") && init?.method === "POST",
+      ),
+    ).toBe(false);
   });
 });

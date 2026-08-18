@@ -11,7 +11,8 @@ export type BuilderAction =
   | "regenerate-routing"
   | "search"
   | "suggest-videos"
-  | "upload";
+  | "upload"
+  | "validate-routing";
 
 export function useProfessorWorkflowRun() {
   const [pendingAction, setPendingAction] = useState<BuilderAction | null>(null);
