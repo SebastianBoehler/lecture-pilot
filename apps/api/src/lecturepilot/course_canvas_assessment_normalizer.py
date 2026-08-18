@@ -15,9 +15,12 @@ def normalize_section_assessments(
     *,
     output_language: str,
     require_checkpoint: bool = True,
+    fallback_section: CanvasSection | None = None,
 ) -> CanvasSection:
     blocks = list(section.blocks)
     evidence = _instructional_statement(blocks)
+    if evidence is None and fallback_section is not None:
+        evidence = _instructional_statement(fallback_section.blocks)
     checkpoint_found = False
     for index, block in enumerate(blocks):
         if block.type != "checkpoint":

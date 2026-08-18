@@ -200,6 +200,7 @@ def _read_section_payload(
         section,
         output_language=output_language,
         require_checkpoint=require_checkpoint,
+        fallback_section=source_section,
     )
 
 

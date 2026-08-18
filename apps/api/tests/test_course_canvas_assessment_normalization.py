@@ -57,10 +57,37 @@ def test_section_parser_adds_a_grounded_checkpoint_when_one_is_missing() -> None
     )
 
 
+def test_section_repair_uses_original_evidence_when_patch_only_contains_math() -> None:
+    parsed = _read_section_payload(
+        {
+            "title": "Probability",
+            "blocks": [{"type": "math", "text": r"P(C\mid x)=P(C)p(x\mid C)/p(x)"}],
+        },
+        _source_section(),
+        {},
+    )
+
+    validate_section_assessments(parsed)
+    checkpoint = next(block for block in parsed.blocks if block.type == "checkpoint")
+    assert checkpoint.text == (
+        "Explain this statement and identify the relationship it describes: "
+        "the stated evidence explains how probability combines prior beliefs and observations."
+    )
+
+
 def _source_section() -> CanvasSection:
     return CanvasSection(
         id="probability",
         title="Probability",
         source_ref="nested/lecture.pdf pages 1-2",
-        blocks=[CanvasBlock(id="source", type="paragraph", text="Source evidence.")],
+        blocks=[
+            CanvasBlock(
+                id="source",
+                type="paragraph",
+                text=(
+                    "The source evidence explains how probability combines prior beliefs and "
+                    "observations."
+                ),
+            )
+        ],
     )
