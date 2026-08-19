@@ -1,5 +1,5 @@
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.course_canvas_ids import avoid_mirrored_section_ids
+from lecturepilot.course_canvas_ids import avoid_mirrored_section_ids, ensure_unique_block_ids
 
 
 def test_renames_planned_sections_that_mirror_extracted_source_ids() -> None:
@@ -22,6 +22,32 @@ def test_renames_planned_sections_that_mirror_extracted_source_ids() -> None:
     assert result.sections[0].id == "learning-1-source-slide-1"
     assert result.sections[0].blocks[0].id == "learning-1-source-slide-1-p-1"
     assert result.sections[0].blocks[1].id == "custom-quiz"
+
+
+def test_normalizes_duplicate_block_ids_across_and_within_sections() -> None:
+    document = _document(
+        "first",
+        [
+            CanvasBlock(id="shared", type="paragraph", text="First"),
+            CanvasBlock(id="shared", type="paragraph", text="Second"),
+        ],
+    )
+    document.sections.append(
+        CanvasSection(
+            id="second",
+            title="Second",
+            source_ref="Lecture03-eng.tex",
+            blocks=[CanvasBlock(id="shared", type="paragraph", text="Third")],
+        )
+    )
+
+    result = ensure_unique_block_ids(document)
+
+    assert [block.id for section in result.sections for block in section.blocks] == [
+        "shared",
+        "shared-2",
+        "shared-3",
+    ]
 
 
 def _document(section_id: str, blocks: list[CanvasBlock]) -> CanvasDocument:

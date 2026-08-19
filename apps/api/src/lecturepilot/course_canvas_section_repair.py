@@ -2,9 +2,15 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from lecturepilot.canvas_component_catalog import normalize_component_identity
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
+from lecturepilot.course_canvas_multi_block_repair import repair_multiple_blocks
+from lecturepilot.course_canvas_repair_apply import (
+    allowed_assets as _allowed_assets,
+    apply_replacement as _apply_replacement,
+    block as _block,
+    section as _section,
+)
 from lecturepilot.course_canvas_repair_preflight import normalize_repair_candidate
 from lecturepilot.course_canvas_repair_response import (
     repair_patch_response_format,
@@ -41,6 +47,26 @@ class _RepairPlanner(Protocol):
 
 
 class CourseCanvasSectionRepairMixin:
+    async def repair_blocks(
+        self: _RepairPlanner,
+        source_document: CanvasDocument,
+        candidate_document: CanvasDocument,
+        *,
+        section_id: str,
+        block_ids: list[str],
+        failure_context: str,
+        output_language: str = "en",
+    ) -> CanvasDocument:
+        return await repair_multiple_blocks(
+            self,
+            source_document,
+            candidate_document,
+            section_id=section_id,
+            block_ids=block_ids,
+            failure_context=failure_context,
+            output_language=output_language,
+        )
+
     async def repair_section(
         self: _RepairPlanner,
         source_document: CanvasDocument,
@@ -146,97 +172,3 @@ def _is_new_target(
     if error.section_id != section.id:
         return True
     return target is not None and error.block_id is not None and error.block_id != target.id
-
-
-def _apply_replacement(
-    document: CanvasDocument,
-    original: CanvasSection,
-    replacement: CanvasSection,
-    target: CanvasBlock | None,
-) -> CanvasDocument:
-    if target is None:
-        repaired_section = replacement.model_copy(
-            update={
-                "id": original.id,
-                "title": original.title,
-                "source_ref": original.source_ref,
-            }
-        )
-    else:
-        target_index = next(
-            index for index, block in enumerate(original.blocks) if block.id == target.id
-        )
-        repaired_blocks = _stable_replacement_blocks(
-            replacement.blocks,
-            target,
-            {block.id for block in original.blocks if block.id != target.id},
-        )
-        repaired_section = original.model_copy(
-            update={
-                "blocks": [
-                    *original.blocks[:target_index],
-                    *repaired_blocks,
-                    *original.blocks[target_index + 1 :],
-                ]
-            }
-        )
-    sections = [
-        repaired_section if section.id == original.id else section for section in document.sections
-    ]
-    return document.model_copy(update={"sections": sections})
-
-
-def _stable_replacement_blocks(
-    replacements: list[CanvasBlock],
-    target: CanvasBlock,
-    reserved: set[str],
-) -> list[CanvasBlock]:
-    if not replacements:
-        raise CanvasGenerationRepairableError("The proposed patch returned no replacement blocks.")
-    primary = next(
-        (index for index, block in enumerate(replacements) if block.type == target.type),
-        len(replacements) - 1,
-    )
-    result: list[CanvasBlock] = []
-    repair_index = 1
-    for index, block in enumerate(replacements):
-        if index == primary:
-            block_id = target.id
-        else:
-            block_id = _unique_id(f"{target.id}-repair-{repair_index}", reserved)
-            repair_index += 1
-        reserved.add(block_id)
-        result.append(normalize_component_identity(block, block_id=block_id))
-    return result
-
-
-def _section(document: CanvasDocument, section_id: str) -> CanvasSection:
-    section = next((item for item in document.sections if item.id == section_id), None)
-    if section is None:
-        raise CanvasGenerationRepairableError("The failed section no longer exists.")
-    return section
-
-
-def _block(section: CanvasSection, block_id: str | None) -> CanvasBlock:
-    block = next((item for item in section.blocks if item.id == block_id), None)
-    if block is None:
-        raise CanvasGenerationRepairableError("The failed block no longer exists.")
-    return block
-
-
-def _allowed_assets(section: CanvasSection) -> dict[str, str | None]:
-    return {
-        block.asset_path: block.asset_url
-        for block in section.blocks
-        if block.type in {"asset", "video"} and block.asset_path
-    }
-
-
-def _unique_id(base: str, reserved: set[str]) -> str:
-    candidate = base[:120]
-    suffix = 2
-    while candidate in reserved:
-        tail = f"-{suffix}"
-        candidate = f"{base[: 120 - len(tail)]}{tail}"
-        suffix += 1
-    return candidate

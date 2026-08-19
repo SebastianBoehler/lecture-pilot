@@ -112,7 +112,9 @@ def _bounded_lines(lines: list[str], budget: int) -> str:
         if remaining <= 0:
             break
         if len(normalized) > remaining:
-            continue
+            if remaining > 3:
+                output.append(normalized[: remaining - 3].rstrip() + "...")
+            break
         output.append(normalized)
         used += len(normalized) + 1
     return "\n".join(output)

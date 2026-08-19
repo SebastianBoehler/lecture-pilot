@@ -9,7 +9,7 @@ from test_course_canvas_quality import _source_document
 from test_course_canvas_targeted_repair import _invalid_candidate
 
 
-async def test_quality_issues_across_blocks_avoid_a_whole_section_rewrite() -> None:
+async def test_quality_issues_across_blocks_use_one_multi_patch_request() -> None:
     source, candidate = _documents()
     issues = [
         CanvasQualityIssue(
@@ -34,12 +34,13 @@ async def test_quality_issues_across_blocks_avoid_a_whole_section_rewrite() -> N
 
     assert repaired == candidate
     assert planner.review_calls == 1
-    assert len(planner.repair_calls) == 5
-    assert [call[1] for call in planner.repair_calls] == [
-        f"optimization-issue-{index}" for index in range(1, 6)
+    assert planner.repair_calls == []
+    assert planner.multi_repair_calls == [
+        (
+            "learning-optimization",
+            [f"optimization-issue-{index}" for index in range(1, 6)],
+        )
     ]
-    assert all(call[0] == "learning-optimization" for call in planner.repair_calls)
-    assert all(call[2].startswith("Canvas quality review failed:") for call in planner.repair_calls)
 
 
 async def test_batched_quality_repair_allows_one_bounded_follow_up_pass() -> None:
@@ -195,6 +196,7 @@ class _BatchPlanner:
         self.reviews = reviews
         self.review_calls = 0
         self.repair_calls: list[tuple[str, str | None, str]] = []
+        self.multi_repair_calls: list[tuple[str, list[str]]] = []
 
     async def repair_section(
         self,
@@ -207,6 +209,19 @@ class _BatchPlanner:
         output_language,
     ):
         self.repair_calls.append((section_id, block_id, failure_context))
+        return candidate_document
+
+    async def repair_blocks(
+        self,
+        source_document,
+        candidate_document,
+        *,
+        section_id,
+        block_ids,
+        failure_context,
+        output_language,
+    ):
+        self.multi_repair_calls.append((section_id, block_ids))
         return candidate_document
 
     async def review_quality(self, source_document, candidate_document):

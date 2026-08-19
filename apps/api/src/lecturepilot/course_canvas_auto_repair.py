@@ -12,6 +12,17 @@ from lecturepilot.course_canvas_validation import validate_planned_document
 
 
 class CanvasRepairPlanner(Protocol):
+    async def repair_blocks(
+        self,
+        source_document: CanvasDocument,
+        candidate_document: CanvasDocument,
+        *,
+        section_id: str,
+        block_ids: list[str],
+        failure_context: str,
+        output_language: str,
+    ) -> CanvasDocument: ...
+
     async def repair_section(
         self,
         source_document: CanvasDocument,
@@ -156,16 +167,14 @@ async def _repair_issue_group(
         return active
     block_groups = _issues_by_block(unresolved)
     if len(block_groups) > 1 and all(group[0].block_id is not None for group in block_groups):
-        for group in block_groups:
-            active = await planner.repair_section(
-                source,
-                active,
-                section_id=group[0].section_id,
-                block_id=group[0].block_id,
-                failure_context=_quality_failure_context(group),
-                output_language=output_language,
-            )
-        return active
+        return await planner.repair_blocks(
+            source,
+            active,
+            section_id=unresolved[0].section_id,
+            block_ids=[group[0].block_id for group in block_groups if group[0].block_id],
+            failure_context=_quality_failure_context(unresolved),
+            output_language=output_language,
+        )
     return await planner.repair_section(
         source,
         active,

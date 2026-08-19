@@ -102,12 +102,13 @@ def test_repairs_all_reported_quality_issues_as_surgical_block_patches(tmp_path:
     )
     assert failed.status_code == 503
     assert repaired.status_code == 200
-    assert len(planner.targeted_repair_calls) == 5
+    assert len(planner.targeted_repair_calls) == 1
+    assert len(planner.multi_repair_calls) == 1
     assert planner.quality_review_calls == 2
-    assert [call[1] for call in planner.targeted_repair_calls[1:]] == [
-        f"optimization-issue-{index}" for index in range(1, 5)
-    ]
-    assert all(f"issue {index}" in planner.targeted_repair_calls[index][2] for index in range(1, 5))
+    section_id, block_ids, failure = planner.multi_repair_calls[0]
+    assert section_id == "learning-optimization"
+    assert block_ids == [f"optimization-issue-{index}" for index in range(1, 5)]
+    assert all(f"issue {index}" in failure for index in range(1, 5))
 
 
 class _TransientRepairPlanner(_TargetedRepairPlanner):
@@ -137,6 +138,23 @@ class _QualityRetryPlanner(_TargetedRepairPlanner):
 
 
 class _ManyQualityRetryPlanner(_TargetedRepairPlanner):
+    def __init__(self) -> None:
+        super().__init__()
+        self.multi_repair_calls: list[tuple[str, list[str], str]] = []
+
+    async def repair_blocks(
+        self,
+        source_document,
+        candidate_document,
+        *,
+        section_id,
+        block_ids,
+        failure_context,
+        output_language,
+    ):
+        self.multi_repair_calls.append((section_id, block_ids, failure_context))
+        return candidate_document
+
     async def review_quality(self, source_document, candidate_document):
         self.quality_review_calls += 1
         if self.quality_review_calls > 1:

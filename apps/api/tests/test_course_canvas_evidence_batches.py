@@ -85,3 +85,46 @@ def test_quality_evidence_keeps_component_options_and_selected_answer() -> None:
 
     assert "options=['TP + FP', 'TP + FN']" in prompt
     assert "selected=0" in prompt
+
+
+def test_quality_evidence_truncates_a_large_source_block_instead_of_dropping_it() -> None:
+    visible_fact = "The interface has three tabs and a two-dimensional latent space."
+    source_section = CanvasSection(
+        id="interactive-html",
+        title="Interactive HTML",
+        source_ref="nested/interactive.html",
+        blocks=[
+            CanvasBlock(
+                id="html-source",
+                type="paragraph",
+                text=f"```html\n<h2>{visible_fact}</h2>\n{'x' * 50_000}\n```",
+            )
+        ],
+    )
+    source = CanvasDocument(
+        id="course-lecture",
+        course_id="course",
+        lecture_id="lecture",
+        title="Lecture",
+        source_kind="markdown",
+        source_ref="nested/interactive.html",
+        workspace_path="source/index.md",
+        sections=[source_section],
+    )
+    candidate = source.model_copy(
+        update={
+            "source_kind": "generated",
+            "sections": [
+                source_section.model_copy(
+                    update={
+                        "blocks": [CanvasBlock(id="claim", type="paragraph", text=visible_fact)]
+                    }
+                )
+            ],
+        }
+    )
+
+    prompt = compact_quality_evidence(source, candidate)
+
+    assert "SOURCE EVIDENCE nested/interactive.html" in prompt
+    assert f"- paragraph: ```html <h2>{visible_fact}</h2>" in prompt

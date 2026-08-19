@@ -125,6 +125,7 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
             "model": settings.model,
         }
         document: CanvasDocument | None = None
+        quality_repair_started = False
         try:
             with self.observability.model_span(
                 stage="sectionwise_plan",
@@ -149,6 +150,7 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
                 )
                 if quality_issues:
                     first = quality_issues[0]
+                    quality_repair_started = True
                     return await repair_until_quality_valid(
                         self,
                         source=source_document,
@@ -167,6 +169,8 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
                 )
                 return document
         except CanvasGenerationRepairableError as exc:
+            if quality_repair_started:
+                raise
             candidate = exc.candidate or document
             if candidate is not None:
                 candidate = interleave_original_slides(candidate, source_document)

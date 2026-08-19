@@ -8,6 +8,7 @@ from lecturepilot.canvas_component_catalog import component_catalog_instruction
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_language import canvas_language_instruction
 from lecturepilot.course_canvas_math import generated_math_instructions
+from lecturepilot.course_canvas_repair_guidance import repair_guidance
 from lecturepilot.course_canvas_repair_preflight import repair_failure_constraint
 
 
@@ -45,6 +46,7 @@ def repair_messages(
                 "Preserve the meaning and use only the supplied evidence. "
                 f"{assessment_generation_instruction()} "
                 f"{repair_failure_constraint(failure)} "
+                f"{repair_guidance(failure)} "
                 f"{generated_math_instructions()}"
             ),
         },
@@ -69,6 +71,59 @@ def repair_retry_message(error: str, target: CanvasBlock | None) -> dict[str, st
         "content": (
             f"The proposed patch failed validation: {error} "
             f"Return corrected structured JSON containing {scope}."
+        ),
+    }
+
+
+def repair_blocks_messages(
+    source: CanvasDocument,
+    section: CanvasSection,
+    targets: list[CanvasBlock],
+    failure: str,
+    *,
+    output_language: str,
+) -> list[dict[str, str]]:
+    target_ids = [target.id for target in targets]
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are applying one atomic surgical patch to a generated LecturePilot canvas. "
+                f"{canvas_language_instruction(output_language)} "
+                f"Return exactly {len(targets)} replace_block edits, one for each requested "
+                f"block id in this exact set: {json.dumps(target_ids)}. Do not add, omit, or "
+                "repeat targets. Each edit's blocks array contains only replacement blocks; "
+                "never repeat unchanged blocks. Return JSON only in the edits outer shape. "
+                "Each replacement block must match its strict block-type schema. "
+                f"{component_catalog_instruction()} "
+                "Preserve the meaning and use only the supplied evidence. "
+                f"{assessment_generation_instruction()} "
+                f"{repair_failure_constraint(failure)} "
+                f"{repair_guidance(failure)} "
+                f"{generated_math_instructions()}"
+            ),
+        },
+        {
+            "role": "user",
+            "content": "\n\n".join(
+                [
+                    f"Validation failures:\n{failure}",
+                    f"Section context:\n{_section_context(section, targets[0])}",
+                    "Requested blocks:\n"
+                    + json.dumps([target.model_dump() for target in targets], default=str),
+                    f"Relevant professor source evidence:\n{_source_evidence(source, section)}",
+                ]
+            ),
+        },
+    ]
+
+
+def repair_blocks_retry_message(error: str, block_count: int) -> dict[str, str]:
+    return {
+        "role": "user",
+        "content": (
+            f"The atomic patch failed validation: {error} Return corrected structured JSON "
+            f"with exactly {block_count} replace_block edits for the original requested ids."
         ),
     }
 

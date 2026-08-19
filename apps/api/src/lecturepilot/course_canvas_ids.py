@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from lecturepilot.canvas_component_catalog import normalize_component_identity
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument
 from lecturepilot.course_canvas_validation import section_ids
 
@@ -18,21 +19,35 @@ def avoid_mirrored_section_ids(
         if section_id in source_ids:
             section_id = f"learning-{index}-{section_id}"
         section_id = _unique_id(section_id, seen)
-        if section_id == section.id:
-            sections.append(section)
-            continue
-        changed = True
+        blocks = [
+            _rename_block(block, old_prefix=section.id, new_prefix=section_id)
+            for block in section.blocks
+        ]
+        changed = changed or section_id != section.id
         sections.append(
-            section.model_copy(
-                update={
-                    "id": section_id,
-                    "blocks": [
-                        _rename_block(block, old_prefix=section.id, new_prefix=section_id)
-                        for block in section.blocks
-                    ],
-                }
-            )
+            section.model_copy(update={"id": section_id, "blocks": blocks})
+            if section_id != section.id
+            else section
         )
+    normalized = document.model_copy(update={"sections": sections}) if changed else document
+    return ensure_unique_block_ids(normalized)
+
+
+def ensure_unique_block_ids(document: CanvasDocument) -> CanvasDocument:
+    seen: set[str] = set()
+    sections = []
+    changed = False
+    for section in document.sections:
+        blocks = []
+        for block in section.blocks:
+            block_id = _unique_id(block.id, seen)
+            changed = changed or block_id != block.id
+            blocks.append(
+                normalize_component_identity(block, block_id=block_id)
+                if block_id != block.id
+                else block
+            )
+        sections.append(section.model_copy(update={"blocks": blocks}))
     return document.model_copy(update={"sections": sections}) if changed else document
 
 
