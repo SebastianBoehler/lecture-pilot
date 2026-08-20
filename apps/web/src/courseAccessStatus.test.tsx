@@ -12,7 +12,7 @@ import { renderWithI18n } from "./test/renderWithI18n";
 describe("course access status", () => {
   const now = new Date("2026-07-14T07:00:00Z");
 
-  it("uses the later of an immediate request and the lecture date", () => {
+  it("lets an immediate override bypass the future lecture date", () => {
     const result = lectureAvailability(
       { audience: "tuebingen_enrolled", publication_mode: "published_now", publication_at: null },
       "2026-07-18",
@@ -20,8 +20,8 @@ describe("course access status", () => {
       now,
     );
 
-    expect(result.state).toBe("scheduled");
-    expect(result.availableAt?.toISOString()).toBe("2026-07-17T22:00:00.000Z");
+    expect(result.state).toBe("available");
+    expect(result.availableAt?.toISOString()).toBe(now.toISOString());
   });
 
   it("round-trips custom times in the course timezone", () => {

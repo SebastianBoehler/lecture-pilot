@@ -27,14 +27,14 @@ export function lectureAvailability(
 
 export function accessDate(rule: CourseAccessRule, lectureDate: string, now = new Date()) {
   if (rule.publication_mode === "hidden") return null;
+  if (rule.publication_mode === "published_now") {
+    const immediate = new Date(rule.publication_at ?? now.toISOString());
+    return Number.isNaN(immediate.getTime()) ? null : immediate;
+  }
   const lectureFloor = berlinLectureStart(lectureDate);
   if (!lectureFloor) return null;
   const requestedValue =
-    rule.publication_mode === "custom"
-      ? rule.publication_at
-      : rule.publication_mode === "published_now"
-        ? (rule.publication_at ?? now.toISOString())
-        : lectureFloor.toISOString();
+    rule.publication_mode === "custom" ? rule.publication_at : lectureFloor.toISOString();
   const requested = new Date(requestedValue ?? "");
   if (Number.isNaN(requested.getTime())) return null;
   return new Date(Math.max(lectureFloor.getTime(), requested.getTime()));

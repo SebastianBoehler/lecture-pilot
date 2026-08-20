@@ -43,6 +43,10 @@ def effective_publication_at(
 ) -> datetime | None:
     if rule.publication_mode is PublicationMode.HIDDEN:
         return None
+    if rule.publication_mode is PublicationMode.PUBLISHED_NOW:
+        if rule.publication_at is None:
+            raise ValueError("Immediate publication requires a publication time.")
+        return rule.publication_at.astimezone(UTC)
     lecture_floor = datetime.combine(lecture.date, time.min, tzinfo=TENANT_TIMEZONE)
     requested = rule.publication_at or lecture_floor
     return max(lecture_floor, requested).astimezone(UTC)

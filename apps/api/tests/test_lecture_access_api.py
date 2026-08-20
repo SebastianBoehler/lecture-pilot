@@ -147,7 +147,7 @@ def test_release_uses_later_of_lecture_date_and_custom_time(client: TestClient) 
 
 
 def test_university_override_widens_course_discovery(client: TestClient) -> None:
-    _seed_course(client, [("lecture-01", PAST_DATE)])
+    _seed_course(client, [("lecture-01", FUTURE_DATE)])
     _publish_canvas(client, "lecture-01")
     outsider = student_headers("outsider", course_ids=())
 
