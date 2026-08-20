@@ -188,7 +188,7 @@ def register_practice_exam_routes(
             status = 503 if exc.code == "compiler_unavailable" else 502
             raise HTTPException(
                 status_code=status,
-                detail="PDF generation is temporarily unavailable. Please retry.",
+                detail=_pdf_error_detail(exc),
             ) from exc
         return FileResponse(
             path,
@@ -236,6 +236,20 @@ def _request_key(value: str | None) -> str:
         return validate_generation_request_key(value)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+def _pdf_error_detail(exc: LatexCompilationError) -> str:
+    if exc.code == "compiler_unavailable":
+        return "PDF generation is temporarily unavailable. Please retry."
+    if exc.code == "source_changed":
+        return (
+            "Practice exam source changed during generation. Please retry generating the exam PDF."
+        )
+    if exc.code == "compilation_error":
+        return "Practice exam PDF contains invalid source and could not be compiled. Please retry."
+    if exc.code == "compiler_rejected":
+        return "Practice exam PDF generation was rejected by the compiler. Please retry."
+    return "Practice exam PDF generation failed. Please retry."
 
 
 def _replay(app, context, course_id, job) -> PracticeExamPublic:

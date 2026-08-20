@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-from lecturepilot.practice_exam_latex import escape_tex, render_exam_markup
+from lecturepilot.practice_exam_latex import _render_text, escape_tex
 from lecturepilot.practice_exam_models import PracticeExam
 
 
-def render_practice_exam_solution_tex(exam: PracticeExam) -> str:
+def render_practice_exam_solution_tex(
+    exam: PracticeExam,
+    *,
+    include_markup: bool = True,
+) -> str:
     lines = [
         r"\documentclass[11pt]{article}",
         r"\usepackage[margin=2.2cm]{geometry}",
-        r"\usepackage[T1]{fontenc}",
-        r"\usepackage[utf8]{inputenc}",
         r"\usepackage{amsmath}",
         r"\usepackage{amssymb}",
         r"\usepackage{xcolor}",
@@ -25,7 +27,8 @@ def render_practice_exam_solution_tex(exam: PracticeExam) -> str:
                 r"\vspace{1em}",
                 r"\noindent\begin{minipage}{\textwidth}",
                 rf"\subsection*{{Question {index} \hfill {question.points} points}}",
-                render_exam_markup(question.prompt) + r"\par\vspace{0.55em}",
+                _render_text(question.prompt, include_markup=include_markup)
+                + r"\par\vspace{0.55em}",
             ]
         )
         if question.status == "invalid":
@@ -37,7 +40,7 @@ def render_practice_exam_solution_tex(exam: PracticeExam) -> str:
             answer_label = chr(ord("A") + answer_index)
             lines.append(
                 rf"\textbf{{Correct answer: {answer_label}.}}\quad "
-                + render_exam_markup(question.options[answer_index])
+                + _render_text(question.options[answer_index], include_markup=include_markup)
                 + r"\par"
             )
         else:
@@ -46,12 +49,13 @@ def render_practice_exam_solution_tex(exam: PracticeExam) -> str:
             lines.extend(
                 [
                     r"\textbf{Full-credit answer}\par",
-                    render_exam_markup(question.reference_answer) + r"\par\vspace{0.45em}",
+                    _render_text(question.reference_answer, include_markup=include_markup)
+                    + r"\par\vspace{0.45em}",
                     r"\textbf{Full-point criteria}\par",
                 ]
             )
             lines.extend(
-                rf"\textbullet\ {render_exam_markup(criterion)}\par"
+                rf"\textbullet\ {_render_text(criterion, include_markup=include_markup)}\par"
                 for criterion in question.rubric
             )
         lines.append(r"\end{minipage}")

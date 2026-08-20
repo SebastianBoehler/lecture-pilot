@@ -103,12 +103,14 @@ _MATH_COMMAND = re.compile(r"\\([A-Za-z]+|.)")
 _MATH_ENVIRONMENT = re.compile(r"\\(begin|end)\{([^{}]+)\}")
 
 
-def render_practice_exam_tex(exam: PracticeExamPublic) -> str:
+def render_practice_exam_tex(
+    exam: PracticeExamPublic,
+    *,
+    include_markup: bool = True,
+) -> str:
     lines = [
         r"\documentclass[11pt,a4paper]{article}",
         r"\usepackage[margin=2.2cm]{geometry}",
-        r"\usepackage[T1]{fontenc}",
-        r"\usepackage[utf8]{inputenc}",
         r"\usepackage{amsmath}",
         r"\usepackage{amssymb}",
         r"\usepackage{fancyhdr}",
@@ -128,14 +130,16 @@ def render_practice_exam_tex(exam: PracticeExamPublic) -> str:
         r"\vspace{0.8em}",
     ]
     for instruction in exam.instructions:
-        lines.append(rf"\textbullet\ {render_exam_markup(instruction)}\par")
+        lines.append(
+            rf"\textbullet\ {_render_text(instruction, include_markup=include_markup)}\par"
+        )
     for index, question in enumerate(exam.questions, start=1):
         lines.extend(
             [
                 r"\vspace{1em}",
                 r"\noindent\begin{minipage}{\textwidth}",
                 rf"\subsection*{{Question {index} \hfill {question.points} points}}",
-                render_exam_markup(question.prompt) + r"\par",
+                _render_text(question.prompt, include_markup=include_markup) + r"\par",
                 r"\vspace{0.6em}",
             ]
         )
@@ -143,7 +147,9 @@ def render_practice_exam_tex(exam: PracticeExamPublic) -> str:
             pass
         elif question.kind == "multiple_choice":
             for option in question.options:
-                lines.append(rf"$\square$\quad {render_exam_markup(option)}\par\vspace{{0.35em}}")
+                lines.append(
+                    rf"$\square$\quad {_render_text(option, include_markup=include_markup)}\par\vspace{{0.35em}}"
+                )
         else:
             answer_space = min(8.0, max(2.5, question.points * 0.8))
             lines.append(rf"\vspace{{{answer_space:.1f}cm}}")
@@ -185,6 +191,12 @@ def render_exam_markup(value: str) -> str:
             output.append(escape_tex(value[cursor:next_marker]))
             cursor = next_marker
     return "".join(output)
+
+
+def _render_text(value: str, *, include_markup: bool) -> str:
+    if include_markup:
+        return render_exam_markup(value)
+    return escape_tex(value)
 
 
 def _render_delimited(

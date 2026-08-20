@@ -72,7 +72,37 @@ def test_solution_pdf_is_a_separate_authenticated_document(tmp_path: Path, monke
     assert other.status_code == 404
 
 
-def test_pdf_retry_does_not_regenerate_exam(tmp_path: Path, monkeypatch) -> None:
+def test_pdf_sources_use_tectonic_native_unicode_fonts(tmp_path: Path, monkeypatch) -> None:
+    client, _planner = _client(tmp_path)
+    client.app.state.practice_exam_pdf_service = PracticeExamPdfService(
+        client.app.state.practice_exam_store
+    )
+    exam_id = _generate(client).json()["id"]
+    rendered: list[str] = []
+
+    def compile_document(*, source: str, output: Path) -> Path:
+        rendered.append(source)
+        return _write_pdf(output)
+
+    monkeypatch.setattr("lecturepilot.practice_exam_pdf.compile_latex_document", compile_document)
+
+    exam_pdf = client.get(
+        f"/courses/martius-ml/practice-exams/{exam_id}/pdf",
+        headers=student_headers("student-a"),
+    )
+    solution_pdf = client.get(
+        f"/courses/martius-ml/practice-exams/{exam_id}/solutions/pdf",
+        headers=student_headers("student-a"),
+    )
+
+    assert exam_pdf.status_code == 200
+    assert solution_pdf.status_code == 200
+    assert len(rendered) == 2
+    assert all(r"\usepackage[T1]{fontenc}" not in source for source in rendered)
+    assert all(r"\usepackage[utf8]{inputenc}" not in source for source in rendered)
+
+
+def test_pdf_retries_transient_compiler_error_before_failing(tmp_path: Path, monkeypatch) -> None:
     client, planner = _client(tmp_path)
     client.app.state.practice_exam_pdf_service = PracticeExamPdfService(
         client.app.state.practice_exam_store
@@ -92,14 +122,72 @@ def test_pdf_retry_does_not_regenerate_exam(tmp_path: Path, monkeypatch) -> None
         f"/courses/martius-ml/practice-exams/{exam_id}/pdf",
         headers=student_headers("student-a"),
     )
-    retry = client.get(
+    assert first.status_code == 200
+    assert first.headers["content-type"] == "application/pdf"
+    assert first.content.startswith(b"%PDF")
+    assert planner.calls == 1
+    assert calls == 2
+
+
+def test_pdf_fallback_without_markup_after_compilation_error(tmp_path: Path, monkeypatch) -> None:
+    client, planner = _client(tmp_path)
+    client.app.state.practice_exam_pdf_service = PracticeExamPdfService(
+        client.app.state.practice_exam_store
+    )
+    exam_id = _generate(client).json()["id"]
+    calls = 0
+
+    def compile_document(*, source: str, output: Path) -> Path:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise LatexCompilationError("latex failed", code="compile_failed")
+        return _write_pdf(output)
+
+    monkeypatch.setattr("lecturepilot.practice_exam_pdf.compile_latex_document", compile_document)
+    first = client.get(
         f"/courses/martius-ml/practice-exams/{exam_id}/pdf",
         headers=student_headers("student-a"),
     )
 
-    assert first.status_code == 503
-    assert first.json()["detail"] == "PDF generation is temporarily unavailable. Please retry."
-    assert retry.status_code == 200
+    assert first.status_code == 200
+    assert first.headers["content-type"] == "application/pdf"
+    assert first.content.startswith(b"%PDF")
+    assert planner.calls == 1
+    assert calls == 2
+
+
+def test_solution_pdf_retry_failure_maps_compilation_status(tmp_path: Path, monkeypatch) -> None:
+    client, planner = _client(tmp_path)
+    client.app.state.practice_exam_pdf_service = PracticeExamPdfService(
+        client.app.state.practice_exam_store
+    )
+    exam_id = _generate(client).json()["id"]
+    calls = 0
+
+    def compile_document(*, source: str, output: Path) -> Path:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise LatexCompilationError("source modified", code="source_changed")
+        return _write_pdf(output)
+
+    monkeypatch.setattr("lecturepilot.practice_exam_pdf.compile_latex_document", compile_document)
+    first = client.get(
+        f"/courses/martius-ml/practice-exams/{exam_id}/solutions/pdf",
+        headers=student_headers("student-a"),
+    )
+    second = client.get(
+        f"/courses/martius-ml/practice-exams/{exam_id}/solutions/pdf",
+        headers=student_headers("student-a"),
+    )
+
+    assert first.status_code == 502
+    assert (
+        first.json()["detail"]
+        == "Solution PDF source changed during generation. Please retry this lecture from the exam page."
+    )
+    assert second.status_code == 200
     assert planner.calls == 1
     assert calls == 2
 

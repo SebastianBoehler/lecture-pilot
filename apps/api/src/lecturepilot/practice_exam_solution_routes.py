@@ -72,10 +72,22 @@ def register_practice_exam_solution_routes(
             status = 503 if exc.code == "compiler_unavailable" else 502
             raise HTTPException(
                 status_code=status,
-                detail="Solution PDF generation is temporarily unavailable. Please retry.",
+                detail=_solution_pdf_error_detail(exc),
             ) from exc
         return FileResponse(
             path,
             media_type="application/pdf",
             filename=f"practice-exam-{exam_id[:8]}-solutions.pdf",
         )
+
+
+def _solution_pdf_error_detail(exc: LatexCompilationError) -> str:
+    if exc.code == "compiler_unavailable":
+        return "Solution PDF generation is temporarily unavailable. Please retry."
+    if exc.code == "source_changed":
+        return "Solution PDF source changed during generation. Please retry this lecture from the exam page."
+    if exc.code == "compilation_error":
+        return "Solution PDF contains invalid source and could not be compiled. Please retry or regenerate the exam."
+    if exc.code == "compiler_rejected":
+        return "Solution PDF generation was rejected by the compiler. Please retry."
+    return "Solution PDF generation failed. Please retry."
