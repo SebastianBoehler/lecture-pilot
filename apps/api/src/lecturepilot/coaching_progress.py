@@ -215,9 +215,10 @@ class CoachingProgressStore:
             progress = self.read(user_id=user_id, course_id=course_id, lecture_id=lecture_id)
             progress.session_goal = session_goal.strip() if session_goal else progress.session_goal
             progress.attendance_prior_used = True
-            progress.pending_check = pending_from_next_check(
-                next_check, now=now or datetime.now(UTC)
-            )
+            if next_check is not None:
+                progress.pending_check = pending_from_next_check(
+                    next_check, now=now or datetime.now(UTC)
+                )
             self._append_exchange(progress, user_message, assistant_message)
             progress.updated_at = now or datetime.now(UTC)
             self._write(

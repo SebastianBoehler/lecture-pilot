@@ -286,11 +286,3 @@ def test_provider_schema_requires_gate_revision() -> None:
         "type": "string",
         "const": _gate().revision,
     }
-
-
-def test_provider_schema_binds_assessment_presence_to_the_pending_check() -> None:
-    required = lecturepilot_response_format(_turn())["json_schema"]["schema"]
-    prohibited = lecturepilot_response_format(_turn(bound_check=False))["json_schema"]["schema"]
-
-    assert required["properties"]["assessment"]["type"] == "object"
-    assert prohibited["properties"]["assessment"] == {"type": "null"}

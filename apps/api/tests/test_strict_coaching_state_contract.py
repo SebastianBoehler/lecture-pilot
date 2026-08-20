@@ -6,7 +6,12 @@ from pydantic import ValidationError
 
 from lecturepilot.coaching_episode import parse_time, record_passed_review
 from lecturepilot.coaching_progress import CoachingProgressStore
-from lecturepilot.coaching_state_models import CoachingProgress, CoachingTurnEvent, DelayedReview
+from lecturepilot.coaching_state_models import (
+    CoachingProgress,
+    CoachingTurnEvent,
+    DelayedReview,
+    PendingCheck,
+)
 from lecturepilot.storage_layout import StorageLayout
 
 IDS = {"user_id": "student-1", "course_id": "course-1", "lecture_id": "lecture-1"}
@@ -112,3 +117,29 @@ def test_delayed_reviews_keep_each_revision_and_stored_delay(tmp_path) -> None:
     assert progress.delayed_reviews[f"gate-1@{first_revision}"].planned_delay_seconds == 172800
     assert progress.delayed_reviews[f"gate-1@{second_revision}"].planned_delay_seconds == 345600
     assert progress.delayed_reviews[f"gate-1@{second_revision}"].section_id == "section-1-revised"
+
+
+def test_unassessed_exchange_keeps_the_pending_check(tmp_path) -> None:
+    store = CoachingProgressStore(StorageLayout(tmp_path))
+    now = datetime(2026, 8, 19, 8, 0, tzinfo=UTC)
+    progress = CoachingProgress.empty(course_id="course-1", lecture_id="lecture-1")
+    progress.pending_check = PendingCheck(
+        gate_id="gate-1",
+        gate_revision="a" * 64,
+        prompt="Explain the mechanism.",
+        assistance_level="none",
+        kind="standard",
+        issued_at=now,
+    )
+    store._write(**IDS, progress=progress)
+
+    store.record_exchange(
+        **IDS,
+        user_message="Add a car example to the canvas.",
+        assistant_message="I added the example.",
+        next_check=None,
+        now=now + timedelta(minutes=1),
+    )
+
+    persisted = store.read(**IDS)
+    assert persisted.pending_check == progress.pending_check

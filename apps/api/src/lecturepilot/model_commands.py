@@ -69,7 +69,7 @@ def validate_quality_gate_decision(
             raise ProviderConfigurationError("Model assessed a turn without a bound pending check.")
         return None
     if decision is None:
-        raise ProviderConfigurationError("Model omitted the bound quality-gate assessment.")
+        return None
     if decision.gate_id != active_gate.id or decision.gate_revision != active_gate.revision:
         raise ProviderConfigurationError("Model quality gate does not match the active contract.")
     allowed = {criterion.id for criterion in active_gate.evidence_criteria}

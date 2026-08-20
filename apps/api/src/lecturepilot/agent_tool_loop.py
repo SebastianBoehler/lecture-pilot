@@ -48,9 +48,15 @@ async def complete_tool_turn(
             if content:
                 try:
                     return agent_result_from_content(content, turn, settings.model)
-                except ProviderConfigurationError:
+                except ProviderConfigurationError as exc:
                     messages.append(_assistant_content_message(content))
-                    return await _final_json_response(acompletion, settings, messages, turn)
+                    return await _final_json_response(
+                        acompletion,
+                        settings,
+                        messages,
+                        turn,
+                        validation_error=str(exc),
+                    )
             return await _final_json_response(acompletion, settings, messages, turn)
         messages.append(_assistant_tool_message(response_message, tool_calls))
         for call in tool_calls[:6]:
@@ -129,7 +135,16 @@ async def _final_json_response(
     settings: ProviderSettings,
     messages: list[dict[str, Any]],
     turn: AgentTurnInput,
+    validation_error: str | None = None,
 ) -> AgentTurnResult:
+    repair = (
+        f" The previous JSON failed server validation: {validation_error[:1000]} "
+        "Correct that contract error in this response. If the student did not answer the "
+        "persisted check, set assessment to null. Declare next_check assistance only when its "
+        "exact content appears in message before the exact prompt."
+        if validation_error
+        else ""
+    )
     response = await acompletion(
         model=settings.model,
         messages=[
@@ -139,6 +154,7 @@ async def _final_json_response(
                 "content": (
                     "Return the final LecturePilot JSON now. "
                     "Do not call another tool and do not leave the message empty."
+                    f"{repair}"
                 ),
             },
         ],
