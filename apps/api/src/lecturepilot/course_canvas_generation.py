@@ -161,6 +161,10 @@ async def repair_targeted_course_canvas_draft(
     repair = failure.repair
     if repair is None or failure.error_detail is None:
         raise CanvasGenerationRepairableError("No targeted repair candidate is available.")
+    if repair.source_revision is None:
+        raise CanvasGenerationRepairableError(
+            "Targeted repair source provenance is unavailable. Generate a new draft before repairing it."
+        )
     candidate = repair.candidate
     common = {
         "course_id": course_id,
@@ -190,6 +194,7 @@ async def repair_targeted_course_canvas_draft(
                 lecture_id=lecture_id,
                 generation_id=generation_id,
                 attempt=attempt,
+                expected_repair_source_revision=repair.source_revision,
             )
         )
         media_root = app.state.canvas_workspace.course_media_root(course_id)

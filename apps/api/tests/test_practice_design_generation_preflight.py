@@ -90,6 +90,14 @@ async def test_targeted_repair_receives_frozen_design_and_rejects_edit_before_pe
     monkeypatch.setattr(
         "lecturepilot.course_canvas_generation.repair_until_quality_valid", repair_callback
     )
+    failure = _targeted_failure()
+    failure = failure.model_copy(
+        update={
+            "repair": failure.repair.model_copy(
+                update={"source_revision": approved.source_revision}
+            )
+        }
+    )
 
     with pytest.raises(InvalidCanvasDraftError, match="practice design changed"):
         await repair_targeted_course_canvas_draft(
@@ -98,7 +106,7 @@ async def test_targeted_repair_receives_frozen_design_and_rejects_edit_before_pe
             lecture_id=LECTURE_ID,
             context=_context(),
             source_document=lambda _course_id, _lecture_id: _document(),
-            failure=_targeted_failure(),
+            failure=failure,
             generation_id="b" * 32,
             attempt=1,
         )

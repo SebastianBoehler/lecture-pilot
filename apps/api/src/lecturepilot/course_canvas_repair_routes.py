@@ -24,6 +24,7 @@ from lecturepilot.course_canvas_generation_service import (
 from lecturepilot.course_practice_design_store import (
     PracticeDesignApprovalRequired,
     PracticeDesignStale,
+    PracticeDesignUnavailable,
 )
 from lecturepilot.source_bundle_canvas import SourceBundleCanvasError
 from lecturepilot.tenancy import TenantContext
@@ -74,13 +75,16 @@ def register_course_canvas_repair_routes(
                 detail="No actionable failed generation is available for AI repair.",
             )
         targeted = failure.repair is not None
-        if targeted and failure.repair is not None and failure.repair.source_revision is not None:
+        if targeted and failure.repair is not None:
             current_revision = lecture_source_revision(
                 store.layout,
                 course_id=course_id,
                 lecture_id=lecture_id,
             )
-            if current_revision != failure.repair.source_revision:
+            if (
+                failure.repair.source_revision is None
+                or current_revision != failure.repair.source_revision
+            ):
                 raise HTTPException(
                     status_code=409,
                     detail=(
@@ -153,6 +157,7 @@ def _require_current_practice_design(
         ownership_store.CanvasGenerationOwnershipError,
         PracticeDesignApprovalRequired,
         PracticeDesignStale,
+        PracticeDesignUnavailable,
         SourceBundleCanvasError,
     ) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

@@ -16,7 +16,7 @@ from lecturepilot.course_canvas_repair_preflight import (
 from lecturepilot.providers import ProviderRegistry
 from test_course_canvas_section_repair import _planner, _repair_payload
 from test_course_canvas_math import _section_with_math
-from test_course_canvas_targeted_repair import _invalid_candidate
+from targeted_repair_test_helpers import invalid_candidate
 
 
 def test_generated_math_normalization_removes_stray_display_delimiters() -> None:
@@ -165,7 +165,7 @@ async def test_section_repair_normalizes_redundant_math_without_calling_the_mode
 ) -> None:
     planner, model = _planner(monkeypatch, [])
     source = published_course_canvas("targeted-repair", "lecture-01")
-    candidate = _invalid_candidate(source)
+    candidate = invalid_candidate(source)
     section = candidate.sections[0]
     target = section.blocks[1].model_copy(update={"text": r"w^\prime \[x"})
     candidate = candidate.model_copy(
@@ -197,7 +197,7 @@ async def test_section_repair_normalizes_source_dependent_checkpoint_without_mod
 ) -> None:
     planner, model = _planner(monkeypatch, [])
     source = published_course_canvas("targeted-repair", "lecture-01")
-    candidate = _invalid_candidate(source)
+    candidate = invalid_candidate(source)
     section = candidate.sections[0]
     valid_math = section.blocks[1].model_copy(update={"text": r"w^\top x"})
     target = section.blocks[4].model_copy(
@@ -241,7 +241,7 @@ async def test_section_repair_converts_incomplete_choice_component_without_model
 ) -> None:
     planner, model = _planner(monkeypatch, [])
     source = published_course_canvas("targeted-repair", "lecture-01")
-    candidate = _invalid_candidate(source)
+    candidate = invalid_candidate(source)
     section = candidate.sections[0]
     valid_math = section.blocks[1].model_copy(update={"text": r"w^\top x"})
     target = section.blocks[4].model_copy(
@@ -301,7 +301,7 @@ async def test_section_repair_rewrites_unsupported_relationship_as_retrieval_wit
 ) -> None:
     planner, model = _planner(monkeypatch, [])
     source = published_course_canvas("targeted-repair", "lecture-01")
-    candidate = _invalid_candidate(source)
+    candidate = invalid_candidate(source)
     section = candidate.sections[0]
     valid_math = section.blocks[1].model_copy(update={"text": r"w^\top x"})
     choice = CanvasBlock(
@@ -365,7 +365,7 @@ async def test_section_repair_downgrades_multi_correct_choice_without_model_call
 ) -> None:
     planner, model = _planner(monkeypatch, [])
     source = published_course_canvas("targeted-repair", "lecture-01")
-    candidate = _invalid_candidate(source)
+    candidate = invalid_candidate(source)
     section = candidate.sections[0]
     valid_math = section.blocks[1].model_copy(update={"text": r"w^\top x"})
     target = section.blocks[5]
@@ -408,7 +408,7 @@ async def test_block_repair_accepts_the_evidence_supported_patch_size(
 
     repaired = await planner.repair_section(
         source,
-        _invalid_candidate(source),
+        invalid_candidate(source),
         section_id="learning-optimization",
         block_id="optimization-math",
         failure_context="Repair only the failed formula.",

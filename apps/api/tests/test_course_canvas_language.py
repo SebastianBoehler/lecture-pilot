@@ -12,7 +12,7 @@ from lecturepilot.course_workspace import resolve_course_workspace
 from lecturepilot.models import CourseWorkspaceSetupInput
 from test_course_canvas_richness import _source_document
 from test_course_canvas_section_repair import _planner, _repair_payload
-from test_course_canvas_targeted_repair import _invalid_candidate
+from targeted_repair_test_helpers import invalid_candidate
 from test_course_workspace_api import _client
 
 
@@ -136,7 +136,7 @@ async def test_section_repair_keeps_the_selected_course_language(
 
     await planner.repair_section(
         source,
-        _invalid_candidate(source),
+        invalid_candidate(source),
         section_id="learning-optimization",
         block_id="optimization-math",
         failure_context="Math block uses unsupported command \\top.",

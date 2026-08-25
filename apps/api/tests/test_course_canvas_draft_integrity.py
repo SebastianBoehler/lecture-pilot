@@ -11,6 +11,7 @@ from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_repairs import lecture_source_revision
 from lecturepilot import course_canvas_generation
+from practice_design_test_helpers import save_approved_design, write_manifest
 
 
 def test_generation_requires_a_valid_idempotency_key(tmp_path: Path) -> None:
@@ -176,12 +177,11 @@ This revised source evidence changes the lecture fingerprint while remaining val
     )
     assert repaired.status_code == 200
     assert regenerated.status_code == 200
-    assert invalidated.status_code == 503
+    assert invalidated.status_code == 409
     assert planner.repair_contexts == [
         None,
         "Math block risk-equation uses unsupported command \\P.",
         "Math block risk-equation uses unsupported command \\P.",
-        None,
     ]
     repair_record = (
         client.app.state.canvas_workspace.layout.course_root("draft-integrity")
@@ -228,6 +228,18 @@ Source evidence explains the generated canvas contract in sufficient detail.
     )
     assert upload.status_code == 200
     confirm_source_routing(client, "draft-integrity")
+    write_manifest(
+        app.state.canvas_workspace.layout,
+        course_id="draft-integrity",
+        lecture_id="lecture-01",
+        source_path="Lecture01.tex",
+    )
+    save_approved_design(
+        app.state.canvas_workspace.layout,
+        course_id="draft-integrity",
+        lecture_id="lecture-01",
+        source_path="Lecture01.tex",
+    )
     return client
 
 
@@ -236,6 +248,7 @@ class _InvalidCoursePlanner:
         self,
         source_document: CanvasDocument,
         *,
+        practice_design,
         output_language: str,
     ) -> CanvasDocument:
         return source_document.model_copy(
@@ -254,6 +267,7 @@ class _RepairingCoursePlanner:
         self,
         source_document: CanvasDocument,
         *,
+        practice_design,
         repair_context: str | None = None,
         output_language: str,
     ) -> CanvasDocument:
@@ -277,6 +291,7 @@ class _UnexpectedCoursePlanner:
         self,
         source_document: CanvasDocument,
         *,
+        practice_design,
         output_language: str,
     ) -> CanvasDocument:
         self.called = True

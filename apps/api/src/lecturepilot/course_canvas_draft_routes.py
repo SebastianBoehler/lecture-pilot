@@ -26,6 +26,7 @@ from lecturepilot.course_canvas_store import InvalidCanvasDraftError
 from lecturepilot.course_practice_design_store import (
     PracticeDesignApprovalRequired,
     PracticeDesignStale,
+    PracticeDesignUnavailable,
 )
 from lecturepilot.source_bundle_canvas import SourceBundleCanvasError
 from lecturepilot.tenancy import TenantContext
@@ -185,6 +186,7 @@ def _require_current_practice_design(
         ownership_store.CanvasGenerationOwnershipError,
         PracticeDesignApprovalRequired,
         PracticeDesignStale,
+        PracticeDesignUnavailable,
         SourceBundleCanvasError,
     ) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

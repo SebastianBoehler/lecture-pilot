@@ -40,11 +40,19 @@ def begin_owned_generation_source(
     lecture_id: str,
     generation_id: str,
     attempt: int,
+    expected_repair_source_revision: str | None = None,
 ) -> tuple[CanvasDocument, str, PracticeDesign, CanvasGenerationOwnership]:
     with locked_course_state(course_root):
         source, revision, design = _approved_source(
             layout, source_document, course_id=course_id, lecture_id=lecture_id
         )
+        if (
+            expected_repair_source_revision is not None
+            and expected_repair_source_revision != revision
+        ):
+            raise CanvasGenerationOwnershipError(
+                "Lecture source changed after this failure. Generate a new draft before repairing it."
+            )
         path = ownership_path(layout, course_id, lecture_id)
         previous = _read(path)
         owner = CanvasGenerationOwnership(

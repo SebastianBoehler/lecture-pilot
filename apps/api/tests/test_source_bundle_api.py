@@ -12,6 +12,7 @@ from auth_helpers import (
     professor_headers,
     student_headers,
 )
+from practice_design_test_helpers import save_approved_design, write_manifest
 
 
 def test_source_bundle_endpoint_lists_only_uploaded_materials(tmp_path: Path) -> None:
@@ -206,6 +207,18 @@ def test_professor_canvas_draft_stays_private_until_publish(tmp_path: Path) -> N
         headers=_professor_headers(),
     )
     assert confirmed.status_code == 200
+    write_manifest(
+        client.app.state.canvas_workspace.layout,
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        source_path="Lecture03-eng.tex",
+    )
+    save_approved_design(
+        client.app.state.canvas_workspace.layout,
+        course_id="martius-ml",
+        lecture_id="lecture-03",
+        source_path="Lecture03-eng.tex",
+    )
 
     draft = client.post(
         "/admin/courses/martius-ml/lectures/lecture-03/canvas/draft",
@@ -307,7 +320,7 @@ def _write(path: Path) -> None:
 
 
 class _FakeCoursePlanner:
-    async def plan_canvas(self, source_document, *, output_language: str):
+    async def plan_canvas(self, source_document, *, practice_design, output_language: str):
         assert source_document.source_ref == "Lecture03-eng.tex"
         return source_document.model_copy(
             update={

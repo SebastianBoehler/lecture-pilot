@@ -9,7 +9,7 @@ from lecturepilot.course_canvas_quality import (
 )
 from lecturepilot.models import ProviderSettings
 from lecturepilot.providers import ProviderRegistry
-from test_course_canvas_targeted_repair import _invalid_candidate
+from targeted_repair_test_helpers import invalid_candidate
 
 
 async def test_quality_reviewer_rejects_a_wrong_selected_quiz_answer() -> None:
@@ -152,7 +152,7 @@ async def test_quality_failure_forces_a_source_grounded_patch_of_valid_structure
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     model = _RepairClient()
     source = _source_document()
-    candidate = _invalid_candidate(source)
+    candidate = invalid_candidate(source)
     section = candidate.sections[0]
     valid_math = section.blocks[1].model_copy(update={"text": r"w^\top x"})
     candidate = candidate.model_copy(

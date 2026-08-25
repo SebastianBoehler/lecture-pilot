@@ -7,7 +7,7 @@ from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.providers import ProviderRegistry
-from test_course_canvas_targeted_repair import _invalid_candidate
+from targeted_repair_test_helpers import invalid_candidate
 
 
 async def test_section_repair_normalizes_explanatory_math_without_calling_the_model(
@@ -15,7 +15,7 @@ async def test_section_repair_normalizes_explanatory_math_without_calling_the_mo
 ) -> None:
     planner, model = _planner(monkeypatch, [])
     source = published_course_canvas("targeted-repair", "lecture-01")
-    candidate = _invalid_candidate(source)
+    candidate = invalid_candidate(source)
 
     repaired = await planner.repair_section(
         source,
@@ -49,7 +49,7 @@ async def test_section_repair_retries_once_with_the_new_validation_error(
         ],
     )
     source = published_course_canvas("targeted-repair", "lecture-01")
-    candidate = _invalid_candidate(source)
+    candidate = invalid_candidate(source)
     section = candidate.sections[0]
     invalid = section.blocks[1].model_copy(update={"text": r"z=\mu+\epsilon\N(0,1)"})
     candidate = candidate.model_copy(
@@ -104,7 +104,7 @@ async def test_section_repair_retries_an_empty_model_response(
 
     repaired = await planner.repair_section(
         source,
-        _invalid_candidate(source),
+        invalid_candidate(source),
         section_id="learning-optimization",
         block_id="optimization-math",
         failure_context="The formula is unsupported by the source.",
@@ -131,7 +131,7 @@ async def test_section_repair_does_not_repeat_exhausted_provider_retries(
     with pytest.raises(ModelExecutionError, match="timed out"):
         await planner.repair_section(
             source,
-            _invalid_candidate(source),
+            invalid_candidate(source),
             section_id="learning-optimization",
             block_id="optimization-math",
             failure_context="The formula is unsupported by the source.",
@@ -160,7 +160,7 @@ async def test_checkpoint_repair_keeps_a_checkpoint_when_model_returns_only_pros
         ],
     )
     source = published_course_canvas("targeted-repair", "lecture-01")
-    candidate = _invalid_candidate(source)
+    candidate = invalid_candidate(source)
     section = candidate.sections[0]
     valid_math = section.blocks[1].model_copy(update={"text": r"w^\top x"})
     target = section.blocks[4]
@@ -195,7 +195,7 @@ async def test_section_repair_rejects_two_invalid_patches_without_mutating_candi
     invalid = _repair_payload([{"type": "math", "text": r"z=\mu+\epsilon\N(0,1)"}])
     planner, model = _planner(monkeypatch, [invalid, invalid])
     source = published_course_canvas("targeted-repair", "lecture-01")
-    candidate = _invalid_candidate(source)
+    candidate = invalid_candidate(source)
     snapshot = candidate.model_copy(deep=True)
 
     with pytest.raises(CanvasGenerationRepairableError, match="unsupported or course-specific"):
@@ -224,7 +224,7 @@ async def test_full_planner_automatically_repairs_an_invalid_generated_block(
             ]
         }
     )
-    candidate = _invalid_candidate(source)
+    candidate = invalid_candidate(source)
     target_section = candidate.sections[0]
     invalid_math = target_section.blocks[1].model_copy(update={"text": r"z=\mu+\epsilon\N(0,1)"})
     candidate = candidate.model_copy(
@@ -279,7 +279,7 @@ async def test_section_repair_retains_the_patch_and_advances_to_the_next_invalid
         [_repair_payload([{"type": "math", "text": r"w^\top x"}])],
     )
     source = published_course_canvas("targeted-repair", "lecture-01")
-    candidate = _invalid_candidate(source)
+    candidate = invalid_candidate(source)
     second = candidate.sections[1]
     second_invalid = second.blocks[1].model_copy(
         update={"type": "math", "text": r"z=\mu+\epsilon\N(0,1)"}

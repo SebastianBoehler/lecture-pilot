@@ -6,7 +6,7 @@ from lecturepilot.course_canvas_auto_repair import repair_until_quality_valid
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_quality import CanvasQualityIssue
 from test_course_canvas_quality import _source_document
-from test_course_canvas_targeted_repair import _invalid_candidate
+from targeted_repair_test_helpers import invalid_candidate
 
 
 async def test_quality_issues_across_blocks_use_one_multi_patch_request() -> None:
@@ -247,7 +247,7 @@ class _ConcurrentBatchPlanner(_BatchPlanner):
 
 def _documents():
     source = _source_document()
-    candidate = _invalid_candidate(source)
+    candidate = invalid_candidate(source)
     section = candidate.sections[0]
     valid_math = section.blocks[1].model_copy(update={"text": r"w^\top x"})
     candidate = candidate.model_copy(
