@@ -73,6 +73,7 @@ def register_course_practice_design_routes(
         if not refresh and existing is not None and existing.source_revision == revision:
             return existing
         expected_design_revision = existing.revision if existing is not None else None
+        expected_design_approval = existing.approval if existing is not None else None
         try:
             with app.state.observability.tool_span(
                 "course_practice_design",
@@ -113,6 +114,7 @@ def register_course_practice_design_routes(
                     proposal=proposal,
                     allowed_source_paths=current_paths,
                     expected_design_revision=expected_design_revision,
+                    expected_design_approval=expected_design_approval,
                 )
             except PracticeDesignStale as exc:
                 raise HTTPException(status_code=409, detail=str(exc)) from exc

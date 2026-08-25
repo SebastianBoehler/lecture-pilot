@@ -49,6 +49,40 @@ def test_refresh_conflicts_instead_of_overwriting_a_concurrent_professor_edit(tm
     )
 
 
+def test_refresh_conflicts_instead_of_erasing_a_concurrent_approval(tmp_path) -> None:
+    client = _client(tmp_path)
+    client.app.state.practice_design_planner = _Planner()
+    original = client.post(_proposal_path(), headers=professor_headers()).json()
+    paused = _PausingPlanner()
+    client.app.state.practice_design_planner = paused
+    outcome: dict[str, object] = {}
+
+    request = Thread(
+        target=lambda: outcome.setdefault(
+            "response",
+            client.post(f"{_proposal_path()}?refresh=true", headers=professor_headers()),
+        )
+    )
+    request.start()
+    assert paused.started.wait(timeout=5)
+    approved = client.post(
+        f"{_design_path()}/approve",
+        headers=professor_headers(),
+        json={
+            "source_revision": original["source_revision"],
+            "practice_design_revision": original["revision"],
+        },
+    )
+    assert approved.status_code == 200
+    paused.resume.set()
+    request.join(timeout=5)
+
+    assert not request.is_alive()
+    response = outcome["response"]
+    assert response.status_code == 409
+    assert client.get(_design_path(), headers=professor_headers()).json()["approval"] is not None
+
+
 def test_update_and_approval_hold_shared_lock_across_source_and_design_mutation(
     tmp_path, monkeypatch
 ) -> None:
