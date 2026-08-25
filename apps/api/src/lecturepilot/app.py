@@ -21,6 +21,8 @@ from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER
 from lecturepilot.course_builder_source import course_builder_source_document
 from lecturepilot.course_canvas_routes import register_course_canvas_routes
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner, LiteLLMCoursePlanClient
+from lecturepilot.course_practice_design_client import LiteLLMPracticeDesignClient
+from lecturepilot.course_practice_design_planner import PracticeDesignPlanner
 from lecturepilot.course_canvas_quality import CanvasQualityReviewer, LiteLLMCanvasQualityClient
 from lecturepilot.course_deletion import register_course_deletion_routes
 from lecturepilot.course_routes import register_course_routes
@@ -119,6 +121,9 @@ def create_app() -> FastAPI:
     )
     app.state.source_routing_planner = CourseSourceRoutingPlanner(
         model_client=LiteLLMSourceRoutingClient(app.state.model_usage)
+    )
+    app.state.practice_design_planner = PracticeDesignPlanner(
+        model_client=LiteLLMPracticeDesignClient(app.state.model_usage)
     )
     app.state.open_answer_evaluator = OpenAnswerEvaluator(
         model_client=LiteLLMOpenAnswerEvaluationClient(app.state.model_usage)
