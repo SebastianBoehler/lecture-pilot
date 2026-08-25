@@ -65,11 +65,14 @@ def register_course_practice_design_routes(
         context: TenantContext = Depends(request_context),
     ) -> PracticeDesign:
         _require_manager(context, request, course_id, course_tenant_id)
-        source, revision, paths = _source_context(app, source_document, course_id, lecture_id)
+        layout = app.state.canvas_workspace.layout
         store = _store(app)
-        existing = store.read(course_id=course_id, lecture_id=lecture_id)
+        with locked_course_state(layout.course_root(course_id)):
+            source, revision, paths = _source_context(app, source_document, course_id, lecture_id)
+            existing = store.read(course_id=course_id, lecture_id=lecture_id)
         if not refresh and existing is not None and existing.source_revision == revision:
             return existing
+        expected_design_revision = existing.revision if existing is not None else None
         try:
             with app.state.observability.tool_span(
                 "course_practice_design",
@@ -93,7 +96,6 @@ def register_course_practice_design_routes(
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         except ModelExecutionError as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from exc
-        layout = app.state.canvas_workspace.layout
         with locked_course_state(layout.course_root(course_id)):
             _, current_revision, current_paths = _source_context(
                 app, source_document, course_id, lecture_id
@@ -110,7 +112,10 @@ def register_course_practice_design_routes(
                     source_revision=revision,
                     proposal=proposal,
                     allowed_source_paths=current_paths,
+                    expected_design_revision=expected_design_revision,
                 )
+            except PracticeDesignStale as exc:
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
             except PracticeDesignValidationError as exc:
                 raise HTTPException(status_code=502, detail=str(exc)) from exc
 
@@ -126,15 +131,17 @@ def register_course_practice_design_routes(
         context: TenantContext = Depends(request_context),
     ) -> PracticeDesign:
         _require_manager(context, request, course_id, course_tenant_id)
-        _, revision, paths = _source_context(app, source_document, course_id, lecture_id)
+        layout = app.state.canvas_workspace.layout
         try:
-            return _store(app).update(
-                course_id=course_id,
-                lecture_id=lecture_id,
-                current_source_revision=revision,
-                update=update,
-                allowed_source_paths=paths,
-            )
+            with locked_course_state(layout.course_root(course_id)):
+                _, revision, paths = _source_context(app, source_document, course_id, lecture_id)
+                return _store(app).update(
+                    course_id=course_id,
+                    lecture_id=lecture_id,
+                    current_source_revision=revision,
+                    update=update,
+                    allowed_source_paths=paths,
+                )
         except PracticeDesignStale as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         except PracticeDesignValidationError as exc:
@@ -152,20 +159,22 @@ def register_course_practice_design_routes(
         context: TenantContext = Depends(request_context),
     ) -> PracticeDesign:
         _require_manager(context, request, course_id, course_tenant_id)
-        _, revision, _ = _source_context(app, source_document, course_id, lecture_id)
-        if approval.source_revision != revision:
-            raise HTTPException(
-                status_code=409,
-                detail="The practice design or source revision changed. Reload it.",
-            )
+        layout = app.state.canvas_workspace.layout
         try:
-            return _store(app).approve(
-                course_id=course_id,
-                lecture_id=lecture_id,
-                source_revision=revision,
-                design_revision=approval.practice_design_revision,
-                approved_by=context.user_id,
-            )
+            with locked_course_state(layout.course_root(course_id)):
+                _, revision, _ = _source_context(app, source_document, course_id, lecture_id)
+                if approval.source_revision != revision:
+                    raise HTTPException(
+                        status_code=409,
+                        detail="The practice design or source revision changed. Reload it.",
+                    )
+                return _store(app).approve(
+                    course_id=course_id,
+                    lecture_id=lecture_id,
+                    source_revision=revision,
+                    design_revision=approval.practice_design_revision,
+                    approved_by=context.user_id,
+                )
         except PracticeDesignStale as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         except PracticeDesignApprovalRequired as exc:

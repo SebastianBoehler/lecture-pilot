@@ -56,6 +56,32 @@ def test_owner_can_propose_edit_and_approve_a_current_practice_design(tmp_path: 
     assert proposed.status_code == 200, proposed.json()
     design = proposed.json()
     assert client.get(_design_path(), headers=student_headers()).status_code == 403
+    assert client.post(_proposal_path(), headers=student_headers()).status_code == 403
+    assert (
+        client.put(
+            _design_path(),
+            headers=student_headers(),
+            json={
+                "source_revision": design["source_revision"],
+                "practice_design_revision": design["revision"],
+                "lecture_title": design["lecture_title"],
+                "objective": design["objective"],
+                "targets": design["targets"],
+            },
+        ).status_code
+        == 403
+    )
+    assert (
+        client.post(
+            f"{_design_path()}/approve",
+            headers=student_headers(),
+            json={
+                "source_revision": design["source_revision"],
+                "practice_design_revision": design["revision"],
+            },
+        ).status_code
+        == 403
+    )
     assert client.post(_proposal_path(), headers=professor_headers()).status_code == 200
     assert planner.calls == 1
 

@@ -41,6 +41,7 @@ def test_save_proposal_round_trips_a_canonical_revision(tmp_path: Path) -> None:
         source_revision=SRC,
         proposal=proposal,
         allowed_source_paths=PATHS,
+        expected_design_revision=None,
     )
 
     assert len(saved.revision) == 64
@@ -56,6 +57,7 @@ def test_revision_is_canonical_and_excludes_approval(tmp_path: Path) -> None:
         source_revision=SRC,
         proposal=proposal,
         allowed_source_paths=PATHS,
+        expected_design_revision=None,
     )
 
     approved = store.approve(
@@ -181,6 +183,7 @@ def test_save_and_update_reject_unknown_routed_source_paths(tmp_path: Path) -> N
             source_revision=SRC,
             proposal=proposal,
             allowed_source_paths=PATHS,
+            expected_design_revision=None,
         )
     saved = _save(store)
     update = PracticeDesignUpdate(
@@ -274,6 +277,7 @@ def _save(store: PracticeDesignStore) -> PracticeDesign:
         source_revision=SRC,
         proposal=_proposal(),
         allowed_source_paths=PATHS,
+        expected_design_revision=None,
     )
 
 

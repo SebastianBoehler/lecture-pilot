@@ -54,6 +54,7 @@ class PracticeDesignStore:
         source_revision: str,
         proposal: PracticeDesignProposal,
         allowed_source_paths: Iterable[str],
+        expected_design_revision: str | None,
     ) -> PracticeDesign:
         design = PracticeDesign.create(
             course_id=course_id,
@@ -64,6 +65,16 @@ class PracticeDesignStore:
         validate_practice_design(design, allowed_source_paths)
         path = self._path(course_id, lecture_id)
         with self._locked(path):
+            current = self._read(path, course_id, lecture_id)
+            if expected_design_revision is None:
+                if current is not None:
+                    raise PracticeDesignStale(
+                        "The practice design changed while the learning plan was proposed. Reload it."
+                    )
+            elif current is None or current.revision != expected_design_revision:
+                raise PracticeDesignStale(
+                    "The practice design changed while the learning plan was proposed. Reload it."
+                )
             self._write(path, design)
         return design
 
