@@ -124,6 +124,14 @@ class StorageLayout:
     def lecture_canvas_repair_path(self, course_id: str, lecture_id: str) -> Path:
         return self.course_root(course_id) / "builder" / "repairs" / f"{safe_id(lecture_id)}.json"
 
+    def lecture_practice_design_path(self, course_id: str, lecture_id: str) -> Path:
+        return (
+            self.course_root(course_id)
+            / "builder"
+            / "practice-designs"
+            / f"{safe_id(lecture_id)}.json"
+        )
+
     def lecture_canvas_section_checkpoints_path(self, course_id: str, lecture_id: str) -> Path:
         return (
             self.course_root(course_id)
