@@ -10,17 +10,17 @@ from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_auto_repair import repair_until_quality_valid
 from lecturepilot.course_canvas_generation_jobs import CanvasGenerationJob
 from lecturepilot import course_canvas_generation_ownership as ownership_store
+from lecturepilot.course_canvas_generation_persistence import write_current_draft
 from lecturepilot.course_canvas_repairs import (
     lecture_source_revision,
     matching_repair_guidance,
     persist_repair_guidance,
 )
-from lecturepilot.course_canvas_store import InvalidCanvasDraftError
+from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.course_canvas_section_checkpoints import (
     SectionPlanCheckpointStore,
     section_plan_checkpoint_scope,
 )
-from lecturepilot.course_update_recovery import locked_course_state
 from lecturepilot.course_media import apply_course_media, course_media_evidence
 from lecturepilot.course_schedule_store import read_course_workspace
 from lecturepilot.logging_observability import operation_scope
@@ -66,7 +66,7 @@ async def generate_course_canvas_draft(
         ) as generation_span,
     ):
         with observability.tool_span("course_canvas_generation", stage="source_resolve", **common):
-            source, source_revision, ownership = await _run_source_prep(
+            source, source_revision, practice_design, ownership = await _run_source_prep(
                 partial(
                     ownership_store.begin_owned_generation_source,
                     app.state.canvas_workspace.layout,
@@ -78,8 +78,6 @@ async def generate_course_canvas_draft(
                     attempt=attempt,
                 )
             )
-            if source_revision is None:
-                raise InvalidCanvasDraftError("Draft source provenance is unavailable.")
         with observability.tool_span("course_canvas_generation", stage="source_media", **common):
             media_root = app.state.canvas_workspace.course_media_root(course_id)
             source = course_media_evidence(source, media_root)
@@ -110,17 +108,13 @@ async def generate_course_canvas_draft(
                 section_plan_checkpoint_scope(checkpoints),
             ):
                 try:
+                    plan_args = {
+                        "practice_design": practice_design,
+                        "output_language": output_language,
+                    }
                     if repair_context:
-                        document = await app.state.course_planner.plan_canvas(
-                            source,
-                            repair_context=repair_context,
-                            output_language=output_language,
-                        )
-                    else:
-                        document = await app.state.course_planner.plan_canvas(
-                            source,
-                            output_language=output_language,
-                        )
+                        plan_args["repair_context"] = repair_context
+                    document = await app.state.course_planner.plan_canvas(source, **plan_args)
                 except CanvasGenerationRepairableError as exc:
                     raise exc.with_source_revision(
                         lecture_source_revision(
@@ -132,7 +126,7 @@ async def generate_course_canvas_draft(
         with observability.tool_span("course_canvas_generation", stage="output_media", **common):
             document = apply_course_media(document, media_root)
         with observability.tool_span("course_canvas_generation", stage="draft_persist", **common):
-            document = _write_current_draft(
+            document = write_current_draft(
                 app,
                 document,
                 expected_source_revision=source_revision,
@@ -186,7 +180,7 @@ async def repair_targeted_course_canvas_draft(
             **common,
         ) as repair_span,
     ):
-        source, source_revision, ownership = await _run_source_prep(
+        source, source_revision, practice_design, ownership = await _run_source_prep(
             partial(
                 ownership_store.begin_owned_generation_source,
                 app.state.canvas_workspace.layout,
@@ -198,8 +192,6 @@ async def repair_targeted_course_canvas_draft(
                 attempt=attempt,
             )
         )
-        if source_revision is None:
-            raise InvalidCanvasDraftError("Draft source provenance is unavailable.")
         media_root = app.state.canvas_workspace.course_media_root(course_id)
         source = course_media_evidence(source, media_root)
         source = filter_source_document_for_planning(source)
@@ -218,13 +210,14 @@ async def repair_targeted_course_canvas_draft(
                     block_id=repair.block_id,
                     failure_context=failure.error_detail,
                     output_language=output_language,
+                    practice_design=practice_design,
                 )
         except CanvasGenerationRepairableError as exc:
             if exc.candidate is None:
                 exc.with_candidate(candidate)
             raise exc.with_source_revision(repair.source_revision)
         document = apply_course_media(document, media_root)
-        document = _write_current_draft(
+        document = write_current_draft(
             app,
             document,
             expected_source_revision=source_revision,
@@ -246,9 +239,9 @@ async def repair_targeted_course_canvas_draft(
 
 async def _run_source_prep(
     operation: Callable[
-        [], tuple[CanvasDocument, str | None, ownership_store.CanvasGenerationOwnership]
+        [], tuple[CanvasDocument, str, PracticeDesign, ownership_store.CanvasGenerationOwnership]
     ],
-) -> tuple[CanvasDocument, str | None, ownership_store.CanvasGenerationOwnership]:
+) -> tuple[CanvasDocument, str, PracticeDesign, ownership_store.CanvasGenerationOwnership]:
     return await to_thread.run_sync(operation, limiter=_source_prep_limiter)
 
 
@@ -270,24 +263,3 @@ def _generation_repair_context(
     if failure_code == "canvas_generation_repairable_error":
         return failure_detail or persisted_content_issue
     return None
-
-
-def _write_current_draft(
-    app: FastAPI,
-    document: CanvasDocument,
-    *,
-    expected_source_revision: str,
-    ownership: ownership_store.CanvasGenerationOwnership,
-) -> CanvasDocument:
-    course_root = app.state.canvas_workspace.course_media_root(document.course_id)
-    with locked_course_state(course_root):
-        try:
-            ownership_store.require_generation_ownership(
-                app.state.canvas_workspace.layout, ownership
-            )
-        except ownership_store.CanvasGenerationOwnershipError as exc:
-            raise InvalidCanvasDraftError(str(exc)) from exc
-        return app.state.canvas_workspace.write_course_canvas_draft(
-            document,
-            expected_source_revision=expected_source_revision,
-        )

@@ -8,6 +8,7 @@ from lecturepilot.canvas_models import CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_quality import CanvasQualityIssue
 from lecturepilot.course_canvas_repair_preflight import normalize_repair_candidate
+from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.course_canvas_validation import validate_planned_document
 
 
@@ -53,6 +54,7 @@ async def repair_until_quality_valid(
     block_id: str | None,
     failure_context: str,
     output_language: str,
+    practice_design: PracticeDesign | None = None,
     quality_issues: list[CanvasQualityIssue] | None = None,
 ) -> CanvasDocument:
     active_candidate = normalize_document_component_identities(candidate)

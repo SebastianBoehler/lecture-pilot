@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+import json
 
 from lecturepilot.course_practice_design_models import (
     PracticeDesignProposal,
@@ -7,6 +8,9 @@ from lecturepilot.course_practice_design_models import (
     PracticeMisconception,
     PracticeTarget,
 )
+from lecturepilot.course_canvas_repairs import lecture_source_revision
+from lecturepilot.course_practice_design_store import PracticeDesignStore
+from lecturepilot.storage_layout import StorageLayout
 
 
 def proposal() -> PracticeDesignProposal:
@@ -50,3 +54,46 @@ def document(task: str) -> SimpleNamespace:
     block = SimpleNamespace(id="practice-derive-conclusion", type="checkpoint", text=task)
     section = SimpleNamespace(source_ref="lecture-01.md", blocks=[block])
     return SimpleNamespace(sections=[section])
+
+
+def write_manifest(
+    layout: StorageLayout, *, course_id: str, lecture_id: str, source_path: str
+) -> None:
+    index = json.loads(layout.course_source_index_path(course_id).read_text())
+    source = next(item for item in index["files"] if item["path"] == source_path)
+    path = layout.lecture_source_manifest_path(course_id, lecture_id)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "course_id": course_id,
+                "lecture_id": lecture_id,
+                "files": [{"path": source_path, "sha256": source["sha256"]}],
+            }
+        )
+    )
+
+
+def save_approved_design(
+    layout: StorageLayout, *, course_id: str, lecture_id: str, source_path: str
+) -> None:
+    revision = lecture_source_revision(layout, course_id=course_id, lecture_id=lecture_id)
+    assert revision is not None
+    target = proposal().targets[0].model_copy(update={"source_refs": (source_path,)})
+    store = PracticeDesignStore(layout)
+    design = store.save_proposal(
+        course_id=course_id,
+        lecture_id=lecture_id,
+        source_revision=revision,
+        proposal=proposal().model_copy(update={"targets": (target,)}),
+        allowed_source_paths=(source_path,),
+        expected_design_revision=None,
+        expected_design_approval=None,
+    )
+    store.approve(
+        course_id=course_id,
+        lecture_id=lecture_id,
+        source_revision=revision,
+        design_revision=design.revision,
+        approved_by="prof01",
+    )

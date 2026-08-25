@@ -12,6 +12,7 @@ from lecturepilot.course_canvas_generation import (
     generate_course_canvas_draft,
     repair_targeted_course_canvas_draft,
 )
+from lecturepilot import course_canvas_generation_ownership as ownership_store
 from lecturepilot.course_canvas_generation_failures import find_latest_canvas_failure
 from lecturepilot.course_canvas_generation_http import run_canvas_generation_request
 from lecturepilot.course_canvas_generation_jobs import CanvasGenerationStore
@@ -20,6 +21,11 @@ from lecturepilot.course_canvas_generation_service import (
     CANVAS_GENERATION_LEASE_SECONDS,
     validate_generation_request_key,
 )
+from lecturepilot.course_practice_design_store import (
+    PracticeDesignApprovalRequired,
+    PracticeDesignStale,
+)
+from lecturepilot.source_bundle_canvas import SourceBundleCanvasError
 from lecturepilot.tenancy import TenantContext
 
 
@@ -82,6 +88,7 @@ def register_course_canvas_repair_routes(
                         "Generate a new draft before repairing it."
                     ),
                 )
+        _require_current_practice_design(app, course_id, lecture_id, source_document)
         outcome = await run_canvas_generation_request(
             app=app,
             store=store,
@@ -126,3 +133,26 @@ def _request_key(value: str | None) -> str:
         return validate_generation_request_key(value)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+def _require_current_practice_design(
+    app: FastAPI,
+    course_id: str,
+    lecture_id: str,
+    source_document: Callable[[str, str], CanvasDocument],
+) -> None:
+    try:
+        ownership_store.require_generation_practice_design(
+            app.state.canvas_workspace.layout,
+            app.state.canvas_workspace.course_media_root(course_id),
+            source_document,
+            course_id=course_id,
+            lecture_id=lecture_id,
+        )
+    except (
+        ownership_store.CanvasGenerationOwnershipError,
+        PracticeDesignApprovalRequired,
+        PracticeDesignStale,
+        SourceBundleCanvasError,
+    ) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
