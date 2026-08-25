@@ -3,48 +3,82 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime
-from typing import Literal
+from collections.abc import Sequence
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, model_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    ValidationInfo,
+    model_validator,
+)
 
 
 _ID_PATTERN = r"^[a-z0-9][a-z0-9-]{0,79}$"
 _REVISION_PATTERN = r"^[a-f0-9]{64}$"
 
 
+def _normalize_nonblank_text(value: object) -> object:
+    if not isinstance(value, str):
+        return value
+    normalized = value.strip()
+    if not normalized:
+        raise ValueError("Required text cannot be blank.")
+    return normalized
+
+
+def _freeze_collection(value: object) -> object:
+    return tuple(value) if isinstance(value, list) else value
+
+
+NonblankText = Annotated[str, BeforeValidator(_normalize_nonblank_text)]
+
+
 class _StrictModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+    model_config = ConfigDict(
+        extra="forbid", frozen=True, revalidate_instances="always", strict=True
+    )
 
 
 class PracticeEvidenceCriterion(_StrictModel):
     id: str = Field(pattern=_ID_PATTERN)
-    description: str = Field(min_length=1, max_length=1_000)
+    description: NonblankText = Field(min_length=1, max_length=1_000)
     required: bool = True
 
 
 class PracticeMisconception(_StrictModel):
     id: str = Field(pattern=_ID_PATTERN)
-    description: str = Field(min_length=1, max_length=1_000)
-    diagnostic_cue: str = Field(min_length=1, max_length=1_000)
+    description: NonblankText = Field(min_length=1, max_length=1_000)
+    diagnostic_cue: NonblankText = Field(min_length=1, max_length=1_000)
 
 
 class PracticeHint(_StrictModel):
     level: Literal["prompt", "cue", "faded_example", "worked_step"]
-    content: str = Field(min_length=1, max_length=2_000)
+    content: NonblankText = Field(min_length=1, max_length=2_000)
 
 
 class PracticeTarget(_StrictModel):
     id: str = Field(pattern=_ID_PATTERN)
-    title: str = Field(min_length=1, max_length=200)
-    outcome: str = Field(min_length=1, max_length=1_000)
-    baseline_task: str = Field(min_length=1, max_length=2_000)
-    independent_exit_task: str = Field(min_length=1, max_length=2_000)
-    delayed_transfer_task: str = Field(min_length=1, max_length=2_000)
-    evidence_criteria: list[PracticeEvidenceCriterion] = Field(min_length=1, max_length=40)
-    misconceptions: list[PracticeMisconception] = Field(default_factory=list, max_length=40)
-    hint_ladder: list[PracticeHint] = Field(default_factory=list, max_length=4)
+    title: NonblankText = Field(min_length=1, max_length=200)
+    outcome: NonblankText = Field(min_length=1, max_length=1_000)
+    baseline_task: NonblankText = Field(min_length=1, max_length=2_000)
+    independent_exit_task: NonblankText = Field(min_length=1, max_length=2_000)
+    delayed_transfer_task: NonblankText = Field(min_length=1, max_length=2_000)
+    evidence_criteria: Annotated[
+        tuple[PracticeEvidenceCriterion, ...], BeforeValidator(_freeze_collection)
+    ] = Field(min_length=1, max_length=40)
+    misconceptions: Annotated[
+        tuple[PracticeMisconception, ...], BeforeValidator(_freeze_collection)
+    ] = Field(default_factory=tuple, max_length=40)
+    hint_ladder: Annotated[tuple[PracticeHint, ...], BeforeValidator(_freeze_collection)] = Field(
+        default_factory=tuple, max_length=4
+    )
     review_after_days: int = Field(ge=1, le=365)
-    source_refs: list[str] = Field(min_length=1, max_length=100)
+    source_refs: Annotated[tuple[str, ...], BeforeValidator(_freeze_collection)] = Field(
+        min_length=1, max_length=100
+    )
 
     @model_validator(mode="after")
     def validate_contract(self) -> PracticeTarget:
@@ -65,9 +99,11 @@ class PracticeTarget(_StrictModel):
 
 
 class PracticeDesignProposal(_StrictModel):
-    lecture_title: str = Field(min_length=1, max_length=200)
-    objective: str = Field(min_length=1, max_length=1_000)
-    targets: list[PracticeTarget] = Field(min_length=1, max_length=8)
+    lecture_title: NonblankText = Field(min_length=1, max_length=200)
+    objective: NonblankText = Field(min_length=1, max_length=1_000)
+    targets: Annotated[tuple[PracticeTarget, ...], BeforeValidator(_freeze_collection)] = Field(
+        min_length=1, max_length=8
+    )
 
     @model_validator(mode="after")
     def validate_target_ids(self) -> PracticeDesignProposal:
@@ -76,7 +112,7 @@ class PracticeDesignProposal(_StrictModel):
 
 
 class PracticeDesignApproval(_StrictModel):
-    approved_by: str = Field(min_length=1, max_length=160)
+    approved_by: NonblankText = Field(min_length=1, max_length=160)
     approved_at: datetime
     source_revision: str = Field(pattern=_REVISION_PATTERN)
     practice_design_revision: str = Field(pattern=_REVISION_PATTERN)
@@ -86,10 +122,12 @@ class PracticeDesign(_StrictModel):
     schema_version: Literal[1] = 1
     course_id: str = Field(min_length=1, max_length=120)
     lecture_id: str = Field(min_length=1, max_length=120)
-    lecture_title: str = Field(min_length=1, max_length=200)
-    objective: str = Field(min_length=1, max_length=1_000)
+    lecture_title: NonblankText = Field(min_length=1, max_length=200)
+    objective: NonblankText = Field(min_length=1, max_length=1_000)
     source_revision: str = Field(pattern=_REVISION_PATTERN)
-    targets: list[PracticeTarget] = Field(min_length=1, max_length=8)
+    targets: Annotated[tuple[PracticeTarget, ...], BeforeValidator(_freeze_collection)] = Field(
+        min_length=1, max_length=8
+    )
     revision: str = Field(pattern=_REVISION_PATTERN)
     approval: PracticeDesignApproval | None = None
 
@@ -116,9 +154,11 @@ class PracticeDesign(_StrictModel):
 class PracticeDesignUpdate(_StrictModel):
     source_revision: str = Field(pattern=_REVISION_PATTERN)
     practice_design_revision: str = Field(pattern=_REVISION_PATTERN)
-    lecture_title: str = Field(min_length=1, max_length=200)
-    objective: str = Field(min_length=1, max_length=1_000)
-    targets: list[PracticeTarget] = Field(min_length=1, max_length=8)
+    lecture_title: NonblankText = Field(min_length=1, max_length=200)
+    objective: NonblankText = Field(min_length=1, max_length=1_000)
+    targets: Annotated[tuple[PracticeTarget, ...], BeforeValidator(_freeze_collection)] = Field(
+        min_length=1, max_length=8
+    )
 
     @model_validator(mode="after")
     def validate_target_ids(self) -> PracticeDesignUpdate:
@@ -150,17 +190,19 @@ def _require_distinct_tasks(target: PracticeTarget) -> None:
             target.delayed_transfer_task,
         )
     }
+    if "" in normalized:
+        raise ValueError("Practice target task variants cannot be blank.")
     if len(normalized) != 3:
         raise ValueError("Practice target task variants must differ.")
 
 
-def _require_unique_ids(items: list[object], label: str) -> None:
+def _require_unique_ids(items: Sequence[object], label: str) -> None:
     ids = [getattr(item, "id") for item in items]
     if len(set(ids)) != len(ids):
         raise ValueError(f"Practice {label} IDs must be unique.")
 
 
-def _require_ordered_hints(hints: list[PracticeHint]) -> None:
+def _require_ordered_hints(hints: Sequence[PracticeHint]) -> None:
     levels = ["prompt", "cue", "faded_example", "worked_step"]
     indices = [levels.index(hint.level) for hint in hints]
     if indices != sorted(indices) or len(set(indices)) != len(indices):

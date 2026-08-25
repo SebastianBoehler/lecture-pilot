@@ -1,5 +1,4 @@
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
@@ -9,9 +8,7 @@ from lecturepilot.course_practice_design_models import (
     PracticeDesignApprovalInput,
     PracticeDesignUpdate,
     PracticeDesignProposal,
-    PracticeEvidenceCriterion,
     PracticeHint,
-    PracticeMisconception,
     PracticeTarget,
 )
 from lecturepilot.course_practice_design_store import (
@@ -25,6 +22,9 @@ from lecturepilot.course_practice_design_validation import (
     validate_canvas_practice_contract,
 )
 from lecturepilot.storage_layout import StorageLayout
+from practice_design_test_helpers import document as _document
+from practice_design_test_helpers import proposal as _proposal
+from practice_design_test_helpers import target as _target
 
 
 SRC = "a" * 64
@@ -130,10 +130,48 @@ def test_models_reject_invalid_ids_duplicate_task_variants_and_unordered_hints()
         )
 
 
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"title": " "},
+        {"outcome": " "},
+        {"baseline_task": " "},
+        {"independent_exit_task": " "},
+        {"delayed_transfer_task": " "},
+        {"evidence_criteria": [{"id": "cite-evidence", "description": " "}]},
+        {"misconceptions": [{"id": "ignore-evidence", "description": " ", "diagnostic_cue": " "}]},
+        {"hint_ladder": [{"level": "prompt", "content": " "}]},
+    ],
+)
+def test_models_reject_whitespace_only_required_content(changes: dict[str, object]) -> None:
+    target = _proposal().targets[0]
+
+    with pytest.raises(ValidationError):
+        PracticeTarget(**{**target.model_dump(), **changes})
+
+
+def test_contract_collections_are_immutable() -> None:
+    proposal = _proposal()
+    target = proposal.targets[0]
+
+    assert all(
+        isinstance(value, tuple)
+        for value in (
+            proposal.targets,
+            target.source_refs,
+            target.evidence_criteria,
+            target.misconceptions,
+            target.hint_ladder,
+        )
+    )
+    with pytest.raises(AttributeError):
+        target.source_refs.append("other-lecture.md")
+
+
 def test_save_and_update_reject_unknown_routed_source_paths(tmp_path: Path) -> None:
     store = PracticeDesignStore(StorageLayout(tmp_path))
-    proposal = _proposal().model_copy(
-        update={"targets": [_target(source_refs=["other-lecture.md"])]}
+    proposal = PracticeDesignProposal(
+        **{**_proposal().model_dump(), "targets": [_target(source_refs=["other-lecture.md"])]}
     )
 
     with pytest.raises(PracticeDesignValidationError, match="unrouted"):
@@ -145,7 +183,9 @@ def test_save_and_update_reject_unknown_routed_source_paths(tmp_path: Path) -> N
             allowed_source_paths=PATHS,
         )
     saved = _save(store)
-    update = _update(saved).model_copy(update={"targets": [_target(source_refs=["other.md"])]})
+    update = PracticeDesignUpdate(
+        **{**_update(saved).model_dump(), "targets": [_target(source_refs=["other.md"])]}
+    )
 
     with pytest.raises(PracticeDesignValidationError, match="unrouted"):
         store.update(
@@ -227,39 +267,6 @@ def test_approval_input_and_canvas_contract_are_exact() -> None:
         )
 
 
-def _proposal() -> PracticeDesignProposal:
-    return PracticeDesignProposal(
-        lecture_title="Practice design",
-        objective="Derive the conclusion independently from the cited evidence.",
-        targets=[
-            PracticeTarget(
-                id="derive-conclusion",
-                title="Derive a conclusion",
-                outcome="Derive a justified conclusion from the given evidence.",
-                baseline_task="Use the evidence to derive the conclusion.",
-                independent_exit_task="Use a parallel evidence set to derive the conclusion.",
-                delayed_transfer_task="Use changed surface details to derive the conclusion.",
-                evidence_criteria=[
-                    PracticeEvidenceCriterion(
-                        id="cite-evidence",
-                        description="Cites the relevant evidence.",
-                    )
-                ],
-                misconceptions=[
-                    PracticeMisconception(
-                        id="ignore-evidence",
-                        description="States a conclusion without evidence.",
-                        diagnostic_cue="The response omits a source-grounded reason.",
-                    )
-                ],
-                hint_ladder=[PracticeHint(level="prompt", content="Identify the key evidence.")],
-                review_after_days=7,
-                source_refs=["lecture-01.md"],
-            )
-        ],
-    )
-
-
 def _save(store: PracticeDesignStore) -> PracticeDesign:
     return store.save_proposal(
         course_id="course-01",
@@ -278,14 +285,3 @@ def _update(design: PracticeDesign, *, objective: str | None = None) -> Practice
         objective=objective or design.objective,
         targets=design.targets,
     )
-
-
-def _target(**changes: object) -> PracticeTarget:
-    target = _proposal().targets[0]
-    return PracticeTarget(**{**target.model_dump(), **changes})
-
-
-def _document(task: str) -> SimpleNamespace:
-    block = SimpleNamespace(id="practice-derive-conclusion", type="checkpoint", text=task)
-    section = SimpleNamespace(source_ref="lecture-01.md", blocks=[block])
-    return SimpleNamespace(sections=[section])
