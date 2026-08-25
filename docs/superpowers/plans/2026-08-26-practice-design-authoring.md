@@ -37,6 +37,7 @@
 ### Task 1: Practice-design contracts and durable store
 
 **Files:**
+
 - Create: `apps/api/src/lecturepilot/course_practice_design_models.py`
 - Create: `apps/api/src/lecturepilot/course_practice_design_validation.py`
 - Create: `apps/api/src/lecturepilot/course_practice_design_store.py`
@@ -44,6 +45,7 @@
 - Test: `apps/api/tests/test_practice_design_store.py`
 
 **Interfaces:**
+
 - Produces `PracticeDesignProposal`, `PracticeDesign`, `PracticeDesignUpdate`, `PracticeDesignApprovalInput`, and `PracticeDesignStore.read/save_proposal/update/approve/require_approved`.
 - `save_proposal(..., proposal, allowed_source_paths)`, `update(..., update, allowed_source_paths)`, and `require_approved(course_id, lecture_id, source_revision, design_revision=None) -> PracticeDesign` validate against the lecture's exact routed paths.
 
@@ -94,6 +96,7 @@ with pytest.raises(PracticeDesignApprovalRequired):
 ### Task 2: Source-grounded proposal planner and professor routes
 
 **Files:**
+
 - Create: `apps/api/src/lecturepilot/course_practice_design_client.py`
 - Create: `apps/api/src/lecturepilot/course_practice_design_prompt.py`
 - Create: `apps/api/src/lecturepilot/course_practice_design_planner.py`
@@ -104,6 +107,7 @@ with pytest.raises(PracticeDesignApprovalRequired):
 - Test: `apps/api/tests/test_practice_design_routes.py`
 
 **Interfaces:**
+
 - Consumes Task 1 contracts/store and existing `source_document(course_id, lecture_id)`.
 - Produces `PracticeDesignPlanner.propose(source, source_revision) -> PracticeDesignProposal` and the four spec routes.
 
@@ -126,6 +130,7 @@ assert approved.json()["approval"]["practice_design_revision"] == revision
 ### Task 3: Block generation and capture an immutable design snapshot
 
 **Files:**
+
 - Modify: `apps/api/src/lecturepilot/course_canvas_generation_ownership.py`
 - Modify: `apps/api/src/lecturepilot/course_canvas_generation.py`
 - Modify: `apps/api/src/lecturepilot/course_canvas_draft_routes.py`
@@ -133,6 +138,7 @@ assert approved.json()["approval"]["practice_design_revision"] == revision
 - Test: `apps/api/tests/test_practice_design_generation_preflight.py`
 
 **Interfaces:**
+
 - Consumes `PracticeDesignStore.require_approved`.
 - Ownership records `practice_design_revision` and the generation/repair callback receives the frozen `PracticeDesign`; persist-time checks require the same approved revision.
 
@@ -152,6 +158,7 @@ assert fake_course_planner.calls == []
 ### Task 4: Make canvas planning and repairs implement the design
 
 **Files:**
+
 - Modify: `apps/api/src/lecturepilot/course_canvas_planner.py`
 - Modify: `apps/api/src/lecturepilot/course_canvas_prompt.py`
 - Modify: `apps/api/src/lecturepilot/course_canvas_section_planner.py`
@@ -161,6 +168,7 @@ assert fake_course_planner.calls == []
 - Test: `apps/api/tests/test_practice_design_canvas_planner.py`
 
 **Interfaces:**
+
 - Changes `CourseCanvasPlanner.plan_canvas(source_document, *, practice_design, repair_context=None, output_language="en")` and every section/repair path to carry the same immutable design.
 - `planner_messages(source_document, practice_design, *, output_language="en")` requires exact `practice-<target-id>` checkpoints and approved task content.
 
@@ -180,6 +188,7 @@ async def plan_canvas(self, source_document: CanvasDocument, *,
 ### Task 5: Bind targets into drafts, learning maps, and publication
 
 **Files:**
+
 - Create: `apps/api/src/lecturepilot/course_practice_design_binding.py`
 - Modify: `apps/api/src/lecturepilot/learning_map.py`
 - Modify: `apps/api/src/lecturepilot/course_canvas_store.py`
@@ -190,6 +199,7 @@ async def plan_canvas(self, source_document: CanvasDocument, *,
 - Test: `apps/api/tests/test_practice_design_publication.py`
 
 **Interfaces:**
+
 - Produces `PracticeDesignBinding(source_revision, practice_design_revision)` at `practice-design-binding.json`.
 - Changes `build_learning_map(document, practice_design)` so new gates require `practice_target_id`, exact baseline/evidence/transfer/review fields, and exact `practice-<target-id>` checkpoint coverage.
 - New publication metadata carries `practice_design_revision`; legacy published metadata remains readable with `None`.
@@ -210,6 +220,7 @@ class PracticeDesignBinding(BaseModel):
 ### Task 6: Web contracts and multi-lecture state
 
 **Files:**
+
 - Create: `apps/web/src/practiceDesignTypes.ts`
 - Create: `apps/web/src/practiceDesignApi.ts`
 - Create: `apps/web/src/useProfessorPracticeDesigns.ts`
@@ -217,6 +228,7 @@ class PracticeDesignBinding(BaseModel):
 - Test: `apps/web/src/useProfessorPracticeDesigns.test.tsx`
 
 **Interfaces:**
+
 - Produces `PracticeDesign`, `PracticeDesignUpdate`, `get/propose/update/approvePracticeDesign`, and a hook keyed by lecture ID.
 - Hook exposes `{designs, pendingLectureId, error, loadAll, propose, save, approve, reset}` and `allApproved(lectureIds)`.
 
@@ -224,7 +236,10 @@ class PracticeDesignBinding(BaseModel):
 
 ```ts
 export async function approvePracticeDesign(input: {
-  courseId: string; lectureId: string; design: PracticeDesign; session: LoginSession;
+  courseId: string;
+  lectureId: string;
+  design: PracticeDesign;
+  session: LoginSession;
 }): Promise<PracticeDesign>;
 ```
 
@@ -236,6 +251,7 @@ export async function approvePracticeDesign(input: {
 ### Task 7: Professor review step and builder blocking
 
 **Files:**
+
 - Create: `apps/web/src/ProfessorPracticeDesignStep.tsx`
 - Create: `apps/web/src/ProfessorPracticeTargetEditor.tsx`
 - Create: `apps/web/src/professor-practice-design.css`
@@ -249,15 +265,18 @@ export async function approvePracticeDesign(input: {
 - Test: `apps/web/src/ProfessorCourseBuilder.practiceDesign.test.tsx`
 
 **Interfaces:**
+
 - Consumes Task 6 hook.
 - Adds `BuilderStep = ... | "design"`; `designReady` requires every target lecture's current approval. Media remains reviewable, but generation requires `designReady && routingReady && reviewReady`.
 
 - [ ] Write UI tests for source → design → media → generate order, compact target summaries, collapsed details, editable content with stable IDs, save-before-approve, all-lectures approval, stale messaging, and disabled generation.
 
 ```tsx
-{builder.activeStep === "design" ? (
-  <ProfessorPracticeDesignStep {...builder.practiceDesignStep} />
-) : null}
+{
+  builder.activeStep === "design" ? (
+    <ProfessorPracticeDesignStep {...builder.practiceDesignStep} />
+  ) : null;
+}
 ```
 
 - [ ] Run `npm test --workspace apps/web -- ProfessorPracticeDesignStep.test.tsx ProfessorCourseBuilder.practiceDesign.test.tsx`; expect missing step/components.
@@ -268,6 +287,7 @@ export async function approvePracticeDesign(input: {
 ### Task 8: Documentation and end-to-end verification
 
 **Files:**
+
 - Modify: `AGENTS.md`
 - Modify: `docs/workspaces.md`
 
