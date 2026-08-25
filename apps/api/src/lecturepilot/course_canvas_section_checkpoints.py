@@ -34,8 +34,14 @@ class SectionPlanCheckpointStore:
         *,
         model: str,
         output_language: str,
+        practice_design_revision: str,
     ) -> CanvasSection | None:
-        key = _cache_key(source_section, model=model, output_language=output_language)
+        key = _cache_key(
+            source_section,
+            model=model,
+            output_language=output_language,
+            practice_design_revision=practice_design_revision,
+        )
         with exclusive_file_lock(self.path):
             payload = self._read_payload()
             if payload.get("source_revision") != self.source_revision:
@@ -57,8 +63,14 @@ class SectionPlanCheckpointStore:
         *,
         model: str,
         output_language: str,
+        practice_design_revision: str,
     ) -> None:
-        key = _cache_key(source_section, model=model, output_language=output_language)
+        key = _cache_key(
+            source_section,
+            model=model,
+            output_language=output_language,
+            practice_design_revision=practice_design_revision,
+        )
         with exclusive_file_lock(self.path):
             payload = self._read_payload()
             if payload.get("source_revision") != self.source_revision:
@@ -96,6 +108,16 @@ def current_section_plan_checkpoint_store() -> SectionPlanCheckpointStore | None
     return _active_store.get()
 
 
-def _cache_key(section: CanvasSection, *, model: str, output_language: str) -> str:
-    material = "\0".join((SECTION_PLAN_VERSION, model, output_language, section.model_dump_json()))
+def _cache_key(
+    section: CanvasSection, *, model: str, output_language: str, practice_design_revision: str
+) -> str:
+    material = "\0".join(
+        (
+            SECTION_PLAN_VERSION,
+            model,
+            output_language,
+            practice_design_revision,
+            section.model_dump_json(),
+        )
+    )
     return sha256(material.encode()).hexdigest()

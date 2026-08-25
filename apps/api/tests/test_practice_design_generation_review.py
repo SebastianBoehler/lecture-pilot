@@ -9,6 +9,7 @@ from lecturepilot import course_canvas_draft_routes
 from lecturepilot import course_canvas_generation as generation
 from lecturepilot import course_canvas_repair_routes
 from lecturepilot.app import create_app
+from lecturepilot.canvas_models import CanvasBlock
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_canvas_generation_ownership import CanvasGenerationOwnershipError
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner
@@ -30,8 +31,30 @@ async def test_real_planner_accepts_frozen_practice_design(
     app, design = _approved_app(tmp_path, "a" * 64)
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
 
+    document = _document()
+    target = design.targets[0]
+    section = document.sections[0]
+    document = document.model_copy(
+        update={
+            "sections": [
+                section.model_copy(
+                    update={
+                        "blocks": [
+                            *section.blocks,
+                            CanvasBlock(
+                                id=f"practice-{target.id}",
+                                type="checkpoint",
+                                text=target.baseline_task,
+                            ),
+                        ]
+                    }
+                )
+            ]
+        }
+    )
+
     async def plan_sections(**_kwargs):
-        return _document()
+        return document
 
     planner = CourseCanvasPlanner(
         provider_registry=ProviderRegistry.from_env("gemini/test-model"),
@@ -44,7 +67,7 @@ async def test_real_planner_accepts_frozen_practice_design(
         "lecturepilot.course_canvas_planner.validate_planned_document", lambda *_args: None
     )
 
-    document = await planner.plan_canvas(_document(), practice_design=design)
+    document = await planner.plan_canvas(document, practice_design=design)
 
     assert document.title == "Learning design"
     assert app.state.canvas_workspace.layout.course_root(COURSE_ID).exists()

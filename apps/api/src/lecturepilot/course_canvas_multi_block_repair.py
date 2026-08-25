@@ -18,8 +18,10 @@ from lecturepilot.course_canvas_repair_response import (
     repair_patch_response_format,
     replacement_edits,
 )
-from lecturepilot.course_canvas_section_planner import _read_section_payload
+from lecturepilot.course_canvas_section_reader import read_section_payload as _read_section_payload
 from lecturepilot.course_canvas_validation import validate_planned_document
+from lecturepilot.course_canvas_practice_contract import validate_practice_candidate
+from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import ProviderCapability, ProviderSettings
 from lecturepilot.providers import ProviderConfigurationError
@@ -53,6 +55,7 @@ async def repair_multiple_blocks(
     block_ids: list[str],
     failure_context: str,
     output_language: str,
+    practice_design: PracticeDesign,
 ) -> CanvasDocument:
     if len(block_ids) < 2 or len(set(block_ids)) != len(block_ids):
         raise CanvasGenerationRepairableError(
@@ -68,6 +71,7 @@ async def repair_multiple_blocks(
         original,
         targets,
         failure_context,
+        practice_design=practice_design,
         output_language=output_language,
     )
     last_error: CanvasGenerationRepairableError | None = None
@@ -102,6 +106,7 @@ async def repair_multiple_blocks(
                     active_target,
                 )
             validate_planned_document(repaired, source_document)
+            validate_practice_candidate(repaired, practice_design)
             return repaired
         except CanvasGenerationRepairableError as exc:
             last_error = exc

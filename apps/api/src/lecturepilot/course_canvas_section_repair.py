@@ -12,6 +12,9 @@ from lecturepilot.course_canvas_repair_apply import (
     section as _section,
 )
 from lecturepilot.course_canvas_repair_preflight import normalize_repair_candidate
+from lecturepilot.course_canvas_practice_contract import (
+    validate_practice_candidate,
+)
 from lecturepilot.course_canvas_repair_response import (
     repair_patch_response_format,
     replacement_blocks,
@@ -20,8 +23,9 @@ from lecturepilot.course_canvas_repair_prompt import (
     repair_messages,
     repair_retry_message,
 )
-from lecturepilot.course_canvas_section_planner import _read_section_payload
+from lecturepilot.course_canvas_section_reader import read_section_payload as _read_section_payload
 from lecturepilot.course_canvas_validation import validate_planned_document
+from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import ProviderCapability, ProviderSettings
 from lecturepilot.providers import ProviderConfigurationError
@@ -55,8 +59,10 @@ class CourseCanvasSectionRepairMixin:
         section_id: str,
         block_ids: list[str],
         failure_context: str,
+        practice_design: PracticeDesign,
         output_language: str = "en",
     ) -> CanvasDocument:
+        validate_practice_candidate(candidate_document, practice_design)
         return await repair_multiple_blocks(
             self,
             source_document,
@@ -64,6 +70,7 @@ class CourseCanvasSectionRepairMixin:
             section_id=section_id,
             block_ids=block_ids,
             failure_context=failure_context,
+            practice_design=practice_design,
             output_language=output_language,
         )
 
@@ -75,6 +82,7 @@ class CourseCanvasSectionRepairMixin:
         section_id: str,
         block_id: str | None,
         failure_context: str,
+        practice_design: PracticeDesign,
         output_language: str = "en",
     ) -> CanvasDocument:
         normalized_candidate = normalize_repair_candidate(
@@ -86,11 +94,13 @@ class CourseCanvasSectionRepairMixin:
         )
         preflight_changed = normalized_candidate != candidate_document
         candidate_document = normalized_candidate
+        validate_practice_candidate(candidate_document, practice_design)
         section = _section(candidate_document, section_id)
         target = _block(section, block_id) if block_id else None
         if preflight_changed or not failure_context.startswith("Canvas quality review failed:"):
             try:
                 validate_planned_document(candidate_document, source_document)
+                validate_practice_candidate(candidate_document, practice_design)
                 return candidate_document
             except CanvasGenerationRepairableError as exc:
                 if _is_new_target(exc, section, target):
@@ -104,6 +114,7 @@ class CourseCanvasSectionRepairMixin:
             section,
             target,
             failure_context,
+            practice_design=practice_design,
             output_language=output_language,
         )
         last_error: CanvasGenerationRepairableError | None = None
@@ -139,6 +150,7 @@ class CourseCanvasSectionRepairMixin:
                     target,
                 )
                 validate_planned_document(repaired, source_document)
+                validate_practice_candidate(repaired, practice_design)
                 return repaired
             except CanvasGenerationRepairableError as exc:
                 if repaired is not None and _is_new_target(exc, section, target):

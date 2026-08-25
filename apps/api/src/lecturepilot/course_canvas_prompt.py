@@ -4,6 +4,8 @@ from lecturepilot.canvas_component_catalog import component_catalog_instruction
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_language import canvas_language_instruction
 from lecturepilot.course_canvas_math import generated_math_instructions
+from lecturepilot.course_canvas_practice_contract import practice_prompt_instruction
+from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.course_canvas_validation import required_section_ids
 
 
@@ -14,6 +16,7 @@ MAX_BLOCK_EVIDENCE_CHARS = 1_600
 
 def planner_messages(
     source_document: CanvasDocument,
+    practice_design: PracticeDesign,
     *,
     output_language: str = "en",
 ) -> list[dict[str, str]]:
@@ -48,6 +51,7 @@ def planner_messages(
                 "callout, math, asset, video, table, checkpoint, quiz, or component. "
                 f"{component_catalog_instruction()} "
                 f"{_assessment_instructions()} "
+                f"{practice_prompt_instruction(practice_design)} "
                 "Every block must include id, type, text, items, asset_path, caption, answer_index, "
                 "component_id, component_type, component_ref, component_version, option_ids, and "
                 "component_data; use null or [] where not relevant. Quiz blocks use text as the "
@@ -67,6 +71,7 @@ def planner_messages(
 def repair_message(
     error: str,
     source_document: CanvasDocument,
+    practice_design: PracticeDesign,
     *,
     output_language: str = "en",
 ) -> dict[str, str]:
@@ -79,6 +84,7 @@ def repair_message(
             "study sections and cite source files and frames in source_ref. Let section depth "
             "follow the evidence; do not write to a fixed section, block, or character quota. "
             f"{_assessment_instructions()} "
+            f"{practice_prompt_instruction(practice_design)} "
             "Source outline ids available for coverage: "
             f"{', '.join(required_section_ids(source_document)) or 'see evidence titles'}. "
             f"{generated_math_instructions()}"

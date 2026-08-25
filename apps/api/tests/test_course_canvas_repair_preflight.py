@@ -17,6 +17,7 @@ from lecturepilot.providers import ProviderRegistry
 from test_course_canvas_section_repair import _planner, _repair_payload
 from test_course_canvas_math import _section_with_math
 from targeted_repair_test_helpers import invalid_candidate
+from practice_design_test_helpers import canvas_with_practice_design
 
 
 def test_generated_math_normalization_removes_stray_display_delimiters() -> None:
@@ -164,8 +165,10 @@ async def test_section_repair_normalizes_redundant_math_without_calling_the_mode
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     planner, model = _planner(monkeypatch, [])
-    source = published_course_canvas("targeted-repair", "lecture-01")
-    candidate = invalid_candidate(source)
+    source, design = canvas_with_practice_design(
+        published_course_canvas("targeted-repair", "lecture-01")
+    )
+    candidate, _ = canvas_with_practice_design(invalid_candidate(source))
     section = candidate.sections[0]
     target = section.blocks[1].model_copy(update={"text": r"w^\prime \[x"})
     candidate = candidate.model_copy(
@@ -185,6 +188,7 @@ async def test_section_repair_normalizes_redundant_math_without_calling_the_mode
         section_id=section.id,
         block_id=target.id,
         failure_context="Math block contains display delimiters.",
+        practice_design=design,
     )
 
     repaired_target = next(block for block in repaired.sections[0].blocks if block.id == target.id)
@@ -196,8 +200,10 @@ async def test_section_repair_normalizes_source_dependent_checkpoint_without_mod
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     planner, model = _planner(monkeypatch, [])
-    source = published_course_canvas("targeted-repair", "lecture-01")
-    candidate = invalid_candidate(source)
+    source, design = canvas_with_practice_design(
+        published_course_canvas("targeted-repair", "lecture-01")
+    )
+    candidate, _ = canvas_with_practice_design(invalid_candidate(source))
     section = candidate.sections[0]
     valid_math = section.blocks[1].model_copy(update={"text": r"w^\top x"})
     target = section.blocks[4].model_copy(
@@ -228,6 +234,7 @@ async def test_section_repair_normalizes_source_dependent_checkpoint_without_mod
         section_id=section.id,
         block_id=target.id,
         failure_context="Checkpoint must be understandable without a slide reference.",
+        practice_design=design,
     )
 
     repaired_target = next(block for block in repaired.sections[0].blocks if block.id == target.id)
@@ -240,8 +247,10 @@ async def test_section_repair_converts_incomplete_choice_component_without_model
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     planner, model = _planner(monkeypatch, [])
-    source = published_course_canvas("targeted-repair", "lecture-01")
-    candidate = invalid_candidate(source)
+    source, design = canvas_with_practice_design(
+        published_course_canvas("targeted-repair", "lecture-01")
+    )
+    candidate, _ = canvas_with_practice_design(invalid_candidate(source))
     section = candidate.sections[0]
     valid_math = section.blocks[1].model_copy(update={"text": r"w^\top x"})
     target = section.blocks[4].model_copy(
@@ -286,6 +295,7 @@ async def test_section_repair_converts_incomplete_choice_component_without_model
             "Component block optimization-choice needs at least two options and one explicit "
             "correct answer."
         ),
+        practice_design=design,
     )
 
     repaired_target = next(block for block in repaired.sections[0].blocks if block.id == target.id)
@@ -300,8 +310,10 @@ async def test_section_repair_rewrites_unsupported_relationship_as_retrieval_wit
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     planner, model = _planner(monkeypatch, [])
-    source = published_course_canvas("targeted-repair", "lecture-01")
-    candidate = invalid_candidate(source)
+    source, design = canvas_with_practice_design(
+        published_course_canvas("targeted-repair", "lecture-01")
+    )
+    candidate, _ = canvas_with_practice_design(invalid_candidate(source))
     section = candidate.sections[0]
     valid_math = section.blocks[1].model_copy(update={"text": r"w^\top x"})
     choice = CanvasBlock(
@@ -352,6 +364,7 @@ async def test_section_repair_rewrites_unsupported_relationship_as_retrieval_wit
             "state or explain a relationship among them; the checkpoint asks for unsupported "
             "interpretation."
         ),
+        practice_design=design,
     )
 
     repaired_target = next(block for block in repaired.sections[0].blocks if block.id == target.id)
@@ -364,8 +377,10 @@ async def test_section_repair_downgrades_multi_correct_choice_without_model_call
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     planner, model = _planner(monkeypatch, [])
-    source = published_course_canvas("targeted-repair", "lecture-01")
-    candidate = invalid_candidate(source)
+    source, design = canvas_with_practice_design(
+        published_course_canvas("targeted-repair", "lecture-01")
+    )
+    candidate, _ = canvas_with_practice_design(invalid_candidate(source))
     section = candidate.sections[0]
     valid_math = section.blocks[1].model_copy(update={"text": r"w^\top x"})
     target = section.blocks[5]
@@ -389,6 +404,7 @@ async def test_section_repair_downgrades_multi_correct_choice_without_model_call
             "Canvas quality review failed: the selected answer is supported, but the second "
             "option is also supported and the answer is not uniquely correct."
         ),
+        practice_design=design,
     )
 
     repaired_target = next(block for block in repaired.sections[0].blocks if block.id == target.id)
@@ -404,14 +420,17 @@ async def test_block_repair_accepts_the_evidence_supported_patch_size(
         [{"type": "paragraph", "text": f"Source-supported detail {index}."} for index in range(4)]
     )
     planner, _model = _planner(monkeypatch, [replacement])
-    source = published_course_canvas("targeted-repair", "lecture-01")
+    source, design = canvas_with_practice_design(
+        published_course_canvas("targeted-repair", "lecture-01")
+    )
 
     repaired = await planner.repair_section(
         source,
-        invalid_candidate(source),
+        canvas_with_practice_design(invalid_candidate(source))[0],
         section_id="learning-optimization",
         block_id="optimization-math",
         failure_context="Repair only the failed formula.",
+        practice_design=design,
     )
 
-    assert len(repaired.sections[0].blocks) == 9
+    assert len(repaired.sections[0].blocks) == 10

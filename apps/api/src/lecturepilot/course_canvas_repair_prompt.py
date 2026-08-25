@@ -10,6 +10,8 @@ from lecturepilot.course_canvas_language import canvas_language_instruction
 from lecturepilot.course_canvas_math import generated_math_instructions
 from lecturepilot.course_canvas_repair_guidance import repair_guidance
 from lecturepilot.course_canvas_repair_preflight import repair_failure_constraint
+from lecturepilot.course_canvas_practice_contract import practice_prompt_instruction
+from lecturepilot.course_practice_design_models import PracticeDesign
 
 
 def repair_messages(
@@ -18,6 +20,7 @@ def repair_messages(
     target: CanvasBlock | None,
     failure: str,
     *,
+    practice_design: PracticeDesign,
     output_language: str,
 ) -> list[dict[str, str]]:
     scope = (
@@ -45,6 +48,7 @@ def repair_messages(
                 f"{component_catalog_instruction()} "
                 "Preserve the meaning and use only the supplied evidence. "
                 f"{assessment_generation_instruction()} "
+                f"{practice_prompt_instruction(practice_design)} "
                 f"{repair_failure_constraint(failure)} "
                 f"{repair_guidance(failure)} "
                 f"{generated_math_instructions()}"
@@ -81,6 +85,7 @@ def repair_blocks_messages(
     targets: list[CanvasBlock],
     failure: str,
     *,
+    practice_design: PracticeDesign,
     output_language: str,
 ) -> list[dict[str, str]]:
     target_ids = [target.id for target in targets]
@@ -98,6 +103,7 @@ def repair_blocks_messages(
                 f"{component_catalog_instruction()} "
                 "Preserve the meaning and use only the supplied evidence. "
                 f"{assessment_generation_instruction()} "
+                f"{practice_prompt_instruction(practice_design)} "
                 f"{repair_failure_constraint(failure)} "
                 f"{repair_guidance(failure)} "
                 f"{generated_math_instructions()}"

@@ -2,12 +2,14 @@ from types import SimpleNamespace
 import json
 
 from lecturepilot.course_practice_design_models import (
+    PracticeDesign,
     PracticeDesignProposal,
     PracticeEvidenceCriterion,
     PracticeHint,
     PracticeMisconception,
     PracticeTarget,
 )
+from lecturepilot.canvas_models import CanvasBlock, CanvasDocument
 from lecturepilot.course_canvas_repairs import lecture_source_revision
 from lecturepilot.course_practice_design_store import PracticeDesignStore
 from lecturepilot.storage_layout import StorageLayout
@@ -54,6 +56,47 @@ def document(task: str) -> SimpleNamespace:
     block = SimpleNamespace(id="practice-derive-conclusion", type="checkpoint", text=task)
     section = SimpleNamespace(source_ref="lecture-01.md", blocks=[block])
     return SimpleNamespace(sections=[section])
+
+
+def canvas_with_practice_design(document: CanvasDocument) -> tuple[CanvasDocument, PracticeDesign]:
+    baseline_task = "Derive the conclusion from the stated evidence and justify the reasoning."
+    design_target = target(
+        baseline_task=baseline_task,
+        independent_exit_task="Derive a conclusion from a parallel evidence set and justify it.",
+        delayed_transfer_task="Derive a conclusion after the surface details change and justify it.",
+        source_refs=(document.sections[0].source_ref or document.source_ref,),
+    )
+    design = PracticeDesign.create(
+        course_id=document.course_id,
+        lecture_id=document.lecture_id,
+        lecture_title=document.title,
+        objective="Derive the conclusion independently from the cited evidence.",
+        source_revision="a" * 64,
+        targets=(design_target,),
+    )
+    first = document.sections[0]
+    return (
+        document.model_copy(
+            update={
+                "sections": [
+                    first.model_copy(
+                        update={
+                            "blocks": [
+                                *first.blocks,
+                                CanvasBlock(
+                                    id="practice-derive-conclusion",
+                                    type="checkpoint",
+                                    text=baseline_task,
+                                ),
+                            ]
+                        }
+                    ),
+                    *document.sections[1:],
+                ]
+            }
+        ),
+        design,
+    )
 
 
 def write_manifest(
