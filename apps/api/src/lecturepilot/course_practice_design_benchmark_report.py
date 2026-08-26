@@ -14,7 +14,7 @@ from lecturepilot.course_practice_design_benchmark_models import (
     PracticeDesignBenchmarkReviewerJudgment,
     PracticeDesignBenchmarkReviewerSpec,
     summarize_dimension_scores,
-    validate_reviewer_specs,
+    validate_benchmark_model_independence,
 )
 from lecturepilot.course_practice_design_contract import (
     NonblankText,
@@ -55,6 +55,7 @@ class PracticeDesignBenchmarkFixtureResult(StrictPracticeDesignModel):
     provenance: Literal["synthetic", "public"]
     source_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     proposal_model: NonblankText = Field(max_length=200)
+    proposal_underlying_model_identity: NonblankText = Field(max_length=300)
     proposal: PracticeDesignProposal | None = None
     production_review: PracticeDesignReviewResult | None = None
     reviewer_results: Annotated[
@@ -103,6 +104,7 @@ class PracticeDesignBenchmarkReport(StrictPracticeDesignModel):
     schema_version: Literal[1] = 1
     generated_at: datetime
     proposal_model: NonblankText = Field(max_length=200)
+    proposal_underlying_model_identity: NonblankText = Field(max_length=300)
     reviewers: Annotated[
         tuple[PracticeDesignBenchmarkReviewerSpec, ...], BeforeValidator(freeze_collection)
     ] = Field(min_length=2)
@@ -121,7 +123,11 @@ class PracticeDesignBenchmarkReport(StrictPracticeDesignModel):
 
     @model_validator(mode="after")
     def require_consistent_model_identity(self) -> PracticeDesignBenchmarkReport:
-        validate_reviewer_specs(self.reviewers)
+        validate_benchmark_model_independence(
+            self.proposal_model,
+            self.proposal_underlying_model_identity,
+            self.reviewers,
+        )
         if self.dimensions != BENCHMARK_DIMENSIONS:
             raise ValueError("Benchmark report dimensions must match the frozen contract.")
         expected_scale = tuple(SCORE_ANCHORS.items())
@@ -130,6 +136,13 @@ class PracticeDesignBenchmarkReport(StrictPracticeDesignModel):
         for fixture in self.fixtures:
             if fixture.proposal_model != self.proposal_model:
                 raise ValueError("Fixture proposal-model identity does not match the report.")
+            if (
+                fixture.proposal_underlying_model_identity
+                != self.proposal_underlying_model_identity
+            ):
+                raise ValueError(
+                    "Fixture proposal underlying-model identity does not match the report."
+                )
             result_reviewers = tuple(item.reviewer for item in fixture.reviewer_results)
             if fixture.pipeline_error is None and result_reviewers != self.reviewers:
                 raise ValueError("Fixture reviewer specifications do not match the report.")

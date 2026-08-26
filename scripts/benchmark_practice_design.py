@@ -33,18 +33,23 @@ DEFAULT_FIXTURES = ROOT / "benchmarks/practice-design/fixtures.json"
 def main() -> int:
     args = _arguments()
     load_project_env()
-    proposal_model = args.proposal_model or os.getenv("LECTUREPILOT_MODEL") or DEFAULT_MODEL
+    proposal_model = (
+        args.proposal_model or os.getenv("LECTUREPILOT_MODEL") or DEFAULT_MODEL
+    )
     try:
         fixtures = load_practice_design_benchmark_fixtures(args.fixtures)
         report = asyncio.run(
             run_practice_design_benchmark(
                 fixtures=fixtures,
                 proposal_model=proposal_model,
+                proposal_underlying_model_identity=args.proposal_underlying_model,
                 reviewers=tuple(args.reviewer),
             )
         )
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(report.model_dump_json(indent=2) + "\n", encoding="utf-8")
+        args.output.write_text(
+            report.model_dump_json(indent=2) + "\n", encoding="utf-8"
+        )
     except Exception as exc:
         print(f"Practice-design benchmark could not run: {exc}", file=sys.stderr)
         return 2
@@ -67,6 +72,14 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument(
         "--proposal-model",
         help="Production planner model; defaults to LECTUREPILOT_MODEL.",
+    )
+    parser.add_argument(
+        "--proposal-underlying-model",
+        required=True,
+        help=(
+            "Canonical underlying proposal model/version or materially distinct fine-tune "
+            "identity; gateways and deployments serving the same weights use the same value."
+        ),
     )
     parser.add_argument(
         "--reviewer",
@@ -113,7 +126,9 @@ def _reviewer_spec(value: str) -> PracticeDesignBenchmarkReviewerSpec:
         return PracticeDesignBenchmarkReviewerSpec(
             invocation_model=invocation_model.strip(),
             underlying_model_identity=underlying_model_identity.strip(),
-            deployment_provenance=(deployment_provenance.strip() if deployment_separator else None),
+            deployment_provenance=(
+                deployment_provenance.strip() if deployment_separator else None
+            ),
         )
     except ValueError as exc:
         raise argparse.ArgumentTypeError(str(exc)) from exc
@@ -122,11 +137,16 @@ def _reviewer_spec(value: str) -> PracticeDesignBenchmarkReviewerSpec:
 def _print_summary(report: PracticeDesignBenchmarkReport) -> None:
     for fixture in report.fixtures:
         if fixture.pipeline_error is not None:
-            print(f"{fixture.fixture_id}: proposal error: {fixture.pipeline_error.message}")
+            print(
+                f"{fixture.fixture_id}: proposal error: {fixture.pipeline_error.message}"
+            )
             continue
-        successes = sum(result.evaluation is not None for result in fixture.reviewer_results)
+        successes = sum(
+            result.evaluation is not None for result in fixture.reviewer_results
+        )
         means = ", ".join(
-            f"{item.dimension}={item.mean_score:.2f}" for item in fixture.dimension_summaries
+            f"{item.dimension}={item.mean_score:.2f}"
+            for item in fixture.dimension_summaries
         )
         spreads = [
             item.score_spread

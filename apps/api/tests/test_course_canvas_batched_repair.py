@@ -11,8 +11,7 @@ from practice_design_test_helpers import canvas_with_practice_design, practice_d
 
 
 async def test_quality_issues_across_blocks_use_one_multi_patch_request() -> None:
-    source, candidate = _documents()
-    design = practice_design_for_canvas(candidate)
+    source, candidate, design = _documents()
     issues = [
         CanvasQualityIssue(
             section_id="learning-optimization",
@@ -47,8 +46,7 @@ async def test_quality_issues_across_blocks_use_one_multi_patch_request() -> Non
 
 
 async def test_batched_quality_repair_allows_one_bounded_follow_up_pass() -> None:
-    source, candidate = _documents()
-    design = practice_design_for_canvas(candidate)
+    source, candidate, design = _documents()
     issue = CanvasQualityIssue(
         section_id="learning-optimization",
         block_id="optimization-intro",
@@ -74,8 +72,7 @@ async def test_batched_quality_repair_allows_one_bounded_follow_up_pass() -> Non
 
 
 async def test_multiple_issues_for_one_block_keep_the_surgical_repair_target() -> None:
-    source, candidate = _documents()
-    design = practice_design_for_canvas(candidate)
+    source, candidate, design = _documents()
     issues = [
         CanvasQualityIssue(
             section_id="learning-optimization",
@@ -111,8 +108,7 @@ async def test_multiple_issues_for_one_block_keep_the_surgical_repair_target() -
 
 
 async def test_batched_quality_repair_stops_after_two_passes() -> None:
-    source, candidate = _documents()
-    design = practice_design_for_canvas(candidate)
+    source, candidate, design = _documents()
     issue = CanvasQualityIssue(
         section_id="learning-optimization",
         block_id="optimization-intro",
@@ -139,8 +135,7 @@ async def test_batched_quality_repair_stops_after_two_passes() -> None:
 
 
 async def test_quality_issues_in_separate_sections_are_repaired_concurrently() -> None:
-    source, candidate = _documents()
-    design = practice_design_for_canvas(candidate)
+    source, candidate, design = _documents()
     issues = [
         CanvasQualityIssue(
             section_id=section.id,
@@ -170,8 +165,7 @@ async def test_quality_issues_in_separate_sections_are_repaired_concurrently() -
 async def test_persisted_quality_failure_rediscovers_all_section_coordinates_before_repair() -> (
     None
 ):
-    source, candidate = _documents()
-    design = practice_design_for_canvas(candidate)
+    source, candidate, design = _documents()
     issues = [
         CanvasQualityIssue(
             section_id=section.id,
@@ -262,7 +256,16 @@ class _ConcurrentBatchPlanner(_BatchPlanner):
 
 def _documents():
     source = _source_document()
-    candidate, _ = canvas_with_practice_design(invalid_candidate(source))
+    design = practice_design_for_canvas(source)
+    candidate, _ = canvas_with_practice_design(invalid_candidate(source), design)
+    candidate = candidate.model_copy(
+        update={
+            "sections": [
+                section.model_copy(update={"source_ref": source.sections[0].source_ref})
+                for section in candidate.sections
+            ]
+        }
+    )
     section = candidate.sections[0]
     valid_math = section.blocks[1].model_copy(update={"text": r"w^\top x"})
     candidate = candidate.model_copy(
@@ -275,4 +278,4 @@ def _documents():
             ]
         }
     )
-    return source, candidate
+    return source, candidate, design

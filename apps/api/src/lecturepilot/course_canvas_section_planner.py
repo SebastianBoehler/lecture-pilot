@@ -4,9 +4,11 @@ from typing import Protocol
 
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
-from lecturepilot.course_canvas_evidence_batches import group_evidence_sections
 from lecturepilot.course_canvas_math import validate_section_math
-from lecturepilot.course_canvas_practice_contract import section_target_assignments
+from lecturepilot.course_canvas_practice_contract import (
+    practice_source_sections,
+    section_target_assignments,
+)
 from lecturepilot.course_canvas_section_reader import read_section_payload as _read_section_payload
 from lecturepilot.course_canvas_section_batch import SectionPlanResult, plan_section_batch
 from lecturepilot.course_canvas_section_checkpoints import (
@@ -15,10 +17,7 @@ from lecturepilot.course_canvas_section_checkpoints import (
 )
 from lecturepilot.course_canvas_section_prompt import section_messages as _section_messages
 from lecturepilot.course_canvas_section_values import allowed_assets as _allowed_assets
-from lecturepilot.course_canvas_validation import (
-    source_topic_sections,
-    validate_section_assessments,
-)
+from lecturepilot.course_canvas_validation import validate_section_assessments
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import ProviderSettings
 from lecturepilot.observability import Observability
@@ -52,10 +51,7 @@ async def plan_sections_individually(
     checkpoint_store: SectionPlanCheckpointStore | None = None,
 ) -> CanvasDocument:
     checkpoint_store = checkpoint_store or current_section_plan_checkpoint_store()
-    source_sections = group_evidence_sections(
-        source_topic_sections(source_document) or source_document.sections,
-        document_source_ref=source_document.source_ref,
-    )
+    source_sections = practice_source_sections(source_document)
     if not source_sections:
         raise CanvasGenerationRepairableError("Section planner returned no usable sections.")
     trace = observability or Observability()

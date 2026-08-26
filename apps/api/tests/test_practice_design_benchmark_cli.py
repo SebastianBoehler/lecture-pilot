@@ -40,6 +40,7 @@ def test_benchmark_cli_documents_compact_explicit_reviewer_specs() -> None:
 
     assert result.returncode == 0
     assert "--proposal-model" in result.stdout
+    assert "--proposal-underlying-model" in result.stdout
     assert "--reviewer MODEL=UNDERLYING_ID[|DEPLOYMENT]" in result.stdout
     assert "--fixtures" in result.stdout
     assert "--output" in result.stdout
@@ -64,6 +65,8 @@ def test_cli_rejects_deployments_with_one_underlying_identity_before_provider_ca
         "argv",
         [
             str(SCRIPT),
+            "--proposal-underlying-model",
+            "vendor/proposal-model@2026-08-01",
             "--reviewer",
             "openai/gpt-5.6=vendor/gpt-5.6@1|openai/us-east",
             "--reviewer",
@@ -96,6 +99,7 @@ def test_cli_main_writes_json_prints_summary_and_returns_zero(
     assert cli.main() == 0
     assert PracticeDesignBenchmarkReport.model_validate_json(output.read_text()) == report
     assert captured["reviewers"] == _reviewers()
+    assert captured["proposal_underlying_model_identity"] == "vendor/proposal-model@2026-08-01"
     stdout = capsys.readouterr().out
     assert "reviewers=2/2" in stdout
     assert "source_faithfulness=5.00" in stdout
@@ -161,6 +165,8 @@ def _argv(output: Path) -> list[str]:
         str(SCRIPT),
         "--proposal-model",
         "openai/proposal-model",
+        "--proposal-underlying-model",
+        "vendor/proposal-model@2026-08-01",
         "--reviewer",
         "openai/reviewer-a=vendor/model-a@1|openai/us",
         "--reviewer",
@@ -181,6 +187,7 @@ def _report(failure: str | None = None) -> PracticeDesignBenchmarkReport:
             provenance="synthetic",
             source_revision="a" * 64,
             proposal_model="openai/proposal-model",
+            proposal_underlying_model_identity="vendor/proposal-model@2026-08-01",
             pipeline_error=PracticeDesignBenchmarkError(
                 stage="proposal_pipeline",
                 model="openai/proposal-model",
@@ -219,6 +226,7 @@ def _report(failure: str | None = None) -> PracticeDesignBenchmarkReport:
             provenance="synthetic",
             source_revision="a" * 64,
             proposal_model="openai/proposal-model",
+            proposal_underlying_model_identity="vendor/proposal-model@2026-08-01",
             proposal=proposal(),
             production_review=passing_review(),
             reviewer_results=results,
@@ -227,6 +235,7 @@ def _report(failure: str | None = None) -> PracticeDesignBenchmarkReport:
     return PracticeDesignBenchmarkReport(
         generated_at=datetime(2026, 8, 26, 12, tzinfo=UTC),
         proposal_model="openai/proposal-model",
+        proposal_underlying_model_identity="vendor/proposal-model@2026-08-01",
         reviewers=reviewers,
         fixtures=(fixture,),
     )

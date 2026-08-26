@@ -10,6 +10,7 @@ def invalid_candidate(source_document: CanvasDocument) -> CanvasDocument:
         id="learning-optimization",
         title="Optimization",
         source_ref="Lecture01.tex frame 1",
+        source_section_id=source_document.sections[0].id,
         blocks=[
             CanvasBlock(id="optimization-intro", type="paragraph", text=detail * 2),
             CanvasBlock(
@@ -37,6 +38,7 @@ def invalid_candidate(source_document: CanvasDocument) -> CanvasDocument:
         id="learning-summary",
         title="Summary",
         source_ref="Lecture01.tex frame 1",
+        source_section_id=source_document.sections[min(1, len(source_document.sections) - 1)].id,
         blocks=[
             CanvasBlock(id="summary-1", type="paragraph", text=detail * 2),
             CanvasBlock(id="summary-2", type="paragraph", text=detail * 2),

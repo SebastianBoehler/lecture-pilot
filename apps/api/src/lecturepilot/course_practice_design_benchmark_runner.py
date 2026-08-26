@@ -17,7 +17,7 @@ from lecturepilot.course_practice_design_benchmark_models import (
     PracticeDesignBenchmarkReviewerJudgment,
     PracticeDesignBenchmarkReviewerSpec,
     summarize_dimension_scores,
-    validate_reviewer_specs,
+    validate_benchmark_model_independence,
 )
 from lecturepilot.course_practice_design_benchmark_report import (
     PracticeDesignBenchmarkError,
@@ -54,13 +54,16 @@ async def run_practice_design_benchmark(
     *,
     fixtures: Sequence[PracticeDesignBenchmarkFixture],
     proposal_model: str,
+    proposal_underlying_model_identity: str,
     reviewers: Sequence[PracticeDesignBenchmarkReviewerSpec],
     planner: PracticeDesignBenchmarkPlanner | None = None,
     evaluation_client: PracticeDesignBenchmarkModelClient | None = None,
     registry_factory: Callable[[str], Any] = ProviderRegistry.from_env,
     generated_at: datetime | None = None,
 ) -> PracticeDesignBenchmarkReport:
-    reviewers = validate_reviewer_specs(reviewers)
+    reviewers = validate_benchmark_model_independence(
+        proposal_model, proposal_underlying_model_identity, reviewers
+    )
     production_planner = planner or PracticeDesignPlanner(
         provider_registry=ProviderRegistry.from_env(proposal_model)
     )
@@ -71,6 +74,7 @@ async def run_practice_design_benchmark(
             await _run_fixture(
                 fixture,
                 proposal_model=proposal_model,
+                proposal_underlying_model_identity=proposal_underlying_model_identity,
                 reviewers=reviewers,
                 planner=production_planner,
                 evaluation_client=client,
@@ -80,6 +84,7 @@ async def run_practice_design_benchmark(
     return PracticeDesignBenchmarkReport(
         generated_at=generated_at or datetime.now(UTC),
         proposal_model=proposal_model,
+        proposal_underlying_model_identity=proposal_underlying_model_identity,
         reviewers=reviewers,
         fixtures=tuple(results),
     )
@@ -89,6 +94,7 @@ async def _run_fixture(
     fixture: PracticeDesignBenchmarkFixture,
     *,
     proposal_model: str,
+    proposal_underlying_model_identity: str,
     reviewers: tuple[PracticeDesignBenchmarkReviewerSpec, ...],
     planner: PracticeDesignBenchmarkPlanner,
     evaluation_client: PracticeDesignBenchmarkModelClient,
@@ -117,6 +123,7 @@ async def _run_fixture(
         return _fixture_result(
             fixture,
             proposal_model=proposal_model,
+            proposal_underlying_model_identity=proposal_underlying_model_identity,
             pipeline_error=_error("proposal_pipeline", proposal_model, exc),
         )
 
@@ -158,6 +165,7 @@ async def _run_fixture(
     return _fixture_result(
         fixture,
         proposal_model=proposal_model,
+        proposal_underlying_model_identity=proposal_underlying_model_identity,
         proposal=proposal,
         production_review=production_review,
         reviewer_results=tuple(results),
@@ -169,6 +177,7 @@ def _fixture_result(
     fixture: PracticeDesignBenchmarkFixture,
     *,
     proposal_model: str,
+    proposal_underlying_model_identity: str,
     **values: Any,
 ) -> PracticeDesignBenchmarkFixtureResult:
     return PracticeDesignBenchmarkFixtureResult(
@@ -178,6 +187,7 @@ def _fixture_result(
         provenance=fixture.provenance,
         source_revision=fixture.source_revision,
         proposal_model=proposal_model,
+        proposal_underlying_model_identity=proposal_underlying_model_identity,
         **values,
     )
 

@@ -147,7 +147,9 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
                 )
                 document = interleave_original_slides(document, source_document)
                 validate_planned_document(document, source_document)
-                validate_practice_candidate(document, practice_design)
+                validate_practice_candidate(
+                    document, practice_design, source_document=source_document
+                )
                 quality_issues = await self.review_quality(
                     source_document,
                     document,

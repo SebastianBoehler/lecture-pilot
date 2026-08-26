@@ -227,7 +227,7 @@ def _course_client(tmp_path: Path) -> TestClient:
                 b"""
 \\title{Targeted repair}
 \\begin{frame}{Optimization}
-The score is the inner product of the transposed weight vector and the input.
+The evidence states that the score is the inner product of the transposed weight vector and the input.
 \\end{frame}
 """,
             )

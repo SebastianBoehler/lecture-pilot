@@ -1,9 +1,12 @@
 import pytest
 from pydantic import ValidationError
+from pathlib import Path
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.canvas_markdown import read_document_source, write_document_source
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_practice_contract import (
+    practice_prompt_instruction,
     section_target_assignments,
     validate_practice_candidate,
 )
@@ -35,6 +38,72 @@ def test_section_assignment_fails_closed_when_no_section_contains_an_approved_an
 
     with pytest.raises(CanvasGenerationRepairableError, match="validated source anchor"):
         section_target_assignments(design, sections)
+
+
+def test_section_prompt_lists_only_applicable_canonical_checkpoint_ids() -> None:
+    design = _design()
+
+    instruction = practice_prompt_instruction(design, targets=())
+
+    assert f"practice-{design.targets[0].id}" not in instruction
+    assert design.targets[0].baseline_task not in instruction
+
+
+def test_canvas_rejects_checkpoint_in_same_path_section_without_approved_anchor() -> None:
+    design = _design()
+    source = CanvasDocument(
+        id="course-lecture",
+        course_id="course",
+        lecture_id="lecture",
+        title="Lecture",
+        source_kind="markdown",
+        source_ref="lecture-01.md",
+        workspace_path="course/index.md",
+        sections=[
+            _source_section("overview", "This introduction has no approved excerpt."),
+            _source_section("evidence", "The cited evidence supports the conclusion."),
+        ],
+    )
+    approved = design.targets[0]
+    document = source.model_copy(
+        update={
+            "source_kind": "generated",
+            "sections": [
+                source.sections[0].model_copy(
+                    update={
+                        "source_section_id": "overview",
+                        "blocks": [
+                            CanvasBlock(
+                                id=f"practice-{approved.id}",
+                                type="checkpoint",
+                                text=approved.baseline_task,
+                            )
+                        ],
+                    }
+                ),
+                source.sections[1].model_copy(
+                    update={"source_section_id": "evidence", "blocks": []}
+                ),
+            ],
+        }
+    )
+
+    with pytest.raises(CanvasGenerationRepairableError, match="anchor-bearing source section"):
+        validate_practice_candidate(document, design, source_document=source)
+
+
+def test_canvas_markdown_persists_exact_source_section_identity(tmp_path: Path) -> None:
+    document = _generated_document(_design())
+    document = document.model_copy(
+        update={
+            "sections": [document.sections[0].model_copy(update={"source_section_id": "evidence"})]
+        }
+    )
+
+    write_document_source(document, tmp_path)
+    reloaded = read_document_source(tmp_path)
+
+    assert reloaded.sections[0].source_section_id == "evidence"
 
 
 def test_canvas_rejects_checkpoint_in_an_unapproved_source_section() -> None:

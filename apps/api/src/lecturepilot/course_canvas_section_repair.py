@@ -62,7 +62,9 @@ class CourseCanvasSectionRepairMixin:
         practice_design: PracticeDesign,
         output_language: str = "en",
     ) -> CanvasDocument:
-        validate_practice_candidate(candidate_document, practice_design)
+        validate_practice_candidate(
+            candidate_document, practice_design, source_document=source_document
+        )
         return await repair_multiple_blocks(
             self,
             source_document,
@@ -94,13 +96,17 @@ class CourseCanvasSectionRepairMixin:
         )
         preflight_changed = normalized_candidate != candidate_document
         candidate_document = normalized_candidate
-        validate_practice_candidate(candidate_document, practice_design)
+        validate_practice_candidate(
+            candidate_document, practice_design, source_document=source_document
+        )
         section = _section(candidate_document, section_id)
         target = _block(section, block_id) if block_id else None
         if preflight_changed or not failure_context.startswith("Canvas quality review failed:"):
             try:
                 validate_planned_document(candidate_document, source_document)
-                validate_practice_candidate(candidate_document, practice_design)
+                validate_practice_candidate(
+                    candidate_document, practice_design, source_document=source_document
+                )
                 return candidate_document
             except CanvasGenerationRepairableError as exc:
                 if _is_new_target(exc, section, target):
@@ -150,7 +156,9 @@ class CourseCanvasSectionRepairMixin:
                     target,
                 )
                 validate_planned_document(repaired, source_document)
-                validate_practice_candidate(repaired, practice_design)
+                validate_practice_candidate(
+                    repaired, practice_design, source_document=source_document
+                )
                 return repaired
             except CanvasGenerationRepairableError as exc:
                 if repaired is not None and _is_new_target(exc, section, target):

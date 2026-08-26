@@ -4,6 +4,7 @@ import json
 from collections.abc import Sequence
 
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
+from lecturepilot.course_canvas_evidence_batches import group_evidence_sections
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_practice_design_models import PracticeDesign, PracticeTarget
 from lecturepilot.course_practice_design_evidence import target_source_anchors
@@ -12,13 +13,14 @@ from lecturepilot.course_practice_design_validation import (
     source_anchor_matches_section,
     validate_canvas_practice_contract,
 )
+from lecturepilot.course_canvas_validation import source_topic_sections
 
 
 def practice_prompt_instruction(
     design: PracticeDesign, *, targets: Sequence[PracticeTarget] | None = None
 ) -> str:
     scoped = tuple(targets) if targets is not None else design.targets
-    expected = [f"practice-{target.id}" for target in design.targets]
+    expected = [f"practice-{target.id}" for target in scoped]
     contracts = [
         {
             "checkpoint_id": f"practice-{target.id}",
@@ -65,8 +67,33 @@ def section_target_assignments(
     return {section_id: tuple(targets) for section_id, targets in assignments.items()}
 
 
-def validate_practice_candidate(document: CanvasDocument, design: PracticeDesign) -> None:
+def practice_source_sections(source_document: CanvasDocument) -> list[CanvasSection]:
+    return group_evidence_sections(
+        source_topic_sections(source_document) or source_document.sections,
+        document_source_ref=source_document.source_ref,
+    )
+
+
+def validate_practice_candidate(
+    document: CanvasDocument,
+    design: PracticeDesign,
+    *,
+    source_document: CanvasDocument | None = None,
+) -> None:
     try:
-        validate_canvas_practice_contract(document, design)
+        expected_source_sections = None
+        if source_document is not None:
+            source_sections = practice_source_sections(source_document)
+            assignments = section_target_assignments(design, source_sections)
+            expected_source_sections = {
+                target.id: section.id
+                for section in source_sections
+                for target in assignments[section.id]
+            }
+        validate_canvas_practice_contract(
+            document,
+            design,
+            expected_source_sections=expected_source_sections,
+        )
     except PracticeDesignValidationError as exc:
         raise CanvasGenerationRepairableError(str(exc), candidate=document) from exc

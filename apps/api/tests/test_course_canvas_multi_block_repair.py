@@ -4,15 +4,13 @@ from lecturepilot.course_canvas_planner import CourseCanvasPlanner
 from lecturepilot.course_canvas_repair_apply import apply_replacement
 from lecturepilot.providers import ProviderRegistry
 from test_course_canvas_batched_repair import _documents
-from practice_design_test_helpers import practice_design_for_canvas
 
 
 async def test_multi_block_repair_applies_one_atomic_patch_request(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
-    source, candidate = _documents()
-    design = practice_design_for_canvas(candidate)
+    source, candidate, design = _documents()
     section = candidate.sections[0]
     targets = [section.blocks[0], section.blocks[2]]
     replacements = [
@@ -44,7 +42,7 @@ async def test_multi_block_repair_applies_one_atomic_patch_request(
 
 
 def test_repair_generated_block_ids_do_not_collide_with_other_sections() -> None:
-    _source, candidate = _documents()
+    _source, candidate, _design = _documents()
     first = candidate.sections[0]
     target = first.blocks[0]
     candidate.sections[1].blocks[0] = (

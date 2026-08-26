@@ -74,6 +74,7 @@ def section_to_markdown(
         "id": section.id,
         "title": section.title,
         "source_ref": section.source_ref or "",
+        "source_section_id": section.source_section_id or "",
         "practice_exam_eligible": section.practice_exam_eligible,
     }
     values.update(extra_frontmatter or {})
@@ -97,6 +98,7 @@ def _read_section(path: Path, manifest: dict[str, str]) -> CanvasSection:
         id=section_id,
         title=_required(frontmatter, "title"),
         source_ref=frontmatter.get("source_ref") or None,
+        source_section_id=frontmatter.get("source_section_id") or None,
         practice_exam_eligible=frontmatter.get("practice_exam_eligible") is not False,
         blocks=read_blocks(
             body,
@@ -118,6 +120,7 @@ def read_section_source(
         id=section_id,
         title=_required(frontmatter, "title"),
         source_ref=frontmatter.get("source_ref") or None,
+        source_section_id=frontmatter.get("source_section_id") or None,
         practice_exam_eligible=frontmatter.get("practice_exam_eligible") is not False,
         blocks=read_blocks(
             body,

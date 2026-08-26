@@ -30,6 +30,7 @@ async def test_runner_retains_production_output_per_reviewer_scores_and_disagree
     report = await run_practice_design_benchmark(
         fixtures=(fixture,),
         proposal_model="openai/proposal-model",
+        proposal_underlying_model_identity="vendor/proposal-model@2026-08-01",
         reviewers=_reviewers(),
         planner=planner,
         evaluation_client=client,
@@ -43,6 +44,8 @@ async def test_runner_retains_production_output_per_reviewer_scores_and_disagree
     assert client.models == ["openai/reviewer-a", "gemini/reviewer-b"]
     result = report.fixtures[0]
     assert result.proposal_model == "openai/proposal-model"
+    assert result.proposal_underlying_model_identity == "vendor/proposal-model@2026-08-01"
+    assert report.proposal_underlying_model_identity == "vendor/proposal-model@2026-08-01"
     assert result.proposal is not None
     assert result.production_review == passing_review()
     assert tuple(item.reviewer for item in result.reviewer_results) == _reviewers()
@@ -58,6 +61,7 @@ async def test_runner_records_provider_errors_without_fallback_scores() -> None:
     report = await run_practice_design_benchmark(
         fixtures=(fixture,),
         proposal_model="openai/proposal-model",
+        proposal_underlying_model_identity="vendor/proposal-model@2026-08-01",
         reviewers=_reviewers(),
         planner=_Planner(_reviewed_proposal(fixture)),
         evaluation_client=client,
@@ -81,6 +85,7 @@ async def test_runner_records_proposal_pipeline_errors_without_calling_reviewers
     report = await run_practice_design_benchmark(
         fixtures=(fixture,),
         proposal_model="openai/proposal-model",
+        proposal_underlying_model_identity="vendor/proposal-model@2026-08-01",
         reviewers=_reviewers(),
         planner=_FailingPlanner(),
         evaluation_client=client,
@@ -118,6 +123,7 @@ async def test_runner_rejects_distinct_deployments_of_the_same_underlying_model(
         await run_practice_design_benchmark(
             fixtures=(fixture,),
             proposal_model="openai/proposal-model",
+            proposal_underlying_model_identity="vendor/proposal-model@2026-08-01",
             reviewers=reviewers,
             planner=_FailingPlanner(),
             evaluation_client=_EvaluationClient(),
@@ -143,6 +149,7 @@ async def test_runner_rejects_duplicate_invocation_slugs_with_claimed_distinct_m
         await run_practice_design_benchmark(
             fixtures=(fixture,),
             proposal_model="openai/proposal-model",
+            proposal_underlying_model_identity="vendor/proposal-model@2026-08-01",
             reviewers=reviewers,
             planner=_FailingPlanner(),
             evaluation_client=_EvaluationClient(),
@@ -173,6 +180,7 @@ async def test_runner_accepts_distinct_model_versions_or_fine_tunes(second_ident
     report = await run_practice_design_benchmark(
         fixtures=(fixture,),
         proposal_model="openai/proposal-model",
+        proposal_underlying_model_identity="vendor/proposal-model@2026-08-01",
         reviewers=reviewers,
         planner=_Planner(_reviewed_proposal(fixture)),
         evaluation_client=_EvaluationClient(),

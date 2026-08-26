@@ -185,3 +185,28 @@ def validate_reviewer_specs(
     if len(set(underlying_identity_keys)) != len(underlying_identity_keys):
         raise ValueError("Underlying reviewer model identities must be distinct.")
     return reviewers
+
+
+def validate_benchmark_model_independence(
+    proposal_model: str,
+    proposal_underlying_model_identity: str,
+    reviewers: Sequence[PracticeDesignBenchmarkReviewerSpec],
+) -> tuple[PracticeDesignBenchmarkReviewerSpec, ...]:
+    reviewers = validate_reviewer_specs(reviewers)
+    proposal_invocation_key = _model_identity_key(proposal_model)
+    proposal_underlying_key = _model_identity_key(proposal_underlying_model_identity)
+    if not proposal_invocation_key or not proposal_underlying_key:
+        raise ValueError("Proposal invocation and underlying model identities must be nonblank.")
+    if proposal_invocation_key in {
+        _model_identity_key(reviewer.invocation_model) for reviewer in reviewers
+    }:
+        raise ValueError("Proposal and reviewer invocation model slugs must be distinct.")
+    if proposal_underlying_key in {
+        _model_identity_key(reviewer.underlying_model_identity) for reviewer in reviewers
+    }:
+        raise ValueError("Proposal and reviewer underlying model identities must be distinct.")
+    return reviewers
+
+
+def _model_identity_key(value: str) -> str:
+    return " ".join(value.split()).casefold()

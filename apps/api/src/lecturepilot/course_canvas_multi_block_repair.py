@@ -106,7 +106,7 @@ async def repair_multiple_blocks(
                     active_target,
                 )
             validate_planned_document(repaired, source_document)
-            validate_practice_candidate(repaired, practice_design)
+            validate_practice_candidate(repaired, practice_design, source_document=source_document)
             return repaired
         except CanvasGenerationRepairableError as exc:
             last_error = exc

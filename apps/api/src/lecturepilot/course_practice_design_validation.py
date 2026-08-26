@@ -172,7 +172,12 @@ def _normalize_whitespace(value: str) -> str:
     return re.sub(r"\s+", " ", value).strip()
 
 
-def validate_canvas_practice_contract(document: _CanvasDocument, design: PracticeDesign) -> None:
+def validate_canvas_practice_contract(
+    document: _CanvasDocument,
+    design: PracticeDesign,
+    *,
+    expected_source_sections: dict[str, str] | None = None,
+) -> None:
     """Validate canonical target checkpoints without importing canvas models.
 
     The document needs sections with ``source_ref`` and blocks with ``id``,
@@ -210,6 +215,14 @@ def validate_canvas_practice_contract(document: _CanvasDocument, design: Practic
                 f"Canvas needs exactly one practice-{target_id} checkpoint."
             )
         section, block = matches[0]
+        if (
+            expected_source_sections is not None
+            and getattr(section, "source_section_id", None) != expected_source_sections[target_id]
+        ):
+            raise PracticeDesignValidationError(
+                f"Practice checkpoint practice-{target_id} must remain in its exact "
+                "anchor-bearing source section."
+            )
         if routed_source_owner(section.source_ref, set(target.source_refs)) is None:
             raise PracticeDesignValidationError(
                 f"Practice checkpoint practice-{target_id} must be in a section owned by its "

@@ -61,7 +61,7 @@ async def repair_until_quality_valid(
     quality_issues: list[CanvasQualityIssue] | None = None,
 ) -> CanvasDocument:
     active_candidate = normalize_document_component_identities(candidate)
-    validate_practice_candidate(active_candidate, practice_design)
+    validate_practice_candidate(active_candidate, practice_design, source_document=source)
     quality_batch = quality_issues is not None
     if quality_issues is None and failure_context.startswith("Canvas quality review failed:"):
         pending = await planner.review_quality(source, active_candidate)
@@ -85,7 +85,7 @@ async def repair_until_quality_valid(
                 practice_design=practice_design,
             )
             validate_planned_document(active_candidate, source)
-            validate_practice_candidate(active_candidate, practice_design)
+            validate_practice_candidate(active_candidate, practice_design, source_document=source)
         except CanvasGenerationRepairableError as exc:
             raise exc.with_candidate(exc.candidate or active_candidate)
         pending = await planner.review_quality(source, active_candidate)

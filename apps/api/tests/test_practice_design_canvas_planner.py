@@ -33,6 +33,7 @@ async def test_planner_rejects_candidate_missing_or_mutating_practice_checkpoint
             "sections": [
                 source.sections[0].model_copy(
                     update={
+                        "source_section_id": "source",
                         "blocks": [
                             CanvasBlock(id="intro", type="paragraph", text="Grounded context."),
                             CanvasBlock(
@@ -40,7 +41,7 @@ async def test_planner_rejects_candidate_missing_or_mutating_practice_checkpoint
                                 type="checkpoint",
                                 text=checkpoint_text,
                             ),
-                        ]
+                        ],
                     }
                 )
             ],
@@ -117,6 +118,7 @@ async def test_automatic_repair_rejects_a_mutated_canonical_checkpoint() -> None
             "sections": [
                 source.sections[0].model_copy(
                     update={
+                        "source_section_id": "source",
                         "blocks": [
                             CanvasBlock(id="intro", type="paragraph", text="Grounded context."),
                             CanvasBlock(
@@ -124,7 +126,7 @@ async def test_automatic_repair_rejects_a_mutated_canonical_checkpoint() -> None
                                 type="checkpoint",
                                 text=target.baseline_task,
                             ),
-                        ]
+                        ],
                     }
                 )
             ],
@@ -198,7 +200,11 @@ def _source() -> CanvasDocument:
                 id="source",
                 title="Source",
                 source_ref="lecture.md",
-                blocks=[CanvasBlock(id="source-text", type="paragraph", text="Grounded context.")],
+                blocks=[
+                    CanvasBlock(
+                        id="source-text", type="paragraph", text="Grounded evidence context."
+                    )
+                ],
             )
         ],
     )

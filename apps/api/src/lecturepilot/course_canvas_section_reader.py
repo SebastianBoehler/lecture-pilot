@@ -29,6 +29,7 @@ def read_section_payload(
         id=section_id,
         title=str(payload.get("title") or source_section.title)[:200],
         source_ref=str(source_section.source_ref or "source evidence")[:500],
+        source_section_id=source_section.source_section_id or source_section.id,
         blocks=blocks,
     )
     return normalize_section_assessments(
