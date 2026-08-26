@@ -1,10 +1,12 @@
 import { vi } from "vitest";
+import type { PracticeDesign } from "./practiceDesignTypes";
 import { learningDesignPayload } from "./testLearningDesignReviewFixture";
 
 export function professorFetchMock() {
   const publishedLectures = new Set<string>();
   const deletedCourses = new Set<string>();
   const selectedMedia = new Map<string, { video: ReturnType<typeof youtubeCandidate> }>();
+  const practiceDesigns = new Map<string, PracticeDesign>();
   let routing = sourceRouting(false);
   const learningDesignApprovals = new Set<string>();
   return vi.fn(async (url: string, init?: RequestInit) => {
@@ -35,7 +37,26 @@ export function professorFetchMock() {
     }
     if (url.includes("/practice-design")) {
       const lectureId = path.match(/lectures\/([^/]+)\/practice-design/)?.[1] ?? "lecture-03";
-      return json(practiceDesignPayload(lectureId));
+      const design = practiceDesigns.get(lectureId);
+      if (path.endsWith("/proposal")) {
+        const proposed = practiceDesignPayload(lectureId);
+        practiceDesigns.set(lectureId, proposed);
+        return json(proposed);
+      }
+      if (path.endsWith("/approve") && design) {
+        const approved = approvePracticeDesign(design);
+        practiceDesigns.set(lectureId, approved);
+        return json(approved);
+      }
+      if (init?.method === "PUT" && design) {
+        const update = JSON.parse(String(init.body));
+        const saved = { ...design, ...update, approval: null, revision: "e".repeat(64) };
+        practiceDesigns.set(lectureId, saved);
+        return json(saved);
+      }
+      return design
+        ? json(design)
+        : json({ detail: "Practice design has not been proposed." }, 404);
     }
     if (url.includes("/materials"))
       return json({ path: "uploads/supplement.md", kind: "markdown", size_bytes: 12 });
@@ -141,8 +162,8 @@ function lectureListPayload() {
   );
 }
 
-function json(payload: unknown) {
-  return { ok: true, json: async () => payload };
+function json(payload: unknown, status = 200) {
+  return { ok: status >= 200 && status < 300, status, json: async () => payload };
 }
 
 function sourceBundle() {
@@ -220,7 +241,7 @@ function canvasPayload() {
   };
 }
 
-function practiceDesignPayload(lectureId: string) {
+function practiceDesignPayload(lectureId: string): PracticeDesign {
   const revision = "d".repeat(64);
   return {
     schema_version: 1,
@@ -230,12 +251,7 @@ function practiceDesignPayload(lectureId: string) {
     objective: "Calculate a posterior from evidence.",
     source_revision: "a".repeat(64),
     revision,
-    approval: {
-      approved_by: "professor-demo",
-      approved_at: "2026-08-26T12:00:00Z",
-      source_revision: "a".repeat(64),
-      practice_design_revision: revision,
-    },
+    approval: null,
     targets: [
       {
         id: "posterior",
@@ -253,6 +269,18 @@ function practiceDesignPayload(lectureId: string) {
         source_refs: ["Lecture03-eng.tex"],
       },
     ],
+  };
+}
+
+function approvePracticeDesign(design: PracticeDesign): PracticeDesign {
+  return {
+    ...design,
+    approval: {
+      approved_by: "professor-demo",
+      approved_at: "2026-08-26T12:00:00Z",
+      source_revision: design.source_revision,
+      practice_design_revision: design.revision,
+    },
   };
 }
 

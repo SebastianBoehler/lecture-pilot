@@ -30,14 +30,13 @@ import {
 import {
   activationLectures,
   courseFromSetup,
-  lectureIdFromNumber,
   scheduleItemFromLecture,
 } from "./professorWorkspaceActivation";
 import { publishLectureRows } from "./professorPublishRows";
 import { useCourseTitleSuggestions } from "./useCourseTitleSuggestions";
 import { useProfessorWorkflowRun } from "./professorWorkflowRun";
 import { useProfessorSourceRouting } from "./useProfessorSourceRouting";
-import { useProfessorPracticeDesigns } from "./useProfessorPracticeDesigns";
+import { useProfessorPracticeDesignGate } from "./practiceDesignGate";
 import { lectureFromWorkspace, requireWorkspace } from "./professorWorkspaceView";
 import { uploadProfessorMaterials } from "./professorMaterialUpload";
 import { ignoredUploadNotice } from "./professorUpload";
@@ -121,10 +120,6 @@ export function useProfessorCourseBuilder({
   const [mediaReviewed, setMediaReviewed] = useState(false);
   const [scheduleApplied, setScheduleApplied] = useState(setup.target !== "full-course");
   const sourceRouting = useProfessorSourceRouting(session);
-  const practiceDesigns = useProfessorPracticeDesigns({
-    courseId: workspace?.courseId ?? null,
-    session,
-  });
   const { error, notice, pendingAction, run, setError } = useProfessorWorkflowRun();
   const [restored, setRestored] = useState(!savedFlow.bundleReady && !savedFlow.canvasReady);
   const [isRestoring, setIsRestoring] = useState(false);
@@ -145,37 +140,29 @@ export function useProfessorCourseBuilder({
   const routingReady = Boolean(
     sourceRouting.routing?.confirmed && !hasNoAssignedEvidence(sourceRouting.routing.routes),
   );
-  const scheduledLectureIds = lectureSchedule.map((lecture) => lectureIdFromNumber(lecture.number));
-  const mediaTargetLectures = workspace
+  const generationTargetLectures = workspace
     ? setup.target === "full-course"
       ? workspaceLectures.length
         ? workspaceLectures
         : activationLectures(workspace, setup, lectureSchedule)
       : [lectureFromWorkspace(workspace, setup, lectureSchedule)]
     : [];
-  const mediaTargetLectureKey = mediaTargetLectures.map((lecture) => lecture.id).join("|");
+  const generationTargetLectureIds = generationTargetLectures.map((lecture) => lecture.id);
+  const mediaTargetLectureKey = generationTargetLectureIds.join("|");
   const mediaTargetLecture =
-    mediaTargetLectures.find((lecture) => lecture.id === mediaLectureId) ?? mediaTargetLectures[0];
-  const fullCourseLectureIds =
-    setup.target === "full-course" && scheduledLectureIds.length
-      ? scheduledLectureIds
-      : workspace
-        ? [workspace.lectureId]
-        : [];
-  const designTargetLectureIds = mediaTargetLectures.map((lecture) => lecture.id);
-  const designTargetLectureKey = designTargetLectureIds.join("|");
-  const designCourseId = workspace?.courseId ?? "";
-  const designReady = Boolean(
-    routingReady &&
-    designTargetLectureIds.length &&
-    practiceDesigns.allApproved(designTargetLectureIds) &&
-    designTargetLectureIds.every(
-      (lectureId) =>
-        practiceDesigns.designs[lectureId]?.source_revision ===
-        sourceRouting.routing?.source_revision,
-    ),
-  );
-  const fullCoursePublishedCount = fullCourseLectureIds.filter((lectureId) =>
+    generationTargetLectures.find((lecture) => lecture.id === mediaLectureId) ??
+    generationTargetLectures[0];
+  const practiceDesign = useProfessorPracticeDesignGate({
+    courseId: workspace?.courseId ?? null,
+    session,
+    sourceRevision: sourceRouting.routing?.source_revision ?? null,
+    targetLectures: generationTargetLectures.map((lecture) => ({
+      id: lecture.id,
+      label: `${lecture.number} · ${lecture.title}`,
+    })),
+  });
+  const designReady = routingReady && practiceDesign.designReady;
+  const fullCoursePublishedCount = generationTargetLectureIds.filter((lectureId) =>
     publishedLectureIds.includes(lectureId),
   ).length;
   const suggestedQueries = youtubeSuggestionQueries(setup, mediaTargetLecture);
@@ -200,7 +187,8 @@ export function useProfessorCourseBuilder({
   const workspacePublished = Boolean(
     workspace &&
     (setup.target === "full-course"
-      ? fullCourseLectureIds.length > 0 && fullCoursePublishedCount === fullCourseLectureIds.length
+      ? generationTargetLectureIds.length > 0 &&
+        fullCoursePublishedCount === generationTargetLectureIds.length
       : publishedLectureIds.includes(workspace.lectureId)),
   );
   const previewHref =
@@ -231,13 +219,6 @@ export function useProfessorCourseBuilder({
     routingReady,
     workspacePublished,
   });
-  const loadPracticeDesigns = useEffectEvent(() => practiceDesigns.loadAll(designTargetLectureIds));
-
-  useEffect(() => {
-    if (!routingReady || !designCourseId || !designTargetLectureKey) return;
-    void loadPracticeDesigns();
-  }, [designCourseId, designTargetLectureKey, routingReady]);
-
   useEffect(() => {
     let cancelled = false;
     async function restoreSavedWorkspace() {
@@ -368,7 +349,11 @@ export function useProfessorCourseBuilder({
 
   function resetGeneratedState() {
     sourceRouting.reset();
-    practiceDesigns.reset();
+    practiceDesign.reset();
+    resetCanvasState();
+  }
+
+  function resetCanvasState() {
     setCanvas(null);
     setGeneratedLectureIds([]);
     setDraftReviewed(false);
@@ -417,17 +402,20 @@ export function useProfessorCourseBuilder({
 
   async function requireConfirmedRouting(courseId: string) {
     const current = await sourceRouting.load(courseId);
-    if (current.confirmed && !hasNoAssignedEvidence(current.routes)) return;
+    if (current.confirmed && !hasNoAssignedEvidence(current.routes)) return current;
     setActiveStep("sources");
     throw new Error(
       "Source assignments changed. Review and confirm source assignments again before generating canvases.",
     );
   }
 
-  function requireApprovedDesigns() {
-    if (designReady) return;
-    setActiveStep("design");
-    throw new Error("Generate and approve the lecture learning plan before generating its canvas.");
+  async function requireApprovedDesigns(sourceRevision: string) {
+    try {
+      await practiceDesign.requireCurrentApprovals(sourceRevision);
+    } catch (approvalError) {
+      setActiveStep("design");
+      throw approvalError;
+    }
   }
 
   function updateGenerationItem(progress: CanvasGenerationProgress) {
@@ -723,17 +711,14 @@ export function useProfessorCourseBuilder({
               },
             ]
           : [],
-    totalCount: fullCourseLectureIds.length,
+    totalCount: generationTargetLectureIds.length,
     onRetry: (lectureId: string) => void retryCanvas(lectureId),
     onGenerate: () =>
       run("generate", async () => {
         const activeWorkspace = requireWorkspace(workspace);
-        await requireConfirmedRouting(activeWorkspace.courseId);
-        requireApprovedDesigns();
-        const lectureIds =
-          setup.target === "full-course" && fullCourseLectureIds.length
-            ? fullCourseLectureIds
-            : [activeWorkspace.lectureId];
+        const confirmedRouting = await requireConfirmedRouting(activeWorkspace.courseId);
+        await requireApprovedDesigns(confirmedRouting.source_revision);
+        const lectureIds = generationTargetLectureIds;
         setDraftReviewed(false);
         setGenerationProgress(lectureIds.map((lectureId) => ({ lectureId, status: "pending" })));
         setGenerationWarnings([]);
@@ -756,10 +741,11 @@ export function useProfessorCourseBuilder({
     onContinue: () =>
       void run("validate-routing", async () => {
         const activeWorkspace = requireWorkspace(workspace);
-        await requireConfirmedRouting(activeWorkspace.courseId);
+        const confirmedRouting = await requireConfirmedRouting(activeWorkspace.courseId);
+        await requireApprovedDesigns(confirmedRouting.source_revision);
         setAutoSuggesting(false);
         setMediaReviewed(true);
-        setActiveStep(designReady ? "generate" : "design");
+        setActiveStep("generate");
       }),
     onQueryChange: setQuery,
     onSearch: () =>
@@ -781,7 +767,7 @@ export function useProfessorCourseBuilder({
     onTargetLectureChange: setMediaLectureId,
     onToggleVideo: (videoId: string) => {
       const activeWorkspace = requireWorkspace(workspace);
-      const target = mediaTargetLecture ?? mediaTargetLectures[0];
+      const target = mediaTargetLecture ?? generationTargetLectures[0];
       const video = availableVideos.find((candidate) => candidate.video_id === videoId);
       if (!target || !video) return;
       const wasSelected = selectedVideos.has(videoId);
@@ -826,7 +812,7 @@ export function useProfessorCourseBuilder({
     suggestedGroups: suggestedVideoGroups,
     suggestedQueries,
     targetLectureId: mediaLectureId,
-    targetLectures: mediaTargetLectures,
+    targetLectures: generationTargetLectures,
     videos,
   };
 
@@ -841,7 +827,7 @@ export function useProfessorCourseBuilder({
           setup.target === "full-course"
             ? generatedLectureIds.length
               ? generatedLectureIds
-              : fullCourseLectureIds
+              : generationTargetLectureIds
             : [activeWorkspace.lectureId];
         const published = [];
         for (const lectureId of lectureIds) {
@@ -864,7 +850,7 @@ export function useProfessorCourseBuilder({
     publishedCount: fullCoursePublishedCount,
     lectures: publishLectures,
     ready: workspacePublished,
-    totalCount: fullCourseLectureIds.length,
+    totalCount: generationTargetLectureIds.length,
   };
 
   const routingLectures = lectureSchedule.length
@@ -880,39 +866,26 @@ export function useProfessorCourseBuilder({
       lectureId: string | null,
     ) => {
       sourceRouting.updateRoute(path, role, lectureId);
-      practiceDesigns.reset(designTargetLectureIds);
-      setCanvas(null);
-      setGeneratedLectureIds([]);
+      practiceDesign.reset();
+      resetCanvasState();
     },
     onRegenerate: () =>
       run("regenerate-routing", async () => {
         const activeWorkspace = requireWorkspace(workspace);
         await sourceRouting.regenerate(activeWorkspace.courseId);
+        practiceDesign.reset();
+        resetCanvasState();
         return "Source assignments rebuilt from the indexed course evidence.";
       }),
     onConfirm: () =>
       run("confirm-routing", async () => {
         const activeWorkspace = requireWorkspace(workspace);
         await sourceRouting.confirm(activeWorkspace.courseId);
-        practiceDesigns.reset(designTargetLectureIds);
+        practiceDesign.reset();
+        resetCanvasState();
         setActiveStep("design");
         return "Source assignments confirmed for Canvas generation.";
       }),
-  };
-
-  const practiceDesignStep = {
-    designs: practiceDesigns.designs,
-    error: practiceDesigns.error,
-    lectures: mediaTargetLectures.map((lecture) => ({
-      id: lecture.id,
-      label: `${lecture.number} · ${lecture.title}`,
-    })),
-    pendingLectureId: practiceDesigns.pendingLectureId,
-    onApprove: (lectureId: string) => void practiceDesigns.approve(lectureId),
-    onPropose: (lectureId: string, refresh = false) =>
-      void practiceDesigns.propose(lectureId, refresh),
-    onSave: (lectureId: string, update: Parameters<typeof practiceDesigns.save>[1]) =>
-      void practiceDesigns.save(lectureId, update),
   };
 
   return {
@@ -925,7 +898,7 @@ export function useProfessorCourseBuilder({
     mediaStep,
     notice,
     publishStep,
-    practiceDesignStep,
+    practiceDesignStep: practiceDesign.practiceDesignStep,
     routingStep,
     restoreWorkspace: () => void restoreFromBackend(workspace, { quietDraftMiss: true }),
     setActiveStep,

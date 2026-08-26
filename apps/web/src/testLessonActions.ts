@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 export async function showAllPublishedLectures(user: ReturnType<typeof userEvent.setup>) {
@@ -30,6 +30,23 @@ export async function approveAllLearningDesigns(user: ReturnType<typeof userEven
     await within(review).findByText(
       new RegExp(`${index + 1} of ${lectureNames.length} approved`, "i"),
     );
+  }
+}
+
+export async function approveAllPracticeDesigns(user: ReturnType<typeof userEvent.setup>) {
+  const proposals = await screen.findAllByRole("button", { name: /generate learning plan/i });
+  for (const proposal of proposals) await user.click(proposal);
+
+  for (let remaining = proposals.length; remaining > 0; remaining -= 1) {
+    const approval = (await screen.findAllByRole("button", { name: /approve learning plan/i }))[0];
+    await user.click(approval);
+    await waitFor(() => {
+      if (
+        screen.queryAllByRole("button", { name: /approve learning plan/i }).length !==
+        remaining - 1
+      )
+        throw new Error("Practice plan approval is still pending.");
+    });
   }
 }
 

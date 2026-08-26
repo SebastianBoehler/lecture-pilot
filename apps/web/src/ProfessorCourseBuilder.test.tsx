@@ -4,7 +4,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
 import { professorFetchMock } from "./ProfessorCourseBuilder.testFixtures";
-import { approveAllLearningDesigns, openProfessorDemo } from "./testLessonActions";
+import {
+  approveAllLearningDesigns,
+  approveAllPracticeDesigns,
+  openProfessorDemo,
+} from "./testLessonActions";
 
 describe("Professor course builder", () => {
   afterEach(() => {
@@ -117,6 +121,7 @@ describe("Professor course builder", () => {
     expect(screen.getByRole("button", { name: /06 generate/i })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
     expect(await screen.findByRole("heading", { name: /learning plans/i })).toBeInTheDocument();
+    await approveAllPracticeDesigns(user);
     await user.click(screen.getByRole("button", { name: /05 media/i }));
     expect(
       await screen.findByRole("heading", { name: /review youtube candidates/i }),
@@ -396,6 +401,7 @@ describe("Professor course builder", () => {
     await screen.findByRole("heading", { name: /source assignments ready/i });
     await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
     await screen.findByRole("heading", { name: /learning plans/i });
+    await approveAllPracticeDesigns(user);
     await user.click(screen.getByRole("button", { name: /05 media/i }));
     await screen.findByRole("heading", { name: /review youtube candidates/i });
     await waitFor(() =>

@@ -1,6 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
+import App from "./App";
 import { builderSteps } from "./ProfessorBuilderStepper";
+import { professorFetchMock } from "./ProfessorCourseBuilder.testFixtures";
+import { openProfessorDemo } from "./testLessonActions";
 
 describe("practice-design builder blocking", () => {
   it("places learning plans between sources and media and blocks generation until every plan is approved", () => {
@@ -41,4 +46,94 @@ describe("practice-design builder blocking", () => {
     expect(blocked.find((step) => step.id === "generate")?.available).toBe(false);
     expect(ready.find((step) => step.id === "generate")?.available).toBe(true);
   });
+});
+
+afterEach(() => {
+  window.localStorage.clear();
+  window.sessionStorage.clear();
+  vi.unstubAllGlobals();
+});
+
+it("requires every full-course plan approval and keeps a stale approval conflict visible", async () => {
+  const user = userEvent.setup();
+  const baseFetch = professorFetchMock();
+  let rejectSecondApproval = true;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (
+        rejectSecondApproval &&
+        url.includes("lecture-02/practice-design/approve") &&
+        init?.method === "POST"
+      ) {
+        rejectSecondApproval = false;
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              detail: "The practice design or source revision changed. Reload it.",
+            }),
+            {
+              status: 409,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+        );
+      }
+      return baseFetch(url, init);
+    }),
+  );
+  render(<App />);
+
+  await openProfessorDemo(user);
+  await user.type(screen.getByLabelText(/course name/i), "Demo ML Course");
+  await user.click(screen.getByRole("button", { name: /create course workspace/i }));
+  await user.upload(
+    await screen.findByLabelText(/^choose files$/i),
+    new File(["# lecture one"], "Lecture01-eng.tex", { type: "application/x-tex" }),
+  );
+  await user.click(screen.getByRole("button", { name: /upload and process materials/i }));
+  await user.click(await screen.findByRole("button", { name: /apply lecture schedule/i }));
+  await user.click(await screen.findByRole("button", { name: /accept assignments and continue/i }));
+
+  const proposals = await screen.findAllByRole("button", { name: /generate learning plan/i });
+  await user.click(proposals[0]);
+  await user.click(proposals[1]);
+  await waitFor(() =>
+    expect(screen.getAllByRole("button", { name: /approve learning plan/i })).toHaveLength(2),
+  );
+  await user.click(screen.getAllByRole("button", { name: /approve learning plan/i })[0]);
+  await waitFor(() =>
+    expect(screen.getAllByRole("button", { name: /approve learning plan/i })).toHaveLength(1),
+  );
+  expect(screen.getByRole("button", { name: /06 generate/i })).toBeDisabled();
+
+  const details = screen.getAllByText(/edit target details/i)[0].closest("details");
+  await user.click(details!.querySelector("summary")!);
+  const outcome = screen.getAllByLabelText(/outcome for posterior/i)[0];
+  await user.clear(outcome);
+  await user.type(outcome, "Calculate a revised posterior from evidence.");
+  await user.click(screen.getAllByRole("button", { name: /save learning plan/i })[0]);
+  await waitFor(() =>
+    expect(screen.getAllByRole("button", { name: /approve learning plan/i })).toHaveLength(2),
+  );
+  expect(screen.getByRole("button", { name: /06 generate/i })).toBeDisabled();
+  await user.click(screen.getAllByRole("button", { name: /approve learning plan/i })[0]);
+  await waitFor(() =>
+    expect(screen.getAllByRole("button", { name: /approve learning plan/i })).toHaveLength(1),
+  );
+
+  await user.click(screen.getByRole("button", { name: /approve learning plan/i }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(/revision changed/i);
+  expect(screen.getByRole("button", { name: /approve learning plan/i })).toBeEnabled();
+
+  await user.click(screen.getByRole("button", { name: /approve learning plan/i }));
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("button", { name: /approve learning plan/i }),
+    ).not.toBeInTheDocument(),
+  );
+  await user.click(screen.getByRole("button", { name: /05 media/i }));
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: /continue to canvas draft/i })).toBeEnabled(),
+  );
 });
