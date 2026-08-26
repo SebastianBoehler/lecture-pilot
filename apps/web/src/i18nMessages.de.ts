@@ -596,6 +596,7 @@ export const deMessages: Record<MessageKey, string> = {
     "Der Vorschlag ist bereits vollständig. Wähle nur den Bereich, den du ändern möchtest.",
   "builder.design.chooseEditSection": "Zu bearbeitenden Bereich wählen",
   "builder.design.editSections.outcome": "Lernziel und Ergebnis",
+  "builder.design.editSections.invariant": "Konstante Fähigkeit",
   "builder.design.editSections.sequence": "Übungsabfolge",
   "builder.design.editSections.evidence": "Leistungsnachweis",
   "builder.design.editSections.misconceptions": "Fehlvorstellungen",
@@ -605,6 +606,9 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.design.outcomeFor": "Lernziel für {target}",
   "builder.design.outcomeHelp":
     "Beschreibe eine beobachtbare Leistung, nicht nur Wissen oder Verständnis.",
+  "builder.design.invariant": "Konstante Fähigkeit",
+  "builder.design.invariantHelp":
+    "Benenne das Wissen oder den Denkprozess, den alle drei Aufgaben erfordern.",
   "builder.design.baseline": "Ausgangsaufgabe",
   "builder.design.baselineWhy": "Zeigt die aktuelle Denkweise vor jeder Unterstützung.",
   "builder.design.baselineEditHelp":
@@ -613,22 +617,33 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.design.exitWhy": "Prüft, ob die Aufgabe ohne Hilfe gelöst werden kann.",
   "builder.design.exitEditHelp":
     "Nutze eine parallele Aufgabe mit derselben Fähigkeit, aber anderen Oberflächenmerkmalen.",
+  "builder.design.exitSurface": "Änderung von Ausgangs- zu Abschlussaufgabe",
+  "builder.design.exitSurfaceHelp":
+    "Beschreibe nur geänderte Werte, Kontexte oder Darstellungen; die Fähigkeit bleibt gleich.",
   "builder.design.transfer": "Verzögerte Transferaufgabe",
   "builder.design.transferWhy":
     "Greift die Fähigkeit nach {days} Tagen mit veränderten Oberflächenmerkmalen erneut auf.",
   "builder.design.transferEditHelp":
     "Ändere Kontext oder Werte, während die zugrunde liegende Fähigkeit gleich bleibt.",
+  "builder.design.transferSurface": "Änderung zur verzögerten Transferaufgabe",
+  "builder.design.transferSurfaceHelp":
+    "Beschreibe die spätere Änderung von Szenario, Werten, Darstellung oder Aufgabenform.",
+  "builder.design.controlledChange": "Kontrollierte Änderung:",
   "builder.design.targetHeading": "{number}. {target}",
   "builder.design.sequenceLabel": "Übungsabfolge",
   "builder.design.inspectSupport": "Leistungsnachweise und Tutorunterstützung prüfen",
   "builder.design.supportCounts":
     "Nachweise: {evidence} · Fehlvorstellungen: {misconceptions} · Hinweise: {hints}",
   "builder.design.sourceGrounding": "Quellengrundlage: {sources}",
+  "builder.design.showSource": "Unterstützende Quelle anzeigen",
+  "builder.design.noAnchor": "Kein Quellenauszug stützt dieses optionale Feld.",
   "builder.design.reviewAfterDays": "Wiederholung nach Tagen",
   "builder.design.reviewAfterDaysHelp":
     "Lege fest, wann Lernende ohne unmittelbare Erinnerung zur Aufgabe zurückkehren.",
   "builder.design.sources": "Quellenverweise (einer pro Zeile)",
   "builder.design.sourcesHelp": "Verankere jede Aufgabe in bestätigten Vorlesungsquellen.",
+  "builder.design.sourcesReadOnly":
+    "Verifizierte Quellenpfade werden aus den Feldbelegen abgeleitet: {sources}",
   "builder.design.evidence": "Evidenzkriterien",
   "builder.design.evidenceHelp":
     "Lege fest, was Lernende tatsächlich zeigen müssen, bevor der Tutor das Ziel bestätigt.",
@@ -657,6 +672,47 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.design.unsaved": "Ungespeicherte Änderungen",
   "builder.design.saveBeforeApprove":
     "Speichere deine gezielten Änderungen, bevor du diesen Plan freigibst.",
+  "builder.design.planningContext": "Planungskontext",
+  "builder.design.context.learnerLevel": "Niveau der Lernenden",
+  "builder.design.context.prerequisites": "Voraussetzungen",
+  "builder.design.context.timeBudget": "Zeitbudget",
+  "builder.design.context.allowedAids": "Erlaubte Hilfsmittel",
+  "builder.design.context.assessmentConditions": "Prüfungsbedingungen",
+  "builder.design.contextGaps": "Quellenlücken im Planungskontext",
+  "builder.design.contextGapFor": "Quellenlücke für {field}",
+  "builder.design.sourceInsufficient": "Nicht durch die Quelle belegt",
+  "builder.design.noneSpecified": "Keine angegeben",
+  "builder.design.noAids": "Keine Hilfsmittel",
+  "builder.design.minutes": "{minutes} Minuten",
+  "builder.design.onePerLine": "Einen Eintrag pro Zeile eingeben.",
+  "builder.design.professorUnspecified": "Die Lehrperson hat dieses Feld offengelassen.",
+  "builder.design.qualityReview": "Qualitätsprüfung durch den Agenten",
+  "builder.design.qualitySummary":
+    "{critical} kritisch · {warnings} Warnungen · {passed} bestanden",
+  "builder.design.qualityPassed": "Alle acht Pädagogik- und Quellenprüfungen sind bestanden.",
+  "builder.design.reviewRequired": "Prüfung erforderlich",
+  "builder.design.reviewRequiredHelp":
+    "Die bearbeitete Revision wurde noch nicht auf Quellenbezug und Pädagogik geprüft.",
+  "builder.design.reviewEdited": "Bearbeiteten Plan prüfen",
+  "builder.design.reviewing": "Bearbeiteter Plan wird geprüft...",
+  "builder.design.reviewBeforeApprove":
+    "Die Freigabe ist gesperrt, bis der Agent genau diese Revision geprüft hat.",
+  "builder.design.criticalBeforeApprove":
+    "Die Freigabe ist gesperrt. Behebe die kritischen Befunde, speichere und prüfe erneut.",
+  "builder.design.criticalStatus": "Kritischer Prüfungsbefund",
+  "builder.design.showAllChecks": "Alle acht Prüfungen anzeigen",
+  "builder.design.affectedTargets": "Betroffene Lernziele: {targets}",
+  "builder.design.reviewSeverity.pass": "Bestanden",
+  "builder.design.reviewSeverity.warning": "Warnung",
+  "builder.design.reviewSeverity.critical": "Kritischer Befund",
+  "builder.design.reviewDimensions.source_entailment": "Quellenableitung",
+  "builder.design.reviewDimensions.objective_task_alignment": "Ausrichtung von Ziel und Aufgabe",
+  "builder.design.reviewDimensions.exit_equivalence": "Äquivalenz der Abschlussaufgabe",
+  "builder.design.reviewDimensions.answer_leakage": "Preisgabe der Antwort",
+  "builder.design.reviewDimensions.difficulty_drift": "Verschiebung der Schwierigkeit",
+  "builder.design.reviewDimensions.transfer_invariant_novelty": "Transferkonstanz und Neuheit",
+  "builder.design.reviewDimensions.rubric_sufficiency": "Ausreichende Evidenzkriterien",
+  "builder.design.reviewDimensions.target_source_coverage": "Abdeckung von Zielen und Quellen",
   "builder.design.approvalHelp":
     "Gib den Plan frei, wenn Lernziel, Übungsabfolge und Leistungsnachweise deiner Absicht entsprechen.",
   "builder.design.approve": "Lernplan freigeben",

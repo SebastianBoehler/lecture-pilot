@@ -72,6 +72,23 @@ export async function approvePracticeDesign(input: {
   );
 }
 
+export async function reviewPracticeDesign(input: {
+  courseId: string;
+  lectureId: string;
+  design: PracticeDesign;
+  session: LoginSession;
+}): Promise<PracticeDesign> {
+  return request(
+    `${path(input.courseId, input.lectureId)}/review`,
+    input.session,
+    json("POST", {
+      source_revision: input.design.source_revision,
+      practice_design_revision: input.design.revision,
+    }),
+    "Practice design review failed.",
+  );
+}
+
 function path(courseId: string, lectureId: string): string {
   return `/admin/courses/${courseId}/lectures/${lectureId}/practice-design`;
 }

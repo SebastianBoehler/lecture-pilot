@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "./i18n";
 import { ProfessorPracticeDesignStep } from "./ProfessorPracticeDesignStep";
+import { practiceDesignFixture } from "./practiceDesignTestFixtures";
 import type { PracticeDesign, PracticeDesignUpdate } from "./practiceDesignTypes";
 
 describe("ProfessorPracticeDesignStep", () => {
@@ -20,6 +21,7 @@ describe("ProfessorPracticeDesignStep", () => {
           routingReady
           onApprove={vi.fn()}
           onPropose={vi.fn()}
+          onReview={vi.fn()}
           onSave={save}
         />
       </I18nProvider>,
@@ -71,6 +73,7 @@ describe("ProfessorPracticeDesignStep", () => {
           routingReady
           onApprove={vi.fn()}
           onPropose={propose}
+          onReview={vi.fn()}
           onSave={vi.fn()}
         />
       </I18nProvider>,
@@ -92,6 +95,7 @@ describe("ProfessorPracticeDesignStep", () => {
           routingReady={false}
           onApprove={vi.fn()}
           onPropose={vi.fn()}
+          onReview={vi.fn()}
           onSave={vi.fn()}
         />
       </I18nProvider>,
@@ -152,20 +156,24 @@ describe("ProfessorPracticeDesignStep", () => {
         targets: [
           expect.objectContaining({
             evidence_criteria: [
-              { id: "substitute", description: "Uses stated values.", required: false },
+              expect.objectContaining({
+                id: "substitute",
+                description: "Uses stated values.",
+                required: false,
+              }),
             ],
             misconceptions: [
-              {
+              expect.objectContaining({
                 id: "prior",
                 description: "Uses the prior only.\nIgnores new evidence.",
                 diagnostic_cue: "Prior repeated.\nLikelihood absent.",
-              },
+              }),
             ],
             hint_ladder: [
-              {
+              expect.objectContaining({
                 level: "worked_step",
                 content: "Substitute the stated values step by step.",
-              },
+              }),
             ],
           }),
         ],
@@ -210,6 +218,7 @@ function renderStep(save: (lectureId: string, update: PracticeDesignUpdate) => v
         routingReady
         onApprove={vi.fn()}
         onPropose={vi.fn()}
+        onReview={vi.fn()}
         onSave={save}
       />
     </I18nProvider>,
@@ -217,40 +226,7 @@ function renderStep(save: (lectureId: string, update: PracticeDesignUpdate) => v
 }
 
 function design(approved = false): PracticeDesign {
-  return {
-    schema_version: 1,
-    course_id: "course-1",
-    lecture_id: "lecture-03",
-    lecture_title: "Bayesian decision theory",
-    objective: "Calculate a posterior from evidence.",
-    source_revision: "s".repeat(64),
-    revision: "d".repeat(64),
-    approval: approved
-      ? {
-          approved_at: "2026-08-26T12:00:00Z",
-          approved_by: "professor-demo",
-          practice_design_revision: "d".repeat(64),
-          source_revision: "s".repeat(64),
-        }
-      : null,
-    targets: [
-      {
-        id: "posterior",
-        title: "Posterior decisions",
-        outcome: "Calculate a posterior from evidence.",
-        baseline_task: "Calculate the posterior.",
-        independent_exit_task: "Calculate a new posterior.",
-        delayed_transfer_task: "Diagnose a posterior decision.",
-        evidence_criteria: [
-          { id: "substitute", description: "Uses stated values.", required: true },
-        ],
-        misconceptions: [
-          { id: "prior", description: "Uses the prior only.", diagnostic_cue: "Prior." },
-        ],
-        hint_ladder: [{ level: "prompt", content: "Start with the evidence." }],
-        review_after_days: 7,
-        source_refs: ["Lecture03.pdf"],
-      },
-    ],
-  };
+  return practiceDesignFixture({
+    approvedBy: approved ? "professor-demo" : null,
+  });
 }

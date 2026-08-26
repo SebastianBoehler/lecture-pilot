@@ -1,9 +1,23 @@
 import { useEffect, useId, useMemo, useState } from "react";
 
 import { useI18n } from "./i18n";
-import { isApproved, sameEditableDesign, updateFor } from "./ProfessorPracticeDesignStep.helpers";
+import {
+  currentQualityReview,
+  hasCriticalQualityFinding,
+  isApproved,
+  sameEditableDesign,
+  updateFor,
+} from "./ProfessorPracticeDesignStep.helpers";
+import { ProfessorPracticeDesignQuality } from "./ProfessorPracticeDesignQuality";
+import {
+  ProfessorPracticeLectureEditor,
+  ProfessorPracticePlanStatus,
+} from "./ProfessorPracticeLectureEditor";
+import { ProfessorPracticePlanningContext } from "./ProfessorPracticePlanningContext";
 import { ProfessorPracticeTargetReview } from "./ProfessorPracticeTargetReview";
 import type { PracticeDesign, PracticeDesignUpdate } from "./practiceDesignTypes";
+
+type Translator = ReturnType<typeof useI18n>["t"];
 
 type Lecture = { id: string; label: string };
 
@@ -15,6 +29,7 @@ export function ProfessorPracticeDesignStep({
   routingReady,
   onApprove,
   onPropose,
+  onReview,
   onSave,
 }: {
   designs: Readonly<Record<string, PracticeDesign>>;
@@ -24,6 +39,7 @@ export function ProfessorPracticeDesignStep({
   routingReady: boolean;
   onApprove: (lectureId: string) => void;
   onPropose: (lectureId: string, refresh?: boolean) => void;
+  onReview: (lectureId: string) => void;
   onSave: (lectureId: string, update: PracticeDesignUpdate) => void;
 }) {
   const { t } = useI18n();
@@ -98,6 +114,7 @@ export function ProfessorPracticeDesignStep({
               onApprove={() => onApprove(lecture.id)}
               onChange={(next) => setDrafts((current) => ({ ...current, [lecture.id]: next }))}
               onRefresh={() => onPropose(lecture.id, true)}
+              onReview={() => onReview(lecture.id)}
               onSave={() => onSave(lecture.id, updateFor(draft))}
             />
           );
@@ -117,6 +134,7 @@ function LecturePlan({
   onApprove,
   onChange,
   onRefresh,
+  onReview,
   onSave,
 }: {
   defaultOpen: boolean;
@@ -128,11 +146,15 @@ function LecturePlan({
   onApprove: () => void;
   onChange: (design: PracticeDesign) => void;
   onRefresh: () => void;
+  onReview: () => void;
   onSave: () => void;
 }) {
   const { t } = useI18n();
   const dirty = !sameEditableDesign(draft, design);
   const approved = !stale && isApproved(design);
+  const qualityReview = currentQualityReview(design);
+  const critical = hasCriticalQualityFinding(design);
+  const reviewMissing = qualityReview === null;
   const [expanded, setExpanded] = useState(defaultOpen);
   const regionId = useId();
   return (
@@ -150,7 +172,13 @@ function LecturePlan({
             <span>{draft.objective}</span>
           </span>
         </button>
-        <PlanStatus approved={approved && !dirty} dirty={dirty} stale={stale} />
+        <ProfessorPracticePlanStatus
+          approved={approved && !dirty}
+          critical={critical}
+          dirty={dirty}
+          reviewMissing={reviewMissing}
+          stale={stale}
+        />
       </header>
       {expanded ? (
         <div className="practice-design-lecture-body" id={regionId}>
@@ -159,8 +187,9 @@ function LecturePlan({
               <h3>{draft.lecture_title}</h3>
               <p>{draft.objective}</p>
             </div>
-            {!stale ? <LectureDetailsEditor draft={draft} onChange={onChange} /> : null}
+            {!stale ? <ProfessorPracticeLectureEditor draft={draft} onChange={onChange} /> : null}
           </header>
+          <ProfessorPracticePlanningContext context={draft.planning_context} />
           <div className="practice-target-summary" role="list">
             {draft.targets.map((target, index) => (
               <ProfessorPracticeTargetReview
@@ -177,9 +206,10 @@ function LecturePlan({
               />
             ))}
           </div>
+          <ProfessorPracticeDesignQuality qualityReview={qualityReview} />
           <footer className="practice-design-actions">
-            <p aria-live="polite">
-              {dirty ? t("builder.design.saveBeforeApprove") : t("builder.design.approvalHelp")}
+            <p aria-live="polite" id={`${regionId}-approval-status`}>
+              {approvalMessage({ critical, dirty, reviewMissing, stale, t })}
             </p>
             <div className="flow-actions">
               {dirty ? (
@@ -192,10 +222,21 @@ function LecturePlan({
                   {pending ? t("builder.design.saving") : t("builder.design.save")}
                 </button>
               ) : null}
-              {approved && !dirty ? null : (
+              {!dirty && reviewMissing ? (
                 <button
                   className="primary-action"
-                  disabled={pending || stale || dirty}
+                  disabled={pending || stale}
+                  type="button"
+                  onClick={onReview}
+                >
+                  {pending ? t("builder.design.reviewing") : t("builder.design.reviewEdited")}
+                </button>
+              ) : null}
+              {approved && !dirty ? null : (
+                <button
+                  aria-describedby={`${regionId}-approval-status`}
+                  className="primary-action"
+                  disabled={pending || stale || dirty || reviewMissing || critical}
                   type="button"
                   onClick={onApprove}
                 >
@@ -213,71 +254,22 @@ function LecturePlan({
   );
 }
 
-function LectureDetailsEditor({
-  draft,
-  onChange,
-}: {
-  draft: PracticeDesign;
-  onChange: (design: PracticeDesign) => void;
-}) {
-  const { t } = useI18n();
-  const [open, setOpen] = useState(false);
-  const regionId = useId();
-  return (
-    <div className="practice-lecture-editor">
-      <button
-        aria-controls={regionId}
-        aria-expanded={open}
-        type="button"
-        onClick={() => setOpen(!open)}
-      >
-        {open ? t("builder.design.finishEditing") : t("builder.design.editLecture")}
-      </button>
-      {open ? (
-        <div className="practice-lecture-fields" id={regionId}>
-          <label>
-            {t("builder.design.lectureTitle")}
-            <span>{t("builder.design.lectureTitleHelp")}</span>
-            <textarea
-              value={draft.lecture_title}
-              onChange={(event) => onChange({ ...draft, lecture_title: event.target.value })}
-            />
-          </label>
-          <label>
-            {t("builder.design.objective")}
-            <span>{t("builder.design.objectiveHelp")}</span>
-            <textarea
-              value={draft.objective}
-              onChange={(event) => onChange({ ...draft, objective: event.target.value })}
-            />
-          </label>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function PlanStatus({
-  approved,
+function approvalMessage({
+  critical,
   dirty,
+  reviewMissing,
   stale,
+  t,
 }: {
-  approved: boolean;
+  critical: boolean;
   dirty: boolean;
+  reviewMissing: boolean;
   stale: boolean;
+  t: Translator;
 }) {
-  const { t } = useI18n();
-  const key = stale
-    ? "builder.design.stale"
-    : approved
-      ? "builder.design.approved"
-      : dirty
-        ? "builder.design.unsaved"
-        : "builder.status.pending";
-  return (
-    <span className={`practice-design-status ${approved ? "is-approved" : ""}`} aria-live="polite">
-      <span aria-hidden="true">{approved ? "✓" : stale ? "!" : "•"}</span>
-      <span>{t(key)}</span>
-    </span>
-  );
+  if (stale) return t("builder.design.staleAction");
+  if (dirty) return t("builder.design.saveBeforeApprove");
+  if (reviewMissing) return t("builder.design.reviewBeforeApprove");
+  if (critical) return t("builder.design.criticalBeforeApprove");
+  return t("builder.design.approvalHelp");
 }

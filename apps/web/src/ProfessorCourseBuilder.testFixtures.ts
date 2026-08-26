@@ -9,6 +9,10 @@ import {
   type FixtureScope,
 } from "./ProfessorCourseBuilder.practiceDesignFixture";
 import type { PracticeDesign } from "./practiceDesignTypes";
+import {
+  practiceDesignFixture,
+  reviewedPracticeDesignFixture as reviewPracticeDesign,
+} from "./practiceDesignTestFixtures";
 import { learningDesignPayload } from "./testLearningDesignReviewFixture";
 
 export function professorFetchMock({
@@ -89,6 +93,11 @@ export function professorFetchMock({
         practiceDesigns.set(lectureId, proposed);
         return json(proposed);
       }
+      if (path.endsWith("/review") && design) {
+        const reviewed = reviewPracticeDesign(design);
+        practiceDesigns.set(lectureId, reviewed);
+        return json(reviewed);
+      }
       if (path.endsWith("/approve") && design) {
         const approval = JSON.parse(String(init?.body));
         if (
@@ -102,7 +111,13 @@ export function professorFetchMock({
         }
         if (!staleApprovalConsumed && lectureId === staleApprovalOnceFor) {
           staleApprovalConsumed = true;
-          practiceDesigns.set(lectureId, { ...design, approval: null, revision: "f".repeat(64) });
+          const changed = reviewPracticeDesign({
+            ...design,
+            approval: null,
+            quality_review: null,
+            revision: "f".repeat(64),
+          });
+          practiceDesigns.set(lectureId, changed);
           return json(
             { detail: "The practice design or source revision changed. Reload it." },
             409,
@@ -114,7 +129,13 @@ export function professorFetchMock({
       }
       if (init?.method === "PUT" && design) {
         const update = JSON.parse(String(init.body));
-        const saved = { ...design, ...update, approval: null, revision: "e".repeat(64) };
+        const saved = {
+          ...design,
+          ...update,
+          approval: null,
+          quality_review: null,
+          revision: "e".repeat(64),
+        };
         practiceDesigns.set(lectureId, saved);
         return json(saved);
       }
@@ -261,34 +282,15 @@ function canvasPayload() {
 }
 
 function practiceDesignPayload(lectureId: string, sourceRevision: string): PracticeDesign {
-  const revision = "d".repeat(64);
-  return {
-    schema_version: 1,
-    course_id: "demo-ml-course",
-    lecture_id: lectureId,
-    lecture_title: "Bayesian Decision Theory",
-    objective: "Calculate a posterior from evidence.",
-    source_revision: sourceRevision,
-    revision,
-    approval: null,
-    targets: [
-      {
-        id: "posterior",
-        title: "Posterior",
-        outcome: "Calculate a posterior from evidence.",
-        baseline_task: "Calculate the posterior.",
-        independent_exit_task: "Calculate a new posterior.",
-        delayed_transfer_task: "Diagnose a posterior decision.",
-        evidence_criteria: [
-          { id: "substitute", description: "Uses stated values.", required: true },
-        ],
-        misconceptions: [],
-        hint_ladder: [],
-        review_after_days: 7,
-        source_refs: [lectureSourcePath(lectureId)],
-      },
-    ],
-  };
+  return practiceDesignFixture({
+    courseId: "demo-ml-course",
+    lectureId,
+    lectureTitle: "Bayesian Decision Theory",
+    sourceExcerpt: "Calculate a posterior from evidence.",
+    sourcePath: lectureSourcePath(lectureId),
+    sourceRevision,
+    targetTitle: "Posterior",
+  });
 }
 
 function approvePracticeDesign(design: PracticeDesign): PracticeDesign {

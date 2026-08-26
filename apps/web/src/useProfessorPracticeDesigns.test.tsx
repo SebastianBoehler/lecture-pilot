@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 
 import type { PracticeDesign } from "./practiceDesignTypes";
+import { practiceDesignFixture } from "./practiceDesignTestFixtures";
 import type { LoginSession } from "./types";
 import { useProfessorPracticeDesigns } from "./useProfessorPracticeDesigns";
 
@@ -61,6 +62,42 @@ it("replaces only the saved lecture and reflects approval clearing", async () =>
   expect(result.current.designs["lecture-01"].revision).toBe("e".repeat(64));
   expect(result.current.designs["lecture-01"].approval).toBeNull();
   expect(result.current.allApproved(["lecture-01"])).toBe(false);
+});
+
+it("requests a revision-bound semantic review and stores the reviewed design", async () => {
+  const requests: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      requests.push(`${init?.method ?? "GET"} ${url}`);
+      const current = design("lecture-01");
+      return Promise.resolve(
+        response(
+          url.endsWith("/review")
+            ? {
+                ...current,
+                quality_review: {
+                  source_revision: current.source_revision,
+                  practice_design_revision: current.revision,
+                  checks: [],
+                },
+              }
+            : current,
+        ),
+      );
+    }),
+  );
+  const { result } = renderHook(() =>
+    useProfessorPracticeDesigns({ courseId: "course-1", session }),
+  );
+  await act(() => result.current.loadAll(["lecture-01"]));
+
+  await act(() => result.current.review("lecture-01"));
+
+  expect(requests.at(-1)).toMatch(/^POST .*\/practice-design\/review$/);
+  expect(result.current.designs["lecture-01"].quality_review?.practice_design_revision).toBe(
+    "d".repeat(64),
+  );
 });
 
 it("requires approval revisions to match the current design", async () => {
@@ -198,40 +235,13 @@ function design(
   approvedBy: string | null = null,
   revision = "d",
 ): PracticeDesign {
-  return {
-    schema_version: 1,
-    course_id: "course-1",
-    lecture_id: lectureId,
-    lecture_title: "Bayes rule",
-    objective: "Calculate a posterior from evidence.",
-    source_revision: "s".repeat(64),
+  return practiceDesignFixture({
+    approvedBy,
+    lectureId,
     revision: revision.repeat(64),
-    approval: approvedBy
-      ? {
-          approved_by: approvedBy,
-          approved_at: "2026-08-26T12:00:00Z",
-          source_revision: "s".repeat(64),
-          practice_design_revision: revision.repeat(64),
-        }
-      : null,
-    targets: [
-      {
-        id: "posterior",
-        title: "Posterior",
-        outcome: "Calculate a posterior from evidence.",
-        baseline_task: "Calculate the posterior.",
-        independent_exit_task: "Calculate another posterior.",
-        delayed_transfer_task: "Calculate a diagnostic posterior.",
-        evidence_criteria: [
-          { id: "substitute", description: "Uses stated values.", required: true },
-        ],
-        misconceptions: [],
-        hint_ladder: [],
-        review_after_days: 7,
-        source_refs: ["Lecture01.md"],
-      },
-    ],
-  };
+    reviewSeverity: null,
+    sourcePath: "Lecture01.md",
+  });
 }
 
 function update(current: PracticeDesign) {
@@ -240,6 +250,7 @@ function update(current: PracticeDesign) {
     practice_design_revision: current.revision,
     lecture_title: current.lecture_title,
     objective: current.objective,
+    planning_context: current.planning_context,
     targets: current.targets,
   };
 }

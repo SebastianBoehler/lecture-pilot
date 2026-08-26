@@ -5,6 +5,7 @@ import {
   approvePracticeDesign,
   getPracticeDesign,
   proposePracticeDesign,
+  reviewPracticeDesign,
   updatePracticeDesign,
 } from "./practiceDesignApi";
 import type { PracticeDesign, PracticeDesignUpdate } from "./practiceDesignTypes";
@@ -161,6 +162,12 @@ export function useProfessorPracticeDesigns({
     await mutate(lectureId, () => approvePracticeDesign({ courseId, lectureId, design, session }));
   }
 
+  async function review(lectureId: string) {
+    const design = designs[lectureId];
+    if (!courseId || !identityKey || !design) return;
+    await mutate(lectureId, () => reviewPracticeDesign({ courseId, lectureId, design, session }));
+  }
+
   function reset(lectureIds?: readonly string[]) {
     if (!identityKey) return;
     if (!lectureIds) {
@@ -213,6 +220,7 @@ export function useProfessorPracticeDesigns({
     loadAll,
     pendingLectureId: pendingLectureId(pending, identityKey),
     propose,
+    review,
     reset,
     save,
   };

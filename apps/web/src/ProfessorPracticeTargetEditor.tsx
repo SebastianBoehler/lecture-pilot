@@ -5,10 +5,11 @@ import { ProfessorPracticeTargetEditorSection } from "./ProfessorPracticeTargetE
 import type { PracticeTarget } from "./practiceDesignTypes";
 
 export type PracticeEditorSection =
-  "outcome" | "sequence" | "evidence" | "misconceptions" | "hints" | "sources";
+  "outcome" | "invariant" | "sequence" | "evidence" | "misconceptions" | "hints" | "sources";
 
 const EDITOR_SECTIONS: readonly PracticeEditorSection[] = [
   "outcome",
+  "invariant",
   "sequence",
   "evidence",
   "misconceptions",

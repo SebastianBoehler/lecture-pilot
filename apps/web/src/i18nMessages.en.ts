@@ -581,6 +581,7 @@ export const enMessages = {
     "The proposal is already complete. Choose one area only when you want to revise it.",
   "builder.design.chooseEditSection": "Choose what to edit",
   "builder.design.editSections.outcome": "Target and outcome",
+  "builder.design.editSections.invariant": "Capability held constant",
   "builder.design.editSections.sequence": "Practice sequence",
   "builder.design.editSections.evidence": "Evidence check",
   "builder.design.editSections.misconceptions": "Misconceptions",
@@ -590,6 +591,9 @@ export const enMessages = {
   "builder.design.outcomeFor": "Outcome for {target}",
   "builder.design.outcomeHelp":
     "Describe an observable performance, not what students should merely know or understand.",
+  "builder.design.invariant": "Capability held constant",
+  "builder.design.invariantHelp":
+    "Name the knowledge or reasoning operation that all three tasks must require.",
   "builder.design.baseline": "Baseline task",
   "builder.design.baselineWhy": "Reveals current reasoning before support.",
   "builder.design.baselineEditHelp":
@@ -598,21 +602,32 @@ export const enMessages = {
   "builder.design.exitWhy": "Checks whether the student can perform without help.",
   "builder.design.exitEditHelp":
     "Use a parallel task that requires the same capability without copied surface details.",
+  "builder.design.exitSurface": "Change from baseline to independent exit",
+  "builder.design.exitSurfaceHelp":
+    "State only the values, context, or representation that changes; the capability stays fixed.",
   "builder.design.transfer": "Delayed transfer task",
   "builder.design.transferWhy": "Returns after {days} days and changes the surface details.",
   "builder.design.transferEditHelp":
     "Change the context or values while keeping the underlying capability the same.",
+  "builder.design.transferSurface": "Change from exit to delayed transfer",
+  "builder.design.transferSurfaceHelp":
+    "State the later change in scenario, values, representation, or task form.",
+  "builder.design.controlledChange": "Controlled change:",
   "builder.design.targetHeading": "{number}. {target}",
   "builder.design.sequenceLabel": "Practice sequence",
   "builder.design.inspectSupport": "Inspect evidence and tutor support",
   "builder.design.supportCounts":
     "Evidence: {evidence} · Misconceptions: {misconceptions} · Hints: {hints}",
   "builder.design.sourceGrounding": "Grounded in: {sources}",
+  "builder.design.showSource": "Show supporting source",
+  "builder.design.noAnchor": "No source excerpt supports this optional field.",
   "builder.design.reviewAfterDays": "Review after days",
   "builder.design.reviewAfterDaysHelp":
     "Choose when the learner should return without relying on immediate memory.",
   "builder.design.sources": "Source references (one per line)",
   "builder.design.sourcesHelp": "Keep every task anchored to confirmed lecture evidence.",
+  "builder.design.sourcesReadOnly":
+    "Verified source paths are derived from the field evidence: {sources}",
   "builder.design.evidence": "Evidence criteria",
   "builder.design.evidenceHelp":
     "Define what the learner must actually demonstrate before the tutor passes the target.",
@@ -640,6 +655,46 @@ export const enMessages = {
   "builder.design.saving": "Saving learning plan...",
   "builder.design.unsaved": "Unsaved changes",
   "builder.design.saveBeforeApprove": "Save your targeted changes before approving this plan.",
+  "builder.design.planningContext": "Planning context",
+  "builder.design.context.learnerLevel": "Learner level",
+  "builder.design.context.prerequisites": "Prerequisites",
+  "builder.design.context.timeBudget": "Time budget",
+  "builder.design.context.allowedAids": "Allowed aids",
+  "builder.design.context.assessmentConditions": "Assessment conditions",
+  "builder.design.contextGaps": "Source gaps in the planning context",
+  "builder.design.contextGapFor": "Source gap for {field}",
+  "builder.design.sourceInsufficient": "Not supported by the source",
+  "builder.design.noneSpecified": "None specified",
+  "builder.design.noAids": "No aids",
+  "builder.design.minutes": "{minutes} minutes",
+  "builder.design.onePerLine": "Enter one item per line.",
+  "builder.design.professorUnspecified": "The professor left this field unspecified.",
+  "builder.design.qualityReview": "Agent quality review",
+  "builder.design.qualitySummary": "{critical} critical · {warnings} warnings · {passed} passed",
+  "builder.design.qualityPassed": "All eight pedagogical and source checks passed.",
+  "builder.design.reviewRequired": "Review required",
+  "builder.design.reviewRequiredHelp":
+    "The edited revision has not yet passed the agent's source and pedagogy review.",
+  "builder.design.reviewEdited": "Review edited plan",
+  "builder.design.reviewing": "Reviewing edited plan...",
+  "builder.design.reviewBeforeApprove":
+    "Approval is blocked until the agent reviews this exact revision.",
+  "builder.design.criticalBeforeApprove":
+    "Approval is blocked. Resolve the critical findings, save, and request a new review.",
+  "builder.design.criticalStatus": "Critical review finding",
+  "builder.design.showAllChecks": "Show all eight checks",
+  "builder.design.affectedTargets": "Affected targets: {targets}",
+  "builder.design.reviewSeverity.pass": "Passed",
+  "builder.design.reviewSeverity.warning": "Warning",
+  "builder.design.reviewSeverity.critical": "Critical issue",
+  "builder.design.reviewDimensions.source_entailment": "Source entailment",
+  "builder.design.reviewDimensions.objective_task_alignment": "Objective and task alignment",
+  "builder.design.reviewDimensions.exit_equivalence": "Independent-exit equivalence",
+  "builder.design.reviewDimensions.answer_leakage": "Answer leakage",
+  "builder.design.reviewDimensions.difficulty_drift": "Difficulty drift",
+  "builder.design.reviewDimensions.transfer_invariant_novelty": "Transfer invariant and novelty",
+  "builder.design.reviewDimensions.rubric_sufficiency": "Evidence sufficiency",
+  "builder.design.reviewDimensions.target_source_coverage": "Target and source coverage",
   "builder.design.approvalHelp":
     "Approve when the outcome, practice sequence, and evidence checks match your intent.",
   "builder.design.approve": "Approve learning plan",

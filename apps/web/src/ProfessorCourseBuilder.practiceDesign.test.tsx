@@ -113,8 +113,14 @@ it("requires every full-course plan approval and keeps a stale approval conflict
   await user.clear(outcome);
   await user.type(outcome, "Calculate a revised posterior from evidence.");
   await user.click(within(firstPlan).getByRole("button", { name: /save learning plan/i }));
-  await within(firstPlan).findByRole("button", { name: /approve learning plan/i });
+  expect(
+    await within(firstPlan).findByRole("button", { name: /approve learning plan/i }),
+  ).toBeDisabled();
   expect(screen.getByRole("button", { name: /06 generate/i })).toBeDisabled();
+  await user.click(within(firstPlan).getByRole("button", { name: /review edited plan/i }));
+  await waitFor(() =>
+    expect(within(firstPlan).getByRole("button", { name: /approve learning plan/i })).toBeEnabled(),
+  );
   await user.click(within(firstPlan).getByRole("button", { name: /approve learning plan/i }));
   await waitFor(() =>
     expect(

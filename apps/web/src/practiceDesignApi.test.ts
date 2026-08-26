@@ -4,9 +4,11 @@ import {
   approvePracticeDesign,
   getPracticeDesign,
   proposePracticeDesign,
+  reviewPracticeDesign,
   updatePracticeDesign,
 } from "./practiceDesignApi";
 import type { PracticeDesign, PracticeDesignUpdate } from "./practiceDesignTypes";
+import { practiceDesignFixture } from "./practiceDesignTestFixtures";
 import type { LoginSession } from "./types";
 
 const session: LoginSession = {
@@ -38,6 +40,12 @@ describe("practice-design API", () => {
       session,
       update: update(current),
     });
+    await reviewPracticeDesign({
+      courseId: "course-1",
+      lectureId: "lecture-01",
+      design: current,
+      session,
+    });
     await approvePracticeDesign({
       courseId: "course-1",
       lectureId: "lecture-01",
@@ -55,8 +63,14 @@ describe("practice-design API", () => {
     expect(fetchMock.mock.calls[1][1]?.method).toBe("POST");
     expect(fetchMock.mock.calls[2][1]?.method).toBe("PUT");
     expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toEqual(update(current));
+    expect(String(fetchMock.mock.calls[3][0])).toMatch(/\/review$/);
     expect(fetchMock.mock.calls[3][1]?.method).toBe("POST");
     expect(JSON.parse(String(fetchMock.mock.calls[3][1]?.body))).toEqual({
+      source_revision: current.source_revision,
+      practice_design_revision: current.revision,
+    });
+    expect(fetchMock.mock.calls[4][1]?.method).toBe("POST");
+    expect(JSON.parse(String(fetchMock.mock.calls[4][1]?.body))).toEqual({
       source_revision: current.source_revision,
       practice_design_revision: current.revision,
     });
@@ -85,33 +99,7 @@ describe("practice-design API", () => {
 });
 
 function design(): PracticeDesign {
-  return {
-    schema_version: 1,
-    course_id: "course-1",
-    lecture_id: "lecture-01",
-    lecture_title: "Bayes rule",
-    objective: "Calculate a posterior from evidence.",
-    source_revision: "s".repeat(64),
-    revision: "d".repeat(64),
-    approval: null,
-    targets: [
-      {
-        id: "posterior",
-        title: "Posterior",
-        outcome: "Calculate a posterior from evidence.",
-        baseline_task: "Calculate the posterior.",
-        independent_exit_task: "Calculate another posterior.",
-        delayed_transfer_task: "Calculate a diagnostic posterior.",
-        evidence_criteria: [
-          { id: "substitute", description: "Uses stated values.", required: true },
-        ],
-        misconceptions: [],
-        hint_ladder: [],
-        review_after_days: 7,
-        source_refs: ["Lecture01.md"],
-      },
-    ],
-  };
+  return practiceDesignFixture({ lectureId: "lecture-01", reviewSeverity: null });
 }
 
 function update(current: PracticeDesign): PracticeDesignUpdate {
@@ -120,6 +108,7 @@ function update(current: PracticeDesign): PracticeDesignUpdate {
     practice_design_revision: current.revision,
     lecture_title: current.lecture_title,
     objective: current.objective,
+    planning_context: current.planning_context,
     targets: current.targets,
   };
 }

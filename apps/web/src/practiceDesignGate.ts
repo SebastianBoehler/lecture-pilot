@@ -47,6 +47,7 @@ export function useProfessorPracticeDesignGate({
       routingReady,
       onApprove: (lectureId: string) => void designs.approve(lectureId),
       onPropose: (lectureId: string, refresh = false) => void designs.propose(lectureId, refresh),
+      onReview: (lectureId: string) => void designs.review(lectureId),
       onSave: (lectureId: string, update: Parameters<typeof designs.save>[1]) =>
         void designs.save(lectureId, update),
     },
