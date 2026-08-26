@@ -1,0 +1,185 @@
+{
+  "schema_version": 1,
+  "fixtures": [
+    {
+      "id": "biology-natural-selection",
+      "discipline": "biology",
+      "domain": "conceptual",
+      "provenance": "synthetic",
+      "allowed_source_paths": ["synthetic/biology-natural-selection.md"],
+      "source": {
+        "id": "benchmark-biology-natural-selection",
+        "course_id": "benchmark-biology",
+        "lecture_id": "natural-selection",
+        "title": "Natural selection as a population mechanism",
+        "source_kind": "markdown",
+        "source_ref": "synthetic/biology-natural-selection.md",
+        "workspace_path": "benchmark/synthetic/biology-natural-selection.md",
+        "sections": [
+          {
+            "id": "mechanism",
+            "title": "Mechanism and assessment conditions",
+            "source_ref": "synthetic/biology-natural-selection.md",
+            "blocks": [
+              {
+                "id": "context",
+                "type": "paragraph",
+                "text": "Audience: introductory undergraduate biology. Prerequisites: distinguish inherited traits from acquired changes and populations from individuals. Budget: 35 minutes. Aids: this source sheet only. Assessment: work individually and explain each causal link without feedback."
+              },
+              {
+                "id": "selection",
+                "type": "paragraph",
+                "text": "Natural selection changes trait frequencies across generations when individuals vary in an inherited trait, that variation changes survival or reproduction in an environment, and the resulting reproductive differences alter the next generation. Individuals do not evolve a needed trait during their lifetime."
+              },
+              {
+                "id": "tasks",
+                "type": "paragraph",
+                "text": "For a beetle population with inherited color variation and bird predation, explain how the color frequencies can change over generations. A parallel assessment may change beetles to seed-eating finches while preserving variation, inheritance, differential reproduction, and population change. A later changed-form assessment may use pesticide resistance data and ask for the same causal chain from variation to frequency change."
+              },
+              {
+                "id": "criteria",
+                "type": "paragraph",
+                "text": "A sufficient explanation identifies pre-existing inherited variation, connects the environment to differential reproductive success, and states that the population frequency changes across generations. A plausible misconception is that exposure causes each individual to acquire the advantageous trait; its cue is need-based language without inherited variation. An initial prompt may ask which traits vary before selection."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "history-source-corroboration",
+      "discipline": "history",
+      "domain": "conceptual",
+      "provenance": "synthetic",
+      "allowed_source_paths": ["synthetic/history-source-corroboration.md"],
+      "source": {
+        "id": "benchmark-history-source-corroboration",
+        "course_id": "benchmark-history",
+        "lecture_id": "source-corroboration",
+        "title": "Corroborating historical claims",
+        "source_kind": "markdown",
+        "source_ref": "synthetic/history-source-corroboration.md",
+        "workspace_path": "benchmark/synthetic/history-source-corroboration.md",
+        "sections": [
+          {
+            "id": "corroboration",
+            "title": "Corroboration and assessment conditions",
+            "source_ref": "synthetic/history-source-corroboration.md",
+            "blocks": [
+              {
+                "id": "context",
+                "type": "paragraph",
+                "text": "Audience: first-year undergraduate history. Prerequisite: distinguish a claim from evidence. Budget: 40 minutes. Aids: the supplied source extracts. Assessment: work individually and justify the conclusion from the documents."
+              },
+              {
+                "id": "method",
+                "type": "paragraph",
+                "text": "Corroboration compares independent sources about the same claim. Agreement increases confidence only when the sources are genuinely independent; shared origin or copied language does not provide independent confirmation. Disagreement should be explained using provenance, purpose, audience, timing, and access to the event rather than hidden."
+              },
+              {
+                "id": "tasks",
+                "type": "paragraph",
+                "text": "Given a mayor's speech, a factory ledger, and a newspaper report, judge the claim that production doubled and justify how provenance affects corroboration. A parallel assessment may use a minister's memo, shipping register, and later memoir about a shortage. A later changed-form assessment may present a citation network and ask which apparently agreeing reports share one original source."
+              },
+              {
+                "id": "criteria",
+                "type": "paragraph",
+                "text": "A sufficient judgment states the claim, compares relevant agreement or conflict, checks source independence, and qualifies confidence using provenance. A plausible misconception is counting three agreeing texts as three confirmations when two copied the first; its cue is a source count without origin analysis. An initial prompt may ask who created each source and how they could know."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "physics-constant-acceleration",
+      "discipline": "physics",
+      "domain": "quantitative",
+      "provenance": "synthetic",
+      "allowed_source_paths": ["synthetic/physics-constant-acceleration.md"],
+      "source": {
+        "id": "benchmark-physics-constant-acceleration",
+        "course_id": "benchmark-physics",
+        "lecture_id": "constant-acceleration",
+        "title": "One-dimensional constant acceleration",
+        "source_kind": "markdown",
+        "source_ref": "synthetic/physics-constant-acceleration.md",
+        "workspace_path": "benchmark/synthetic/physics-constant-acceleration.md",
+        "sections": [
+          {
+            "id": "kinematics",
+            "title": "Model, tasks, and assessment conditions",
+            "source_ref": "synthetic/physics-constant-acceleration.md",
+            "blocks": [
+              {
+                "id": "context",
+                "type": "paragraph",
+                "text": "Audience: introductory undergraduate mechanics. Prerequisites: signed quantities, algebra, and SI units. Budget: 30 minutes. Aids: calculator and this formula sheet. Assessment: solve individually, show substitutions, and state direction with a sign convention."
+              },
+              {
+                "id": "model",
+                "type": "paragraph",
+                "text": "For one-dimensional motion with constant acceleration, v = v0 + a t and x = x0 + v0 t + 0.5 a t^2. Choose a positive direction before assigning signs. These equations are not valid with a changing acceleration unless the interval is modeled piecewise."
+              },
+              {
+                "id": "tasks",
+                "type": "paragraph",
+                "text": "A bicycle starts at 4 m/s and accelerates at 2 m/s^2 for 3 s; determine final velocity and displacement. A parallel assessment may change the values and use a cart moving in the same chosen positive direction. A later changed-form assessment may give final velocity and elapsed time for a braking train and ask for signed acceleration and displacement."
+              },
+              {
+                "id": "criteria",
+                "type": "paragraph",
+                "text": "A sufficient solution declares a sign convention, selects a constant-acceleration equation containing the knowns and unknown, substitutes values with units, and interprets the sign. A plausible misconception is treating braking acceleration as positive because speed remains positive; its cue is ignoring the chosen direction. An initial prompt may ask the learner to list known quantities with signs."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "statistics-conditional-probability",
+      "discipline": "statistics",
+      "domain": "quantitative",
+      "provenance": "synthetic",
+      "allowed_source_paths": ["synthetic/statistics-conditional-probability.md"],
+      "source": {
+        "id": "benchmark-statistics-conditional-probability",
+        "course_id": "benchmark-statistics",
+        "lecture_id": "conditional-probability",
+        "title": "Conditional probability from counts",
+        "source_kind": "markdown",
+        "source_ref": "synthetic/statistics-conditional-probability.md",
+        "workspace_path": "benchmark/synthetic/statistics-conditional-probability.md",
+        "sections": [
+          {
+            "id": "conditional-probability",
+            "title": "Conditioning set, tasks, and assessment conditions",
+            "source_ref": "synthetic/statistics-conditional-probability.md",
+            "blocks": [
+              {
+                "id": "context",
+                "type": "paragraph",
+                "text": "Audience: introductory undergraduate statistics. Prerequisites: fractions, percentages, and two-way tables. Budget: 30 minutes. Aids: calculator and this source sheet. Assessment: work individually and identify the conditioning group before computing."
+              },
+              {
+                "id": "definition",
+                "type": "paragraph",
+                "text": "Conditional probability restricts the reference set: P(A given B) = count(A and B) divided by count(B), when count(B) is nonzero. Reversing the condition changes the denominator, so P(A given B) generally differs from P(B given A)."
+              },
+              {
+                "id": "tasks",
+                "type": "paragraph",
+                "text": "In a class, 18 of 30 commuters submitted early and 14 of 20 non-commuters submitted early; compute the probability that a commuter submitted early and explain the denominator. A parallel assessment may change the counts and categories to library users. A later changed-form assessment may provide a tree diagram for a screening test and ask for the reverse conditional probability from branch counts."
+              },
+              {
+                "id": "criteria",
+                "type": "paragraph",
+                "text": "A sufficient solution names the conditioned group, uses its total as the denominator, uses the intersection count as the numerator, computes the ratio, and interprets it in context. A plausible misconception is dividing by the full sample; its cue is a denominator that includes cases outside the conditioned group. An initial prompt may ask which cases remain after applying the condition."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
