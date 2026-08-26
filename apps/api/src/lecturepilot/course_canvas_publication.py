@@ -12,6 +12,7 @@ from pydantic import (
     field_validator,
 )
 
+from lecturepilot.canvas_internal_serialization import canvas_document_internal_payload
 from lecturepilot.canvas_learning_support import normalize_learning_support
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.course_learning_design_models import LearningDesignReview
@@ -27,6 +28,7 @@ class CanvasPublicationMetadata(BaseModel):
     source_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     draft_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
     learning_map_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
+    practice_design_revision: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
     published_at: AwareDatetime
     published_by: str = Field(min_length=1, max_length=160)
 
@@ -54,7 +56,7 @@ def prepared_document(document: CanvasDocument, canvas_dir: Path) -> CanvasDocum
     normalized = normalize_learning_support(document).model_copy(
         update={"workspace_path": str(canvas_dir / "index.md")}
     )
-    return CanvasDocument.model_validate(normalized.model_dump())
+    return CanvasDocument.model_validate(canvas_document_internal_payload(normalized))
 
 
 def publication_path(canvas_dir: Path) -> Path:
@@ -93,4 +95,5 @@ def publication_metadata(
         draft_digest=review.draft_digest,
         source_revision=review.source_revision,
         learning_map_revision=review.learning_map.revision,
+        practice_design_revision=review.practice_design_revision,
     )

@@ -15,7 +15,13 @@ def test_put_and_approve_reject_a_stale_learning_map_revision(tmp_path: Path) ->
     changed = client.put(
         path,
         headers=professor_headers(),
-        json={**_update_payload(initial), "objective": "Changed objective."},
+        json={
+            **_update_payload(initial),
+            "prerequisites": [
+                {"section_id": "intro", "prerequisite_ids": []},
+                {"section_id": "practice", "prerequisite_ids": []},
+            ],
+        },
     )
     assert changed.status_code == 200
 
@@ -30,6 +36,7 @@ def test_put_and_approve_reject_a_stale_learning_map_revision(tmp_path: Path) ->
         json={
             "draft_digest": initial["draft_digest"],
             "source_revision": initial["source_revision"],
+            "practice_design_revision": initial["practice_design_revision"],
             "learning_map_revision": initial["learning_map"]["revision"],
             "report_revision": initial["report"]["report_revision"],
         },

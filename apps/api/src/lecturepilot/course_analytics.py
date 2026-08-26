@@ -143,8 +143,11 @@ class _Aggregate:
         if event["gate_revision"] != contract.gate_revisions.get(gate_id):
             return
         kind = event["attempt_kind"]
+        if kind == "diagnostic":
+            return
         evidence_type = {
             "independent": "independent_first_pass",
+            "independent_exit": "independent_first_pass",
             "supported_retry": "supported_retry",
             "delayed_transfer": "delayed_transfer",
         }[kind]

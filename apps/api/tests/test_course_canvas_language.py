@@ -12,7 +12,8 @@ from lecturepilot.course_workspace import resolve_course_workspace
 from lecturepilot.models import CourseWorkspaceSetupInput
 from test_course_canvas_richness import _source_document
 from test_course_canvas_section_repair import _planner, _repair_payload
-from test_course_canvas_targeted_repair import _invalid_candidate
+from targeted_repair_test_helpers import invalid_candidate
+from practice_design_test_helpers import canvas_with_practice_design, practice_design_for_canvas
 from test_course_workspace_api import _client
 
 
@@ -113,10 +114,17 @@ def test_bilingual_uploads_remain_available_as_generation_evidence(tmp_path: Pat
 
 def test_generation_contract_writes_mixed_source_evidence_in_selected_language() -> None:
     source = _source_document(4)
+    design = practice_design_for_canvas(source)
     prompts = (
-        planner_messages(source, output_language="de")[0]["content"],
-        repair_message("bad draft", source, output_language="de")["content"],
-        section_messages(source, source.sections[0], output_language="de")[0]["content"],
+        planner_messages(source, design, output_language="de")[0]["content"],
+        repair_message("bad draft", source, design, output_language="de")["content"],
+        section_messages(
+            source,
+            source.sections[0],
+            practice_design=design,
+            applicable_targets=(),
+            output_language="de",
+        )[0]["content"],
     )
 
     for prompt in prompts:
@@ -133,14 +141,17 @@ async def test_section_repair_keeps_the_selected_course_language(
         [_repair_payload([{"type": "math", "text": r"w^\top x"}])],
     )
     source = published_course_canvas("targeted-repair", "lecture-01")
+    design = practice_design_for_canvas(source)
+    candidate, _ = canvas_with_practice_design(invalid_candidate(source), design)
 
     await planner.repair_section(
         source,
-        _invalid_candidate(source),
+        candidate,
         section_id="learning-optimization",
         block_id="optimization-math",
         failure_context="Math block uses unsupported command \\top.",
         output_language="de",
+        practice_design=design,
     )
 
     assert "German" in model.messages[0][0]["content"]

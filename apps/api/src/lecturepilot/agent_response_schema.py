@@ -11,14 +11,15 @@ from lecturepilot.provider_turn_schema import assessment_schema, next_check_sche
 
 
 def lecturepilot_response_format(turn: AgentTurnInput) -> dict[str, Any]:
+    bound = assessment_required(turn)
     return {
         "type": "json_schema",
         "json_schema": {
             "name": "lecturepilot_agent_turn",
             "strict": True,
             "schema": _agent_turn_schema(
-                assessment_gate=(turn.active_gate if assessment_required(turn) else None),
-                next_check_gate=turn.active_gate,
+                assessment_gate=(turn.active_gate if bound else None),
+                next_check_gate=(turn.active_gate if bound else None),
             ),
         },
     }

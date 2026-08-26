@@ -6,7 +6,7 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from lecturepilot.coaching_state_models import PendingCheckKind
 from lecturepilot.quality_gate_models import QualityGateStatus
-from lecturepilot.scaffold_policy import AssistanceLevel
+from lecturepilot.coaching_contract import MAX_APPROVED_TASK_LENGTH, AssistanceLevel
 
 QuizOutcome = Literal["correct", "incorrect", "unscored"]
 QuizCorrectionState = Literal["not_needed", "needed", "corrected"]
@@ -39,7 +39,7 @@ class LearnerPendingCheck(BaseModel):
 
     gate_id: str
     gate_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
-    prompt: str
+    prompt: str = Field(min_length=1, max_length=MAX_APPROVED_TASK_LENGTH)
     assistance_level: AssistanceLevel
     kind: PendingCheckKind
 

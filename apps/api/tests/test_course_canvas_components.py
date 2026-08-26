@@ -13,9 +13,11 @@ from lecturepilot.canvas_models import (
 from lecturepilot.component_response_schema import component_data_schema
 from lecturepilot.course_canvas_section_planner import plan_sections_individually
 from lecturepilot.models import ProviderSettings
+from practice_design_test_helpers import practice_design_for_canvas
 
 
 async def test_section_planner_creates_catalogued_interactive_chart() -> None:
+    source = _source_document()
     planned = await plan_sections_individually(
         model_client=_CatalogAwarePlanClient(),
         settings=ProviderSettings(
@@ -24,7 +26,8 @@ async def test_section_planner_creates_catalogued_interactive_chart() -> None:
             api_key_env="TEST_API_KEY",
             capabilities=set(),
         ),
-        source_document=_source_document(),
+        source_document=source,
+        practice_design=practice_design_for_canvas(source),
     )
 
     component = planned.sections[0].blocks[0]

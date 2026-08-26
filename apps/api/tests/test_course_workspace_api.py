@@ -11,10 +11,12 @@ from auth_helpers import (
     professor_headers,
     student_headers,
 )
+from practice_design_test_helpers import save_approved_design
 from canvas_workspace_fixtures import publish_course_canvas, published_course_canvas
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.course_builder_source import course_builder_source_document
 from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT_VERSION
 from lecturepilot.logging_observability import LOGGER_NAME, LoggingObservability
 from lecturepilot.models import LectureScheduleItem, LectureScheduleProposal
@@ -236,6 +238,7 @@ def test_dynamic_course_workspace_uses_uploaded_source(tmp_path: Path) -> None:
     assert bundle.status_code == 200
     assert [item["path"] for item in bundle.json()["files"]] == ["uploads/Lecture07.tex"]
     confirm_source_routing(client, "demo-ml-course")
+    _approve_design(client, "demo-ml-course", "lecture-07", "uploads/Lecture07.tex")
 
     draft = client.post(
         "/admin/courses/demo-ml-course/lectures/lecture-07/canvas/draft",
@@ -330,6 +333,7 @@ def test_full_course_draft_uses_matching_lecture_source(tmp_path: Path) -> None:
         )
         assert upload.status_code == 200
     confirm_source_routing(client, "demo-ml-course")
+    _approve_design(client, "demo-ml-course", "lecture-02", "Lecture02-eng.tex")
 
     draft = client.post(
         "/admin/courses/demo-ml-course/lectures/lecture-02/canvas/draft",
@@ -388,6 +392,7 @@ def test_course_canvas_draft_can_use_markdown_text_and_pdf_without_latex(tmp_pat
         "mixed-source-course",
         {path: ("course_wide", None) for path, _content in uploads},
     )
+    _approve_design(client, "mixed-source-course", "lecture-01", "notes/overview.md")
 
     draft = client.post(
         "/admin/courses/mixed-source-course/lectures/lecture-01/canvas/draft",
@@ -480,8 +485,19 @@ def _pdf_source(text: str) -> bytes:
     return payload
 
 
+def _approve_design(client, course_id: str, lecture_id: str, source_path: str) -> None:
+    layout = client.app.state.canvas_workspace.layout
+    course_builder_source_document(client.app, course_id, lecture_id)
+    save_approved_design(
+        layout,
+        course_id=course_id,
+        lecture_id=lecture_id,
+        source_path=source_path,
+    )
+
+
 class _FakeCoursePlanner:
-    async def plan_canvas(self, source_document, *, output_language: str):
+    async def plan_canvas(self, source_document, *, practice_design, output_language: str):
         assert output_language == "de"
         assert source_document.course_id == "demo-ml-course"
         assert source_document.lecture_id == "lecture-07"
@@ -501,7 +517,12 @@ class _FakeCoursePlanner:
                                 id="planner-summary-p-1",
                                 type="paragraph",
                                 text="The uploaded dynamic course source seeded this canvas.",
-                            )
+                            ),
+                            CanvasBlock(
+                                id=f"practice-{practice_design.targets[0].id}",
+                                type="checkpoint",
+                                text=practice_design.targets[0].baseline_task,
+                            ),
                         ],
                     )
                 ],
@@ -513,12 +534,29 @@ class _RecordingCoursePlanner:
     def __init__(self) -> None:
         self.seen_source_refs: list[str] = []
 
-    async def plan_canvas(self, source_document, *, output_language: str):
+    async def plan_canvas(self, source_document, *, practice_design, output_language: str):
         self.seen_source_refs.append(source_document.source_ref)
         return source_document.model_copy(
             update={
                 "source_kind": "generated",
                 "source_ref": f"planned {source_document.source_ref}",
+                "sections": [
+                    section.model_copy(
+                        update={
+                            "blocks": [
+                                *section.blocks,
+                                CanvasBlock(
+                                    id=f"practice-{practice_design.targets[0].id}",
+                                    type="checkpoint",
+                                    text=practice_design.targets[0].baseline_task,
+                                ),
+                            ]
+                        }
+                    )
+                    if index == 0
+                    else section
+                    for index, section in enumerate(source_document.sections)
+                ],
             }
         )
 
@@ -581,7 +619,7 @@ def _course_titles(payload: dict) -> list[str]:
 
 
 class _FakeMixedSourcePlanner:
-    async def plan_canvas(self, source_document, *, output_language: str):
+    async def plan_canvas(self, source_document, *, practice_design, output_language: str):
         evidence = "\n".join(
             block.text or "" for section in source_document.sections for block in section.blocks
         )
@@ -618,12 +656,17 @@ class _FakeMixedSourcePlanner:
                     CanvasSection(
                         id="mixed-source-summary",
                         title="Mixed source summary",
-                        source_ref=source_document.source_ref,
+                        source_ref=practice_design.targets[0].source_refs[0],
                         blocks=[
                             CanvasBlock(
                                 id="mixed-source-summary-p-1",
                                 type="paragraph",
                                 text="The planner saw Markdown, text, and PDF evidence.",
+                            ),
+                            CanvasBlock(
+                                id=f"practice-{practice_design.targets[0].id}",
+                                type="checkpoint",
+                                text=practice_design.targets[0].baseline_task,
                             ),
                             media["figures/risk.png"],
                             media["videos/decision.mp4"],

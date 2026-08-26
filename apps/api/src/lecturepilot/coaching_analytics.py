@@ -13,7 +13,7 @@ from lecturepilot.analytics_outcomes import (
     version_status,
 )
 
-_OUTCOME_KINDS = ("independent", "supported_retry", "delayed_transfer")
+_OUTCOME_KINDS = ("independent_exit", "supported_retry", "delayed_transfer")
 
 
 class AnalyticsGateMetric(BaseModel):
@@ -80,8 +80,12 @@ class GateMetricsAccumulator:
         learner_key = event["user_key"]
         state.learners.add(learner_key)
         kind = event["attempt_kind"]
+        if kind == "diagnostic":
+            return
+        if kind == "independent":
+            kind = "independent_exit"
         attempt_index = event["attempt_index"]
-        if kind == "independent" and attempt_index != 1:
+        if kind == "independent_exit" and attempt_index != 1:
             return
         attempt = _LearnerAttempt(
             attempt_index=attempt_index,
@@ -119,7 +123,9 @@ class GateMetricsAccumulator:
             version_status=status,
             activity_events=state.activity_events,
             unique_learners=len(state.learners),
-            independent_first_pass=_cell("independent_first_pass", state.outcomes["independent"]),
+            independent_first_pass=_cell(
+                "independent_first_pass", state.outcomes["independent_exit"]
+            ),
             supported_retry=_cell("supported_retry", state.outcomes["supported_retry"]),
             delayed_transfer=_cell("delayed_transfer", state.outcomes["delayed_transfer"]),
         )

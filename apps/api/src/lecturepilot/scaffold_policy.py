@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from lecturepilot.coaching_contract import AssessmentStage, AssistanceLevel
+
 GuidanceLevel = Literal["challenge", "standard", "scaffolded"]
 RevisionTaskKind = Literal["review_wrong_mc", "review_open_answer"]
 LearnerStage = Literal["novice", "early_intermediate", "late_intermediate"]
@@ -18,7 +20,6 @@ ScaffoldProfile = Literal["worked_example", "faded_example", "self_explanation",
 ProcessLabel = Literal[
     "shallow_lookup", "scaffolded_reasoning", "self_explanation", "transfer_attempt"
 ]
-AssistanceLevel = Literal["none", "prompt", "cue", "faded_example", "worked_step"]
 
 
 class TutorScaffoldPolicy(BaseModel):
@@ -131,6 +132,61 @@ def scaffold_policy_for_tutor_turn(
             "specific evidence they provide."
         ),
         forbidden="Do not solve the whole task before the learner makes an attempt.",
+    )
+
+
+def scaffold_policy_for_assessment_stage(
+    *, stage: AssessmentStage, assistance_level: AssistanceLevel
+) -> TutorScaffoldPolicy:
+    if stage in {"independent_exit", "delayed_transfer"}:
+        return TutorScaffoldPolicy(
+            trigger=("delayed_transfer" if stage == "delayed_transfer" else "conceptual"),
+            learner_stage="late_intermediate",
+            profile="transfer",
+            process_label="transfer_attempt",
+            assistance_level="none",
+            tutor_move="Administer the exact approved task without adding help.",
+            forbidden="Do not add a prompt, cue, worked step, or substitute task.",
+        )
+    if stage == "diagnostic":
+        return TutorScaffoldPolicy(
+            trigger="conceptual",
+            learner_stage="early_intermediate",
+            profile="self_explanation",
+            process_label="self_explanation",
+            assistance_level="none",
+            tutor_move="Assess the learner's response to the exact diagnostic task.",
+            forbidden="Do not classify diagnostic success as independent mastery.",
+        )
+    trigger: ScaffoldTrigger = "delayed_transfer" if stage == "delayed_support" else "error"
+    if assistance_level == "worked_step":
+        return TutorScaffoldPolicy(
+            trigger=trigger,
+            learner_stage="novice",
+            profile="worked_example",
+            process_label="scaffolded_reasoning",
+            assistance_level="worked_step",
+            tutor_move="Render the exact approved support, then administer the bound check.",
+            forbidden="Do not add another solution step, hint, or substitute check.",
+        )
+    if assistance_level in {"cue", "faded_example"}:
+        return TutorScaffoldPolicy(
+            trigger=trigger,
+            learner_stage="early_intermediate",
+            profile="faded_example",
+            process_label="self_explanation",
+            assistance_level=assistance_level,
+            tutor_move="Render the exact approved support, then administer the bound check.",
+            forbidden="Do not add another hint, solution step, or substitute check.",
+        )
+    return TutorScaffoldPolicy(
+        trigger=trigger,
+        learner_stage="early_intermediate",
+        profile="self_explanation",
+        process_label="self_explanation",
+        assistance_level=assistance_level,
+        tutor_move="Administer the exact server-selected retry and no other support.",
+        forbidden="Do not invent help after the approved hint ladder is exhausted.",
     )
 
 

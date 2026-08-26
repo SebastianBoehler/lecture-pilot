@@ -23,6 +23,7 @@ from lecturepilot.models import ProviderSettings
 from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
 from lecturepilot.source_bundle_canvas import SourceBundleCanvasError
 from lecturepilot.tenancy import TenantContext
+from practice_design_test_helpers import practice_design_for_canvas
 
 
 async def test_source_resolution_failure_logs_generation_stage_without_content(
@@ -86,7 +87,8 @@ async def test_course_planner_logs_model_retry_attempts_without_error_messages(
 
     with caplog.at_level(logging.ERROR, logger=LOGGER_NAME):
         with pytest.raises(ModelExecutionError):
-            await planner.plan_canvas(_source_document())
+            source = _source_document()
+            await planner.plan_canvas(source, practice_design=practice_design_for_canvas(source))
 
     payloads = [
         json.loads(record.message) for record in caplog.records if record.name == LOGGER_NAME
@@ -120,6 +122,7 @@ async def test_section_fallback_logs_each_section_attempt_without_content(caplog
                 capabilities=set(),
             ),
             source_document=source,
+            practice_design=practice_design_for_canvas(source),
             observability=LoggingObservability(),
             span_attributes={
                 "course_id": source.course_id,

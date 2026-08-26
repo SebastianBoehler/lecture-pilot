@@ -1,20 +1,50 @@
 import { vi } from "vitest";
+import {
+  hasConfirmedLectureRoute,
+  lectureSourcePath,
+  savedWorkspaceScope,
+  sourceBundle,
+  sourceRouting,
+  workspaceScope,
+  type FixtureScope,
+} from "./ProfessorCourseBuilder.practiceDesignFixture";
+import type { PracticeDesign } from "./practiceDesignTypes";
+import {
+  practiceDesignFixture,
+  reviewedPracticeDesignFixture as reviewPracticeDesign,
+} from "./practiceDesignTestFixtures";
 import { learningDesignPayload } from "./testLearningDesignReviewFixture";
 
-export function professorFetchMock() {
+export function professorFetchMock({
+  staleApprovalOnceFor,
+  staleRoutingAfterApproval,
+}: { staleApprovalOnceFor?: string; staleRoutingAfterApproval?: boolean } = {}) {
   const publishedLectures = new Set<string>();
   const deletedCourses = new Set<string>();
   const selectedMedia = new Map<string, { video: ReturnType<typeof youtubeCandidate> }>();
-  let routing = sourceRouting(false);
+  const practiceDesigns = new Map<string, PracticeDesign>();
+  let scope: FixtureScope = "single-lecture";
+  let routing = sourceRouting(false, scope);
+  let workspaceCreated = false;
+  let staleApprovalConsumed = false;
   const learningDesignApprovals = new Set<string>();
   return vi.fn(async (url: string, init?: RequestInit) => {
     const path = new URL(url, "http://localhost").pathname;
+    function restoreScopeFromSavedFlow() {
+      if (workspaceCreated || savedWorkspaceScope() !== "full-course") return;
+      scope = "full-course";
+      routing = sourceRouting(false, scope);
+    }
+
     if (path === "/admin/courses") {
       return json(deletedCourses.has("demo-ml-course") ? [] : [courseWorkspacePayload()]);
     }
     if (path === "/courses")
       return json(deletedCourses.has("demo-ml-course") ? [] : [workspaceCourse()]);
-    if (path.match(/^\/courses\/[^/]+\/lectures$/)) return json(lectureListPayload());
+    if (path.match(/^\/courses\/[^/]+\/lectures$/)) {
+      restoreScopeFromSavedFlow();
+      return json(lectureListPayload(scope));
+    }
     if (path.match(/^\/admin\/courses\/[^/]+$/) && init?.method === "DELETE") {
       const courseId = path.match(/admin\/courses\/([^/]+)$/)?.[1] ?? "demo-ml-course";
       deletedCourses.add(courseId);
@@ -23,15 +53,109 @@ export function professorFetchMock() {
         deleted: true,
       });
     }
-    if (url.endsWith("/admin/course-workspaces")) return json(courseWorkspacePayload(init));
+    if (url.endsWith("/admin/course-workspaces")) {
+      scope = workspaceScope(init);
+      routing = sourceRouting(false, scope);
+      workspaceCreated = true;
+      return json(courseWorkspacePayload(init));
+    }
     if (url.includes("/lecture-schedule")) return json(lectureSchedulePayload());
-    if (url.includes("/source-bundle")) return json(sourceBundle());
+    if (url.includes("/source-bundle")) {
+      restoreScopeFromSavedFlow();
+      return json(sourceBundle(scope));
+    }
     if (url.includes("/source-routing")) {
+      restoreScopeFromSavedFlow();
+      if (
+        staleRoutingAfterApproval &&
+        init?.method !== "PUT" &&
+        [...practiceDesigns.values()].some((design) => design.approval)
+      ) {
+        return json(
+          { detail: "Source assignments changed. Regenerate and reconfirm source routing." },
+          409,
+        );
+      }
       if (init?.method === "PUT") {
         const body = JSON.parse(String(init.body));
         routing = { ...routing, ...body, confirmed: true };
       }
       return json(routing);
+    }
+    if (url.includes("/practice-design")) {
+      const lectureId = path.match(/lectures\/([^/]+)\/practice-design/)?.[1] ?? "lecture-03";
+      const design = practiceDesigns.get(lectureId);
+      const currentSourceRevision = lectureSourceRevision(lectureId);
+      if (path.endsWith("/readiness")) {
+        return json({
+          lecture_id: lectureId,
+          current_source_revision: currentSourceRevision,
+          practice_design_revision: design?.revision ?? null,
+          ready_for_generation: Boolean(
+            design?.approval &&
+            design.source_revision === currentSourceRevision &&
+            design.approval.source_revision === currentSourceRevision &&
+            design.approval.practice_design_revision === design.revision,
+          ),
+        });
+      }
+      if (path.endsWith("/proposal")) {
+        if (!hasConfirmedLectureRoute(routing, lectureId)) {
+          return json({ detail: "Confirm a current source route for this lecture first." }, 409);
+        }
+        const proposed = practiceDesignPayload(lectureId, currentSourceRevision);
+        practiceDesigns.set(lectureId, proposed);
+        return json(proposed);
+      }
+      if (path.endsWith("/review") && design) {
+        const reviewed = reviewPracticeDesign(design);
+        practiceDesigns.set(lectureId, reviewed);
+        return json(reviewed);
+      }
+      if (path.endsWith("/approve") && design) {
+        const approval = JSON.parse(String(init?.body));
+        if (
+          approval.source_revision !== design.source_revision ||
+          approval.practice_design_revision !== design.revision
+        ) {
+          return json(
+            { detail: "The practice design or source revision changed. Reload it." },
+            409,
+          );
+        }
+        if (!staleApprovalConsumed && lectureId === staleApprovalOnceFor) {
+          staleApprovalConsumed = true;
+          const changed = reviewPracticeDesign({
+            ...design,
+            approval: null,
+            quality_review: null,
+            revision: "f".repeat(64),
+          });
+          practiceDesigns.set(lectureId, changed);
+          return json(
+            { detail: "The practice design or source revision changed. Reload it." },
+            409,
+          );
+        }
+        const approved = approvePracticeDesign(design);
+        practiceDesigns.set(lectureId, approved);
+        return json(approved);
+      }
+      if (init?.method === "PUT" && design) {
+        const update = JSON.parse(String(init.body));
+        const saved = {
+          ...design,
+          ...update,
+          approval: null,
+          quality_review: null,
+          revision: "e".repeat(64),
+        };
+        practiceDesigns.set(lectureId, saved);
+        return json(saved);
+      }
+      return design
+        ? json(design)
+        : json({ detail: "Practice design has not been proposed." }, 404);
     }
     if (url.includes("/materials"))
       return json({ path: "uploads/supplement.md", kind: "markdown", size_bytes: 12 });
@@ -116,10 +240,12 @@ function workspaceCourse() {
   };
 }
 
-function lectureListPayload() {
+function lectureListPayload(scope: FixtureScope) {
   const workspace = courseWorkspacePayload({
     body: JSON.stringify({
-      lectures: lectureSchedulePayload().lectures,
+      lectures: scope === "full-course" ? lectureSchedulePayload().lectures : [],
+      lecture_number: "03",
+      lecture_title: "Bayesian Decision Theory",
     }),
   });
   return workspace.lectures.map(
@@ -137,55 +263,8 @@ function lectureListPayload() {
   );
 }
 
-function json(payload: unknown) {
-  return { ok: true, json: async () => payload };
-}
-
-function sourceBundle() {
-  return {
-    course_id: "demo-ml-course",
-    files: [
-      { path: "Lecture03-eng.tex", kind: "latex", size_bytes: 1000 },
-      { path: "Ch3/Venn_C-X_1.pdf", kind: "pdf", size_bytes: 2000 },
-      { path: "videos/demo.mp4", kind: "video", size_bytes: 3000 },
-    ],
-    counts_by_kind: { latex: 1, pdf: 1, video: 1 },
-    supported_uploads: [
-      { suffix: ".md", kind: "markdown", max_bytes: 5 * 1024 * 1024 },
-      { suffix: ".tex", kind: "latex", max_bytes: 10 * 1024 * 1024 },
-    ],
-  };
-}
-
-function sourceRouting(confirmed: boolean) {
-  return {
-    confirmed,
-    course_id: "demo-ml-course",
-    source_revision: "a".repeat(64),
-    routes: [
-      {
-        kind: "latex",
-        lecture_id: "lecture-03",
-        path: "Lecture03-eng.tex",
-        role: "lecture",
-        sha256: "b".repeat(64),
-      },
-      {
-        kind: "pdf",
-        lecture_id: "lecture-03",
-        path: "Ch3/Venn_C-X_1.pdf",
-        role: "lecture",
-        sha256: "c".repeat(64),
-      },
-      {
-        kind: "video",
-        lecture_id: "lecture-03",
-        path: "videos/demo.mp4",
-        role: "lecture",
-        sha256: "d".repeat(64),
-      },
-    ],
-  };
+function json(payload: unknown, status = 200) {
+  return { ok: status >= 200 && status < 300, status, json: async () => payload };
 }
 
 function lectureSchedulePayload() {
@@ -213,6 +292,39 @@ function canvasPayload() {
       { id: "aim", title: "Decision making", blocks: [] },
       { id: "bayes-formula", title: "Bayes formula", blocks: [] },
     ],
+  };
+}
+
+function practiceDesignPayload(lectureId: string, sourceRevision: string): PracticeDesign {
+  return practiceDesignFixture({
+    courseId: "demo-ml-course",
+    lectureId,
+    lectureTitle: "Bayesian Decision Theory",
+    sourceExcerpt: "Calculate a posterior from evidence.",
+    sourcePath: lectureSourcePath(lectureId),
+    sourceRevision,
+    targetTitle: "Posterior",
+  });
+}
+
+function lectureSourceRevision(lectureId: string) {
+  const revisionByLecture: Record<string, string> = {
+    "lecture-01": "1",
+    "lecture-02": "2",
+    "lecture-03": "3",
+  };
+  return (revisionByLecture[lectureId] ?? "4").repeat(64);
+}
+
+function approvePracticeDesign(design: PracticeDesign): PracticeDesign {
+  return {
+    ...design,
+    approval: {
+      approved_by: "professor-demo",
+      approved_at: "2026-08-26T12:00:00Z",
+      source_revision: design.source_revision,
+      practice_design_revision: design.revision,
+    },
   };
 }
 

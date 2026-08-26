@@ -5,6 +5,8 @@ from lecturepilot.canvas_component_catalog import component_catalog_instruction
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_language import canvas_language_instruction
 from lecturepilot.course_canvas_math import generated_math_instructions
+from lecturepilot.course_canvas_practice_contract import practice_prompt_instruction
+from lecturepilot.course_practice_design_models import PracticeDesign, PracticeTarget
 
 
 MAX_SECTION_EVIDENCE_CHARS = 24_000
@@ -14,6 +16,8 @@ def section_messages(
     source_document: CanvasDocument,
     section: CanvasSection,
     *,
+    practice_design: PracticeDesign,
+    applicable_targets: tuple[PracticeTarget, ...],
     output_language: str = "en",
 ) -> list[dict[str, str]]:
     return [
@@ -43,6 +47,7 @@ def section_messages(
                 "Do not use generic 'explain the key mechanism' or 'as you would in an exam "
                 "answer' phrasing. Quiz text must be one direct question ending in a question mark. "
                 f"{assessment_generation_instruction()} "
+                f"{practice_prompt_instruction(practice_design, targets=applicable_targets)} "
                 "Use text as the question, items as possible answers, and the zero-based "
                 "answer_index of the correct option. Never guess an answer key. "
                 "Return only the fields required by each block type; do not emit null placeholders. "

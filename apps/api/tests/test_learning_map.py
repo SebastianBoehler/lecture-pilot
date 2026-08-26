@@ -1,5 +1,6 @@
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.learning_map import build_learning_map
+from practice_design_test_helpers import canvas_with_practice_design
 
 
 def test_learning_map_derives_ordered_concepts_checkpoints_and_quizzes() -> None:
@@ -42,17 +43,18 @@ def test_learning_map_derives_ordered_concepts_checkpoints_and_quizzes() -> None
         ],
     )
 
-    learning_map = build_learning_map(document)
+    document, practice_design = canvas_with_practice_design(document)
+    learning_map = build_learning_map(document, practice_design)
 
     assert [node.id for node in learning_map.nodes] == [
         "bayesian-decision-theory-the-aim",
         "losses-and-risks",
     ]
-    assert learning_map.nodes[0].gate_ids == ["intro-check"]
+    assert learning_map.nodes[0].gate_ids == ["intro-check", "practice-derive-conclusion"]
     assert learning_map.nodes[1].prerequisites == ["bayesian-decision-theory-the-aim"]
     assert learning_map.nodes[1].quiz_ids == ["risk-quiz"]
     assert learning_map.gates[0].prompt == "Explain the learning setup."
-    assert [gate.id for gate in learning_map.gates] == ["intro-check"]
+    assert [gate.id for gate in learning_map.gates] == ["intro-check", "practice-derive-conclusion"]
 
 
 def test_learning_map_bounds_generated_checkpoint_titles() -> None:
@@ -69,6 +71,7 @@ def test_learning_map_bounds_generated_checkpoint_titles() -> None:
             CanvasSection(
                 id="introduction",
                 title="Introduction",
+                source_ref="source.md#introduction",
                 blocks=[
                     CanvasBlock(
                         id="intro-check",
@@ -81,7 +84,8 @@ def test_learning_map_bounds_generated_checkpoint_titles() -> None:
         ],
     )
 
-    learning_map = build_learning_map(document)
+    document, practice_design = canvas_with_practice_design(document)
+    learning_map = build_learning_map(document, practice_design)
 
     assert learning_map.gates[0].title == long_caption[:200]
     assert len(learning_map.gates[0].prompt) == 1000
@@ -100,6 +104,7 @@ def test_learning_map_only_counts_assessments_as_quizzes() -> None:
             CanvasSection(
                 id="decision-boundaries",
                 title="Decision boundaries",
+                source_ref="source.md#decision-boundaries",
                 blocks=[
                     CanvasBlock(
                         id="risk-chart",
@@ -130,7 +135,8 @@ def test_learning_map_only_counts_assessments_as_quizzes() -> None:
         ],
     )
 
-    learning_map = build_learning_map(document)
+    document, practice_design = canvas_with_practice_design(document)
+    learning_map = build_learning_map(document, practice_design)
 
     assert learning_map.nodes[0].quiz_ids == ["risk-choice"]
 
@@ -148,6 +154,7 @@ def test_learning_map_uses_checkpoint_contract_for_later_lectures() -> None:
             CanvasSection(
                 id="causal-transfer",
                 title="Causal transfer",
+                source_ref="source.md#causal-transfer",
                 blocks=[
                     CanvasBlock(
                         id="causal-transfer-check",
@@ -160,10 +167,11 @@ def test_learning_map_uses_checkpoint_contract_for_later_lectures() -> None:
         ],
     )
 
-    first = build_learning_map(document)
-    second = build_learning_map(document)
+    document, practice_design = canvas_with_practice_design(document)
+    first = build_learning_map(document, practice_design)
+    second = build_learning_map(document, practice_design)
 
-    assert first.nodes[0].gate_ids == ["causal-transfer-check"]
+    assert first.nodes[0].gate_ids == ["causal-transfer-check", "practice-derive-conclusion"]
     assert first.gates[0].id == "causal-transfer-check"
     assert first.gates[0].evidence_criteria[0].description == (
         "Explain when the causal conclusion transfers to a new setting."

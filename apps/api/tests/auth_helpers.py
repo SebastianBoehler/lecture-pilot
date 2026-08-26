@@ -120,6 +120,7 @@ def approve_learning_design(
         json={
             "draft_digest": review["draft_digest"],
             "source_revision": review["source_revision"],
+            "practice_design_revision": review["practice_design_revision"],
             "learning_map_revision": review["learning_map"]["revision"],
             "report_revision": review["report"]["report_revision"],
         },

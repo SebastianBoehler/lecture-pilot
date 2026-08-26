@@ -8,6 +8,7 @@ import { ProfessorCanvasDraftStep } from "./ProfessorCanvasDraftStep";
 import { ProfessorCourseSetupStep } from "./ProfessorCourseSetupStep";
 import { ProfessorGenerationWarnings } from "./ProfessorGenerationWarnings";
 import { ProfessorMaterialStep } from "./ProfessorMaterialStep";
+import { ProfessorPracticeDesignStep } from "./ProfessorPracticeDesignStep";
 import { ProfessorPublishStep } from "./ProfessorPublishStep";
 import { ProfessorReviewStep } from "./ProfessorReviewStep";
 import { ProfessorSourceRoutingStep } from "./ProfessorSourceRoutingStep";
@@ -75,6 +76,9 @@ export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
             {builder.activeStep === "sources" ? (
               <ProfessorSourceRoutingStep {...builder.routingStep} />
             ) : null}
+            {builder.activeStep === "design" ? (
+              <ProfessorPracticeDesignStep {...builder.practiceDesignStep} />
+            ) : null}
             {builder.activeStep === "generate" ? (
               <ProfessorCanvasDraftStep
                 {...builder.generateStep}
@@ -107,6 +111,7 @@ function builderStageDescription(step: BuilderStep, t: ReturnType<typeof useI18n
   if (step === "define") return t("builder.stage.define");
   if (step === "upload") return t("builder.stage.upload");
   if (step === "sources") return t("builder.stage.sources");
+  if (step === "design") return t("builder.stage.design");
   if (step === "review") return t("builder.stage.review");
   if (step === "generate") return t("builder.stage.generate");
   return t("builder.stage.publish");

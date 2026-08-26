@@ -4,6 +4,8 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
+from lecturepilot.coaching_contract import MAX_APPROVED_TASK_LENGTH
+
 
 class GateReviewQueueItem(BaseModel):
     id: str
@@ -47,5 +49,5 @@ class GateReviewOpening(BaseModel):
     section_id: str
     gate_id: str
     gate_revision: str
-    prompt: str
+    prompt: str = Field(min_length=1, max_length=MAX_APPROVED_TASK_LENGTH)
     stage: Literal["due", "repair"]

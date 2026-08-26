@@ -12,6 +12,7 @@ from lecturepilot.course_canvas_generation import (
     generate_course_canvas_draft,
     repair_targeted_course_canvas_draft,
 )
+from lecturepilot import course_canvas_generation_ownership as ownership_store
 from lecturepilot.course_canvas_generation_failures import find_latest_canvas_failure
 from lecturepilot.course_canvas_generation_http import run_canvas_generation_request
 from lecturepilot.course_canvas_generation_jobs import CanvasGenerationStore
@@ -20,6 +21,12 @@ from lecturepilot.course_canvas_generation_service import (
     CANVAS_GENERATION_LEASE_SECONDS,
     validate_generation_request_key,
 )
+from lecturepilot.course_practice_design_store import (
+    PracticeDesignApprovalRequired,
+    PracticeDesignStale,
+    PracticeDesignUnavailable,
+)
+from lecturepilot.source_bundle_canvas import SourceBundleCanvasError
 from lecturepilot.tenancy import TenantContext
 
 
@@ -68,7 +75,15 @@ def register_course_canvas_repair_routes(
                 detail="No actionable failed generation is available for AI repair.",
             )
         targeted = failure.repair is not None
-        if targeted and failure.repair is not None and failure.repair.source_revision is not None:
+        if targeted and failure.repair is not None:
+            if (
+                failure.repair.source_revision is None
+                or failure.repair.practice_design_revision is None
+            ):
+                raise HTTPException(
+                    status_code=409,
+                    detail="Targeted repair provenance is unavailable. Generate a new draft before repairing it.",
+                )
             current_revision = lecture_source_revision(
                 store.layout,
                 course_id=course_id,
@@ -82,6 +97,16 @@ def register_course_canvas_repair_routes(
                         "Generate a new draft before repairing it."
                     ),
                 )
+        _require_current_practice_design(
+            app,
+            course_id,
+            lecture_id,
+            source_document,
+            expected_source_revision=failure.repair.source_revision if targeted else None,
+            expected_practice_design_revision=(
+                failure.repair.practice_design_revision if targeted else None
+            ),
+        )
         outcome = await run_canvas_generation_request(
             app=app,
             store=store,
@@ -126,3 +151,32 @@ def _request_key(value: str | None) -> str:
         return validate_generation_request_key(value)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+def _require_current_practice_design(
+    app: FastAPI,
+    course_id: str,
+    lecture_id: str,
+    source_document: Callable[[str, str], CanvasDocument],
+    *,
+    expected_source_revision: str | None = None,
+    expected_practice_design_revision: str | None = None,
+) -> None:
+    try:
+        ownership_store.require_generation_practice_design(
+            app.state.canvas_workspace.layout,
+            app.state.canvas_workspace.course_media_root(course_id),
+            source_document,
+            course_id=course_id,
+            lecture_id=lecture_id,
+            expected_source_revision=expected_source_revision,
+            expected_practice_design_revision=expected_practice_design_revision,
+        )
+    except (
+        ownership_store.CanvasGenerationOwnershipError,
+        PracticeDesignApprovalRequired,
+        PracticeDesignStale,
+        PracticeDesignUnavailable,
+        SourceBundleCanvasError,
+    ) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc

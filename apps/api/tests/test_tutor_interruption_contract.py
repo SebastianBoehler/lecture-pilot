@@ -28,12 +28,14 @@ def test_provider_schema_allows_only_bound_or_null_assessments() -> None:
 
     assert bound["properties"]["assessment"]["type"] == ["object", "null"]
     assert unbound["properties"]["assessment"] == {"type": "null"}
+    assert unbound["properties"]["next_check"] == {"type": "null"}
 
 
 @pytest.mark.asyncio
-async def test_tool_loop_repair_receives_the_exact_contract_error() -> None:
+async def test_tool_loop_repair_receives_the_server_selected_check_error() -> None:
     invalid = _payload()
-    invalid["next_check"]["assistance"]["content"] = "This cue is absent."
+    invalid["next_check"]["prompt"] = "An invented replacement check."
+    invalid["message"] = "An invented replacement check."
     corrected = _payload()
     calls: list[dict] = []
 
@@ -65,5 +67,8 @@ async def test_tool_loop_repair_receives_the_exact_contract_error() -> None:
     )
 
     repair_instruction = calls[1]["messages"][-1]["content"]
-    assert "declared next-check assistance is not present" in repair_instruction
-    assert result.message == corrected["message"]
+    assert "server-selected next check" in repair_instruction
+    assert result.message == (
+        "More evidence is needed for the approved criterion: Names one boundary.\n\n"
+        "Next check:\nExplain the mechanism."
+    )

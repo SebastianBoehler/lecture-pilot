@@ -7,11 +7,12 @@ from hashlib import sha256
 import json
 from pathlib import Path
 
+from lecturepilot.canvas_internal_serialization import canvas_section_internal_payload
 from lecturepilot.canvas_models import CanvasSection
 from lecturepilot.durable_files import atomic_write_json, exclusive_file_lock
 
 
-SECTION_PLAN_VERSION = "3"
+SECTION_PLAN_VERSION = "4"
 _active_store: ContextVar[SectionPlanCheckpointStore | None] = ContextVar(
     "lecturepilot_section_plan_checkpoint_store", default=None
 )
@@ -34,8 +35,14 @@ class SectionPlanCheckpointStore:
         *,
         model: str,
         output_language: str,
+        practice_design_revision: str,
     ) -> CanvasSection | None:
-        key = _cache_key(source_section, model=model, output_language=output_language)
+        key = _cache_key(
+            source_section,
+            model=model,
+            output_language=output_language,
+            practice_design_revision=practice_design_revision,
+        )
         with exclusive_file_lock(self.path):
             payload = self._read_payload()
             if payload.get("source_revision") != self.source_revision:
@@ -57,14 +64,20 @@ class SectionPlanCheckpointStore:
         *,
         model: str,
         output_language: str,
+        practice_design_revision: str,
     ) -> None:
-        key = _cache_key(source_section, model=model, output_language=output_language)
+        key = _cache_key(
+            source_section,
+            model=model,
+            output_language=output_language,
+            practice_design_revision=practice_design_revision,
+        )
         with exclusive_file_lock(self.path):
             payload = self._read_payload()
             if payload.get("source_revision") != self.source_revision:
                 payload = {"source_revision": self.source_revision, "sections": {}}
             sections = payload.setdefault("sections", {})
-            sections[key] = completed_section.model_dump(mode="json")
+            sections[key] = canvas_section_internal_payload(completed_section)
             atomic_write_json(self.path, payload)
 
     def _read_payload(self) -> dict:
@@ -96,6 +109,16 @@ def current_section_plan_checkpoint_store() -> SectionPlanCheckpointStore | None
     return _active_store.get()
 
 
-def _cache_key(section: CanvasSection, *, model: str, output_language: str) -> str:
-    material = "\0".join((SECTION_PLAN_VERSION, model, output_language, section.model_dump_json()))
+def _cache_key(
+    section: CanvasSection, *, model: str, output_language: str, practice_design_revision: str
+) -> str:
+    material = "\0".join(
+        (
+            SECTION_PLAN_VERSION,
+            model,
+            output_language,
+            practice_design_revision,
+            section.model_dump_json(),
+        )
+    )
     return sha256(material.encode()).hexdigest()

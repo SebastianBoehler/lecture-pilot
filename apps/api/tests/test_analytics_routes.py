@@ -72,7 +72,10 @@ def test_quiz_answers_are_recorded_as_aggregate_lecture_analytics(tmp_path: Path
     assert "attendance_split" not in quiz
     assert payload["learning_map"]["nodes"][0]["id"] == "risk"
     assert payload["learning_map"]["nodes"][0]["quiz_ids"] == ["risk-check"]
-    assert payload["learning_map"]["nodes"][0]["gate_ids"] == ["risk-evidence-check"]
+    assert payload["learning_map"]["nodes"][0]["gate_ids"] == [
+        "risk-evidence-check",
+        "practice-practice-target",
+    ]
     assert payload["learning_map"]["gates"][0]["title"] == "Risk evidence gate"
 
 

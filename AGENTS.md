@@ -74,8 +74,8 @@ database authority in Postgres and files on the persisted `/app/storage` volume.
     course.json
     source/{uploads/,normalized/,source-index.json}
     canvas/lectures/<lecture-id>/{index.md,sections/*.md,assets/}
-    canvas-drafts/lectures/<lecture-id>/latest/
-    builder/{generations/,repairs/,source-manifests/,source-routing.json,updates/}
+    canvas-drafts/lectures/<lecture-id>/latest/{...,practice-design-binding.json}
+    builder/{generations/,practice-designs/<lecture-id>.json,repairs/,source-manifests/,source-routing.json,updates/}
 ```
 
 Official source material belongs to `courses/<tenant>/<course>/source`.
@@ -191,11 +191,21 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
   every indexed course file exactly once as lecture-specific, course-wide, or
   not used. Professors review and may edit this complete proposal; generation
   remains blocked until they confirm the current source revision.
+- After source confirmation, each target lecture needs a source-grounded,
+  professor-approved practice design before generation. The model may propose
+  it, but the professor owns outcomes, tasks, evidence, scaffolds, review
+  timing, and approval; an edit or source revision makes approval stale.
+- Generation receives the exact approved design snapshot and writes its source
+  and practice-design revisions to the draft binding. Draft review and
+  publication fail closed when that binding, design approval, or source
+  revision is no longer current; regenerate rather than infer a replacement.
 - A generated canvas may become ready only after deterministic learning-design
   defects have passed validation or targeted repair. Professor approval confirms
-  the intended outcome and editable learning plan for the exact draft, source,
-  report, and learning-map revisions; professors do not acknowledge generator
-  diagnostics as a separate publication task.
+  the implementation for the exact draft, source, practice-design, report, and
+  learning-map revisions; it does not replace the earlier design approval or
+  acknowledge generator diagnostics as a separate publication task.
+- This slice records future independent-exit and scaffold intent only. It does
+  not assert learner efficacy or add learner-runtime SRL or AI-policy enforcement.
 - Canvas commands may focus sections, highlight specific blocks or phrases, and
   append/update learner-specific Markdown sections.
 - Infographic requests may call the backend image-generation tool. Provider

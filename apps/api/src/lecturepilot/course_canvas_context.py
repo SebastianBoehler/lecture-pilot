@@ -16,6 +16,10 @@ from lecturepilot.course_canvas_publication import (
     publication_path,
     read_publication,
 )
+from lecturepilot.course_practice_design_binding import (
+    PracticeDesignBindingError,
+    read_practice_design_binding,
+)
 from lecturepilot.course_learning_design_store import canvas_digest
 
 
@@ -145,8 +149,30 @@ def read_published_snapshot_locked(
         raise InvalidPublishedCanvasContextError(
             "Published canvas metadata does not match its document. Publish it again."
         )
+    _validate_practice_binding(published_dir, publication)
     return PublishedCanvasSnapshot(
         document=document.model_copy(update={"workspace_path": str(published_dir / "index.md")}),
         publication=publication,
         learning_map=learning_map,
     )
+
+
+def _validate_practice_binding(
+    published_dir: Path,
+    publication: CanvasPublicationMetadata,
+) -> None:
+    if publication.practice_design_revision is None:
+        return
+    try:
+        binding = read_practice_design_binding(published_dir)
+    except PracticeDesignBindingError as exc:
+        raise InvalidPublishedCanvasContextError(
+            "Published canvas practice-design binding is invalid. Publish it again."
+        ) from exc
+    if (
+        binding.source_revision != publication.source_revision
+        or binding.practice_design_revision != publication.practice_design_revision
+    ):
+        raise InvalidPublishedCanvasContextError(
+            "Published canvas practice-design binding does not match its metadata. Publish it again."
+        )

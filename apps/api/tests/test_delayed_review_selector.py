@@ -115,7 +115,9 @@ def test_opened_due_review_target_wins_when_multiple_gates_are_due() -> None:
         gate_revision=gates[1].revision,
         prompt="Apply gate 2 to a changed case.",
         assistance_level="none",
+        assistance_content=None,
         kind="delayed_transfer",
+        stage="delayed_transfer",
         issued_at=datetime(2026, 7, 16, 8, tzinfo=UTC),
     )
     progress.delayed_reviews = {

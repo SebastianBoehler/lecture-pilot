@@ -10,11 +10,14 @@ from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_canvas_publication import CanvasPublicationMetadata
 from lecturepilot.course_canvas_repairs import lecture_source_revision
 from lecturepilot.course_learning_design_store import CourseLearningDesignStore
+from lecturepilot.course_practice_design_store import PracticeDesignStore
 from lecturepilot.latex_canvas_importer import CANVAS_IMPORT_VERSION
 from lecturepilot.learner_state import LearnerStateStore
 from lecturepilot.lecture_source_manifest import write_lecture_source_manifest
 from lecturepilot.source_index_models import CourseSourceIndex, IndexedSourceFile
+from lecturepilot.course_source_ownership import routed_source_owner
 from lecturepilot.user_memory import UserMemoryStore
+from practice_design_test_helpers import approved_design_document
 
 
 def write_course_source(tmp_path: Path) -> Path:
@@ -104,31 +107,47 @@ def published_martius_workspace(tmp_path: Path) -> CanvasWorkspace:
     return workspace
 
 
-def write_canvas_draft(workspace: CanvasWorkspace, document: CanvasDocument) -> CanvasDocument:
-    source_index = CourseSourceIndex(
-        course_id=document.course_id,
-        files=[
-            IndexedSourceFile(
-                path="source.md",
-                kind="markdown",
-                size_bytes=1,
-                sha256="a" * 64,
-                modified_ns=1,
-            )
-        ],
+def write_canvas_draft(
+    workspace: CanvasWorkspace,
+    document: CanvasDocument,
+    *,
+    delayed_transfer_task: str | None = None,
+) -> CanvasDocument:
+    existing_design = PracticeDesignStore(workspace.layout).read(
+        course_id=document.course_id, lecture_id=document.lecture_id
     )
-    write_lecture_source_manifest(
-        workspace.layout.lecture_source_manifest_path(document.course_id, document.lecture_id),
-        course_id=document.course_id,
-        lecture_id=document.lecture_id,
-        file_paths=["source.md"],
-        source_index=source_index,
+    source_path = (
+        _document_source_path(document)
+        if existing_design is None
+        else existing_design.targets[0].source_refs[0]
     )
+    if existing_design is None:
+        source_index = CourseSourceIndex(
+            course_id=document.course_id,
+            files=[
+                IndexedSourceFile(
+                    path=source_path,
+                    kind=Path(source_path).suffix.removeprefix(".") or "markdown",
+                    size_bytes=1,
+                    sha256="a" * 64,
+                    modified_ns=1,
+                )
+            ],
+        )
+        write_lecture_source_manifest(
+            workspace.layout.lecture_source_manifest_path(document.course_id, document.lecture_id),
+            course_id=document.course_id,
+            lecture_id=document.lecture_id,
+            file_paths=[source_path],
+            source_index=source_index,
+        )
     sourced_document = document.model_copy(
         update={
-            "source_ref": _concrete_source_ref(document.source_ref),
+            "source_ref": _concrete_source_ref(document.source_ref, source_path),
             "sections": [
-                section.model_copy(update={"source_ref": _concrete_source_ref(section.source_ref)})
+                section.model_copy(
+                    update={"source_ref": _concrete_source_ref(section.source_ref, source_path)}
+                )
                 for section in document.sections
             ],
         }
@@ -139,9 +158,17 @@ def write_canvas_draft(workspace: CanvasWorkspace, document: CanvasDocument) -> 
         lecture_id=document.lecture_id,
     )
     assert revision is not None
+    sourced_document, practice_design = approved_design_document(
+        workspace.layout,
+        sourced_document,
+        source_revision=revision,
+        source_path=source_path,
+        delayed_transfer_task=delayed_transfer_task,
+    )
     workspace.write_course_canvas_draft(
         sourced_document,
         expected_source_revision=revision,
+        practice_design=practice_design,
     )
 
     return sourced_document
@@ -159,15 +186,26 @@ def approve_canvas_draft(
         lecture_id=lecture_id,
         draft_digest=current.draft_digest,
         source_revision=current.source_revision,
+        practice_design_revision=current.practice_design_revision,
         learning_map_revision=current.learning_map.revision,
         report_revision=current.report.report_revision,
         approved_by="professor",
     )
 
 
-def _concrete_source_ref(source_ref: str | None) -> str:
-    if source_ref and not source_ref.lower().startswith("test"):
+def _concrete_source_ref(source_ref: str | None, source_path: str) -> str:
+    if routed_source_owner(source_ref, {source_path}) is not None:
         return source_ref
+    return source_path
+
+
+def _document_source_path(document: CanvasDocument) -> str:
+    for source_ref in [document.source_ref, *(section.source_ref for section in document.sections)]:
+        if source_ref is None:
+            continue
+        path = source_ref.split("#", maxsplit=1)[0].split(" ", maxsplit=1)[0]
+        if Path(path).suffix:
+            return path
     return "source.md"
 
 

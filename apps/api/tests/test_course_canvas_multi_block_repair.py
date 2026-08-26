@@ -10,7 +10,7 @@ async def test_multi_block_repair_applies_one_atomic_patch_request(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
-    source, candidate = _documents()
+    source, candidate, design = _documents()
     section = candidate.sections[0]
     targets = [section.blocks[0], section.blocks[2]]
     replacements = [
@@ -29,6 +29,7 @@ async def test_multi_block_repair_applies_one_atomic_patch_request(
         block_ids=[target.id for target in targets],
         failure_context="Canvas quality review failed: fix both reported issues.",
         output_language="en",
+        practice_design=design,
     )
 
     assert model.calls == 1
@@ -41,7 +42,7 @@ async def test_multi_block_repair_applies_one_atomic_patch_request(
 
 
 def test_repair_generated_block_ids_do_not_collide_with_other_sections() -> None:
-    _source, candidate = _documents()
+    _source, candidate, _design = _documents()
     first = candidate.sections[0]
     target = first.blocks[0]
     candidate.sections[1].blocks[0] = (

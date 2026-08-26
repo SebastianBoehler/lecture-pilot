@@ -3,14 +3,15 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from auth_helpers import confirm_source_routing, professor_headers
+from canvas_planner_test_helpers import RepairingCoursePlanner
 from canvas_workspace_fixtures import published_course_canvas, write_canvas_draft
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import MAX_SOURCE_REF_LENGTH, CanvasDocument
+from lecturepilot.canvas_models import MAX_SOURCE_REF_LENGTH, CanvasBlock, CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT_VERSION
-from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_repairs import lecture_source_revision
 from lecturepilot import course_canvas_generation
+from practice_design_test_helpers import save_approved_design, write_manifest
 
 
 def test_generation_requires_a_valid_idempotency_key(tmp_path: Path) -> None:
@@ -84,8 +85,7 @@ def test_invalid_stored_draft_returns_actionable_error(tmp_path: Path) -> None:
         workspace.course_canvas_store.draft_path("draft-integrity", "lecture-01") / "index.md"
     )
     source = manifest.read_text(encoding="utf-8")
-    source_ref_line = 'source_ref: "source.md"'
-    assert source_ref_line in source
+    source_ref_line = next(line for line in source.splitlines() if line.startswith("source_ref:"))
     invalid_source_ref = "s" * (MAX_SOURCE_REF_LENGTH + 1)
     manifest.write_text(
         source.replace(
@@ -115,7 +115,7 @@ def test_ai_repair_uses_and_persists_failure_guidance_for_the_source_revision(
     tmp_path: Path,
 ) -> None:
     client = _course_client(tmp_path)
-    planner = _RepairingCoursePlanner()
+    planner = RepairingCoursePlanner()
     client.app.state.course_planner = planner
     draft_path = "/admin/courses/draft-integrity/lectures/lecture-01/canvas/draft"
 
@@ -176,12 +176,11 @@ This revised source evidence changes the lecture fingerprint while remaining val
     )
     assert repaired.status_code == 200
     assert regenerated.status_code == 200
-    assert invalidated.status_code == 503
+    assert invalidated.status_code == 409
     assert planner.repair_contexts == [
         None,
         "Math block risk-equation uses unsupported command \\P.",
         "Math block risk-equation uses unsupported command \\P.",
-        None,
     ]
     repair_record = (
         client.app.state.canvas_workspace.layout.course_root("draft-integrity")
@@ -228,6 +227,18 @@ Source evidence explains the generated canvas contract in sufficient detail.
     )
     assert upload.status_code == 200
     confirm_source_routing(client, "draft-integrity")
+    write_manifest(
+        app.state.canvas_workspace.layout,
+        course_id="draft-integrity",
+        lecture_id="lecture-01",
+        source_path="Lecture01.tex",
+    )
+    save_approved_design(
+        app.state.canvas_workspace.layout,
+        course_id="draft-integrity",
+        lecture_id="lecture-01",
+        source_path="Lecture01.tex",
+    )
     return client
 
 
@@ -236,36 +247,23 @@ class _InvalidCoursePlanner:
         self,
         source_document: CanvasDocument,
         *,
+        practice_design,
         output_language: str,
     ) -> CanvasDocument:
+        first = source_document.sections[0]
+        checkpoint = CanvasBlock(
+            id=f"practice-{practice_design.targets[0].id}",
+            type="checkpoint",
+            text=practice_design.targets[0].baseline_task,
+        )
         return source_document.model_copy(
             update={
                 "source_kind": "generated",
                 "source_ref": "s" * (MAX_SOURCE_REF_LENGTH + 1),
-            }
-        )
-
-
-class _RepairingCoursePlanner:
-    def __init__(self) -> None:
-        self.repair_contexts: list[str | None] = []
-
-    async def plan_canvas(
-        self,
-        source_document: CanvasDocument,
-        *,
-        repair_context: str | None = None,
-        output_language: str,
-    ) -> CanvasDocument:
-        self.repair_contexts.append(repair_context)
-        if repair_context is None:
-            raise CanvasGenerationRepairableError(
-                "Math block risk-equation uses unsupported command \\P."
-            )
-        return source_document.model_copy(
-            update={
-                "source_kind": "generated",
-                "source_ref": "Repaired from source evidence",
+                "sections": [
+                    first.model_copy(update={"blocks": [*first.blocks, checkpoint]}),
+                    *source_document.sections[1:],
+                ],
             }
         )
 
@@ -277,6 +275,7 @@ class _UnexpectedCoursePlanner:
         self,
         source_document: CanvasDocument,
         *,
+        practice_design,
         output_language: str,
     ) -> CanvasDocument:
         self.called = True

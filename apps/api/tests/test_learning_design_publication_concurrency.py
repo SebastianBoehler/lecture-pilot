@@ -10,15 +10,16 @@ from lecturepilot.course_learning_design_store import (
     LearningDesignApprovalRequiredError,
     LearningDesignStaleError,
 )
+from lecturepilot.course_practice_design_store import PracticeDesignStore
 
 
 def test_republish_racing_real_regeneration_never_publishes_unapproved_draft(
     tmp_path: Path,
 ) -> None:
     workspace = _workspace(tmp_path)
-    replacement = published_course_canvas("design-course", "lecture-01").model_copy(
-        update={"title": "Regenerated draft"}
-    )
+    replacement = workspace.read_course_canvas_draft(
+        course_id="design-course", lecture_id="lecture-01"
+    ).model_copy(update={"title": "Regenerated draft"})
     revision = _revision(workspace)
     start = Barrier(3)
 
@@ -38,6 +39,7 @@ def test_republish_racing_real_regeneration_never_publishes_unapproved_draft(
         return workspace.write_course_canvas_draft(
             replacement,
             expected_source_revision=revision,
+            practice_design=_design(workspace, revision),
         )
 
     with ThreadPoolExecutor(max_workers=2) as executor:
@@ -67,9 +69,9 @@ def test_approval_racing_real_regeneration_cannot_approve_different_draft(
     workspace = _workspace(tmp_path)
     reviews = CourseLearningDesignStore(workspace.layout)
     current = reviews.read(course_id="design-course", lecture_id="lecture-01")
-    replacement = published_course_canvas("design-course", "lecture-01").model_copy(
-        update={"title": "Different draft"}
-    )
+    replacement = workspace.read_course_canvas_draft(
+        course_id="design-course", lecture_id="lecture-01"
+    ).model_copy(update={"title": "Different draft"})
     start = Barrier(3)
 
     def approve():
@@ -80,6 +82,7 @@ def test_approval_racing_real_regeneration_cannot_approve_different_draft(
                 lecture_id="lecture-01",
                 draft_digest=current.draft_digest,
                 source_revision=current.source_revision,
+                practice_design_revision=current.practice_design_revision,
                 learning_map_revision=current.learning_map.revision,
                 report_revision=current.report.report_revision,
                 approved_by="professor",
@@ -92,6 +95,7 @@ def test_approval_racing_real_regeneration_cannot_approve_different_draft(
         return workspace.write_course_canvas_draft(
             replacement,
             expected_source_revision=_revision(workspace),
+            practice_design=_design(workspace, _revision(workspace)),
         )
 
     with ThreadPoolExecutor(max_workers=2) as executor:
@@ -126,3 +130,11 @@ def _revision(workspace: CanvasWorkspace) -> str:
     )
     assert revision is not None
     return revision
+
+
+def _design(workspace: CanvasWorkspace, source_revision: str):
+    return PracticeDesignStore(workspace.layout).require_approved(
+        course_id="design-course",
+        lecture_id="lecture-01",
+        source_revision=source_revision,
+    )

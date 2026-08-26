@@ -1,0 +1,208 @@
+.practice-planning-context,
+.practice-quality {
+  border-block: 1px solid var(--color-border-primary);
+  padding-block: 16px;
+}
+
+.practice-planning-context h4,
+.practice-quality h4,
+.practice-target-invariant h4,
+.practice-quality p,
+.practice-target-invariant p {
+  margin: 0;
+}
+
+.practice-planning-context h4,
+.practice-quality h4,
+.practice-target-invariant h4 {
+  font-size: 15px;
+}
+
+.practice-planning-context dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 24px;
+  margin: 14px 0 0;
+}
+
+.practice-planning-context dl > div {
+  min-width: 0;
+}
+
+.practice-planning-context dt {
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+}
+
+.practice-planning-context dd {
+  margin: 3px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.practice-context-gaps,
+.practice-quality-all-checks {
+  margin-block-start: 12px;
+}
+
+.practice-context-gaps summary,
+.practice-quality-all-checks summary,
+.practice-source-evidence summary {
+  width: fit-content;
+  min-height: 32px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.practice-context-gaps ul,
+.practice-quality-all-checks ul {
+  margin-block: 6px 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.practice-context-editor {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  border: 0;
+  padding: 14px 0 0;
+}
+
+.practice-context-editor legend {
+  padding: 0;
+  font-weight: 750;
+}
+
+.practice-context-editor > label {
+  display: grid;
+  gap: 5px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.practice-target-invariant {
+  display: grid;
+  gap: 6px;
+  max-width: 70ch;
+}
+
+.practice-target-invariant > p,
+.practice-surface-change {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.practice-source-evidence {
+  max-width: 70ch;
+}
+
+.practice-source-evidence > div {
+  display: grid;
+  gap: 6px;
+  padding-block: 2px 8px;
+}
+
+.practice-source-evidence code {
+  width: fit-content;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.practice-source-evidence blockquote {
+  margin: 0;
+  border-inline-start: 2px solid var(--color-border-strong);
+  padding-inline-start: 10px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.practice-evidence-missing {
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+}
+
+.practice-quality {
+  display: grid;
+  gap: 14px;
+}
+
+.practice-quality > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.practice-quality > header p,
+.practice-quality.is-required > p,
+.practice-quality-passed {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.practice-quality-findings {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.practice-quality-findings > li {
+  border-inline-start: 3px solid var(--color-border-strong);
+  padding-inline-start: 12px;
+}
+
+.practice-quality-findings > li.is-critical {
+  border-inline-start-color: var(--color-danger);
+}
+
+.practice-quality-findings > li > div {
+  display: flex;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.practice-quality-findings > li > div span,
+.practice-quality-findings > li > p {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.practice-quality-findings > li > p {
+  margin-block-start: 5px;
+}
+
+.practice-quality-all-checks li {
+  display: grid;
+  grid-template-columns: minmax(70px, auto) 1fr;
+  gap: 12px;
+}
+
+.practice-source-evidence summary:focus-visible,
+.practice-context-gaps summary:focus-visible,
+.practice-quality-all-checks summary:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}
+
+@media (max-width: 820px) {
+  .practice-planning-context dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .practice-planning-context dl,
+  .practice-quality > header {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}

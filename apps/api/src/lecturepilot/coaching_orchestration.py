@@ -17,7 +17,10 @@ from lecturepilot.models import (
     AgentTurnResult,
 )
 from lecturepilot.observability import Observability
-from lecturepilot.scaffold_policy import scaffold_policy_for_tutor_turn
+from lecturepilot.scaffold_policy import (
+    scaffold_policy_for_assessment_stage,
+    scaffold_policy_for_tutor_turn,
+)
 
 
 def prepare_coaching_turn(
@@ -46,7 +49,14 @@ def prepare_coaching_turn(
         course_id=turn.course_id,
         lecture_id=turn.lecture_id,
     )
-    if turn.checkpoint_gate_id is not None:
+    if progress.pending_check is not None:
+        active_gate = select_active_gate(
+            learning_map,
+            pending_gate_id=progress.pending_check.gate_id,
+            pending_gate_revision=progress.pending_check.gate_revision,
+            latest_decisions=decisions,
+        )
+    elif turn.checkpoint_gate_id is not None:
         _validate_requested_gate(
             learning_map,
             requested_gate_id=turn.checkpoint_gate_id,
@@ -60,9 +70,7 @@ def prepare_coaching_turn(
             user_id=turn.user_id,
             course_id=turn.course_id,
             lecture_id=turn.lecture_id,
-            gate_id=active_gate.id,
-            gate_revision=active_gate.revision,
-            published_prompt=active_gate.prompt,
+            gate=active_gate,
         )
     else:
         if turn.requested_gate_id is not None:
@@ -96,17 +104,21 @@ def prepare_coaching_turn(
                 "active_gate_review_after_days": active_gate.review_after_days,
             }
         )
-    policy = (
-        turn.readiness_task.scaffold_policy
-        if turn.readiness_task is not None
-        else scaffold_policy_for_tutor_turn(
+    if turn.readiness_task is not None:
+        policy = turn.readiness_task.scaffold_policy
+    elif context.pending_check_stage is not None:
+        policy = scaffold_policy_for_assessment_stage(
+            stage=context.pending_check_stage,
+            assistance_level=context.last_assistance_level,
+        )
+    else:
+        policy = scaffold_policy_for_tutor_turn(
             attendance=turn.attendance.value,
             delayed_transfer_due=context.delayed_transfer_due,
             last_gate_status=context.last_gate_status,
             needs_evidence_count=context.needs_evidence_count,
             prior_assistance=(context.prior_assistance or context.attendance_prior_used),
         )
-    )
     return turn.model_copy(
         update={
             "active_gate": active_gate,
@@ -216,9 +228,7 @@ def persist_coaching_turn(
             policy=turn.scaffold_policy,
             decision=result.quality_gate,
             next_check=result.next_check,
-            gate_section_id=active_gate.section_id,
-            transfer_prompt=active_gate.transfer_prompt,
-            review_after_days=active_gate.review_after_days,
+            gate=active_gate,
             user_message=turn.message,
             assistant_message=result.message,
             session_goal=result.session_goal,

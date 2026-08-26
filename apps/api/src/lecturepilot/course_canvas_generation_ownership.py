@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field, ValidationError
 
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.course_canvas_repairs import lecture_source_revision
+from lecturepilot.course_practice_design_models import PracticeDesign
+from lecturepilot.course_practice_design_store import PracticeDesignStore
 from lecturepilot.course_update_recovery import locked_course_state
 from lecturepilot.durable_files import ensure_durable_directory, fsync_directory
 from lecturepilot.storage_layout import StorageLayout, safe_id
@@ -22,6 +24,7 @@ class CanvasGenerationOwnership(BaseModel):
     sequence: int = Field(ge=1)
     generation_id: str = Field(min_length=1, max_length=160)
     attempt: int = Field(ge=1)
+    practice_design_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
 
 
 class CanvasGenerationOwnershipError(RuntimeError):
@@ -37,8 +40,24 @@ def begin_owned_generation_source(
     lecture_id: str,
     generation_id: str,
     attempt: int,
-) -> tuple[CanvasDocument, str | None, CanvasGenerationOwnership]:
+    expected_repair_source_revision: str | None = None,
+    expected_repair_practice_design_revision: str | None = None,
+) -> tuple[CanvasDocument, str, PracticeDesign, CanvasGenerationOwnership]:
     with locked_course_state(course_root):
+        source, revision, design = _approved_source(
+            layout,
+            source_document,
+            course_id=course_id,
+            lecture_id=lecture_id,
+            expected_source_revision=expected_repair_source_revision,
+        )
+        if (
+            expected_repair_practice_design_revision is not None
+            and expected_repair_practice_design_revision != design.revision
+        ):
+            raise CanvasGenerationOwnershipError(
+                "The practice design changed after this failure. Generate a new draft before repairing it."
+            )
         path = ownership_path(layout, course_id, lecture_id)
         previous = _read(path)
         owner = CanvasGenerationOwnership(
@@ -48,11 +67,38 @@ def begin_owned_generation_source(
             sequence=(previous.sequence + 1) if previous else 1,
             generation_id=generation_id,
             attempt=attempt,
+            practice_design_revision=design.revision,
         )
         _write(path, owner)
-        source = source_document(course_id, lecture_id)
-        revision = lecture_source_revision(layout, course_id=course_id, lecture_id=lecture_id)
-        return source, revision, owner
+        return source, revision, design, owner
+
+
+def require_generation_practice_design(
+    layout: StorageLayout,
+    course_root: Path,
+    source_document: Callable[[str, str], CanvasDocument],
+    *,
+    course_id: str,
+    lecture_id: str,
+    expected_source_revision: str | None = None,
+    expected_practice_design_revision: str | None = None,
+) -> PracticeDesign:
+    with locked_course_state(course_root):
+        _, _, design = _approved_source(
+            layout,
+            source_document,
+            course_id=course_id,
+            lecture_id=lecture_id,
+            expected_source_revision=expected_source_revision,
+        )
+        if (
+            expected_practice_design_revision is not None
+            and expected_practice_design_revision != design.revision
+        ):
+            raise CanvasGenerationOwnershipError(
+                "The practice design changed after this failure. Generate a new draft before repairing it."
+            )
+        return design
 
 
 def require_generation_ownership(
@@ -71,6 +117,28 @@ def ownership_path(layout: StorageLayout, course_id: str, lecture_id: str) -> Pa
         / "generation-ownership"
         / f"{safe_id(lecture_id)}.json"
     )
+
+
+def _approved_source(
+    layout: StorageLayout,
+    source_document: Callable[[str, str], CanvasDocument],
+    *,
+    course_id: str,
+    lecture_id: str,
+    expected_source_revision: str | None = None,
+) -> tuple[CanvasDocument, str, PracticeDesign]:
+    source = source_document(course_id, lecture_id)
+    revision = lecture_source_revision(layout, course_id=course_id, lecture_id=lecture_id)
+    if revision is None:
+        raise CanvasGenerationOwnershipError("Draft source provenance is unavailable.")
+    if expected_source_revision is not None and expected_source_revision != revision:
+        raise CanvasGenerationOwnershipError(
+            "Lecture source changed after this failure. Generate a new draft before repairing it."
+        )
+    design = PracticeDesignStore(layout).require_approved(
+        course_id=course_id, lecture_id=lecture_id, source_revision=revision
+    )
+    return source, revision, design
 
 
 def _read(path: Path) -> CanvasGenerationOwnership | None:

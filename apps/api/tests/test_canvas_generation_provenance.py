@@ -9,6 +9,7 @@ from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_canvas_generation import generate_course_canvas_draft
 from lecturepilot.course_canvas_store import InvalidCanvasDraftError
 from lecturepilot.tenancy import TenantContext, TenantRole
+from practice_design_test_helpers import canvas_with_practice_design, save_approved_design
 
 from test_learning_design_review_routes import _document
 
@@ -26,6 +27,12 @@ async def test_generation_rejects_source_revision_that_changes_during_planning(
         "design-course", "lecture-01"
     )
     _write_manifest(manifest, "a" * 64)
+    save_approved_design(
+        app.state.canvas_workspace.layout,
+        course_id="design-course",
+        lecture_id="lecture-01",
+        source_path="lecture.md",
+    )
     app.state.course_planner = _SourceChangingPlanner(manifest)
 
     with pytest.raises(
@@ -43,7 +50,9 @@ async def test_generation_rejects_source_revision_that_changes_during_planning(
                 course_ids=frozenset(),
                 auth_mode="dev",
             ),
-            source_document=lambda _course_id, _lecture_id: _document(),
+            source_document=lambda _course_id, _lecture_id: canvas_with_practice_design(
+                _document()
+            )[0],
             generation_id="a" * 32,
             attempt=1,
         )
@@ -66,6 +75,12 @@ async def test_newer_generation_owns_the_draft_when_older_planning_finishes_last
         "design-course", "lecture-01"
     )
     _write_manifest(manifest, "a" * 64)
+    save_approved_design(
+        app.state.canvas_workspace.layout,
+        course_id="design-course",
+        lecture_id="lecture-01",
+        source_path="lecture.md",
+    )
     planner = _InterleavedPlanner()
     app.state.course_planner = planner
     source_titles = iter(("Older generation", "Newer generation"))
@@ -76,7 +91,9 @@ async def test_newer_generation_owns_the_draft_when_older_planning_finishes_last
             course_id="design-course",
             lecture_id="lecture-01",
             context=_context(),
-            source_document=lambda _course_id, _lecture_id: _document(title=next(source_titles)),
+            source_document=lambda _course_id, _lecture_id: canvas_with_practice_design(
+                _document(title=next(source_titles))
+            )[0],
             generation_id="a" * 32,
             attempt=1,
         )
@@ -87,7 +104,9 @@ async def test_newer_generation_owns_the_draft_when_older_planning_finishes_last
         course_id="design-course",
         lecture_id="lecture-01",
         context=_context(),
-        source_document=lambda _course_id, _lecture_id: _document(title=next(source_titles)),
+        source_document=lambda _course_id, _lecture_id: canvas_with_practice_design(
+            _document(title=next(source_titles))
+        )[0],
         generation_id="b" * 32,
         attempt=1,
     )

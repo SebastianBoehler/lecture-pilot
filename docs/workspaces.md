@@ -20,8 +20,10 @@ volume.
       learning-map.json
     canvas-drafts/lectures/<lecture-id>/latest/
       learning-design.json
+      practice-design-binding.json
     builder/
       generations/<lecture-id>/*.json
+      practice-designs/<lecture-id>.json
       repairs/<lecture-id>.json
       source-manifests/<lecture-id>.json
       source-routing.json
@@ -101,6 +103,7 @@ modification metadata. Rendered PDF pages and TeX-compiled previews live in
 Private builder state includes:
 
 - lecture-to-source manifests;
+- one revisioned practice design per lecture, including current professor approval;
 - staged incremental updates and their analysis;
 - idempotent generation records with actor and request-key hashes;
 - targeted-repair provenance tied to a source revision; and
@@ -110,8 +113,34 @@ Private builder state includes:
 Publication atomically copies a valid draft into the shared course canvas and
 increments `publication.json`. Original source files remain immutable evidence.
 Students never read drafts, staged updates, generation errors, repair records,
-or learning-design reports. Publication excludes the private report and
-acknowledgement record.
+practice designs, bindings, or learning-design reports; publication excludes the
+private report and acknowledgement record.
+
+## Practice-design authoring
+
+The professor builder has seven ordered stages: define course, upload material, confirm source
+routing, propose/edit/approve the learning plan, review media, generate a canvas draft, and
+publish. Generation needs confirmed routing, required media review, and a current approved
+design for every target lecture.
+
+`builder/practice-designs/<lecture-id>.json` is the course-owned,
+source-grounded learning-plan record: lecture objective, observable targets,
+task variants, evidence, misconceptions, approved hints, review timing, exact
+routed source references, canonical design revision, and optional professor
+approval. The model can propose it; only a course manager can edit or approve
+it, and approval is valid only for its exact source and design revisions.
+
+Generation resolves an approved immutable snapshot, not a mutable file during planning. The draft writes
+`canvas-drafts/lectures/<lecture-id>/latest/practice-design-binding.json`, which
+binds its source revision and practice-design revision. Canvas, learning-map,
+learning-design review, and publication checks require those revisions to stay
+current. A source change makes a proposal/approval and dependent draft binding
+stale; a design edit clears approval and makes dependent drafts stale. The API
+fails closed, so the professor must refresh or approve the new plan and
+regenerate rather than reuse or infer an old draft.
+
+This slice establishes professor intent and revision-bound generation, not learner efficacy,
+factual paragraph validation, learner-practice episodes, SRL enforcement, or AI-policy controls.
 
 Local sanitized demos may set `LECTUREPILOT_COURSE_MATERIAL_ROOT`; the seeded
 course can read that legacy source/canvas layout. Uploaded production courses

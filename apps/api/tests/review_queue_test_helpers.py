@@ -10,8 +10,8 @@ from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.coaching_progress import CoachingProgressStore
 from lecturepilot.coaching_state_models import CoachingProgress, DelayedReview, review_key
 from lecturepilot.course_schedule_store import write_course_workspace
-from lecturepilot.course_learning_design_models import LearningDesignUpdate
 from lecturepilot.course_learning_design_store import CourseLearningDesignStore
+from lecturepilot.course_learning_design_models import LearningDesignUpdate
 from lecturepilot.durable_files import atomic_write_json
 from lecturepilot.exam_revision_plan import ExamRevisionTask
 from lecturepilot.models import Course, CourseWorkspaceResult, Lecture
@@ -20,7 +20,12 @@ COURSE_ID = "review-course"
 NOW = datetime.now(UTC)
 
 
-def review_client(tmp_path: Path) -> TestClient:
+def review_client(
+    tmp_path: Path,
+    *,
+    baseline_prompt: str | None = None,
+    delayed_transfer_prompt: str | None = None,
+) -> TestClient:
     app = create_app()
     app.state.canvas_workspace = CanvasWorkspace(
         workspace_root=tmp_path / "workspaces",
@@ -51,7 +56,12 @@ def review_client(tmp_path: Path) -> TestClient:
         ("lecture-locked", "section-locked", "gate-locked", "Locked"),
     ):
         document = published_course_canvas(COURSE_ID, lecture_id)
-        blocks = [CanvasBlock(id=gate_id, type="checkpoint", text=f"Explain {label}.")]
+        gate_prompt = (
+            baseline_prompt
+            if lecture_id == "lecture-a" and gate_id == "gate-a" and baseline_prompt is not None
+            else f"Explain {label}."
+        )
+        blocks = [CanvasBlock(id=gate_id, type="checkpoint", text=gate_prompt)]
         if lecture_id == "lecture-a":
             blocks.append(CanvasBlock(id="gate-c", type="checkpoint", text="Explain C."))
         document.sections[0] = document.sections[0].model_copy(
@@ -61,7 +71,11 @@ def review_client(tmp_path: Path) -> TestClient:
                 "blocks": blocks,
             }
         )
-        write_canvas_draft(app.state.canvas_workspace, document)
+        write_canvas_draft(
+            app.state.canvas_workspace,
+            document,
+            delayed_transfer_task=(delayed_transfer_prompt if lecture_id == "lecture-a" else None),
+        )
         reviews = CourseLearningDesignStore(app.state.canvas_workspace.layout)
         review = reviews.read(course_id=COURSE_ID, lecture_id=lecture_id)
         changed = reviews.update(
@@ -70,6 +84,7 @@ def review_client(tmp_path: Path) -> TestClient:
             update=LearningDesignUpdate(
                 draft_digest=review.draft_digest,
                 source_revision=review.source_revision,
+                practice_design_revision=review.practice_design_revision,
                 learning_map_revision=review.learning_map.revision,
                 objective=review.learning_map.objective,
                 gates=[
@@ -78,17 +93,16 @@ def review_client(tmp_path: Path) -> TestClient:
                         "prompt": gate.prompt,
                         "evidence_criteria": gate.evidence_criteria,
                         "transfer_prompt": (
-                            f"Apply {'C' if gate.id == 'gate-c' else label} to an unfamiliar case."
+                            gate.transfer_prompt
+                            if gate.practice_target_id is not None
+                            else f"Apply {label} to an unfamiliar case."
                         ),
                         "review_after_days": gate.review_after_days,
                     }
                     for gate in review.learning_map.gates
                 ],
                 prerequisites=[
-                    {
-                        "section_id": node.section_id,
-                        "prerequisite_ids": node.prerequisites,
-                    }
+                    {"section_id": node.section_id, "prerequisite_ids": node.prerequisites}
                     for node in review.learning_map.nodes
                 ],
             ),
@@ -98,6 +112,7 @@ def review_client(tmp_path: Path) -> TestClient:
             lecture_id=lecture_id,
             draft_digest=changed.draft_digest,
             source_revision=changed.source_revision,
+            practice_design_revision=changed.practice_design_revision,
             learning_map_revision=changed.learning_map.revision,
             report_revision=changed.report.report_revision,
             approved_by="professor",

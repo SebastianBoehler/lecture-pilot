@@ -8,6 +8,7 @@ from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_canvas_repairs import lecture_source_revision
+from practice_design_test_helpers import approved_design_document
 
 
 def test_professor_edits_approves_and_publishes_the_exact_learning_design(tmp_path: Path) -> None:
@@ -26,37 +27,11 @@ def test_professor_edits_approves_and_publishes_the_exact_learning_design(tmp_pa
     changed = client.put(
         path,
         headers=professor_headers(),
-        json={
-            "draft_digest": review["draft_digest"],
-            "source_revision": review["source_revision"],
-            "learning_map_revision": review["learning_map"]["revision"],
-            "objective": "Explain the mechanism and transfer it to a changed case.",
-            "gates": [
-                {
-                    "id": "intro-check",
-                    "prompt": "Explain the mechanism without using the example wording.",
-                    "evidence_criteria": [
-                        {
-                            "id": "intro-check",
-                            "description": "Names the cause and the resulting effect.",
-                            "required": True,
-                        }
-                    ],
-                    "transfer_prompt": "Apply the mechanism to an unfamiliar case.",
-                    "review_after_days": 4,
-                }
-            ],
-            "prerequisites": [
-                {"section_id": "intro", "prerequisite_ids": []},
-                {"section_id": "practice", "prerequisite_ids": ["intro"]},
-            ],
-        },
+        json=_update_payload(review),
     )
     assert changed.status_code == 200, changed.json()
     edited = changed.json()
-    assert edited["learning_map"]["objective"].startswith("Explain the mechanism")
-    assert edited["learning_map"]["gates"][0]["review_after_days"] == 4
-    assert edited["learning_map"]["nodes"][1]["prerequisites"] == ["intro"]
+    assert edited["learning_map"]["objective"] == review["learning_map"]["objective"]
     assert edited["approval"] is None
 
     approved = client.post(
@@ -65,6 +40,7 @@ def test_professor_edits_approves_and_publishes_the_exact_learning_design(tmp_pa
         json={
             "draft_digest": edited["draft_digest"],
             "source_revision": edited["source_revision"],
+            "practice_design_revision": edited["practice_design_revision"],
             "learning_map_revision": edited["learning_map"]["revision"],
             "report_revision": edited["report"]["report_revision"],
         },
@@ -85,6 +61,7 @@ def test_professor_edits_approves_and_publishes_the_exact_learning_design(tmp_pa
     assert metadata["draft_digest"] == approved.json()["draft_digest"]
     assert metadata["source_revision"] == approved.json()["source_revision"]
     assert metadata["learning_map_revision"] == learning_map["revision"]
+    assert metadata["practice_design_revision"] == approved.json()["practice_design_revision"]
     assert metadata["published_by"] == "prof01"
     assert not (published_dir / "learning-design.json").exists()
 
@@ -180,9 +157,17 @@ def _client_with_draft(tmp_path: Path) -> TestClient:
         material_root=tmp_path / "materials",
     )
     _write_source_manifest(app.state.canvas_workspace)
-    app.state.canvas_workspace.write_course_canvas_draft(
+    revision = _source_revision(app.state.canvas_workspace)
+    document, practice_design = approved_design_document(
+        app.state.canvas_workspace.layout,
         _document(),
-        expected_source_revision=_source_revision(app.state.canvas_workspace),
+        source_revision=revision,
+        source_path="lecture.md",
+    )
+    app.state.canvas_workspace.write_course_canvas_draft(
+        document,
+        expected_source_revision=revision,
+        practice_design=practice_design,
     )
     return TestClient(app)
 
@@ -238,7 +223,7 @@ def _document(*, title: str = "Learning design") -> CanvasDocument:
                 id="practice",
                 title="Practice",
                 source_ref="lecture.md#practice",
-                blocks=[CanvasBlock(id="practice-p", type="paragraph", text="Apply it.")],
+                blocks=[CanvasBlock(id="apply-p", type="paragraph", text="Apply it.")],
             ),
         ],
     )
@@ -248,6 +233,7 @@ def _update_payload(review: dict) -> dict:
     return {
         "draft_digest": review["draft_digest"],
         "source_revision": review["source_revision"],
+        "practice_design_revision": review["practice_design_revision"],
         "learning_map_revision": review["learning_map"]["revision"],
         "objective": review["learning_map"]["objective"],
         "gates": [

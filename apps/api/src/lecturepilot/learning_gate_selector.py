@@ -11,11 +11,16 @@ def select_active_gate(
     *,
     requested_gate_id: str | None = None,
     focused_section_id: str | None = None,
+    pending_gate_id: str | None = None,
+    pending_gate_revision: str | None = None,
     latest_decisions: Mapping[str, QualityGateDecision] | None = None,
 ) -> LearningMapGate | None:
     """Select one open gate using only the published contract and learner decisions."""
     decisions = latest_decisions or {}
     gates = {gate.id: gate for gate in learning_map.gates}
+    pending_gate = gates.get(pending_gate_id or "")
+    if pending_gate is not None and pending_gate.revision == pending_gate_revision:
+        return pending_gate
     passed = {
         gate_id
         for gate_id, decision in decisions.items()

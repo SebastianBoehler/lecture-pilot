@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from pydantic import ValidationError
 
+from lecturepilot.agent_context_models import AgentConversationMessage
 from lecturepilot.coaching_episode import parse_time, record_passed_review
 from lecturepilot.coaching_progress import CoachingProgressStore
 from lecturepilot.coaching_state_models import (
@@ -46,6 +47,25 @@ def test_coaching_store_rejects_corrupt_or_obsolete_state_without_rewriting(
     assert path.read_bytes() == payload
 
 
+def test_coaching_store_fails_closed_on_complete_stage_less_schema_one_state(
+    tmp_path,
+) -> None:
+    store = CoachingProgressStore(StorageLayout(tmp_path))
+    path = store.layout.user_lecture_root(*IDS.values()) / "tutor-state.json"
+    path.parent.mkdir(parents=True)
+    payload = CoachingProgress.empty(
+        course_id=IDS["course_id"], lecture_id=IDS["lecture_id"]
+    ).model_dump(mode="json")
+    payload["schema_version"] = 1
+    encoded = json.dumps(payload).encode()
+    path.write_bytes(encoded)
+
+    with pytest.raises(ValueError, match="tutor state"):
+        store.read(**IDS)
+
+    assert path.read_bytes() == encoded
+
+
 def test_coaching_event_rejects_revisionless_or_redundant_attempt_fields() -> None:
     valid = {
         "created_at": "2026-08-09T08:00:00+00:00",
@@ -68,6 +88,14 @@ def test_coaching_event_rejects_revisionless_or_redundant_attempt_fields() -> No
         )
     with pytest.raises(ValidationError):
         CoachingTurnEvent.model_validate({**valid, "independent_attempt": True})
+
+
+def test_recent_message_can_hold_an_exact_max_hint_and_check() -> None:
+    content = f"{'h' * 2_000} {'p' * 2_000}"
+
+    message = AgentConversationMessage(role="assistant", content=content)
+
+    assert message.content == content
 
 
 def test_delayed_review_requires_exact_contract_and_aware_times() -> None:
@@ -128,7 +156,9 @@ def test_unassessed_exchange_keeps_the_pending_check(tmp_path) -> None:
         gate_revision="a" * 64,
         prompt="Explain the mechanism.",
         assistance_level="none",
+        assistance_content=None,
         kind="standard",
+        stage="independent_exit",
         issued_at=now,
     )
     store._write(**IDS, progress=progress)

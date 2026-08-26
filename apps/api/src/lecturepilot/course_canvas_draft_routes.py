@@ -13,6 +13,7 @@ from lecturepilot.client_contract import (
     require_current_client_contract,
 )
 from lecturepilot.course_canvas_generation import generate_course_canvas_draft
+from lecturepilot import course_canvas_generation_ownership as ownership_store
 from lecturepilot.course_canvas_generation_failures import find_latest_canvas_generation
 from lecturepilot.course_canvas_generation_http import run_canvas_generation_request
 from lecturepilot.course_canvas_generation_jobs import CanvasGenerationStore
@@ -22,6 +23,12 @@ from lecturepilot.course_canvas_generation_service import (
     validate_generation_request_key,
 )
 from lecturepilot.course_canvas_store import InvalidCanvasDraftError
+from lecturepilot.course_practice_design_store import (
+    PracticeDesignApprovalRequired,
+    PracticeDesignStale,
+    PracticeDesignUnavailable,
+)
+from lecturepilot.source_bundle_canvas import SourceBundleCanvasError
 from lecturepilot.tenancy import TenantContext
 
 
@@ -48,6 +55,7 @@ def register_course_canvas_draft_routes(
         _require_owner(request, context, course_id, course_tenant_id)
         require_current_client_contract(client_contract)
         request_key = _request_key(idempotency_key)
+        _require_current_practice_design(app, course_id, lecture_id, source_document)
         store = _store(app)
         outcome = await run_canvas_generation_request(
             app=app,
@@ -158,3 +166,27 @@ def _require_owner(
         request=request,
         course_id=course_id,
     )
+
+
+def _require_current_practice_design(
+    app: FastAPI,
+    course_id: str,
+    lecture_id: str,
+    source_document: Callable[[str, str], CanvasDocument],
+) -> None:
+    try:
+        ownership_store.require_generation_practice_design(
+            app.state.canvas_workspace.layout,
+            app.state.canvas_workspace.course_media_root(course_id),
+            source_document,
+            course_id=course_id,
+            lecture_id=lecture_id,
+        )
+    except (
+        ownership_store.CanvasGenerationOwnershipError,
+        PracticeDesignApprovalRequired,
+        PracticeDesignStale,
+        PracticeDesignUnavailable,
+        SourceBundleCanvasError,
+    ) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc

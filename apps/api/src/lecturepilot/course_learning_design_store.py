@@ -1,13 +1,9 @@
-from __future__ import annotations
-
 import hashlib
 import json
-import os
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
-from uuid import uuid4
 
 from pydantic import ValidationError
 
@@ -15,13 +11,15 @@ from lecturepilot.canvas_markdown import read_document_source
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.canvas_snapshot import locked_canvas_paths
 from lecturepilot.course_canvas_repairs import lecture_source_revision
+from lecturepilot import course_practice_design_binding as practice_bindings
+from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.course_learning_design_models import (
     LearningDesignApproval,
     LearningDesignReview,
     LearningDesignUpdate,
 )
 from lecturepilot.course_learning_design_update import apply_learning_design_update
-from lecturepilot.durable_files import ensure_durable_directory, fsync_directory
+from lecturepilot.durable_files import atomic_write_text
 from lecturepilot.learning_design_report import build_learning_design_report
 from lecturepilot.learning_map import build_learning_map
 from lecturepilot.storage_layout import StorageLayout
@@ -65,12 +63,16 @@ class CourseLearningDesignStore:
                 current,
                 update.draft_digest,
                 update.source_revision,
+                update.practice_design_revision,
                 update.learning_map_revision,
             )
             try:
                 learning_map = apply_learning_design_update(current.learning_map, update)
             except ValueError as exc:
                 raise LearningDesignError(str(exc)) from exc
+            _bound_design(
+                self.layout, draft_dir, learning_map, course_id, lecture_id, current.source_revision
+            )
             document = read_document_source(draft_dir)
             report = build_learning_design_report(
                 document=document,
@@ -95,6 +97,7 @@ class CourseLearningDesignStore:
         lecture_id: str,
         draft_digest: str,
         source_revision: str,
+        practice_design_revision: str,
         learning_map_revision: str,
         report_revision: str,
         approved_by: str,
@@ -105,6 +108,7 @@ class CourseLearningDesignStore:
                 current,
                 draft_digest,
                 source_revision,
+                practice_design_revision,
                 learning_map_revision,
             )
             _require_report_revision(current, report_revision=report_revision)
@@ -113,6 +117,7 @@ class CourseLearningDesignStore:
                 approved_at=datetime.now(UTC),
                 draft_digest=current.draft_digest,
                 source_revision=current.source_revision,
+                practice_design_revision=current.practice_design_revision,
                 learning_map_revision=current.learning_map.revision,
                 report_revision=current.report.report_revision,
                 acknowledged_warning_ids=[],
@@ -133,8 +138,9 @@ def initialize_learning_design(
     document: CanvasDocument,
     draft_dir: Path,
     source_revision: str,
+    practice_design: PracticeDesign,
 ) -> LearningDesignReview:
-    learning_map = build_learning_map(document)
+    learning_map = build_learning_map(document, practice_design)
     draft_digest = canvas_digest(document)
     report = build_learning_design_report(
         document=document,
@@ -148,6 +154,7 @@ def initialize_learning_design(
         lecture_id=document.lecture_id,
         draft_digest=draft_digest,
         source_revision=source_revision,
+        practice_design_revision=practice_design.revision,
         learning_map=learning_map,
         report=report,
     )
@@ -167,6 +174,7 @@ def approved_learning_design(
     if approval is None or (
         approval.draft_digest != current.draft_digest
         or approval.source_revision != current.source_revision
+        or approval.practice_design_revision != current.practice_design_revision
         or approval.learning_map_revision != current.learning_map.revision
         or approval.report_revision != current.report.report_revision
     ):
@@ -205,11 +213,15 @@ def _current_review(
         raise LearningDesignUnavailableError(
             "Draft source provenance is unavailable. Regenerate the draft."
         )
+    design = _bound_design(
+        layout, draft_dir, stored.learning_map, course_id, lecture_id, current_source
+    )
     if (
         stored.course_id != course_id
         or stored.lecture_id != lecture_id
         or stored.draft_digest != canvas_digest(document)
         or stored.source_revision != current_source
+        or stored.practice_design_revision != design.revision
         or stored.report.draft_digest != stored.draft_digest
         or stored.report.source_revision != stored.source_revision
         or stored.report.learning_map_revision != stored.learning_map.revision
@@ -224,11 +236,13 @@ def _require_request_version(
     review: LearningDesignReview,
     digest: str,
     source_revision: str,
+    practice_design_revision: str,
     learning_map_revision: str,
 ) -> None:
     if (
         review.draft_digest != digest
         or review.source_revision != source_revision
+        or review.practice_design_revision != practice_design_revision
         or review.learning_map.revision != learning_map_revision
     ):
         raise LearningDesignStaleError(
@@ -258,16 +272,28 @@ def _read_review(path: Path) -> LearningDesignReview | None:
         ) from exc
 
 
-def _write_review(path: Path, review: LearningDesignReview) -> None:
-    ensure_durable_directory(path.parent)
-    temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
+def _bound_design(
+    layout: StorageLayout,
+    draft_dir: Path,
+    learning_map,
+    course_id: str,
+    lecture_id: str,
+    source_revision: str,
+) -> PracticeDesign:
     try:
-        descriptor = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            handle.write(review.model_dump_json(indent=2))
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary, path)
-        fsync_directory(path.parent)
-    finally:
-        temporary.unlink(missing_ok=True)
+        return practice_bindings.validate_bound_learning_map(
+            layout,
+            draft_dir,
+            learning_map,
+            course_id=course_id,
+            lecture_id=lecture_id,
+            source_revision=source_revision,
+        )
+    except practice_bindings.PracticeDesignBindingError as exc:
+        raise LearningDesignUnavailableError(str(exc)) from exc
+    except ValueError as exc:
+        raise LearningDesignStaleError(str(exc)) from exc
+
+
+def _write_review(path: Path, review: LearningDesignReview) -> None:
+    atomic_write_text(path, review.model_dump_json(indent=2))

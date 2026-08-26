@@ -10,8 +10,10 @@ from lecturepilot.course_content_filter import filter_source_document_for_planni
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_json import parse_model_json
 from lecturepilot.course_canvas_quality import CanvasQualityIssue, CanvasQualityReviewer
+from lecturepilot.course_canvas_practice_contract import validate_practice_candidate
 from lecturepilot.course_canvas_section_planner import plan_sections_individually
 from lecturepilot.course_canvas_section_repair import CourseCanvasSectionRepairMixin
+from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.course_canvas_validation import validate_planned_document
 from lecturepilot.course_slide_interleaving import interleave_original_slides
 from lecturepilot.course_planner_warnings import planned_payload
@@ -109,6 +111,7 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
         self,
         source_document: CanvasDocument,
         *,
+        practice_design: PracticeDesign,
         repair_context: str | None = None,
         output_language: str = "en",
     ) -> CanvasDocument:
@@ -136,6 +139,7 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
                     model_client=self.model_client,
                     settings=settings,
                     source_document=source_document,
+                    practice_design=practice_design,
                     output_language=output_language,
                     repair_context=repair_context,
                     observability=self.observability,
@@ -143,6 +147,9 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
                 )
                 document = interleave_original_slides(document, source_document)
                 validate_planned_document(document, source_document)
+                validate_practice_candidate(
+                    document, practice_design, source_document=source_document
+                )
                 quality_issues = await self.review_quality(
                     source_document,
                     document,
@@ -159,6 +166,7 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
                         block_id=first.block_id,
                         failure_context="Canvas quality review failed.",
                         output_language=output_language,
+                        practice_design=practice_design,
                         quality_issues=quality_issues,
                     )
                 span.set_outputs(
@@ -184,6 +192,7 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
                     block_id=exc.block_id,
                     failure_context=str(exc),
                     output_language=output_language,
+                    practice_design=practice_design,
                 )
             raise
 

@@ -21,7 +21,10 @@ from lecturepilot.coaching_state_models import (
 )
 
 
-def test_stream_preflight_rejects_invalid_tutor_state_before_starting_response(tmp_path) -> None:
+@pytest.mark.parametrize("endpoint", ["/agent/turn", "/agent/turn/stream"])
+def test_agent_preflight_rejects_invalid_tutor_state_before_model_call(
+    tmp_path, endpoint: str
+) -> None:
     app = _published_app(tmp_path)
     path = (
         app.state.canvas_workspace.layout.user_lecture_root("u1", "martius-ml", "lecture-01")
@@ -30,14 +33,14 @@ def test_stream_preflight_rejects_invalid_tutor_state_before_starting_response(t
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text('{"legacy": true}', encoding="utf-8")
 
-    response = TestClient(app).post(
-        "/agent/turn/stream",
+    response = TestClient(app, raise_server_exceptions=False).post(
+        endpoint,
         headers=student_headers("u1"),
         json=_turn_payload(),
     )
 
     assert response.status_code == 409
-    assert response.json() == {"detail": "Persisted learning state is invalid."}
+    assert response.json() == _recovery_required_response()
     assert response.headers["content-type"].startswith("application/json")
 
 
@@ -61,7 +64,7 @@ def test_stream_preflight_rejects_learning_state_bound_to_republished_gate(
     )
 
     assert response.status_code == 409
-    assert response.json() == {"detail": "Persisted learning state is invalid."}
+    assert response.json() == _recovery_required_response()
     assert response.headers["content-type"].startswith("application/json")
 
 
@@ -113,7 +116,9 @@ def _write_bound_coaching_state(app, gate, binding_kind: str) -> None:
             gate_revision=gate.revision,
             prompt=gate.prompt,
             assistance_level="none",
+            assistance_content=None,
             kind="standard",
+            stage="independent_exit",
             issued_at=issued_at,
         )
     else:
@@ -143,4 +148,17 @@ def _turn_payload() -> dict:
         "lecture_id": "lecture-01",
         "attendance": "present",
         "message": "Explain the current checkpoint.",
+    }
+
+
+def _recovery_required_response() -> dict:
+    return {
+        "detail": {
+            "code": "coaching_state_recovery_required",
+            "message": (
+                "Persisted coaching state cannot be resumed safely. Use the authenticated "
+                "recovery endpoint before continuing."
+            ),
+            "recovery_path": ("/courses/martius-ml/lectures/lecture-01/learner-state/recover"),
+        }
     }

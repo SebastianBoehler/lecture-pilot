@@ -110,9 +110,11 @@ def test_lesson_state_hydrates_gate_quiz_goal_pending_check_and_due_review(
     progress.pending_check = PendingCheck(
         gate_id="risk-check",
         gate_revision=gate.revision,
-        prompt="Apply the rule to a changed example.",
-        assistance_level="prompt",
+        prompt=gate.prompt,
+        assistance_level="none",
+        assistance_content=None,
         kind="standard",
+        stage="independent_exit",
         issued_at=now,
     )
     key = review_key("risk-check", gate.revision)
@@ -156,8 +158,8 @@ def test_lesson_state_hydrates_gate_quiz_goal_pending_check_and_due_review(
         "pending_check": {
             "gate_id": "risk-check",
             "gate_revision": gate.revision,
-            "prompt": "Apply the rule to a changed example.",
-            "assistance_level": "prompt",
+            "prompt": gate.prompt,
+            "assistance_level": "none",
             "kind": "standard",
         },
         "due_gate_reviews": [

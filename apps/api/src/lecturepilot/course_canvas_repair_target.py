@@ -12,3 +12,4 @@ class CanvasGenerationRepairTarget(BaseModel):
     section_id: str = Field(min_length=1, max_length=120)
     block_id: str | None = Field(default=None, max_length=120)
     source_revision: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+    practice_design_revision: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")

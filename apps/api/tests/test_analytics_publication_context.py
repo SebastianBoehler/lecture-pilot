@@ -7,7 +7,6 @@ from lecturepilot.agent_gate_persistence import persist_quality_gate
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.coaching_orchestration import prepare_coaching_turn
 from lecturepilot.coaching_progress import CoachingTurnEvent
-from lecturepilot.learning_map import build_learning_map
 from lecturepilot.models import (
     AgentTurnInput,
     AgentTurnResult,
@@ -29,16 +28,17 @@ def test_canvas_analytics_context_never_tears_during_real_publication(tmp_path: 
             course_id="quiz-snapshot", lecture_id="lecture-01"
         ).learning_map_revision
     }
-    for version, document in enumerate(documents, start=2):
-        expected[version] = build_learning_map(document).revision
 
     start = Barrier(2)
     finished = Event()
 
     def publish_all() -> None:
         start.wait()
-        for document in documents:
+        for version, document in enumerate(documents, start=2):
             _publish(client, document)
+            expected[version] = store.read_analytics_context(
+                course_id="quiz-snapshot", lecture_id="lecture-01"
+            ).learning_map_revision
         finished.set()
 
     observed: list[tuple[int, str | None]] = []

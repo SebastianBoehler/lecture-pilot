@@ -7,7 +7,9 @@ from types import SimpleNamespace
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner, LiteLLMCoursePlanClient
 from lecturepilot.course_canvas_repair_response import repair_patch_response_format
+from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.providers import ProviderRegistry
+from practice_design_test_helpers import proposal, target as practice_target
 
 
 async def test_litellm_course_plan_client_requests_canvas_schema(monkeypatch) -> None:
@@ -86,7 +88,8 @@ async def test_course_planner_restyles_source_evidence(monkeypatch) -> None:
         quality_reviewer=_NoIssuesQualityReviewer(),
     )
 
-    document = await planner.plan_canvas(_source_document())
+    source = _source_document()
+    document = await planner.plan_canvas(source, practice_design=_practice_design(source))
 
     assert document.source_kind == "generated"
     assert document.source_ref == "course planner from Lecture03-eng.tex"
@@ -194,6 +197,7 @@ class _FakePlanClient:
                     ),
                 },
                 {
+                    "id": "practice-derive-conclusion",
                     "type": "checkpoint",
                     "text": (
                         "How do prior, likelihood, posterior, and decision costs interact "
@@ -328,6 +332,27 @@ class _NoIssuesQualityReviewer:
 
     async def validate(self, **_kwargs) -> None:
         return None
+
+
+def _practice_design(source: CanvasDocument) -> PracticeDesign:
+    draft = proposal()
+    target = practice_target(
+        baseline_task=(
+            "How do prior, likelihood, posterior, and decision costs interact "
+            "when selecting an action?"
+        ),
+        source_refs=(source.source_ref,),
+        source_excerpt="prior",
+    )
+    return PracticeDesign.create(
+        course_id=source.course_id,
+        lecture_id=source.lecture_id,
+        lecture_title=source.title,
+        objective=draft.objective,
+        planning_context=draft.planning_context,
+        source_revision="a" * 64,
+        targets=(target,),
+    )
 
 
 def _source_document() -> CanvasDocument:

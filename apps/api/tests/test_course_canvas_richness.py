@@ -16,13 +16,18 @@ from lecturepilot.course_canvas_validation import (
 )
 from lecturepilot.latex_canvas_importer import import_latex_canvas
 from lecturepilot.models import ProviderSettings
+from canvas_planner_test_helpers import RecordingFallbackPlanClient
+from practice_design_test_helpers import practice_design_for_canvas
 
 
 def test_planner_uses_source_driven_depth_without_content_quotas() -> None:
     source = _source_document(10)
-    prompt = planner_messages(source)[0]["content"]
-    repair = repair_message("bad draft", source)["content"]
-    section_prompt = _section_messages(source, source.sections[0])[0]["content"]
+    design = practice_design_for_canvas(source)
+    prompt = planner_messages(source, design)[0]["content"]
+    repair = repair_message("bad draft", source, design)["content"]
+    section_prompt = _section_messages(
+        source, source.sections[0], practice_design=design, applicable_targets=()
+    )[0]["content"]
 
     assert "Let section count and depth follow the supplied evidence" in prompt
     assert "fixed section, block, or character quota" in prompt
@@ -55,10 +60,11 @@ def test_section_parser_preserves_model_supported_depth_and_long_code() -> None:
 
 def test_single_topic_lecture_uses_coherent_assessment_requirements() -> None:
     source = _source_document(1)
+    design = practice_design_for_canvas(source)
 
     validate_planned_document(_generated_document(1), source)
-    prompt = planner_messages(source)[0]["content"]
-    repair = repair_message("bad draft", source)["content"]
+    prompt = planner_messages(source, design)[0]["content"]
+    repair = repair_message("bad draft", source, design)["content"]
     assert "at least one standalone assessment" in prompt
     assert "at least one standalone assessment" in repair
 
@@ -85,6 +91,7 @@ def test_asset_only_outline_section_does_not_inflate_fallback_topic_count() -> N
 
 async def test_section_fallback_skips_asset_only_outline_sections() -> None:
     source = _source_document(7)
+    design = practice_design_for_canvas(source)
     source.sections.append(
         CanvasSection(
             id="original-slides",
@@ -93,7 +100,7 @@ async def test_section_fallback_skips_asset_only_outline_sections() -> None:
             blocks=[CanvasBlock(id="slide-1", type="asset", asset_path="slide-001.png")],
         )
     )
-    client = _FallbackPlanClient()
+    client = RecordingFallbackPlanClient()
 
     planned = await plan_sections_individually(
         model_client=client,
@@ -104,6 +111,7 @@ async def test_section_fallback_skips_asset_only_outline_sections() -> None:
             capabilities=set(),
         ),
         source_document=source,
+        practice_design=design,
     )
 
     assert len(planned.sections) == 5
@@ -120,7 +128,14 @@ def test_planner_and_section_fallback_receive_materially_more_bounded_evidence()
     assert 20_000 < len(fallback_evidence) <= 24_000
     assert (
         "depth and structure follow the supplied evidence"
-        in (_section_messages(source, source.sections[0])[0]["content"])
+        in (
+            _section_messages(
+                source,
+                source.sections[0],
+                practice_design=practice_design_for_canvas(source),
+                applicable_targets=(),
+            )[0]["content"]
+        )
     )
 
 
@@ -266,35 +281,3 @@ def _generated_document(section_count: int) -> CanvasDocument:
         workspace_path="canvas/index.md",
         sections=sections,
     )
-
-
-class _FallbackPlanClient:
-    def __init__(self) -> None:
-        self.source_ids: list[str] = []
-
-    async def complete_plan(self, *, settings, messages):
-        evidence = messages[1]["content"]
-        source_id = evidence.split("Required section id: ", 1)[1].splitlines()[0]
-        self.source_ids.append(source_id)
-        return {
-            "sections": [
-                {
-                    "id": f"learning-{source_id}",
-                    "title": f"Learning {source_id}",
-                    "source_ref": f"Lecture.tex {source_id}",
-                    "blocks": [
-                        {
-                            "type": "paragraph",
-                            "text": "A source-grounded explanation of this learning topic.",
-                        },
-                        {
-                            "type": "checkpoint",
-                            "text": (
-                                "Explain how this learning topic follows from the evidence "
-                                "and identify one consequence."
-                            ),
-                        },
-                    ],
-                }
-            ]
-        }

@@ -9,20 +9,25 @@ from lecturepilot.coaching_check_binding import bind_inline_checkpoint
 from lecturepilot.coaching_episode import (
     attempt_kind,
     bound_pending,
+    complete_delayed_review,
     matching_pending,
-    pending_from_next_check,
-    record_passed_review,
+    pending_from_transition,
     record_review_attempt,
+    schedule_delayed_review,
 )
 from lecturepilot.coaching_state_io import MAX_RECENT_MESSAGES, MAX_TURN_EVENTS
 from lecturepilot.coaching_state_models import (
     CoachingProgress,
     CoachingTurnEvent,
+    HintExposure,
     attempt_key,
+    hint_exposure_key,
     review_key,
 )
+from lecturepilot.coaching_transitions import derive_next_transition
 from lecturepilot.durable_files import atomic_write_json, exclusive_file_lock
 from lecturepilot.models import AgentCoachingContext, AgentConversationMessage, QualityGateDecision
+from lecturepilot.learning_map import LearningMapGate
 from lecturepilot.scaffold_policy import TutorScaffoldPolicy
 from lecturepilot.storage_layout import StorageLayout
 
@@ -67,6 +72,14 @@ class CoachingProgressStore:
         latest_turn = gate_turns[-1] if gate_turns else None
         pending = matching_pending(progress.pending_check, gate_id, gate_revision)
         transfer = progress.delayed_reviews.get(review_key(gate_id, gate_revision))
+        exposures = sorted(
+            (
+                exposure
+                for exposure in progress.hint_exposures.values()
+                if exposure.gate_id == gate_id and exposure.gate_revision == gate_revision
+            ),
+            key=lambda item: item.exposed_at,
+        )
         current_time = now or datetime.now(UTC)
         transfer_due = bool(
             transfer
@@ -87,8 +100,12 @@ class CoachingProgressStore:
             pending_check_gate_id=(pending.gate_id if pending else None),
             pending_check_gate_revision=(pending.gate_revision if pending else None),
             pending_check_kind=(pending.kind if pending else None),
+            pending_check_stage=(pending.stage if pending else None),
             pending_check_issued_at=(pending.issued_at.isoformat() if pending else None),
             pending_check_prompt=(pending.prompt if pending else None),
+            pending_check_assistance_content=(pending.assistance_content if pending else None),
+            exposed_hint_levels=[item.assistance_level for item in exposures],
+            delayed_review_attempted=bool(transfer and transfer.attempted_at is not None),
             evidence_ids=sorted({item for turn in gate_turns for item in turn.evidence_ids}),
             missing_evidence_ids=(latest_turn.missing_evidence_ids if latest_turn else []),
         )
@@ -99,9 +116,7 @@ class CoachingProgressStore:
         user_id: str,
         course_id: str,
         lecture_id: str,
-        gate_id: str,
-        gate_revision: str,
-        published_prompt: str,
+        gate: LearningMapGate,
         now: datetime | None = None,
     ) -> None:
         bind_inline_checkpoint(
@@ -109,9 +124,7 @@ class CoachingProgressStore:
             user_id=user_id,
             course_id=course_id,
             lecture_id=lecture_id,
-            gate_id=gate_id,
-            gate_revision=gate_revision,
-            published_prompt=published_prompt,
+            gate=gate,
             now=now,
         )
 
@@ -125,9 +138,7 @@ class CoachingProgressStore:
         policy: TutorScaffoldPolicy,
         decision: QualityGateDecision,
         next_check: NextCheck | None,
-        gate_section_id: str,
-        transfer_prompt: str,
-        review_after_days: int,
+        gate: LearningMapGate,
         user_message: str,
         assistant_message: str,
         session_goal: str | None = None,
@@ -155,7 +166,7 @@ class CoachingProgressStore:
                 if kind == "delayed_transfer"
                 else None
             )
-            count_key = attempt_key(decision.gate_id, decision.gate_revision)
+            count_key = attempt_key(decision.gate_id, decision.gate_revision, kind)
             attempt_index = progress.attempt_counts.get(count_key, 0) + 1
             progress.attempt_counts[count_key] = attempt_index
             event = CoachingTurnEvent(
@@ -174,18 +185,47 @@ class CoachingProgressStore:
                 missing_evidence_ids=decision.missing_evidence_ids,
             )
             progress.turns = [*progress.turns, event][-MAX_TURN_EVENTS:]
-            if decision.status.value == "passed":
-                record_passed_review(
+            transition = derive_next_transition(
+                gate,
+                current_stage=pending.stage,
+                status=decision.status,
+                exposed_hint_levels=[
+                    item.assistance_level
+                    for item in progress.hint_exposures.values()
+                    if item.gate_id == gate.id and item.gate_revision == gate.revision
+                ],
+            )
+            expected_check = transition.check if transition else None
+            if next_check != expected_check:
+                raise ValueError("Tutor response substituted the server-selected next check.")
+            if decision.status.value == "passed" and kind == "independent_exit":
+                schedule_delayed_review(
                     progress,
                     gate_id=decision.gate_id,
                     gate_revision=decision.gate_revision,
-                    section_id=gate_section_id,
-                    transfer_prompt=transfer_prompt,
-                    delayed_attempt=kind == "delayed_transfer",
-                    review_after_days=review_after_days,
+                    section_id=gate.section_id,
+                    transfer_prompt=gate.transfer_prompt,
+                    review_after_days=gate.review_after_days,
                     now=current_time,
                 )
-            progress.pending_check = pending_from_next_check(next_check, now=current_time)
+            elif decision.status.value == "passed" and kind == "delayed_transfer":
+                complete_delayed_review(
+                    progress,
+                    gate_id=decision.gate_id,
+                    gate_revision=decision.gate_revision,
+                    now=current_time,
+                )
+            if transition is not None and transition.check.assistance.level != "none":
+                assistance = transition.check.assistance
+                key = hint_exposure_key(gate.revision, assistance.level)
+                progress.hint_exposures[key] = HintExposure(
+                    gate_id=gate.id,
+                    gate_revision=gate.revision,
+                    assistance_level=assistance.level,
+                    content=assistance.content or "",
+                    exposed_at=current_time,
+                )
+            progress.pending_check = pending_from_transition(transition, now=current_time)
             progress.session_goal = session_goal.strip() if session_goal else progress.session_goal
             progress.attendance_prior_used = True
             self._append_exchange(progress, user_message, assistant_message)
@@ -216,9 +256,7 @@ class CoachingProgressStore:
             progress.session_goal = session_goal.strip() if session_goal else progress.session_goal
             progress.attendance_prior_used = True
             if next_check is not None:
-                progress.pending_check = pending_from_next_check(
-                    next_check, now=now or datetime.now(UTC)
-                )
+                raise ValueError("An unassessed turn cannot create a pending check.")
             self._append_exchange(progress, user_message, assistant_message)
             progress.updated_at = now or datetime.now(UTC)
             self._write(

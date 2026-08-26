@@ -24,6 +24,7 @@ lecturepilot-bootstrap-admin = "lecturepilot.bootstrap_admin:main"
 [project.optional-dependencies]
 agent = [
   "litellm==1.91.1",
+  "openai==2.54.0",
 ]
 observability = [
   "mlflow>=3.0.0",

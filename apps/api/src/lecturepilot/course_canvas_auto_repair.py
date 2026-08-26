@@ -8,6 +8,8 @@ from lecturepilot.canvas_models import CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_quality import CanvasQualityIssue
 from lecturepilot.course_canvas_repair_preflight import normalize_repair_candidate
+from lecturepilot.course_canvas_practice_contract import validate_practice_candidate
+from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.course_canvas_validation import validate_planned_document
 
 
@@ -21,6 +23,7 @@ class CanvasRepairPlanner(Protocol):
         block_ids: list[str],
         failure_context: str,
         output_language: str,
+        practice_design: PracticeDesign,
     ) -> CanvasDocument: ...
 
     async def repair_section(
@@ -32,6 +35,7 @@ class CanvasRepairPlanner(Protocol):
         block_id: str | None,
         failure_context: str,
         output_language: str,
+        practice_design: PracticeDesign,
     ) -> CanvasDocument: ...
 
     async def review_quality(
@@ -53,9 +57,11 @@ async def repair_until_quality_valid(
     block_id: str | None,
     failure_context: str,
     output_language: str,
+    practice_design: PracticeDesign,
     quality_issues: list[CanvasQualityIssue] | None = None,
 ) -> CanvasDocument:
     active_candidate = normalize_document_component_identities(candidate)
+    validate_practice_candidate(active_candidate, practice_design, source_document=source)
     quality_batch = quality_issues is not None
     if quality_issues is None and failure_context.startswith("Canvas quality review failed:"):
         pending = await planner.review_quality(source, active_candidate)
@@ -76,8 +82,10 @@ async def repair_until_quality_valid(
                 issue_groups=_issues_by_section(pending),
                 quality_batch=quality_batch,
                 output_language=output_language,
+                practice_design=practice_design,
             )
             validate_planned_document(active_candidate, source)
+            validate_practice_candidate(active_candidate, practice_design, source_document=source)
         except CanvasGenerationRepairableError as exc:
             raise exc.with_candidate(exc.candidate or active_candidate)
         pending = await planner.review_quality(source, active_candidate)
@@ -101,6 +109,7 @@ async def _repair_sections_once(
     issue_groups: list[list[CanvasQualityIssue]],
     quality_batch: bool,
     output_language: str,
+    practice_design: PracticeDesign,
 ) -> CanvasDocument:
     tasks = [
         asyncio.create_task(
@@ -111,6 +120,7 @@ async def _repair_sections_once(
                 issues=issues,
                 quality_batch=quality_batch,
                 output_language=output_language,
+                practice_design=practice_design,
             )
         )
         for issues in issue_groups
@@ -142,6 +152,7 @@ async def _repair_issue_group(
     issues: list[CanvasQualityIssue],
     quality_batch: bool,
     output_language: str,
+    practice_design: PracticeDesign,
 ) -> CanvasDocument:
     active = candidate
     unresolved: list[CanvasQualityIssue] = []
@@ -174,6 +185,7 @@ async def _repair_issue_group(
             block_ids=[group[0].block_id for group in block_groups if group[0].block_id],
             failure_context=_quality_failure_context(unresolved),
             output_language=output_language,
+            practice_design=practice_design,
         )
     return await planner.repair_section(
         source,
@@ -184,6 +196,7 @@ async def _repair_issue_group(
             _quality_failure_context(unresolved) if quality_batch else unresolved[0].reason
         ),
         output_language=output_language,
+        practice_design=practice_design,
     )
 
 

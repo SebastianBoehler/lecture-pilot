@@ -10,11 +10,12 @@ from lecturepilot.canvas_text_normalizer import clean_canvas_text
 from lecturepilot.course_canvas_plan_parser import _read_block as read_planned_block
 from lecturepilot.course_canvas_prompt import planner_messages
 from lecturepilot.course_canvas_section_prompt import section_messages
-from lecturepilot.course_canvas_section_planner import _read_block as read_section_planned_block
+from lecturepilot.course_canvas_section_reader import _read_block as read_section_planned_block
 from lecturepilot.source_bundle_canvas import (
     SourceBundleCanvasError,
     import_source_bundle_canvas,
 )
+from practice_design_test_helpers import practice_design_for_canvas
 
 
 def test_notebook_imports_markdown_and_code_without_outputs(tmp_path: Path) -> None:
@@ -133,13 +134,22 @@ def test_notebook_code_keeps_indentation_across_planner_boundaries(tmp_path: Pat
         workspace_path="planner/source.json",
     )
     code = document.sections[0].blocks[0].text or ""
+    practice_design = practice_design_for_canvas(document)
 
-    assert code in planner_messages(document)[1]["content"]
-    assert "preserve it" in planner_messages(document)[0]["content"]
-    assert "Never collapse source code into one line" in planner_messages(document)[0]["content"]
+    assert code in planner_messages(document, practice_design)[1]["content"]
+    assert "preserve it" in planner_messages(document, practice_design)[0]["content"]
     assert (
         "Never collapse source code into one line"
-        in section_messages(document, document.sections[0])[0]["content"]
+        in planner_messages(document, practice_design)[0]["content"]
+    )
+    assert (
+        "Never collapse source code into one line"
+        in section_messages(
+            document,
+            document.sections[0],
+            practice_design=practice_design,
+            applicable_targets=practice_design.targets,
+        )[0]["content"]
     )
     assert clean_canvas_text(code) == code
     assert read_planned_block({"text": code}, "code-1", "paragraph", {}).text == code

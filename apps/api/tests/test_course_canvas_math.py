@@ -14,15 +14,19 @@ from lecturepilot.course_canvas_plan_parser import planned_document as _planned_
 from lecturepilot.course_canvas_section_planner import _section_messages
 from lecturepilot.course_canvas_validation import validate_planned_document
 from lecturepilot.providers import ProviderConfigurationError
+from practice_design_test_helpers import practice_design_for_canvas
 
 
 def test_generation_prompts_require_raw_portable_display_math() -> None:
     source = _source_document()
+    design = practice_design_for_canvas(source)
 
     prompts = [
-        planner_messages(source)[0]["content"],
-        repair_message("bad math", source)["content"],
-        _section_messages(source, source.sections[0])[0]["content"],
+        planner_messages(source, design)[0]["content"],
+        repair_message("bad math", source, design)["content"],
+        _section_messages(
+            source, source.sections[0], practice_design=design, applicable_targets=()
+        )[0]["content"],
         generated_math_instructions(),
     ]
 

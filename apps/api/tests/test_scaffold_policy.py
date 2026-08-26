@@ -1,4 +1,5 @@
 from lecturepilot.scaffold_policy import (
+    scaffold_policy_for_assessment_stage,
     scaffold_policy_for_revision_task,
     scaffold_policy_for_tutor_turn,
 )
@@ -87,6 +88,15 @@ def test_repeated_missing_evidence_escalates_support() -> None:
 
     assert policy.profile == "worked_example"
     assert policy.assistance_level == "worked_step"
+
+
+def test_assessment_worked_step_renders_only_the_approved_support() -> None:
+    policy = scaffold_policy_for_assessment_stage(
+        stage="exit_support", assistance_level="worked_step"
+    )
+
+    assert policy.assistance_level == "worked_step"
+    assert "exact approved support" in policy.tutor_move.lower()
 
 
 def test_first_missing_evidence_uses_a_targeted_cue() -> None:

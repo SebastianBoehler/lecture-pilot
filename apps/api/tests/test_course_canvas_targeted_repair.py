@@ -4,10 +4,12 @@ from fastapi.testclient import TestClient
 
 from auth_helpers import confirm_source_routing, professor_headers
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.canvas_models import CanvasBlock, CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT_VERSION
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
+from practice_design_test_helpers import save_approved_design, write_manifest
+from targeted_repair_test_helpers import invalid_candidate
 
 
 def test_ai_repair_replaces_only_the_failed_block_and_preserves_neighboring_sections(
@@ -150,13 +152,16 @@ class _TargetedRepairPlanner:
         self,
         source_document: CanvasDocument,
         *,
+        practice_design,
         repair_context: str | None = None,
         output_language: str,
     ) -> CanvasDocument:
         if repair_context is not None:
             self.full_repair_called = True
             raise AssertionError("A block-addressable failure must not regenerate the full draft.")
-        self.candidate = _invalid_candidate(source_document)
+        self.candidate = _candidate_with_practice_design(
+            invalid_candidate(source_document), practice_design
+        )
         error = CanvasGenerationRepairableError(
             "Math block optimization-math in Optimization contains explanatory prose; "
             "move that text to a paragraph or callout block."
@@ -175,6 +180,7 @@ class _TargetedRepairPlanner:
         block_id: str | None,
         failure_context: str,
         output_language: str,
+        practice_design,
     ) -> CanvasDocument:
         self.targeted_repair_calls.append((section_id, block_id, failure_context))
         section = candidate_document.sections[0]
@@ -193,70 +199,6 @@ class _TargetedRepairPlanner:
             update={"sections": [repaired, candidate_document.sections[1]]}
         )
         return self.repaired_document
-
-
-def _invalid_candidate(source_document: CanvasDocument) -> CanvasDocument:
-    detail = (
-        "This source-grounded explanation connects the definition to the optimization "
-        "procedure, its assumptions, and the practical consequence for model training. "
-    )
-    first = CanvasSection(
-        id="learning-optimization",
-        title="Optimization",
-        source_ref="Lecture01.tex frame 1",
-        blocks=[
-            CanvasBlock(id="optimization-intro", type="paragraph", text=detail * 2),
-            CanvasBlock(
-                id="optimization-math",
-                type="math",
-                text=r"The score is computed as w^\top x.",
-            ),
-            CanvasBlock(id="optimization-example", type="callout", text=detail * 2),
-            CanvasBlock(id="optimization-steps", type="paragraph", text=detail * 2),
-            CanvasBlock(
-                id="optimization-open-check",
-                type="checkpoint",
-                text="Explain how the transpose makes the score dimensionally valid.",
-            ),
-            CanvasBlock(
-                id="optimization-check",
-                type="quiz",
-                text="What does the transpose accomplish?",
-                items=["It aligns dimensions", "It removes the weights"],
-                answer_index=0,
-            ),
-        ],
-    )
-    second = CanvasSection(
-        id="learning-summary",
-        title="Summary",
-        source_ref="Lecture01.tex frame 1",
-        blocks=[
-            CanvasBlock(id="summary-1", type="paragraph", text=detail * 2),
-            CanvasBlock(id="summary-2", type="paragraph", text=detail * 2),
-            CanvasBlock(id="summary-3", type="callout", text=detail * 2),
-            CanvasBlock(id="summary-4", type="paragraph", text=detail * 2),
-            CanvasBlock(
-                id="summary-open-check",
-                type="checkpoint",
-                text="Explain which vector dimensions must align in the score expression.",
-            ),
-            CanvasBlock(
-                id="summary-quiz",
-                type="quiz",
-                text="Which expression is dimensionally valid?",
-                items=[r"w^\top x", "wx"],
-                answer_index=0,
-            ),
-        ],
-    )
-    return source_document.model_copy(
-        update={
-            "source_kind": "generated",
-            "source_ref": "Lecture01.tex",
-            "sections": [first, second],
-        }
-    )
 
 
 def _course_client(tmp_path: Path) -> TestClient:
@@ -285,7 +227,7 @@ def _course_client(tmp_path: Path) -> TestClient:
                 b"""
 \\title{Targeted repair}
 \\begin{frame}{Optimization}
-The score is the inner product of the transposed weight vector and the input.
+The evidence states that the score is the inner product of the transposed weight vector and the input.
 \\end{frame}
 """,
             )
@@ -294,8 +236,36 @@ The score is the inner product of the transposed weight vector and the input.
     )
     assert upload.status_code == 200
     confirm_source_routing(client, "targeted-repair")
+    write_manifest(
+        client.app.state.canvas_workspace.layout,
+        course_id="targeted-repair",
+        lecture_id="lecture-01",
+        source_path="Lecture01.tex",
+    )
+    save_approved_design(
+        client.app.state.canvas_workspace.layout,
+        course_id="targeted-repair",
+        lecture_id="lecture-01",
+        source_path="Lecture01.tex",
+    )
     return client
 
 
 def _client_contract_headers() -> dict[str, str]:
     return {CLIENT_CONTRACT_HEADER: CLIENT_CONTRACT_VERSION}
+
+
+def _candidate_with_practice_design(candidate: CanvasDocument, practice_design) -> CanvasDocument:
+    first = candidate.sections[0]
+    checkpoints = [
+        CanvasBlock(id=f"practice-{target.id}", type="checkpoint", text=target.baseline_task)
+        for target in practice_design.targets
+    ]
+    return candidate.model_copy(
+        update={
+            "sections": [
+                first.model_copy(update={"blocks": [*first.blocks, *checkpoints]}),
+                *candidate.sections[1:],
+            ]
+        }
+    )

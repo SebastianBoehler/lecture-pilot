@@ -13,6 +13,7 @@ from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_canvas_store import InvalidCanvasDraftError
 from lecturepilot.course_schedule_store import write_course_workspace
 from lecturepilot.learning_map import build_learning_map
+from practice_design_test_helpers import practice_design_for_canvas
 from lecturepilot.models import Course, CourseWorkspaceResult, Lecture
 from canvas_workspace_fixtures import (
     configure_canvas_workspace,
@@ -79,7 +80,7 @@ def test_duplicate_canonical_quiz_ids_are_rejected_by_all_canvas_writes(
     document = _duplicate_quiz_document()
 
     with pytest.raises(ValueError, match="Duplicate canonical quiz ID 'shared-quiz'"):
-        build_learning_map(document)
+        build_learning_map(document, practice_design_for_canvas(document))
 
     workspace = CanvasWorkspace(
         workspace_root=tmp_path / "workspaces",

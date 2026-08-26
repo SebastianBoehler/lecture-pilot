@@ -106,7 +106,7 @@ def test_open_due_gate_binds_exact_current_transfer_without_completing(tmp_path:
     assert progress.delayed_reviews[key].completed_at is None
 
 
-def test_failed_due_attempt_becomes_repair_and_pass_clears_only_that_review(
+def test_failed_due_attempt_requires_repair_then_an_unaided_transfer_pass(
     tmp_path: Path,
 ) -> None:
     client = _client(tmp_path)
@@ -119,6 +119,11 @@ def test_failed_due_attempt_becomes_repair_and_pass_clears_only_that_review(
     assert client.post(open_url, headers=headers).status_code == 200
     store = CoachingProgressStore(client.app.state.canvas_workspace.layout)
     revision = _gate_revision(client, "lecture-a", "gate-a")
+    learning_map = client.app.state.canvas_workspace.course_canvas_store.learning_map(
+        course_id=COURSE_ID, lecture_id="lecture-a"
+    )
+    assert learning_map is not None
+    gate = next(item for item in learning_map.gates if item.id == "gate-a")
     context = store.context(
         user_id=user_id,
         course_id=COURSE_ID,
@@ -155,9 +160,7 @@ def test_failed_due_attempt_becomes_repair_and_pass_clears_only_that_review(
             prompt="Apply A to an unfamiliar case.",
             assistance=NextCheckAssistance(level="none", content=None),
         ),
-        gate_section_id="section-a",
-        transfer_prompt="Apply A to an unfamiliar case.",
-        review_after_days=2,
+        gate=gate,
         user_message="Attempt",
         assistant_message="Try the current check again.",
         now=NOW + timedelta(minutes=2),
@@ -200,13 +203,51 @@ def test_failed_due_attempt_becomes_repair_and_pass_clears_only_that_review(
             evidence_ids=["gate-a"],
             missing_evidence_ids=[],
         ),
-        next_check=None,
-        gate_section_id="section-a",
-        transfer_prompt="Apply A to an unfamiliar case.",
-        review_after_days=2,
+        next_check=NextCheck(
+            gate_id="gate-a",
+            gate_revision=revision,
+            prompt="Apply A to an unfamiliar case.",
+            assistance=NextCheckAssistance(level="none", content=None),
+        ),
+        gate=gate,
         user_message="Repair",
-        assistant_message="Passed.",
+        assistant_message="Apply A to an unfamiliar case.",
         now=NOW + timedelta(minutes=5),
+    )
+    after_support = _read_progress(client, user_id, "lecture-a")
+    key = review_key("gate-a", revision)
+    assert after_support.delayed_reviews[key].completed_at is None
+    assert after_support.pending_check is not None
+    assert after_support.pending_check.stage == "delayed_transfer"
+
+    exit_context = store.context(
+        user_id=user_id,
+        course_id=COURSE_ID,
+        lecture_id="lecture-a",
+        gate_id="gate-a",
+        gate_revision=revision,
+        learning_objective="Explain and apply gate A.",
+        now=NOW + timedelta(minutes=6),
+    )
+    store.record_turn(
+        user_id=user_id,
+        course_id=COURSE_ID,
+        lecture_id="lecture-a",
+        context=exit_context,
+        policy=policy,
+        decision=QualityGateDecision(
+            gate_id="gate-a",
+            gate_revision=revision,
+            status=QualityGateStatus.PASSED,
+            reason="The changed case is independently explained.",
+            evidence_ids=["gate-a"],
+            missing_evidence_ids=[],
+        ),
+        next_check=None,
+        gate=gate,
+        user_message="Independent transfer",
+        assistant_message="Passed.",
+        now=NOW + timedelta(minutes=6),
     )
     final_items = client.get(
         f"/courses/{COURSE_ID}/review-queue",

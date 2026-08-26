@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 export async function showAllPublishedLectures(user: ReturnType<typeof userEvent.setup>) {
@@ -30,6 +30,28 @@ export async function approveAllLearningDesigns(user: ReturnType<typeof userEven
     await within(review).findByText(
       new RegExp(`${index + 1} of ${lectureNames.length} approved`, "i"),
     );
+  }
+}
+
+export async function approveAllPracticeDesigns(user: ReturnType<typeof userEvent.setup>) {
+  const proposals = await screen.findAllByRole("button", { name: /generate learning plan/i });
+  for (const proposal of proposals) await user.click(proposal);
+
+  await waitFor(() => {
+    if (screen.queryAllByRole("button", { name: /review plan for/i }).length !== proposals.length)
+      throw new Error("Practice plans are still being generated.");
+  });
+  for (let index = 0; index < proposals.length; index += 1) {
+    const toggle = screen.getAllByRole("button", { name: /review plan for/i })[index];
+    if (toggle.getAttribute("aria-expanded") !== "true") await user.click(toggle);
+    const plan = toggle.closest("article");
+    if (!plan) throw new Error("Practice plan container is missing.");
+    const approval = await within(plan).findByRole("button", { name: /approve learning plan/i });
+    await user.click(approval);
+    await waitFor(() => {
+      if (within(plan).queryByRole("button", { name: /approve learning plan/i }))
+        throw new Error("Practice plan approval is still pending.");
+    });
   }
 }
 

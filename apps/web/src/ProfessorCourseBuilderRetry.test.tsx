@@ -1,10 +1,14 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
 import { professorFetchMock } from "./ProfessorCourseBuilder.testFixtures";
-import { approveAllLearningDesigns, openProfessorDemo } from "./testLessonActions";
+import {
+  approveAllLearningDesigns,
+  approveAllPracticeDesigns,
+  openProfessorDemo,
+} from "./testLessonActions";
 
 describe("Professor course builder generation retry", () => {
   afterEach(() => {
@@ -49,7 +53,13 @@ describe("Professor course builder generation retry", () => {
     await user.click(screen.getByRole("button", { name: /apply lecture schedule/i }));
     await screen.findByRole("heading", { name: /source assignments ready/i });
     await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
+    await screen.findByRole("heading", { name: /learning plans/i });
+    await approveAllPracticeDesigns(user);
+    await user.click(screen.getByRole("button", { name: /05 media/i }));
     await screen.findByRole("heading", { name: /review youtube candidates/i });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /continue to canvas draft/i })).toBeEnabled(),
+    );
     await user.click(screen.getByRole("button", { name: /continue to canvas draft/i }));
     vi.useFakeTimers();
     fireEvent.click(screen.getByRole("button", { name: /generate all lecture canvases/i }));

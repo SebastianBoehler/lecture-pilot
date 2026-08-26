@@ -124,6 +124,58 @@ describe("Professor course builder recovery", () => {
     expect(await screen.findByText(/temporarily unavailable/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /^sources$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /03 sources/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /04 design/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /retry source assignments/i })).toBeEnabled();
+  });
+
+  it("keeps Design locked after a transient routing reload following confirmation", async () => {
+    const user = userEvent.setup();
+    const baseFetch = professorFetchMock();
+    let failRoutingReload = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string, init?: RequestInit) => {
+        if (failRoutingReload && url.endsWith("/source-routing") && !init?.method) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({ detail: "Source routing refresh is temporarily unavailable." }),
+              {
+                status: 503,
+              },
+            ),
+          );
+        }
+        return baseFetch(url, init);
+      }),
+    );
+    render(<App />);
+
+    await openProfessorDemo(user);
+    await user.type(screen.getByLabelText(/course name/i), "Demo ML Course");
+    await user.click(screen.getByRole("button", { name: /specific lecture/i }));
+    await user.type(screen.getByLabelText(/lecture number/i), "03");
+    await user.clear(screen.getByLabelText(/lecture title/i));
+    await user.type(screen.getByLabelText(/lecture title/i), "Bayesian Decision Theory");
+    await user.click(screen.getByRole("button", { name: /create course workspace/i }));
+    await user.upload(
+      await screen.findByLabelText(/^choose files$/i),
+      new File(["# lecture three"], "Lecture03-eng.tex", { type: "application/x-tex" }),
+    );
+    await user.click(screen.getByRole("button", { name: /upload and process materials/i }));
+    await user.click(await screen.findByText(/review source assignments/i));
+    await user.click(
+      await screen.findByRole("button", { name: /accept assignments and continue/i }),
+    );
+    expect(await screen.findByRole("heading", { name: /learning plans/i })).toBeInTheDocument();
+
+    failRoutingReload = true;
+    await user.click(screen.getByRole("button", { name: /refresh workspace/i }));
+
+    expect(
+      await screen.findByText(/routing refresh is temporarily unavailable/i),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^sources$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /04 design/i })).toBeDisabled();
+    expect(screen.queryByText(/source routing is stale/i)).not.toBeInTheDocument();
   });
 });

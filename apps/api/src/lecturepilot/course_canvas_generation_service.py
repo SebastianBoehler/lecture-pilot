@@ -255,6 +255,7 @@ def _repair_metadata(exc: Exception) -> dict:
                 section_id=exc.section_id,
                 block_id=exc.block_id,
                 source_revision=exc.source_revision,
+                practice_design_revision=exc.practice_design_revision,
             )
             if exc.candidate is not None and exc.section_id is not None
             else None
