@@ -8,6 +8,7 @@ from lecturepilot.canvas_models import MAX_SOURCE_REF_LENGTH, CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_canvas_plan_parser import planned_document
 from lecturepilot.course_canvas_store import InvalidCanvasDraftError
+from lecturepilot.course_practice_design_store import PracticeDesignStore
 from test_course_canvas_draft_integrity import (
     _InvalidCoursePlanner,
     _client_contract_headers,
@@ -47,10 +48,15 @@ def test_invalid_draft_does_not_replace_existing_draft(tmp_path: Path) -> None:
     existing = published_course_canvas("demo-course", "lecture-01")
     stored = write_canvas_draft(workspace, existing)
     invalid = existing.model_copy(update={"title": "Invalid replacement", "source_ref": "s" * 501})
+    revision = _revision(workspace, "demo-course")
+    design = PracticeDesignStore(workspace.layout).read(
+        course_id="demo-course", lecture_id="lecture-01"
+    )
+    assert design is not None
 
     with pytest.raises(InvalidCanvasDraftError):
         workspace.course_canvas_store.write_draft(
-            invalid, expected_source_revision=_revision(workspace, "demo-course")
+            invalid, expected_source_revision=revision, practice_design=design
         )
 
     preserved = workspace.course_canvas_store.read_draft(

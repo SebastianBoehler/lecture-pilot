@@ -336,7 +336,12 @@ class _FakeCoursePlanner:
                                 id="planner-summary-p-1",
                                 type="paragraph",
                                 text="Bayes rule becomes a compact learning section.",
-                            )
+                            ),
+                            CanvasBlock(
+                                id=f"practice-{practice_design.targets[0].id}",
+                                type="checkpoint",
+                                text=practice_design.targets[0].baseline_task,
+                            ),
                         ],
                     )
                 ],

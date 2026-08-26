@@ -6,7 +6,7 @@ from auth_helpers import confirm_source_routing, professor_headers
 from canvas_planner_test_helpers import RepairingCoursePlanner
 from canvas_workspace_fixtures import published_course_canvas, write_canvas_draft
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import MAX_SOURCE_REF_LENGTH, CanvasDocument
+from lecturepilot.canvas_models import MAX_SOURCE_REF_LENGTH, CanvasBlock, CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT_VERSION
 from lecturepilot.course_canvas_repairs import lecture_source_revision
@@ -251,10 +251,26 @@ class _InvalidCoursePlanner:
         practice_design,
         output_language: str,
     ) -> CanvasDocument:
+        first = source_document.sections[0]
         return source_document.model_copy(
             update={
                 "source_kind": "generated",
                 "source_ref": "s" * (MAX_SOURCE_REF_LENGTH + 1),
+                "sections": [
+                    first.model_copy(
+                        update={
+                            "blocks": [
+                                *first.blocks,
+                                CanvasBlock(
+                                    id=f"practice-{practice_design.targets[0].id}",
+                                    type="checkpoint",
+                                    text=practice_design.targets[0].baseline_task,
+                                ),
+                            ]
+                        }
+                    ),
+                    *source_document.sections[1:],
+                ],
             }
         )
 

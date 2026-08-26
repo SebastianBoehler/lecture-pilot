@@ -178,6 +178,10 @@ def test_evaluation_failure_returns_retryable_response_without_persisting(tmp_pa
             "answers": [
                 {"question_id": "lecture-03:quiz", "selected_index": 1},
                 {"question_id": "lecture-03:section:open", "text": "Expected risk uses losses."},
+                {
+                    "question_id": "lecture-03:practice-practice-target:open",
+                    "text": "Expected risk uses losses.",
+                },
             ]
         },
     )

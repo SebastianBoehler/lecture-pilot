@@ -22,6 +22,10 @@ def test_professor_reads_privacy_preserving_readiness_summary(tmp_path: Path) ->
                 "answers": [
                     {"question_id": "lecture-03:risk-quiz", "selected_index": selected_index},
                     {"question_id": "lecture-03:risk:open", "text": "Expected risk weighs losses."},
+                    {
+                        "question_id": "lecture-03:practice-practice-target:open",
+                        "text": "Expected risk weighs losses.",
+                    },
                 ]
             },
         )
@@ -82,7 +86,12 @@ class _Evaluator:
                 question_id="lecture-03:risk:open",
                 score=0.75,
                 feedback="Add one concrete consequence.",
-            )
+            ),
+            OpenAnswerEvaluation(
+                question_id="lecture-03:practice-practice-target:open",
+                score=0.75,
+                feedback="Add one concrete consequence.",
+            ),
         ]
 
 
