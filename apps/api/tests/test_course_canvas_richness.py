@@ -16,6 +16,7 @@ from lecturepilot.course_canvas_validation import (
 )
 from lecturepilot.latex_canvas_importer import import_latex_canvas
 from lecturepilot.models import ProviderSettings
+from canvas_planner_test_helpers import RecordingFallbackPlanClient
 from practice_design_test_helpers import practice_design_for_canvas
 
 
@@ -99,7 +100,7 @@ async def test_section_fallback_skips_asset_only_outline_sections() -> None:
             blocks=[CanvasBlock(id="slide-1", type="asset", asset_path="slide-001.png")],
         )
     )
-    client = _FallbackPlanClient()
+    client = RecordingFallbackPlanClient()
 
     planned = await plan_sections_individually(
         model_client=client,
@@ -280,35 +281,3 @@ def _generated_document(section_count: int) -> CanvasDocument:
         workspace_path="canvas/index.md",
         sections=sections,
     )
-
-
-class _FallbackPlanClient:
-    def __init__(self) -> None:
-        self.source_ids: list[str] = []
-
-    async def complete_plan(self, *, settings, messages):
-        evidence = messages[1]["content"]
-        source_id = evidence.split("Required section id: ", 1)[1].splitlines()[0]
-        self.source_ids.append(source_id)
-        return {
-            "sections": [
-                {
-                    "id": f"learning-{source_id}",
-                    "title": f"Learning {source_id}",
-                    "source_ref": f"Lecture.tex {source_id}",
-                    "blocks": [
-                        {
-                            "type": "paragraph",
-                            "text": "A source-grounded explanation of this learning topic.",
-                        },
-                        {
-                            "type": "checkpoint",
-                            "text": (
-                                "Explain how this learning topic follows from the evidence "
-                                "and identify one consequence."
-                            ),
-                        },
-                    ],
-                }
-            ]
-        }

@@ -41,3 +41,35 @@ class RepairingCoursePlanner:
                 ],
             }
         )
+
+
+class RecordingFallbackPlanClient:
+    def __init__(self) -> None:
+        self.source_ids: list[str] = []
+
+    async def complete_plan(self, *, settings, messages):
+        evidence = messages[1]["content"]
+        source_id = evidence.split("Required section id: ", 1)[1].splitlines()[0]
+        self.source_ids.append(source_id)
+        return {
+            "sections": [
+                {
+                    "id": f"learning-{source_id}",
+                    "title": f"Learning {source_id}",
+                    "source_ref": f"Lecture.tex {source_id}",
+                    "blocks": [
+                        {
+                            "type": "paragraph",
+                            "text": "A source-grounded explanation of this learning topic.",
+                        },
+                        {
+                            "type": "checkpoint",
+                            "text": (
+                                "Explain how this learning topic follows from the evidence "
+                                "and identify one consequence."
+                            ),
+                        },
+                    ],
+                }
+            ]
+        }
