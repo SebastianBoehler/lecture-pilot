@@ -18,6 +18,7 @@ from lecturepilot.course_practice_design_validation import (
 )
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_provider_errors import model_provider_error_message
+from lecturepilot.model_provider_schema import strict_pydantic_response_format
 from lecturepilot.model_request_options import completion_options
 from lecturepilot.model_usage import ModelUsageRecorder, complete_with_usage
 from lecturepilot.models import ProviderSettings
@@ -77,14 +78,10 @@ def practice_design_benchmark_messages(
 
 
 def practice_design_benchmark_response_format() -> dict[str, Any]:
-    return {
-        "type": "json_schema",
-        "json_schema": {
-            "name": "lecturepilot_practice_design_benchmark_review",
-            "strict": True,
-            "schema": PracticeDesignBenchmarkEvaluation.model_json_schema(),
-        },
-    }
+    return strict_pydantic_response_format(
+        name="lecturepilot_practice_design_benchmark_review",
+        model=PracticeDesignBenchmarkEvaluation,
+    )
 
 
 class PracticeDesignBenchmarkModelClient(Protocol):

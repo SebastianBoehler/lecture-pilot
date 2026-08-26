@@ -6,6 +6,7 @@ from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.course_canvas_prompt import source_evidence
 from lecturepilot.course_practice_design_models import PracticeDesign, PracticeDesignProposal
 from lecturepilot.course_practice_design_review_models import PracticeDesignReviewResult
+from lecturepilot.model_provider_schema import strict_pydantic_response_format
 
 
 def practice_design_review_messages(
@@ -44,11 +45,7 @@ def practice_design_review_messages(
 
 
 def practice_design_review_response_format() -> dict[str, Any]:
-    return {
-        "type": "json_schema",
-        "json_schema": {
-            "name": "lecturepilot_practice_design_semantic_review",
-            "strict": True,
-            "schema": PracticeDesignReviewResult.model_json_schema(),
-        },
-    }
+    return strict_pydantic_response_format(
+        name="lecturepilot_practice_design_semantic_review",
+        model=PracticeDesignReviewResult,
+    )
