@@ -106,6 +106,19 @@ export function ProfessorPracticeDesignStep({
                 </span>
               </header>
               <label className="practice-design-objective">
+                {t("builder.design.lectureTitle")}
+                <textarea
+                  disabled={stale}
+                  value={draft.lecture_title}
+                  onChange={(event) =>
+                    setDrafts((current) => ({
+                      ...current,
+                      [lecture.id]: { ...draft, lecture_title: event.target.value },
+                    }))
+                  }
+                />
+              </label>
+              <label className="practice-design-objective">
                 {t("builder.design.objective")}
                 <textarea
                   disabled={stale}
