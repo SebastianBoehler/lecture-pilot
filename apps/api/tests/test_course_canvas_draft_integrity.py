@@ -252,23 +252,17 @@ class _InvalidCoursePlanner:
         output_language: str,
     ) -> CanvasDocument:
         first = source_document.sections[0]
+        checkpoint = CanvasBlock(
+            id=f"practice-{practice_design.targets[0].id}",
+            type="checkpoint",
+            text=practice_design.targets[0].baseline_task,
+        )
         return source_document.model_copy(
             update={
                 "source_kind": "generated",
                 "source_ref": "s" * (MAX_SOURCE_REF_LENGTH + 1),
                 "sections": [
-                    first.model_copy(
-                        update={
-                            "blocks": [
-                                *first.blocks,
-                                CanvasBlock(
-                                    id=f"practice-{practice_design.targets[0].id}",
-                                    type="checkpoint",
-                                    text=practice_design.targets[0].baseline_task,
-                                ),
-                            ]
-                        }
-                    ),
+                    first.model_copy(update={"blocks": [*first.blocks, checkpoint]}),
                     *source_document.sections[1:],
                 ],
             }
