@@ -161,14 +161,14 @@ def _target_for_checkpoint(block: CanvasBlock, design: PracticeDesign) -> Practi
 def _generic_checkpoint_gate(
     document: CanvasDocument, section: CanvasSection, block: CanvasBlock
 ) -> LearningMapGate:
-    prompt = (block.text or block.caption or section.title)[:1000]
+    prompt = (block.text or block.caption or section.title)[:1_000]
     return LearningMapGate.create(
         id=block.id,
         concept_id=section.id,
         title=(block.caption or section.title)[:200],
         prompt=prompt,
         evidence_criteria=[LearningMapEvidenceCriterion(id=block.id, description=prompt)],
-        transfer_prompt=("Apply the same reasoning to a changed case: " + prompt)[:1000],
+        transfer_prompt=("Apply the same reasoning to a changed case: " + prompt)[:1_000],
         review_after_days=2,
         section_id=section.id,
         source_ref=section.source_ref or document.source_ref,

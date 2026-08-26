@@ -40,7 +40,7 @@ def test_agent_preflight_rejects_invalid_tutor_state_before_model_call(
     )
 
     assert response.status_code == 409
-    assert response.json() == {"detail": "Persisted learning state is invalid."}
+    assert response.json() == _recovery_required_response()
     assert response.headers["content-type"].startswith("application/json")
 
 
@@ -64,7 +64,7 @@ def test_stream_preflight_rejects_learning_state_bound_to_republished_gate(
     )
 
     assert response.status_code == 409
-    assert response.json() == {"detail": "Persisted learning state is invalid."}
+    assert response.json() == _recovery_required_response()
     assert response.headers["content-type"].startswith("application/json")
 
 
@@ -148,4 +148,17 @@ def _turn_payload() -> dict:
         "lecture_id": "lecture-01",
         "attendance": "present",
         "message": "Explain the current checkpoint.",
+    }
+
+
+def _recovery_required_response() -> dict:
+    return {
+        "detail": {
+            "code": "coaching_state_recovery_required",
+            "message": (
+                "Persisted coaching state cannot be resumed safely. Use the authenticated "
+                "recovery endpoint before continuing."
+            ),
+            "recovery_path": ("/courses/martius-ml/lectures/lecture-01/learner-state/recover"),
+        }
     }

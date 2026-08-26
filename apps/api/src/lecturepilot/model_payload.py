@@ -4,7 +4,7 @@ import json
 
 from pydantic import ValidationError
 
-from lecturepilot.coaching_assistance import emitted_assistance_level
+from lecturepilot.assessment_feedback import assessment_reason, compose_assessment_message
 from lecturepilot.model_commands import (
     resolve_provider_canvas_commands,
     validate_next_check,
@@ -38,8 +38,11 @@ def agent_result_from_content(
     decision = _quality_gate_decision(provider_result.assessment, turn)
     decision = validate_quality_gate_decision(decision, turn)
     validate_next_check(provider_result.next_check, turn, decision)
+    message = provider_result.message.strip()
+    if decision is not None:
+        message = compose_assessment_message(decision, provider_result.next_check)
     result = AgentTurnResult(
-        message=provider_result.message.strip(),
+        message=message,
         session_goal=(
             provider_result.session_goal.strip() if provider_result.session_goal else None
         ),
@@ -48,15 +51,6 @@ def agent_result_from_content(
         quality_gate=decision,
         model=model,
     )
-    try:
-        if result.next_check is not None:
-            emitted_assistance_level(
-                message=result.message,
-                prompt=result.next_check.prompt,
-                assistance=result.next_check.assistance,
-            )
-    except ValueError as exc:
-        raise ProviderConfigurationError(f"Invalid next-check assistance: {exc}.") from exc
     return result
 
 
@@ -65,16 +59,16 @@ def _quality_gate_decision(
 ) -> QualityGateDecision | None:
     if assessment is None:
         return None
+    gate = turn.active_gate
     required = [
-        criterion.id
-        for criterion in (turn.active_gate.evidence_criteria if turn.active_gate else [])
-        if criterion.required
+        criterion.id for criterion in (gate.evidence_criteria if gate else []) if criterion.required
     ]
     missing = [
         evidence_id for evidence_id in required if evidence_id not in assessment.evidence_ids
     ]
     return QualityGateDecision(
-        **assessment.model_dump(mode="json"),
+        **assessment.model_dump(mode="json", exclude={"reason"}),
+        reason=(assessment_reason(gate, missing) if gate is not None else assessment.reason),
         status=(QualityGateStatus.NEEDS_EVIDENCE if missing else QualityGateStatus.PASSED),
         missing_evidence_ids=missing,
     )

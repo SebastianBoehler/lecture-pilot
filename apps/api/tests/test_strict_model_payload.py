@@ -238,6 +238,7 @@ def test_provider_payload_accepts_unbound_turn_without_assessment() -> None:
 
     assert result.quality_gate is None
     assert result.next_check is None
+    assert result.message == payload["message"]
 
 
 def test_provider_payload_accepts_one_complete_strict_contract() -> None:

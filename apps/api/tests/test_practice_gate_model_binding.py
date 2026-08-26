@@ -75,7 +75,36 @@ def test_provider_accepts_exact_approved_hint_and_prompt() -> None:
     assert result.next_check.assistance.content == "Name the invariant first."
 
 
-def test_unassisted_next_check_must_still_appear_exactly_in_message() -> None:
+def test_assessed_response_replaces_provider_help_with_server_owned_feedback() -> None:
+    gate = practice_gate()
+    payload = _payload(
+        gate,
+        evidence_ids=[],
+        next_prompt=gate.prompt,
+        assistance_level="prompt",
+        assistance_content="Name the invariant first.",
+    )
+    payload["message"] = (
+        "Invented trick: divide both sides first. "
+        "Name the invariant first. Diagnose the mechanism in the canonical case."
+    )
+    payload["assessment"]["reason"] = "Invented assessor prose."
+
+    result = _parse(gate, payload, stage="diagnostic")
+
+    assert result.message == (
+        "More evidence is needed for the approved criterion: Names the causal boundary.\n\n"
+        "Approved support:\nName the invariant first.\n\n"
+        "Next check:\nDiagnose the mechanism in the canonical case."
+    )
+    assert result.quality_gate is not None
+    assert result.quality_gate.reason == (
+        "More evidence is needed for the approved criterion: Names the causal boundary."
+    )
+    assert "Invented" not in result.model_dump_json()
+
+
+def test_server_composes_unassisted_next_check_when_provider_omits_it_from_message() -> None:
     gate = practice_gate()
     payload = _payload(
         gate,
@@ -86,8 +115,12 @@ def test_unassisted_next_check_must_still_appear_exactly_in_message() -> None:
     )
     payload["message"] = "Good diagnostic answer. Now try the parallel case."
 
-    with pytest.raises(ProviderConfigurationError, match="next check is not present"):
-        _parse(gate, payload, stage="diagnostic")
+    result = _parse(gate, payload, stage="diagnostic")
+
+    assert result.message == (
+        "Assessment passed against the approved required evidence.\n\n"
+        f"Next check:\n{gate.independent_exit_task}"
+    )
 
 
 def test_exact_two_thousand_character_exit_task_is_not_truncated() -> None:

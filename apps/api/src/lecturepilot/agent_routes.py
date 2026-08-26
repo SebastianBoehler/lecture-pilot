@@ -9,6 +9,7 @@ from lecturepilot.agent_turn_orchestration import agent_turn_events, complete_ag
 from lecturepilot.api_auth import request_context
 from lecturepilot.models import AgentTurnRequest, AgentTurnResult, Course, Lecture
 from lecturepilot.coaching_progress import CoachingProgressStore, InvalidCoachingStateError
+from lecturepilot.coaching_state_recovery import recovery_required_detail
 from lecturepilot.learner_state import InvalidLearnerGateStateError
 from lecturepilot.learning_state_preflight import validate_coaching_bindings
 from lecturepilot.professor_preview import resolve_learner_workspace_access
@@ -89,5 +90,10 @@ def _preflight_learning_state(app: FastAPI, user_id: str, course_id: str, lectur
                 user_id=user_id, course_id=course_id, lecture_id=lecture_id
             )
             validate_coaching_bindings(progress, learning_map)
-    except (InvalidCoachingStateError, InvalidLearnerGateStateError) as exc:
+    except InvalidCoachingStateError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=recovery_required_detail(course_id, lecture_id),
+        ) from exc
+    except InvalidLearnerGateStateError as exc:
         raise HTTPException(status_code=409, detail="Persisted learning state is invalid.") from exc

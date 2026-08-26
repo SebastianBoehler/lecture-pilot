@@ -107,7 +107,12 @@ def published_martius_workspace(tmp_path: Path) -> CanvasWorkspace:
     return workspace
 
 
-def write_canvas_draft(workspace: CanvasWorkspace, document: CanvasDocument) -> CanvasDocument:
+def write_canvas_draft(
+    workspace: CanvasWorkspace,
+    document: CanvasDocument,
+    *,
+    delayed_transfer_task: str | None = None,
+) -> CanvasDocument:
     existing_design = PracticeDesignStore(workspace.layout).read(
         course_id=document.course_id, lecture_id=document.lecture_id
     )
@@ -156,6 +161,7 @@ def write_canvas_draft(workspace: CanvasWorkspace, document: CanvasDocument) -> 
         sourced_document,
         source_revision=revision,
         source_path=source_path,
+        delayed_transfer_task=delayed_transfer_task,
     )
     workspace.write_course_canvas_draft(
         sourced_document,

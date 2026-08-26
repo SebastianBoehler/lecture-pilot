@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from lecturepilot.coaching_progress import CoachingProgressStore
+from lecturepilot.coaching_state_models import CoachingProgress
 from lecturepilot.learner_lesson_state_models import (
     LearnerDueGateReview,
     LearnerLessonState,
@@ -19,13 +20,15 @@ def lesson_state_snapshot(
     course_id: str,
     lecture_id: str,
     publication_version: int,
+    progress: CoachingProgress | None = None,
     now: datetime | None = None,
 ) -> LearnerLessonState:
-    progress = coaching_store.read(
-        user_id=user_id,
-        course_id=course_id,
-        lecture_id=lecture_id,
-    )
+    if progress is None:
+        progress = coaching_store.read(
+            user_id=user_id,
+            course_id=course_id,
+            lecture_id=lecture_id,
+        )
     decisions = learner_store.latest_gate_decisions(
         user_id=user_id,
         course_id=course_id,

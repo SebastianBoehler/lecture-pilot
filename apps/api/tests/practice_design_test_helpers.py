@@ -213,6 +213,7 @@ def approved_design_document(
     *,
     source_revision: str,
     source_path: str,
+    delayed_transfer_task: str | None = None,
 ) -> tuple[CanvasDocument, PracticeDesign]:
     baseline = next(
         (
@@ -227,7 +228,9 @@ def approved_design_document(
         id="practice-target",
         baseline_task=baseline,
         independent_exit_task="Solve a parallel source-grounded task independently.",
-        delayed_transfer_task="Solve a changed source-grounded transfer task independently.",
+        delayed_transfer_task=(
+            delayed_transfer_task or "Solve a changed source-grounded transfer task independently."
+        ),
         source_refs=(source_path,),
     )
     design = PracticeDesign.create(

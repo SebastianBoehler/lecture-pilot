@@ -68,4 +68,7 @@ async def test_tool_loop_repair_receives_the_server_selected_check_error() -> No
 
     repair_instruction = calls[1]["messages"][-1]["content"]
     assert "server-selected next check" in repair_instruction
-    assert result.message == corrected["message"]
+    assert result.message == (
+        "More evidence is needed for the approved criterion: Names one boundary.\n\n"
+        "Next check:\nExplain the mechanism."
+    )

@@ -20,7 +20,12 @@ COURSE_ID = "review-course"
 NOW = datetime.now(UTC)
 
 
-def review_client(tmp_path: Path) -> TestClient:
+def review_client(
+    tmp_path: Path,
+    *,
+    baseline_prompt: str | None = None,
+    delayed_transfer_prompt: str | None = None,
+) -> TestClient:
     app = create_app()
     app.state.canvas_workspace = CanvasWorkspace(
         workspace_root=tmp_path / "workspaces",
@@ -51,7 +56,12 @@ def review_client(tmp_path: Path) -> TestClient:
         ("lecture-locked", "section-locked", "gate-locked", "Locked"),
     ):
         document = published_course_canvas(COURSE_ID, lecture_id)
-        blocks = [CanvasBlock(id=gate_id, type="checkpoint", text=f"Explain {label}.")]
+        gate_prompt = (
+            baseline_prompt
+            if lecture_id == "lecture-a" and gate_id == "gate-a" and baseline_prompt is not None
+            else f"Explain {label}."
+        )
+        blocks = [CanvasBlock(id=gate_id, type="checkpoint", text=gate_prompt)]
         if lecture_id == "lecture-a":
             blocks.append(CanvasBlock(id="gate-c", type="checkpoint", text="Explain C."))
         document.sections[0] = document.sections[0].model_copy(
@@ -61,7 +71,11 @@ def review_client(tmp_path: Path) -> TestClient:
                 "blocks": blocks,
             }
         )
-        write_canvas_draft(app.state.canvas_workspace, document)
+        write_canvas_draft(
+            app.state.canvas_workspace,
+            document,
+            delayed_transfer_task=(delayed_transfer_prompt if lecture_id == "lecture-a" else None),
+        )
         reviews = CourseLearningDesignStore(app.state.canvas_workspace.layout)
         review = reviews.read(course_id=COURSE_ID, lecture_id=lecture_id)
         changed = reviews.update(

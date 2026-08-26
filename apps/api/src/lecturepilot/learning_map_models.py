@@ -7,6 +7,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
+from lecturepilot.coaching_contract import MAX_APPROVED_TASK_LENGTH
+
 
 ADDED_GATE_FIELDS = {
     "target_invariant",
@@ -47,11 +49,13 @@ class LearningMapGate(BaseModel):
     id: str = Field(min_length=1, max_length=160)
     concept_id: str = Field(min_length=1, max_length=160)
     title: str = Field(min_length=1, max_length=200)
-    prompt: str = Field(min_length=1, max_length=1000)
+    prompt: str = Field(min_length=1, max_length=MAX_APPROVED_TASK_LENGTH)
     target_invariant: str | None = Field(default=None, min_length=1, max_length=1_000)
     evidence_criteria: list[LearningMapEvidenceCriterion] = Field(min_length=1, max_length=40)
-    transfer_prompt: str = Field(min_length=1, max_length=1000)
-    independent_exit_task: str | None = Field(default=None, min_length=1, max_length=2_000)
+    transfer_prompt: str = Field(min_length=1, max_length=MAX_APPROVED_TASK_LENGTH)
+    independent_exit_task: str | None = Field(
+        default=None, min_length=1, max_length=MAX_APPROVED_TASK_LENGTH
+    )
     independent_exit_surface_change: str | None = Field(
         default=None, min_length=1, max_length=1_000
     )

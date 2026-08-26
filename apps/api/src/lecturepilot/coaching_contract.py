@@ -1,5 +1,6 @@
 from typing import Literal
 
+MAX_APPROVED_TASK_LENGTH = 2_000
 AssistanceLevel = Literal["none", "prompt", "cue", "faded_example", "worked_step"]
 AssessmentStage = Literal[
     "diagnostic",

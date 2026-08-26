@@ -4,7 +4,12 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from lecturepilot.coaching_contract import AssessmentStage, AssistanceLevel, HintLevel
+from lecturepilot.coaching_contract import (
+    MAX_APPROVED_TASK_LENGTH,
+    AssessmentStage,
+    AssistanceLevel,
+    HintLevel,
+)
 from lecturepilot.scaffold_policy import TutorScaffoldPolicy
 
 
@@ -44,7 +49,7 @@ class AgentCoachingContext(BaseModel):
     pending_check_kind: Literal["standard", "delayed_transfer"] | None = None
     pending_check_stage: AssessmentStage | None = None
     pending_check_issued_at: str | None = Field(default=None, max_length=80)
-    pending_check_prompt: str | None = Field(default=None, max_length=2_000)
+    pending_check_prompt: str | None = Field(default=None, max_length=MAX_APPROVED_TASK_LENGTH)
     pending_check_assistance_content: str | None = Field(default=None, max_length=2_000)
     exposed_hint_levels: list[HintLevel] = Field(default_factory=list, max_length=4)
     delayed_review_attempted: bool = False

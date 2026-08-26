@@ -73,6 +73,39 @@ class LearnerStateStore:
         path = self.layout.user_lecture_root(user_id, course_id, lecture_id) / "gates.json"
         return dict(_read_gate_payload(path, course_id=course_id, lecture_id=lecture_id).gates)
 
+    def clear_quality_gates_matching_revisions(
+        self,
+        *,
+        course_id: str,
+        lecture_id: str,
+        user_id: str,
+        gate_revisions: dict[str, str],
+    ) -> list[str]:
+        path = self.layout.user_lecture_root(user_id, course_id, lecture_id) / "gates.json"
+        with exclusive_file_lock(path):
+            payload = _read_gate_payload(path, course_id=course_id, lecture_id=lecture_id)
+            cleared = sorted(
+                gate_id
+                for gate_id, decision in payload.gates.items()
+                if gate_revisions.get(gate_id) == decision.gate_revision
+            )
+            if not cleared:
+                return []
+            gates = {
+                gate_id: decision
+                for gate_id, decision in payload.gates.items()
+                if gate_id not in cleared
+            }
+            stored = LearnerGateStorePayload(
+                schema_version=1,
+                course_id=course_id,
+                lecture_id=lecture_id,
+                updated_at=datetime.now(UTC),
+                gates=gates,
+            )
+            _write_json(path, stored.model_dump(mode="json"))
+            return cleared
+
     def record_quiz_answer(
         self,
         *,

@@ -5,6 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from lecturepilot.coaching_contract import MAX_APPROVED_TASK_LENGTH
 from lecturepilot.learning_design_report_models import LearningDesignReport
 from lecturepilot.learning_map import LearningMap, LearningMapEvidenceCriterion
 
@@ -39,9 +40,9 @@ class LearningDesignReview(BaseModel):
 
 class LearningDesignGateInput(BaseModel):
     id: str = Field(min_length=1, max_length=160)
-    prompt: str = Field(min_length=1, max_length=1_000)
+    prompt: str = Field(min_length=1, max_length=MAX_APPROVED_TASK_LENGTH)
     evidence_criteria: list[LearningMapEvidenceCriterion] = Field(min_length=1, max_length=40)
-    transfer_prompt: str = Field(min_length=1, max_length=1_000)
+    transfer_prompt: str = Field(min_length=1, max_length=MAX_APPROVED_TASK_LENGTH)
     review_after_days: int = Field(ge=1, le=365)
 
 

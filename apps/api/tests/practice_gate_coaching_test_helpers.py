@@ -8,7 +8,11 @@ NOW = datetime(2026, 8, 26, 9, tzinfo=UTC)
 
 
 def practice_gate(
-    *, one_hint: bool = False, independent_exit_task: str | None = None
+    *,
+    one_hint: bool = False,
+    baseline_task: str | None = None,
+    independent_exit_task: str | None = None,
+    delayed_transfer_task: str | None = None,
 ) -> LearningMapGate:
     hints = [{"level": "prompt", "content": "Name the invariant first."}]
     if not one_hint:
@@ -22,10 +26,12 @@ def practice_gate(
         id="practice-mechanism",
         concept_id="mechanism",
         title="Mechanism",
-        prompt="Diagnose the mechanism in the canonical case.",
+        prompt=baseline_task or "Diagnose the mechanism in the canonical case.",
         target_invariant="The causal boundary remains unchanged.",
         evidence_criteria=[{"id": "boundary", "description": "Names the causal boundary."}],
-        transfer_prompt="Apply the boundary after the representation changes.",
+        transfer_prompt=(
+            delayed_transfer_task or "Apply the boundary after the representation changes."
+        ),
         independent_exit_task=(
             independent_exit_task or "Apply the boundary to a parallel case without help."
         ),

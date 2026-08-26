@@ -5,7 +5,12 @@ from typing import Literal
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
 from lecturepilot.agent_context_models import AgentConversationMessage
-from lecturepilot.coaching_contract import AssessmentStage, AssistanceLevel, HintLevel
+from lecturepilot.coaching_contract import (
+    MAX_APPROVED_TASK_LENGTH,
+    AssessmentStage,
+    AssistanceLevel,
+    HintLevel,
+)
 
 AttemptKind = Literal[
     "none",
@@ -31,7 +36,7 @@ class PendingCheck(BaseModel):
 
     gate_id: str = Field(min_length=1, max_length=160)
     gate_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
-    prompt: str = Field(min_length=1, max_length=2_000)
+    prompt: str = Field(min_length=1, max_length=MAX_APPROVED_TASK_LENGTH)
     assistance_level: AssistanceLevel
     assistance_content: str | None = Field(max_length=2_000)
     kind: PendingCheckKind
@@ -72,7 +77,7 @@ class DelayedReview(BaseModel):
     gate_id: str = Field(min_length=1, max_length=160)
     gate_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     section_id: str = Field(min_length=1, max_length=160)
-    transfer_prompt: str = Field(min_length=1, max_length=1000)
+    transfer_prompt: str = Field(min_length=1, max_length=MAX_APPROVED_TASK_LENGTH)
     scheduled_at: AwareDatetime
     due_at: AwareDatetime
     planned_delay_seconds: int = Field(gt=0)
