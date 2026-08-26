@@ -18,6 +18,7 @@ from lecturepilot.course_practice_design_validation import (
 )
 from lecturepilot.course_canvas_repairs import lecture_source_revision
 from lecturepilot.durable_files import ensure_durable_directory, fsync_directory
+from lecturepilot.learning_map import LearningMap, read_learning_map
 from lecturepilot.storage_layout import StorageLayout
 
 
@@ -149,3 +150,23 @@ def validate_bound_learning_map(
     )
     validate_learning_map_practice_contract(learning_map, design)
     return design
+
+
+def read_bound_learning_map(
+    layout: StorageLayout, canvas_dir: Path, *, course_id: str, lecture_id: str
+) -> LearningMap | None:
+    learning_map = read_learning_map(canvas_dir)
+    if learning_map is None:
+        return None
+    source_revision = lecture_source_revision(layout, course_id=course_id, lecture_id=lecture_id)
+    if source_revision is None:
+        raise PracticeDesignBindingError("Draft source provenance is unavailable.")
+    validate_bound_learning_map(
+        layout,
+        canvas_dir,
+        learning_map,
+        course_id=course_id,
+        lecture_id=lecture_id,
+        source_revision=source_revision,
+    )
+    return learning_map

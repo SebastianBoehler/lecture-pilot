@@ -37,6 +37,7 @@ class LearningMapGate(BaseModel):
     prompt: str = Field(min_length=1, max_length=1000)
     evidence_criteria: list[LearningMapEvidenceCriterion] = Field(min_length=1, max_length=40)
     transfer_prompt: str = Field(min_length=1, max_length=1000)
+    independent_exit_task: str | None = Field(default=None, min_length=1, max_length=2_000)
     review_after_days: int = Field(ge=1, le=365)
     revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     section_id: str = Field(min_length=1, max_length=160)
@@ -228,6 +229,7 @@ def _checkpoint_gate(
             for item in target.evidence_criteria
         ],
         transfer_prompt=target.delayed_transfer_task,
+        independent_exit_task=target.independent_exit_task,
         review_after_days=target.review_after_days,
         section_id=section.id,
         source_ref=section.source_ref or document.source_ref,

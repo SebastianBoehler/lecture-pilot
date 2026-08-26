@@ -149,7 +149,7 @@ def read_published_snapshot_locked(
         raise InvalidPublishedCanvasContextError(
             "Published canvas metadata does not match its document. Publish it again."
         )
-    _validate_practice_binding(published_dir, publication, learning_map)
+    _validate_practice_binding(published_dir, publication)
     return PublishedCanvasSnapshot(
         document=document.model_copy(update={"workspace_path": str(published_dir / "index.md")}),
         publication=publication,
@@ -160,7 +160,6 @@ def read_published_snapshot_locked(
 def _validate_practice_binding(
     published_dir: Path,
     publication: CanvasPublicationMetadata,
-    learning_map: learning_maps.LearningMap,
 ) -> None:
     if publication.practice_design_revision is None:
         return

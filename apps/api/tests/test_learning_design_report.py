@@ -7,7 +7,9 @@ from pydantic import ValidationError
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_learning_design_store import canvas_digest
+from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.learning_map import LearningMapGate, build_learning_map
+from practice_design_test_helpers import practice_design_for_canvas
 
 
 def test_valid_report_is_deterministic_and_fully_source_backed() -> None:
@@ -46,18 +48,19 @@ def test_valid_report_is_deterministic_and_fully_source_backed() -> None:
         "status": "complete",
     }
     assert first.coverage.source_backed_assessments.model_dump() == {
-        "covered": 2,
-        "total": 2,
+        "covered": 3,
+        "total": 3,
         "status": "complete",
     }
     assert first.coverage.transfer_prompts.model_dump() == {
-        "covered": 1,
-        "total": 1,
+        "covered": 2,
+        "total": 2,
         "status": "complete",
     }
     assert first.concepts[0].source_backed_assessment_ids == [
         "mechanism-check",
         "mechanism-quiz",
+        "practice-derive-conclusion",
     ]
     assert first.diagnostics == []
 
@@ -109,13 +112,13 @@ def test_transfer_coverage_preserves_the_strict_learning_map_contract() -> None:
     )
 
     assert gateful.coverage.transfer_prompts.status == "complete"
-    assert gateful.coverage.transfer_prompts.covered == gateful.coverage.transfer_prompts.total == 1
+    assert gateful.coverage.transfer_prompts.covered == gateful.coverage.transfer_prompts.total == 2
     assert no_gate.coverage.transfer_prompts.model_dump() == {
-        "covered": 0,
-        "total": 0,
-        "status": "not_applicable",
+        "covered": 1,
+        "total": 1,
+        "status": "complete",
     }
-    assert [item.code for item in no_gate.diagnostics] == ["quiz_only_no_open_checkpoint"]
+    assert no_gate.diagnostics == []
 
 
 def test_document_source_does_not_mask_missing_local_assessment_sources() -> None:
@@ -140,8 +143,8 @@ def test_document_source_does_not_mask_missing_local_assessment_sources() -> Non
     report = _report(document)
 
     assert report.coverage.source_backed_assessments.model_dump() == {
-        "covered": 0,
-        "total": 2,
+        "covered": 1,
+        "total": 3,
         "status": "incomplete",
     }
     assert report.concepts[0].source_backed_assessment_ids == []
@@ -152,7 +155,6 @@ def test_document_source_does_not_mask_missing_local_assessment_sources() -> Non
         "local-check",
         "local-quiz",
     ]
-    assert any(item.code == "no_source_backed_assessment" for item in report.diagnostics)
 
 
 def test_report_identifies_unassessed_concepts_and_late_examples_without_sequence_noise() -> None:
@@ -191,7 +193,63 @@ def _report(document: CanvasDocument):
         from lecturepilot.learning_design_report import build_learning_design_report
     except ModuleNotFoundError:
         pytest.fail("learning-design report module is missing", pytrace=False)
-    learning_map = build_learning_map(document)
+    source_sections = [section for section in document.sections if section.source_ref]
+    if not source_sections:
+        document = document.model_copy(
+            update={
+                "sections": [
+                    *document.sections,
+                    CanvasSection(
+                        id="practice-source",
+                        title="Practice source",
+                        source_ref=document.source_ref,
+                        blocks=[],
+                    ),
+                ]
+            }
+        )
+        source_sections = [document.sections[-1]]
+    target_section = source_sections[-1]
+    base_design = practice_design_for_canvas(document)
+    practice_design = base_design.model_copy(
+        update={
+            "targets": (
+                base_design.targets[0].model_copy(
+                    update={"source_refs": (target_section.source_ref,)}
+                ),
+            )
+        }
+    )
+    practice_design = PracticeDesign.create(
+        course_id=document.course_id,
+        lecture_id=document.lecture_id,
+        lecture_title=document.title,
+        objective=practice_design.objective,
+        source_revision="a" * 64,
+        targets=practice_design.targets,
+    )
+    document = document.model_copy(
+        update={
+            "sections": [
+                section.model_copy(
+                    update={
+                        "blocks": [
+                            *section.blocks,
+                            CanvasBlock(
+                                id=f"practice-{practice_design.targets[0].id}",
+                                type="checkpoint",
+                                text=practice_design.targets[0].baseline_task,
+                            ),
+                        ]
+                    }
+                )
+                if section.id == target_section.id
+                else section
+                for section in document.sections
+            ]
+        }
+    )
+    learning_map = build_learning_map(document, practice_design)
     return build_learning_design_report(
         document=document,
         learning_map=learning_map,

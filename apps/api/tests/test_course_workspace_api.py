@@ -11,11 +11,12 @@ from auth_helpers import (
     professor_headers,
     student_headers,
 )
-from practice_design_test_helpers import save_approved_design, write_manifest
+from practice_design_test_helpers import save_approved_design
 from canvas_workspace_fixtures import publish_course_canvas, published_course_canvas
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.course_builder_source import course_builder_source_document
 from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT_VERSION
 from lecturepilot.logging_observability import LOGGER_NAME, LoggingObservability
 from lecturepilot.models import LectureScheduleItem, LectureScheduleProposal
@@ -486,12 +487,7 @@ def _pdf_source(text: str) -> bytes:
 
 def _approve_design(client, course_id: str, lecture_id: str, source_path: str) -> None:
     layout = client.app.state.canvas_workspace.layout
-    write_manifest(
-        layout,
-        course_id=course_id,
-        lecture_id=lecture_id,
-        source_path=source_path,
-    )
+    course_builder_source_document(client.app, course_id, lecture_id)
     save_approved_design(
         layout,
         course_id=course_id,
@@ -521,7 +517,12 @@ class _FakeCoursePlanner:
                                 id="planner-summary-p-1",
                                 type="paragraph",
                                 text="The uploaded dynamic course source seeded this canvas.",
-                            )
+                            ),
+                            CanvasBlock(
+                                id=f"practice-{practice_design.targets[0].id}",
+                                type="checkpoint",
+                                text=practice_design.targets[0].baseline_task,
+                            ),
                         ],
                     )
                 ],
@@ -539,6 +540,23 @@ class _RecordingCoursePlanner:
             update={
                 "source_kind": "generated",
                 "source_ref": f"planned {source_document.source_ref}",
+                "sections": [
+                    section.model_copy(
+                        update={
+                            "blocks": [
+                                *section.blocks,
+                                CanvasBlock(
+                                    id=f"practice-{practice_design.targets[0].id}",
+                                    type="checkpoint",
+                                    text=practice_design.targets[0].baseline_task,
+                                ),
+                            ]
+                        }
+                    )
+                    if index == 0
+                    else section
+                    for index, section in enumerate(source_document.sections)
+                ],
             }
         )
 
@@ -644,6 +662,11 @@ class _FakeMixedSourcePlanner:
                                 id="mixed-source-summary-p-1",
                                 type="paragraph",
                                 text="The planner saw Markdown, text, and PDF evidence.",
+                            ),
+                            CanvasBlock(
+                                id=f"practice-{practice_design.targets[0].id}",
+                                type="checkpoint",
+                                text=practice_design.targets[0].baseline_task,
                             ),
                             media["figures/risk.png"],
                             media["videos/decision.mp4"],

@@ -180,30 +180,42 @@ def approved_design_document(
         targets=(design_target,),
     )
     store = PracticeDesignStore(layout)
-    stored = store.save_proposal(
-        course_id=document.course_id,
-        lecture_id=document.lecture_id,
-        source_revision=source_revision,
-        proposal=PracticeDesignProposal(
-            lecture_title=design.lecture_title,
-            objective=design.objective,
-            targets=design.targets,
-        ),
-        allowed_source_paths=(source_path,),
-        expected_design_revision=None,
-        expected_design_approval=None,
-    )
-    design = store.approve(
-        course_id=document.course_id,
-        lecture_id=document.lecture_id,
-        source_revision=source_revision,
-        design_revision=stored.revision,
-        approved_by="professor",
-    )
+    current = store.read(course_id=document.course_id, lecture_id=document.lecture_id)
+    if current is not None:
+        design = store.require_approved(
+            course_id=document.course_id,
+            lecture_id=document.lecture_id,
+            source_revision=source_revision,
+        )
+    else:
+        stored = store.save_proposal(
+            course_id=document.course_id,
+            lecture_id=document.lecture_id,
+            source_revision=source_revision,
+            proposal=PracticeDesignProposal(
+                lecture_title=design.lecture_title,
+                objective=design.objective,
+                targets=design.targets,
+            ),
+            allowed_source_paths=(source_path,),
+            expected_design_revision=None,
+            expected_design_approval=None,
+        )
+        design = store.approve(
+            course_id=document.course_id,
+            lecture_id=document.lecture_id,
+            source_revision=source_revision,
+            design_revision=stored.revision,
+            approved_by="professor",
+        )
     first = document.sections[0]
     blocks = [
         *first.blocks,
-        CanvasBlock(id="practice-practice-target", type="checkpoint", text=baseline),
+        CanvasBlock(
+            id=f"practice-{design.targets[0].id}",
+            type="checkpoint",
+            text=design.targets[0].baseline_task,
+        ),
     ]
     return document.model_copy(
         update={"sections": [first.model_copy(update={"blocks": blocks}), *document.sections[1:]]}

@@ -37,6 +37,7 @@ class _LearningMapGate(Protocol):
     prompt: str
     evidence_criteria: list[_LearningMapCriterion]
     transfer_prompt: str
+    independent_exit_task: str | None
     review_after_days: int
 
 
@@ -139,6 +140,7 @@ def validate_learning_map_practice_contract(
         if (
             gate.prompt != target.baseline_task
             or observed_criteria != expected_criteria
+            or gate.independent_exit_task != target.independent_exit_task
             or gate.transfer_prompt != target.delayed_transfer_task
             or gate.review_after_days != target.review_after_days
         ):

@@ -45,18 +45,12 @@ def test_update_recomputes_the_report_and_publication_keeps_it_private(tmp_path:
         headers=professor_headers(),
         json={**_update_payload(initial), "objective": "A revised exact-draft objective."},
     )
-    assert changed.status_code == 200, changed.json()
-    current = changed.json()
-    assert current["approval"] is None
-    assert current["report"]["draft_digest"] == current["draft_digest"]
-    assert current["report"]["source_revision"] == current["source_revision"]
-    assert current["report"]["learning_map_revision"] == current["learning_map"]["revision"]
-    assert current["report"]["report_revision"] != initial["report"]["report_revision"]
+    assert changed.status_code == 409, changed.json()
 
     approved = client.post(
         f"{_review_path()}/approve",
         headers=professor_headers(),
-        json=_approval_payload(current),
+        json=_approval_payload(initial),
     )
     assert approved.status_code == 200, approved.json()
     published = client.post(_publish_path(), headers=professor_headers())
@@ -71,6 +65,7 @@ def _approval_payload(review: dict) -> dict:
     return {
         "draft_digest": review["draft_digest"],
         "source_revision": review["source_revision"],
+        "practice_design_revision": review["practice_design_revision"],
         "learning_map_revision": review["learning_map"]["revision"],
         "report_revision": review["report"]["report_revision"],
     }

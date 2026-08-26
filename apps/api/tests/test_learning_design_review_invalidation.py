@@ -4,7 +4,6 @@ from auth_helpers import professor_headers
 from lecturepilot.course_practice_design_store import PracticeDesignStore
 from test_learning_design_review_routes import (
     _client_with_draft,
-    _document,
     _publish_path,
     _review_path,
     _source_revision,

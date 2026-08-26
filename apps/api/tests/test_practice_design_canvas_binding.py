@@ -7,7 +7,11 @@ from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSectio
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_canvas_store import InvalidCanvasDraftError
 from lecturepilot.course_practice_design_binding import read_practice_design_binding
-from lecturepilot.course_practice_design_models import PracticeDesign, PracticeDesignProposal
+from lecturepilot.course_practice_design_models import (
+    PracticeDesign,
+    PracticeDesignProposal,
+    PracticeDesignUpdate,
+)
 from lecturepilot.course_practice_design_store import PracticeDesignStore
 from lecturepilot.course_canvas_repairs import lecture_source_revision
 from lecturepilot.course_practice_design_validation import (
@@ -50,6 +54,7 @@ def test_bound_draft_writes_exact_practice_gate_and_binding(tmp_path: Path) -> N
     assert [item.id for item in learning_map.gates[0].evidence_criteria] == [
         item.id for item in design.targets[0].evidence_criteria
     ]
+    assert learning_map.gates[0].independent_exit_task == design.targets[0].independent_exit_task
     assert learning_map.gates[0].transfer_prompt == design.targets[0].delayed_transfer_task
     assert learning_map.gates[0].review_after_days == design.targets[0].review_after_days
 
@@ -101,6 +106,56 @@ def test_shared_validator_rejects_mutated_target_criterion(tmp_path: Path) -> No
 
     with pytest.raises(PracticeDesignValidationError, match="differs"):
         validate_learning_map_practice_contract(mutated, design)
+
+
+def test_shared_validator_rejects_mutated_independent_exit_task(tmp_path: Path) -> None:
+    workspace = CanvasWorkspace(
+        workspace_root=tmp_path / "workspaces", material_root=tmp_path / "materials"
+    )
+    design = _approved_design(workspace)
+    learning_map = build_learning_map(_document(design), design)
+    mutated = learning_map.model_copy(
+        update={
+            "gates": [
+                learning_map.gates[0].model_copy(
+                    update={"independent_exit_task": "A mutated independent exit."}
+                )
+            ]
+        }
+    )
+
+    with pytest.raises(PracticeDesignValidationError, match="differs"):
+        validate_learning_map_practice_contract(mutated, design)
+
+
+def test_draft_learning_map_rejects_superseded_practice_design(tmp_path: Path) -> None:
+    workspace = CanvasWorkspace(
+        workspace_root=tmp_path / "workspaces", material_root=tmp_path / "materials"
+    )
+    design = _approved_design(workspace)
+    workspace.write_course_canvas_draft(
+        _document(design),
+        expected_source_revision=design.source_revision,
+        practice_design=design,
+    )
+    PracticeDesignStore(workspace.layout).update(
+        course_id=design.course_id,
+        lecture_id=design.lecture_id,
+        current_source_revision=design.source_revision,
+        update=PracticeDesignUpdate(
+            source_revision=design.source_revision,
+            practice_design_revision=design.revision,
+            lecture_title=design.lecture_title,
+            objective="Revised approved objective.",
+            targets=design.targets,
+        ),
+        allowed_source_paths=("lecture.md",),
+    )
+
+    with pytest.raises(InvalidCanvasDraftError, match="Stored canvas draft is invalid"):
+        workspace.course_canvas_store.learning_map(
+            course_id=COURSE_ID, lecture_id=LECTURE_ID, draft=True
+        )
 
 
 def _approved_design(workspace: CanvasWorkspace) -> PracticeDesign:

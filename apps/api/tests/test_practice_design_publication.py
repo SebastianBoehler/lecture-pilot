@@ -1,11 +1,15 @@
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
 from lecturepilot.course_canvas_publication import CanvasPublicationMetadata
+from lecturepilot.course_canvas_context import InvalidPublishedCanvasContextError
+from lecturepilot.course_canvas_publication import publication_path
 from lecturepilot.course_canvas_store import InvalidCanvasDraftError
-from lecturepilot.course_practice_design_binding import PracticeDesignBinding
+from lecturepilot.course_learning_design_store import CourseLearningDesignStore
+from lecturepilot.course_practice_design_binding import PracticeDesignBinding, binding_path
 from lecturepilot.course_practice_design_models import PracticeDesignUpdate
 from lecturepilot.course_practice_design_store import PracticeDesignStore
 from test_practice_design_canvas_binding import _approved_design, _document
@@ -75,3 +79,78 @@ def test_publication_metadata_rejects_practice_revision_mismatch() -> None:
     )
 
     assert metadata.practice_design_revision != binding.practice_design_revision
+
+
+@pytest.mark.parametrize("corruption", ["missing", "malformed", "stale", "mismatch"])
+def test_published_snapshot_rejects_invalid_practice_binding(
+    tmp_path: Path, corruption: str
+) -> None:
+    workspace, design = _published_workspace(tmp_path)
+    published_dir = workspace.course_canvas_store.path(design.course_id, design.lecture_id)
+    path = binding_path(published_dir)
+    if corruption == "missing":
+        path.unlink()
+    elif corruption == "malformed":
+        path.write_text("{}", encoding="utf-8")
+    else:
+        binding = json.loads(path.read_text(encoding="utf-8"))
+        binding["source_revision" if corruption == "stale" else "practice_design_revision"] = (
+            "b" * 64
+        )
+        path.write_text(json.dumps(binding), encoding="utf-8")
+
+    with pytest.raises(InvalidPublishedCanvasContextError, match="practice-design binding"):
+        workspace.course_canvas_store.read_current_published_snapshot(
+            course_id=design.course_id, lecture_id=design.lecture_id
+        )
+
+
+def test_legacy_published_snapshot_reads_and_republish_restores_binding(tmp_path: Path) -> None:
+    workspace, design = _published_workspace(tmp_path)
+    published_dir = workspace.course_canvas_store.path(design.course_id, design.lecture_id)
+    metadata_path = publication_path(published_dir)
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata.pop("practice_design_revision")
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+    binding_path(published_dir).unlink()
+
+    legacy = workspace.course_canvas_store.read_current_published_snapshot(
+        course_id=design.course_id, lecture_id=design.lecture_id
+    )
+    assert legacy is not None
+    assert legacy.publication.practice_design_revision is None
+
+    republished = workspace.publish_course_canvas_draft(
+        course_id=design.course_id, lecture_id=design.lecture_id, published_by="professor"
+    )
+    assert republished.version == 2
+    assert republished.practice_design_revision == design.revision
+
+
+def _published_workspace(tmp_path: Path) -> tuple[CanvasWorkspace, object]:
+    workspace = CanvasWorkspace(
+        workspace_root=tmp_path / "workspaces", material_root=tmp_path / "materials"
+    )
+    design = _approved_design(workspace)
+    workspace.write_course_canvas_draft(
+        _document(design),
+        expected_source_revision=design.source_revision,
+        practice_design=design,
+    )
+    review = CourseLearningDesignStore(workspace.layout).read(
+        course_id=design.course_id, lecture_id=design.lecture_id
+    )
+    CourseLearningDesignStore(workspace.layout).approve(
+        course_id=design.course_id,
+        lecture_id=design.lecture_id,
+        draft_digest=review.draft_digest,
+        source_revision=review.source_revision,
+        practice_design_revision=review.practice_design_revision,
+        learning_map_revision=review.learning_map.revision,
+        report_revision=review.report.report_revision,
+        approved_by="professor",
+    )
+    workspace.publish_course_canvas_draft(
+        course_id=design.course_id, lecture_id=design.lecture_id, published_by="professor"
+    )
+    return workspace, design

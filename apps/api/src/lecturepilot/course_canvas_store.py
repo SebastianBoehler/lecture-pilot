@@ -36,6 +36,7 @@ from lecturepilot.course_canvas_context import (
 )
 from lecturepilot.course_canvas_repairs import lecture_source_revision
 from lecturepilot.course_practice_design_binding import (
+    read_bound_learning_map,
     validate_bound_canvas_draft,
     write_practice_design_binding,
 )
@@ -188,10 +189,7 @@ class CourseCanvasStore:
                 ) from exc
 
     def publication(self, *, course_id: str, lecture_id: str) -> CanvasPublicationMetadata | None:
-        snapshot = self.read_current_published_snapshot(
-            course_id=course_id,
-            lecture_id=lecture_id,
-        )
+        snapshot = self.read_current_published_snapshot(course_id=course_id, lecture_id=lecture_id)
         return snapshot.publication if snapshot else None
 
     def read_published_snapshot(
@@ -217,9 +215,7 @@ class CourseCanvasStore:
         self, *, course_id: str, lecture_id: str
     ) -> AnalyticsPublicationContext:
         return read_analytics_context(
-            self.path(course_id, lecture_id),
-            course_id=course_id,
-            lecture_id=lecture_id,
+            self.path(course_id, lecture_id), course_id=course_id, lecture_id=lecture_id
         )
 
     def learning_map(
@@ -233,7 +229,14 @@ class CourseCanvasStore:
             return snapshot.learning_map if snapshot else None
         canvas_dir = self.draft_path(course_id, lecture_id)
         with locked_canvas_paths(canvas_dir):
-            return learning_maps.read_learning_map(canvas_dir)
+            try:
+                return read_bound_learning_map(
+                    self.layout, canvas_dir, course_id=course_id, lecture_id=lecture_id
+                )
+            except ValueError as exc:
+                raise InvalidCanvasDraftError(
+                    "Stored canvas draft is invalid. Retry generation for this lecture."
+                ) from exc
 
     @contextmanager
     def locked_published_learning_map(
@@ -256,10 +259,7 @@ class CourseCanvasStore:
 
 
 def _write_validated_draft(
-    document: CanvasDocument,
-    staging: Path,
-    source_revision: str,
-    practice_design: PracticeDesign,
+    document: CanvasDocument, staging: Path, source_revision: str, practice_design: PracticeDesign
 ) -> CanvasDocument:
     write_document_source(document, staging)
     normalized = normalize_learning_support(read_document_source(staging))
