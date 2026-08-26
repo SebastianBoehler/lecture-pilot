@@ -43,6 +43,22 @@ it("requires an explicit agent re-review for a saved edited revision", async () 
   expect(review).toHaveBeenCalledWith("lecture-03");
 });
 
+it("stops presenting the saved review as current after a draft edit", async () => {
+  const user = userEvent.setup();
+  renderStep("pass", vi.fn());
+
+  expect(screen.getByText(/all eight pedagogical and source checks passed/i)).toBeVisible();
+  await user.click(screen.getByRole("button", { name: /edit this target/i }));
+  const outcome = screen.getByLabelText(/outcome for posterior decisions/i);
+  await user.type(outcome, " independently");
+
+  expect(
+    screen.queryByText(/all eight pedagogical and source checks passed/i),
+  ).not.toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: /changes need review/i })).toBeVisible();
+  expect(screen.getByText(/save the changes, then request a new agent review/i)).toBeVisible();
+});
+
 function renderStep(
   reviewSeverity: PracticeDesignReviewCheck["severity"] | null,
   onReview: (lectureId: string) => void,
@@ -53,6 +69,7 @@ function renderStep(
         designs={{ "lecture-03": practiceDesignFixture({ reviewSeverity }) }}
         error={null}
         lectures={[{ id: "lecture-03", label: "03 · Bayesian decision theory" }]}
+        pendingAction={null}
         pendingLectureId={null}
         routingReady
         onApprove={vi.fn()}

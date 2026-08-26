@@ -16,7 +16,10 @@ type State = {
   designs: Readonly<Record<string, PracticeDesign>>;
   key: string;
 };
-type Pending = { key: string; values: Readonly<Record<string, number>> };
+export type PracticeDesignPendingAction =
+  "load" | "propose" | "refresh" | "save" | "review" | "approve";
+type PendingEntry = { action: PracticeDesignPendingAction; operation: number };
+type Pending = { key: string; values: Readonly<Record<string, PendingEntry>> };
 type ErrorState = { key: string; message: string | null };
 type Token = { epoch: number; key: string; lectureId: string; operation: number };
 type Active = {
@@ -62,7 +65,7 @@ export function useProfessorPracticeDesigns({
 
   async function load(lectureId: string) {
     const token = begin(lectureId);
-    markPending(token, true);
+    markPending(token, true, "load");
     try {
       const design = await getPracticeDesign({ courseId: courseId!, lectureId, session });
       if (current(token)) setDesign(lectureId, design, false);
@@ -75,13 +78,17 @@ export function useProfessorPracticeDesigns({
         }
       }
     } finally {
-      markPending(token, false);
+      markPending(token, false, "load");
     }
   }
 
-  async function mutate(lectureId: string, operation: () => Promise<PracticeDesign>) {
+  async function mutate(
+    lectureId: string,
+    action: PracticeDesignPendingAction,
+    operation: () => Promise<PracticeDesign>,
+  ) {
     const token = begin(lectureId);
-    markPending(token, true);
+    markPending(token, true, action);
     setErrorState({ key: identityKey, message: null });
     try {
       const design = await operation();
@@ -94,7 +101,7 @@ export function useProfessorPracticeDesigns({
         }
       }
     } finally {
-      markPending(token, false);
+      markPending(token, false, action);
     }
   }
 
@@ -113,13 +120,17 @@ export function useProfessorPracticeDesigns({
     );
   }
 
-  function markPending(token: Token, activeOperation: boolean) {
+  function markPending(
+    token: Token,
+    activeOperation: boolean,
+    action: PracticeDesignPendingAction,
+  ) {
     if (!current(token)) return;
     setPending((currentPending) => {
       const currentValues = currentPending.key === token.key ? currentPending.values : {};
       const values = activeOperation
-        ? { ...currentValues, [token.lectureId]: token.operation }
-        : currentValues[token.lectureId] === token.operation
+        ? { ...currentValues, [token.lectureId]: { action, operation: token.operation } }
+        : currentValues[token.lectureId]?.operation === token.operation
           ? omit(currentValues, [token.lectureId])
           : currentValues;
       return { key: token.key, values };
@@ -148,24 +159,32 @@ export function useProfessorPracticeDesigns({
 
   async function propose(lectureId: string, refresh = false) {
     if (!courseId || !identityKey) return;
-    await mutate(lectureId, () => proposePracticeDesign({ courseId, lectureId, refresh, session }));
+    await mutate(lectureId, refresh ? "refresh" : "propose", () =>
+      proposePracticeDesign({ courseId, lectureId, refresh, session }),
+    );
   }
 
   async function save(lectureId: string, update: PracticeDesignUpdate) {
     if (!courseId || !identityKey) return;
-    await mutate(lectureId, () => updatePracticeDesign({ courseId, lectureId, session, update }));
+    await mutate(lectureId, "save", () =>
+      updatePracticeDesign({ courseId, lectureId, session, update }),
+    );
   }
 
   async function approve(lectureId: string) {
     const design = designs[lectureId];
     if (!courseId || !identityKey || !design) return;
-    await mutate(lectureId, () => approvePracticeDesign({ courseId, lectureId, design, session }));
+    await mutate(lectureId, "approve", () =>
+      approvePracticeDesign({ courseId, lectureId, design, session }),
+    );
   }
 
   async function review(lectureId: string) {
     const design = designs[lectureId];
     if (!courseId || !identityKey || !design) return;
-    await mutate(lectureId, () => reviewPracticeDesign({ courseId, lectureId, design, session }));
+    await mutate(lectureId, "review", () =>
+      reviewPracticeDesign({ courseId, lectureId, design, session }),
+    );
   }
 
   function reset(lectureIds?: readonly string[]) {
@@ -212,13 +231,15 @@ export function useProfessorPracticeDesigns({
     );
   }
 
+  const currentPending = latestPending(pending, identityKey);
   return {
     allApproved,
     approve,
     designs,
     error: errorState.key === identityKey ? errorState.message : null,
     loadAll,
-    pendingLectureId: pendingLectureId(pending, identityKey),
+    pendingAction: currentPending?.action ?? null,
+    pendingLectureId: currentPending?.lectureId ?? null,
     propose,
     review,
     reset,
@@ -232,11 +253,14 @@ function omit<T>(values: Readonly<Record<string, T>>, keys: readonly string[]): 
   return next;
 }
 
-function pendingLectureId(pending: Pending, key: string): string | null {
+function latestPending(
+  pending: Pending,
+  key: string,
+): (PendingEntry & { lectureId: string }) | null {
   if (pending.key !== key) return null;
-  return Object.entries(pending.values).reduce<string | null>(
-    (latest, [lectureId, operation]) =>
-      !latest || operation > (pending.values[latest] ?? -1) ? lectureId : latest,
+  return Object.entries(pending.values).reduce<(PendingEntry & { lectureId: string }) | null>(
+    (latest, [lectureId, entry]) =>
+      !latest || entry.operation > latest.operation ? { lectureId, ...entry } : latest,
     null,
   );
 }

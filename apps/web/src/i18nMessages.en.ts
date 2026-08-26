@@ -563,6 +563,7 @@ export const enMessages = {
   "builder.design.generate": "Generate learning plan",
   "builder.design.generating": "Generating learning plan...",
   "builder.design.refresh": "Refresh proposal",
+  "builder.design.refreshing": "Refreshing proposal...",
   "builder.design.lectureTitle": "Lecture title",
   "builder.design.lectureTitleHelp": "Use the title students should see in this lecture.",
   "builder.design.objective": "Lecture objective",
@@ -634,6 +635,8 @@ export const enMessages = {
   "builder.design.criterionId": "Criterion ID",
   "builder.design.criterionDescription": "Criterion description: {id}",
   "builder.design.criterionRequired": "Criterion {id} is required",
+  "builder.design.criterionRequiredNeedsAnchor":
+    "This criterion cannot be required without an exact source excerpt. Regenerate the proposal to ground it.",
   "builder.design.misconceptions": "Misconceptions and diagnostic cues",
   "builder.design.misconceptionsHelp":
     "Describe likely wrong strategies and the evidence that lets the tutor recognize them.",
@@ -649,7 +652,8 @@ export const enMessages = {
   "builder.design.hintLevels.cue": "Cue",
   "builder.design.hintLevels.faded_example": "Faded example",
   "builder.design.hintLevels.worked_step": "Worked step",
-  "builder.design.addHint": "Add hint",
+  "builder.design.addHintByRegenerating":
+    "Regenerate the proposal to add source-grounded scaffold content.",
   "builder.design.removeHint": "Remove hint {index}",
   "builder.design.save": "Save learning plan",
   "builder.design.saving": "Saving learning plan...",
@@ -675,6 +679,9 @@ export const enMessages = {
   "builder.design.reviewRequired": "Review required",
   "builder.design.reviewRequiredHelp":
     "The edited revision has not yet passed the agent's source and pedagogy review.",
+  "builder.design.changesNeedReview": "Changes need review",
+  "builder.design.changesNeedReviewHelp":
+    "Save the changes, then request a new agent review. The previous review applies only to the saved revision.",
   "builder.design.reviewEdited": "Review edited plan",
   "builder.design.reviewing": "Reviewing edited plan...",
   "builder.design.reviewBeforeApprove":

@@ -86,26 +86,10 @@ export function ProfessorPracticeHintEditor({
         </div>
       ))}
       {target.hint_ladder.length < HINT_LEVELS.length ? (
-        <button disabled={disabled} type="button" onClick={() => addHint(target, onChange)}>
-          {t("builder.design.addHint")}
-        </button>
+        <p>{t("builder.design.addHintByRegenerating")}</p>
       ) : null}
     </fieldset>
   );
-}
-
-function addHint(target: PracticeTarget, onChange: (target: PracticeTarget) => void) {
-  const level = HINT_LEVELS.find(
-    (candidate) => !target.hint_ladder.some((hint) => hint.level === candidate),
-  );
-  if (level)
-    onChange({
-      ...target,
-      hint_ladder: sortHints([
-        ...target.hint_ladder,
-        { level, content: "", source_anchor: target.target_invariant_anchor },
-      ]),
-    });
 }
 
 function sortHints(hints: readonly PracticeHint[]): PracticeHint[] {

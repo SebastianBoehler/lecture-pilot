@@ -1,3 +1,5 @@
+import { useId } from "react";
+
 import { useI18n } from "./i18n";
 import { ProfessorPracticeEvidence } from "./ProfessorPracticeEvidence";
 import { NumberField, TextField } from "./ProfessorPracticeEditorFields";
@@ -17,6 +19,7 @@ export function ProfessorPracticeTargetEditorSection({
   onChange: (target: PracticeTarget) => void;
 }) {
   const { t } = useI18n();
+  const criterionHelpId = useId();
   if (section === "outcome")
     return (
       <fieldset className="practice-editor-fields">
@@ -105,41 +108,51 @@ export function ProfessorPracticeTargetEditorSection({
       <fieldset className="practice-editor-fields">
         <legend>{t("builder.design.evidence")}</legend>
         <p>{t("builder.design.evidenceHelp")}</p>
-        {target.evidence_criteria.map((criterion) => (
-          <div className="practice-contract-item" key={criterion.id}>
-            <code>{criterion.id}</code>
-            <TextField
-              disabled={disabled}
-              label={t("builder.design.criterionDescription", { id: criterion.id })}
-              value={criterion.description}
-              onChange={(description) =>
-                onChange({
-                  ...target,
-                  evidence_criteria: target.evidence_criteria.map((item) =>
-                    item.id === criterion.id ? { ...item, description } : item,
-                  ),
-                })
-              }
-            />
-            <label className="practice-checkbox-field">
-              <input
-                checked={criterion.required}
+        {target.evidence_criteria.map((criterion) => {
+          const cannotRequire = !criterion.required && criterion.source_anchor === null;
+          const helpId = `${criterionHelpId}-${criterion.id}`;
+          return (
+            <div className="practice-contract-item" key={criterion.id}>
+              <code>{criterion.id}</code>
+              <TextField
                 disabled={disabled}
-                type="checkbox"
-                onChange={(event) =>
+                label={t("builder.design.criterionDescription", { id: criterion.id })}
+                value={criterion.description}
+                onChange={(description) =>
                   onChange({
                     ...target,
                     evidence_criteria: target.evidence_criteria.map((item) =>
-                      item.id === criterion.id ? { ...item, required: event.target.checked } : item,
+                      item.id === criterion.id ? { ...item, description } : item,
                     ),
                   })
                 }
               />
-              {t("builder.design.criterionRequired", { id: criterion.id })}
-            </label>
-            <ProfessorPracticeEvidence anchor={criterion.source_anchor} />
-          </div>
-        ))}
+              <label className="practice-checkbox-field">
+                <input
+                  aria-describedby={cannotRequire ? helpId : undefined}
+                  checked={criterion.required}
+                  disabled={disabled || cannotRequire}
+                  type="checkbox"
+                  onChange={(event) =>
+                    onChange({
+                      ...target,
+                      evidence_criteria: target.evidence_criteria.map((item) =>
+                        item.id === criterion.id
+                          ? { ...item, required: event.target.checked }
+                          : item,
+                      ),
+                    })
+                  }
+                />
+                {t("builder.design.criterionRequired", { id: criterion.id })}
+              </label>
+              {cannotRequire ? (
+                <p id={helpId}>{t("builder.design.criterionRequiredNeedsAnchor")}</p>
+              ) : null}
+              <ProfessorPracticeEvidence anchor={criterion.source_anchor} />
+            </div>
+          );
+        })}
       </fieldset>
     );
   if (section === "misconceptions")

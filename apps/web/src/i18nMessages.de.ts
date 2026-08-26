@@ -578,6 +578,7 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.design.generate": "Lernplan erzeugen",
   "builder.design.generating": "Lernplan wird erzeugt...",
   "builder.design.refresh": "Vorschlag aktualisieren",
+  "builder.design.refreshing": "Vorschlag wird aktualisiert...",
   "builder.design.lectureTitle": "Vorlesungstitel",
   "builder.design.lectureTitleHelp": "Verwende den Titel, den Studierende sehen sollen.",
   "builder.design.objective": "Vorlesungsziel",
@@ -650,6 +651,8 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.design.criterionId": "Kriterien-ID",
   "builder.design.criterionDescription": "Kriterienbeschreibung: {id}",
   "builder.design.criterionRequired": "Kriterium {id} ist erforderlich",
+  "builder.design.criterionRequiredNeedsAnchor":
+    "Dieses Kriterium kann ohne exakten Quellenauszug nicht verpflichtend sein. Erzeuge den Vorschlag erneut, um es zu belegen.",
   "builder.design.misconceptions": "Fehlvorstellungen und Diagnosehinweise",
   "builder.design.misconceptionsHelp":
     "Beschreibe wahrscheinliche Fehlstrategien und woran der Tutor sie erkennt.",
@@ -665,7 +668,8 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.design.hintLevels.cue": "Hinweis",
   "builder.design.hintLevels.faded_example": "Ausgeblendetes Beispiel",
   "builder.design.hintLevels.worked_step": "Ausgearbeiteter Schritt",
-  "builder.design.addHint": "Hinweis hinzufügen",
+  "builder.design.addHintByRegenerating":
+    "Erzeuge den Vorschlag erneut, um quellenbelegte Hilfestufen hinzuzufügen.",
   "builder.design.removeHint": "Hinweis {index} entfernen",
   "builder.design.save": "Lernplan speichern",
   "builder.design.saving": "Lernplan wird gespeichert...",
@@ -693,6 +697,9 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.design.reviewRequired": "Prüfung erforderlich",
   "builder.design.reviewRequiredHelp":
     "Die bearbeitete Revision wurde noch nicht auf Quellenbezug und Pädagogik geprüft.",
+  "builder.design.changesNeedReview": "Änderungen müssen geprüft werden",
+  "builder.design.changesNeedReviewHelp":
+    "Speichere die Änderungen und fordere dann eine neue Agentenprüfung an. Die vorherige Prüfung gilt nur für die gespeicherte Revision.",
   "builder.design.reviewEdited": "Bearbeiteten Plan prüfen",
   "builder.design.reviewing": "Bearbeiteter Plan wird geprüft...",
   "builder.design.reviewBeforeApprove":

@@ -5,12 +5,21 @@ import { ProfessorPracticeEvidence } from "./ProfessorPracticeEvidence";
 import type { PracticeDesignQualityReview } from "./practiceDesignTypes";
 
 export function ProfessorPracticeDesignQuality({
+  dirty,
   qualityReview,
 }: {
+  dirty: boolean;
   qualityReview: PracticeDesignQualityReview | null;
 }) {
   const { t } = useI18n();
   const headingId = useId();
+  if (dirty)
+    return (
+      <section className="practice-quality is-required" aria-labelledby={headingId}>
+        <h4 id={headingId}>{t("builder.design.changesNeedReview")}</h4>
+        <p>{t("builder.design.changesNeedReviewHelp")}</p>
+      </section>
+    );
   if (!qualityReview)
     return (
       <section className="practice-quality is-required" aria-labelledby={headingId}>

@@ -17,6 +17,7 @@ describe("ProfessorPracticeDesignStep", () => {
           designs={{ "lecture-03": design() }}
           error={null}
           lectures={[{ id: "lecture-03", label: "03 · Bayesian decision theory" }]}
+          pendingAction={null}
           pendingLectureId={null}
           routingReady
           onApprove={vi.fn()}
@@ -69,6 +70,7 @@ describe("ProfessorPracticeDesignStep", () => {
           designs={{}}
           error="The practice design or source revision changed. Reload it."
           lectures={[{ id: "lecture-03", label: "03 · Bayesian decision theory" }]}
+          pendingAction={null}
           pendingLectureId={null}
           routingReady
           onApprove={vi.fn()}
@@ -91,6 +93,7 @@ describe("ProfessorPracticeDesignStep", () => {
           designs={{ "lecture-03": design(true) }}
           error={null}
           lectures={[{ id: "lecture-03", label: "03 · Bayesian decision theory" }]}
+          pendingAction={null}
           pendingLectureId={null}
           routingReady={false}
           onApprove={vi.fn()}
@@ -181,7 +184,7 @@ describe("ProfessorPracticeDesignStep", () => {
     );
   });
 
-  it("supports an empty hint ladder and can start authoring one again", async () => {
+  it("does not fabricate grounding when the professor removes all agent-authored hints", async () => {
     const user = userEvent.setup();
     const save = vi.fn();
     renderStep(save);
@@ -201,9 +204,10 @@ describe("ProfessorPracticeDesignStep", () => {
       }),
     );
 
-    await user.click(screen.getByRole("button", { name: /add hint/i }));
-    expect(screen.getByRole("combobox", { name: /hint level 1/i })).toHaveValue("prompt");
-    expect(screen.getByLabelText(/hint content 1/i)).toHaveValue("");
+    expect(screen.queryByRole("button", { name: /add hint/i })).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/regenerate the proposal to add source-grounded scaffold content/i),
+    ).toBeVisible();
   });
 });
 
@@ -214,6 +218,7 @@ function renderStep(save: (lectureId: string, update: PracticeDesignUpdate) => v
         designs={{ "lecture-03": design() }}
         error={null}
         lectures={[{ id: "lecture-03", label: "03 · Bayesian decision theory" }]}
+        pendingAction={null}
         pendingLectureId={null}
         routingReady
         onApprove={vi.fn()}

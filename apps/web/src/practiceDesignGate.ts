@@ -43,6 +43,7 @@ export function useProfessorPracticeDesignGate({
       designs: designs.designs,
       error: designs.error,
       lectures: targetLectures,
+      pendingAction: designs.pendingAction,
       pendingLectureId: designs.pendingLectureId,
       routingReady,
       onApprove: (lectureId: string) => void designs.approve(lectureId),
