@@ -4,9 +4,8 @@ from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
-from pydantic import ValidationError
-
 from lecturepilot.canvas_models import CanvasDocument
+from lecturepilot.course_practice_design_files import locked_design_file, write_design_file
 from lecturepilot.course_practice_design_models import (
     PracticeDesign,
     PracticeDesignApproval,
@@ -14,11 +13,17 @@ from lecturepilot.course_practice_design_models import (
     PracticeDesignUpdate,
     PracticeTarget,
 )
-from lecturepilot.course_practice_design_files import locked_design_file, write_design_file
 from lecturepilot.course_practice_design_review_binding import with_quality_review
 from lecturepilot.course_practice_design_review_models import (
     PracticeDesignQualityReview,
     PracticeDesignReviewResult,
+)
+from lecturepilot.course_practice_design_snapshot import (
+    PracticeDesignError,
+    PracticeDesignSnapshot,
+    PracticeDesignUnavailable as PracticeDesignUnavailable,
+    read_practice_design,
+    snapshot_practice_design,
 )
 from lecturepilot.course_practice_design_validation import (
     PracticeDesignValidationError,
@@ -26,14 +31,6 @@ from lecturepilot.course_practice_design_validation import (
     validate_practice_design_review,
 )
 from lecturepilot.storage_layout import StorageLayout
-
-
-class PracticeDesignError(ValueError):
-    pass
-
-
-class PracticeDesignUnavailable(PracticeDesignError):
-    pass
 
 
 class PracticeDesignStale(PracticeDesignError):
@@ -53,6 +50,11 @@ class PracticeDesignStore:
         with locked_design_file(path):
             return self._read(path, course_id, lecture_id)
 
+    def snapshot(self, *, course_id: str, lecture_id: str) -> PracticeDesignSnapshot:
+        path = self._path(course_id, lecture_id)
+        with locked_design_file(path):
+            return snapshot_practice_design(path, course_id=course_id, lecture_id=lecture_id)
+
     def save_proposal(
         self,
         *,
@@ -66,6 +68,7 @@ class PracticeDesignStore:
         expected_design_revision: str | None,
         expected_design_approval: PracticeDesignApproval | None,
         expected_design_review: PracticeDesignQualityReview | None,
+        expected_invalid_digest: str | None = None,
     ) -> PracticeDesign:
         design = PracticeDesign.create(
             course_id=course_id,
@@ -83,25 +86,34 @@ class PracticeDesignStore:
         design = with_quality_review(design, review)
         path = self._path(course_id, lecture_id)
         with locked_design_file(path):
-            current = self._read(path, course_id, lecture_id)
-            if expected_design_revision is None:
-                if (
-                    current is not None
-                    or expected_design_approval is not None
-                    or expected_design_review is not None
+            if expected_invalid_digest is not None:
+                current_snapshot = snapshot_practice_design(
+                    path, course_id=course_id, lecture_id=lecture_id
+                )
+                if current_snapshot.invalid_digest != expected_invalid_digest:
+                    raise PracticeDesignStale(
+                        "The practice design changed while the learning plan was proposed. Reload it."
+                    )
+            else:
+                current = self._read(path, course_id, lecture_id)
+                if expected_design_revision is None:
+                    if (
+                        current is not None
+                        or expected_design_approval is not None
+                        or expected_design_review is not None
+                    ):
+                        raise PracticeDesignStale(
+                            "The practice design changed while the learning plan was proposed. Reload it."
+                        )
+                elif (
+                    current is None
+                    or current.revision != expected_design_revision
+                    or current.approval != expected_design_approval
+                    or current.quality_review != expected_design_review
                 ):
                     raise PracticeDesignStale(
                         "The practice design changed while the learning plan was proposed. Reload it."
                     )
-            elif (
-                current is None
-                or current.revision != expected_design_revision
-                or current.approval != expected_design_approval
-                or current.quality_review != expected_design_review
-            ):
-                raise PracticeDesignStale(
-                    "The practice design changed while the learning plan was proposed. Reload it."
-                )
             write_design_file(path, design)
         return design
 
@@ -262,30 +274,7 @@ class PracticeDesignStore:
 
     @staticmethod
     def _read(path: Path, course_id: str, lecture_id: str) -> PracticeDesign | None:
-        if not path.exists():
-            return None
-        try:
-            design = PracticeDesign.model_validate_json(path.read_text(encoding="utf-8"))
-        except (OSError, ValidationError) as exc:
-            raise PracticeDesignUnavailable(
-                "Stored practice design is invalid. Generate a new learning plan."
-            ) from exc
-        if design.course_id != course_id or design.lecture_id != lecture_id:
-            raise PracticeDesignUnavailable("Stored practice design identity is invalid.")
-        review = design.quality_review
-        if review is not None:
-            if (
-                review.source_revision != design.source_revision
-                or review.practice_design_revision != design.revision
-            ):
-                raise PracticeDesignUnavailable("Stored practice design review is stale.")
-            if design.approval is not None and review.has_critical_issues:
-                raise PracticeDesignUnavailable("Stored practice design review blocks approval.")
-        elif design.approval is not None:
-            raise PracticeDesignUnavailable(
-                "Stored approved practice design has no quality review."
-            )
-        return design
+        return read_practice_design(path, course_id=course_id, lecture_id=lecture_id)
 
 
 def _identity_skeleton(targets: Sequence[PracticeTarget]) -> tuple:

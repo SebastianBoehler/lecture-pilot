@@ -70,9 +70,15 @@ def register_course_practice_design_routes(
         _require_manager(context, request, course_id, course_tenant_id)
         layout = app.state.canvas_workspace.layout
         store = _store(app)
-        with locked_course_state(layout.course_root(course_id)):
-            source, revision, paths = _source_context(app, source_document, course_id, lecture_id)
-            existing = store.read(course_id=course_id, lecture_id=lecture_id)
+        try:
+            with locked_course_state(layout.course_root(course_id)):
+                source, revision, paths = _source_context(
+                    app, source_document, course_id, lecture_id
+                )
+                snapshot = store.snapshot(course_id=course_id, lecture_id=lecture_id)
+        except PracticeDesignUnavailable as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+        existing = snapshot.design
         if not refresh and existing is not None and existing.source_revision == revision:
             return existing
         expected_design_revision = existing.revision if existing is not None else None
@@ -122,9 +128,12 @@ def register_course_practice_design_routes(
                     expected_design_revision=expected_design_revision,
                     expected_design_approval=expected_design_approval,
                     expected_design_review=expected_design_review,
+                    expected_invalid_digest=snapshot.invalid_digest,
                 )
             except PracticeDesignStale as exc:
                 raise HTTPException(status_code=409, detail=str(exc)) from exc
+            except PracticeDesignUnavailable as exc:
+                raise HTTPException(status_code=500, detail=str(exc)) from exc
             except PracticeDesignValidationError as exc:
                 raise HTTPException(status_code=502, detail=str(exc)) from exc
 
