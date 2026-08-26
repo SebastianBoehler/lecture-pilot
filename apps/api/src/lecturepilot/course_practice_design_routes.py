@@ -148,6 +148,15 @@ def register_course_practice_design_routes(
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         except PracticeDesignValidationError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except PracticeDesignApprovalRequired as exc:
+            raise HTTPException(
+                status_code=404, detail="Practice design has not been proposed."
+            ) from exc
+        except PracticeDesignUnavailable as exc:
+            raise HTTPException(
+                status_code=500,
+                detail="Stored practice design failed an integrity check.",
+            ) from exc
 
     @app.post(
         "/admin/courses/{course_id}/lectures/{lecture_id}/practice-design/approve",

@@ -13,6 +13,7 @@ from lecturepilot.canvas_models import CanvasBlock
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_canvas_generation_ownership import CanvasGenerationOwnershipError
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner
+from lecturepilot.course_canvas_repairs import lecture_source_revision
 from lecturepilot.course_practice_design_store import PracticeDesignStore
 from lecturepilot.providers import ProviderRegistry
 from practice_design_test_helpers import proposal
@@ -78,7 +79,7 @@ async def test_targeted_repair_rejects_candidate_after_snapshot_source_changes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     app, approved = _approved_app(tmp_path, "a" * 64)
-    failure = _failure(approved.source_revision)
+    failure = _failure(approved.source_revision, approved.revision)
     _write_manifest(app, "b" * 64)
     _replace_approved_design(app, approved)
     callback_calls = []
@@ -138,7 +139,7 @@ def _replace_approved_design(app, previous):
 
 def _save_design(app, *, expected):
     store = PracticeDesignStore(app.state.canvas_workspace.layout)
-    revision = generation.lecture_source_revision(
+    revision = lecture_source_revision(
         app.state.canvas_workspace.layout, course_id=COURSE_ID, lecture_id=LECTURE_ID
     )
     assert revision is not None
@@ -160,12 +161,19 @@ def _save_design(app, *, expected):
     )
 
 
-def _failure(source_revision: str):
+def _failure(source_revision: str, practice_design_revision: str):
     from test_practice_design_generation_preflight import _targeted_failure
 
     failure = _targeted_failure()
     return failure.model_copy(
-        update={"repair": failure.repair.model_copy(update={"source_revision": source_revision})}
+        update={
+            "repair": failure.repair.model_copy(
+                update={
+                    "source_revision": source_revision,
+                    "practice_design_revision": practice_design_revision,
+                }
+            )
+        }
     )
 
 

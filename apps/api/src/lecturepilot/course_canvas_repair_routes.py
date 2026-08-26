@@ -76,15 +76,20 @@ def register_course_canvas_repair_routes(
             )
         targeted = failure.repair is not None
         if targeted and failure.repair is not None:
+            if (
+                failure.repair.source_revision is None
+                or failure.repair.practice_design_revision is None
+            ):
+                raise HTTPException(
+                    status_code=409,
+                    detail="Targeted repair provenance is unavailable. Generate a new draft before repairing it.",
+                )
             current_revision = lecture_source_revision(
                 store.layout,
                 course_id=course_id,
                 lecture_id=lecture_id,
             )
-            if (
-                failure.repair.source_revision is None
-                or current_revision != failure.repair.source_revision
-            ):
+            if current_revision != failure.repair.source_revision:
                 raise HTTPException(
                     status_code=409,
                     detail=(
@@ -92,7 +97,16 @@ def register_course_canvas_repair_routes(
                         "Generate a new draft before repairing it."
                     ),
                 )
-        _require_current_practice_design(app, course_id, lecture_id, source_document)
+        _require_current_practice_design(
+            app,
+            course_id,
+            lecture_id,
+            source_document,
+            expected_source_revision=failure.repair.source_revision if targeted else None,
+            expected_practice_design_revision=(
+                failure.repair.practice_design_revision if targeted else None
+            ),
+        )
         outcome = await run_canvas_generation_request(
             app=app,
             store=store,
@@ -144,6 +158,9 @@ def _require_current_practice_design(
     course_id: str,
     lecture_id: str,
     source_document: Callable[[str, str], CanvasDocument],
+    *,
+    expected_source_revision: str | None = None,
+    expected_practice_design_revision: str | None = None,
 ) -> None:
     try:
         ownership_store.require_generation_practice_design(
@@ -152,6 +169,8 @@ def _require_current_practice_design(
             source_document,
             course_id=course_id,
             lecture_id=lecture_id,
+            expected_source_revision=expected_source_revision,
+            expected_practice_design_revision=expected_practice_design_revision,
         )
     except (
         ownership_store.CanvasGenerationOwnershipError,

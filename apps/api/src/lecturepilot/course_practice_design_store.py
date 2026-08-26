@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from datetime import UTC, datetime
 import fcntl
@@ -15,8 +15,12 @@ from lecturepilot.course_practice_design_models import (
     PracticeDesignApproval,
     PracticeDesignProposal,
     PracticeDesignUpdate,
+    PracticeTarget,
 )
-from lecturepilot.course_practice_design_validation import validate_practice_design
+from lecturepilot.course_practice_design_validation import (
+    PracticeDesignValidationError,
+    validate_practice_design,
+)
 from lecturepilot.durable_files import ensure_durable_directory, fsync_directory
 from lecturepilot.storage_layout import StorageLayout
 
@@ -102,6 +106,10 @@ class PracticeDesignStore:
             ):
                 raise PracticeDesignStale(
                     "The practice design or source revision changed. Reload it."
+                )
+            if _identity_skeleton(current.targets) != _identity_skeleton(update.targets):
+                raise PracticeDesignValidationError(
+                    "Stable practice design IDs cannot be added, removed, renamed, or reordered."
                 )
             changed = PracticeDesign.create(
                 course_id=course_id,
@@ -220,3 +228,14 @@ class PracticeDesignStore:
             fsync_directory(path.parent)
         finally:
             temporary.unlink(missing_ok=True)
+
+
+def _identity_skeleton(targets: Sequence[PracticeTarget]) -> tuple:
+    return tuple(
+        (
+            target.id,
+            tuple(item.id for item in target.evidence_criteria),
+            tuple(item.id for item in target.misconceptions),
+        )
+        for target in targets
+    )

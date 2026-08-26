@@ -94,7 +94,10 @@ async def test_targeted_repair_receives_frozen_design_and_rejects_edit_before_pe
     failure = failure.model_copy(
         update={
             "repair": failure.repair.model_copy(
-                update={"source_revision": approved.source_revision}
+                update={
+                    "source_revision": approved.source_revision,
+                    "practice_design_revision": approved.revision,
+                }
             )
         }
     )

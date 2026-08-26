@@ -12,7 +12,6 @@ from lecturepilot.course_canvas_generation_jobs import CanvasGenerationJob
 from lecturepilot import course_canvas_generation_ownership as ownership_store
 from lecturepilot.course_canvas_generation_persistence import write_current_draft
 from lecturepilot.course_canvas_repairs import (
-    lecture_source_revision,
     matching_repair_guidance,
     persist_repair_guidance,
 )
@@ -116,12 +115,8 @@ async def generate_course_canvas_draft(
                         plan_args["repair_context"] = repair_context
                     document = await app.state.course_planner.plan_canvas(source, **plan_args)
                 except CanvasGenerationRepairableError as exc:
-                    raise exc.with_source_revision(
-                        lecture_source_revision(
-                            app.state.canvas_workspace.layout,
-                            course_id=course_id,
-                            lecture_id=lecture_id,
-                        )
+                    raise exc.with_source_revision(source_revision).with_practice_design_revision(
+                        practice_design.revision
                     )
         with observability.tool_span("course_canvas_generation", stage="output_media", **common):
             document = apply_course_media(document, media_root)
@@ -161,9 +156,9 @@ async def repair_targeted_course_canvas_draft(
     repair = failure.repair
     if repair is None or failure.error_detail is None:
         raise CanvasGenerationRepairableError("No targeted repair candidate is available.")
-    if repair.source_revision is None:
+    if repair.source_revision is None or repair.practice_design_revision is None:
         raise CanvasGenerationRepairableError(
-            "Targeted repair source provenance is unavailable. Generate a new draft before repairing it."
+            "Targeted repair provenance is unavailable. Generate a new draft before repairing it."
         )
     candidate = repair.candidate
     common = {
@@ -195,6 +190,7 @@ async def repair_targeted_course_canvas_draft(
                 generation_id=generation_id,
                 attempt=attempt,
                 expected_repair_source_revision=repair.source_revision,
+                expected_repair_practice_design_revision=repair.practice_design_revision,
             )
         )
         media_root = app.state.canvas_workspace.course_media_root(course_id)
@@ -220,7 +216,9 @@ async def repair_targeted_course_canvas_draft(
         except CanvasGenerationRepairableError as exc:
             if exc.candidate is None:
                 exc.with_candidate(candidate)
-            raise exc.with_source_revision(repair.source_revision)
+            raise exc.with_source_revision(repair.source_revision).with_practice_design_revision(
+                repair.practice_design_revision
+            )
         document = apply_course_media(document, media_root)
         document = write_current_draft(
             app,
