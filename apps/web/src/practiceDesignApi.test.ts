@@ -21,7 +21,7 @@ describe("practice-design API", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("uses the exact authenticated routes and revision-bound bodies", async () => {
-    const fetchMock = vi.fn(async () => response(design()));
+    const fetchMock = vi.fn<typeof fetch>(async (_input, _init) => response(design()));
     vi.stubGlobal("fetch", fetchMock);
     const current = design();
 

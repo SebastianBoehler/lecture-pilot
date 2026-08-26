@@ -140,6 +140,45 @@ it("does not let an older lecture request overwrite a newer lecture state", asyn
   });
 });
 
+it("does not restore an unseen in-flight lecture after a full reset", async () => {
+  const request = deferred<Response>();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => request.promise),
+  );
+  const { result } = renderHook(() =>
+    useProfessorPracticeDesigns({ courseId: "course-1", session }),
+  );
+
+  void result.current.loadAll(["lecture-01"]);
+  await waitFor(() => expect(result.current.pendingLectureId).toBe("lecture-01"));
+  act(() => result.current.reset());
+  expect(result.current.pendingLectureId).toBeNull();
+
+  await act(() => request.resolve(response(design("lecture-01"))));
+  expect(result.current.designs).toEqual({});
+});
+
+it("ignores an in-flight completion after unmount", async () => {
+  const request = deferred<Response>();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => request.promise),
+  );
+  const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+  const { result, unmount } = renderHook(() =>
+    useProfessorPracticeDesigns({ courseId: "course-1", session }),
+  );
+
+  void result.current.loadAll(["lecture-01"]);
+  await waitFor(() => expect(result.current.pendingLectureId).toBe("lecture-01"));
+  unmount();
+  await act(() => request.resolve(response(design("lecture-01"))));
+
+  expect(consoleError).not.toHaveBeenCalled();
+  consoleError.mockRestore();
+});
+
 function design(
   lectureId: string,
   approvedBy: string | null = null,

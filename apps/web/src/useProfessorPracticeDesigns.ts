@@ -50,6 +50,13 @@ export function useProfessorPracticeDesigns({
         operations: {},
       };
     }
+    return () => {
+      active.current = {
+        ...active.current,
+        epoch: active.current.epoch + 1,
+        operations: {},
+      };
+    };
   }, [identityKey]);
 
   async function load(lectureId: string) {
@@ -101,8 +108,8 @@ export function useProfessorPracticeDesigns({
   }
 
   function markPending(token: Token, activeOperation: boolean) {
+    if (!current(token)) return;
     setPending((currentPending) => {
-      if (!current(token)) return currentPending;
       const currentValues = currentPending.key === token.key ? currentPending.values : {};
       const values = activeOperation
         ? { ...currentValues, [token.lectureId]: token.operation }
@@ -151,11 +158,18 @@ export function useProfessorPracticeDesigns({
 
   function reset(lectureIds?: readonly string[]) {
     if (!identityKey) return;
-    const currentDesigns = state.key === identityKey ? state.designs : {};
-    const currentAbsent = state.key === identityKey ? state.absent : {};
-    const ids = lectureIds
-      ? [...lectureIds]
-      : [...new Set([...Object.keys(currentDesigns), ...Object.keys(currentAbsent)])];
+    if (!lectureIds) {
+      active.current = {
+        ...active.current,
+        epoch: active.current.epoch + 1,
+        operations: {},
+      };
+      setState({ key: identityKey, designs: {}, absent: {} });
+      setPending({ key: identityKey, values: {} });
+      setErrorState({ key: identityKey, message: null });
+      return;
+    }
+    const ids = [...lectureIds];
     for (const lectureId of ids) {
       active.current.nextOperation += 1;
       active.current.operations[lectureId] = active.current.nextOperation;
