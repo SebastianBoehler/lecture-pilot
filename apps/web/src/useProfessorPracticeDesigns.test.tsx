@@ -19,13 +19,14 @@ afterEach(() => vi.unstubAllGlobals());
 it("loads every lecture independently and records a 404 as absent", async () => {
   vi.stubGlobal(
     "fetch",
-    vi.fn((url: string) =>
-      Promise.resolve(
+    vi.fn((url: string) => {
+      const current = design("lecture-01");
+      return Promise.resolve(
         url.includes("lecture-01")
-          ? response(design("lecture-01"))
+          ? resourceResponse(url, current)
           : response({ detail: "Practice design has not been proposed." }, 404),
-      ),
-    ),
+      );
+    }),
   );
   const { result } = renderHook(() =>
     useProfessorPracticeDesigns({ courseId: "course-1", session }),
@@ -43,12 +44,12 @@ it("replaces only the saved lecture and reflects approval clearing", async () =>
   let saved = false;
   vi.stubGlobal(
     "fetch",
-    vi.fn((_url: string, init?: RequestInit) => {
+    vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "PUT") {
         saved = true;
         return Promise.resolve(response(design("lecture-01", null, "e")));
       }
-      return Promise.resolve(response(design("lecture-01", "professor-demo")));
+      return Promise.resolve(resourceResponse(url, design("lecture-01", "professor-demo")));
     }),
   );
   const { result } = renderHook(() =>
@@ -73,7 +74,7 @@ it("requests a revision-bound semantic review and stores the reviewed design", a
       requests.push(`${init?.method ?? "GET"} ${url}`);
       const current = design("lecture-01");
       if (url.endsWith("/review")) return reviewed.promise;
-      return Promise.resolve(response(current));
+      return Promise.resolve(resourceResponse(url, current));
     }),
   );
   const { result } = renderHook(() =>
@@ -101,7 +102,7 @@ it("requests a revision-bound semantic review and stores the reviewed design", a
   );
   await act(() => review!);
 
-  expect(requests.at(-1)).toMatch(/^POST .*\/practice-design\/review$/);
+  expect(requests).toContainEqual(expect.stringMatching(/^POST .*\/practice-design\/review$/));
   expect(result.current.pendingAction).toBeNull();
   expect(result.current.designs["lecture-01"].quality_review?.practice_design_revision).toBe(
     "d".repeat(64),
@@ -111,7 +112,9 @@ it("requests a revision-bound semantic review and stores the reviewed design", a
 it("requires approval revisions to match the current design", async () => {
   vi.stubGlobal(
     "fetch",
-    vi.fn(() => Promise.resolve(response(design("lecture-01", "professor-demo")))),
+    vi.fn((url: string) =>
+      Promise.resolve(resourceResponse(url, design("lecture-01", "professor-demo"))),
+    ),
   );
   const { result } = renderHook(() =>
     useProfessorPracticeDesigns({ courseId: "course-1", session }),
@@ -128,7 +131,7 @@ it("requires approval revisions to match the current design", async () => {
   };
   vi.stubGlobal(
     "fetch",
-    vi.fn(() => Promise.resolve(response(mismatched))),
+    vi.fn((url: string) => Promise.resolve(resourceResponse(url, mismatched))),
   );
   await act(() => result.current.loadAll(["lecture-01"]));
 
@@ -275,5 +278,20 @@ function response(payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {
     status,
     headers: { "Content-Type": "application/json" },
+  });
+}
+
+function resourceResponse(url: string, current: PracticeDesign) {
+  if (!url.endsWith("/readiness")) return response(current);
+  const approval = current.approval;
+  return response({
+    lecture_id: current.lecture_id,
+    current_source_revision: current.source_revision,
+    practice_design_revision: current.revision,
+    ready_for_generation: Boolean(
+      approval &&
+      approval.source_revision === current.source_revision &&
+      approval.practice_design_revision === current.revision,
+    ),
   });
 }

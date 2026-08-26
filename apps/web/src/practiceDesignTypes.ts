@@ -119,3 +119,10 @@ export type PracticeDesignUpdate = Readonly<{
   planning_context: PracticePlanningContext;
   targets: readonly PracticeTarget[];
 }>;
+
+export type PracticeDesignReadiness = Readonly<{
+  lecture_id: string;
+  current_source_revision: string;
+  practice_design_revision: string | null;
+  ready_for_generation: boolean;
+}>;

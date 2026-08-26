@@ -152,6 +152,10 @@ it("requires every full-course plan approval and keeps a stale approval conflict
   await waitFor(() =>
     expect(screen.getByRole("button", { name: /continue to canvas draft/i })).toBeEnabled(),
   );
+  await user.click(screen.getByRole("button", { name: /continue to canvas draft/i }));
+  expect(
+    await screen.findByRole("button", { name: /generate all lecture canvases/i }),
+  ).toBeEnabled();
 });
 
 it("marks an approved design stale after a source update removes current routing", async () => {

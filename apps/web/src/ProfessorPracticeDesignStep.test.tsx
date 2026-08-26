@@ -8,6 +8,89 @@ import { practiceDesignFixture } from "./practiceDesignTestFixtures";
 import type { PracticeDesign, PracticeDesignUpdate } from "./practiceDesignTypes";
 
 describe("ProfessorPracticeDesignStep", () => {
+  it("preserves a dirty lecture draft across unrelated rerenders and failed saves", async () => {
+    const user = userEvent.setup();
+    const save = vi.fn();
+    const view = renderStep(save);
+    await editOutcome(user, "Keep this local edit.");
+    await user.click(screen.getByRole("button", { name: /save learning plan/i }));
+    expect(save).toHaveBeenCalledOnce();
+
+    view.rerender(step({ onSave: save, pendingAction: "save", pendingLectureId: "lecture-03" }));
+    expect(screen.getByLabelText(/outcome for posterior decisions/i)).toHaveValue(
+      "Keep this local edit.",
+    );
+
+    view.rerender(step({ error: "Practice design failed to save.", onSave: save }));
+
+    expect(screen.getByLabelText(/outcome for posterior decisions/i)).toHaveValue(
+      "Keep this local edit.",
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(/failed to save/i);
+  });
+
+  it("preserves one lecture's dirty draft when another lecture changes", async () => {
+    const user = userEvent.setup();
+    const first = design();
+    const second = practiceDesignFixture({ lectureId: "lecture-04", lectureTitle: "Lecture 04" });
+    const view = render(
+      step({
+        designs: { "lecture-03": first, "lecture-04": second },
+        lectures: [
+          { id: "lecture-03", label: "03 · Bayesian decision theory" },
+          { id: "lecture-04", label: "04 · Decision surfaces" },
+        ],
+      }),
+    );
+    await editOutcome(user, "Keep the first lecture edit.");
+
+    view.rerender(
+      step({
+        designs: {
+          "lecture-03": { ...first },
+          "lecture-04": { ...second, revision: "e".repeat(64), objective: "Changed remotely." },
+        },
+        lectures: [
+          { id: "lecture-03", label: "03 · Bayesian decision theory" },
+          { id: "lecture-04", label: "04 · Decision surfaces" },
+        ],
+      }),
+    );
+
+    expect(screen.getByLabelText(/outcome for posterior decisions/i)).toHaveValue(
+      "Keep the first lecture edit.",
+    );
+  });
+
+  it("preserves dirty edits and surfaces an accessible conflict when their base revision changes", async () => {
+    const user = userEvent.setup();
+    const original = design();
+    const view = render(step({ designs: { "lecture-03": original } }));
+    await editOutcome(user, "My unsaved outcome.");
+
+    view.rerender(
+      step({
+        designs: {
+          "lecture-03": {
+            ...original,
+            revision: "e".repeat(64),
+            objective: "A newer server objective.",
+          },
+        },
+      }),
+    );
+
+    expect(screen.getByLabelText(/outcome for posterior decisions/i)).toHaveValue(
+      "My unsaved outcome.",
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(/newer version.*edits are preserved/i);
+    expect(screen.getByRole("button", { name: /save learning plan/i })).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: /use latest plan/i }));
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.getAllByText("A newer server objective.")[0]).toBeVisible();
+  });
+
   it("presents an AI-authored review first and requires save before approval after a targeted edit", async () => {
     const user = userEvent.setup();
     const save = vi.fn();
@@ -212,7 +295,11 @@ describe("ProfessorPracticeDesignStep", () => {
 });
 
 function renderStep(save: (lectureId: string, update: PracticeDesignUpdate) => void) {
-  render(
+  return render(step({ onSave: save }));
+}
+
+function step(overrides: Partial<React.ComponentProps<typeof ProfessorPracticeDesignStep>> = {}) {
+  return (
     <I18nProvider locale="en" setLocale={() => undefined}>
       <ProfessorPracticeDesignStep
         designs={{ "lecture-03": design() }}
@@ -224,10 +311,18 @@ function renderStep(save: (lectureId: string, update: PracticeDesignUpdate) => v
         onApprove={vi.fn()}
         onPropose={vi.fn()}
         onReview={vi.fn()}
-        onSave={save}
+        onSave={vi.fn()}
+        {...overrides}
       />
-    </I18nProvider>,
+    </I18nProvider>
   );
+}
+
+async function editOutcome(user: ReturnType<typeof userEvent.setup>, value: string) {
+  await user.click(screen.getByRole("button", { name: /edit this target/i }));
+  const outcome = screen.getByLabelText(/outcome for posterior decisions/i);
+  await user.clear(outcome);
+  await user.type(outcome, value);
 }
 
 function design(approved = false): PracticeDesign {

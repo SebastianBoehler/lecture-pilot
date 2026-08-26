@@ -12,6 +12,7 @@ from lecturepilot.course_practice_design_models import (
     PracticeDesignApprovalInput,
     PracticeDesignUpdate,
 )
+from lecturepilot.course_practice_design_readiness import PracticeDesignReadiness
 from lecturepilot.course_practice_design_review_routes import (
     register_practice_design_review_route,
 )
@@ -55,6 +56,29 @@ def register_course_practice_design_routes(
         if design is None:
             raise HTTPException(status_code=404, detail="Practice design has not been proposed.")
         return design
+
+    @app.get(
+        "/admin/courses/{course_id}/lectures/{lecture_id}/practice-design/readiness",
+        response_model=PracticeDesignReadiness,
+    )
+    def get_practice_design_readiness(
+        course_id: str,
+        lecture_id: str,
+        request: Request,
+        context: TenantContext = Depends(request_context),
+    ) -> PracticeDesignReadiness:
+        _require_manager(context, request, course_id, course_tenant_id)
+        try:
+            with locked_course_state(app.state.canvas_workspace.layout.course_root(course_id)):
+                _, source_revision, _ = _source_context(app, source_document, course_id, lecture_id)
+                design = _store(app).read(course_id=course_id, lecture_id=lecture_id)
+        except PracticeDesignUnavailable as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+        return PracticeDesignReadiness.current(
+            lecture_id=lecture_id,
+            source_revision=source_revision,
+            design=design,
+        )
 
     @app.post(
         "/admin/courses/{course_id}/lectures/{lecture_id}/practice-design/proposal",

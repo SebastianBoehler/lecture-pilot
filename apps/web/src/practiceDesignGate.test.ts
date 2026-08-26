@@ -11,16 +11,25 @@ const session = {
   username: "professor-demo",
 } as LoginSession;
 
-it("rejects a fresh routing revision when the reloaded design approval belongs to the old source", async () => {
+it("uses authoritative lecture readiness instead of comparing with the course routing digest", async () => {
   vi.stubGlobal(
     "fetch",
-    vi.fn(() =>
-      Promise.resolve(
-        new Response(JSON.stringify(design("a")), {
+    vi.fn((input: string | URL | Request) => {
+      const url = String(input);
+      const payload = url.endsWith("/readiness")
+        ? {
+            lecture_id: "lecture-01",
+            current_source_revision: "b".repeat(64),
+            practice_design_revision: "d".repeat(64),
+            ready_for_generation: true,
+          }
+        : design("b");
+      return Promise.resolve(
+        new Response(JSON.stringify(payload), {
           headers: { "Content-Type": "application/json" },
         }),
-      ),
-    ),
+      );
+    }),
   );
 
   await expect(
@@ -28,9 +37,8 @@ it("rejects a fresh routing revision when the reloaded design approval belongs t
       courseId: "course-1",
       lectureIds: ["lecture-01"],
       session,
-      sourceRevision: "b".repeat(64),
     }),
-  ).rejects.toThrow(/generate and approve/i);
+  ).resolves.toBeUndefined();
 });
 
 function design(revision: string) {

@@ -4,17 +4,24 @@ import {
   PracticeDesignRequestError,
   approvePracticeDesign,
   getPracticeDesign,
+  getPracticeDesignReadiness,
   proposePracticeDesign,
   reviewPracticeDesign,
   updatePracticeDesign,
 } from "./practiceDesignApi";
-import type { PracticeDesign, PracticeDesignUpdate } from "./practiceDesignTypes";
+import type {
+  PracticeDesign,
+  PracticeDesignReadiness,
+  PracticeDesignUpdate,
+} from "./practiceDesignTypes";
+import { isPracticeDesignReady } from "./practiceDesignReadiness";
 import type { LoginSession } from "./types";
 
 type State = {
   absent: Readonly<Record<string, true>>;
   designs: Readonly<Record<string, PracticeDesign>>;
   key: string;
+  readiness: Readonly<Record<string, PracticeDesignReadiness>>;
 };
 export type PracticeDesignPendingAction =
   "load" | "propose" | "refresh" | "save" | "review" | "approve";
@@ -40,7 +47,7 @@ export function useProfessorPracticeDesigns({
     ? JSON.stringify([session.tenant_id ?? "", session.username, courseId])
     : "";
   const active = useRef<Active>({ epoch: 0, key: identityKey, nextOperation: 0, operations: {} });
-  const [state, setState] = useState<State>({ absent: {}, designs: {}, key: "" });
+  const [state, setState] = useState<State>({ absent: {}, designs: {}, key: "", readiness: {} });
   const [pending, setPending] = useState<Pending>({ key: "", values: {} });
   const [errorState, setErrorState] = useState<ErrorState>({ key: "", message: null });
   const designs = state.key === identityKey ? state.designs : {};
@@ -68,11 +75,16 @@ export function useProfessorPracticeDesigns({
     markPending(token, true, "load");
     try {
       const design = await getPracticeDesign({ courseId: courseId!, lectureId, session });
-      if (current(token)) setDesign(lectureId, design, false);
+      const readiness = await getPracticeDesignReadiness({
+        courseId: courseId!,
+        lectureId,
+        session,
+      });
+      if (current(token)) setDesign(lectureId, design, readiness, false);
     } catch (loadError) {
       if (current(token)) {
         if (loadError instanceof PracticeDesignRequestError && loadError.status === 404) {
-          setDesign(lectureId, null, true);
+          setDesign(lectureId, null, null, true);
         } else {
           setErrorState({ key: identityKey, message: errorMessage(loadError) });
         }
@@ -92,7 +104,12 @@ export function useProfessorPracticeDesigns({
     setErrorState({ key: identityKey, message: null });
     try {
       const design = await operation();
-      if (current(token)) setDesign(lectureId, design, false);
+      const readiness = await getPracticeDesignReadiness({
+        courseId: courseId!,
+        lectureId,
+        session,
+      });
+      if (current(token)) setDesign(lectureId, design, readiness, false);
     } catch (mutationError) {
       if (current(token)) {
         setErrorState({ key: identityKey, message: errorMessage(mutationError) });
@@ -137,16 +154,25 @@ export function useProfessorPracticeDesigns({
     });
   }
 
-  function setDesign(lectureId: string, design: PracticeDesign | null, absent: boolean) {
+  function setDesign(
+    lectureId: string,
+    design: PracticeDesign | null,
+    readiness: PracticeDesignReadiness | null,
+    absent: boolean,
+  ) {
     setState((currentState) => {
       const currentDesigns = currentState.key === identityKey ? currentState.designs : {};
       const currentAbsent = currentState.key === identityKey ? currentState.absent : {};
+      const currentReadiness = currentState.key === identityKey ? currentState.readiness : {};
       return {
         key: identityKey,
         designs: design
           ? { ...currentDesigns, [lectureId]: design }
           : omit(currentDesigns, [lectureId]),
         absent: absent ? { ...currentAbsent, [lectureId]: true } : omit(currentAbsent, [lectureId]),
+        readiness: readiness
+          ? { ...currentReadiness, [lectureId]: readiness }
+          : omit(currentReadiness, [lectureId]),
       };
     });
   }
@@ -195,7 +221,7 @@ export function useProfessorPracticeDesigns({
         epoch: active.current.epoch + 1,
         operations: {},
       };
-      setState({ key: identityKey, designs: {}, absent: {} });
+      setState({ key: identityKey, designs: {}, absent: {}, readiness: {} });
       setPending({ key: identityKey, values: {} });
       setErrorState({ key: identityKey, message: null });
       return;
@@ -209,6 +235,7 @@ export function useProfessorPracticeDesigns({
       key: identityKey,
       designs: omit(current.key === identityKey ? current.designs : {}, ids),
       absent: omit(current.key === identityKey ? current.absent : {}, ids),
+      readiness: omit(current.key === identityKey ? current.readiness : {}, ids),
     }));
     setPending((current) => ({
       key: identityKey,
@@ -221,11 +248,9 @@ export function useProfessorPracticeDesigns({
     return (
       lectureIds.length > 0 &&
       lectureIds.every((lectureId) => {
-        const design = designs[lectureId];
         return Boolean(
-          design?.approval &&
-          design.approval.source_revision === design.source_revision &&
-          design.approval.practice_design_revision === design.revision,
+          state.key === identityKey &&
+          isPracticeDesignReady(designs[lectureId], state.readiness[lectureId]),
         );
       })
     );
@@ -240,6 +265,7 @@ export function useProfessorPracticeDesigns({
     loadAll,
     pendingAction: currentPending?.action ?? null,
     pendingLectureId: currentPending?.lectureId ?? null,
+    readiness: state.key === identityKey ? state.readiness : {},
     propose,
     review,
     reset,

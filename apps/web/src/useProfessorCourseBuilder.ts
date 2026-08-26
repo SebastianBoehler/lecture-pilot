@@ -156,7 +156,6 @@ export function useProfessorCourseBuilder({
     courseId: workspace?.courseId ?? null,
     routingReady,
     session,
-    sourceRevision: sourceRouting.routing?.source_revision ?? null,
     targetLectures: generationTargetLectures.map((lecture) => ({
       id: lecture.id,
       label: `${lecture.number} · ${lecture.title}`,
@@ -411,9 +410,9 @@ export function useProfessorCourseBuilder({
     );
   }
 
-  async function requireApprovedDesigns(sourceRevision: string) {
+  async function requireApprovedDesigns() {
     try {
-      await practiceDesign.requireCurrentApprovals(sourceRevision);
+      await practiceDesign.requireCurrentApprovals();
     } catch (approvalError) {
       setActiveStep("design");
       throw approvalError;
@@ -718,8 +717,8 @@ export function useProfessorCourseBuilder({
     onGenerate: () =>
       run("generate", async () => {
         const activeWorkspace = requireWorkspace(workspace);
-        const confirmedRouting = await requireConfirmedRouting(activeWorkspace.courseId);
-        await requireApprovedDesigns(confirmedRouting.source_revision);
+        await requireConfirmedRouting(activeWorkspace.courseId);
+        await requireApprovedDesigns();
         const lectureIds = generationTargetLectureIds;
         setDraftReviewed(false);
         setGenerationProgress(lectureIds.map((lectureId) => ({ lectureId, status: "pending" })));
@@ -743,8 +742,8 @@ export function useProfessorCourseBuilder({
     onContinue: () =>
       void run("validate-routing", async () => {
         const activeWorkspace = requireWorkspace(workspace);
-        const confirmedRouting = await requireConfirmedRouting(activeWorkspace.courseId);
-        await requireApprovedDesigns(confirmedRouting.source_revision);
+        await requireConfirmedRouting(activeWorkspace.courseId);
+        await requireApprovedDesigns();
         setAutoSuggesting(false);
         setMediaReviewed(true);
         setActiveStep("generate");

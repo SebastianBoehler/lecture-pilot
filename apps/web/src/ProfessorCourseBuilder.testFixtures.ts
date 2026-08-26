@@ -85,11 +85,25 @@ export function professorFetchMock({
     if (url.includes("/practice-design")) {
       const lectureId = path.match(/lectures\/([^/]+)\/practice-design/)?.[1] ?? "lecture-03";
       const design = practiceDesigns.get(lectureId);
+      const currentSourceRevision = lectureSourceRevision(lectureId);
+      if (path.endsWith("/readiness")) {
+        return json({
+          lecture_id: lectureId,
+          current_source_revision: currentSourceRevision,
+          practice_design_revision: design?.revision ?? null,
+          ready_for_generation: Boolean(
+            design?.approval &&
+            design.source_revision === currentSourceRevision &&
+            design.approval.source_revision === currentSourceRevision &&
+            design.approval.practice_design_revision === design.revision,
+          ),
+        });
+      }
       if (path.endsWith("/proposal")) {
         if (!hasConfirmedLectureRoute(routing, lectureId)) {
           return json({ detail: "Confirm a current source route for this lecture first." }, 409);
         }
-        const proposed = practiceDesignPayload(lectureId, routing.source_revision);
+        const proposed = practiceDesignPayload(lectureId, currentSourceRevision);
         practiceDesigns.set(lectureId, proposed);
         return json(proposed);
       }
@@ -291,6 +305,15 @@ function practiceDesignPayload(lectureId: string, sourceRevision: string): Pract
     sourceRevision,
     targetTitle: "Posterior",
   });
+}
+
+function lectureSourceRevision(lectureId: string) {
+  const revisionByLecture: Record<string, string> = {
+    "lecture-01": "1",
+    "lecture-02": "2",
+    "lecture-03": "3",
+  };
+  return (revisionByLecture[lectureId] ?? "4").repeat(64);
 }
 
 function approvePracticeDesign(design: PracticeDesign): PracticeDesign {

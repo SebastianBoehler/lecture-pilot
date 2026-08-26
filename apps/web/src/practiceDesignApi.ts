@@ -1,6 +1,10 @@
 import { apiUrl, readApiError } from "./api";
 import { authRequestInit } from "./authz";
-import type { PracticeDesign, PracticeDesignUpdate } from "./practiceDesignTypes";
+import type {
+  PracticeDesign,
+  PracticeDesignReadiness,
+  PracticeDesignUpdate,
+} from "./practiceDesignTypes";
 import type { LoginSession } from "./types";
 
 export class PracticeDesignRequestError extends Error {
@@ -24,6 +28,25 @@ export async function getPracticeDesign(input: {
     undefined,
     "Practice design failed to load.",
   );
+}
+
+export async function getPracticeDesignReadiness(input: {
+  courseId: string;
+  lectureId: string;
+  session: LoginSession;
+}): Promise<PracticeDesignReadiness> {
+  const response = await fetch(
+    apiUrl(`${path(input.courseId, input.lectureId)}/readiness`),
+    authRequestInit(input.session),
+  );
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new PracticeDesignRequestError(
+      readApiError(payload, "Practice design readiness failed to load."),
+      response.status,
+    );
+  }
+  return payload as PracticeDesignReadiness;
 }
 
 export async function proposePracticeDesign(input: {

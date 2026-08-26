@@ -676,6 +676,9 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.design.unsaved": "Ungespeicherte Änderungen",
   "builder.design.saveBeforeApprove":
     "Speichere deine gezielten Änderungen, bevor du diesen Plan freigibst.",
+  "builder.design.revisionConflict":
+    "Eine neuere Version ist verfügbar. Deine ungespeicherten Änderungen bleiben erhalten; verwende vor der weiteren Bearbeitung den neuesten Plan.",
+  "builder.design.useLatest": "Neuesten Plan verwenden",
   "builder.design.planningContext": "Planungskontext",
   "builder.design.context.learnerLevel": "Niveau der Lernenden",
   "builder.design.context.prerequisites": "Voraussetzungen",

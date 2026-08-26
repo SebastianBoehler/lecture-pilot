@@ -659,6 +659,9 @@ export const enMessages = {
   "builder.design.saving": "Saving learning plan...",
   "builder.design.unsaved": "Unsaved changes",
   "builder.design.saveBeforeApprove": "Save your targeted changes before approving this plan.",
+  "builder.design.revisionConflict":
+    "A newer version is available. Your unsaved edits are preserved; use the latest plan before editing again.",
+  "builder.design.useLatest": "Use latest plan",
   "builder.design.planningContext": "Planning context",
   "builder.design.context.learnerLevel": "Learner level",
   "builder.design.context.prerequisites": "Prerequisites",
