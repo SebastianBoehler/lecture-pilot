@@ -17,6 +17,7 @@ describe("ProfessorPracticeDesignStep", () => {
           error={null}
           lectures={[{ id: "lecture-03", label: "03 · Bayesian decision theory" }]}
           pendingLectureId={null}
+          routingReady
           onApprove={vi.fn()}
           onPropose={vi.fn()}
           onSave={save}
@@ -60,6 +61,7 @@ describe("ProfessorPracticeDesignStep", () => {
           error="The practice design or source revision changed. Reload it."
           lectures={[{ id: "lecture-03", label: "03 · Bayesian decision theory" }]}
           pendingLectureId={null}
+          routingReady
           onApprove={vi.fn()}
           onPropose={propose}
           onSave={vi.fn()}
@@ -71,9 +73,35 @@ describe("ProfessorPracticeDesignStep", () => {
     await userEvent.setup().click(screen.getByRole("button", { name: /generate learning plan/i }));
     expect(propose).toHaveBeenCalledWith("lecture-03", false);
   });
+
+  it("does not present an approved plan after source routing becomes stale", () => {
+    render(
+      <I18nProvider locale="en" setLocale={() => undefined}>
+        <ProfessorPracticeDesignStep
+          designs={{ "lecture-03": design(true) }}
+          error={null}
+          lectures={[{ id: "lecture-03", label: "03 · Bayesian decision theory" }]}
+          pendingLectureId={null}
+          routingReady={false}
+          onApprove={vi.fn()}
+          onPropose={vi.fn()}
+          onSave={vi.fn()}
+        />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /regenerate or reconfirm source routing, refresh the plan, then approve/i,
+    );
+    expect(screen.getByText(/source routing is stale/i)).toBeInTheDocument();
+    expect(screen.queryByText(/^approved$/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /approve learning plan/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /refresh proposal/i })).toBeDisabled();
+    expect(screen.getByLabelText(/lecture objective/i)).toBeDisabled();
+  });
 });
 
-function design(): PracticeDesign {
+function design(approved = false): PracticeDesign {
   return {
     schema_version: 1,
     course_id: "course-1",
@@ -82,7 +110,14 @@ function design(): PracticeDesign {
     objective: "Calculate a posterior from evidence.",
     source_revision: "s".repeat(64),
     revision: "d".repeat(64),
-    approval: null,
+    approval: approved
+      ? {
+          approved_at: "2026-08-26T12:00:00Z",
+          approved_by: "professor-demo",
+          practice_design_revision: "d".repeat(64),
+          source_revision: "s".repeat(64),
+        }
+      : null,
     targets: [
       {
         id: "posterior",

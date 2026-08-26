@@ -2,9 +2,11 @@ import { useI18n } from "./i18n";
 import type { PracticeTarget } from "./practiceDesignTypes";
 
 export function ProfessorPracticeTargetEditor({
+  disabled,
   target,
   onChange,
 }: {
+  disabled: boolean;
   target: PracticeTarget;
   onChange: (target: PracticeTarget) => void;
 }) {
@@ -15,26 +17,31 @@ export function ProfessorPracticeTargetEditor({
       <div className="practice-target-fields">
         <TextField
           label={t("builder.design.targetTitle")}
+          disabled={disabled}
           value={target.title}
           onChange={(title) => onChange({ ...target, title })}
         />
         <TextField
           label={t("builder.design.outcomeFor", { target: target.title })}
+          disabled={disabled}
           value={target.outcome}
           onChange={(outcome) => onChange({ ...target, outcome })}
         />
         <TextField
           label={t("builder.design.baseline")}
+          disabled={disabled}
           value={target.baseline_task}
           onChange={(baseline_task) => onChange({ ...target, baseline_task })}
         />
         <TextField
           label={t("builder.design.exit")}
+          disabled={disabled}
           value={target.independent_exit_task}
           onChange={(independent_exit_task) => onChange({ ...target, independent_exit_task })}
         />
         <TextField
           label={t("builder.design.transfer")}
+          disabled={disabled}
           value={target.delayed_transfer_task}
           onChange={(delayed_transfer_task) => onChange({ ...target, delayed_transfer_task })}
         />
@@ -44,6 +51,7 @@ export function ProfessorPracticeTargetEditor({
             min="1"
             max="365"
             type="number"
+            disabled={disabled}
             value={target.review_after_days}
             onChange={(event) =>
               onChange({ ...target, review_after_days: Number(event.target.value) })
@@ -52,6 +60,7 @@ export function ProfessorPracticeTargetEditor({
         </label>
         <TextField
           label={t("builder.design.sources")}
+          disabled={disabled}
           value={target.source_refs.join("\n")}
           onChange={(sourceRefs) =>
             onChange({ ...target, source_refs: sourceRefs.split("\n").filter(Boolean) })
@@ -60,6 +69,7 @@ export function ProfessorPracticeTargetEditor({
       </div>
       <TargetList
         label={t("builder.design.evidence")}
+        disabled={disabled}
         items={target.evidence_criteria.map((item) => item.description)}
         onChange={(values) =>
           onChange({
@@ -73,6 +83,7 @@ export function ProfessorPracticeTargetEditor({
       />
       <TargetList
         label={t("builder.design.misconceptions")}
+        disabled={disabled}
         items={target.misconceptions.map((item) => `${item.description}\n${item.diagnostic_cue}`)}
         onChange={(values) =>
           onChange({
@@ -86,6 +97,7 @@ export function ProfessorPracticeTargetEditor({
       />
       <TargetList
         label={t("builder.design.hints")}
+        disabled={disabled}
         items={target.hint_ladder.map((item) => item.content)}
         onChange={(values) =>
           onChange({
@@ -102,10 +114,12 @@ export function ProfessorPracticeTargetEditor({
 }
 
 function TextField({
+  disabled,
   label,
   value,
   onChange,
 }: {
+  disabled: boolean;
   label: string;
   value: string;
   onChange: (value: string) => void;
@@ -115,6 +129,7 @@ function TextField({
       {label}
       <textarea
         aria-label={label}
+        disabled={disabled}
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
@@ -123,10 +138,12 @@ function TextField({
 }
 
 function TargetList({
+  disabled,
   label,
   items,
   onChange,
 }: {
+  disabled: boolean;
   label: string;
   items: readonly string[];
   onChange: (items: string[]) => void;
@@ -138,6 +155,7 @@ function TargetList({
       {items.map((value, index) => (
         <TextField
           key={index}
+          disabled={disabled}
           label={`${label} ${index + 1}`}
           value={value}
           onChange={(next) =>

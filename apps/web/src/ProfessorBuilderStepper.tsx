@@ -15,6 +15,7 @@ export function builderSteps({
   bundleReady,
   canvasReady,
   courseReady,
+  designAvailable = false,
   designReady,
   draftReviewed,
   reviewAvailable,
@@ -25,6 +26,7 @@ export function builderSteps({
   bundleReady: boolean;
   canvasReady: boolean;
   courseReady: boolean;
+  designAvailable?: boolean;
   designReady: boolean;
   draftReviewed: boolean;
   reviewAvailable: boolean;
@@ -42,7 +44,13 @@ export function builderSteps({
       number: "03",
       ready: routingReady,
     },
-    { available: routingReady, id: "design", label: "Design", number: "04", ready: designReady },
+    {
+      available: routingReady || designAvailable,
+      id: "design",
+      label: "Design",
+      number: "04",
+      ready: designReady,
+    },
     { available: routingReady, id: "review", label: "Media", number: "05", ready: reviewReady },
     {
       available: (routingReady && reviewReady && designReady) || canvasReady,

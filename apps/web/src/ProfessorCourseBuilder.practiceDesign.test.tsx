@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { builderSteps } from "./ProfessorBuilderStepper";
 import { professorFetchMock } from "./ProfessorCourseBuilder.testFixtures";
-import { openProfessorDemo } from "./testLessonActions";
+import { approveAllPracticeDesigns, openProfessorDemo } from "./testLessonActions";
 
 describe("practice-design builder blocking", () => {
   it("places learning plans between sources and media and blocks generation until every plan is approved", () => {
@@ -140,4 +140,36 @@ it("requires every full-course plan approval and keeps a stale approval conflict
   await waitFor(() =>
     expect(screen.getByRole("button", { name: /continue to canvas draft/i })).toBeEnabled(),
   );
+});
+
+it("marks an approved design stale after a source update removes current routing", async () => {
+  const user = userEvent.setup();
+  vi.stubGlobal("fetch", professorFetchMock({ staleRoutingAfterApproval: true }));
+  render(<App />);
+
+  await openProfessorDemo(user);
+  await user.type(screen.getByLabelText(/course name/i), "Demo ML Course");
+  await user.click(screen.getByRole("button", { name: /create course workspace/i }));
+  await user.upload(
+    await screen.findByLabelText(/^choose files$/i),
+    new File(["# lecture three"], "Lecture03-eng.tex", { type: "application/x-tex" }),
+  );
+  await user.click(screen.getByRole("button", { name: /upload and process materials/i }));
+  await user.click(await screen.findByRole("button", { name: /apply lecture schedule/i }));
+  await screen.findByRole("heading", { name: /source assignments ready/i });
+  await user.click(screen.getByText(/review source assignments/i));
+  await user.click(await screen.findByRole("button", { name: /accept assignments and continue/i }));
+  await approveAllPracticeDesigns(user);
+  expect(await screen.findAllByText(/^approved$/i)).toHaveLength(2);
+
+  await user.click(screen.getByRole("button", { name: /refresh workspace/i }));
+  expect(await screen.findByText(/source assignments changed/i)).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: /04 design/i }));
+
+  expect(await screen.findAllByText(/source routing is stale/i)).toHaveLength(2);
+  expect(screen.queryByText(/^approved$/i)).not.toBeInTheDocument();
+  for (const button of screen.getAllByRole("button", { name: /approve learning plan/i }))
+    expect(button).toBeDisabled();
+  for (const button of screen.getAllByRole("button", { name: /refresh proposal/i }))
+    expect(button).toBeDisabled();
 });

@@ -13,7 +13,8 @@ import { learningDesignPayload } from "./testLearningDesignReviewFixture";
 
 export function professorFetchMock({
   staleApprovalOnceFor,
-}: { staleApprovalOnceFor?: string } = {}) {
+  staleRoutingAfterApproval,
+}: { staleApprovalOnceFor?: string; staleRoutingAfterApproval?: boolean } = {}) {
   const publishedLectures = new Set<string>();
   const deletedCourses = new Set<string>();
   const selectedMedia = new Map<string, { video: ReturnType<typeof youtubeCandidate> }>();
@@ -61,6 +62,16 @@ export function professorFetchMock({
     }
     if (url.includes("/source-routing")) {
       restoreScopeFromSavedFlow();
+      if (
+        staleRoutingAfterApproval &&
+        init?.method !== "PUT" &&
+        [...practiceDesigns.values()].some((design) => design.approval)
+      ) {
+        return json(
+          { detail: "Source assignments changed. Regenerate and reconfirm source routing." },
+          409,
+        );
+      }
       if (init?.method === "PUT") {
         const body = JSON.parse(String(init.body));
         routing = { ...routing, ...body, confirmed: true };

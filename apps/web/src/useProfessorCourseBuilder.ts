@@ -154,6 +154,7 @@ export function useProfessorCourseBuilder({
     generationTargetLectures[0];
   const practiceDesign = useProfessorPracticeDesignGate({
     courseId: workspace?.courseId ?? null,
+    routingReady,
     session,
     sourceRevision: sourceRouting.routing?.source_revision ?? null,
     targetLectures: generationTargetLectures.map((lecture) => ({
@@ -212,6 +213,7 @@ export function useProfessorCourseBuilder({
     bundleReady,
     canvasReady: !!canvas,
     courseReady,
+    designAvailable: sourceRouting.unavailable,
     designReady,
     draftReviewed,
     reviewAvailable,

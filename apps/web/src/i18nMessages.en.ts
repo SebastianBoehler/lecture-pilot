@@ -579,6 +579,9 @@ export const enMessages = {
   "builder.design.approve": "Approve learning plan",
   "builder.design.approving": "Approving learning plan...",
   "builder.design.approved": "Approved",
+  "builder.design.stale": "Source routing is stale",
+  "builder.design.staleAction":
+    "Regenerate or reconfirm source routing, refresh the plan, then approve.",
   "builder.define.title": "Define course and lecture scope",
   "builder.define.courseName": "Course name",
   "builder.define.courseSearchError":

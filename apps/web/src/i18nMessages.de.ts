@@ -594,6 +594,9 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.design.approve": "Lernplan freigeben",
   "builder.design.approving": "Lernplan wird freigegeben...",
   "builder.design.approved": "Freigegeben",
+  "builder.design.stale": "Quellenzuordnung ist veraltet",
+  "builder.design.staleAction":
+    "Erzeuge oder bestätige die Quellenzuordnung erneut, aktualisiere den Lernplan und gib ihn dann frei.",
   "builder.define.title": "Kurs- und Vorlesungsumfang definieren",
   "builder.define.courseName": "Kursname",
   "builder.define.courseSearchError":

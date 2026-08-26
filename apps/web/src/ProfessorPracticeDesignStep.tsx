@@ -11,6 +11,7 @@ export function ProfessorPracticeDesignStep({
   error,
   lectures,
   pendingLectureId,
+  routingReady,
   onApprove,
   onPropose,
   onSave,
@@ -19,6 +20,7 @@ export function ProfessorPracticeDesignStep({
   error: string | null;
   lectures: Lecture[];
   pendingLectureId: string | null;
+  routingReady: boolean;
   onApprove: (lectureId: string) => void;
   onPropose: (lectureId: string, refresh?: boolean) => void;
   onSave: (lectureId: string, update: PracticeDesignUpdate) => void;
@@ -55,12 +57,18 @@ export function ProfessorPracticeDesignStep({
           {error}
         </p>
       ) : null}
+      {!routingReady ? (
+        <p className="form-error" role="alert">
+          {t("builder.design.staleAction")}
+        </p>
+      ) : null}
       <p className="practice-design-boundary">{t("builder.design.boundary")}</p>
       <div className="practice-design-lectures">
         {lectures.map((lecture) => {
           const design = designs[lecture.id];
           const draft = drafts[lecture.id] ?? design;
           const pending = pendingLectureId === lecture.id;
+          const stale = !routingReady;
           if (!design || !draft)
             return (
               <article className="practice-design-lecture" key={lecture.id}>
@@ -70,7 +78,7 @@ export function ProfessorPracticeDesignStep({
                 </header>
                 <button
                   className="primary-action"
-                  disabled={pending}
+                  disabled={pending || stale}
                   type="button"
                   onClick={() => onPropose(lecture.id, false)}
                 >
@@ -79,7 +87,7 @@ export function ProfessorPracticeDesignStep({
               </article>
             );
           const dirty = !sameEditableDesign(draft, design);
-          const approved = isApproved(design);
+          const approved = !stale && isApproved(design);
           return (
             <article className="practice-design-lecture" key={lecture.id}>
               <header>
@@ -88,16 +96,19 @@ export function ProfessorPracticeDesignStep({
                   <p>{draft.objective}</p>
                 </div>
                 <span className={approved && !dirty ? "is-approved" : ""} aria-live="polite">
-                  {approved && !dirty
-                    ? t("builder.design.approved")
-                    : dirty
-                      ? t("builder.design.unsaved")
-                      : t("builder.status.pending")}
+                  {stale
+                    ? t("builder.design.stale")
+                    : approved && !dirty
+                      ? t("builder.design.approved")
+                      : dirty
+                        ? t("builder.design.unsaved")
+                        : t("builder.status.pending")}
                 </span>
               </header>
               <label className="practice-design-objective">
                 {t("builder.design.objective")}
                 <textarea
+                  disabled={stale}
                   value={draft.objective}
                   onChange={(event) =>
                     setDrafts((current) => ({
@@ -110,6 +121,7 @@ export function ProfessorPracticeDesignStep({
               <div className="practice-target-summary" role="list">
                 {draft.targets.map((target) => (
                   <TargetSummary
+                    disabled={stale}
                     key={target.id}
                     target={target}
                     onChange={(next) =>
@@ -126,7 +138,7 @@ export function ProfessorPracticeDesignStep({
               </div>
               <div className="flow-actions">
                 <button
-                  disabled={pending || !dirty}
+                  disabled={pending || stale || !dirty}
                   type="button"
                   onClick={() => onSave(lecture.id, updateFor(draft))}
                 >
@@ -135,7 +147,7 @@ export function ProfessorPracticeDesignStep({
                 {approved && !dirty ? null : (
                   <button
                     className="primary-action"
-                    disabled={pending || dirty}
+                    disabled={pending || stale || dirty}
                     type="button"
                     onClick={() => onApprove(lecture.id)}
                   >
@@ -143,7 +155,7 @@ export function ProfessorPracticeDesignStep({
                   </button>
                 )}
                 <button
-                  disabled={pending}
+                  disabled={pending || stale}
                   type="button"
                   onClick={() => onPropose(lecture.id, true)}
                 >
@@ -160,9 +172,11 @@ export function ProfessorPracticeDesignStep({
 
 function TargetSummary({
   target,
+  disabled,
   onChange,
 }: {
   target: PracticeTarget;
+  disabled: boolean;
   onChange: (target: PracticeTarget) => void;
 }) {
   const { t } = useI18n();
@@ -186,7 +200,7 @@ function TargetSummary({
           <dd>{target.delayed_transfer_task}</dd>
         </div>
       </dl>
-      <ProfessorPracticeTargetEditor target={target} onChange={onChange} />
+      <ProfessorPracticeTargetEditor disabled={disabled} target={target} onChange={onChange} />
     </section>
   );
 }

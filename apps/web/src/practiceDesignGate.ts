@@ -9,11 +9,13 @@ export type PracticeDesignLecture = { id: string; label: string };
 
 export function useProfessorPracticeDesignGate({
   courseId,
+  routingReady,
   session,
   sourceRevision,
   targetLectures,
 }: {
   courseId: string | null;
+  routingReady: boolean;
   session: LoginSession;
   sourceRevision: string | null;
   targetLectures: PracticeDesignLecture[];
@@ -42,6 +44,7 @@ export function useProfessorPracticeDesignGate({
       error: designs.error,
       lectures: targetLectures,
       pendingLectureId: designs.pendingLectureId,
+      routingReady,
       onApprove: (lectureId: string) => void designs.approve(lectureId),
       onPropose: (lectureId: string, refresh = false) => void designs.propose(lectureId, refresh),
       onSave: (lectureId: string, update: Parameters<typeof designs.save>[1]) =>

@@ -5,22 +5,34 @@ import type { CourseSourceRoutingManifest, LoginSession, SourceRouteRole } from 
 
 export function useProfessorSourceRouting(session: LoginSession) {
   const [routing, setRouting] = useState<CourseSourceRoutingManifest | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
 
   const load = useCallback(
     async (courseId: string) => {
-      const result = await getSourceRouting(courseId, session);
-      setRouting(result);
-      return result;
+      try {
+        const result = await getSourceRouting(courseId, session);
+        setRouting(result);
+        setUnavailable(false);
+        return result;
+      } catch (error) {
+        setRouting(null);
+        setUnavailable(true);
+        throw error;
+      }
     },
     [session],
   );
 
-  const reset = useCallback(() => setRouting(null), []);
+  const reset = useCallback(() => {
+    setRouting(null);
+    setUnavailable(false);
+  }, []);
 
   const regenerate = useCallback(
     async (courseId: string) => {
       const result = await proposeSourceRouting(courseId, session, true);
       setRouting(result);
+      setUnavailable(false);
       return result;
     },
     [session],
@@ -30,6 +42,7 @@ export function useProfessorSourceRouting(session: LoginSession) {
     async (courseId: string) => {
       const result = await proposeSourceRouting(courseId, session);
       setRouting(result);
+      setUnavailable(false);
       return result;
     },
     [session],
@@ -59,10 +72,11 @@ export function useProfessorSourceRouting(session: LoginSession) {
       if (!routing) throw new Error("Load source routing before confirming it.");
       const result = await confirmSourceRouting(courseId, routing, session);
       setRouting(result);
+      setUnavailable(false);
       return result;
     },
     [routing, session],
   );
 
-  return { confirm, load, propose, regenerate, reset, routing, updateRoute };
+  return { confirm, load, propose, regenerate, reset, routing, unavailable, updateRoute };
 }
