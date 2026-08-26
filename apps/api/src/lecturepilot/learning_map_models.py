@@ -180,7 +180,7 @@ def _valid_gate_revision(gate: LearningMapGate) -> bool:
     payload = gate.model_dump(mode="json", exclude={"revision"})
     if gate.revision == digest_payload(payload):
         return True
-    if gate.practice_target_id is not None or ADDED_GATE_FIELDS <= gate.model_fields_set:
+    if gate.practice_target_id is not None or ADDED_GATE_FIELDS & gate.model_fields_set:
         return False
     for field in ADDED_GATE_FIELDS:
         payload.pop(field)
@@ -191,9 +191,12 @@ def _valid_map_revision(learning_map: LearningMap) -> bool:
     payload = learning_map.model_dump(mode="json", exclude={"revision"})
     if learning_map.revision == digest_payload(payload):
         return True
-    for gate, gate_payload in zip(learning_map.gates, payload["gates"], strict=True):
-        if gate.practice_target_id is not None or ADDED_GATE_FIELDS <= gate.model_fields_set:
-            continue
+    if any(
+        gate.practice_target_id is not None or ADDED_GATE_FIELDS & gate.model_fields_set
+        for gate in learning_map.gates
+    ):
+        return False
+    for gate_payload in payload["gates"]:
         for field in ADDED_GATE_FIELDS:
             gate_payload.pop(field)
     return learning_map.revision == digest_payload(payload)

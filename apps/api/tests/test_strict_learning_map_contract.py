@@ -32,6 +32,36 @@ def _gate_payload() -> dict:
     }
 
 
+def _legacy_learning_map_payload() -> dict:
+    return {
+        "course_id": "course-1",
+        "lecture_id": "lecture-1",
+        "title": "Lecture",
+        "objective": "Apply the mechanism independently.",
+        "revision": "043ad5be63817d2ee1f22314639e635d2b30f408f28b9b72e66aa5751210bde2",
+        "nodes": [
+            {
+                "id": "mechanism",
+                "title": "Mechanism",
+                "lecture_id": "lecture-1",
+                "section_id": "mechanism",
+                "source_ref": "lecture.md#mechanism",
+                "prerequisites": [],
+                "gate_ids": ["mechanism-check"],
+                "quiz_ids": [],
+            }
+        ],
+        "gates": [
+            {
+                **_gate_payload(),
+                "independent_exit_task": None,
+                "practice_target_id": None,
+                "revision": "9aac7e6b0f6eca1b9782cdbfe9c1150cc0eb164efd5bfcd64552864fac6480eb",
+            }
+        ],
+    }
+
+
 @pytest.mark.parametrize(
     ("field", "replacement"),
     [
@@ -72,33 +102,7 @@ def test_learning_map_gate_has_no_evidence_required_compatibility_field() -> Non
 
 
 def test_legacy_generic_learning_map_reads_with_safe_teaching_contract_defaults() -> None:
-    payload = {
-        "course_id": "course-1",
-        "lecture_id": "lecture-1",
-        "title": "Lecture",
-        "objective": "Apply the mechanism independently.",
-        "revision": "043ad5be63817d2ee1f22314639e635d2b30f408f28b9b72e66aa5751210bde2",
-        "nodes": [
-            {
-                "id": "mechanism",
-                "title": "Mechanism",
-                "lecture_id": "lecture-1",
-                "section_id": "mechanism",
-                "source_ref": "lecture.md#mechanism",
-                "prerequisites": [],
-                "gate_ids": ["mechanism-check"],
-                "quiz_ids": [],
-            }
-        ],
-        "gates": [
-            {
-                **_gate_payload(),
-                "independent_exit_task": None,
-                "practice_target_id": None,
-                "revision": "9aac7e6b0f6eca1b9782cdbfe9c1150cc0eb164efd5bfcd64552864fac6480eb",
-            }
-        ],
-    }
+    payload = _legacy_learning_map_payload()
 
     learning_map = LearningMap.model_validate(payload)
 
@@ -108,6 +112,26 @@ def test_legacy_generic_learning_map_reads_with_safe_teaching_contract_defaults(
     assert gate.delayed_transfer_surface_change is None
     assert gate.misconceptions == []
     assert gate.hint_ladder == []
+
+
+def test_legacy_generic_gate_rejects_partial_added_field_with_old_revision() -> None:
+    payload = _legacy_learning_map_payload()["gates"][0]
+    payload["target_invariant"] = "Injected teaching contract."
+
+    with pytest.raises(ValidationError, match="gate revision"):
+        LearningMapGate.model_validate(payload)
+
+
+def test_legacy_learning_map_rejects_partial_added_gate_field_with_old_revision() -> None:
+    payload = _legacy_learning_map_payload()
+    payload["gates"][0]["target_invariant"] = "Injected teaching contract."
+    payload["gates"][0]["revision"] = (
+        "ae55a09bfe33f1355e07e4cb662906cbba7d62f50f75106ef123ba169c4ed6fd"
+    )
+    payload["revision"] = "2a8261e47b51e664746a49ca1f786b7551503530474e0571680b4aecae585bd3"
+
+    with pytest.raises(ValidationError, match="revision"):
+        LearningMap.model_validate(payload)
 
 
 def test_published_map_rejects_digest_mismatch_without_repair(tmp_path: Path) -> None:
