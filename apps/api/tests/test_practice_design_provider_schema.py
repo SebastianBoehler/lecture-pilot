@@ -1,12 +1,18 @@
 import json
+import sys
 from collections.abc import Callable
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
 from openai.lib._pydantic import to_strict_json_schema
 from pydantic import BaseModel, ValidationError
 
+import lecturepilot.course_practice_design_benchmark_evaluator as benchmark_client_module
+import lecturepilot.course_practice_design_client as proposal_client_module
+import lecturepilot.course_practice_design_review_client as review_client_module
 from lecturepilot.course_practice_design_benchmark_evaluator import (
+    LiteLLMPracticeDesignBenchmarkClient,
     practice_design_benchmark_response_format,
 )
 from lecturepilot.course_practice_design_benchmark_models import (
@@ -14,13 +20,17 @@ from lecturepilot.course_practice_design_benchmark_models import (
     PracticeDesignBenchmarkEvaluation,
 )
 from lecturepilot.course_practice_design_models import PracticeDesignProposal
+from lecturepilot.course_practice_design_client import LiteLLMPracticeDesignClient
 from lecturepilot.course_practice_design_prompt import practice_design_response_format
+from lecturepilot.course_practice_design_review_client import LiteLLMPracticeDesignReviewClient
 from lecturepilot.course_practice_design_review_models import (
     PracticeDesignReviewResult,
 )
 from lecturepilot.course_practice_design_review_prompt import (
     practice_design_review_response_format,
 )
+from lecturepilot.models import ProviderCapability, ProviderSettings
+from lecturepilot.providers import ProviderConfigurationError
 from practice_design_test_helpers import passing_review, proposal
 
 
@@ -79,6 +89,56 @@ def test_practice_design_strict_schema_preserves_nullable_semantic_fields() -> N
         "assessment_conditions",
     ):
         assert _allows_null(planning_context["properties"][field])
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("client", "method_name", "client_module", "schema_function"),
+    (
+        (
+            LiteLLMPracticeDesignClient(),
+            "complete_proposal",
+            proposal_client_module,
+            "practice_design_response_format",
+        ),
+        (
+            LiteLLMPracticeDesignReviewClient(),
+            "complete_review",
+            review_client_module,
+            "practice_design_review_response_format",
+        ),
+        (
+            LiteLLMPracticeDesignBenchmarkClient(),
+            "complete_evaluation",
+            benchmark_client_module,
+            "practice_design_benchmark_response_format",
+        ),
+    ),
+)
+async def test_practice_design_clients_preserve_schema_configuration_errors(
+    monkeypatch,
+    client: Any,
+    method_name: str,
+    client_module: Any,
+    schema_function: str,
+) -> None:
+    def unavailable_schema() -> dict[str, Any]:
+        raise ProviderConfigurationError("strict schema helper unavailable")
+
+    monkeypatch.setitem(sys.modules, "litellm", SimpleNamespace(acompletion=object()))
+    monkeypatch.setattr(client_module, schema_function, unavailable_schema)
+    complete = getattr(client, method_name)
+
+    with pytest.raises(ProviderConfigurationError, match="strict schema helper unavailable"):
+        await complete(
+            settings=ProviderSettings(
+                provider="openai",
+                model="openai/gpt-5.6-luna",
+                api_key_env="OPENAI_API_KEY",
+                capabilities={ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON},
+            ),
+            messages=[{"role": "user", "content": "generate"}],
+        )
 
 
 @pytest.mark.parametrize(

@@ -42,6 +42,8 @@ class LiteLLMPracticeDesignClient:
                 response_format=practice_design_response_format(),
                 **completion_options(settings, temperature=0.4, max_tokens=6000),
             )
+        except ProviderConfigurationError:
+            raise
         except Exception as exc:
             raise ModelExecutionError(
                 model_provider_error_message(exc, provider=settings.provider)

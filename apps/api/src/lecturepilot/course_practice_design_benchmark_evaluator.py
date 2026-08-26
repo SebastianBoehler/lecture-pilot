@@ -114,6 +114,8 @@ class LiteLLMPracticeDesignBenchmarkClient:
                 response_format=practice_design_benchmark_response_format(),
                 **completion_options(settings, temperature=0.0, reasoning_effort="low"),
             )
+        except ProviderConfigurationError:
+            raise
         except Exception as exc:
             raise ModelExecutionError(
                 model_provider_error_message(exc, provider=settings.provider)

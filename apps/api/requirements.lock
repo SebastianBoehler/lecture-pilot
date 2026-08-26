@@ -103,8 +103,10 @@ multidict==6.7.1
     # via
     #   aiohttp
     #   yarl
-openai==2.44.0
-    # via litellm
+openai==2.54.0
+    # via
+    #   lecturepilot-api (apps/api/pyproject.toml)
+    #   litellm
 packaging==26.2
     # via
     #   huggingface-hub
@@ -199,14 +201,21 @@ tue-api-wrapper==0.3.0
     # via lecturepilot-api (apps/api/pyproject.toml)
 typing-extensions==4.16.0
     # via
+    #   aiohttp
+    #   aiosignal
     #   alembic
+    #   anyio
     #   beautifulsoup4
     #   fastapi
     #   huggingface-hub
     #   openai
+    #   psycopg
     #   pydantic
     #   pydantic-core
+    #   pytest-asyncio
+    #   referencing
     #   sqlalchemy
+    #   starlette
     #   typing-inspection
 typing-inspection==0.4.2
     # via
