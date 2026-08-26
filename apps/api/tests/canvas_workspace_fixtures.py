@@ -10,6 +10,7 @@ from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_canvas_publication import CanvasPublicationMetadata
 from lecturepilot.course_canvas_repairs import lecture_source_revision
 from lecturepilot.course_learning_design_store import CourseLearningDesignStore
+from lecturepilot.course_practice_design_store import PracticeDesignStore
 from lecturepilot.latex_canvas_importer import CANVAS_IMPORT_VERSION
 from lecturepilot.learner_state import LearnerStateStore
 from lecturepilot.lecture_source_manifest import write_lecture_source_manifest
@@ -106,25 +107,29 @@ def published_martius_workspace(tmp_path: Path) -> CanvasWorkspace:
 
 
 def write_canvas_draft(workspace: CanvasWorkspace, document: CanvasDocument) -> CanvasDocument:
-    source_index = CourseSourceIndex(
-        course_id=document.course_id,
-        files=[
-            IndexedSourceFile(
-                path="source.md",
-                kind="markdown",
-                size_bytes=1,
-                sha256="a" * 64,
-                modified_ns=1,
-            )
-        ],
+    existing_design = PracticeDesignStore(workspace.layout).read(
+        course_id=document.course_id, lecture_id=document.lecture_id
     )
-    write_lecture_source_manifest(
-        workspace.layout.lecture_source_manifest_path(document.course_id, document.lecture_id),
-        course_id=document.course_id,
-        lecture_id=document.lecture_id,
-        file_paths=["source.md"],
-        source_index=source_index,
-    )
+    if existing_design is None:
+        source_index = CourseSourceIndex(
+            course_id=document.course_id,
+            files=[
+                IndexedSourceFile(
+                    path="source.md",
+                    kind="markdown",
+                    size_bytes=1,
+                    sha256="a" * 64,
+                    modified_ns=1,
+                )
+            ],
+        )
+        write_lecture_source_manifest(
+            workspace.layout.lecture_source_manifest_path(document.course_id, document.lecture_id),
+            course_id=document.course_id,
+            lecture_id=document.lecture_id,
+            file_paths=["source.md"],
+            source_index=source_index,
+        )
     sourced_document = document.model_copy(
         update={
             "source_ref": _concrete_source_ref(document.source_ref),
@@ -144,7 +149,9 @@ def write_canvas_draft(workspace: CanvasWorkspace, document: CanvasDocument) -> 
         workspace.layout,
         sourced_document,
         source_revision=revision,
-        source_path="source.md",
+        source_path="source.md"
+        if existing_design is None
+        else existing_design.targets[0].source_refs[0],
     )
     workspace.write_course_canvas_draft(
         sourced_document,

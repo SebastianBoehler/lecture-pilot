@@ -3,12 +3,12 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from auth_helpers import confirm_source_routing, professor_headers
+from canvas_planner_test_helpers import RepairingCoursePlanner
 from canvas_workspace_fixtures import published_course_canvas, write_canvas_draft
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import MAX_SOURCE_REF_LENGTH, CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT_VERSION
-from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_repairs import lecture_source_revision
 from lecturepilot import course_canvas_generation
 from practice_design_test_helpers import save_approved_design, write_manifest
@@ -116,7 +116,7 @@ def test_ai_repair_uses_and_persists_failure_guidance_for_the_source_revision(
     tmp_path: Path,
 ) -> None:
     client = _course_client(tmp_path)
-    planner = _RepairingCoursePlanner()
+    planner = RepairingCoursePlanner()
     client.app.state.course_planner = planner
     draft_path = "/admin/courses/draft-integrity/lectures/lecture-01/canvas/draft"
 
@@ -255,31 +255,6 @@ class _InvalidCoursePlanner:
             update={
                 "source_kind": "generated",
                 "source_ref": "s" * (MAX_SOURCE_REF_LENGTH + 1),
-            }
-        )
-
-
-class _RepairingCoursePlanner:
-    def __init__(self) -> None:
-        self.repair_contexts: list[str | None] = []
-
-    async def plan_canvas(
-        self,
-        source_document: CanvasDocument,
-        *,
-        practice_design,
-        repair_context: str | None = None,
-        output_language: str,
-    ) -> CanvasDocument:
-        self.repair_contexts.append(repair_context)
-        if repair_context is None:
-            raise CanvasGenerationRepairableError(
-                "Math block risk-equation uses unsupported command \\P."
-            )
-        return source_document.model_copy(
-            update={
-                "source_kind": "generated",
-                "source_ref": "Repaired from source evidence",
             }
         )
 

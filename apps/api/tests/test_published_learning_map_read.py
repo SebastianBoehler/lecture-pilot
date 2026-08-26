@@ -29,7 +29,8 @@ def test_learning_map_get_reads_the_approved_published_snapshot_without_rewritin
     path = "/admin/courses/martius-ml/lectures/lecture-01/canvas/learning-design"
     review = client.get(path, headers=professor_headers()).json()
     update = _update_payload(review)
-    update["objective"] = "Approved objective that is not present in canvas Markdown."
+    generic_gate = next(gate for gate in update["gates"] if not gate["id"].startswith("practice-"))
+    generic_gate["transfer_prompt"] = "Apply the mechanism to a changed case."
     changed = client.put(path, headers=professor_headers(), json=update)
     assert changed.status_code == 200
     approved = client.post(
@@ -38,6 +39,7 @@ def test_learning_map_get_reads_the_approved_published_snapshot_without_rewritin
         json={
             "draft_digest": changed.json()["draft_digest"],
             "source_revision": changed.json()["source_revision"],
+            "practice_design_revision": changed.json()["practice_design_revision"],
             "learning_map_revision": changed.json()["learning_map"]["revision"],
             "report_revision": changed.json()["report"]["report_revision"],
         },
@@ -61,4 +63,10 @@ def test_learning_map_get_reads_the_approved_published_snapshot_without_rewritin
 
     assert response.status_code == 200, response.json()
     assert response.json()["objective"] == update["objective"]
+    assert (
+        next(gate for gate in response.json()["gates"] if gate["id"] == generic_gate["id"])[
+            "transfer_prompt"
+        ]
+        == generic_gate["transfer_prompt"]
+    )
     assert map_path.read_bytes() == before
