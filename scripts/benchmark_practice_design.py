@@ -17,6 +17,9 @@ from lecturepilot.course_practice_design_benchmark_fixtures import (  # noqa: E4
 from lecturepilot.course_practice_design_benchmark_report import (  # noqa: E402
     PracticeDesignBenchmarkReport,
 )
+from lecturepilot.course_practice_design_benchmark_models import (  # noqa: E402
+    PracticeDesignBenchmarkReviewerSpec,
+)
 from lecturepilot.course_practice_design_benchmark_runner import (  # noqa: E402
     run_practice_design_benchmark,
 )
@@ -39,7 +42,7 @@ def main() -> int:
             run_practice_design_benchmark(
                 fixtures=fixtures,
                 proposal_model=proposal_model,
-                reviewer_models=tuple(args.reviewer_model),
+                reviewers=tuple(args.reviewer),
             )
         )
         args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -57,20 +60,27 @@ def main() -> int:
 
 def _arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
+        allow_abbrev=False,
         description=(
             "Run the opt-in production practice-design benchmark with separate judgments from "
-            "two or more distinct reviewer models."
-        )
+            "two or more reviewer deployments. Canonical identities are operator-supplied; "
+            "aliases are never inferred to be independent."
+        ),
     )
     parser.add_argument(
         "--proposal-model",
         help="Production planner model; defaults to LECTUREPILOT_MODEL.",
     )
     parser.add_argument(
-        "--reviewer-model",
+        "--reviewer",
         action="append",
         required=True,
-        help="Distinct benchmark reviewer model slug; provide this flag at least twice.",
+        type=_reviewer_spec,
+        metavar="MODEL=CANONICAL_ID",
+        help=(
+            "Invocation model slug and canonical underlying model/deployment identity; repeat "
+            "with distinct canonical identities."
+        ),
     )
     parser.add_argument(
         "--fixtures",
@@ -84,12 +94,22 @@ def _arguments() -> argparse.Namespace:
         action="store_true",
         help="Also print concise per-fixture dimension means and disagreement.",
     )
-    args = parser.parse_args()
-    if len(args.reviewer_model) < 2 or len(set(args.reviewer_model)) != len(
-        args.reviewer_model
-    ):
-        parser.error("--reviewer-model requires at least two distinct model slugs")
-    return args
+    return parser.parse_args()
+
+
+def _reviewer_spec(value: str) -> PracticeDesignBenchmarkReviewerSpec:
+    invocation_model, separator, canonical_identity = value.partition("=")
+    if not separator or not invocation_model.strip() or not canonical_identity.strip():
+        raise argparse.ArgumentTypeError(
+            "reviewer must be MODEL=CANONICAL_ID with both values nonblank"
+        )
+    try:
+        return PracticeDesignBenchmarkReviewerSpec(
+            invocation_model=invocation_model,
+            canonical_identity=canonical_identity,
+        )
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
 
 
 def _print_summary(report: PracticeDesignBenchmarkReport) -> None:
@@ -113,12 +133,15 @@ def _print_summary(report: PracticeDesignBenchmarkReport) -> None:
         ]
         disagreement = str(max(spreads)) if spreads else "n/a"
         print(
-            f"{fixture.fixture_id}: reviewers={successes}/{len(report.reviewer_models)}; "
+            f"{fixture.fixture_id}: reviewers={successes}/{len(report.reviewers)}; "
             f"max_spread={disagreement}; {means or 'no scores'}"
         )
         for result in fixture.reviewer_results:
             if result.error is not None:
-                print(f"  {result.reviewer_model}: error: {result.error.message}")
+                print(
+                    f"  {result.reviewer.invocation_model} "
+                    f"[{result.reviewer.canonical_identity}]: error: {result.error.message}"
+                )
 
 
 if __name__ == "__main__":

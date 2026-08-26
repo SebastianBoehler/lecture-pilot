@@ -15,7 +15,9 @@ from lecturepilot.course_practice_design_benchmark_fixtures import (
 )
 from lecturepilot.course_practice_design_benchmark_models import (
     PracticeDesignBenchmarkReviewerJudgment,
+    PracticeDesignBenchmarkReviewerSpec,
     summarize_dimension_scores,
+    validate_reviewer_specs,
 )
 from lecturepilot.course_practice_design_benchmark_report import (
     PracticeDesignBenchmarkError,
@@ -52,15 +54,13 @@ async def run_practice_design_benchmark(
     *,
     fixtures: Sequence[PracticeDesignBenchmarkFixture],
     proposal_model: str,
-    reviewer_models: Sequence[str],
+    reviewers: Sequence[PracticeDesignBenchmarkReviewerSpec],
     planner: PracticeDesignBenchmarkPlanner | None = None,
     evaluation_client: PracticeDesignBenchmarkModelClient | None = None,
     registry_factory: Callable[[str], Any] = ProviderRegistry.from_env,
     generated_at: datetime | None = None,
 ) -> PracticeDesignBenchmarkReport:
-    reviewer_models = tuple(reviewer_models)
-    if len(reviewer_models) < 2 or len(set(reviewer_models)) != len(reviewer_models):
-        raise ValueError("Provide at least two distinct reviewer models.")
+    reviewers = validate_reviewer_specs(reviewers)
     production_planner = planner or PracticeDesignPlanner(
         provider_registry=ProviderRegistry.from_env(proposal_model)
     )
@@ -71,7 +71,7 @@ async def run_practice_design_benchmark(
             await _run_fixture(
                 fixture,
                 proposal_model=proposal_model,
-                reviewer_models=reviewer_models,
+                reviewers=reviewers,
                 planner=production_planner,
                 evaluation_client=client,
                 registry_factory=registry_factory,
@@ -80,7 +80,7 @@ async def run_practice_design_benchmark(
     return PracticeDesignBenchmarkReport(
         generated_at=generated_at or datetime.now(UTC),
         proposal_model=proposal_model,
-        reviewer_models=reviewer_models,
+        reviewers=reviewers,
         fixtures=tuple(results),
     )
 
@@ -89,7 +89,7 @@ async def _run_fixture(
     fixture: PracticeDesignBenchmarkFixture,
     *,
     proposal_model: str,
-    reviewer_models: tuple[str, ...],
+    reviewers: tuple[PracticeDesignBenchmarkReviewerSpec, ...],
     planner: PracticeDesignBenchmarkPlanner,
     evaluation_client: PracticeDesignBenchmarkModelClient,
     registry_factory: Callable[[str], Any],
@@ -122,9 +122,9 @@ async def _run_fixture(
 
     results = []
     judgments = []
-    for reviewer_model in reviewer_models:
+    for reviewer in reviewers:
         try:
-            settings = registry_factory(reviewer_model).require_ready(
+            settings = registry_factory(reviewer.invocation_model).require_ready(
                 [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
             )
             raw_evaluation = await evaluation_client.complete_evaluation(
@@ -143,20 +143,16 @@ async def _run_fixture(
                 allowed_source_paths=fixture.allowed_source_paths,
             )
             results.append(
-                PracticeDesignBenchmarkReviewerResult(
-                    reviewer_model=reviewer_model, evaluation=evaluation
-                )
+                PracticeDesignBenchmarkReviewerResult(reviewer=reviewer, evaluation=evaluation)
             )
             judgments.append(
-                PracticeDesignBenchmarkReviewerJudgment(
-                    reviewer_model=reviewer_model, evaluation=evaluation
-                )
+                PracticeDesignBenchmarkReviewerJudgment(reviewer=reviewer, evaluation=evaluation)
             )
         except Exception as exc:
             results.append(
                 PracticeDesignBenchmarkReviewerResult(
-                    reviewer_model=reviewer_model,
-                    error=_error("benchmark_review", reviewer_model, exc),
+                    reviewer=reviewer,
+                    error=_error("benchmark_review", reviewer.invocation_model, exc),
                 )
             )
     return _fixture_result(

@@ -16,18 +16,23 @@ Then run:
 ```bash
 python scripts/benchmark_practice_design.py \
   --proposal-model openai/gpt-5.6-luna \
-  --reviewer-model gemini/gemini-3.1-flash-lite \
-  --reviewer-model openrouter/openai/gpt-oss-120b:nitro \
+  --reviewer 'gemini/gemini-3.1-flash-lite=google/gemini-3.1-flash-lite@stable' \
+  --reviewer 'openrouter/openai/gpt-oss-120b:nitro=openai/gpt-oss-120b@nitro' \
   --output .runtime/practice-design-benchmark.json \
   --summary
 ```
 
 `--proposal-model` defaults to `LECTUREPILOT_MODEL`. `--fixtures` can select a
-different frozen synthetic or clearly public corpus. The CLI requires at least
-two distinct reviewer model slugs: repeated temperature-zero calls to one model
-must not be presented as independent evidence. It writes the JSON report even
-when an individual proposal or reviewer call fails, and returns nonzero when
-the retained report contains such an error.
+different frozen synthetic or clearly public corpus. Each compact
+`--reviewer MODEL=CANONICAL_ID` specification separates the invocation slug
+from the operator-asserted underlying model or deployment identity. Aliases or
+gateways for the same deployment must use the same canonical identity; the CLI
+does not infer independence from different slugs. Both identities must be
+unique across at least two reviewers and both are retained in the report.
+Repeated temperature-zero calls to one canonical model must not be presented
+as independent evidence. The command writes the JSON report even when an
+individual proposal or reviewer call fails, and returns nonzero when the
+retained report contains such an error.
 
 ## Dimensions and scale
 
@@ -52,13 +57,15 @@ The bounded scale is retained in every report:
 - **5 — Strong:** fully satisfies the dimension with no material defect found.
 
 Each submaximal score requires a textual rationale and a failure example backed
-by an exact routed source excerpt. Reports preserve the configured proposal and
-reviewer model identities, production proposal, production semantic review,
-per-reviewer scores and rationales, source-supported failure examples, errors,
-and per-fixture summaries. `score_spread` is the maximum reviewer score minus
-the minimum for that fixture and dimension; it is `null` when fewer than two
-reviewers returned valid judgments. There is deliberately no opaque readiness
-aggregate or automatic promotion threshold.
+by an exact routed source excerpt. A target-specific example uses
+`scope: "target"` and at least one exact target ID; a proposal-wide example uses
+`scope: "global"` and no target IDs. Reports preserve the configured proposal
+identity, both reviewer identities, production proposal, production semantic
+review, per-reviewer scores and rationales, source-supported failure examples,
+errors, and per-fixture summaries. `score_spread` is the maximum reviewer score
+minus the minimum for that fixture and dimension; it is `null` when fewer than
+two reviewers returned valid judgments. There is deliberately no opaque
+readiness aggregate or automatic promotion threshold.
 
 ## What this can and cannot establish
 

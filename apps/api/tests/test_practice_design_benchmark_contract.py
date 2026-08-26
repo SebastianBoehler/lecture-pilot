@@ -6,6 +6,7 @@ from lecturepilot.course_practice_design_benchmark_models import (
     SCORE_ANCHORS,
     PracticeDesignBenchmarkEvaluation,
     PracticeDesignBenchmarkReviewerJudgment,
+    PracticeDesignBenchmarkReviewerSpec,
     summarize_dimension_scores,
 )
 
@@ -41,16 +42,59 @@ def test_submaximal_score_requires_a_source_supported_failure_example() -> None:
         PracticeDesignBenchmarkEvaluation.model_validate(payload)
 
 
+def test_reviewer_spec_retains_invocation_and_canonical_deployment_identity() -> None:
+    spec = PracticeDesignBenchmarkReviewerSpec(
+        invocation_model="openrouter/openai/gpt-5.6",
+        canonical_identity="openai/gpt-5.6@2026-08-01",
+    )
+
+    assert spec.model_dump() == {
+        "invocation_model": "openrouter/openai/gpt-5.6",
+        "canonical_identity": "openai/gpt-5.6@2026-08-01",
+    }
+
+
+def test_failure_example_scope_distinguishes_target_and_global_issues() -> None:
+    target_payload = _score(BENCHMARK_DIMENSIONS[0], 3)
+    target_payload["failure_examples"][0]["target_ids"] = []
+    with pytest.raises(ValidationError, match="Target-scoped"):
+        PracticeDesignBenchmarkEvaluation(
+            scores=[
+                target_payload,
+                *[_score(dimension, 5) for dimension in BENCHMARK_DIMENSIONS[1:]],
+            ]
+        )
+
+    global_payload = _score(BENCHMARK_DIMENSIONS[0], 3)
+    global_payload["failure_examples"][0].update({"scope": "global", "target_ids": []})
+    parsed = PracticeDesignBenchmarkEvaluation(
+        scores=[
+            global_payload,
+            *[_score(dimension, 5) for dimension in BENCHMARK_DIMENSIONS[1:]],
+        ]
+    )
+    assert parsed.scores[0].failure_examples[0].scope == "global"
+
+    global_payload["failure_examples"][0]["target_ids"] = ["target-1"]
+    with pytest.raises(ValidationError, match="Global"):
+        PracticeDesignBenchmarkEvaluation(
+            scores=[
+                global_payload,
+                *[_score(dimension, 5) for dimension in BENCHMARK_DIMENSIONS[1:]],
+            ]
+        )
+
+
 def test_dimension_summary_preserves_reviewer_scores_and_exposes_disagreement() -> None:
     first = _evaluation(5).model_dump(mode="json")
     first["scores"][0] = _score(BENCHMARK_DIMENSIONS[0], 2)
     judgments = (
         PracticeDesignBenchmarkReviewerJudgment(
-            reviewer_model="openai/reviewer-a",
+            reviewer=_reviewer("openai/reviewer-a", "vendor/model-a@1"),
             evaluation=PracticeDesignBenchmarkEvaluation.model_validate(first),
         ),
         PracticeDesignBenchmarkReviewerJudgment(
-            reviewer_model="gemini/reviewer-b",
+            reviewer=_reviewer("gemini/reviewer-b", "vendor/model-b@1"),
             evaluation=_evaluation(5),
         ),
     )
@@ -59,8 +103,20 @@ def test_dimension_summary_preserves_reviewer_scores_and_exposes_disagreement() 
 
     assert summary.dimension == "source_faithfulness"
     assert tuple(item.model_dump() for item in summary.reviewer_scores) == (
-        {"reviewer_model": "openai/reviewer-a", "score": 2},
-        {"reviewer_model": "gemini/reviewer-b", "score": 5},
+        {
+            "reviewer": {
+                "invocation_model": "openai/reviewer-a",
+                "canonical_identity": "vendor/model-a@1",
+            },
+            "score": 2,
+        },
+        {
+            "reviewer": {
+                "invocation_model": "gemini/reviewer-b",
+                "canonical_identity": "vendor/model-b@1",
+            },
+            "score": 5,
+        },
     )
     assert summary.mean_score == 3.5
     assert summary.minimum_score == 2
@@ -74,11 +130,19 @@ def _evaluation(score: int) -> PracticeDesignBenchmarkEvaluation:
     )
 
 
+def _reviewer(invocation_model: str, canonical_identity: str):
+    return PracticeDesignBenchmarkReviewerSpec(
+        invocation_model=invocation_model,
+        canonical_identity=canonical_identity,
+    )
+
+
 def _score(dimension: str, score: int) -> dict:
     examples = []
     if score < 5:
         examples = [
             {
+                "scope": "target",
                 "description": "The proposal omits a source-supported condition.",
                 "target_ids": ["target-1"],
                 "supporting_anchors": [{"source_path": "fixture.md", "excerpt": "source evidence"}],

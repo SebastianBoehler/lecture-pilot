@@ -12,7 +12,9 @@ from lecturepilot.course_practice_design_benchmark_models import (
     PracticeDesignBenchmarkDimensionSummary,
     PracticeDesignBenchmarkEvaluation,
     PracticeDesignBenchmarkReviewerJudgment,
+    PracticeDesignBenchmarkReviewerSpec,
     summarize_dimension_scores,
+    validate_reviewer_specs,
 )
 from lecturepilot.course_practice_design_contract import (
     NonblankText,
@@ -35,7 +37,7 @@ class PracticeDesignBenchmarkError(StrictPracticeDesignModel):
 
 
 class PracticeDesignBenchmarkReviewerResult(StrictPracticeDesignModel):
-    reviewer_model: NonblankText = Field(max_length=200)
+    reviewer: PracticeDesignBenchmarkReviewerSpec
     evaluation: PracticeDesignBenchmarkEvaluation | None = None
     error: PracticeDesignBenchmarkError | None = None
 
@@ -80,12 +82,12 @@ class PracticeDesignBenchmarkFixtureResult(StrictPracticeDesignModel):
         for result in self.reviewer_results:
             if result.error is not None and (
                 result.error.stage != "benchmark_review"
-                or result.error.model != result.reviewer_model
+                or result.error.model != result.reviewer.invocation_model
             ):
                 raise ValueError("Benchmark-review error identity is inconsistent.")
         judgments = tuple(
             PracticeDesignBenchmarkReviewerJudgment(
-                reviewer_model=result.reviewer_model,
+                reviewer=result.reviewer,
                 evaluation=result.evaluation,
             )
             for result in self.reviewer_results
@@ -101,9 +103,9 @@ class PracticeDesignBenchmarkReport(StrictPracticeDesignModel):
     schema_version: Literal[1] = 1
     generated_at: datetime
     proposal_model: NonblankText = Field(max_length=200)
-    reviewer_models: Annotated[tuple[str, ...], BeforeValidator(freeze_collection)] = Field(
-        min_length=2
-    )
+    reviewers: Annotated[
+        tuple[PracticeDesignBenchmarkReviewerSpec, ...], BeforeValidator(freeze_collection)
+    ] = Field(min_length=2)
     dimensions: Annotated[tuple[BenchmarkDimension, ...], BeforeValidator(freeze_collection)] = (
         BENCHMARK_DIMENSIONS
     )
@@ -119,8 +121,7 @@ class PracticeDesignBenchmarkReport(StrictPracticeDesignModel):
 
     @model_validator(mode="after")
     def require_consistent_model_identity(self) -> PracticeDesignBenchmarkReport:
-        if len(set(self.reviewer_models)) != len(self.reviewer_models):
-            raise ValueError("At least two distinct reviewer models are required.")
+        validate_reviewer_specs(self.reviewers)
         if self.dimensions != BENCHMARK_DIMENSIONS:
             raise ValueError("Benchmark report dimensions must match the frozen contract.")
         expected_scale = tuple(SCORE_ANCHORS.items())
@@ -129,9 +130,9 @@ class PracticeDesignBenchmarkReport(StrictPracticeDesignModel):
         for fixture in self.fixtures:
             if fixture.proposal_model != self.proposal_model:
                 raise ValueError("Fixture proposal-model identity does not match the report.")
-            result_models = tuple(item.reviewer_model for item in fixture.reviewer_results)
-            if fixture.pipeline_error is None and result_models != self.reviewer_models:
-                raise ValueError("Fixture reviewer-model identities do not match the report.")
+            result_reviewers = tuple(item.reviewer for item in fixture.reviewer_results)
+            if fixture.pipeline_error is None and result_reviewers != self.reviewers:
+                raise ValueError("Fixture reviewer specifications do not match the report.")
         return self
 
     @property

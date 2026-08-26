@@ -6,7 +6,10 @@ import pytest
 from lecturepilot.course_practice_design_benchmark_fixtures import (
     load_practice_design_benchmark_fixtures,
 )
-from lecturepilot.course_practice_design_benchmark_models import BENCHMARK_DIMENSIONS
+from lecturepilot.course_practice_design_benchmark_models import (
+    BENCHMARK_DIMENSIONS,
+    PracticeDesignBenchmarkReviewerSpec,
+)
 from lecturepilot.course_practice_design_benchmark_report import PracticeDesignBenchmarkReport
 from lecturepilot.course_practice_design_benchmark_runner import run_practice_design_benchmark
 from lecturepilot.course_practice_design_planner import ReviewedPracticeDesignProposal
@@ -27,7 +30,7 @@ async def test_runner_retains_production_output_per_reviewer_scores_and_disagree
     report = await run_practice_design_benchmark(
         fixtures=(fixture,),
         proposal_model="openai/proposal-model",
-        reviewer_models=("openai/reviewer-a", "gemini/reviewer-b"),
+        reviewers=_reviewers(),
         planner=planner,
         evaluation_client=client,
         registry_factory=_Registry,
@@ -42,10 +45,7 @@ async def test_runner_retains_production_output_per_reviewer_scores_and_disagree
     assert result.proposal_model == "openai/proposal-model"
     assert result.proposal is not None
     assert result.production_review == passing_review()
-    assert tuple(item.reviewer_model for item in result.reviewer_results) == (
-        "openai/reviewer-a",
-        "gemini/reviewer-b",
-    )
+    assert tuple(item.reviewer for item in result.reviewer_results) == _reviewers()
     assert result.dimension_summaries[0].score_spread == 3
     assert PracticeDesignBenchmarkReport.model_validate_json(report.model_dump_json()) == report
 
@@ -58,7 +58,7 @@ async def test_runner_records_provider_errors_without_fallback_scores() -> None:
     report = await run_practice_design_benchmark(
         fixtures=(fixture,),
         proposal_model="openai/proposal-model",
-        reviewer_models=("openai/reviewer-a", "gemini/reviewer-b"),
+        reviewers=_reviewers(),
         planner=_Planner(_reviewed_proposal(fixture)),
         evaluation_client=client,
         registry_factory=_Registry,
@@ -70,7 +70,7 @@ async def test_runner_records_provider_errors_without_fallback_scores() -> None:
     assert result.reviewer_results[0].error.message == "reviewer unavailable"
     assert result.reviewer_results[1].evaluation is not None
     assert result.dimension_summaries[0].score_spread is None
-    assert result.dimension_summaries[0].reviewer_scores[0].reviewer_model == ("gemini/reviewer-b")
+    assert result.dimension_summaries[0].reviewer_scores[0].reviewer == _reviewers()[1]
 
 
 @pytest.mark.asyncio
@@ -81,7 +81,7 @@ async def test_runner_records_proposal_pipeline_errors_without_calling_reviewers
     report = await run_practice_design_benchmark(
         fixtures=(fixture,),
         proposal_model="openai/proposal-model",
-        reviewer_models=("openai/reviewer-a", "gemini/reviewer-b"),
+        reviewers=_reviewers(),
         planner=_FailingPlanner(),
         evaluation_client=client,
         registry_factory=_Registry,
@@ -96,6 +96,31 @@ async def test_runner_records_proposal_pipeline_errors_without_calling_reviewers
     assert result.dimension_summaries == ()
     assert client.models == []
     assert report.has_errors is True
+
+
+@pytest.mark.asyncio
+async def test_runner_rejects_aliases_with_the_same_canonical_reviewer_identity() -> None:
+    fixture = load_practice_design_benchmark_fixtures(FIXTURES)[0]
+    reviewers = (
+        PracticeDesignBenchmarkReviewerSpec(
+            invocation_model="openai/gpt-5.6",
+            canonical_identity="openai/gpt-5.6@2026-08-01",
+        ),
+        PracticeDesignBenchmarkReviewerSpec(
+            invocation_model="openrouter/openai/gpt-5.6",
+            canonical_identity="OpenAI/GPT-5.6@2026-08-01",
+        ),
+    )
+
+    with pytest.raises(ValueError, match="(?i)canonical reviewer identities"):
+        await run_practice_design_benchmark(
+            fixtures=(fixture,),
+            proposal_model="openai/proposal-model",
+            reviewers=reviewers,
+            planner=_FailingPlanner(),
+            evaluation_client=_EvaluationClient(),
+            registry_factory=_Registry,
+        )
 
 
 class _Planner:
@@ -148,6 +173,19 @@ def _reviewed_proposal(fixture) -> ReviewedPracticeDesignProposal:
     )
 
 
+def _reviewers() -> tuple[PracticeDesignBenchmarkReviewerSpec, ...]:
+    return (
+        PracticeDesignBenchmarkReviewerSpec(
+            invocation_model="openai/reviewer-a",
+            canonical_identity="vendor/model-a@1",
+        ),
+        PracticeDesignBenchmarkReviewerSpec(
+            invocation_model="gemini/reviewer-b",
+            canonical_identity="vendor/model-b@1",
+        ),
+    )
+
+
 def _evaluation_payload(score: int) -> dict:
     return {
         "scores": [
@@ -160,6 +198,7 @@ def _evaluation_payload(score: int) -> dict:
                     if score == 5
                     else [
                         {
+                            "scope": "target",
                             "description": "The proposed condition needs material repair.",
                             "target_ids": ["derive-conclusion"],
                             "supporting_anchors": [

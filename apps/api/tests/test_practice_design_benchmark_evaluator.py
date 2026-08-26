@@ -27,6 +27,8 @@ def test_evaluator_prompt_audits_the_production_proposal_and_semantic_review() -
     assert "1 = Unusable" in messages[0]["content"]
     assert "source_faithfulness" in messages[0]["content"]
     assert "misconception_plausibility" in messages[0]["content"]
+    assert "scope to target" in messages[0]["content"]
+    assert "scope to global" in messages[0]["content"]
     assert "PRODUCTION SEMANTIC REVIEW" in messages[1]["content"]
     assert '"source_entailment"' in messages[1]["content"]
     assert "PRODUCTION PRACTICE DESIGN" in messages[1]["content"]
@@ -72,6 +74,7 @@ def test_evaluation_failure_examples_must_reference_real_targets_and_source_text
         "rationale": "A material unsupported detail remains.",
         "failure_examples": [
             {
+                "scope": "target",
                 "description": "The target claims content absent from the source.",
                 "target_ids": ["unknown-target"],
                 "supporting_anchors": [

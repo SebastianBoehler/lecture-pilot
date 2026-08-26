@@ -45,6 +45,7 @@ SCORE_ANCHORS: dict[int, str] = {
 
 
 class PracticeDesignBenchmarkFailureExample(StrictPracticeDesignModel):
+    scope: Literal["target", "global"]
     description: NonblankText = Field(max_length=2_000)
     target_ids: Annotated[tuple[str, ...], BeforeValidator(freeze_collection)] = Field(max_length=8)
     supporting_anchors: Annotated[
@@ -52,9 +53,13 @@ class PracticeDesignBenchmarkFailureExample(StrictPracticeDesignModel):
     ] = Field(min_length=1, max_length=12)
 
     @model_validator(mode="after")
-    def require_unique_target_ids(self) -> PracticeDesignBenchmarkFailureExample:
+    def require_explicit_scope(self) -> PracticeDesignBenchmarkFailureExample:
         if len(set(self.target_ids)) != len(self.target_ids):
             raise ValueError("Benchmark failure-example target IDs must be unique.")
+        if self.scope == "target" and not self.target_ids:
+            raise ValueError("Target-scoped failure examples need at least one target ID.")
+        if self.scope == "global" and self.target_ids:
+            raise ValueError("Global failure examples cannot name target IDs.")
         return self
 
 
@@ -89,13 +94,27 @@ class PracticeDesignBenchmarkEvaluation(StrictPracticeDesignModel):
         return self
 
 
+class PracticeDesignBenchmarkReviewerSpec(StrictPracticeDesignModel):
+    invocation_model: NonblankText = Field(
+        max_length=200,
+        description="Configured provider/model slug used for this invocation.",
+    )
+    canonical_identity: NonblankText = Field(
+        max_length=300,
+        description=(
+            "Operator-supplied canonical underlying model or deployment identity; aliases and "
+            "gateways for the same deployment must use the same value."
+        ),
+    )
+
+
 class PracticeDesignBenchmarkReviewerJudgment(StrictPracticeDesignModel):
-    reviewer_model: NonblankText = Field(max_length=200)
+    reviewer: PracticeDesignBenchmarkReviewerSpec
     evaluation: PracticeDesignBenchmarkEvaluation
 
 
 class PracticeDesignBenchmarkReviewerScore(StrictPracticeDesignModel):
-    reviewer_model: NonblankText = Field(max_length=200)
+    reviewer: PracticeDesignBenchmarkReviewerSpec
     score: int = Field(ge=1, le=5)
 
 
@@ -113,14 +132,12 @@ class PracticeDesignBenchmarkDimensionSummary(StrictPracticeDesignModel):
 def summarize_dimension_scores(
     judgments: Sequence[PracticeDesignBenchmarkReviewerJudgment],
 ) -> tuple[PracticeDesignBenchmarkDimensionSummary, ...]:
-    reviewer_models = [judgment.reviewer_model for judgment in judgments]
-    if len(set(reviewer_models)) != len(reviewer_models):
-        raise ValueError("Reviewer models must be distinct for disagreement reporting.")
+    validate_reviewer_specs(tuple(judgment.reviewer for judgment in judgments), minimum=1)
     summaries = []
     for index, dimension in enumerate(BENCHMARK_DIMENSIONS):
         reviewer_scores = tuple(
             PracticeDesignBenchmarkReviewerScore(
-                reviewer_model=judgment.reviewer_model,
+                reviewer=judgment.reviewer,
                 score=judgment.evaluation.scores[index].score,
             )
             for judgment in judgments
@@ -137,3 +154,20 @@ def summarize_dimension_scores(
             )
         )
     return tuple(summaries)
+
+
+def validate_reviewer_specs(
+    reviewers: Sequence[PracticeDesignBenchmarkReviewerSpec], *, minimum: int = 2
+) -> tuple[PracticeDesignBenchmarkReviewerSpec, ...]:
+    reviewers = tuple(reviewers)
+    if len(reviewers) < minimum:
+        raise ValueError(f"Provide at least {minimum} reviewer specifications.")
+    invocation_keys = [reviewer.invocation_model.casefold() for reviewer in reviewers]
+    if len(set(invocation_keys)) != len(invocation_keys):
+        raise ValueError("Reviewer invocation models must be distinct.")
+    canonical_keys = [
+        " ".join(reviewer.canonical_identity.split()).casefold() for reviewer in reviewers
+    ]
+    if len(set(canonical_keys)) != len(canonical_keys):
+        raise ValueError("Canonical reviewer identities must be distinct.")
+    return reviewers
