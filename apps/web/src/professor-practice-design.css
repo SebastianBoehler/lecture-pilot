@@ -1,166 +1,242 @@
 .practice-design-step,
 .practice-design-lectures,
-.practice-design-lecture,
+.practice-design-lecture-body,
+.practice-target-summary,
 .practice-target,
-.practice-target-fields,
-.practice-target-list {
+.practice-target-editor-panel,
+.practice-editor-fields {
   display: grid;
-  gap: 14px;
 }
 
-.practice-design-header,
-.practice-design-lecture > header {
+.practice-design-step {
+  gap: 24px;
+}
+
+.practice-design-header {
   display: flex;
   align-items: start;
   justify-content: space-between;
-  gap: 18px;
-  border-bottom: 1px solid var(--color-border-primary);
-  padding-bottom: 12px;
+  gap: 32px;
 }
+
 .practice-design-header h2,
-.practice-design-lecture h3,
-.practice-design-lecture p,
-.practice-target p {
+.practice-design-header p,
+.practice-design-empty p,
+.practice-design-proposal-heading h3,
+.practice-design-proposal-heading p,
+.practice-target p,
+.practice-design-actions p {
   margin: 0;
 }
-.practice-design-header p,
-.practice-design-lecture > header p,
-.practice-design-boundary,
-.practice-target dd {
-  color: var(--color-text-secondary);
+
+.practice-design-header h2 {
+  margin-block: 4px 8px;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  text-wrap: balance;
 }
-.practice-design-header > span,
-.practice-design-lecture > header > span {
-  color: var(--color-text-tertiary);
-  font-size: 12px;
+
+.practice-design-header > div > p:last-child {
+  max-width: 65ch;
+  color: var(--color-text-secondary);
+  text-wrap: pretty;
+}
+
+.practice-design-header > span {
+  color: var(--color-text-secondary);
+  font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
 }
-.practice-design-lecture > header > .is-approved {
-  color: var(--color-accent-primary);
-}
+
 .practice-design-boundary {
   margin: 0;
+  border-inline-start: 3px solid var(--color-accent-primary);
+  padding: 10px 12px;
+  color: var(--color-text-secondary);
+  background: color-mix(in srgb, var(--color-accent-primary) 5%, var(--color-bg-primary));
   font-size: 13px;
 }
-.practice-design-lecture {
-  border-bottom: 1px solid var(--color-border-primary);
-  padding-bottom: 18px;
+
+.practice-design-lectures {
+  gap: 16px;
 }
-.practice-design-objective,
-.practice-target-fields label,
-.practice-target-list label,
-.practice-contract-item {
+
+.practice-design-empty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-block: 1px solid var(--color-border-primary);
+  padding-block: 18px;
+}
+
+.practice-design-empty p {
+  margin-block-start: 3px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.practice-design-lecture {
+  border-block: 1px solid var(--color-border-primary);
+}
+
+.practice-design-lecture-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.practice-design-lecture-toggle > button {
+  display: grid;
+  flex: 1 1 auto;
+  justify-items: start;
+  min-width: 0;
+  min-height: 72px;
+  border: 0;
+  padding: 12px 0;
+  text-align: start;
+  background: transparent;
+}
+
+.practice-design-lecture-toggle > button:hover:not(:disabled) {
+  background: transparent;
+}
+
+.practice-design-lecture-toggle > button > span:last-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.practice-design-lecture-toggle > button > span:last-child > span {
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.practice-plan-action {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.practice-design-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.practice-design-status.is-approved {
+  color: var(--color-accent-primary);
+}
+
+.practice-design-lecture-body {
+  gap: 30px;
+  padding-block: 8px 24px;
+}
+
+.practice-design-proposal-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 24px;
+}
+
+.practice-design-proposal-heading h3 {
+  margin-block: 5px 6px;
+  font-size: 22px;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.practice-design-proposal-heading > div > p:last-child {
+  max-width: 65ch;
+  color: var(--color-text-secondary);
+  text-wrap: pretty;
+}
+
+.practice-lecture-editor {
+  display: grid;
+  justify-items: end;
+  gap: 12px;
+}
+
+.practice-lecture-fields {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 16px;
+  width: min(680px, 100%);
+  padding-block-start: 8px;
+}
+
+.practice-lecture-fields label,
+.practice-editor-fields label,
+.practice-editor-section-picker {
   display: grid;
   gap: 5px;
   color: var(--color-text-secondary);
   font-size: 13px;
   font-weight: 700;
 }
+
+.practice-lecture-fields label > span,
+.practice-editor-fields label > span,
+.practice-editor-fields > p {
+  margin: 0;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
 .practice-design-step textarea,
 .practice-design-step input,
 .practice-design-step select {
   min-width: 0;
   border: 1px solid var(--color-border-primary);
   border-radius: 6px;
-  padding: 8px 10px;
+  padding: 9px 10px;
   color: var(--color-text-primary);
   background: var(--color-bg-primary);
   font: inherit;
   font-weight: 400;
 }
+
 .practice-design-step textarea {
-  min-height: 58px;
+  min-height: 76px;
   resize: vertical;
 }
-.practice-target-summary {
-  display: grid;
-  gap: 12px;
+
+.practice-design-step button {
+  min-height: 40px;
 }
-.practice-target {
-  border-left: 2px solid var(--color-border-primary);
-  padding-left: 12px;
-}
-.practice-target > div {
-  display: grid;
-  gap: 4px;
-}
-.practice-target dl {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin: 0;
-}
-.practice-target dl div {
-  display: grid;
-  gap: 3px;
-}
-.practice-target dt {
-  color: var(--color-text-tertiary);
-  font-size: 11px;
-  font-weight: 750;
-  text-transform: uppercase;
-}
-.practice-target dd {
-  margin: 0;
-  font-size: 13px;
-}
-.practice-target-editor {
-  border-top: 1px solid var(--color-border-primary);
-  padding-top: 10px;
-}
-.practice-target-editor summary {
-  color: var(--color-accent-primary);
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 700;
-}
-.practice-target-editor[open] summary {
-  margin-bottom: 12px;
-}
-.practice-target-fields {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-.practice-target-fields label:nth-child(n + 3) {
-  grid-column: span 2;
-}
-.practice-target-list {
-  border: 0;
-  border-top: 1px solid var(--color-border-primary);
-  margin: 0;
-  padding: 12px 0 0;
-}
-.practice-target-list legend {
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  font-weight: 700;
-}
-.practice-contract-item {
-  border-bottom: 1px solid var(--color-border-primary);
-  padding-bottom: 12px;
-}
-.practice-contract-item:last-child {
-  border-bottom: 0;
-}
-.practice-checkbox-field {
+
+.practice-design-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 20px;
+  border-block-start: 1px solid var(--color-border-primary);
+  padding-block-start: 18px;
 }
-.practice-checkbox-field input {
-  margin: 0;
-}
-@media (max-width: 680px) {
-  .practice-design-header,
-  .practice-design-lecture > header {
-    display: grid;
-    gap: 8px;
-  }
-  .practice-target dl,
-  .practice-target-fields {
-    grid-template-columns: 1fr;
-  }
-  .practice-target-fields label:nth-child(n) {
-    grid-column: auto;
-  }
+
+.practice-design-actions > p {
+  max-width: 54ch;
+  color: var(--color-text-secondary);
+  font-size: 13px;
 }

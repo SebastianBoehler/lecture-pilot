@@ -567,35 +567,83 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.stage.publish": "Gib geprüfte Vorlesungs-Arbeitsbereiche für deine Studierenden frei.",
   "builder.status.ready": "Bereit",
   "builder.status.pending": "Ausstehend",
-  "builder.design.title": "Lernpläne",
+  "builder.design.title": "Lernpläne prüfen",
   "builder.design.help":
-    "Prüfe die vorgeschlagenen Lernziele und den Übungsrahmen für jede Vorlesung.",
+    "LecturePilot entwirft jeden Plan aus bestätigten Quellen und lernwissenschaftlichen Regeln. Prüfe und genehmige ihn oder ändere nur das, was angepasst werden soll.",
   "builder.design.coverage": "{designed} von {total} geplant",
   "builder.design.boundary":
-    "Die Freigabe bestätigt gewünschte Lernziele und Übungsaufgaben. Quellen- und Faktenprüfung bleiben getrennt.",
+    "Mit deiner Freigabe wird dieser Lernplan maßgeblich. Quellen- und Faktenprüfung bleiben getrennt.",
+  "builder.design.emptyHelp":
+    "Es gibt noch keinen Vorschlag. Lass LecturePilot den vollständigen Plan entwerfen.",
   "builder.design.generate": "Lernplan erzeugen",
   "builder.design.generating": "Lernplan wird erzeugt...",
   "builder.design.refresh": "Vorschlag aktualisieren",
   "builder.design.lectureTitle": "Vorlesungstitel",
+  "builder.design.lectureTitleHelp": "Verwende den Titel, den Studierende sehen sollen.",
   "builder.design.objective": "Vorlesungsziel",
+  "builder.design.objectiveHelp":
+    "Beschreibe, was Studierende am Ende der Vorlesung selbstständig leisten können sollen.",
+  "builder.design.reviewPlan": "Lernplan prüfen für",
+  "builder.design.editLecture": "Vorlesungsdetails bearbeiten",
+  "builder.design.finishEditing": "Bearbeitung der Vorlesungsdetails beenden",
   "builder.design.targetId": "Ziel-ID",
   "builder.design.targetTitle": "Titel des Lernziels",
-  "builder.design.editTarget": "Zieldetails bearbeiten",
+  "builder.design.targetTitleHelp": "Benenne die Fähigkeit kurz und konkret.",
+  "builder.design.editTarget": "Dieses Lernziel bearbeiten",
+  "builder.design.finishEditingTarget": "Bearbeitung dieses Lernziels beenden",
+  "builder.design.targetedEditTitle": "Gezielte Änderung",
+  "builder.design.targetedEditHelp":
+    "Der Vorschlag ist bereits vollständig. Wähle nur den Bereich, den du ändern möchtest.",
+  "builder.design.chooseEditSection": "Zu bearbeitenden Bereich wählen",
+  "builder.design.editSections.outcome": "Lernziel und Ergebnis",
+  "builder.design.editSections.sequence": "Übungsabfolge",
+  "builder.design.editSections.evidence": "Leistungsnachweis",
+  "builder.design.editSections.misconceptions": "Fehlvorstellungen",
+  "builder.design.editSections.hints": "Hinweisleiter",
+  "builder.design.editSections.sources": "Zeitpunkt und Quellen",
+  "builder.design.technicalDetails": "Technische Details",
   "builder.design.outcomeFor": "Lernziel für {target}",
+  "builder.design.outcomeHelp":
+    "Beschreibe eine beobachtbare Leistung, nicht nur Wissen oder Verständnis.",
   "builder.design.baseline": "Ausgangsaufgabe",
+  "builder.design.baselineWhy": "Zeigt die aktuelle Denkweise vor jeder Unterstützung.",
+  "builder.design.baselineEditHelp":
+    "Verlange einen ersten Versuch, der die aktuelle Strategie zeigt, bevor etwas erklärt wird.",
   "builder.design.exit": "Selbstständige Abschlussaufgabe",
+  "builder.design.exitWhy": "Prüft, ob die Aufgabe ohne Hilfe gelöst werden kann.",
+  "builder.design.exitEditHelp":
+    "Nutze eine parallele Aufgabe mit derselben Fähigkeit, aber anderen Oberflächenmerkmalen.",
   "builder.design.transfer": "Verzögerte Transferaufgabe",
+  "builder.design.transferWhy":
+    "Greift die Fähigkeit nach {days} Tagen mit veränderten Oberflächenmerkmalen erneut auf.",
+  "builder.design.transferEditHelp":
+    "Ändere Kontext oder Werte, während die zugrunde liegende Fähigkeit gleich bleibt.",
+  "builder.design.targetHeading": "{number}. {target}",
+  "builder.design.sequenceLabel": "Übungsabfolge",
+  "builder.design.inspectSupport": "Leistungsnachweise und Tutorunterstützung prüfen",
+  "builder.design.supportCounts":
+    "Nachweise: {evidence} · Fehlvorstellungen: {misconceptions} · Hinweise: {hints}",
+  "builder.design.sourceGrounding": "Quellengrundlage: {sources}",
   "builder.design.reviewAfterDays": "Wiederholung nach Tagen",
+  "builder.design.reviewAfterDaysHelp":
+    "Lege fest, wann Lernende ohne unmittelbare Erinnerung zur Aufgabe zurückkehren.",
   "builder.design.sources": "Quellenverweise (einer pro Zeile)",
+  "builder.design.sourcesHelp": "Verankere jede Aufgabe in bestätigten Vorlesungsquellen.",
   "builder.design.evidence": "Evidenzkriterien",
+  "builder.design.evidenceHelp":
+    "Lege fest, was Lernende tatsächlich zeigen müssen, bevor der Tutor das Ziel bestätigt.",
   "builder.design.criterionId": "Kriterien-ID",
   "builder.design.criterionDescription": "Kriterienbeschreibung: {id}",
   "builder.design.criterionRequired": "Kriterium {id} ist erforderlich",
   "builder.design.misconceptions": "Fehlvorstellungen und Diagnosehinweise",
+  "builder.design.misconceptionsHelp":
+    "Beschreibe wahrscheinliche Fehlstrategien und woran der Tutor sie erkennt.",
   "builder.design.misconceptionId": "Fehlvorstellungs-ID",
   "builder.design.misconceptionDescription": "Beschreibung der Fehlvorstellung: {id}",
   "builder.design.diagnosticCue": "Diagnosehinweis: {id}",
   "builder.design.hints": "Hinweisleiter",
+  "builder.design.hintsHelp":
+    "Beginne mit minimaler Hilfe und verstärke sie nur, wenn Lernende weiterhin feststecken.",
   "builder.design.hintLevel": "Hinweisstufe {index}",
   "builder.design.hintContent": "Hinweisinhalt {index}",
   "builder.design.hintLevels.prompt": "Impuls",
@@ -607,6 +655,10 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.design.save": "Lernplan speichern",
   "builder.design.saving": "Lernplan wird gespeichert...",
   "builder.design.unsaved": "Ungespeicherte Änderungen",
+  "builder.design.saveBeforeApprove":
+    "Speichere deine gezielten Änderungen, bevor du diesen Plan freigibst.",
+  "builder.design.approvalHelp":
+    "Gib den Plan frei, wenn Lernziel, Übungsabfolge und Leistungsnachweise deiner Absicht entsprechen.",
   "builder.design.approve": "Lernplan freigeben",
   "builder.design.approving": "Lernplan wird freigegeben...",
   "builder.design.approved": "Freigegeben",

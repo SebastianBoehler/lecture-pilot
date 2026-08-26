@@ -37,14 +37,19 @@ export async function approveAllPracticeDesigns(user: ReturnType<typeof userEven
   const proposals = await screen.findAllByRole("button", { name: /generate learning plan/i });
   for (const proposal of proposals) await user.click(proposal);
 
-  for (let remaining = proposals.length; remaining > 0; remaining -= 1) {
-    const approval = (await screen.findAllByRole("button", { name: /approve learning plan/i }))[0];
+  await waitFor(() => {
+    if (screen.queryAllByRole("button", { name: /review plan for/i }).length !== proposals.length)
+      throw new Error("Practice plans are still being generated.");
+  });
+  for (let index = 0; index < proposals.length; index += 1) {
+    const toggle = screen.getAllByRole("button", { name: /review plan for/i })[index];
+    if (toggle.getAttribute("aria-expanded") !== "true") await user.click(toggle);
+    const plan = toggle.closest("article");
+    if (!plan) throw new Error("Practice plan container is missing.");
+    const approval = await within(plan).findByRole("button", { name: /approve learning plan/i });
     await user.click(approval);
     await waitFor(() => {
-      if (
-        screen.queryAllByRole("button", { name: /approve learning plan/i }).length !==
-        remaining - 1
-      )
+      if (within(plan).queryByRole("button", { name: /approve learning plan/i }))
         throw new Error("Practice plan approval is still pending.");
     });
   }

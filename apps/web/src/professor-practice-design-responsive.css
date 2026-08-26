@@ -1,0 +1,47 @@
+@media (max-width: 820px) {
+  .practice-design-step input,
+  .practice-design-step select,
+  .practice-design-step textarea {
+    font-size: 16px;
+  }
+
+  .practice-design-header,
+  .practice-design-empty,
+  .practice-design-proposal-heading,
+  .practice-design-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .practice-lecture-editor {
+    justify-items: start;
+  }
+
+  .practice-sequence,
+  .practice-diagnostics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .practice-sequence li + li {
+    border-block-start: 1px solid var(--color-border-primary);
+    padding-block-start: 16px;
+  }
+}
+
+@media (max-width: 520px) {
+  .practice-design-lecture-toggle,
+  .practice-target-diagnostics > summary {
+    display: grid;
+    gap: 8px;
+  }
+
+  .practice-design-lecture-toggle > button > span:last-child > span {
+    white-space: normal;
+  }
+
+  .practice-target-editor-panel {
+    border-radius: 6px;
+    padding: 14px;
+  }
+}

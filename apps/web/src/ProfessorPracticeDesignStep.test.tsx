@@ -7,7 +7,7 @@ import { ProfessorPracticeDesignStep } from "./ProfessorPracticeDesignStep";
 import type { PracticeDesign, PracticeDesignUpdate } from "./practiceDesignTypes";
 
 describe("ProfessorPracticeDesignStep", () => {
-  it("keeps target details collapsed and requires save before approval after an edit", async () => {
+  it("presents an AI-authored review first and requires save before approval after a targeted edit", async () => {
     const user = userEvent.setup();
     const save = vi.fn();
     render(
@@ -25,12 +25,20 @@ describe("ProfessorPracticeDesignStep", () => {
       </I18nProvider>,
     );
 
-    expect(screen.getByRole("heading", { name: /learning plans/i })).toBeInTheDocument();
-    expect(screen.getByText("Posterior decisions", { selector: "strong" })).toBeInTheDocument();
-    const details = screen.getByText(/edit target details/i).closest("details");
-    expect(details).not.toHaveAttribute("open");
-    await user.click(details!.querySelector("summary")!);
-    expect(screen.getByLabelText(/target id/i)).toHaveAttribute("readonly");
+    expect(screen.getByRole("heading", { name: /review learning plans/i })).toBeInTheDocument();
+    expect(
+      screen.getByText(/lecturepilot drafts each plan from confirmed sources/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/posterior decisions/i, { selector: "strong" })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/lecture title/i)).not.toBeInTheDocument();
+    const sequence = screen.getByRole("list", { name: /practice sequence/i });
+    expect(within(sequence).getByText(/reveals current reasoning before support/i)).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: /edit this target/i }));
+    const section = screen.getByRole("combobox", { name: /choose what to edit/i });
+    expect(section).toHaveValue("outcome");
+    expect(screen.queryByLabelText(/baseline task/i)).not.toBeInTheDocument();
+    expect(screen.getByText("posterior", { selector: "code" })).toBeInTheDocument();
     const outcome = screen.getByLabelText(/outcome for posterior decisions/i);
     await user.clear(outcome);
     await user.type(outcome, "Calculate a calibrated posterior.");
@@ -96,7 +104,7 @@ describe("ProfessorPracticeDesignStep", () => {
     expect(screen.queryByText(/^approved$/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /approve learning plan/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /refresh proposal/i })).toBeDisabled();
-    expect(screen.getByLabelText(/lecture objective/i)).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /edit lecture details/i })).not.toBeInTheDocument();
   });
 
   it("round-trips every mutable contract field without multiplexing multiline values", async () => {
@@ -104,17 +112,19 @@ describe("ProfessorPracticeDesignStep", () => {
     const save = vi.fn();
     renderStep(save);
 
+    await user.click(screen.getByRole("button", { name: /edit lecture details/i }));
     const lectureTitle = screen.getByLabelText(/lecture title/i);
     await user.clear(lectureTitle);
     await user.type(lectureTitle, "Bayesian evidence decisions");
-    await user.click(screen.getByText(/edit target details/i));
+    await user.click(screen.getByRole("button", { name: /edit this target/i }));
+    const section = screen.getByRole("combobox", { name: /choose what to edit/i });
 
-    expect(screen.getByLabelText(/target id/i)).toHaveValue("posterior");
-    expect(screen.getByLabelText(/criterion id/i)).toHaveValue("substitute");
-    expect(screen.getByLabelText(/misconception id/i)).toHaveValue("prior");
+    expect(screen.getByText("posterior", { selector: "code" })).toBeInTheDocument();
+    await user.selectOptions(section, "evidence");
     const required = screen.getByRole("checkbox", { name: /criterion substitute is required/i });
     await user.click(required);
 
+    await user.selectOptions(section, "misconceptions");
     const description = screen.getByLabelText(/misconception description.*prior/i);
     await user.clear(description);
     await user.type(description, "Uses the prior only.{enter}Ignores new evidence.");
@@ -122,6 +132,7 @@ describe("ProfessorPracticeDesignStep", () => {
     await user.clear(diagnosticCue);
     await user.type(diagnosticCue, "Prior repeated.{enter}Likelihood absent.");
 
+    await user.selectOptions(section, "hints");
     const hintLevel = screen.getByLabelText(/hint level 1/i);
     expect(
       within(hintLevel)
@@ -166,7 +177,11 @@ describe("ProfessorPracticeDesignStep", () => {
     const user = userEvent.setup();
     const save = vi.fn();
     renderStep(save);
-    await user.click(screen.getByText(/edit target details/i));
+    await user.click(screen.getByRole("button", { name: /edit this target/i }));
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: /choose what to edit/i }),
+      "hints",
+    );
 
     await user.click(screen.getByRole("button", { name: /remove hint 1/i }));
     expect(screen.queryByRole("combobox", { name: /hint level/i })).not.toBeInTheDocument();

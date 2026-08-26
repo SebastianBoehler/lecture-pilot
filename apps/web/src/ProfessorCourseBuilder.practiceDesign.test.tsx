@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -96,37 +96,43 @@ it("requires every full-course plan approval and keeps a stale approval conflict
   await user.click(proposals[0]);
   await user.click(proposals[1]);
   await waitFor(() =>
-    expect(screen.getAllByRole("button", { name: /approve learning plan/i })).toHaveLength(2),
+    expect(screen.getAllByRole("button", { name: /review plan for/i })).toHaveLength(2),
   );
-  await user.click(screen.getAllByRole("button", { name: /approve learning plan/i })[0]);
-  await waitFor(() =>
-    expect(screen.getAllByRole("button", { name: /approve learning plan/i })).toHaveLength(1),
-  );
-  expect(screen.getByRole("button", { name: /06 generate/i })).toBeDisabled();
-
-  const details = screen.getAllByText(/edit target details/i)[0].closest("details");
-  await user.click(details!.querySelector("summary")!);
-  const outcome = screen.getAllByLabelText(/outcome for posterior/i)[0];
-  await user.clear(outcome);
-  await user.type(outcome, "Calculate a revised posterior from evidence.");
-  await user.click(screen.getAllByRole("button", { name: /save learning plan/i })[0]);
-  await waitFor(() =>
-    expect(screen.getAllByRole("button", { name: /approve learning plan/i })).toHaveLength(2),
-  );
-  expect(screen.getByRole("button", { name: /06 generate/i })).toBeDisabled();
-  await user.click(screen.getAllByRole("button", { name: /approve learning plan/i })[0]);
-  await waitFor(() =>
-    expect(screen.getAllByRole("button", { name: /approve learning plan/i })).toHaveLength(1),
-  );
-
-  await user.click(screen.getByRole("button", { name: /approve learning plan/i }));
-  expect(await screen.findByRole("alert")).toHaveTextContent(/revision changed/i);
-  expect(screen.getByRole("button", { name: /approve learning plan/i })).toBeEnabled();
-
-  await user.click(screen.getByRole("button", { name: /approve learning plan/i }));
+  const firstToggle = screen.getAllByRole("button", { name: /review plan for/i })[0];
+  const firstPlan = firstToggle.closest("article")!;
+  await user.click(within(firstPlan).getByRole("button", { name: /approve learning plan/i }));
   await waitFor(() =>
     expect(
-      screen.queryByRole("button", { name: /approve learning plan/i }),
+      within(firstPlan).queryByRole("button", { name: /approve learning plan/i }),
+    ).not.toBeInTheDocument(),
+  );
+  expect(screen.getByRole("button", { name: /06 generate/i })).toBeDisabled();
+
+  await user.click(within(firstPlan).getByRole("button", { name: /edit this target/i }));
+  const outcome = within(firstPlan).getByLabelText(/outcome for posterior/i);
+  await user.clear(outcome);
+  await user.type(outcome, "Calculate a revised posterior from evidence.");
+  await user.click(within(firstPlan).getByRole("button", { name: /save learning plan/i }));
+  await within(firstPlan).findByRole("button", { name: /approve learning plan/i });
+  expect(screen.getByRole("button", { name: /06 generate/i })).toBeDisabled();
+  await user.click(within(firstPlan).getByRole("button", { name: /approve learning plan/i }));
+  await waitFor(() =>
+    expect(
+      within(firstPlan).queryByRole("button", { name: /approve learning plan/i }),
+    ).not.toBeInTheDocument(),
+  );
+
+  const secondToggle = screen.getAllByRole("button", { name: /review plan for/i })[1];
+  await user.click(secondToggle);
+  const secondPlan = secondToggle.closest("article")!;
+  await user.click(within(secondPlan).getByRole("button", { name: /approve learning plan/i }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(/revision changed/i);
+  expect(within(secondPlan).getByRole("button", { name: /approve learning plan/i })).toBeEnabled();
+
+  await user.click(within(secondPlan).getByRole("button", { name: /approve learning plan/i }));
+  await waitFor(() =>
+    expect(
+      within(secondPlan).queryByRole("button", { name: /approve learning plan/i }),
     ).not.toBeInTheDocument(),
   );
   const approvalRevisions = fetchMock.mock.calls
@@ -168,8 +174,6 @@ it("marks an approved design stale after a source update removes current routing
 
   expect(await screen.findAllByText(/source routing is stale/i)).toHaveLength(2);
   expect(screen.queryByText(/^approved$/i)).not.toBeInTheDocument();
-  for (const button of screen.getAllByRole("button", { name: /approve learning plan/i }))
-    expect(button).toBeDisabled();
-  for (const button of screen.getAllByRole("button", { name: /refresh proposal/i }))
-    expect(button).toBeDisabled();
+  expect(screen.getByRole("button", { name: /approve learning plan/i })).toBeDisabled();
+  expect(screen.getByRole("button", { name: /refresh proposal/i })).toBeDisabled();
 });
