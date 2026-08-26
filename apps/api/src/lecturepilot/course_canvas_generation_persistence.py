@@ -37,7 +37,9 @@ def write_current_draft(
         except ownership_store.CanvasGenerationOwnershipError as exc:
             raise InvalidCanvasDraftError(str(exc)) from exc
         try:
-            PracticeDesignStore(app.state.canvas_workspace.layout).require_approved(
+            practice_design = PracticeDesignStore(
+                app.state.canvas_workspace.layout
+            ).require_approved(
                 course_id=document.course_id,
                 lecture_id=document.lecture_id,
                 source_revision=expected_source_revision,
@@ -50,4 +52,5 @@ def write_current_draft(
         return app.state.canvas_workspace.write_course_canvas_draft(
             document,
             expected_source_revision=expected_source_revision,
+            practice_design=practice_design,
         )

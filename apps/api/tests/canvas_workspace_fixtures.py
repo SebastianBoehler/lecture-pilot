@@ -15,6 +15,7 @@ from lecturepilot.learner_state import LearnerStateStore
 from lecturepilot.lecture_source_manifest import write_lecture_source_manifest
 from lecturepilot.source_index_models import CourseSourceIndex, IndexedSourceFile
 from lecturepilot.user_memory import UserMemoryStore
+from practice_design_test_helpers import approved_design_document
 
 
 def write_course_source(tmp_path: Path) -> Path:
@@ -139,9 +140,16 @@ def write_canvas_draft(workspace: CanvasWorkspace, document: CanvasDocument) -> 
         lecture_id=document.lecture_id,
     )
     assert revision is not None
+    sourced_document, practice_design = approved_design_document(
+        workspace.layout,
+        sourced_document,
+        source_revision=revision,
+        source_path="source.md",
+    )
     workspace.write_course_canvas_draft(
         sourced_document,
         expected_source_revision=revision,
+        practice_design=practice_design,
     )
 
     return sourced_document
@@ -159,6 +167,7 @@ def approve_canvas_draft(
         lecture_id=lecture_id,
         draft_digest=current.draft_digest,
         source_revision=current.source_revision,
+        practice_design_revision=current.practice_design_revision,
         learning_map_revision=current.learning_map.revision,
         report_revision=current.report.report_revision,
         approved_by="professor",

@@ -16,6 +16,7 @@ class LearningDesignApproval(BaseModel):
     approved_at: datetime
     draft_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
     source_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
+    practice_design_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     learning_map_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     report_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     acknowledged_warning_ids: list[str] = Field(default_factory=list, max_length=200)
@@ -29,6 +30,7 @@ class LearningDesignReview(BaseModel):
     lecture_id: str = Field(min_length=1, max_length=120)
     draft_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
     source_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
+    practice_design_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     learning_map: LearningMap
     report: LearningDesignReport
     factual_quality_separate: bool = True
@@ -51,6 +53,7 @@ class LearningDesignPrerequisiteInput(BaseModel):
 class LearningDesignUpdate(BaseModel):
     draft_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
     source_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
+    practice_design_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     learning_map_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     objective: str = Field(min_length=1, max_length=1_000)
     gates: list[LearningDesignGateInput] = Field(default_factory=list, max_length=100)
@@ -62,5 +65,6 @@ class LearningDesignUpdate(BaseModel):
 class LearningDesignApprovalInput(BaseModel):
     draft_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
     source_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
+    practice_design_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     learning_map_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     report_revision: str = Field(pattern=r"^[a-f0-9]{64}$")

@@ -10,7 +10,6 @@ from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.coaching_progress import CoachingProgressStore
 from lecturepilot.coaching_state_models import CoachingProgress, DelayedReview, review_key
 from lecturepilot.course_schedule_store import write_course_workspace
-from lecturepilot.course_learning_design_models import LearningDesignUpdate
 from lecturepilot.course_learning_design_store import CourseLearningDesignStore
 from lecturepilot.durable_files import atomic_write_json
 from lecturepilot.exam_revision_plan import ExamRevisionTask
@@ -64,42 +63,14 @@ def review_client(tmp_path: Path) -> TestClient:
         write_canvas_draft(app.state.canvas_workspace, document)
         reviews = CourseLearningDesignStore(app.state.canvas_workspace.layout)
         review = reviews.read(course_id=COURSE_ID, lecture_id=lecture_id)
-        changed = reviews.update(
-            course_id=COURSE_ID,
-            lecture_id=lecture_id,
-            update=LearningDesignUpdate(
-                draft_digest=review.draft_digest,
-                source_revision=review.source_revision,
-                learning_map_revision=review.learning_map.revision,
-                objective=review.learning_map.objective,
-                gates=[
-                    {
-                        "id": gate.id,
-                        "prompt": gate.prompt,
-                        "evidence_criteria": gate.evidence_criteria,
-                        "transfer_prompt": (
-                            f"Apply {'C' if gate.id == 'gate-c' else label} to an unfamiliar case."
-                        ),
-                        "review_after_days": gate.review_after_days,
-                    }
-                    for gate in review.learning_map.gates
-                ],
-                prerequisites=[
-                    {
-                        "section_id": node.section_id,
-                        "prerequisite_ids": node.prerequisites,
-                    }
-                    for node in review.learning_map.nodes
-                ],
-            ),
-        )
         reviews.approve(
             course_id=COURSE_ID,
             lecture_id=lecture_id,
-            draft_digest=changed.draft_digest,
-            source_revision=changed.source_revision,
-            learning_map_revision=changed.learning_map.revision,
-            report_revision=changed.report.report_revision,
+            draft_digest=review.draft_digest,
+            source_revision=review.source_revision,
+            practice_design_revision=review.practice_design_revision,
+            learning_map_revision=review.learning_map.revision,
+            report_revision=review.report.report_revision,
             approved_by="professor",
         )
         app.state.canvas_workspace.publish_course_canvas_draft(

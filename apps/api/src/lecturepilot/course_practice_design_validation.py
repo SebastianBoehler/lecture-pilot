@@ -25,6 +25,26 @@ class _CanvasDocument(Protocol):
     sections: list[_CanvasSection]
 
 
+class _LearningMapCriterion(Protocol):
+    id: str
+    description: str
+    required: bool
+
+
+class _LearningMapGate(Protocol):
+    id: str
+    practice_target_id: str | None
+    prompt: str
+    evidence_criteria: list[_LearningMapCriterion]
+    transfer_prompt: str
+    review_after_days: int
+
+
+class _LearningMap(Protocol):
+    objective: str
+    gates: list[_LearningMapGate]
+
+
 def validate_practice_design(
     design: PracticeDesign | PracticeDesignProposal, allowed_source_paths: Iterable[str]
 ) -> None:
@@ -83,4 +103,45 @@ def validate_canvas_practice_contract(document: _CanvasDocument, design: Practic
         if block.text != target.baseline_task:
             raise PracticeDesignValidationError(
                 f"Practice checkpoint practice-{target_id} must use the approved baseline task."
+            )
+
+
+def validate_learning_map_practice_contract(
+    learning_map: _LearningMap, design: PracticeDesign
+) -> None:
+    if learning_map.objective != design.objective:
+        raise PracticeDesignValidationError(
+            "Learning-map objective must match the approved practice design."
+        )
+    expected = {target.id: target for target in design.targets}
+    gates: dict[str, list[_LearningMapGate]] = {target_id: [] for target_id in expected}
+    for gate in learning_map.gates:
+        target_id = gate.practice_target_id
+        if target_id is None:
+            continue
+        if target_id not in expected or gate.id != f"practice-{target_id}":
+            raise PracticeDesignValidationError(
+                "Learning-map gates must use exact approved practice target IDs."
+            )
+        gates[target_id].append(gate)
+    for target_id, target in expected.items():
+        matches = gates[target_id]
+        if len(matches) != 1:
+            raise PracticeDesignValidationError(
+                f"Learning map needs exactly one practice-{target_id} gate."
+            )
+        gate = matches[0]
+        expected_criteria = [item.model_dump() for item in target.evidence_criteria]
+        observed_criteria = [
+            {"id": item.id, "description": item.description, "required": item.required}
+            for item in gate.evidence_criteria
+        ]
+        if (
+            gate.prompt != target.baseline_task
+            or observed_criteria != expected_criteria
+            or gate.transfer_prompt != target.delayed_transfer_task
+            or gate.review_after_days != target.review_after_days
+        ):
+            raise PracticeDesignValidationError(
+                f"Learning-map gate practice-{target_id} differs from the approved practice target."
             )

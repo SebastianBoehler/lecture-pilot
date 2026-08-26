@@ -27,6 +27,7 @@ class CanvasPublicationMetadata(BaseModel):
     source_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     draft_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
     learning_map_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
+    practice_design_revision: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
     published_at: AwareDatetime
     published_by: str = Field(min_length=1, max_length=160)
 
@@ -93,4 +94,5 @@ def publication_metadata(
         draft_digest=review.draft_digest,
         source_revision=review.source_revision,
         learning_map_revision=review.learning_map.revision,
+        practice_design_revision=review.practice_design_revision,
     )

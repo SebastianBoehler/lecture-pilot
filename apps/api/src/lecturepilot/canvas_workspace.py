@@ -14,6 +14,7 @@ from lecturepilot.canvas_workspace_config import (
     SEEDED_COURSE_ID,
 )
 from lecturepilot.course_canvas_store import CourseCanvasStore
+from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.course_canvas_context import PublishedCanvasSnapshot
 from lecturepilot.course_canvas_publication import CanvasPublicationMetadata
 from lecturepilot.course_update_recovery import locked_course_state
@@ -160,10 +161,12 @@ class CanvasWorkspace(CanvasLearnerWorkspaceMixin):
         document: CanvasDocument,
         *,
         expected_source_revision: str,
+        practice_design: PracticeDesign,
     ) -> CanvasDocument:
         return self.course_canvas_store.write_draft(
             document,
             expected_source_revision=expected_source_revision,
+            practice_design=practice_design,
         )
 
     def publish_course_canvas_draft(

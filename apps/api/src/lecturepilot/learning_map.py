@@ -8,6 +8,11 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.course_practice_design_models import PracticeDesign, PracticeTarget
+from lecturepilot.course_practice_design_validation import (
+    PracticeDesignValidationError,
+    validate_canvas_practice_contract,
+)
 from lecturepilot.quiz_identity import (
     canonical_quiz_id,
     is_quiz_block,
@@ -36,6 +41,7 @@ class LearningMapGate(BaseModel):
     revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     section_id: str = Field(min_length=1, max_length=160)
     source_ref: str | None = Field(default=None, max_length=500)
+    practice_target_id: str | None = Field(default=None, min_length=1, max_length=80)
 
     @field_validator("transfer_prompt")
     @classmethod
@@ -115,14 +121,18 @@ class LearningMap(BaseModel):
         return cls.model_validate({**payload, "revision": _digest_payload(payload)})
 
 
-def build_learning_map(document: CanvasDocument) -> LearningMap:
+def build_learning_map(document: CanvasDocument, practice_design: PracticeDesign) -> LearningMap:
     validate_unique_quiz_ids(document)
     validate_learning_contract_ids(document)
+    try:
+        validate_canvas_practice_contract(document, practice_design)
+    except PracticeDesignValidationError as exc:
+        raise ValueError(str(exc)) from exc
     nodes: list[LearningMapNode] = []
     gates: list[LearningMapGate] = []
     previous_id: str | None = None
     for section in document.sections:
-        section_gates = _section_gates(document, section)
+        section_gates = _section_gates(document, section, practice_design)
         gates.extend(section_gates)
         nodes.append(
             LearningMapNode(
@@ -141,14 +151,16 @@ def build_learning_map(document: CanvasDocument) -> LearningMap:
         course_id=document.course_id,
         lecture_id=document.lecture_id,
         title=document.title,
-        objective=f"Explain and apply {document.title} independently.",
+        objective=practice_design.objective,
         nodes=nodes,
         gates=gates,
     )
 
 
-def write_learning_map(document: CanvasDocument, canvas_dir: Path) -> LearningMap:
-    learning_map = build_learning_map(document)
+def write_learning_map(
+    document: CanvasDocument, canvas_dir: Path, practice_design: PracticeDesign
+) -> LearningMap:
+    learning_map = build_learning_map(document, practice_design)
     path = learning_map_path(canvas_dir)
     path.write_text(learning_map.model_dump_json(indent=2), encoding="utf-8")
     return learning_map
@@ -185,9 +197,11 @@ def validate_learning_contract_ids(document: CanvasDocument) -> None:
     )
 
 
-def _section_gates(document: CanvasDocument, section: CanvasSection) -> list[LearningMapGate]:
+def _section_gates(
+    document: CanvasDocument, section: CanvasSection, practice_design: PracticeDesign
+) -> list[LearningMapGate]:
     return [
-        _checkpoint_gate(document, section, block)
+        _checkpoint_gate(document, section, block, practice_design)
         for block in section.blocks
         if block.type == "checkpoint"
     ]
@@ -197,6 +211,37 @@ def _checkpoint_gate(
     document: CanvasDocument,
     section: CanvasSection,
     block: CanvasBlock,
+    practice_design: PracticeDesign,
+) -> LearningMapGate:
+    if not block.id.startswith("practice-"):
+        return _generic_checkpoint_gate(document, section, block)
+    target = _target_for_checkpoint(block, practice_design)
+    return LearningMapGate.create(
+        id=block.id,
+        concept_id=section.id,
+        title=target.title,
+        prompt=target.baseline_task,
+        evidence_criteria=[
+            LearningMapEvidenceCriterion(
+                id=item.id, description=item.description, required=item.required
+            )
+            for item in target.evidence_criteria
+        ],
+        transfer_prompt=target.delayed_transfer_task,
+        review_after_days=target.review_after_days,
+        section_id=section.id,
+        source_ref=section.source_ref or document.source_ref,
+        practice_target_id=target.id,
+    )
+
+
+def _target_for_checkpoint(block: CanvasBlock, design: PracticeDesign) -> PracticeTarget:
+    target_id = block.id.removeprefix("practice-")
+    return next(target for target in design.targets if target.id == target_id)
+
+
+def _generic_checkpoint_gate(
+    document: CanvasDocument, section: CanvasSection, block: CanvasBlock
 ) -> LearningMapGate:
     prompt = (block.text or block.caption or section.title)[:1000]
     return LearningMapGate.create(
@@ -205,9 +250,7 @@ def _checkpoint_gate(
         title=(block.caption or section.title)[:200],
         prompt=prompt,
         evidence_criteria=[LearningMapEvidenceCriterion(id=block.id, description=prompt)],
-        transfer_prompt=(
-            "Apply the same reasoning to a changed case not used in the lecture: " + prompt
-        )[:1000],
+        transfer_prompt=("Apply the same reasoning to a changed case: " + prompt)[:1000],
         review_after_days=2,
         section_id=section.id,
         source_ref=section.source_ref or document.source_ref,

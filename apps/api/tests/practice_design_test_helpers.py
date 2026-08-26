@@ -146,3 +146,65 @@ def save_approved_design(
         design_revision=design.revision,
         approved_by="prof01",
     )
+
+
+def approved_design_document(
+    layout: StorageLayout,
+    document: CanvasDocument,
+    *,
+    source_revision: str,
+    source_path: str,
+) -> tuple[CanvasDocument, PracticeDesign]:
+    baseline = next(
+        (
+            block.text
+            for section in document.sections
+            for block in section.blocks
+            if block.type == "checkpoint" and block.text
+        ),
+        "Explain the source-grounded mechanism.",
+    )
+    design_target = target(
+        id="practice-target",
+        baseline_task=baseline,
+        independent_exit_task="Solve a parallel source-grounded task independently.",
+        delayed_transfer_task="Solve a changed source-grounded transfer task independently.",
+        source_refs=(source_path,),
+    )
+    design = PracticeDesign.create(
+        course_id=document.course_id,
+        lecture_id=document.lecture_id,
+        lecture_title=document.title,
+        objective="Apply the approved source-grounded reasoning independently.",
+        source_revision=source_revision,
+        targets=(design_target,),
+    )
+    store = PracticeDesignStore(layout)
+    stored = store.save_proposal(
+        course_id=document.course_id,
+        lecture_id=document.lecture_id,
+        source_revision=source_revision,
+        proposal=PracticeDesignProposal(
+            lecture_title=design.lecture_title,
+            objective=design.objective,
+            targets=design.targets,
+        ),
+        allowed_source_paths=(source_path,),
+        expected_design_revision=None,
+        expected_design_approval=None,
+    )
+    design = store.approve(
+        course_id=document.course_id,
+        lecture_id=document.lecture_id,
+        source_revision=source_revision,
+        design_revision=stored.revision,
+        approved_by="professor",
+    )
+    first = document.sections[0]
+    blocks = [
+        *first.blocks,
+        CanvasBlock(id="practice-practice-target", type="checkpoint", text=baseline),
+    ]
+    return document.model_copy(
+        update={"sections": [first.model_copy(update={"blocks": blocks}), *document.sections[1:]]}
+    ), design

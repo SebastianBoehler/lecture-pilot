@@ -35,6 +35,17 @@ from lecturepilot.course_canvas_context import (
     read_published_snapshot,
 )
 from lecturepilot.course_canvas_repairs import lecture_source_revision
+from lecturepilot.course_practice_design_binding import (
+    validate_bound_canvas_draft,
+    write_practice_design_binding,
+)
+from lecturepilot.course_practice_design_models import PracticeDesign
+from lecturepilot.course_practice_design_store import (
+    PracticeDesignApprovalRequired,
+    PracticeDesignStale,
+    PracticeDesignStore,
+)
+from lecturepilot.course_practice_design_validation import validate_canvas_practice_contract
 from lecturepilot.course_learning_design_models import LearningDesignReview
 from lecturepilot.course_learning_design_store import (
     LearningDesignError,
@@ -61,6 +72,9 @@ class CourseCanvasStore:
                 return None
             try:
                 document = normalize_learning_support(read_document_source(draft_dir))
+                validate_bound_canvas_draft(
+                    self.layout, draft_dir, document, course_id=course_id, lecture_id=lecture_id
+                )
                 return document
             except (CanvasMarkdownError, ValidationError, ValueError) as exc:
                 raise InvalidCanvasDraftError(
@@ -72,6 +86,7 @@ class CourseCanvasStore:
         document: CanvasDocument,
         *,
         expected_source_revision: str,
+        practice_design: PracticeDesign,
     ) -> CanvasDocument:
         draft_dir = self.draft_path(document.course_id, document.lecture_id)
         current_source_revision = lecture_source_revision(
@@ -84,6 +99,21 @@ class CourseCanvasStore:
                 "Course sources changed during generation. Generate this draft again."
             )
         try:
+            current_design = PracticeDesignStore(self.layout).require_approved(
+                course_id=document.course_id,
+                lecture_id=document.lecture_id,
+                source_revision=expected_source_revision,
+                design_revision=practice_design.revision,
+            )
+            if current_design != practice_design:
+                raise PracticeDesignStale("The practice design changed during generation.")
+            validate_canvas_practice_contract(document, practice_design)
+        except (PracticeDesignApprovalRequired, PracticeDesignStale, ValueError) as exc:
+            raise InvalidCanvasDraftError(
+                "The approved practice design changed or the generated checkpoints are invalid. "
+                "Generate this draft again."
+            ) from exc
+        try:
             learning_maps.validate_learning_contract_ids(document)
             document = prepared_document(document, draft_dir)
         except (CanvasMarkdownError, ValidationError, ValueError) as exc:
@@ -95,7 +125,7 @@ class CourseCanvasStore:
                 written = replace_canvas_snapshot(
                     draft_dir,
                     lambda staging: _write_validated_draft(
-                        document, staging, current_source_revision
+                        document, staging, current_source_revision, practice_design
                     ),
                 )
             except (CanvasMarkdownError, ValidationError, ValueError) as exc:
@@ -229,11 +259,13 @@ def _write_validated_draft(
     document: CanvasDocument,
     staging: Path,
     source_revision: str,
+    practice_design: PracticeDesign,
 ) -> CanvasDocument:
     write_document_source(document, staging)
     normalized = normalize_learning_support(read_document_source(staging))
-    learning_maps.write_learning_map(normalized, staging)
-    initialize_learning_design(normalized, staging, source_revision)
+    learning_maps.write_learning_map(normalized, staging, practice_design)
+    write_practice_design_binding(staging, practice_design)
+    initialize_learning_design(normalized, staging, source_revision, practice_design)
     return normalized
 
 
