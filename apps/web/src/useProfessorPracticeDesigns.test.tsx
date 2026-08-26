@@ -90,16 +90,27 @@ it("requires approval revisions to match the current design", async () => {
   expect(result.current.allApproved(["lecture-01"])).toBe(false);
 });
 
-it("keeps a stale approval conflict visible and reset removes changed lectures", async () => {
+it("reloads a stale approval conflict and posts the refreshed revision on retry", async () => {
+  const approvalRevisions: string[] = [];
+  let approvalAttempts = 0;
   vi.stubGlobal(
     "fetch",
     vi.fn((_url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
+        approvalAttempts += 1;
+        approvalRevisions.push(JSON.parse(String(init.body)).practice_design_revision);
         return Promise.resolve(
-          response({ detail: "The practice design or source revision changed. Reload it." }, 409),
+          approvalAttempts === 1
+            ? response(
+                { detail: "The practice design or source revision changed. Reload it." },
+                409,
+              )
+            : response(design("lecture-01", "professor-demo", "e")),
         );
       }
-      return Promise.resolve(response(design("lecture-01")));
+      return Promise.resolve(
+        response(approvalAttempts === 0 ? design("lecture-01") : design("lecture-01", null, "e")),
+      );
     }),
   );
   const { result } = renderHook(() =>
@@ -109,10 +120,13 @@ it("keeps a stale approval conflict visible and reset removes changed lectures",
 
   await act(() => result.current.approve("lecture-01"));
   expect(result.current.error).toBe("The practice design or source revision changed. Reload it.");
+  expect(result.current.designs["lecture-01"].revision).toBe("e".repeat(64));
 
-  act(() => result.current.reset(["lecture-01"]));
-  expect(result.current.designs).toEqual({});
-  expect(result.current.error).toBeNull();
+  await act(() => result.current.approve("lecture-01"));
+  expect(approvalRevisions).toEqual(["d".repeat(64), "e".repeat(64)]);
+  expect(result.current.designs["lecture-01"].approval?.practice_design_revision).toBe(
+    "e".repeat(64),
+  );
 });
 
 it("does not let an older lecture request overwrite a newer lecture state", async () => {

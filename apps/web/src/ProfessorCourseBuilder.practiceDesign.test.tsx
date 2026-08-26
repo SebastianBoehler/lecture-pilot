@@ -54,34 +54,27 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+it("rejects a practice proposal without current confirmed lecture evidence", async () => {
+  const fetchMock = professorFetchMock();
+  const routingResponse = await fetchMock("/admin/courses/demo-ml-course/source-routing");
+  const routing = await routingResponse.json();
+  await fetchMock("/admin/courses/demo-ml-course/source-routing", {
+    body: JSON.stringify(routing),
+    method: "PUT",
+  });
+
+  const proposal = await fetchMock(
+    "/admin/courses/demo-ml-course/lectures/lecture-02/practice-design/proposal",
+    { method: "POST" },
+  );
+  expect(proposal.ok).toBe(false);
+  expect(proposal.status).toBe(409);
+});
+
 it("requires every full-course plan approval and keeps a stale approval conflict visible", async () => {
   const user = userEvent.setup();
-  const baseFetch = professorFetchMock();
-  let rejectSecondApproval = true;
-  vi.stubGlobal(
-    "fetch",
-    vi.fn((url: string, init?: RequestInit) => {
-      if (
-        rejectSecondApproval &&
-        url.includes("lecture-02/practice-design/approve") &&
-        init?.method === "POST"
-      ) {
-        rejectSecondApproval = false;
-        return Promise.resolve(
-          new Response(
-            JSON.stringify({
-              detail: "The practice design or source revision changed. Reload it.",
-            }),
-            {
-              status: 409,
-              headers: { "Content-Type": "application/json" },
-            },
-          ),
-        );
-      }
-      return baseFetch(url, init);
-    }),
-  );
+  const fetchMock = professorFetchMock({ staleApprovalOnceFor: "lecture-02" });
+  vi.stubGlobal("fetch", fetchMock);
   render(<App />);
 
   await openProfessorDemo(user);
@@ -93,6 +86,10 @@ it("requires every full-course plan approval and keeps a stale approval conflict
   );
   await user.click(screen.getByRole("button", { name: /upload and process materials/i }));
   await user.click(await screen.findByRole("button", { name: /apply lecture schedule/i }));
+  await user.click(await screen.findByText(/review source assignments/i));
+  expect(await screen.findByLabelText(/route lecture01-eng\.tex/i)).toHaveValue("lecture");
+  expect(screen.getByLabelText(/route lecture02-eng\.tex/i)).toHaveValue("lecture");
+  expect(screen.queryByLabelText(/route lecture03-eng\.tex/i)).not.toBeInTheDocument();
   await user.click(await screen.findByRole("button", { name: /accept assignments and continue/i }));
 
   const proposals = await screen.findAllByRole("button", { name: /generate learning plan/i });
@@ -132,6 +129,13 @@ it("requires every full-course plan approval and keeps a stale approval conflict
       screen.queryByRole("button", { name: /approve learning plan/i }),
     ).not.toBeInTheDocument(),
   );
+  const approvalRevisions = fetchMock.mock.calls
+    .filter(
+      ([url, init]) =>
+        String(url).includes("lecture-02/practice-design/approve") && init?.method === "POST",
+    )
+    .map(([, init]) => JSON.parse(String(init?.body)).practice_design_revision);
+  expect(approvalRevisions).toEqual(["d".repeat(64), "f".repeat(64)]);
   await user.click(screen.getByRole("button", { name: /05 media/i }));
   await waitFor(() =>
     expect(screen.getByRole("button", { name: /continue to canvas draft/i })).toBeEnabled(),

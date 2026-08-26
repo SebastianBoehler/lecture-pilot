@@ -86,7 +86,12 @@ export function useProfessorPracticeDesigns({
       const design = await operation();
       if (current(token)) setDesign(lectureId, design, false);
     } catch (mutationError) {
-      if (current(token)) setErrorState({ key: identityKey, message: errorMessage(mutationError) });
+      if (current(token)) {
+        setErrorState({ key: identityKey, message: errorMessage(mutationError) });
+        if (mutationError instanceof PracticeDesignRequestError && mutationError.status === 409) {
+          await load(lectureId);
+        }
+      }
     } finally {
       markPending(token, false);
     }
