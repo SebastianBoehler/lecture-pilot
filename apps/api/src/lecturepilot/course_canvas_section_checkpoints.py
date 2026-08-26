@@ -7,6 +7,7 @@ from hashlib import sha256
 import json
 from pathlib import Path
 
+from lecturepilot.canvas_internal_serialization import canvas_section_internal_payload
 from lecturepilot.canvas_models import CanvasSection
 from lecturepilot.durable_files import atomic_write_json, exclusive_file_lock
 
@@ -76,7 +77,7 @@ class SectionPlanCheckpointStore:
             if payload.get("source_revision") != self.source_revision:
                 payload = {"source_revision": self.source_revision, "sections": {}}
             sections = payload.setdefault("sections", {})
-            sections[key] = completed_section.model_dump(mode="json")
+            sections[key] = canvas_section_internal_payload(completed_section)
             atomic_write_json(self.path, payload)
 
     def _read_payload(self) -> dict:

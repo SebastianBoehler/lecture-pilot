@@ -32,15 +32,17 @@ async def test_real_planner_accepts_frozen_practice_design(
     app, design = _approved_app(tmp_path, "a" * 64)
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
 
-    document = _document()
+    source = source_document(SOURCE_PATH)
+    template = _document()
     target = design.targets[0]
-    section = document.sections[0]
-    document = document.model_copy(
+    section = template.sections[0]
+    document = template.model_copy(
         update={
             "sections": [
                 section.model_copy(
                     update={
                         "source_ref": target.source_refs[0],
+                        "source_section_id": source.sections[0].id,
                         "blocks": [
                             *section.blocks,
                             CanvasBlock(
@@ -69,7 +71,7 @@ async def test_real_planner_accepts_frozen_practice_design(
         "lecturepilot.course_canvas_planner.validate_planned_document", lambda *_args: None
     )
 
-    document = await planner.plan_canvas(document, practice_design=design)
+    document = await planner.plan_canvas(source, practice_design=design)
 
     assert document.title == "Learning design"
     assert app.state.canvas_workspace.layout.course_root(COURSE_ID).exists()

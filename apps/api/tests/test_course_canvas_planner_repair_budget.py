@@ -12,7 +12,13 @@ async def test_exhausted_quality_repair_budget_is_not_started_again(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
-    candidate, design = canvas_with_practice_design(_candidate())
+    source = _candidate()
+    candidate, design = canvas_with_practice_design(source)
+    candidate = candidate.model_copy(
+        update={
+            "sections": [candidate.sections[0].model_copy(update={"source_section_id": "topic"})]
+        }
+    )
 
     async def plan_sections(**_kwargs) -> CanvasDocument:
         return candidate
@@ -28,7 +34,7 @@ async def test_exhausted_quality_repair_budget_is_not_started_again(
     )
 
     with pytest.raises(CanvasGenerationRepairableError, match="unsupported"):
-        await planner.plan_canvas(candidate, practice_design=design)
+        await planner.plan_canvas(source, practice_design=design)
 
     assert reviewer.calls == 3
     assert planner.repair_calls == 2

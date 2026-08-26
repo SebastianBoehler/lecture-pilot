@@ -175,6 +175,9 @@ async def test_retry_reuses_sections_completed_before_provider_failure(tmp_path)
 
     assert retry_client.source_ids == ["source-3", "source-4"]
     assert len(planned.sections) == 4
+    assert [section.source_section_id for section in planned.sections] == [
+        f"source-{index}" for index in range(1, 5)
+    ]
 
 
 class _ControlledPlanClient:

@@ -6,11 +6,13 @@ def invalid_candidate(source_document: CanvasDocument) -> CanvasDocument:
         "This source-grounded explanation connects the definition to the optimization "
         "procedure, its assumptions, and the practical consequence for model training. "
     )
+    first_source = source_document.sections[0]
+    second_source = source_document.sections[min(1, len(source_document.sections) - 1)]
     first = CanvasSection(
         id="learning-optimization",
         title="Optimization",
-        source_ref="Lecture01.tex frame 1",
-        source_section_id=source_document.sections[0].id,
+        source_ref=first_source.source_ref or source_document.source_ref,
+        source_section_id=first_source.id,
         blocks=[
             CanvasBlock(id="optimization-intro", type="paragraph", text=detail * 2),
             CanvasBlock(
@@ -37,8 +39,8 @@ def invalid_candidate(source_document: CanvasDocument) -> CanvasDocument:
     second = CanvasSection(
         id="learning-summary",
         title="Summary",
-        source_ref="Lecture01.tex frame 1",
-        source_section_id=source_document.sections[min(1, len(source_document.sections) - 1)].id,
+        source_ref=second_source.source_ref or source_document.source_ref,
+        source_section_id=second_source.id,
         blocks=[
             CanvasBlock(id="summary-1", type="paragraph", text=detail * 2),
             CanvasBlock(id="summary-2", type="paragraph", text=detail * 2),

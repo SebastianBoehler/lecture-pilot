@@ -141,7 +141,8 @@ async def test_section_repair_keeps_the_selected_course_language(
         [_repair_payload([{"type": "math", "text": r"w^\top x"}])],
     )
     source = published_course_canvas("targeted-repair", "lecture-01")
-    candidate, design = canvas_with_practice_design(invalid_candidate(source))
+    design = practice_design_for_canvas(source)
+    candidate, _ = canvas_with_practice_design(invalid_candidate(source), design)
 
     await planner.repair_section(
         source,
