@@ -2,23 +2,15 @@ from __future__ import annotations
 
 from typing import Annotated, Literal, get_args
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, model_validator
+from pydantic import BeforeValidator, Field, model_validator
+
+from lecturepilot.course_practice_design_contract import (
+    NonblankText,
+    StrictPracticeDesignModel,
+    freeze_collection,
+)
 
 
-def _normalize_nonblank_text(value: object) -> object:
-    if not isinstance(value, str):
-        return value
-    normalized = value.strip()
-    if not normalized:
-        raise ValueError("Required text cannot be blank.")
-    return normalized
-
-
-def _freeze_collection(value: object) -> object:
-    return tuple(value) if isinstance(value, list) else value
-
-
-NonblankText = Annotated[str, BeforeValidator(_normalize_nonblank_text)]
 PlanningContextField = Literal[
     "learner_level",
     "prerequisites",
@@ -28,13 +20,7 @@ PlanningContextField = Literal[
 ]
 
 
-class _StrictModel(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid", frozen=True, revalidate_instances="always", strict=True
-    )
-
-
-class PracticePlanningInsufficiency(_StrictModel):
+class PracticePlanningInsufficiency(StrictPracticeDesignModel):
     field: PlanningContextField
     description: NonblankText = Field(
         min_length=1,
@@ -43,24 +29,24 @@ class PracticePlanningInsufficiency(_StrictModel):
     )
 
 
-class PracticePlanningContext(_StrictModel):
+class PracticePlanningContext(StrictPracticeDesignModel):
     learner_level: NonblankText | None = Field(
         description="Professor-editable source-supported learner level, or null if unsupported."
     )
     prerequisites: Annotated[
-        tuple[NonblankText, ...] | None, BeforeValidator(_freeze_collection)
+        tuple[NonblankText, ...] | None, BeforeValidator(freeze_collection)
     ] = Field(max_length=40, description="Known prerequisites, or null if the source is silent.")
     time_budget_minutes: int | None = Field(
         ge=1, description="Available learner time in minutes, or null if the source is silent."
     )
-    allowed_aids: Annotated[
-        tuple[NonblankText, ...] | None, BeforeValidator(_freeze_collection)
-    ] = Field(max_length=40, description="Explicitly allowed aids, or null if unsupported.")
+    allowed_aids: Annotated[tuple[NonblankText, ...] | None, BeforeValidator(freeze_collection)] = (
+        Field(max_length=40, description="Explicitly allowed aids, or null if unsupported.")
+    )
     assessment_conditions: NonblankText | None = Field(
         description="Professor-editable assessment conditions, or null if unsupported."
     )
     insufficiencies: Annotated[
-        tuple[PracticePlanningInsufficiency, ...], BeforeValidator(_freeze_collection)
+        tuple[PracticePlanningInsufficiency, ...], BeforeValidator(freeze_collection)
     ] = Field(
         max_length=5,
         description="Exactly one explicit source insufficiency for every null context field.",

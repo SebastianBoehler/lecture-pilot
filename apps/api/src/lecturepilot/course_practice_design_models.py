@@ -7,44 +7,25 @@ from collections.abc import Sequence
 from typing import Annotated, Literal
 
 from pydantic import (
-    BaseModel,
     BeforeValidator,
-    ConfigDict,
     Field,
     ValidationInfo,
     model_validator,
 )
 
 from lecturepilot.course_practice_design_context import PracticePlanningContext
+from lecturepilot.course_practice_design_contract import (
+    NonblankText,
+    StrictPracticeDesignModel,
+    freeze_collection,
+)
 
 
 _ID_PATTERN = r"^[a-z0-9][a-z0-9-]{0,79}$"
 _REVISION_PATTERN = r"^[a-f0-9]{64}$"
 
 
-def _normalize_nonblank_text(value: object) -> object:
-    if not isinstance(value, str):
-        return value
-    normalized = value.strip()
-    if not normalized:
-        raise ValueError("Required text cannot be blank.")
-    return normalized
-
-
-def _freeze_collection(value: object) -> object:
-    return tuple(value) if isinstance(value, list) else value
-
-
-NonblankText = Annotated[str, BeforeValidator(_normalize_nonblank_text)]
-
-
-class _StrictModel(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid", frozen=True, revalidate_instances="always", strict=True
-    )
-
-
-class PracticeEvidenceCriterion(_StrictModel):
+class PracticeEvidenceCriterion(StrictPracticeDesignModel):
     id: str = Field(pattern=_ID_PATTERN)
     description: NonblankText = Field(
         min_length=1,
@@ -57,7 +38,7 @@ class PracticeEvidenceCriterion(_StrictModel):
     required: bool = True
 
 
-class PracticeMisconception(_StrictModel):
+class PracticeMisconception(StrictPracticeDesignModel):
     id: str = Field(pattern=_ID_PATTERN)
     description: NonblankText = Field(
         min_length=1,
@@ -74,7 +55,7 @@ class PracticeMisconception(_StrictModel):
     )
 
 
-class PracticeHint(_StrictModel):
+class PracticeHint(StrictPracticeDesignModel):
     level: Literal["prompt", "cue", "faded_example", "worked_step"] = Field(
         description=(
             "Approved support level: prompt asks the learner to inspect or plan without domain "
@@ -90,7 +71,7 @@ class PracticeHint(_StrictModel):
     )
 
 
-class PracticeTarget(_StrictModel):
+class PracticeTarget(StrictPracticeDesignModel):
     id: str = Field(pattern=_ID_PATTERN)
     title: NonblankText = Field(min_length=1, max_length=200)
     outcome: NonblankText = Field(
@@ -138,12 +119,12 @@ class PracticeTarget(_StrictModel):
         description="Controlled later change in scenario, values, representation, or task form.",
     )
     evidence_criteria: Annotated[
-        tuple[PracticeEvidenceCriterion, ...], BeforeValidator(_freeze_collection)
+        tuple[PracticeEvidenceCriterion, ...], BeforeValidator(freeze_collection)
     ] = Field(min_length=1, max_length=40)
     misconceptions: Annotated[
-        tuple[PracticeMisconception, ...], BeforeValidator(_freeze_collection)
+        tuple[PracticeMisconception, ...], BeforeValidator(freeze_collection)
     ] = Field(default_factory=tuple, max_length=40)
-    hint_ladder: Annotated[tuple[PracticeHint, ...], BeforeValidator(_freeze_collection)] = Field(
+    hint_ladder: Annotated[tuple[PracticeHint, ...], BeforeValidator(freeze_collection)] = Field(
         default_factory=tuple, max_length=4
     )
     review_after_days: int = Field(
@@ -154,7 +135,7 @@ class PracticeTarget(_StrictModel):
             "that the model selected a scientifically optimal delay."
         ),
     )
-    source_refs: Annotated[tuple[str, ...], BeforeValidator(_freeze_collection)] = Field(
+    source_refs: Annotated[tuple[str, ...], BeforeValidator(freeze_collection)] = Field(
         min_length=1, max_length=100
     )
 
@@ -178,11 +159,11 @@ class PracticeTarget(_StrictModel):
         return self
 
 
-class PracticeDesignProposal(_StrictModel):
+class PracticeDesignProposal(StrictPracticeDesignModel):
     lecture_title: NonblankText = Field(min_length=1, max_length=200)
     objective: NonblankText = Field(min_length=1, max_length=1_000)
     planning_context: PracticePlanningContext
-    targets: Annotated[tuple[PracticeTarget, ...], BeforeValidator(_freeze_collection)] = Field(
+    targets: Annotated[tuple[PracticeTarget, ...], BeforeValidator(freeze_collection)] = Field(
         min_length=1, max_length=8
     )
 
@@ -192,14 +173,14 @@ class PracticeDesignProposal(_StrictModel):
         return self
 
 
-class PracticeDesignApproval(_StrictModel):
+class PracticeDesignApproval(StrictPracticeDesignModel):
     approved_by: NonblankText = Field(min_length=1, max_length=160)
     approved_at: datetime
     source_revision: str = Field(pattern=_REVISION_PATTERN)
     practice_design_revision: str = Field(pattern=_REVISION_PATTERN)
 
 
-class PracticeDesign(_StrictModel):
+class PracticeDesign(StrictPracticeDesignModel):
     schema_version: Literal[1] = 1
     course_id: str = Field(min_length=1, max_length=120)
     lecture_id: str = Field(min_length=1, max_length=120)
@@ -207,7 +188,7 @@ class PracticeDesign(_StrictModel):
     objective: NonblankText = Field(min_length=1, max_length=1_000)
     planning_context: PracticePlanningContext
     source_revision: str = Field(pattern=_REVISION_PATTERN)
-    targets: Annotated[tuple[PracticeTarget, ...], BeforeValidator(_freeze_collection)] = Field(
+    targets: Annotated[tuple[PracticeTarget, ...], BeforeValidator(freeze_collection)] = Field(
         min_length=1, max_length=8
     )
     revision: str = Field(pattern=_REVISION_PATTERN)
@@ -233,13 +214,13 @@ class PracticeDesign(_StrictModel):
         )
 
 
-class PracticeDesignUpdate(_StrictModel):
+class PracticeDesignUpdate(StrictPracticeDesignModel):
     source_revision: str = Field(pattern=_REVISION_PATTERN)
     practice_design_revision: str = Field(pattern=_REVISION_PATTERN)
     lecture_title: NonblankText = Field(min_length=1, max_length=200)
     objective: NonblankText = Field(min_length=1, max_length=1_000)
     planning_context: PracticePlanningContext
-    targets: Annotated[tuple[PracticeTarget, ...], BeforeValidator(_freeze_collection)] = Field(
+    targets: Annotated[tuple[PracticeTarget, ...], BeforeValidator(freeze_collection)] = Field(
         min_length=1, max_length=8
     )
 
@@ -249,7 +230,7 @@ class PracticeDesignUpdate(_StrictModel):
         return self
 
 
-class PracticeDesignApprovalInput(_StrictModel):
+class PracticeDesignApprovalInput(StrictPracticeDesignModel):
     source_revision: str = Field(pattern=_REVISION_PATTERN)
     practice_design_revision: str = Field(pattern=_REVISION_PATTERN)
 
