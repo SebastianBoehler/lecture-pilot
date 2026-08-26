@@ -33,12 +33,13 @@ def persist_quality_gate(
     with observability.tool_span(
         "record_quality_gate", gate_id=decision.gate_id, status=decision.status.value
     ):
-        learner_state_store(app).record_quality_gate(
-            course_id=turn.course_id,
-            lecture_id=turn.lecture_id,
-            user_id=turn.user_id,
-            decision=decision,
-        )
+        if decision.status.value == "passed" and coaching_event.attempt_kind == "independent_exit":
+            learner_state_store(app).record_quality_gate(
+                course_id=turn.course_id,
+                lecture_id=turn.lecture_id,
+                user_id=turn.user_id,
+                decision=decision,
+            )
         if turn.user_id == LOCAL_PREVIEW_USER_ID or is_professor_preview_user_id(turn.user_id):
             return
         assessed_turn = AssessedAgentTurnInput.model_validate(turn.model_dump())

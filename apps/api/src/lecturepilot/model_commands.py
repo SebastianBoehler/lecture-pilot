@@ -7,6 +7,7 @@ from lecturepilot.models import (
     QualityGateStatus,
 )
 from lecturepilot.coaching_assistance import NextCheck
+from lecturepilot.coaching_transitions import derive_next_transition
 from lecturepilot.providers import ProviderConfigurationError
 
 
@@ -89,14 +90,34 @@ def validate_quality_gate_decision(
     return decision
 
 
-def validate_next_check(next_check: NextCheck | None, turn: AgentTurnInput) -> None:
+def validate_next_check(
+    next_check: NextCheck | None,
+    turn: AgentTurnInput,
+    decision: QualityGateDecision | None,
+) -> None:
     gate = turn.active_gate
-    if next_check is None:
+    if decision is None:
+        if next_check is not None:
+            raise ProviderConfigurationError(
+                "Model returned a next check without an assessed pending check."
+            )
         return
     if gate is None:
         raise ProviderConfigurationError("Model returned a next check without an active gate.")
-    if next_check.gate_id != gate.id or next_check.gate_revision != gate.revision:
-        raise ProviderConfigurationError("Model next check does not match the active contract.")
+    stage = turn.coaching_context.pending_check_stage
+    if stage is None:
+        raise ProviderConfigurationError("Assessed turn is missing its pending assessment stage.")
+    transition = derive_next_transition(
+        gate,
+        current_stage=stage,
+        status=decision.status,
+        exposed_hint_levels=turn.coaching_context.exposed_hint_levels,
+    )
+    expected = transition.check if transition else None
+    if next_check != expected:
+        raise ProviderConfigurationError(
+            "Model response does not match the server-selected next check."
+        )
 
 
 def resolve_provider_canvas_commands(

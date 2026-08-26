@@ -6,7 +6,7 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from lecturepilot.coaching_state_models import PendingCheckKind
 from lecturepilot.quality_gate_models import QualityGateStatus
-from lecturepilot.scaffold_policy import AssistanceLevel
+from lecturepilot.coaching_contract import AssistanceLevel
 
 QuizOutcome = Literal["correct", "incorrect", "unscored"]
 QuizCorrectionState = Literal["not_needed", "needed", "corrected"]

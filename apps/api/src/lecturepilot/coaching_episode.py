@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from lecturepilot.coaching_assistance import NextCheck
 from lecturepilot.coaching_state_models import (
     AttemptKind,
     CoachingProgress,
@@ -10,6 +9,7 @@ from lecturepilot.coaching_state_models import (
     PendingCheck,
     review_key,
 )
+from lecturepilot.coaching_transitions import CheckTransition, attempt_kind_for_stage
 from lecturepilot.models import AgentCoachingContext, QualityGateDecision
 
 
@@ -24,15 +24,37 @@ def record_passed_review(
     review_after_days: int,
     now: datetime,
 ) -> None:
+    if delayed_attempt:
+        complete_delayed_review(
+            progress,
+            gate_id=gate_id,
+            gate_revision=gate_revision,
+            now=now,
+        )
+        return
+    schedule_delayed_review(
+        progress,
+        gate_id=gate_id,
+        gate_revision=gate_revision,
+        section_id=section_id,
+        transfer_prompt=transfer_prompt,
+        review_after_days=review_after_days,
+        now=now,
+    )
+
+
+def schedule_delayed_review(
+    progress: CoachingProgress,
+    *,
+    gate_id: str,
+    gate_revision: str,
+    section_id: str,
+    transfer_prompt: str,
+    review_after_days: int,
+    now: datetime,
+) -> None:
     key = review_key(gate_id, gate_revision)
     current = progress.delayed_reviews.get(key)
-    if (
-        current is not None
-        and current.completed_at is None
-        and (delayed_attempt or current.attempted_at is not None)
-    ):
-        progress.delayed_reviews[key] = current.model_copy(update={"completed_at": now})
-        return
     if current is not None:
         return
     planned_seconds = review_after_days * 24 * 60 * 60
@@ -50,6 +72,21 @@ def record_passed_review(
     )
 
 
+def complete_delayed_review(
+    progress: CoachingProgress,
+    *,
+    gate_id: str,
+    gate_revision: str,
+    now: datetime,
+) -> None:
+    key = review_key(gate_id, gate_revision)
+    current = progress.delayed_reviews.get(key)
+    if current is None or current.attempted_at is None:
+        raise ValueError("Delayed review cannot complete before an independent attempt.")
+    if current.completed_at is None:
+        progress.delayed_reviews[key] = current.model_copy(update={"completed_at": now})
+
+
 def record_review_attempt(
     progress: CoachingProgress,
     *,
@@ -61,6 +98,8 @@ def record_review_attempt(
     current = progress.delayed_reviews.get(key)
     if current is None or current.completed_at is not None:
         return None
+    if current.attempted_at is not None:
+        return current
     observed = int((now - current.scheduled_at).total_seconds())
     if observed < 0:
         raise ValueError("Delayed-review attempt precedes its schedule.")
@@ -69,19 +108,22 @@ def record_review_attempt(
     return updated
 
 
-def pending_from_next_check(
-    next_check: NextCheck | None,
+def pending_from_transition(
+    transition: CheckTransition | None,
     *,
     now: datetime,
 ) -> PendingCheck | None:
-    if next_check is None:
+    if transition is None:
         return None
+    next_check = transition.check
     return PendingCheck(
         gate_id=next_check.gate_id,
         gate_revision=next_check.gate_revision,
         prompt=next_check.prompt,
         assistance_level=next_check.assistance.level,
-        kind="standard",
+        assistance_content=next_check.assistance.content,
+        kind=("delayed_transfer" if transition.stage == "delayed_transfer" else "standard"),
+        stage=transition.stage,
         issued_at=now,
     )
 
@@ -110,9 +152,7 @@ def matching_pending(
 def attempt_kind(pending: PendingCheck | None, assessed: bool) -> AttemptKind:
     if not assessed or pending is None:
         return "none"
-    if pending.kind == "delayed_transfer":
-        return "delayed_transfer"
-    return "independent" if pending.assistance_level in {"none", "prompt"} else "supported_retry"
+    return attempt_kind_for_stage(pending.stage)
 
 
 def parse_time(value: str) -> datetime:

@@ -37,7 +37,7 @@ def agent_result_from_content(
     )
     decision = _quality_gate_decision(provider_result.assessment, turn)
     decision = validate_quality_gate_decision(decision, turn)
-    validate_next_check(provider_result.next_check, turn)
+    validate_next_check(provider_result.next_check, turn, decision)
     result = AgentTurnResult(
         message=provider_result.message.strip(),
         session_goal=(

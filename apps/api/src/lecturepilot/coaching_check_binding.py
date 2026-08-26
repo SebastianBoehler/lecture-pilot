@@ -5,7 +5,9 @@ from typing import TYPE_CHECKING
 
 from lecturepilot.coaching_episode import matching_pending
 from lecturepilot.coaching_state_models import PendingCheck, review_key
+from lecturepilot.coaching_transitions import initial_assessment_stage
 from lecturepilot.durable_files import exclusive_file_lock
+from lecturepilot.learning_map import LearningMapGate
 
 if TYPE_CHECKING:
     from lecturepilot.coaching_progress import CoachingProgressStore
@@ -17,20 +19,25 @@ def bind_inline_checkpoint(
     user_id: str,
     course_id: str,
     lecture_id: str,
-    gate_id: str,
-    gate_revision: str,
-    published_prompt: str,
+    gate: LearningMapGate,
     now: datetime | None,
 ) -> None:
     path = store._path(user_id=user_id, course_id=course_id, lecture_id=lecture_id)
     with exclusive_file_lock(path):
         progress = store.read(user_id=user_id, course_id=course_id, lecture_id=lecture_id)
+        current = progress.pending_check
+        if current is not None:
+            if current.gate_id == gate.id and current.gate_revision == gate.revision:
+                return
+            raise ValueError("Another assessment is already pending.")
         progress.pending_check = PendingCheck(
-            gate_id=gate_id,
-            gate_revision=gate_revision,
-            prompt=published_prompt,
+            gate_id=gate.id,
+            gate_revision=gate.revision,
+            prompt=gate.prompt,
             assistance_level="none",
+            assistance_content=None,
             kind="standard",
+            stage=initial_assessment_stage(gate),
             issued_at=now or datetime.now(UTC),
         )
         store._write(
@@ -60,7 +67,10 @@ def bind_delayed_review(
             raise ValueError("Gate review is no longer available.")
         if review.attempted_at is not None:
             pending = matching_pending(progress.pending_check, gate_id, gate_revision)
-            if pending is None or pending.kind != "standard":
+            if pending is None or pending.stage not in {
+                "delayed_support",
+                "delayed_transfer",
+            }:
                 raise ValueError("Gate repair is no longer active.")
             return pending
         if review.due_at > current_time:
@@ -70,7 +80,9 @@ def bind_delayed_review(
             gate_revision=gate_revision,
             prompt=review.transfer_prompt,
             assistance_level="none",
+            assistance_content=None,
             kind="delayed_transfer",
+            stage="delayed_transfer",
             issued_at=current_time,
         )
         store._write(

@@ -43,6 +43,7 @@ def register_agent_routes(
             seeded_lectures=seeded_lectures,
             turn=turn,
         )
+        _preflight_learning_state(app, turn.user_id, turn.course_id, turn.lecture_id)
         return await complete_agent_turn(app, turn=turn, actor_user_id=access.actor_user_id)
 
     @app.post("/agent/turn/stream")

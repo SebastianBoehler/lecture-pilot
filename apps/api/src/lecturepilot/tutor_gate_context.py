@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from lecturepilot.coaching_transitions import CheckTransition, derive_next_transition
 from lecturepilot.models import AgentTurnInput
+from lecturepilot.quality_gate_models import QualityGateStatus
 
 
 def gate_rubric_context(turn: AgentTurnInput) -> str:
@@ -13,6 +15,7 @@ def gate_rubric_context(turn: AgentTurnInput) -> str:
         for criterion in gate.evidence_criteria
     )
     teaching_contract = _practice_teaching_contract(gate)
+    transition_contract = _transition_contract(turn)
     return (
         f"Active quality gate: {gate.id} ({gate.title})\n"
         f"Gate revision: {gate.revision}\n"
@@ -22,6 +25,7 @@ def gate_rubric_context(turn: AgentTurnInput) -> str:
         f"{criteria}\n"
         f"Unfamiliar transfer prompt: {gate.transfer_prompt}\n"
         f"Review after days: {gate.review_after_days}\n"
+        f"{transition_contract}"
         "Treat this server-owned contract as the complete pass rubric."
     )
 
@@ -43,4 +47,41 @@ def _practice_teaching_contract(gate) -> str:
         f"{misconceptions or '- none'}\n"
         "Approved hint ladder:\n"
         f"{hints or '- none'}\n"
+    )
+
+
+def _transition_contract(turn: AgentTurnInput) -> str:
+    gate = turn.active_gate
+    stage = turn.coaching_context.pending_check_stage
+    if gate is None or stage is None:
+        return "Server-selected next check: none; return next_check as null.\n"
+    passed = derive_next_transition(
+        gate,
+        current_stage=stage,
+        status=QualityGateStatus.PASSED,
+        exposed_hint_levels=turn.coaching_context.exposed_hint_levels,
+    )
+    needs_evidence = derive_next_transition(
+        gate,
+        current_stage=stage,
+        status=QualityGateStatus.NEEDS_EVIDENCE,
+        exposed_hint_levels=turn.coaching_context.exposed_hint_levels,
+    )
+    return (
+        f"Current persisted assessment stage: {stage}\n"
+        f"If passed, server-selected next check: {_describe_transition(passed)}\n"
+        "If needs_evidence, server-selected next check: "
+        f"{_describe_transition(needs_evidence)}\n"
+        "Copy that exact prompt, assistance level, and approved assistance content; "
+        "the server rejects substitutions.\n"
+    )
+
+
+def _describe_transition(transition: CheckTransition | None) -> str:
+    if transition is None:
+        return "null"
+    assistance = transition.check.assistance
+    return (
+        f"stage={transition.stage}; assistance={assistance.level}; "
+        f"content={assistance.content!r}; prompt={transition.check.prompt!r}"
     )

@@ -148,3 +148,26 @@ def test_selector_resumes_pending_gate_before_first_open_gate() -> None:
 
     assert selected is not None
     assert selected.id == "lecture-14-focused-check"
+
+
+def test_selector_keeps_the_gate_that_owns_a_pending_exit_even_if_marked_passed() -> None:
+    learning_map = _map()
+    pending_gate = learning_map.gates[1]
+
+    selected = _select(
+        learning_map,
+        pending_gate_id=pending_gate.id,
+        pending_gate_revision=pending_gate.revision,
+        latest_decisions={
+            pending_gate.id: QualityGateDecision(
+                gate_id=pending_gate.id,
+                gate_revision=pending_gate.revision,
+                status=QualityGateStatus.PASSED,
+                reason="A diagnostic must not orphan the bound exit.",
+                evidence_ids=["focused-explanation"],
+                missing_evidence_ids=[],
+            )
+        },
+    )
+
+    assert selected == pending_gate

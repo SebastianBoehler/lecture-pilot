@@ -5,10 +5,23 @@ from typing import Literal
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
 from lecturepilot.agent_context_models import AgentConversationMessage
-from lecturepilot.scaffold_policy import AssistanceLevel
+from lecturepilot.coaching_contract import AssessmentStage, AssistanceLevel, HintLevel
 
-AttemptKind = Literal["none", "independent", "supported_retry", "delayed_transfer"]
-AssessedAttemptKind = Literal["independent", "supported_retry", "delayed_transfer"]
+AttemptKind = Literal[
+    "none",
+    "diagnostic",
+    "independent",
+    "independent_exit",
+    "supported_retry",
+    "delayed_transfer",
+]
+AssessedAttemptKind = Literal[
+    "diagnostic",
+    "independent",
+    "independent_exit",
+    "supported_retry",
+    "delayed_transfer",
+]
 PendingCheckKind = Literal["standard", "delayed_transfer"]
 GateStatus = Literal["passed", "needs_evidence"]
 
@@ -18,10 +31,39 @@ class PendingCheck(BaseModel):
 
     gate_id: str = Field(min_length=1, max_length=160)
     gate_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
-    prompt: str = Field(min_length=1, max_length=500)
+    prompt: str = Field(min_length=1, max_length=2_000)
     assistance_level: AssistanceLevel
+    assistance_content: str | None = Field(max_length=2_000)
     kind: PendingCheckKind
+    stage: AssessmentStage
     issued_at: AwareDatetime
+
+    @model_validator(mode="after")
+    def validate_assistance_and_stage(self) -> PendingCheck:
+        if self.assistance_level == "none" and self.assistance_content is not None:
+            raise ValueError("Unassisted pending checks cannot bind assistance content.")
+        if self.assistance_level != "none" and not (
+            self.assistance_content and self.assistance_content.strip()
+        ):
+            raise ValueError("Assisted pending checks require exact assistance content.")
+        expected_kind = "delayed_transfer" if self.stage == "delayed_transfer" else "standard"
+        if self.kind != expected_kind:
+            raise ValueError("Pending-check kind does not match its assessment stage.")
+        if self.stage in {"diagnostic", "independent_exit", "delayed_transfer"} and (
+            self.assistance_level != "none"
+        ):
+            raise ValueError("Independent assessment stages cannot carry assistance.")
+        return self
+
+
+class HintExposure(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    gate_id: str = Field(min_length=1, max_length=160)
+    gate_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
+    assistance_level: HintLevel
+    content: str = Field(min_length=1, max_length=2_000)
+    exposed_at: AwareDatetime
 
 
 class DelayedReview(BaseModel):
@@ -60,7 +102,7 @@ class CoachingTurnEvent(BaseModel):
 class CoachingProgress(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    schema_version: Literal[1]
+    schema_version: Literal[2]
     course_id: str = Field(min_length=1, max_length=120)
     lecture_id: str = Field(min_length=1, max_length=120)
     session_goal: str | None = Field(max_length=500)
@@ -69,6 +111,7 @@ class CoachingProgress(BaseModel):
     attendance_prior_used: bool
     messages: list[AgentConversationMessage] = Field(max_length=8)
     pending_check: PendingCheck | None
+    hint_exposures: dict[str, HintExposure]
     delayed_reviews: dict[str, DelayedReview]
     updated_at: AwareDatetime | None
 
@@ -77,12 +120,15 @@ class CoachingProgress(BaseModel):
         for key, review in self.delayed_reviews.items():
             if key != review_key(review.gate_id, review.gate_revision):
                 raise ValueError("Delayed-review key does not match its gate contract.")
+        for key, exposure in self.hint_exposures.items():
+            if key != hint_exposure_key(exposure.gate_revision, exposure.assistance_level):
+                raise ValueError("Hint-exposure key does not match its gate contract.")
         return self
 
     @classmethod
     def empty(cls, *, course_id: str, lecture_id: str) -> CoachingProgress:
         return cls(
-            schema_version=1,
+            schema_version=2,
             course_id=course_id,
             lecture_id=lecture_id,
             session_goal=None,
@@ -91,6 +137,7 @@ class CoachingProgress(BaseModel):
             attendance_prior_used=False,
             messages=[],
             pending_check=None,
+            hint_exposures={},
             delayed_reviews={},
             updated_at=None,
         )
@@ -100,5 +147,9 @@ def review_key(gate_id: str, gate_revision: str) -> str:
     return f"{gate_id}@{gate_revision}"
 
 
-def attempt_key(gate_id: str, gate_revision: str) -> str:
-    return review_key(gate_id, gate_revision)
+def attempt_key(gate_id: str, gate_revision: str, attempt_kind: str) -> str:
+    return f"{review_key(gate_id, gate_revision)}@{attempt_kind}"
+
+
+def hint_exposure_key(gate_revision: str, assistance_level: HintLevel) -> str:
+    return f"{gate_revision}@{assistance_level}"

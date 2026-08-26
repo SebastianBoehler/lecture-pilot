@@ -16,7 +16,7 @@ from pydantic import (
 
 from lecturepilot.learner_lesson_state_models import QuizCorrectionState
 from lecturepilot.models import AttendanceStatus, QualityGateStatus
-from lecturepilot.scaffold_policy import AssistanceLevel
+from lecturepilot.coaching_contract import AssistanceLevel
 
 
 CanonicalId = Annotated[
@@ -122,7 +122,13 @@ class GateOutcomeEvent(BaseModel):
     publication_version: PositiveInt
     learning_map_revision: RevisionId
     status: QualityGateStatus
-    attempt_kind: Literal["independent", "supported_retry", "delayed_transfer"]
+    attempt_kind: Literal[
+        "diagnostic",
+        "independent",
+        "independent_exit",
+        "supported_retry",
+        "delayed_transfer",
+    ]
     attempt_index: PositiveInt
     assistance_before_attempt: AssistanceLevel
     planned_delay_seconds: NonNegativeInt | None

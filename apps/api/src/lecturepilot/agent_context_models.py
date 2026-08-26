@@ -4,7 +4,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from lecturepilot.scaffold_policy import AssistanceLevel, TutorScaffoldPolicy
+from lecturepilot.coaching_contract import AssessmentStage, AssistanceLevel, HintLevel
+from lecturepilot.scaffold_policy import TutorScaffoldPolicy
 
 
 class UserMemoryContext(BaseModel):
@@ -15,7 +16,7 @@ class UserMemoryContext(BaseModel):
 
 class AgentConversationMessage(BaseModel):
     role: Literal["user", "assistant"]
-    content: str = Field(min_length=1, max_length=4000)
+    content: str = Field(min_length=1, max_length=8_000)
 
 
 class AgentReadinessTask(BaseModel):
@@ -41,7 +42,11 @@ class AgentCoachingContext(BaseModel):
     pending_check_gate_id: str | None = Field(default=None, max_length=160)
     pending_check_gate_revision: str | None = Field(default=None, max_length=64)
     pending_check_kind: Literal["standard", "delayed_transfer"] | None = None
+    pending_check_stage: AssessmentStage | None = None
     pending_check_issued_at: str | None = Field(default=None, max_length=80)
-    pending_check_prompt: str | None = Field(default=None, max_length=500)
+    pending_check_prompt: str | None = Field(default=None, max_length=2_000)
+    pending_check_assistance_content: str | None = Field(default=None, max_length=2_000)
+    exposed_hint_levels: list[HintLevel] = Field(default_factory=list, max_length=4)
+    delayed_review_attempted: bool = False
     evidence_ids: list[str] = Field(default_factory=list, max_length=40)
     missing_evidence_ids: list[str] = Field(default_factory=list, max_length=40)

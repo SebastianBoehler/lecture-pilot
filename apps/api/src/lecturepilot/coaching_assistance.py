@@ -4,14 +4,14 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from lecturepilot.scaffold_policy import AssistanceLevel
+from lecturepilot.coaching_contract import AssistanceLevel
 
 
 class NextCheckAssistance(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     level: AssistanceLevel
-    content: str | None = Field(max_length=500)
+    content: str | None = Field(max_length=2_000)
 
     @model_validator(mode="after")
     def validate_content(self) -> "NextCheckAssistance":
@@ -27,7 +27,7 @@ class NextCheck(BaseModel):
 
     gate_id: str = Field(min_length=1, max_length=160)
     gate_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
-    prompt: str = Field(min_length=1, max_length=500)
+    prompt: str = Field(min_length=1, max_length=2_000)
     assistance: NextCheckAssistance
 
 
@@ -37,16 +37,16 @@ def emitted_assistance_level(
     prompt: str,
     assistance: NextCheckAssistance,
 ) -> AssistanceLevel:
+    prompt = prompt.strip()
+    prompt_at = message.find(prompt) if prompt else -1
+    if prompt_at < 0:
+        raise ValueError("the next check is not present in the tutor message")
     if assistance.level == "none":
         return "none"
     content = (assistance.content or "").strip()
-    prompt = prompt.strip()
     content_at = message.find(content)
-    prompt_at = message.find(prompt) if prompt else -1
     if content_at < 0:
         raise ValueError("declared next-check assistance is not present in the tutor message")
-    if prompt_at < 0:
-        raise ValueError("the next check is not present in the tutor message")
     if content_at + len(content) > prompt_at:
         raise ValueError("next-check assistance must appear before the next check")
     return assistance.level

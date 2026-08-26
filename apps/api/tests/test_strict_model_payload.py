@@ -42,6 +42,7 @@ def _turn(*, active_gate: bool = True, bound_check: bool = True) -> AgentTurnInp
                 active_gate_revision=gate.revision,
                 pending_check_gate_id=gate.id,
                 pending_check_gate_revision=gate.revision,
+                pending_check_stage="independent_exit",
                 pending_check_issued_at="2026-08-09T08:00:00+00:00",
                 pending_check_prompt="Explain the mechanism.",
             )
@@ -79,7 +80,7 @@ def _turn(*, active_gate: bool = True, bound_check: bool = True) -> AgentTurnInp
 def _payload() -> dict:
     gate = _gate()
     return {
-        "message": "Use the causal link. Explain the mechanism.",
+        "message": "Explain the mechanism.",
         "session_goal": "Explain and transfer the mechanism.",
         "canvas_commands": [
             {
@@ -111,7 +112,7 @@ def _payload() -> dict:
             "gate_id": gate.id,
             "gate_revision": gate.revision,
             "prompt": "Explain the mechanism.",
-            "assistance": {"level": "cue", "content": "Use the causal link."},
+            "assistance": {"level": "none", "content": None},
         },
     }
 
@@ -231,11 +232,12 @@ def test_provider_payload_rejects_assessment_without_bound_check() -> None:
 def test_provider_payload_accepts_unbound_turn_without_assessment() -> None:
     payload = _payload()
     payload["assessment"] = None
+    payload["next_check"] = None
 
     result = agent_result_from_content(json.dumps(payload), _turn(bound_check=False), "model")
 
     assert result.quality_gate is None
-    assert result.next_check is not None
+    assert result.next_check is None
 
 
 def test_provider_payload_accepts_one_complete_strict_contract() -> None:
