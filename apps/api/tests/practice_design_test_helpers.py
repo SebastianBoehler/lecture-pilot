@@ -10,7 +10,9 @@ from lecturepilot.course_practice_design_models import (
     PracticeTarget,
 )
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument
+from lecturepilot.course_canvas_evidence_batches import group_evidence_sections
 from lecturepilot.course_canvas_repairs import lecture_source_revision
+from lecturepilot.course_canvas_validation import source_topic_sections
 from lecturepilot.course_practice_design_store import PracticeDesignStore
 from practice_design_review_test_helpers import passing_review, source_document
 from lecturepilot.storage_layout import StorageLayout
@@ -77,10 +79,12 @@ def proposal() -> PracticeDesignProposal:
 
 
 def target(**changes: object) -> PracticeTarget:
+    changes = dict(changes)
+    source_excerpt = str(changes.pop("source_excerpt", "evidence"))
     payload = {**proposal().targets[0].model_dump(mode="json"), **changes}
     source_refs = tuple(payload["source_refs"])
     source_path = source_refs[0]
-    anchor = {"source_path": source_path, "excerpt": "evidence"}
+    anchor = {"source_path": source_path, "excerpt": source_excerpt}
     for field in (
         "outcome_anchor",
         "target_invariant_anchor",
@@ -109,52 +113,52 @@ def document(task: str) -> SimpleNamespace:
     return SimpleNamespace(sections=[section])
 
 
-def canvas_with_practice_design(document: CanvasDocument) -> tuple[CanvasDocument, PracticeDesign]:
-    design = practice_design_for_canvas(document)
-    baseline_task = design.targets[0].baseline_task
+def canvas_with_practice_design(
+    document: CanvasDocument, practice_design: PracticeDesign | None = None
+) -> tuple[CanvasDocument, PracticeDesign]:
+    design = practice_design or practice_design_for_canvas(document)
+    target = design.targets[0]
     first = document.sections[0]
-    return (
-        document.model_copy(
-            update={
-                "sections": [
-                    first.model_copy(
-                        update={
-                            "blocks": [
-                                *first.blocks,
-                                CanvasBlock(
-                                    id="practice-derive-conclusion",
-                                    type="checkpoint",
-                                    text=baseline_task,
-                                ),
-                            ]
-                        }
-                    ),
-                    *document.sections[1:],
-                ]
-            }
-        ),
-        design,
+    if practice_design is not None:
+        first = first.model_copy(update={"source_ref": target.source_refs[0]})
+    checkpoint = CanvasBlock(
+        id=f"practice-{target.id}", type="checkpoint", text=target.baseline_task
     )
+    first = first.model_copy(update={"blocks": [*first.blocks, checkpoint]})
+    return document.model_copy(update={"sections": [first, *document.sections[1:]]}), design
 
 
 def practice_design_for_canvas(document: CanvasDocument) -> PracticeDesign:
-    baseline_task = "Derive the conclusion from the stated evidence and justify the reasoning."
+    source_section = group_evidence_sections(
+        source_topic_sections(document) or document.sections,
+        document_source_ref=document.source_ref,
+    )[0]
+    source_excerpt = next(
+        (
+            value
+            for block in source_section.blocks
+            for value in (block.text, block.caption, *block.items)
+            if value
+        ),
+        source_section.title,
+    )[:1_600]
     design_target = target(
-        baseline_task=baseline_task,
+        baseline_task="Derive the conclusion from the stated evidence and justify the reasoning.",
         independent_exit_task="Derive a conclusion from a parallel evidence set and justify it.",
         delayed_transfer_task="Derive a conclusion after the surface details change and justify it.",
-        source_refs=(document.sections[0].source_ref or document.source_ref,),
+        source_refs=(source_section.source_ref or document.source_ref,),
+        source_excerpt=source_excerpt,
     )
-    design = PracticeDesign.create(
+    draft = proposal()
+    return PracticeDesign.create(
         course_id=document.course_id,
         lecture_id=document.lecture_id,
         lecture_title=document.title,
         objective="Derive the conclusion independently from the cited evidence.",
-        planning_context=proposal().planning_context,
+        planning_context=draft.planning_context,
         source_revision="a" * 64,
         targets=(design_target,),
     )
-    return design
 
 
 def write_manifest(

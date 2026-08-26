@@ -85,8 +85,7 @@ def test_invalid_stored_draft_returns_actionable_error(tmp_path: Path) -> None:
         workspace.course_canvas_store.draft_path("draft-integrity", "lecture-01") / "index.md"
     )
     source = manifest.read_text(encoding="utf-8")
-    source_ref_line = 'source_ref: "source.md"'
-    assert source_ref_line in source
+    source_ref_line = next(line for line in source.splitlines() if line.startswith("source_ref:"))
     invalid_source_ref = "s" * (MAX_SOURCE_REF_LENGTH + 1)
     manifest.write_text(
         source.replace(

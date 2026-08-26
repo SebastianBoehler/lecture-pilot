@@ -342,6 +342,7 @@ def _practice_design(source: CanvasDocument) -> PracticeDesign:
             "when selecting an action?"
         ),
         source_refs=(source.source_ref,),
+        source_excerpt="prior",
     )
     return PracticeDesign.create(
         course_id=source.course_id,

@@ -76,3 +76,44 @@ def test_model_prompt_includes_derived_coaching_goal_and_support_policy() -> Non
     assert "goal_status: proposed" in user_prompt
     assert "profile: self_explanation" in user_prompt
     assert "Ask for the learner's own attempt" in user_prompt
+
+
+def test_model_prompt_includes_the_approved_practice_teaching_contract() -> None:
+    gate = LearningMapGate.create(
+        id="practice-causal-transfer",
+        concept_id="causal-transfer",
+        title="Causal transfer",
+        prompt="Explain when the conclusion transfers.",
+        target_invariant="Apply the same causal boundary reasoning.",
+        evidence_criteria=[{"id": "boundary", "description": "Name a transfer boundary."}],
+        transfer_prompt="Apply the conclusion to an unfamiliar setting.",
+        independent_exit_task="Apply the boundary independently to a parallel setting.",
+        independent_exit_surface_change="Change the setting while preserving the boundary.",
+        delayed_transfer_surface_change="Change the representation and setting.",
+        misconceptions=[
+            {
+                "id": "surface-match",
+                "description": "Transfers from superficial similarity alone.",
+                "diagnostic_cue": "The response never checks the causal boundary.",
+            }
+        ],
+        hint_ladder=[{"level": "prompt", "content": "Identify the causal boundary first."}],
+        review_after_days=3,
+        section_id="causal-transfer",
+        source_ref="lecture.md",
+        practice_target_id="causal-transfer",
+    )
+    prompt = _messages(_turn().model_copy(update={"active_gate": gate}))[1]["content"]
+
+    for value in (
+        gate.target_invariant,
+        gate.independent_exit_task,
+        gate.independent_exit_surface_change,
+        gate.delayed_transfer_surface_change,
+        gate.misconceptions[0].id,
+        gate.misconceptions[0].description,
+        gate.misconceptions[0].diagnostic_cue,
+        gate.hint_ladder[0].level,
+        gate.hint_ladder[0].content,
+    ):
+        assert value in prompt

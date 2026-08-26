@@ -168,7 +168,7 @@ async def test_section_repair_normalizes_redundant_math_without_calling_the_mode
     source, design = canvas_with_practice_design(
         published_course_canvas("targeted-repair", "lecture-01")
     )
-    candidate, _ = canvas_with_practice_design(invalid_candidate(source))
+    candidate, _ = canvas_with_practice_design(invalid_candidate(source), design)
     section = candidate.sections[0]
     target = section.blocks[1].model_copy(update={"text": r"w^\prime \[x"})
     candidate = candidate.model_copy(
@@ -203,7 +203,7 @@ async def test_section_repair_normalizes_source_dependent_checkpoint_without_mod
     source, design = canvas_with_practice_design(
         published_course_canvas("targeted-repair", "lecture-01")
     )
-    candidate, _ = canvas_with_practice_design(invalid_candidate(source))
+    candidate, _ = canvas_with_practice_design(invalid_candidate(source), design)
     section = candidate.sections[0]
     valid_math = section.blocks[1].model_copy(update={"text": r"w^\top x"})
     target = section.blocks[4].model_copy(
@@ -250,7 +250,7 @@ async def test_section_repair_converts_incomplete_choice_component_without_model
     source, design = canvas_with_practice_design(
         published_course_canvas("targeted-repair", "lecture-01")
     )
-    candidate, _ = canvas_with_practice_design(invalid_candidate(source))
+    candidate, _ = canvas_with_practice_design(invalid_candidate(source), design)
     section = candidate.sections[0]
     valid_math = section.blocks[1].model_copy(update={"text": r"w^\top x"})
     target = section.blocks[4].model_copy(
@@ -313,7 +313,7 @@ async def test_section_repair_rewrites_unsupported_relationship_as_retrieval_wit
     source, design = canvas_with_practice_design(
         published_course_canvas("targeted-repair", "lecture-01")
     )
-    candidate, _ = canvas_with_practice_design(invalid_candidate(source))
+    candidate, _ = canvas_with_practice_design(invalid_candidate(source), design)
     section = candidate.sections[0]
     valid_math = section.blocks[1].model_copy(update={"text": r"w^\top x"})
     choice = CanvasBlock(
@@ -380,7 +380,7 @@ async def test_section_repair_downgrades_multi_correct_choice_without_model_call
     source, design = canvas_with_practice_design(
         published_course_canvas("targeted-repair", "lecture-01")
     )
-    candidate, _ = canvas_with_practice_design(invalid_candidate(source))
+    candidate, _ = canvas_with_practice_design(invalid_candidate(source), design)
     section = candidate.sections[0]
     valid_math = section.blocks[1].model_copy(update={"text": r"w^\top x"})
     target = section.blocks[5]
@@ -426,7 +426,7 @@ async def test_block_repair_accepts_the_evidence_supported_patch_size(
 
     repaired = await planner.repair_section(
         source,
-        canvas_with_practice_design(invalid_candidate(source))[0],
+        canvas_with_practice_design(invalid_candidate(source), design)[0],
         section_id="learning-optimization",
         block_id="optimization-math",
         failure_context="Repair only the failed formula.",

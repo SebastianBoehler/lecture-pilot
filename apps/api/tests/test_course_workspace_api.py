@@ -656,7 +656,7 @@ class _FakeMixedSourcePlanner:
                     CanvasSection(
                         id="mixed-source-summary",
                         title="Mixed source summary",
-                        source_ref=source_document.source_ref,
+                        source_ref=practice_design.targets[0].source_refs[0],
                         blocks=[
                             CanvasBlock(
                                 id="mixed-source-summary-p-1",

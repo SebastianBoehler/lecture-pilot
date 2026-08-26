@@ -40,6 +40,7 @@ async def test_real_planner_accepts_frozen_practice_design(
             "sections": [
                 section.model_copy(
                     update={
+                        "source_ref": target.source_refs[0],
                         "blocks": [
                             *section.blocks,
                             CanvasBlock(
@@ -47,7 +48,7 @@ async def test_real_planner_accepts_frozen_practice_design(
                                 type="checkpoint",
                                 text=target.baseline_task,
                             ),
-                        ]
+                        ],
                     }
                 )
             ]

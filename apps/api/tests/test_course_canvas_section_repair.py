@@ -382,7 +382,8 @@ def _planner(
 
 
 def _candidate_and_design(source):
-    return canvas_with_practice_design(invalid_candidate(source))
+    _, design = canvas_with_practice_design(source)
+    return canvas_with_practice_design(invalid_candidate(source), design)
 
 
 def _repair_payload(blocks: list[dict]) -> dict:

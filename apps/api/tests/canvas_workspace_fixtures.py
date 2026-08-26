@@ -15,6 +15,7 @@ from lecturepilot.latex_canvas_importer import CANVAS_IMPORT_VERSION
 from lecturepilot.learner_state import LearnerStateStore
 from lecturepilot.lecture_source_manifest import write_lecture_source_manifest
 from lecturepilot.source_index_models import CourseSourceIndex, IndexedSourceFile
+from lecturepilot.course_source_ownership import routed_source_owner
 from lecturepilot.user_memory import UserMemoryStore
 from practice_design_test_helpers import approved_design_document
 
@@ -130,11 +131,16 @@ def write_canvas_draft(workspace: CanvasWorkspace, document: CanvasDocument) -> 
             file_paths=["source.md"],
             source_index=source_index,
         )
+    source_path = (
+        "source.md" if existing_design is None else existing_design.targets[0].source_refs[0]
+    )
     sourced_document = document.model_copy(
         update={
-            "source_ref": _concrete_source_ref(document.source_ref),
+            "source_ref": _concrete_source_ref(document.source_ref, source_path),
             "sections": [
-                section.model_copy(update={"source_ref": _concrete_source_ref(section.source_ref)})
+                section.model_copy(
+                    update={"source_ref": _concrete_source_ref(section.source_ref, source_path)}
+                )
                 for section in document.sections
             ],
         }
@@ -149,9 +155,7 @@ def write_canvas_draft(workspace: CanvasWorkspace, document: CanvasDocument) -> 
         workspace.layout,
         sourced_document,
         source_revision=revision,
-        source_path="source.md"
-        if existing_design is None
-        else existing_design.targets[0].source_refs[0],
+        source_path=source_path,
     )
     workspace.write_course_canvas_draft(
         sourced_document,
@@ -181,10 +185,10 @@ def approve_canvas_draft(
     )
 
 
-def _concrete_source_ref(source_ref: str | None) -> str:
-    if source_ref and not source_ref.lower().startswith("test"):
+def _concrete_source_ref(source_ref: str | None, source_path: str) -> str:
+    if routed_source_owner(source_ref, {source_path}) is not None:
         return source_ref
-    return "source.md"
+    return source_path
 
 
 _LECTURE_01 = r"""

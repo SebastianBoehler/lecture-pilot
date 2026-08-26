@@ -1,11 +1,6 @@
 from __future__ import annotations
 
-import hashlib
-import json
-from collections.abc import Iterable
 from pathlib import Path
-
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_practice_design_models import PracticeDesign, PracticeTarget
@@ -18,108 +13,15 @@ from lecturepilot.quiz_identity import (
     is_quiz_block,
     validate_unique_quiz_ids,
 )
-
-
-class LearningMapEvidenceCriterion(BaseModel):
-    model_config = ConfigDict(extra="forbid", strict=True)
-
-    id: str = Field(min_length=1, max_length=160)
-    description: str = Field(min_length=1, max_length=1000)
-    required: bool = True
-
-
-class LearningMapGate(BaseModel):
-    model_config = ConfigDict(extra="forbid", strict=True)
-
-    id: str = Field(min_length=1, max_length=160)
-    concept_id: str = Field(min_length=1, max_length=160)
-    title: str = Field(min_length=1, max_length=200)
-    prompt: str = Field(min_length=1, max_length=1000)
-    evidence_criteria: list[LearningMapEvidenceCriterion] = Field(min_length=1, max_length=40)
-    transfer_prompt: str = Field(min_length=1, max_length=1000)
-    independent_exit_task: str | None = Field(default=None, min_length=1, max_length=2_000)
-    review_after_days: int = Field(ge=1, le=365)
-    revision: str = Field(pattern=r"^[a-f0-9]{64}$")
-    section_id: str = Field(min_length=1, max_length=160)
-    source_ref: str | None = Field(default=None, max_length=500)
-    practice_target_id: str | None = Field(default=None, min_length=1, max_length=80)
-
-    @field_validator("transfer_prompt")
-    @classmethod
-    def require_nonblank_transfer_prompt(cls, value: str) -> str:
-        if not value.strip():
-            raise ValueError("transfer_prompt must not be blank")
-        return value
-
-    @model_validator(mode="after")
-    def validate_contract(self, info: ValidationInfo) -> LearningMapGate:
-        _require_unique_ids(
-            (criterion.id for criterion in self.evidence_criteria),
-            f"evidence criterion for gate '{self.id}'",
-        )
-        if not (info.context or {}).get("build_revision") and self.revision != _digest(
-            self, "revision"
-        ):
-            raise ValueError("Learning-map gate revision is invalid.")
-        return self
-
-    @classmethod
-    def create(cls, **values: object) -> LearningMapGate:
-        proposal = cls.model_validate(
-            {**values, "revision": "0" * 64}, context={"build_revision": True}
-        )
-        payload = proposal.model_dump(mode="json", exclude={"revision"})
-        return cls.model_validate({**payload, "revision": _digest_payload(payload)})
-
-
-class LearningMapNode(BaseModel):
-    model_config = ConfigDict(extra="forbid", strict=True)
-
-    id: str = Field(min_length=1, max_length=160)
-    title: str = Field(min_length=1, max_length=200)
-    lecture_id: str = Field(min_length=1, max_length=120)
-    section_id: str = Field(min_length=1, max_length=160)
-    source_ref: str | None = Field(default=None, max_length=500)
-    prerequisites: list[str] = Field(max_length=20)
-    gate_ids: list[str] = Field(max_length=20)
-    quiz_ids: list[str] = Field(max_length=30)
-
-
-class LearningMap(BaseModel):
-    model_config = ConfigDict(extra="forbid", strict=True)
-
-    course_id: str = Field(min_length=1, max_length=120)
-    lecture_id: str = Field(min_length=1, max_length=120)
-    title: str = Field(min_length=1, max_length=200)
-    objective: str = Field(min_length=1, max_length=1_000)
-    revision: str = Field(pattern=r"^[a-f0-9]{64}$")
-    nodes: list[LearningMapNode]
-    gates: list[LearningMapGate]
-
-    @model_validator(mode="after")
-    def validate_contract(self, info: ValidationInfo) -> LearningMap:
-        _require_unique_ids((node.id for node in self.nodes), "node")
-        _require_unique_ids((node.section_id for node in self.nodes), "section")
-        _require_unique_ids((gate.id for gate in self.gates), "gate")
-        gate_ids = {gate.id for gate in self.gates}
-        section_ids = {node.section_id for node in self.nodes}
-        if any(set(node.gate_ids) - gate_ids for node in self.nodes):
-            raise ValueError("Learning-map nodes reference unknown gates.")
-        if any(gate.section_id not in section_ids for gate in self.gates):
-            raise ValueError("Learning-map gates reference unknown sections.")
-        if not (info.context or {}).get("build_revision") and self.revision != _digest(
-            self, "revision"
-        ):
-            raise ValueError("Learning-map revision is invalid.")
-        return self
-
-    @classmethod
-    def create(cls, **values: object) -> LearningMap:
-        proposal = cls.model_validate(
-            {**values, "revision": "0" * 64}, context={"build_revision": True}
-        )
-        payload = proposal.model_dump(mode="json", exclude={"revision"})
-        return cls.model_validate({**payload, "revision": _digest_payload(payload)})
+from lecturepilot.learning_map_models import (
+    LearningMap,
+    LearningMapEvidenceCriterion,
+    LearningMapGate,
+    LearningMapHint,
+    LearningMapMisconception,
+    LearningMapNode,
+    require_unique_ids,
+)
 
 
 def build_learning_map(document: CanvasDocument, practice_design: PracticeDesign) -> LearningMap:
@@ -186,8 +88,8 @@ def learning_map_path(canvas_dir: Path) -> Path:
 
 
 def validate_learning_contract_ids(document: CanvasDocument) -> None:
-    _require_unique_ids((section.id for section in document.sections), "section")
-    _require_unique_ids(
+    require_unique_ids((section.id for section in document.sections), "section")
+    require_unique_ids(
         (
             block.id
             for section in document.sections
@@ -222,6 +124,7 @@ def _checkpoint_gate(
         concept_id=section.id,
         title=target.title,
         prompt=target.baseline_task,
+        target_invariant=target.target_invariant,
         evidence_criteria=[
             LearningMapEvidenceCriterion(
                 id=item.id, description=item.description, required=item.required
@@ -230,6 +133,19 @@ def _checkpoint_gate(
         ],
         transfer_prompt=target.delayed_transfer_task,
         independent_exit_task=target.independent_exit_task,
+        independent_exit_surface_change=target.independent_exit_surface_change,
+        delayed_transfer_surface_change=target.delayed_transfer_surface_change,
+        misconceptions=[
+            LearningMapMisconception(
+                id=item.id,
+                description=item.description,
+                diagnostic_cue=item.diagnostic_cue,
+            )
+            for item in target.misconceptions
+        ],
+        hint_ladder=[
+            LearningMapHint(level=item.level, content=item.content) for item in target.hint_ladder
+        ],
         review_after_days=target.review_after_days,
         section_id=section.id,
         source_ref=section.source_ref or document.source_ref,
@@ -261,32 +177,3 @@ def _generic_checkpoint_gate(
 
 def _quiz_ids(blocks: list[CanvasBlock]) -> list[str]:
     return [canonical_quiz_id(block) for block in blocks if is_quiz_block(block)]
-
-
-def _digest(model: BaseModel, excluded_field: str) -> str:
-    payload = model.model_dump(mode="json", exclude={excluded_field})
-    canonical = json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-
-
-def _digest_payload(payload: dict[str, object]) -> str:
-    serializable = {
-        key: value.model_dump(mode="json") if isinstance(value, BaseModel) else value
-        for key, value in payload.items()
-    }
-    for key, value in serializable.items():
-        if isinstance(value, list):
-            serializable[key] = [
-                item.model_dump(mode="json") if isinstance(item, BaseModel) else item
-                for item in value
-            ]
-    canonical = json.dumps(serializable, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-
-
-def _require_unique_ids(ids: Iterable[str], label: str) -> None:
-    seen: set[str] = set()
-    for identifier in ids:
-        if identifier in seen:
-            raise ValueError(f"Duplicate {label} ID '{identifier}'.")
-        seen.add(identifier)

@@ -21,6 +21,7 @@ from lecturepilot.models import (
 )
 from lecturepilot.observability import Observability
 from lecturepilot.providers import ProviderConfigurationError
+from lecturepilot.tutor_gate_context import gate_rubric_context
 
 
 class ModelExecutionError(RuntimeError):
@@ -206,7 +207,7 @@ def _messages(turn: AgentTurnInput) -> list[dict[str, str]]:
             f"{_user_memory_context(turn)}\n"
             f"{_coaching_context(turn)}\n"
             f"{_active_scaffold_context(turn)}\n"
-            f"{_gate_rubric_context(turn)}\n"
+            f"{gate_rubric_context(turn)}\n"
             f"{canvas_context(turn)}\n"
             f"Student message: {turn.message}"
         ),
@@ -264,25 +265,4 @@ def _coaching_context(turn: AgentTurnInput) -> str:
         f"\n- pending_check: {context.pending_check_prompt or 'none'}"
         f"\n- demonstrated_evidence: {context.evidence_ids or ['none']}"
         f"\n- missing_evidence: {context.missing_evidence_ids or ['none']}"
-    )
-
-
-def _gate_rubric_context(turn: AgentTurnInput) -> str:
-    gate = turn.active_gate
-    if gate is None:
-        return "Active quality gate: none. Return assessment as null."
-    criteria = "\n".join(
-        f"- {criterion.id}: {criterion.description}"
-        f" ({'required' if criterion.required else 'optional'})"
-        for criterion in gate.evidence_criteria
-    )
-    return (
-        f"Active quality gate: {gate.id} ({gate.title})\n"
-        f"Gate revision: {gate.revision}\n"
-        f"Gate prompt: {gate.prompt}\n"
-        "Evidence criteria:\n"
-        f"{criteria}\n"
-        f"Unfamiliar transfer prompt: {gate.transfer_prompt}\n"
-        f"Review after days: {gate.review_after_days}\n"
-        "Treat this server-owned contract as the complete pass rubric."
     )

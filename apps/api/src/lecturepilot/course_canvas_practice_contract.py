@@ -6,8 +6,10 @@ from collections.abc import Sequence
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_practice_design_models import PracticeDesign, PracticeTarget
+from lecturepilot.course_practice_design_evidence import target_source_anchors
 from lecturepilot.course_practice_design_validation import (
     PracticeDesignValidationError,
+    source_anchor_matches_section,
     validate_canvas_practice_contract,
 )
 
@@ -43,7 +45,22 @@ def section_target_assignments(
 ) -> dict[str, tuple[PracticeTarget, ...]]:
     assignments: dict[str, list[PracticeTarget]] = {section.id: [] for section in sections}
     for target in design.targets:
-        section = next((item for item in sections if _matches(target, item)), sections[0])
+        routed_paths = set(target.source_refs)
+        section = next(
+            (
+                item
+                for item in sections
+                if any(
+                    source_anchor_matches_section(anchor, item, routed_paths)
+                    for anchor in target_source_anchors(target)
+                )
+            ),
+            None,
+        )
+        if section is None:
+            raise CanvasGenerationRepairableError(
+                f"Practice target {target.id} has no section containing a validated source anchor."
+            )
         assignments[section.id].append(target)
     return {section_id: tuple(targets) for section_id, targets in assignments.items()}
 
@@ -53,8 +70,3 @@ def validate_practice_candidate(document: CanvasDocument, design: PracticeDesign
         validate_canvas_practice_contract(document, design)
     except PracticeDesignValidationError as exc:
         raise CanvasGenerationRepairableError(str(exc), candidate=document) from exc
-
-
-def _matches(target: PracticeTarget, section: CanvasSection) -> bool:
-    source_ref = (section.source_ref or "").casefold()
-    return any(path.casefold() in source_ref for path in target.source_refs)

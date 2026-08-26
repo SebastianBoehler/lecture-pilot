@@ -10,20 +10,11 @@ from lecturepilot.course_practice_design_evidence import (
     target_source_anchors,
 )
 from lecturepilot.course_practice_design_review_models import PracticeDesignReviewResult
+from lecturepilot.course_source_ownership import routed_source_owner
 
 
 class PracticeDesignValidationError(ValueError):
     """Raised when a design cannot be grounded in the lecture contract."""
-
-
-_DERIVED_SOURCE_REF_PREFIXES = (
-    "pages ",
-    "slide ",
-    "sheet ",
-    "frame ",
-    "frames ",
-    "compiled preview",
-)
 
 
 class _CanvasBlock(Protocol):
@@ -47,13 +38,29 @@ class _LearningMapCriterion(Protocol):
     required: bool
 
 
+class _LearningMapMisconception(Protocol):
+    id: str
+    description: str
+    diagnostic_cue: str
+
+
+class _LearningMapHint(Protocol):
+    level: str
+    content: str
+
+
 class _LearningMapGate(Protocol):
     id: str
     practice_target_id: str | None
     prompt: str
+    target_invariant: str | None
     evidence_criteria: list[_LearningMapCriterion]
     transfer_prompt: str
     independent_exit_task: str | None
+    independent_exit_surface_change: str | None
+    delayed_transfer_surface_change: str | None
+    misconceptions: list[_LearningMapMisconception]
+    hint_ladder: list[_LearningMapHint]
     review_after_days: int
 
 
@@ -126,36 +133,23 @@ def _validate_source_anchor(
     source: _CanvasDocument,
     routed_paths: set[str],
 ) -> None:
-    excerpt = _normalize_whitespace(anchor.excerpt)
-    matching_sections = [
-        section
-        for section in source.sections
-        if _routed_source_owner(section.source_ref, routed_paths) == anchor.source_path
-    ]
-    if any(excerpt in _section_text(section) for section in matching_sections):
+    if any(
+        source_anchor_matches_section(anchor, section, routed_paths) for section in source.sections
+    ):
         return
     raise PracticeDesignValidationError(
         f"Source anchor for {anchor.source_path} is not a verbatim excerpt from that routed source."
     )
 
 
-def _routed_source_owner(source_ref: str | None, routed_paths: set[str]) -> str | None:
-    if source_ref is None:
-        return None
-    candidates = [
-        path
-        for path in routed_paths
-        if source_ref == path or _is_derived_source_ref(source_ref, path)
-    ]
-    return max(candidates, key=len, default=None)
-
-
-def _is_derived_source_ref(source_ref: str, path: str) -> bool:
-    prefix = f"{path} "
-    if not source_ref.startswith(prefix):
-        return False
-    suffix = source_ref[len(prefix) :]
-    return suffix.startswith(_DERIVED_SOURCE_REF_PREFIXES)
+def source_anchor_matches_section(
+    anchor: PracticeSourceAnchor,
+    section: _CanvasSection,
+    routed_paths: set[str],
+) -> bool:
+    return routed_source_owner(
+        section.source_ref, routed_paths
+    ) == anchor.source_path and _normalize_whitespace(anchor.excerpt) in _section_text(section)
 
 
 def _section_text(section: _CanvasSection) -> str:
@@ -216,9 +210,10 @@ def validate_canvas_practice_contract(document: _CanvasDocument, design: Practic
                 f"Canvas needs exactly one practice-{target_id} checkpoint."
             )
         section, block = matches[0]
-        if not section.source_ref:
+        if routed_source_owner(section.source_ref, set(target.source_refs)) is None:
             raise PracticeDesignValidationError(
-                f"Practice checkpoint practice-{target_id} must be in a source-backed section."
+                f"Practice checkpoint practice-{target_id} must be in a section owned by its "
+                "approved source evidence."
             )
         if block.text != target.baseline_task:
             raise PracticeDesignValidationError(
@@ -263,11 +258,38 @@ def validate_learning_map_practice_contract(
             {"id": item.id, "description": item.description, "required": item.required}
             for item in gate.evidence_criteria
         ]
+        expected_misconceptions = [
+            {
+                "id": item.id,
+                "description": item.description,
+                "diagnostic_cue": item.diagnostic_cue,
+            }
+            for item in target.misconceptions
+        ]
+        observed_misconceptions = [
+            {
+                "id": item.id,
+                "description": item.description,
+                "diagnostic_cue": item.diagnostic_cue,
+            }
+            for item in gate.misconceptions
+        ]
+        expected_hints = [
+            {"level": item.level, "content": item.content} for item in target.hint_ladder
+        ]
+        observed_hints = [
+            {"level": item.level, "content": item.content} for item in gate.hint_ladder
+        ]
         if (
             gate.prompt != target.baseline_task
+            or gate.target_invariant != target.target_invariant
             or observed_criteria != expected_criteria
             or gate.independent_exit_task != target.independent_exit_task
+            or gate.independent_exit_surface_change != target.independent_exit_surface_change
             or gate.transfer_prompt != target.delayed_transfer_task
+            or gate.delayed_transfer_surface_change != target.delayed_transfer_surface_change
+            or observed_misconceptions != expected_misconceptions
+            or observed_hints != expected_hints
             or gate.review_after_days != target.review_after_days
         ):
             raise PracticeDesignValidationError(
