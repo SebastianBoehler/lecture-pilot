@@ -116,13 +116,18 @@ def write_canvas_draft(
     existing_design = PracticeDesignStore(workspace.layout).read(
         course_id=document.course_id, lecture_id=document.lecture_id
     )
+    source_path = (
+        _document_source_path(document)
+        if existing_design is None
+        else existing_design.targets[0].source_refs[0]
+    )
     if existing_design is None:
         source_index = CourseSourceIndex(
             course_id=document.course_id,
             files=[
                 IndexedSourceFile(
-                    path="source.md",
-                    kind="markdown",
+                    path=source_path,
+                    kind=Path(source_path).suffix.removeprefix(".") or "markdown",
                     size_bytes=1,
                     sha256="a" * 64,
                     modified_ns=1,
@@ -133,12 +138,9 @@ def write_canvas_draft(
             workspace.layout.lecture_source_manifest_path(document.course_id, document.lecture_id),
             course_id=document.course_id,
             lecture_id=document.lecture_id,
-            file_paths=["source.md"],
+            file_paths=[source_path],
             source_index=source_index,
         )
-    source_path = (
-        "source.md" if existing_design is None else existing_design.targets[0].source_refs[0]
-    )
     sourced_document = document.model_copy(
         update={
             "source_ref": _concrete_source_ref(document.source_ref, source_path),
@@ -195,6 +197,16 @@ def _concrete_source_ref(source_ref: str | None, source_path: str) -> str:
     if routed_source_owner(source_ref, {source_path}) is not None:
         return source_ref
     return source_path
+
+
+def _document_source_path(document: CanvasDocument) -> str:
+    for source_ref in [document.source_ref, *(section.source_ref for section in document.sections)]:
+        if source_ref is None:
+            continue
+        path = source_ref.split("#", maxsplit=1)[0].split(" ", maxsplit=1)[0]
+        if Path(path).suffix:
+            return path
+    return "source.md"
 
 
 _LECTURE_01 = r"""
