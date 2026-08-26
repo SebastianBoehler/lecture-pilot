@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import hashlib
+from pathlib import Path
+
 from pydantic import BaseModel, ConfigDict
 
 from lecturepilot.coaching_progress import CoachingProgressStore, InvalidCoachingStateError
@@ -45,30 +48,35 @@ def recover_invalid_coaching_state(
     lecture_id: str,
 ) -> CoachingStateRecoveryResult:
     coaching_store = CoachingProgressStore(layout)
-    try:
-        progress = coaching_store.read(
+    path = layout.user_lecture_root(user_id, course_id, lecture_id) / "tutor-state.json"
+    # Agent persistence writes tutor state before gate state; recovery keeps that lock order.
+    with exclusive_file_lock(path):
+        snapshot = _state_snapshot(path)
+        try:
+            progress = coaching_store.read(
+                user_id=user_id,
+                course_id=course_id,
+                lecture_id=lecture_id,
+            )
+            validate_coaching_bindings(progress, learning_map)
+        except InvalidCoachingStateError:
+            pass
+        else:
+            raise CoachingStateRecoveryNotRequired
+        if _state_snapshot(path) != snapshot:
+            raise CoachingStateRecoveryNotRequired
+        current_revisions = {gate.id: gate.revision for gate in learning_map.gates}
+        cleared = learner_store.clear_quality_gates_matching_revisions(
             user_id=user_id,
             course_id=course_id,
             lecture_id=lecture_id,
+            gate_revisions=current_revisions,
         )
-        validate_coaching_bindings(progress, learning_map)
-    except InvalidCoachingStateError:
-        pass
-    else:
-        raise CoachingStateRecoveryNotRequired
-    current_revisions = {gate.id: gate.revision for gate in learning_map.gates}
-    cleared = learner_store.clear_quality_gates_matching_revisions(
-        user_id=user_id,
-        course_id=course_id,
-        lecture_id=lecture_id,
-        gate_revisions=current_revisions,
-    )
-    _write_empty_coaching_state(
-        layout=layout,
-        user_id=user_id,
-        course_id=course_id,
-        lecture_id=lecture_id,
-    )
+        _write_empty_coaching_state(
+            path=path,
+            course_id=course_id,
+            lecture_id=lecture_id,
+        )
     return CoachingStateRecoveryResult(
         course_id=course_id,
         lecture_id=lecture_id,
@@ -77,10 +85,12 @@ def recover_invalid_coaching_state(
     )
 
 
-def _write_empty_coaching_state(
-    *, layout: StorageLayout, user_id: str, course_id: str, lecture_id: str
-) -> None:
-    path = layout.user_lecture_root(user_id, course_id, lecture_id) / "tutor-state.json"
+def _write_empty_coaching_state(*, path: Path, course_id: str, lecture_id: str) -> None:
     empty = CoachingProgress.empty(course_id=course_id, lecture_id=lecture_id)
-    with exclusive_file_lock(path):
-        atomic_write_json(path, empty.model_dump(mode="json"))
+    atomic_write_json(path, empty.model_dump(mode="json"))
+
+
+def _state_snapshot(path: Path) -> tuple[bytes | None, str | None]:
+    content = path.read_bytes() if path.exists() else None
+    digest = hashlib.sha256(content).hexdigest() if content is not None else None
+    return content, digest

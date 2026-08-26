@@ -65,14 +65,21 @@ def bind_delayed_review(
         review = progress.delayed_reviews.get(review_key(gate_id, gate_revision))
         if review is None or review.completed_at is not None:
             raise ValueError("Gate review is no longer available.")
+        current = progress.pending_check
+        pending = matching_pending(current, gate_id, gate_revision)
+        if current is not None and pending is None:
+            raise ValueError("Another assessment is already pending.")
         if review.attempted_at is not None:
-            pending = matching_pending(progress.pending_check, gate_id, gate_revision)
             if pending is None or pending.stage not in {
                 "delayed_support",
                 "delayed_transfer",
             }:
                 raise ValueError("Gate repair is no longer active.")
             return pending
+        if pending is not None:
+            if pending.kind == "delayed_transfer" and pending.stage == "delayed_transfer":
+                return pending
+            raise ValueError("Another assessment is already pending.")
         if review.due_at > current_time:
             raise ValueError("Gate review is not due yet.")
         progress.pending_check = PendingCheck(

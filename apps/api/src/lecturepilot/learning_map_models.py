@@ -10,14 +10,16 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validat
 from lecturepilot.coaching_contract import MAX_APPROVED_TASK_LENGTH
 
 
-ADDED_GATE_FIELDS = {
+HARDENING_GATE_FIELDS = {
     "target_invariant",
+    "independent_exit_task",
     "independent_exit_surface_change",
     "delayed_transfer_surface_change",
     "misconceptions",
     "hint_ladder",
+    "practice_target_id",
 }
-PRACTICE_GATE_FIELDS = ADDED_GATE_FIELDS | {"independent_exit_task"}
+PRACTICE_GATE_FIELDS = HARDENING_GATE_FIELDS - {"practice_target_id"}
 
 
 class LearningMapEvidenceCriterion(BaseModel):
@@ -184,9 +186,9 @@ def _valid_gate_revision(gate: LearningMapGate) -> bool:
     payload = gate.model_dump(mode="json", exclude={"revision"})
     if gate.revision == digest_payload(payload):
         return True
-    if gate.practice_target_id is not None or ADDED_GATE_FIELDS & gate.model_fields_set:
+    if HARDENING_GATE_FIELDS & gate.model_fields_set:
         return False
-    for field in ADDED_GATE_FIELDS:
+    for field in HARDENING_GATE_FIELDS:
         payload.pop(field)
     return gate.revision == digest_payload(payload)
 
@@ -195,13 +197,10 @@ def _valid_map_revision(learning_map: LearningMap) -> bool:
     payload = learning_map.model_dump(mode="json", exclude={"revision"})
     if learning_map.revision == digest_payload(payload):
         return True
-    if any(
-        gate.practice_target_id is not None or ADDED_GATE_FIELDS & gate.model_fields_set
-        for gate in learning_map.gates
-    ):
+    if any(HARDENING_GATE_FIELDS & gate.model_fields_set for gate in learning_map.gates):
         return False
     for gate_payload in payload["gates"]:
-        for field in ADDED_GATE_FIELDS:
+        for field in HARDENING_GATE_FIELDS:
             gate_payload.pop(field)
     return learning_map.revision == digest_payload(payload)
 

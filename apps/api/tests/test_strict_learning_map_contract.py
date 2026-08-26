@@ -38,7 +38,7 @@ def _legacy_learning_map_payload() -> dict:
         "lecture_id": "lecture-1",
         "title": "Lecture",
         "objective": "Apply the mechanism independently.",
-        "revision": "043ad5be63817d2ee1f22314639e635d2b30f408f28b9b72e66aa5751210bde2",
+        "revision": "2f332450966e4d62ef1881775c75d86f191d63bcbb6d03ed10ac6e9ba923f361",
         "nodes": [
             {
                 "id": "mechanism",
@@ -54,9 +54,7 @@ def _legacy_learning_map_payload() -> dict:
         "gates": [
             {
                 **_gate_payload(),
-                "independent_exit_task": None,
-                "practice_target_id": None,
-                "revision": "9aac7e6b0f6eca1b9782cdbfe9c1150cc0eb164efd5bfcd64552864fac6480eb",
+                "revision": "549df79247720520a2f661f39246e7dff613d5329286815a779d03f75d918fdb",
             }
         ],
     }
@@ -101,22 +99,42 @@ def test_learning_map_gate_has_no_evidence_required_compatibility_field() -> Non
         LearningMapGate.model_validate({**_gate_payload(), "evidence_required": "legacy rubric"})
 
 
-def test_legacy_generic_learning_map_reads_with_safe_teaching_contract_defaults() -> None:
+def test_base_schema_learning_map_bytes_read_without_rewriting(tmp_path: Path) -> None:
     payload = _legacy_learning_map_payload()
+    canvas_dir = tmp_path / "canvas"
+    canvas_dir.mkdir()
+    path = canvas_dir / "learning-map.json"
+    original = json.dumps(payload, indent=2, sort_keys=True).encode()
+    path.write_bytes(original)
 
-    learning_map = LearningMap.model_validate(payload)
+    learning_map = read_strict_published_learning_map(canvas_dir)
 
+    assert learning_map is not None
     gate = learning_map.gates[0]
     assert gate.target_invariant is None
+    assert gate.independent_exit_task is None
     assert gate.independent_exit_surface_change is None
     assert gate.delayed_transfer_surface_change is None
     assert gate.misconceptions == []
     assert gate.hint_ladder == []
+    assert gate.practice_target_id is None
+    assert path.read_bytes() == original
 
 
-def test_legacy_generic_gate_rejects_partial_added_field_with_old_revision() -> None:
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("target_invariant", "Injected teaching contract."),
+        ("independent_exit_task", "Injected exit task."),
+        ("practice_target_id", None),
+    ],
+)
+def test_legacy_generic_gate_rejects_partial_added_field_with_old_revision(
+    field: str,
+    value: object,
+) -> None:
     payload = _legacy_learning_map_payload()["gates"][0]
-    payload["target_invariant"] = "Injected teaching contract."
+    payload[field] = value
 
     with pytest.raises(ValidationError, match="gate revision"):
         LearningMapGate.model_validate(payload)
