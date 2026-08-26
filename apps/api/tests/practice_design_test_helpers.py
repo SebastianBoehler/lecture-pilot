@@ -24,9 +24,9 @@ def proposal() -> PracticeDesignProposal:
                 id="derive-conclusion",
                 title="Derive a conclusion",
                 outcome="Derive a justified conclusion from the given evidence.",
-                baseline_task="Use the evidence to derive the conclusion.",
-                independent_exit_task="Use a parallel evidence set to derive the conclusion.",
-                delayed_transfer_task="Use changed surface details to derive the conclusion.",
+                baseline_task="Derive the conclusion from the stated evidence and justify the reasoning.",
+                independent_exit_task="Derive a conclusion from a parallel evidence set and justify it.",
+                delayed_transfer_task="Derive a conclusion after the surface details change and justify it.",
                 evidence_criteria=[
                     PracticeEvidenceCriterion(
                         id="cite-evidence",
@@ -59,21 +59,8 @@ def document(task: str) -> SimpleNamespace:
 
 
 def canvas_with_practice_design(document: CanvasDocument) -> tuple[CanvasDocument, PracticeDesign]:
-    baseline_task = "Derive the conclusion from the stated evidence and justify the reasoning."
-    design_target = target(
-        baseline_task=baseline_task,
-        independent_exit_task="Derive a conclusion from a parallel evidence set and justify it.",
-        delayed_transfer_task="Derive a conclusion after the surface details change and justify it.",
-        source_refs=(document.sections[0].source_ref or document.source_ref,),
-    )
-    design = PracticeDesign.create(
-        course_id=document.course_id,
-        lecture_id=document.lecture_id,
-        lecture_title=document.title,
-        objective="Derive the conclusion independently from the cited evidence.",
-        source_revision="a" * 64,
-        targets=(design_target,),
-    )
+    design = practice_design_for_canvas(document)
+    baseline_task = design.targets[0].baseline_task
     first = document.sections[0]
     return (
         document.model_copy(
@@ -97,6 +84,25 @@ def canvas_with_practice_design(document: CanvasDocument) -> tuple[CanvasDocumen
         ),
         design,
     )
+
+
+def practice_design_for_canvas(document: CanvasDocument) -> PracticeDesign:
+    baseline_task = "Derive the conclusion from the stated evidence and justify the reasoning."
+    design_target = target(
+        baseline_task=baseline_task,
+        independent_exit_task="Derive a conclusion from a parallel evidence set and justify it.",
+        delayed_transfer_task="Derive a conclusion after the surface details change and justify it.",
+        source_refs=(document.sections[0].source_ref or document.source_ref,),
+    )
+    design = PracticeDesign.create(
+        course_id=document.course_id,
+        lecture_id=document.lecture_id,
+        lecture_title=document.title,
+        objective="Derive the conclusion independently from the cited evidence.",
+        source_revision="a" * 64,
+        targets=(design_target,),
+    )
+    return design
 
 
 def write_manifest(

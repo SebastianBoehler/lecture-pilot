@@ -7,10 +7,12 @@ from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_quality import CanvasQualityIssue
 from test_course_canvas_quality import _source_document
 from targeted_repair_test_helpers import invalid_candidate
+from practice_design_test_helpers import canvas_with_practice_design, practice_design_for_canvas
 
 
 async def test_quality_issues_across_blocks_use_one_multi_patch_request() -> None:
     source, candidate = _documents()
+    design = practice_design_for_canvas(candidate)
     issues = [
         CanvasQualityIssue(
             section_id="learning-optimization",
@@ -29,6 +31,7 @@ async def test_quality_issues_across_blocks_use_one_multi_patch_request() -> Non
         block_id=issues[0].block_id,
         failure_context="Canvas quality review failed.",
         output_language="en",
+        practice_design=design,
         quality_issues=issues,
     )
 
@@ -45,6 +48,7 @@ async def test_quality_issues_across_blocks_use_one_multi_patch_request() -> Non
 
 async def test_batched_quality_repair_allows_one_bounded_follow_up_pass() -> None:
     source, candidate = _documents()
+    design = practice_design_for_canvas(candidate)
     issue = CanvasQualityIssue(
         section_id="learning-optimization",
         block_id="optimization-intro",
@@ -60,6 +64,7 @@ async def test_batched_quality_repair_allows_one_bounded_follow_up_pass() -> Non
         block_id=issue.block_id,
         failure_context="Canvas quality review failed.",
         output_language="en",
+        practice_design=design,
         quality_issues=[issue],
     )
 
@@ -70,6 +75,7 @@ async def test_batched_quality_repair_allows_one_bounded_follow_up_pass() -> Non
 
 async def test_multiple_issues_for_one_block_keep_the_surgical_repair_target() -> None:
     source, candidate = _documents()
+    design = practice_design_for_canvas(candidate)
     issues = [
         CanvasQualityIssue(
             section_id="learning-optimization",
@@ -92,6 +98,7 @@ async def test_multiple_issues_for_one_block_keep_the_surgical_repair_target() -
         block_id=issues[0].block_id,
         failure_context="Canvas quality review failed.",
         output_language="en",
+        practice_design=design,
         quality_issues=issues,
     )
 
@@ -105,6 +112,7 @@ async def test_multiple_issues_for_one_block_keep_the_surgical_repair_target() -
 
 async def test_batched_quality_repair_stops_after_two_passes() -> None:
     source, candidate = _documents()
+    design = practice_design_for_canvas(candidate)
     issue = CanvasQualityIssue(
         section_id="learning-optimization",
         block_id="optimization-intro",
@@ -121,6 +129,7 @@ async def test_batched_quality_repair_stops_after_two_passes() -> None:
             block_id=issue.block_id,
             failure_context="Canvas quality review failed.",
             output_language="en",
+            practice_design=design,
             quality_issues=[issue],
         )
 
@@ -131,6 +140,7 @@ async def test_batched_quality_repair_stops_after_two_passes() -> None:
 
 async def test_quality_issues_in_separate_sections_are_repaired_concurrently() -> None:
     source, candidate = _documents()
+    design = practice_design_for_canvas(candidate)
     issues = [
         CanvasQualityIssue(
             section_id=section.id,
@@ -149,6 +159,7 @@ async def test_quality_issues_in_separate_sections_are_repaired_concurrently() -
         block_id=issues[0].block_id,
         failure_context="Canvas quality review failed.",
         output_language="en",
+        practice_design=design,
         quality_issues=issues,
     )
 
@@ -160,6 +171,7 @@ async def test_persisted_quality_failure_rediscovers_all_section_coordinates_bef
     None
 ):
     source, candidate = _documents()
+    design = practice_design_for_canvas(candidate)
     issues = [
         CanvasQualityIssue(
             section_id=section.id,
@@ -181,6 +193,7 @@ async def test_persisted_quality_failure_rediscovers_all_section_coordinates_bef
             "- persisted cross-section issues"
         ),
         output_language="en",
+        practice_design=design,
     )
 
     assert planner.review_calls == 2
@@ -207,6 +220,7 @@ class _BatchPlanner:
         block_id,
         failure_context,
         output_language,
+        practice_design,
     ):
         self.repair_calls.append((section_id, block_id, failure_context))
         return candidate_document
@@ -220,6 +234,7 @@ class _BatchPlanner:
         block_ids,
         failure_context,
         output_language,
+        practice_design,
     ):
         self.multi_repair_calls.append((section_id, block_ids))
         return candidate_document
@@ -247,7 +262,7 @@ class _ConcurrentBatchPlanner(_BatchPlanner):
 
 def _documents():
     source = _source_document()
-    candidate = invalid_candidate(source)
+    candidate, _ = canvas_with_practice_design(invalid_candidate(source))
     section = candidate.sections[0]
     valid_math = section.blocks[1].model_copy(update={"text": r"w^\top x"})
     candidate = candidate.model_copy(

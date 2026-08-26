@@ -150,6 +150,40 @@ async def test_automatic_repair_rejects_a_mutated_canonical_checkpoint() -> None
     assert planner.received_designs == [design]
 
 
+def test_shared_contract_rejects_practice_id_on_non_checkpoint() -> None:
+    source = _source()
+    design = _design(source)
+    target = design.targets[0]
+    document = source.model_copy(
+        update={
+            "source_kind": "generated",
+            "sections": [
+                source.sections[0].model_copy(
+                    update={
+                        "blocks": [
+                            CanvasBlock(
+                                id=f"practice-{target.id}",
+                                type="checkpoint",
+                                text=target.baseline_task,
+                            ),
+                            CanvasBlock(
+                                id=f"practice-{target.id}",
+                                type="paragraph",
+                                text="Duplicate canonical id.",
+                            ),
+                        ]
+                    }
+                )
+            ],
+        }
+    )
+
+    with pytest.raises(CanvasGenerationRepairableError, match="only be a checkpoint"):
+        from lecturepilot.course_canvas_practice_contract import validate_practice_candidate
+
+        validate_practice_candidate(document, design)
+
+
 def _source() -> CanvasDocument:
     return CanvasDocument(
         id="course-lecture",

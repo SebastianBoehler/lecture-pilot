@@ -53,9 +53,13 @@ def validate_canvas_practice_contract(document: _CanvasDocument, design: Practic
     unknown: list[str] = []
     for section in document.sections:
         for block in section.blocks:
-            if block.type != "checkpoint" or not block.id.startswith("practice-"):
+            if not block.id.startswith("practice-"):
                 continue
             target_id = block.id.removeprefix("practice-")
+            if block.type != "checkpoint":
+                raise PracticeDesignValidationError(
+                    f"Practice block id {block.id} may only be a checkpoint."
+                )
             if target_id not in expected:
                 unknown.append(target_id)
             else:

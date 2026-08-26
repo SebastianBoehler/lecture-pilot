@@ -12,6 +12,7 @@ from lecturepilot.course_canvas_section_planner import plan_sections_individuall
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import ProviderSettings
 from lecturepilot.providers import ProviderRegistry
+from practice_design_test_helpers import practice_design_for_canvas
 
 
 async def test_dense_section_plan_uses_three_provider_rounds_and_keeps_source_order() -> None:
@@ -22,6 +23,7 @@ async def test_dense_section_plan_uses_three_provider_rounds_and_keeps_source_or
             model_client=client,
             settings=_settings(),
             source_document=_source_document(6),
+            practice_design=practice_design_for_canvas(_source_document(6)),
         )
     )
     await client.wait_until_started(2)
@@ -48,6 +50,7 @@ async def test_section_planner_keeps_a_complete_candidate_after_one_section_fail
             model_client=client,
             settings=_settings(),
             source_document=_source_document(4),
+            practice_design=practice_design_for_canvas(_source_document(4)),
         )
 
     assert set(client.source_ids) == {f"source-{index}" for index in range(1, 5)}
@@ -66,6 +69,7 @@ async def test_section_planner_retries_an_empty_model_response() -> None:
         model_client=client,
         settings=_settings(),
         source_document=_source_document(1),
+        practice_design=practice_design_for_canvas(_source_document(1)),
     )
 
     assert client.calls == 2
@@ -79,6 +83,7 @@ async def test_section_planner_repairs_an_invalid_checkpoint_before_batch_valida
         model_client=client,
         settings=_settings(),
         source_document=_source_document(1),
+        practice_design=practice_design_for_canvas(_source_document(1)),
     )
 
     assert client.calls == 1
@@ -93,6 +98,7 @@ async def test_section_planner_repairs_a_section_without_an_open_response_check(
         model_client=client,
         settings=_settings(),
         source_document=_source_document(1),
+        practice_design=practice_design_for_canvas(_source_document(1)),
     )
 
     assert client.calls == 1
@@ -103,14 +109,15 @@ async def test_course_planner_starts_with_the_bounded_section_outline(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
-    client = _SectionOnlyPlanClient()
+    client = _SectionOnlyPlanClient(include_practice_checkpoint=True)
     planner = CourseCanvasPlanner(
         provider_registry=ProviderRegistry.from_env("gemini/test-model"),
         model_client=client,
         quality_reviewer=_NoIssuesQualityReviewer(),
     )
 
-    planned = await planner.plan_canvas(_source_document(4))
+    source = _source_document(4)
+    planned = await planner.plan_canvas(source, practice_design=practice_design_for_canvas(source))
 
     assert client.source_ids == [f"source-{index}" for index in range(1, 5)]
     assert len(planned.sections) == 4
@@ -123,6 +130,7 @@ async def test_dense_lecture_is_grouped_into_five_learning_sections() -> None:
         model_client=client,
         settings=_settings(),
         source_document=_source_document(14),
+        practice_design=practice_design_for_canvas(_source_document(14)),
     )
 
     assert len(client.source_ids) == 5
@@ -135,6 +143,7 @@ async def test_generated_section_provenance_comes_from_supplied_evidence() -> No
         model_client=_SectionOnlyPlanClient(),
         settings=_settings(),
         source_document=_source_document(1),
+        practice_design=practice_design_for_canvas(_source_document(1)),
     )
 
     assert planned.sections[0].source_ref == "Lecture.tex frame 1"
@@ -151,6 +160,7 @@ async def test_retry_reuses_sections_completed_before_provider_failure(tmp_path)
             model_client=first_client,
             settings=_settings(),
             source_document=_source_document(4),
+            practice_design=practice_design_for_canvas(_source_document(4)),
             checkpoint_store=checkpoints,
         )
 
@@ -159,6 +169,7 @@ async def test_retry_reuses_sections_completed_before_provider_failure(tmp_path)
         model_client=retry_client,
         settings=_settings(),
         source_document=_source_document(4),
+        practice_design=practice_design_for_canvas(_source_document(4)),
         checkpoint_store=checkpoints,
     )
 
@@ -211,13 +222,16 @@ class _OneInvalidSectionClient:
 
 
 class _SectionOnlyPlanClient:
-    def __init__(self) -> None:
+    def __init__(self, *, include_practice_checkpoint: bool = False) -> None:
         self.source_ids: list[str] = []
+        self.include_practice_checkpoint = include_practice_checkpoint
 
     async def complete_plan(self, *, settings, messages):
         source_id = _source_id(messages)
         self.source_ids.append(source_id)
-        return _section_payload(source_id)
+        return _section_payload(
+            source_id, include_practice_checkpoint=self.include_practice_checkpoint
+        )
 
 
 class _TransientSectionPlanClient:
@@ -251,6 +265,7 @@ async def test_section_planner_does_not_repeat_exhausted_provider_retries() -> N
             model_client=client,
             settings=_settings(),
             source_document=_source_document(1),
+            practice_design=practice_design_for_canvas(_source_document(1)),
         )
 
     assert client.calls == 1
@@ -264,6 +279,7 @@ async def test_section_planner_cancels_sibling_provider_calls_after_fatal_failur
             model_client=client,
             settings=_settings(),
             source_document=_source_document(4),
+            practice_design=practice_design_for_canvas(_source_document(4)),
         )
 
     await asyncio.wait_for(client.in_flight_sibling_cancelled.wait(), timeout=1)
@@ -365,7 +381,9 @@ def _source_id(messages: list[dict[str, str]]) -> str:
     return evidence.split("Required section id: ", 1)[1].splitlines()[0]
 
 
-def _section_payload(source_id: str, *, math: str | None = None) -> dict:
+def _section_payload(
+    source_id: str, *, math: str | None = None, include_practice_checkpoint: bool = False
+) -> dict:
     blocks = [
         {
             "type": "paragraph",
@@ -386,6 +404,14 @@ def _section_payload(source_id: str, *, math: str | None = None) -> dict:
             ),
         }
     )
+    if include_practice_checkpoint and source_id == "source-1":
+        blocks.append(
+            {
+                "id": "practice-derive-conclusion",
+                "type": "checkpoint",
+                "text": "Derive the conclusion from the stated evidence and justify the reasoning.",
+            }
+        )
     if source_id in {"source-2", "source-4"}:
         blocks.append(
             {

@@ -151,6 +151,7 @@ class _ManyQualityRetryPlanner(_TargetedRepairPlanner):
         block_ids,
         failure_context,
         output_language,
+        practice_design,
     ):
         self.multi_repair_calls.append((section_id, block_ids, failure_context))
         return candidate_document

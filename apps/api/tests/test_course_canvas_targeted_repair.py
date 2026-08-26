@@ -159,7 +159,9 @@ class _TargetedRepairPlanner:
         if repair_context is not None:
             self.full_repair_called = True
             raise AssertionError("A block-addressable failure must not regenerate the full draft.")
-        self.candidate = invalid_candidate(source_document)
+        self.candidate = _candidate_with_practice_design(
+            invalid_candidate(source_document), practice_design
+        )
         error = CanvasGenerationRepairableError(
             "Math block optimization-math in Optimization contains explanatory prose; "
             "move that text to a paragraph or callout block."
@@ -178,6 +180,7 @@ class _TargetedRepairPlanner:
         block_id: str | None,
         failure_context: str,
         output_language: str,
+        practice_design,
     ) -> CanvasDocument:
         self.targeted_repair_calls.append((section_id, block_id, failure_context))
         section = candidate_document.sections[0]
@@ -250,3 +253,19 @@ The score is the inner product of the transposed weight vector and the input.
 
 def _client_contract_headers() -> dict[str, str]:
     return {CLIENT_CONTRACT_HEADER: CLIENT_CONTRACT_VERSION}
+
+
+def _candidate_with_practice_design(candidate: CanvasDocument, practice_design) -> CanvasDocument:
+    first = candidate.sections[0]
+    checkpoints = [
+        CanvasBlock(id=f"practice-{target.id}", type="checkpoint", text=target.baseline_task)
+        for target in practice_design.targets
+    ]
+    return candidate.model_copy(
+        update={
+            "sections": [
+                first.model_copy(update={"blocks": [*first.blocks, *checkpoints]}),
+                *candidate.sections[1:],
+            ]
+        }
+    )

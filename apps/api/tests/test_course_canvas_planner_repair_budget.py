@@ -5,13 +5,14 @@ from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner
 from lecturepilot.course_canvas_quality import CanvasQualityIssue
 from lecturepilot.providers import ProviderRegistry
+from practice_design_test_helpers import canvas_with_practice_design
 
 
 async def test_exhausted_quality_repair_budget_is_not_started_again(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
-    candidate = _candidate()
+    candidate, design = canvas_with_practice_design(_candidate())
 
     async def plan_sections(**_kwargs) -> CanvasDocument:
         return candidate
@@ -27,7 +28,7 @@ async def test_exhausted_quality_repair_budget_is_not_started_again(
     )
 
     with pytest.raises(CanvasGenerationRepairableError, match="unsupported"):
-        await planner.plan_canvas(candidate)
+        await planner.plan_canvas(candidate, practice_design=design)
 
     assert reviewer.calls == 3
     assert planner.repair_calls == 2

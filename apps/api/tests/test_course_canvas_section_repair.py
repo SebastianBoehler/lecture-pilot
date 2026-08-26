@@ -7,6 +7,7 @@ from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.providers import ProviderRegistry
+from practice_design_test_helpers import canvas_with_practice_design
 from targeted_repair_test_helpers import invalid_candidate
 
 
@@ -15,7 +16,7 @@ async def test_section_repair_normalizes_explanatory_math_without_calling_the_mo
 ) -> None:
     planner, model = _planner(monkeypatch, [])
     source = published_course_canvas("targeted-repair", "lecture-01")
-    candidate = invalid_candidate(source)
+    candidate, practice_design = _candidate_and_design(source)
 
     repaired = await planner.repair_section(
         source,
@@ -26,6 +27,7 @@ async def test_section_repair_normalizes_explanatory_math_without_calling_the_mo
             "Math block optimization-math in Optimization contains explanatory prose; "
             "move that text to a paragraph or callout block."
         ),
+        practice_design=practice_design,
     )
 
     assert repaired.sections[1] == candidate.sections[1]
@@ -49,7 +51,7 @@ async def test_section_repair_retries_once_with_the_new_validation_error(
         ],
     )
     source = published_course_canvas("targeted-repair", "lecture-01")
-    candidate = invalid_candidate(source)
+    candidate, practice_design = _candidate_and_design(source)
     section = candidate.sections[0]
     invalid = section.blocks[1].model_copy(update={"text": r"z=\mu+\epsilon\N(0,1)"})
     candidate = candidate.model_copy(
@@ -69,6 +71,7 @@ async def test_section_repair_retries_once_with_the_new_validation_error(
         section_id="learning-optimization",
         block_id="optimization-math",
         failure_context="Math block optimization-math uses unsupported command \\N.",
+        practice_design=practice_design,
     )
 
     assert len(model.messages) == 2
@@ -102,12 +105,14 @@ async def test_section_repair_retries_an_empty_model_response(
     )
     source = published_course_canvas("targeted-repair", "lecture-01")
 
+    candidate, practice_design = _candidate_and_design(source)
     repaired = await planner.repair_section(
         source,
-        invalid_candidate(source),
+        candidate,
         section_id="learning-optimization",
         block_id="optimization-math",
         failure_context="The formula is unsupported by the source.",
+        practice_design=practice_design,
     )
 
     assert len(model.messages) == 2
@@ -129,12 +134,14 @@ async def test_section_repair_does_not_repeat_exhausted_provider_retries(
     source = published_course_canvas("targeted-repair", "lecture-01")
 
     with pytest.raises(ModelExecutionError, match="timed out"):
+        candidate, practice_design = _candidate_and_design(source)
         await planner.repair_section(
             source,
-            invalid_candidate(source),
+            candidate,
             section_id="learning-optimization",
             block_id="optimization-math",
             failure_context="The formula is unsupported by the source.",
+            practice_design=practice_design,
         )
 
     assert len(model.messages) == 1
@@ -160,7 +167,7 @@ async def test_checkpoint_repair_keeps_a_checkpoint_when_model_returns_only_pros
         ],
     )
     source = published_course_canvas("targeted-repair", "lecture-01")
-    candidate = invalid_candidate(source)
+    candidate, practice_design = _candidate_and_design(source)
     section = candidate.sections[0]
     valid_math = section.blocks[1].model_copy(update={"text": r"w^\top x"})
     target = section.blocks[4]
@@ -181,6 +188,7 @@ async def test_checkpoint_repair_keeps_a_checkpoint_when_model_returns_only_pros
         section_id=section.id,
         block_id=target.id,
         failure_context="Canvas quality review failed: the checkpoint is unsupported.",
+        practice_design=practice_design,
     )
 
     repaired_target = next(block for block in repaired.sections[0].blocks if block.id == target.id)
@@ -195,7 +203,7 @@ async def test_section_repair_rejects_two_invalid_patches_without_mutating_candi
     invalid = _repair_payload([{"type": "math", "text": r"z=\mu+\epsilon\N(0,1)"}])
     planner, model = _planner(monkeypatch, [invalid, invalid])
     source = published_course_canvas("targeted-repair", "lecture-01")
-    candidate = invalid_candidate(source)
+    candidate, practice_design = _candidate_and_design(source)
     snapshot = candidate.model_copy(deep=True)
 
     with pytest.raises(CanvasGenerationRepairableError, match="unsupported or course-specific"):
@@ -205,6 +213,7 @@ async def test_section_repair_rejects_two_invalid_patches_without_mutating_candi
             section_id="learning-optimization",
             block_id="optimization-math",
             failure_context="Math block optimization-math uses unsupported command \\N.",
+            practice_design=practice_design,
         )
 
     assert len(model.messages) == 2
@@ -224,7 +233,7 @@ async def test_full_planner_automatically_repairs_an_invalid_generated_block(
             ]
         }
     )
-    candidate = invalid_candidate(source)
+    candidate, practice_design = _candidate_and_design(source)
     target_section = candidate.sections[0]
     invalid_math = target_section.blocks[1].model_copy(update={"text": r"z=\mu+\epsilon\N(0,1)"})
     candidate = candidate.model_copy(
@@ -256,7 +265,7 @@ async def test_full_planner_automatically_repairs_an_invalid_generated_block(
         quality_reviewer=_NoIssuesQualityReviewer(),
     )
 
-    document = await planner.plan_canvas(source)
+    document = await planner.plan_canvas(source, practice_design=practice_design)
 
     assert model.repair_calls == 1
     assert [section.id for section in document.sections] == [
@@ -279,7 +288,7 @@ async def test_section_repair_retains_the_patch_and_advances_to_the_next_invalid
         [_repair_payload([{"type": "math", "text": r"w^\top x"}])],
     )
     source = published_course_canvas("targeted-repair", "lecture-01")
-    candidate = invalid_candidate(source)
+    candidate, practice_design = _candidate_and_design(source)
     second = candidate.sections[1]
     second_invalid = second.blocks[1].model_copy(
         update={"type": "math", "text": r"z=\mu+\epsilon\N(0,1)"}
@@ -302,6 +311,7 @@ async def test_section_repair_retains_the_patch_and_advances_to_the_next_invalid
             section_id="learning-optimization",
             block_id="optimization-math",
             failure_context="The first formula contains explanatory prose.",
+            practice_design=practice_design,
         )
 
     assert model.messages == []
@@ -369,6 +379,10 @@ def _planner(
         ),
         model,
     )
+
+
+def _candidate_and_design(source):
+    return canvas_with_practice_design(invalid_candidate(source))
 
 
 def _repair_payload(blocks: list[dict]) -> dict:
