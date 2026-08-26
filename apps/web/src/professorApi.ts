@@ -16,6 +16,16 @@ import type {
   YoutubeVideoCandidate,
 } from "./types";
 
+export class SourceRoutingRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "SourceRoutingRequestError";
+  }
+}
+
 export async function listCourseWorkspaces(
   session: LoginSession,
 ): Promise<ManagedCourseWorkspaceResult[]> {
@@ -133,7 +143,11 @@ export async function getSourceRouting(
     authRequestInit(session),
   );
   const payload = await response.json();
-  if (!response.ok) throw new Error(readApiError(payload, "Source assignments are not ready."));
+  if (!response.ok)
+    throw new SourceRoutingRequestError(
+      readApiError(payload, "Source assignments are not ready."),
+      response.status,
+    );
   return payload as CourseSourceRoutingManifest;
 }
 

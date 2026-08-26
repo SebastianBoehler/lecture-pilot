@@ -1,22 +1,38 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
-import { confirmSourceRouting, getSourceRouting, proposeSourceRouting } from "./professorApi";
+import {
+  SourceRoutingRequestError,
+  confirmSourceRouting,
+  getSourceRouting,
+  proposeSourceRouting,
+} from "./professorApi";
+import { hasNoAssignedEvidence } from "./sourceRoutingView";
 import type { CourseSourceRoutingManifest, LoginSession, SourceRouteRole } from "./types";
+
+type RoutingStatus = "current" | "stale" | "unavailable";
 
 export function useProfessorSourceRouting(session: LoginSession) {
   const [routing, setRouting] = useState<CourseSourceRoutingManifest | null>(null);
-  const [unavailable, setUnavailable] = useState(false);
+  const [status, setStatus] = useState<RoutingStatus>("unavailable");
+  const hadConfirmedAuthority = useRef(false);
 
   const load = useCallback(
     async (courseId: string) => {
       try {
         const result = await getSourceRouting(courseId, session);
         setRouting(result);
-        setUnavailable(false);
+        hadConfirmedAuthority.current = hasConfirmedAuthority(result);
+        setStatus("current");
         return result;
       } catch (error) {
         setRouting(null);
-        setUnavailable(true);
+        setStatus(
+          error instanceof SourceRoutingRequestError &&
+            error.status === 409 &&
+            hadConfirmedAuthority.current
+            ? "stale"
+            : "unavailable",
+        );
         throw error;
       }
     },
@@ -25,14 +41,16 @@ export function useProfessorSourceRouting(session: LoginSession) {
 
   const reset = useCallback(() => {
     setRouting(null);
-    setUnavailable(false);
+    hadConfirmedAuthority.current = false;
+    setStatus("unavailable");
   }, []);
 
   const regenerate = useCallback(
     async (courseId: string) => {
       const result = await proposeSourceRouting(courseId, session, true);
       setRouting(result);
-      setUnavailable(false);
+      hadConfirmedAuthority.current = hasConfirmedAuthority(result);
+      setStatus("current");
       return result;
     },
     [session],
@@ -42,7 +60,8 @@ export function useProfessorSourceRouting(session: LoginSession) {
     async (courseId: string) => {
       const result = await proposeSourceRouting(courseId, session);
       setRouting(result);
-      setUnavailable(false);
+      hadConfirmedAuthority.current = hasConfirmedAuthority(result);
+      setStatus("current");
       return result;
     },
     [session],
@@ -50,6 +69,8 @@ export function useProfessorSourceRouting(session: LoginSession) {
 
   const updateRoute = useCallback(
     (path: string, role: SourceRouteRole, lectureId: string | null) => {
+      hadConfirmedAuthority.current = false;
+      setStatus("current");
       setRouting((current) =>
         current
           ? {
@@ -72,11 +93,16 @@ export function useProfessorSourceRouting(session: LoginSession) {
       if (!routing) throw new Error("Load source routing before confirming it.");
       const result = await confirmSourceRouting(courseId, routing, session);
       setRouting(result);
-      setUnavailable(false);
+      hadConfirmedAuthority.current = hasConfirmedAuthority(result);
+      setStatus("current");
       return result;
     },
     [routing, session],
   );
 
-  return { confirm, load, propose, regenerate, reset, routing, unavailable, updateRoute };
+  return { confirm, load, propose, regenerate, reset, routing, status, updateRoute };
+}
+
+function hasConfirmedAuthority(routing: CourseSourceRoutingManifest) {
+  return routing.confirmed && !hasNoAssignedEvidence(routing.routes);
 }

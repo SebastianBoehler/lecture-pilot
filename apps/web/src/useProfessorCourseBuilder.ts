@@ -213,7 +213,7 @@ export function useProfessorCourseBuilder({
     bundleReady,
     canvasReady: !!canvas,
     courseReady,
-    designAvailable: sourceRouting.unavailable,
+    designAvailable: sourceRouting.status === "stale",
     designReady,
     draftReviewed,
     reviewAvailable,
