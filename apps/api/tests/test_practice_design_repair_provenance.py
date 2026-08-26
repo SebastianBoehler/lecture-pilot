@@ -23,6 +23,7 @@ from test_practice_design_generation_preflight import (
     _targeted_failure,
     _write_manifest,
 )
+from practice_design_test_helpers import passing_review, source_document
 
 
 @pytest.mark.anyio
@@ -179,7 +180,19 @@ def _replace_and_approve_design(app, approved):
             planning_context=approved.planning_context,
             targets=approved.targets,
         ),
+        source=source_document(SOURCE_PATH),
         allowed_source_paths=(SOURCE_PATH,),
+    )
+    changed = store.save_review(
+        course_id=COURSE_ID,
+        lecture_id=LECTURE_ID,
+        source_revision=changed.source_revision,
+        design_revision=changed.revision,
+        review=passing_review(),
+        source=source_document(SOURCE_PATH),
+        allowed_source_paths=(SOURCE_PATH,),
+        expected_design_review=None,
+        expected_design_approval=None,
     )
     return store.approve(
         course_id=COURSE_ID,

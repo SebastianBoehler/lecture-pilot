@@ -44,8 +44,12 @@ def practice_design_messages(
                 "invent learner level, prerequisites, time budget, allowed aids, or assessment "
                 "conditions. review_after_days is an operational proposal informed by available "
                 "context, not a claim that this interval is scientifically optimal. Use exact source "
-                "paths from the supplied authoritative list; never invent a path or cite an extracted "
-                "frame as a source path."
+                "paths from the supplied authoritative list. For every outcome, invariant, task, "
+                "required criterion, misconception, and present hint, return its exact source path "
+                "and a bounded verbatim excerpt from that path; whitespace may be normalized but "
+                "wording and symbols may not be paraphrased. source_refs must be the ordered unique "
+                "paths used by those field anchors. Never invent a path or cite an extracted frame "
+                "as a source path."
             ),
         },
         {

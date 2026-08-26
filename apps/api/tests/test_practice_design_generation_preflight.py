@@ -22,7 +22,7 @@ from lecturepilot.course_practice_design_store import (
     PracticeDesignStore,
 )
 from lecturepilot.tenancy import TenantContext, TenantRole
-from practice_design_test_helpers import proposal
+from practice_design_test_helpers import passing_review, proposal, source_document
 from test_learning_design_review_routes import _document
 
 
@@ -151,9 +151,12 @@ def _save_design(app, *, approved: bool):
         lecture_id=LECTURE_ID,
         source_revision=revision,
         proposal=proposal(),
+        review=passing_review(),
+        source=source_document(SOURCE_PATH),
         allowed_source_paths=(SOURCE_PATH,),
         expected_design_revision=None,
         expected_design_approval=None,
+        expected_design_review=None,
     )
     return (
         store.approve(
@@ -181,6 +184,7 @@ def _edit_design(store: PracticeDesignStore, design, app) -> None:
             planning_context=design.planning_context,
             targets=design.targets,
         ),
+        source=source_document(SOURCE_PATH),
         allowed_source_paths=(SOURCE_PATH,),
     )
 

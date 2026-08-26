@@ -16,7 +16,7 @@ from lecturepilot.course_canvas_planner import CourseCanvasPlanner
 from lecturepilot.course_canvas_repairs import lecture_source_revision
 from lecturepilot.course_practice_design_store import PracticeDesignStore
 from lecturepilot.providers import ProviderRegistry
-from practice_design_test_helpers import proposal
+from practice_design_test_helpers import passing_review, proposal, source_document
 from test_learning_design_review_routes import _document
 
 
@@ -148,9 +148,12 @@ def _save_design(app, *, expected):
         lecture_id=LECTURE_ID,
         source_revision=revision,
         proposal=proposal(),
+        review=passing_review(),
+        source=source_document(SOURCE_PATH),
         allowed_source_paths=(SOURCE_PATH,),
         expected_design_revision=expected.revision if expected else None,
         expected_design_approval=expected.approval if expected else None,
+        expected_design_review=expected.quality_review if expected else None,
     )
     return store.approve(
         course_id=COURSE_ID,

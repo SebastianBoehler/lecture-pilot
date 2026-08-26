@@ -19,7 +19,11 @@ from lecturepilot.course_practice_design_contract import (
     StrictPracticeDesignModel,
     freeze_collection,
 )
-
+from lecturepilot.course_practice_design_evidence import (
+    PracticeSourceAnchor,
+    anchored_source_paths,
+)
+from lecturepilot.course_practice_design_review_models import PracticeDesignQualityReview
 
 _ID_PATTERN = r"^[a-z0-9][a-z0-9-]{0,79}$"
 _REVISION_PATTERN = r"^[a-f0-9]{64}$"
@@ -36,6 +40,13 @@ class PracticeEvidenceCriterion(StrictPracticeDesignModel):
         ),
     )
     required: bool = True
+    source_anchor: PracticeSourceAnchor | None = None
+
+    @model_validator(mode="after")
+    def require_source_anchor(self) -> PracticeEvidenceCriterion:
+        if self.required and self.source_anchor is None:
+            raise ValueError("Required evidence criteria need an exact source anchor.")
+        return self
 
 
 class PracticeMisconception(StrictPracticeDesignModel):
@@ -53,6 +64,7 @@ class PracticeMisconception(StrictPracticeDesignModel):
         max_length=1_000,
         description="Observable evidence in learner work that distinguishes this misconception.",
     )
+    source_anchor: PracticeSourceAnchor
 
 
 class PracticeHint(StrictPracticeDesignModel):
@@ -69,6 +81,7 @@ class PracticeHint(StrictPracticeDesignModel):
         max_length=2_000,
         description="Approved hint content containing only the minimum next information.",
     )
+    source_anchor: PracticeSourceAnchor
 
 
 class PracticeTarget(StrictPracticeDesignModel):
@@ -79,11 +92,13 @@ class PracticeTarget(StrictPracticeDesignModel):
         max_length=1_000,
         description="Source-supported conditions, observable action, and acceptable standard.",
     )
+    outcome_anchor: PracticeSourceAnchor
     target_invariant: NonblankText = Field(
         min_length=1,
         max_length=1_000,
         description="Knowledge or reasoning operation held constant across all task variants.",
     )
+    target_invariant_anchor: PracticeSourceAnchor
     baseline_task: NonblankText = Field(
         min_length=1,
         max_length=2_000,
@@ -92,6 +107,7 @@ class PracticeTarget(StrictPracticeDesignModel):
             "itself treated as a mastery claim."
         ),
     )
+    baseline_task_anchor: PracticeSourceAnchor
     independent_exit_task: NonblankText = Field(
         min_length=1,
         max_length=2_000,
@@ -100,6 +116,7 @@ class PracticeTarget(StrictPracticeDesignModel):
             "requiring the same invariant without new unprovided knowledge."
         ),
     )
+    independent_exit_task_anchor: PracticeSourceAnchor
     independent_exit_surface_change: NonblankText = Field(
         min_length=1,
         max_length=1_000,
@@ -113,6 +130,7 @@ class PracticeTarget(StrictPracticeDesignModel):
             "unprovided knowledge."
         ),
     )
+    delayed_transfer_task_anchor: PracticeSourceAnchor
     delayed_transfer_surface_change: NonblankText = Field(
         min_length=1,
         max_length=1_000,
@@ -155,6 +173,10 @@ class PracticeTarget(StrictPracticeDesignModel):
         _require_unique_ids(self.misconceptions, "misconception")
         if len(set(self.source_refs)) != len(self.source_refs):
             raise ValueError("Practice target source references must be unique.")
+        if tuple(self.source_refs) != anchored_source_paths(self):
+            raise ValueError(
+                "Practice target source references must exactly match its field-level anchors."
+            )
         _require_ordered_hints(self.hint_ladder)
         return self
 
@@ -192,6 +214,7 @@ class PracticeDesign(StrictPracticeDesignModel):
         min_length=1, max_length=8
     )
     revision: str = Field(pattern=_REVISION_PATTERN)
+    quality_review: PracticeDesignQualityReview | None = None
     approval: PracticeDesignApproval | None = None
 
     @model_validator(mode="after")
@@ -208,7 +231,9 @@ class PracticeDesign(StrictPracticeDesignModel):
         candidate = cls.model_validate(
             {**values, "revision": "0" * 64}, context={"build_revision": True}
         )
-        payload = candidate.model_dump(mode="json", exclude={"revision", "approval"})
+        payload = candidate.model_dump(
+            mode="json", exclude={"revision", "quality_review", "approval"}
+        )
         return cls.model_validate(
             {**candidate.model_dump(mode="json"), "revision": _digest(payload)}
         )
@@ -236,7 +261,7 @@ class PracticeDesignApprovalInput(StrictPracticeDesignModel):
 
 
 def practice_design_revision(design: PracticeDesign) -> str:
-    payload = design.model_dump(mode="json", exclude={"revision", "approval"})
+    payload = design.model_dump(mode="json", exclude={"revision", "quality_review", "approval"})
     return _digest(payload)
 
 

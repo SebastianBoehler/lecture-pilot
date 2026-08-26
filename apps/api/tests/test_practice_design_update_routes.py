@@ -25,6 +25,7 @@ def test_put_rejects_stable_id_mutation_and_preserves_the_stored_design(
                 "id": "new-misconception",
                 "description": "Uses an unsupported shortcut.",
                 "diagnostic_cue": "The response skips the source-grounded reason.",
+                "source_anchor": targets[0]["outcome_anchor"],
             }
         ]
 

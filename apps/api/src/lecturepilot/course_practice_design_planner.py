@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 from pydantic import ValidationError
 
@@ -14,10 +15,23 @@ from lecturepilot.course_practice_design_prompt import practice_design_messages
 from lecturepilot.course_practice_design_validation import (
     PracticeDesignValidationError,
     validate_practice_design,
+    validate_practice_design_review,
 )
+from lecturepilot.course_practice_design_review_client import (
+    LiteLLMPracticeDesignReviewClient,
+    PracticeDesignReviewModelClient,
+)
+from lecturepilot.course_practice_design_review_models import PracticeDesignReviewResult
+from lecturepilot.course_practice_design_review_prompt import practice_design_review_messages
 from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.models import ProviderCapability
+from lecturepilot.models import ProviderCapability, ProviderSettings
 from lecturepilot.providers import ProviderRegistry
+
+
+@dataclass(frozen=True)
+class ReviewedPracticeDesignProposal:
+    proposal: PracticeDesignProposal
+    review: PracticeDesignReviewResult
 
 
 class PracticeDesignPlanner:
@@ -25,9 +39,11 @@ class PracticeDesignPlanner:
         self,
         provider_registry: ProviderRegistry | None = None,
         model_client: PracticeDesignModelClient | None = None,
+        review_client: PracticeDesignReviewModelClient | None = None,
     ) -> None:
         self.provider_registry = provider_registry or ProviderRegistry.from_env()
         self.model_client = model_client or LiteLLMPracticeDesignClient()
+        self.review_client = review_client or LiteLLMPracticeDesignReviewClient()
 
     async def propose(
         self,
@@ -35,7 +51,7 @@ class PracticeDesignPlanner:
         source: CanvasDocument,
         source_revision: str,
         allowed_source_paths: Sequence[str],
-    ) -> PracticeDesignProposal:
+    ) -> ReviewedPracticeDesignProposal:
         settings = self.provider_registry.require_ready(
             [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
         )
@@ -50,9 +66,60 @@ class PracticeDesignPlanner:
                     ),
                 )
             )
-            validate_practice_design(proposal, allowed_source_paths)
+            validate_practice_design(
+                proposal,
+                source=source,
+                allowed_source_paths=allowed_source_paths,
+            )
         except (ValidationError, PracticeDesignValidationError) as exc:
             raise ModelExecutionError(
                 f"Practice-design proposal violated its contract: {exc}"
             ) from exc
-        return proposal
+        review = await self.review(
+            source=source,
+            source_revision=source_revision,
+            allowed_source_paths=allowed_source_paths,
+            proposal=proposal,
+            settings=settings,
+        )
+        return ReviewedPracticeDesignProposal(proposal=proposal, review=review)
+
+    async def review(
+        self,
+        *,
+        source: CanvasDocument,
+        source_revision: str,
+        allowed_source_paths: Sequence[str],
+        proposal: PracticeDesignProposal,
+        settings: ProviderSettings | None = None,
+    ) -> PracticeDesignReviewResult:
+        settings = settings or self.provider_registry.require_ready(
+            [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
+        )
+        try:
+            validate_practice_design(
+                proposal,
+                source=source,
+                allowed_source_paths=allowed_source_paths,
+            )
+            review = PracticeDesignReviewResult.model_validate(
+                await self.review_client.complete_review(
+                    settings=settings,
+                    messages=practice_design_review_messages(
+                        source,
+                        proposal,
+                        source_revision=source_revision,
+                    ),
+                )
+            )
+            validate_practice_design_review(
+                review,
+                proposal,
+                source=source,
+                allowed_source_paths=allowed_source_paths,
+            )
+        except (ValidationError, PracticeDesignValidationError) as exc:
+            raise ModelExecutionError(
+                f"Practice-design semantic review violated its contract: {exc}"
+            ) from exc
+        return review

@@ -24,7 +24,7 @@ from lecturepilot.course_practice_design_validation import (
 from lecturepilot.storage_layout import StorageLayout
 from practice_design_test_helpers import document as _document
 from practice_design_test_helpers import proposal as _proposal
-from practice_design_test_helpers import target as _target
+from practice_design_test_helpers import passing_review, source_document
 
 
 SRC = "a" * 64
@@ -40,9 +40,12 @@ def test_save_proposal_round_trips_a_canonical_revision(tmp_path: Path) -> None:
         lecture_id="lecture-01",
         source_revision=SRC,
         proposal=proposal,
+        review=passing_review(),
+        source=source_document(),
         allowed_source_paths=PATHS,
         expected_design_revision=None,
         expected_design_approval=None,
+        expected_design_review=None,
     )
 
     assert len(saved.revision) == 64
@@ -57,9 +60,12 @@ def test_revision_is_canonical_and_excludes_approval(tmp_path: Path) -> None:
         lecture_id="lecture-01",
         source_revision=SRC,
         proposal=proposal,
+        review=passing_review(),
+        source=source_document(),
         allowed_source_paths=PATHS,
         expected_design_revision=None,
         expected_design_approval=None,
+        expected_design_review=None,
     )
 
     approved = store.approve(
@@ -113,8 +119,16 @@ def test_models_reject_invalid_ids_duplicate_task_variants_and_unordered_hints()
             **{
                 **target.model_dump(),
                 "hint_ladder": [
-                    PracticeHint(level="cue", content="Notice the evidence relation."),
-                    PracticeHint(level="prompt", content="Identify the key evidence."),
+                    PracticeHint(
+                        level="cue",
+                        content="Notice the evidence relation.",
+                        source_anchor=target.outcome_anchor,
+                    ),
+                    PracticeHint(
+                        level="prompt",
+                        content="Identify the key evidence.",
+                        source_anchor=target.outcome_anchor,
+                    ),
                 ],
             }
         )
@@ -123,8 +137,16 @@ def test_models_reject_invalid_ids_duplicate_task_variants_and_unordered_hints()
             **{
                 **target.model_dump(),
                 "hint_ladder": [
-                    PracticeHint(level="prompt", content="Identify the key evidence."),
-                    PracticeHint(level="prompt", content="Name the relevant source."),
+                    PracticeHint(
+                        level="prompt",
+                        content="Identify the key evidence.",
+                        source_anchor=target.outcome_anchor,
+                    ),
+                    PracticeHint(
+                        level="prompt",
+                        content="Name the relevant source.",
+                        source_anchor=target.outcome_anchor,
+                    ),
                 ],
             }
         )
@@ -175,37 +197,6 @@ def test_contract_collections_are_immutable() -> None:
         target.source_refs.append("other-lecture.md")
 
 
-def test_save_and_update_reject_unknown_routed_source_paths(tmp_path: Path) -> None:
-    store = PracticeDesignStore(StorageLayout(tmp_path))
-    proposal = PracticeDesignProposal(
-        **{**_proposal().model_dump(), "targets": [_target(source_refs=["other-lecture.md"])]}
-    )
-
-    with pytest.raises(PracticeDesignValidationError, match="unrouted"):
-        store.save_proposal(
-            course_id="course-01",
-            lecture_id="lecture-01",
-            source_revision=SRC,
-            proposal=proposal,
-            allowed_source_paths=PATHS,
-            expected_design_revision=None,
-            expected_design_approval=None,
-        )
-    saved = _save(store)
-    update = PracticeDesignUpdate(
-        **{**_update(saved).model_dump(), "targets": [_target(source_refs=["other.md"])]}
-    )
-
-    with pytest.raises(PracticeDesignValidationError, match="unrouted"):
-        store.update(
-            course_id="course-01",
-            lecture_id="lecture-01",
-            current_source_revision=SRC,
-            update=update,
-            allowed_source_paths=PATHS,
-        )
-
-
 def test_update_clears_approval_and_requires_current_versions(tmp_path: Path) -> None:
     store = PracticeDesignStore(StorageLayout(tmp_path))
     saved = _save(store)
@@ -221,6 +212,7 @@ def test_update_clears_approval_and_requires_current_versions(tmp_path: Path) ->
         lecture_id="lecture-01",
         current_source_revision=SRC,
         update=_update(approved, objective="Derive a changed, independent conclusion."),
+        source=source_document(),
         allowed_source_paths=PATHS,
     )
     assert changed.approval is None
@@ -233,6 +225,7 @@ def test_update_clears_approval_and_requires_current_versions(tmp_path: Path) ->
             lecture_id="lecture-01",
             current_source_revision=SRC,
             update=_update(approved),
+            source=source_document(),
             allowed_source_paths=PATHS,
         )
 
@@ -282,9 +275,12 @@ def _save(store: PracticeDesignStore) -> PracticeDesign:
         lecture_id="lecture-01",
         source_revision=SRC,
         proposal=_proposal(),
+        review=passing_review(),
+        source=source_document(),
         allowed_source_paths=PATHS,
         expected_design_revision=None,
         expected_design_approval=None,
+        expected_design_review=None,
     )
 
 

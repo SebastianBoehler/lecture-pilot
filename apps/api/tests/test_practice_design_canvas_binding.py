@@ -19,6 +19,7 @@ from lecturepilot.course_practice_design_validation import (
     validate_learning_map_practice_contract,
 )
 from lecturepilot.learning_map import LearningMapEvidenceCriterion, build_learning_map
+from practice_design_test_helpers import passing_review, source_document, target
 
 
 COURSE_ID = "practice-course"
@@ -150,6 +151,7 @@ def test_draft_learning_map_rejects_superseded_practice_design(tmp_path: Path) -
             planning_context=design.planning_context,
             targets=design.targets,
         ),
+        source=source_document("lecture.md"),
         allowed_source_paths=("lecture.md",),
     )
 
@@ -178,24 +180,12 @@ def _approved_design(workspace: CanvasWorkspace) -> PracticeDesign:
         },
         source_revision=revision,
         targets=[
-            {
-                "id": "derive-conclusion",
-                "title": "Derive a conclusion",
-                "outcome": "Derive a justified conclusion from the cited evidence.",
-                "target_invariant": "Connect the relevant evidence to a justified conclusion.",
-                "baseline_task": "Derive the conclusion from the stated evidence and justify it.",
-                "independent_exit_task": "Derive a conclusion from parallel evidence and justify it.",
-                "independent_exit_surface_change": "Change the evidence details, not the reasoning.",
-                "delayed_transfer_task": "Derive a conclusion after details change and justify it.",
-                "delayed_transfer_surface_change": (
-                    "Change the scenario and representation without adding new knowledge."
-                ),
-                "evidence_criteria": [
-                    {"id": "cite-evidence", "description": "Cites the relevant evidence."}
-                ],
-                "review_after_days": 7,
-                "source_refs": ["lecture.md"],
-            }
+            target(
+                source_refs=("lecture.md",),
+                baseline_task="Derive the conclusion from the stated evidence and justify it.",
+                independent_exit_task="Derive a conclusion from parallel evidence and justify it.",
+                delayed_transfer_task="Derive a conclusion after details change and justify it.",
+            )
         ],
     )
     store = PracticeDesignStore(workspace.layout)
@@ -210,9 +200,12 @@ def _approved_design(workspace: CanvasWorkspace) -> PracticeDesign:
         lecture_id=LECTURE_ID,
         source_revision=revision,
         proposal=proposed,
+        review=passing_review(),
+        source=source_document("lecture.md"),
         allowed_source_paths=("lecture.md",),
         expected_design_revision=None,
         expected_design_approval=None,
+        expected_design_review=None,
     )
     return store.approve(
         course_id=COURSE_ID,

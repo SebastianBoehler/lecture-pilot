@@ -11,7 +11,7 @@ from lecturepilot.course_practice_design_models import (
 from lecturepilot.course_practice_design_store import PracticeDesignStore
 from lecturepilot.course_practice_design_validation import PracticeDesignValidationError
 from lecturepilot.storage_layout import StorageLayout
-from practice_design_test_helpers import proposal, target
+from practice_design_test_helpers import passing_review, proposal, source_document, target
 
 
 SRC = "a" * 64
@@ -72,6 +72,7 @@ Mutation = Callable[[list[dict]], list[dict]]
                     "id": "extra-misconception",
                     "description": "Uses an unsupported shortcut.",
                     "diagnostic_cue": "The response skips the cited evidence.",
+                    "source_anchor": targets[0]["outcome_anchor"],
                 },
             ),
             id="misconception-add",
@@ -99,6 +100,7 @@ def test_ordinary_update_rejects_identity_skeleton_changes_without_writing(
             lecture_id="lecture-01",
             current_source_revision=SRC,
             update=update,
+            source=source_document(),
             allowed_source_paths=PATHS,
         )
 
@@ -143,9 +145,12 @@ def _save_two_target_design(store: PracticeDesignStore) -> PracticeDesign:
             planning_context=proposal_model.planning_context,
             targets=(first, second),
         ),
+        review=passing_review(),
+        source=source_document(),
         allowed_source_paths=PATHS,
         expected_design_revision=None,
         expected_design_approval=None,
+        expected_design_review=None,
     )
 
 

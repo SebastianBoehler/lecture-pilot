@@ -9,7 +9,7 @@ from lecturepilot.course_canvas_planner import CourseCanvasPlanner, LiteLLMCours
 from lecturepilot.course_canvas_repair_response import repair_patch_response_format
 from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.providers import ProviderRegistry
-from practice_design_test_helpers import proposal
+from practice_design_test_helpers import proposal, target as practice_target
 
 
 async def test_litellm_course_plan_client_requests_canvas_schema(monkeypatch) -> None:
@@ -336,14 +336,12 @@ class _NoIssuesQualityReviewer:
 
 def _practice_design(source: CanvasDocument) -> PracticeDesign:
     draft = proposal()
-    target = draft.targets[0].model_copy(
-        update={
-            "baseline_task": (
-                "How do prior, likelihood, posterior, and decision costs interact "
-                "when selecting an action?"
-            ),
-            "source_refs": (source.source_ref,),
-        }
+    target = practice_target(
+        baseline_task=(
+            "How do prior, likelihood, posterior, and decision costs interact "
+            "when selecting an action?"
+        ),
+        source_refs=(source.source_ref,),
     )
     return PracticeDesign.create(
         course_id=source.course_id,

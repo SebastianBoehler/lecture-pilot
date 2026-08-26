@@ -123,16 +123,25 @@ def test_update_and_approval_hold_shared_lock_across_source_and_design_mutation(
             "targets": design["targets"],
         },
     )
-    approved = client.post(
-        f"{_design_path()}/approve",
+    reviewed = client.post(
+        f"{_design_path()}/review",
         headers=professor_headers(),
         json={
             "source_revision": updated.json()["source_revision"],
             "practice_design_revision": updated.json()["revision"],
         },
     )
+    approved = client.post(
+        f"{_design_path()}/approve",
+        headers=professor_headers(),
+        json={
+            "source_revision": reviewed.json()["source_revision"],
+            "practice_design_revision": reviewed.json()["revision"],
+        },
+    )
 
     assert updated.status_code == 200
+    assert reviewed.status_code == 200
     assert approved.status_code == 200
     assert observed == [True, True, True, True]
 

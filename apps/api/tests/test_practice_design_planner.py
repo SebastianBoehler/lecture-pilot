@@ -5,6 +5,7 @@ import pytest
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.models import ProviderCapability, ProviderSettings
+from practice_design_test_helpers import passing_review, proposal, target
 
 
 SOURCE_REVISION = "a" * 64
@@ -39,34 +40,15 @@ async def test_planner_uses_native_schema_and_exact_authoritative_source_paths(m
 
     async def fake_completion(**kwargs):
         calls.append(kwargs)
+        content = (
+            proposal()
+            .model_copy(update={"targets": (target(source_refs=("lecture.md",)),)})
+            .model_dump_json()
+            if len(calls) == 1
+            else passing_review().model_dump_json()
+        )
         return SimpleNamespace(
-            choices=[
-                SimpleNamespace(
-                    message=SimpleNamespace(
-                        content=(
-                            '{"lecture_title":"Bayes rule","objective":"Calculate a posterior '
-                            'from stated evidence.","targets":[{"id":"posterior","title":"Posterior",'
-                            '"outcome":"Calculate a posterior from stated evidence.","baseline_task":'
-                            '"Calculate the posterior for the stated prior and likelihood.",'
-                            '"target_invariant":"Apply Bayes rule to the stated prior and likelihood.",'
-                            '"independent_exit_task":"Calculate a posterior for a different prior and likelihood.",'
-                            '"independent_exit_surface_change":"Change only the stated probabilities.",'
-                            '"delayed_transfer_task":"Choose and calculate a posterior for a changed diagnostic setting.",'
-                            '"delayed_transfer_surface_change":"Change the scenario and representation, not the rule.",'
-                            '"evidence_criteria":[{"id":"substitute","description":"Substitutes the stated values.",'
-                            '"required":true}],"misconceptions":[],"hint_ladder":[],"review_after_days":7,'
-                            '"source_refs":["lecture.md"]}],"planning_context":{'
-                            '"learner_level":null,"prerequisites":null,"time_budget_minutes":null,'
-                            '"allowed_aids":null,"assessment_conditions":null,"insufficiencies":['
-                            '{"field":"learner_level","description":"The source does not state the learner level."},'
-                            '{"field":"prerequisites","description":"The source does not state prerequisites."},'
-                            '{"field":"time_budget_minutes","description":"The source does not state a time budget."},'
-                            '{"field":"allowed_aids","description":"The source does not state allowed aids."},'
-                            '{"field":"assessment_conditions","description":"The source does not state assessment conditions."}]}}'
-                        )
-                    )
-                )
-            ],
+            choices=[SimpleNamespace(message=SimpleNamespace(content=content))],
             usage=None,
         )
 
@@ -86,12 +68,16 @@ async def test_planner_uses_native_schema_and_exact_authoritative_source_paths(m
         provider_registry=Registry(), model_client=LiteLLMPracticeDesignClient()
     )
 
-    proposal = await planner.propose(
+    reviewed = await planner.propose(
         source=_source(), source_revision=SOURCE_REVISION, allowed_source_paths=("lecture.md",)
     )
 
-    assert proposal.targets[0].source_refs == ("lecture.md",)
-    assert proposal.planning_context.learner_level is None
+    assert reviewed.proposal.targets[0].source_refs == ("lecture.md",)
+    assert len(reviewed.review.checks) == 8
+    assert (
+        reviewed.proposal.planning_context.learner_level
+        == "Undergraduate learners in this lecture."
+    )
     request = calls[0]
     assert request["response_format"]["type"] == "json_schema"
     assert request["response_format"]["json_schema"]["strict"] is True
@@ -107,6 +93,9 @@ async def test_planner_uses_native_schema_and_exact_authoritative_source_paths(m
     assert "not a claim that this interval is scientifically optimal" in instruction
     assert "lecture.md" in request["messages"][1]["content"]
     assert "unrouted.md" not in request["messages"][1]["content"]
+    review_request = calls[1]
+    assert review_request["response_format"]["json_schema"]["strict"] is True
+    assert "SOURCE EVIDENCE" in review_request["messages"][1]["content"]
 
 
 def test_response_schema_describes_the_assessment_and_scaffold_contract() -> None:

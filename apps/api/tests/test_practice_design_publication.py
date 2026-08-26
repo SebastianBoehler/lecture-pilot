@@ -14,6 +14,7 @@ from lecturepilot.course_practice_design_models import PracticeDesignUpdate
 from lecturepilot.course_practice_design_store import PracticeDesignStore
 from test_practice_design_canvas_binding import _approved_design, _document
 from lecturepilot.canvas_workspace import CanvasWorkspace
+from practice_design_test_helpers import source_document
 
 
 def test_draft_rejects_post_generation_only_design_approval(tmp_path: Path) -> None:
@@ -34,6 +35,7 @@ def test_draft_rejects_post_generation_only_design_approval(tmp_path: Path) -> N
             planning_context=design.planning_context,
             targets=design.targets,
         ),
+        source=source_document("lecture.md"),
         allowed_source_paths=("lecture.md",),
     )
 

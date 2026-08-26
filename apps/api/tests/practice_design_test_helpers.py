@@ -12,10 +12,12 @@ from lecturepilot.course_practice_design_models import (
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument
 from lecturepilot.course_canvas_repairs import lecture_source_revision
 from lecturepilot.course_practice_design_store import PracticeDesignStore
+from practice_design_review_test_helpers import passing_review, source_document
 from lecturepilot.storage_layout import StorageLayout
 
 
 def proposal() -> PracticeDesignProposal:
+    source_anchor = {"source_path": "lecture-01.md", "excerpt": "evidence"}
     return PracticeDesignProposal(
         lecture_title="Practice design",
         objective="Derive the conclusion independently from the cited evidence.",
@@ -32,11 +34,16 @@ def proposal() -> PracticeDesignProposal:
                 id="derive-conclusion",
                 title="Derive a conclusion",
                 outcome="Derive a justified conclusion from the given evidence.",
+                outcome_anchor=source_anchor,
                 target_invariant="Connect the relevant evidence to a justified conclusion.",
+                target_invariant_anchor=source_anchor,
                 baseline_task="Derive the conclusion from the stated evidence and justify the reasoning.",
+                baseline_task_anchor=source_anchor,
                 independent_exit_task="Derive a conclusion from a parallel evidence set and justify it.",
+                independent_exit_task_anchor=source_anchor,
                 independent_exit_surface_change="Change the evidence details, not the reasoning.",
                 delayed_transfer_task="Derive a conclusion after the surface details change and justify it.",
+                delayed_transfer_task_anchor=source_anchor,
                 delayed_transfer_surface_change=(
                     "Change the scenario and representation without adding new knowledge."
                 ),
@@ -44,6 +51,7 @@ def proposal() -> PracticeDesignProposal:
                     PracticeEvidenceCriterion(
                         id="cite-evidence",
                         description="Cites the relevant evidence.",
+                        source_anchor=source_anchor,
                     )
                 ],
                 misconceptions=[
@@ -51,9 +59,16 @@ def proposal() -> PracticeDesignProposal:
                         id="ignore-evidence",
                         description="States a conclusion without evidence.",
                         diagnostic_cue="The response omits a source-grounded reason.",
+                        source_anchor=source_anchor,
                     )
                 ],
-                hint_ladder=[PracticeHint(level="prompt", content="Identify the key evidence.")],
+                hint_ladder=[
+                    PracticeHint(
+                        level="prompt",
+                        content="Identify the key evidence.",
+                        source_anchor=source_anchor,
+                    )
+                ],
                 review_after_days=7,
                 source_refs=["lecture-01.md"],
             )
@@ -62,7 +77,30 @@ def proposal() -> PracticeDesignProposal:
 
 
 def target(**changes: object) -> PracticeTarget:
-    return PracticeTarget(**{**proposal().targets[0].model_dump(), **changes})
+    payload = {**proposal().targets[0].model_dump(mode="json"), **changes}
+    source_refs = tuple(payload["source_refs"])
+    source_path = source_refs[0]
+    anchor = {"source_path": source_path, "excerpt": "evidence"}
+    for field in (
+        "outcome_anchor",
+        "target_invariant_anchor",
+        "baseline_task_anchor",
+        "independent_exit_task_anchor",
+        "delayed_transfer_task_anchor",
+    ):
+        if "source_refs" in changes and field not in changes:
+            payload[field] = anchor
+    for field in ("evidence_criteria", "misconceptions", "hint_ladder"):
+        payload[field] = [
+            {
+                **item,
+                "source_anchor": (
+                    anchor if "source_refs" in changes else item.get("source_anchor") or anchor
+                ),
+            }
+            for item in payload[field]
+        ]
+    return PracticeTarget(**payload)
 
 
 def document(task: str) -> SimpleNamespace:
@@ -142,16 +180,19 @@ def save_approved_design(
 ) -> None:
     revision = lecture_source_revision(layout, course_id=course_id, lecture_id=lecture_id)
     assert revision is not None
-    target = proposal().targets[0].model_copy(update={"source_refs": (source_path,)})
+    design_target = target(source_refs=(source_path,))
     store = PracticeDesignStore(layout)
     design = store.save_proposal(
         course_id=course_id,
         lecture_id=lecture_id,
         source_revision=revision,
-        proposal=proposal().model_copy(update={"targets": (target,)}),
+        proposal=proposal().model_copy(update={"targets": (design_target,)}),
+        review=passing_review(),
+        source=source_document(source_path),
         allowed_source_paths=(source_path,),
         expected_design_revision=None,
         expected_design_approval=None,
+        expected_design_review=None,
     )
     store.approve(
         course_id=course_id,
@@ -213,9 +254,12 @@ def approved_design_document(
                 planning_context=design.planning_context,
                 targets=design.targets,
             ),
+            review=passing_review(),
+            source=source_document(source_path),
             allowed_source_paths=(source_path,),
             expected_design_revision=None,
             expected_design_approval=None,
+            expected_design_review=None,
         )
         design = store.approve(
             course_id=document.course_id,

@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+import re
 from typing import Protocol
 
 from lecturepilot.course_practice_design_models import PracticeDesign, PracticeDesignProposal
+from lecturepilot.course_practice_design_evidence import (
+    PracticeSourceAnchor,
+    target_source_anchors,
+)
+from lecturepilot.course_practice_design_review_models import PracticeDesignReviewResult
 
 
 class PracticeDesignValidationError(ValueError):
@@ -47,16 +53,97 @@ class _LearningMap(Protocol):
 
 
 def validate_practice_design(
-    design: PracticeDesign | PracticeDesignProposal, allowed_source_paths: Iterable[str]
+    design: PracticeDesign | PracticeDesignProposal,
+    *,
+    source: _CanvasDocument,
+    allowed_source_paths: Iterable[str],
 ) -> None:
     allowed = set(allowed_source_paths)
     for target in design.targets:
-        unknown = set(target.source_refs) - allowed
+        anchors = target_source_anchors(target)
+        unknown = {anchor.source_path for anchor in anchors} - allowed
         if unknown:
             paths = ", ".join(sorted(unknown))
             raise PracticeDesignValidationError(
                 f"Practice target {target.id} references unrouted source paths: {paths}."
             )
+        for anchor in anchors:
+            _validate_source_anchor(anchor, source)
+
+
+def validate_source_anchors(
+    anchors: Iterable[PracticeSourceAnchor],
+    *,
+    source: _CanvasDocument,
+    allowed_source_paths: Iterable[str],
+) -> None:
+    allowed = set(allowed_source_paths)
+    for anchor in anchors:
+        if anchor.source_path not in allowed:
+            raise PracticeDesignValidationError(
+                f"Source anchor references unrouted source path: {anchor.source_path}."
+            )
+        _validate_source_anchor(anchor, source)
+
+
+def validate_practice_design_review(
+    review: PracticeDesignReviewResult,
+    design: PracticeDesign | PracticeDesignProposal,
+    *,
+    source: _CanvasDocument,
+    allowed_source_paths: Iterable[str],
+) -> None:
+    target_ids = {target.id for target in design.targets}
+    unknown = {
+        target_id
+        for check in review.checks
+        for target_id in check.target_ids
+        if target_id not in target_ids
+    }
+    if unknown:
+        raise PracticeDesignValidationError(
+            f"Semantic review references unknown practice targets: {', '.join(sorted(unknown))}."
+        )
+    validate_source_anchors(
+        (anchor for check in review.checks for anchor in check.supporting_anchors),
+        source=source,
+        allowed_source_paths=allowed_source_paths,
+    )
+
+
+def _validate_source_anchor(anchor: PracticeSourceAnchor, source: _CanvasDocument) -> None:
+    excerpt = _normalize_whitespace(anchor.excerpt)
+    matching_sections = [
+        section
+        for section in source.sections
+        if section.source_ref == anchor.source_path
+        or (section.source_ref or "").startswith(f"{anchor.source_path} ")
+    ]
+    if any(excerpt in _section_text(section) for section in matching_sections):
+        return
+    raise PracticeDesignValidationError(
+        f"Source anchor for {anchor.source_path} is not a verbatim excerpt from that routed source."
+    )
+
+
+def _section_text(section: _CanvasSection) -> str:
+    values: list[str] = []
+    title = getattr(section, "title", None)
+    if title:
+        values.append(title)
+    for block in section.blocks:
+        for value in (
+            block.text,
+            getattr(block, "caption", None),
+            *getattr(block, "items", ()),
+        ):
+            if value:
+                values.append(value)
+    return _normalize_whitespace(" ".join(values))
+
+
+def _normalize_whitespace(value: str) -> str:
+    return re.sub(r"\s+", " ", value).strip()
 
 
 def validate_canvas_practice_contract(document: _CanvasDocument, design: PracticeDesign) -> None:
@@ -132,7 +219,14 @@ def validate_learning_map_practice_contract(
                 f"Learning map needs exactly one practice-{target_id} gate."
             )
         gate = matches[0]
-        expected_criteria = [item.model_dump() for item in target.evidence_criteria]
+        expected_criteria = [
+            {
+                "id": item.id,
+                "description": item.description,
+                "required": item.required,
+            }
+            for item in target.evidence_criteria
+        ]
         observed_criteria = [
             {"id": item.id, "description": item.description, "required": item.required}
             for item in gate.evidence_criteria

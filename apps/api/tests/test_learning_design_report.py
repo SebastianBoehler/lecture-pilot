@@ -9,7 +9,7 @@ from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSectio
 from lecturepilot.course_learning_design_store import canvas_digest
 from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.learning_map import LearningMapGate, build_learning_map
-from practice_design_test_helpers import practice_design_for_canvas
+from practice_design_test_helpers import practice_design_for_canvas, target as practice_target
 
 
 def test_valid_report_is_deterministic_and_fully_source_backed() -> None:
@@ -211,14 +211,18 @@ def _report(document: CanvasDocument):
         source_sections = [document.sections[-1]]
     target_section = source_sections[-1]
     base_design = practice_design_for_canvas(document)
+    target_payload = base_design.targets[0].model_dump(mode="json")
+    target_payload["source_refs"] = (target_section.source_ref,)
+    for field in (
+        "outcome_anchor",
+        "target_invariant_anchor",
+        "baseline_task_anchor",
+        "independent_exit_task_anchor",
+        "delayed_transfer_task_anchor",
+    ):
+        target_payload.pop(field)
     practice_design = base_design.model_copy(
-        update={
-            "targets": (
-                base_design.targets[0].model_copy(
-                    update={"source_refs": (target_section.source_ref,)}
-                ),
-            )
-        }
+        update={"targets": (practice_target(**target_payload),)}
     )
     practice_design = PracticeDesign.create(
         course_id=document.course_id,

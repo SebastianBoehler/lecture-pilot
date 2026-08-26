@@ -1,15 +1,12 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator, Sequence
-from contextlib import contextmanager
+from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime
-import fcntl
-import os
 from pathlib import Path
-from uuid import uuid4
 
 from pydantic import ValidationError
 
+from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.course_practice_design_models import (
     PracticeDesign,
     PracticeDesignApproval,
@@ -17,11 +14,17 @@ from lecturepilot.course_practice_design_models import (
     PracticeDesignUpdate,
     PracticeTarget,
 )
+from lecturepilot.course_practice_design_files import locked_design_file, write_design_file
+from lecturepilot.course_practice_design_review_binding import with_quality_review
+from lecturepilot.course_practice_design_review_models import (
+    PracticeDesignQualityReview,
+    PracticeDesignReviewResult,
+)
 from lecturepilot.course_practice_design_validation import (
     PracticeDesignValidationError,
     validate_practice_design,
+    validate_practice_design_review,
 )
-from lecturepilot.durable_files import ensure_durable_directory, fsync_directory
 from lecturepilot.storage_layout import StorageLayout
 
 
@@ -47,7 +50,7 @@ class PracticeDesignStore:
 
     def read(self, *, course_id: str, lecture_id: str) -> PracticeDesign | None:
         path = self._path(course_id, lecture_id)
-        with self._locked(path):
+        with locked_design_file(path):
             return self._read(path, course_id, lecture_id)
 
     def save_proposal(
@@ -57,9 +60,12 @@ class PracticeDesignStore:
         lecture_id: str,
         source_revision: str,
         proposal: PracticeDesignProposal,
+        review: PracticeDesignReviewResult,
+        source: CanvasDocument,
         allowed_source_paths: Iterable[str],
         expected_design_revision: str | None,
         expected_design_approval: PracticeDesignApproval | None,
+        expected_design_review: PracticeDesignQualityReview | None,
     ) -> PracticeDesign:
         design = PracticeDesign.create(
             course_id=course_id,
@@ -67,12 +73,23 @@ class PracticeDesignStore:
             source_revision=source_revision,
             **proposal.model_dump(mode="python"),
         )
-        validate_practice_design(design, allowed_source_paths)
+        validate_practice_design(design, source=source, allowed_source_paths=allowed_source_paths)
+        validate_practice_design_review(
+            review,
+            design,
+            source=source,
+            allowed_source_paths=allowed_source_paths,
+        )
+        design = with_quality_review(design, review)
         path = self._path(course_id, lecture_id)
-        with self._locked(path):
+        with locked_design_file(path):
             current = self._read(path, course_id, lecture_id)
             if expected_design_revision is None:
-                if current is not None or expected_design_approval is not None:
+                if (
+                    current is not None
+                    or expected_design_approval is not None
+                    or expected_design_review is not None
+                ):
                     raise PracticeDesignStale(
                         "The practice design changed while the learning plan was proposed. Reload it."
                     )
@@ -80,11 +97,12 @@ class PracticeDesignStore:
                 current is None
                 or current.revision != expected_design_revision
                 or current.approval != expected_design_approval
+                or current.quality_review != expected_design_review
             ):
                 raise PracticeDesignStale(
                     "The practice design changed while the learning plan was proposed. Reload it."
                 )
-            self._write(path, design)
+            write_design_file(path, design)
         return design
 
     def update(
@@ -94,10 +112,11 @@ class PracticeDesignStore:
         lecture_id: str,
         current_source_revision: str,
         update: PracticeDesignUpdate,
+        source: CanvasDocument,
         allowed_source_paths: Iterable[str],
     ) -> PracticeDesign:
         path = self._path(course_id, lecture_id)
-        with self._locked(path):
+        with locked_design_file(path):
             current = self._required(path, course_id, lecture_id)
             if (
                 current.source_revision != current_source_revision
@@ -120,9 +139,46 @@ class PracticeDesignStore:
                 planning_context=update.planning_context,
                 targets=update.targets,
             )
-            validate_practice_design(changed, allowed_source_paths)
-            self._write(path, changed)
+            validate_practice_design(
+                changed, source=source, allowed_source_paths=allowed_source_paths
+            )
+            write_design_file(path, changed)
             return changed
+
+    def save_review(
+        self,
+        *,
+        course_id: str,
+        lecture_id: str,
+        source_revision: str,
+        design_revision: str,
+        review: PracticeDesignReviewResult,
+        source: CanvasDocument,
+        allowed_source_paths: Iterable[str],
+        expected_design_review: PracticeDesignQualityReview | None,
+        expected_design_approval: PracticeDesignApproval | None,
+    ) -> PracticeDesign:
+        path = self._path(course_id, lecture_id)
+        with locked_design_file(path):
+            current = self._required(path, course_id, lecture_id)
+            if (
+                current.source_revision != source_revision
+                or current.revision != design_revision
+                or current.quality_review != expected_design_review
+                or current.approval != expected_design_approval
+            ):
+                raise PracticeDesignStale(
+                    "The practice design or source revision changed. Reload it."
+                )
+            validate_practice_design_review(
+                review,
+                current,
+                source=source,
+                allowed_source_paths=allowed_source_paths,
+            )
+            reviewed = with_quality_review(current.model_copy(update={"approval": None}), review)
+            write_design_file(path, reviewed)
+            return reviewed
 
     def approve(
         self,
@@ -134,11 +190,24 @@ class PracticeDesignStore:
         approved_by: str,
     ) -> PracticeDesign:
         path = self._path(course_id, lecture_id)
-        with self._locked(path):
+        with locked_design_file(path):
             current = self._required(path, course_id, lecture_id)
             if current.source_revision != source_revision or current.revision != design_revision:
                 raise PracticeDesignStale(
                     "The practice design or source revision changed. Reload it."
+                )
+            review = current.quality_review
+            if (
+                review is None
+                or review.source_revision != current.source_revision
+                or review.practice_design_revision != current.revision
+            ):
+                raise PracticeDesignApprovalRequired(
+                    "Review the current practice design before approval."
+                )
+            if review.has_critical_issues:
+                raise PracticeDesignApprovalRequired(
+                    "Resolve critical semantic review issues before approval."
                 )
             approved = current.model_copy(
                 update={
@@ -150,7 +219,7 @@ class PracticeDesignStore:
                     )
                 }
             )
-            self._write(path, approved)
+            write_design_file(path, approved)
             return approved
 
     def require_approved(
@@ -162,7 +231,7 @@ class PracticeDesignStore:
         design_revision: str | None = None,
     ) -> PracticeDesign:
         path = self._path(course_id, lecture_id)
-        with self._locked(path):
+        with locked_design_file(path):
             current = self._required(path, course_id, lecture_id)
             if current.source_revision != source_revision or (
                 design_revision is not None and current.revision != design_revision
@@ -182,17 +251,6 @@ class PracticeDesignStore:
 
     def _path(self, course_id: str, lecture_id: str) -> Path:
         return self.layout.lecture_practice_design_path(course_id, lecture_id)
-
-    @contextmanager
-    def _locked(self, path: Path) -> Iterator[None]:
-        ensure_durable_directory(path.parent)
-        descriptor = os.open(path.parent / ".practice-design.lock", os.O_CREAT | os.O_RDWR, 0o600)
-        try:
-            fcntl.flock(descriptor, fcntl.LOCK_EX)
-            yield
-        finally:
-            fcntl.flock(descriptor, fcntl.LOCK_UN)
-            os.close(descriptor)
 
     def _required(self, path: Path, course_id: str, lecture_id: str) -> PracticeDesign:
         design = self._read(path, course_id, lecture_id)
@@ -214,21 +272,20 @@ class PracticeDesignStore:
             ) from exc
         if design.course_id != course_id or design.lecture_id != lecture_id:
             raise PracticeDesignUnavailable("Stored practice design identity is invalid.")
+        review = design.quality_review
+        if review is not None:
+            if (
+                review.source_revision != design.source_revision
+                or review.practice_design_revision != design.revision
+            ):
+                raise PracticeDesignUnavailable("Stored practice design review is stale.")
+            if design.approval is not None and review.has_critical_issues:
+                raise PracticeDesignUnavailable("Stored practice design review blocks approval.")
+        elif design.approval is not None:
+            raise PracticeDesignUnavailable(
+                "Stored approved practice design has no quality review."
+            )
         return design
-
-    @staticmethod
-    def _write(path: Path, design: PracticeDesign) -> None:
-        temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
-        try:
-            descriptor = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-            with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-                handle.write(design.model_dump_json(indent=2))
-                handle.flush()
-                os.fsync(handle.fileno())
-            os.replace(temporary, path)
-            fsync_directory(path.parent)
-        finally:
-            temporary.unlink(missing_ok=True)
 
 
 def _identity_skeleton(targets: Sequence[PracticeTarget]) -> tuple:

@@ -12,6 +12,9 @@ from lecturepilot.course_practice_design_models import (
     PracticeDesignApprovalInput,
     PracticeDesignUpdate,
 )
+from lecturepilot.course_practice_design_review_routes import (
+    register_practice_design_review_route,
+)
 from lecturepilot.course_practice_design_store import (
     PracticeDesignApprovalRequired,
     PracticeDesignStale,
@@ -74,6 +77,7 @@ def register_course_practice_design_routes(
             return existing
         expected_design_revision = existing.revision if existing is not None else None
         expected_design_approval = existing.approval if existing is not None else None
+        expected_design_review = existing.quality_review if existing is not None else None
         try:
             with app.state.observability.tool_span(
                 "course_practice_design",
@@ -87,18 +91,18 @@ def register_course_practice_design_routes(
                     course_id=course_id,
                     workload="course_practice_design",
                 ):
-                    proposal = await app.state.practice_design_planner.propose(
+                    reviewed = await app.state.practice_design_planner.propose(
                         source=source,
                         source_revision=revision,
                         allowed_source_paths=paths,
                     )
-                span.set_outputs({"target_count": len(proposal.targets)})
+                span.set_outputs({"target_count": len(reviewed.proposal.targets)})
         except ProviderConfigurationError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         except ModelExecutionError as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from exc
         with locked_course_state(layout.course_root(course_id)):
-            _, current_revision, current_paths = _source_context(
+            current_source, current_revision, current_paths = _source_context(
                 app, source_document, course_id, lecture_id
             )
             if current_revision != revision:
@@ -111,10 +115,13 @@ def register_course_practice_design_routes(
                     course_id=course_id,
                     lecture_id=lecture_id,
                     source_revision=revision,
-                    proposal=proposal,
+                    proposal=reviewed.proposal,
+                    review=reviewed.review,
+                    source=current_source,
                     allowed_source_paths=current_paths,
                     expected_design_revision=expected_design_revision,
                     expected_design_approval=expected_design_approval,
+                    expected_design_review=expected_design_review,
                 )
             except PracticeDesignStale as exc:
                 raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -136,12 +143,15 @@ def register_course_practice_design_routes(
         layout = app.state.canvas_workspace.layout
         try:
             with locked_course_state(layout.course_root(course_id)):
-                _, revision, paths = _source_context(app, source_document, course_id, lecture_id)
+                source, revision, paths = _source_context(
+                    app, source_document, course_id, lecture_id
+                )
                 return _store(app).update(
                     course_id=course_id,
                     lecture_id=lecture_id,
                     current_source_revision=revision,
                     update=update,
+                    source=source,
                     allowed_source_paths=paths,
                 )
         except PracticeDesignStale as exc:
@@ -190,6 +200,14 @@ def register_course_practice_design_routes(
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         except PracticeDesignApprovalRequired as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    register_practice_design_review_route(
+        app,
+        course_tenant_id=course_tenant_id,
+        source_document=source_document,
+        source_context=_source_context,
+        require_manager=_require_manager,
+    )
 
 
 def _store(app: FastAPI) -> PracticeDesignStore:

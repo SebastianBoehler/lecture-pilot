@@ -10,7 +10,7 @@ from lecturepilot.course_canvas_section_prompt import section_messages
 from lecturepilot.course_canvas_quality import CanvasQualityIssue
 from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.providers import ProviderRegistry
-from practice_design_test_helpers import proposal
+from practice_design_test_helpers import proposal, target as build_target
 
 
 @pytest.mark.anyio
@@ -206,13 +206,11 @@ def _source() -> CanvasDocument:
 
 def _design(source: CanvasDocument):
     draft = proposal()
-    target = draft.targets[0].model_copy(
-        update={
-            "baseline_task": "Derive the conclusion from the stated evidence and justify it.",
-            "independent_exit_task": "Derive a conclusion from parallel evidence and justify it.",
-            "delayed_transfer_task": "Derive a conclusion after details change and justify it.",
-            "source_refs": ("lecture.md",),
-        }
+    target = build_target(
+        baseline_task="Derive the conclusion from the stated evidence and justify it.",
+        independent_exit_task="Derive a conclusion from parallel evidence and justify it.",
+        delayed_transfer_task="Derive a conclusion after details change and justify it.",
+        source_refs=("lecture.md",),
     )
     return PracticeDesign.create(
         course_id=source.course_id,
