@@ -45,6 +45,7 @@ def test_benchmark_cli_documents_compact_explicit_reviewer_specs() -> None:
     assert "--output" in result.stdout
     assert "--summary" in result.stdout
     assert "aliases" in result.stdout
+    assert "insufficient evidence of independence" in " ".join(result.stdout.split())
 
 
 def test_cli_rejects_deployments_with_one_underlying_identity_before_provider_calls(

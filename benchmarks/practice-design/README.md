@@ -30,12 +30,15 @@ materially distinct fine-tune identity. The optional deployment value records
 gateway, endpoint, region, or deployment provenance for audit only. Two
 gateways or deployments serving the same underlying weights must use the same
 underlying identity and are rejected as separate reviewers. Invocation slugs
-and deployment provenance are never used in the uniqueness gate or to claim
-reviewer disagreement; only distinct underlying identities qualify. Repeated
-temperature-zero calls to one underlying model must not be presented as
-independent evidence. The command writes the JSON report even when an
-individual proposal or reviewer call fails, and returns nonzero when the
-retained report contains such an error.
+must also be unique as a configuration-consistency guard, so one configured
+target cannot be relabeled with conflicting claimed identities. Distinct
+invocation slugs are necessary but insufficient evidence of independence.
+Deployment provenance never establishes independence; only distinct underlying
+identities qualify for reviewer disagreement. Repeated temperature-zero calls
+to one underlying model must not be presented as independent evidence. The
+command writes the JSON report even when an individual proposal or reviewer
+call fails, and returns nonzero when the retained report contains such an
+error.
 
 ## Dimensions and scale
 

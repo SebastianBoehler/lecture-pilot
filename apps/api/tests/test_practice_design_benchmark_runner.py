@@ -125,6 +125,31 @@ async def test_runner_rejects_distinct_deployments_of_the_same_underlying_model(
         )
 
 
+@pytest.mark.asyncio
+async def test_runner_rejects_duplicate_invocation_slugs_with_claimed_distinct_models() -> None:
+    fixture = load_practice_design_benchmark_fixtures(FIXTURES)[0]
+    reviewers = (
+        PracticeDesignBenchmarkReviewerSpec(
+            invocation_model="gateway/reviewer",
+            underlying_model_identity="vendor/model@v1",
+        ),
+        PracticeDesignBenchmarkReviewerSpec(
+            invocation_model="GATEWAY/REVIEWER",
+            underlying_model_identity="vendor/model@v2",
+        ),
+    )
+
+    with pytest.raises(ValueError, match="(?i)reviewer invocation model slugs"):
+        await run_practice_design_benchmark(
+            fixtures=(fixture,),
+            proposal_model="openai/proposal-model",
+            reviewers=reviewers,
+            planner=_FailingPlanner(),
+            evaluation_client=_EvaluationClient(),
+            registry_factory=_Registry,
+        )
+
+
 @pytest.mark.parametrize(
     "second_identity",
     ("vendor/model@v2", "vendor/model@v1+finetune:course-a"),

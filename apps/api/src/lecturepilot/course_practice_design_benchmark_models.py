@@ -97,7 +97,10 @@ class PracticeDesignBenchmarkEvaluation(StrictPracticeDesignModel):
 class PracticeDesignBenchmarkReviewerSpec(StrictPracticeDesignModel):
     invocation_model: NonblankText = Field(
         max_length=200,
-        description="Configured provider/model slug used for this invocation.",
+        description=(
+            "Configured provider/model slug used for this invocation. Slugs must be unique for "
+            "configuration consistency but do not establish reviewer independence."
+        ),
     )
     underlying_model_identity: NonblankText = Field(
         max_length=300,
@@ -171,6 +174,11 @@ def validate_reviewer_specs(
     reviewers = tuple(reviewers)
     if len(reviewers) < minimum:
         raise ValueError(f"Provide at least {minimum} reviewer specifications.")
+    invocation_keys = [
+        " ".join(reviewer.invocation_model.split()).casefold() for reviewer in reviewers
+    ]
+    if len(set(invocation_keys)) != len(invocation_keys):
+        raise ValueError("Reviewer invocation model slugs must be distinct.")
     underlying_identity_keys = [
         " ".join(reviewer.underlying_model_identity.split()).casefold() for reviewer in reviewers
     ]

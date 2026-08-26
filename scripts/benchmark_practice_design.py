@@ -60,7 +60,8 @@ def _arguments() -> argparse.Namespace:
         description=(
             "Run the opt-in production practice-design benchmark with separate judgments from "
             "two or more underlying model versions or materially distinct fine-tunes. "
-            "Provider aliases and deployment provenance are never evidence of independence."
+            "Invocation slugs must be unique for consistency but are insufficient evidence of "
+            "independence. Provider aliases and deployment provenance never establish it."
         ),
     )
     parser.add_argument(
@@ -75,7 +76,8 @@ def _arguments() -> argparse.Namespace:
         metavar="MODEL=UNDERLYING_ID[|DEPLOYMENT]",
         help=(
             "Invocation slug, required underlying model/version or fine-tune identity, and "
-            "optional deployment provenance; repeat with distinct underlying identities."
+            "optional deployment provenance; repeat with distinct invocation slugs and "
+            "underlying identities."
         ),
     )
     parser.add_argument(
