@@ -15,6 +15,8 @@ from pydantic import (
     model_validator,
 )
 
+from lecturepilot.course_practice_design_context import PracticePlanningContext
+
 
 _ID_PATTERN = r"^[a-z0-9][a-z0-9-]{0,79}$"
 _REVISION_PATTERN = r"^[a-f0-9]{64}$"
@@ -44,28 +46,97 @@ class _StrictModel(BaseModel):
 
 class PracticeEvidenceCriterion(_StrictModel):
     id: str = Field(pattern=_ID_PATTERN)
-    description: NonblankText = Field(min_length=1, max_length=1_000)
+    description: NonblankText = Field(
+        min_length=1,
+        max_length=1_000,
+        description=(
+            "One atomic, observable unit of learner evidence that can be judged from the work "
+            "without passing on a keyword alone. Required criteria collectively cover the invariant."
+        ),
+    )
     required: bool = True
 
 
 class PracticeMisconception(_StrictModel):
     id: str = Field(pattern=_ID_PATTERN)
-    description: NonblankText = Field(min_length=1, max_length=1_000)
-    diagnostic_cue: NonblankText = Field(min_length=1, max_length=1_000)
+    description: NonblankText = Field(
+        min_length=1,
+        max_length=1_000,
+        description=(
+            "A plausible incorrect reasoning pattern inside this target's boundary; do not use "
+            "an unrelated error, an unstated prerequisite, or merely a missing final answer."
+        ),
+    )
+    diagnostic_cue: NonblankText = Field(
+        min_length=1,
+        max_length=1_000,
+        description="Observable evidence in learner work that distinguishes this misconception.",
+    )
 
 
 class PracticeHint(_StrictModel):
-    level: Literal["prompt", "cue", "faded_example", "worked_step"]
-    content: NonblankText = Field(min_length=1, max_length=2_000)
+    level: Literal["prompt", "cue", "faded_example", "worked_step"] = Field(
+        description=(
+            "Approved support level: prompt asks the learner to inspect or plan without domain "
+            "answer content; cue names the relevant principle or representation but not the next "
+            "answer; faded_example gives an analogous partial example with a learner-owned step; "
+            "worked_step gives one justified step and then returns a new step to the learner."
+        )
+    )
+    content: NonblankText = Field(
+        min_length=1,
+        max_length=2_000,
+        description="Approved hint content containing only the minimum next information.",
+    )
 
 
 class PracticeTarget(_StrictModel):
     id: str = Field(pattern=_ID_PATTERN)
     title: NonblankText = Field(min_length=1, max_length=200)
-    outcome: NonblankText = Field(min_length=1, max_length=1_000)
-    baseline_task: NonblankText = Field(min_length=1, max_length=2_000)
-    independent_exit_task: NonblankText = Field(min_length=1, max_length=2_000)
-    delayed_transfer_task: NonblankText = Field(min_length=1, max_length=2_000)
+    outcome: NonblankText = Field(
+        min_length=1,
+        max_length=1_000,
+        description="Source-supported conditions, observable action, and acceptable standard.",
+    )
+    target_invariant: NonblankText = Field(
+        min_length=1,
+        max_length=1_000,
+        description="Knowledge or reasoning operation held constant across all task variants.",
+    )
+    baseline_task: NonblankText = Field(
+        min_length=1,
+        max_length=2_000,
+        description=(
+            "Diagnostic attempt before substantive help, used to choose support and never by "
+            "itself treated as a mastery claim."
+        ),
+    )
+    independent_exit_task: NonblankText = Field(
+        min_length=1,
+        max_length=2_000,
+        description=(
+            "Parallel unaided independent exit after support, hidden during instruction and "
+            "requiring the same invariant without new unprovided knowledge."
+        ),
+    )
+    independent_exit_surface_change: NonblankText = Field(
+        min_length=1,
+        max_length=1_000,
+        description="Controlled surface change from the diagnostic to the independent exit.",
+    )
+    delayed_transfer_task: NonblankText = Field(
+        min_length=1,
+        max_length=2_000,
+        description=(
+            "Delayed changed-form transfer assessment preserving the invariant without new "
+            "unprovided knowledge."
+        ),
+    )
+    delayed_transfer_surface_change: NonblankText = Field(
+        min_length=1,
+        max_length=1_000,
+        description="Controlled later change in scenario, values, representation, or task form.",
+    )
     evidence_criteria: Annotated[
         tuple[PracticeEvidenceCriterion, ...], BeforeValidator(_freeze_collection)
     ] = Field(min_length=1, max_length=40)
@@ -75,7 +146,14 @@ class PracticeTarget(_StrictModel):
     hint_ladder: Annotated[tuple[PracticeHint, ...], BeforeValidator(_freeze_collection)] = Field(
         default_factory=tuple, max_length=4
     )
-    review_after_days: int = Field(ge=1, le=365)
+    review_after_days: int = Field(
+        ge=1,
+        le=365,
+        description=(
+            "Operational proposed review interval informed by the available context, not a claim "
+            "that the model selected a scientifically optimal delay."
+        ),
+    )
     source_refs: Annotated[tuple[str, ...], BeforeValidator(_freeze_collection)] = Field(
         min_length=1, max_length=100
     )
@@ -91,6 +169,8 @@ class PracticeTarget(_StrictModel):
             )
         _require_distinct_tasks(self)
         _require_unique_ids(self.evidence_criteria, "evidence criterion")
+        if not any(criterion.required for criterion in self.evidence_criteria):
+            raise ValueError("Practice targets need at least one required evidence criterion.")
         _require_unique_ids(self.misconceptions, "misconception")
         if len(set(self.source_refs)) != len(self.source_refs):
             raise ValueError("Practice target source references must be unique.")
@@ -101,6 +181,7 @@ class PracticeTarget(_StrictModel):
 class PracticeDesignProposal(_StrictModel):
     lecture_title: NonblankText = Field(min_length=1, max_length=200)
     objective: NonblankText = Field(min_length=1, max_length=1_000)
+    planning_context: PracticePlanningContext
     targets: Annotated[tuple[PracticeTarget, ...], BeforeValidator(_freeze_collection)] = Field(
         min_length=1, max_length=8
     )
@@ -124,6 +205,7 @@ class PracticeDesign(_StrictModel):
     lecture_id: str = Field(min_length=1, max_length=120)
     lecture_title: NonblankText = Field(min_length=1, max_length=200)
     objective: NonblankText = Field(min_length=1, max_length=1_000)
+    planning_context: PracticePlanningContext
     source_revision: str = Field(pattern=_REVISION_PATTERN)
     targets: Annotated[tuple[PracticeTarget, ...], BeforeValidator(_freeze_collection)] = Field(
         min_length=1, max_length=8
@@ -156,6 +238,7 @@ class PracticeDesignUpdate(_StrictModel):
     practice_design_revision: str = Field(pattern=_REVISION_PATTERN)
     lecture_title: NonblankText = Field(min_length=1, max_length=200)
     objective: NonblankText = Field(min_length=1, max_length=1_000)
+    planning_context: PracticePlanningContext
     targets: Annotated[tuple[PracticeTarget, ...], BeforeValidator(_freeze_collection)] = Field(
         min_length=1, max_length=8
     )

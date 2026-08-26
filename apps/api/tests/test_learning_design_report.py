@@ -225,6 +225,7 @@ def _report(document: CanvasDocument):
         lecture_id=document.lecture_id,
         lecture_title=document.title,
         objective=practice_design.objective,
+        planning_context=practice_design.planning_context,
         source_revision="a" * 64,
         targets=practice_design.targets,
     )

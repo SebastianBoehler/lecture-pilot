@@ -89,6 +89,7 @@ def test_ordinary_update_rejects_identity_skeleton_changes_without_writing(
         practice_design_revision=saved.revision,
         lecture_title=saved.lecture_title,
         objective="A permitted content edit that must not mask an identity change.",
+        planning_context=saved.planning_context,
         targets=mutate(targets),
     )
 
@@ -139,6 +140,7 @@ def _save_two_target_design(store: PracticeDesignStore) -> PracticeDesign:
         proposal=PracticeDesignProposal(
             lecture_title=proposal_model.lecture_title,
             objective=proposal_model.objective,
+            planning_context=proposal_model.planning_context,
             targets=(first, second),
         ),
         allowed_source_paths=PATHS,

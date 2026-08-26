@@ -31,6 +31,7 @@ def test_draft_rejects_post_generation_only_design_approval(tmp_path: Path) -> N
             practice_design_revision=design.revision,
             lecture_title=design.lecture_title,
             objective="Derive a revised conclusion independently.",
+            planning_context=design.planning_context,
             targets=design.targets,
         ),
         allowed_source_paths=("lecture.md",),

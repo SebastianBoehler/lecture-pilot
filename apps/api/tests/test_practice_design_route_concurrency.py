@@ -33,6 +33,7 @@ def test_refresh_conflicts_instead_of_overwriting_a_concurrent_professor_edit(tm
             "practice_design_revision": original["revision"],
             "lecture_title": original["lecture_title"],
             "objective": "Calculate a revised posterior from stated evidence.",
+            "planning_context": original["planning_context"],
             "targets": original["targets"],
         },
     )
@@ -118,6 +119,7 @@ def test_update_and_approval_hold_shared_lock_across_source_and_design_mutation(
             "practice_design_revision": design["revision"],
             "lecture_title": design["lecture_title"],
             "objective": "Calculate a revised posterior from stated evidence.",
+            "planning_context": design["planning_context"],
             "targets": design["targets"],
         },
     )

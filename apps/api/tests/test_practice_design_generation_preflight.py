@@ -178,6 +178,7 @@ def _edit_design(store: PracticeDesignStore, design, app) -> None:
             practice_design_revision=design.revision,
             lecture_title=design.lecture_title,
             objective="Derive a revised conclusion from the cited evidence.",
+            planning_context=design.planning_context,
             targets=design.targets,
         ),
         allowed_source_paths=(SOURCE_PATH,),

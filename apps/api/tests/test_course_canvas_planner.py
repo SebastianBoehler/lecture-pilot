@@ -350,6 +350,7 @@ def _practice_design(source: CanvasDocument) -> PracticeDesign:
         lecture_id=source.lecture_id,
         lecture_title=source.title,
         objective=draft.objective,
+        planning_context=draft.planning_context,
         source_revision="a" * 64,
         targets=(target,),
     )

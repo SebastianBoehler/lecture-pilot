@@ -82,5 +82,6 @@ def _update_payload(design: dict, targets: list[dict]) -> dict:
         "practice_design_revision": design["revision"],
         "lecture_title": design["lecture_title"],
         "objective": "A permitted content edit.",
+        "planning_context": design["planning_context"],
         "targets": targets,
     }

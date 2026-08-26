@@ -19,14 +19,27 @@ def proposal() -> PracticeDesignProposal:
     return PracticeDesignProposal(
         lecture_title="Practice design",
         objective="Derive the conclusion independently from the cited evidence.",
+        planning_context={
+            "learner_level": "Undergraduate learners in this lecture.",
+            "prerequisites": ["Interpret the supplied evidence."],
+            "time_budget_minutes": 30,
+            "allowed_aids": ["Course notes"],
+            "assessment_conditions": "Complete each assessment individually.",
+            "insufficiencies": [],
+        },
         targets=[
             PracticeTarget(
                 id="derive-conclusion",
                 title="Derive a conclusion",
                 outcome="Derive a justified conclusion from the given evidence.",
+                target_invariant="Connect the relevant evidence to a justified conclusion.",
                 baseline_task="Derive the conclusion from the stated evidence and justify the reasoning.",
                 independent_exit_task="Derive a conclusion from a parallel evidence set and justify it.",
+                independent_exit_surface_change="Change the evidence details, not the reasoning.",
                 delayed_transfer_task="Derive a conclusion after the surface details change and justify it.",
+                delayed_transfer_surface_change=(
+                    "Change the scenario and representation without adding new knowledge."
+                ),
                 evidence_criteria=[
                     PracticeEvidenceCriterion(
                         id="cite-evidence",
@@ -99,6 +112,7 @@ def practice_design_for_canvas(document: CanvasDocument) -> PracticeDesign:
         lecture_id=document.lecture_id,
         lecture_title=document.title,
         objective="Derive the conclusion independently from the cited evidence.",
+        planning_context=proposal().planning_context,
         source_revision="a" * 64,
         targets=(design_target,),
     )
@@ -176,6 +190,7 @@ def approved_design_document(
         lecture_id=document.lecture_id,
         lecture_title=document.title,
         objective="Apply the approved source-grounded reasoning independently.",
+        planning_context=proposal().planning_context,
         source_revision=source_revision,
         targets=(design_target,),
     )
@@ -195,6 +210,7 @@ def approved_design_document(
             proposal=PracticeDesignProposal(
                 lecture_title=design.lecture_title,
                 objective=design.objective,
+                planning_context=design.planning_context,
                 targets=design.targets,
             ),
             allowed_source_paths=(source_path,),

@@ -28,14 +28,36 @@ class _Planner:
         return PracticeDesignProposal(
             lecture_title="Practice lecture",
             objective="Calculate a posterior from stated evidence.",
+            planning_context={
+                "learner_level": None,
+                "prerequisites": None,
+                "time_budget_minutes": None,
+                "allowed_aids": None,
+                "assessment_conditions": None,
+                "insufficiencies": [
+                    {"field": field, "description": f"The source does not state {field}."}
+                    for field in (
+                        "learner_level",
+                        "prerequisites",
+                        "time_budget_minutes",
+                        "allowed_aids",
+                        "assessment_conditions",
+                    )
+                ],
+            },
             targets=(
                 PracticeTarget(
                     id="posterior",
                     title="Posterior",
                     outcome="Calculate a posterior from stated evidence.",
+                    target_invariant="Apply Bayes rule to a stated prior and likelihood.",
                     baseline_task="Calculate the posterior for the stated prior and likelihood.",
                     independent_exit_task="Calculate a posterior for a different prior and likelihood.",
+                    independent_exit_surface_change="Change only the stated probabilities.",
                     delayed_transfer_task="Choose and calculate a posterior for a changed diagnostic setting.",
+                    delayed_transfer_surface_change=(
+                        "Change the scenario and representation while preserving Bayes rule."
+                    ),
                     evidence_criteria=({"id": "substitute", "description": "Uses stated values."},),
                     misconceptions=(),
                     hint_ladder=(),
@@ -66,6 +88,7 @@ def test_owner_can_propose_edit_and_approve_a_current_practice_design(tmp_path: 
                 "practice_design_revision": design["revision"],
                 "lecture_title": design["lecture_title"],
                 "objective": design["objective"],
+                "planning_context": design["planning_context"],
                 "targets": design["targets"],
             },
         ).status_code
@@ -93,6 +116,7 @@ def test_owner_can_propose_edit_and_approve_a_current_practice_design(tmp_path: 
             "practice_design_revision": design["revision"],
             "lecture_title": design["lecture_title"],
             "objective": "Calculate posterior probabilities from evidence.",
+            "planning_context": design["planning_context"],
             "targets": design["targets"],
         },
     )
@@ -107,6 +131,7 @@ def test_owner_can_propose_edit_and_approve_a_current_practice_design(tmp_path: 
             "practice_design_revision": design["revision"],
             "lecture_title": updated.json()["lecture_title"],
             "objective": updated.json()["objective"],
+            "planning_context": updated.json()["planning_context"],
             "targets": updated.json()["targets"],
         },
     )
@@ -148,6 +173,7 @@ def test_rejects_invalid_target_source_references(tmp_path: Path) -> None:
             "practice_design_revision": design["revision"],
             "lecture_title": design["lecture_title"],
             "objective": design["objective"],
+            "planning_context": design["planning_context"],
             "targets": [target],
         },
     )

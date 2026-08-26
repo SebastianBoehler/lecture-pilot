@@ -117,6 +117,7 @@ class PracticeDesignStore:
                 source_revision=current_source_revision,
                 lecture_title=update.lecture_title,
                 objective=update.objective,
+                planning_context=update.planning_context,
                 targets=update.targets,
             )
             validate_practice_design(changed, allowed_source_paths)

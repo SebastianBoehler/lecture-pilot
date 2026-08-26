@@ -82,12 +82,14 @@ def test_revision_is_canonical_and_excludes_approval(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("count", [0, 9])
 def test_proposal_rejects_target_counts_outside_one_through_eight(count: int) -> None:
-    targets = [_proposal().targets[0] for _ in range(count)]
+    proposal = _proposal()
+    targets = [proposal.targets[0] for _ in range(count)]
 
     with pytest.raises(ValidationError):
         PracticeDesignProposal(
             lecture_title="Practice design",
             objective="Derive the conclusion independently from the cited evidence.",
+            planning_context=proposal.planning_context,
             targets=targets,
         )
 
@@ -130,6 +132,7 @@ def test_models_reject_invalid_ids_duplicate_task_variants_and_unordered_hints()
         PracticeDesignProposal(
             lecture_title="Practice design",
             objective="Derive the conclusion independently from the cited evidence.",
+            planning_context=_proposal().planning_context,
             targets=[target, target],
         )
 
@@ -291,5 +294,6 @@ def _update(design: PracticeDesign, *, objective: str | None = None) -> Practice
         practice_design_revision=design.revision,
         lecture_title=design.lecture_title,
         objective=objective or design.objective,
+        planning_context=design.planning_context,
         targets=design.targets,
     )

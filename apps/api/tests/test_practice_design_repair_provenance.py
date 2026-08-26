@@ -176,6 +176,7 @@ def _replace_and_approve_design(app, approved):
             practice_design_revision=approved.revision,
             lecture_title=approved.lecture_title,
             objective="Derive a revised conclusion independently from the cited evidence.",
+            planning_context=approved.planning_context,
             targets=approved.targets,
         ),
         allowed_source_paths=(SOURCE_PATH,),

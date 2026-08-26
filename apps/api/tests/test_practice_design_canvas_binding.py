@@ -147,6 +147,7 @@ def test_draft_learning_map_rejects_superseded_practice_design(tmp_path: Path) -
             practice_design_revision=design.revision,
             lecture_title=design.lecture_title,
             objective="Revised approved objective.",
+            planning_context=design.planning_context,
             targets=design.targets,
         ),
         allowed_source_paths=("lecture.md",),
@@ -167,15 +168,28 @@ def _approved_design(workspace: CanvasWorkspace) -> PracticeDesign:
         lecture_id=LECTURE_ID,
         lecture_title="Practice lecture",
         objective="Derive the conclusion independently from the cited evidence.",
+        planning_context={
+            "learner_level": "Undergraduate learners in this lecture.",
+            "prerequisites": ["Interpret the supplied evidence."],
+            "time_budget_minutes": 30,
+            "allowed_aids": ["Course notes"],
+            "assessment_conditions": "Complete each assessment individually.",
+            "insufficiencies": [],
+        },
         source_revision=revision,
         targets=[
             {
                 "id": "derive-conclusion",
                 "title": "Derive a conclusion",
                 "outcome": "Derive a justified conclusion from the cited evidence.",
+                "target_invariant": "Connect the relevant evidence to a justified conclusion.",
                 "baseline_task": "Derive the conclusion from the stated evidence and justify it.",
                 "independent_exit_task": "Derive a conclusion from parallel evidence and justify it.",
+                "independent_exit_surface_change": "Change the evidence details, not the reasoning.",
                 "delayed_transfer_task": "Derive a conclusion after details change and justify it.",
+                "delayed_transfer_surface_change": (
+                    "Change the scenario and representation without adding new knowledge."
+                ),
                 "evidence_criteria": [
                     {"id": "cite-evidence", "description": "Cites the relevant evidence."}
                 ],
@@ -188,6 +202,7 @@ def _approved_design(workspace: CanvasWorkspace) -> PracticeDesign:
     proposed = PracticeDesignProposal(
         lecture_title=design.lecture_title,
         objective=design.objective,
+        planning_context=design.planning_context,
         targets=design.targets,
     )
     stored = store.save_proposal(
