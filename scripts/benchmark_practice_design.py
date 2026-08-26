@@ -33,9 +33,7 @@ DEFAULT_FIXTURES = ROOT / "benchmarks/practice-design/fixtures.json"
 def main() -> int:
     args = _arguments()
     load_project_env()
-    proposal_model = (
-        args.proposal_model or os.getenv("LECTUREPILOT_MODEL") or DEFAULT_MODEL
-    )
+    proposal_model = args.proposal_model or os.getenv("LECTUREPILOT_MODEL") or DEFAULT_MODEL
     try:
         fixtures = load_practice_design_benchmark_fixtures(args.fixtures)
         report = asyncio.run(
@@ -46,9 +44,7 @@ def main() -> int:
             )
         )
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(
-            report.model_dump_json(indent=2) + "\n", encoding="utf-8"
-        )
+        args.output.write_text(report.model_dump_json(indent=2) + "\n", encoding="utf-8")
     except Exception as exc:
         print(f"Practice-design benchmark could not run: {exc}", file=sys.stderr)
         return 2
@@ -63,8 +59,8 @@ def _arguments() -> argparse.Namespace:
         allow_abbrev=False,
         description=(
             "Run the opt-in production practice-design benchmark with separate judgments from "
-            "two or more reviewer deployments. Canonical identities are operator-supplied; "
-            "aliases are never inferred to be independent."
+            "two or more underlying model versions or materially distinct fine-tunes. "
+            "Provider aliases and deployment provenance are never evidence of independence."
         ),
     )
     parser.add_argument(
@@ -76,10 +72,10 @@ def _arguments() -> argparse.Namespace:
         action="append",
         required=True,
         type=_reviewer_spec,
-        metavar="MODEL=CANONICAL_ID",
+        metavar="MODEL=UNDERLYING_ID[|DEPLOYMENT]",
         help=(
-            "Invocation model slug and canonical underlying model/deployment identity; repeat "
-            "with distinct canonical identities."
+            "Invocation slug, required underlying model/version or fine-tune identity, and "
+            "optional deployment provenance; repeat with distinct underlying identities."
         ),
     )
     parser.add_argument(
@@ -98,15 +94,24 @@ def _arguments() -> argparse.Namespace:
 
 
 def _reviewer_spec(value: str) -> PracticeDesignBenchmarkReviewerSpec:
-    invocation_model, separator, canonical_identity = value.partition("=")
-    if not separator or not invocation_model.strip() or not canonical_identity.strip():
+    invocation_model, separator, identity_and_deployment = value.partition("=")
+    underlying_model_identity, deployment_separator, deployment_provenance = (
+        identity_and_deployment.partition("|")
+    )
+    if (
+        not separator
+        or not invocation_model.strip()
+        or not underlying_model_identity.strip()
+        or (deployment_separator and not deployment_provenance.strip())
+    ):
         raise argparse.ArgumentTypeError(
-            "reviewer must be MODEL=CANONICAL_ID with both values nonblank"
+            "reviewer must be MODEL=UNDERLYING_ID[|DEPLOYMENT] with supplied values nonblank"
         )
     try:
         return PracticeDesignBenchmarkReviewerSpec(
-            invocation_model=invocation_model,
-            canonical_identity=canonical_identity,
+            invocation_model=invocation_model.strip(),
+            underlying_model_identity=underlying_model_identity.strip(),
+            deployment_provenance=(deployment_provenance.strip() if deployment_separator else None),
         )
     except ValueError as exc:
         raise argparse.ArgumentTypeError(str(exc)) from exc
@@ -115,16 +120,11 @@ def _reviewer_spec(value: str) -> PracticeDesignBenchmarkReviewerSpec:
 def _print_summary(report: PracticeDesignBenchmarkReport) -> None:
     for fixture in report.fixtures:
         if fixture.pipeline_error is not None:
-            print(
-                f"{fixture.fixture_id}: proposal error: {fixture.pipeline_error.message}"
-            )
+            print(f"{fixture.fixture_id}: proposal error: {fixture.pipeline_error.message}")
             continue
-        successes = sum(
-            result.evaluation is not None for result in fixture.reviewer_results
-        )
+        successes = sum(result.evaluation is not None for result in fixture.reviewer_results)
         means = ", ".join(
-            f"{item.dimension}={item.mean_score:.2f}"
-            for item in fixture.dimension_summaries
+            f"{item.dimension}={item.mean_score:.2f}" for item in fixture.dimension_summaries
         )
         spreads = [
             item.score_spread
@@ -138,9 +138,15 @@ def _print_summary(report: PracticeDesignBenchmarkReport) -> None:
         )
         for result in fixture.reviewer_results:
             if result.error is not None:
+                deployment = (
+                    f"; deployment={result.reviewer.deployment_provenance}"
+                    if result.reviewer.deployment_provenance
+                    else ""
+                )
                 print(
                     f"  {result.reviewer.invocation_model} "
-                    f"[{result.reviewer.canonical_identity}]: error: {result.error.message}"
+                    f"[underlying={result.reviewer.underlying_model_identity}{deployment}]: "
+                    f"error: {result.error.message}"
                 )
 
 

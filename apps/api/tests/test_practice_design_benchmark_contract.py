@@ -42,15 +42,17 @@ def test_submaximal_score_requires_a_source_supported_failure_example() -> None:
         PracticeDesignBenchmarkEvaluation.model_validate(payload)
 
 
-def test_reviewer_spec_retains_invocation_and_canonical_deployment_identity() -> None:
+def test_reviewer_spec_retains_underlying_identity_and_deployment_provenance() -> None:
     spec = PracticeDesignBenchmarkReviewerSpec(
         invocation_model="openrouter/openai/gpt-5.6",
-        canonical_identity="openai/gpt-5.6@2026-08-01",
+        underlying_model_identity="openai/gpt-5.6@2026-08-01",
+        deployment_provenance="openrouter/eu-west",
     )
 
     assert spec.model_dump() == {
         "invocation_model": "openrouter/openai/gpt-5.6",
-        "canonical_identity": "openai/gpt-5.6@2026-08-01",
+        "underlying_model_identity": "openai/gpt-5.6@2026-08-01",
+        "deployment_provenance": "openrouter/eu-west",
     }
 
 
@@ -106,14 +108,16 @@ def test_dimension_summary_preserves_reviewer_scores_and_exposes_disagreement() 
         {
             "reviewer": {
                 "invocation_model": "openai/reviewer-a",
-                "canonical_identity": "vendor/model-a@1",
+                "underlying_model_identity": "vendor/model-a@1",
+                "deployment_provenance": None,
             },
             "score": 2,
         },
         {
             "reviewer": {
                 "invocation_model": "gemini/reviewer-b",
-                "canonical_identity": "vendor/model-b@1",
+                "underlying_model_identity": "vendor/model-b@1",
+                "deployment_provenance": None,
             },
             "score": 5,
         },
@@ -130,10 +134,10 @@ def _evaluation(score: int) -> PracticeDesignBenchmarkEvaluation:
     )
 
 
-def _reviewer(invocation_model: str, canonical_identity: str):
+def _reviewer(invocation_model: str, underlying_model_identity: str):
     return PracticeDesignBenchmarkReviewerSpec(
         invocation_model=invocation_model,
-        canonical_identity=canonical_identity,
+        underlying_model_identity=underlying_model_identity,
     )
 
 

@@ -13,6 +13,7 @@ from lecturepilot.course_practice_design_benchmark_models import (
     PracticeDesignBenchmarkReviewerJudgment,
     PracticeDesignBenchmarkReviewerSpec,
     summarize_dimension_scores,
+    validate_reviewer_specs,
 )
 from lecturepilot.course_practice_design_benchmark_report import (
     PracticeDesignBenchmarkError,
@@ -39,34 +40,40 @@ def test_benchmark_cli_documents_compact_explicit_reviewer_specs() -> None:
 
     assert result.returncode == 0
     assert "--proposal-model" in result.stdout
-    assert "--reviewer MODEL=CANONICAL_ID" in result.stdout
+    assert "--reviewer MODEL=UNDERLYING_ID[|DEPLOYMENT]" in result.stdout
     assert "--fixtures" in result.stdout
     assert "--output" in result.stdout
     assert "--summary" in result.stdout
     assert "aliases" in result.stdout
 
 
-def test_cli_rejects_aliases_with_one_canonical_identity_before_provider_calls(tmp_path) -> None:
+def test_cli_rejects_deployments_with_one_underlying_identity_before_provider_calls(
+    monkeypatch, tmp_path, capsys
+) -> None:
+    cli = _load_cli()
+
+    async def validating_runner(**kwargs):
+        validate_reviewer_specs(kwargs["reviewers"])
+        raise AssertionError("duplicate underlying identity was accepted")
+
+    _patch_cli(monkeypatch, cli, validating_runner)
     output = tmp_path / "aliases.json"
-    result = subprocess.run(
+    monkeypatch.setattr(
+        sys,
+        "argv",
         [
-            sys.executable,
             str(SCRIPT),
             "--reviewer",
-            "openai/gpt-5.6=vendor/gpt-5.6@1",
+            "openai/gpt-5.6=vendor/gpt-5.6@1|openai/us-east",
             "--reviewer",
-            "openrouter/openai/gpt-5.6=VENDOR/GPT-5.6@1",
+            "openrouter/openai/gpt-5.6=VENDOR/GPT-5.6@1|openrouter/eu-west",
             "--output",
             str(output),
         ],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        check=False,
     )
 
-    assert result.returncode == 2
-    assert "Canonical reviewer identities must be distinct" in result.stderr
+    assert cli.main() == 2
+    assert "Underlying reviewer model identities must be distinct" in capsys.readouterr().err
     assert not output.exists()
 
 
@@ -154,9 +161,9 @@ def _argv(output: Path) -> list[str]:
         "--proposal-model",
         "openai/proposal-model",
         "--reviewer",
-        "openai/reviewer-a=vendor/model-a@1",
+        "openai/reviewer-a=vendor/model-a@1|openai/us",
         "--reviewer",
-        "gemini/reviewer-b=vendor/model-b@1",
+        "gemini/reviewer-b=vendor/model-b@1|google/eu",
         "--output",
         str(output),
         "--summary",
@@ -242,10 +249,12 @@ def _reviewers() -> tuple[PracticeDesignBenchmarkReviewerSpec, ...]:
     return (
         PracticeDesignBenchmarkReviewerSpec(
             invocation_model="openai/reviewer-a",
-            canonical_identity="vendor/model-a@1",
+            underlying_model_identity="vendor/model-a@1",
+            deployment_provenance="openai/us",
         ),
         PracticeDesignBenchmarkReviewerSpec(
             invocation_model="gemini/reviewer-b",
-            canonical_identity="vendor/model-b@1",
+            underlying_model_identity="vendor/model-b@1",
+            deployment_provenance="google/eu",
         ),
     )

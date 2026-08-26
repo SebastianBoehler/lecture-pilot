@@ -99,20 +99,22 @@ async def test_runner_records_proposal_pipeline_errors_without_calling_reviewers
 
 
 @pytest.mark.asyncio
-async def test_runner_rejects_aliases_with_the_same_canonical_reviewer_identity() -> None:
+async def test_runner_rejects_distinct_deployments_of_the_same_underlying_model() -> None:
     fixture = load_practice_design_benchmark_fixtures(FIXTURES)[0]
     reviewers = (
         PracticeDesignBenchmarkReviewerSpec(
             invocation_model="openai/gpt-5.6",
-            canonical_identity="openai/gpt-5.6@2026-08-01",
+            underlying_model_identity="openai/gpt-5.6@2026-08-01",
+            deployment_provenance="openai/us-east",
         ),
         PracticeDesignBenchmarkReviewerSpec(
             invocation_model="openrouter/openai/gpt-5.6",
-            canonical_identity="OpenAI/GPT-5.6@2026-08-01",
+            underlying_model_identity="OpenAI/GPT-5.6@2026-08-01",
+            deployment_provenance="openrouter/eu-west",
         ),
     )
 
-    with pytest.raises(ValueError, match="(?i)canonical reviewer identities"):
+    with pytest.raises(ValueError, match="(?i)underlying reviewer model identities"):
         await run_practice_design_benchmark(
             fixtures=(fixture,),
             proposal_model="openai/proposal-model",
@@ -121,6 +123,38 @@ async def test_runner_rejects_aliases_with_the_same_canonical_reviewer_identity(
             evaluation_client=_EvaluationClient(),
             registry_factory=_Registry,
         )
+
+
+@pytest.mark.parametrize(
+    "second_identity",
+    ("vendor/model@v2", "vendor/model@v1+finetune:course-a"),
+)
+@pytest.mark.asyncio
+async def test_runner_accepts_distinct_model_versions_or_fine_tunes(second_identity) -> None:
+    fixture = load_practice_design_benchmark_fixtures(FIXTURES)[0]
+    reviewers = (
+        PracticeDesignBenchmarkReviewerSpec(
+            invocation_model="gateway/model-a",
+            underlying_model_identity="vendor/model@v1",
+            deployment_provenance="gateway/us",
+        ),
+        PracticeDesignBenchmarkReviewerSpec(
+            invocation_model="gateway/model-b",
+            underlying_model_identity=second_identity,
+            deployment_provenance="gateway/eu",
+        ),
+    )
+
+    report = await run_practice_design_benchmark(
+        fixtures=(fixture,),
+        proposal_model="openai/proposal-model",
+        reviewers=reviewers,
+        planner=_Planner(_reviewed_proposal(fixture)),
+        evaluation_client=_EvaluationClient(),
+        registry_factory=_Registry,
+    )
+
+    assert report.reviewers == reviewers
 
 
 class _Planner:
@@ -177,11 +211,11 @@ def _reviewers() -> tuple[PracticeDesignBenchmarkReviewerSpec, ...]:
     return (
         PracticeDesignBenchmarkReviewerSpec(
             invocation_model="openai/reviewer-a",
-            canonical_identity="vendor/model-a@1",
+            underlying_model_identity="vendor/model-a@1",
         ),
         PracticeDesignBenchmarkReviewerSpec(
             invocation_model="gemini/reviewer-b",
-            canonical_identity="vendor/model-b@1",
+            underlying_model_identity="vendor/model-b@1",
         ),
     )
 

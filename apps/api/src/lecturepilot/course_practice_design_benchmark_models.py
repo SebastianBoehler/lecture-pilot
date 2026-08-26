@@ -99,11 +99,20 @@ class PracticeDesignBenchmarkReviewerSpec(StrictPracticeDesignModel):
         max_length=200,
         description="Configured provider/model slug used for this invocation.",
     )
-    canonical_identity: NonblankText = Field(
+    underlying_model_identity: NonblankText = Field(
         max_length=300,
         description=(
-            "Operator-supplied canonical underlying model or deployment identity; aliases and "
-            "gateways for the same deployment must use the same value."
+            "Operator-supplied canonical underlying model and version, or materially distinct "
+            "fine-tune identity. Gateways, endpoints, regions, and deployments serving the "
+            "same weights must use the same value."
+        ),
+    )
+    deployment_provenance: NonblankText | None = Field(
+        default=None,
+        max_length=300,
+        description=(
+            "Optional gateway, endpoint, region, or deployment provenance retained for audit; "
+            "never used to establish reviewer distinctness."
         ),
     )
 
@@ -162,12 +171,9 @@ def validate_reviewer_specs(
     reviewers = tuple(reviewers)
     if len(reviewers) < minimum:
         raise ValueError(f"Provide at least {minimum} reviewer specifications.")
-    invocation_keys = [reviewer.invocation_model.casefold() for reviewer in reviewers]
-    if len(set(invocation_keys)) != len(invocation_keys):
-        raise ValueError("Reviewer invocation models must be distinct.")
-    canonical_keys = [
-        " ".join(reviewer.canonical_identity.split()).casefold() for reviewer in reviewers
+    underlying_identity_keys = [
+        " ".join(reviewer.underlying_model_identity.split()).casefold() for reviewer in reviewers
     ]
-    if len(set(canonical_keys)) != len(canonical_keys):
-        raise ValueError("Canonical reviewer identities must be distinct.")
+    if len(set(underlying_identity_keys)) != len(underlying_identity_keys):
+        raise ValueError("Underlying reviewer model identities must be distinct.")
     return reviewers
