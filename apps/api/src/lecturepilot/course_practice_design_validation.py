@@ -16,6 +16,16 @@ class PracticeDesignValidationError(ValueError):
     """Raised when a design cannot be grounded in the lecture contract."""
 
 
+_DERIVED_SOURCE_REF_PREFIXES = (
+    "pages ",
+    "slide ",
+    "sheet ",
+    "frame ",
+    "frames ",
+    "compiled preview",
+)
+
+
 class _CanvasBlock(Protocol):
     id: str
     type: str
@@ -68,7 +78,7 @@ def validate_practice_design(
                 f"Practice target {target.id} references unrouted source paths: {paths}."
             )
         for anchor in anchors:
-            _validate_source_anchor(anchor, source)
+            _validate_source_anchor(anchor, source, allowed)
 
 
 def validate_source_anchors(
@@ -83,7 +93,7 @@ def validate_source_anchors(
             raise PracticeDesignValidationError(
                 f"Source anchor references unrouted source path: {anchor.source_path}."
             )
-        _validate_source_anchor(anchor, source)
+        _validate_source_anchor(anchor, source, allowed)
 
 
 def validate_practice_design_review(
@@ -111,19 +121,41 @@ def validate_practice_design_review(
     )
 
 
-def _validate_source_anchor(anchor: PracticeSourceAnchor, source: _CanvasDocument) -> None:
+def _validate_source_anchor(
+    anchor: PracticeSourceAnchor,
+    source: _CanvasDocument,
+    routed_paths: set[str],
+) -> None:
     excerpt = _normalize_whitespace(anchor.excerpt)
     matching_sections = [
         section
         for section in source.sections
-        if section.source_ref == anchor.source_path
-        or (section.source_ref or "").startswith(f"{anchor.source_path} ")
+        if _routed_source_owner(section.source_ref, routed_paths) == anchor.source_path
     ]
     if any(excerpt in _section_text(section) for section in matching_sections):
         return
     raise PracticeDesignValidationError(
         f"Source anchor for {anchor.source_path} is not a verbatim excerpt from that routed source."
     )
+
+
+def _routed_source_owner(source_ref: str | None, routed_paths: set[str]) -> str | None:
+    if source_ref is None:
+        return None
+    candidates = [
+        path
+        for path in routed_paths
+        if source_ref == path or _is_derived_source_ref(source_ref, path)
+    ]
+    return max(candidates, key=len, default=None)
+
+
+def _is_derived_source_ref(source_ref: str, path: str) -> bool:
+    prefix = f"{path} "
+    if not source_ref.startswith(prefix):
+        return False
+    suffix = source_ref[len(prefix) :]
+    return suffix.startswith(_DERIVED_SOURCE_REF_PREFIXES)
 
 
 def _section_text(section: _CanvasSection) -> str:
