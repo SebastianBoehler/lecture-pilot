@@ -1,6 +1,7 @@
 import { useI18n } from "./i18n";
 
-export type BuilderStep = "define" | "upload" | "sources" | "review" | "generate" | "publish";
+export type BuilderStep =
+  "define" | "upload" | "sources" | "design" | "review" | "generate" | "publish";
 
 export type StepState = {
   available: boolean;
@@ -14,6 +15,7 @@ export function builderSteps({
   bundleReady,
   canvasReady,
   courseReady,
+  designReady,
   draftReviewed,
   reviewAvailable,
   reviewReady,
@@ -23,6 +25,7 @@ export function builderSteps({
   bundleReady: boolean;
   canvasReady: boolean;
   courseReady: boolean;
+  designReady: boolean;
   draftReviewed: boolean;
   reviewAvailable: boolean;
   reviewReady: boolean;
@@ -39,19 +42,20 @@ export function builderSteps({
       number: "03",
       ready: routingReady,
     },
-    { available: routingReady, id: "review", label: "Media", number: "04", ready: reviewReady },
+    { available: routingReady, id: "design", label: "Design", number: "04", ready: designReady },
+    { available: routingReady, id: "review", label: "Media", number: "05", ready: reviewReady },
     {
-      available: (routingReady && reviewReady) || canvasReady,
+      available: (routingReady && reviewReady && designReady) || canvasReady,
       id: "generate",
       label: "Generate",
-      number: "05",
+      number: "06",
       ready: canvasReady,
     },
     {
       available: canvasReady && (draftReviewed || workspacePublished),
       id: "publish",
       label: "Publish",
-      number: "06",
+      number: "07",
       ready: workspacePublished,
     },
   ];
@@ -116,6 +120,7 @@ export function builderStepLabel(
       | "builder.step.define"
       | "builder.step.upload"
       | "builder.step.sources"
+      | "builder.step.design"
       | "builder.step.review"
       | "builder.step.generate"
       | "builder.step.publish",
@@ -124,6 +129,7 @@ export function builderStepLabel(
   if (step === "define") return t("builder.step.define");
   if (step === "upload") return t("builder.step.upload");
   if (step === "sources") return t("builder.step.sources");
+  if (step === "design") return t("builder.step.design");
   if (step === "review") return t("builder.step.review");
   if (step === "generate") return t("builder.step.generate");
   return t("builder.step.publish");

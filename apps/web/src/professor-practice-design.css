@@ -1,0 +1,149 @@
+.practice-design-step,
+.practice-design-lectures,
+.practice-design-lecture,
+.practice-target,
+.practice-target-fields,
+.practice-target-list {
+  display: grid;
+  gap: 14px;
+}
+
+.practice-design-header,
+.practice-design-lecture > header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid var(--color-border-primary);
+  padding-bottom: 12px;
+}
+.practice-design-header h2,
+.practice-design-lecture h3,
+.practice-design-lecture p,
+.practice-target p {
+  margin: 0;
+}
+.practice-design-header p,
+.practice-design-lecture > header p,
+.practice-design-boundary,
+.practice-target dd {
+  color: var(--color-text-secondary);
+}
+.practice-design-header > span,
+.practice-design-lecture > header > span {
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.practice-design-lecture > header > .is-approved {
+  color: var(--color-accent-primary);
+}
+.practice-design-boundary {
+  margin: 0;
+  font-size: 13px;
+}
+.practice-design-lecture {
+  border-bottom: 1px solid var(--color-border-primary);
+  padding-bottom: 18px;
+}
+.practice-design-objective,
+.practice-target-fields label,
+.practice-target-list label {
+  display: grid;
+  gap: 5px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+}
+.practice-design-step textarea,
+.practice-design-step input {
+  min-width: 0;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  font: inherit;
+  font-weight: 400;
+}
+.practice-design-step textarea {
+  min-height: 58px;
+  resize: vertical;
+}
+.practice-target-summary {
+  display: grid;
+  gap: 12px;
+}
+.practice-target {
+  border-left: 2px solid var(--color-border-primary);
+  padding-left: 12px;
+}
+.practice-target > div {
+  display: grid;
+  gap: 4px;
+}
+.practice-target dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+.practice-target dl div {
+  display: grid;
+  gap: 3px;
+}
+.practice-target dt {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+.practice-target dd {
+  margin: 0;
+  font-size: 13px;
+}
+.practice-target-editor {
+  border-top: 1px solid var(--color-border-primary);
+  padding-top: 10px;
+}
+.practice-target-editor summary {
+  color: var(--color-accent-primary);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+.practice-target-editor[open] summary {
+  margin-bottom: 12px;
+}
+.practice-target-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.practice-target-fields label:nth-child(n + 3) {
+  grid-column: span 2;
+}
+.practice-target-list {
+  border: 0;
+  border-top: 1px solid var(--color-border-primary);
+  margin: 0;
+  padding: 12px 0 0;
+}
+.practice-target-list legend {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+}
+@media (max-width: 680px) {
+  .practice-design-header,
+  .practice-design-lecture > header {
+    display: grid;
+    gap: 8px;
+  }
+  .practice-target dl,
+  .practice-target-fields {
+    grid-template-columns: 1fr;
+  }
+  .practice-target-fields label:nth-child(n) {
+    grid-column: auto;
+  }
+}

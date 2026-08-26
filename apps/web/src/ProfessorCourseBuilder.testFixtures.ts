@@ -33,6 +33,10 @@ export function professorFetchMock() {
       }
       return json(routing);
     }
+    if (url.includes("/practice-design")) {
+      const lectureId = path.match(/lectures\/([^/]+)\/practice-design/)?.[1] ?? "lecture-03";
+      return json(practiceDesignPayload(lectureId));
+    }
     if (url.includes("/materials"))
       return json({ path: "uploads/supplement.md", kind: "markdown", size_bytes: 12 });
     if (path.match(/^\/admin\/courses\/[^/]+\/analytics$/)) {
@@ -212,6 +216,42 @@ function canvasPayload() {
     sections: [
       { id: "aim", title: "Decision making", blocks: [] },
       { id: "bayes-formula", title: "Bayes formula", blocks: [] },
+    ],
+  };
+}
+
+function practiceDesignPayload(lectureId: string) {
+  const revision = "d".repeat(64);
+  return {
+    schema_version: 1,
+    course_id: "demo-ml-course",
+    lecture_id: lectureId,
+    lecture_title: "Bayesian Decision Theory",
+    objective: "Calculate a posterior from evidence.",
+    source_revision: "a".repeat(64),
+    revision,
+    approval: {
+      approved_by: "professor-demo",
+      approved_at: "2026-08-26T12:00:00Z",
+      source_revision: "a".repeat(64),
+      practice_design_revision: revision,
+    },
+    targets: [
+      {
+        id: "posterior",
+        title: "Posterior",
+        outcome: "Calculate a posterior from evidence.",
+        baseline_task: "Calculate the posterior.",
+        independent_exit_task: "Calculate a new posterior.",
+        delayed_transfer_task: "Diagnose a posterior decision.",
+        evidence_criteria: [
+          { id: "substitute", description: "Uses stated values.", required: true },
+        ],
+        misconceptions: [],
+        hint_ladder: [],
+        review_after_days: 7,
+        source_refs: ["Lecture03-eng.tex"],
+      },
     ],
   };
 }

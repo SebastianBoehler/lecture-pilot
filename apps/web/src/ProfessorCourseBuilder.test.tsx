@@ -62,8 +62,9 @@ describe("Professor course builder", () => {
     );
     expect(screen.queryByLabelText(/upload course material/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /03 sources/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /04 media/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /05 generate/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /04 design/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /05 media/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /06 generate/i })).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: /create course workspace/i }));
     expect(
@@ -111,14 +112,17 @@ describe("Professor course builder", () => {
     expect(screen.queryByLabelText(/route videos\/demo\.mp4/i)).not.toBeInTheDocument();
     await user.click(screen.getByText(/review source assignments/i));
     expect(screen.getByLabelText(/route videos\/demo\.mp4/i)).toHaveValue("lecture");
-    expect(screen.getByRole("button", { name: /04 media/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /05 generate/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /04 design/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /05 media/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /06 generate/i })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
+    expect(await screen.findByRole("heading", { name: /learning plans/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /05 media/i }));
     expect(
       await screen.findByRole("heading", { name: /review youtube candidates/i }),
     ).toBeInTheDocument();
     expect(screen.getByText(/videos are saved directly for lecture 03/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /05 generate/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /06 generate/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /search youtube/i })).toBeEnabled();
     const candidate = await screen.findByLabelText(/bayesian decision theory/i);
     expect(screen.getByRole("button", { name: /refresh suggested videos/i })).toBeEnabled();
@@ -149,6 +153,9 @@ describe("Professor course builder", () => {
 
     await user.click(candidate);
     expect(await screen.findByText(/saved 1 approved video for lecture 03/i)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /continue to canvas draft/i })).toBeEnabled(),
+    );
     await user.click(screen.getByRole("button", { name: /continue to canvas draft/i }));
     expect(screen.getByRole("heading", { name: /generate canvas draft/i })).toBeInTheDocument();
 
@@ -172,7 +179,7 @@ describe("Professor course builder", () => {
     expect(
       screen.queryByRole("heading", { name: /learning design review/i }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /06 publish/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /07 publish/i })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: /continue to publishing/i }));
     expect(screen.getByRole("heading", { name: /publish tutor workspace/i })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /publish tutor workspace/i }));
@@ -204,7 +211,7 @@ describe("Professor course builder", () => {
     expect(screen.getByText(/answer distribution/i)).toBeInTheDocument();
     expect(screen.getByText(/posterior-weighted loss/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^course builder$/i }));
-    await user.click(screen.getByRole("button", { name: /05 generate/i }));
+    await user.click(screen.getByRole("button", { name: /06 generate/i }));
     const previewLink = screen.getByRole("link", { name: /open learner preview for/i });
     expect(previewLink).toHaveAttribute("target", "_blank");
     expect(previewLink).toHaveAttribute(
@@ -333,7 +340,7 @@ describe("Professor course builder", () => {
     expect(await screen.findByText(/2 lecture canvases ready to review/i)).toBeInTheDocument();
     await approveAllLearningDesigns(user);
     await waitFor(() => expect(screen.getByText(/2 of 2 approved/i)).toBeInTheDocument());
-    expect(screen.getByRole("button", { name: /06 publish/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /07 publish/i })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: /continue to publishing/i }));
     expect(await screen.findByText(/0 of 2 lecture workspaces published/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /publish all tutor workspaces/i }));
@@ -388,7 +395,12 @@ describe("Professor course builder", () => {
     await user.click(screen.getByRole("button", { name: /upload and process materials/i }));
     await screen.findByRole("heading", { name: /source assignments ready/i });
     await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
+    await screen.findByRole("heading", { name: /learning plans/i });
+    await user.click(screen.getByRole("button", { name: /05 media/i }));
     await screen.findByRole("heading", { name: /review youtube candidates/i });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /continue to canvas draft/i })).toBeEnabled(),
+    );
     await user.click(screen.getByRole("button", { name: /continue to canvas draft/i }));
 
     await user.click(screen.getByRole("button", { name: /generate draft canvas/i }));

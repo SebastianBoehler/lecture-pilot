@@ -37,6 +37,7 @@ import { publishLectureRows } from "./professorPublishRows";
 import { useCourseTitleSuggestions } from "./useCourseTitleSuggestions";
 import { useProfessorWorkflowRun } from "./professorWorkflowRun";
 import { useProfessorSourceRouting } from "./useProfessorSourceRouting";
+import { useProfessorPracticeDesigns } from "./useProfessorPracticeDesigns";
 import { lectureFromWorkspace, requireWorkspace } from "./professorWorkspaceView";
 import { uploadProfessorMaterials } from "./professorMaterialUpload";
 import { ignoredUploadNotice } from "./professorUpload";
@@ -120,6 +121,10 @@ export function useProfessorCourseBuilder({
   const [mediaReviewed, setMediaReviewed] = useState(false);
   const [scheduleApplied, setScheduleApplied] = useState(setup.target !== "full-course");
   const sourceRouting = useProfessorSourceRouting(session);
+  const practiceDesigns = useProfessorPracticeDesigns({
+    courseId: workspace?.courseId ?? null,
+    session,
+  });
   const { error, notice, pendingAction, run, setError } = useProfessorWorkflowRun();
   const [restored, setRestored] = useState(!savedFlow.bundleReady && !savedFlow.canvasReady);
   const [isRestoring, setIsRestoring] = useState(false);
@@ -157,6 +162,19 @@ export function useProfessorCourseBuilder({
       : workspace
         ? [workspace.lectureId]
         : [];
+  const designTargetLectureIds = mediaTargetLectures.map((lecture) => lecture.id);
+  const designTargetLectureKey = designTargetLectureIds.join("|");
+  const designCourseId = workspace?.courseId ?? "";
+  const designReady = Boolean(
+    routingReady &&
+    designTargetLectureIds.length &&
+    practiceDesigns.allApproved(designTargetLectureIds) &&
+    designTargetLectureIds.every(
+      (lectureId) =>
+        practiceDesigns.designs[lectureId]?.source_revision ===
+        sourceRouting.routing?.source_revision,
+    ),
+  );
   const fullCoursePublishedCount = fullCourseLectureIds.filter((lectureId) =>
     publishedLectureIds.includes(lectureId),
   ).length;
@@ -206,12 +224,19 @@ export function useProfessorCourseBuilder({
     bundleReady,
     canvasReady: !!canvas,
     courseReady,
+    designReady,
     draftReviewed,
     reviewAvailable,
     reviewReady,
     routingReady,
     workspacePublished,
   });
+  const loadPracticeDesigns = useEffectEvent(() => practiceDesigns.loadAll(designTargetLectureIds));
+
+  useEffect(() => {
+    if (!routingReady || !designCourseId || !designTargetLectureKey) return;
+    void loadPracticeDesigns();
+  }, [designCourseId, designTargetLectureKey, routingReady]);
 
   useEffect(() => {
     let cancelled = false;
@@ -343,6 +368,7 @@ export function useProfessorCourseBuilder({
 
   function resetGeneratedState() {
     sourceRouting.reset();
+    practiceDesigns.reset();
     setCanvas(null);
     setGeneratedLectureIds([]);
     setDraftReviewed(false);
@@ -396,6 +422,12 @@ export function useProfessorCourseBuilder({
     throw new Error(
       "Source assignments changed. Review and confirm source assignments again before generating canvases.",
     );
+  }
+
+  function requireApprovedDesigns() {
+    if (designReady) return;
+    setActiveStep("design");
+    throw new Error("Generate and approve the lecture learning plan before generating its canvas.");
   }
 
   function updateGenerationItem(progress: CanvasGenerationProgress) {
@@ -529,7 +561,7 @@ export function useProfessorCourseBuilder({
           ),
         );
         setDraftReviewed(false);
-        setActiveStep(activeCanvas ? "generate" : restoredRouting.confirmed ? "review" : "sources");
+        setActiveStep(activeCanvas ? "generate" : restoredRouting.confirmed ? "design" : "sources");
         return;
       }
       try {
@@ -544,7 +576,7 @@ export function useProfessorCourseBuilder({
         setDraftReviewed(false);
         setActiveStep("generate");
       } catch (canvasError) {
-        setActiveStep(restoredRouting.confirmed ? "review" : "sources");
+        setActiveStep(restoredRouting.confirmed ? "design" : "sources");
         if (!options.quietDraftMiss) {
           setError(
             canvasError instanceof Error
@@ -667,7 +699,7 @@ export function useProfessorCourseBuilder({
 
   const generateStep = {
     canvas,
-    canGenerate: Boolean(bundleReady && routingReady && reviewReady && workspace),
+    canGenerate: Boolean(bundleReady && routingReady && reviewReady && designReady && workspace),
     generationProgress,
     generatedCount: generatedLectureIds.length,
     isFullCourse: setup.target === "full-course",
@@ -697,6 +729,7 @@ export function useProfessorCourseBuilder({
       run("generate", async () => {
         const activeWorkspace = requireWorkspace(workspace);
         await requireConfirmedRouting(activeWorkspace.courseId);
+        requireApprovedDesigns();
         const lectureIds =
           setup.target === "full-course" && fullCourseLectureIds.length
             ? fullCourseLectureIds
@@ -716,7 +749,7 @@ export function useProfessorCourseBuilder({
   };
 
   const mediaStep = {
-    canContinue: Boolean(bundleReady && routingReady && workspace),
+    canContinue: Boolean(bundleReady && routingReady && designReady && workspace),
     canSearch: Boolean(setupReady && workspace),
     canSuggest: Boolean(suggestedQueries.length && setupReady && workspace),
     pendingAction,
@@ -726,7 +759,7 @@ export function useProfessorCourseBuilder({
         await requireConfirmedRouting(activeWorkspace.courseId);
         setAutoSuggesting(false);
         setMediaReviewed(true);
-        setActiveStep("generate");
+        setActiveStep(designReady ? "generate" : "design");
       }),
     onQueryChange: setQuery,
     onSearch: () =>
@@ -841,7 +874,16 @@ export function useProfessorCourseBuilder({
     isSaving: pendingAction === "confirm-routing" || pendingAction === "regenerate-routing",
     lectures: routingLectures,
     routing: sourceRouting.routing,
-    onRouteChange: sourceRouting.updateRoute,
+    onRouteChange: (
+      path: string,
+      role: Parameters<typeof sourceRouting.updateRoute>[1],
+      lectureId: string | null,
+    ) => {
+      sourceRouting.updateRoute(path, role, lectureId);
+      practiceDesigns.reset(designTargetLectureIds);
+      setCanvas(null);
+      setGeneratedLectureIds([]);
+    },
     onRegenerate: () =>
       run("regenerate-routing", async () => {
         const activeWorkspace = requireWorkspace(workspace);
@@ -852,9 +894,25 @@ export function useProfessorCourseBuilder({
       run("confirm-routing", async () => {
         const activeWorkspace = requireWorkspace(workspace);
         await sourceRouting.confirm(activeWorkspace.courseId);
-        setActiveStep("review");
+        practiceDesigns.reset(designTargetLectureIds);
+        setActiveStep("design");
         return "Source assignments confirmed for Canvas generation.";
       }),
+  };
+
+  const practiceDesignStep = {
+    designs: practiceDesigns.designs,
+    error: practiceDesigns.error,
+    lectures: mediaTargetLectures.map((lecture) => ({
+      id: lecture.id,
+      label: `${lecture.number} · ${lecture.title}`,
+    })),
+    pendingLectureId: practiceDesigns.pendingLectureId,
+    onApprove: (lectureId: string) => void practiceDesigns.approve(lectureId),
+    onPropose: (lectureId: string, refresh = false) =>
+      void practiceDesigns.propose(lectureId, refresh),
+    onSave: (lectureId: string, update: Parameters<typeof practiceDesigns.save>[1]) =>
+      void practiceDesigns.save(lectureId, update),
   };
 
   return {
@@ -867,6 +925,7 @@ export function useProfessorCourseBuilder({
     mediaStep,
     notice,
     publishStep,
+    practiceDesignStep,
     routingStep,
     restoreWorkspace: () => void restoreFromBackend(workspace, { quietDraftMiss: true }),
     setActiveStep,

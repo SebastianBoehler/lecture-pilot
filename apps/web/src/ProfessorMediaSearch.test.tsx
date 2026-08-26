@@ -30,6 +30,8 @@ describe("Professor lecture media search", () => {
     await user.click(await screen.findByRole("button", { name: /apply lecture schedule/i }));
     await screen.findByRole("heading", { name: /source assignments ready/i });
     await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
+    await screen.findByRole("heading", { name: /learning plans/i });
+    await user.click(screen.getByRole("button", { name: /05 media/i }));
 
     const target = screen.getByLabelText(/choose videos for/i);
     const suggestions = screen.getByRole("region", { name: /suggested searches/i });
@@ -93,6 +95,8 @@ describe("Professor lecture media search", () => {
     await user.click(await screen.findByRole("button", { name: /apply lecture schedule/i }));
     await screen.findByRole("heading", { name: /source assignments ready/i });
     await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
+    await screen.findByRole("heading", { name: /learning plans/i });
+    await user.click(screen.getByRole("button", { name: /05 media/i }));
 
     await user.click(await screen.findByLabelText(/bayesian decision theory/i));
     await user.click(await screen.findByLabelText(/second machine-learning explanation/i));
@@ -127,9 +131,14 @@ describe("Professor lecture media search", () => {
     await user.click(await screen.findByRole("button", { name: /apply lecture schedule/i }));
     await screen.findByRole("heading", { name: /source assignments ready/i });
     await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
+    await screen.findByRole("heading", { name: /learning plans/i });
+    await user.click(screen.getByRole("button", { name: /05 media/i }));
     await screen.findByRole("heading", { name: /review youtube candidates/i });
 
     routingInvalidated = true;
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /continue to canvas draft/i })).toBeEnabled(),
+    );
     await user.click(screen.getByRole("button", { name: /continue to canvas draft/i }));
 
     expect(await screen.findByRole("heading", { name: /source assignments ready/i })).toBeVisible();
