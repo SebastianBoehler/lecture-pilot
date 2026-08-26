@@ -12,6 +12,7 @@ from pydantic import (
     field_validator,
 )
 
+from lecturepilot.canvas_internal_serialization import canvas_document_internal_payload
 from lecturepilot.canvas_learning_support import normalize_learning_support
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.course_learning_design_models import LearningDesignReview
@@ -55,7 +56,7 @@ def prepared_document(document: CanvasDocument, canvas_dir: Path) -> CanvasDocum
     normalized = normalize_learning_support(document).model_copy(
         update={"workspace_path": str(canvas_dir / "index.md")}
     )
-    return CanvasDocument.model_validate(normalized.model_dump())
+    return CanvasDocument.model_validate(canvas_document_internal_payload(normalized))
 
 
 def publication_path(canvas_dir: Path) -> Path:

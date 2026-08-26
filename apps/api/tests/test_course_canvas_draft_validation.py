@@ -67,6 +67,36 @@ def test_invalid_draft_does_not_replace_existing_draft(tmp_path: Path) -> None:
     assert preserved.source_ref == stored.source_ref
 
 
+def test_write_draft_round_trip_preserves_exact_source_section_identity(tmp_path: Path) -> None:
+    workspace = CanvasWorkspace(
+        workspace_root=tmp_path / "workspaces", material_root=tmp_path / "materials"
+    )
+    document = write_canvas_draft(workspace, published_course_canvas("demo-course", "lecture-01"))
+    revision = _revision(workspace, "demo-course")
+    design = PracticeDesignStore(workspace.layout).read(
+        course_id="demo-course", lecture_id="lecture-01"
+    )
+    assert design is not None
+    identified = document.model_copy(
+        update={
+            "sections": [
+                document.sections[0].model_copy(update={"source_section_id": "source-intro"})
+            ]
+        }
+    )
+
+    written = workspace.course_canvas_store.write_draft(
+        identified, expected_source_revision=revision, practice_design=design
+    )
+    read_back = workspace.course_canvas_store.read_draft(
+        course_id="demo-course", lecture_id="lecture-01"
+    )
+
+    assert written.sections[0].source_section_id == "source-intro"
+    assert read_back is not None
+    assert read_back.sections[0].source_section_id == "source-intro"
+
+
 def test_generation_rejects_invalid_draft_without_replacing_existing(tmp_path: Path) -> None:
     client = _course_client(tmp_path)
     existing = published_course_canvas("draft-integrity", "lecture-01")
