@@ -235,7 +235,7 @@ function renderBlock(
         block={block}
         className={className}
         highlightedText={phrase}
-        key={block.id}
+        key={`${block.id}:${block.text}`}
         sectionId={sectionId}
         sourceMarker={sourceMarker}
         onSubmitCheckpoint={onSubmitCheckpoint}

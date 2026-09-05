@@ -1,3 +1,24 @@
+@media (min-width: 641px) and (max-width: 1180px) {
+  .top-bar:has([data-tour="professor-navigation"]) {
+    grid-template-areas: "brand utilities" "navigation navigation";
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: 54px 44px;
+  }
+
+  .top-bar:has([data-tour="professor-navigation"]) .top-brand-zone {
+    grid-area: brand;
+  }
+
+  .top-bar:has([data-tour="professor-navigation"]) .top-utility-actions {
+    grid-area: utilities;
+  }
+
+  .top-bar:has([data-tour="professor-navigation"]) .top-primary-nav {
+    grid-area: navigation;
+    justify-self: center;
+  }
+}
+
 @media (max-width: 860px) {
   .top-bar {
     grid-template-columns: auto 1fr auto;
@@ -19,6 +40,16 @@
   }
 }
 
+@media (min-width: 641px) and (max-width: 860px) {
+  [data-tour="professor-navigation"] .top-nav-button {
+    width: auto;
+  }
+
+  [data-tour="professor-navigation"] .top-nav-button span {
+    display: inline;
+  }
+}
+
 @media (max-width: 640px) {
   .top-bar:has(.top-primary-nav) {
     grid-template-areas:
@@ -27,6 +58,7 @@
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-rows: 54px 44px;
     padding: 0 10px;
+    column-gap: 8px;
   }
 
   .top-bar:has(.top-primary-nav) .top-brand-zone {
@@ -71,6 +103,10 @@
 
   .brand {
     font-size: 16px;
+  }
+
+  .feedback-header-button span {
+    display: none;
   }
 
   .top-icon-button {

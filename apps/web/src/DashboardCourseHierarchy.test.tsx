@@ -74,15 +74,15 @@ describe("Dashboard supported course hierarchy", () => {
     ).toBeVisible();
     expect(within(workspace).getAllByRole("article")).toHaveLength(2);
     expect(
-      within(workspace).getByLabelText(`Exam readiness check for ${course.title}`),
-    ).not.toBeVisible();
+      within(workspace).queryByLabelText(`Exam readiness check for ${course.title}`),
+    ).not.toBeInTheDocument();
 
     lecturesTab.focus();
     await user.keyboard("{ArrowRight}");
     expect(readinessTab).toHaveFocus();
     expect(readinessTab).toHaveAttribute("aria-selected", "true");
     expect(
-      within(workspace).getByLabelText(`Exam readiness check for ${course.title}`),
+      await within(workspace).findByLabelText(`Exam readiness check for ${course.title}`),
     ).toBeVisible();
     expect(
       within(workspace).getByLabelText(`Available lectures for ${course.title}`),
@@ -90,6 +90,8 @@ describe("Dashboard supported course hierarchy", () => {
 
     await user.click(practiceTab);
     expect(practiceTab).toHaveAttribute("aria-selected", "true");
-    expect(within(workspace).getByLabelText(`Practice exams for ${course.title}`)).toBeVisible();
+    expect(
+      await within(workspace).findByLabelText(`Practice exams for ${course.title}`),
+    ).toBeVisible();
   });
 });

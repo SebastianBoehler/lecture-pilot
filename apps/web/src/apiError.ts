@@ -9,6 +9,10 @@ export function readApiError(payload: unknown, fallback: string): string {
   if (typeof detail === "string" && detail.trim()) {
     return detail.trim();
   }
+  if (detail && typeof detail === "object" && !Array.isArray(detail)) {
+    const message = (detail as { message?: unknown }).message;
+    return typeof message === "string" && message.trim() ? message.trim() : fallback;
+  }
   if (!Array.isArray(detail)) {
     return fallback;
   }

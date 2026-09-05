@@ -45,6 +45,7 @@ export function OutlinePanel({
                         renderOutlineNode({
                           id: block.id,
                           title: blockTitle(block, t),
+                          fullTitle: block.caption ?? block.text ?? undefined,
                           kind: outlineKind(block),
                           kindLabel: outlineKindLabel(block, t),
                           activeAnchorId,
@@ -70,6 +71,7 @@ export function OutlinePanel({
 function renderOutlineNode({
   id,
   title,
+  fullTitle,
   kind,
   kindLabel,
   activeAnchorId,
@@ -80,6 +82,7 @@ function renderOutlineNode({
 }: {
   id: string;
   title: string;
+  fullTitle?: string;
   kind: string;
   kindLabel?: string;
   activeAnchorId: DocumentAnchorId | null;
@@ -93,6 +96,7 @@ function renderOutlineNode({
   return (
     <button
       aria-label={title}
+      title={fullTitle}
       aria-pressed={isActive}
       className={`outline-node ${variant} ${isActive ? "is-active" : ""}`}
       key={id}
@@ -117,8 +121,20 @@ function blockTitle(
   block: CanvasBlock,
   t: (key: "outline.kind.keyPoint" | "outline.listTitle") => string,
 ) {
+  if ((block.type === "checkpoint" || block.type === "quiz") && block.text) {
+    if (
+      block.caption &&
+      !/^(checkpoint|quiz|quick check|lernzielkontrolle)$/i.test(block.caption.trim())
+    ) {
+      return block.caption;
+    }
+    return outlineTextExcerpt(block.text);
+  }
   if (block.caption) {
-    return block.caption;
+    return block.caption.replace(/^((?:Original|Compiled) slide \d+) from .+$/, "$1");
+  }
+  if (block.type === "table" && block.text) {
+    return outlineTextExcerpt(block.text.split("\n")[0].replace(/\|/g, " "));
   }
   if (block.text) {
     return outlineTextExcerpt(block.text);
@@ -130,10 +146,11 @@ function blockTitle(
 }
 
 function outlineInterestBlocks(blocks: CanvasBlock[]) {
+  const assessments = blocks.filter(
+    (block) => block.type === "checkpoint" || block.type === "quiz",
+  );
   const preferredTypes: CanvasBlock["type"][] = [
-    "checkpoint",
     "component",
-    "quiz",
     "table",
     "list",
     "video",
@@ -145,7 +162,7 @@ function outlineInterestBlocks(blocks: CanvasBlock[]) {
     const block = blocks.find((candidate) => candidate.type === type);
     if (block) result.push(block);
   }
-  return result.slice(0, 3);
+  return [...assessments, ...result.slice(0, Math.max(1, 3 - assessments.length))];
 }
 
 function outlineKind(block: CanvasBlock) {

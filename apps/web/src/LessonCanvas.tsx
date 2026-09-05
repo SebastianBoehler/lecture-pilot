@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 
 import { CanvasBlocks } from "./CanvasBlocks";
+import { scrollToCanvasAnchor } from "./canvasNavigation";
 import { SectionSources } from "./SectionSources";
 import { isLearnerGeneratedSection } from "./canvasSectionOrigin";
 import type { CanvasLearningActions } from "./canvasLearningActions";
@@ -43,17 +44,11 @@ export function LessonCanvas({
 
   useEffect(() => {
     if (navigationVersion === initialNavigationVersion.current) return;
-    const section = document.getElementById(focusedSectionId);
-    if (typeof section?.scrollIntoView === "function") {
-      section.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
+    scrollToCanvasAnchor(focusedSectionId);
   }, [focusedSectionId, navigationVersion]);
 
   useEffect(() => {
-    const block = highlightedBlockId ? document.getElementById(highlightedBlockId) : null;
-    if (typeof block?.scrollIntoView === "function") {
-      block.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
+    if (highlightedBlockId) scrollToCanvasAnchor(highlightedBlockId);
   }, [highlightedBlockId, navigationVersion]);
 
   function isActive(id: DocumentAnchorId) {

@@ -1,13 +1,72 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "./i18n";
 import { LessonWorkspace } from "./LessonWorkspace";
 import type { TutorMessageOptions } from "./canvasLearningActions";
 import type { CanvasDocument } from "./types";
+import type { LearnerLessonState } from "./learnerLessonStateTypes";
 
 describe("LessonWorkspace learning attempts", () => {
+  afterEach(() => {
+    delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+  });
+  it("jumps to the section start and centers individual checks without unwanted motion", async () => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn(() => ({ matches: true })),
+    );
+    const scroll = vi.fn();
+    Object.defineProperty(Element.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scroll,
+    });
+    renderWorkspace({ onSendMessage: tutorMessageMock(), panelMode: "outline" });
+
+    await userEvent.click(screen.getByRole("button", { name: "Risk" }));
+    expect(scroll).toHaveBeenLastCalledWith({ behavior: "instant", block: "start" });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Explain why expected loss changes the" }),
+    );
+    expect(scroll).toHaveBeenLastCalledWith({ behavior: "instant", block: "center" });
+  });
+  it("resumes the persisted check in the canvas without changing the published task", async () => {
+    const user = userEvent.setup();
+    const onSendMessage = tutorMessageMock();
+    const view = renderWorkspace({
+      onSendMessage,
+      learnerState: {
+        course_id: "course-1",
+        lecture_id: "lecture-1",
+        publication_version: 1,
+        gate_statuses: {},
+        quiz_states: {},
+        active_session_goal: null,
+        due_gate_reviews: [],
+        pending_check: {
+          gate_id: "risk-checkpoint",
+          gate_revision: "revision",
+          prompt: "Unaided, apply the idea to a new case.",
+          assistance_level: "none",
+          kind: "standard",
+        },
+      },
+    });
+    expect(screen.getByText("Unaided, apply the idea to a new case.")).toBeInTheDocument();
+    expect(screen.queryByText("Explain why expected loss changes the decision.")).toBeNull();
+    await user.type(screen.getByLabelText(/your checkpoint answer/i), "My new-case answer.");
+    await user.click(screen.getByRole("button", { name: /submit checkpoint answer/i }));
+    expect(onSendMessage).toHaveBeenCalledWith("My new-case answer.", {
+      focusedSectionId: "risk",
+      checkpointGateId: "risk-checkpoint",
+    });
+    expect(canvas.sections[0].blocks[1].text).toBe(
+      "Explain why expected loss changes the decision.",
+    );
+    view.setLearnerState(null);
+    expect(screen.getByLabelText(/your checkpoint answer/i)).toHaveValue("");
+  });
   it("submits a checkpoint through the tutor with its published section and gate", async () => {
     const user = userEvent.setup();
     const onSendMessage = tutorMessageMock();
@@ -25,14 +84,22 @@ describe("LessonWorkspace learning attempts", () => {
 
 function renderWorkspace({
   onSendMessage,
+  learnerState = null,
+  panelMode = null,
 }: {
   onSendMessage: (message: string, options?: TutorMessageOptions) => Promise<void>;
+  learnerState?: LearnerLessonState | null;
+  panelMode?: "outline" | null;
 }) {
-  return render(
+  const view = (state: LearnerLessonState | null) => (
     <I18nProvider locale="en" setLocale={vi.fn()}>
       <LessonWorkspace
         canvasDocument={canvas}
-        publishedCanvasView={null}
+        publishedCanvasView={{
+          document: canvas,
+          publication_version: 1,
+          learning_map_revision: "revision",
+        }}
         canvasError={null}
         courseId="course-1"
         focusedSectionId="risk"
@@ -47,8 +114,8 @@ function renderWorkspace({
         }}
         messages={[]}
         navigationVersion={0}
-        panelMode={null}
-        learnerState={null}
+        panelMode={panelMode}
+        learnerState={state}
         learnerStateError={null}
         session={{ username: "student", term: "Summer 2026", courses: [] }}
         tutorModel={null}
@@ -57,8 +124,10 @@ function renderWorkspace({
         onSendMessage={onSendMessage}
         onTogglePanel={vi.fn()}
       />
-    </I18nProvider>,
+    </I18nProvider>
   );
+  const rendered = render(view(learnerState));
+  return { setLearnerState: (state: LearnerLessonState | null) => rendered.rerender(view(state)) };
 }
 
 function tutorMessageMock() {

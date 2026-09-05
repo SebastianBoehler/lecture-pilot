@@ -216,7 +216,7 @@ describe("Dashboard course workspace matching", () => {
 
     expect(screen.queryByRole("dialog", { name: /exam readiness check/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: /exam check/i }));
-    await user.click(screen.getByRole("button", { name: /start exam check/i }));
+    await user.click(await screen.findByRole("button", { name: /start exam check/i }));
 
     const dialog = await screen.findByRole("dialog", { name: /exam readiness check/i });
     const quizPrompt = await within(dialog).findByText(/which quantity should be minimized/i);

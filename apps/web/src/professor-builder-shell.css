@@ -146,3 +146,34 @@
     width: 132px;
   }
 }
+
+@media (max-width: 480px) {
+  .builder-journey {
+    overflow-x: visible;
+  }
+
+  .builder-journey ol {
+    display: grid;
+    width: auto;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .builder-journey li {
+    width: auto;
+  }
+
+  .builder-journey button {
+    grid-template-columns: 1fr;
+    gap: 2px;
+    justify-items: start;
+  }
+
+  .builder-journey strong {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .builder-journey li:last-child {
+    grid-column: 1 / -1;
+  }
+}

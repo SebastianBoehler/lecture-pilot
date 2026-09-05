@@ -2,11 +2,13 @@ import { FileText, FolderTree, GitBranch, MessageSquare, TableOfContents } from 
 import { useEffect, useState } from "react";
 
 import { useI18n } from "./i18n";
+import { canvasWithPendingCheck } from "./canvasPendingCheck";
 import { LessonCanvas } from "./LessonCanvas";
 import { LearningPathPanel } from "./LearningPathPanel";
 import { ProfessorLearnerPreviewBanner } from "./ProfessorLearnerPreviewBanner";
 import { reconcileCanvasLearnerState, type PublishedCanvasView } from "./publishedCanvasView";
 import { NotesPanel, OutlinePanel } from "./LessonSidePanels";
+import { scrollToCanvasAnchor } from "./canvasNavigation";
 import type { LearnerQuizAnswerResult } from "./analyticsApi";
 import type { TutorMessageOptions } from "./canvasLearningActions";
 import type { LearnerLessonState } from "./learnerLessonStateTypes";
@@ -100,10 +102,7 @@ export function LessonWorkspace({
   function jumpToAnchor(anchorId: DocumentAnchorId) {
     setActiveAnchorId(anchorId);
     setOutlinePulse((current) => ({ id: anchorId, version: (current?.version ?? 0) + 1 }));
-    const anchor = document.getElementById(anchorId);
-    if (typeof anchor?.scrollIntoView === "function") {
-      anchor.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
+    scrollToCanvasAnchor(anchorId);
   }
 
   function openWorkspaceResource(resource: WorkspaceResource) {
@@ -119,10 +118,7 @@ export function LessonWorkspace({
     const targetId = resource.blockId ?? resource.sectionId;
     setActiveAnchorId(targetId);
     setOutlinePulse((current) => ({ id: targetId, version: (current?.version ?? 0) + 1 }));
-    const target = document.getElementById(targetId);
-    if (typeof target?.scrollIntoView === "function") {
-      target.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
+    scrollToCanvasAnchor(targetId);
   }
 
   return (
@@ -136,7 +132,11 @@ export function LessonWorkspace({
           <span>{lecture.date}</span>
         </div>
         {canvasError ? <p className="form-error">{canvasError}</p> : null}
-        {learnerStateError ? <p className="form-error">{learnerStateError}</p> : null}
+        {learnerStateError ? (
+          <p className="form-error" role="alert">
+            {learnerStateError}
+          </p>
+        ) : null}
         {canvasLearnerState.requiresReconciliation ? (
           <div className="form-error" role="alert">
             <p>{t("quiz.publicationChanged")}</p>
@@ -155,7 +155,10 @@ export function LessonWorkspace({
         ) : null}
         {canvasDocument ? (
           <LessonCanvas
-            canvasDocument={canvasDocument}
+            canvasDocument={canvasWithPendingCheck(
+              canvasDocument,
+              canvasLearnerState.currentLearnerState?.pending_check,
+            )}
             focusedSectionId={focusedSectionId}
             highlightedBlockId={highlightedBlockId}
             highlightedText={highlightedText}

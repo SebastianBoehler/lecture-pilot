@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 
 import type { CourseWorkspaceGroup } from "./dashboardCourses";
 import { availableCourseLectures } from "./dashboardCourses";
@@ -9,10 +9,15 @@ import {
   tabId,
   type CourseWorkspaceTool,
 } from "./CourseWorkspaceTabs";
-import { ExamReadinessPanel } from "./ExamReadinessPanel";
 import { useI18n } from "./i18n";
-import { PracticeExamPanel } from "./PracticeExamPanel";
 import type { Attendance, Lecture, LoginSession } from "./types";
+
+const ExamReadinessPanel = lazy(() =>
+  import("./ExamReadinessPanel").then((module) => ({ default: module.ExamReadinessPanel })),
+);
+const PracticeExamPanel = lazy(() =>
+  import("./PracticeExamPanel").then((module) => ({ default: module.PracticeExamPanel })),
+);
 
 const LECTURE_PREVIEW_COUNT = 2;
 
@@ -81,6 +86,7 @@ export function DashboardCourseWorkspaces({
 
       {activeGroup ? (
         <ActiveWorkspace
+          key={activeGroup.course.id}
           activeTool={activeTool}
           expanded={expandedLectureLists[activeGroup.course.id] ?? false}
           group={activeGroup}
@@ -125,6 +131,7 @@ function ActiveWorkspace({
   onToggleLectures: () => void;
 }) {
   const { t } = useI18n();
+  const [openedTools, setOpenedTools] = useState<CourseWorkspaceTool[]>([]);
   const idBase = `course-tools-${group.course.id.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
   const visibleLectures = expanded
     ? group.courseLectures
@@ -141,7 +148,10 @@ function ActiveWorkspace({
         <CourseWorkspaceTabs
           activeTool={activeTool}
           idBase={idBase}
-          onChange={onActiveToolChange}
+          onChange={(tool) => {
+            setOpenedTools((current) => (current.includes(tool) ? current : [...current, tool]));
+            onActiveToolChange(tool);
+          }}
         />
       </header>
 
@@ -181,13 +191,17 @@ function ActiveWorkspace({
         id={panelId(idBase, "readiness")}
         role="tabpanel"
       >
-        <ExamReadinessPanel
-          course={group.course}
-          lectures={availableCourseLectures(group.courseLectures)}
-          session={session}
-          onOpenLecture={onOpen}
-          onProgress={onProgress}
-        />
+        {openedTools.includes("readiness") ? (
+          <Suspense fallback={<p role="status">{t("app.loadingView")}</p>}>
+            <ExamReadinessPanel
+              course={group.course}
+              lectures={availableCourseLectures(group.courseLectures)}
+              session={session}
+              onOpenLecture={onOpen}
+              onProgress={onProgress}
+            />
+          </Suspense>
+        ) : null}
       </div>
 
       <div
@@ -197,7 +211,11 @@ function ActiveWorkspace({
         id={panelId(idBase, "practice")}
         role="tabpanel"
       >
-        <PracticeExamPanel course={group.course} session={session} />
+        {openedTools.includes("practice") ? (
+          <Suspense fallback={<p role="status">{t("app.loadingView")}</p>}>
+            <PracticeExamPanel course={group.course} session={session} />
+          </Suspense>
+        ) : null}
       </div>
     </section>
   );
