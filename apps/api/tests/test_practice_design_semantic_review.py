@@ -37,6 +37,7 @@ async def test_planner_runs_a_complete_second_semantic_critic_after_anchor_valid
     assert "untrusted data" in review_client.messages[0]["content"]
     assert "derive-conclusion" in review_client.messages[1]["content"]
     assert "SOURCE EVIDENCE" in review_client.messages[1]["content"]
+    assert "Allowed exact source paths: lecture-01.md" in review_client.messages[1]["content"]
 
 
 @pytest.mark.asyncio
@@ -62,7 +63,9 @@ async def test_native_review_client_uses_a_strict_dimension_complete_schema(monk
     client = LiteLLMPracticeDesignReviewClient()
 
     payload = await client.complete_review(
-        settings=_settings(), messages=[{"role": "user", "content": "review"}]
+        settings=_settings(),
+        messages=[{"role": "user", "content": "review"}],
+        allowed_source_paths=("lecture-01.md",),
     )
 
     assert len(payload["checks"]) == len(REVIEW_DIMENSIONS)
@@ -74,6 +77,9 @@ async def test_native_review_client_uses_a_strict_dimension_complete_schema(monk
     assert set(check_schema["required"]) == set(check_schema["properties"])
     dimension_schema = check_schema["properties"]["dimension"]
     assert tuple(dimension_schema["enum"]) == REVIEW_DIMENSIONS
+    assert definitions["PracticeSourceAnchor"]["properties"]["source_path"]["enum"] == [
+        "lecture-01.md"
+    ]
 
 
 @pytest.mark.asyncio

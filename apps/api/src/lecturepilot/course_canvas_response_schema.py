@@ -72,6 +72,7 @@ def _captioned_text_schema(kind: str) -> dict[str, Any]:
             "type": _const(kind),
             "text": {"type": "string"},
             "caption": {"type": "string"},
+            **({"id": {"type": ["string", "null"]}} if kind == "checkpoint" else {}),
         }
     )
 

@@ -61,9 +61,11 @@ def validate_section_assessments(
     for index, block in enumerate(section.blocks):
         if block.type not in {"checkpoint", "quiz"}:
             continue
+        checkpoint_found = checkpoint_found or block.type == "checkpoint"
+        if block.type == "checkpoint" and block.id.startswith("practice-"):
+            continue  # The stricter practice contract owns approved task wording.
         if first_assessment_index is None:
             first_assessment_index = index
-        checkpoint_found = checkpoint_found or block.type == "checkpoint"
         if issue := assessment_prompt_issue(block.text, block.type):
             raise CanvasGenerationRepairableError(
                 f"{block.type.title()} block {block.id} {issue}.",
@@ -105,7 +107,7 @@ def validate_section_assessments(
     )
     if late_example is not None:
         raise CanvasGenerationRepairableError(
-            f"Worked example {late_example.id} must appear before the first assessment.",
+            f"Worked example {late_example.id} must appear before the first formative assessment.",
             candidate=candidate,
             section_id=section.id,
             block_id=late_example.id,

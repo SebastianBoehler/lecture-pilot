@@ -7,7 +7,6 @@ from lecturepilot.canvas_models import CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_evidence_batches import group_evidence_sections
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_practice_design_models import PracticeDesign, PracticeTarget
-from lecturepilot.course_practice_design_evidence import target_source_anchors
 from lecturepilot.course_practice_design_validation import (
     PracticeDesignValidationError,
     source_anchor_matches_section,
@@ -24,6 +23,8 @@ def practice_prompt_instruction(
     contracts = [
         {
             "checkpoint_id": f"practice-{target.id}",
+            "outcome": target.outcome,
+            "target_invariant": target.target_invariant,
             "baseline_task": target.baseline_task,
             "evidence_criteria": [
                 {"id": criterion.id, "description": criterion.description}
@@ -38,6 +39,15 @@ def practice_prompt_instruction(
         f"one checkpoint for each canonical id {json.dumps(expected)} and no other practice-* "
         "checkpoint. Each canonical checkpoint text must exactly equal its approved baseline_task; "
         "do not paraphrase, split, merge, duplicate, or move it into another block type. "
+        "Place this diagnostic before substantive help on its capability, within its assigned "
+        "outcome-anchor section. Keep analogous worked examples before later formative checks. "
+        "The design context calibrates vocabulary and scaffolding, not the required evidence "
+        "standard. Null context fields are unknown, not permission to invent learner expertise. "
+        "Use the outcome, invariant and criteria to design instruction; do not print assessed "
+        "answers or hidden exit/transfer tasks next to the diagnostic. If an approved task is "
+        "unsuitable, report the conflict rather than silently rewriting it. "
+        f"Approved lecture objective: {json.dumps(design.objective)}. "
+        f"Approved planning context: {design.planning_context.model_dump_json()}. "
         f"Applicable approved target contracts: {json.dumps(contracts)}"
     )
 
@@ -52,16 +62,13 @@ def section_target_assignments(
             (
                 item
                 for item in sections
-                if any(
-                    source_anchor_matches_section(anchor, item, routed_paths)
-                    for anchor in target_source_anchors(target)
-                )
+                if source_anchor_matches_section(target.outcome_anchor, item, routed_paths)
             ),
             None,
         )
         if section is None:
             raise CanvasGenerationRepairableError(
-                f"Practice target {target.id} has no section containing a validated source anchor."
+                f"Practice target {target.id} has no section containing its validated source anchor for the outcome."
             )
         assignments[section.id].append(target)
     return {section_id: tuple(targets) for section_id, targets in assignments.items()}
@@ -72,6 +79,27 @@ def practice_source_sections(source_document: CanvasDocument) -> list[CanvasSect
         source_topic_sections(source_document) or source_document.sections,
         document_source_ref=source_document.source_ref,
     )
+
+
+def validate_section_practice(section: CanvasSection, targets: Sequence[PracticeTarget]) -> None:
+    expected = {f"practice-{target.id}": target for target in targets}
+    canonical = [block for block in section.blocks if block.id.startswith("practice-")]
+    if any(block.id not in expected for block in canonical):
+        raise CanvasGenerationRepairableError(
+            "Section contains a practice checkpoint assigned to different source evidence.",
+            section_id=section.id,
+        )
+    for checkpoint_id, target in expected.items():
+        matches = [block for block in canonical if block.id == checkpoint_id]
+        if (
+            len(matches) != 1
+            or matches[0].type != "checkpoint"
+            or matches[0].text != target.baseline_task
+        ):
+            raise CanvasGenerationRepairableError(
+                f"Section needs exactly one {checkpoint_id} checkpoint with the exact approved baseline task.",
+                section_id=section.id,
+            )
 
 
 def validate_practice_candidate(

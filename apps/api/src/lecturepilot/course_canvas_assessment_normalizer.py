@@ -31,6 +31,8 @@ def normalize_section_assessments(
         if block.type != "checkpoint":
             continue
         checkpoint_found = True
+        if block.id.startswith("practice-"):
+            continue  # Exact approved wording is validated by the practice contract.
         issue = assessment_prompt_issue(block.text, "checkpoint")
         if not issue:
             continue

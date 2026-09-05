@@ -7,6 +7,7 @@ from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.course_canvas_prompt import source_evidence
 from lecturepilot.course_practice_design_models import PracticeDesignProposal
 from lecturepilot.model_provider_schema import strict_pydantic_response_format
+from lecturepilot.course_teaching_instructions import capability_design_instruction
 
 
 def practice_design_messages(
@@ -26,6 +27,7 @@ def practice_design_messages(
                 "not evidence of learning. Select the minimum set of distinct capabilities supported "
                 "by the source; do not pad thin material or split one skill into cosmetic targets. "
                 "Work backward from source-supported outcomes to acceptable evidence and practice. "
+                f"{capability_design_instruction()} "
                 "For each target, state the target invariant held constant across every variant. "
                 "Diagnostic attempt means baseline_task before substantive help, used to choose "
                 "support and never alone as mastery evidence. Independent exit means a parallel task "

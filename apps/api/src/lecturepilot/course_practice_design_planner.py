@@ -105,10 +105,12 @@ class PracticeDesignPlanner:
             review = PracticeDesignReviewResult.model_validate(
                 await self.review_client.complete_review(
                     settings=settings,
+                    allowed_source_paths=allowed_source_paths,
                     messages=practice_design_review_messages(
                         source,
                         proposal,
                         source_revision=source_revision,
+                        allowed_source_paths=allowed_source_paths,
                     ),
                 )
             )

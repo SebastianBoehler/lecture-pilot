@@ -68,3 +68,27 @@ async def test_retry_replans_legacy_checkpoint_without_source_section_identity(t
 
     assert client.source_ids == ["source-1"]
     assert planned.sections[0].source_section_id == "source-1"
+
+
+async def test_current_cache_with_missing_practice_task_is_replanned(tmp_path) -> None:
+    source = _source_document(1)
+    design = practice_design_for_canvas(source)
+    settings = _settings()
+    checkpoints = SectionPlanCheckpointStore(tmp_path / "sections.json", source_revision="r1")
+    checkpoints.write(
+        source.sections[0],
+        source.sections[0],
+        model=settings.model,
+        output_language="en",
+        practice_design_revision=design.revision,
+    )
+    client = _SectionOnlyPlanClient()
+    planned = await plan_sections_individually(
+        model_client=client,
+        settings=settings,
+        source_document=source,
+        practice_design=design,
+        checkpoint_store=checkpoints,
+    )
+    assert client.source_ids == ["source-1"]
+    assert any(block.id == "practice-derive-conclusion" for block in planned.sections[0].blocks)

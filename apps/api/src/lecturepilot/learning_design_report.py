@@ -142,6 +142,7 @@ def _worked_example_diagnostics(section: CanvasSection) -> list[LearningDesignDi
             (index, _assessment_id(block))
             for index, block in enumerate(section.blocks)
             if _is_assessment(block)
+            and not (block.type == "checkpoint" and block.id.startswith("practice-"))
         ),
         None,
     )
@@ -151,8 +152,8 @@ def _worked_example_diagnostics(section: CanvasSection) -> list[LearningDesignDi
     return [
         _diagnostic(
             "worked_example_after_assessment",
-            f"Worked example {block.id} appears after the first assessment.",
-            "Move the explicit worked example before the first checkpoint or quiz, or remove its worked-example marker.",
+            f"Worked example {block.id} appears after the first formative assessment.",
+            "Place the example after the approved diagnostic but before later formative checks.",
             section_id=section.id,
             assessment_id=assessment_id,
             block_id=block.id,

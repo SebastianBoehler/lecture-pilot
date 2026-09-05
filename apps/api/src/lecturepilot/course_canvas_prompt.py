@@ -7,6 +7,7 @@ from lecturepilot.course_canvas_math import generated_math_instructions
 from lecturepilot.course_canvas_practice_contract import practice_prompt_instruction
 from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.course_canvas_validation import required_section_ids
+from lecturepilot.course_teaching_instructions import canvas_teaching_instruction
 
 
 MAX_SOURCE_EVIDENCE_SECTIONS = 80
@@ -44,8 +45,7 @@ def planner_messages(
                 "and indent nested blocks. If extraction provides one-line C/Java-style code, "
                 "restore structural line breaks after braces and statements. "
                 "Leave room for professor-approved YouTube videos instead of inventing "
-                "video links. When original slide image assets are listed, use one as "
-                "the recognition anchor for each section and cite the matching PDF page or frame in source_ref. "
+                "video links. Cite the matching PDF page or frame for source assets in source_ref. "
                 "Return one structured draft with title and sections. Each section must "
                 "include id, title, source_ref, and blocks. Blocks may be paragraph, list, "
                 "callout, math, asset, video, table, checkpoint, quiz, or component. "
@@ -96,7 +96,9 @@ def _assessment_instructions() -> str:
     return (
         "Include at least one standalone assessment for the lecture, and add further "
         "assessments only where the supplied evidence supports a determinate answer. Place "
-        "them after relevant concepts, worked examples, or skill transitions. Every "
+        "formative checks after relevant concepts, worked examples, or skill transitions; "
+        "approved diagnostics precede substantive help. "
+        f"{canvas_teaching_instruction()} Every "
         "assessment text must be a specific, standalone, source-grounded question or "
         "task that remains understandable away from the canvas. Put short labels such as "
         "'Checkpoint' or 'Why this matters' only in caption, never at the start of text. "

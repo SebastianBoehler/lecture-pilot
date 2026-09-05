@@ -34,7 +34,7 @@ from lecturepilot.providers import ProviderConfigurationError
 from practice_design_test_helpers import passing_review, proposal
 
 
-ResponseFormatFactory = Callable[[], dict[str, Any]]
+ResponseFormatFactory = Callable[..., dict[str, Any]]
 
 
 @pytest.mark.parametrize(
@@ -62,14 +62,23 @@ def test_practice_design_response_formats_use_the_strict_production_model_schema
     name: str,
     model: type[BaseModel],
 ) -> None:
-    response_format = response_format_factory()
+    response_format = (
+        response_format_factory(["Lecture.tex"])
+        if response_format_factory is practice_design_review_response_format
+        else response_format_factory()
+    )
 
+    expected_schema = to_strict_json_schema(model)
+    if response_format_factory is practice_design_review_response_format:
+        expected_schema["$defs"]["PracticeSourceAnchor"]["properties"]["source_path"]["enum"] = [
+            "Lecture.tex"
+        ]
     assert response_format == {
         "type": "json_schema",
         "json_schema": {
             "name": name,
             "strict": True,
-            "schema": to_strict_json_schema(model),
+            "schema": expected_schema,
         },
     }
     _assert_every_object_is_strict(response_format["json_schema"]["schema"])
@@ -122,7 +131,7 @@ async def test_practice_design_clients_preserve_schema_configuration_errors(
     client_module: Any,
     schema_function: str,
 ) -> None:
-    def unavailable_schema() -> dict[str, Any]:
+    def unavailable_schema(*args) -> dict[str, Any]:
         raise ProviderConfigurationError("strict schema helper unavailable")
 
     monkeypatch.setitem(sys.modules, "litellm", SimpleNamespace(acompletion=object()))
@@ -138,6 +147,11 @@ async def test_practice_design_clients_preserve_schema_configuration_errors(
                 capabilities={ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON},
             ),
             messages=[{"role": "user", "content": "generate"}],
+            **(
+                {"allowed_source_paths": ["Lecture.tex"]}
+                if method_name == "complete_review"
+                else {}
+            ),
         )
 
 

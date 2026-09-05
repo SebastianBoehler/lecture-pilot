@@ -35,6 +35,13 @@ def test_checkpoint_rejects_observed_question_with_unstated_choices() -> None:
     )
 
 
+def test_standalone_instruction_does_not_supply_the_knowledge_being_assessed() -> None:
+    instruction = assessment_generation_instruction().casefold()
+    assert "permitted aids" in instruction
+    assert "do not supply the answer" in instruction
+    assert "restate every required value, formula" not in instruction
+
+
 def test_checkpoint_rejects_which_statement_without_options() -> None:
     assert assessment_prompt_issue("Which statement about softmax is correct?", "checkpoint") == (
         "must not ask the learner to choose from statements, tasks, or options that are not stated"

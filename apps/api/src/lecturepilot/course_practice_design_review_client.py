@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Protocol
+from collections.abc import Sequence
 
 from lecturepilot.course_canvas_json import parse_model_json
 from lecturepilot.course_practice_design_review_prompt import (
@@ -16,7 +17,11 @@ from lecturepilot.providers import ProviderConfigurationError
 
 class PracticeDesignReviewModelClient(Protocol):
     async def complete_review(
-        self, *, settings: ProviderSettings, messages: list[dict[str, str]]
+        self,
+        *,
+        settings: ProviderSettings,
+        messages: list[dict[str, str]],
+        allowed_source_paths: Sequence[str],
     ) -> dict:
         """Return one strict semantic review payload."""
 
@@ -26,7 +31,11 @@ class LiteLLMPracticeDesignReviewClient:
         self.usage_recorder = usage_recorder
 
     async def complete_review(
-        self, *, settings: ProviderSettings, messages: list[dict[str, str]]
+        self,
+        *,
+        settings: ProviderSettings,
+        messages: list[dict[str, str]],
+        allowed_source_paths: Sequence[str],
     ) -> dict:
         try:
             from litellm import acompletion
@@ -41,7 +50,7 @@ class LiteLLMPracticeDesignReviewClient:
                 usage_stage="course_practice_design_review",
                 model=settings.model,
                 messages=messages,
-                response_format=practice_design_review_response_format(),
+                response_format=practice_design_review_response_format(allowed_source_paths),
                 **completion_options(settings, temperature=0.0, reasoning_effort="low"),
             )
         except ProviderConfigurationError:

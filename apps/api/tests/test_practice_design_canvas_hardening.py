@@ -49,6 +49,20 @@ def test_section_prompt_lists_only_applicable_canonical_checkpoint_ids() -> None
     assert design.targets[0].baseline_task not in instruction
 
 
+def test_canvas_writer_receives_approved_context_without_hidden_exit_tasks() -> None:
+    design = _design()
+    instruction = practice_prompt_instruction(design)
+    approved = design.targets[0]
+
+    assert design.planning_context.learner_level in instruction
+    assert design.planning_context.prerequisites[0] in instruction
+    assert design.objective in instruction
+    assert approved.outcome in instruction
+    assert approved.target_invariant in instruction
+    assert approved.independent_exit_task not in instruction
+    assert approved.delayed_transfer_task not in instruction
+
+
 def test_canvas_rejects_checkpoint_in_same_path_section_without_approved_anchor() -> None:
     design = _design()
     source = CanvasDocument(

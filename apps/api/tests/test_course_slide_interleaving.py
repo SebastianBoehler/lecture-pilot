@@ -139,6 +139,43 @@ def test_interleave_original_slides_does_not_duplicate_an_existing_asset() -> No
     )
 
 
+def test_interleave_recognizes_source_slides_even_when_the_writer_changes_the_caption() -> None:
+    slides = [_slide(1), _slide(2), _slide(3)]
+    source = _document("source", [_section("source-pdf", slides)])
+    renamed = slides[0].model_copy(update={"caption": "Course introduction"})
+    planned = _document(
+        "generated",
+        [
+            _section("topic", [renamed, _paragraph("Explanation")], "lecture.pdf pages 1-3"),
+        ],
+    )
+
+    result = interleave_original_slides(planned, source)
+    assets = [block.asset_path for block in result.sections[0].blocks if block.asset_path]
+
+    assert assets.count(renamed.asset_path) == 1
+    assert len(assets) == 2
+    assert result.sections[0].blocks[0].caption == "Course introduction"
+
+
+def test_pdf_cover_preview_already_represents_the_first_original_slide() -> None:
+    slides = [_slide(1), _slide(2), _slide(3)]
+    source = _document("source", [_section("source-pdf", slides)])
+    cover = CanvasBlock(id="pdf-cover", type="asset", asset_path="lecture.pdf", caption="Lecture")
+    planned = _document(
+        "generated",
+        [
+            _section("topic", [cover, _paragraph("Explanation")], "lecture.pdf pages 1-3"),
+        ],
+    )
+
+    result = interleave_original_slides(planned, source)
+    paths = [block.asset_path for block in result.sections[0].blocks if block.asset_path]
+
+    assert slides[0].asset_path not in paths
+    assert paths == ["lecture.pdf", slides[1].asset_path]
+
+
 def _document(kind: str, sections: list[CanvasSection]) -> CanvasDocument:
     return CanvasDocument(
         id=f"demo-{kind}",

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from lecturepilot.course_teaching_instructions import media_review_instruction
 
 import asyncio
 import json
@@ -199,7 +200,7 @@ def _quality_messages(
                 "A checkpoint that asks which statement, task, option, or example is correct is "
                 "not determinate unless those alternatives are restated in its text. "
                 "Report unsupported teaching claims, altered code behavior, wrong formulas, and "
-                "contradictions. Also report an "
+                f"contradictions. {media_review_instruction()} Also report an "
                 "assessment whose task is generic or depends on an exercise sheet, slide, source, "
                 "section, or prior question that is not restated. Do not otherwise report style, "
                 "wording, missing enrichment, or harmless simplification. Use exact candidate "

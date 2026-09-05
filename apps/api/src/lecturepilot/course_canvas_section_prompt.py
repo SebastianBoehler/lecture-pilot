@@ -7,6 +7,7 @@ from lecturepilot.course_canvas_language import canvas_language_instruction
 from lecturepilot.course_canvas_math import generated_math_instructions
 from lecturepilot.course_canvas_practice_contract import practice_prompt_instruction
 from lecturepilot.course_practice_design_models import PracticeDesign, PracticeTarget
+from lecturepilot.course_teaching_instructions import canvas_teaching_instruction
 
 
 MAX_SECTION_EVIDENCE_CHARS = 24_000
@@ -29,6 +30,8 @@ def section_messages(
                 f"{canvas_language_instruction(output_language)} "
                 "exactly one object with title and blocks. The server derives section ids, block "
                 "ids, and source provenance from the supplied evidence. "
+                "For approved practice checkpoints, return their exact canonical id in the id "
+                "field; use null for other checkpoint ids. "
                 "Let the section's depth and structure follow the supplied evidence. Explain "
                 "all material needed for independent study with source-backed paragraphs, "
                 "examples, or steps; do not pad thin evidence or omit dense evidence to meet "
@@ -47,14 +50,15 @@ def section_messages(
                 "Do not use generic 'explain the key mechanism' or 'as you would in an exam "
                 "answer' phrasing. Quiz text must be one direct question ending in a question mark. "
                 f"{assessment_generation_instruction()} "
+                f"{canvas_teaching_instruction()} "
                 f"{practice_prompt_instruction(practice_design, targets=applicable_targets)} "
                 "Use text as the question, items as possible answers, and the zero-based "
                 "answer_index of the correct option. Never guess an answer key. "
                 "Return only the fields required by each block type; do not emit null placeholders. "
                 "Do not preserve raw slide ids; create a stable learning topic id. Preserve "
                 "key formulas and source-backed assets. Add a worked example or infographic "
-                "brief when it helps learning. Explain why each key idea matters before "
-                "asking for retrieval. Use light Markdown for key terms and notation. "
+                "brief when it helps learning. Explain why each key idea matters without "
+                "giving its answer before the diagnostic. Use light Markdown for key terms and notation. "
                 f"{generated_math_instructions()} "
                 "Preserve relevant fenced code in paragraph text with its language and "
                 "indentation; never execute it. Never collapse source code into one line. "

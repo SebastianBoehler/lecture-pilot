@@ -292,7 +292,8 @@ class _CatalogAwarePlanClient:
                 },
                 {
                     "type": "checkpoint",
-                    "text": "Explain how stronger evidence changes the posterior probability.",
+                    "id": "practice-derive-conclusion",
+                    "text": "Derive the conclusion from the stated evidence and justify the reasoning.",
                 },
             ],
         }

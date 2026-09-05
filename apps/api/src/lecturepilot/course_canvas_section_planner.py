@@ -8,6 +8,7 @@ from lecturepilot.course_canvas_math import validate_section_math
 from lecturepilot.course_canvas_practice_contract import (
     practice_source_sections,
     section_target_assignments,
+    validate_section_practice,
 )
 from lecturepilot.course_canvas_section_reader import read_section_payload as _read_section_payload
 from lecturepilot.course_canvas_section_batch import SectionPlanResult, plan_section_batch
@@ -66,7 +67,12 @@ async def plan_sections_individually(
                 practice_design_revision=practice_design.revision,
             )
             if cached is not None:
-                return SectionPlanResult(cached)
+                try:
+                    validate_section_practice(cached, assignments[source_section.id])
+                except CanvasGenerationRepairableError:
+                    pass  # An incomplete section is not a reusable generation checkpoint.
+                else:
+                    return SectionPlanResult(cached)
         result = await _plan_section(
             model_client=model_client,
             settings=settings,
@@ -139,6 +145,7 @@ async def _plan_section(
                     output_language=output_language,
                 )
                 validate_section_math(section)
+                validate_section_practice(section, applicable_targets)
                 validate_section_assessments(section)
                 span.set_outputs({"section_count": 1})
                 return SectionPlanResult(section)

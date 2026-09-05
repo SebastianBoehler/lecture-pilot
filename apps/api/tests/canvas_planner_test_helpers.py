@@ -64,9 +64,11 @@ class RecordingFallbackPlanClient:
                         },
                         {
                             "type": "checkpoint",
+                            "id": "practice-derive-conclusion"
+                            if source_id == "evidence-batch-1"
+                            else None,
                             "text": (
-                                "Explain how this learning topic follows from the evidence "
-                                "and identify one consequence."
+                                "Derive the conclusion from the stated evidence and justify the reasoning."
                             ),
                         },
                     ],

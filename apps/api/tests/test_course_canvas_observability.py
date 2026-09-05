@@ -179,7 +179,8 @@ class _RepairingSectionPlanClient:
                         },
                         {
                             "type": "checkpoint",
-                            "text": "Explain how the risk mechanism changes the decision.",
+                            "id": "practice-derive-conclusion",
+                            "text": "Derive the conclusion from the stated evidence and justify the reasoning.",
                         },
                     ],
                 }

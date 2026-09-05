@@ -34,11 +34,22 @@ def interleave_original_slides(
         block.asset_path
         for section in document.sections
         for block in section.blocks
-        if _is_original_slide(block) and block.asset_path
+        if block.type == "asset" and block.asset_path
     }
+    pdf_sources = {
+        slide.source_ref
+        for slides in slides_by_source.values()
+        for slide in slides
+        if slide.page_number == 1 and slide.source_ref.lower().endswith(".pdf")
+    }
+    for slides in slides_by_source.values():
+        for slide in slides:
+            if slide.page_number == 1 and slide.source_ref in used:
+                used.add(_slide_identity(slide))
     sections = []
     for index, section in enumerate(document.sections):
-        capacity = MAX_ORIGINAL_SLIDES_PER_SECTION - _original_slide_count(section)
+        existing_count = _original_slide_count(section, pdf_sources)
+        capacity = MAX_ORIGINAL_SLIDES_PER_SECTION - existing_count
         selected = _select_slides(
             section=section,
             section_index=index,
@@ -48,15 +59,17 @@ def interleave_original_slides(
             companion_positions=companion_positions,
             used=used,
         )
-        sections.append(_with_slides(section, selected))
+        sections.append(_with_slides(section, selected, existing_count))
     return document.model_copy(update={"sections": sections})
 
 
-def _with_slides(section: CanvasSection, slides: list[CanvasBlock]) -> CanvasSection:
+def _with_slides(
+    section: CanvasSection, slides: list[CanvasBlock], existing_count: int
+) -> CanvasSection:
     if not slides:
         return section
     blocks = list(section.blocks)
-    if _original_slide_count(section) == 0:
+    if existing_count == 0:
         blocks.insert(0, slides.pop(0))
     for slide in slides:
         blocks.insert(_after_teaching_blocks(blocks, count=2), slide)
@@ -258,13 +271,14 @@ def _is_original_slide(block: CanvasBlock) -> bool:
         block.type == "asset"
         and block.asset_path
         and block.asset_path.startswith("generated-slides/")
-        and block.caption
-        and block.caption.startswith(("Original slide ", "Compiled slide "))
     )
 
 
-def _original_slide_count(section: CanvasSection) -> int:
-    return sum(_is_original_slide(block) for block in section.blocks)
+def _original_slide_count(section: CanvasSection, pdf_sources: set[str]) -> int:
+    return sum(
+        _is_original_slide(block) or (block.type == "asset" and block.asset_path in pdf_sources)
+        for block in section.blocks
+    )
 
 
 def _after_teaching_blocks(blocks: list[CanvasBlock], *, count: int) -> int:

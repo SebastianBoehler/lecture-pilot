@@ -101,7 +101,7 @@ async def test_section_planner_repairs_a_section_without_an_open_response_check(
         practice_design=practice_design_for_canvas(_source_document(1)),
     )
 
-    assert client.calls == 1
+    assert client.calls == 2
     assert any(block.type == "checkpoint" for block in planned.sections[0].blocks)
 
 
@@ -225,7 +225,7 @@ class _OneInvalidSectionClient:
 
 
 class _SectionOnlyPlanClient:
-    def __init__(self, *, include_practice_checkpoint: bool = False) -> None:
+    def __init__(self, *, include_practice_checkpoint: bool = True) -> None:
         self.source_ids: list[str] = []
         self.include_practice_checkpoint = include_practice_checkpoint
 
@@ -347,13 +347,13 @@ class _InvalidCheckpointClient:
         self.calls += 1
         if self.calls == 1:
             payload = _section_payload(_source_id(messages))
-            payload["sections"][0]["blocks"][-1]["text"] = (
+            payload["sections"][0]["blocks"][1]["text"] = (
                 "Which task is a regression problem because its target is continuous?"
             )
             return payload
         self.repair_message = messages[-1]["content"]
         payload = _section_payload(_source_id(messages))
-        payload["sections"][0]["blocks"][-1]["text"] = (
+        payload["sections"][0]["blocks"][1]["text"] = (
             "Explain why predicting a continuous target is a regression task."
         )
         return payload
@@ -385,7 +385,7 @@ def _source_id(messages: list[dict[str, str]]) -> str:
 
 
 def _section_payload(
-    source_id: str, *, math: str | None = None, include_practice_checkpoint: bool = False
+    source_id: str, *, math: str | None = None, include_practice_checkpoint: bool = True
 ) -> dict:
     blocks = [
         {
@@ -407,7 +407,7 @@ def _section_payload(
             ),
         }
     )
-    if include_practice_checkpoint and source_id == "source-1":
+    if include_practice_checkpoint and source_id in {"source-1", "evidence-batch-1"}:
         blocks.append(
             {
                 "id": "practice-derive-conclusion",
