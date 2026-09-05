@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from lecturepilot.coaching_contract import MAX_APPROVED_TASK_LENGTH, AssistanceLevel
@@ -29,22 +27,3 @@ class NextCheck(BaseModel):
     gate_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     prompt: str = Field(min_length=1, max_length=MAX_APPROVED_TASK_LENGTH)
     assistance: NextCheckAssistance
-
-
-def next_check_assistance_schema() -> dict[str, Any]:
-    return {
-        "type": "object",
-        "additionalProperties": False,
-        "properties": {
-            "level": {
-                "type": "string",
-                "enum": ["none", "prompt", "cue", "faded_example", "worked_step"],
-                "description": "Exact server-selected assistance level for the next check.",
-            },
-            "content": {
-                "type": ["string", "null"],
-                "description": "Exact approved support text, or null when level is none.",
-            },
-        },
-        "required": ["level", "content"],
-    }

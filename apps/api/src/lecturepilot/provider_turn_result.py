@@ -4,7 +4,6 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from lecturepilot.coaching_assistance import NextCheck
 from lecturepilot.models import CanvasCommand
 from lecturepilot.provider_canvas_models import (
     ProviderCanvasSection,
@@ -57,7 +56,6 @@ class ProviderAgentTurnResult(BaseModel):
     session_goal: str | None = Field(max_length=500)
     canvas_commands: list[ProviderCanvasCommand]
     assessment: ProviderQualityGateDecision | None
-    next_check: NextCheck | None
 
     @model_validator(mode="after")
     def require_navigation_commands(self) -> ProviderAgentTurnResult:

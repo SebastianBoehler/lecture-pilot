@@ -9,7 +9,7 @@ from lecturepilot.agent_tool_executor import AgentToolExecutor
 from lecturepilot.agent_tool_loop import complete_tool_turn
 from lecturepilot.agent_tool_schemas import AgentToolProfile, tutor_tool_profile_for_message
 from lecturepilot.agent_response_schema import lecturepilot_response_format
-from lecturepilot.model_commands import canvas_context
+from lecturepilot.model_commands import canvas_context, checkpoint_assessment_required
 from lecturepilot.model_payload import agent_result_from_content
 from lecturepilot.model_provider_errors import model_provider_error_message
 from lecturepilot.model_request_options import completion_options
@@ -69,7 +69,7 @@ class LiteLLMModelClient:
             return await self.usage_recorder.complete(acompletion, **kwargs)
 
         try:
-            if tool_executor is not None:
+            if tool_executor is not None and not checkpoint_assessment_required(turn):
                 return await complete_tool_turn(
                     acompletion=tracked_completion,
                     settings=settings,
@@ -135,23 +135,22 @@ def _messages(turn: AgentTurnInput) -> list[dict[str, str]]:
             "Return assessment only when the student message answers the persisted pending "
             "check. Otherwise assessment must be null; never fabricate not_assessed. "
             "A request to add, edit, or explain canvas content is not itself an answer to a "
-            "pending check. Handle that request with assessment null and next_check null; the "
+            "pending check. Handle that request with assessment null; the "
             "backend retains the pending check for the learner's later answer. "
             "Do not mark a gate passed from keywords or a definition-only answer. "
             "Use the active quality-gate rubric as the complete pass contract; do not "
             "invent additional required concepts once the listed evidence groups are covered. "
             "In assessment.evidence_ids, return only listed evidence IDs the learner "
             "explicitly demonstrated; the backend derives pass status and missing evidence. "
-            "Return next_check separately using the server-selected gate ID, revision, prompt, "
-            "assistance level, and assistance content without substitutions. The server "
+            "An explicit checkpoint submission is an attempt even when incomplete or uncertain; "
+            "assess it against the rubric, including empty evidence_ids when nothing is demonstrated. "
+            "The server alone selects the next check and approved assistance. Do not return "
+            "next_check or invent a replacement task or hint. The server "
             "composes the learner-facing assessment from the approved evidence criteria, "
             "derived decision, selected approved support, and exact next check; provider "
-            "assessment prose in message is discarded. For non-none support, return the exact "
-            "server-selected approved content; use level none and null content when the server "
-            "selected no support. Never report planned or prior assistance. After a failed delayed "
-            "independent attempt, use only the next approved support selected by the server. "
+            "assessment prose in message is discarded. Never report planned or prior assistance. "
             "Return one structured tutor response with message, session_goal, canvas_commands, "
-            "assessment, and next_check. "
+            "and assessment. "
             "canvas_commands must contain focus_section and highlight_span commands. "
             "Canvas editing is a real tool call: when the student asks to append, add, "
             "create, generate, update, edit, or extend a canvas section, note, example, "

@@ -108,12 +108,6 @@ def _payload() -> dict:
             "reason": "The boundary is missing.",
             "evidence_ids": ["causal-link"],
         },
-        "next_check": {
-            "gate_id": gate.id,
-            "gate_revision": gate.revision,
-            "prompt": "Explain the mechanism.",
-            "assistance": {"level": "none", "content": None},
-        },
     }
 
 
@@ -155,7 +149,7 @@ def _parse(payload: dict, *, active_gate: bool = True):
     return agent_result_from_content(json.dumps(payload), _turn(active_gate=active_gate), "model")
 
 
-@pytest.mark.parametrize("missing", ["session_goal", "assessment", "next_check"])
+@pytest.mark.parametrize("missing", ["session_goal", "assessment"])
 def test_provider_payload_rejects_missing_required_fields(missing: str) -> None:
     payload = _payload()
     payload.pop(missing)
@@ -232,7 +226,6 @@ def test_provider_payload_rejects_assessment_without_bound_check() -> None:
 def test_provider_payload_accepts_unbound_turn_without_assessment() -> None:
     payload = _payload()
     payload["assessment"] = None
-    payload["next_check"] = None
 
     result = agent_result_from_content(json.dumps(payload), _turn(bound_check=False), "model")
 

@@ -247,7 +247,7 @@ class AgentTurnRequest(BaseModel):
     course_id: str = Field(min_length=1)
     lecture_id: str = Field(min_length=1)
     attendance: AttendanceStatus
-    message: str = Field(min_length=1, max_length=4000)
+    message: str = Field(min_length=1, max_length=4000, pattern=r"\S")
     requested_gate_id: str | None = Field(default=None, min_length=1, max_length=160)
     checkpoint_gate_id: str | None = Field(default=None, min_length=1, max_length=160)
     canvas_state: CanvasState = Field(default_factory=CanvasState)

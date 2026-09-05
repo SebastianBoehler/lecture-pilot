@@ -6,8 +6,9 @@ from pydantic import ValidationError
 
 from lecturepilot.assessment_feedback import assessment_reason, compose_assessment_message
 from lecturepilot.model_commands import (
+    checkpoint_assessment_required,
     resolve_provider_canvas_commands,
-    validate_next_check,
+    select_next_check,
     validate_quality_gate_decision,
 )
 from lecturepilot.models import (
@@ -36,18 +37,20 @@ def agent_result_from_content(
         [command.to_domain() for command in provider_result.canvas_commands], turn
     )
     decision = _quality_gate_decision(provider_result.assessment, turn)
+    if decision is None and checkpoint_assessment_required(turn):
+        raise ProviderConfigurationError("Explicit checkpoint submission requires an assessment.")
     decision = validate_quality_gate_decision(decision, turn)
-    validate_next_check(provider_result.next_check, turn, decision)
+    next_check = select_next_check(turn, decision)
     message = provider_result.message.strip()
     if decision is not None:
-        message = compose_assessment_message(decision, provider_result.next_check)
+        message = compose_assessment_message(decision, next_check)
     result = AgentTurnResult(
         message=message,
         session_goal=(
             provider_result.session_goal.strip() if provider_result.session_goal else None
         ),
         canvas_commands=commands,
-        next_check=provider_result.next_check,
+        next_check=next_check,
         quality_gate=decision,
         model=model,
     )

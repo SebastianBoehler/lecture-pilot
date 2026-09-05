@@ -20,9 +20,12 @@ def canvas_context(turn: AgentTurnInput) -> str:
         f"Canvas source: {document.source_ref}",
         "Allowed canvas targets:",
     ]
-    for section in document.sections:
+    focused = turn.canvas_state.focused_section_id
+    sections = sorted(document.sections, key=lambda section: section.id != focused)
+    for section in sections:
         lines.append(f"- section_id={section.id}; title={section.title}")
-        for block in section.blocks[:5]:
+        blocks = section.blocks if section.id == focused else section.blocks[:5]
+        for block in blocks:
             excerpt = _block_excerpt(
                 block.type, block.text, block.items, block.caption, block.asset_path
             )
@@ -50,6 +53,14 @@ def assessment_required(turn: AgentTurnInput) -> bool:
         and context.pending_check_gate_id == active_gate.id
         and context.pending_check_gate_revision == active_gate.revision
         and context.pending_check_issued_at is not None
+    )
+
+
+def checkpoint_assessment_required(turn: AgentTurnInput) -> bool:
+    return (
+        assessment_required(turn)
+        and turn.checkpoint_gate_id is not None
+        and turn.checkpoint_gate_id == turn.active_gate.id
     )
 
 
@@ -90,18 +101,13 @@ def validate_quality_gate_decision(
     return decision
 
 
-def validate_next_check(
-    next_check: NextCheck | None,
+def select_next_check(
     turn: AgentTurnInput,
     decision: QualityGateDecision | None,
-) -> None:
+) -> NextCheck | None:
     gate = turn.active_gate
     if decision is None:
-        if next_check is not None:
-            raise ProviderConfigurationError(
-                "Model returned a next check without an assessed pending check."
-            )
-        return
+        return None
     if gate is None:
         raise ProviderConfigurationError("Model returned a next check without an active gate.")
     stage = turn.coaching_context.pending_check_stage
@@ -113,11 +119,7 @@ def validate_next_check(
         status=decision.status,
         exposed_hint_levels=turn.coaching_context.exposed_hint_levels,
     )
-    expected = transition.check if transition else None
-    if next_check != expected:
-        raise ProviderConfigurationError(
-            "Model response does not match the server-selected next check."
-        )
+    return transition.check if transition else None
 
 
 def resolve_provider_canvas_commands(

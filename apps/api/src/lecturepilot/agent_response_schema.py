@@ -3,24 +3,27 @@ from __future__ import annotations
 from typing import Any
 
 from lecturepilot import component_response_schema
+from lecturepilot.tutor_response_constraints import constrain_tutor_response
 from lecturepilot.course_canvas_response_schema import course_canvas_schema
 from lecturepilot.learning_map import LearningMapGate
-from lecturepilot.model_commands import assessment_required
+from lecturepilot.model_commands import assessment_required, checkpoint_assessment_required
 from lecturepilot.models import AgentTurnInput
-from lecturepilot.provider_turn_schema import assessment_schema, next_check_schema
+from lecturepilot.provider_turn_schema import assessment_schema
 
 
 def lecturepilot_response_format(turn: AgentTurnInput) -> dict[str, Any]:
     bound = assessment_required(turn)
+    schema = _agent_turn_schema(
+        assessment_gate=(turn.active_gate if bound else None),
+        required_assessment=checkpoint_assessment_required(turn),
+    )
+    constrain_tutor_response(schema, turn)
     return {
         "type": "json_schema",
         "json_schema": {
             "name": "lecturepilot_agent_turn",
             "strict": True,
-            "schema": _agent_turn_schema(
-                assessment_gate=(turn.active_gate if bound else None),
-                next_check_gate=(turn.active_gate if bound else None),
-            ),
+            "schema": schema,
         },
     }
 
@@ -135,7 +138,7 @@ def _source_route_schema(role: str) -> dict[str, Any]:
 
 
 def _agent_turn_schema(
-    *, assessment_gate: LearningMapGate | None, next_check_gate: LearningMapGate | None
+    *, assessment_gate: LearningMapGate | None, required_assessment: bool
 ) -> dict[str, Any]:
     return {
         "type": "object",
@@ -150,15 +153,13 @@ def _agent_turn_schema(
                 "items": _canvas_command_schema(),
                 "description": "Canvas navigation or learner-owned canvas updates.",
             },
-            "assessment": assessment_schema(assessment_gate),
-            "next_check": next_check_schema(next_check_gate),
+            "assessment": assessment_schema(assessment_gate, required=required_assessment),
         },
         "required": [
             "message",
             "session_goal",
             "canvas_commands",
             "assessment",
-            "next_check",
         ],
     }
 

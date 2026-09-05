@@ -140,8 +140,8 @@ async def _final_json_response(
     repair = (
         f" The previous JSON failed server validation: {validation_error[:1000]} "
         "Correct that contract error in this response. If the student did not answer the "
-        "persisted check, set assessment to null. Declare next_check assistance only when its "
-        "exact content appears in message before the exact prompt."
+        "persisted check, set assessment to null, except an explicit checkpoint submission "
+        "always requires assessment. Do not return next_check; the server selects it."
         if validation_error
         else ""
     )

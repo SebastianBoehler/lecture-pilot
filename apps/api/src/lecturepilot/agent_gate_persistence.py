@@ -42,7 +42,8 @@ def persist_quality_gate(
             )
         if turn.user_id == LOCAL_PREVIEW_USER_ID or is_professor_preview_user_id(turn.user_id):
             return
-        assessed_turn = AssessedAgentTurnInput.model_validate(turn.model_dump())
+        # Preserve nested field presence: dumping adds defaults absent from legacy gate hashes.
+        assessed_turn = AssessedAgentTurnInput.model_validate(dict(turn))
         store = analytics_store(app)
         store.record_quality_gate(
             course_id=assessed_turn.course_id,

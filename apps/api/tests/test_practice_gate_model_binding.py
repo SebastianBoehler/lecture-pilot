@@ -40,11 +40,15 @@ def test_provider_cannot_substitute_the_server_selected_failed_diagnostic_check(
         assistance_content=content,
     )
 
-    with pytest.raises(ProviderConfigurationError, match="server-selected next check"):
+    payload["next_check"] = {
+        "prompt": prompt,
+        "assistance": {"level": level, "content": content},
+    }
+    with pytest.raises(ProviderConfigurationError, match="result contract"):
         _parse(gate, payload, stage="diagnostic")
 
 
-def test_provider_must_issue_exact_independent_exit_after_diagnostic_pass() -> None:
+def test_server_issues_exact_independent_exit_after_diagnostic_pass() -> None:
     gate = practice_gate()
     payload = _payload(
         gate,
@@ -54,8 +58,9 @@ def test_provider_must_issue_exact_independent_exit_after_diagnostic_pass() -> N
         assistance_content=None,
     )
 
-    with pytest.raises(ProviderConfigurationError, match="server-selected next check"):
-        _parse(gate, payload, stage="diagnostic")
+    result = _parse(gate, payload, stage="diagnostic")
+    assert result.next_check.prompt == gate.independent_exit_task
+    assert result.next_check.assistance.level == "none"
 
 
 def test_provider_accepts_exact_approved_hint_and_prompt() -> None:
@@ -203,12 +208,6 @@ def _payload(
             "gate_revision": gate.revision,
             "reason": "Evidence checked against the approved criterion.",
             "evidence_ids": evidence_ids,
-        },
-        "next_check": {
-            "gate_id": gate.id,
-            "gate_revision": gate.revision,
-            "prompt": next_prompt,
-            "assistance": {"level": assistance_level, "content": assistance_content},
         },
     }
 

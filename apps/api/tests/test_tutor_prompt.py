@@ -43,7 +43,8 @@ def test_model_prompt_requires_guided_quality_gate_turns() -> None:
     assert "delayed independent transfer check" in system_prompt
     assert "server composes the learner-facing assessment" in system_prompt
     assert "assistance actually contained in message" not in system_prompt
-    assert "next approved support selected by the server" in system_prompt
+    assert "server alone selects the next check and approved assistance" in system_prompt
+    assert "explicit checkpoint submission is an attempt even when incomplete" in system_prompt
     assert "highlight_span" in system_prompt
 
 

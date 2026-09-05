@@ -2,10 +2,14 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
+from pydantic import ValidationError
+
 from lecturepilot.agent_gate_persistence import persist_quality_gate
 from lecturepilot.analytics_events import outcome_event_id, parse_analytics_event
 from lecturepilot.coaching_analytics import gate_metrics
 from lecturepilot.coaching_progress import CoachingTurnEvent
+from lecturepilot.learning_map_models import HARDENING_GATE_FIELDS, LearningMapGate, digest_payload
 from lecturepilot.models import AgentTurnResult, QualityGateDecision, QualityGateStatus
 from lecturepilot.observability import Observability
 from test_analytics_routes import _client
@@ -54,10 +58,19 @@ def test_legacy_independent_events_remain_compatible() -> None:
     assert gate.independent_first_pass.sample_size == 1
 
 
-def test_only_passed_independent_exit_updates_gate_completion(tmp_path: Path) -> None:
+@pytest.mark.parametrize("legacy_gate", [False, True])
+def test_only_passed_independent_exit_updates_gate_completion(
+    tmp_path: Path, legacy_gate: bool
+) -> None:
     client = _client(tmp_path)
     turn = _prepare_gate(client, "student-a")
     assert turn.active_gate is not None
+    if legacy_gate:
+        payload = turn.active_gate.model_dump(
+            mode="json", exclude={"revision", *HARDENING_GATE_FIELDS}
+        )
+        gate = LearningMapGate.model_validate({**payload, "revision": digest_payload(payload)})
+        turn = turn.model_copy(update={"active_gate": gate})
     gate = turn.active_gate
     pass_decision = _decision(gate.id, gate.revision, QualityGateStatus.PASSED)
     fail_decision = _decision(gate.id, gate.revision, QualityGateStatus.NEEDS_EVIDENCE)
@@ -97,6 +110,31 @@ def test_only_passed_independent_exit_updates_gate_completion(tmp_path: Path) ->
         "independent_exit",
     ]
     assert all("reason" not in event and "learner_text" not in event for event in events)
+
+
+@pytest.mark.parametrize("invalid_field", ["active_gate", "analytics_context"])
+def test_gate_persistence_still_rejects_invalid_assessment_context(
+    tmp_path: Path, invalid_field: str
+) -> None:
+    client = _client(tmp_path)
+    turn = _prepare_gate(client, "student-a")
+    assert turn.active_gate is not None
+    gate = turn.active_gate
+    invalid_value = (
+        gate.model_copy(update={"prompt": "Changed without updating the revision."})
+        if invalid_field == "active_gate"
+        else None
+    )
+    turn = turn.model_copy(update={invalid_field: invalid_value})
+    decision = _decision(gate.id, gate.revision, QualityGateStatus.NEEDS_EVIDENCE)
+
+    with pytest.raises(ValidationError, match=invalid_field):
+        _persist(client, turn, decision, "diagnostic", 1)
+
+    assert (
+        client.app.state.analytics_store.events(course_id="demo-course", lecture_id="lecture-01")
+        == []
+    )
 
 
 def _persist(client, turn, decision, kind: str, index: int) -> None:

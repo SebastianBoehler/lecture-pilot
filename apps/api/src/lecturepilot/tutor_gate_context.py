@@ -54,7 +54,7 @@ def _transition_contract(turn: AgentTurnInput) -> str:
     gate = turn.active_gate
     stage = turn.coaching_context.pending_check_stage
     if gate is None or stage is None:
-        return "Server-selected next check: none; return next_check as null.\n"
+        return "No bound assessment stage. Do not return a next_check field.\n"
     passed = derive_next_transition(
         gate,
         current_stage=stage,
@@ -72,8 +72,8 @@ def _transition_contract(turn: AgentTurnInput) -> str:
         f"If passed, server-selected next check: {_describe_transition(passed)}\n"
         "If needs_evidence, server-selected next check: "
         f"{_describe_transition(needs_evidence)}\n"
-        "Copy that exact prompt, assistance level, and approved assistance content; "
-        "the server rejects substitutions.\n"
+        "These transitions are applied by the server after assessment. "
+        "Do not return a next_check field or substitute tasks or support.\n"
     )
 
 
