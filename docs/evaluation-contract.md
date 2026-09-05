@@ -10,16 +10,25 @@ local environment only.
 
 Each private canvas draft has one deterministic learning-design report in its
 existing `learning-design.json` review record. The report is bound to the exact
-draft digest, source revision, and learning-map revision. It covers gate,
+draft digest, source revision, approved practice-design revision, and
+learning-map revision. It covers gate,
 quiz, source-backed assessment, and transfer-prompt presence, and points to
 structural diagnostics such as a concept without an assessment or a checkpoint
 without section-local source evidence.
 
-A professor must acknowledge every diagnostic for that exact draft before
-approval. Saving or changing any bound revision invalidates the acknowledgement.
-Acknowledgement is a publication control, not a claim that the design is good,
-effective, or suitable for research. The report and acknowledgements remain
-private builder state and are excluded from the published learner canvas.
+A professor approves the source-grounded practice design before generation,
+then reviews and approves the resulting learning plan for the exact draft,
+source, practice-design, report, and learning-map revisions before publication.
+Deterministic defects require validation or repair; professors do not separately
+acknowledge generator diagnostics. Changing a bound revision makes the approval
+stale. Approval is a publication control, not evidence that the design is
+effective or suitable for research. The report and approval remain private
+builder state and are excluded from the published learner canvas.
+
+Implementation authority: `CourseLearningDesignStore.approve` and
+`approved_learning_design` in
+`apps/api/src/lecturepilot/course_learning_design_store.py`, with practice-design
+binding validated by `course_practice_design_binding.py` (reviewed at `8e656e2`).
 
 ## Outcome contract
 

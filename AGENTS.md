@@ -171,6 +171,10 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
 - Attendance changes agent behavior; it must not fork the workspace schema.
 - The tutor should lead the session, ask targeted checks, and only pass quality
   gates after meaningful evidence from the student.
+- Explicit checkpoint submissions use one structured assessment call, without
+  filesystem tools. Even an incomplete answer requires an assessment. The
+  backend derives the next approved check and assistance from that assessment;
+  the provider must not choose or return `next_check`.
 - Exam-readiness submissions use the typed API action and scaffold policy over
   the selected task, source excerpt, rubric, and course progress summary; they
   are not a general agent filesystem tool.
@@ -204,6 +208,13 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
   the implementation for the exact draft, source, practice-design, report, and
   learning-map revisions; it does not replace the earlier design approval or
   acknowledge generator diagnostics as a separate publication task.
+- Place each approved practice checkpoint in its outcome-anchor section, not
+  the first section matching an auxiliary hint. Validate exact task ids/text
+  before caching completed sections; generic formatting must preserve them.
+- Shared authoring guidance lives in `course_teaching_instructions.py`. Forward
+  approved learner context into canvas generation without exposing hidden exit
+  tasks. Canonical diagnostics may precede worked examples; ordinary formative
+  checks follow them. Keep generation validation and draft reports consistent.
 - This slice records future independent-exit and scaffold intent only. It does
   not assert learner efficacy or add learner-runtime SRL or AI-policy enforcement.
 - Canvas commands may focus sections, highlight specific blocks or phrases, and
@@ -223,6 +234,8 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
 
 - The canvas is the main learning surface and should remain the single ground
   truth for generated explanations, quizzes, examples, figures, and summaries.
+  Render the revision-matched pending check at its checkpoint after reload; do
+  not overwrite published tasks or carry a previous answer into a changed task.
 - Side panels are navigation and inspection aids; do not move core learning
   content into a side panel unless the user explicitly asks.
 - Source references must stay in-app. Do not use direct links that navigate the
