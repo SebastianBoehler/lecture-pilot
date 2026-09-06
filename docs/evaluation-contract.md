@@ -16,8 +16,10 @@ quiz, source-backed assessment, and transfer-prompt presence, and points to
 structural diagnostics such as a concept without an assessment or a checkpoint
 without section-local source evidence.
 
-A professor approves the source-grounded practice design before generation,
-then reviews and approves the resulting learning plan for the exact draft,
+A professor approves source-grounded goals or explicitly protects the full
+practice design before generation. Goal approval permits repair of the teaching
+implementation while preserving the goal identities and constraints. The professor
+then reviews and approves the resulting teaching implementation for the exact draft,
 source, practice-design, report, and learning-map revisions before publication.
 Deterministic defects require validation or repair; professors do not separately
 acknowledge generator diagnostics. Changing a bound revision makes the approval
@@ -36,7 +38,10 @@ Outcome events contain categorical, revision-bound metadata. Quiz events retain
 task and option identifiers, attempt order, correctness where a key exists, and
 publication/map revisions. Gate events retain gate and map revisions, attempt
 kind and index, the assistance level immediately before the attempt, and the
-planned and observed delay from the exact stored coaching turn.
+planned and observed delay from the exact stored coaching turn. Reviewed task IDs
+and recorded help exposure distinguish supported work from a fresh independent
+attempt. Bank exhaustion is not successful independent completion. See
+[learning-evidence-flow.md](learning-evidence-flow.md).
 
 The events do not contain learner answer text, tutor messages, experimental
 conditions, randomization assignments, browser timings, or a research export.

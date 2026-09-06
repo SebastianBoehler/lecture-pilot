@@ -258,6 +258,22 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
   Markdown for rich tutor memory, course memory for course-specific teaching
   observations, and `memory-trace.jsonl` for provenance.
 
+## Learning Evidence And Teaching Languages
+
+- Reviewed supplemental task banks belong to private practice designs and learning
+  maps. Never forward their hidden questions into teaching generation.
+- Help requests bind gate revision, task ID and issuance time and persist support
+  before revealing materials. Supported work needs a fresh reviewed task for
+  independent evidence; bank exhaustion stays explicit.
+- Focused attempts hide teaching, notes, sources and chat. Wait for learner state
+  on reload; do not flash materials before resolving a pending independent task.
+- German/English explanation variants require exact-digest professor publication.
+  Preserve canonical assessments, formulas, code and source identities. Bind to
+  current canonical publication; never substitute a stale translation.
+- AI implementation repair reports live in private practice-design history and
+  show deterministic before/after values and recorded reasons. See
+  `docs/learning-evidence-flow.md` for ownership and storage paths.
+
 ## UI And Canvas Rules
 
 - The canvas is the main learning surface and should remain the single ground

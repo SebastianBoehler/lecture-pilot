@@ -72,10 +72,12 @@ create owned course
   -> upload files or folder tree
   -> index by relative path and SHA-256
   -> infer and reorder lecture schedule
-  -> assign evidence per lecture
+  -> confirm complete source routing
+  -> approve source-grounded goals (or an explicit full practice design)
+  -> prepare and review the teaching implementation and task bank
   -> generate private canvas drafts
   -> repair a failed draft or exact invalid block when actionable
-  -> review and acknowledge the exact draft's learning-design report
+  -> review and approve the exact draft's teaching implementation
   -> preview and explicitly publish
 ```
 
@@ -100,9 +102,9 @@ uses a surgical block replacement when the failure contains an exact target. See
 [course-ingestion-pipeline.md](course-ingestion-pipeline.md).
 
 The private learning-design review record binds a deterministic report and any
-professor acknowledgement to the exact draft digest, source revision, and
-learning-map revision. A save or revision change requires a new acknowledgement;
-publication revalidates the binding. Neither the report nor its acknowledgement
+professor approval to the exact draft digest, source, practice-design, intent and
+learning-map revisions. A save or revision change requires a new approval;
+publication revalidates the binding. Neither the report nor its approval
 is copied into the published canvas. See
 [evaluation-contract.md](evaluation-contract.md).
 
@@ -157,3 +159,6 @@ restore matching versions together. The implementation does not replace the
 outstanding restore rehearsal, retention/deletion policy, or privacy approval;
 see [self-hosting.md](self-hosting.md) and
 [security-operations.md](security-operations.md).
+
+Reviewed task variants, focused attempts, teaching languages and exact implementation
+changes are documented in [learning-evidence-flow.md](learning-evidence-flow.md).
