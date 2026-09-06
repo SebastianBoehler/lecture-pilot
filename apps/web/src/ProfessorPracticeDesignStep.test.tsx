@@ -111,10 +111,8 @@ describe("ProfessorPracticeDesignStep", () => {
       </I18nProvider>,
     );
 
-    expect(screen.getByRole("heading", { name: /review learning plans/i })).toBeInTheDocument();
-    expect(
-      screen.getByText(/lecturepilot drafts each plan from confirmed sources/i),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /learning goals/i })).toBeInTheDocument();
+    expect(screen.getByText(/decide what students should learn/i)).toBeInTheDocument();
     expect(screen.getByText(/posterior decisions/i, { selector: "strong" })).toBeInTheDocument();
     expect(screen.queryByLabelText(/lecture title/i)).not.toBeInTheDocument();
     const sequence = screen.getByRole("list", { name: /practice sequence/i });
@@ -165,7 +163,7 @@ describe("ProfessorPracticeDesignStep", () => {
     );
 
     expect(screen.getByRole("alert")).toHaveTextContent(/revision changed/i);
-    await userEvent.setup().click(screen.getByRole("button", { name: /generate learning plan/i }));
+    await userEvent.setup().click(screen.getByRole("button", { name: /propose learning goals/i }));
     expect(propose).toHaveBeenCalledWith("lecture-03", false);
   });
 

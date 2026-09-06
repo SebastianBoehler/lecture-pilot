@@ -92,7 +92,7 @@ it("requires every full-course plan approval and keeps a stale approval conflict
   expect(screen.queryByLabelText(/route lecture03-eng\.tex/i)).not.toBeInTheDocument();
   await user.click(await screen.findByRole("button", { name: /accept assignments and continue/i }));
 
-  const proposals = await screen.findAllByRole("button", { name: /generate learning plan/i });
+  const proposals = await screen.findAllByRole("button", { name: /propose learning goals/i });
   await user.click(proposals[0]);
   await user.click(proposals[1]);
   await waitFor(() =>

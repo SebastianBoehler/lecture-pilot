@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from lecturepilot.canvas_models import CanvasDocument
+from lecturepilot.course_learning_intent import LearningIntent, has_approved_intent
 from lecturepilot.course_practice_design_files import locked_design_file, write_design_file
 from lecturepilot.course_practice_design_models import (
     PracticeDesign,
@@ -19,7 +20,9 @@ from lecturepilot.course_practice_design_review_models import (
     PracticeDesignReviewResult,
 )
 from lecturepilot.course_practice_design_snapshot import (
-    PracticeDesignError,
+    PracticeDesignApprovalRequired as PracticeDesignApprovalRequired,
+    PracticeDesignStale as PracticeDesignStale,
+    require_proposal_snapshot,
     PracticeDesignSnapshot,
     PracticeDesignUnavailable as PracticeDesignUnavailable,
     read_practice_design,
@@ -31,14 +34,6 @@ from lecturepilot.course_practice_design_validation import (
     validate_practice_design_review,
 )
 from lecturepilot.storage_layout import StorageLayout
-
-
-class PracticeDesignStale(PracticeDesignError):
-    pass
-
-
-class PracticeDesignApprovalRequired(PracticeDesignError):
-    pass
 
 
 class PracticeDesignStore:
@@ -69,6 +64,8 @@ class PracticeDesignStore:
         expected_design_approval: PracticeDesignApproval | None,
         expected_design_review: PracticeDesignQualityReview | None,
         expected_invalid_digest: str | None = None,
+        expected_learning_intent: LearningIntent | None = None,
+        goals_first: bool = False,
     ) -> PracticeDesign:
         design = PracticeDesign.create(
             course_id=course_id,
@@ -86,34 +83,24 @@ class PracticeDesignStore:
         design = with_quality_review(design, review)
         path = self._path(course_id, lecture_id)
         with locked_design_file(path):
-            if expected_invalid_digest is not None:
-                current_snapshot = snapshot_practice_design(
-                    path, course_id=course_id, lecture_id=lecture_id
-                )
-                if current_snapshot.invalid_digest != expected_invalid_digest:
-                    raise PracticeDesignStale(
-                        "The practice design changed while the learning plan was proposed. Reload it."
-                    )
-            else:
-                current = self._read(path, course_id, lecture_id)
-                if expected_design_revision is None:
-                    if (
-                        current is not None
-                        or expected_design_approval is not None
-                        or expected_design_review is not None
-                    ):
-                        raise PracticeDesignStale(
-                            "The practice design changed while the learning plan was proposed. Reload it."
-                        )
-                elif (
-                    current is None
-                    or current.revision != expected_design_revision
-                    or current.approval != expected_design_approval
-                    or current.quality_review != expected_design_review
-                ):
-                    raise PracticeDesignStale(
-                        "The practice design changed while the learning plan was proposed. Reload it."
-                    )
+            require_proposal_snapshot(
+                path,
+                course_id=course_id,
+                lecture_id=lecture_id,
+                expected_design_revision=expected_design_revision,
+                expected_design_approval=expected_design_approval,
+                expected_design_review=expected_design_review,
+                expected_learning_intent=expected_learning_intent,
+                expected_invalid_digest=expected_invalid_digest,
+            )
+            if goals_first:
+                from lecturepilot.course_learning_intent_store import rebuild
+
+                intent = expected_learning_intent
+                if intent is None or intent.source_revision != source_revision:
+                    intent = LearningIntent.from_design(design)
+                intent.require_matches(design)
+                design = with_quality_review(rebuild(design, learning_intent=intent), review)
             write_design_file(path, design)
         return design
 
@@ -151,6 +138,16 @@ class PracticeDesignStore:
                 planning_context=update.planning_context,
                 targets=update.targets,
             )
+            if current.learning_intent is not None:
+                from lecturepilot.course_learning_intent_store import rebuild
+
+                intent = LearningIntent.from_design(
+                    changed,
+                    fixed_target_ids=tuple(
+                        target.id for target in current.learning_intent.fixed_targets
+                    ),
+                )
+                changed = rebuild(changed, learning_intent=intent)
             validate_practice_design(
                 changed, source=source, allowed_source_paths=allowed_source_paths
             )
@@ -241,6 +238,7 @@ class PracticeDesignStore:
         lecture_id: str,
         source_revision: str,
         design_revision: str | None = None,
+        allow_pending_implementation: bool = False,
     ) -> PracticeDesign:
         path = self._path(course_id, lecture_id)
         with locked_design_file(path):
@@ -251,6 +249,17 @@ class PracticeDesignStore:
                 raise PracticeDesignStale(
                     "The practice design or source revision changed. Reload it."
                 )
+            if current.approval is None and has_approved_intent(current):
+                review = current.quality_review
+                if not allow_pending_implementation and (
+                    review is None
+                    or review.has_critical_issues
+                    or review.practice_design_revision != current.revision
+                ):
+                    raise PracticeDesignApprovalRequired(
+                        "Teaching implementation needs automatic repair."
+                    )
+                return current
             approval = current.approval
             if approval is None or (
                 approval.source_revision != current.source_revision

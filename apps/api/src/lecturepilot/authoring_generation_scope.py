@@ -29,8 +29,14 @@ def generation_authoring_scope(
             design_revision=ownership.practice_design_revision,
         )
 
+    root = bind_session(layout, ownership, session_generation_id)
+    design = PracticeDesignStore(layout).read(
+        course_id=ownership.course_id, lecture_id=ownership.lecture_id
+    )
+    if design is not None and design.learning_intent is not None:
+        root = root / "implementations" / ownership.practice_design_revision
     return AuthoringScope(
-        root=bind_session(layout, ownership, session_generation_id),
+        root=root,
         source_revision=source_revision,
         authorize=authorize,
         candidate=candidate,

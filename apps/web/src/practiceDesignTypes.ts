@@ -1,3 +1,5 @@
+import type { LearningIntent } from "./learningIntentTypes";
+
 export type PracticeSourceAnchor = Readonly<{
   source_path: string;
   excerpt: string;
@@ -98,7 +100,8 @@ export type PracticeDesignApproval = Readonly<{
 }>;
 
 export type PracticeDesign = Readonly<{
-  schema_version: 1;
+  schema_version: 1 | 2;
+  learning_intent?: LearningIntent | null;
   course_id: string;
   lecture_id: string;
   lecture_title: string;
@@ -112,6 +115,7 @@ export type PracticeDesign = Readonly<{
 }>;
 
 export type PracticeDesignUpdate = Readonly<{
+  goals?: LearningIntent["goals"];
   source_revision: string;
   practice_design_revision: string;
   lecture_title: string;

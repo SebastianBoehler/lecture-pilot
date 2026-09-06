@@ -13,6 +13,14 @@ class PracticeDesignError(ValueError):
     pass
 
 
+class PracticeDesignStale(PracticeDesignError):
+    pass
+
+
+class PracticeDesignApprovalRequired(PracticeDesignError):
+    pass
+
+
 class PracticeDesignUnavailable(PracticeDesignError):
     pass
 
@@ -75,3 +83,46 @@ def _parse_design(payload: bytes, *, course_id: str, lecture_id: str) -> Practic
     elif design.approval is not None:
         raise PracticeDesignUnavailable("Stored approved practice design has no quality review.")
     return design
+
+
+def require_proposal_snapshot(
+    path,
+    *,
+    course_id,
+    lecture_id,
+    expected_design_revision,
+    expected_design_approval,
+    expected_design_review,
+    expected_learning_intent,
+    expected_invalid_digest,
+):
+    snapshot = snapshot_practice_design(path, course_id=course_id, lecture_id=lecture_id)
+    message = "The practice design changed while the learning plan was proposed. Reload it."
+    if expected_invalid_digest is not None:
+        if snapshot.invalid_digest != expected_invalid_digest:
+            raise PracticeDesignStale(message)
+        return
+    if snapshot.invalid_digest is not None:
+        raise PracticeDesignUnavailable(
+            "Stored practice design is invalid. Generate a new learning plan."
+        )
+    current = snapshot.design
+    if expected_design_revision is None:
+        if any(
+            item is not None
+            for item in (
+                current,
+                expected_design_approval,
+                expected_design_review,
+                expected_learning_intent,
+            )
+        ):
+            raise PracticeDesignStale(message)
+    elif (
+        current is None
+        or current.revision != expected_design_revision
+        or current.approval != expected_design_approval
+        or current.quality_review != expected_design_review
+        or current.learning_intent != expected_learning_intent
+    ):
+        raise PracticeDesignStale(message)

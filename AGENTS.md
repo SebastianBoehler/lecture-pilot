@@ -211,18 +211,20 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
   every indexed course file exactly once as lecture-specific, course-wide, or
   not used. Professors review and may edit this complete proposal; generation
   remains blocked until they confirm the current source revision.
-- After source confirmation, each target lecture needs a source-grounded,
-  professor-approved practice design before generation. The model may propose
-  it, but the professor owns outcomes, tasks, evidence, scaffolds, review
-  timing, and approval; an edit or source revision makes approval stale.
-- Same-source learning-plan refresh repairs the existing design while preserving
-  its objective, ordered target IDs and outcomes. It must not evade a difficult
-  assessment by dropping its learning goal. Refresh still requires new approval.
+- After source confirmation, propose source-backed learning goals without tasks.
+  Professors approve outcomes, constraints and explicitly fixed tasks. Schema-2
+  teaching implementations are AI-owned until publication and may be repaired
+  without changing approved intent. Preserve schema-1 full approvals unless the
+  professor explicitly converts them; archive earlier snapshots privately.
+  See `docs/learning-intent-ownership.md`.
+- Same-source implementation repair preserves every approved goal, ordered ID,
+  constraint and fixed task. It cannot evade an assessment by dropping its goal.
+  Goal/source edits need new intent approval; implementation repair preserves it.
 - Practice-design providers select request-local evidence IDs from
   `practice_evidence_catalogue.py`; the backend hydrates exact routed quotations
   and derives source paths. Semantic support still requires review.
-- Generation receives the exact approved design snapshot and writes its source
-  and practice-design revisions to the draft binding. Draft review and
+- Generation receives exact approved intent and a reviewed implementation and
+  writes source, intent and implementation revisions to the draft binding. Draft review and
   publication fail closed when that binding, design approval, or source
   revision is no longer current; regenerate rather than infer a replacement.
 - A generated canvas may become ready only after deterministic learning-design

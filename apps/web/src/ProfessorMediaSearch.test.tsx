@@ -30,7 +30,7 @@ describe("Professor lecture media search", () => {
     await user.click(await screen.findByRole("button", { name: /apply lecture schedule/i }));
     await screen.findByRole("heading", { name: /source assignments ready/i });
     await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
-    await screen.findByRole("heading", { name: /learning plans/i });
+    await screen.findByRole("heading", { name: /learning goals/i });
     await approveAllPracticeDesigns(user);
     await user.click(screen.getByRole("button", { name: /05 media/i }));
 
@@ -96,7 +96,7 @@ describe("Professor lecture media search", () => {
     await user.click(await screen.findByRole("button", { name: /apply lecture schedule/i }));
     await screen.findByRole("heading", { name: /source assignments ready/i });
     await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
-    await screen.findByRole("heading", { name: /learning plans/i });
+    await screen.findByRole("heading", { name: /learning goals/i });
     await approveAllPracticeDesigns(user);
     await user.click(screen.getByRole("button", { name: /05 media/i }));
 
@@ -133,7 +133,7 @@ describe("Professor lecture media search", () => {
     await user.click(await screen.findByRole("button", { name: /apply lecture schedule/i }));
     await screen.findByRole("heading", { name: /source assignments ready/i });
     await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
-    await screen.findByRole("heading", { name: /learning plans/i });
+    await screen.findByRole("heading", { name: /learning goals/i });
     await approveAllPracticeDesigns(user);
     await user.click(screen.getByRole("button", { name: /05 media/i }));
     await screen.findByRole("heading", { name: /review youtube candidates/i });

@@ -14,5 +14,5 @@ def with_quality_review(
         practice_design_revision=design.revision,
     )
     return PracticeDesign.model_validate(
-        {**design.model_dump(mode="json"), "quality_review": review.model_dump(mode="json")}
+        {**design.model_dump(mode="python"), "quality_review": review.model_dump(mode="python")}
     )

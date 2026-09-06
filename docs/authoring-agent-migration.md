@@ -66,7 +66,9 @@ again. Repeated identical defects stop with an explicit stalled error. A critic
 issue against an exact approved checkpoint is checked against its task, rubric,
 source and teaching. Unsupported objections are dismissed; missing explanation
 is repaired in the canvas. Only a source-checked conflict that requires changing
-the approved task/rubric stops with HTTP 409. Model agreement is still not proof
+a fully professor-protected task/rubric stops with HTTP 409. AI-owned unpublished
+implementation can instead receive one bounded repair while preserving approved
+intent; see [learning intent ownership](learning-intent-ownership.md). Model agreement is still not proof
 of correctness, and human approval is not silently overwritten.
 There is no claim that structured output guarantees semantic correctness.
 

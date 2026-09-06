@@ -1,3 +1,4 @@
+import type { LearningIntentApprovalOptions } from "./learningIntentTypes";
 import { useLayoutEffect, useRef, useState } from "react";
 
 import {
@@ -197,11 +198,11 @@ export function useProfessorPracticeDesigns({
     );
   }
 
-  async function approve(lectureId: string) {
+  async function approve(lectureId: string, intent?: LearningIntentApprovalOptions) {
     const design = designs[lectureId];
     if (!courseId || !identityKey || !design) return;
     await mutate(lectureId, "approve", () =>
-      approvePracticeDesign({ courseId, lectureId, design, session }),
+      approvePracticeDesign({ courseId, lectureId, design, session, intent }),
     );
   }
 

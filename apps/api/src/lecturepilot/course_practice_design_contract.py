@@ -23,3 +23,9 @@ class StrictPracticeDesignModel(BaseModel):
     model_config = ConfigDict(
         extra="forbid", frozen=True, revalidate_instances="always", strict=True
     )
+
+
+def require_observable_outcome(outcome: str) -> None:
+    normalized = outcome.strip().casefold()
+    if normalized in {"understand", "know"} or normalized.startswith(("understand ", "know ")):
+        raise ValueError("Practice target outcomes must be observable independent capabilities.")

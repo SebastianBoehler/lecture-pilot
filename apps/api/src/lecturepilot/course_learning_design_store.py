@@ -13,6 +13,12 @@ from lecturepilot.canvas_snapshot import locked_canvas_paths
 from lecturepilot.course_canvas_repairs import lecture_source_revision
 from lecturepilot import course_practice_design_binding as practice_bindings
 from lecturepilot.course_practice_design_models import PracticeDesign
+from lecturepilot.course_learning_design_errors import (
+    LearningDesignError as LearningDesignError,
+    LearningDesignStaleError as LearningDesignStaleError,
+    LearningDesignUnavailableError as LearningDesignUnavailableError,
+    LearningDesignApprovalRequiredError as LearningDesignApprovalRequiredError,
+)
 from lecturepilot.course_learning_design_models import (
     LearningDesignApproval,
     LearningDesignReview,
@@ -24,22 +30,6 @@ from lecturepilot.learning_design_report import build_learning_design_report
 from lecturepilot.learning_map import build_learning_map
 from lecturepilot.storage_layout import StorageLayout
 from lecturepilot.course_update_recovery import locked_course_state
-
-
-class LearningDesignError(ValueError):
-    pass
-
-
-class LearningDesignStaleError(LearningDesignError):
-    pass
-
-
-class LearningDesignUnavailableError(LearningDesignError):
-    pass
-
-
-class LearningDesignApprovalRequiredError(LearningDesignError):
-    pass
 
 
 class CourseLearningDesignStore:
@@ -118,6 +108,7 @@ class CourseLearningDesignStore:
                 draft_digest=current.draft_digest,
                 source_revision=current.source_revision,
                 practice_design_revision=current.practice_design_revision,
+                learning_intent_revision=current.learning_intent_revision,
                 learning_map_revision=current.learning_map.revision,
                 report_revision=current.report.report_revision,
                 acknowledged_warning_ids=[],
@@ -155,6 +146,9 @@ def initialize_learning_design(
         draft_digest=draft_digest,
         source_revision=source_revision,
         practice_design_revision=practice_design.revision,
+        learning_intent_revision=practice_design.learning_intent.revision
+        if practice_design.learning_intent
+        else None,
         learning_map=learning_map,
         report=report,
     )
@@ -175,6 +169,7 @@ def approved_learning_design(
         approval.draft_digest != current.draft_digest
         or approval.source_revision != current.source_revision
         or approval.practice_design_revision != current.practice_design_revision
+        or approval.learning_intent_revision != current.learning_intent_revision
         or approval.learning_map_revision != current.learning_map.revision
         or approval.report_revision != current.report.report_revision
     ):
@@ -222,6 +217,8 @@ def _current_review(
         or stored.draft_digest != canvas_digest(document)
         or stored.source_revision != current_source
         or stored.practice_design_revision != design.revision
+        or stored.learning_intent_revision
+        != (design.learning_intent.revision if design.learning_intent else None)
         or stored.report.draft_digest != stored.draft_digest
         or stored.report.source_revision != stored.source_revision
         or stored.report.learning_map_revision != stored.learning_map.revision

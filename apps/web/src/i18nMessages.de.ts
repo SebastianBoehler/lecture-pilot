@@ -561,7 +561,7 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.stage.sources":
     "Übernimm die vorgeschlagenen Quellenzuordnungen oder prüfe bei Bedarf einzelne Dateien.",
   "builder.stage.design":
-    "Prüfe die gewünschten Lernziele und Übungsaufgaben, bevor ein Canvas-Entwurf erzeugt wird.",
+    "Gib frei, was Studierende lernen sollen, bevor die KI Erklärungen und Aufgaben entwickelt.",
   "builder.stage.review": "Wähle nur Medien, die den Canvas gezielt ergänzen.",
   "builder.stage.generate": "Erstelle den Canvas-Entwurf und prüfe ihn in der Lernansicht.",
   "builder.stage.publish": "Gib geprüfte Vorlesungs-Arbeitsbereiche für deine Studierenden frei.",

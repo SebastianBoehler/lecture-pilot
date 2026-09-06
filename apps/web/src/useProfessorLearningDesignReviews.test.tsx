@@ -28,6 +28,9 @@ it("loads, edits, approves, and refreshes draft-bound reviews per lecture", asyn
       };
     }
     if (init?.method === "POST") {
+      expect(JSON.parse(String(init.body)).practice_design_revision).toBe(
+        serverReview.practice_design_revision,
+      );
       serverReview = {
         ...serverReview,
         approval: {
@@ -61,6 +64,7 @@ it("loads, edits, approves, and refreshes draft-bound reviews per lecture", asyn
     result.current.save("lecture-01", {
       draft_digest: serverReview.draft_digest,
       source_revision: serverReview.source_revision,
+      practice_design_revision: serverReview.practice_design_revision,
       learning_map_revision: serverReview.learning_map.revision,
       objective: "Edited objective",
       gates: [],
@@ -172,6 +176,7 @@ function review(digest: string, approvedBy: string | null): LearningDesignReview
     lecture_id: "lecture-01",
     draft_digest: digest.repeat(64),
     source_revision: "s".repeat(64),
+    practice_design_revision: "a".repeat(64),
     factual_quality_separate: true,
     report: learningDesignReportFixture({
       draftDigest: digest.repeat(64),
@@ -205,6 +210,7 @@ function updateFor(current: LearningDesignReview) {
   return {
     draft_digest: current.draft_digest,
     source_revision: current.source_revision,
+    practice_design_revision: current.practice_design_revision,
     learning_map_revision: current.learning_map.revision,
     objective: current.learning_map.objective,
     gates: [],

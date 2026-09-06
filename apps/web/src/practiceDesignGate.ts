@@ -1,3 +1,4 @@
+import type { LearningIntentApprovalOptions } from "./learningIntentTypes";
 import { useEffect, useEffectEvent } from "react";
 
 import { getPracticeDesignReadiness } from "./practiceDesignApi";
@@ -43,7 +44,8 @@ export function useProfessorPracticeDesignGate({
       pendingAction: designs.pendingAction,
       pendingLectureId: designs.pendingLectureId,
       routingReady,
-      onApprove: (lectureId: string) => void designs.approve(lectureId),
+      onApprove: (lectureId: string, intent?: LearningIntentApprovalOptions) =>
+        void designs.approve(lectureId, intent),
       onPropose: (lectureId: string, refresh = false) => void designs.propose(lectureId, refresh),
       onReview: (lectureId: string) => void designs.review(lectureId),
       onSave: (lectureId: string, update: Parameters<typeof designs.save>[1]) =>

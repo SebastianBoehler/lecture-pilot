@@ -166,7 +166,7 @@ describe("Professor course builder recovery", () => {
     await user.click(
       await screen.findByRole("button", { name: /accept assignments and continue/i }),
     );
-    expect(await screen.findByRole("heading", { name: /learning plans/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /learning goals/i })).toBeInTheDocument();
 
     failRoutingReload = true;
     await user.click(screen.getByRole("button", { name: /refresh workspace/i }));

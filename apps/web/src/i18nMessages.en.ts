@@ -547,7 +547,7 @@ export const enMessages = {
   "builder.stage.sources":
     "Accept the proposed source assignments, or inspect individual files when needed.",
   "builder.stage.design":
-    "Review the intended outcomes and practice contract before generating a canvas draft.",
+    "Approve what students should learn before AI develops the teaching and practice.",
   "builder.stage.review": "Choose only media that gives the canvas useful support.",
   "builder.stage.generate": "Generate the canvas draft and review it in the learner view.",
   "builder.stage.publish": "Release reviewed lecture workspaces to your students.",

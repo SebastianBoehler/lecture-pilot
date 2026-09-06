@@ -144,7 +144,10 @@ def _approved_source(
             "Lecture source changed after this failure. Generate a new draft before repairing it."
         )
     design = PracticeDesignStore(layout).require_approved(
-        course_id=course_id, lecture_id=lecture_id, source_revision=revision
+        course_id=course_id,
+        lecture_id=lecture_id,
+        source_revision=revision,
+        allow_pending_implementation=True,
     )
     return source, revision, design
 
@@ -173,3 +176,11 @@ def _write(path: Path, owner: CanvasGenerationOwnership) -> None:
         fsync_directory(path.parent)
     finally:
         temporary.unlink(missing_ok=True)
+
+
+def replace_generation_design(layout, ownership, design):
+    """Caller holds the course lock; retain worker identity while rebinding its implementation."""
+    require_generation_ownership(layout, ownership)
+    changed = ownership.model_copy(update={"practice_design_revision": design.revision})
+    _write(ownership_path(layout, ownership.course_id, ownership.lecture_id), changed)
+    return changed

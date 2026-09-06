@@ -35,7 +35,7 @@ export async function approveAllLearningDesigns(user: ReturnType<typeof userEven
 }
 
 export async function approveAllPracticeDesigns(user: ReturnType<typeof userEvent.setup>) {
-  const proposals = await screen.findAllByRole("button", { name: /generate learning plan/i });
+  const proposals = await screen.findAllByRole("button", { name: /propose learning goals/i });
   for (const proposal of proposals) await user.click(proposal);
 
   await waitFor(() => {

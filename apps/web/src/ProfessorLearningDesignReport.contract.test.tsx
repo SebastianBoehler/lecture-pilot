@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentType } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "./i18n";
 import { ProfessorLearningDesignReview } from "./ProfessorLearningDesignReview";
@@ -8,6 +8,16 @@ import { ProfessorLearningDesignReview } from "./ProfessorLearningDesignReview";
 const ReviewComponent = ProfessorLearningDesignReview as ComponentType<Record<string, unknown>>;
 
 describe("professor learning-design approval", () => {
+  it("reviews the implementation without offering edits to approved goals", () => {
+    const onApprove = vi.fn();
+    renderReview({ ...reportReview(), learning_intent_revision: "a".repeat(64) }, { onApprove });
+    expect(screen.getByRole("textbox", { name: "Learning objective" })).toHaveAttribute("readonly");
+    expect(screen.queryByRole("button", { name: "Save learning design" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Edit learning plan")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Approve learning design" }));
+    expect(onApprove).toHaveBeenCalledWith("lecture-01");
+  });
+
   it("keeps generator diagnostics out of the review and approves the exact design directly", () => {
     let approvedLectureId = "";
     renderReview(reportReview(), {
@@ -52,6 +62,7 @@ function reportReview() {
   const firstId = "concept_without_assessment:a".padEnd(91, "a");
   const secondId = "assessment_section_source_missing:b".padEnd(101, "b");
   return {
+    learning_intent_revision: null as string | null,
     schema_version: 2,
     course_id: "course-1",
     lecture_id: "lecture-01",

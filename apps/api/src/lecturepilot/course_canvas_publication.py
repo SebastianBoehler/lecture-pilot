@@ -10,6 +10,7 @@ from pydantic import (
     PositiveInt,
     ValidationError,
     field_validator,
+    model_validator,
 )
 
 from lecturepilot.canvas_internal_serialization import canvas_document_internal_payload
@@ -29,8 +30,15 @@ class CanvasPublicationMetadata(BaseModel):
     draft_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
     learning_map_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     practice_design_revision: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+    learning_intent_revision: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
     published_at: AwareDatetime
     published_by: str = Field(min_length=1, max_length=160)
+
+    @model_validator(mode="after")
+    def require_intent_implementation(self) -> CanvasPublicationMetadata:
+        if self.learning_intent_revision is not None and self.practice_design_revision is None:
+            raise ValueError("Learning intent publication requires an implementation revision")
+        return self
 
     @field_validator("schema_version", mode="before")
     @classmethod
@@ -96,4 +104,5 @@ def publication_metadata(
         source_revision=review.source_revision,
         learning_map_revision=review.learning_map.revision,
         practice_design_revision=review.practice_design_revision,
+        learning_intent_revision=review.learning_intent_revision,
     )

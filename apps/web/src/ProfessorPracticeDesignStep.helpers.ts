@@ -2,6 +2,7 @@ import type { PracticeDesign, PracticeDesignUpdate } from "./practiceDesignTypes
 
 export function updateFor(design: PracticeDesign): PracticeDesignUpdate {
   return {
+    ...(design.learning_intent ? { goals: design.learning_intent.goals } : {}),
     lecture_title: design.lecture_title,
     objective: design.objective,
     planning_context: design.planning_context,
@@ -13,9 +14,13 @@ export function updateFor(design: PracticeDesign): PracticeDesignUpdate {
 
 export function isApproved(design: PracticeDesign) {
   return Boolean(
-    design.approval &&
-    design.approval.source_revision === design.source_revision &&
-    design.approval.practice_design_revision === design.revision,
+    (!design.approval &&
+      design.learning_intent?.approval &&
+      design.learning_intent.source_revision === design.source_revision &&
+      design.learning_intent.approval.intent_revision === design.learning_intent.revision) ||
+    (design.approval &&
+      design.approval.source_revision === design.source_revision &&
+      design.approval.practice_design_revision === design.revision),
   );
 }
 

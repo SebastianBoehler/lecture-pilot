@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from lecturepilot.course_practice_design_route_context import _source_context, _require_manager
+
 from collections.abc import Callable
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 
-from lecturepilot.api_auth import request_context, require_course_manager
+from lecturepilot.api_auth import request_context
 from lecturepilot.canvas_models import CanvasDocument
-from lecturepilot.course_canvas_repairs import lecture_source_revision
+from lecturepilot.course_learning_intent_routes import register_learning_intent_routes
 from lecturepilot.course_practice_design_models import (
     PracticeDesign,
     PracticeDesignApprovalInput,
@@ -25,11 +27,9 @@ from lecturepilot.course_practice_design_store import (
 )
 from lecturepilot.course_practice_design_validation import PracticeDesignValidationError
 from lecturepilot.course_update_recovery import locked_course_state
-from lecturepilot.lecture_source_manifest import read_lecture_source_manifest
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_usage import model_usage_scope
 from lecturepilot.providers import ProviderConfigurationError
-from lecturepilot.source_bundle_canvas import SourceBundleCanvasError
 from lecturepilot.tenancy import TenantContext
 
 
@@ -106,6 +106,18 @@ def register_course_practice_design_routes(
         existing = snapshot.design
         if not refresh and existing is not None and existing.source_revision == revision:
             return existing
+        if (
+            existing is not None
+            and existing.approval is not None
+            and existing.source_revision == revision
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "This plan is approved in full. Explicitly convert to learning-goal approval "
+                    "before asking AI to change its protected teaching details."
+                ),
+            )
         expected_design_revision = existing.revision if existing is not None else None
         expected_design_approval = existing.approval if existing is not None else None
         expected_design_review = existing.quality_review if existing is not None else None
@@ -129,7 +141,9 @@ def register_course_practice_design_routes(
                             planning_context=existing.planning_context,
                             targets=existing.targets,
                         )
-                        if existing is not None and existing.source_revision == revision
+                        if existing is not None
+                        and existing.targets
+                        and existing.source_revision == revision
                         else None
                     )
                     reviewed = await app.state.practice_design_planner.propose(
@@ -137,6 +151,13 @@ def register_course_practice_design_routes(
                         source_revision=revision,
                         allowed_source_paths=paths,
                         **({"initial": initial} if initial is not None else {}),
+                        **(
+                            {"protected_intent": existing.learning_intent}
+                            if existing
+                            and existing.learning_intent
+                            and existing.learning_intent.approval
+                            else {}
+                        ),
                     )
                 span.set_outputs({"target_count": len(reviewed.proposal.targets)})
         except ProviderConfigurationError as exc:
@@ -165,6 +186,8 @@ def register_course_practice_design_routes(
                     expected_design_approval=expected_design_approval,
                     expected_design_review=expected_design_review,
                     expected_invalid_digest=snapshot.invalid_digest,
+                    expected_learning_intent=existing.learning_intent if existing else None,
+                    goals_first=existing is None or existing.learning_intent is not None,
                 )
             except PracticeDesignStale as exc:
                 raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -246,6 +269,13 @@ def register_course_practice_design_routes(
         except PracticeDesignApprovalRequired as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
 
+    register_learning_intent_routes(
+        app,
+        course_tenant_id=course_tenant_id,
+        source_document=source_document,
+        source_context=_source_context,
+        require_manager=_require_manager,
+    )
     register_practice_design_review_route(
         app,
         course_tenant_id=course_tenant_id,
@@ -257,33 +287,3 @@ def register_course_practice_design_routes(
 
 def _store(app: FastAPI) -> PracticeDesignStore:
     return PracticeDesignStore(app.state.canvas_workspace.layout)
-
-
-def _source_context(
-    app: FastAPI,
-    source_document: Callable[[str, str], CanvasDocument],
-    course_id: str,
-    lecture_id: str,
-) -> tuple[CanvasDocument, str, tuple[str, ...]]:
-    try:
-        source = source_document(course_id, lecture_id)
-    except SourceBundleCanvasError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-    layout = app.state.canvas_workspace.layout
-    manifest = read_lecture_source_manifest(
-        layout.lecture_source_manifest_path(course_id, lecture_id), course_id, lecture_id
-    )
-    revision = lecture_source_revision(layout, course_id=course_id, lecture_id=lecture_id)
-    paths = tuple(item.path for item in manifest.files)
-    if revision is None or not paths:
-        raise HTTPException(status_code=409, detail="Confirmed lecture sources are unavailable.")
-    return source, revision, paths
-
-
-def _require_manager(context, request, course_id: str, course_tenant_id: str) -> None:
-    require_course_manager(
-        context,
-        course_tenant_id=course_tenant_id,
-        request=request,
-        course_id=course_id,
-    )

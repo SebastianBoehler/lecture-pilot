@@ -120,7 +120,7 @@ describe("Professor course builder", () => {
     expect(screen.getByRole("button", { name: /05 media/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /06 generate/i })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
-    expect(await screen.findByRole("heading", { name: /learning plans/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /learning goals/i })).toBeInTheDocument();
     await approveAllPracticeDesigns(user);
     await user.click(screen.getByRole("button", { name: /05 media/i }));
     expect(
@@ -400,7 +400,7 @@ describe("Professor course builder", () => {
     await user.click(screen.getByRole("button", { name: /upload and process materials/i }));
     await screen.findByRole("heading", { name: /source assignments ready/i });
     await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
-    await screen.findByRole("heading", { name: /learning plans/i });
+    await screen.findByRole("heading", { name: /learning goals/i });
     await approveAllPracticeDesigns(user);
     await user.click(screen.getByRole("button", { name: /05 media/i }));
     await screen.findByRole("heading", { name: /review youtube candidates/i });

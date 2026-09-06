@@ -172,6 +172,7 @@ def _validate_practice_binding(
     if (
         binding.source_revision != publication.source_revision
         or binding.practice_design_revision != publication.practice_design_revision
+        or binding.learning_intent_revision != publication.learning_intent_revision
     ):
         raise InvalidPublishedCanvasContextError(
             "Published canvas practice-design binding does not match its metadata. Publish it again."

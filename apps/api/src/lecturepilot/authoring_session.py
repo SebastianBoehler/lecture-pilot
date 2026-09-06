@@ -49,8 +49,7 @@ def has_resumable_session(layout, job):
     if job.error_code not in RESUMABLE_AUTHORING_ERRORS:
         return False
     try:
-        return (
-            session_root(layout, job.course_id, job.lecture_id, job.generation_id) / "session.json"
-        ).is_file()
+        root = session_root(layout, job.course_id, job.lecture_id, job.generation_id)
+        return (root / "session.json").is_file() or any(root.glob("implementations/*/session.json"))
     except (OSError, AuthoringStateError):
         return False

@@ -1,4 +1,6 @@
-import { useMemo } from "react";
+import type { LearningIntentApprovalOptions } from "./learningIntentTypes";
+import { ProfessorLearningIntent } from "./ProfessorLearningIntent";
+import { useMemo, useState } from "react";
 
 import { useI18n } from "./i18n";
 import { ProfessorPracticeLecturePlan } from "./ProfessorPracticeLecturePlan";
@@ -27,12 +29,13 @@ export function ProfessorPracticeDesignStep({
   pendingAction: PracticeDesignPendingAction | null;
   pendingLectureId: string | null;
   routingReady: boolean;
-  onApprove: (lectureId: string) => void;
+  onApprove: (lectureId: string, options?: LearningIntentApprovalOptions) => void;
   onPropose: (lectureId: string, refresh?: boolean) => void;
   onReview: (lectureId: string) => void;
   onSave: (lectureId: string, update: PracticeDesignUpdate) => void;
 }) {
   const { t } = useI18n();
+  const [converting, setConverting] = useState<Readonly<Record<string, boolean>>>({});
   const lectureIds = useMemo(() => lectures.map(({ id }) => id), [lectures]);
   const draftState = usePracticeDesignDrafts({
     designs,
@@ -42,8 +45,8 @@ export function ProfessorPracticeDesignStep({
     <section className="flow-card practice-design-step">
       <header className="practice-design-header">
         <div>
-          <h2>{t("builder.design.title")}</h2>
-          <p>{t("builder.design.help")}</p>
+          <h2>{t("builder.intent.title")}</h2>
+          <p>{t("builder.intent.help")}</p>
         </div>
         <span aria-live="polite">
           {t("builder.design.coverage", {
@@ -62,7 +65,6 @@ export function ProfessorPracticeDesignStep({
           {t("builder.design.staleAction")}
         </p>
       ) : null}
-      <p className="practice-design-boundary">{t("builder.design.boundary")}</p>
       <div className="practice-design-lectures">
         {lectures.map((lecture, lectureIndex) => {
           const design = designs[lecture.id];
@@ -73,7 +75,7 @@ export function ProfessorPracticeDesignStep({
               <article className="practice-design-empty" key={lecture.id}>
                 <div>
                   <strong>{lecture.label}</strong>
-                  <p>{t("builder.design.emptyHelp")}</p>
+                  <p>{t("builder.intent.empty")}</p>
                 </div>
                 <button
                   className="primary-action"
@@ -82,29 +84,55 @@ export function ProfessorPracticeDesignStep({
                   onClick={() => onPropose(lecture.id, false)}
                 >
                   {pendingAction === "propose" && pending
-                    ? t("builder.design.generating")
-                    : t("builder.design.generate")}
+                    ? t("builder.intent.generating")
+                    : t("builder.intent.generate")}
                 </button>
               </article>
             );
+          if (design.learning_intent || converting[lecture.id])
+            return (
+              <ProfessorLearningIntent
+                key={`${lecture.id}:${design.revision}`}
+                design={design}
+                draft={draft}
+                label={lecture.label}
+                pending={pending}
+                stale={!routingReady}
+                conflict={draftState.conflicts[lecture.id] ?? false}
+                onChange={(next) => draftState.change(lecture.id, next)}
+                onApprove={(options) => onApprove(lecture.id, options)}
+                onSave={() => onSave(lecture.id, updateFor(draft))}
+                onRefresh={() => onPropose(lecture.id, true)}
+                onUseLatest={() => draftState.useLatest(lecture.id)}
+              />
+            );
           return (
-            <ProfessorPracticeLecturePlan
-              conflict={draftState.conflicts[lecture.id] ?? false}
-              defaultOpen={lectures.length === 1 || lectureIndex === 0}
-              design={design}
-              draft={draft}
-              key={lecture.id}
-              label={lecture.label}
-              pending={pending}
-              pendingAction={pending ? pendingAction : null}
-              stale={!routingReady}
-              onApprove={() => onApprove(lecture.id)}
-              onChange={(next) => draftState.change(lecture.id, next)}
-              onRefresh={() => onPropose(lecture.id, true)}
-              onReview={() => onReview(lecture.id)}
-              onSave={() => onSave(lecture.id, updateFor(draft))}
-              onUseLatest={() => draftState.useLatest(lecture.id)}
-            />
+            <div key={lecture.id}>
+              <button
+                type="button"
+                disabled={pending || !routingReady}
+                onClick={() => setConverting({ ...converting, [lecture.id]: true })}
+              >
+                {t("builder.intent.convert")}
+              </button>
+              <ProfessorPracticeLecturePlan
+                conflict={draftState.conflicts[lecture.id] ?? false}
+                defaultOpen={lectures.length === 1 || lectureIndex === 0}
+                design={design}
+                draft={draft}
+                key={lecture.id}
+                label={lecture.label}
+                pending={pending}
+                pendingAction={pending ? pendingAction : null}
+                stale={!routingReady}
+                onApprove={() => onApprove(lecture.id)}
+                onChange={(next) => draftState.change(lecture.id, next)}
+                onRefresh={() => onPropose(lecture.id, true)}
+                onReview={() => onReview(lecture.id)}
+                onSave={() => onSave(lecture.id, updateFor(draft))}
+                onUseLatest={() => draftState.useLatest(lecture.id)}
+              />
+            </div>
           );
         })}
       </div>

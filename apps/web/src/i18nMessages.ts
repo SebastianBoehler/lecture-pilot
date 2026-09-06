@@ -1,3 +1,4 @@
+import { learningIntentMessages } from "./learningIntentMessages";
 import { deMessages } from "./i18nMessages.de";
 import { enMessages } from "./i18nMessages.en";
 import { courseAccessMessages } from "./courseAccessMessages";
@@ -9,6 +10,7 @@ import { reviewQueueMessages } from "./reviewQueueMessages";
 export const messages = {
   en: {
     ...enMessages,
+    ...learningIntentMessages.en,
     ...courseAccessMessages.en,
     ...interactiveComponentMessages.en,
     ...learnerStateMessages.en,
@@ -17,6 +19,7 @@ export const messages = {
   },
   de: {
     ...deMessages,
+    ...learningIntentMessages.de,
     ...courseAccessMessages.de,
     ...interactiveComponentMessages.de,
     ...learnerStateMessages.de,

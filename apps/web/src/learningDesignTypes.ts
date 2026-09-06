@@ -87,7 +87,9 @@ export type LearningDesignReview = {
   lecture_id: string;
   draft_digest: string;
   source_revision: string;
+  practice_design_revision: string;
   factual_quality_separate: boolean;
+  learning_intent_revision?: string | null;
   report: LearningDesignReport;
   approval: {
     approved_by: string;
@@ -110,6 +112,7 @@ export type LearningDesignReview = {
 };
 
 export type LearningDesignUpdate = {
+  practice_design_revision: string;
   draft_digest: string;
   source_revision: string;
   learning_map_revision: string;
@@ -123,7 +126,7 @@ export type LearningDesignUpdate = {
 
 export type LearningDesignApprovalInput = Pick<
   LearningDesignUpdate,
-  "draft_digest" | "source_revision" | "learning_map_revision"
+  "draft_digest" | "source_revision" | "practice_design_revision" | "learning_map_revision"
 > & {
   report_revision: string;
 };

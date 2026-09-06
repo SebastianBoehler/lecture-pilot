@@ -19,109 +19,121 @@ export function ProfessorLearningDesignReview({
   const { t } = useI18n();
   const [update, setUpdate] = useState(() => editableReview(review));
   useEffect(() => setUpdate(editableReview(review)), [review]);
+  const intentOwned = Boolean(review.learning_intent_revision);
   const dirty = JSON.stringify(update) !== JSON.stringify(editableReview(review));
   return (
     <section className="learning-design-review">
       <h3>{t("builder.learningDesign.title")}</h3>
-      <p>{t("builder.learningDesign.reviewIntro")}</p>
+      <p>
+        {t(
+          intentOwned
+            ? "builder.intent.reviewImplementation"
+            : "builder.learningDesign.reviewIntro",
+        )}
+      </p>
       <div className="learning-design-fields">
         <label>
           {t("builder.learningDesign.objective")}
           <textarea
             aria-describedby="learning-design-objective-help"
+            readOnly={intentOwned}
             value={update.objective}
             onChange={(event) => setUpdate({ ...update, objective: event.target.value })}
           />
         </label>
-        <small id="learning-design-objective-help">
+        <small id="learning-design-objective-help" hidden={intentOwned}>
           {t("builder.learningDesign.objectiveHelp")}
         </small>
-        <details className="learning-design-disclosure">
-          <summary>
-            <span>{t("builder.learningDesign.editPlan")}</span>
-            <small>{t("builder.learningDesign.editPlanHelp")}</small>
-          </summary>
-          {update.gates.map((gate, gateIndex) => (
-            <details className="learning-design-disclosure" key={gate.id}>
-              <summary>{review.learning_map.gates[gateIndex]?.title ?? gate.id}</summary>
-              <fieldset>
-                <label>
-                  {t("builder.learningDesign.prompt")}
-                  <textarea
-                    value={gate.prompt}
-                    onChange={(event) =>
-                      setUpdate({
-                        ...update,
-                        gates: replaceAt(update.gates, gateIndex, {
-                          ...gate,
-                          prompt: event.target.value,
-                        }),
-                      })
-                    }
-                  />
-                </label>
-                {gate.evidence_criteria.map((criterion, criterionIndex) => (
-                  <label key={criterion.id}>
-                    {t("builder.learningDesign.evidence")}
+        {!intentOwned && (
+          <details className="learning-design-disclosure">
+            <summary>
+              <span>{t("builder.learningDesign.editPlan")}</span>
+              <small>{t("builder.learningDesign.editPlanHelp")}</small>
+            </summary>
+            {update.gates.map((gate, gateIndex) => (
+              <details className="learning-design-disclosure" key={gate.id}>
+                <summary>{review.learning_map.gates[gateIndex]?.title ?? gate.id}</summary>
+                <fieldset>
+                  <label>
+                    {t("builder.learningDesign.prompt")}
                     <textarea
-                      value={criterion.description}
+                      value={gate.prompt}
                       onChange={(event) =>
                         setUpdate({
                           ...update,
                           gates: replaceAt(update.gates, gateIndex, {
                             ...gate,
-                            evidence_criteria: replaceAt(gate.evidence_criteria, criterionIndex, {
-                              ...criterion,
-                              description: event.target.value,
-                            }),
+                            prompt: event.target.value,
                           }),
                         })
                       }
                     />
                   </label>
-                ))}
-                <label>
-                  {t("builder.learningDesign.transfer")}
-                  <textarea
-                    value={gate.transfer_prompt}
-                    onChange={(event) =>
-                      setUpdate({
-                        ...update,
-                        gates: replaceAt(update.gates, gateIndex, {
-                          ...gate,
-                          transfer_prompt: event.target.value,
-                        }),
-                      })
-                    }
-                  />
-                </label>
-                <label>
-                  {t("builder.learningDesign.interval")}
-                  <input
-                    min="1"
-                    max="365"
-                    type="number"
-                    value={gate.review_after_days}
-                    onChange={(event) =>
-                      setUpdate({
-                        ...update,
-                        gates: replaceAt(update.gates, gateIndex, {
-                          ...gate,
-                          review_after_days: Number(event.target.value),
-                        }),
-                      })
-                    }
-                  />
-                </label>
-              </fieldset>
-            </details>
-          ))}
-          <Prerequisites review={review} update={update} onChange={setUpdate} />
-        </details>
+                  {gate.evidence_criteria.map((criterion, criterionIndex) => (
+                    <label key={criterion.id}>
+                      {t("builder.learningDesign.evidence")}
+                      <textarea
+                        value={criterion.description}
+                        onChange={(event) =>
+                          setUpdate({
+                            ...update,
+                            gates: replaceAt(update.gates, gateIndex, {
+                              ...gate,
+                              evidence_criteria: replaceAt(gate.evidence_criteria, criterionIndex, {
+                                ...criterion,
+                                description: event.target.value,
+                              }),
+                            }),
+                          })
+                        }
+                      />
+                    </label>
+                  ))}
+                  <label>
+                    {t("builder.learningDesign.transfer")}
+                    <textarea
+                      value={gate.transfer_prompt}
+                      onChange={(event) =>
+                        setUpdate({
+                          ...update,
+                          gates: replaceAt(update.gates, gateIndex, {
+                            ...gate,
+                            transfer_prompt: event.target.value,
+                          }),
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    {t("builder.learningDesign.interval")}
+                    <input
+                      min="1"
+                      max="365"
+                      type="number"
+                      value={gate.review_after_days}
+                      onChange={(event) =>
+                        setUpdate({
+                          ...update,
+                          gates: replaceAt(update.gates, gateIndex, {
+                            ...gate,
+                            review_after_days: Number(event.target.value),
+                          }),
+                        })
+                      }
+                    />
+                  </label>
+                </fieldset>
+              </details>
+            ))}
+            <Prerequisites review={review} update={update} onChange={setUpdate} />
+          </details>
+        )}
         <div className="learning-design-actions">
-          <button disabled={saving} type="button" onClick={() => onSave(lectureId, update)}>
-            {t("builder.learningDesign.save")}
-          </button>
+          {!intentOwned && (
+            <button disabled={saving} type="button" onClick={() => onSave(lectureId, update)}>
+              {t("builder.learningDesign.save")}
+            </button>
+          )}
           <button
             className="primary-action"
             disabled={dirty || saving || Boolean(review.approval)}
@@ -191,6 +203,7 @@ function editableReview(review: LearningDesignReview): LearningDesignUpdate {
   return {
     draft_digest: review.draft_digest,
     source_revision: review.source_revision,
+    practice_design_revision: review.practice_design_revision,
     learning_map_revision: review.learning_map.revision,
     objective: review.learning_map.objective,
     gates: review.learning_map.gates.map((gate) => ({

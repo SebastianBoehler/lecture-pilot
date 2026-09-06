@@ -18,6 +18,7 @@ class LearningDesignApproval(BaseModel):
     draft_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
     source_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     practice_design_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
+    learning_intent_revision: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
     learning_map_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     report_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     acknowledged_warning_ids: list[str] = Field(default_factory=list, max_length=200)
@@ -32,6 +33,7 @@ class LearningDesignReview(BaseModel):
     draft_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
     source_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     practice_design_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
+    learning_intent_revision: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
     learning_map: LearningMap
     report: LearningDesignReport
     factual_quality_separate: bool = True

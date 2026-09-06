@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime
-from collections.abc import Sequence
 from typing import Annotated, Literal
 
 from pydantic import (
@@ -13,172 +12,24 @@ from pydantic import (
     model_validator,
 )
 
+from lecturepilot.course_learning_intent import LearningIntent
 from lecturepilot.course_practice_design_context import PracticePlanningContext
 from lecturepilot.course_practice_design_contract import (
     NonblankText,
     StrictPracticeDesignModel,
     freeze_collection,
 )
-from lecturepilot.course_practice_design_evidence import (
-    PracticeSourceAnchor,
-    anchored_source_paths,
-)
 from lecturepilot.course_practice_design_review_models import PracticeDesignQualityReview
 
-_ID_PATTERN = r"^[a-z0-9][a-z0-9-]{0,79}$"
+from lecturepilot.course_practice_target import (
+    PracticeEvidenceCriterion as PracticeEvidenceCriterion,
+    PracticeHint as PracticeHint,
+    PracticeMisconception as PracticeMisconception,
+    PracticeTarget as PracticeTarget,
+    require_unique_ids,
+)
+
 _REVISION_PATTERN = r"^[a-f0-9]{64}$"
-
-
-class PracticeEvidenceCriterion(StrictPracticeDesignModel):
-    id: str = Field(pattern=_ID_PATTERN)
-    description: NonblankText = Field(
-        min_length=1,
-        max_length=1_000,
-        description=(
-            "One atomic, observable unit of learner evidence that can be judged from the work "
-            "without passing on a keyword alone. Required criteria collectively cover the invariant."
-        ),
-    )
-    required: bool = True
-    source_anchor: PracticeSourceAnchor | None = None
-
-    @model_validator(mode="after")
-    def require_source_anchor(self) -> PracticeEvidenceCriterion:
-        if self.required and self.source_anchor is None:
-            raise ValueError("Required evidence criteria need an exact source anchor.")
-        return self
-
-
-class PracticeMisconception(StrictPracticeDesignModel):
-    id: str = Field(pattern=_ID_PATTERN)
-    description: NonblankText = Field(
-        min_length=1,
-        max_length=1_000,
-        description=(
-            "A plausible incorrect reasoning pattern inside this target's boundary; do not use "
-            "an unrelated error, an unstated prerequisite, or merely a missing final answer."
-        ),
-    )
-    diagnostic_cue: NonblankText = Field(
-        min_length=1,
-        max_length=1_000,
-        description="Observable evidence in learner work that distinguishes this misconception.",
-    )
-    source_anchor: PracticeSourceAnchor
-
-
-class PracticeHint(StrictPracticeDesignModel):
-    level: Literal["prompt", "cue", "faded_example", "worked_step"] = Field(
-        description=(
-            "Approved support level: prompt asks the learner to inspect or plan without domain "
-            "answer content; cue names the relevant principle or representation but not the next "
-            "answer; faded_example gives an analogous partial example with a learner-owned step; "
-            "worked_step gives one justified step and then returns a new step to the learner."
-        )
-    )
-    content: NonblankText = Field(
-        min_length=1,
-        max_length=2_000,
-        description="Approved hint content containing only the minimum next information.",
-    )
-    source_anchor: PracticeSourceAnchor
-
-
-class PracticeTarget(StrictPracticeDesignModel):
-    id: str = Field(pattern=_ID_PATTERN)
-    title: NonblankText = Field(min_length=1, max_length=200)
-    outcome: NonblankText = Field(
-        min_length=1,
-        max_length=1_000,
-        description="Source-supported conditions, observable action, and acceptable standard.",
-    )
-    outcome_anchor: PracticeSourceAnchor
-    target_invariant: NonblankText = Field(
-        min_length=1,
-        max_length=1_000,
-        description="Knowledge or reasoning operation held constant across all task variants.",
-    )
-    target_invariant_anchor: PracticeSourceAnchor
-    baseline_task: NonblankText = Field(
-        min_length=1,
-        max_length=2_000,
-        description=(
-            "Diagnostic attempt before substantive help, used to choose support and never by "
-            "itself treated as a mastery claim."
-        ),
-    )
-    baseline_task_anchor: PracticeSourceAnchor
-    independent_exit_task: NonblankText = Field(
-        min_length=1,
-        max_length=2_000,
-        description=(
-            "Parallel unaided independent exit after support, hidden during instruction and "
-            "requiring the same invariant without new unprovided knowledge."
-        ),
-    )
-    independent_exit_task_anchor: PracticeSourceAnchor
-    independent_exit_surface_change: NonblankText = Field(
-        min_length=1,
-        max_length=1_000,
-        description="Controlled surface change from the diagnostic to the independent exit.",
-    )
-    delayed_transfer_task: NonblankText = Field(
-        min_length=1,
-        max_length=2_000,
-        description=(
-            "Delayed changed-form transfer assessment preserving the invariant without new "
-            "unprovided knowledge."
-        ),
-    )
-    delayed_transfer_task_anchor: PracticeSourceAnchor
-    delayed_transfer_surface_change: NonblankText = Field(
-        min_length=1,
-        max_length=1_000,
-        description="Controlled later change in scenario, values, representation, or task form.",
-    )
-    evidence_criteria: Annotated[
-        tuple[PracticeEvidenceCriterion, ...], BeforeValidator(freeze_collection)
-    ] = Field(min_length=1, max_length=40)
-    misconceptions: Annotated[
-        tuple[PracticeMisconception, ...], BeforeValidator(freeze_collection)
-    ] = Field(default_factory=tuple, max_length=40)
-    hint_ladder: Annotated[tuple[PracticeHint, ...], BeforeValidator(freeze_collection)] = Field(
-        default_factory=tuple, max_length=4
-    )
-    review_after_days: int = Field(
-        ge=1,
-        le=365,
-        description=(
-            "Operational proposed review interval informed by the available context, not a claim "
-            "that the model selected a scientifically optimal delay."
-        ),
-    )
-    source_refs: Annotated[tuple[str, ...], BeforeValidator(freeze_collection)] = Field(
-        min_length=1, max_length=100
-    )
-
-    @model_validator(mode="after")
-    def validate_contract(self) -> PracticeTarget:
-        if self.outcome.strip().casefold() in {
-            "understand",
-            "know",
-        } or self.outcome.strip().casefold().startswith(("understand ", "know ")):
-            raise ValueError(
-                "Practice target outcomes must be observable independent capabilities."
-            )
-        _require_distinct_tasks(self)
-        _require_unique_ids(self.evidence_criteria, "evidence criterion")
-        if not any(criterion.required for criterion in self.evidence_criteria):
-            raise ValueError("Practice targets need at least one required evidence criterion.")
-        _require_unique_ids(self.misconceptions, "misconception")
-        if len(set(self.source_refs)) != len(self.source_refs):
-            raise ValueError("Practice target source references must be unique.")
-        if tuple(self.source_refs) != anchored_source_paths(self):
-            raise ValueError(
-                "Practice target source references must exactly match its field-level anchors."
-            )
-        _require_ordered_hints(self.hint_ladder)
-        return self
 
 
 class PracticeDesignProposal(StrictPracticeDesignModel):
@@ -191,7 +42,7 @@ class PracticeDesignProposal(StrictPracticeDesignModel):
 
     @model_validator(mode="after")
     def validate_target_ids(self) -> PracticeDesignProposal:
-        _require_unique_ids(self.targets, "practice target")
+        require_unique_ids(self.targets, "practice target")
         return self
 
 
@@ -203,7 +54,8 @@ class PracticeDesignApproval(StrictPracticeDesignModel):
 
 
 class PracticeDesign(StrictPracticeDesignModel):
-    schema_version: Literal[1] = 1
+    schema_version: Literal[1, 2] = 1
+    learning_intent: LearningIntent | None = None
     course_id: str = Field(min_length=1, max_length=120)
     lecture_id: str = Field(min_length=1, max_length=120)
     lecture_title: NonblankText = Field(min_length=1, max_length=200)
@@ -211,7 +63,7 @@ class PracticeDesign(StrictPracticeDesignModel):
     planning_context: PracticePlanningContext
     source_revision: str = Field(pattern=_REVISION_PATTERN)
     targets: Annotated[tuple[PracticeTarget, ...], BeforeValidator(freeze_collection)] = Field(
-        min_length=1, max_length=8
+        max_length=8
     )
     revision: str = Field(pattern=_REVISION_PATTERN)
     quality_review: PracticeDesignQualityReview | None = None
@@ -223,19 +75,33 @@ class PracticeDesign(StrictPracticeDesignModel):
             "build_revision"
         ) and self.revision != practice_design_revision(self):
             raise ValueError("Practice design revision is invalid.")
-        _require_unique_ids(self.targets, "practice target")
+        require_unique_ids(self.targets, "practice target")
+        if (self.schema_version == 2) != (self.learning_intent is not None):
+            raise ValueError("Practice design schema does not match its ownership contract.")
+        if self.learning_intent is not None:
+            if self.learning_intent.source_revision != self.source_revision:
+                raise ValueError("Learning intent source revision is stale.")
+            if self.targets:
+                self.learning_intent.require_matches(self)
+            elif (
+                self.objective != self.learning_intent.objective
+                or self.planning_context != self.learning_intent.planning_context
+            ):
+                raise ValueError("Pending teaching must retain protected learning intent.")
+        elif not self.targets:
+            raise ValueError("Practice designs require learning goals or teaching targets.")
         return self
 
     @classmethod
     def create(cls, **values: object) -> PracticeDesign:
+        if values.get("learning_intent") is not None:
+            values["schema_version"] = 2
         candidate = cls.model_validate(
             {**values, "revision": "0" * 64}, context={"build_revision": True}
         )
-        payload = candidate.model_dump(
-            mode="json", exclude={"revision", "quality_review", "approval"}
-        )
+        payload = _revision_payload(candidate)
         return cls.model_validate(
-            {**candidate.model_dump(mode="json"), "revision": _digest(payload)}
+            {**candidate.model_dump(mode="python"), "revision": _digest(payload)}
         )
 
 
@@ -251,7 +117,7 @@ class PracticeDesignUpdate(StrictPracticeDesignModel):
 
     @model_validator(mode="after")
     def validate_target_ids(self) -> PracticeDesignUpdate:
-        _require_unique_ids(self.targets, "practice target")
+        require_unique_ids(self.targets, "practice target")
         return self
 
 
@@ -261,38 +127,19 @@ class PracticeDesignApprovalInput(StrictPracticeDesignModel):
 
 
 def practice_design_revision(design: PracticeDesign) -> str:
+    return _digest(_revision_payload(design))
+
+
+def _revision_payload(design: PracticeDesign) -> dict:
     payload = design.model_dump(mode="json", exclude={"revision", "quality_review", "approval"})
-    return _digest(payload)
+    intent = payload.get("learning_intent")
+    if intent is None:
+        payload.pop("learning_intent", None)  # Preserve existing approved revision hashes.
+    else:
+        intent.pop("approval", None)
+    return payload
 
 
 def _digest(payload: dict[str, object]) -> str:
     canonical = json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-
-
-def _require_distinct_tasks(target: PracticeTarget) -> None:
-    normalized = {
-        " ".join(value.split()).casefold()
-        for value in (
-            target.baseline_task,
-            target.independent_exit_task,
-            target.delayed_transfer_task,
-        )
-    }
-    if "" in normalized:
-        raise ValueError("Practice target task variants cannot be blank.")
-    if len(normalized) != 3:
-        raise ValueError("Practice target task variants must differ.")
-
-
-def _require_unique_ids(items: Sequence[object], label: str) -> None:
-    ids = [getattr(item, "id") for item in items]
-    if len(set(ids)) != len(ids):
-        raise ValueError(f"Practice {label} IDs must be unique.")
-
-
-def _require_ordered_hints(hints: Sequence[PracticeHint]) -> None:
-    levels = ["prompt", "cue", "faded_example", "worked_step"]
-    indices = [levels.index(hint.level) for hint in hints]
-    if indices != sorted(indices) or len(set(indices)) != len(indices):
-        raise ValueError("Practice hint levels must be unique and ordered.")

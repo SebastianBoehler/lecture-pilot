@@ -1,3 +1,4 @@
+import type { LearningIntentApprovalOptions } from "./learningIntentTypes";
 import { apiUrl, readApiError } from "./api";
 import { authRequestInit } from "./authz";
 import type {
@@ -57,7 +58,7 @@ export async function proposePracticeDesign(input: {
 }): Promise<PracticeDesign> {
   const suffix = input.refresh ? "?refresh=true" : "";
   return request(
-    `${path(input.courseId, input.lectureId)}/proposal${suffix}`,
+    `${path(input.courseId, input.lectureId)}/${input.refresh ? "proposal" : "intent/proposal"}${suffix}`,
     input.session,
     { method: "POST" },
     "Practice design proposal failed to generate.",
@@ -71,9 +72,21 @@ export async function updatePracticeDesign(input: {
   update: PracticeDesignUpdate;
 }): Promise<PracticeDesign> {
   return request(
-    path(input.courseId, input.lectureId),
+    `${path(input.courseId, input.lectureId)}${input.update.goals ? "/intent" : ""}`,
     input.session,
-    json("PUT", input.update),
+    json(
+      "PUT",
+      input.update.goals
+        ? {
+            source_revision: input.update.source_revision,
+            practice_design_revision: input.update.practice_design_revision,
+            lecture_title: input.update.lecture_title,
+            objective: input.update.objective,
+            planning_context: input.update.planning_context,
+            goals: input.update.goals,
+          }
+        : input.update,
+    ),
     "Practice design failed to save.",
   );
 }
@@ -82,12 +95,14 @@ export async function approvePracticeDesign(input: {
   courseId: string;
   lectureId: string;
   design: PracticeDesign;
+  intent?: LearningIntentApprovalOptions;
   session: LoginSession;
 }): Promise<PracticeDesign> {
   return request(
-    `${path(input.courseId, input.lectureId)}/approve`,
+    `${path(input.courseId, input.lectureId)}/${input.intent ? "intent/approve" : "approve"}`,
     input.session,
     json("POST", {
+      ...input.intent,
       source_revision: input.design.source_revision,
       practice_design_revision: input.design.revision,
     }),

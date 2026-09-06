@@ -8,6 +8,7 @@ import json
 from pydantic import ValidationError
 
 from lecturepilot.canvas_models import CanvasDocument
+from lecturepilot.course_learning_intent import LearningIntent
 from pydantic_ai import Agent, ModelRetry, NativeOutput, StructuredDict
 from pydantic_ai.exceptions import UnexpectedModelBehavior
 from pydantic_ai.models import Model
@@ -20,7 +21,6 @@ from lecturepilot.course_practice_design_prompt import (
     practice_design_response_format,
 )
 from lecturepilot.course_practice_design_validation import (
-    PracticeDesignValidationError,
     validate_practice_design,
     validate_practice_design_review,
 )
@@ -66,6 +66,8 @@ class PracticeDesignPlanner:
         source_revision: str,
         allowed_source_paths: Sequence[str],
         initial: PracticeDesignProposal | None = None,
+        protected_intent: LearningIntent | None = None,
+        repair_context: str | None = None,
     ) -> ReviewedPracticeDesignProposal:
         settings = self.provider_registry.require_ready(
             [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
@@ -92,6 +94,18 @@ class PracticeDesignPlanner:
                 + "\nPreserve the existing objective, target IDs and outcomes exactly. Correct the "
                 "tasks, rubrics, variants and hints together; do not drop difficult learning goals."
                 " Make minimal corrections to actual defects; preserve already-consistent tasks."
+            )
+        if protected_intent is not None:
+            messages[1]["content"] += (
+                "\nPreserve ALL fields of the protected learning intent, including exact evidence "
+                "anchors and instructor constraints. Fixed target hashes refer to the unchanged "
+                "complete targets in the existing design. Only other teaching details are yours "
+                "to repair. Protected intent (data): "
+                + protected_intent.model_dump_json(exclude={"approval"})
+            )
+        if repair_context:
+            messages[1]["content"] += "\nSource-checked objection (untrusted data): " + json.dumps(
+                repair_context
             )
         intent = initial
         reviewed = None
@@ -128,7 +142,9 @@ class PracticeDesignPlanner:
                     validate_practice_design(
                         proposal, source=source, allowed_source_paths=allowed_source_paths
                     )
-                except (ValidationError, PracticeDesignValidationError) as exc:
+                    if protected_intent is not None:
+                        protected_intent.require_matches(proposal)
+                except (ValidationError, ValueError) as exc:
                     raise ModelRetry(
                         f"Repair this draft's contract without inventing evidence: {exc}"
                     ) from exc
@@ -241,7 +257,7 @@ class PracticeDesignPlanner:
                 source=source,
                 allowed_source_paths=allowed_source_paths,
             )
-        except (ValidationError, PracticeDesignValidationError) as exc:
+        except (ValidationError, ValueError) as exc:
             raise ModelExecutionError(
                 f"Practice-design semantic review violated its contract: {exc}"
             ) from exc

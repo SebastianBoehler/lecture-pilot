@@ -17,6 +17,7 @@ from lecturepilot.course_canvas_repairs import (
     persist_repair_guidance,
 )
 from lecturepilot.course_practice_design_models import PracticeDesign
+from lecturepilot.course_teaching_implementation import author_with_implementation
 from lecturepilot.course_media import apply_course_media, course_media_evidence
 from lecturepilot.course_schedule_store import read_course_workspace
 from lecturepilot.logging_observability import operation_scope
@@ -90,33 +91,27 @@ async def generate_course_canvas_draft(
         )
         output_language = _canvas_language(app, course_id)
         with observability.tool_span("course_canvas_generation", stage="model_plan", **common):
-            with (
-                model_usage_scope(
-                    actor_user_id=context.user_id,
-                    course_id=course_id,
-                    workload="course_canvas",
-                ),
-                authoring_scope(
-                    generation_authoring_scope(
-                        app,
-                        ownership=ownership,
-                        source_revision=source_revision,
-                        session_generation_id=session_generation_id,
-                    )
-                ),
+            with model_usage_scope(
+                actor_user_id=context.user_id,
+                course_id=course_id,
+                workload="course_canvas",
             ):
                 try:
-                    plan_args = {
-                        "practice_design": practice_design,
-                        "output_language": output_language,
-                    }
-                    if repair_context:
-                        plan_args["repair_context"] = repair_context
-                    document = await app.state.course_planner.plan_canvas(source, **plan_args)
-                except CanvasGenerationRepairableError as exc:
-                    raise exc.with_source_revision(source_revision).with_practice_design_revision(
-                        practice_design.revision
+                    document, practice_design, ownership = await author_with_implementation(
+                        app,
+                        source=source,
+                        design=practice_design,
+                        ownership=ownership,
+                        output_language=output_language,
+                        repair_context=repair_context,
+                        session_generation_id=session_generation_id,
                     )
+                except CanvasGenerationRepairableError as exc:
+                    if exc.practice_design_revision is None:
+                        exc.with_source_revision(source_revision).with_practice_design_revision(
+                            practice_design.revision
+                        )
+                    raise
         with observability.tool_span("course_canvas_generation", stage="output_media", **common):
             document = apply_course_media(document, media_root)
         with observability.tool_span("course_canvas_generation", stage="draft_persist", **common):

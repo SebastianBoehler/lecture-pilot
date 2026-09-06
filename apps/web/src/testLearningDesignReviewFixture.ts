@@ -7,6 +7,7 @@ export function learningDesignPayload(courseId: string, lectureId: string, appro
     lecture_id: lectureId,
     draft_digest: "d".repeat(64),
     source_revision: "s".repeat(64),
+    practice_design_revision: "a".repeat(64),
     factual_quality_separate: true,
     report: learningDesignReportFixture({
       draftDigest: "d".repeat(64),
