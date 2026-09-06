@@ -45,8 +45,9 @@ uploads were rejected, students could neither upload nor publish, empty tutor
 input failed validation, unrelated-course access returned 404, and the missing
 draft response retained its allowed-origin and exposed repair headers.
 
-Final local verification: `verify:full` passed **1,192 API, 22 compiler,
-17 converter and 383 web tests**, plus the production frontend build.
+Local verification: `verify:full` passed **1,192 API, 22 compiler,
+17 converter and 383 web tests**, plus the production frontend build. The final
+preview-navigation regression brings the subsequent web suite to **384 tests**.
 `verify:fast` passed formatting, lint, documentation/changelog consistency,
 dead-code and diff checks. The existing large math-rendering chunk warning
 remains; these checks do not replace production verification.
@@ -72,6 +73,8 @@ remains; these checks do not replace production verification.
 5. **Clearer authoring flow.** Media review is explicitly optional and no longer
    gates generation. Missing source proposals say pending. Successful workspace
    refresh clears stale connection errors. Navigation labels wrap without ellipsis.
+   Outline navigation accounts for the measured preview-banner height so the
+   sticky banner does not hide the selected section heading.
 6. **Recoverable browser errors.** CORS covers guard responses; repairability and
    retry headers are exposed. Reading a draft no longer consumes the paid-generation
    rate bucket. Authorization and CSRF checks remain enforced.
