@@ -442,13 +442,13 @@ export function useProfessorCourseBuilder({
   async function generateCanvases(
     courseId: string,
     lectureIds: string[],
-    options: { repair?: boolean } = {},
+    options: { repair?: boolean; repairIds?: ReadonlySet<string> } = {},
   ) {
     try {
       return await generateLectureCanvasDrafts({
         lectureIds,
         draft: (lectureId) =>
-          options.repair
+          options.repair || options.repairIds?.has(lectureId)
             ? repairLectureCanvas(courseId, lectureId, session)
             : draftLectureCanvas(courseId, lectureId, session),
         onDraftReady: recordGeneratedCanvas,
@@ -689,7 +689,9 @@ export function useProfessorCourseBuilder({
 
   const generateStep = {
     canvas,
-    canGenerate: Boolean(bundleReady && routingReady && designReady && workspace),
+    canGenerate: Boolean(
+      bundleReady && routingReady && designReady && workspace && !retryingLectureIds.size,
+    ),
     generationProgress,
     generatedCount: generatedLectureIds.length,
     isFullCourse: setup.target === "full-course",
@@ -720,15 +722,29 @@ export function useProfessorCourseBuilder({
         const activeWorkspace = requireWorkspace(workspace);
         await requireConfirmedRouting(activeWorkspace.courseId);
         await requireApprovedDesigns();
-        const lectureIds = generationTargetLectureIds;
+        const unfinished = generationTargetLectureIds.filter(
+          (id) => !generatedLectureIds.includes(id),
+        );
+        const lectureIds = unfinished.length ? unfinished : generationTargetLectureIds;
+        const repairIds = new Set(
+          generationProgress
+            .filter((item) => lectureIds.includes(item.lectureId) && item.errorKind === "repair")
+            .map((item) => item.lectureId),
+        );
         setDraftReviewed(false);
-        setGenerationProgress(lectureIds.map((lectureId) => ({ lectureId, status: "pending" })));
-        setGenerationWarnings([]);
-        const canvases = await generateCanvases(activeWorkspace.courseId, lectureIds);
+        setGenerationProgress(
+          generationTargetLectureIds.map((lectureId) => ({
+            lectureId,
+            status: lectureIds.includes(lectureId) ? "pending" : "ready",
+          })),
+        );
+        if (!unfinished.length) setGenerationWarnings([]);
+        const canvases = await generateCanvases(activeWorkspace.courseId, lectureIds, {
+          repairIds,
+        });
         if (!canvases) return;
         setCanvas(canvases[0] ?? null);
-        setGeneratedLectureIds(lectureIds);
-        setGenerationWarnings(Array.from(new Set(canvases.flatMap((item) => item.warnings ?? []))));
+        setGeneratedLectureIds(generationTargetLectureIds);
         if (lectureIds.length === 1)
           return "Course-builder agent generated a source-grounded canvas draft.";
         return `Course-builder agent generated ${lectureIds.length} source-grounded lecture canvases.`;

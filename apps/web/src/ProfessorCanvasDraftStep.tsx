@@ -55,6 +55,7 @@ export function ProfessorCanvasDraftStep({
       ? t("builder.generate.statusAll", { count: activeCount || totalCount })
       : t("builder.generate.statusSingle");
   const hasDraft = Boolean(canvas);
+  const hasUnfinished = generationProgress.some((item) => item.status === "error");
   const allDraftsReady =
     generationProgress.length === 0 || generationProgress.every((item) => item.status === "ready");
   const timeEstimate = isFullCourse
@@ -79,7 +80,13 @@ export function ProfessorCanvasDraftStep({
         type="button"
         onClick={onGenerate}
       >
-        {isGenerating ? busyLabel : hasDraft ? t("builder.generate.regenerate") : actionLabel}
+        {isGenerating
+          ? busyLabel
+          : hasUnfinished
+            ? t("builder.generate.resume")
+            : hasDraft
+              ? t("builder.generate.regenerate")
+              : actionLabel}
       </button>
       {isGenerating ? <PendingStatus label={statusLabel} /> : null}
       {generationProgress.length ? (

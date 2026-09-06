@@ -899,6 +899,7 @@ export const enMessages = {
   "builder.generate.progressStatus.ready": "Ready",
   "builder.generate.progressStatus.error": "Previous attempt failed",
   "builder.generate.regenerate": "Regenerate draft canvas",
+  "builder.generate.resume": "Continue unfinished lectures",
   "builder.generate.review": "Review draft canvases",
   "builder.generate.reviewHelp":
     "Open any learner preview in a separate tab. Review learning design only when you are ready to approve it.",

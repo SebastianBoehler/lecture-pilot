@@ -921,6 +921,7 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.generate.progressStatus.ready": "Bereit",
   "builder.generate.progressStatus.error": "Vorheriger Versuch fehlgeschlagen",
   "builder.generate.regenerate": "Canvas-Entwurf erneut erzeugen",
+  "builder.generate.resume": "Offene Vorlesungen fortsetzen",
   "builder.generate.review": "Canvas-Entwürfe prüfen",
   "builder.generate.reviewHelp":
     "Öffne jede Lernendenansicht in einem eigenen Tab. Prüfe das Lerndesign erst, wenn du es freigeben möchtest.",
