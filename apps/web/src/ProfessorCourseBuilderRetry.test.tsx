@@ -18,9 +18,13 @@ describe("Professor course builder generation retry", () => {
     vi.unstubAllGlobals();
   });
 
-  it.each([false, true])(
-    "recovers only the failed lecture (terminal failure: %s)",
-    async (terminal) => {
+  it.each([
+    { terminal: false, regenerate: false },
+    { terminal: true, regenerate: false },
+    { terminal: true, regenerate: true },
+  ])(
+    "recovers only the failed lecture (terminal: $terminal, regeneration: $regenerate)",
+    async ({ terminal, regenerate }) => {
       const user = userEvent.setup();
       const baseFetch = professorFetchMock();
       const draftAttempts = new Map<string, number>();
@@ -34,7 +38,7 @@ describe("Professor course builder generation retry", () => {
             ...(requestKeys.get(lectureId) ?? []),
             new Headers(init.headers).get("Idempotency-Key") ?? "",
           ]);
-          if (lectureId === "lecture-02" && attempt === 1) {
+          if (lectureId === "lecture-02" && attempt === (regenerate ? 2 : 1)) {
             if (terminal)
               return Promise.resolve(
                 new Response(JSON.stringify({ detail: "Repair needed." }), {
@@ -66,7 +70,7 @@ describe("Professor course builder generation retry", () => {
       await user.click(screen.getByRole("button", { name: /apply lecture schedule/i }));
       await screen.findByRole("heading", { name: /source assignments ready/i });
       await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
-      await screen.findByRole("heading", { name: /learning plans/i });
+      await screen.findByRole("heading", { name: /learning goals/i });
       await approveAllPracticeDesigns(user);
       await user.click(screen.getByRole("button", { name: /05 media/i }));
       await screen.findByRole("heading", { name: /review youtube candidates/i });
@@ -81,8 +85,17 @@ describe("Professor course builder generation retry", () => {
       });
       vi.useRealTimers();
 
+      if (regenerate) {
+        await screen.findByText(/2 lecture canvases ready to review/i);
+        await user.click(screen.getByRole("button", { name: /regenerate draft canvas/i }));
+      }
+
       if (terminal) {
-        expect(await screen.findByText(/1 lecture canvases ready to review/i)).toBeInTheDocument();
+        if (!regenerate)
+          expect(
+            await screen.findByText(/1 lecture canvases ready to review/i),
+          ).toBeInTheDocument();
+        await screen.findByRole("button", { name: /continue unfinished lectures/i });
         await user.click(screen.getByRole("button", { name: /continue unfinished lectures/i }));
         await screen.findByText(/2 lecture canvases ready to review/i);
         expect(
@@ -99,12 +112,14 @@ describe("Professor course builder generation retry", () => {
       );
       expect(draftAttempts).toEqual(
         new Map([
-          ["lecture-01", 1],
-          ["lecture-02", 2],
+          ["lecture-01", regenerate ? 2 : 1],
+          ["lecture-02", regenerate ? 3 : 2],
         ]),
       );
-      expect(requestKeys.get("lecture-02")).toHaveLength(2);
-      expect(new Set(requestKeys.get("lecture-02"))).toHaveLength(terminal ? 2 : 1);
+      expect(requestKeys.get("lecture-02")).toHaveLength(regenerate ? 3 : 2);
+      expect(new Set(requestKeys.get("lecture-02"))).toHaveLength(
+        regenerate ? 3 : terminal ? 2 : 1,
+      );
       expect(await screen.findByText(/2 lecture canvases ready to review/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/lecture generation progress/i)).toHaveTextContent(
         /Lecture 02/i,

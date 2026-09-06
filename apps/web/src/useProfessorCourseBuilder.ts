@@ -723,7 +723,9 @@ export function useProfessorCourseBuilder({
         await requireConfirmedRouting(activeWorkspace.courseId);
         await requireApprovedDesigns();
         const unfinished = generationTargetLectureIds.filter(
-          (id) => !generatedLectureIds.includes(id),
+          (id) =>
+            !generatedLectureIds.includes(id) ||
+            generationProgress.some((item) => item.lectureId === id && item.status === "error"),
         );
         const lectureIds = unfinished.length ? unfinished : generationTargetLectureIds;
         const repairIds = new Set(
