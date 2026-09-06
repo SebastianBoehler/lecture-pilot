@@ -1,9 +1,10 @@
+import { LessonSidebarResize, useLessonSidebarWidth } from "./LessonSidebarResize";
 import { CheckpointDrafts } from "./CheckpointDrafts";
 import { FocusedCheckpoint, LearningEvidenceFlow } from "./LearningEvidenceFlow";
 import { useCheckpointSupport } from "./useCheckpointSupport";
 import { useTeachingLanguage } from "./useTeachingLanguage";
 import { LessonControlRail } from "./LessonControlRail";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useI18n } from "./i18n";
 import { canvasWithPendingCheck } from "./canvasPendingCheck";
@@ -76,6 +77,8 @@ export function LessonWorkspace({
   onResetWorkspace: (options: WorkspaceResetSelection) => Promise<void>;
 }) {
   const { t } = useI18n();
+  const layoutRef = useRef<HTMLElement>(null);
+  const sidebar = useLessonSidebarWidth(layoutRef);
   const language = useTeachingLanguage(
     courseId,
     lecture.id,
@@ -147,7 +150,11 @@ export function LessonWorkspace({
     <CheckpointDrafts
       key={`${session.tenant_id}:${session.username}:${workspaceMode}:${courseId}:${lecture.id}:${publishedCanvasView?.publication_version}`}
     >
-      <main className={layoutClass}>
+      <main
+        ref={layoutRef}
+        style={sidebar.style}
+        className={`${layoutClass}${sidebar.dragging ? " is-resizing-sidebar" : ""}`}
+      >
         <section className="lesson-main">
           {previewMode ? <ProfessorLearnerPreviewBanner /> : null}
           <div className="lesson-toolbar">
@@ -217,7 +224,9 @@ export function LessonWorkspace({
         </section>
 
         {!focused ? (
-          <LessonControlRail panelMode={panelMode} onTogglePanel={onTogglePanel} />
+          <LessonControlRail panelMode={panelMode} onTogglePanel={onTogglePanel}>
+            {panelMode ? <LessonSidebarResize sidebar={sidebar} /> : null}
+          </LessonControlRail>
         ) : null}
 
         {!focused && panelMode === "chat" ? (

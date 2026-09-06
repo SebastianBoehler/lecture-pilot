@@ -7,7 +7,7 @@
 }
 
 .lesson-layout.panel-open {
-  grid-template-columns: minmax(0, 1fr) 56px minmax(320px, 380px);
+  grid-template-columns: minmax(0, 1fr) 56px calc(var(--lesson-sidebar-width, 436px) - 56px);
 }
 
 .lesson-main {

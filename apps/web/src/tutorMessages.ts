@@ -1,5 +1,9 @@
 export const tutorMessages = {
   en: {
+    "sidebar.resize": "Resize sidebar",
+    "sidebar.width": "{width} pixels wide",
+    "sidebar.resizeHelp":
+      "Drag to resize. Left/Right arrows adjust width; Home/End set limits. Double-click to reset.",
     "chat.title": "Tutor",
     "chat.details": "Session details",
     "chat.model": "Model",
@@ -29,6 +33,10 @@ export const tutorMessages = {
     "chat.list": "Inspect workspace",
   },
   de: {
+    "sidebar.resize": "Seitenleiste vergrößern oder verkleinern",
+    "sidebar.width": "{width} Pixel breit",
+    "sidebar.resizeHelp":
+      "Zum Ändern ziehen. Links/Rechts ändern die Breite; Pos1/Ende setzen die Grenzen. Doppelklick setzt zurück.",
     "chat.title": "Tutor",
     "chat.details": "Sitzungsdetails",
     "chat.model": "Modell",

@@ -27,15 +27,37 @@ def assemble_approved_checkpoints(
                 "Generated content conflicts with the assigned approved practice checkpoints.",
                 section_id=section.id,
             )
-    checkpoints = [
-        CanvasBlock(
-            id=checkpoint_id, type="checkpoint", text=target.baseline_task, caption=target.title
+    contexts = {f"check-context-{target.id}" for target in targets}
+    context_blocks = [block for block in section.blocks if block.id in contexts]
+    if len({block.id for block in context_blocks}) != len(context_blocks):
+        raise CanvasGenerationRepairableError(
+            "Use exactly one orientation paragraph for each check-context id.",
+            section_id=section.id,
         )
-        for checkpoint_id, target in expected.items()
-    ]
+    by_id = {block.id: block for block in context_blocks}
+    checkpoints = []
+    for checkpoint_id, target in expected.items():
+        context_id = f"check-context-{target.id}"
+        context = by_id.get(context_id)
+        if context is not None:
+            if context.type != "paragraph" or not context.text.strip():
+                raise CanvasGenerationRepairableError(
+                    f"{context_id} must be a non-empty orientation paragraph without answers.",
+                    section_id=section.id,
+                )
+            checkpoints.append(context)
+        checkpoints.append(
+            CanvasBlock(
+                id=checkpoint_id, type="checkpoint", text=target.baseline_task, caption=target.title
+            )
+        )
     return section.model_copy(
         update={
             "blocks": checkpoints
-            + [block for block in section.blocks if not block.id.startswith("practice-")],
+            + [
+                block
+                for block in section.blocks
+                if not block.id.startswith("practice-") and block.id not in contexts
+            ],
         }
     )

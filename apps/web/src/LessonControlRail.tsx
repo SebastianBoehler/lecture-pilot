@@ -1,4 +1,5 @@
 import { FolderTree, MessageSquare, TableOfContents } from "lucide-react";
+import type { ReactNode } from "react";
 import { useI18n } from "./i18n";
 import type { LessonPanelMode } from "./types";
 
@@ -11,13 +12,16 @@ const controls = [
 export function LessonControlRail({
   panelMode,
   onTogglePanel,
+  children,
 }: {
   panelMode: LessonPanelMode | null;
   onTogglePanel: (mode: LessonPanelMode) => void;
+  children?: ReactNode;
 }) {
   const { t } = useI18n();
   return (
     <aside className="rail" aria-label={t("lesson.controls")}>
+      {children}
       {controls.map(([mode, Icon, open, close]) => (
         <button
           key={mode}
