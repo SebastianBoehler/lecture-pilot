@@ -277,7 +277,7 @@ export const enMessages = {
   "practice.ppi.importingSource": "Importing PPI source…",
   "practice.view.eyebrow": "{minutes} minutes · {points} points",
   "practice.view.localDraft":
-    "Your professor and other course staff will never see this attempt. It is only for your personal practice and feedback.",
+    "Drafts stay in this tab. Finish and review saves your answers privately for your tutor and later self-review. Course staff cannot access these answers. You can delete saved attempts.",
   "practice.privacy.title": "Not shared with course staff",
   "practice.question": "Question {number}",
   "practice.points": "{count} points",

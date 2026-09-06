@@ -12,6 +12,7 @@ from lecturepilot.agent_context_models import (
     AgentReadinessTask,
     UserMemoryContext,
 )
+from lecturepilot.assessment_history_models import AssessmentHistoryContext
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
 from lecturepilot.coaching_assistance import NextCheck
 from lecturepilot.lecture_access_models import (
@@ -229,6 +230,7 @@ class AgentTurnInput(BaseModel):
     canvas_state: CanvasState = Field(default_factory=CanvasState)
     canvas_context: CanvasDocument | None = None
     user_memory: UserMemoryContext = Field(default_factory=UserMemoryContext)
+    assessment_history: AssessmentHistoryContext = Field(default_factory=AssessmentHistoryContext)
     readiness_task: AgentReadinessTask | None = None
     scaffold_policy: TutorScaffoldPolicy | None = None
     coaching_context: AgentCoachingContext = Field(default_factory=AgentCoachingContext)

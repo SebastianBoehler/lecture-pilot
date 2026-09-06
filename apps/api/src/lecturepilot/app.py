@@ -34,6 +34,7 @@ from lecturepilot.course_update_routes import register_course_update_routes
 from lecturepilot.csrf import CsrfProtectionMiddleware, allowed_origins
 from lecturepilot.database import Database
 from lecturepilot.exam_readiness_routes import register_exam_readiness_routes
+from lecturepilot.practice_exam_attempt_routes import register_practice_exam_attempt_routes
 from lecturepilot.exam_answer_evaluation import (
     LiteLLMOpenAnswerEvaluationClient,
     OpenAnswerEvaluator,
@@ -253,6 +254,7 @@ def create_app() -> FastAPI:
     register_ppi_exam_source_routes(app, **seeded_route_args)
     register_practice_exam_routes(app, **seeded_route_args)
     register_practice_exam_solution_routes(app, **seeded_route_args)
+    register_practice_exam_attempt_routes(app, **seeded_route_args)
     register_asset_routes(app, **seeded_route_args)
     register_course_routes(
         app,

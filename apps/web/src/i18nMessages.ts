@@ -1,4 +1,5 @@
 import { dashboardMessages } from "./dashboardMessages";
+import { practiceHistoryMessages } from "./practiceHistoryMessages";
 import { outlineMessages } from "./outlineMessages";
 import { learningIntentMessages } from "./learningIntentMessages";
 import { tutorMessages } from "./tutorMessages";
@@ -12,6 +13,7 @@ import { reviewQueueMessages } from "./reviewQueueMessages";
 
 export const messages = {
   en: {
+    ...practiceHistoryMessages.en,
     ...dashboardMessages.en,
     ...tutorMessages.en,
     ...outlineMessages.en,
@@ -24,6 +26,7 @@ export const messages = {
     ...reviewQueueMessages.en,
   },
   de: {
+    ...practiceHistoryMessages.de,
     ...dashboardMessages.de,
     ...tutorMessages.de,
     ...outlineMessages.de,

@@ -1,0 +1,24 @@
+.practice-attempt-history {
+  border-bottom: 1px solid var(--color-border-primary);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+.practice-attempt-history p {
+  color: var(--color-text-secondary);
+}
+.practice-attempt-history ul {
+  list-style: none;
+  padding: 0;
+}
+.practice-attempt-history li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-block: 8px;
+}
+.practice-attempt-history time {
+  flex: 1;
+  min-width: 160px;
+}

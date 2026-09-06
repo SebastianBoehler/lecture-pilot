@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 import shutil
 
-from lecturepilot.durable_files import atomic_write_json, fsync_directory
+from lecturepilot.durable_files import atomic_write_json, exclusive_file_lock, fsync_directory
 from lecturepilot.practice_exam_models import PracticeExam
 from lecturepilot.storage_layout import StorageLayout
 
@@ -44,12 +44,17 @@ class PracticeExamStore:
         return sorted(exams, key=lambda exam: (exam.created_at, exam.id), reverse=True)
 
     def delete(self, *, user_id: str, course_id: str, exam_id: str) -> bool:
+        with exclusive_file_lock(self.attempt_lock(user_id, course_id, exam_id)):
+            root = self._exam_path(user_id, course_id, exam_id).parent
+            if not root.exists():
+                return False
+            shutil.rmtree(root)
+            fsync_directory(root.parent)
+            return True
+
+    def attempt_lock(self, user_id: str, course_id: str, exam_id: str) -> Path:
         root = self._exam_path(user_id, course_id, exam_id).parent
-        if not root.exists():
-            return False
-        shutil.rmtree(root)
-        fsync_directory(root.parent)
-        return True
+        return root.parent / f"{exam_id}.attempts"
 
     def pdf_path(self, *, user_id: str, course_id: str, exam_id: str) -> Path:
         return self._exam_path(user_id, course_id, exam_id).parent / "exam.pdf"

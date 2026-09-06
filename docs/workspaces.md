@@ -175,8 +175,8 @@ Practice exams are a learner-owned layer beside, not inside, Exam Readiness.
 The API generates one immutable 20–50 question exam from currently unlocked,
 published canvases. Its private record includes answer keys, rubrics, and source
 provenance; browser and PDF responses use a public projection that omits those
-fields. Online answers are kept only in the active browser tab and are never
-submitted in this release.
+fields. Draft answers stay in the tab; **Finish and review** saves private answers
+for tutor context and later review/deletion. See [assessment history](assessment-history.md).
 
 Generation interleaves the bounded evidence budget across lectures and sections
 instead of filling it from the start of the course. Every lecture represented in

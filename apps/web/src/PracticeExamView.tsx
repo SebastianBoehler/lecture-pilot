@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { PracticeAttemptHistory } from "./PracticeAttemptHistory";
+import { savePracticeAttempt, type PracticeAttempt } from "./practiceAttemptApi";
 
 import { useI18n } from "./i18n";
 import { dismissDialogFromBackdrop } from "./dialogBackdrop";
@@ -32,6 +34,9 @@ export function PracticeExamView({
   );
   const [pdfBusy, setPdfBusy] = useState(false);
   const [reviewBusy, setReviewBusy] = useState(false);
+  const [submissionId] = useState(() => crypto.randomUUID());
+  const [submittedAnswers, setSubmittedAnswers] = useState<PracticeExamAnswers | null>(null);
+  const [savedAttempt, setSavedAttempt] = useState<PracticeAttempt | null>(null);
   const [solutions, setSolutions] = useState<PracticeExamSolutionSheet | null>(null);
   const [solutionPdfBusy, setSolutionPdfBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +64,33 @@ export function PracticeExamView({
     setReviewBusy(true);
     setError(null);
     try {
+      const snapshot = submittedAnswers ?? answers;
+      setSubmittedAnswers(snapshot);
+      if (!savedAttempt) {
+        setSavedAttempt(
+          await savePracticeAttempt(courseId, exam.id, session, {
+            id: submissionId,
+            answers: snapshot,
+          }),
+        );
+      }
       setSolutions(await loadPracticeExamSolutions(courseId, exam.id, session));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : t("practice.solutions.loadFailed"));
+    } finally {
+      setReviewBusy(false);
+    }
+  }
+
+  async function reviewAttempt(attempt: PracticeAttempt) {
+    setReviewBusy(true);
+    setError(null);
+    try {
+      const sheet = await loadPracticeExamSolutions(courseId, exam.id, session);
+      setAnswers(attempt.answers);
+      setSubmittedAnswers(attempt.answers);
+      setSavedAttempt(attempt);
+      setSolutions(sheet);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : t("practice.solutions.loadFailed"));
     } finally {
@@ -121,6 +152,24 @@ export function PracticeExamView({
         </div>
       </header>
       <div className="practice-exam-dialog-body">
+        <PracticeAttemptHistory
+          key={savedAttempt?.id ?? "unsaved"}
+          courseId={courseId}
+          examId={exam.id}
+          session={session}
+          disabled={reviewBusy}
+          onDelete={(id) => {
+            if (savedAttempt?.id === id) setSavedAttempt(null);
+          }}
+          onReview={(attempt) => void reviewAttempt(attempt)}
+        />
+        {savedAttempt ? (
+          <p role="status">
+            {t("practice.history.saved", {
+              date: new Date(savedAttempt.created_at).toLocaleString(),
+            })}
+          </p>
+        ) : null}
         {error ? (
           <p className="practice-exam-error" role="alert">
             {error}
@@ -150,7 +199,7 @@ export function PracticeExamView({
             <ol className="practice-question-list">
               {exam.questions.map((question, index) => (
                 <li key={question.id}>
-                  <fieldset>
+                  <fieldset disabled={reviewBusy || submittedAnswers !== null}>
                     <legend>
                       <span aria-hidden="true" className="practice-question-number">
                         {index + 1}.
@@ -204,7 +253,7 @@ export function PracticeExamView({
             type="button"
             onClick={() => void finishAndReview()}
           >
-            {reviewBusy ? t("practice.solutions.loading") : t("practice.solutions.finish")}
+            {reviewBusy ? t("practice.history.saving") : t("practice.solutions.finish")}
           </button>
         ) : null}
       </footer>

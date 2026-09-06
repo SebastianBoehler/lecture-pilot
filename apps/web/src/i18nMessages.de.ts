@@ -285,7 +285,7 @@ export const deMessages: Record<MessageKey, string> = {
   "practice.ppi.importingSource": "PPI-Quelle wird importiert…",
   "practice.view.eyebrow": "{minutes} Minuten · {points} Punkte",
   "practice.view.localDraft":
-    "Deine Professorin, dein Professor und andere Lehrende werden diesen Versuch nicht sehen. Er dient nur deiner persönlichen Übung und Auswertung.",
+    "Entwürfe bleiben in diesem Tab. Abschließen und auswerten speichert deine Antworten privat für deinen Tutor und spätere Selbstkontrolle. Lehrende haben keinen Zugriff. Du kannst gespeicherte Versuche löschen.",
   "practice.privacy.title": "Nicht mit Lehrenden geteilt",
   "practice.question": "Frage {number}",
   "practice.points": "{count} Punkte",

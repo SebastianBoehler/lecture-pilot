@@ -18,6 +18,7 @@ from lecturepilot.agent_command_utils import (
     without_generated_section_commands,
 )
 from lecturepilot.agent_tool_executor import AgentToolExecutor
+from lecturepilot.assessment_history import load_assessment_history
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.coaching_orchestration import (
     persist_coaching_turn,
@@ -143,6 +144,14 @@ async def _complete_agent_turn_inner(
             turn = turn.model_copy(update={"canvas_context": document, "user_memory": memory})
             layout = getattr(app.state.canvas_workspace, "layout", None)
             if callable(getattr(layout, "user_canvas_dir", None)):
+                activity("read assessment history")
+                history = load_assessment_history(
+                    layout,
+                    user_id=turn.user_id,
+                    course_id=turn.course_id,
+                    lecture_id=turn.lecture_id,
+                )
+                turn = turn.model_copy(update={"assessment_history": history})
                 tool_executor = AgentToolExecutor(
                     canvas_workspace=app.state.canvas_workspace,
                     course_id=turn.course_id,

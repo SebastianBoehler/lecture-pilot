@@ -6,6 +6,7 @@ from typing import Protocol
 
 from lecturepilot.canvas_component_catalog import component_catalog_instruction
 from lecturepilot.agent_tool_executor import AgentToolExecutor
+from lecturepilot.assessment_history_prompt import assessment_history_prompt
 from lecturepilot.agent_tool_loop import complete_tool_turn
 from lecturepilot.agent_tool_schemas import AgentToolProfile, tutor_tool_profile_for_message
 from lecturepilot.agent_response_schema import lecturepilot_response_format
@@ -202,6 +203,7 @@ def _messages(turn: AgentTurnInput) -> list[dict[str, str]]:
             "Current section: "
             f"{turn.canvas_state.focused_section_id or 'none'}\n"
             f"{_user_memory_context(turn)}\n"
+            f"{assessment_history_prompt(turn.assessment_history)}\n"
             f"{_coaching_context(turn)}\n"
             f"{_active_scaffold_context(turn)}\n"
             f"{gate_rubric_context(turn)}\n"

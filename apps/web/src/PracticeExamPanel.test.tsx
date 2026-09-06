@@ -81,7 +81,7 @@ describe("PracticeExamPanel", () => {
     expect(within(dialog).queryByLabelText("PPI password")).not.toBeInTheDocument();
   });
 
-  it("generates one online exam and keeps answers only in the tab draft", async () => {
+  it("generates one online exam and keeps unsubmitted answers in the tab draft", async () => {
     vi.stubGlobal("fetch", generationFetch());
     const user = userEvent.setup();
     renderPanel();

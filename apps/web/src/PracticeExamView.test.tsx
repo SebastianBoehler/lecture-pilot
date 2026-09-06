@@ -42,8 +42,8 @@ describe("PracticeExamView", () => {
     );
 
     const notice = screen.getByRole("note", { name: "Not shared with course staff" });
-    expect(notice).toHaveTextContent("Your professor and other course staff will never see");
-    expect(notice).toHaveTextContent("personal practice and feedback");
+    expect(notice).toHaveTextContent("Course staff cannot access these answers");
+    expect(notice).toHaveTextContent("privately for your tutor and later self-review");
     expect(notice).not.toHaveTextContent("submitted to LecturePilot");
     expect(notice.querySelector("svg")).toBeNull();
   });
@@ -88,11 +88,41 @@ describe("PracticeExamView", () => {
     expect(screen.queryByLabelText("Your answer for question 3")).not.toBeInTheDocument();
   });
 
+  it("retries a failed save with the same frozen answer snapshot", async () => {
+    const user = userEvent.setup();
+    const submissions: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url, init) => {
+        if (!String(url).endsWith("/attempts")) return json(solutionSheet);
+        submissions.push(init.body);
+        if (submissions.length === 1)
+          return new Response(JSON.stringify({ detail: "Please retry saving." }), { status: 503 });
+        return json({ ...JSON.parse(init.body), created_at: "2026-09-06T10:00:00Z" });
+      }),
+    );
+    renderWithI18n(
+      <PracticeExamView courseId="course-1" exam={exam} session={session} onClose={vi.fn()} />,
+    );
+    await user.type(screen.getByLabelText("Your answer for question 2"), "My answer");
+    await user.click(screen.getByRole("button", { name: "Finish and review" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Please retry saving.");
+    expect(screen.getByLabelText("Your answer for question 2")).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Finish and review" }));
+    expect(await screen.findByRole("heading", { name: "Solution sheet" })).toBeInTheDocument();
+    expect(submissions).toHaveLength(2);
+    expect(submissions[0]).toBe(submissions[1]);
+  });
+
   it("scores multiple choice locally and reveals full-credit open answers after finishing", async () => {
     const user = userEvent.setup();
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => json(solutionSheet)),
+      vi.fn(async (url, init) =>
+        String(url).endsWith("/attempts")
+          ? json({ ...JSON.parse(init.body), created_at: "2026-09-06T10:00:00Z" })
+          : json(solutionSheet),
+      ),
     );
     renderWithI18n(
       <PracticeExamView courseId="course-1" exam={exam} session={session} onClose={vi.fn()} />,
