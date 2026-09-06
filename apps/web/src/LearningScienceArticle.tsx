@@ -96,8 +96,9 @@ export function LearningScienceArticle() {
         </p>
         <p>
           When you use a tutor—human or digital—bring an attempt. Ask what went wrong or request the
-          next useful clue. Only look at the full solution after you have tried to repair the answer
-          yourself.
+          next useful clue. If the prerequisites are unfamiliar, study a worked example first. Then
+          cover the next step and try to complete or explain it yourself. As understanding grows,
+          reduce the help and try a fresh problem.
         </p>
       </section>
 

@@ -26,6 +26,8 @@ def test_both_canvas_writers_receive_the_same_teaching_and_media_boundaries() ->
         assert "recognition anchor for each section" not in prompt
         assert "checkpoint text is not an explanation" in prompt
         assert "Do not reveal the diagnostic's solution" in prompt
+        assert "prediction or principle explanation" in prompt
+        assert "prerequisites are missing" in prompt
 
 
 def test_planner_and_critic_distinguish_capability_from_administrative_recall() -> None:
@@ -57,3 +59,4 @@ def test_canvas_critic_checks_media_claims_without_claiming_unseen_visual_verifi
     assert "caption/source mismatch as a factual error" in prompt
     assert "do not claim visual verification" in prompt
     assert "missing instruction needed to solve" in prompt
+    assert "interaction alone is not evidence" in prompt

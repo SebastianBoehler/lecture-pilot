@@ -22,6 +22,8 @@ def component_catalog_instruction() -> str:
         "decorative metrics, controls, panels, or alternate views. Keep important comparisons "
         "simultaneously visible, use shared scales, label quantities and units, and state the "
         "causal takeaway next to the marks it explains. "
+        "When a prediction helps the learner reason, use the existing prompt text for it and "
+        "the frame explanation to explain the result; no new component or mandatory quiz is needed. "
         "Supported component_type values are: single_choice_quiz for one checked answer; "
         "interactive_chart for exact source-supported numeric comparisons or parameter changes; "
         "process_explorer for one ordered mechanism or algorithm; and visual_artifact for a "
