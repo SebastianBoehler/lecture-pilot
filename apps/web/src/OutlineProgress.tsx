@@ -29,7 +29,7 @@ export function OutlineProgress({
         </button>
       ) : null}
       <details className="outline-help">
-        <summary>{t("outline.howPracticeWorks")}</summary>
+        <summary tabIndex={0}>{t("outline.howPracticeWorks")}</summary>
         <p>{t("outline.navigationHelp")}</p>
         <ol>
           <li>{t("outline.practice.try")}</li>

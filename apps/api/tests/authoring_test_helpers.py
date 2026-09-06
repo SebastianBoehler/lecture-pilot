@@ -8,6 +8,10 @@ from lecturepilot.course_canvas_quality import CanvasQualityReviewer
 
 
 def install_author(client, monkeypatch, respond, reviewer):
+    monkeypatch.setenv("LECTUREPILOT_MODEL", "openai/authoring-test")
+    monkeypatch.setenv("LECTUREPILOT_ALLOWED_MODELS", "openai/authoring-test")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-only-function-model")
+
     @asynccontextmanager
     async def model(*args, **kwargs):
         yield FunctionModel(respond)

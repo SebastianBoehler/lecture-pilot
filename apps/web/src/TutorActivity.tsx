@@ -39,7 +39,7 @@ export function TutorActivity({
   return (
     <div className="tutor-activity" aria-label={t("chat.activity")}>
       <details className="tool-timeline">
-        <summary>
+        <summary tabIndex={0}>
           <ChevronRight className="disclosure-chevron" size={14} aria-hidden="true" />
           {pending ? (
             <span role="status" className="tutor-working">
@@ -56,7 +56,7 @@ export function TutorActivity({
             return (
               <li key={`${index}-${tag}`}>
                 <details className="tool-call">
-                  <summary>
+                  <summary tabIndex={0}>
                     <ChevronRight className="disclosure-chevron" size={12} aria-hidden="true" />
                     <span>{labels[name] ? t(labels[name]) : name}</span>
                     {target ? <code title={target}>{target}</code> : null}

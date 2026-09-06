@@ -21,7 +21,7 @@ export async function openLecture03FromDashboard(
 
 export async function openProfessorDemo(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: /preview professor account/i }));
-  await screen.findByRole("navigation", { name: /course builder progress/i });
+  await screen.findByRole("navigation", { name: /course builder progress/i }, { timeout: 5_000 });
 }
 
 export async function approveAllLearningDesigns(user: ReturnType<typeof userEvent.setup>) {

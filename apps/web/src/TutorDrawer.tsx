@@ -49,7 +49,7 @@ export function TutorDrawer({
           <h2>{t("chat.title")}</h2>
         </header>
         <details className="tutor-session-details">
-          <summary>
+          <summary tabIndex={0}>
             <ChevronRight className="disclosure-chevron" size={14} aria-hidden="true" />
             {t("chat.details")}
           </summary>
