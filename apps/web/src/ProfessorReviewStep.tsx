@@ -55,7 +55,7 @@ export function ProfessorReviewStep({
   const isSuggesting = pendingAction === "suggest-videos";
   return (
     <section className="flow-card wide">
-      <StepHeader number="03" title={t("builder.review.title")} done={ready} />
+      <StepHeader title={t("builder.review.title")} done={ready} />
       <p className="drawer-note">{t("builder.review.help")}</p>
       {targetLectures.length > 1 ? (
         <label>

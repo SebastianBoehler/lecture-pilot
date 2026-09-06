@@ -525,6 +525,12 @@ export const deMessages: Record<MessageKey, string> = {
   "courseUpdate.status.publishing": "Wird veröffentlicht...",
   "courseUpdate.status.published": "Veröffentlicht",
   "builder.progress": "Fortschritt beim Kurserstellen",
+  "builder.journey.course": "Kurs",
+  "builder.journey.materials": "Materialien",
+  "builder.journey.plan": "Lernplan",
+  "builder.journey.release": "Prüfen & veröffentlichen",
+  "builder.materials.files": "Dateien und Vorlesungsplan",
+  "builder.release.revision": "Entwurf prüfen oder neu erstellen",
   "builder.step.define": "Definieren",
   "builder.step.upload": "Hochladen",
   "builder.step.sources": "Quellen",
@@ -540,7 +546,8 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.stage.design":
     "Gib frei, was Studierende lernen sollen, bevor die KI Erklärungen und Aufgaben entwickelt.",
   "builder.stage.review": "Wähle nur Medien, die den Canvas gezielt ergänzen.",
-  "builder.stage.generate": "Erstelle den Canvas-Entwurf und prüfe ihn in der Lernansicht.",
+  "builder.stage.generate":
+    "Erstelle den Entwurf, prüfe die Lernansicht und veröffentliche ihn nach der Freigabe.",
   "builder.stage.publish": "Gib geprüfte Vorlesungs-Arbeitsbereiche für deine Studierenden frei.",
   "builder.status.ready": "Bereit",
   "builder.status.pending": "Ausstehend",

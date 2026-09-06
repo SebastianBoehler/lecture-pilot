@@ -106,7 +106,7 @@ it("requires every full-course plan approval and keeps a stale approval conflict
       within(firstPlan).queryByRole("button", { name: /approve learning plan/i }),
     ).not.toBeInTheDocument(),
   );
-  expect(screen.getByRole("button", { name: /06 generate/i })).toBeDisabled();
+  expect(screen.getByRole("button", { name: /04 review & publish/i })).toBeDisabled();
 
   await user.click(within(firstPlan).getByRole("button", { name: /edit this target/i }));
   const outcome = within(firstPlan).getByLabelText(/outcome for posterior/i);
@@ -116,7 +116,7 @@ it("requires every full-course plan approval and keeps a stale approval conflict
   expect(
     await within(firstPlan).findByRole("button", { name: /approve learning plan/i }),
   ).toBeDisabled();
-  expect(screen.getByRole("button", { name: /06 generate/i })).toBeDisabled();
+  expect(screen.getByRole("button", { name: /04 review & publish/i })).toBeDisabled();
   await user.click(within(firstPlan).getByRole("button", { name: /review edited plan/i }));
   await waitFor(() =>
     expect(within(firstPlan).getByRole("button", { name: /approve learning plan/i })).toBeEnabled(),
@@ -148,7 +148,8 @@ it("requires every full-course plan approval and keeps a stale approval conflict
     )
     .map(([, init]) => JSON.parse(String(init?.body)).practice_design_revision);
   expect(approvalRevisions).toEqual(["d".repeat(64), "f".repeat(64)]);
-  await user.click(screen.getByRole("button", { name: /05 media/i }));
+  await user.click(screen.getByRole("button", { name: /02 materials/i }));
+  await user.click(screen.getByText("Media (optional)", { selector: "summary" }));
   await waitFor(() =>
     expect(screen.getByRole("button", { name: /continue to canvas draft/i })).toBeEnabled(),
   );
@@ -180,7 +181,7 @@ it("marks an approved design stale after a source update removes current routing
 
   await user.click(screen.getByRole("button", { name: /refresh workspace/i }));
   expect(await screen.findByText(/source assignments changed/i)).toBeInTheDocument();
-  await user.click(screen.getByRole("button", { name: /04 design/i }));
+  await user.click(screen.getByRole("button", { name: /03 learning plan/i }));
 
   expect(await screen.findAllByText(/source routing is stale/i)).toHaveLength(2);
   expect(screen.queryByText(/^approved$/i)).not.toBeInTheDocument();

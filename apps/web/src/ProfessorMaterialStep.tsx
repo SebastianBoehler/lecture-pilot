@@ -52,11 +52,7 @@ export function ProfessorMaterialStep({
   });
   return (
     <section className="flow-card">
-      <StepHeader
-        number="02"
-        title={t("builder.upload.title")}
-        done={Boolean(bundle?.files.length)}
-      />
+      <StepHeader title={t("builder.upload.title")} done={Boolean(bundle?.files.length)} />
       <div
         className={`material-drop-zone${isDragOver ? " is-drag-over" : ""}${disabled ? " is-disabled" : ""}`}
         onDragOver={(event) => {

@@ -118,10 +118,11 @@ private report and acknowledgement record.
 
 ## Practice-design authoring
 
-The professor builder has seven ordered stages: define course, upload material, confirm source
-routing, propose/edit/approve the learning plan, review media, generate a canvas draft, and
-publish. Generation needs confirmed routing, required media review, and a current approved
-design for every target lecture.
+The professor builder has four stages: Course, Materials, Learning plan, and Review & publish.
+Materials combines uploads, lecture scheduling, and source confirmation; media review is optional
+and collapsed. The final stage combines generation, learner preview, exact-draft approval, and
+publication without a separate publishing step. Generation needs confirmed routing and a current
+approved design for every target lecture. Publication still requires approval of each current draft.
 
 `builder/practice-designs/<lecture-id>.json` is the course-owned,
 source-grounded learning-plan record: lecture objective, observable targets,

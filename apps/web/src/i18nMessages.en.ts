@@ -512,6 +512,12 @@ export const enMessages = {
   "courseUpdate.status.publishing": "Publishing...",
   "courseUpdate.status.published": "Published",
   "builder.progress": "Course builder progress",
+  "builder.journey.course": "Course",
+  "builder.journey.materials": "Materials",
+  "builder.journey.plan": "Learning plan",
+  "builder.journey.release": "Review & publish",
+  "builder.materials.files": "Files and lecture schedule",
+  "builder.release.revision": "Review or regenerate the draft",
   "builder.step.define": "Define",
   "builder.step.upload": "Upload",
   "builder.step.sources": "Sources",
@@ -526,7 +532,8 @@ export const enMessages = {
   "builder.stage.design":
     "Approve what students should learn before AI develops the teaching and practice.",
   "builder.stage.review": "Choose only media that gives the canvas useful support.",
-  "builder.stage.generate": "Generate the canvas draft and review it in the learner view.",
+  "builder.stage.generate":
+    "Generate the draft, review the learner experience, and publish when approved.",
   "builder.stage.publish": "Release reviewed lecture workspaces to your students.",
   "builder.status.ready": "Ready",
   "builder.status.pending": "Pending",

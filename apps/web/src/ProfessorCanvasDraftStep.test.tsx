@@ -57,12 +57,10 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
     expect(screen.getByRole("button", { name: "Retry Lecture 07" })).toBeEnabled();
   });
 
-  it("keeps publishing blocked while the exact draft learning design is unapproved", () => {
-    const onContinueToPublish = vi.fn();
+  it("reviews the exact draft without an extra publishing step", () => {
     renderStep({
       isFullCourse: false,
       totalCount: 1,
-      onContinueToPublish,
       review: learningDesignReview(null),
     });
 
@@ -78,20 +76,18 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
     expect(screen.queryByText("lecture.md#mechanism")).not.toBeInTheDocument();
     expect(screen.queryByText(/open-answer checkpoint coverage/i)).not.toBeInTheDocument();
     expect(screen.queryByText("Practice has no checkpoint or quiz.")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Continue to publishing" })).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "Continue to publishing" }));
-    expect(onContinueToPublish).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("button", { name: "Continue to publishing" }),
+    ).not.toBeInTheDocument();
   });
 
   it("edits and approves a per-lecture gate contract before continuing", () => {
     const onApproveLearningDesign = vi.fn();
     const onSaveLearningDesign = vi.fn();
-    const onContinueToPublish = vi.fn();
     const { rerender } = renderStep({
       isFullCourse: false,
       totalCount: 1,
       onApproveLearningDesign,
-      onContinueToPublish,
       onSaveLearningDesign,
       review: learningDesignReview(null),
     });
@@ -118,7 +114,6 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
     rerender(
       step(savedReview, {
         onApproveLearningDesign,
-        onContinueToPublish,
         onSaveLearningDesign,
       }),
     );
@@ -128,12 +123,9 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
     rerender(
       step(learningDesignReview("prof01"), {
         onApproveLearningDesign,
-        onContinueToPublish,
         onSaveLearningDesign,
       }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Continue to publishing" }));
-    expect(onContinueToPublish).toHaveBeenCalledOnce();
   });
 
   it("collapses a completed review and keeps the approved state when reopened", () => {
@@ -151,7 +143,6 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
     rerender(
       step(learningDesignReview("prof01"), {
         onApproveLearningDesign,
-        onContinueToPublish: vi.fn(),
         onSaveLearningDesign: vi.fn(),
       }),
     );
@@ -195,7 +186,6 @@ function renderStep({
   isFullCourse,
   totalCount,
   onApproveLearningDesign = vi.fn(),
-  onContinueToPublish = vi.fn(),
   onSaveLearningDesign = vi.fn(),
   review = null,
   generationProgress = [],
@@ -205,7 +195,6 @@ function renderStep({
   isFullCourse: boolean;
   totalCount: number;
   onApproveLearningDesign?: (lectureId: string) => void;
-  onContinueToPublish?: () => void;
   onSaveLearningDesign?: (lectureId: string, update: unknown) => void;
   review?: ReturnType<typeof learningDesignReview> | null;
   generationProgress?: Array<{
@@ -219,7 +208,7 @@ function renderStep({
   return render(
     step(
       review,
-      { onApproveLearningDesign, onContinueToPublish, onSaveLearningDesign },
+      { onApproveLearningDesign, onSaveLearningDesign },
       {
         generationProgress,
         isFullCourse,
@@ -235,7 +224,6 @@ function step(
   review: ReturnType<typeof learningDesignReview> | null,
   actions: {
     onApproveLearningDesign: (lectureId: string) => void;
-    onContinueToPublish: () => void;
     onSaveLearningDesign: (lectureId: string, update: unknown) => void;
   },
   overrides: {
@@ -262,7 +250,6 @@ function step(
         learningDesignReviews={review ? { "lecture-01": review } : {}}
         learningDesignSaving={false}
         onApproveLearningDesign={actions.onApproveLearningDesign}
-        onContinueToPublish={actions.onContinueToPublish}
         onGenerate={vi.fn()}
         onRetry={vi.fn()}
         retryingLectureIds={overrides.retryingLectureIds ?? new Set()}

@@ -1,4 +1,5 @@
 import { useI18n } from "./i18n";
+import { builderStage, builderStages } from "./builderStages";
 
 export type BuilderStep =
   "define" | "upload" | "sources" | "design" | "review" | "generate" | "publish";
@@ -6,8 +7,6 @@ export type BuilderStep =
 export type StepState = {
   available: boolean;
   id: BuilderStep;
-  label: string;
-  number: string;
   ready: boolean;
 };
 
@@ -35,35 +34,27 @@ export function builderSteps({
   workspacePublished: boolean;
 }): StepState[] {
   return [
-    { available: true, id: "define", label: "Define", number: "01", ready: courseReady },
-    { available: courseReady, id: "upload", label: "Upload", number: "02", ready: bundleReady },
+    { available: true, id: "define", ready: courseReady },
+    { available: courseReady, id: "upload", ready: bundleReady },
     {
       available: reviewAvailable,
       id: "sources",
-      label: "Sources",
-      number: "03",
       ready: routingReady,
     },
     {
       available: routingReady || designAvailable,
       id: "design",
-      label: "Design",
-      number: "04",
       ready: designReady,
     },
-    { available: routingReady, id: "review", label: "Media", number: "05", ready: reviewReady },
+    { available: routingReady, id: "review", ready: reviewReady },
     {
       available: (routingReady && designReady) || canvasReady,
       id: "generate",
-      label: "Generate",
-      number: "06",
       ready: canvasReady,
     },
     {
       available: canvasReady && (draftReviewed || workspacePublished),
       id: "publish",
-      label: "Publish",
-      number: "07",
       ready: workspacePublished,
     },
   ];
@@ -97,48 +88,26 @@ export function ProfessorBuilderStepper({
   return (
     <nav className="builder-journey" aria-label={t("builder.progress")}>
       <ol>
-        {steps.map((step) => (
+        {builderStages(steps).map((step, index) => (
           <li
-            className={`${step.ready ? "is-ready" : ""} ${activeStep === step.id ? "is-active" : ""} ${
+            className={`${step.ready ? "is-ready" : ""} ${builderStage(activeStep) === step.id ? "is-active" : ""} ${
               step.available ? "" : "is-locked"
             }`}
             key={step.id}
           >
             <button
-              aria-current={activeStep === step.id ? "step" : undefined}
-              aria-label={`${step.number} ${builderStepLabel(step.id, t)}`}
+              aria-current={builderStage(activeStep) === step.id ? "step" : undefined}
+              aria-label={`0${index + 1} ${t(`builder.journey.${step.id}`)}`}
               disabled={!step.available}
               type="button"
-              onClick={() => onStepChange(step.id)}
+              onClick={() => onStepChange(step.target)}
             >
-              <span>{step.number}</span>
-              <strong>{builderStepLabel(step.id, t)}</strong>
+              <span>0{index + 1}</span>
+              <strong>{t(`builder.journey.${step.id}`)}</strong>
             </button>
           </li>
         ))}
       </ol>
     </nav>
   );
-}
-
-export function builderStepLabel(
-  step: BuilderStep,
-  t: (
-    key:
-      | "builder.step.define"
-      | "builder.step.upload"
-      | "builder.step.sources"
-      | "builder.step.design"
-      | "builder.step.review"
-      | "builder.step.generate"
-      | "builder.step.publish",
-  ) => string,
-) {
-  if (step === "define") return t("builder.step.define");
-  if (step === "upload") return t("builder.step.upload");
-  if (step === "sources") return t("builder.step.sources");
-  if (step === "design") return t("builder.step.design");
-  if (step === "review") return t("builder.step.review");
-  if (step === "generate") return t("builder.step.generate");
-  return t("builder.step.publish");
 }

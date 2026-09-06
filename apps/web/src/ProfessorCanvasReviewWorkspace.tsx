@@ -7,20 +7,16 @@ import { ProfessorLearningDesignReview } from "./ProfessorLearningDesignReview";
 type PreviewLecture = { id: string; label: string; previewHref: string };
 
 export function ProfessorCanvasReviewWorkspace({
-  canContinue,
   lectures,
   learningDesignReviews,
   learningDesignSaving,
   onApproveLearningDesign,
-  onContinueToPublish,
   onSaveLearningDesign,
 }: {
-  canContinue: boolean;
   lectures: PreviewLecture[];
   learningDesignReviews: Record<string, LearningDesignReview>;
   learningDesignSaving: boolean;
   onApproveLearningDesign: (lectureId: string) => void;
-  onContinueToPublish: () => void;
   onSaveLearningDesign: (lectureId: string, update: LearningDesignUpdate) => void;
 }) {
   const { t } = useI18n();
@@ -124,14 +120,6 @@ export function ProfessorCanvasReviewWorkspace({
       </ul>
       <footer className="draft-review-footer">
         <span>{t("builder.generate.publishGateHelp")}</span>
-        <button
-          className="primary-action"
-          disabled={!canContinue}
-          type="button"
-          onClick={onContinueToPublish}
-        >
-          {t("builder.generate.continueToPublish")}
-        </button>
       </footer>
     </section>
   );

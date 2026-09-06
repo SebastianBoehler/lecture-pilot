@@ -27,7 +27,6 @@ it("summarizes historical generation failures until their details are requested"
         previewLectures={[]}
         totalCount={1}
         onApproveLearningDesign={vi.fn()}
-        onContinueToPublish={vi.fn()}
         onGenerate={vi.fn()}
         onRetry={vi.fn()}
         onSaveLearningDesign={vi.fn()}

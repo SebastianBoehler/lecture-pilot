@@ -29,7 +29,7 @@ export function ProfessorCourseSetupStep({
   const { t } = useI18n();
   return (
     <section className="flow-card wide">
-      <StepHeader number="01" title={t("builder.define.title")} done={courseReady} />
+      <StepHeader title={t("builder.define.title")} done={courseReady} />
       <CourseNameField
         courseSearchFailed={courseSearchFailed}
         courseSuggestions={courseSuggestions}

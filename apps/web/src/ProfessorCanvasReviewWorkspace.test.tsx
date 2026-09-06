@@ -41,7 +41,6 @@ describe("ProfessorCanvasDraftStep review workspace", () => {
           ]}
           totalCount={2}
           onApproveLearningDesign={() => undefined}
-          onContinueToPublish={() => undefined}
           onGenerate={() => undefined}
           onRetry={() => undefined}
           onSaveLearningDesign={() => undefined}

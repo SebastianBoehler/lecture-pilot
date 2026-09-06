@@ -51,8 +51,8 @@ describe("Professor course builder recovery", () => {
     await user.click(screen.getByRole("button", { name: /apply lecture schedule/i }));
 
     expect(await screen.findByText(/unknown source path returned/i)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /^sources$/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /03 sources/i })).toBeEnabled();
+    expect(screen.getByRole("heading", { name: /^materials$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /02 materials/i })).toBeEnabled();
     await user.click(screen.getByRole("button", { name: /retry source assignments/i }));
 
     expect(
@@ -122,9 +122,9 @@ describe("Professor course builder recovery", () => {
     await openProfessorDemo(user);
 
     expect(await screen.findByText(/temporarily unavailable/i)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /^sources$/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /03 sources/i })).toBeEnabled();
-    expect(screen.getByRole("button", { name: /04 design/i })).toBeDisabled();
+    expect(screen.getByRole("heading", { name: /^materials$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /02 materials/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /03 learning plan/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /retry source assignments/i })).toBeEnabled();
   });
 
@@ -174,8 +174,8 @@ describe("Professor course builder recovery", () => {
     expect(
       await screen.findByText(/routing refresh is temporarily unavailable/i),
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /^sources$/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /04 design/i })).toBeDisabled();
+    expect(screen.getByRole("heading", { name: /^materials$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /03 learning plan/i })).toBeDisabled();
     expect(screen.queryByText(/source routing is stale/i)).not.toBeInTheDocument();
   });
 });

@@ -1,18 +1,13 @@
 import { ProfessorImplementationChanges } from "./ProfessorImplementationChanges";
 import { useI18n } from "./i18n";
-import {
-  builderStepLabel,
-  type BuilderStep,
-  ProfessorBuilderStepper,
-} from "./ProfessorBuilderStepper";
+import { ProfessorBuilderStepper } from "./ProfessorBuilderStepper";
 import { ProfessorCanvasDraftStep } from "./ProfessorCanvasDraftStep";
 import { ProfessorCourseSetupStep } from "./ProfessorCourseSetupStep";
 import { ProfessorGenerationWarnings } from "./ProfessorGenerationWarnings";
-import { ProfessorMaterialStep } from "./ProfessorMaterialStep";
+import { ProfessorBuilderMaterials } from "./ProfessorBuilderMaterials";
+import { builderStage, type BuilderStage } from "./builderStages";
 import { ProfessorPracticeDesignStep } from "./ProfessorPracticeDesignStep";
 import { ProfessorPublishStep } from "./ProfessorPublishStep";
-import { ProfessorReviewStep } from "./ProfessorReviewStep";
-import { ProfessorSourceRoutingStep } from "./ProfessorSourceRoutingStep";
 import {
   useProfessorCourseBuilder,
   type ProfessorCourseBuilderProps,
@@ -39,12 +34,30 @@ export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
       builder.uploadStep.uploadFiles.length > 0,
   );
 
+  const stage = builderStage(builder.activeStep);
+  const canPublish =
+    builder.publishStep.canPublish &&
+    !learningDesign.saving &&
+    learningDesign.allApproved &&
+    reviewLectureIds.length > 0 &&
+    !builder.generateStep.isGenerating &&
+    builder.generateStep.retryingLectureIds.size === 0 &&
+    builder.generateStep.generationProgress.every((item) => item.status === "ready");
+  const draft = (
+    <ProfessorCanvasDraftStep
+      {...builder.generateStep}
+      learningDesignReviews={learningDesign.reviews}
+      learningDesignSaving={learningDesign.saving}
+      onApproveLearningDesign={(lectureId) => void learningDesign.approve(lectureId)}
+      onSaveLearningDesign={(lectureId, update) => void learningDesign.save(lectureId, update)}
+    />
+  );
   return (
     <main className="professor-screen">
       <section className="builder-masthead" data-tour="course-creation-workflow">
         <div>
-          <h1>{builderStepLabel(builder.activeStep, t)}</h1>
-          <p>{builderStageDescription(builder.activeStep, t)}</p>
+          <h1>{t(`builder.journey.${stage}`)}</h1>
+          <p>{builderStageDescription(stage, t)}</p>
         </div>
         <div className="professor-header-actions">
           <button
@@ -68,39 +81,37 @@ export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
             {builder.activeStep === "define" ? (
               <ProfessorCourseSetupStep {...builder.defineStep} />
             ) : null}
-            {builder.activeStep === "upload" ? (
-              <ProfessorMaterialStep {...builder.uploadStep} />
-            ) : null}
-            {builder.activeStep === "review" ? (
-              <ProfessorReviewStep {...builder.mediaStep} />
-            ) : null}
-            {builder.activeStep === "sources" ? (
-              <ProfessorSourceRoutingStep {...builder.routingStep} />
-            ) : null}
+            {stage === "materials" ? <ProfessorBuilderMaterials builder={builder} /> : null}
             {builder.activeStep === "design" ? (
               <ProfessorPracticeDesignStep {...builder.practiceDesignStep} />
             ) : null}
-            {builder.activeStep === "generate" ? (
-              <ProfessorCanvasDraftStep
-                {...builder.generateStep}
-                learningDesignReviews={learningDesign.reviews}
-                learningDesignSaving={learningDesign.saving}
-                onApproveLearningDesign={(lectureId) => void learningDesign.approve(lectureId)}
-                onSaveLearningDesign={(lectureId, update) =>
-                  void learningDesign.save(lectureId, update)
-                }
-              />
-            ) : null}
-            {builder.activeStep === "publish" ? (
-              <ProfessorPublishStep
-                {...builder.publishStep}
-                courseId={builder.workspace?.courseId}
-                session={props.session}
-                canPublish={builder.publishStep.canPublish && learningDesign.allApproved}
-              />
+            {stage === "release" ? (
+              <>
+                {builder.publishStep.ready ? (
+                  <details className="builder-optional">
+                    <summary>{t("builder.release.revision")}</summary>
+                    {draft}
+                  </details>
+                ) : (
+                  draft
+                )}
+                {builder.generateStep.canvas ? (
+                  <ProfessorPublishStep
+                    {...builder.publishStep}
+                    courseId={builder.workspace?.courseId}
+                    session={props.session}
+                    canPublish={canPublish}
+                    onPublish={() => {
+                      if (!canPublish) return;
+                      builder.generateStep.onContinueToPublish();
+                      void builder.publishStep.onPublish();
+                    }}
+                  />
+                ) : null}
+              </>
             ) : null}
           </div>
-          {builder.activeStep === "generate" && builder.workspace
+          {stage === "release" && builder.workspace
             ? reviewLectureIds.map((lectureId) => (
                 <ProfessorImplementationChanges
                   key={lectureId}
@@ -120,12 +131,9 @@ export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
   );
 }
 
-function builderStageDescription(step: BuilderStep, t: ReturnType<typeof useI18n>["t"]) {
-  if (step === "define") return t("builder.stage.define");
-  if (step === "upload") return t("builder.stage.upload");
-  if (step === "sources") return t("builder.stage.sources");
-  if (step === "design") return t("builder.stage.design");
-  if (step === "review") return t("builder.stage.review");
-  if (step === "generate") return t("builder.stage.generate");
-  return t("builder.stage.publish");
+function builderStageDescription(stage: BuilderStage, t: ReturnType<typeof useI18n>["t"]) {
+  if (stage === "course") return t("builder.stage.define");
+  if (stage === "materials") return t("builder.stage.upload");
+  if (stage === "plan") return t("builder.stage.design");
+  return t("builder.stage.generate");
 }

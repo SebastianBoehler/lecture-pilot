@@ -2,21 +2,12 @@ import { useI18n } from "./i18n";
 import type { YoutubeCandidateGroup } from "./professorYoutubeSuggestions";
 import type { CanvasDocument, SourceBundleManifest, YoutubeVideoCandidate } from "./types";
 
-export function StepHeader({
-  number,
-  title,
-  done,
-}: {
-  number: string;
-  title: string;
-  done: boolean;
-}) {
+export function StepHeader({ title, done }: { title: string; done: boolean }) {
   const { t } = useI18n();
   return (
     <header className="step-header">
       <h2>{title}</h2>
       <strong>{done ? t("builder.status.ready") : t("builder.status.pending")}</strong>
-      <span>{number}</span>
     </header>
   );
 }

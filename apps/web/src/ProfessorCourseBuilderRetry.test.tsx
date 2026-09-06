@@ -72,7 +72,8 @@ describe("Professor course builder generation retry", () => {
       await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
       await screen.findByRole("heading", { name: /learning goals/i });
       await approveAllPracticeDesigns(user);
-      await user.click(screen.getByRole("button", { name: /05 media/i }));
+      await user.click(screen.getByRole("button", { name: /02 materials/i }));
+      await user.click(screen.getByText("Media (optional)", { selector: "summary" }));
       await screen.findByRole("heading", { name: /review youtube candidates/i });
       await waitFor(() =>
         expect(screen.getByRole("button", { name: /continue to canvas draft/i })).toBeEnabled(),
@@ -126,7 +127,7 @@ describe("Professor course builder generation retry", () => {
       );
       expect(screen.getByLabelText(/lecture generation progress/i)).toHaveTextContent(/ready/i);
       await approveAllLearningDesigns(user);
-      expect(screen.getByRole("button", { name: /continue to publishing/i })).toBeEnabled();
+      expect(screen.getByRole("button", { name: /publish .*tutor workspace/i })).toBeEnabled();
     },
   );
 });

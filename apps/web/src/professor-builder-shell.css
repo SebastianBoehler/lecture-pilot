@@ -41,7 +41,7 @@
 
 .builder-journey ol {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 4px;
   margin: 0;
   padding: 0;
@@ -133,48 +133,25 @@
     align-items: start;
     margin-bottom: 24px;
   }
-
-  .builder-journey {
-    overflow-x: auto;
-  }
-
-  .builder-journey ol {
-    display: flex;
-    width: max-content;
-  }
-
-  .builder-journey li {
-    width: 132px;
-  }
-}
-
-@media (max-width: 480px) {
-  .builder-journey {
-    overflow-x: visible;
-  }
-
-  .builder-journey ol {
-    display: grid;
-    width: auto;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .builder-journey li {
-    width: auto;
-  }
-
   .builder-journey button {
     grid-template-columns: 1fr;
-    gap: 2px;
-    justify-items: start;
+    gap: 4px;
   }
-
-  .builder-journey strong {
-    white-space: normal;
-    overflow-wrap: anywhere;
+}
+@media (max-width: 480px) {
+  .builder-journey ol {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
-  .builder-journey li:last-child {
-    grid-column: 1 / -1;
-  }
+}
+.builder-optional {
+  border-bottom: 1px solid var(--color-border-primary);
+  padding: 12px 0;
+}
+.builder-optional > summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+.builder-optional > .flow-card {
+  margin-top: 18px;
 }

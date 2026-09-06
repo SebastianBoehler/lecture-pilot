@@ -288,6 +288,10 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
 
 ## UI And Canvas Rules
 
+- Course creation has four visible stages: Course, Materials, Learning plan, and
+  Review & publish. Materials owns source confirmation and optional media; the
+  final stage owns draft generation, exact-draft approval, and publication.
+
 - The canvas is the main learning surface and should remain the single ground
   truth for generated explanations, quizzes, examples, figures, and summaries.
   Render the revision-matched pending check at its checkpoint after reload; do

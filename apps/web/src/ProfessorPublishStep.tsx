@@ -39,7 +39,7 @@ export function ProfessorPublishStep({
     : t("builder.publish.statusSingle");
   return (
     <section className="flow-card wide">
-      <StepHeader number="05" title={t("builder.publish.title")} done={ready} />
+      <StepHeader title={t("builder.publish.title")} done={ready} />
       {ready ? (
         <p className="drawer-note">{t("builder.publish.readyNote")}</p>
       ) : (

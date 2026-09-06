@@ -38,12 +38,12 @@ describe("Professor course deletion", () => {
     render(<App />);
 
     await openProfessorDemo(user);
-    expect(screen.getByRole("heading", { name: /^define$/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^course$/i })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /created courses/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /manage courses/i }));
     expect(await screen.findByRole("heading", { name: /created courses/i })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /create course/i }));
-    expect(await screen.findByRole("heading", { name: /^define$/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /^course$/i })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /manage courses/i }));
     const deleteButton = await screen.findByRole("button", { name: /delete demo ml course/i });
     expect(deleteButton).toBeEnabled();

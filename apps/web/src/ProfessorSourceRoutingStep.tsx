@@ -43,7 +43,6 @@ export function ProfessorSourceRoutingStep({
   return (
     <section className="flow-card">
       <StepHeader
-        number="03"
         title={t(routingMissing ? "builder.sources.pendingTitle" : "builder.sources.title")}
         done={Boolean(routing?.confirmed) && !noAssignedEvidence}
       />

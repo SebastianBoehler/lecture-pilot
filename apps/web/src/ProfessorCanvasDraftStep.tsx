@@ -15,7 +15,6 @@ export function ProfessorCanvasDraftStep({
   learningDesignReviews,
   learningDesignSaving,
   onApproveLearningDesign,
-  onContinueToPublish,
   onGenerate,
   onRetry,
   onSaveLearningDesign,
@@ -32,7 +31,6 @@ export function ProfessorCanvasDraftStep({
   learningDesignReviews: Record<string, LearningDesignReview>;
   learningDesignSaving: boolean;
   onApproveLearningDesign: (lectureId: string) => void;
-  onContinueToPublish: () => void;
   onGenerate: () => void;
   onRetry: (lectureId: string) => void;
   onSaveLearningDesign: (lectureId: string, update: LearningDesignUpdate) => void;
@@ -65,11 +63,7 @@ export function ProfessorCanvasDraftStep({
     : t("builder.generate.estimateSingle");
   return (
     <section className="flow-card">
-      <StepHeader
-        number="04"
-        title={t("builder.generate.title")}
-        done={hasDraft && allDraftsReady}
-      />
+      <StepHeader title={t("builder.generate.title")} done={hasDraft && allDraftsReady} />
       <aside aria-label={t("builder.generate.timingLabel")} className="generation-time-notice">
         <strong>{timeEstimate}</strong>
         <span>{t("builder.generate.backgroundHelp")}</span>
@@ -104,16 +98,10 @@ export function ProfessorCanvasDraftStep({
       ) : null}
       {hasDraft ? (
         <ProfessorCanvasReviewWorkspace
-          canContinue={
-            allDraftsReady &&
-            previewLectures.length > 0 &&
-            previewLectures.every((lecture) => Boolean(learningDesignReviews[lecture.id]?.approval))
-          }
           lectures={previewLectures}
           learningDesignReviews={learningDesignReviews}
           learningDesignSaving={learningDesignSaving}
           onApproveLearningDesign={onApproveLearningDesign}
-          onContinueToPublish={onContinueToPublish}
           onSaveLearningDesign={onSaveLearningDesign}
         />
       ) : null}
