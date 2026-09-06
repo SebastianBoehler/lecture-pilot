@@ -6,88 +6,22 @@ import asyncio
 import json
 import os
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "apps/api/src"))
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection  # noqa: E402
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from gate_benchmark_cases import SCENARIOS, _turn_for_scenario  # noqa: E402
 from lecturepilot.harness import LecturePilotHarness  # noqa: E402
-from lecturepilot.learning_map import LearningMapGate  # noqa: E402
-from lecturepilot.models import (  # noqa: E402
-    AgentCoachingContext,
-    AgentTurnInput,
-    AttendanceStatus,
-    CanvasState,
+from lecturepilot.model_client import ModelExecutionError  # noqa: E402
+from lecturepilot.providers import (  # noqa: E402
+    DEFAULT_MODEL,
+    ProviderRegistry,
+    ProviderConfigurationError,
 )
-from lecturepilot.providers import DEFAULT_MODEL, ProviderRegistry  # noqa: E402
-
-
-@dataclass(frozen=True)
-class GateScenario:
-    lecture_id: str
-    label: str
-    attendance: AttendanceStatus
-    message: str
-    expected_status: str
-
-
-SCENARIOS = (
-    GateScenario(
-        "lecture-01",
-        "weak_intro_answer",
-        AttendanceStatus.PRESENT,
-        "Machine learning predicts labels from examples.",
-        "needs_evidence",
-    ),
-    GateScenario(
-        "lecture-01",
-        "strong_intro_answer",
-        AttendanceStatus.PRESENT,
-        (
-            "Supervised classification predicts a target label from training data. "
-            "A model is optimized with a loss, then validation or test data checks generalization."
-        ),
-        "passed",
-    ),
-    GateScenario(
-        "lecture-02",
-        "weak_generalization_answer",
-        AttendanceStatus.ABSENT,
-        "Generalization means the model works later.",
-        "needs_evidence",
-    ),
-    GateScenario(
-        "lecture-02",
-        "strong_generalization_answer",
-        AttendanceStatus.PRESENT,
-        (
-            "We train on training data, use validation or held-out test data to estimate "
-            "generalization, and inspect false positive or recall rates because the classifier "
-            "threshold changes the decision rates."
-        ),
-        "passed",
-    ),
-    GateScenario(
-        "lecture-03",
-        "weak_bayes_answer",
-        AttendanceStatus.PRESENT,
-        "The posterior is P(C|X), so Bayes updates a belief.",
-        "needs_evidence",
-    ),
-    GateScenario(
-        "lecture-03",
-        "strong_bayes_answer",
-        AttendanceStatus.PRESENT,
-        (
-            "The posterior P(C|X) combines prior, likelihood, and evidence P(X). "
-            "The classifier then chooses a decision, while loss or false-positive cost "
-            "changes the risk-sensitive threshold."
-        ),
-        "passed",
-    ),
-)
+from pydantic import ValidationError  # noqa: E402
 
 
 async def main() -> int:
@@ -105,7 +39,9 @@ async def main() -> int:
 
 
 async def _benchmark_model(model: str) -> list[dict]:
-    harness = LecturePilotHarness(provider_registry=ProviderRegistry.from_env(model))
+    registry = ProviderRegistry.from_env(model)
+    registry.require_ready([])
+    harness = LecturePilotHarness(provider_registry=registry)
     rows = []
     for scenario in SCENARIOS:
         row = {
@@ -116,7 +52,9 @@ async def _benchmark_model(model: str) -> list[dict]:
         try:
             result = await harness.run_turn(_turn_for_scenario(scenario))
             status = (
-                result.quality_gate.status.value if result.quality_gate else "missing"
+                result.quality_gate.status.value
+                if result.quality_gate
+                else "contract_error"
             )
             row.update(
                 {
@@ -126,129 +64,33 @@ async def _benchmark_model(model: str) -> list[dict]:
                     "message": result.message[:240],
                 }
             )
-        except Exception as exc:
-            row.update({"actual": "error", "ok": False, "error": str(exc)})
+        except ModelExecutionError as exc:
+            row.update({"actual": "provider_error", "ok": False, "error": str(exc)})
+        except (ProviderConfigurationError, ValidationError, ValueError) as exc:
+            row.update({"actual": "contract_error", "ok": False, "error": str(exc)})
         rows.append(row)
     return rows
 
 
-def _turn_for_scenario(scenario: GateScenario) -> AgentTurnInput:
-    gate = _gate_for_lecture(scenario.lecture_id)
-    return AgentTurnInput(
-        user_id="provider-benchmark-user",
-        course_id="martius-ml",
-        lecture_id=scenario.lecture_id,
-        attendance=scenario.attendance,
-        message=scenario.message,
-        canvas_state=CanvasState(
-            focused_section_id=_focused_section_id(scenario.lecture_id)
+def summarize_results(rows: list[dict]) -> dict[str, int]:
+    return {
+        "matched": sum(row["actual"] == row["expected"] for row in rows),
+        "total": len(rows),
+        "false_passes": sum(
+            row["actual"] == "passed" and row["expected"] == "needs_evidence"
+            for row in rows
         ),
-        canvas_context=_canvas_for_lecture(scenario.lecture_id),
-        active_gate=gate,
-        coaching_context=AgentCoachingContext(
-            active_gate_id=gate.id,
-            active_gate_revision=gate.revision,
-            pending_check_gate_id=gate.id,
-            pending_check_gate_revision=gate.revision,
-            pending_check_issued_at="2026-08-18T08:00:00+00:00",
-            pending_check_prompt=gate.prompt,
+        "false_rejections": sum(
+            row["actual"] == "needs_evidence" and row["expected"] == "passed"
+            for row in rows
         ),
-    )
-
-
-def _gate_for_lecture(lecture_id: str) -> LearningMapGate:
-    section_id = _focused_section_id(lecture_id)
-    if lecture_id == "lecture-01":
-        criteria = [
-            {"id": "target", "description": "Identifies prediction of a target label."},
-            {"id": "loss", "description": "Explains model optimization using a loss."},
-            {
-                "id": "generalization",
-                "description": "Uses held-out validation or test data to check generalization.",
-            },
-        ]
-    elif lecture_id == "lecture-02":
-        criteria = [
-            {
-                "id": "held-out",
-                "description": "Distinguishes training from held-out generalization evaluation.",
-            },
-            {
-                "id": "threshold-errors",
-                "description": "Connects classifier threshold choice to an error rate.",
-            },
-        ]
-    else:
-        criteria = [
-            {
-                "id": "bayes-components",
-                "description": "Connects prior, likelihood, evidence, and posterior.",
-            },
-            {
-                "id": "risk-decision",
-                "description": "Connects loss or error cost to the decision threshold.",
-            },
-        ]
-    return LearningMapGate.create(
-        id=f"{section_id}-gate",
-        concept_id=section_id,
-        title=f"{section_id} evidence check",
-        prompt="Explain the concept using every required evidence item.",
-        evidence_criteria=criteria,
-        transfer_prompt="Apply the explanation to a changed example.",
-        review_after_days=3,
-        section_id=section_id,
-        source_ref="benchmark scenario",
-    )
-
-
-def _canvas_for_lecture(lecture_id: str) -> CanvasDocument:
-    section_id, title, text = _canvas_seed(lecture_id)
-    return CanvasDocument(
-        id=f"benchmark-{lecture_id}",
-        course_id="martius-ml",
-        lecture_id=lecture_id,
-        title=title,
-        source_kind="generated",
-        source_ref="benchmark scenario",
-        workspace_path=f".lecturepilot/benchmark/{lecture_id}/canvas/index.md",
-        sections=[
-            CanvasSection(
-                id=section_id,
-                title=title,
-                blocks=[
-                    CanvasBlock(id=f"{section_id}-p-1", type="paragraph", text=text)
-                ],
-            )
-        ],
-    )
-
-
-def _canvas_seed(lecture_id: str) -> tuple[str, str, str]:
-    if lecture_id == "lecture-01":
-        return (
-            "what-is-machine-learning",
-            "Machine learning setup",
-            "Machine learning connects data, model, loss, optimization, and generalization.",
-        )
-    if lecture_id == "lecture-02":
-        return (
-            "generalization-foundations",
-            "Generalization and classifier evaluation",
-            "Held-out validation and test sets estimate generalization and classifier errors.",
-        )
-    return (
-        "bayesian-decision-theory-the-aim",
-        "Bayesian decision theory",
-        "Bayes turns prior, likelihood, and evidence into a posterior for decisions under risk.",
-    )
-
-
-def _focused_section_id(lecture_id: str) -> str:
-    return _canvas_seed(lecture_id)[0]
+        "contract_errors": sum(row["actual"] == "contract_error" for row in rows),
+        "provider_errors": sum(row["actual"] == "provider_error" for row in rows),
+    }
 
 
 def _print_table(rows: list[dict]) -> None:
+    print(json.dumps(summarize_results(rows)))
     passed = sum(1 for row in rows if row.get("ok"))
     print(f"Gate benchmark: {passed}/{len(rows)} scenarios matched expected status")
     for row in rows:
