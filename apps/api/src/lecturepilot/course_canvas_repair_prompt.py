@@ -148,7 +148,14 @@ def _section_context(section: CanvasSection, target: CanvasBlock | None) -> str:
             "id": section.id,
             "title": section.title,
             "source_ref": section.source_ref,
-            "blocks": [{"id": block.id, "type": block.type} for block in section.blocks],
+            "blocks": [
+                {"id": block.id, "type": block.type}
+                if block.type in {"checkpoint", "quiz"}
+                or block.id == target.id
+                or block.component_type == "single_choice_quiz"
+                else block.model_dump(exclude_none=True)
+                for block in section.blocks
+            ],
         },
         separators=(",", ":"),
     )

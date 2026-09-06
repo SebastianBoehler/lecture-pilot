@@ -65,7 +65,9 @@ def stable_replacement_blocks(
         if index == primary:
             block_id = target.id
         else:
-            block_id = unique_id(f"{target.id}-repair-{repair_index}", reserved)
+            # Only the approved checkpoint may claim the reserved practice-* namespace.
+            base = f"repair-{target.id}" if target.id.startswith("practice-") else target.id
+            block_id = unique_id(f"{base}-repair-{repair_index}", reserved)
             repair_index += 1
         reserved.add(block_id)
         result.append(normalize_component_identity(block, block_id=block_id))

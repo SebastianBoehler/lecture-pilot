@@ -27,7 +27,7 @@ def test_section_parser_turns_a_declarative_checkpoint_into_a_concrete_task() ->
     validate_section_assessments(parsed)
     checkpoint = next(block for block in parsed.blocks if block.type == "checkpoint")
     assert checkpoint.text == (
-        "Explain this statement and identify the relationship it describes: "
+        "Explain this statement in your own words: "
         "probability-based reasoning separates observable evidence from hidden causes."
     )
 
@@ -52,7 +52,7 @@ def test_section_parser_adds_a_grounded_checkpoint_when_one_is_missing() -> None
     validate_section_assessments(parsed)
     checkpoint = next(block for block in parsed.blocks if block.type == "checkpoint")
     assert checkpoint.text == (
-        "Explain this statement and identify the relationship it describes: "
+        "Explain this statement in your own words: "
         "A posterior combines the prior with observed evidence."
     )
 
@@ -70,7 +70,7 @@ def test_section_repair_uses_original_evidence_when_patch_only_contains_math() -
     validate_section_assessments(parsed)
     checkpoint = next(block for block in parsed.blocks if block.type == "checkpoint")
     assert checkpoint.text == (
-        "Explain this statement and identify the relationship it describes: "
+        "Explain this statement in your own words: "
         "this statement summarizes how probability combines prior beliefs and observations."
     )
 

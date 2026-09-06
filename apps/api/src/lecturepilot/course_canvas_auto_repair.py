@@ -11,6 +11,7 @@ from lecturepilot.course_canvas_repair_preflight import normalize_repair_candida
 from lecturepilot.course_canvas_practice_contract import validate_practice_candidate
 from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.course_canvas_validation import validate_planned_document
+from lecturepilot.course_canvas_structural_repair import repair_structural_targets
 
 
 class CanvasRepairPlanner(Protocol):
@@ -117,6 +118,18 @@ async def _repair_sections_once(
     output_language: str,
     practice_design: PracticeDesign,
 ) -> CanvasDocument:
+    if not quality_batch:
+        issue = issue_groups[0][0]
+        return await repair_structural_targets(
+            planner,
+            source=source,
+            candidate=candidate,
+            section_id=issue.section_id,
+            block_id=issue.block_id,
+            failure_context=issue.reason,
+            output_language=output_language,
+            practice_design=practice_design,
+        )
     tasks = [
         asyncio.create_task(
             _repair_issue_group(
@@ -182,6 +195,18 @@ async def _repair_issue_group(
         unresolved = issues
     if not unresolved:
         return active
+    # Approved task text cannot be rewritten. Rebuild its teaching context instead;
+    # the backend re-inserts the exact approved checkpoints into the section.
+    if any(issue.block_id and issue.block_id.startswith("practice-") for issue in unresolved):
+        return await planner.repair_section(
+            source,
+            active,
+            section_id=unresolved[0].section_id,
+            block_id=None,
+            failure_context=_quality_failure_context(unresolved),
+            output_language=output_language,
+            practice_design=practice_design,
+        )
     block_groups = _issues_by_block(unresolved)
     if len(block_groups) > 1 and all(group[0].block_id is not None for group in block_groups):
         return await planner.repair_blocks(

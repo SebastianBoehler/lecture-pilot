@@ -114,9 +114,9 @@ def _usable_statement(value: str | None) -> str | None:
 
 def _explanation_task(statement: str, output_language: str) -> str:
     if output_language.casefold().startswith("de"):
-        prefix = "Erkläre diese Aussage und benenne den beschriebenen Zusammenhang: "
+        prefix = "Erkläre diese Aussage in eigenen Worten: "
     else:
-        prefix = "Explain this statement and identify the relationship it describes: "
+        prefix = "Explain this statement in your own words: "
     return f"{prefix}{statement}"
 
 

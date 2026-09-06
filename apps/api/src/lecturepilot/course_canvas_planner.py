@@ -67,16 +67,18 @@ class LiteLLMCoursePlanClient:
                 self.usage_recorder,
                 acompletion,
                 usage_stage="canvas_plan_or_repair",
-                max_attempts=1,
                 model=settings.model,
                 messages=messages,
                 response_format=response_format or course_canvas_response_format(),
                 **completion_options(
                     settings,
                     temperature=temperature,
+                    reasoning_effort="low",
                     timeout_seconds=CANVAS_PLAN_REQUEST_TIMEOUT_SECONDS,
                 ),
             )
+        except ProviderConfigurationError:
+            raise
         except Exception as exc:
             raise ModelExecutionError(
                 model_provider_error_message(exc, provider=settings.provider)

@@ -20,7 +20,8 @@ from lecturepilot.logging_observability import (
 )
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import ProviderSettings
-from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
+from lecturepilot.providers import ProviderRegistry
+from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.source_bundle_canvas import SourceBundleCanvasError
 from lecturepilot.tenancy import TenantContext
 from practice_design_test_helpers import practice_design_for_canvas
@@ -101,7 +102,7 @@ async def test_course_planner_logs_model_retry_attempts_without_error_messages(
     assert all(payload["provider"] == "gemini" for payload in payloads)
     assert all(payload["model"] == "gemini/test-model" for payload in payloads)
     assert [payload["exception_type"] for payload in section_payloads] == [
-        "ProviderConfigurationError",
+        "CanvasGenerationRepairableError",
         "ModelExecutionError",
     ]
     assert any(payload["stage"] == "sectionwise_plan" for payload in payloads)
@@ -155,7 +156,7 @@ class _FailingPlanClient:
     async def complete_plan(self, *, settings, messages, response_format=None):
         self.calls += 1
         if self.calls == 1:
-            raise ProviderConfigurationError("PRIVATE invalid model response")
+            raise CanvasGenerationRepairableError("PRIVATE invalid model response")
         raise ModelExecutionError("PRIVATE provider failure")
 
 

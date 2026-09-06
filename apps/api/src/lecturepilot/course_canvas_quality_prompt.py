@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 
 
@@ -87,6 +89,22 @@ def _matching_sources(
 
 def _candidate_line(block: CanvasBlock) -> str:
     prefix = f"CANDIDATE BLOCK {block.id} [{block.type}]"
+    if block.type == "component" and block.component_type != "single_choice_quiz":
+        return f"{prefix}: " + json.dumps(
+            {
+                "component_type": block.component_type,
+                "text": block.text,
+                "caption": block.caption,
+                "data": (
+                    block.component_data.model_dump(mode="json", exclude_defaults=True)
+                    if block.component_data
+                    else None
+                ),
+                "options": block.items,
+                "selected": block.answer_index,
+            },
+            ensure_ascii=False,
+        )
     if block.type in {"list", "quiz"} or block.items:
         answer = f"; selected={block.answer_index}" if block.answer_index is not None else ""
         return f"{prefix}: {block.text or ''}; options={block.items}{answer}"

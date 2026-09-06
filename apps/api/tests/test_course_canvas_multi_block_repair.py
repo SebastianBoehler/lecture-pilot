@@ -2,8 +2,31 @@ import pytest
 
 from lecturepilot.course_canvas_planner import CourseCanvasPlanner
 from lecturepilot.course_canvas_repair_apply import apply_replacement
+from lecturepilot.course_canvas_practice_contract import validate_practice_candidate
 from lecturepilot.providers import ProviderRegistry
 from test_course_canvas_batched_repair import _documents
+
+
+def test_checkpoint_repair_can_add_explanation_without_claiming_another_practice_target():
+    source, candidate, design = _documents()
+    original = next(
+        s for s in candidate.sections if any(b.id.startswith("practice-") for b in s.blocks)
+    )
+    target = next(b for b in original.blocks if b.id.startswith("practice-"))
+    replacement = original.model_copy(
+        update={
+            "blocks": [
+                target.model_copy(update={"type": "paragraph", "text": "Supporting explanation."}),
+                target,
+            ]
+        }
+    )
+
+    repaired = apply_replacement(candidate, original, replacement, target)
+
+    validate_practice_candidate(repaired, design, source_document=source)
+    assert any(b.text == "Supporting explanation." for s in repaired.sections for b in s.blocks)
+    assert sum(b.id == target.id for s in repaired.sections for b in s.blocks) == 1
 
 
 async def test_multi_block_repair_applies_one_atomic_patch_request(

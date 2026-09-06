@@ -90,7 +90,7 @@ async def test_section_repair_retries_once_with_the_new_validation_error(
     first_prompt = model.messages[0][1]["content"]
     assert "Failed section context:" in first_prompt
     assert "optimization-intro" in first_prompt
-    assert "This source-grounded explanation connects the definition" not in first_prompt
+    assert "This source-grounded explanation connects the definition" in first_prompt
 
 
 async def test_section_repair_retries_an_empty_model_response(

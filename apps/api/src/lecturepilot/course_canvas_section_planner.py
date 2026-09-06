@@ -173,6 +173,8 @@ async def _plan_section(
                 },
             ]
         except ProviderConfigurationError as exc:
+            if not isinstance(exc, CanvasGenerationRepairableError):
+                raise
             if section is not None or last_candidate is None:
                 last_error = exc
                 last_candidate = section
