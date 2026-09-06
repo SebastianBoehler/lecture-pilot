@@ -61,6 +61,8 @@
 @import "./source-evidence.css";
 @import "./sources.css";
 
+@import "./professor-dashboard.css";
+
 .route-loading {
   display: grid;
   min-height: 40vh;

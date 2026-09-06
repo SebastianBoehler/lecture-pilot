@@ -32,6 +32,19 @@ describe("professor learner-level outcomes", () => {
     expect(screen.getByText("60%")).toBeInTheDocument();
   });
 
+  it("uses approved titles only for the exact current gate revision", () => {
+    const analytics = gateAnalytics(5);
+    analytics.learning_map = learningMap();
+    analytics.learning_map.gates[0].revision = "revision-2";
+    const { unmount } = renderWithI18n(<PerformanceInsights analytics={analytics} view="gates" />);
+    expect(screen.getByRole("heading", { name: "Risk evidence gate" })).toBeInTheDocument();
+    analytics.gates[0].gate_revision = "older-revision";
+    unmount();
+    renderWithI18n(<PerformanceInsights analytics={analytics} view="gates" />);
+    expect(screen.queryByRole("heading", { name: "Risk evidence gate" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "risk-gate" })).toBeInTheDocument();
+  });
+
   it("uses evidence availability instead of healthy, watch or attention ampels", () => {
     const snapshot = courseLectureSnapshot({
       activity_events: 12,
@@ -80,7 +93,7 @@ describe("professor learner-level outcomes", () => {
     expect(screen.getByText("Independent first pass · Available · n=5")).toBeInTheDocument();
   });
 
-  it("shows each course lecture's publication and map revision", () => {
+  it("keeps raw revisions out of course navigation", () => {
     const analytics = gateAnalytics(5);
     renderWithI18n(
       <CoursePerformanceOverview
@@ -99,13 +112,8 @@ describe("professor learner-level outcomes", () => {
       />,
     );
 
-    expect(
-      screen.getByText(
-        (_, element) =>
-          element?.tagName === "SMALL" &&
-          element.textContent === "Publication v2 · Learning map revision map-revision-2",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/map-revision-2/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Risk lecture/ })).toBeInTheDocument();
   });
 });
 

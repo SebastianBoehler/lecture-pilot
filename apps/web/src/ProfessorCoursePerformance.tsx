@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { LayoutDashboard } from "lucide-react";
 
 import { getCourseAnalytics, getLectureAnalytics } from "./analyticsApi";
@@ -22,10 +22,12 @@ import type {
 
 export function ProfessorCoursePerformance({
   lectures,
+  courseSelector,
   publishedLectureIds,
   session,
   workspaceCourse,
 }: {
+  courseSelector?: ReactNode;
   lectures: Lecture[];
   publishedLectureIds: string[];
   session: LoginSession;
@@ -115,6 +117,7 @@ export function ProfessorCoursePerformance({
     <main className="professor-screen performance-page">
       <PerformancePageHeader
         course={course}
+        courseSelector={courseSelector}
         loading={loading}
         refresh={() =>
           selectedLecture ? void loadLectureAnalytics(selectedLecture) : void loadCourseAnalytics()
@@ -136,7 +139,6 @@ export function ProfessorCoursePerformance({
           <nav className="performance-lecture-rail" aria-label={t("professor.lectureList")}>
             <div className="performance-rail-heading">
               <span>{t("professor.courseLectures")}</span>
-              <small>{t("professor.publishedOnly")}</small>
             </div>
             <button
               aria-current={!selectedLecture ? "true" : undefined}
@@ -171,7 +173,6 @@ export function ProfessorCoursePerformance({
                 analytics={selectedAnalytics}
                 error={analyticsError}
                 lecture={selectedLecture}
-                lectureCount={visibleLectures.length}
                 loading={loading}
               />
             ) : (

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 
+import { UsageActivityChart } from "./UsageActivityChart";
 import { getProfessorUsage } from "./usageApi";
 import { useI18n } from "./i18n";
 import type { LoginSession } from "./types";
@@ -74,31 +75,43 @@ export function ProfessorUsage({ session }: { session: LoginSession }) {
         </div>
       </section>
 
-      {error ? <p className="form-error">{error}</p> : null}
+      {error ? (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      ) : null}
       {visibleUsage ? (
         <>
           <UsageOverview usage={visibleUsage} locale={locale} />
-          <div className="usage-columns">
-            <UsageTable
-              label={t("usage.byFunction")}
-              rows={visibleUsage.workloads.map((item) => ({
-                key: item.workload,
-                label: workloadLabel(item.workload, t),
-                activity: { ...item, tutor_turns: 0, images: 0 },
-              }))}
-              locale={locale}
-            />
-            <UsageTable
-              label={t("usage.byCourse")}
-              rows={visibleUsage.courses.map((item) => ({
-                key: item.course_id,
-                label: item.course_title,
-                activity: item,
-              }))}
-              locale={locale}
-            />
-          </div>
-          <UsageTimeline usage={visibleUsage} locale={locale} />
+          {visibleUsage.daily.length ? (
+            <UsageActivityChart usage={visibleUsage} />
+          ) : (
+            <p className="usage-empty">{t("usage.noRecordedUsage")}</p>
+          )}
+          {visibleUsage.daily.length ||
+          visibleUsage.workloads.length ||
+          visibleUsage.courses.length ? (
+            <div className="usage-columns">
+              <UsageTable
+                label={t("usage.byFunction")}
+                rows={visibleUsage.workloads.map((item) => ({
+                  key: item.workload,
+                  label: workloadLabel(item.workload, t),
+                  activity: { ...item, tutor_turns: 0, images: 0 },
+                }))}
+                locale={locale}
+              />
+              <UsageTable
+                label={t("usage.byCourse")}
+                rows={visibleUsage.courses.map((item) => ({
+                  key: item.course_id,
+                  label: item.course_title,
+                  activity: item,
+                }))}
+                locale={locale}
+              />
+            </div>
+          ) : null}
           <UsageLimits usage={visibleUsage} locale={locale} />
         </>
       ) : !error ? (
@@ -115,8 +128,7 @@ function UsageOverview({ usage, locale }: { usage: ProfessorUsageSummary; locale
   const values = [
     [t("usage.modelRequests"), usage.totals.model_requests],
     [t("usage.totalTokens"), usage.totals.total_tokens],
-    [t("usage.inputTokens"), usage.totals.input_tokens],
-    [t("usage.outputTokens"), usage.totals.output_tokens],
+    [t("dashboard.tutorRequests"), usage.totals.tutor_turns],
   ] as const;
   return (
     <section className="usage-overview" aria-label={t("usage.overview")}>
@@ -128,21 +140,29 @@ function UsageOverview({ usage, locale }: { usage: ProfessorUsageSummary; locale
           </div>
         ))}
       </div>
-      <div className="usage-overview-notes">
-        <p>
-          {t("usage.tokenDetails", {
-            cached: number(usage.totals.cached_input_tokens, locale),
-            reasoning: number(usage.totals.reasoning_tokens, locale),
-          })}
-        </p>
-        <p>
-          {t("usage.tutorDetails", {
-            turns: number(usage.totals.tutor_turns, locale),
-            images: number(usage.totals.images, locale),
-          })}
-        </p>
-        <small>{t("usage.recordingNotice")}</small>
-      </div>
+      <p className="dashboard-hint">{t("dashboard.requestMeaning")}</p>
+      <details className="dashboard-details">
+        <summary>{t("dashboard.recordingDetails")}</summary>
+        <div className="usage-overview-notes">
+          <p>
+            {t("usage.inputTokens")}: {number(usage.totals.input_tokens, locale)} ·{" "}
+            {t("usage.outputTokens")}: {number(usage.totals.output_tokens, locale)}
+          </p>
+          <p>
+            {t("usage.tokenDetails", {
+              cached: number(usage.totals.cached_input_tokens, locale),
+              reasoning: number(usage.totals.reasoning_tokens, locale),
+            })}
+          </p>
+          <p>
+            {t("usage.tutorDetails", {
+              turns: number(usage.totals.tutor_turns, locale),
+              images: number(usage.totals.images, locale),
+            })}
+          </p>
+          <small>{t("usage.recordingNotice")}</small>
+        </div>
+      </details>
     </section>
   );
 }
@@ -188,69 +208,31 @@ function UsageTable({ rows, label, locale }: { rows: UsageRow[]; label: string; 
   );
 }
 
-function UsageTimeline({ usage, locale }: { usage: ProfessorUsageSummary; locale: string }) {
-  const { t } = useI18n();
-  const max = Math.max(1, ...usage.daily.map((item) => item.total_tokens));
-  return (
-    <section className="usage-section">
-      <h2>{t("usage.activity")}</h2>
-      {usage.daily.length ? (
-        <div className="usage-timeline">
-          {usage.daily.slice(-14).map((day) => (
-            <div className="usage-day" key={day.date}>
-              <time dateTime={day.date}>
-                {new Intl.DateTimeFormat(locale).format(new Date(`${day.date}T12:00:00`))}
-              </time>
-              <div
-                aria-label={t("usage.tokensShort", {
-                  count: number(day.total_tokens, locale),
-                })}
-                className="usage-activity-track"
-                role="img"
-              >
-                <span
-                  className="usage-activity-fill"
-                  style={{
-                    width: day.total_tokens
-                      ? `${Math.max(2, (day.total_tokens / max) * 100)}%`
-                      : "0",
-                  }}
-                />
-              </div>
-              <strong>{number(day.total_tokens, locale)}</strong>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="usage-empty">{t("usage.noRecordedUsage")}</p>
-      )}
-    </section>
-  );
-}
-
 function UsageLimits({ usage, locale }: { usage: ProfessorUsageSummary; locale: string }) {
   const { t } = useI18n();
   return (
-    <section className="usage-limits">
-      <div>
-        <h2>{t("usage.guardrails")}</h2>
-        <p>{t("usage.guardrailsHelp")}</p>
-      </div>
-      <dl>
+    <details className="dashboard-details">
+      <summary>{t("usage.guardrails")}</summary>
+      <section className="usage-limits">
         <div>
-          <dt>{t("usage.turnsPerDay")}</dt>
-          <dd>{number(usage.limits.turns_per_day, locale)}</dd>
+          <p>{t("usage.guardrailsHelp")}</p>
         </div>
-        <div>
-          <dt>{t("usage.reservedTokensPerDay")}</dt>
-          <dd>{number(usage.limits.reserved_tokens_per_day, locale)}</dd>
-        </div>
-        <div>
-          <dt>{t("usage.imagesPerDay")}</dt>
-          <dd>{number(usage.limits.images_per_day, locale)}</dd>
-        </div>
-      </dl>
-    </section>
+        <dl>
+          <div>
+            <dt>{t("usage.turnsPerDay")}</dt>
+            <dd>{number(usage.limits.turns_per_day, locale)}</dd>
+          </div>
+          <div>
+            <dt>{t("usage.reservedTokensPerDay")}</dt>
+            <dd>{number(usage.limits.reserved_tokens_per_day, locale)}</dd>
+          </div>
+          <div>
+            <dt>{t("usage.imagesPerDay")}</dt>
+            <dd>{number(usage.limits.images_per_day, locale)}</dd>
+          </div>
+        </dl>
+      </section>
+    </details>
   );
 }
 

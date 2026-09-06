@@ -45,7 +45,6 @@ export function ProfessorCourseManager({
       <div className="course-manager-header" data-tour="course-management-workflow">
         <div>
           <h2 id="created-courses-heading">{t("professor.createdCourses")}</h2>
-          <p>{t("professor.createdCoursesHelp")}</p>
         </div>
         <button className="refresh-button" disabled={isLoading} type="button" onClick={onRefresh}>
           {isLoading ? t("professor.refreshing") : t("professor.refresh")}
@@ -61,9 +60,7 @@ export function ProfessorCourseManager({
               <div className="created-course-summary">
                 <div className="created-course-title">
                   <strong>{workspace.course.title}</strong>
-                  <span>
-                    {workspace.course.professor} · {workspace.course.term}
-                  </span>
+                  <span>{workspace.course.term}</span>
                 </div>
                 <div className="created-course-meta">
                   <strong>
@@ -78,7 +75,6 @@ export function ProfessorCourseManager({
                       release: defaultReleaseLabel(workspace.accessSummary.default_rule, t),
                     })}
                   </span>
-                  <small>{workspace.course.id}</small>
                 </div>
                 <div className="created-course-actions">
                   <button

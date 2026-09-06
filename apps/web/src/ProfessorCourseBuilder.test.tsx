@@ -198,7 +198,8 @@ describe("Professor course builder", () => {
       screen.queryByRole("heading", { name: /live course analytics/i }),
     ).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^course performance$/i }));
-    expect(await screen.findByRole("heading", { name: /course performance/i })).toBeInTheDocument();
+    await screen.findByRole("combobox", { name: "Course" });
+    expect(screen.getByRole("heading", { name: /course performance/i })).toBeInTheDocument();
     expect(
       screen.queryByRole("navigation", { name: /performance course scope/i }),
     ).not.toBeInTheDocument();
@@ -210,7 +211,7 @@ describe("Professor course builder", () => {
         { name: /bayesian decision theory/i },
       ),
     );
-    expect(await screen.findByText("Activity events")).toBeInTheDocument();
+    expect(await screen.findByText("Active learners")).toBeInTheDocument();
     expect(screen.getAllByText("First-attempt correctness").length).toBeGreaterThan(0);
     expect(screen.getAllByText("60%").length).toBeGreaterThan(0);
     expect(screen.getByText(/answer distribution/i)).toBeInTheDocument();

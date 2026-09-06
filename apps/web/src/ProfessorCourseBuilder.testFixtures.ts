@@ -37,7 +37,21 @@ export function professorFetchMock({
     }
 
     if (path === "/admin/courses") {
-      return json(deletedCourses.has("demo-ml-course") ? [] : [courseWorkspacePayload()]);
+      restoreScopeFromSavedFlow();
+      return json(
+        deletedCourses.has("demo-ml-course")
+          ? []
+          : [
+              {
+                ...courseWorkspacePayload({
+                  body: JSON.stringify({
+                    lectures: scope === "full-course" ? lectureSchedulePayload().lectures : [],
+                  }),
+                }),
+                published_lecture_ids: [...publishedLectures].map((key) => key.split(":")[1]),
+              },
+            ],
+      );
     }
     if (path === "/courses")
       return json(deletedCourses.has("demo-ml-course") ? [] : [workspaceCourse()]);

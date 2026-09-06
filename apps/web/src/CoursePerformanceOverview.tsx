@@ -49,7 +49,7 @@ export function CoursePerformanceOverview({
           <section className="attention-queue">
             <h4>{t("analytics.publishedLectureEvidence")}</h4>
             <div className="attention-lecture-list">
-              {rows.map(({ analytics: lectureAnalytics, lecture, snapshot }) => (
+              {rows.map(({ lecture, snapshot }) => (
                 <button key={lecture.id} type="button" onClick={() => onSelectLecture(lecture)}>
                   <span className="attention-lecture-number">{lecture.number}</span>
                   <span>
@@ -61,17 +61,6 @@ export function CoursePerformanceOverview({
                         quiz: snapshot.quizRate,
                       })}
                     </small>
-                    {lectureAnalytics ? (
-                      <small>
-                        {t("analytics.publicationCurrent", {
-                          version: lectureAnalytics.current_publication_version,
-                        })}
-                        {" · "}
-                        {t("analytics.learningMapRevision", {
-                          revision: lectureAnalytics.current_learning_map_revision,
-                        })}
-                      </small>
-                    ) : null}
                   </span>
                   <span className={`lecture-status is-${snapshot.status}`}>
                     {statusLabel(snapshot.status, t)}
@@ -80,8 +69,8 @@ export function CoursePerformanceOverview({
               ))}
             </div>
           </section>
-          <section className="signal-coverage">
-            <h4>{t("analytics.evidenceCoverage")}</h4>
+          <details className="signal-coverage dashboard-details">
+            <summary>{t("analytics.evidenceCoverage")}</summary>
             <dl>
               <CoverageRow label={t("analytics.status.available")} value={coverage.available} />
               <CoverageRow
@@ -94,7 +83,7 @@ export function CoursePerformanceOverview({
               />
               <CoverageRow label={t("analytics.status.noData")} value={coverage["no-data"]} />
             </dl>
-          </section>
+          </details>
         </div>
       </section>
     </>

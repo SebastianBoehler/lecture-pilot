@@ -42,7 +42,7 @@ describe("ProfessorCoursePerformance", () => {
     );
 
     expect(await screen.findByRole("heading", { name: /course overview/i })).toBeInTheDocument();
-    expect(screen.getByText("10", { selector: ".analytics-kpi strong" })).toBeInTheDocument();
+    expect(screen.queryByText("10", { selector: ".analytics-kpi strong" })).not.toBeInTheDocument();
     await user.click(lectureButton(/introduction/i));
     expect(await screen.findByRole("heading", { name: "Introduction" })).toBeInTheDocument();
   });
@@ -171,11 +171,11 @@ describe("ProfessorCoursePerformance", () => {
     await userEvent.setup().click(lectureButton(/introduction/i));
     expect(await screen.findByRole("heading", { name: "Introduction" })).toBeInTheDocument();
     expect(lectureButton(/introduction/i)).toHaveAttribute("aria-current", "true");
-    expect(screen.getByRole("tab", { name: /quiz friction.*1/i })).toHaveAttribute(
+    expect(screen.getByRole("tab", { name: /quiz answers.*1/i })).toHaveAttribute(
       "aria-selected",
       "true",
     );
-    expect(screen.getByRole("tab", { name: /gate evidence.*0/i })).toBeDisabled();
+    expect(screen.getByRole("tab", { name: /independent checks.*0/i })).toBeDisabled();
     expect(screen.queryByLabelText("Lecture analytics chart")).not.toBeInTheDocument();
   });
 });

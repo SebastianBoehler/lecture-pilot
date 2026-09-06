@@ -1,5 +1,5 @@
 .course-overview-panel {
-  background: var(--color-bg-secondary);
+  background: transparent;
   border: 1px solid var(--color-border-primary);
   border-radius: 9px;
   overflow: hidden;
@@ -37,7 +37,7 @@
 
 .course-overview-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(190px, 0.75fr);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .course-overview-grid > section {

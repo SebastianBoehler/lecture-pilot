@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AlertTriangle, BarChart3, CheckCircle2, Users } from "lucide-react";
+import { CheckCircle2, Users } from "lucide-react";
 
 import { useI18n } from "./i18n";
 import type { LectureSnapshot } from "./performanceMetrics";
@@ -15,9 +15,9 @@ export function PerformanceOverview({
   return (
     <div className="performance-overview" aria-label={label ?? t("analytics.selectedOverview")}>
       <MetricCard
-        icon={<BarChart3 size={18} />}
-        label={t("analytics.events")}
-        value={String(snapshot.events)}
+        icon={<Users size={18} />}
+        label={t("analytics.activeLearners")}
+        value={String(snapshot.learners)}
       />
       <MetricCard
         icon={<CheckCircle2 size={18} />}
@@ -26,23 +26,20 @@ export function PerformanceOverview({
         detail={evidenceDetail(snapshot.quizEvidence, t("analytics.quizFirstAttempt"), t)}
       />
       <MetricCard
-        icon={<Users size={18} />}
-        label={t("analytics.activeLearners")}
-        value={String(snapshot.learners)}
-      />
-      <MetricCard
-        icon={<AlertTriangle size={18} />}
+        icon={<CheckCircle2 size={18} />}
         label={t("analytics.independentFirstPass")}
         value={snapshot.gateRate}
         detail={evidenceDetail(snapshot.gateEvidence, t("analytics.independentFirstPass"), t)}
       />
       {snapshot.publicationVersion !== null ? (
-        <div className="analytics-version-context">
+        <details className="analytics-version-context dashboard-details">
+          <summary>{t("dashboard.dataDetails")}</summary>
+          <span>{t("analytics.activityEvents", { count: snapshot.events })}</span>
           <span>{t("analytics.publicationCurrent", { version: snapshot.publicationVersion })}</span>
           <span>
             {t("analytics.learningMapRevision", { revision: snapshot.learningMapRevision ?? "—" })}
           </span>
-        </div>
+        </details>
       ) : null}
     </div>
   );

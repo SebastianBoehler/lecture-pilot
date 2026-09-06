@@ -31,7 +31,12 @@ export function PerformanceInsights({
   const selected =
     analytics.gates.find((gate) => gateKey(gate) === selectedGateKey) ?? analytics.gates[0];
   return selected ? (
-    <GateBrowser gates={analytics.gates} selected={selected} onSelect={setSelectedGateKey} />
+    <GateBrowser
+      analytics={analytics}
+      gates={analytics.gates}
+      selected={selected}
+      onSelect={setSelectedGateKey}
+    />
   ) : (
     <InsightEmpty kind="gates" />
   );
@@ -71,12 +76,15 @@ function QuizBrowser({
           <span>{selected.title}</span>
           <h3>{selected.question}</h3>
           <VersionLabel version={selected.publication_version} status={selected.version_status} />
-          <p>
-            {t("analytics.learningMapRevision", {
-              revision: selected.learning_map_revision,
-            })}
-          </p>
-          <p>{t("analytics.activityEvents", { count: selected.activity_events })}</p>
+          <details className="dashboard-details">
+            <summary>{t("dashboard.dataDetails")}</summary>
+            <p>
+              {t("analytics.learningMapRevision", {
+                revision: selected.learning_map_revision,
+              })}
+            </p>
+            <p>{t("analytics.activityEvents", { count: selected.activity_events })}</p>
+          </details>
         </header>
         <div className="analytics-insight-grid">
           <OutcomeSection cell={selected.first_attempt} title={t("analytics.quizFirstAttempt")} />
@@ -92,15 +100,27 @@ function QuizBrowser({
 }
 
 function GateBrowser({
+  analytics,
   gates,
   onSelect,
   selected,
 }: {
+  analytics: LectureAnalyticsSummary;
   gates: AnalyticsGateMetric[];
   onSelect: (key: string) => void;
   selected: AnalyticsGateMetric;
 }) {
   const { t } = useI18n();
+  const title = (gate: AnalyticsGateMetric) => {
+    const approved =
+      gate.version_status === "current" &&
+      gate.learning_map_revision === analytics.current_learning_map_revision
+        ? analytics.learning_map?.gates.find(
+            (item) => item.id === gate.gate_id && item.revision === gate.gate_revision,
+          )
+        : undefined;
+    return approved ? approved.title : gate.gate_id;
+  };
   return (
     <div className="insight-browser">
       <nav aria-label={t("analytics.gateList")} className="insight-browser-list">
@@ -114,7 +134,7 @@ function GateBrowser({
           >
             <span className="insight-item-index">{String(index + 1).padStart(2, "0")}</span>
             <span>
-              <strong>{gate.gate_id}</strong>
+              <strong>{title(gate)}</strong>
               <small>{t("analytics.activityEvents", { count: gate.activity_events })}</small>
             </span>
           </button>
@@ -123,17 +143,20 @@ function GateBrowser({
       <article className="insight-browser-detail">
         <header>
           <span>{t("analytics.gateEvidence")}</span>
-          <h3>{selected.gate_id}</h3>
+          <h3>{title(selected)}</h3>
           <VersionLabel version={selected.publication_version} status={selected.version_status} />
-          <p>
-            {t("analytics.learningMapRevision", {
-              revision: selected.learning_map_revision,
-            })}
-          </p>
-          {selected.gate_revision ? (
-            <p>{t("analytics.gateRevision", { revision: selected.gate_revision })}</p>
-          ) : null}
-          <p>{t("analytics.activityEvents", { count: selected.activity_events })}</p>
+          <details className="dashboard-details">
+            <summary>{t("dashboard.dataDetails")}</summary>
+            <p>
+              {t("analytics.learningMapRevision", {
+                revision: selected.learning_map_revision,
+              })}
+            </p>
+            {selected.gate_revision ? (
+              <p>{t("analytics.gateRevision", { revision: selected.gate_revision })}</p>
+            ) : null}
+            <p>{t("analytics.activityEvents", { count: selected.activity_events })}</p>
+          </details>
         </header>
         <div className="analytics-insight-grid is-gate">
           <OutcomeSection

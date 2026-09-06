@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { RefreshCw } from "lucide-react";
 
 import { AnalyticsEmptyState } from "./AnalyticsEmptyState";
@@ -15,10 +16,12 @@ import type {
 
 export function PerformancePageHeader({
   course,
+  courseSelector,
   loading,
   refresh,
 }: {
   course: UniversityCourse | null;
+  courseSelector?: ReactNode;
   loading: boolean;
   refresh: () => void;
 }) {
@@ -28,13 +31,14 @@ export function PerformancePageHeader({
       <div>
         <h1>{t("professor.performance.title")}</h1>
         <p>{t("professor.performance.subtitle")}</p>
-        {course ? (
-          <div className="performance-course-context">
-            <strong>{course.title}</strong>
-            <span aria-hidden="true">·</span>
-            <span>{course.term}</span>
-          </div>
-        ) : null}
+        {courseSelector ??
+          (course ? (
+            <div className="performance-course-context">
+              <strong>{course.title}</strong>
+              <span aria-hidden="true">·</span>
+              <span>{course.term}</span>
+            </div>
+          ) : null)}
       </div>
       <button
         aria-label={t("professor.refreshAnalytics")}
@@ -112,13 +116,11 @@ export function LectureBoard({
   analytics,
   error,
   lecture,
-  lectureCount,
   loading,
 }: {
   analytics: LectureAnalyticsSummary | null;
   error: string | null;
   lecture: Lecture;
-  lectureCount: number;
   loading: boolean;
 }) {
   const { t } = useI18n();
@@ -134,8 +136,6 @@ export function LectureBoard({
           </div>
         </div>
         <div className="performance-course-meta" aria-label={t("professor.analyticsStatus")}>
-          <span>{t("professor.publishedLectures", { count: lectureCount })}</span>
-          <span>{t("professor.eventsLoaded", { count: snapshot.events })}</span>
           {loading ? (
             <span className="analytics-loading" role="status">
               {t("professor.loadingAnalytics")}

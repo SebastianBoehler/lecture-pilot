@@ -77,8 +77,10 @@ describe("ProfessorUsage", () => {
     expect(screen.getByText("Machine Learning")).toBeInTheDocument();
     expect(screen.getByText(/per learner and course/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "30 days" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getAllByRole("columnheader", { name: "Model requests" })).toHaveLength(2);
-    expect(screen.getByRole("img", { name: "15,000 tokens" })).toBeInTheDocument();
+    expect(screen.getAllByRole("columnheader", { name: "Model requests" })).toHaveLength(3);
+    expect(
+      screen.getByRole("img", { name: /Model requests.*2026-06-14.*2026-07-13/ }),
+    ).toBeInTheDocument();
   });
 
   it("replaces the loading state with an API error", async () => {

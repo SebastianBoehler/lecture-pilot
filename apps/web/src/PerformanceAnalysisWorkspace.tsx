@@ -29,7 +29,7 @@ export function PerformanceAnalysisWorkspace({
 
   const tabs: Array<{ count: number; label: string; view: AnalysisView }> = [
     { count: counts.quizzes, label: t("analytics.quizFriction"), view: "quizzes" },
-    { count: counts.path, label: t("analytics.learningPathGates"), view: "path" },
+    { count: counts.path, label: t("dashboard.learningGoals"), view: "path" },
     { count: counts.gates, label: t("analytics.gateEvidence"), view: "gates" },
   ];
 

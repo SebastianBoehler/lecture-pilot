@@ -44,8 +44,8 @@ const ProfessorCourseManagement = lazy(() =>
   })),
 );
 const ProfessorCoursePerformance = lazy(() =>
-  import("./ProfessorCoursePerformance").then((module) => ({
-    default: module.ProfessorCoursePerformance,
+  import("./ProfessorPerformanceDashboard").then((module) => ({
+    default: module.ProfessorPerformanceDashboard,
   })),
 );
 const ProfessorUsage = lazy(() =>
@@ -185,14 +185,7 @@ export function AppRoutes(props: AppRoutesProps) {
     );
   }
   if (view === "performance" && courseManagerSession) {
-    return deferred(
-      <ProfessorCoursePerformance
-        lectures={availableLectures}
-        publishedLectureIds={publishedLectureIds}
-        session={courseManagerSession}
-        workspaceCourse={workspaceCourse}
-      />,
-    );
+    return deferred(<ProfessorCoursePerformance session={courseManagerSession} />);
   }
   if (view === "usage" && courseManagerSession) {
     return deferred(<ProfessorUsage session={courseManagerSession} />);
