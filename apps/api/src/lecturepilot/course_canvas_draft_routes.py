@@ -13,6 +13,9 @@ from lecturepilot.client_contract import (
     require_current_client_contract,
 )
 from lecturepilot.course_canvas_generation import generate_course_canvas_draft
+from lecturepilot.course_canvas_generation_cancel import cancel_canvas_generation
+from lecturepilot.authoring_status import read_authoring_metrics
+from lecturepilot.authoring_session import has_resumable_session
 from lecturepilot import course_canvas_generation_ownership as ownership_store
 from lecturepilot.course_canvas_generation_failures import find_latest_canvas_generation
 from lecturepilot.course_canvas_generation_http import run_canvas_generation_request
@@ -38,6 +41,33 @@ def register_course_canvas_draft_routes(
     course_tenant_id: str,
     source_document: Callable[[str, str], CanvasDocument],
 ) -> None:
+    @app.post(
+        "/admin/courses/{course_id}/lectures/{lecture_id}/canvas/draft/cancel",
+        response_model=CanvasGenerationStatusResponse,
+        response_model_exclude={"canvas": {"workspace_path"}},
+    )
+    async def cancel_draft_generation(
+        course_id: str,
+        lecture_id: str,
+        request: Request,
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key")],
+        client_contract: Annotated[str | None, Header(alias=CLIENT_CONTRACT_HEADER)] = None,
+        context: TenantContext = Depends(request_context),
+    ):
+        _require_owner(request, context, course_id, course_tenant_id)
+        require_current_client_contract(client_contract)
+        job = await cancel_canvas_generation(
+            app=app,
+            store=_store(app),
+            course_id=course_id,
+            lecture_id=lecture_id,
+            actor_user_id=context.user_id,
+            request_key=_request_key(idempotency_key),
+        )
+        if job is None:
+            raise HTTPException(status_code=404, detail="Canvas generation was not found.")
+        return CanvasGenerationStatusResponse.model_validate(job.model_dump())
+
     @app.post(
         "/admin/courses/{course_id}/lectures/{lecture_id}/canvas/draft",
         response_model=CanvasDocument,
@@ -106,6 +136,7 @@ def register_course_canvas_draft_routes(
             error_code=job.error_code,
             error_detail=job.error_detail,
             canvas=job.canvas,
+            authoring_metrics=read_authoring_metrics(app.state.canvas_workspace.layout, job),
         )
 
     @app.get(
@@ -135,7 +166,10 @@ def register_course_canvas_draft_routes(
                 actor_user_id=context.user_id,
             )
             headers = {"X-Generation-Status": generation.status} if generation else {}
-            if generation and generation.error_code == "canvas_generation_repairable_error":
+            if generation and (
+                generation.error_code == "canvas_generation_repairable_error"
+                or has_resumable_session(app.state.canvas_workspace.layout, generation)
+            ):
                 headers["X-Generation-Repairable"] = "true"
             detail = generation.error_detail if generation and generation.error_detail else str(exc)
             raise HTTPException(status_code=404, detail=detail, headers=headers) from exc

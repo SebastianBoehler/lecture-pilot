@@ -1,5 +1,6 @@
-from types import SimpleNamespace
-import sys
+import json
+from pydantic_ai.models.function import FunctionModel
+from pydantic_ai.messages import ModelResponse, TextPart
 
 import pytest
 
@@ -8,6 +9,7 @@ from lecturepilot.course_practice_design_review_models import REVIEW_DIMENSIONS
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import ProviderCapability, ProviderSettings
 from practice_design_test_helpers import proposal
+from lecturepilot.practice_evidence_catalogue import compact_evidence_anchors
 
 
 SOURCE_REVISION = "a" * 64
@@ -21,7 +23,7 @@ async def test_planner_runs_a_complete_second_semantic_critic_after_anchor_valid
     review_client = _ReviewClient(events)
     planner = PracticeDesignPlanner(
         provider_registry=_Registry(),
-        model_client=_ProposalClient(events),
+        model=_proposal_model(events),
         review_client=review_client,
     )
 
@@ -32,7 +34,7 @@ async def test_planner_runs_a_complete_second_semantic_critic_after_anchor_valid
     )
 
     assert events == ["proposal", "review"]
-    assert reviewed.proposal == proposal()
+    assert reviewed.proposal.targets[0].outcome == proposal().targets[0].outcome
     assert tuple(check.dimension for check in reviewed.review.checks) == REVIEW_DIMENSIONS
     assert "untrusted data" in review_client.messages[0]["content"]
     assert "derive-conclusion" in review_client.messages[1]["content"]
@@ -41,44 +43,38 @@ async def test_planner_runs_a_complete_second_semantic_critic_after_anchor_valid
 
 
 @pytest.mark.asyncio
-async def test_native_review_client_uses_a_strict_dimension_complete_schema(monkeypatch) -> None:
+async def test_native_review_client_uses_a_strict_dimension_complete_schema() -> None:
     from lecturepilot.course_practice_design_review_client import (
-        LiteLLMPracticeDesignReviewClient,
+        NativePracticeDesignReviewClient,
     )
 
     calls: list[dict] = []
 
-    async def fake_completion(**kwargs):
-        calls.append(kwargs)
-        return SimpleNamespace(
-            choices=[
-                SimpleNamespace(
-                    message=SimpleNamespace(content=_review_payload_json()),
-                )
-            ],
-            usage=None,
-        )
+    def fake_completion(messages, info):
+        calls.append(info.model_request_parameters)
+        return ModelResponse(parts=[TextPart(_review_payload_json())])
 
-    monkeypatch.setitem(sys.modules, "litellm", SimpleNamespace(acompletion=fake_completion))
-    client = LiteLLMPracticeDesignReviewClient()
+    client = NativePracticeDesignReviewClient(model=FunctionModel(fake_completion))
 
     payload = await client.complete_review(
         settings=_settings(),
-        messages=[{"role": "user", "content": "review"}],
+        messages=[
+            {"role": "system", "content": "Review the supplied plan."},
+            {"role": "user", "content": "review"},
+        ],
         allowed_source_paths=("lecture-01.md",),
         catalogue={"e0": {"source_path": "lecture-01.md", "excerpt": "evidence"}},
     )
 
     assert len(payload["checks"]) == len(REVIEW_DIMENSIONS)
     request = calls[0]
-    assert request["response_format"]["type"] == "json_schema"
-    assert request["response_format"]["json_schema"]["strict"] is True
-    definitions = request["response_format"]["json_schema"]["schema"]["$defs"]
-    check_schema = definitions["PracticeDesignReviewCheck"]
+    assert request.output_mode == "native"
+    assert request.output_object.strict is True
+    check_schema = request.output_object.json_schema["properties"]["checks"]["items"]
     assert set(check_schema["required"]) == set(check_schema["properties"])
     dimension_schema = check_schema["properties"]["dimension"]
     assert tuple(dimension_schema["enum"]) == REVIEW_DIMENSIONS
-    assert definitions["PracticeSourceAnchor"]["enum"] == ["e0"]
+    assert check_schema["properties"]["supporting_anchors"]["items"]["enum"] == ["e0"]
 
 
 @pytest.mark.asyncio
@@ -87,7 +83,7 @@ async def test_review_provider_failure_is_returned_without_a_reviewed_proposal()
 
     planner = PracticeDesignPlanner(
         provider_registry=_Registry(),
-        model_client=_ProposalClient([]),
+        model=_proposal_model([]),
         review_client=_FailingReviewClient(),
     )
 
@@ -118,7 +114,7 @@ async def test_critic_issue_support_must_quote_the_exact_routed_source() -> None
     )
     planner = PracticeDesignPlanner(
         provider_registry=_Registry(),
-        model_client=_ProposalClient([]),
+        model=_proposal_model([]),
         review_client=_StaticReviewClient(payload),
     )
 
@@ -130,13 +126,14 @@ async def test_critic_issue_support_must_quote_the_exact_routed_source() -> None
         )
 
 
-class _ProposalClient:
-    def __init__(self, events: list[str]) -> None:
-        self.events = events
+def _proposal_model(events):
+    def respond(messages, info):
+        events.append("proposal")
+        payload = compact_evidence_anchors(proposal().model_dump(mode="json"), {})
+        payload["targets"][0].pop("source_refs")
+        return ModelResponse(parts=[TextPart(json.dumps(payload))])
 
-    async def complete_proposal(self, **_kwargs) -> dict:
-        self.events.append("proposal")
-        return proposal().model_dump(mode="json")
+    return FunctionModel(respond)
 
 
 class _ReviewClient:

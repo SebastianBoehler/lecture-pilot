@@ -166,6 +166,22 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
 
 ## Agent Harness Rules
 
+- Canvas authoring uses `CourseCanvasAuthor` and the Pydantic AI loop in
+  `authoring_job.py`; do not route production through the retained benchmark-only
+  legacy planner. The framework owns execution, not authority or learner memory.
+- Private `builder/authoring-jobs/<lecture>/<generation>/` contains native history,
+  read-only evidence and editable draft files. Status exposes metadata from
+  `builder/authoring-metrics/`, never source-bearing histories. Keep these private.
+- Authoring tools have no shell, arbitrary network or learner-memory access.
+  Approved checkpoints are backend-inserted. Verify a critic's objection against
+  source, task, rubric and teaching: dismiss unsupported objections, repair missing
+  teaching, and escalate only confirmed approved-design conflicts. Never rewrite
+  genuine approvals. See `docs/authoring-agent-migration.md`.
+- Learning-plan proposals and their reviewer use native-schema Pydantic AI sessions.
+  Repair generated questions, rubrics, hints and variants before design approval;
+  missing reviewer evidence must be corrected by the reviewer. Schema validity is
+  not semantic truth. Do not confuse "choose one" with a uniquely correct answer.
+
 - Keep lecture unlocks backend-enforced: `lecture.date <= today` is not a
   prompt instruction.
 - Attendance changes agent behavior; it must not fork the workspace schema.
@@ -199,6 +215,9 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
   professor-approved practice design before generation. The model may propose
   it, but the professor owns outcomes, tasks, evidence, scaffolds, review
   timing, and approval; an edit or source revision makes approval stale.
+- Same-source learning-plan refresh repairs the existing design while preserving
+  its objective, ordered target IDs and outcomes. It must not evade a difficult
+  assessment by dropping its learning goal. Refresh still requires new approval.
 - Practice-design providers select request-local evidence IDs from
   `practice_evidence_catalogue.py`; the backend hydrates exact routed quotations
   and derives source paths. Semantic support still requires review.

@@ -22,7 +22,7 @@ class Planner:
         self.severity = severity
         self.review_calls = 0
 
-    async def propose(self, *, source, source_revision, allowed_source_paths):
+    async def propose(self, *, source, source_revision, allowed_source_paths, initial=None):
         from lecturepilot.course_practice_design_models import (
             PracticeDesignProposal,
             PracticeTarget,

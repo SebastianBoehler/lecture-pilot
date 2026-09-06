@@ -91,7 +91,7 @@ async def test_targeted_repair_rejects_candidate_after_snapshot_source_changes(
         callback_calls.append(True)
         return _document()
 
-    monkeypatch.setattr(generation, "repair_until_quality_valid", repair_callback)
+    monkeypatch.setattr(app.state.course_planner, "plan_canvas", repair_callback)
 
     with pytest.raises(CanvasGenerationOwnershipError, match="source changed after this failure"):
         await generation.repair_targeted_course_canvas_draft(

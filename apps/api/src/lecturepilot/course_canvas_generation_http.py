@@ -5,6 +5,9 @@ import logging
 from typing import Any
 
 from fastapi import HTTPException
+from lecturepilot.authoring_models import AuthoringDesignConflict, AuthoringStalledError
+from lecturepilot.authoring_state import AuthoringStateError
+from lecturepilot.authoring_session import has_resumable_session
 
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
@@ -48,6 +51,10 @@ async def run_canvas_generation_request(
             request_key=request_key,
             generate=generate,
         )
+    except (AuthoringDesignConflict, AuthoringStateError) as exc:
+        raise _generation_error(409, str(exc), store, context, request_key, course_id, lecture_id)
+    except AuthoringStalledError as exc:
+        raise _generation_error(503, str(exc), store, context, request_key, course_id, lecture_id)
     except InvalidCanvasDraftError as exc:
         raise _generation_error(502, str(exc), store, context, request_key, course_id, lecture_id)
     except CanvasWorkspaceError as exc:
@@ -71,6 +78,9 @@ async def run_canvas_generation_request(
         raise _generation_error(502, str(exc), store, context, request_key, course_id, lecture_id)
     except CanvasGenerationReplayError as exc:
         status = {
+            "authoring_design_conflict": 409,
+            "authoring_state_error": 409,
+            "authoring_stalled_error": 503,
             "canvas_workspace_error": 404,
             "source_bundle_canvas_error": 400,
             "provider_configuration_error": 503,
@@ -129,4 +139,6 @@ def _generation_error(
     if job is not None:
         response_headers["X-Generation-Id"] = job.generation_id
         response_headers["X-Generation-Status"] = job.status
+        if has_resumable_session(store.layout, job):
+            response_headers["X-Generation-Repairable"] = "true"
     return HTTPException(status_code=status_code, detail=detail, headers=response_headers)

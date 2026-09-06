@@ -9,7 +9,6 @@ from openai.lib._pydantic import to_strict_json_schema
 from pydantic import BaseModel, ValidationError
 
 import lecturepilot.course_practice_design_benchmark_evaluator as benchmark_client_module
-import lecturepilot.course_practice_design_client as proposal_client_module
 import lecturepilot.course_practice_design_review_client as review_client_module
 from lecturepilot.course_practice_design_benchmark_evaluator import (
     LiteLLMPracticeDesignBenchmarkClient,
@@ -20,9 +19,8 @@ from lecturepilot.course_practice_design_benchmark_models import (
     PracticeDesignBenchmarkEvaluation,
 )
 from lecturepilot.course_practice_design_models import PracticeDesignProposal
-from lecturepilot.course_practice_design_client import LiteLLMPracticeDesignClient
 from lecturepilot.course_practice_design_prompt import practice_design_response_format
-from lecturepilot.course_practice_design_review_client import LiteLLMPracticeDesignReviewClient
+from lecturepilot.course_practice_design_review_client import NativePracticeDesignReviewClient
 from lecturepilot.course_practice_design_review_models import (
     PracticeDesignReviewResult,
 )
@@ -112,13 +110,7 @@ def test_practice_design_strict_schema_preserves_nullable_semantic_fields() -> N
     ("client", "method_name", "client_module", "schema_function"),
     (
         (
-            LiteLLMPracticeDesignClient(),
-            "complete_proposal",
-            proposal_client_module,
-            "practice_design_response_format",
-        ),
-        (
-            LiteLLMPracticeDesignReviewClient(),
+            NativePracticeDesignReviewClient(),
             "complete_review",
             review_client_module,
             "practice_design_review_response_format",

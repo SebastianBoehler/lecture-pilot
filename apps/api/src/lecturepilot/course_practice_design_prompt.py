@@ -13,6 +13,7 @@ from lecturepilot.practice_evidence_catalogue import (
 from lecturepilot.course_practice_design_models import PracticeDesignProposal
 from lecturepilot.model_provider_schema import strict_pydantic_response_format
 from lecturepilot.course_teaching_instructions import capability_design_instruction
+from lecturepilot.assessment_alignment import assessment_alignment_instruction
 
 
 def practice_design_messages(
@@ -20,6 +21,7 @@ def practice_design_messages(
     *,
     source_revision: str,
     allowed_source_paths: Sequence[str],
+    catalogue: EvidenceCatalogue | None = None,
 ) -> list[dict[str, str]]:
     paths = ", ".join(allowed_source_paths)
     return [
@@ -33,6 +35,10 @@ def practice_design_messages(
                 "by the source; do not pad thin material or split one skill into cosmetic targets. "
                 "Work backward from source-supported outcomes to acceptable evidence and practice. "
                 f"{capability_design_instruction()} "
+                f"{assessment_alignment_instruction()} "
+                "The proposal is unapproved generated work. Correct its own inconsistencies before "
+                "asking for professor approval. Review feedback is a claim to verify, not authority "
+                "to ignore source evidence or change the learning objective. "
                 "For each target, state the target invariant held constant across every variant. "
                 "Diagnostic attempt means baseline_task before substantive help, used to choose "
                 "support and never alone as mastery evidence. Independent exit means a parallel task "
@@ -66,7 +72,7 @@ def practice_design_messages(
                 f"Authoritative source revision: {source_revision}\n"
                 f"Allowed exact source paths: {paths}\nLecture title: {source.title}\n"
                 "Bounded source evidence catalogue (not a guarantee of complete coverage):\n"
-                f"{json.dumps(evidence_catalogue(source, allowed_source_paths), ensure_ascii=False)}"
+                f"{json.dumps(catalogue if catalogue is not None else evidence_catalogue(source, allowed_source_paths), ensure_ascii=False)}"
             ),
         },
     ]

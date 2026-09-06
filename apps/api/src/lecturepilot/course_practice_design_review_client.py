@@ -2,17 +2,21 @@ from __future__ import annotations
 
 from typing import Protocol
 from collections.abc import Sequence
+from contextlib import asynccontextmanager
+import json
+from pydantic import ValidationError
+from pydantic_ai import Agent, ModelRetry, NativeOutput, StructuredDict
+from pydantic_ai.exceptions import UnexpectedModelBehavior
 
-from lecturepilot.course_canvas_json import parse_model_json
+from lecturepilot.authoring_provider import authoring_model
 from lecturepilot.course_practice_design_review_prompt import (
     practice_design_review_response_format,
 )
 from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.model_provider_errors import model_provider_error_message
-from lecturepilot.model_request_options import completion_options
-from lecturepilot.model_usage import ModelUsageRecorder, complete_with_usage
+from lecturepilot.model_usage import ModelUsageRecorder
 from lecturepilot.models import ProviderSettings
-from lecturepilot.providers import ProviderConfigurationError
+from lecturepilot.course_practice_design_review_models import PracticeDesignReviewResult
+from lecturepilot.course_practice_design_validation import PracticeDesignValidationError
 from lecturepilot.practice_evidence_catalogue import EvidenceCatalogue, expand_evidence_ids
 
 
@@ -28,9 +32,10 @@ class PracticeDesignReviewModelClient(Protocol):
         """Return one strict semantic review payload."""
 
 
-class LiteLLMPracticeDesignReviewClient:
-    def __init__(self, usage_recorder: ModelUsageRecorder | None = None) -> None:
+class NativePracticeDesignReviewClient:
+    def __init__(self, usage_recorder: ModelUsageRecorder | None = None, *, model=None) -> None:
         self.usage_recorder = usage_recorder
+        self.model = model
 
     async def complete_review(
         self,
@@ -40,26 +45,48 @@ class LiteLLMPracticeDesignReviewClient:
         allowed_source_paths: Sequence[str],
         catalogue: EvidenceCatalogue,
     ) -> dict:
-        try:
-            from litellm import acompletion
-        except ImportError as exc:
-            raise ProviderConfigurationError(
-                'litellm is not installed. Install the backend with the "agent" extra.'
-            ) from exc
-        try:
-            response = await complete_with_usage(
-                self.usage_recorder,
-                acompletion,
-                usage_stage="course_practice_design_review",
-                model=settings.model,
-                messages=messages,
-                response_format=practice_design_review_response_format(catalogue),
-                **completion_options(settings, temperature=0.0, reasoning_effort="low"),
+        schema = practice_design_review_response_format(catalogue)["json_schema"]["schema"]
+        async with self._model(settings) as model:
+            agent = Agent(
+                model,
+                output_type=NativeOutput(StructuredDict(schema), strict=True),
+                retries=2,
+                instructions=messages[0]["content"],
+                model_settings={
+                    "timeout": 120,
+                    **(
+                        {"openai_reasoning_effort": "medium", "openai_store": False}
+                        if settings.provider == "openai"
+                        else {"temperature": 0.0}
+                    ),
+                },
             )
-        except ProviderConfigurationError:
-            raise
-        except Exception as exc:
-            raise ModelExecutionError(
-                model_provider_error_message(exc, provider=settings.provider)
-            ) from exc
-        return expand_evidence_ids(parse_model_json(response.choices[0].message.content), catalogue)
+
+            @agent.output_validator
+            def require_valid_review(ctx, output):
+                try:
+                    review = PracticeDesignReviewResult.model_validate_json(
+                        json.dumps(expand_evidence_ids(output, catalogue))
+                    )
+                except (ValidationError, PracticeDesignValidationError) as exc:
+                    raise ModelRetry(
+                        f"Correct your review's structure and source support: {exc}"
+                    ) from exc
+                return review.model_dump(mode="json")
+
+            try:
+                return (await agent.run(messages[1]["content"])).output
+            except UnexpectedModelBehavior as exc:
+                raise ModelExecutionError(
+                    f"Practice-design reviewer could not produce valid evidence-backed feedback: {exc}"
+                ) from exc
+
+    @asynccontextmanager
+    async def _model(self, settings):
+        if self.model is not None:
+            yield self.model
+        else:
+            async with authoring_model(
+                settings, self.usage_recorder, lambda: None, stage="course_practice_design_review"
+            ) as model:
+                yield model

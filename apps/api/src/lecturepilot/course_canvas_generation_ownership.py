@@ -119,6 +119,14 @@ def ownership_path(layout: StorageLayout, course_id: str, lecture_id: str) -> Pa
     )
 
 
+def revoke_generation_ownership(layout: StorageLayout, job) -> None:
+    """Fence a cancelled worker; caller holds the course-state lock."""
+    path = ownership_path(layout, job.course_id, job.lecture_id)
+    current = _read(path)
+    if current and (current.generation_id, current.attempt) == (job.generation_id, job.attempt):
+        _write(path, current.model_copy(update={"token": uuid4().hex}))
+
+
 def _approved_source(
     layout: StorageLayout,
     source_document: Callable[[str, str], CanvasDocument],

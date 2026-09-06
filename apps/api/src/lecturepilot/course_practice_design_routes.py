@@ -11,6 +11,7 @@ from lecturepilot.course_practice_design_models import (
     PracticeDesign,
     PracticeDesignApprovalInput,
     PracticeDesignUpdate,
+    PracticeDesignProposal,
 )
 from lecturepilot.course_practice_design_readiness import PracticeDesignReadiness
 from lecturepilot.course_practice_design_review_routes import (
@@ -121,10 +122,21 @@ def register_course_practice_design_routes(
                     course_id=course_id,
                     workload="course_practice_design",
                 ):
+                    initial = (
+                        PracticeDesignProposal(
+                            lecture_title=existing.lecture_title,
+                            objective=existing.objective,
+                            planning_context=existing.planning_context,
+                            targets=existing.targets,
+                        )
+                        if existing is not None and existing.source_revision == revision
+                        else None
+                    )
                     reviewed = await app.state.practice_design_planner.propose(
                         source=source,
                         source_revision=revision,
                         allowed_source_paths=paths,
+                        **({"initial": initial} if initial is not None else {}),
                     )
                 span.set_outputs({"target_count": len(reviewed.proposal.targets)})
         except ProviderConfigurationError as exc:

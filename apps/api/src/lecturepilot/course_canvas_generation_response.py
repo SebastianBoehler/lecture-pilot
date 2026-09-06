@@ -3,6 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel
 
 from lecturepilot.canvas_models import CanvasDocument
+from lecturepilot.authoring_models import AuthoringMetrics
 from lecturepilot.course_canvas_generation_jobs import GenerationStatus
 
 
@@ -14,3 +15,4 @@ class CanvasGenerationStatusResponse(BaseModel):
     error_code: str | None = None
     error_detail: str | None = None
     canvas: CanvasDocument | None = None
+    authoring_metrics: AuthoringMetrics | None = None

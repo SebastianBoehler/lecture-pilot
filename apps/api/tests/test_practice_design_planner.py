@@ -1,6 +1,6 @@
-from types import SimpleNamespace
 import json
-import sys
+from pydantic_ai.models.function import FunctionModel
+from pydantic_ai.messages import ModelResponse, TextPart
 
 import pytest
 
@@ -34,14 +34,13 @@ def _source() -> CanvasDocument:
 
 
 @pytest.mark.asyncio
-async def test_planner_uses_native_schema_and_exact_authoritative_source_paths(monkeypatch) -> None:
-    from lecturepilot.course_practice_design_client import LiteLLMPracticeDesignClient
+async def test_planner_uses_native_schema_and_exact_authoritative_source_paths() -> None:
     from lecturepilot.course_practice_design_planner import PracticeDesignPlanner
 
     calls: list[dict] = []
 
-    async def fake_completion(**kwargs):
-        calls.append(kwargs)
+    def fake_completion(messages, info):
+        calls.append({"messages": messages, "instructions": info.instructions})
         catalogue = evidence_catalogue(_source(), ("lecture.md",))
         payload = (
             proposal()
@@ -56,13 +55,13 @@ async def test_planner_uses_native_schema_and_exact_authoritative_source_paths(m
         )
         wire = compact_evidence_anchors(payload, catalogue)
         wire["targets"][0].pop("source_refs")
-        content = json.dumps(wire) if len(calls) == 1 else passing_review().model_dump_json()
-        return SimpleNamespace(
-            choices=[SimpleNamespace(message=SimpleNamespace(content=content))],
-            usage=None,
-        )
+        return ModelResponse(parts=[TextPart(json.dumps(wire))])
 
-    monkeypatch.setitem(sys.modules, "litellm", SimpleNamespace(acompletion=fake_completion))
+    class ReviewClient:
+        async def complete_review(self, **kwargs):
+            calls.append(kwargs)
+            return passing_review().model_dump(mode="json")
+
     settings = ProviderSettings(
         provider="openai",
         model="openai/gpt-5.6-luna",
@@ -75,7 +74,9 @@ async def test_planner_uses_native_schema_and_exact_authoritative_source_paths(m
             return settings
 
     planner = PracticeDesignPlanner(
-        provider_registry=Registry(), model_client=LiteLLMPracticeDesignClient()
+        provider_registry=Registry(),
+        model=FunctionModel(fake_completion),
+        review_client=ReviewClient(),
     )
 
     reviewed = await planner.propose(
@@ -89,9 +90,7 @@ async def test_planner_uses_native_schema_and_exact_authoritative_source_paths(m
         == "Undergraduate learners in this lecture."
     )
     request = calls[0]
-    assert request["response_format"]["type"] == "json_schema"
-    assert request["response_format"]["json_schema"]["strict"] is True
-    instruction = request["messages"][0]["content"]
+    instruction = request["instructions"]
     assert "minimum set of distinct capabilities supported by the source" in instruction
     assert "3 to 6 targets" not in instruction
     assert "Diagnostic attempt" in instruction
@@ -101,11 +100,13 @@ async def test_planner_uses_native_schema_and_exact_authoritative_source_paths(m
     assert "prompt asks the learner to inspect or plan" in instruction
     assert "worked_step gives one justified step" in instruction
     assert "not a claim that this interval is scientifically optimal" in instruction
-    assert "lecture.md" in request["messages"][1]["content"]
-    assert "unrouted.md" not in request["messages"][1]["content"]
+    assert "solve it from its stated givens" in instruction
+    assert "Contradictory givens make a task unassessable" in instruction
+    assert "lecture.md" in str(request["messages"])
+    assert "unrouted.md" not in str(request["messages"])
     review_request = calls[1]
-    assert review_request["response_format"]["json_schema"]["strict"] is True
     assert "SOURCE EVIDENCE" in review_request["messages"][1]["content"]
+    assert "solve it from its stated givens" in review_request["messages"][0]["content"]
 
 
 def test_response_schema_describes_the_assessment_and_scaffold_contract() -> None:

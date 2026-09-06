@@ -59,6 +59,9 @@ FastAPI backend. University of Tübingen integration is available through
   Markdown, YAML components, and learner assets. Backend policy—not the
   prompt—enforces tenant access, lecture unlocks, safe paths, and immutable
   official sources.
+- A Pydantic AI canvas-authoring worker with private draft files, validation and
+  same-session repair. See the [runtime boundary](docs/authoring-agent-migration.md)
+  and [measured comparison](docs/research/2026-09-06-authoring-agent-results.md).
 - Source-backed checkpoints, quizzes, Exam Readiness, practice exams, persistent
   learner memory, and in-canvas generated explanations or images.
 - PDF-first slide previews plus an isolated, no-secret TeX compiler for courses

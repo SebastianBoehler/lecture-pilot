@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from lecturepilot.course_canvas_generation_jobs import CanvasGenerationJob
+from lecturepilot.authoring_session import has_resumable_session
 from lecturepilot.storage_layout import StorageLayout, safe_id
 
 
@@ -41,7 +42,11 @@ def find_latest_canvas_failure(
         if (job := _read_job(path)) is not None
         and job.status == "failed"
         and job.actor_key == actor_key
-        and (not repairable_only or job.error_code == "canvas_generation_repairable_error")
+        and (
+            not repairable_only
+            or job.error_code == "canvas_generation_repairable_error"
+            or has_resumable_session(layout, job)
+        )
     ]
     return max(failures, key=lambda job: job.updated_at, default=None)
 

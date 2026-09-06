@@ -10,10 +10,13 @@ from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from practice_design_test_helpers import save_approved_design, write_manifest
 from targeted_repair_test_helpers import invalid_candidate
+from authoring_test_helpers import assigned_drafts, install_author
+from pydantic_ai.messages import ModelResponse, ToolCallPart
 
 
 def test_ai_repair_replaces_only_the_failed_block_and_preserves_neighboring_sections(
     tmp_path: Path,
+    monkeypatch,
 ) -> None:
     client = _course_client(tmp_path)
     planner = _TargetedRepairPlanner()
@@ -28,6 +31,31 @@ def test_ai_repair_replaces_only_the_failed_block_and_preserves_neighboring_sect
             "Idempotency-Key": "targeted-repair-failure-0001",
         },
     )
+    calls = 0
+
+    class Reviewer:
+        async def complete_review(self, **kwargs):
+            return {"issues": []}
+
+    def respond(messages, info):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return ModelResponse(
+                parts=[
+                    ToolCallPart(
+                        "edit",
+                        {
+                            "path": assigned_drafts(info)[0],
+                            "old": r"The score is computed as w^\top x.",
+                            "new": r"w^\top x",
+                        },
+                    )
+                ]
+            )
+        return ModelResponse(parts=[ToolCallPart("final_result", {"ready": True})])
+
+    install_author(client, monkeypatch, respond, Reviewer())
     repaired = client.post(
         f"{path}/repair",
         headers={
@@ -39,20 +67,32 @@ def test_ai_repair_replaces_only_the_failed_block_and_preserves_neighboring_sect
 
     assert failed.status_code == 503
     assert failed.headers["X-Generation-Repairable"] == "true"
-    assert repaired.status_code == 200
-    assert planner.full_repair_called is False
-    assert planner.quality_review_calls == 1
-    assert planner.targeted_repair_calls == [
-        (
-            "learning-optimization",
-            "optimization-math",
-            "Math block optimization-math in Optimization contains explanatory prose; "
-            "move that text to a paragraph or callout block.",
-        )
-    ]
-    assert planner.repaired_document is not None
-    assert planner.repaired_document.sections[1] == planner.candidate.sections[1]
+    assert repaired.status_code == 200, repaired.text
+    assert calls == 2
+    status = client.get(
+        path + "/status",
+        headers={
+            **professor_headers(),
+            "Idempotency-Key": "targeted-repair-success-0001",
+        },
+    )
+    assert status.status_code == 200
+    assert status.json()["authoring_metrics"]["repair_edits"] == 1
+    other_owner = client.post(
+        path + "/cancel",
+        headers={
+            **professor_headers("other-professor"),
+            **_client_contract_headers(),
+            "Idempotency-Key": "targeted-repair-success-0001",
+        },
+    )
+    assert other_owner.status_code == 404
     payload = repaired.json()
+    expected_blocks = [b.model_dump(mode="json") for b in planner.candidate.sections[1].blocks]
+    for block in expected_blocks:
+        if block["text"]:
+            block["text"] = block["text"].strip()
+    assert payload["sections"][1]["blocks"] == expected_blocks
     repaired_blocks = payload["sections"][0]["blocks"]
     assert [block["type"] for block in repaired_blocks[1:3]] == ["paragraph", "math"]
     assert repaired_blocks[2]["text"] == r"w^\top x"
@@ -129,26 +169,11 @@ The revised source changes the formula evidence used by this lecture.
     assert repaired.json()["detail"] == (
         "Lecture source changed after this failure. Generate a new draft before repairing it."
     )
-    assert planner.targeted_repair_calls == []
 
 
 class _TargetedRepairPlanner:
     def __init__(self) -> None:
         self.candidate: CanvasDocument | None = None
-        self.repaired_document: CanvasDocument | None = None
-        self.full_repair_called = False
-        self.quality_review_calls = 0
-        self.targeted_repair_calls: list[tuple[str, str | None, str]] = []
-
-    async def review_quality(
-        self,
-        source_document: CanvasDocument,
-        candidate_document: CanvasDocument,
-        *,
-        practice_design,
-    ) -> list:
-        self.quality_review_calls += 1
-        return []
 
     async def plan_canvas(
         self,
@@ -159,7 +184,6 @@ class _TargetedRepairPlanner:
         output_language: str,
     ) -> CanvasDocument:
         if repair_context is not None:
-            self.full_repair_called = True
             raise AssertionError("A block-addressable failure must not regenerate the full draft.")
         self.candidate = _candidate_with_practice_design(
             invalid_candidate(source_document), practice_design
@@ -172,35 +196,6 @@ class _TargetedRepairPlanner:
         error.section_id = "learning-optimization"
         error.block_id = "optimization-math"
         raise error
-
-    async def repair_section(
-        self,
-        source_document: CanvasDocument,
-        candidate_document: CanvasDocument,
-        *,
-        section_id: str,
-        block_id: str | None,
-        failure_context: str,
-        output_language: str,
-        practice_design,
-    ) -> CanvasDocument:
-        self.targeted_repair_calls.append((section_id, block_id, failure_context))
-        section = candidate_document.sections[0]
-        blocks = [
-            section.blocks[0],
-            CanvasBlock(
-                id="optimization-math-explanation",
-                type="paragraph",
-                text="The transpose turns the weight vector into the matching row vector.",
-            ),
-            CanvasBlock(id="optimization-math", type="math", text=r"w^\top x"),
-            *section.blocks[2:],
-        ]
-        repaired = section.model_copy(update={"blocks": blocks})
-        self.repaired_document = candidate_document.model_copy(
-            update={"sections": [repaired, candidate_document.sections[1]]}
-        )
-        return self.repaired_document
 
 
 def _course_client(tmp_path: Path) -> TestClient:
@@ -230,6 +225,9 @@ def _course_client(tmp_path: Path) -> TestClient:
 \\title{Targeted repair}
 \\begin{frame}{Optimization}
 The evidence states that the score is the inner product of the transposed weight vector and the input.
+\\end{frame}
+\\begin{frame}{Summary}
+The weight and input vectors must have matching dimensions for the inner product.
 \\end{frame}
 """,
             )

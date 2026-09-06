@@ -86,7 +86,7 @@ async def test_targeted_repair_rejects_a_reapproved_design_before_model_invocati
         repair_calls.append(True)
         return _document()
 
-    monkeypatch.setattr(generation, "repair_until_quality_valid", repair_callback)
+    monkeypatch.setattr(app.state.course_planner, "plan_canvas", repair_callback)
 
     with pytest.raises(CanvasGenerationOwnershipError, match="practice design changed"):
         await generation.repair_targeted_course_canvas_draft(
@@ -119,8 +119,8 @@ async def test_targeted_repair_rejects_legacy_candidates_with_incomplete_provena
     )
     repair_calls = []
     monkeypatch.setattr(
-        generation,
-        "repair_until_quality_valid",
+        app.state.course_planner,
+        "plan_canvas",
         lambda *_args, **_kwargs: repair_calls.append(True),
     )
 

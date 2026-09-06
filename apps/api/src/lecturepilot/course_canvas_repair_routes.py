@@ -136,6 +136,7 @@ def register_course_canvas_repair_routes(
                     attempt=attempt,
                     repair_failure_code=failure.error_code or "generation_failed",
                     repair_failure_detail=failure.error_detail,
+                    session_generation_id=failure.generation_id,
                 )
             ),
         )

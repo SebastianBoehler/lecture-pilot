@@ -7,7 +7,8 @@ from fastapi import FastAPI
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.course_content_filter import filter_source_document_for_planning
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
-from lecturepilot.course_canvas_auto_repair import repair_until_quality_valid
+from lecturepilot.authoring_generation_scope import generation_authoring_scope
+from lecturepilot.authoring_runtime import authoring_scope
 from lecturepilot.course_canvas_generation_jobs import CanvasGenerationJob
 from lecturepilot import course_canvas_generation_ownership as ownership_store
 from lecturepilot.course_canvas_generation_persistence import write_current_draft
@@ -16,10 +17,6 @@ from lecturepilot.course_canvas_repairs import (
     persist_repair_guidance,
 )
 from lecturepilot.course_practice_design_models import PracticeDesign
-from lecturepilot.course_canvas_section_checkpoints import (
-    SectionPlanCheckpointStore,
-    section_plan_checkpoint_scope,
-)
 from lecturepilot.course_media import apply_course_media, course_media_evidence
 from lecturepilot.course_schedule_store import read_course_workspace
 from lecturepilot.logging_observability import operation_scope
@@ -42,6 +39,7 @@ async def generate_course_canvas_draft(
     attempt: int,
     repair_failure_code: str | None = None,
     repair_failure_detail: str | None = None,
+    session_generation_id: str | None = None,
 ) -> CanvasDocument:
     observability = app.state.observability
     common = {
@@ -91,12 +89,6 @@ async def generate_course_canvas_draft(
             repair_record.failure_detail if repair_record else None,
         )
         output_language = _canvas_language(app, course_id)
-        checkpoints = SectionPlanCheckpointStore(
-            app.state.canvas_workspace.layout.lecture_canvas_section_checkpoints_path(
-                course_id, lecture_id
-            ),
-            source_revision=source_revision,
-        )
         with observability.tool_span("course_canvas_generation", stage="model_plan", **common):
             with (
                 model_usage_scope(
@@ -104,7 +96,14 @@ async def generate_course_canvas_draft(
                     course_id=course_id,
                     workload="course_canvas",
                 ),
-                section_plan_checkpoint_scope(checkpoints),
+                authoring_scope(
+                    generation_authoring_scope(
+                        app,
+                        ownership=ownership,
+                        source_revision=source_revision,
+                        session_generation_id=session_generation_id,
+                    )
+                ),
             ):
                 try:
                     plan_args = {
@@ -203,16 +202,21 @@ async def repair_targeted_course_canvas_draft(
                 course_id=course_id,
                 workload="course_canvas",
             ):
-                document = await repair_until_quality_valid(
-                    app.state.course_planner,
-                    source=source,
-                    candidate=candidate,
-                    section_id=repair.section_id,
-                    block_id=repair.block_id,
-                    failure_context=failure.error_detail,
-                    output_language=output_language,
-                    practice_design=practice_design,
-                )
+                with authoring_scope(
+                    generation_authoring_scope(
+                        app,
+                        ownership=ownership,
+                        source_revision=source_revision,
+                        session_generation_id=failure.generation_id,
+                        candidate=candidate,
+                    )
+                ):
+                    document = await app.state.course_planner.plan_canvas(
+                        source,
+                        practice_design=practice_design,
+                        output_language=output_language,
+                        repair_context=failure.error_detail,
+                    )
         except CanvasGenerationRepairableError as exc:
             if exc.candidate is None:
                 exc.with_candidate(candidate)

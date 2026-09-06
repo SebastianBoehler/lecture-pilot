@@ -122,15 +122,20 @@ async def _execute(
             request_key=request_key,
         )
     )
+    worker = asyncio.current_task()
+
+    def stop_on_lease_loss(completed):
+        if not completed.cancelled() and completed.exception() is not None and worker is not None:
+            worker.cancel()
+
+    heartbeat.add_done_callback(stop_on_lease_loss)
     try:
         canvas = await generate(job.generation_id, job.attempt)
     except asyncio.CancelledError:
-        store.fail(
-            job,
-            actor_user_id=actor_user_id,
-            request_key=request_key,
-            error_code="interrupted",
-        )
+        with suppress(CanvasGenerationStoreError):
+            store.fail(
+                job, actor_user_id=actor_user_id, request_key=request_key, error_code="interrupted"
+            )
         raise
     except Exception as exc:
         repair = _repair_metadata(exc)

@@ -25,6 +25,7 @@ lecturepilot-bootstrap-admin = "lecturepilot.bootstrap_admin:main"
 agent = [
   "litellm==1.91.1",
   "openai==2.54.0",
+  "pydantic-ai-slim[openai,google]==1.107.5",
 ]
 observability = [
   "mlflow>=3.0.0",

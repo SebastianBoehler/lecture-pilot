@@ -82,14 +82,12 @@ async def test_targeted_repair_receives_frozen_design_and_rejects_edit_before_pe
     store = PracticeDesignStore(app.state.canvas_workspace.layout)
     received = []
 
-    async def repair_callback(_planner, *, candidate, practice_design, **_kwargs):
+    async def repair_callback(_source, *, practice_design, **_kwargs):
         received.append(practice_design)
         _edit_design(store, approved, app)
-        return candidate
+        return failure.repair.candidate
 
-    monkeypatch.setattr(
-        "lecturepilot.course_canvas_generation.repair_until_quality_valid", repair_callback
-    )
+    monkeypatch.setattr(app.state.course_planner, "plan_canvas", repair_callback)
     failure = _targeted_failure()
     failure = failure.model_copy(
         update={

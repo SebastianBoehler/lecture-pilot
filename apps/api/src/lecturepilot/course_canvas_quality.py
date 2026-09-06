@@ -1,5 +1,6 @@
 from __future__ import annotations
 from lecturepilot.course_teaching_instructions import media_review_instruction
+from lecturepilot.assessment_alignment import assessment_alignment_instruction
 
 import asyncio
 import json
@@ -211,7 +212,7 @@ def _quality_messages(
                 "never construct an id from a section or source pattern. If the issue applies to "
                 "the section as a whole or no exact candidate block id applies, use null. Return "
                 "an empty issues array only when no material issue "
-                "remains."
+                "remains." + assessment_alignment_instruction()
             ),
         },
         {
