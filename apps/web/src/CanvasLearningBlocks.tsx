@@ -1,4 +1,5 @@
 import { useCheckpointAnswer } from "./CheckpointDrafts";
+import { CheckpointGuidance } from "./CheckpointGuidance";
 import { useState, type FormEvent, type ReactNode } from "react";
 
 import { MathText } from "./MathText";
@@ -68,6 +69,7 @@ export function CheckpointBlock({
       <div className="canvas-markdown">
         <MathText highlightedText={highlightedText} mode="block" text={block.text ?? ""} />
       </div>
+      <CheckpointGuidance gateId={block.id} />
       {onSubmitCheckpoint && sectionId ? (
         <form className="canvas-checkpoint-form" onSubmit={submit}>
           <label htmlFor={`${block.id}-answer`}>{t("checkpoint.answer")}</label>

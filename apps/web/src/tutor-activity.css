@@ -1,3 +1,4 @@
+.tutor-activity,
 .tool-timeline,
 .tool-call {
   min-width: 0;
@@ -37,6 +38,7 @@ details[open] > summary > .disclosure-chevron {
 }
 .tool-timeline ol {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 3px;
   margin: 6px 0 0 7px;
   padding: 0 0 0 12px;
@@ -44,13 +46,16 @@ details[open] > summary > .disclosure-chevron {
   list-style: none;
 }
 .tool-call summary > span {
-  flex-shrink: 0;
+  overflow-wrap: anywhere;
+}
+.tool-call summary {
+  flex-wrap: wrap;
 }
 .tool-call code {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
   font-size: 11px;
 }
 .tool-call pre {

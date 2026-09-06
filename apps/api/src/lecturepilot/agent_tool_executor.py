@@ -5,6 +5,8 @@ from fnmatch import fnmatch
 from typing import Any
 
 from lecturepilot.agent_canvas_write import prepare_student_canvas_write
+from lecturepilot.agent_annotation import write_annotation
+from lecturepilot.agent_canvas_placement import contextual_placement, learner_update_commands
 from lecturepilot.agent_image_placement import AgentImagePlacement, dedupe_markdown_image_refs
 from lecturepilot.agent_image_tool import AgentImageToolError
 from lecturepilot.agent_side_effect_tools import AgentSideEffectError, AgentSideEffectTools
@@ -21,7 +23,6 @@ from lecturepilot.agent_tool_utils import (
 from lecturepilot.learner_canvas_locking import serialized_canvas_write
 from lecturepilot.canvas_markdown import CanvasMarkdownError
 from lecturepilot.learner_canvas_markdown import read_student_sections
-from lecturepilot.canvas_signatures import is_student_section
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.models import CanvasCommand
 from lecturepilot.storage_layout import safe_id
@@ -93,16 +94,7 @@ class AgentToolExecutor(AgentSideEffectTools):
     def canvas_update_commands(self) -> list[CanvasCommand]:
         commands: list[CanvasCommand] = []
         if self.canvas_changed:
-            document = self.canvas_workspace.read_document(
-                course_id=self.course_id,
-                lecture_id=self.lecture_id,
-                user_id=self.user_id,
-            )
-            commands.extend(
-                CanvasCommand(type="update_section", section_id=section.id, section=section)
-                for section in document.sections
-                if is_student_section(section)
-            )
+            commands.extend(learner_update_commands(self))
         focus_id = self.focus_section_id or self.latest_written_section_id
         if focus_id:
             commands.append(CanvasCommand(type="focus_section", section_id=focus_id))
@@ -227,11 +219,14 @@ class AgentToolExecutor(AgentSideEffectTools):
     @serialized_canvas_write
     def _write(self, logical_path: str, content: str) -> dict[str, Any]:
         resolved = self._resolve(logical_path, for_write=True)
+        if resolved.logical.startswith("/lecture/annotations/"):
+            return write_annotation(self, resolved.logical, content)
         path, content, section_id = prepare_student_canvas_write(
             resolved.logical, resolved.path, content
         )
         if path != resolved.path:
             resolved = ToolPath(self.workspace_fs.logical_for(path, allow_missing=True), path)
+        content = contextual_placement(self, resolved, content, section_id)
         error = self._pending_image_write_error(resolved.logical, content)
         if error:
             raise AgentToolError(error)
@@ -259,6 +254,8 @@ class AgentToolExecutor(AgentSideEffectTools):
         if old_text not in current:
             raise AgentToolError("old_text was not found exactly once.")
         updated = current.replace(old_text, new_text, 1)
+        if resolved.logical.startswith("/lecture/annotations/"):
+            return write_annotation(self, resolved.logical, updated, expected_text=current)
         updated = dedupe_markdown_image_refs(updated)
         self.policy.validate_write(
             relative_write_path(resolved.logical), len(updated.encode("utf-8"))

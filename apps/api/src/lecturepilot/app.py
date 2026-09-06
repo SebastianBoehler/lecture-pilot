@@ -17,6 +17,7 @@ from lecturepilot.agent_routes import register_agent_routes
 from lecturepilot.auth_routes import register_auth_routes
 from lecturepilot.body_limits import RequestBodyLimitMiddleware
 from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.canvas_annotation_routes import register_canvas_annotation_routes
 from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER
 from lecturepilot.course_builder_source import course_builder_source_document
 from lecturepilot.course_canvas_routes import register_course_canvas_routes
@@ -224,6 +225,7 @@ def create_app() -> FastAPI:
     register_agent_routes(app, **seeded_route_args)
     register_analytics_routes(app, **seeded_route_args)
     register_learner_lesson_state_routes(app, **seeded_route_args)
+    register_canvas_annotation_routes(app, **seeded_route_args)
     register_review_queue_routes(app, **seeded_route_args)
     register_professor_usage_routes(app, course_tenant_id=COURSE_TENANT_ID)
     register_course_canvas_routes(

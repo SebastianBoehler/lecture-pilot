@@ -31,8 +31,16 @@ def learner_workspace_capability(
     lecture_id: str,
 ) -> WorkspaceCapability:
     layout = canvas_workspace.layout
+    from lecturepilot.canvas_annotations import AnnotationStore
+
+    annotations = AnnotationStore(layout, user_id, course_id, lecture_id)
     return WorkspaceCapability(
         roots=(
+            CapabilityRoot(
+                "/lecture/annotations",
+                annotations.directory,
+                writable=True,
+            ),
             CapabilityRoot(
                 "/lecture/canvas",
                 layout.user_canvas_dir(user_id, course_id, lecture_id),

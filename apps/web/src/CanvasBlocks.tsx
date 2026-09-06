@@ -1,4 +1,5 @@
 import { CheckpointBlock, QuizBlock, TableBlock } from "./CanvasLearningBlocks";
+import { AnnotatedCanvasBlock } from "./AnnotatedCanvasBlock";
 import { ComponentBlock } from "./CanvasInteractiveComponents";
 import { renderAssetBlock, renderVideoBlock } from "./CanvasMediaBlocks";
 import { DisplayMath, MathText } from "./MathText";
@@ -128,22 +129,26 @@ function readBlockRun(blocks: CanvasBlock[], start: number, type: CanvasBlock["t
 }
 
 function renderBlockWithOptions(block: CanvasBlock, options: RenderBlockOptions) {
-  return renderBlock(block, {
-    isHighlighted: options.highlightedBlockId === block.id,
-    isPulsed: options.outlinePulseId === block.id,
-    highlightedText: options.highlightedText,
-    outlinePulseVersion: options.outlinePulseVersion,
-    session: options.session,
-    onOpenResource: options.onOpenResource,
-    onSubmitQuizAnswer: options.onSubmitQuizAnswer,
-    onSubmitCheckpoint: options.onSubmitCheckpoint,
-    publicationVersion: options.publicationVersion,
-    quizStates: options.quizStates,
-    showSourceMarker: shouldShowSourceMarker(block, options.keySourceBlockId),
-    sourceLabel: options.sourceLabel,
-    sectionId: options.sectionId,
-    sourceReference: blockSourceReference(options.sourceReferences, block),
-  });
+  return (
+    <AnnotatedCanvasBlock key={block.id} blockId={block.id}>
+      {renderBlock(block, {
+        isHighlighted: options.highlightedBlockId === block.id,
+        isPulsed: options.outlinePulseId === block.id,
+        highlightedText: options.highlightedText,
+        outlinePulseVersion: options.outlinePulseVersion,
+        session: options.session,
+        onOpenResource: options.onOpenResource,
+        onSubmitQuizAnswer: options.onSubmitQuizAnswer,
+        onSubmitCheckpoint: options.onSubmitCheckpoint,
+        publicationVersion: options.publicationVersion,
+        quizStates: options.quizStates,
+        showSourceMarker: shouldShowSourceMarker(block, options.keySourceBlockId),
+        sourceLabel: options.sourceLabel,
+        sectionId: options.sectionId,
+        sourceReference: blockSourceReference(options.sourceReferences, block),
+      })}
+    </AnnotatedCanvasBlock>
+  );
 }
 
 function renderBlock(

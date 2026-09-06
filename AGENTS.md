@@ -69,6 +69,7 @@ database authority in Postgres and files on the persisted `/app/storage` volume.
       memories/{course.md,memory-trace.jsonl}
       lectures/<lecture-id>/
         {attendance.json,gates.json,tutor-state.json}
+        annotations/<name>.json
         canvas/{student/*.md,components/*.yaml,student-assets/*}
   courses/<tenant-id>/<course-id>/
     course.json
@@ -251,6 +252,13 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
   not assert learner efficacy or add learner-runtime SRL or AI-policy enforcement.
 - Canvas commands may focus sections, highlight specific blocks or phrases, and
   append/update learner-specific Markdown sections.
+- Private passage comments are files under `/lecture/annotations/<name>.json`.
+  Use ordinary `write`, `read`, and `edit`; the adapter validates `block_id`,
+  `quote`, and Markdown `comment`, and owns publication/identity metadata. Markers
+  reopen comments; learners can delete them. Independent attempts hide comments.
+- Learner Markdown uses `placement_mode` and `placement_section_id` frontmatter
+  for contextual insertion. New unplaced sections follow the current focus;
+  rewrites preserve saved placement. Official sections remain immutable.
 - Infographic requests may call the backend image-generation tool. Provider
   raster images are stored under the learner workspace. Do not generate local
   SVG fallback infographics.

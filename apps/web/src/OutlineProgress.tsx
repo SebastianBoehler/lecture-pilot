@@ -28,6 +28,9 @@ export function OutlineProgress({
           <ArrowRight size={15} aria-hidden="true" />
         </button>
       ) : null}
+      {state?.due_gate_reviews.length ? (
+        <p className="drawer-note">A later review is ready in your review queue.</p>
+      ) : null}
       <details className="outline-help">
         <summary tabIndex={0}>{t("outline.howPracticeWorks")}</summary>
         <p>{t("outline.navigationHelp")}</p>

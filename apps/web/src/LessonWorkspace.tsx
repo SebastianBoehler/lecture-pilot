@@ -1,6 +1,7 @@
 import { LessonSidebarResize, useLessonSidebarWidth } from "./LessonSidebarResize";
 import { CheckpointDrafts } from "./CheckpointDrafts";
-import { FocusedCheckpoint, LearningEvidenceFlow } from "./LearningEvidenceFlow";
+import { FocusedCheckpoint } from "./LearningEvidenceFlow";
+import { CheckpointGuidanceContext } from "./CheckpointGuidance";
 import { useCheckpointSupport } from "./useCheckpointSupport";
 import { useTeachingLanguage } from "./useTeachingLanguage";
 import { LessonControlRail } from "./LessonControlRail";
@@ -9,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { useI18n } from "./i18n";
 import { canvasWithPendingCheck } from "./canvasPendingCheck";
 import { LessonCanvas } from "./LessonCanvas";
+import { LessonAnnotations } from "./LessonAnnotations";
 import { ProfessorLearnerPreviewBanner } from "./ProfessorLearnerPreviewBanner";
 import { reconcileCanvasLearnerState, type PublishedCanvasView } from "./publishedCanvasView";
 import { OutlinePanel } from "./LessonSidePanels";
@@ -186,9 +188,6 @@ export function LessonWorkspace({
           {!canvasDocument && !canvasError ? (
             <p className="drawer-note">{t("lesson.loadingCanvas")}</p>
           ) : null}
-          {canvasDocument ? (
-            <LearningEvidenceFlow state={canvasLearnerState.currentLearnerState} />
-          ) : null}
           {waitingForState ? (
             <p role="status">Checking the saved attempt before opening teaching…</p>
           ) : canvasDocument && focused && canvasLearnerState.currentLearnerState ? (
@@ -201,25 +200,36 @@ export function LessonWorkspace({
               error={support.error}
             />
           ) : canvasDocument ? (
-            <LessonCanvas
-              canvasDocument={canvasWithPendingCheck(
-                language.document ?? canvasDocument,
-                canvasLearnerState.currentLearnerState?.pending_check,
-              )}
-              focusedSectionId={focusedSectionId}
-              highlightedBlockId={highlightedBlockId}
-              highlightedText={highlightedText}
-              activeAnchorId={activeAnchorId}
-              navigationVersion={navigationVersion}
-              outlinePulseId={outlinePulse?.id ?? null}
-              outlinePulseVersion={outlinePulse?.version ?? 0}
+            <LessonAnnotations
+              key={`${session.tenant_id}:${session.username}:${workspaceMode}:${courseId}:${lecture.id}:${publishedCanvasView?.publication_version}`}
+              courseId={courseId}
+              lectureId={lecture.id}
               session={session}
-              quizStates={canvasLearnerState.quizStates}
-              publicationVersion={canvasLearnerState.publicationVersion}
-              onOpenResource={openWorkspaceResource}
-              onSubmitCheckpoint={learningAttempts.submitCheckpoint}
-              onSubmitQuizAnswer={learningAttempts.submitQuiz}
-            />
+              mode={workspaceMode}
+              revision={navigationVersion}
+            >
+              <CheckpointGuidanceContext.Provider value={canvasLearnerState.currentLearnerState}>
+                <LessonCanvas
+                  canvasDocument={canvasWithPendingCheck(
+                    language.document ?? canvasDocument,
+                    canvasLearnerState.currentLearnerState?.pending_check,
+                  )}
+                  focusedSectionId={focusedSectionId}
+                  highlightedBlockId={highlightedBlockId}
+                  highlightedText={highlightedText}
+                  activeAnchorId={activeAnchorId}
+                  navigationVersion={navigationVersion}
+                  outlinePulseId={outlinePulse?.id ?? null}
+                  outlinePulseVersion={outlinePulse?.version ?? 0}
+                  session={session}
+                  quizStates={canvasLearnerState.quizStates}
+                  publicationVersion={canvasLearnerState.publicationVersion}
+                  onOpenResource={openWorkspaceResource}
+                  onSubmitCheckpoint={learningAttempts.submitCheckpoint}
+                  onSubmitQuizAnswer={learningAttempts.submitQuiz}
+                />
+              </CheckpointGuidanceContext.Provider>
+            </LessonAnnotations>
           ) : null}
         </section>
 

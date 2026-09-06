@@ -113,7 +113,10 @@ export function QuizBlock({
       ) : null}
       {checking ? <p role="status">{t("quiz.checking")}</p> : null}
       {result ? (
-        <div className="canvas-quiz-feedback" role="status">
+        <div
+          className={result.correct === null ? "canvas-quiz-feedback" : "visually-hidden"}
+          role="status"
+        >
           <strong>{outcomeLabel(result, t)}</strong>
           <p>{guidance(result, t)}</p>
         </div>

@@ -1,37 +1,7 @@
 import { useRef, useState } from "react";
 import { CheckpointBlock } from "./CanvasLearningBlocks";
-import { MathText } from "./MathText";
 import type { LearnerLessonState } from "./learnerLessonStateTypes";
 import type { CanvasDocument } from "./types";
-
-export function LearningEvidenceFlow({ state }: { state: LearnerLessonState | null }) {
-  if (!state?.pending_check && !state?.due_gate_reviews.length) return null;
-  return (
-    <section className="learning-evidence-flow" aria-label="Learning evidence">
-      {state.pending_check?.focus_required && state.active_session_goal ? (
-        <p>
-          <strong>Goal:</strong> {state.active_session_goal}
-        </p>
-      ) : null}
-      {state.pending_check?.bank_exhausted ? (
-        <p role="status">
-          All reviewed variants have been used. You can continue with support; a new reviewed task
-          is needed for independent evidence.
-        </p>
-      ) : null}
-      {!state.pending_check?.focus_required && state.pending_check?.assistance_content ? (
-        <div className="canvas-markdown">
-          <MathText
-            highlightedText={null}
-            mode="block"
-            text={state.pending_check.assistance_content}
-          />
-        </div>
-      ) : null}
-      {state.due_gate_reviews.length ? <p>A later review is ready in your review queue.</p> : null}
-    </section>
-  );
-}
 
 export function FocusedCheckpoint({
   state,
@@ -78,6 +48,11 @@ export function FocusedCheckpoint({
     return <p role="alert">The task no longer matches this canvas. Reload the lecture.</p>;
   return (
     <section className="focused-checkpoint" aria-label="Independent attempt">
+      {state.active_session_goal ? (
+        <p>
+          <strong>Goal:</strong> {state.active_session_goal}
+        </p>
+      ) : null}
       <h2>{check.stage === "delayed_transfer" ? "Later review" : "Try independently"}</h2>
       <p>
         Teaching, notes, sources and chat are closed during this attempt. Request help to reopen

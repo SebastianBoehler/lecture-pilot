@@ -133,7 +133,11 @@ def read_section_source(
 
 
 def read_section_frontmatter(path: Path) -> dict[str, object]:
-    return _read_frontmatter(path.read_text(encoding="utf-8"))[0]
+    return parse_section_frontmatter(path.read_text(encoding="utf-8"))
+
+
+def parse_section_frontmatter(text: str) -> dict[str, object]:
+    return _read_frontmatter(text)[0]
 
 
 def _read_frontmatter(text: str) -> tuple[dict[str, object], str]:

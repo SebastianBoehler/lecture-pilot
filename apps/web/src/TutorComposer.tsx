@@ -83,7 +83,9 @@ export function TutorComposer({
             rows={2}
           />
           <div className="chat-composer-actions">
-            <span id="tutor-keyboard">{t("chat.keyboard")}</span>
+            <span id="tutor-keyboard" className="visually-hidden">
+              {t("chat.keyboard")}
+            </span>
             <button
               aria-label={t("chat.send")}
               title={t("chat.send")}

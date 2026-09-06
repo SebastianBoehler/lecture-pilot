@@ -72,8 +72,10 @@ def _with_tool_instruction(
         " You can use Pi-style low-level tools over a constrained filesystem image. "
         f"Active tool profile: {tool_profile}. "
         f"{_profile_instruction(tool_profile)} "
-        "New learner canvas Markdown belongs under /lecture/canvas/student and is appended after "
-        "the course canvas; do not claim it was inserted before the lecture content. "
+        "New learner canvas Markdown belongs under /lecture/canvas/student. Place custom explanations "
+        "beside the relevant existing section using frontmatter placement_mode (after_section or "
+        "before_section) and placement_section_id (the exact existing anchor id). Without explicit "
+        "placement, new sections follow the current focused section. Preserve placement on edits. "
         "When write creates canvas Markdown, use the returned path and section_id for focus/highlight. "
         "Do not duplicate a successful write/edit/generate_image as an append_section or update_section "
         "in the final JSON; the filesystem tool output is the source of truth. "
@@ -237,6 +239,7 @@ def _tool_activity(name: str, args: dict[str, Any]) -> str:
         or args.get("pattern")
         or args.get("section_id")
         or args.get("span_id")
+        or args.get("block_id")
         or args.get("gate_id")
         or ""
     )
