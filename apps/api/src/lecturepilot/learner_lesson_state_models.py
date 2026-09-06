@@ -6,7 +6,11 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from lecturepilot.coaching_state_models import PendingCheckKind
 from lecturepilot.quality_gate_models import QualityGateStatus
-from lecturepilot.coaching_contract import MAX_APPROVED_TASK_LENGTH, AssistanceLevel
+from lecturepilot.coaching_contract import (
+    MAX_APPROVED_TASK_LENGTH,
+    AssistanceLevel,
+    AssessmentStage,
+)
 
 QuizOutcome = Literal["correct", "incorrect", "unscored"]
 QuizCorrectionState = Literal["not_needed", "needed", "corrected"]
@@ -42,6 +46,12 @@ class LearnerPendingCheck(BaseModel):
     prompt: str = Field(min_length=1, max_length=MAX_APPROVED_TASK_LENGTH)
     assistance_level: AssistanceLevel
     kind: PendingCheckKind
+    task_id: str
+    stage: AssessmentStage
+    issued_at: str
+    assistance_content: str | None
+    focus_required: bool
+    bank_exhausted: bool
 
 
 class LearnerDueGateReview(BaseModel):
@@ -52,6 +62,16 @@ class LearnerDueGateReview(BaseModel):
     due_at: AwareDatetime
 
 
+class LearnerGoalEvidence(BaseModel):
+    gate_id: str
+    gate_revision: str
+    supported: bool = False
+    independent: bool = False
+    delayed: bool = False
+    missing_evidence_ids: list[str] = Field(default_factory=list)
+    missing_evidence: list[str] = Field(default_factory=list)
+
+
 class LearnerLessonState(BaseModel):
     course_id: str
     lecture_id: str
@@ -60,4 +80,5 @@ class LearnerLessonState(BaseModel):
     quiz_states: dict[str, LearnerQuizState] = Field(default_factory=dict)
     active_session_goal: str | None = None
     pending_check: LearnerPendingCheck | None = None
+    goal_evidence: list[LearnerGoalEvidence] = Field(default_factory=list)
     due_gate_reviews: list[LearnerDueGateReview] = Field(default_factory=list)

@@ -118,6 +118,8 @@ def select_next_check(
         current_stage=stage,
         status=decision.status,
         exposed_hint_levels=turn.coaching_context.exposed_hint_levels,
+        exposed_task_ids=turn.coaching_context.exposed_task_ids,
+        current_task_id=turn.coaching_context.pending_check_task_id,
     )
     return transition.check if transition else None
 

@@ -61,7 +61,8 @@ def target_source_anchors(target: _AnchoredTarget) -> tuple[PracticeSourceAnchor
         for item in items
         if item.source_anchor is not None
     )
-    return (*direct, *nested)
+    supplemental = tuple(task.source_anchor for task in getattr(target, "supplemental_tasks", ()))
+    return (*direct, *nested, *supplemental)
 
 
 def anchored_source_paths(target: _AnchoredTarget) -> tuple[str, ...]:

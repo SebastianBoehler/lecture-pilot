@@ -125,6 +125,8 @@ def pending_from_transition(
         kind=("delayed_transfer" if transition.stage == "delayed_transfer" else "standard"),
         stage=transition.stage,
         issued_at=now,
+        task_id=transition.task_id,
+        bank_exhausted=transition.bank_exhausted,
     )
 
 

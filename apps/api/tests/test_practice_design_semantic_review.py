@@ -1,3 +1,4 @@
+from reviewed_task_bank_helpers import with_bank
 import json
 from pydantic_ai.models.function import FunctionModel
 from pydantic_ai.messages import ModelResponse, TextPart
@@ -129,7 +130,9 @@ async def test_critic_issue_support_must_quote_the_exact_routed_source() -> None
 def _proposal_model(events):
     def respond(messages, info):
         events.append("proposal")
-        payload = compact_evidence_anchors(proposal().model_dump(mode="json"), {})
+        draft = proposal()
+        draft = draft.model_copy(update={"targets": tuple(with_bank(t) for t in draft.targets)})
+        payload = compact_evidence_anchors(draft.model_dump(mode="json"), {})
         payload["targets"][0].pop("source_refs")
         return ModelResponse(parts=[TextPart(json.dumps(payload))])
 

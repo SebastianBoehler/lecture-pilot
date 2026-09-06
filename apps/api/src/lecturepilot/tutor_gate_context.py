@@ -19,7 +19,7 @@ def gate_rubric_context(turn: AgentTurnInput) -> str:
     return (
         f"Active quality gate: {gate.id} ({gate.title})\n"
         f"Gate revision: {gate.revision}\n"
-        f"Gate prompt: {gate.prompt}\n"
+        f"Gate prompt: {turn.coaching_context.pending_check_prompt or gate.prompt}\n"
         f"{teaching_contract}"
         "Evidence criteria:\n"
         f"{criteria}\n"
@@ -60,12 +60,16 @@ def _transition_contract(turn: AgentTurnInput) -> str:
         current_stage=stage,
         status=QualityGateStatus.PASSED,
         exposed_hint_levels=turn.coaching_context.exposed_hint_levels,
+        exposed_task_ids=turn.coaching_context.exposed_task_ids,
+        current_task_id=turn.coaching_context.pending_check_task_id,
     )
     needs_evidence = derive_next_transition(
         gate,
         current_stage=stage,
         status=QualityGateStatus.NEEDS_EVIDENCE,
         exposed_hint_levels=turn.coaching_context.exposed_hint_levels,
+        exposed_task_ids=turn.coaching_context.exposed_task_ids,
+        current_task_id=turn.coaching_context.pending_check_task_id,
     )
     return (
         f"Current persisted assessment stage: {stage}\n"

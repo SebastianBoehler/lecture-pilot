@@ -144,6 +144,18 @@ class PracticeDesignPlanner:
                     )
                     if protected_intent is not None:
                         protected_intent.require_matches(proposal)
+                    fixed = (
+                        {t.id for t in protected_intent.fixed_targets}
+                        if protected_intent
+                        else set()
+                    )
+                    for target in proposal.targets:
+                        if target.id not in fixed and {
+                            task.stage for task in target.supplemental_tasks
+                        } != {"independent_exit", "delayed_transfer"}:
+                            raise ValueError(
+                                "New teaching requires fresh exit and delayed task variants."
+                            )
                 except (ValidationError, ValueError) as exc:
                     raise ModelRetry(
                         f"Repair this draft's contract without inventing evidence: {exc}"
@@ -208,12 +220,12 @@ class PracticeDesignPlanner:
         return reviewed
 
     @asynccontextmanager
-    async def _model(self, settings):
+    async def _model(self, settings, *, stage="course_practice_design"):
         if self.model is not None:
             yield self.model
         else:
             async with authoring_model(
-                settings, self.usage_recorder, lambda: None, stage="course_practice_design"
+                settings, self.usage_recorder, lambda: None, stage=stage
             ) as model:
                 yield model
 

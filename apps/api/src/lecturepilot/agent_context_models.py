@@ -49,6 +49,8 @@ class AgentCoachingContext(BaseModel):
     pending_check_kind: Literal["standard", "delayed_transfer"] | None = None
     pending_check_stage: AssessmentStage | None = None
     pending_check_issued_at: str | None = Field(default=None, max_length=80)
+    pending_check_task_id: str | None = None
+    exposed_task_ids: list[str] = Field(default_factory=list)
     pending_check_prompt: str | None = Field(default=None, max_length=MAX_APPROVED_TASK_LENGTH)
     pending_check_assistance_content: str | None = Field(default=None, max_length=2_000)
     exposed_hint_levels: list[HintLevel] = Field(default_factory=list, max_length=4)

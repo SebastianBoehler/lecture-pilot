@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from lecturepilot.coaching_task_bank import canonical_task_id, record_task_exposure
 from lecturepilot.coaching_episode import matching_pending
 from lecturepilot.coaching_state_models import PendingCheck, review_key
 from lecturepilot.coaching_transitions import initial_assessment_stage
@@ -34,12 +35,14 @@ def bind_inline_checkpoint(
             gate_id=gate.id,
             gate_revision=gate.revision,
             prompt=gate.prompt,
+            task_id=canonical_task_id(initial_assessment_stage(gate)),
             assistance_level="none",
             assistance_content=None,
             kind="standard",
             stage=initial_assessment_stage(gate),
             issued_at=now or datetime.now(UTC),
         )
+        record_task_exposure(progress, progress.pending_check, progress.pending_check.issued_at)
         store._write(
             user_id=user_id,
             course_id=course_id,
@@ -77,7 +80,7 @@ def bind_delayed_review(
                 raise ValueError("Gate repair is no longer active.")
             return pending
         if pending is not None:
-            if pending.kind == "delayed_transfer" and pending.stage == "delayed_transfer":
+            if pending.stage in {"delayed_transfer", "delayed_support"}:
                 return pending
             raise ValueError("Another assessment is already pending.")
         if review.due_at > current_time:
@@ -86,12 +89,14 @@ def bind_delayed_review(
             gate_id=gate_id,
             gate_revision=gate_revision,
             prompt=review.transfer_prompt,
+            task_id="delayed-transfer",
             assistance_level="none",
             assistance_content=None,
             kind="delayed_transfer",
             stage="delayed_transfer",
             issued_at=current_time,
         )
+        record_task_exposure(progress, progress.pending_check, progress.pending_check.issued_at)
         store._write(
             user_id=user_id,
             course_id=course_id,

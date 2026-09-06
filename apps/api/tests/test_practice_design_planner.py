@@ -1,3 +1,4 @@
+from reviewed_task_bank_helpers import with_bank
 import json
 from pydantic_ai.models.function import FunctionModel
 from pydantic_ai.messages import ModelResponse, TextPart
@@ -47,7 +48,11 @@ async def test_planner_uses_native_schema_and_exact_authoritative_source_paths()
             .model_copy(
                 update={
                     "targets": (
-                        target(source_refs=("lecture.md",), source_excerpt="Posterior evidence."),
+                        with_bank(
+                            target(
+                                source_refs=("lecture.md",), source_excerpt="Posterior evidence."
+                            )
+                        ),
                     )
                 }
             )

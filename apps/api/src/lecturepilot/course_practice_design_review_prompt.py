@@ -30,7 +30,7 @@ def practice_design_review_messages(
             "role": "system",
             "content": (
                 "You are the independent LecturePilot practice-design semantic critic. Audit the "
-                "complete proposal against only the supplied exact source packet. Return all eight "
+                "complete proposal, including EVERY supplemental task and its numeric assertions, against only the supplied exact source packet. Return all eight "
                 "checks exactly once and in schema order. Judge source entailment; alignment of the "
                 "objective, outcome, and tasks; baseline/exit equivalence; answer leakage in tasks "
                 "and hints; difficulty drift; whether delayed transfer preserves the invariant while "
@@ -41,7 +41,7 @@ def practice_design_review_messages(
                 "audit must work through each numerical example, including dimensions and "
                 "whether all required error types or boundary distinctions can be observed. "
                 "In the rubric_sufficiency summary, give a concrete solved result or contradiction "
-                "for EVERY baseline task before your conclusion. Check every sentence literally; "
+                "for EVERY baseline and supplemental task before your conclusion. Check every sentence literally; "
                 "never silently correct a given or substitute the rubric's intended numbers. "
                 "Compare hints against the baseline: using hidden exit or delayed-transfer values "
                 "or solutions during support is leakage even when the task text hides its answer. "

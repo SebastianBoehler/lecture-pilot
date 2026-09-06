@@ -133,6 +133,7 @@ def _checkpoint_gate(
         ],
         transfer_prompt=target.delayed_transfer_task,
         independent_exit_task=target.independent_exit_task,
+        supplemental_tasks=list(target.supplemental_tasks),
         independent_exit_surface_change=target.independent_exit_surface_change,
         delayed_transfer_surface_change=target.delayed_transfer_surface_change,
         misconceptions=[

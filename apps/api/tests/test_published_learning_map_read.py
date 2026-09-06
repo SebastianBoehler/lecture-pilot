@@ -63,10 +63,13 @@ def test_learning_map_get_reads_the_approved_published_snapshot_without_rewritin
 
     assert response.status_code == 200, response.json()
     assert response.json()["objective"] == update["objective"]
-    assert (
-        next(gate for gate in response.json()["gates"] if gate["id"] == generic_gate["id"])[
-            "transfer_prompt"
-        ]
-        == generic_gate["transfer_prompt"]
+    safe_gate = next(gate for gate in response.json()["gates"] if gate["id"] == generic_gate["id"])
+    assert "transfer_prompt" not in safe_gate
+    internal = app.state.canvas_workspace.course_canvas_store.learning_map(
+        course_id="martius-ml",
+        lecture_id="lecture-01",
     )
+    published_gate = next(gate for gate in internal.gates if gate.id == generic_gate["id"])
+    assert published_gate.transfer_prompt == generic_gate["transfer_prompt"]
+    assert safe_gate["revision"] == published_gate.revision
     assert map_path.read_bytes() == before

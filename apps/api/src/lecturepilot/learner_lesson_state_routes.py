@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 
+from lecturepilot.coaching_support_routes import register_coaching_support_routes
 from lecturepilot.agent_state_access import learner_state_store
 from lecturepilot.api_auth import request_context
 from lecturepilot.audit import record_audit_event
@@ -28,6 +29,13 @@ def register_learner_lesson_state_routes(
     seeded_course: Course,
     seeded_lectures: list[Lecture],
 ) -> None:
+    register_coaching_support_routes(
+        app,
+        course_tenant_id=course_tenant_id,
+        seeded_course=seeded_course,
+        seeded_lectures=seeded_lectures,
+    )
+
     @app.get(
         "/courses/{course_id}/lectures/{lecture_id}/learner-state",
         response_model=LearnerLessonState,
@@ -80,6 +88,7 @@ def register_learner_lesson_state_routes(
             course_id=course_id,
             lecture_id=lecture_id,
             publication_version=snapshot.version,
+            learning_map=snapshot.learning_map,
             progress=progress,
         )
 

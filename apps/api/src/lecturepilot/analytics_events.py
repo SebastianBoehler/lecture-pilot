@@ -109,6 +109,7 @@ class QuizOutcomeEvent(BaseModel):
 
 
 class GateOutcomeEvent(BaseModel):
+    task_id: CanonicalId | None = None
     model_config = ConfigDict(extra="forbid", strict=True)
 
     type: Literal["gate_decision"] = "gate_decision"

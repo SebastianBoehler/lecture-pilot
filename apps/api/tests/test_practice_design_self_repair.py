@@ -1,3 +1,4 @@
+from reviewed_task_bank_helpers import with_bank
 import json
 
 import pytest
@@ -17,8 +18,8 @@ async def test_proposal_repairs_rubric_before_returning_for_approval(severity):
     catalogue = evidence_catalogue(source, ("lecture-01.md",))
     draft = proposal().model_dump(mode="json")
     draft["targets"] = [
-        target(
-            source_refs=("lecture-01.md",), source_excerpt=source.sections[0].blocks[0].text
+        with_bank(
+            target(source_refs=("lecture-01.md",), source_excerpt=source.sections[0].blocks[0].text)
         ).model_dump(mode="json")
     ]
     draft["targets"][0]["evidence_criteria"][0]["description"] = "Accept only the example answer."
@@ -65,8 +66,11 @@ async def test_repair_cannot_change_the_existing_learning_objective():
     initial = proposal().model_copy(
         update={
             "targets": (
-                target(
-                    source_refs=("lecture-01.md",), source_excerpt=source.sections[0].blocks[0].text
+                with_bank(
+                    target(
+                        source_refs=("lecture-01.md",),
+                        source_excerpt=source.sections[0].blocks[0].text,
+                    )
                 ),
             )
         }

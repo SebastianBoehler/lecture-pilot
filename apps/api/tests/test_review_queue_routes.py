@@ -106,7 +106,7 @@ def test_open_due_gate_binds_exact_current_transfer_without_completing(tmp_path:
     assert progress.delayed_reviews[key].completed_at is None
 
 
-def test_failed_due_attempt_requires_repair_then_an_unaided_transfer_pass(
+def test_failed_due_attempt_with_exhausted_legacy_bank_stays_in_supported_repair(
     tmp_path: Path,
 ) -> None:
     client = _client(tmp_path)
@@ -218,43 +218,18 @@ def test_failed_due_attempt_requires_repair_then_an_unaided_transfer_pass(
     key = review_key("gate-a", revision)
     assert after_support.delayed_reviews[key].completed_at is None
     assert after_support.pending_check is not None
-    assert after_support.pending_check.stage == "delayed_transfer"
+    assert after_support.pending_check.stage == "delayed_support"
+    assert after_support.pending_check.bank_exhausted
+    assert after_support.turns[-1].attempt_kind == "supported_retry"
+    assert not after_support.goal_evidence[key].delayed
 
-    exit_context = store.context(
-        user_id=user_id,
-        course_id=COURSE_ID,
-        lecture_id="lecture-a",
-        gate_id="gate-a",
-        gate_revision=revision,
-        learning_objective="Explain and apply gate A.",
-        now=NOW + timedelta(minutes=6),
-    )
-    store.record_turn(
-        user_id=user_id,
-        course_id=COURSE_ID,
-        lecture_id="lecture-a",
-        context=exit_context,
-        policy=policy,
-        decision=QualityGateDecision(
-            gate_id="gate-a",
-            gate_revision=revision,
-            status=QualityGateStatus.PASSED,
-            reason="The changed case is independently explained.",
-            evidence_ids=["gate-a"],
-            missing_evidence_ids=[],
-        ),
-        next_check=None,
-        gate=gate,
-        user_message="Independent transfer",
-        assistant_message="Passed.",
-        now=NOW + timedelta(minutes=6),
-    )
     final_items = client.get(
         f"/courses/{COURSE_ID}/review-queue",
         headers=headers,
     ).json()["items"]
     assert [item["id"] for item in final_items] == [
         "gate:lecture-b:gate-b",
+        "gate-repair:lecture-a:gate-a",
         "readiness:repair-risk",
     ]
 

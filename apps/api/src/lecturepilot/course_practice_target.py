@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Annotated, Literal
 
-from pydantic import BeforeValidator, Field, model_validator
+from pydantic import BeforeValidator, Field, model_serializer, model_validator
 
 from lecturepilot.course_practice_design_contract import (
     NonblankText,
@@ -12,6 +12,8 @@ from lecturepilot.course_practice_design_contract import (
     require_observable_outcome,
 )
 from lecturepilot.course_practice_design_evidence import PracticeSourceAnchor, anchored_source_paths
+
+from lecturepilot.practice_task_bank import SupplementalPracticeTask
 
 _ID_PATTERN = r"^[a-z0-9][a-z0-9-]{0,79}$"
 
@@ -144,10 +146,22 @@ class PracticeTarget(StrictPracticeDesignModel):
         min_length=1, max_length=100
     )
 
+    supplemental_tasks: Annotated[
+        tuple[SupplementalPracticeTask, ...], BeforeValidator(freeze_collection)
+    ] = Field(default_factory=tuple, max_length=6)
+
+    @model_serializer(mode="wrap")
+    def serialize_legacy_compatible(self, handler):
+        payload = handler(self)
+        if not self.supplemental_tasks:
+            payload.pop("supplemental_tasks", None)
+        return payload
+
     @model_validator(mode="after")
     def validate_contract(self) -> PracticeTarget:
         require_observable_outcome(self.outcome)
         _require_distinct_tasks(self)
+        require_unique_ids(self.supplemental_tasks, "supplemental task")
         require_unique_ids(self.evidence_criteria, "evidence criterion")
         if not any(criterion.required for criterion in self.evidence_criteria):
             raise ValueError("Practice targets need at least one required evidence criterion.")
@@ -169,11 +183,12 @@ def _require_distinct_tasks(target: PracticeTarget) -> None:
             target.baseline_task,
             target.independent_exit_task,
             target.delayed_transfer_task,
+            *(task.prompt for task in target.supplemental_tasks),
         )
     }
     if "" in normalized:
         raise ValueError("Practice target task variants cannot be blank.")
-    if len(normalized) != 3:
+    if len(normalized) != 3 + len(target.supplemental_tasks):
         raise ValueError("Practice target task variants must differ.")
 
 

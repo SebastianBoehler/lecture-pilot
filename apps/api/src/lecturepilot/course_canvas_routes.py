@@ -10,6 +10,7 @@ from lecturepilot.api_auth import (
 )
 from lecturepilot.audit import record_audit_event
 from lecturepilot.canvas_models import CanvasDocument
+from lecturepilot.canvas_language_routes import register_canvas_language_routes
 from lecturepilot.canvas_response import published_canvas_payload
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.course_access import require_course_id_access, require_lecture_id_access
@@ -25,7 +26,7 @@ from lecturepilot.learner_workspace_reset import (
     LearnerWorkspaceResetResult,
     reset_learner_workspace,
 )
-from lecturepilot.learning_map import LearningMap
+from lecturepilot.learner_learning_map import LearnerLearningMap, learner_learning_map
 from lecturepilot.models import CanvasPublicationResult, Course, Lecture
 from lecturepilot.professor_preview import (
     is_professor_preview_user_id,
@@ -43,6 +44,9 @@ def register_course_canvas_routes(
     seeded_course: Course,
     source_document: Callable[[str, str], CanvasDocument],
 ) -> None:
+    register_canvas_language_routes(
+        app, course_tenant_id=course_tenant_id, seeded_course=seeded_course, lectures=lectures
+    )
     register_course_practice_design_routes(
         app,
         course_tenant_id=course_tenant_id,
@@ -162,13 +166,13 @@ def register_course_canvas_routes(
 
     @app.get(
         "/courses/{course_id}/lectures/{lecture_id}/learning-map",
-        response_model=LearningMap,
+        response_model=LearnerLearningMap,
     )
     def lecture_learning_map(
         course_id: str,
         lecture_id: str,
         context: TenantContext = Depends(request_context),
-    ) -> LearningMap:
+    ) -> LearnerLearningMap:
         require_lecture_id_access(
             app,
             context,
@@ -184,7 +188,7 @@ def register_course_canvas_routes(
         ) as learning_map:
             if learning_map is None:
                 raise HTTPException(status_code=404, detail="Canvas has not been published.")
-            return learning_map
+            return learner_learning_map(learning_map)
 
     @app.post(
         "/courses/{course_id}/learner-workspace/reset",

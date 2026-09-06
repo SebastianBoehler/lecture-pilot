@@ -66,3 +66,32 @@ def assistant_message(next_check: NextCheck | None) -> str:
         return "Assessment recorded."
     content = next_check.assistance.content
     return f"{content + ' ' if content else ''}{next_check.prompt}"
+
+
+def bank_gate():
+    gate = practice_gate()
+    return LearningMapGate.create(
+        **{
+            **gate.model_dump(exclude={"revision"}),
+            "supplemental_tasks": [
+                {
+                    "id": name,
+                    "stage": stage,
+                    "prompt": prompt,
+                    "source_anchor": {
+                        "source_path": "lecture.md",
+                        "excerpt": "The causal boundary remains unchanged.",
+                    },
+                    "surface_change": "Change the example while preserving the causal boundary.",
+                }
+                for name, stage, prompt in (
+                    ("exit-fresh", "independent_exit", "Apply the boundary to a new device case."),
+                    (
+                        "delayed-fresh",
+                        "delayed_transfer",
+                        "Apply the boundary to a new graphical case.",
+                    ),
+                )
+            ],
+        }
+    )

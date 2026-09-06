@@ -4,6 +4,9 @@ from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
+from lecturepilot.coaching_goal_evidence import GoalEvidence
+from lecturepilot.coaching_task_bank import TaskExposure
+
 from lecturepilot.agent_context_models import AgentConversationMessage
 from lecturepilot.coaching_contract import (
     MAX_APPROVED_TASK_LENGTH,
@@ -41,6 +44,8 @@ class PendingCheck(BaseModel):
     assistance_content: str | None = Field(max_length=2_000)
     kind: PendingCheckKind
     stage: AssessmentStage
+    task_id: str | None = Field(default=None, min_length=1, max_length=80)
+    bank_exhausted: bool = False
     issued_at: AwareDatetime
 
     @model_validator(mode="after")
@@ -51,6 +56,8 @@ class PendingCheck(BaseModel):
             self.assistance_content and self.assistance_content.strip()
         ):
             raise ValueError("Assisted pending checks require exact assistance content.")
+        if self.bank_exhausted and not self.stage.endswith("support"):
+            raise ValueError("An exhausted task bank requires supported study.")
         expected_kind = "delayed_transfer" if self.stage == "delayed_transfer" else "standard"
         if self.kind != expected_kind:
             raise ValueError("Pending-check kind does not match its assessment stage.")
@@ -89,6 +96,7 @@ class DelayedReview(BaseModel):
 class CoachingTurnEvent(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
+    task_id: str | None = Field(default=None, min_length=1, max_length=80)
     created_at: AwareDatetime
     gate_id: str = Field(min_length=1, max_length=160)
     gate_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
@@ -118,6 +126,8 @@ class CoachingProgress(BaseModel):
     pending_check: PendingCheck | None
     hint_exposures: dict[str, HintExposure]
     delayed_reviews: dict[str, DelayedReview]
+    goal_evidence: dict[str, GoalEvidence] = Field(default_factory=dict)
+    task_exposures: dict[str, TaskExposure] = Field(default_factory=dict)
     updated_at: AwareDatetime | None
 
     @model_validator(mode="after")

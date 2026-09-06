@@ -1,5 +1,7 @@
 from typing import Annotated
 
+from lecturepilot.teaching_implementation_change_routes import register_implementation_change_routes
+
 from fastapi import Depends, HTTPException, Request
 from pydantic import BeforeValidator, Field
 
@@ -35,6 +37,8 @@ class LearningIntentUpdate(LearningIntentProposal):
 def register_learning_intent_routes(
     app, *, course_tenant_id, source_document, source_context, require_manager
 ):
+    register_implementation_change_routes(app, course_tenant_id=course_tenant_id)
+
     @app.post(
         "/admin/courses/{course_id}/lectures/{lecture_id}/practice-design/intent/approve",
         response_model=PracticeDesign,

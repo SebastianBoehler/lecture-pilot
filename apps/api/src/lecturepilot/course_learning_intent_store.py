@@ -119,7 +119,9 @@ class LearningIntentStore(PracticeDesignStore):
             write_design_file(path, changed)
             return changed
 
-    def save_implementation(self, *, expected, proposal, review, source, allowed_source_paths):
+    def save_implementation(
+        self, *, expected, proposal, review, source, allowed_source_paths, repair_reason=None
+    ):
         path = self._path(expected.course_id, expected.lecture_id)
         with locked_design_file(path):
             current = self._required(path, expected.course_id, expected.lecture_id)
@@ -141,6 +143,9 @@ class LearningIntentStore(PracticeDesignStore):
             if any(check.severity == "critical" for check in review.checks):
                 raise ValueError("Implementation repair still has critical semantic issues.")
             changed = with_quality_review(changed, review)
+            from lecturepilot.teaching_implementation_changes import record_implementation_changes
+
+            record_implementation_changes(path, current, changed, repair_reason)
             write_design_file(path, changed)
             return changed
 

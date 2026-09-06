@@ -146,7 +146,12 @@ def expand_evidence_ids(
             anchors = [target.get(key) for key in _DIRECT_ANCHORS]
             anchors.extend(
                 item.get("source_anchor")
-                for key in ("evidence_criteria", "misconceptions", "hint_ladder")
+                for key in (
+                    "evidence_criteria",
+                    "misconceptions",
+                    "hint_ladder",
+                    "supplemental_tasks",
+                )
                 for item in _objects(target.get(key, []))
             )
             target["source_refs"] = list(

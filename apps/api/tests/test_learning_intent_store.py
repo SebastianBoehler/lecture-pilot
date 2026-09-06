@@ -133,3 +133,39 @@ def test_racing_intent_approval_invalidates_pending_implementation(tmp_path):
     with pytest.raises(ValueError, match="changed"):
         repair(store, first)
     assert store.read(course_id=design.course_id, lecture_id=design.lecture_id) == latest
+
+
+def test_implementation_report_records_exact_changes_without_changing_goals(tmp_path):
+    import json
+
+    store, original = stored(tmp_path)
+    approved = approve(store, original)
+    changed = repair(
+        store,
+        approved,
+        targets=(
+            approved.targets[0].model_copy(
+                update={
+                    "baseline_task": "Derive a conclusion using the supplied evidence and justify it."
+                }
+            ),
+        ),
+    )
+    path = store.layout.lecture_practice_design_path(changed.course_id, changed.lecture_id)
+    report = json.loads(
+        (
+            path.parent / path.stem / "implementation-changes" / f"{changed.revision}.json"
+        ).read_text()
+    )
+    assert report["from_revision"] == approved.revision
+    assert report["to_revision"] == changed.revision
+    assert report["learning_intent_revision"] == approved.learning_intent.revision
+    assert report["changes"] == [
+        {
+            "target_id": changed.targets[0].id,
+            "target_title": changed.targets[0].title,
+            "field": "baseline_task",
+            "before": approved.targets[0].baseline_task,
+            "after": changed.targets[0].baseline_task,
+        }
+    ]

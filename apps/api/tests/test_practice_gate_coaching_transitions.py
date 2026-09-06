@@ -8,6 +8,7 @@ from lecturepilot.models import QualityGateDecision, QualityGateStatus
 from lecturepilot.scaffold_policy import scaffold_policy_for_tutor_turn
 from lecturepilot.storage_layout import StorageLayout
 from practice_gate_coaching_test_helpers import (
+    bank_gate as _bank_gate,
     IDS,
     NOW,
     assistant_message as _assistant_message,
@@ -78,7 +79,7 @@ def test_failed_checks_expose_approved_hints_once_and_keep_exit_indices_separate
     tmp_path,
 ) -> None:
     store = CoachingProgressStore(StorageLayout(tmp_path))
-    gate = _practice_gate()
+    gate = _bank_gate()
     _bind_diagnostic(store, gate)
 
     diagnostic = _record(
@@ -133,7 +134,7 @@ def test_failed_checks_expose_approved_hints_once_and_keep_exit_indices_separate
         store,
         gate,
         status=QualityGateStatus.PASSED,
-        next_check=_check(gate, gate.independent_exit_task, "none", None),
+        next_check=_check(gate, gate.supplemental_tasks[0].prompt, "none", None),
         now=NOW + timedelta(minutes=4),
     )
     second_exit = _record(
@@ -179,7 +180,7 @@ def test_exhausted_hint_ladder_issues_unassisted_support_retry(tmp_path) -> None
 
 def test_delayed_failure_and_support_require_another_unaided_transfer(tmp_path) -> None:
     store = CoachingProgressStore(StorageLayout(tmp_path))
-    gate = _practice_gate()
+    gate = _bank_gate()
     _bind_diagnostic(store, gate)
     _record(
         store,
@@ -217,7 +218,7 @@ def test_delayed_failure_and_support_require_another_unaided_transfer(tmp_path) 
         store,
         gate,
         status=QualityGateStatus.PASSED,
-        next_check=_check(gate, gate.transfer_prompt, "none", None),
+        next_check=_check(gate, gate.supplemental_tasks[1].prompt, "none", None),
         now=due + timedelta(minutes=2),
     )
     progress = store.read(**IDS)

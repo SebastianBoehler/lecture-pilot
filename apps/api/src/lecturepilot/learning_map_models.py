@@ -5,9 +5,18 @@ import json
 from collections.abc import Iterable
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationInfo,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 
 from lecturepilot.coaching_contract import MAX_APPROVED_TASK_LENGTH
+from lecturepilot.practice_task_bank import SupplementalPracticeTask
 
 
 HARDENING_GATE_FIELDS = {
@@ -72,6 +81,15 @@ class LearningMapGate(BaseModel):
     source_ref: str | None = Field(default=None, max_length=500)
     practice_target_id: str | None = Field(default=None, min_length=1, max_length=80)
 
+    supplemental_tasks: list[SupplementalPracticeTask] = Field(default_factory=list, max_length=6)
+
+    @model_serializer(mode="wrap")
+    def serialize_legacy_compatible(self, handler):
+        payload = handler(self)
+        if not self.supplemental_tasks:
+            payload.pop("supplemental_tasks", None)
+        return payload
+
     @field_validator(
         "transfer_prompt",
         "target_invariant",
@@ -96,6 +114,14 @@ class LearningMapGate(BaseModel):
             f"misconception for gate '{self.id}'",
         )
         _require_ordered_hints(self.hint_ladder)
+        require_unique_ids((task.id for task in self.supplemental_tasks), "supplemental task")
+        prompts = [self.prompt, self.independent_exit_task, self.transfer_prompt]
+        for task in self.supplemental_tasks:
+            if " ".join(task.prompt.split()).casefold() in {
+                " ".join(prompt.split()).casefold() for prompt in prompts if prompt
+            }:
+                raise ValueError("Supplemental tasks must differ from all bank members.")
+            prompts.append(task.prompt)
         if self.practice_target_id is not None:
             missing = PRACTICE_GATE_FIELDS - self.model_fields_set
             empty = {

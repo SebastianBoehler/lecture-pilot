@@ -5,6 +5,7 @@ from lecturepilot.coaching_assistance import NextCheck, NextCheckAssistance
 from lecturepilot.coaching_check_binding import bind_delayed_review
 from lecturepilot.coaching_progress import CoachingProgressStore
 from lecturepilot.course_learning_design_models import LearningDesignGateInput
+from lecturepilot.learning_map import LearningMap
 from lecturepilot.learner_lesson_state import lesson_state_snapshot
 from lecturepilot.learner_state import LearnerStateStore
 from lecturepilot.models import QualityGateDecision, QualityGateStatus
@@ -40,6 +41,24 @@ def test_exact_two_thousand_character_baseline_survives_binding_and_hydration(
         coaching_store=store,
         **IDS,
         publication_version=1,
+        learning_map=LearningMap.create(
+            course_id=IDS["course_id"],
+            lecture_id=IDS["lecture_id"],
+            title="Mechanism",
+            objective="Apply the boundary.",
+            gates=[gate],
+            nodes=[
+                dict(
+                    id="mechanism",
+                    title="Mechanism",
+                    lecture_id=IDS["lecture_id"],
+                    section_id=gate.section_id,
+                    prerequisites=[],
+                    gate_ids=[gate.id],
+                    quiz_ids=[],
+                )
+            ],
+        ),
         now=NOW,
     )
 
@@ -119,8 +138,16 @@ def test_exact_two_thousand_character_tasks_survive_published_api_round_trip(
     assert map_response.status_code == 200
     gate_id = "practice-practice-target"
     gate = next(item for item in map_response.json()["gates"] if item["id"] == gate_id)
-    assert gate["prompt"] == baseline
-    assert gate["transfer_prompt"] == transfer
+    assert "prompt" not in gate
+    assert "transfer_prompt" not in gate
+    internal = client.app.state.canvas_workspace.course_canvas_store.learning_map(
+        course_id=REVIEW_COURSE_ID,
+        lecture_id="lecture-a",
+    )
+    published_gate = next(item for item in internal.gates if item.id == gate_id)
+    assert published_gate.prompt == baseline
+    assert published_gate.transfer_prompt == transfer
+    assert gate["revision"] == published_gate.revision
     write_review(client, "student-a", "lecture-a", gate_id, NOW - timedelta(days=1))
 
     opened = client.post(

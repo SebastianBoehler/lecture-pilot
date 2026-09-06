@@ -60,6 +60,7 @@ async def repair_implementation(app, *, source, design, ownership, feedback=None
             raise PracticeDesignStale("Course sources changed during teaching repair.")
         changed = LearningIntentStore(layout).save_implementation(
             expected=design,
+            repair_reason=feedback,
             proposal=reviewed.proposal,
             review=reviewed.review,
             source=source,

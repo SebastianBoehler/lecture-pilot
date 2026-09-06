@@ -165,6 +165,7 @@ class AnalyticsStore:
             "attendance": attendance,
             "gate_id": decision.gate_id,
             "gate_revision": coaching_event.gate_revision,
+            "task_id": coaching_event.task_id,
             "publication_version": publication_version,
             "learning_map_revision": learning_map_revision,
             "status": decision.status,

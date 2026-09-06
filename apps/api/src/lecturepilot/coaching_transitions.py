@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Collection
 
 from lecturepilot.coaching_assistance import NextCheck, NextCheckAssistance
+from lecturepilot.coaching_task_bank import canonical_task_id, task_ids_for_stage, task_prompt
 from lecturepilot.coaching_contract import AssessmentStage
 from lecturepilot.coaching_state_models import AssessedAttemptKind
 from lecturepilot.learning_map import LearningMapGate
@@ -14,6 +15,8 @@ from lecturepilot.quality_gate_models import QualityGateStatus
 class CheckTransition:
     stage: AssessmentStage
     check: NextCheck
+    task_id: str | None = None
+    bank_exhausted: bool = False
 
 
 def initial_assessment_stage(gate: LearningMapGate) -> AssessmentStage:
@@ -26,15 +29,47 @@ def derive_next_transition(
     current_stage: AssessmentStage,
     status: QualityGateStatus,
     exposed_hint_levels: Collection[str],
+    exposed_task_ids: Collection[str] = (),
+    current_task_id: str | None = None,
 ) -> CheckTransition | None:
+    task_id = current_task_id or canonical_task_id(current_stage)
     if status == QualityGateStatus.PASSED:
-        return _passed_transition(gate, current_stage)
-    support_stage = _support_stage(current_stage)
+        transition = _passed_transition(gate, current_stage)
+        if transition is None:
+            return None
+        candidates = task_ids_for_stage(gate, transition.stage)
+        fresh = next((item for item in candidates if item not in exposed_task_ids), None)
+        if fresh is not None:
+            return CheckTransition(
+                stage=transition.stage,
+                task_id=fresh,
+                check=_check(
+                    gate,
+                    prompt=task_prompt(gate, fresh),
+                    assistance=NextCheckAssistance(level="none", content=None),
+                ),
+            )
+        return CheckTransition(
+            stage=_support_stage(current_stage),
+            task_id=task_id,
+            bank_exhausted=True,
+            check=_check(
+                gate,
+                prompt=task_prompt(gate, task_id),
+                assistance=_next_assistance(gate, exposed_hint_levels),
+            ),
+        )
+    base_stage = "delayed_transfer" if current_stage.startswith("delayed") else "independent_exit"
+    exhausted = not current_stage.startswith("diagnostic") and not any(
+        item not in exposed_task_ids for item in task_ids_for_stage(gate, base_stage)
+    )
     return CheckTransition(
-        stage=support_stage,
+        stage=_support_stage(current_stage),
+        task_id=task_id,
+        bank_exhausted=exhausted,
         check=_check(
             gate,
-            prompt=_prompt_for_stage(gate, support_stage),
+            prompt=task_prompt(gate, task_id),
             assistance=_next_assistance(gate, exposed_hint_levels),
         ),
     )

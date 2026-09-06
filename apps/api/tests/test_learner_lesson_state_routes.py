@@ -1,3 +1,4 @@
+from reviewed_task_bank_helpers import expected_goal_evidence as _expected_goal_evidence
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
@@ -55,6 +56,7 @@ def test_new_learner_receives_explicit_empty_lesson_state(tmp_path: Path) -> Non
         "quiz_states": {},
         "active_session_goal": None,
         "pending_check": None,
+        "goal_evidence": _expected_goal_evidence(client, COURSE_ID),
         "due_gate_reviews": [],
     }
 
@@ -161,7 +163,14 @@ def test_lesson_state_hydrates_gate_quiz_goal_pending_check_and_due_review(
             "prompt": gate.prompt,
             "assistance_level": "none",
             "kind": "standard",
+            "task_id": "independent-exit",
+            "stage": "independent_exit",
+            "issued_at": now.isoformat(),
+            "assistance_content": None,
+            "focus_required": True,
+            "bank_exhausted": False,
         },
+        "goal_evidence": _expected_goal_evidence(client, COURSE_ID),
         "due_gate_reviews": [
             {
                 "gate_id": "risk-check",
