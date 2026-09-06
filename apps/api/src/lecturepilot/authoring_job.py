@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -111,7 +112,9 @@ async def _run(job: AuthoringJob, *, model: Model) -> AuthoringResult:
                 checkpoint()
             state.completed = True
         finally:
-            checkpoint()
+            # Revoked workers retain the last saved checkpoint without masking cancellation.
+            if not asyncio.current_task().cancelling():
+                checkpoint()
     return AuthoringResult(workspace.document(), metrics)
 
 

@@ -25,6 +25,12 @@ from test_authoring_job import authoring_job
             "prompt_tokens_details": {"cached_tokens": 60},
             "completion_tokens_details": {"reasoning_tokens": 5},
         },
+        {
+            "prompt_tokens": 100,
+            "completion_tokens": 20,
+            "prompt_tokens_details": None,
+            "completion_tokens_details": None,
+        },
     ],
 )
 async def test_raw_usage_survives_unknown_model_price_catalogue(tmp_path, raw):
@@ -41,8 +47,9 @@ async def test_raw_usage_survives_unknown_model_price_catalogue(tmp_path, raw):
     result = await Agent(model).run("Report usage")
     assert result.usage.input_tokens == 100
     assert result.usage.output_tokens == 20
-    assert result.usage.cache_read_tokens == 60
-    assert result.usage.details["reasoning_tokens"] == 5
+    nullable_details = raw.get("prompt_tokens_details", {}) is None
+    assert result.usage.cache_read_tokens == (0 if nullable_details else 60)
+    assert result.usage.details["reasoning_tokens"] == (0 if nullable_details else 5)
 
 
 async def test_missing_usage_cannot_reuse_previous_response_usage(tmp_path):

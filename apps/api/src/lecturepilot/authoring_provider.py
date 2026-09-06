@@ -47,11 +47,11 @@ class MeteredAuthoringModel(WrapperModel):
                     raise ModelExecutionError("Provider response omitted usage accounting.")
                 usage.input_tokens = raw.get("input_tokens", raw.get("prompt_tokens", 0))
                 usage.output_tokens = raw.get("output_tokens", raw.get("completion_tokens", 0))
-                usage.cache_read_tokens = raw.get(
-                    "input_tokens_details", raw.get("prompt_tokens_details", {})
+                usage.cache_read_tokens = (
+                    raw.get("input_tokens_details", raw.get("prompt_tokens_details")) or {}
                 ).get("cached_tokens", 0)
-                usage.details["reasoning_tokens"] = raw.get(
-                    "output_tokens_details", raw.get("completion_tokens_details", {})
+                usage.details["reasoning_tokens"] = (
+                    raw.get("output_tokens_details", raw.get("completion_tokens_details")) or {}
                 ).get("reasoning_tokens", 0)
             return {
                 "response": response,
