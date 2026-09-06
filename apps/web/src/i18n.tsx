@@ -1,16 +1,9 @@
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { useContext, useMemo, type ReactNode } from "react";
 
 import { messages, type MessageKey } from "./i18nMessages";
 
-export type Locale = keyof typeof messages;
-
-type I18nContextValue = {
-  locale: Locale;
-  setLocale: (locale: Locale) => void;
-  t: (key: MessageKey, params?: Record<string, string | number>) => string;
-};
-
-const I18nContext = createContext<I18nContextValue | null>(null);
+import { I18nContext, type Locale } from "./i18nContext";
+export type { Locale } from "./i18nContext";
 
 export function I18nProvider({
   children,

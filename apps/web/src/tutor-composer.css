@@ -1,0 +1,76 @@
+.chat-dock {
+  min-width: 0;
+  background: var(--color-bg-primary);
+}
+.chat-composer {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 6px;
+  padding: 10px;
+  background: var(--color-bg-primary);
+}
+.chat-composer:focus-within {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 1px;
+}
+.chat-composer textarea {
+  min-height: 48px;
+  max-height: 180px;
+  resize: none;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.chat-composer textarea:focus-visible {
+  outline: none;
+}
+.chat-composer textarea::placeholder {
+  color: var(--color-text-tertiary);
+}
+.chat-composer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.chat-composer-actions > span {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.chat-send-button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--color-on-accent);
+  background: var(--color-accent-primary);
+}
+.chat-send-button:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+}
+.chat-send-button:disabled {
+  cursor: not-allowed;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-tertiary);
+}
+.chat-dock .form-error {
+  margin-top: 8px;
+}
+@media (max-width: 860px) {
+  .chat-composer textarea {
+    font-size: 16px;
+  }
+  .chat-send-button {
+    width: 44px;
+    height: 44px;
+  }
+}

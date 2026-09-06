@@ -1,3 +1,4 @@
+import { useI18n } from "./i18n";
 import { useMemo } from "react";
 
 import { assetPreviewUrl } from "./assetMedia";
@@ -20,6 +21,7 @@ export function WorkspaceFilesPanel({
   onClose: () => void;
   onSelectResource: (resource: WorkspaceResource) => void;
 }) {
+  const { t } = useI18n();
   const nodes = useMemo(
     () => (canvasDocument ? buildWorkspaceTree(canvasDocument) : []),
     [canvasDocument],
@@ -32,12 +34,15 @@ export function WorkspaceFilesPanel({
         <h2>Workspace files</h2>
         {canvasDocument ? (
           <>
-            <WorkspaceFileTree
-              nodes={nodes}
-              selectedResource={selectedResource}
-              onSelectResource={onSelectResource}
-            />
             <WorkspacePreview selectedResource={selectedResource} session={session} />
+            <details className="workspace-browser">
+              <summary>{t("files.browse")}</summary>
+              <WorkspaceFileTree
+                nodes={nodes}
+                selectedResource={selectedResource}
+                onSelectResource={onSelectResource}
+              />
+            </details>
           </>
         ) : (
           <p className="drawer-note">Canvas loading...</p>
@@ -54,7 +59,8 @@ function WorkspacePreview({
   selectedResource: WorkspaceResource | null;
   session: LoginSession;
 }) {
-  if (!selectedResource) return <p className="drawer-note">Select a file to preview it here.</p>;
+  if (!selectedResource)
+    return <p className="drawer-note">Open a source from the canvas, or browse the files below.</p>;
   return (
     <section className="workspace-preview" aria-label="Selected file preview">
       <span>{previewLabel(selectedResource.kind)}</span>

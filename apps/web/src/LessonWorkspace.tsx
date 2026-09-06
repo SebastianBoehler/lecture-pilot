@@ -8,10 +8,9 @@ import { useEffect, useState } from "react";
 import { useI18n } from "./i18n";
 import { canvasWithPendingCheck } from "./canvasPendingCheck";
 import { LessonCanvas } from "./LessonCanvas";
-import { LearningPathPanel } from "./LearningPathPanel";
 import { ProfessorLearnerPreviewBanner } from "./ProfessorLearnerPreviewBanner";
 import { reconcileCanvasLearnerState, type PublishedCanvasView } from "./publishedCanvasView";
-import { NotesPanel, OutlinePanel } from "./LessonSidePanels";
+import { OutlinePanel } from "./LessonSidePanels";
 import { scrollToCanvasAnchor } from "./canvasNavigation";
 import type { LearnerQuizAnswerResult } from "./analyticsApi";
 import type { TutorMessageOptions } from "./canvasLearningActions";
@@ -181,10 +180,7 @@ export function LessonWorkspace({
             <p className="drawer-note">{t("lesson.loadingCanvas")}</p>
           ) : null}
           {canvasDocument ? (
-            <LearningEvidenceFlow
-              state={canvasLearnerState.currentLearnerState}
-              document={canvasDocument}
-            />
+            <LearningEvidenceFlow state={canvasLearnerState.currentLearnerState} />
           ) : null}
           {waitingForState ? (
             <p role="status">Checking the saved attempt before opening teaching…</p>
@@ -235,26 +231,12 @@ export function LessonWorkspace({
         ) : null}
         {!focused && panelMode === "outline" ? (
           <OutlinePanel
-            activeAnchorId={activeAnchorId}
+            activeAnchorId={activeAnchorId ?? focusedSectionId}
+            learnerState={canvasLearnerState.currentLearnerState}
             canvasDocument={canvasDocument}
             onClose={() => onTogglePanel("outline")}
             onJumpAnchor={jumpToAnchor}
           />
-        ) : null}
-        {!focused && panelMode === "path" ? (
-          <LearningPathPanel
-            activeAnchorId={activeAnchorId}
-            courseId={courseId}
-            focusedSectionId={focusedSectionId}
-            lecture={lecture}
-            learnerState={canvasLearnerState.currentLearnerState}
-            session={session}
-            onClose={() => onTogglePanel("path")}
-            onJumpAnchor={jumpToAnchor}
-          />
-        ) : null}
-        {!focused && panelMode === "notes" ? (
-          <NotesPanel lecture={lecture} onClose={() => onTogglePanel("notes")} />
         ) : null}
         {!focused && panelMode === "files" ? (
           <WorkspaceFilesPanel

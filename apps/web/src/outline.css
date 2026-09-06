@@ -1,100 +1,156 @@
-.outline-tree {
+.outline-drawer h2,
+.drawer-section > h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+}
+.outline-progress {
   display: grid;
   gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--color-border-primary);
+  font-size: 13px;
+  line-height: 1.5;
 }
-
+.outline-goal {
+  margin: 0;
+}
+.outline-goal > span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.outline-continue {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 4px;
+  background: var(--color-bg-primary);
+  color: var(--color-accent-primary);
+  text-align: left;
+  font: inherit;
+}
+.outline-help {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+.outline-help summary,
+.workspace-browser summary {
+  cursor: pointer;
+  min-height: 28px;
+  align-content: center;
+}
+.outline-help ol {
+  padding-left: 20px;
+}
+.outline-help p,
+.outline-help ol {
+  margin: 8px 0 0;
+}
+.outline-tree,
 .outline-group {
   display: grid;
   gap: 6px;
 }
-
+.outline-group + .outline-group {
+  margin-top: 10px;
+}
 .outline-children {
   display: grid;
-  gap: 5px;
-  margin-left: 15px;
+  gap: 3px;
+  margin-left: 17px;
   border-left: 1px solid var(--color-border-primary);
-  padding-left: 12px;
+  padding-left: 10px;
 }
-
 .outline-node {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
+  align-items: start;
   gap: 10px;
-  border: 1px solid var(--color-border-primary);
-  border-radius: 6px;
+  width: 100%;
+  min-height: 36px;
+  border: 0;
+  border-radius: 4px;
+  padding: 8px;
   color: var(--color-text-primary);
-  text-align: left;
-}
-
-.outline-node.section {
-  padding: 10px;
-  background: var(--color-bg-primary);
-}
-
-.outline-node.child {
-  border-color: transparent;
-  padding: 7px 8px;
-  color: var(--color-text-secondary);
   background: transparent;
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.5;
 }
-
-.outline-index {
-  display: inline-grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  border: 1px solid var(--color-border-primary);
-  border-radius: 6px;
-  color: var(--color-text-tertiary);
+.outline-node.child {
+  gap: 9px;
+  padding: 6px 8px;
+}
+.outline-node:hover,
+.outline-node.is-active {
   background: var(--color-bg-secondary);
+}
+.outline-node.is-active {
+  box-shadow: inset 2px 0 var(--color-accent-primary);
+}
+.outline-index {
+  min-width: 20px;
+  color: var(--color-text-secondary);
   font-size: 12px;
-  font-weight: 800;
+  line-height: 21px;
   font-variant-numeric: tabular-nums;
 }
-
 .outline-marker {
-  width: 9px;
-  height: 9px;
-  border: 2px solid var(--color-text-tertiary);
+  width: 6px;
+  height: 6px;
+  margin-top: 8px;
   border-radius: 50%;
+  background: var(--color-border-strong);
 }
-
-.outline-marker.check {
-  border-color: var(--color-accent-primary);
+.outline-marker.check,
+.outline-marker.quiz {
   background: var(--color-accent-primary);
 }
-
 .outline-copy {
   display: grid;
   min-width: 0;
   gap: 2px;
 }
-
-.outline-kind {
-  color: var(--color-text-tertiary);
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
 .outline-title {
   overflow-wrap: anywhere;
-  font-weight: 700;
+  font-weight: 500;
 }
-
-.outline-node.child .outline-title {
+.outline-node.section .outline-title {
   font-weight: 600;
 }
-
-.outline-node.is-active {
-  border-color: var(--color-accent-primary);
-  color: var(--color-accent-primary);
-  background: var(--color-bg-secondary);
+.outline-kind,
+.outline-current-check {
+  color: var(--color-text-secondary);
+  font-size: 12px;
 }
-
-.outline-node.is-active .outline-index,
-.outline-node.is-active .outline-marker {
-  border-color: var(--color-accent-primary);
+.outline-current-check {
   color: var(--color-accent-primary);
+  font-weight: 600;
+}
+.outline-node:focus-visible,
+.outline-continue:focus-visible,
+.outline-help summary:focus-visible,
+.workspace-browser summary:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+.workspace-browser {
+  border-top: 1px solid var(--color-border-primary);
+  padding-top: 10px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+@media (max-width: 860px) {
+  .outline-node,
+  .outline-continue,
+  .workspace-browser summary {
+    min-height: 44px;
+  }
 }

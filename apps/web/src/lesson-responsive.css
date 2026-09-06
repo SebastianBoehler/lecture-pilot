@@ -1,3 +1,9 @@
+@media (min-width: 641px) and (max-width: 1180px) {
+  .app-shell:has([data-tour="professor-navigation"]) .lesson-layout {
+    --lesson-header-offset: 99px;
+  }
+}
+
 @media (max-width: 860px) {
   .lesson-layout,
   .lesson-layout.panel-open {

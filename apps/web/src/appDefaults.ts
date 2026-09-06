@@ -11,7 +11,6 @@ export function initialMessagesForAttendance(
         id: `agent-review-${review.gate_id}`,
         role: "agent",
         content: review.prompt,
-        toolTags: [review.stage === "due" ? "delayed transfer" : "review repair"],
       },
     ];
   }
@@ -20,7 +19,6 @@ export function initialMessagesForAttendance(
       id: "agent-welcome",
       role: "agent",
       content: initialMessage(attendance),
-      toolTags: [`mode: ${modeLabel(attendance)}`],
     },
   ];
 }
@@ -33,12 +31,6 @@ function initialMessage(attendance: Attendance) {
     return "You marked this lecture as missed. I’ll teach the canvas step by step and lead you toward the quality gates without jumping straight into quizzes.";
   }
   return "Attendance is unknown for this lecture. I’ll start in diagnostic mode and locate the first missing concept.";
-}
-
-function modeLabel(attendance: Attendance) {
-  if (attendance === "present") return "verification";
-  if (attendance === "absent") return "guided walkthrough";
-  return "diagnostic";
 }
 
 export const localDemoSession: LoginSession = {

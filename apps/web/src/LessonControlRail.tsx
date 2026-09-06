@@ -1,12 +1,10 @@
-import { FileText, FolderTree, GitBranch, MessageSquare, TableOfContents } from "lucide-react";
+import { FolderTree, MessageSquare, TableOfContents } from "lucide-react";
 import { useI18n } from "./i18n";
 import type { LessonPanelMode } from "./types";
 
 const controls = [
   ["chat", MessageSquare, "lesson.openChat", "lesson.closeChat"],
   ["outline", TableOfContents, "lesson.openOutline", "lesson.closeOutline"],
-  ["path", GitBranch, "lesson.openPath", "lesson.closePath"],
-  ["notes", FileText, "lesson.openNotes", "lesson.closeNotes"],
   ["files", FolderTree, "lesson.openFiles", "lesson.closeFiles"],
 ] as const;
 
@@ -27,6 +25,7 @@ export function LessonControlRail({
           className={panelMode === mode ? "rail-button is-active" : "rail-button"}
           type="button"
           aria-label={t(panelMode === mode ? close : open)}
+          title={t(panelMode === mode ? close : open)}
           aria-controls="lesson-panel"
           aria-expanded={panelMode === mode}
           aria-pressed={panelMode === mode}

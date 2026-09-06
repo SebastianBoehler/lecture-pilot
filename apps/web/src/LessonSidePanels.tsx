@@ -1,24 +1,30 @@
+import { OutlineProgress } from "./OutlineProgress";
+import { practiceStatus } from "./practiceStatus";
+import type { LearnerLessonState } from "./learnerLessonStateTypes";
 import { useI18n } from "./i18n";
 import { LessonDrawerClose } from "./LessonDrawerClose";
-import type { CanvasBlock, CanvasDocument, DocumentAnchorId, Lecture } from "./types";
+import type { CanvasBlock, CanvasDocument, DocumentAnchorId } from "./types";
 
 export function OutlinePanel({
   activeAnchorId,
   canvasDocument,
+  learnerState = null,
   onClose,
   onJumpAnchor,
 }: {
   activeAnchorId: DocumentAnchorId | null;
   canvasDocument: CanvasDocument | null;
+  learnerState?: LearnerLessonState | null;
   onClose: () => void;
   onJumpAnchor: (anchorId: DocumentAnchorId) => void;
 }) {
   const { t } = useI18n();
   return (
-    <aside className="drawer" id="lesson-panel" aria-label={t("outline.panel")}>
+    <aside className="drawer outline-drawer" id="lesson-panel" aria-label={t("outline.panel")}>
       <LessonDrawerClose returnFocusId="lesson-panel-trigger-outline" onClose={onClose} />
       <div className="drawer-section">
         <h2>{t("outline.title")}</h2>
+        <OutlineProgress state={learnerState} onJumpAnchor={onJumpAnchor} />
         <nav className="outline-tree" aria-label={t("outline.nav")}>
           {canvasDocument ? (
             canvasDocument.sections.map((section, index) => {
@@ -32,7 +38,6 @@ export function OutlinePanel({
                     activeAnchorId,
                     onJumpAnchor,
                     index,
-                    mainPointLabel: t("outline.mainPoint"),
                     variant: "section",
                   })}
                   {interestBlocks.length ? (
@@ -47,9 +52,15 @@ export function OutlinePanel({
                           title: blockTitle(block, t),
                           fullTitle: block.caption ?? block.text ?? undefined,
                           kind: outlineKind(block),
-                          kindLabel: outlineKindLabel(block, t),
+                          kindLabel:
+                            block.type === "checkpoint" || block.type === "quiz"
+                              ? t(practiceStatus(block.type, block.id, learnerState))
+                              : outlineKindLabel(block, t),
+                          currentCheck:
+                            learnerState?.pending_check?.gate_id === block.id
+                              ? t("outline.currentCheck")
+                              : undefined,
                           activeAnchorId,
-                          mainPointLabel: t("outline.mainPoint"),
                           onJumpAnchor,
                           variant: "child",
                         }),
@@ -75,7 +86,7 @@ function renderOutlineNode({
   kind,
   kindLabel,
   activeAnchorId,
-  mainPointLabel,
+  currentCheck,
   onJumpAnchor,
   index,
   variant,
@@ -86,7 +97,7 @@ function renderOutlineNode({
   kind: string;
   kindLabel?: string;
   activeAnchorId: DocumentAnchorId | null;
-  mainPointLabel: string;
+  currentCheck?: string;
   onJumpAnchor: (anchorId: DocumentAnchorId) => void;
   index?: number;
   variant: "section" | "child";
@@ -109,7 +120,7 @@ function renderOutlineNode({
         <span className={`outline-marker ${kind}`} aria-hidden="true" />
       )}
       <span className="outline-copy">
-        {variant === "section" ? <span className="outline-kind">{mainPointLabel}</span> : null}
+        {currentCheck ? <span className="outline-current-check">{currentCheck}</span> : null}
         <span className="outline-title">{title}</span>
         {variant === "child" ? <span className="outline-kind">{kindLabel ?? kind}</span> : null}
       </span>
@@ -176,7 +187,7 @@ function outlineKind(block: CanvasBlock) {
     return "key point";
   }
   if (block.type === "checkpoint") {
-    return "gate";
+    return "check";
   }
   if (block.type === "quiz") {
     return "quiz";
@@ -196,9 +207,13 @@ function outlineKindLabel(
       | "outline.kind.keyPoint"
       | "outline.kind.gate"
       | "outline.kind.quiz"
-      | "outline.kind.interactive",
+      | "outline.kind.interactive"
+      | "outline.kind.note"
+      | "outline.kind.table",
   ) => string,
 ) {
+  if (block.type === "callout") return t("outline.kind.note");
+  if (block.type === "table") return t("outline.kind.table");
   if (block.type === "asset") return t("outline.kind.figure");
   if (block.type === "video") return t("outline.kind.video");
   if (block.type === "list") return t("outline.kind.keyPoint");
@@ -213,33 +228,9 @@ function outlineTextExcerpt(text: string) {
     .replace(/\$[^$]+\$/g, "Formula")
     .replace(/\\\((.*?)\\\)/g, "Formula")
     .replace(/\\[a-zA-Z]+/g, "")
+    .replace(/\*\*|__|`/g, "")
     .replace(/\s+/g, " ")
     .trim();
-  return cleaned.split(" ").slice(0, 6).join(" ");
-}
-
-export function NotesPanel({ lecture, onClose }: { lecture: Lecture; onClose: () => void }) {
-  const { t } = useI18n();
-  return (
-    <aside className="drawer" id="lesson-panel" aria-label={t("notes.panel")}>
-      <LessonDrawerClose returnFocusId="lesson-panel-trigger-notes" onClose={onClose} />
-      <div className="drawer-section">
-        <h2>{t("notes.title")}</h2>
-        <div className="source-list">
-          <article>
-            <span>{t("notes.officialSource")}</span>
-            <strong>{lecture.materialPath ?? "courses/martius-ml/lectures/03/source.tex"}</strong>
-          </article>
-          <article>
-            <span>{t("notes.timelineGate")}</span>
-            <strong>{t("notes.unlocked", { date: lecture.date })}</strong>
-          </article>
-          <article>
-            <span>{t("notes.attendanceContext")}</span>
-            <strong>{lecture.attendance}</strong>
-          </article>
-        </div>
-      </div>
-    </aside>
-  );
+  const words = cleaned.split(" ");
+  return words.length > 10 ? `${words.slice(0, 10).join(" ")}…` : cleaned;
 }

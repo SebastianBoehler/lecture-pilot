@@ -61,7 +61,10 @@ export function completePendingTutorMessage(
       id: messageId,
       role: "agent" as const,
       content: result.message,
-      toolTags: toolTagsFromResult(result),
+      toolTags: [
+        ...(message.toolTags ?? []),
+        ...toolTagsFromResult(result).filter((tag) => !message.toolTags?.includes(tag)),
+      ],
     };
   });
 }
@@ -96,10 +99,12 @@ export function toolTagsFromResult(result: AgentTurnResult): string[] {
 const hiddenActivityTags = new Set([
   "call tutor model",
   "load learner memory",
+  "load coaching progress",
   "prepare canvas update",
   "read canvas",
   "save attendance",
   "save quality gate",
+  "save coaching progress",
   "write canvas update",
 ]);
 

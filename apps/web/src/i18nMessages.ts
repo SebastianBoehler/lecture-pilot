@@ -1,4 +1,6 @@
+import { outlineMessages } from "./outlineMessages";
 import { learningIntentMessages } from "./learningIntentMessages";
+import { tutorMessages } from "./tutorMessages";
 import { deMessages } from "./i18nMessages.de";
 import { enMessages } from "./i18nMessages.en";
 import { courseAccessMessages } from "./courseAccessMessages";
@@ -9,6 +11,8 @@ import { reviewQueueMessages } from "./reviewQueueMessages";
 
 export const messages = {
   en: {
+    ...tutorMessages.en,
+    ...outlineMessages.en,
     ...enMessages,
     ...learningIntentMessages.en,
     ...courseAccessMessages.en,
@@ -18,6 +22,8 @@ export const messages = {
     ...reviewQueueMessages.en,
   },
   de: {
+    ...tutorMessages.de,
+    ...outlineMessages.de,
     ...deMessages,
     ...learningIntentMessages.de,
     ...courseAccessMessages.de,

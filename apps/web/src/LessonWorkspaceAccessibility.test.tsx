@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { expect, it, vi } from "vitest";
@@ -34,6 +34,8 @@ it("exposes and dismisses the active mobile lesson panel accessibly", async () =
   const drawer = screen.getByRole("dialog", { name: /document outline panel/i });
   const closeButton = within(drawer).getByRole("button", { name: /close panel/i });
   expect(closeButton).toHaveFocus();
+  await user.tab();
+  expect(screen.getByText("How practice works")).toHaveFocus();
   await user.tab();
   expect(closeButton).toHaveFocus();
 
@@ -87,3 +89,29 @@ function LessonWorkspaceHarness() {
     </I18nProvider>
   );
 }
+
+it("updates the tutor dialog semantics when the viewport crosses the mobile breakpoint", async () => {
+  const media = { matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() };
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn(() => media),
+  );
+  const user = userEvent.setup();
+  render(<LessonWorkspaceHarness />);
+  await user.click(screen.getByRole("button", { name: /open tutor chat/i }));
+  const drawer = screen.getByRole("dialog", { name: /tutor drawer/i });
+  const close = within(drawer).getByRole("button", { name: /close panel/i });
+  expect(close).toHaveFocus();
+  await user.tab();
+  expect(screen.getByText("Session details")).toHaveFocus();
+  await user.tab();
+  expect(screen.getByRole("textbox", { name: "Tutor message" })).toHaveFocus();
+  await user.tab();
+  expect(close).toHaveFocus();
+  act(() => {
+    media.matches = false;
+    media.addEventListener.mock.calls[0][1]();
+  });
+  expect(drawer).not.toHaveAttribute("aria-modal");
+  expect(drawer).not.toHaveAttribute("role", "dialog");
+});

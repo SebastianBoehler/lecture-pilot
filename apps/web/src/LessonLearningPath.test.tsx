@@ -11,51 +11,34 @@ describe("Lesson learning path", () => {
     vi.unstubAllGlobals();
   });
 
-  it("opens a student learning path tab and jumps to concepts", async () => {
+  it("combines navigation and practice guidance without separate path or notes tabs", async () => {
     const user = userEvent.setup();
     vi.stubGlobal("fetch", mockLoginFetch({ published: true }));
     render(<App />);
 
     await logIn(user);
     await openLecture03FromDashboard(user);
-    await user.click(screen.getByLabelText(/open learning path/i));
-
-    const panel = await screen.findByRole("complementary", { name: /learning path panel/i });
-    expect(within(panel).getByRole("heading", { name: /learning path/i })).toBeInTheDocument();
-    const path = within(panel).getByRole("list", {
-      name: /bayesian decision theory learning path/i,
-    });
-    const currentStep = within(path).getByRole("button", {
-      name: /decision making under uncertainty.*current/i,
-    });
-    expect(currentStep).toHaveAttribute("aria-pressed", "true");
-    expect(currentStep).toHaveAttribute("aria-current", "step");
-    const firstBranch = currentStep.closest("li")?.querySelector(":scope > .student-path-branch");
-    expect(firstBranch).toBeInTheDocument();
+    expect(screen.queryByLabelText(/open learning path/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/open lecture notes panel/i)).not.toBeInTheDocument();
+    await user.click(screen.getByLabelText(/open document outline/i));
+    const panel = screen.getByRole("complementary", { name: /document outline panel/i });
+    const outline = within(panel).getByRole("navigation", { name: /lesson document outline/i });
     expect(
-      within(firstBranch as HTMLElement).getByRole("button", {
-        name: /bayes formula and conditional probability/i,
-      }),
-    ).toBeInTheDocument();
-    expect(within(path).getAllByText(/bayesian decision theory/i)).not.toHaveLength(0);
-    expect(within(path).getAllByText(/^quiz$/i)).toHaveLength(2);
-
-    await user.click(
-      within(path).getByRole("button", {
-        name: /bayes formula and conditional probability.*available/i,
-      }),
-    );
-
-    await waitFor(() => {
+      within(outline).getByRole("button", { name: "Decision making under uncertainty" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await user.click(within(panel).getByText("How practice works"));
+    expect(within(panel).getByText(/do not unlock the next section/i)).toBeVisible();
+    const next = within(outline).getByRole("button", {
+      name: /bayes formula and conditional probability/i,
+    });
+    expect(next).toBeEnabled();
+    await user.click(next);
+    await waitFor(() =>
       expect(
         screen.getByRole("region", { name: /bayes formula and conditional probability/i }),
-      ).toHaveAttribute("aria-current", "true");
-    });
-    expect(
-      within(path).getByRole("button", {
-        name: /decision making under uncertainty.*available/i,
-      }),
-    ).not.toHaveTextContent(/visited/i);
+      ).toHaveAttribute("aria-current", "true"),
+    );
+    expect(next).toHaveAttribute("aria-pressed", "true");
   });
 });
 

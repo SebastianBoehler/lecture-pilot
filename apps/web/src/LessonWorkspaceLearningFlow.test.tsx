@@ -15,7 +15,7 @@ describe("LessonWorkspace learning attempts", () => {
   it("jumps to the section start and centers individual checks without unwanted motion", async () => {
     vi.stubGlobal(
       "matchMedia",
-      vi.fn(() => ({ matches: true })),
+      vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })),
     );
     const scroll = vi.fn();
     Object.defineProperty(Element.prototype, "scrollIntoView", {
@@ -27,7 +27,7 @@ describe("LessonWorkspace learning attempts", () => {
     await userEvent.click(screen.getByRole("button", { name: "Risk" }));
     expect(scroll).toHaveBeenLastCalledWith({ behavior: "instant", block: "start" });
     await userEvent.click(
-      screen.getByRole("button", { name: "Explain why expected loss changes the" }),
+      screen.getByRole("button", { name: /Explain why expected loss changes/ }),
     );
     expect(scroll).toHaveBeenLastCalledWith({ behavior: "instant", block: "center" });
   });

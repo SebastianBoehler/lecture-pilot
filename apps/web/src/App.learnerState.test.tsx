@@ -1,3 +1,4 @@
+import type { PublishedCanvasView } from "./publishedCanvasView";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -18,6 +19,18 @@ describe("durable learner lesson state", () => {
           stateReads += 1;
           return json(persistedState("lecture-03", "Apply Bayes risk to a new case."));
         }
+        if (url.endsWith("/canvas")) {
+          const response = await baseFetch(url, init);
+          const payload = (await response.json()) as PublishedCanvasView;
+          payload.document.sections[0].blocks.push({
+            id: "bayes-decision-check",
+            type: "checkpoint",
+            text: "Explain the decision under uncertainty.",
+            caption: "Decision check",
+            items: [],
+          });
+          return json(payload);
+        }
         return baseFetch(url, init);
       }),
     );
@@ -29,9 +42,9 @@ describe("durable learner lesson state", () => {
     const goal = await screen.findByText("Apply Bayes risk to a new case.");
     expect(goal.closest(".message-list")).toBeNull();
     expect(document.querySelector(".message-list")).toHaveAttribute("aria-live", "polite");
-    await user.click(screen.getByLabelText(/open learning path/i));
-    const path = await screen.findByRole("complementary", { name: /learning path panel/i });
-    expect(within(path).getByText("Passed")).toBeInTheDocument();
+    await user.click(screen.getByLabelText(/open document outline/i));
+    const path = await screen.findByRole("complementary", { name: /document outline panel/i });
+    expect(within(path).getByText("Check passed")).toBeInTheDocument();
     expect(within(path).getByText("Correct")).toBeInTheDocument();
 
     first.unmount();
@@ -190,9 +203,9 @@ describe("durable learner lesson state", () => {
     await logIn(user);
     await openLecture03FromDashboard(user);
     await user.click(screen.getByRole("button", { name: /B Expected risk/i }));
-    await user.click(screen.getByLabelText(/open learning path/i));
+    await user.click(screen.getByLabelText(/open document outline/i));
 
-    const path = await screen.findByRole("complementary", { name: /learning path panel/i });
+    const path = await screen.findByRole("complementary", { name: /document outline panel/i });
     expect(await within(path).findByText("Correct")).toBeInTheDocument();
   });
 });

@@ -30,7 +30,7 @@ describe("LecturePilot attendance tutor intro", () => {
     await openLecture03FromDashboard(user);
 
     expect(screen.getByText(/you marked this lecture as attended/i)).toBeInTheDocument();
-    expect(screen.getByText("mode: verification")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Tutor activity")).not.toBeInTheDocument();
     expect(screen.queryByText(/mark whether you attended/i)).not.toBeInTheDocument();
     expect(screen.queryByText("gate: needs evidence")).not.toBeInTheDocument();
   });
@@ -84,7 +84,7 @@ describe("LecturePilot attendance tutor intro", () => {
     expect(
       await screen.findByRole("heading", { name: /soccer scouting example/i }),
     ).toBeInTheDocument();
-    const history = screen.getByText("+1 earlier").closest("details");
+    const history = screen.getByLabelText("Tutor activity");
     expect(history).not.toBeNull();
     expect(
       within(history as HTMLElement).getByText("canvas: student-soccer-bayes-example"),

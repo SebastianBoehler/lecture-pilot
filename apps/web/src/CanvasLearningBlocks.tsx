@@ -25,6 +25,8 @@ type LearningBlockProps = {
     publicationVersion: number,
   ) => Promise<LearnerQuizAnswerResult>;
   onSubmitCheckpoint?: (gateId: string, sectionId: string, answer: string) => Promise<void>;
+  secondaryAction?: ReactNode;
+  disabled?: boolean;
 };
 
 export function CheckpointBlock({
@@ -34,6 +36,8 @@ export function CheckpointBlock({
   onSubmitCheckpoint,
   sectionId,
   sourceMarker,
+  secondaryAction,
+  disabled = false,
 }: LearningBlockProps) {
   const { t } = useI18n();
   const [answer, setAnswer] = useCheckpointAnswer(`${block.id}:${block.text}`);
@@ -43,7 +47,7 @@ export function CheckpointBlock({
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!answer.trim() || !onSubmitCheckpoint || !sectionId) return;
+    if (!answer.trim() || !onSubmitCheckpoint || !sectionId || disabled || submitting) return;
     setSubmitting(true);
     setError(null);
     setStatus(null);
@@ -70,15 +74,22 @@ export function CheckpointBlock({
           <textarea
             id={`${block.id}-answer`}
             value={answer}
-            disabled={submitting}
+            disabled={submitting || disabled}
             placeholder={t("checkpoint.answerPlaceholder")}
             required
             rows={4}
             onChange={(event) => setAnswer(event.target.value)}
           />
-          <button className="primary-button" disabled={submitting || !answer.trim()} type="submit">
-            {submitting ? t("checkpoint.submitting") : t("checkpoint.submit")}
-          </button>
+          <div className="canvas-checkpoint-actions">
+            <button
+              className="primary-button"
+              disabled={submitting || disabled || !answer.trim()}
+              type="submit"
+            >
+              {submitting ? t("checkpoint.submitting") : t("checkpoint.submit")}
+            </button>
+            {secondaryAction}
+          </div>
           {status ? <p role="status">{status}</p> : null}
           {error ? (
             <p className="form-error" role="alert">

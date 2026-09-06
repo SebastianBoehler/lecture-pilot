@@ -173,6 +173,7 @@ describe("LecturePilot canvas interactions", () => {
     ).toBeInTheDocument();
 
     await user.click(screen.getByLabelText(/open file workspace/i));
+    await user.click(screen.getByText("Browse files"));
 
     const filePanel = screen.getByRole("complementary", { name: /file workspace panel/i });
     expect(

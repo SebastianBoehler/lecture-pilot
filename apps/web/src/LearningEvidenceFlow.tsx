@@ -4,48 +4,15 @@ import { MathText } from "./MathText";
 import type { LearnerLessonState } from "./learnerLessonStateTypes";
 import type { CanvasDocument } from "./types";
 
-export function LearningEvidenceFlow({
-  state,
-  document,
-}: {
-  state: LearnerLessonState | null;
-  document: CanvasDocument;
-}) {
-  if (!state?.pending_check && !state?.goal_evidence?.length) return null;
+export function LearningEvidenceFlow({ state }: { state: LearnerLessonState | null }) {
+  if (!state?.pending_check && !state?.due_gate_reviews.length) return null;
   return (
     <section className="learning-evidence-flow" aria-label="Learning evidence">
-      {state.active_session_goal ? (
+      {state.pending_check?.focus_required && state.active_session_goal ? (
         <p>
           <strong>Goal:</strong> {state.active_session_goal}
         </p>
       ) : null}
-      <p>Attempt → targeted support → a fresh independent task → later review</p>
-      {state.goal_evidence?.map((evidence) => (
-        <div key={evidence.gate_id}>
-          <p>
-            <strong>
-              {document.sections
-                .flatMap((section) => section.blocks)
-                .find((block) => block.id === evidence.gate_id)?.caption ?? "Learning goal"}
-            </strong>
-            {": "}
-            {evidence.delayed
-              ? "Demonstrated again after a delay"
-              : evidence.independent
-                ? "Demonstrated independently in this app"
-                : evidence.supported
-                  ? "Demonstrated with support · independent check still needed"
-                  : "Evidence still needed"}
-          </p>
-          {!state.pending_check?.focus_required && evidence.missing_evidence?.length ? (
-            <ul aria-label="Evidence to demonstrate">
-              {evidence.missing_evidence.map((text, index) => (
-                <li key={index}>{text}</li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-      ))}
       {state.pending_check?.bank_exhausted ? (
         <p role="status">
           All reviewed variants have been used. You can continue with support; a new reviewed task
@@ -61,7 +28,7 @@ export function LearningEvidenceFlow({
           />
         </div>
       ) : null}
-      {state.due_gate_reviews.length ? <p>A later review is ready in your learning path.</p> : null}
+      {state.due_gate_reviews.length ? <p>A later review is ready in your review queue.</p> : null}
     </section>
   );
 }
@@ -129,16 +96,19 @@ export function FocusedCheckpoint({
         highlightedText={null}
         sourceMarker={null}
         sectionId={section.id}
-        onSubmitCheckpoint={busy ? undefined : submit}
+        onSubmitCheckpoint={submit}
+        disabled={busy}
+        secondaryAction={
+          <button
+            type="button"
+            className="checkpoint-help"
+            disabled={busy || submitting}
+            onClick={() => void help()}
+          >
+            {busy ? "Recording help…" : "Request help and open materials"}
+          </button>
+        }
       />
-      <button
-        type="button"
-        className="refresh-button"
-        disabled={busy || submitting}
-        onClick={() => void help()}
-      >
-        {busy ? "Recording help…" : "Request help and open materials"}
-      </button>
       {error ? (
         <p className="form-error" role="alert">
           {error}

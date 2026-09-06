@@ -1,11 +1,11 @@
-import { SendHorizontal } from "lucide-react";
-import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
-
+import { ArrowDown, ChevronRight } from "lucide-react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { MathText } from "./MathText";
 import { LessonDrawerClose } from "./LessonDrawerClose";
+import { TutorActivity } from "./TutorActivity";
+import { TutorComposer } from "./TutorComposer";
 import { useI18n } from "./i18n";
 import type { ChatMessage } from "./types";
-import { useVersionUpdateActivity } from "./VersionUpdateBoundary";
 
 export function TutorDrawer({
   messages,
@@ -21,148 +21,88 @@ export function TutorDrawer({
   onSendMessage: (message: string) => Promise<void>;
 }) {
   const { t } = useI18n();
-  const [draft, setDraft] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isSending, setIsSending] = useState(false);
-  const messageListRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const following = useRef(true);
+  const [showLatest, setShowLatest] = useState(false);
   const hasPendingTurn = messages.some((message) => message.isPending);
-  useVersionUpdateActivity(isSending || hasPendingTurn || Boolean(draft.trim()));
+  useLayoutEffect(() => {
+    if (following.current && listRef.current)
+      listRef.current.scrollTop = listRef.current.scrollHeight;
+  }, [messages]);
 
-  useEffect(() => {
-    const list = messageListRef.current;
-    if (list) {
-      list.scrollTop = list.scrollHeight;
-    }
-  }, [messages.length]);
-
-  async function submitMessage(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const message = draft.trim();
-    if (!message || isSending) {
-      return;
-    }
-
-    setDraft("");
-    setError(null);
-    setIsSending(true);
-    try {
-      await onSendMessage(message);
-    } catch (sendError) {
-      setDraft(message);
-      setError(sendError instanceof Error ? sendError.message : "Tutor turn failed.");
-    } finally {
-      setIsSending(false);
-    }
+  function scrollChanged() {
+    const list = listRef.current;
+    if (!list) return;
+    following.current = list.scrollHeight - list.clientHeight - list.scrollTop < 48;
+    setShowLatest(!following.current);
   }
-
-  function handleDraftKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key !== "Enter" || event.shiftKey) {
-      return;
-    }
-    event.preventDefault();
-    event.currentTarget.form?.requestSubmit();
+  function jumpToLatest() {
+    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+    following.current = true;
+    setShowLatest(false);
   }
-
   return (
     <aside className="drawer tutor-drawer" id="lesson-panel" aria-label="Tutor drawer">
       <LessonDrawerClose returnFocusId="lesson-panel-trigger-chat" onClose={onClose} />
-      <div
-        className={`drawer-section tutor-drawer-section ${sessionGoal ? "has-session-goal" : ""}`}
-      >
-        <div className="tutor-heading">
-          <h2>Tutor</h2>
-          <span className="tutor-status">{hasPendingTurn ? "Working..." : tutorStatus(model)}</span>
-        </div>
-        {sessionGoal ? (
-          <section className="tutor-session-goal" aria-label={t("tutor.sessionGoal")}>
-            <span>{t("tutor.sessionGoal")}</span>
-            <p>{sessionGoal}</p>
-          </section>
-        ) : null}
-        <div className="message-list" aria-live="polite" ref={messageListRef}>
+      <div className="tutor-drawer-section">
+        <header className="tutor-heading">
+          <h2>{t("chat.title")}</h2>
+        </header>
+        <details className="tutor-session-details">
+          <summary>
+            <ChevronRight className="disclosure-chevron" size={14} aria-hidden="true" />
+            {t("chat.details")}
+          </summary>
+          {sessionGoal ? (
+            <section aria-label={t("tutor.sessionGoal")}>
+              <strong>{t("tutor.sessionGoal")}</strong>
+              <p>{sessionGoal}</p>
+            </section>
+          ) : null}
+          <p>
+            <strong>{t("chat.model")}</strong>
+            <span>
+              {model === "local-guided-preview"
+                ? t("chat.preview")
+                : (model ?? t("chat.modelPending"))}
+            </span>
+          </p>
+        </details>
+        <div
+          className="message-list"
+          aria-live="polite"
+          aria-label={t("chat.title")}
+          ref={listRef}
+          onScroll={scrollChanged}
+        >
           {messages.map((message) => (
             <div className={`chat-turn ${message.role}`} key={message.id}>
-              {message.role === "agent" ? <ToolTags tags={message.toolTags} /> : null}
-              <div
-                aria-busy={message.isPending ? "true" : undefined}
-                className={["chat-message", message.role, message.isPending ? "is-pending" : ""]
-                  .filter(Boolean)
-                  .join(" ")}
-              >
-                <div className="chat-message-content">
-                  <MathText highlightedText={null} mode="block" text={message.content} />
+              {message.role === "agent" ? (
+                <TutorActivity tags={message.toolTags} pending={message.isPending} />
+              ) : null}
+              {!message.isPending ? (
+                <div className={`chat-message ${message.role}`}>
+                  <span className="chat-speaker">
+                    {t(message.role === "user" ? "chat.you" : "chat.title")}
+                  </span>
+                  <div className="chat-message-content">
+                    <MathText highlightedText={null} mode="block" text={message.content} />
+                  </div>
                 </div>
-              </div>
-              {message.role === "user" ? <ToolTags tags={message.toolTags} /> : null}
+              ) : null}
             </div>
           ))}
         </div>
-        <div className="chat-dock">
-          <form className="chat-form" onSubmit={submitMessage}>
-            <div className="chat-composer">
-              <textarea
-                aria-label="Tutor message"
-                disabled={isSending}
-                onChange={(event) => setDraft(event.target.value)}
-                onKeyDown={handleDraftKeyDown}
-                placeholder="Ask about this lecture..."
-                rows={1}
-                value={draft}
-              />
-              <button
-                aria-label="Send message"
-                className="chat-send-button"
-                disabled={isSending || !draft.trim()}
-                title="Send message"
-                type="submit"
-              >
-                <SendHorizontal size={17} />
-              </button>
-            </div>
-          </form>
-          {error ? <p className="form-error">{error}</p> : null}
+        <div className="tutor-composer-dock">
+          {showLatest ? (
+            <button type="button" className="chat-latest" onClick={jumpToLatest}>
+              <ArrowDown size={14} aria-hidden="true" />
+              {t("chat.latest")}
+            </button>
+          ) : null}
+          <TutorComposer pending={hasPendingTurn} onSendMessage={onSendMessage} />
         </div>
       </div>
     </aside>
   );
-}
-
-function ToolTags({ tags }: { tags?: string[] }) {
-  if (!tags?.length) {
-    return null;
-  }
-  const visibleTags = tags.slice(-3);
-  const hiddenTags = tags.slice(0, -3);
-  return (
-    <div className="tool-tags" aria-label="Tool calls">
-      {hiddenTags.length > 0 ? (
-        <details className="tool-history">
-          <summary>+{hiddenTags.length} earlier</summary>
-          <div className="tool-history-list">
-            {hiddenTags.map((tag, index) => (
-              <span className={toolTagClassName(tag)} key={`${tag}-${index}`}>
-                <MathText highlightedText={null} text={tag} />
-              </span>
-            ))}
-          </div>
-        </details>
-      ) : null}
-      {visibleTags.map((tag, index) => (
-        <span className={toolTagClassName(tag)} key={`${tag}-${index}`}>
-          <MathText highlightedText={null} text={tag} />
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function toolTagClassName(tag: string) {
-  return ["tool-tag", tag.startsWith("phrase:") ? "tool-tag-detail" : ""].filter(Boolean).join(" ");
-}
-
-function tutorStatus(model: string | null) {
-  if (model) {
-    return model === "local-guided-preview" ? "Local guided preview" : `Model: ${model}`;
-  }
-  return "Model after first turn";
 }

@@ -41,7 +41,12 @@ export function useTeachingLanguage(
     control: (
       <div className="teaching-language-control">
         {!data ? (
-          <button type="button" disabled={busy} onClick={() => void load()}>
+          <button
+            className="ghost-button"
+            type="button"
+            disabled={busy}
+            onClick={() => void load()}
+          >
             {busy ? "Loading languages…" : "Teaching language"}
           </button>
         ) : (

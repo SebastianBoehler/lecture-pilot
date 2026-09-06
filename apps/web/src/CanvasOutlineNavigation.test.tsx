@@ -59,7 +59,7 @@ it("distinguishes checks by task and shortens provenance without losing its full
   );
 
   await userEvent.click(
-    screen.getByRole("button", { name: "Explain why unseen examples matter for" }),
+    screen.getByRole("button", { name: "Explain why unseen examples matter for classification." }),
   );
   expect(onJumpAnchor).toHaveBeenCalledWith("check");
   await userEvent.click(screen.getByRole("button", { name: "Compare the classifiers" }));

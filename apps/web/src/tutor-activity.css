@@ -1,0 +1,67 @@
+.tool-timeline,
+.tool-call {
+  min-width: 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+.tool-timeline summary,
+.tool-call summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  cursor: pointer;
+  list-style: none;
+}
+.tool-timeline summary::-webkit-details-marker,
+.tool-call summary::-webkit-details-marker,
+.tutor-session-details summary::-webkit-details-marker {
+  display: none;
+}
+.disclosure-chevron {
+  flex: 0 0 auto;
+}
+details[open] > summary > .disclosure-chevron {
+  transform: rotate(90deg);
+}
+.tool-timeline summary:hover,
+.tool-call summary:hover,
+.tutor-session-details summary:hover {
+  color: var(--color-text-primary);
+}
+.tool-timeline summary:focus-visible,
+.tool-call summary:focus-visible,
+.tutor-session-details summary:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+.tool-timeline ol {
+  display: grid;
+  gap: 3px;
+  margin: 6px 0 0 7px;
+  padding: 0 0 0 12px;
+  border-left: 1px solid var(--color-border-primary);
+  list-style: none;
+}
+.tool-call summary > span {
+  flex-shrink: 0;
+}
+.tool-call code {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+.tool-call pre {
+  margin: 4px 0 8px 18px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.tutor-working {
+  margin: 0;
+  color: var(--color-accent-primary);
+  font-size: 12px;
+}

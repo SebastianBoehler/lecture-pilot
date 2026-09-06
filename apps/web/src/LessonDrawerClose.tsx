@@ -6,6 +6,7 @@ import { useI18n } from "./i18n";
 const MOBILE_DRAWER_QUERY = "(max-width: 860px)";
 const FOCUSABLE_SELECTOR = [
   "a[href]",
+  "summary",
   "button:not([disabled])",
   "input:not([disabled])",
   "select:not([disabled])",
@@ -35,17 +36,29 @@ export function LessonDrawerClose({
 
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return undefined;
-    if (!window.matchMedia(MOBILE_DRAWER_QUERY).matches) return undefined;
+    const media = window.matchMedia(MOBILE_DRAWER_QUERY);
 
     const button = buttonRef.current;
     const drawer = button?.closest<HTMLElement>(".drawer");
     if (!button || !drawer) return undefined;
 
-    drawer.setAttribute("role", "dialog");
-    drawer.setAttribute("aria-modal", "true");
-    button.focus();
+    function updateMode() {
+      if (!drawer || !button) return;
+      if (media.matches) {
+        drawer.setAttribute("role", "dialog");
+        drawer.setAttribute("aria-modal", "true");
+        button.focus();
+      } else {
+        drawer.removeAttribute("role");
+        drawer.removeAttribute("aria-modal");
+        if (document.activeElement === button) document.getElementById(returnFocusId)?.focus();
+      }
+    }
+    updateMode();
+    media.addEventListener("change", updateMode);
 
     function handleKeyDown(event: KeyboardEvent) {
+      if (!media.matches) return;
       if (event.key === "Escape") {
         event.preventDefault();
         closeDrawer();
@@ -55,7 +68,18 @@ export function LessonDrawerClose({
 
       const focusable = Array.from(
         drawer?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? [],
-      ).filter((element) => element.getAttribute("aria-hidden") !== "true");
+      ).filter((element) => {
+        if (element.getAttribute("aria-hidden") === "true") return false;
+        for (
+          let parent = element.parentElement;
+          parent && parent !== drawer;
+          parent = parent.parentElement
+        ) {
+          if (parent.matches("details:not([open])") && parent.querySelector("summary") !== element)
+            return false;
+        }
+        return true;
+      });
       if (!focusable.length) {
         event.preventDefault();
         return;
@@ -73,11 +97,12 @@ export function LessonDrawerClose({
 
     drawer.addEventListener("keydown", handleKeyDown);
     return () => {
+      media.removeEventListener("change", updateMode);
       drawer.removeEventListener("keydown", handleKeyDown);
       drawer.removeAttribute("role");
       drawer.removeAttribute("aria-modal");
     };
-  }, [closeDrawer]);
+  }, [closeDrawer, returnFocusId]);
 
   return (
     <button

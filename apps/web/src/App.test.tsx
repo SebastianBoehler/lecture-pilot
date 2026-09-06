@@ -421,7 +421,7 @@ describe("LecturePilot app shell", () => {
     expect(screen.getByPlaceholderText(/ask about this lecture/i)).toBeInTheDocument();
   });
 
-  it("switches the focused workspace rail between tutor, outline, and notes", async () => {
+  it("switches the workspace rail between tutor, outline, and source files", async () => {
     const user = userEvent.setup();
     vi.stubGlobal("fetch", mockLoginFetch({ published: true }));
     renderPublishedApp();
@@ -449,12 +449,12 @@ describe("LecturePilot app shell", () => {
     ).toBeInTheDocument();
     expect(screen.queryByPlaceholderText(/ask about this lecture/i)).not.toBeInTheDocument();
 
-    await user.click(screen.getByLabelText(/open lecture notes panel/i));
-
-    const notesPanel = screen.getByRole("complementary", { name: /lecture notes panel/i });
-    expect(within(notesPanel).getByRole("heading", { name: /source notes/i })).toBeInTheDocument();
-    expect(within(notesPanel).getByText(/official latex source/i)).toBeInTheDocument();
-    expect(within(notesPanel).getByText(/lecture03-eng\.tex/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/open lecture notes panel/i)).not.toBeInTheDocument();
+    await user.click(screen.getByLabelText(/open file workspace/i));
+    const filesPanel = screen.getByRole("complementary", { name: /file workspace panel/i });
+    expect(within(filesPanel).getByText("Browse files").closest("details")).not.toHaveAttribute(
+      "open",
+    );
   });
 
   it("renders professor course canvas blocks instead of old demo artifacts", async () => {
@@ -525,7 +525,8 @@ describe("LecturePilot app shell", () => {
 
     await user.click(screen.getByRole("button", { name: /preview local demo/i }));
     await openLecture03FromDashboard(user);
-    expect(screen.getByText(/model after first turn/i)).toBeInTheDocument();
+    await user.click(screen.getByText("Session details"));
+    expect(screen.getByText("Available after the first reply")).toBeVisible();
 
     const prompt = screen.getByPlaceholderText(/ask about this lecture/i);
     await user.type(prompt, "What are");
@@ -535,7 +536,7 @@ describe("LecturePilot app shell", () => {
     await user.keyboard("{Enter}");
 
     expect(await screen.findByText(/bayes answer/i)).toBeInTheDocument();
-    expect(screen.getByText(/model: gemini\/gemini-3\.1-flash-lite/i)).toBeInTheDocument();
+    expect(screen.getByText("gemini/gemini-3.1-flash-lite")).toBeVisible();
     expect(screen.getByText("focus: bayes-formula")).toBeInTheDocument();
     expect(screen.getAllByText("gate: needs evidence").length).toBeGreaterThanOrEqual(1);
     expect(

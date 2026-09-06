@@ -282,6 +282,9 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
   not overwrite published tasks or carry a previous answer into a changed task.
 - Side panels are navigation and inspection aids; do not move core learning
   content into a side panel unless the user explicitly asks.
+- Learner sidebar modes are Tutor, Document outline, and files. The outline owns
+  section navigation and practice evidence; do not reintroduce separate path or
+  metadata-only notes panels. Practice checks do not unlock subsequent sections.
 - Source references must stay in-app. Do not use direct links that navigate the
   browser away from LecturePilot for course assets or source traces.
 - Prefer compact, readable controls. Avoid gradients, decorative blobs, nested
