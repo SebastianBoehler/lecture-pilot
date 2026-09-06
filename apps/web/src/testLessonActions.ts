@@ -11,7 +11,8 @@ export async function showAllPublishedLectures(user: ReturnType<typeof userEvent
 export async function openLecture03FromDashboard(user: ReturnType<typeof userEvent.setup>) {
   await showAllPublishedLectures(user);
   await user.click(await screen.findByRole("button", { name: /open lecture 03/i }));
-  await screen.findByLabelText(/close tutor chat/i);
+  // Allow the cold lazy lesson module to transform on constrained CI workers.
+  await screen.findByLabelText(/close tutor chat/i, {}, { timeout: 5_000 });
 }
 
 export async function openProfessorDemo(user: ReturnType<typeof userEvent.setup>) {
