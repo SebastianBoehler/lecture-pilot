@@ -6,7 +6,11 @@ import type { MessageKey } from "./i18nMessages";
 import { LessonDrawerClose } from "./LessonDrawerClose";
 import { getLectureLearningMap } from "./learningMapApi";
 import { buildLearningTree, type LearningTreeBranch } from "./learningTree";
-import type { LearningMap, LearningMapGate, LearningMapNode } from "./learningMapTypes";
+import type {
+  LearnerLearningMap,
+  LearnerLearningMapGate,
+  LearningMapNode,
+} from "./learningMapTypes";
 import type { LearnerLessonState } from "./learnerLessonStateTypes";
 import type { DocumentAnchorId, Lecture, LoginSession } from "./types";
 
@@ -33,7 +37,7 @@ export function LearningPathPanel({
   onJumpAnchor: (anchorId: DocumentAnchorId) => void;
 }) {
   const { t } = useI18n();
-  const [learningMap, setLearningMap] = useState<LearningMap | null>(null);
+  const [learningMap, setLearningMap] = useState<LearnerLearningMap | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -118,7 +122,7 @@ function PathBranch({
   activeAnchorId: DocumentAnchorId | null;
   branch: LearningTreeBranch<LearningMapNode>;
   focusedSectionId: string;
-  gateLookup: Map<string, LearningMapGate>;
+  gateLookup: Map<string, LearnerLearningMapGate>;
   indexById: Map<string, number>;
   learnerState: LearnerLessonState | null;
   t: Translator;

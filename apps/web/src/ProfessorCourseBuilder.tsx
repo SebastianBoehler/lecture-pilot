@@ -1,3 +1,4 @@
+import { ProfessorImplementationChanges } from "./ProfessorImplementationChanges";
 import { useI18n } from "./i18n";
 import {
   builderStepLabel,
@@ -93,10 +94,22 @@ export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
             {builder.activeStep === "publish" ? (
               <ProfessorPublishStep
                 {...builder.publishStep}
+                courseId={builder.workspace?.courseId}
+                session={props.session}
                 canPublish={builder.publishStep.canPublish && learningDesign.allApproved}
               />
             ) : null}
           </div>
+          {builder.activeStep === "generate" && builder.workspace
+            ? reviewLectureIds.map((lectureId) => (
+                <ProfessorImplementationChanges
+                  key={lectureId}
+                  courseId={builder.workspace!.courseId}
+                  lectureId={lectureId}
+                  session={props.session}
+                />
+              ))
+            : null}
           <ProfessorGenerationWarnings warnings={builder.generationWarnings} />
           {builder.notice ? <p className="form-success">{builder.notice}</p> : null}
           {builder.error ? <p className="form-error">{builder.error}</p> : null}

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 
@@ -25,12 +25,9 @@ it("opens a due review at its exact section and presents the bound transfer prom
   await user.click(await screen.findByRole("button", { name: /open due review/i }));
 
   const prompt = await screen.findByText("Apply expected risk to an unfamiliar hospital case.");
-  expect(prompt.closest(".message-list")).not.toBeNull();
-  await waitFor(() => {
-    expect(document.getElementById("losses-and-risks")).toHaveClass("is-focused");
-    expect(document.getElementById("losses-and-risks-p-1")).toHaveClass("is-highlighted");
-  });
-  expect(within(screen.getByLabelText("Tutor drawer")).getByText("delayed transfer")).toBeVisible();
+  expect(prompt.closest(".focused-checkpoint")).not.toBeNull();
+  expect(screen.queryByLabelText("Tutor drawer")).toBeNull();
+  expect(screen.getByRole("heading", { name: "Later review" })).toBeVisible();
 });
 
 function queue() {
@@ -69,10 +66,16 @@ function emptyLessonState() {
   return {
     course_id: "martius-ml",
     lecture_id: "lecture-03",
+    publication_version: 1,
     gate_statuses: {},
     quiz_states: {},
     active_session_goal: null,
     pending_check: {
+      task_id: "delayed-transfer",
+      issued_at: "2026-09-06T12:00:00Z",
+      stage: "delayed_transfer",
+      focus_required: true,
+      bank_exhausted: false,
       gate_id: "losses-and-risks-p-1",
       gate_revision: "revision-1",
       prompt: "Apply expected risk to an unfamiliar hospital case.",

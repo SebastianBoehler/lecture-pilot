@@ -1,3 +1,4 @@
+import type { SupplementalPracticeTask } from "./practiceTaskBankTypes";
 export type LearningDesignEvidenceCriterion = {
   id: string;
   description: string;
@@ -5,6 +6,7 @@ export type LearningDesignEvidenceCriterion = {
 };
 
 export type LearningDesignGate = {
+  supplemental_tasks?: readonly SupplementalPracticeTask[];
   id: string;
   concept_id: string;
   title: string;

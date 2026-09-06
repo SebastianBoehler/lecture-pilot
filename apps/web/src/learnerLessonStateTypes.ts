@@ -21,9 +21,30 @@ export type LearnerLessonState = {
     gate_id: string;
     gate_revision: string;
     prompt: string;
-    assistance_level: "none" | "prompt" | "hint" | "worked_step" | "worked_example";
+    assistance_level: "none" | "prompt" | "cue" | "faded_example" | "worked_step";
     kind: "standard" | "delayed_transfer";
+    task_id?: string;
+    issued_at?: string;
+    stage?:
+      | "diagnostic"
+      | "diagnostic_support"
+      | "independent_exit"
+      | "exit_support"
+      | "delayed_transfer"
+      | "delayed_support";
+    assistance_content?: string | null;
+    focus_required?: boolean;
+    bank_exhausted?: boolean;
   } | null;
+  goal_evidence?: Array<{
+    gate_id: string;
+    gate_revision: string;
+    supported: boolean;
+    independent: boolean;
+    delayed: boolean;
+    missing_evidence_ids: string[];
+    missing_evidence?: string[];
+  }>;
   due_gate_reviews: Array<{
     gate_id: string;
     gate_revision: string;

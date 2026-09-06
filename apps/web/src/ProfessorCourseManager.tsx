@@ -1,3 +1,4 @@
+import { ProfessorLanguageVariants } from "./ProfessorLanguageVariants";
 import { useI18n } from "./i18n";
 import {
   accessAudienceLabel,
@@ -162,6 +163,13 @@ export function ProfessorCourseManager({
                             {t("courseAccess.manage")}
                           </button>
                         </span>
+                        {accessSummary.content_ready ? (
+                          <ProfessorLanguageVariants
+                            courseId={workspace.course.id}
+                            lectureId={lecture.id}
+                            session={session}
+                          />
+                        ) : null}
                       </li>
                     );
                   })}

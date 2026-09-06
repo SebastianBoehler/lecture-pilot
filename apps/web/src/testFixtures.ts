@@ -18,6 +18,7 @@ export function mockLoginFetch({ published = false }: { published?: boolean } = 
         json: async () => publicationPayload(url, published),
       };
     }
+    if (url.endsWith("/learner-state")) return json(emptyLearnerState(url));
     if (url.endsWith("/courses")) return json(courseListPayload());
     if (/\/courses\/[^/]+\/lectures$/.test(url)) return json(lectureListPayload(published));
     if (url.endsWith("/review-queue")) return json(emptyReviewQueue(url));
@@ -57,6 +58,7 @@ export function mockLoginAndTutorFetch({
       };
     }
 
+    if (url.endsWith("/learner-state")) return json(emptyLearnerState(url));
     if (url.endsWith("/courses")) return json(courseListPayload());
     if (/\/courses\/[^/]+\/lectures$/.test(url)) return json(lectureListPayload(published));
     if (url.endsWith("/review-queue")) return json(emptyReviewQueue(url));
@@ -180,5 +182,19 @@ function loginPayload() {
         term: "Sommer 2026",
       },
     ],
+  };
+}
+
+export function emptyLearnerState(url: string) {
+  return {
+    course_id: url.match(/courses\/([^/]+)/)?.[1] ?? "martius-ml",
+    lecture_id: url.match(/lectures\/([^/]+)/)?.[1] ?? "lecture-03",
+    publication_version: 1,
+    gate_statuses: {},
+    quiz_states: {},
+    active_session_goal: null,
+    pending_check: null,
+    due_gate_reviews: [],
+    goal_evidence: [],
   };
 }

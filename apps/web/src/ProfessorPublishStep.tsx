@@ -1,7 +1,11 @@
+import { ProfessorLanguageVariants } from "./ProfessorLanguageVariants";
+import type { LoginSession } from "./types";
 import { useI18n } from "./i18n";
 import { PendingStatus, StepHeader } from "./ProfessorCourseBuilderParts";
 
 export function ProfessorPublishStep({
+  courseId,
+  session,
   canPublish,
   isFullCourse,
   isPublishing,
@@ -11,6 +15,8 @@ export function ProfessorPublishStep({
   ready,
   totalCount,
 }: {
+  courseId?: string;
+  session?: LoginSession;
   canPublish: boolean;
   isFullCourse: boolean;
   isPublishing: boolean;
@@ -54,6 +60,20 @@ export function ProfessorPublishStep({
       ) : null}
       {isPublishing ? <PendingStatus label={statusLabel} /> : null}
       {ready ? <PublishedLectureList lectures={lectures} /> : null}
+      {ready && courseId && session
+        ? lectures
+            .filter((lecture) => lecture.published)
+            .map((lecture) => (
+              <section key={lecture.id}>
+                <h3>{lecture.label}</h3>
+                <ProfessorLanguageVariants
+                  courseId={courseId}
+                  lectureId={lecture.id}
+                  session={session}
+                />
+              </section>
+            ))
+        : null}
     </section>
   );
 }

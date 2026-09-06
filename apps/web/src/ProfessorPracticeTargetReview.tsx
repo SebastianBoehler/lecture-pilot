@@ -1,3 +1,4 @@
+import { ProfessorTaskBankReview } from "./ProfessorTaskBankReview";
 import { useI18n } from "./i18n";
 import { ProfessorPracticeEvidence } from "./ProfessorPracticeEvidence";
 import { ProfessorPracticeTargetEditor } from "./ProfessorPracticeTargetEditor";
@@ -70,6 +71,7 @@ export function ProfessorPracticeTargetReview({
           </li>
         ))}
       </ol>
+      <ProfessorTaskBankReview tasks={target.supplemental_tasks ?? []} />
       <details className="practice-target-diagnostics">
         <summary>
           <span>{t("builder.design.inspectSupport")}</span>

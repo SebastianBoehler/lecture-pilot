@@ -62,7 +62,7 @@ describe("durable learner lesson state", () => {
     render(<App />);
 
     await logIn(user);
-    await openLecture03FromDashboard(user);
+    await openLecture03FromDashboard(user, false);
     await act(async () => {
       window.history.pushState({}, "", "/courses/martius-ml/lectures/lecture-02");
       window.dispatchEvent(new PopStateEvent("popstate"));
@@ -118,7 +118,7 @@ describe("durable learner lesson state", () => {
     expect(await screen.findByText("Use expected risk without hints.")).toBeInTheDocument();
   });
 
-  it("keeps a successful tutor update when an older hydration request finishes later", async () => {
+  it("waits for hydration before allowing a tutor turn, then refreshes authoritative state", async () => {
     const baseFetch = mockLoginAndTutorFetch({
       tutorResponse: {
         message: "Goal updated.",
@@ -151,15 +151,15 @@ describe("durable learner lesson state", () => {
     render(<App />);
 
     await logIn(user);
-    await openLecture03FromDashboard(user);
+    await openLecture03FromDashboard(user, false);
+    expect(screen.queryByPlaceholderText(/ask about this lecture/i)).toBeNull();
+    expect(screen.queryByRole("article")).toBeNull();
+    await act(async () => resolveHydration?.(json(emptyState("lecture-03"))));
+    await screen.findByPlaceholderText(/ask about this lecture/i);
     await user.type(screen.getByPlaceholderText(/ask about this lecture/i), "My repaired answer.");
     await user.click(screen.getByRole("button", { name: /send message/i }));
     expect(await screen.findByText("Use the repaired strategy independently.")).toBeInTheDocument();
 
-    await act(async () => {
-      resolveHydration?.(json(persistedState("lecture-03", "Older goal.")));
-    });
-    expect(screen.queryByText("Older goal.")).not.toBeInTheDocument();
     expect(screen.getByText("Use the repaired strategy independently.")).toBeInTheDocument();
   });
 

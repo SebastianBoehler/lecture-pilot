@@ -1,3 +1,4 @@
+import { useCheckpointAnswer } from "./CheckpointDrafts";
 import { useState, type FormEvent, type ReactNode } from "react";
 
 import { MathText } from "./MathText";
@@ -35,7 +36,7 @@ export function CheckpointBlock({
   sourceMarker,
 }: LearningBlockProps) {
   const { t } = useI18n();
-  const [answer, setAnswer] = useState("");
+  const [answer, setAnswer] = useCheckpointAnswer(`${block.id}:${block.text}`);
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +49,7 @@ export function CheckpointBlock({
     setStatus(null);
     try {
       await onSubmitCheckpoint(block.id, sectionId, answer.trim());
+      setAnswer("");
       setStatus(t("checkpoint.submitted"));
     } catch (reason) {
       setError(errorMessage(reason, t("attempt.failed")));

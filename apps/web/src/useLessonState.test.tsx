@@ -266,6 +266,11 @@ function pendingCheck(gateId: string) {
     gate_id: gateId,
     gate_revision: "revision-1",
     prompt: "Try the changed case.",
+    task_id: "delayed-transfer",
+    issued_at: "2026-09-06T12:00:00Z",
+    stage: "delayed_transfer" as const,
+    focus_required: true,
+    bank_exhausted: false,
     assistance_level: "none" as const,
     kind: "delayed_transfer" as const,
   };

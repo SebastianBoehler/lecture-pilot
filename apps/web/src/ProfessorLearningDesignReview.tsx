@@ -1,3 +1,4 @@
+import { ProfessorTaskBankReview } from "./ProfessorTaskBankReview";
 import { useEffect, useState } from "react";
 
 import { useI18n } from "./i18n";
@@ -31,6 +32,14 @@ export function ProfessorLearningDesignReview({
             : "builder.learningDesign.reviewIntro",
         )}
       </p>
+      {review.learning_map.gates
+        .filter((gate) => gate.supplemental_tasks?.length)
+        .map((gate) => (
+          <section key={gate.id}>
+            <h4>{gate.title}</h4>
+            <ProfessorTaskBankReview tasks={gate.supplemental_tasks!} />
+          </section>
+        ))}
       <div className="learning-design-fields">
         <label>
           {t("builder.learningDesign.objective")}

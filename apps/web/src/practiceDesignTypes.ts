@@ -1,3 +1,4 @@
+import type { SupplementalPracticeTask } from "./practiceTaskBankTypes";
 import type { LearningIntent } from "./learningIntentTypes";
 
 export type PracticeSourceAnchor = Readonly<{
@@ -47,6 +48,7 @@ export type PracticeHint = Readonly<{
 }>;
 
 export type PracticeTarget = Readonly<{
+  supplemental_tasks?: readonly SupplementalPracticeTask[];
   id: string;
   title: string;
   outcome: string;

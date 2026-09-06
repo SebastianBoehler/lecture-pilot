@@ -1,3 +1,4 @@
+import { emptyLearnerState } from "./testFixtures";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
@@ -72,6 +73,7 @@ it("opens the readiness check in the professor preview workspace", async () => {
 
 async function handleRequest(input: RequestInfo | URL, _init?: RequestInit) {
   const url = String(input);
+  if (url.endsWith("/learner-state")) return json(emptyLearnerState(url));
   if (url.endsWith("/admin/courses")) {
     return json([
       {

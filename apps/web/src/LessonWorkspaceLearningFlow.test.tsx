@@ -67,6 +67,74 @@ describe("LessonWorkspace learning attempts", () => {
     view.setLearnerState(null);
     expect(screen.getByLabelText(/your checkpoint answer/i)).toHaveValue("");
   });
+  it("closes teaching and chat until help is recorded and keeps them closed on failure", async () => {
+    const state: LearnerLessonState = {
+      course_id: "course-1",
+      lecture_id: "lecture-1",
+      publication_version: 1,
+      gate_statuses: {},
+      quiz_states: {},
+      active_session_goal: "Apply expected loss",
+      due_gate_reviews: [],
+      pending_check: {
+        gate_id: "risk-checkpoint",
+        gate_revision: "revision",
+        task_id: "independent-exit",
+        issued_at: "2026-09-06T12:00:00Z",
+        prompt: "Unaided new task",
+        assistance_level: "none",
+        kind: "standard",
+        stage: "independent_exit",
+        bank_exhausted: false,
+        focus_required: true,
+      },
+    };
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ detail: "Stale check" }) });
+    vi.stubGlobal("fetch", fetcher);
+    const view = renderWorkspace({ onSendMessage: tutorMessageMock(), learnerState: state });
+    expect(screen.getByRole("region", { name: "Independent attempt" })).toBeInTheDocument();
+    expect(screen.queryByText("What should be minimized?")).toBeNull();
+    expect(screen.queryByRole("button", { name: /open chat/i })).toBeNull();
+    await userEvent.type(screen.getByLabelText(/your checkpoint answer/i), "My partial reasoning");
+    await userEvent.click(screen.getByRole("button", { name: "Request help and open materials" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Stale check");
+    expect(screen.queryByText("What should be minimized?")).toBeNull();
+    fetcher.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        ...state,
+        pending_check: {
+          ...state.pending_check,
+          focus_required: false,
+          stage: "exit_support",
+          assistance_content: "Inspect the losses.",
+        },
+      }),
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Request help and open materials" }));
+    expect(screen.getByText("What should be minimized?")).toBeInTheDocument();
+    expect(screen.getByText("Inspect the losses.")).toBeInTheDocument();
+    expect(screen.getByLabelText(/your checkpoint answer/i)).toHaveValue("My partial reasoning");
+    expect(JSON.parse(fetcher.mock.calls[1][1].body)).toMatchObject({
+      task_id: "independent-exit",
+      issued_at: state.pending_check!.issued_at,
+    });
+    view.setLearnerState({
+      ...state,
+      pending_check: {
+        ...state.pending_check!,
+        task_id: "exit-variant",
+        issued_at: "2026-09-06T12:01:00Z",
+        prompt: "Fresh task",
+      },
+    });
+    expect(screen.getByText("Fresh task")).toBeInTheDocument();
+    expect(screen.getByLabelText(/your checkpoint answer/i)).toHaveValue("");
+    expect(screen.queryByText("What should be minimized?")).toBeNull();
+    vi.unstubAllGlobals();
+  });
   it("submits a checkpoint through the tutor with its published section and gate", async () => {
     const user = userEvent.setup();
     const onSendMessage = tutorMessageMock();
@@ -115,7 +183,18 @@ function renderWorkspace({
         messages={[]}
         navigationVersion={0}
         panelMode={panelMode}
-        learnerState={state}
+        learnerState={
+          state ?? {
+            course_id: "course-1",
+            lecture_id: "lecture-1",
+            publication_version: 1,
+            gate_statuses: {},
+            quiz_states: {},
+            active_session_goal: null,
+            pending_check: null,
+            due_gate_reviews: [],
+          }
+        }
         learnerStateError={null}
         session={{ username: "student", term: "Summer 2026", courses: [] }}
         tutorModel={null}
