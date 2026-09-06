@@ -81,6 +81,30 @@ describe("Professor course builder restoration", () => {
     ).toMatchObject({ courseReady: false, workspace: null });
   });
 
+  it("clears a previous connection error after a successful workspace refresh", async () => {
+    saveRestorableFullCourse();
+    const baseFetch = professorFetchMock();
+    let unavailable = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string, init?: RequestInit) => {
+        if (unavailable && url.includes("/source-bundle")) {
+          return Promise.reject(new TypeError("Failed to fetch"));
+        }
+        return baseFetch(url, init);
+      }),
+    );
+    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps));
+    await waitFor(() => expect(result.current.isRestoring).toBe(false));
+    unavailable = true;
+    act(() => result.current.restoreWorkspace());
+    await waitFor(() => expect(result.current.error).toBe("Failed to fetch"));
+    unavailable = false;
+    act(() => result.current.restoreWorkspace());
+    await waitFor(() => expect(result.current.isRestoring).toBe(false));
+    expect(result.current.error).toBeNull();
+  });
+
   it("keeps a still-running lecture out of the failed retry state after refresh", async () => {
     saveRestorableFullCourse();
     const baseFetch = professorFetchMock();

@@ -148,6 +148,10 @@ def create_app() -> FastAPI:
     )
     app.state.image_generator = image_generator_from_env()
     app.state.youtube_discovery = YoutubeDiscovery.from_env()
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts())
+    app.add_middleware(RequestBodyLimitMiddleware)
+    app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(CsrfProtectionMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(allowed_origins()),
@@ -169,14 +173,12 @@ def create_app() -> FastAPI:
         expose_headers=[
             CLIENT_CONTRACT_HEADER,
             "X-Generation-Id",
+            "X-Generation-Repairable",
             "X-Generation-Status",
+            "Retry-After",
             "X-Request-ID",
         ],
     )
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts())
-    app.add_middleware(RequestBodyLimitMiddleware)
-    app.add_middleware(RateLimitMiddleware)
-    app.add_middleware(CsrfProtectionMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RequestDiagnosticsMiddleware)
     app.add_middleware(SessionCookieRefreshMiddleware)

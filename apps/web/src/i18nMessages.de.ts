@@ -552,7 +552,7 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.step.upload": "Hochladen",
   "builder.step.sources": "Quellen",
   "builder.step.design": "Lernplan",
-  "builder.step.review": "Medien",
+  "builder.step.review": "Medien (optional)",
   "builder.step.generate": "Generieren",
   "builder.step.publish": "Veröffentlichen",
   "builder.stage.define": "Lege Zugriff und Umfang fest, bevor du das erste Material hochlädst.",
@@ -788,6 +788,9 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.upload.uploadSelected": "Materialien hochladen und verarbeiten",
   "builder.upload.uploadingStatus": "Materialien werden hochgeladen und vorbereitet...",
   "builder.sources.title": "Quellenzuordnung bereit",
+  "builder.sources.pendingTitle": "Quellenzuordnung erforderlich",
+  "builder.sources.pendingHelp":
+    "Erstelle einen Vorschlag, der jede indexierte Datei einer Vorlesung, dem gesamten Kurs oder 'nicht verwenden' zuordnet. Bestätige die Zuordnung vor der Erstellung des Lehrplans.",
   "builder.sources.help":
     "LecturePilot hat jede indexierte Datei einer Vorlesung, dem gesamten Kurs oder 'nicht verwenden' zugeordnet. Übernimm den Vorschlag oder prüfe bei Bedarf einzelne Zuordnungen.",
   "builder.sources.overviewAssigned": "{count} zugeordnet",

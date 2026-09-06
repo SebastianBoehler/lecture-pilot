@@ -489,6 +489,7 @@ export function useProfessorCourseBuilder({
       return;
     }
     setIsRestoring(true);
+    setError(null);
     try {
       if (options.skipWhenMissing) {
         const savedWorkspaceExists = (await listCourseWorkspaces(session)).some(
@@ -688,7 +689,7 @@ export function useProfessorCourseBuilder({
 
   const generateStep = {
     canvas,
-    canGenerate: Boolean(bundleReady && routingReady && reviewReady && designReady && workspace),
+    canGenerate: Boolean(bundleReady && routingReady && designReady && workspace),
     generationProgress,
     generatedCount: generatedLectureIds.length,
     isFullCourse: setup.target === "full-course",

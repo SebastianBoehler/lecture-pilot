@@ -53,7 +53,7 @@ export function builderSteps({
     },
     { available: routingReady, id: "review", label: "Media", number: "05", ready: reviewReady },
     {
-      available: (routingReady && reviewReady && designReady) || canvasReady,
+      available: (routingReady && designReady) || canvasReady,
       id: "generate",
       label: "Generate",
       number: "06",

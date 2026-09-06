@@ -44,10 +44,12 @@ export function ProfessorSourceRoutingStep({
     <section className="flow-card">
       <StepHeader
         number="03"
-        title={t("builder.sources.title")}
+        title={t(routingMissing ? "builder.sources.pendingTitle" : "builder.sources.title")}
         done={Boolean(routing?.confirmed) && !noAssignedEvidence}
       />
-      <p className="flow-help">{t("builder.sources.help")}</p>
+      <p className="flow-help">
+        {t(routingMissing ? "builder.sources.pendingHelp" : "builder.sources.help")}
+      </p>
       <div className="source-routing-overview" role="list">
         <span role="listitem">
           {t("builder.sources.overviewAssigned", { count: counts.assigned })}

@@ -127,7 +127,7 @@ describe("Professor course builder", () => {
       await screen.findByRole("heading", { name: /review youtube candidates/i }),
     ).toBeInTheDocument();
     expect(screen.getByText(/videos are saved directly for lecture 03/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /06 generate/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /06 generate/i })).toBeEnabled();
     expect(screen.getByRole("button", { name: /search youtube/i })).toBeEnabled();
     const candidate = await screen.findByLabelText(/bayesian decision theory/i);
     expect(screen.getByRole("button", { name: /refresh suggested videos/i })).toBeEnabled();

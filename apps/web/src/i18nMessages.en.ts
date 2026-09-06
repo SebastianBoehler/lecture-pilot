@@ -539,7 +539,7 @@ export const enMessages = {
   "builder.step.upload": "Upload",
   "builder.step.sources": "Sources",
   "builder.step.design": "Design",
-  "builder.step.review": "Media",
+  "builder.step.review": "Media (optional)",
   "builder.step.generate": "Generate",
   "builder.step.publish": "Publish",
   "builder.stage.define": "Set access and scope before adding the first course material.",
@@ -770,6 +770,9 @@ export const enMessages = {
   "builder.upload.uploadSelected": "Upload and process materials",
   "builder.upload.uploadingStatus": "Uploading and preparing materials...",
   "builder.sources.title": "Source assignments ready",
+  "builder.sources.pendingTitle": "Source assignments needed",
+  "builder.sources.pendingHelp":
+    "Generate a proposal to assign each indexed file to a lecture, the whole course, or not used. You will confirm the assignments before teaching-plan generation.",
   "builder.sources.help":
     "LecturePilot assigned every indexed file to a lecture, the whole course, or not used. Continue with the proposal, or inspect individual assignments if needed.",
   "builder.sources.overviewAssigned": "{count} assigned",

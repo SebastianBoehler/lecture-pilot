@@ -47,6 +47,24 @@ const routing: CourseSourceRoutingManifest = {
 };
 
 describe("ProfessorSourceRoutingStep", () => {
+  it("does not announce ready assignments before a proposal exists", () => {
+    render(
+      <I18nProvider locale="en" setLocale={() => undefined}>
+        <ProfessorSourceRoutingStep
+          isSaving={false}
+          lectures={[]}
+          routing={null}
+          onConfirm={vi.fn()}
+          onRegenerate={vi.fn()}
+          onRouteChange={vi.fn()}
+        />
+      </I18nProvider>,
+    );
+    expect(screen.queryByText(/source assignments ready/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/assigned every indexed file/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /retry source assignment/i })).toBeEnabled();
+  });
+
   it("makes continuing primary and keeps individual routes behind optional review", async () => {
     const user = userEvent.setup();
     const routeChanges: unknown[][] = [];
