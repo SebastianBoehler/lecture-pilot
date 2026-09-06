@@ -87,11 +87,15 @@ async def test_section_planner_repairs_an_invalid_checkpoint_before_batch_valida
     )
 
     assert client.calls == 1
-    checkpoint = next(block for block in planned.sections[0].blocks if block.type == "checkpoint")
+    checkpoint = next(
+        block
+        for block in planned.sections[0].blocks
+        if block.type == "checkpoint" and not block.id.startswith("practice-")
+    )
     assert checkpoint.text.startswith("Explain this statement")
 
 
-async def test_section_planner_repairs_a_section_without_an_open_response_check() -> None:
+async def test_section_planner_assembles_approved_check_without_a_second_provider_call() -> None:
     client = _QuizOnlySectionClient()
 
     planned = await plan_sections_individually(
@@ -101,7 +105,7 @@ async def test_section_planner_repairs_a_section_without_an_open_response_check(
         practice_design=practice_design_for_canvas(_source_document(1)),
     )
 
-    assert client.calls == 2
+    assert client.calls == 1
     assert any(block.type == "checkpoint" for block in planned.sections[0].blocks)
 
 
@@ -188,7 +192,7 @@ class _ControlledPlanClient:
         self.pending: list[asyncio.Future[None]] = []
         self.started_changed = asyncio.Condition()
 
-    async def complete_plan(self, *, settings, messages):
+    async def complete_plan(self, *, settings, messages, response_format=None):
         source_id = _source_id(messages)
         release = asyncio.get_running_loop().create_future()
         self.pending.append(release)
@@ -216,7 +220,7 @@ class _OneInvalidSectionClient:
     def __init__(self) -> None:
         self.source_ids: list[str] = []
 
-    async def complete_plan(self, *, settings, messages):
+    async def complete_plan(self, *, settings, messages, response_format=None):
         source_id = _source_id(messages)
         self.source_ids.append(source_id)
         if source_id == "source-2":
@@ -229,7 +233,7 @@ class _SectionOnlyPlanClient:
         self.source_ids: list[str] = []
         self.include_practice_checkpoint = include_practice_checkpoint
 
-    async def complete_plan(self, *, settings, messages):
+    async def complete_plan(self, *, settings, messages, response_format=None):
         source_id = _source_id(messages)
         self.source_ids.append(source_id)
         return _section_payload(
@@ -241,7 +245,7 @@ class _TransientSectionPlanClient:
     def __init__(self) -> None:
         self.calls = 0
 
-    async def complete_plan(self, *, settings, messages):
+    async def complete_plan(self, *, settings, messages, response_format=None):
         self.calls += 1
         if self.calls == 1:
             raise ModelExecutionError("Course planner returned an empty response.")
@@ -252,7 +256,7 @@ class _ExhaustedProviderSectionPlanClient:
     def __init__(self) -> None:
         self.calls = 0
 
-    async def complete_plan(self, *, settings, messages):
+    async def complete_plan(self, *, settings, messages, response_format=None):
         self.calls += 1
         try:
             raise TimeoutError("provider timeout")
@@ -297,7 +301,7 @@ class _FatalSectionPlanClient:
         self.cancelled_source_ids: set[str] = set()
         self.in_flight_sibling_cancelled = asyncio.Event()
 
-    async def complete_plan(self, *, settings, messages):
+    async def complete_plan(self, *, settings, messages, response_format=None):
         source_id = _source_id(messages)
         try:
             self.started += 1
@@ -322,7 +326,7 @@ class _LateFatalSectionPlanClient:
         self.completed = 0
         self.two_completed = asyncio.Event()
 
-    async def complete_plan(self, *, settings, messages):
+    async def complete_plan(self, *, settings, messages, response_format=None):
         source_id = _source_id(messages)
         if source_id in {"source-1", "source-2"}:
             self.completed += 1
@@ -343,7 +347,7 @@ class _InvalidCheckpointClient:
         self.calls = 0
         self.repair_message = ""
 
-    async def complete_plan(self, *, settings, messages):
+    async def complete_plan(self, *, settings, messages, response_format=None):
         self.calls += 1
         if self.calls == 1:
             payload = _section_payload(_source_id(messages))
@@ -364,7 +368,7 @@ class _QuizOnlySectionClient:
         self.calls = 0
         self.repair_message = ""
 
-    async def complete_plan(self, *, settings, messages):
+    async def complete_plan(self, *, settings, messages, response_format=None):
         self.calls += 1
         payload = _section_payload(_source_id(messages))
         if self.calls == 1:

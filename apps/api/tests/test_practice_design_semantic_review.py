@@ -66,6 +66,7 @@ async def test_native_review_client_uses_a_strict_dimension_complete_schema(monk
         settings=_settings(),
         messages=[{"role": "user", "content": "review"}],
         allowed_source_paths=("lecture-01.md",),
+        catalogue={"e0": {"source_path": "lecture-01.md", "excerpt": "evidence"}},
     )
 
     assert len(payload["checks"]) == len(REVIEW_DIMENSIONS)
@@ -77,9 +78,7 @@ async def test_native_review_client_uses_a_strict_dimension_complete_schema(monk
     assert set(check_schema["required"]) == set(check_schema["properties"])
     dimension_schema = check_schema["properties"]["dimension"]
     assert tuple(dimension_schema["enum"]) == REVIEW_DIMENSIONS
-    assert definitions["PracticeSourceAnchor"]["properties"]["source_path"]["enum"] == [
-        "lecture-01.md"
-    ]
+    assert definitions["PracticeSourceAnchor"]["enum"] == ["e0"]
 
 
 @pytest.mark.asyncio

@@ -2,6 +2,12 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from lecturepilot.agent_response_schema import course_canvas_section_response_format
+from lecturepilot.course_canvas_approved_checkpoints import (
+    assemble_approved_checkpoints,
+    section_practice_targets,
+)
+
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_multi_block_repair import repair_multiple_blocks
@@ -100,6 +106,7 @@ class CourseCanvasSectionRepairMixin:
             candidate_document, practice_design, source_document=source_document
         )
         section = _section(candidate_document, section_id)
+        applicable = section_practice_targets(section, practice_design)
         target = _block(section, block_id) if block_id else None
         if preflight_changed or not failure_context.startswith("Canvas quality review failed:"):
             try:
@@ -132,7 +139,11 @@ class CourseCanvasSectionRepairMixin:
                     settings=settings,
                     messages=messages,
                     temperature=0.4,
-                    response_format=repair_patch_response_format() if target else None,
+                    response_format=(
+                        repair_patch_response_format(section_id=section.id, block_ids=[target.id])
+                        if target
+                        else course_canvas_section_response_format()
+                    ),
                 )
                 if target is not None:
                     payload = {
@@ -147,8 +158,12 @@ class CourseCanvasSectionRepairMixin:
                     section,
                     _allowed_assets(section),
                     output_language=output_language,
-                    require_checkpoint=target is None or target.type == "checkpoint",
+                    require_checkpoint=(
+                        not applicable if target is None else target.type == "checkpoint"
+                    ),
                 )
+                if target is None:
+                    replacement = assemble_approved_checkpoints(replacement, applicable)
                 repaired = _apply_replacement(
                     candidate_document,
                     section,

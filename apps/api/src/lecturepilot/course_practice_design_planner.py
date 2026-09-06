@@ -26,6 +26,7 @@ from lecturepilot.course_practice_design_review_prompt import practice_design_re
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import ProviderCapability, ProviderSettings
 from lecturepilot.providers import ProviderRegistry
+from lecturepilot.practice_evidence_catalogue import evidence_catalogue
 
 
 @dataclass(frozen=True)
@@ -59,6 +60,7 @@ class PracticeDesignPlanner:
             proposal = PracticeDesignProposal.model_validate(
                 await self.model_client.complete_proposal(
                     settings=settings,
+                    catalogue=evidence_catalogue(source, allowed_source_paths),
                     messages=practice_design_messages(
                         source,
                         source_revision=source_revision,
@@ -102,16 +104,20 @@ class PracticeDesignPlanner:
                 source=source,
                 allowed_source_paths=allowed_source_paths,
             )
+            catalogue = evidence_catalogue(source, allowed_source_paths)
+            messages = practice_design_review_messages(
+                source,
+                proposal,
+                source_revision=source_revision,
+                allowed_source_paths=allowed_source_paths,
+                catalogue=catalogue,
+            )
             review = PracticeDesignReviewResult.model_validate(
                 await self.review_client.complete_review(
                     settings=settings,
                     allowed_source_paths=allowed_source_paths,
-                    messages=practice_design_review_messages(
-                        source,
-                        proposal,
-                        source_revision=source_revision,
-                        allowed_source_paths=allowed_source_paths,
-                    ),
+                    messages=messages,
+                    catalogue=catalogue,
                 )
             )
             validate_practice_design_review(

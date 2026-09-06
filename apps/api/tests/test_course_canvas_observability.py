@@ -152,7 +152,7 @@ class _FailingPlanClient:
     def __init__(self) -> None:
         self.calls = 0
 
-    async def complete_plan(self, *, settings, messages):
+    async def complete_plan(self, *, settings, messages, response_format=None):
         self.calls += 1
         if self.calls == 1:
             raise ProviderConfigurationError("PRIVATE invalid model response")
@@ -163,7 +163,7 @@ class _RepairingSectionPlanClient:
     def __init__(self) -> None:
         self.calls = 0
 
-    async def complete_plan(self, *, settings, messages):
+    async def complete_plan(self, *, settings, messages, response_format=None):
         self.calls += 1
         if self.calls == 1:
             return {"sections": [{"title": "PRIVATE invalid", "blocks": []}]}

@@ -12,7 +12,7 @@ from lecturepilot.canvas_models import CanvasSection
 from lecturepilot.durable_files import atomic_write_json, exclusive_file_lock
 
 
-SECTION_PLAN_VERSION = "6"
+SECTION_PLAN_VERSION = "9"
 _active_store: ContextVar[SectionPlanCheckpointStore | None] = ContextVar(
     "lecturepilot_section_plan_checkpoint_store", default=None
 )

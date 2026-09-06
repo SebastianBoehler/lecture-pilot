@@ -6,11 +6,13 @@ import re
 from lecturepilot.assessment_prompts import assessment_generation_instruction
 from lecturepilot.canvas_component_catalog import component_catalog_instruction
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.course_canvas_approved_checkpoints import section_practice_targets
 from lecturepilot.course_canvas_language import canvas_language_instruction
 from lecturepilot.course_canvas_math import generated_math_instructions
 from lecturepilot.course_canvas_repair_guidance import repair_guidance
 from lecturepilot.course_canvas_repair_preflight import repair_failure_constraint
 from lecturepilot.course_canvas_practice_contract import practice_prompt_instruction
+from lecturepilot.course_canvas_practice_support import practice_support_evidence
 from lecturepilot.course_practice_design_models import PracticeDesign
 
 
@@ -23,6 +25,7 @@ def repair_messages(
     practice_design: PracticeDesign,
     output_language: str,
 ) -> list[dict[str, str]]:
+    applicable = section_practice_targets(section, practice_design, (target,) if target else ())
     scope = (
         "Return exactly one replace_block edit for the failed block. Its blocks array contains "
         "only replacement blocks; do not repeat or rewrite unchanged blocks. You may replace one "
@@ -48,7 +51,7 @@ def repair_messages(
                 f"{component_catalog_instruction()} "
                 "Preserve the meaning and use only the supplied evidence. "
                 f"{assessment_generation_instruction()} "
-                f"{practice_prompt_instruction(practice_design)} "
+                f"{practice_prompt_instruction(practice_design, targets=applicable, server_owned_checkpoints=target is None)} "
                 f"{repair_failure_constraint(failure)} "
                 f"{repair_guidance(failure)} "
                 f"{generated_math_instructions()}"
@@ -62,6 +65,7 @@ def repair_messages(
                     f"Failed section context:\n{_section_context(section, target)}",
                     f"Failed block:\n{target.model_dump_json() if target else 'whole section'}",
                     f"Relevant professor source evidence:\n{_source_evidence(source, section)}",
+                    practice_support_evidence(applicable),
                 ]
             ),
         },
@@ -89,6 +93,7 @@ def repair_blocks_messages(
     output_language: str,
 ) -> list[dict[str, str]]:
     target_ids = [target.id for target in targets]
+    applicable = section_practice_targets(section, practice_design, targets)
     return [
         {
             "role": "system",
@@ -103,7 +108,7 @@ def repair_blocks_messages(
                 f"{component_catalog_instruction()} "
                 "Preserve the meaning and use only the supplied evidence. "
                 f"{assessment_generation_instruction()} "
-                f"{practice_prompt_instruction(practice_design)} "
+                f"{practice_prompt_instruction(practice_design, targets=applicable)} "
                 f"{repair_failure_constraint(failure)} "
                 f"{repair_guidance(failure)} "
                 f"{generated_math_instructions()}"
@@ -118,6 +123,7 @@ def repair_blocks_messages(
                     "Requested blocks:\n"
                     + json.dumps([target.model_dump() for target in targets], default=str),
                     f"Relevant professor source evidence:\n{_source_evidence(source, section)}",
+                    practice_support_evidence(applicable),
                 ]
             ),
         },

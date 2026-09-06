@@ -47,7 +47,7 @@ class RecordingFallbackPlanClient:
     def __init__(self) -> None:
         self.source_ids: list[str] = []
 
-    async def complete_plan(self, *, settings, messages):
+    async def complete_plan(self, *, settings, messages, response_format=None):
         evidence = messages[1]["content"]
         source_id = evidence.split("Required section id: ", 1)[1].splitlines()[0]
         self.source_ids.append(source_id)

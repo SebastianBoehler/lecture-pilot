@@ -35,6 +35,7 @@ from practice_design_test_helpers import passing_review, proposal
 
 
 ResponseFormatFactory = Callable[..., dict[str, Any]]
+CATALOGUE = {"e0": {"source_path": "Lecture.tex", "excerpt": "Course evidence."}}
 
 
 @pytest.mark.parametrize(
@@ -63,16 +64,22 @@ def test_practice_design_response_formats_use_the_strict_production_model_schema
     model: type[BaseModel],
 ) -> None:
     response_format = (
-        response_format_factory(["Lecture.tex"])
-        if response_format_factory is practice_design_review_response_format
+        response_format_factory(CATALOGUE)
+        if response_format_factory is not practice_design_benchmark_response_format
         else response_format_factory()
     )
 
     expected_schema = to_strict_json_schema(model)
-    if response_format_factory is practice_design_review_response_format:
-        expected_schema["$defs"]["PracticeSourceAnchor"]["properties"]["source_path"]["enum"] = [
-            "Lecture.tex"
-        ]
+    if response_format_factory is not practice_design_benchmark_response_format:
+        expected_schema["$defs"]["PracticeSourceAnchor"] = {
+            "type": "string",
+            "enum": ["e0"],
+            "description": "Exact evidence ID from the supplied catalogue; do not write a quote or path.",
+        }
+    if response_format_factory is practice_design_response_format:
+        target_schema = expected_schema["$defs"]["PracticeTarget"]
+        target_schema["properties"].pop("source_refs")
+        target_schema["required"].remove("source_refs")
     assert response_format == {
         "type": "json_schema",
         "json_schema": {
@@ -85,7 +92,7 @@ def test_practice_design_response_formats_use_the_strict_production_model_schema
 
 
 def test_practice_design_strict_schema_preserves_nullable_semantic_fields() -> None:
-    schema = practice_design_response_format()["json_schema"]["schema"]
+    schema = practice_design_response_format(CATALOGUE)["json_schema"]["schema"]
     criterion = schema["$defs"]["PracticeEvidenceCriterion"]
     planning_context = schema["$defs"]["PracticePlanningContext"]
 
@@ -147,6 +154,7 @@ async def test_practice_design_clients_preserve_schema_configuration_errors(
                 capabilities={ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON},
             ),
             messages=[{"role": "user", "content": "generate"}],
+            **({"catalogue": CATALOGUE} if method_name != "complete_evaluation" else {}),
             **(
                 {"allowed_source_paths": ["Lecture.tex"]}
                 if method_name == "complete_review"

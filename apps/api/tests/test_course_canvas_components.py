@@ -30,7 +30,7 @@ async def test_section_planner_creates_catalogued_interactive_chart() -> None:
         practice_design=practice_design_for_canvas(source),
     )
 
-    component = planned.sections[0].blocks[0]
+    component = next(block for block in planned.sections[0].blocks if block.type == "component")
     assert component.type == "component"
     assert component.component_id == component.id
     assert component.component_ref == f"{component.id}.yaml"
@@ -246,7 +246,7 @@ def test_component_catalog_rejects_malformed_new_chart_shapes() -> None:
 
 
 class _CatalogAwarePlanClient:
-    async def complete_plan(self, *, settings, messages):
+    async def complete_plan(self, *, settings, messages, response_format=None):
         instruction = messages[0]["content"]
         if not all(term in instruction for term in ("interactive_chart", "scatter", "heatmap")):
             return {

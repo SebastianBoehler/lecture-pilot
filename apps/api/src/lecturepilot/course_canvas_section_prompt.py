@@ -6,6 +6,7 @@ from lecturepilot.canvas_models import CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_language import canvas_language_instruction
 from lecturepilot.course_canvas_math import generated_math_instructions
 from lecturepilot.course_canvas_practice_contract import practice_prompt_instruction
+from lecturepilot.course_canvas_practice_support import practice_support_evidence
 from lecturepilot.course_practice_design_models import PracticeDesign, PracticeTarget
 from lecturepilot.course_teaching_instructions import canvas_teaching_instruction
 
@@ -30,8 +31,7 @@ def section_messages(
                 f"{canvas_language_instruction(output_language)} "
                 "exactly one object with title and blocks. The server derives section ids, block "
                 "ids, and source provenance from the supplied evidence. "
-                "For approved practice checkpoints, return their exact canonical id in the id "
-                "field; use null for other checkpoint ids. "
+                "Use null for checkpoint ids; the server inserts approved practice checkpoints. "
                 "Let the section's depth and structure follow the supplied evidence. Explain "
                 "all material needed for independent study with source-backed paragraphs, "
                 "examples, or steps; do not pad thin evidence or omit dense evidence to meet "
@@ -51,7 +51,7 @@ def section_messages(
                 "answer' phrasing. Quiz text must be one direct question ending in a question mark. "
                 f"{assessment_generation_instruction()} "
                 f"{canvas_teaching_instruction()} "
-                f"{practice_prompt_instruction(practice_design, targets=applicable_targets)} "
+                f"{practice_prompt_instruction(practice_design, targets=applicable_targets, server_owned_checkpoints=True)} "
                 "Use text as the question, items as possible answers, and the zero-based "
                 "answer_index of the correct option. Never guess an answer key. "
                 "Return only the fields required by each block type; do not emit null placeholders. "
@@ -69,7 +69,12 @@ def section_messages(
                 "unsupported topics."
             ),
         },
-        {"role": "user", "content": section_evidence(source_document, section)},
+        {
+            "role": "user",
+            "content": section_evidence(source_document, section)
+            + "\n\n"
+            + practice_support_evidence(applicable_targets),
+        },
     ]
 
 

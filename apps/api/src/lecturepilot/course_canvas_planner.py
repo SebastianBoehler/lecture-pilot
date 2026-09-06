@@ -8,6 +8,7 @@ from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.course_canvas_auto_repair import repair_until_quality_valid
 from lecturepilot.course_content_filter import filter_source_document_for_planning
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
+from lecturepilot.course_canvas_practice_support import source_for_practice_review
 from lecturepilot.course_canvas_json import parse_model_json
 from lecturepilot.course_canvas_quality import CanvasQualityIssue, CanvasQualityReviewer
 from lecturepilot.course_canvas_practice_contract import validate_practice_candidate
@@ -153,6 +154,7 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
                 quality_issues = await self.review_quality(
                     source_document,
                     document,
+                    practice_design=practice_design,
                     settings=settings,
                 )
                 if quality_issues:
@@ -217,6 +219,7 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
         source_document: CanvasDocument,
         candidate_document: CanvasDocument,
         *,
+        practice_design: PracticeDesign,
         settings: ProviderSettings | None = None,
     ) -> list[CanvasQualityIssue]:
         active_settings = settings or self.provider_registry.require_ready(
@@ -224,6 +227,8 @@ class CourseCanvasPlanner(CourseCanvasSectionRepairMixin):
         )
         return await self.quality_reviewer.review(
             settings=active_settings,
-            source_document=source_document,
+            source_document=source_for_practice_review(
+                source_document, candidate_document, practice_design
+            ),
             candidate_document=candidate_document,
         )

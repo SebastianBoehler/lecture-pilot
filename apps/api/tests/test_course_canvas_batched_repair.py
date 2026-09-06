@@ -233,7 +233,7 @@ class _BatchPlanner:
         self.multi_repair_calls.append((section_id, block_ids))
         return candidate_document
 
-    async def review_quality(self, source_document, candidate_document):
+    async def review_quality(self, source_document, candidate_document, *, practice_design):
         self.review_calls += 1
         return self.reviews.pop(0)
 

@@ -1,7 +1,13 @@
 from __future__ import annotations
 
+from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
+
 
 def section_payload(payload: dict) -> dict:
+    if isinstance(payload.get("sections"), list) and len(payload["sections"]) != 1:
+        raise CanvasGenerationRepairableError(
+            "Section planner must return exactly one section; no extra sections may be discarded."
+        )
     if isinstance(payload.get("section"), dict):
         payload = payload["section"]
     elif isinstance(payload.get("sections"), list) and payload["sections"]:

@@ -39,6 +39,17 @@ def course_canvas_response_format() -> dict[str, Any]:
     }
 
 
+def course_canvas_section_response_format() -> dict[str, Any]:
+    response = course_canvas_response_format()
+    response["json_schema"]["name"] = "lecturepilot_course_canvas_section"
+    sections = response["json_schema"]["schema"]["properties"]["sections"]
+    sections.update(minItems=1, maxItems=1)
+    for block in sections["items"]["properties"]["blocks"]["items"]["anyOf"]:
+        if block["properties"]["type"].get("const") == "checkpoint":
+            block["properties"]["id"] = {"type": "null"}
+    return response
+
+
 def lecture_schedule_response_format() -> dict[str, Any]:
     return {
         "type": "json_schema",

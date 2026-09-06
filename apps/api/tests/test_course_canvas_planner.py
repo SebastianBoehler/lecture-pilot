@@ -71,7 +71,7 @@ async def test_litellm_course_plan_client_uses_compact_repair_patch_schema(monke
     payload = await LiteLLMCoursePlanClient().complete_plan(
         settings=ProviderRegistry.from_env("gemini/test-model").require_ready([]),
         messages=[{"role": "user", "content": "Repair"}],
-        response_format=repair_patch_response_format(),
+        response_format=repair_patch_response_format(section_id="topic", block_ids=["claim"]),
     )
 
     assert payload == patch
@@ -98,17 +98,17 @@ async def test_course_planner_restyles_source_evidence(monkeypatch) -> None:
     assert section.title == "Evidence, update, decision"
     assert section.blocks[0].asset_path.startswith("generated-slides/")
     assert [block.type for block in section.blocks[1:]] == [
+        "checkpoint",
         "paragraph",
         "math",
         "asset",
         "video",
         "list",
         "callout",
-        "checkpoint",
     ]
-    assert section.blocks[3].asset_path == "Ch3/venn.pdf"
-    assert section.blocks[3].asset_url == "/course-assets/martius-ml/lecture-03/Ch3/venn.pdf"
-    assert section.blocks[4].asset_path == "videos/bayes-risk.mp4"
+    assert section.blocks[4].asset_path == "Ch3/venn.pdf"
+    assert section.blocks[4].asset_url == "/course-assets/martius-ml/lecture-03/Ch3/venn.pdf"
+    assert section.blocks[5].asset_path == "videos/bayes-risk.mp4"
     assessment_sections = [
         item.id
         for item in document.sections
@@ -116,7 +116,7 @@ async def test_course_planner_restyles_source_evidence(monkeypatch) -> None:
     ]
     assert assessment_sections == [section.id for section in document.sections]
     authored_checkpoint = next(block for block in section.blocks if block.type == "checkpoint")
-    assert authored_checkpoint.caption == "Decision workflow check"
+    assert authored_checkpoint.caption == _practice_design(source).targets[0].title
     final_quiz = next(block for block in document.sections[-1].blocks if block.type == "quiz")
     assert final_quiz.answer_index == 1
     assert final_quiz.items[1] == "The posterior combines prior and likelihood evidence."
@@ -131,7 +131,7 @@ async def test_course_planner_restyles_source_evidence(monkeypatch) -> None:
 
 
 class _FakePlanClient:
-    async def complete_plan(self, *, settings, messages):
+    async def complete_plan(self, *, settings, messages, response_format=None):
         assert settings.model == "gemini/test-model"
         system_prompt = messages[0]["content"]
         assert "source-backed assets" in system_prompt.lower()

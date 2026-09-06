@@ -124,7 +124,7 @@ class _TransientRepairPlanner(_TargetedRepairPlanner):
 
 
 class _QualityRetryPlanner(_TargetedRepairPlanner):
-    async def review_quality(self, source_document, candidate_document):
+    async def review_quality(self, source_document, candidate_document, *, practice_design):
         self.quality_review_calls += 1
         if self.quality_review_calls == 1:
             return [
@@ -156,7 +156,7 @@ class _ManyQualityRetryPlanner(_TargetedRepairPlanner):
         self.multi_repair_calls.append((section_id, block_ids, failure_context))
         return candidate_document
 
-    async def review_quality(self, source_document, candidate_document):
+    async def review_quality(self, source_document, candidate_document, *, practice_design):
         self.quality_review_calls += 1
         if self.quality_review_calls > 1:
             return []

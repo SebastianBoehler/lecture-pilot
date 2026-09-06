@@ -13,6 +13,7 @@ from lecturepilot.model_request_options import completion_options
 from lecturepilot.model_usage import ModelUsageRecorder, complete_with_usage
 from lecturepilot.models import ProviderSettings
 from lecturepilot.providers import ProviderConfigurationError
+from lecturepilot.practice_evidence_catalogue import EvidenceCatalogue, expand_evidence_ids
 
 
 class PracticeDesignReviewModelClient(Protocol):
@@ -22,6 +23,7 @@ class PracticeDesignReviewModelClient(Protocol):
         settings: ProviderSettings,
         messages: list[dict[str, str]],
         allowed_source_paths: Sequence[str],
+        catalogue: EvidenceCatalogue,
     ) -> dict:
         """Return one strict semantic review payload."""
 
@@ -36,6 +38,7 @@ class LiteLLMPracticeDesignReviewClient:
         settings: ProviderSettings,
         messages: list[dict[str, str]],
         allowed_source_paths: Sequence[str],
+        catalogue: EvidenceCatalogue,
     ) -> dict:
         try:
             from litellm import acompletion
@@ -50,7 +53,7 @@ class LiteLLMPracticeDesignReviewClient:
                 usage_stage="course_practice_design_review",
                 model=settings.model,
                 messages=messages,
-                response_format=practice_design_review_response_format(allowed_source_paths),
+                response_format=practice_design_review_response_format(catalogue),
                 **completion_options(settings, temperature=0.0, reasoning_effort="low"),
             )
         except ProviderConfigurationError:
@@ -59,4 +62,4 @@ class LiteLLMPracticeDesignReviewClient:
             raise ModelExecutionError(
                 model_provider_error_message(exc, provider=settings.provider)
             ) from exc
-        return parse_model_json(response.choices[0].message.content)
+        return expand_evidence_ids(parse_model_json(response.choices[0].message.content), catalogue)

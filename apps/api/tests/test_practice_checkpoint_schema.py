@@ -15,13 +15,10 @@ def test_strict_checkpoint_schema_can_return_the_required_canonical_id():
     assert checkpoint["additionalProperties"] is False
 
 
-def test_section_prompt_exempts_approved_practice_ids_from_server_generated_ids():
+def test_section_prompt_assigns_approved_practice_ids_to_server_assembly():
     source = _source_document(1)
     design = practice_design_for_canvas(source)
     messages = section_messages(
         source, source.sections[0], practice_design=design, applicable_targets=design.targets
     )
-    assert (
-        "For approved practice checkpoints, return their exact canonical id"
-        in messages[0]["content"]
-    )
+    assert "The server inserts the exact approved diagnostic checkpoints" in messages[0]["content"]

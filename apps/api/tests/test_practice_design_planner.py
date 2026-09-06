@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+import json
 import sys
 
 import pytest
@@ -6,6 +7,7 @@ import pytest
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.models import ProviderCapability, ProviderSettings
 from practice_design_test_helpers import passing_review, proposal, target
+from lecturepilot.practice_evidence_catalogue import evidence_catalogue, compact_evidence_anchors
 
 
 SOURCE_REVISION = "a" * 64
@@ -40,13 +42,21 @@ async def test_planner_uses_native_schema_and_exact_authoritative_source_paths(m
 
     async def fake_completion(**kwargs):
         calls.append(kwargs)
-        content = (
+        catalogue = evidence_catalogue(_source(), ("lecture.md",))
+        payload = (
             proposal()
-            .model_copy(update={"targets": (target(source_refs=("lecture.md",)),)})
-            .model_dump_json()
-            if len(calls) == 1
-            else passing_review().model_dump_json()
+            .model_copy(
+                update={
+                    "targets": (
+                        target(source_refs=("lecture.md",), source_excerpt="Posterior evidence."),
+                    )
+                }
+            )
+            .model_dump(mode="json")
         )
+        wire = compact_evidence_anchors(payload, catalogue)
+        wire["targets"][0].pop("source_refs")
+        content = json.dumps(wire) if len(calls) == 1 else passing_review().model_dump_json()
         return SimpleNamespace(
             choices=[SimpleNamespace(message=SimpleNamespace(content=content))],
             usage=None,
@@ -101,7 +111,9 @@ async def test_planner_uses_native_schema_and_exact_authoritative_source_paths(m
 def test_response_schema_describes_the_assessment_and_scaffold_contract() -> None:
     from lecturepilot.course_practice_design_prompt import practice_design_response_format
 
-    schema = practice_design_response_format()["json_schema"]["schema"]
+    schema = practice_design_response_format(evidence_catalogue(_source(), ("lecture.md",)))[
+        "json_schema"
+    ]["schema"]
     target_schema = schema["$defs"]["PracticeTarget"]["properties"]
     criterion_schema = schema["$defs"]["PracticeEvidenceCriterion"]["properties"]
     misconception_schema = schema["$defs"]["PracticeMisconception"]["properties"]

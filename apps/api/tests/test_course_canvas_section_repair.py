@@ -272,7 +272,7 @@ async def test_full_planner_automatically_repairs_an_invalid_generated_block(
         "learning-optimization",
         "learning-summary",
     ]
-    repaired_math = document.sections[0].blocks[1]
+    repaired_math = next(block for block in document.sections[0].blocks if block.type == "math")
     assert repaired_math.id == "learning-optimization-math-1"
     assert repaired_math.text == r"z=\mu+\epsilon"
     assert (

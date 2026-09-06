@@ -81,7 +81,9 @@ async def repair_multiple_blocks(
                 settings=settings,
                 messages=messages,
                 temperature=0.4,
-                response_format=repair_patch_response_format(),
+                response_format=repair_patch_response_format(
+                    section_id=section_id, block_ids=block_ids
+                ),
             )
             edits = replacement_edits(
                 payload,

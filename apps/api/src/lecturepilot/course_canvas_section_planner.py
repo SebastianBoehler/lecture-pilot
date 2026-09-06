@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from typing import Protocol
+from lecturepilot.agent_response_schema import course_canvas_section_response_format
 
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
+from lecturepilot.course_canvas_approved_checkpoints import assemble_approved_checkpoints
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_math import validate_section_math
 from lecturepilot.course_canvas_practice_contract import (
@@ -35,6 +37,7 @@ class SectionPlanModelClient(Protocol):
         *,
         settings: ProviderSettings,
         messages: list[dict[str, str]],
+        response_format: dict | None = None,
     ) -> dict:
         """Return one section-level canvas plan."""
 
@@ -137,13 +140,19 @@ async def _plan_section(
                 section_index=section_index,
                 **span_attributes,
             ) as span:
-                payload = await model_client.complete_plan(settings=settings, messages=messages)
+                payload = await model_client.complete_plan(
+                    settings=settings,
+                    messages=messages,
+                    response_format=course_canvas_section_response_format(),
+                )
                 section = _read_section_payload(
                     payload,
                     source_section,
                     allowed_assets,
                     output_language=output_language,
+                    require_checkpoint=not applicable_targets,
                 )
+                section = assemble_approved_checkpoints(section, applicable_targets)
                 validate_section_math(section)
                 validate_section_practice(section, applicable_targets)
                 validate_section_assessments(section)

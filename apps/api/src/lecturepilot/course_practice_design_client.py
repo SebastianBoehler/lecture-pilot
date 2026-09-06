@@ -10,11 +10,16 @@ from lecturepilot.model_request_options import completion_options
 from lecturepilot.model_usage import ModelUsageRecorder, complete_with_usage
 from lecturepilot.models import ProviderSettings
 from lecturepilot.providers import ProviderConfigurationError
+from lecturepilot.practice_evidence_catalogue import EvidenceCatalogue, expand_evidence_ids
 
 
 class PracticeDesignModelClient(Protocol):
     async def complete_proposal(
-        self, *, settings: ProviderSettings, messages: list[dict[str, str]]
+        self,
+        *,
+        settings: ProviderSettings,
+        messages: list[dict[str, str]],
+        catalogue: EvidenceCatalogue,
     ) -> dict:
         """Return one structured practice-design proposal."""
 
@@ -24,7 +29,11 @@ class LiteLLMPracticeDesignClient:
         self.usage_recorder = usage_recorder
 
     async def complete_proposal(
-        self, *, settings: ProviderSettings, messages: list[dict[str, str]]
+        self,
+        *,
+        settings: ProviderSettings,
+        messages: list[dict[str, str]],
+        catalogue: EvidenceCatalogue,
     ) -> dict:
         try:
             from litellm import acompletion
@@ -39,7 +48,7 @@ class LiteLLMPracticeDesignClient:
                 usage_stage="course_practice_design",
                 model=settings.model,
                 messages=messages,
-                response_format=practice_design_response_format(),
+                response_format=practice_design_response_format(catalogue),
                 **completion_options(settings, temperature=0.4, max_tokens=6000),
             )
         except ProviderConfigurationError:
@@ -48,4 +57,8 @@ class LiteLLMPracticeDesignClient:
             raise ModelExecutionError(
                 model_provider_error_message(exc, provider=settings.provider)
             ) from exc
-        return parse_model_json(response.choices[0].message.content)
+        return expand_evidence_ids(
+            parse_model_json(response.choices[0].message.content),
+            catalogue,
+            derive_source_refs=True,
+        )

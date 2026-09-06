@@ -144,6 +144,8 @@ class _TargetedRepairPlanner:
         self,
         source_document: CanvasDocument,
         candidate_document: CanvasDocument,
+        *,
+        practice_design,
     ) -> list:
         self.quality_review_calls += 1
         return []

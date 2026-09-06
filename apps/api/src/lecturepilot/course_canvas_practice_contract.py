@@ -16,7 +16,10 @@ from lecturepilot.course_canvas_validation import source_topic_sections
 
 
 def practice_prompt_instruction(
-    design: PracticeDesign, *, targets: Sequence[PracticeTarget] | None = None
+    design: PracticeDesign,
+    *,
+    targets: Sequence[PracticeTarget] | None = None,
+    server_owned_checkpoints: bool = False,
 ) -> str:
     scoped = tuple(targets) if targets is not None else design.targets
     expected = [f"practice-{target.id}" for target in scoped]
@@ -34,13 +37,22 @@ def practice_prompt_instruction(
         }
         for target in scoped
     ]
-    return (
-        f"Approved practice-design revision: {design.revision}. The lecture must contain exactly "
+    checkpoint_instruction = (
+        f"Approved practice-design revision: {design.revision}. "
+        "The server inserts the exact approved diagnostic checkpoints before your teaching "
+        "blocks in this assigned outcome-anchor section. Do not output or reproduce these "
+        "baseline tasks or canonical practice-* ids. Generate instruction around their "
+        "capabilities, not replacements for the approved diagnostics. "
+        if server_owned_checkpoints
+        else f"Approved practice-design revision: {design.revision}. The lecture must contain exactly "
         f"one checkpoint for each canonical id {json.dumps(expected)} and no other practice-* "
         "checkpoint. Each canonical checkpoint text must exactly equal its approved baseline_task; "
         "do not paraphrase, split, merge, duplicate, or move it into another block type. "
         "Place this diagnostic before substantive help on its capability, within its assigned "
-        "outcome-anchor section. Keep analogous worked examples before later formative checks. "
+        "outcome-anchor section. "
+    )
+    return (
+        checkpoint_instruction + "Keep analogous worked examples before later formative checks. "
         "The design context calibrates vocabulary and scaffolding, not the required evidence "
         "standard. Null context fields are unknown, not permission to invent learner expertise. "
         "Use the outcome, invariant and criteria to design instruction; do not print assessed "

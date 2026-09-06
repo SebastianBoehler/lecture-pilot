@@ -6,14 +6,16 @@ from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_response_schema import canvas_block_schema
 
 
-def repair_patch_response_format() -> dict[str, Any]:
+def repair_patch_response_format(*, section_id: str, block_ids: list[str]) -> dict[str, Any]:
+    if not block_ids or len(set(block_ids)) != len(block_ids):
+        raise ValueError("Repair targets must be nonempty and distinct.")
     edit = {
         "type": "object",
         "additionalProperties": False,
         "properties": {
             "operation": {"type": "string", "const": "replace_block"},
-            "section_id": {"type": "string"},
-            "block_id": {"type": "string"},
+            "section_id": {"type": "string", "enum": [section_id]},
+            "block_id": {"type": "string", "enum": block_ids},
             "blocks": {
                 "type": "array",
                 "items": canvas_block_schema(),
@@ -30,7 +32,14 @@ def repair_patch_response_format() -> dict[str, Any]:
             "schema": {
                 "type": "object",
                 "additionalProperties": False,
-                "properties": {"edits": {"type": "array", "items": edit, "minItems": 1}},
+                "properties": {
+                    "edits": {
+                        "type": "array",
+                        "items": edit,
+                        "minItems": len(block_ids),
+                        "maxItems": len(block_ids),
+                    }
+                },
                 "required": ["edits"],
             },
         },
