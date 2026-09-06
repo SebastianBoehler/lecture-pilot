@@ -199,6 +199,9 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
   professor-approved practice design before generation. The model may propose
   it, but the professor owns outcomes, tasks, evidence, scaffolds, review
   timing, and approval; an edit or source revision makes approval stale.
+- Practice-design providers select request-local evidence IDs from
+  `practice_evidence_catalogue.py`; the backend hydrates exact routed quotations
+  and derives source paths. Semantic support still requires review.
 - Generation receives the exact approved design snapshot and writes its source
   and practice-design revisions to the draft binding. Draft review and
   publication fail closed when that binding, design approval, or source
@@ -211,6 +214,10 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
 - Place each approved practice checkpoint in its outcome-anchor section, not
   the first section matching an auxiliary hint. Validate exact task ids/text
   before caching completed sections; generic formatting must preserve them.
+- Section output has native exact-one cardinality; the backend inserts approved
+  checkpoints. Repair schemas bind exact target IDs/counts, and repair prompts
+  receive only their section's targets. Cross-section approved source excerpts
+  may support teaching, but hidden assessment wording must not be forwarded.
 - Shared authoring guidance lives in `course_teaching_instructions.py`. Forward
   approved learner context into canvas generation without exposing hidden exit
   tasks. Canonical diagnostics may precede worked examples; ordinary formative

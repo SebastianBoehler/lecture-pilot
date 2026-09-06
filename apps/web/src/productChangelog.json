@@ -15,6 +15,28 @@
       "changes": [
         {
           "title": {
+            "en": "Exact teaching evidence and scoped repairs",
+            "de": "Exakte Lehrbelege und gezielte Reparaturen"
+          },
+          "description": {
+            "en": "Practice-design proposals select exact source excerpts by ID. Approved checkpoints are assembled by the backend, while section and block repair contracts keep their scope. Supporting evidence reaches the writer and reviewer without exposing hidden assessment questions; professor review remains required.",
+            "de": "Übungskonzepte wählen exakte Quellenauszüge per ID. Freigegebene Checkpoints werden im Backend zusammengesetzt; Reparaturverträge begrenzen Abschnitte und Blöcke. Ergänzende Belege erreichen Erstellung und Prüfung ohne verborgene Prüfungsfragen; die Freigabe durch Lehrende bleibt erforderlich."
+          },
+          "feedbackDriven": true
+        },
+        {
+          "title": {
+            "en": "Less friction during course creation",
+            "de": "Weniger Reibung bei der Kurserstellung"
+          },
+          "description": {
+            "en": "Optional media review no longer blocks generation. Source proposals and refresh errors show accurate states, navigation labels stay readable, and browser error responses retain repair and retry information. Reading drafts does not consume the generation rate allowance.",
+            "de": "Die optionale Medienprüfung blockiert die Generierung nicht mehr. Quellenvorschläge und Aktualisierungsfehler zeigen korrekte Zustände, Navigationsbeschriftungen bleiben lesbar und Browserfehler enthalten Reparatur- und Wiederholungshinweise. Das Lesen von Entwürfen verbraucht kein Generierungslimit."
+          },
+          "feedbackDriven": true
+        },
+        {
+          "title": {
             "en": "Office, code, and arbitrary folder structures",
             "de": "Office, Quellcode und beliebige Ordnerstrukturen"
           },
