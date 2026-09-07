@@ -1,22 +1,54 @@
-import { render, screen } from "@testing-library/react";
-import { expect, it } from "vitest";
-
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, expect, it } from "vitest";
+import { I18nProvider } from "./i18n";
 import { InfoPage } from "./InfoPage";
+import type { InfoPageKind } from "./types";
 
-it("describes the bounded private tutor context precisely", () => {
-  render(<InfoPage kind="privacy" />);
+beforeEach(() => {
+  HTMLDialogElement.prototype.showModal = function () {
+    this.setAttribute("open", "");
+  };
+  HTMLDialogElement.prototype.close = function () {
+    this.removeAttribute("open");
+  };
+});
 
+function page(kind: InfoPageKind, locale: "en" | "de" = "en") {
+  return (
+    <I18nProvider locale={locale} setLocale={() => {}}>
+      <InfoPage kind={kind} />
+    </I18nProvider>
+  );
+}
+
+it("explains disclosure, private analytics and incomplete retention details", () => {
+  render(page("privacy"));
+  expect(screen.getByText(/up to eight recent learner and tutor messages/)).toBeInTheDocument();
+  expect(screen.getByText(/do not see ordinary private chat messages/)).toBeInTheDocument();
+  expect(screen.getByText(/Professor preview activity is excluded/)).toBeInTheDocument();
+  expect(screen.getByText(/does not promise zero provider retention/)).toBeInTheDocument();
   expect(
-    screen.getByText(/up to eight recent learner and tutor messages from this lecture/i),
+    screen.getByText(/designated data controller.*still require institutional confirmation/),
   ).toBeInTheDocument();
-  expect(screen.getByText(/ordinary private chat messages.*course analytics/i)).toBeInTheDocument();
-  expect(
-    screen.getByText(
-      /versioned outcome records.*assistance before the attempt.*planned and observed delay/i,
-    ),
-  ).toBeInTheDocument();
-  expect(screen.getByText(/professor preview activity is excluded/i)).toBeInTheDocument();
-  expect(
-    screen.getByText(/does not show that LecturePilot is effective or that a research study/i),
-  ).toBeInTheDocument();
+});
+
+it.each(["privacy", "how-it-works", "learning-science"] as const)(
+  "localizes %s and provides working chapter targets",
+  (kind) => {
+    const { container, rerender } = render(page(kind));
+    const english = screen.getByRole("heading", { level: 1 }).textContent;
+    rerender(page(kind, "de"));
+    expect(screen.getByRole("heading", { level: 1 }).textContent).not.toBe(english);
+    const nav = screen.getByRole("navigation", { name: "Auf dieser Seite" });
+    for (const link of nav.querySelectorAll("a")) {
+      expect(container.querySelector(link.getAttribute("href")!)).not.toBeNull();
+    }
+  },
+);
+
+it("opens the real chaptered onboarding from the lecturer guide", () => {
+  render(page("how-it-works"));
+  fireEvent.click(screen.getByRole("button", { name: "Watch introduction" }));
+  expect(screen.getByRole("dialog")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /Close/i })).toBeInTheDocument();
 });

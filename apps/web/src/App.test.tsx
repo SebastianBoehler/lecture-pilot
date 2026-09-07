@@ -376,22 +376,24 @@ describe("LecturePilot app shell", () => {
     await user.click(screen.getByRole("button", { name: /how it works/i }));
 
     expect(
-      await screen.findByRole("heading", { name: /how lecturepilot actually works/i }),
+      await screen.findByRole("heading", { name: /how lecturepilot works/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText("agent harness")).toBeInTheDocument();
+    expect(screen.getByText(/the agent harness/)).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /each student gets a private layer on top/i }),
+      screen.getByRole("heading", { name: /your own notes, explanations and memory/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/shared course truth, separate learner work/i)).toBeInTheDocument();
+    expect(screen.getByText(/Together these form the tutor/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /learn how to learn/i }));
 
     expect(
       await screen.findByRole("heading", { name: /^learning how to learn$/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/most of us arrive at university/i)).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /sources and further reading/i }),
+      screen.getByText(/Use LecturePilot to do more of the thinking yourself/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /research behind the advice/i }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/tübingen contributor/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/current tübingen project/i)).not.toBeInTheDocument();
@@ -399,10 +401,10 @@ describe("LecturePilot app shell", () => {
 
     await user.click(screen.getByRole("button", { name: /privacy/i }));
 
-    expect(await screen.findByRole("heading", { name: /privacy notice/i })).toBeInTheDocument();
     expect(
-      screen.getByText(/provider api keys remain on the lecturepilot service/i),
+      await screen.findByRole("heading", { name: /privacy and your data/i }),
     ).toBeInTheDocument();
+    expect(screen.getByText(/current university deployment uses OpenAI/i)).toBeInTheDocument();
   });
 
   it("opens a focused lesson workspace without showing the course dashboard", async () => {

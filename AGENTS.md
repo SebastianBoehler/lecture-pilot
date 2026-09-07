@@ -301,6 +301,11 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
 
 ## UI And Canvas Rules
 
+- Public information pages use `InfoArticle.tsx` with bilingual content modules.
+  Keep privacy disclosures aligned with deployment, memory and deletion behavior;
+  see `docs/product-information-pages.md`. The How it works guide also opens the
+  public chaptered onboarding video.
+
 - Professor onboarding video and chapter descriptions live in `OnboardingVideo.tsx`
   and `onboardingChapters.ts`. Versioned public media is tracked under `docs/onboarding-media/`,
   mounted read-only into the web service; see `docs/onboarding-video.md`.

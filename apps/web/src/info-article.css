@@ -1,0 +1,104 @@
+.guide-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  margin-bottom: 28px;
+  padding: 18px 0;
+  border-top: 1px solid var(--color-border-primary);
+}
+.guide-nav a {
+  color: var(--color-accent-primary);
+  text-underline-offset: 4px;
+}
+.guide-article > section {
+  scroll-margin-top: 90px;
+}
+.guide-steps {
+  padding: 0;
+  margin: 28px 0;
+  list-style: none;
+}
+.guide-steps li {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border-primary);
+}
+.guide-steps li > span {
+  color: var(--color-accent-primary);
+  font-weight: 700;
+}
+.guide-steps p {
+  margin: 0;
+  line-height: 1.65;
+}
+.guide-example {
+  margin-top: 24px;
+  padding: 18px 22px;
+  border-left: 3px solid var(--color-accent-primary);
+  background: var(--color-bg-secondary);
+}
+.guide-example p,
+.guide-detail p {
+  margin: 10px 0 0;
+  line-height: 1.7;
+  color: var(--color-text-secondary);
+}
+.guide-detail {
+  margin-top: 24px;
+}
+.guide-detail summary {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.guide-workspace {
+  margin: 28px 0 0;
+}
+.guide-workspace > div {
+  padding: 18px;
+  border: 1px solid var(--color-border-primary);
+  margin-top: 12px;
+}
+.guide-workspace strong {
+  display: block;
+  margin-bottom: 8px;
+}
+.guide-workspace p {
+  margin: 0;
+  line-height: 1.6;
+}
+.guide-workspace figcaption {
+  margin-top: 12px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+.guide-video {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+.guide-video .top-icon-button {
+  flex-shrink: 0;
+}
+.guide-links {
+  padding-left: 22px;
+  line-height: 1.7;
+}
+.guide-links li + li {
+  margin-top: 10px;
+}
+.guide-links a {
+  color: var(--color-accent-primary);
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .guide-nav {
+    flex-direction: column;
+  }
+  .guide-example {
+    padding: 16px;
+  }
+}

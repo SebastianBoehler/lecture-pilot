@@ -33,7 +33,7 @@ it("opens public information directly from its URL", async () => {
   render(<App />);
 
   expect(
-    await screen.findByRole("heading", { name: /how lecturepilot actually works/i }),
+    await screen.findByRole("heading", { name: /how lecturepilot works/i }),
   ).toBeInTheDocument();
 });
 

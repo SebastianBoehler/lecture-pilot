@@ -30,3 +30,6 @@ excluded from Docker build contexts.
 Before releasing, verify playback, chapter seeks, captions, media-error feedback,
 keyboard dismissal, and the layout in both themes and at a narrow viewport.
 Confirm deployed MP4 range requests return HTTP 206 and VTT returns `text/vtt`.
+
+The public **How it works** page also opens the same player from its lecturer
+section, so prospective lecturers can watch before signing in.
