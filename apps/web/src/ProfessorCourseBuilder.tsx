@@ -47,11 +47,7 @@ export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
   const learningDesign = useProfessorLearningDesignReviews({
     courseId: builder.workspace?.courseId ?? null,
     lectureIds: reviewLectureIds,
-    revisionKey: JSON.stringify([
-      builder.draftRestoreRevision,
-      builder.generateStep.canvas,
-      builder.generateStep.generationProgress,
-    ]),
+    revisionKey: JSON.stringify([builder.draftRestoreRevision, builder.generateStep.canvas]),
     session: props.session,
   });
   useVersionUpdateActivity(

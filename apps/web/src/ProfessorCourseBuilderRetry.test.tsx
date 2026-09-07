@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -29,6 +29,10 @@ describe("Professor course builder generation retry", () => {
       const baseFetch = professorFetchMock();
       const draftAttempts = new Map<string, number>();
       const requestKeys = new Map<string, string[]>();
+      let releaseRetry: (() => void) | undefined;
+      const retryPause = new Promise<void>((resolve) => {
+        releaseRetry = resolve;
+      });
       const fetchMock = vi.fn((url: string, init?: RequestInit) => {
         const lectureId = url.match(/lectures\/(lecture-\d+)\/canvas\/draft/)?.[1];
         if (lectureId && init?.method === "POST") {
@@ -52,6 +56,15 @@ describe("Professor course builder generation retry", () => {
               );
             return Promise.reject(new TypeError("Failed to fetch"));
           }
+        }
+        if (
+          terminal &&
+          !regenerate &&
+          lectureId === "lecture-02" &&
+          init?.method === "POST" &&
+          draftAttempts.get(lectureId) === 2
+        ) {
+          return retryPause.then(() => baseFetch(url, init));
         }
         return baseFetch(url, init);
       });
@@ -89,7 +102,23 @@ describe("Professor course builder generation retry", () => {
             await screen.findByText(/1 lecture canvases ready to review/i),
           ).toBeInTheDocument();
         await screen.findByRole("button", { name: /continue unfinished lectures/i });
+        if (!regenerate) {
+          await user.click(screen.getByRole("button", { name: /review lecture canvas for 01/i }));
+          await user.click(
+            await screen.findByRole("button", { name: /approve canvas for publication/i }),
+          );
+          await screen.findByText("1 of 2 approved");
+          fetchMock.mockClear();
+        }
         await user.click(screen.getByRole("button", { name: /continue unfinished lectures/i }));
+        if (!regenerate) {
+          await waitFor(() => expect(draftAttempts.get("lecture-02")).toBe(2));
+          expect(screen.getByText("1 of 2 approved")).toBeInTheDocument();
+          expect(
+            fetchMock.mock.calls.some(([url]) => url.includes("lecture-01/canvas/learning-design")),
+          ).toBe(false);
+          releaseRetry?.();
+        }
         await screen.findByText(/2 lecture canvases ready to review/i);
         expect(
           fetchMock.mock.calls.some(([url]) => url.endsWith("lecture-02/canvas/draft/repair")),
@@ -118,7 +147,13 @@ describe("Professor course builder generation retry", () => {
       expect(screen.getByLabelText(/lecture generation progress/i)).toHaveTextContent(
         /needs review/i,
       );
-      await approveAllLearningDesigns(user);
+      if (terminal && !regenerate) {
+        await user.click(screen.getByRole("button", { name: /review lecture canvas for 02/i }));
+        await user.click(
+          await screen.findByRole("button", { name: /approve canvas for publication/i }),
+        );
+        await screen.findByText("2 of 2 approved");
+      } else await approveAllLearningDesigns(user);
       expect(screen.getByRole("button", { name: /publish .*tutor workspace/i })).toBeEnabled();
     },
   );
