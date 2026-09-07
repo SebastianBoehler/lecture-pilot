@@ -19,6 +19,7 @@ import {
   proposeLectureSchedule,
   removeYoutubeMedia,
   searchYoutubeMedia,
+  SourceRoutingRequestError,
 } from "./professorApi";
 import {
   clearSavedFlow,
@@ -104,6 +105,7 @@ export function useProfessorCourseBuilder({
   const [canvas, setCanvas] = useState<CanvasDocument | null>(null);
   const [generatedLectureIds, setGeneratedLectureIds] = useState<string[]>([]);
   const [draftReviewed, setDraftReviewed] = useState(false);
+  const [draftRestoreRevision, setDraftRestoreRevision] = useState(0);
   const [generationProgress, setGenerationProgress] = useState<CanvasGenerationProgress[]>([]);
   const [generationWarnings, setGenerationWarnings] = useState<string[]>([]);
   const [retryingLectureIds, setRetryingLectureIds] = useState<Set<string>>(new Set());
@@ -382,8 +384,12 @@ export function useProfessorCourseBuilder({
             6000,
           );
           return { query: searchQuery, videos: response.items };
-        } catch {
-          return { query: searchQuery, videos: [] };
+        } catch (error) {
+          return {
+            query: searchQuery,
+            videos: [],
+            error: error instanceof Error ? error.message : "Video search failed.",
+          };
         }
       }),
     );
@@ -395,7 +401,7 @@ export function useProfessorCourseBuilder({
         seenVideoIds.add(video.video_id);
         return true;
       });
-      groups.push({ query: response.query, videos: groupVideos });
+      groups.push({ query: response.query, videos: groupVideos, error: response.error });
     }
     if (generation === suggestedSearchGeneration.current) setSuggestedVideoGroups(groups);
     return flattenVideoGroups(groups).length;
@@ -527,9 +533,14 @@ export function useProfessorCourseBuilder({
       } catch (routingError) {
         setActiveStep("sources");
         setError(
-          routingError instanceof Error
-            ? routingError.message
-            : "Source assignments failed to load.",
+          routingError instanceof SourceRoutingRequestError &&
+            routingError.status === 409 &&
+            routingError.message ===
+              "Generate an agent source-assignment proposal before reviewing it."
+            ? null
+            : routingError instanceof Error
+              ? routingError.message
+              : "Source assignments failed to load.",
         );
         return;
       }
@@ -545,13 +556,14 @@ export function useProfessorCourseBuilder({
         setCanvas(activeCanvas ?? null);
         setGeneratedLectureIds(restoredDrafts.restored.map((item) => item.lectureId));
         setGenerationProgress(restoredDrafts.progress);
+        setDraftRestoreRevision((revision) => revision + 1);
         setGenerationWarnings(
           Array.from(
             new Set(restoredDrafts.restored.flatMap((item) => item.canvas.warnings ?? [])),
           ),
         );
         setDraftReviewed(false);
-        setActiveStep(activeCanvas ? "generate" : restoredRouting.confirmed ? "design" : "sources");
+        setActiveStep(activeCanvas ? "generate" : restoredRouting.confirmed ? "review" : "sources");
         return;
       }
       try {
@@ -561,12 +573,13 @@ export function useProfessorCourseBuilder({
           session,
         );
         setCanvas(restoredCanvas);
+        setDraftRestoreRevision((revision) => revision + 1);
         setGeneratedLectureIds([targetWorkspace.lectureId]);
         setGenerationWarnings(restoredCanvas.warnings ?? []);
         setDraftReviewed(false);
         setActiveStep("generate");
       } catch (canvasError) {
-        setActiveStep(restoredRouting.confirmed ? "design" : "sources");
+        setActiveStep(restoredRouting.confirmed ? "review" : "sources");
         if (!options.quietDraftMiss) {
           setError(
             canvasError instanceof Error
@@ -754,7 +767,7 @@ export function useProfessorCourseBuilder({
   };
 
   const mediaStep = {
-    canContinue: Boolean(bundleReady && routingReady && designReady && workspace),
+    canContinue: Boolean(bundleReady && routingReady && workspace),
     canSearch: Boolean(setupReady && workspace),
     canSuggest: Boolean(suggestedQueries.length && setupReady && workspace),
     pendingAction,
@@ -762,10 +775,9 @@ export function useProfessorCourseBuilder({
       void run("validate-routing", async () => {
         const activeWorkspace = requireWorkspace(workspace);
         await requireConfirmedRouting(activeWorkspace.courseId);
-        await requireApprovedDesigns();
         setAutoSuggesting(false);
         setMediaReviewed(true);
-        setActiveStep("generate");
+        setActiveStep("design");
       }),
     onQueryChange: setQuery,
     onSearch: () =>
@@ -877,6 +889,11 @@ export function useProfessorCourseBuilder({
     ? lectureSchedule
     : workspaceLectures.map(scheduleItemFromLecture);
   const routingStep = {
+    isLoading: isRestoring,
+    isProposing:
+      pendingAction === "apply-schedule" ||
+      pendingAction === "upload" ||
+      pendingAction === "regenerate-routing",
     isSaving: pendingAction === "confirm-routing" || pendingAction === "regenerate-routing",
     lectures: routingLectures,
     routing: sourceRouting.routing,
@@ -903,13 +920,15 @@ export function useProfessorCourseBuilder({
         await sourceRouting.confirm(activeWorkspace.courseId);
         practiceDesign.reset();
         resetCanvasState();
-        setActiveStep("design");
+        setMediaReviewed(false);
+        setActiveStep("review");
         return "Source assignments confirmed for Canvas generation.";
       }),
   };
 
   return {
     activeStep,
+    draftRestoreRevision,
     defineStep,
     error,
     generateStep,

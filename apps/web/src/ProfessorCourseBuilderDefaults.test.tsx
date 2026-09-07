@@ -41,9 +41,7 @@ describe("Professor course builder defaults", () => {
     await openProfessorDemo(user);
 
     expect(screen.getByLabelText(/course name/i)).toHaveValue("");
-    expect(screen.getByLabelText(/course name/i)).toHaveAccessibleDescription(
-      /exact course title from alma or ilias.*course title and term/i,
-    );
+    expect(screen.getByLabelText(/course name/i)).not.toHaveAttribute("aria-describedby");
     expect(screen.queryByLabelText(/lecture title/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /full course/i })).toHaveClass("is-active");
     expect(screen.getByRole("button", { name: /create course workspace/i })).toBeDisabled();
@@ -113,9 +111,7 @@ describe("Professor course builder defaults", () => {
     await openProfessorDemo(user);
     const language = screen.getByLabelText(/course language/i);
     expect(language).toHaveValue("en");
-    expect(language).toHaveAccessibleDescription(
-      /all matching uploaded materials.*canvas.*selected language/i,
-    );
+    expect(language).not.toHaveAttribute("aria-describedby");
     await user.selectOptions(language, "de");
     await user.type(screen.getByLabelText(/course name/i), "Bilingual ML Course");
     await user.click(screen.getByRole("button", { name: /create course workspace/i }));

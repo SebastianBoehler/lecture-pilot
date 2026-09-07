@@ -11,6 +11,7 @@ export function LessonAnnotations({
   session,
   mode,
   revision,
+  enabled = true,
   children,
 }: {
   courseId: string;
@@ -18,6 +19,7 @@ export function LessonAnnotations({
   session: LoginSession;
   mode: LearnerWorkspaceMode;
   revision: number;
+  enabled?: boolean;
   children: ReactNode;
 }) {
   const [annotations, setAnnotations] = useState<CanvasAnnotation[]>([]);
@@ -25,6 +27,7 @@ export function LessonAnnotations({
   const path = `/courses/${courseId}/lectures/${lectureId}/annotations`;
 
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     async function load() {
       try {
@@ -48,9 +51,10 @@ export function LessonAnnotations({
     return () => {
       cancelled = true;
     };
-  }, [path, session, mode, revision]);
+  }, [path, session, mode, revision, enabled]);
 
   async function remove(id: string) {
+    if (!enabled) throw new Error("Draft annotations are unavailable.");
     const response = await fetch(
       apiUrl(`${path}/${id}`),
       learnerRequestInit(session, mode, { method: "DELETE" }),
@@ -61,8 +65,8 @@ export function LessonAnnotations({
   }
 
   return (
-    <CanvasAnnotationContext.Provider value={{ annotations, remove }}>
-      {error ? (
+    <CanvasAnnotationContext.Provider value={{ annotations: enabled ? annotations : [], remove }}>
+      {enabled && error ? (
         <p className="form-error" role="alert">
           {error}
         </p>

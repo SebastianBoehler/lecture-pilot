@@ -1,3 +1,6 @@
+import { ProfessorLanguageVariants } from "./ProfessorLanguageVariants";
+import { ProfessorReviewStep } from "./ProfessorReviewStep";
+import { useAutomaticCanvasGeneration } from "./useAutomaticCanvasGeneration";
 import { ProfessorImplementationChanges } from "./ProfessorImplementationChanges";
 import { useI18n } from "./i18n";
 import { ProfessorBuilderStepper } from "./ProfessorBuilderStepper";
@@ -18,11 +21,34 @@ import { useVersionUpdateActivity } from "./VersionUpdateBoundary";
 export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
   const { t } = useI18n();
   const builder = useProfessorCourseBuilder(props);
+  useAutomaticCanvasGeneration({
+    revision: JSON.stringify([
+      builder.workspace?.courseId,
+      builder.practiceDesignStep.lectures.map(({ id }) => [
+        id,
+        builder.practiceDesignStep.designs[id]?.revision,
+      ]),
+    ]),
+    ready:
+      builder.activeStep === "design" &&
+      builder.generateStep.canGenerate &&
+      !builder.isRestoring &&
+      builder.uploadStep.pendingAction === null &&
+      !builder.practiceDesignStep.preparing &&
+      builder.practiceDesignStep.pendingLectureId === null &&
+      !builder.generateStep.canvas &&
+      builder.generateStep.generationProgress.length === 0,
+    start: () => {
+      builder.setActiveStep("generate");
+      void builder.generateStep.onGenerate();
+    },
+  });
   const reviewLectureIds = builder.generateStep.previewLectures.map((lecture) => lecture.id);
   const learningDesign = useProfessorLearningDesignReviews({
     courseId: builder.workspace?.courseId ?? null,
     lectureIds: reviewLectureIds,
     revisionKey: JSON.stringify([
+      builder.draftRestoreRevision,
       builder.generateStep.canvas,
       builder.generateStep.generationProgress,
     ]),
@@ -45,8 +71,43 @@ export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
     builder.generateStep.generationProgress.every((item) => item.status === "ready");
   const draft = (
     <ProfessorCanvasDraftStep
+      publicationAction={
+        builder.generateStep.canvas ? (
+          <ProfessorPublishStep
+            {...builder.publishStep}
+            canPublish={canPublish}
+            onPublish={() => {
+              if (!canPublish) return;
+              builder.generateStep.onContinueToPublish();
+              void builder.publishStep.onPublish();
+            }}
+          />
+        ) : null
+      }
       {...builder.generateStep}
+      lectures={builder.publishStep.lectures}
+      renderPublishedLecture={(lectureId) =>
+        builder.workspace ? (
+          <ProfessorLanguageVariants
+            courseId={builder.workspace.courseId}
+            lectureId={lectureId}
+            session={props.session}
+          />
+        ) : null
+      }
+      renderImplementationChanges={(lectureId) =>
+        builder.workspace ? (
+          <ProfessorImplementationChanges
+            key={lectureId}
+            courseId={builder.workspace.courseId}
+            lectureId={lectureId}
+            session={props.session}
+          />
+        ) : null
+      }
       learningDesignReviews={learningDesign.reviews}
+      learningDesignErrors={learningDesign.errorsByLecture}
+      onReloadLearningDesign={(id) => void learningDesign.reload(id)}
       learningDesignSaving={learningDesign.saving}
       onApproveLearningDesign={(lectureId) => void learningDesign.approve(lectureId)}
       onSaveLearningDesign={(lectureId, update) => void learningDesign.save(lectureId, update)}
@@ -62,7 +123,9 @@ export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
         <div className="professor-header-actions">
           <button
             className="refresh-button"
-            disabled={!builder.workspace || builder.isRestoring}
+            disabled={
+              !builder.workspace || builder.isRestoring || builder.uploadStep.pendingAction !== null
+            }
             type="button"
             onClick={builder.restoreWorkspace}
           >
@@ -82,46 +145,15 @@ export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
               <ProfessorCourseSetupStep {...builder.defineStep} />
             ) : null}
             {stage === "materials" ? <ProfessorBuilderMaterials builder={builder} /> : null}
+            {stage === "media" ? <ProfessorReviewStep {...builder.mediaStep} /> : null}
             {builder.activeStep === "design" ? (
               <ProfessorPracticeDesignStep {...builder.practiceDesignStep} />
             ) : null}
-            {stage === "release" ? (
-              <>
-                {builder.publishStep.ready ? (
-                  <details className="builder-optional">
-                    <summary>{t("builder.release.revision")}</summary>
-                    {draft}
-                  </details>
-                ) : (
-                  draft
-                )}
-                {builder.generateStep.canvas ? (
-                  <ProfessorPublishStep
-                    {...builder.publishStep}
-                    courseId={builder.workspace?.courseId}
-                    session={props.session}
-                    canPublish={canPublish}
-                    onPublish={() => {
-                      if (!canPublish) return;
-                      builder.generateStep.onContinueToPublish();
-                      void builder.publishStep.onPublish();
-                    }}
-                  />
-                ) : null}
-              </>
-            ) : null}
+            {stage === "release" ? <>{draft}</> : null}
           </div>
-          {stage === "release" && builder.workspace
-            ? reviewLectureIds.map((lectureId) => (
-                <ProfessorImplementationChanges
-                  key={lectureId}
-                  courseId={builder.workspace!.courseId}
-                  lectureId={lectureId}
-                  session={props.session}
-                />
-              ))
-            : null}
-          <ProfessorGenerationWarnings warnings={builder.generationWarnings} />
+          {stage === "materials" ? (
+            <ProfessorGenerationWarnings warnings={builder.generationWarnings} />
+          ) : null}
           {builder.notice ? <p className="form-success">{builder.notice}</p> : null}
           {builder.error ? <p className="form-error">{builder.error}</p> : null}
           {learningDesign.error ? <p className="form-error">{learningDesign.error}</p> : null}
@@ -134,6 +166,7 @@ export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
 function builderStageDescription(stage: BuilderStage, t: ReturnType<typeof useI18n>["t"]) {
   if (stage === "course") return t("builder.stage.define");
   if (stage === "materials") return t("builder.stage.upload");
+  if (stage === "media") return t("builder.stage.review");
   if (stage === "plan") return t("builder.stage.design");
   return t("builder.stage.generate");
 }

@@ -1,5 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 
 import App from "./App";
@@ -9,8 +8,7 @@ afterEach(() => {
   window.history.replaceState({}, "", "/");
 });
 
-it("keeps tutor turns scoped to the course shown in a draft preview", async () => {
-  const user = userEvent.setup();
+it("loads the correct course draft without enabling unpublished tutor turns", async () => {
   window.localStorage.setItem("lecturepilot.loginSession", JSON.stringify(localProfessorSession));
   window.history.replaceState(
     {},
@@ -59,19 +57,13 @@ it("keeps tutor turns scoped to the course shown in a draft preview", async () =
   expect(
     await screen.findByRole("heading", { name: "Scoped draft" }, { timeout: 3_000 }),
   ).toBeInTheDocument();
-  await user.type(screen.getByPlaceholderText(/ask about this lecture/i), "Explain this draft.");
-  await user.click(screen.getByRole("button", { name: /send message/i }));
-  expect(await screen.findByText("Scoped answer.")).toBeInTheDocument();
-
-  await waitFor(() => {
-    const call = fetchMock.mock.calls.find(([url]) => String(url).includes("/agent/turn/stream"));
-    expect(call).toBeDefined();
-    expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({
-      course_id: "security-course",
-      lecture_id: "lecture-01",
-      canvas_state: { focused_section_id: "scoped-section" },
-    });
-  });
+  expect(
+    screen.getByText(/Tutor conversations and assessed attempts are available after publication/),
+  ).toBeInTheDocument();
+  expect(screen.queryByPlaceholderText(/ask about this lecture/i)).not.toBeInTheDocument();
+  expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/agent/turn/stream"))).toBe(
+    false,
+  );
 });
 
 function jsonResponse(payload: unknown) {

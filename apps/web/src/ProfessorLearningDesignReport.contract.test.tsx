@@ -12,9 +12,9 @@ describe("professor learning-design approval", () => {
     const onApprove = vi.fn();
     renderReview({ ...reportReview(), learning_intent_revision: "a".repeat(64) }, { onApprove });
     expect(screen.getByRole("textbox", { name: "Learning objective" })).toHaveAttribute("readonly");
-    expect(screen.queryByRole("button", { name: "Save learning design" })).not.toBeInTheDocument();
-    expect(screen.queryByText("Edit learning plan")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Approve learning design" }));
+    expect(screen.queryByRole("button", { name: "Save practice details" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Edit practice details")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Approve canvas for publication" }));
     expect(onApprove).toHaveBeenCalledWith("lecture-01");
   });
 
@@ -23,7 +23,7 @@ describe("professor learning-design approval", () => {
     renderReview(reportReview(), {
       onApprove: (lectureId: string) => (approvedLectureId = lectureId),
     });
-    const approve = screen.getByRole("button", { name: "Approve learning design" });
+    const approve = screen.getByRole("button", { name: "Approve canvas for publication" });
 
     expect(screen.queryByRole("heading", { name: "Review findings" })).not.toBeInTheDocument();
     expect(screen.queryByText("Practice has no checkpoint or quiz.")).not.toBeInTheDocument();

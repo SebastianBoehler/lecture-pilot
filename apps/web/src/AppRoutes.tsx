@@ -233,6 +233,7 @@ export function AppRoutes(props: AppRoutesProps) {
       learnerState={props.learnerState}
       learnerStateError={props.learnerStateError}
       previewMode={lessonMode === "professor-preview"}
+      draftMode={lessonMode === "draft"}
       workspaceMode={lessonMode === "professor-preview" ? "professor-preview" : "learner"}
       onSendMessage={props.onSendMessage}
       onPracticeSubmitted={props.onPracticeSubmitted}

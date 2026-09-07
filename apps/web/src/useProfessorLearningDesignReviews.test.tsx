@@ -231,3 +231,41 @@ function deferred<T>() {
 function response(payload: unknown) {
   return { ok: true, json: async () => payload };
 }
+
+it("retains successful reviews when another lecture fails and permits a targeted retry", async () => {
+  let fail = true;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === "PUT") throw new Error("Save unavailable");
+      if (url.includes("lecture-02") && fail) throw new Error("Review unavailable");
+      return response({
+        ...review("d", null),
+        lecture_id: url.includes("lecture-02") ? "lecture-02" : "lecture-01",
+      });
+    }),
+  );
+  const { result } = renderHook(() =>
+    useProfessorLearningDesignReviews({
+      courseId: "course-1",
+      lectureIds: ["lecture-01", "lecture-02"],
+      revisionKey: "one",
+      session,
+    }),
+  );
+  await waitFor(() =>
+    expect(result.current.errorsByLecture["lecture-02"]).toBe("Review unavailable"),
+  );
+  expect(result.current.reviews["lecture-01"]).toBeDefined();
+  expect(result.current.allApproved).toBe(false);
+  await act(() =>
+    result.current.save("lecture-01", updateFor(result.current.reviews["lecture-01"])),
+  );
+  expect(result.current.error).toBe("Save unavailable");
+  expect(result.current.errorsByLecture["lecture-01"]).toBe("Save unavailable");
+  expect(result.current.errorsByLecture["lecture-02"]).toBe("Review unavailable");
+  fail = false;
+  await act(() => result.current.reload("lecture-02"));
+  expect(result.current.reviews["lecture-02"]).toBeDefined();
+  expect(result.current.errorsByLecture["lecture-02"]).toBeUndefined();
+});

@@ -4,9 +4,9 @@ import { describe, expect, it, vi } from "vitest";
 import { builderSteps, ProfessorBuilderStepper } from "./ProfessorBuilderStepper";
 import { renderWithI18n } from "./test/renderWithI18n";
 
-describe("four-stage course creation", () => {
+describe("five-stage course creation", () => {
   it.each(["upload", "sources", "review"] as const)(
-    "keeps %s inside Materials and makes optional media unnecessary for review",
+    "gives %s its own appropriate stage without requiring a video",
     (activeStep) => {
       const onStepChange = vi.fn();
       renderWithI18n(
@@ -30,12 +30,13 @@ describe("four-stage course creation", () => {
       expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
         "01 Course",
         "02 Materials",
-        "03 Learning plan",
-        "04 Review & publish",
+        "03 Media",
+        "04 Learning plan",
+        "05 Review & publish",
       ]);
-      expect(buttons[1]).toHaveAttribute("aria-current", "step");
-      expect(buttons[3]).toBeEnabled();
-      fireEvent.click(buttons[3]);
+      expect(buttons[activeStep === "review" ? 2 : 1]).toHaveAttribute("aria-current", "step");
+      expect(buttons[4]).toBeEnabled();
+      fireEvent.click(buttons[4]);
       expect(onStepChange).toHaveBeenCalledWith("generate");
     },
   );

@@ -93,12 +93,18 @@ export function VideoCandidateGroups({
       {groups.map((group) => (
         <section className="video-candidate-group" key={group.query}>
           <h3>{group.query}</h3>
-          <VideoCandidates
-            emptyLabel={t("builder.video.noStrongCandidates")}
-            videos={group.videos}
-            selectedVideos={selectedVideos}
-            onToggle={onToggle}
-          />
+          {group.error ? (
+            <p className="form-error" role="alert">
+              {group.error}
+            </p>
+          ) : (
+            <VideoCandidates
+              emptyLabel={t("builder.video.noStrongCandidates")}
+              videos={group.videos}
+              selectedVideos={selectedVideos}
+              onToggle={onToggle}
+            />
+          )}
         </section>
       ))}
     </div>

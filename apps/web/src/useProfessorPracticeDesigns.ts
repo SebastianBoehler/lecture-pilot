@@ -1,3 +1,12 @@
+import { runBoundedTasks } from "./boundedTaskPool";
+import {
+  lectureError,
+  clearLectureError,
+  type ErrorState,
+  latestPending,
+  omit,
+  type Pending,
+} from "./practiceDesignOperations";
 import type { LearningIntentApprovalOptions } from "./learningIntentTypes";
 import { useLayoutEffect, useRef, useState } from "react";
 
@@ -13,22 +22,15 @@ import {
 import type {
   PracticeDesign,
   PracticeDesignReadiness,
+  PracticeDesignState,
   PracticeDesignUpdate,
 } from "./practiceDesignTypes";
 import { isPracticeDesignReady } from "./practiceDesignReadiness";
 import type { LoginSession } from "./types";
 
-type State = {
-  absent: Readonly<Record<string, true>>;
-  designs: Readonly<Record<string, PracticeDesign>>;
-  key: string;
-  readiness: Readonly<Record<string, PracticeDesignReadiness>>;
-};
 export type PracticeDesignPendingAction =
   "load" | "propose" | "refresh" | "save" | "review" | "approve";
-type PendingEntry = { action: PracticeDesignPendingAction; operation: number };
-type Pending = { key: string; values: Readonly<Record<string, PendingEntry>> };
-type ErrorState = { key: string; message: string | null };
+
 type Token = { epoch: number; key: string; lectureId: string; operation: number };
 type Active = {
   epoch: number;
@@ -48,7 +50,12 @@ export function useProfessorPracticeDesigns({
     ? JSON.stringify([session.tenant_id ?? "", session.username, courseId])
     : "";
   const active = useRef<Active>({ epoch: 0, key: identityKey, nextOperation: 0, operations: {} });
-  const [state, setState] = useState<State>({ absent: {}, designs: {}, key: "", readiness: {} });
+  const [state, setState] = useState<PracticeDesignState>({
+    absent: {},
+    designs: {},
+    key: "",
+    readiness: {},
+  });
   const [pending, setPending] = useState<Pending>({ key: "", values: {} });
   const [errorState, setErrorState] = useState<ErrorState>({ key: "", message: null });
   const designs = state.key === identityKey ? state.designs : {};
@@ -71,11 +78,15 @@ export function useProfessorPracticeDesigns({
     };
   }, [identityKey]);
 
-  async function load(lectureId: string) {
+  async function load(lectureId: string, proposeMissing = false, preserveError = false) {
+    let design: PracticeDesign | undefined;
     const token = begin(lectureId);
     markPending(token, true, "load");
+    if (!preserveError)
+      setErrorState((current) => clearLectureError(current, identityKey, lectureId));
     try {
-      const design = await getPracticeDesign({ courseId: courseId!, lectureId, session });
+      design = await getPracticeDesign({ courseId: courseId!, lectureId, session });
+      if (current(token)) setDesign(lectureId, design, null, false);
       const readiness = await getPracticeDesignReadiness({
         courseId: courseId!,
         lectureId,
@@ -84,10 +95,15 @@ export function useProfessorPracticeDesigns({
       if (current(token)) setDesign(lectureId, design, readiness, false);
     } catch (loadError) {
       if (current(token)) {
-        if (loadError instanceof PracticeDesignRequestError && loadError.status === 404) {
+        if (
+          !design &&
+          loadError instanceof PracticeDesignRequestError &&
+          loadError.status === 404
+        ) {
           setDesign(lectureId, null, null, true);
+          if (proposeMissing) await propose(lectureId);
         } else {
-          setErrorState({ key: identityKey, message: errorMessage(loadError) });
+          setErrorState((current) => lectureError(current, identityKey, lectureId, loadError));
         }
       }
     } finally {
@@ -102,9 +118,14 @@ export function useProfessorPracticeDesigns({
   ) {
     const token = begin(lectureId);
     markPending(token, true, action);
-    setErrorState({ key: identityKey, message: null });
+    setErrorState((current) => ({
+      key: identityKey,
+      message: null,
+      byLecture: omit(current.key === identityKey ? (current.byLecture ?? {}) : {}, [lectureId]),
+    }));
     try {
       const design = await operation();
+      if (current(token)) setDesign(lectureId, design, null, false);
       const readiness = await getPracticeDesignReadiness({
         courseId: courseId!,
         lectureId,
@@ -113,9 +134,9 @@ export function useProfessorPracticeDesigns({
       if (current(token)) setDesign(lectureId, design, readiness, false);
     } catch (mutationError) {
       if (current(token)) {
-        setErrorState({ key: identityKey, message: errorMessage(mutationError) });
+        setErrorState((current) => lectureError(current, identityKey, lectureId, mutationError));
         if (mutationError instanceof PracticeDesignRequestError && mutationError.status === 409) {
-          await load(lectureId);
+          await load(lectureId, false, true);
         }
       }
     } finally {
@@ -178,10 +199,10 @@ export function useProfessorPracticeDesigns({
     });
   }
 
-  async function loadAll(lectureIds: readonly string[]) {
+  async function loadAll(lectureIds: readonly string[], proposeMissing = false) {
     if (!courseId || !identityKey) return;
     setErrorState({ key: identityKey, message: null });
-    await Promise.all(lectureIds.map((lectureId) => load(lectureId)));
+    await runBoundedTasks([...lectureIds], 4, (id) => load(id, proposeMissing));
   }
 
   async function propose(lectureId: string, refresh = false) {
@@ -263,7 +284,10 @@ export function useProfessorPracticeDesigns({
     approve,
     designs,
     error: errorState.key === identityKey ? errorState.message : null,
+    errorsByLecture: errorState.key === identityKey ? (errorState.byLecture ?? {}) : {},
     loadAll,
+    load,
+    pendingByLecture: pending.key === identityKey ? pending.values : {},
     pendingAction: currentPending?.action ?? null,
     pendingLectureId: currentPending?.lectureId ?? null,
     readiness: state.key === identityKey ? state.readiness : {},
@@ -272,26 +296,4 @@ export function useProfessorPracticeDesigns({
     reset,
     save,
   };
-}
-
-function omit<T>(values: Readonly<Record<string, T>>, keys: readonly string[]): Record<string, T> {
-  const next = { ...values };
-  for (const key of keys) delete next[key];
-  return next;
-}
-
-function latestPending(
-  pending: Pending,
-  key: string,
-): (PendingEntry & { lectureId: string }) | null {
-  if (pending.key !== key) return null;
-  return Object.entries(pending.values).reduce<(PendingEntry & { lectureId: string }) | null>(
-    (latest, [lectureId, entry]) =>
-      !latest || entry.operation > latest.operation ? { lectureId, ...entry } : latest,
-    null,
-  );
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Practice design request failed.";
 }

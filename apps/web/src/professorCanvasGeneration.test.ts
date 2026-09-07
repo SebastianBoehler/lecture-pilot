@@ -74,6 +74,7 @@ describe("professor canvas generation", () => {
 
   it("automatically reconnects a network failure through the same draft callback", async () => {
     vi.useFakeTimers();
+    const onProgress = vi.fn();
     const draft = vi
       .fn<() => Promise<CanvasDocument>>()
       .mockRejectedValueOnce(new TypeError("Failed to fetch"))
@@ -82,15 +83,24 @@ describe("professor canvas generation", () => {
     const generation = generateLectureCanvasDrafts({
       draft,
       lectureIds: ["lecture-01"],
+      onProgress,
     });
     await vi.runAllTimersAsync();
 
     await expect(generation).resolves.toEqual([canvas]);
     expect(draft).toHaveBeenCalledTimes(2);
+    expect(onProgress).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "Connection interrupted; reconnecting in 2s.",
+      }),
+    );
+    expect(
+      onProgress.mock.calls.some(([progress]) => progress.message?.includes("Provider busy")),
+    ).toBe(false);
     vi.useRealTimers();
   });
 
-  it("queues every lecture while running at most two drafts concurrently", async () => {
+  it("starts every lecture without a frontend concurrency cap", async () => {
     const releases: Array<() => void> = [];
     const draft = vi.fn(
       () =>
@@ -105,13 +115,8 @@ describe("professor canvas generation", () => {
     });
     await Promise.resolve();
 
-    expect(draft).toHaveBeenCalledTimes(2);
-    releases[0]();
-    await vi.waitFor(() => expect(draft).toHaveBeenCalledTimes(3));
-    releases[1]();
-    await vi.waitFor(() => expect(draft).toHaveBeenCalledTimes(4));
-    releases[2]();
-    releases[3]();
+    expect(draft).toHaveBeenCalledTimes(4);
+    releases.forEach((release) => release());
     await expect(generation).resolves.toHaveLength(4);
   });
 });

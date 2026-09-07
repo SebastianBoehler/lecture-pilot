@@ -1,10 +1,11 @@
 import type { BuilderStep, StepState } from "./ProfessorBuilderStepper";
 
-export type BuilderStage = "course" | "materials" | "plan" | "release";
+export type BuilderStage = "course" | "materials" | "media" | "plan" | "release";
 
 export function builderStage(step: BuilderStep): BuilderStage {
   if (step === "define") return "course";
-  if (step === "upload" || step === "sources" || step === "review") return "materials";
+  if (step === "upload" || step === "sources") return "materials";
+  if (step === "review") return "media";
   return step === "design" ? "plan" : "release";
 }
 
@@ -17,6 +18,12 @@ export function builderStages(steps: StepState[]) {
       target: state("sources").available ? "sources" : "upload",
       available: state("upload").available,
       ready: state("upload").ready && state("sources").ready,
+    },
+    {
+      id: "media",
+      target: "review",
+      available: state("review").available,
+      ready: state("review").ready,
     },
     {
       id: "plan",

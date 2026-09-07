@@ -40,7 +40,6 @@ export function ProfessorCourseSetupStep({
       <label>
         {t("builder.define.courseLanguage")}
         <select
-          aria-describedby="course-language-help"
           value={setup.canvasLanguage}
           onChange={(event) =>
             onSetupChange({
@@ -52,9 +51,6 @@ export function ProfessorCourseSetupStep({
           <option value="de">{t("builder.define.courseLanguage.german")}</option>
           <option value="en">{t("builder.define.courseLanguage.english")}</option>
         </select>
-        <span className="field-help" id="course-language-help">
-          {t("builder.define.courseLanguage.help")}
-        </span>
       </label>
       <label>
         {t("builder.define.visibility")}

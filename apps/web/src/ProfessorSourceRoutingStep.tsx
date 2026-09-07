@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 
 import { useI18n } from "./i18n";
-import { StepHeader } from "./ProfessorCourseBuilderParts";
+import { PendingStatus, StepHeader } from "./ProfessorCourseBuilderParts";
 import { ProfessorSourceRoutingEditor } from "./ProfessorSourceRoutingEditor";
 import { lectureIdFromNumber } from "./professorWorkspaceActivation";
 import { hasNoAssignedEvidence, lectureRouteCounts, sourceRouteCounts } from "./sourceRoutingView";
@@ -11,6 +11,8 @@ import type { CourseSourceRoutingManifest, LectureScheduleItem, SourceRouteRole 
 export type SourceRoutingLectureOption = { id: string; label: string };
 
 export function ProfessorSourceRoutingStep({
+  isLoading = false,
+  isProposing = false,
   isSaving,
   lectures,
   routing,
@@ -18,6 +20,8 @@ export function ProfessorSourceRoutingStep({
   onRegenerate,
   onRouteChange,
 }: {
+  isLoading?: boolean;
+  isProposing?: boolean;
   isSaving: boolean;
   lectures: LectureScheduleItem[];
   routing: CourseSourceRoutingManifest | null;
@@ -39,6 +43,17 @@ export function ProfessorSourceRoutingStep({
     (lecture) => (lectureCounts.get(lecture.id) ?? 0) > 0,
   ).length;
   const noAssignedEvidence = hasNoAssignedEvidence(routes);
+
+  if (isLoading || isProposing) {
+    return (
+      <section className="flow-card" aria-busy="true">
+        <PendingStatus
+          label={t(isLoading ? "builder.sources.loading" : "builder.sources.preparing")}
+        />
+        {!isLoading && <p className="flow-help">{t("builder.sources.preparingHelp")}</p>}
+      </section>
+    );
+  }
 
   return (
     <section className="flow-card">

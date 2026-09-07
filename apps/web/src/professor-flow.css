@@ -38,8 +38,7 @@
   gap: 8px;
 }
 
-.generation-progress,
-.generation-warnings {
+.generation-progress {
   display: grid;
   gap: 8px;
 }
@@ -78,8 +77,11 @@
   padding: 4px 9px;
 }
 
-.generation-warnings strong {
-  color: var(--color-accent-primary);
+.generation-warnings summary {
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .generation-progress-row small {
@@ -107,16 +109,15 @@
 }
 
 .generation-warnings {
-  border: 1px solid color-mix(in srgb, var(--color-accent-primary) 42%, var(--color-border-primary));
-  border-radius: 8px;
-  padding: 12px;
-  background: color-mix(in srgb, var(--color-accent-primary) 7%, var(--color-bg-primary));
+  border-top: 1px solid var(--color-border-primary);
+  padding: 12px 0;
+  color: var(--color-text-secondary);
 }
 
 .generation-warnings ul {
   display: grid;
   gap: 4px;
-  margin: 0;
+  margin: 8px 0 0;
   padding-left: 18px;
 }
 

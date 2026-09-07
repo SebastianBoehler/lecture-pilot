@@ -4,6 +4,7 @@ import type { Lecture, YoutubeVideoCandidate } from "./types";
 export type YoutubeCandidateGroup = {
   query: string;
   videos: YoutubeVideoCandidate[];
+  error?: string;
 };
 
 export function youtubeSuggestionQueries(setup: CourseSetup, lecture?: Lecture) {

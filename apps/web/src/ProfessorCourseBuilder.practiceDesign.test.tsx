@@ -91,14 +91,12 @@ it("requires every full-course plan approval and keeps a stale approval conflict
   expect(screen.getByLabelText(/route lecture02-eng\.tex/i)).toHaveValue("lecture");
   expect(screen.queryByLabelText(/route lecture03-eng\.tex/i)).not.toBeInTheDocument();
   await user.click(await screen.findByRole("button", { name: /accept assignments and continue/i }));
-
-  const proposals = await screen.findAllByRole("button", { name: /propose learning goals/i });
-  await user.click(proposals[0]);
-  await user.click(proposals[1]);
-  await waitFor(() =>
-    expect(screen.getAllByRole("button", { name: /review plan for/i })).toHaveLength(2),
+  await user.click(
+    await screen.findByRole("button", { name: /continue (?:without videos|to learning plan)/i }),
   );
-  const firstToggle = screen.getAllByRole("button", { name: /review plan for/i })[0];
+
+  const navigation = await screen.findByRole("navigation", { name: "Learning plan lectures" });
+  const firstToggle = await screen.findByRole("button", { name: /review plan for/i });
   const firstPlan = firstToggle.closest("article")!;
   await user.click(within(firstPlan).getByRole("button", { name: /approve learning plan/i }));
   await waitFor(() =>
@@ -106,7 +104,7 @@ it("requires every full-course plan approval and keeps a stale approval conflict
       within(firstPlan).queryByRole("button", { name: /approve learning plan/i }),
     ).not.toBeInTheDocument(),
   );
-  expect(screen.getByRole("button", { name: /04 review & publish/i })).toBeDisabled();
+  expect(screen.getByRole("button", { name: /05 review & publish/i })).toBeDisabled();
 
   await user.click(within(firstPlan).getByRole("button", { name: /edit this target/i }));
   const outcome = within(firstPlan).getByLabelText(/outcome for posterior/i);
@@ -116,7 +114,7 @@ it("requires every full-course plan approval and keeps a stale approval conflict
   expect(
     await within(firstPlan).findByRole("button", { name: /approve learning plan/i }),
   ).toBeDisabled();
-  expect(screen.getByRole("button", { name: /04 review & publish/i })).toBeDisabled();
+  expect(screen.getByRole("button", { name: /05 review & publish/i })).toBeDisabled();
   await user.click(within(firstPlan).getByRole("button", { name: /review edited plan/i }));
   await waitFor(() =>
     expect(within(firstPlan).getByRole("button", { name: /approve learning plan/i })).toBeEnabled(),
@@ -128,8 +126,8 @@ it("requires every full-course plan approval and keeps a stale approval conflict
     ).not.toBeInTheDocument(),
   );
 
-  const secondToggle = screen.getAllByRole("button", { name: /review plan for/i })[1];
-  await user.click(secondToggle);
+  await user.click(within(navigation).getAllByRole("button")[1]);
+  const secondToggle = await screen.findByRole("button", { name: /review plan for/i });
   const secondPlan = secondToggle.closest("article")!;
   await user.click(within(secondPlan).getByRole("button", { name: /approve learning plan/i }));
   expect(await screen.findByRole("alert")).toHaveTextContent(/revision changed/i);
@@ -148,15 +146,12 @@ it("requires every full-course plan approval and keeps a stale approval conflict
     )
     .map(([, init]) => JSON.parse(String(init?.body)).practice_design_revision);
   expect(approvalRevisions).toEqual(["d".repeat(64), "f".repeat(64)]);
-  await user.click(screen.getByRole("button", { name: /02 materials/i }));
-  await user.click(screen.getByText("Media (optional)", { selector: "summary" }));
-  await waitFor(() =>
-    expect(screen.getByRole("button", { name: /continue to canvas draft/i })).toBeEnabled(),
-  );
-  await user.click(screen.getByRole("button", { name: /continue to canvas draft/i }));
+  expect(await screen.findByText(/2 lecture canvases ready to review/i)).toBeInTheDocument();
   expect(
-    await screen.findByRole("button", { name: /generate all lecture canvases/i }),
-  ).toBeEnabled();
+    fetchMock.mock.calls.filter(
+      ([url, init]) => String(url).endsWith("/canvas/draft") && init?.method === "POST",
+    ),
+  ).toHaveLength(2);
 });
 
 it("marks an approved design stale after a source update removes current routing", async () => {
@@ -176,14 +171,14 @@ it("marks an approved design stale after a source update removes current routing
   await screen.findByRole("heading", { name: /source assignments ready/i });
   await user.click(screen.getByText(/review source assignments/i));
   await user.click(await screen.findByRole("button", { name: /accept assignments and continue/i }));
+  await user.click(
+    await screen.findByRole("button", { name: /continue (?:without videos|to learning plan)/i }),
+  );
   await approveAllPracticeDesigns(user);
-  expect(await screen.findAllByText(/^approved$/i)).toHaveLength(2);
-
-  await user.click(screen.getByRole("button", { name: /refresh workspace/i }));
   expect(await screen.findByText(/source assignments changed/i)).toBeInTheDocument();
-  await user.click(screen.getByRole("button", { name: /03 learning plan/i }));
+  await user.click(screen.getByRole("button", { name: /04 learning plan/i }));
 
-  expect(await screen.findAllByText(/source routing is stale/i)).toHaveLength(2);
+  expect(await screen.findAllByText(/source routing is stale/i)).toHaveLength(1);
   expect(screen.queryByText(/^approved$/i)).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: /approve learning plan/i })).toBeDisabled();
   expect(screen.getByRole("button", { name: /refresh proposal/i })).toBeDisabled();

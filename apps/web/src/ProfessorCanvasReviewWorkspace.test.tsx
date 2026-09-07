@@ -27,6 +27,7 @@ describe("ProfessorCanvasDraftStep review workspace", () => {
           isGenerating={false}
           learningDesignReviews={{ "lecture-01": first, "lecture-02": second }}
           learningDesignSaving={false}
+          learningDesignErrors={{ "lecture-02": "Approval could not be saved" }}
           previewLectures={[
             {
               id: "lecture-01",
@@ -39,6 +40,7 @@ describe("ProfessorCanvasDraftStep review workspace", () => {
               previewHref: "http://localhost/draft/lecture-02",
             },
           ]}
+          renderImplementationChanges={(id) => <div>Implementation changes for {id}</div>}
           totalCount={2}
           onApproveLearningDesign={() => undefined}
           onGenerate={() => undefined}
@@ -48,6 +50,7 @@ describe("ProfessorCanvasDraftStep review workspace", () => {
       </I18nProvider>,
     );
 
+    expect(screen.queryByText(/Implementation changes for/)).not.toBeInTheDocument();
     expect(screen.queryByTitle("Learner draft preview")).not.toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /open learner preview for 01 · introduction/i }),
@@ -58,8 +61,11 @@ describe("ProfessorCanvasDraftStep review workspace", () => {
     expect(screen.queryByLabelText("Learning objective")).not.toBeInTheDocument();
 
     await user.click(
-      screen.getByRole("button", { name: /review learning design for 02 · translation/i }),
+      screen.getByRole("button", { name: /review lecture canvas for 02 · translation/i }),
     );
+    expect(screen.getByText("Implementation changes for lecture-02")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Approval could not be saved");
+    expect(screen.queryByText("Implementation changes for lecture-01")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Learning objective")).toHaveValue(
       "Transfer the translation mechanism.",
     );

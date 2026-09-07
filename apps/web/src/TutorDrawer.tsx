@@ -11,12 +11,14 @@ export function TutorDrawer({
   messages,
   model,
   sessionGoal = null,
+  readOnlyNotice,
   onClose,
   onSendMessage,
 }: {
   messages: ChatMessage[];
   model: string | null;
   sessionGoal?: string | null;
+  readOnlyNotice?: string;
   onClose: () => void;
   onSendMessage: (message: string) => Promise<void>;
 }) {
@@ -41,6 +43,14 @@ export function TutorDrawer({
     following.current = true;
     setShowLatest(false);
   }
+  if (readOnlyNotice)
+    return (
+      <aside className="drawer tutor-drawer" id="lesson-panel" aria-label="Tutor drawer">
+        <LessonDrawerClose returnFocusId="lesson-panel-trigger-chat" onClose={onClose} />
+        <h2>{t("chat.title")}</h2>
+        <p>{readOnlyNotice}</p>
+      </aside>
+    );
   return (
     <aside className="drawer tutor-drawer" id="lesson-panel" aria-label="Tutor drawer">
       <LessonDrawerClose returnFocusId="lesson-panel-trigger-chat" onClose={onClose} />

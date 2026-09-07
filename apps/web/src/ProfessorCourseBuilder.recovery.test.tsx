@@ -124,7 +124,7 @@ describe("Professor course builder recovery", () => {
     expect(await screen.findByText(/temporarily unavailable/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /^materials$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /02 materials/i })).toBeEnabled();
-    expect(screen.getByRole("button", { name: /03 learning plan/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /04 learning plan/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /retry source assignments/i })).toBeEnabled();
   });
 
@@ -166,7 +166,7 @@ describe("Professor course builder recovery", () => {
     await user.click(
       await screen.findByRole("button", { name: /accept assignments and continue/i }),
     );
-    expect(await screen.findByRole("heading", { name: /learning goals/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /^media$/i })).toBeInTheDocument();
 
     failRoutingReload = true;
     await user.click(screen.getByRole("button", { name: /refresh workspace/i }));
@@ -175,7 +175,7 @@ describe("Professor course builder recovery", () => {
       await screen.findByText(/routing refresh is temporarily unavailable/i),
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /^materials$/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /03 learning plan/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /04 learning plan/i })).toBeDisabled();
     expect(screen.queryByText(/source routing is stale/i)).not.toBeInTheDocument();
   });
 });

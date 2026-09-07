@@ -66,9 +66,9 @@ describe("Professor course builder", () => {
     );
     expect(screen.queryByLabelText(/upload course material/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /02 materials/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /03 learning plan/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /04 learning plan/i })).toBeDisabled();
     expect(screen.queryByText("Media (optional)", { selector: "summary" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /04 review & publish/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /05 review & publish/i })).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: /create course workspace/i }));
     expect(
@@ -78,7 +78,7 @@ describe("Professor course builder", () => {
     expect(
       screen.queryByRole("heading", { name: /define course and lecture scope/i }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /03 learning plan/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /04 learning plan/i })).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: /^lecturepilot$/i }));
     expect(await screen.findByRole("heading", { name: /upload materials/i })).toBeInTheDocument();
@@ -116,19 +116,21 @@ describe("Professor course builder", () => {
     expect(screen.queryByLabelText(/route videos\/demo\.mp4/i)).not.toBeInTheDocument();
     await user.click(screen.getByText(/review source assignments/i));
     expect(screen.getByLabelText(/route videos\/demo\.mp4/i)).toHaveValue("lecture");
-    expect(screen.getByRole("button", { name: /03 learning plan/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /04 learning plan/i })).toBeDisabled();
     expect(screen.queryByText("Media (optional)", { selector: "summary" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /04 review & publish/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /05 review & publish/i })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
+    await user.click(
+      await screen.findByRole("button", { name: /continue (?:without videos|to learning plan)/i }),
+    );
     expect(await screen.findByRole("heading", { name: /learning goals/i })).toBeInTheDocument();
     await approveAllPracticeDesigns(user);
-    await user.click(screen.getByRole("button", { name: /02 materials/i }));
-    await user.click(screen.getByText("Media (optional)", { selector: "summary" }));
+    await user.click(screen.getByRole("button", { name: /03 media/i }));
     expect(
       await screen.findByRole("heading", { name: /review youtube candidates/i }),
     ).toBeInTheDocument();
     expect(screen.getByText(/videos are saved directly for lecture 03/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /04 review & publish/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /05 review & publish/i })).toBeEnabled();
     expect(screen.getByRole("button", { name: /search youtube/i })).toBeEnabled();
     const candidate = await screen.findByLabelText(/bayesian decision theory/i);
     expect(screen.getByRole("button", { name: /refresh suggested videos/i })).toBeEnabled();
@@ -160,37 +162,43 @@ describe("Professor course builder", () => {
     await user.click(candidate);
     expect(await screen.findByText(/saved 1 approved video for lecture 03/i)).toBeInTheDocument();
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: /continue to canvas draft/i })).toBeEnabled(),
+      expect(screen.getByRole("button", { name: /continue to learning plan/i })).toBeEnabled(),
     );
-    await user.click(screen.getByRole("button", { name: /continue to canvas draft/i }));
-    expect(screen.getByRole("heading", { name: /generate canvas draft/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /continue to learning plan/i }));
+    await user.click(screen.getByRole("button", { name: /05 review & publish/i }));
+    expect(screen.getByRole("region", { name: /lecture canvases/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /generate draft canvas/i }));
     expect(await screen.findByText(/course-builder agent generated/i)).toBeInTheDocument();
-    expect(screen.getByText(/review needed/i)).toBeInTheDocument();
-    expect(screen.getByText(/planner model finished with reason/i)).toBeInTheDocument();
-    expect(await screen.findByText(/2 sections ready for review/i)).toBeInTheDocument();
+    expect(screen.queryByText(/planner model finished with reason/i)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /02 materials/i }));
+    const notes = screen.getByText(/processing notes/i);
+    expect(notes.closest("details")).not.toHaveAttribute("open");
+    await user.click(notes);
+    expect(screen.getByText(/planner model finished with reason/i)).toBeVisible();
+    await user.click(screen.getByRole("button", { name: /05 review & publish/i }));
+    expect(await screen.findByText(/needs review/i)).toBeInTheDocument();
     const draftPreview = screen.getByRole("link", { name: /open learner preview for/i });
     expect(draftPreview).toHaveAttribute(
       "href",
       expect.stringContaining("/professor/courses/demo-ml-course/lectures/lecture-03/draft"),
     );
-    await user.click(screen.getByRole("button", { name: /review learning design for/i }));
+    await user.click(screen.getByRole("button", { name: /review lecture canvas for/i }));
     expect(
-      await screen.findByRole("heading", { name: /learning design review/i }),
+      await screen.findByRole("heading", { name: /lecture canvas review/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /publish .*tutor workspace/i })).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: /approve learning design/i }));
+    await user.click(screen.getByRole("button", { name: /approve canvas for publication/i }));
     expect(await screen.findByText(/^approved$/i)).toBeInTheDocument();
     expect(
-      screen.queryByRole("heading", { name: /learning design review/i }),
+      screen.queryByRole("heading", { name: /lecture canvas review/i }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /publish tutor workspace/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /publish tutor workspace/i })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /publish tutor workspace/i }));
     expect(await screen.findByText(/tutor workspace published/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/published lecture workspaces/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/lecture generation progress/i)).toBeInTheDocument();
     expect(
-      within(screen.getByLabelText(/published lecture workspaces/i)).getByRole("link", {
+      within(screen.getByLabelText(/lecture generation progress/i)).getByRole("link", {
         name: /preview/i,
       }),
     ).toHaveAttribute(
@@ -220,15 +228,14 @@ describe("Professor course builder", () => {
     expect(screen.getByText(/answer distribution/i)).toBeInTheDocument();
     expect(screen.getByText(/posterior-weighted loss/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^course builder$/i }));
-    await user.click(screen.getByRole("button", { name: /04 review & publish/i }));
-    await user.click(screen.getByText("Review or regenerate the draft", { selector: "summary" }));
+    await user.click(screen.getByRole("button", { name: /05 review & publish/i }));
     const previewLink = screen.getByRole("link", { name: /open learner preview for/i });
     expect(previewLink).toHaveAttribute("target", "_blank");
     expect(previewLink).toHaveAttribute(
       "href",
       expect.stringContaining("/professor/courses/demo-ml-course/lectures/lecture-03/draft"),
     );
-    expect(await screen.findByText(/2 sections ready for review/i)).toBeInTheDocument();
+    expect(await screen.findByText(/^published$/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^lecturepilot$/i }));
     expect(await screen.findByRole("heading", { name: /^review & publish$/i })).toBeInTheDocument();
     expect(screen.queryByText(/ai tutor available/i)).not.toBeInTheDocument();
@@ -282,7 +289,7 @@ describe("Professor course builder", () => {
     expect(
       await screen.findByText(/2 lectures inferred from the source bundle/i),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /03 learning plan/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /04 learning plan/i })).toBeDisabled();
     expect(screen.getByDisplayValue("Lecture 01")).toBeInTheDocument();
     expect(screen.getByDisplayValue("2026-05-13")).toBeInTheDocument();
     expect(screen.queryByText("Lecture01-eng.tex")).not.toBeInTheDocument();
@@ -354,8 +361,8 @@ describe("Professor course builder", () => {
     await user.click(screen.getByRole("button", { name: /publish all tutor workspaces/i }));
 
     expect(await screen.findByText(/2 tutor workspaces published/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/published lecture workspaces/i)).toHaveTextContent("Lecture 01");
-    expect(screen.getByLabelText(/published lecture workspaces/i)).toHaveTextContent("Lecture 02");
+    expect(screen.getByLabelText(/lecture generation progress/i)).toHaveTextContent("Lecture 01");
+    expect(screen.getByLabelText(/lecture generation progress/i)).toHaveTextContent("Lecture 02");
     await user.click(screen.getByRole("button", { name: /^course performance$/i }));
     expect(await screen.findByText(/2 published lectures/i)).toBeInTheDocument();
     expect(screen.queryByText(/no published course workspace yet/i)).not.toBeInTheDocument();
@@ -403,23 +410,26 @@ describe("Professor course builder", () => {
     await user.click(screen.getByRole("button", { name: /upload and process materials/i }));
     await screen.findByRole("heading", { name: /source assignments ready/i });
     await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
+    await user.click(
+      await screen.findByRole("button", { name: /continue (?:without videos|to learning plan)/i }),
+    );
     await screen.findByRole("heading", { name: /learning goals/i });
     await approveAllPracticeDesigns(user);
-    await user.click(screen.getByRole("button", { name: /02 materials/i }));
-    await user.click(screen.getByText("Media (optional)", { selector: "summary" }));
-    await screen.findByRole("heading", { name: /review youtube candidates/i });
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: /continue to canvas draft/i })).toBeEnabled(),
-    );
-    await user.click(screen.getByRole("button", { name: /continue to canvas draft/i }));
-
-    await user.click(screen.getByRole("button", { name: /generate draft canvas/i }));
+    await screen.findByRole("heading", { name: "Review & publish", level: 1 });
+    await waitFor(() => expect(draftRequest.resolve).toBeDefined());
+    expect(
+      fetchMock.mock.calls.filter(
+        ([url, init]) => String(url).endsWith("/canvas/draft") && init?.method === "POST",
+      ),
+    ).toHaveLength(1);
 
     expect(screen.getByRole("button", { name: /generating draft canvas/i })).toBeDisabled();
     expect(screen.getByRole("status")).toHaveTextContent(
       /generating a source-grounded canvas draft/i,
     );
-    expect(screen.getByLabelText(/lecture generation progress/i)).toHaveTextContent(/Lecture 03/);
+    expect(screen.getByLabelText(/lecture generation progress/i)).toHaveTextContent(
+      /03 · Bayesian Decision Theory/,
+    );
     expect(screen.getByLabelText(/lecture generation progress/i)).toHaveTextContent(/generating/i);
 
     draftRequest.resolve?.();

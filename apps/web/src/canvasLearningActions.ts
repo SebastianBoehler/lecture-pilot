@@ -17,5 +17,5 @@ export type CanvasLearningActions = {
     attemptId: string,
     publicationVersion: number,
   ) => Promise<LearnerQuizAnswerResult>;
-  onSubmitCheckpoint: (gateId: string, sectionId: string, answer: string) => Promise<void>;
+  onSubmitCheckpoint?: (gateId: string, sectionId: string, answer: string) => Promise<void>;
 };

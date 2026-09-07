@@ -46,7 +46,7 @@ it("clears an expired persisted session before rendering a protected route", asy
     await screen.findByRole("heading", { name: /sign in to lecturepilot/i }),
   ).toBeInTheDocument();
   expect(window.localStorage.getItem("lecturepilot.loginSession")).toBeNull();
-  expect(window.location.pathname).toBe("/");
+  await waitFor(() => expect(window.location.pathname).toBe("/"));
 });
 
 it("restores a canvas session without loading learner-profile data", async () => {
@@ -62,7 +62,10 @@ it("restores a canvas session without loading learner-profile data", async () =>
 
   render(<App />);
 
-  expect(await screen.findByLabelText(/close tutor chat/i)).toBeInTheDocument();
+  // The restored route also loads the canvas module on a cold test run.
+  expect(
+    await screen.findByLabelText(/close tutor chat/i, {}, { timeout: 5000 }),
+  ).toBeInTheDocument();
   await waitFor(() => {
     expect(
       fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/me/learning-profile")),

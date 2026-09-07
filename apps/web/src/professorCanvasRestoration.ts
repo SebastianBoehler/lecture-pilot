@@ -1,3 +1,4 @@
+import { runBoundedTasks } from "./boundedTaskPool";
 import { CanvasDraftLoadError, getDraftLectureCanvas } from "./api";
 import type { CanvasGenerationProgress } from "./professorCanvasGeneration";
 import type { CanvasDocument, LoginSession } from "./types";
@@ -17,17 +18,16 @@ export async function restoreFullCourseCanvasDrafts({
   session: LoginSession;
 }) {
   const restored: RestoredCanvas[] = [];
-  const progress = await Promise.all(
-    lectureIds.map(async (lectureId): Promise<CanvasGenerationProgress> => {
-      try {
-        const canvas = await getDraftLectureCanvas(courseId, lectureId, session);
-        restored.push({ canvas, lectureId });
-        return { lectureId, status: "ready" };
-      } catch (error) {
-        return restorationFailure(lectureId, error);
-      }
-    }),
-  );
+  const progress: CanvasGenerationProgress[] = [];
+  await runBoundedTasks(lectureIds, 4, async (lectureId, index) => {
+    try {
+      const canvas = await getDraftLectureCanvas(courseId, lectureId, session);
+      restored.push({ canvas, lectureId });
+      progress[index] = { lectureId, status: "ready" };
+    } catch (error) {
+      progress[index] = restorationFailure(lectureId, error);
+    }
+  });
   const restoredByLecture = new Map(restored.map((item) => [item.lectureId, item]));
   return {
     restored: lectureIds.flatMap((lectureId) => {
@@ -52,7 +52,9 @@ function restorationFailure(lectureId: string, error: unknown): CanvasGeneration
     return { lectureId, status: "pending" };
   }
   if (error instanceof TypeError) {
-    return { errorKind: "network", lectureId, message, status: "error" };
+    throw new Error(
+      "Could not load current draft status. Refresh workspace state to reconnect; saved drafts and running jobs are unchanged.",
+    );
   }
   const errorKind =
     error instanceof CanvasDraftLoadError && error.repairable ? "repair" : "service";

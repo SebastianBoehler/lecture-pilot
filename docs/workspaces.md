@@ -118,11 +118,16 @@ private report and acknowledgement record.
 
 ## Practice-design authoring
 
-The professor builder has four stages: Course, Materials, Learning plan, and Review & publish.
-Materials combines uploads, lecture scheduling, and source confirmation; media review is optional
-and collapsed. The final stage combines generation, learner preview, exact-draft approval, and
+The professor builder has five stages: Course, Materials, Media, Learning plan, and Review & publish.
+Materials combines uploads, lecture scheduling, and source confirmation. Confirmation opens Media,
+where professors can select videos or explicitly continue without them before reviewing the learning plan. The final stage combines generation, learner preview, exact-draft approval, and
 publication without a separate publishing step. Generation needs confirmed routing and a current
-approved design for every target lecture. Publication still requires approval of each current draft.
+approved design for every target lecture. Confirming sources automatically prepares missing learning
+goals concurrently, with per-lecture status. Model calls follow provider budgets and cooldowns;
+there is no fixed lecture or model-call concurrency ceiling. Existing plans are preserved. A lecture
+navigator shows one plan at a time, with evidence and planning details collapsed. The last required
+approval advances to Review & publish and starts generation once for that saved plan revision.
+Failed runs remain explicitly retryable. Publication still requires approval of each current draft.
 
 `builder/practice-designs/<lecture-id>.json` is the course-owned,
 source-grounded learning-plan record: lecture objective, observable targets,

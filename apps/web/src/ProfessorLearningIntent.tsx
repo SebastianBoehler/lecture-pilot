@@ -57,6 +57,32 @@ export function ProfessorLearningIntent({
           {approved ? t("builder.intent.approved") : t("builder.status.pending")}
         </span>
       </header>
+      <div className="learning-intent-actions">
+        <button type="button" disabled={disabled || legacy} onClick={() => setEditing(!editing)}>
+          {editing ? t("builder.design.finishEditing") : t("builder.intent.edit")}
+        </button>
+
+        {dirty ? (
+          <button type="button" className="primary-action" disabled={disabled} onClick={onSave}>
+            {t("builder.design.save")}
+          </button>
+        ) : null}
+        {!approved ? (
+          <button
+            type="button"
+            className="primary-action"
+            disabled={disabled || dirty || (legacy && !conversionConfirmed)}
+            onClick={() => onApprove({ fixed_target_ids: fixed, convert_legacy: legacy })}
+          >
+            {t("builder.intent.approve")}
+          </button>
+        ) : null}
+        {!legacy && approved && draft.targets.length > 0 ? (
+          <button type="button" disabled={disabled || dirty} onClick={onRefresh}>
+            {t("builder.intent.refresh")}
+          </button>
+        ) : null}
+      </div>
       <div className="practice-design-lecture-body">
         {legacy ? (
           <div className="practice-design-conflict">
@@ -79,11 +105,9 @@ export function ProfessorLearningIntent({
             </button>
           </div>
         ) : null}
-        <button type="button" disabled={disabled || legacy} onClick={() => setEditing(!editing)}>
-          {editing ? t("builder.design.finishEditing") : t("builder.intent.edit")}
-        </button>
+
         {editing ? <ProfessorPracticeLectureEditor draft={draft} onChange={onChange} /> : null}
-        <ProfessorPracticePlanningContext context={draft.planning_context} />
+
         <ol className="practice-target-summary">
           {goals.map((target, index) => {
             const implementation = draft.targets.find(({ id }) => id === target.id);
@@ -124,8 +148,9 @@ export function ProfessorLearningIntent({
                 ) : (
                   <p>{target.outcome}</p>
                 )}
-                <ProfessorPracticeEvidence anchor={target.outcome_anchor} />
-                <p>{target.target_invariant}</p>
+                <ProfessorPracticeEvidence anchor={target.outcome_anchor}>
+                  <p>{target.target_invariant}</p>
+                </ProfessorPracticeEvidence>
                 {implementation ? (
                   <details>
                     <summary>{t("builder.intent.details")}</summary>
@@ -157,29 +182,11 @@ export function ProfessorLearningIntent({
           })}
         </ol>
         {draft.targets.length > 0 ? <p>{t("builder.intent.fixedHelp")}</p> : null}
-        <p>{t("builder.intent.repair")}</p>
-        <footer className="flow-actions">
-          {dirty ? (
-            <button type="button" className="primary-action" disabled={disabled} onClick={onSave}>
-              {t("builder.design.save")}
-            </button>
-          ) : null}
-          {!approved ? (
-            <button
-              type="button"
-              className="primary-action"
-              disabled={disabled || dirty || (legacy && !conversionConfirmed)}
-              onClick={() => onApprove({ fixed_target_ids: fixed, convert_legacy: legacy })}
-            >
-              {t("builder.intent.approve")}
-            </button>
-          ) : null}
-          {!legacy && approved && draft.targets.length > 0 ? (
-            <button type="button" disabled={disabled || dirty} onClick={onRefresh}>
-              {t("builder.intent.refresh")}
-            </button>
-          ) : null}
-        </footer>
+        <details>
+          <summary>{t("builder.design.planningContext")}</summary>
+          <ProfessorPracticePlanningContext context={draft.planning_context} />
+          <p>{t("builder.intent.repair")}</p>
+        </details>
       </div>
     </article>
   );

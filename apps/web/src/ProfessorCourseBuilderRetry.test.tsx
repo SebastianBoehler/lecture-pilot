@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -70,21 +70,13 @@ describe("Professor course builder generation retry", () => {
       await user.click(screen.getByRole("button", { name: /apply lecture schedule/i }));
       await screen.findByRole("heading", { name: /source assignments ready/i });
       await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
+      await user.click(
+        await screen.findByRole("button", {
+          name: /continue (?:without videos|to learning plan)/i,
+        }),
+      );
       await screen.findByRole("heading", { name: /learning goals/i });
       await approveAllPracticeDesigns(user);
-      await user.click(screen.getByRole("button", { name: /02 materials/i }));
-      await user.click(screen.getByText("Media (optional)", { selector: "summary" }));
-      await screen.findByRole("heading", { name: /review youtube candidates/i });
-      await waitFor(() =>
-        expect(screen.getByRole("button", { name: /continue to canvas draft/i })).toBeEnabled(),
-      );
-      await user.click(screen.getByRole("button", { name: /continue to canvas draft/i }));
-      vi.useFakeTimers();
-      fireEvent.click(screen.getByRole("button", { name: /generate all lecture canvases/i }));
-      await act(async () => {
-        await vi.runAllTimersAsync();
-      });
-      vi.useRealTimers();
 
       if (regenerate) {
         await screen.findByText(/2 lecture canvases ready to review/i);
@@ -104,13 +96,11 @@ describe("Professor course builder generation retry", () => {
         ).toBe(true);
       }
 
+      await screen.findByText(/2 lecture canvases ready to review/i, {}, { timeout: 3000 });
       expect(screen.queryByText(/could not reach the API/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/^Failed to fetch$/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/lecture canvas drafts? failed/i)).not.toBeInTheDocument();
-      expect(screen.getByLabelText(/lecture generation progress/i)).toHaveAttribute(
-        "aria-live",
-        "polite",
-      );
+      expect(screen.getAllByText("Needs review")[0]).toHaveAttribute("aria-live", "polite");
       expect(draftAttempts).toEqual(
         new Map([
           ["lecture-01", regenerate ? 2 : 1],
@@ -125,7 +115,9 @@ describe("Professor course builder generation retry", () => {
       expect(screen.getByLabelText(/lecture generation progress/i)).toHaveTextContent(
         /Lecture 02/i,
       );
-      expect(screen.getByLabelText(/lecture generation progress/i)).toHaveTextContent(/ready/i);
+      expect(screen.getByLabelText(/lecture generation progress/i)).toHaveTextContent(
+        /needs review/i,
+      );
       await approveAllLearningDesigns(user);
       expect(screen.getByRole("button", { name: /publish .*tutor workspace/i })).toBeEnabled();
     },

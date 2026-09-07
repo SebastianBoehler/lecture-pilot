@@ -4,13 +4,13 @@ export function ProfessorGenerationWarnings({ warnings }: { warnings: string[] }
   const { t } = useI18n();
   if (!warnings.length) return null;
   return (
-    <div className="generation-warnings" role="alert">
-      <strong>{t("builder.warnings.title")}</strong>
+    <details className="generation-warnings">
+      <summary>{t("builder.warnings.title", { count: warnings.length })}</summary>
       <ul>
         {warnings.map((warning) => (
           <li key={warning}>{warning}</li>
         ))}
       </ul>
-    </div>
+    </details>
   );
 }

@@ -1,5 +1,5 @@
 import type { LearningIntentApprovalOptions } from "./learningIntentTypes";
-import { useEffect, useEffectEvent } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 
 import { getPracticeDesignReadiness } from "./practiceDesignApi";
 import { isPracticeDesignReady } from "./practiceDesignReadiness";
@@ -22,7 +22,8 @@ export function useProfessorPracticeDesignGate({
   const designs = useProfessorPracticeDesigns({ courseId, session });
   const lectureIds = targetLectures.map((lecture) => lecture.id);
   const lectureKey = lectureIds.join("|");
-  const load = useEffectEvent(() => designs.loadAll(lectureIds));
+  const [preparing, setPreparing] = useState(false);
+  const load = useEffectEvent(() => designs.loadAll(lectureIds, routingReady));
   const designReady = Boolean(
     lectureIds.length &&
     lectureIds.every((lectureId) =>
@@ -32,14 +33,24 @@ export function useProfessorPracticeDesignGate({
 
   useEffect(() => {
     if (!courseId || !lectureKey) return;
-    void load();
-  }, [courseId, lectureKey]);
+    let cancelled = false;
+    setPreparing(routingReady);
+    void load().finally(() => {
+      if (!cancelled) setPreparing(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId, lectureKey, routingReady]);
 
   return {
     designReady,
     practiceDesignStep: {
       designs: designs.designs,
+      preparing,
+      pendingByLecture: designs.pendingByLecture,
       error: designs.error,
+      errorsByLecture: designs.errorsByLecture,
       lectures: targetLectures,
       pendingAction: designs.pendingAction,
       pendingLectureId: designs.pendingLectureId,
@@ -48,6 +59,7 @@ export function useProfessorPracticeDesignGate({
         void designs.approve(lectureId, intent),
       onPropose: (lectureId: string, refresh = false) => void designs.propose(lectureId, refresh),
       onReview: (lectureId: string) => void designs.review(lectureId),
+      onReload: (lectureId: string) => designs.load(lectureId),
       onSave: (lectureId: string, update: Parameters<typeof designs.save>[1]) =>
         void designs.save(lectureId, update),
     },

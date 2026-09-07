@@ -131,7 +131,7 @@ export function ProfessorReviewStep({
         type="button"
         onClick={onContinue}
       >
-        {t("builder.review.continue")}
+        {t(selectedVideos.size ? "builder.review.continue" : "builder.review.skip")}
       </button>
       {isSavingSelection ? <PendingStatus label={t("builder.review.saving")} /> : null}
     </section>

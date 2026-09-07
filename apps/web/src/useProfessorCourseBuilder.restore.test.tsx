@@ -23,6 +23,30 @@ const hookProps: ProfessorCourseBuilderProps = {
 };
 
 describe("Professor course builder restoration", () => {
+  it("treats a not-yet-generated routing proposal as a normal materials step", async () => {
+    saveRestorableFullCourse();
+    const baseFetch = professorFetchMock();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string, init?: RequestInit) => {
+        if (url.endsWith("/source-routing") && !init?.method) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                detail: "Generate an agent source-assignment proposal before reviewing it.",
+              }),
+              { status: 409 },
+            ),
+          );
+        }
+        return baseFetch(url, init);
+      }),
+    );
+    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps));
+    await waitFor(() => expect(result.current.isRestoring).toBe(false));
+    expect(result.current.activeStep).toBe("sources");
+    expect(result.current.error).toBeNull();
+  });
   afterEach(() => {
     window.sessionStorage.clear();
     vi.clearAllMocks();

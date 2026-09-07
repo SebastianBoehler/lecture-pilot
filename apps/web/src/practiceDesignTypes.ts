@@ -132,3 +132,10 @@ export type PracticeDesignReadiness = Readonly<{
   practice_design_revision: string | null;
   ready_for_generation: boolean;
 }>;
+
+export type PracticeDesignState = {
+  absent: Readonly<Record<string, true>>;
+  designs: Readonly<Record<string, PracticeDesign>>;
+  key: string;
+  readiness: Readonly<Record<string, PracticeDesignReadiness>>;
+};

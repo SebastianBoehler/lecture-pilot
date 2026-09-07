@@ -1,7 +1,7 @@
 export const learningIntentMessages = {
   en: {
     "builder.intent.reviewImplementation":
-      "Review the learner preview and approve this exact teaching implementation. To change the approved goals, return to Design and generate a new draft.",
+      "Your learning goals are already approved. Review how this canvas teaches them, then approve it for publication. To change the goals, return to Learning plan and generate a new draft.",
     "builder.intent.title": "Learning goals",
     "builder.intent.empty":
       "Propose source-backed goals for professor review. Practice tasks are developed after approval.",
@@ -26,7 +26,7 @@ export const learningIntentMessages = {
   },
   de: {
     "builder.intent.reviewImplementation":
-      "Prüfen Sie die Lernenden-Vorschau und geben Sie genau diese Umsetzung frei. Um freigegebene Lernziele zu ändern, kehren Sie zu Design zurück und erstellen Sie einen neuen Entwurf.",
+      "Die Lernziele sind bereits freigegeben. Prüfe ihre Umsetzung in diesem Canvas und gib ihn zur Veröffentlichung frei. Für Änderungen an den Lernzielen gehe zum Lernplan zurück und erstelle einen neuen Entwurf.",
     "builder.intent.title": "Lernziele",
     "builder.intent.empty":
       "Lass quellenbasierte Lernziele zur Prüfung vorschlagen. Übungsaufgaben entstehen nach der Freigabe.",

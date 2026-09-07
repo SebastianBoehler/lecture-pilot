@@ -87,12 +87,16 @@ lecture assignments are reviewed before an atomic apply, and published canvases
 are not replaced until the professor publishes new drafts.
 
 Canvas generation uses idempotency keys, private job records, heartbeats, a
-bounded lease, and status polling. Closing the browser does not make the
+bounded lease, and status polling. The web client requests `Prefer: respond-async`:
+draft and repair submissions return HTTP 202 after dispatch and release their
+connections while the client polls the authenticated status endpoint. This avoids
+browser connection limits serializing model work. Closing the browser does not make the
 in-process generation task depend on the tab; after interruption or process
 loss, a stale lease can be claimed for another attempt. Dense source outlines
-are grouped into at most five pedagogical sections. Two lectures progress at a
-time, each with two section calls, while the provider-wide request budget stays
-at three. Completed sections are revision-bound checkpoints, so a retry resumes
+are grouped into at most five pedagogical sections. Lecture and section jobs have no fixed model-call concurrency cap. Provider
+request/token budgets and cooldown headers govern model throughput; token estimates
+are calibrated from observed usage. A missing provider budget does not impose an
+application ceiling. Completed sections are revision-bound checkpoints, so a retry resumes
 instead of regenerating them. Quality repair batches all reported issues into
 one pass and one compact re-review; any remaining candidate stays available for
 targeted repair. Metadata logs record stage, attempt, queue wait, provider

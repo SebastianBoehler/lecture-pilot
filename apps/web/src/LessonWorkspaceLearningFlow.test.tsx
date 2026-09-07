@@ -9,6 +9,20 @@ import type { CanvasDocument } from "./types";
 import type { LearnerLessonState } from "./learnerLessonStateTypes";
 
 describe("LessonWorkspace learning attempts", () => {
+  it("keeps an unpublished professor draft free of learner requests and chat actions", () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ detail: "Student workspace access is required." }), {
+        status: 403,
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    renderWorkspace({ onSendMessage: tutorMessageMock(), draftMode: true, panelMode: "chat" });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText(/your checkpoint answer/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Tutor message" })).not.toBeInTheDocument();
+    expect(screen.getByText(/Unpublished draft/)).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
   afterEach(() => {
     delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
   });
@@ -154,20 +168,27 @@ function renderWorkspace({
   onSendMessage,
   learnerState = null,
   panelMode = null,
+  draftMode = false,
 }: {
   onSendMessage: (message: string, options?: TutorMessageOptions) => Promise<void>;
   learnerState?: LearnerLessonState | null;
-  panelMode?: "outline" | null;
+  panelMode?: "outline" | "chat" | null;
+  draftMode?: boolean;
 }) {
   const view = (state: LearnerLessonState | null) => (
     <I18nProvider locale="en" setLocale={vi.fn()}>
       <LessonWorkspace
+        draftMode={draftMode}
         canvasDocument={canvas}
-        publishedCanvasView={{
-          document: canvas,
-          publication_version: 1,
-          learning_map_revision: "revision",
-        }}
+        publishedCanvasView={
+          draftMode
+            ? null
+            : {
+                document: canvas,
+                publication_version: 1,
+                learning_map_revision: "revision",
+              }
+        }
         canvasError={null}
         courseId="course-1"
         focusedSectionId="risk"

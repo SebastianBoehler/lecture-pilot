@@ -25,13 +25,15 @@ export async function openProfessorDemo(user: ReturnType<typeof userEvent.setup>
 }
 
 export async function approveAllLearningDesigns(user: ReturnType<typeof userEvent.setup>) {
-  const review = await screen.findByRole("region", { name: /review draft canvases/i });
+  const review = await screen.findByRole("region", { name: /lecture canvases/i });
   const lectureNames = within(review)
-    .getAllByRole("button", { name: /review learning design for/i })
+    .getAllByRole("button", { name: /review lecture canvas for/i })
     .map((button) => button.getAttribute("aria-label") ?? "");
   for (const [index, name] of lectureNames.entries()) {
     await user.click(within(review).getByRole("button", { name }));
-    await user.click(await screen.findByRole("button", { name: /approve learning design/i }));
+    await user.click(
+      await screen.findByRole("button", { name: /approve canvas for publication/i }),
+    );
     await within(review).findByText(
       new RegExp(`${index + 1} of ${lectureNames.length} approved`, "i"),
     );
@@ -39,23 +41,19 @@ export async function approveAllLearningDesigns(user: ReturnType<typeof userEven
 }
 
 export async function approveAllPracticeDesigns(user: ReturnType<typeof userEvent.setup>) {
-  const proposals = await screen.findAllByRole("button", { name: /propose learning goals/i });
-  for (const proposal of proposals) await user.click(proposal);
-
-  await waitFor(() => {
-    if (screen.queryAllByRole("button", { name: /review plan for/i }).length !== proposals.length)
-      throw new Error("Practice plans are still being generated.");
-  });
-  for (let index = 0; index < proposals.length; index += 1) {
-    const toggle = screen.getAllByRole("button", { name: /review plan for/i })[index];
+  const navigation = await screen.findByRole("navigation", { name: "Learning plan lectures" });
+  const count = within(navigation).getAllByRole("button").length;
+  for (let index = 0; index < count; index += 1) {
+    await user.click(within(navigation).getAllByRole("button")[index]);
+    const toggle = await screen.findByRole("button", { name: /review plan for/i });
     if (toggle.getAttribute("aria-expanded") !== "true") await user.click(toggle);
     const plan = toggle.closest("article");
     if (!plan) throw new Error("Practice plan container is missing.");
     const approval = await within(plan).findByRole("button", { name: /approve learning plan/i });
     await user.click(approval);
     await waitFor(() => {
-      if (within(plan).queryByRole("button", { name: /approve learning plan/i }))
-        throw new Error("Practice plan approval is still pending.");
+      if (within(navigation).queryAllByText(/^Approved$/).length !== index + 1)
+        throw new Error("Approval pending");
     });
   }
 }

@@ -34,8 +34,8 @@ it("summarizes historical generation failures until their details are requested"
     </I18nProvider>,
   );
 
-  expect(screen.getByText("Previous attempt failed")).toBeVisible();
-  expect(screen.getByText(/results from the last generation run/i)).toBeVisible();
+  expect(screen.getByText("Failed")).toBeVisible();
+  expect(screen.getByText(/some lectures failed/i)).toBeVisible();
   const details = screen.getByText("View failure details").closest("details");
   expect(details).not.toHaveAttribute("open");
 

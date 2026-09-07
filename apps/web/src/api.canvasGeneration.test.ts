@@ -115,3 +115,59 @@ const canvas = {
   sections: [],
   warnings: [],
 };
+
+it("polls accepted jobs without holding a generation connection open", async () => {
+  vi.useFakeTimers();
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(new Response(JSON.stringify({ status: "running" }), { status: 202 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ status: "running" })))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ status: "completed", canvas })));
+  vi.stubGlobal("fetch", fetchMock);
+  try {
+    const result = draftLectureCanvas("course-1", "lecture-01", session);
+    await vi.advanceTimersByTimeAsync(3000);
+    await expect(result).resolves.toEqual(canvas);
+    const firstHeaders = new Headers(fetchMock.mock.calls[0][1].headers);
+    expect(firstHeaders.get("Prefer")).toBe("respond-async");
+    for (const [url, init] of fetchMock.mock.calls.slice(1)) {
+      expect(url).toContain("/canvas/draft/status");
+      expect(init.method).not.toBe("POST");
+      expect(new Headers(init.headers).get("Idempotency-Key")).toBe(
+        firstHeaders.get("Idempotency-Key"),
+      );
+    }
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("preserves repairability and clears the request key for a failed polled job", async () => {
+  vi.useFakeTimers();
+  vi.stubGlobal(
+    "fetch",
+    vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: "running" }), { status: 202 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ status: "failed", error_detail: "Fix teaching", repairable: true }),
+        ),
+      ),
+  );
+  try {
+    const result = draftLectureCanvas("course-1", "lecture-01", session);
+    const assertion = expect(result).rejects.toMatchObject({
+      message: "Fix teaching",
+      terminalGeneration: true,
+      repairable: true,
+    });
+    await vi.advanceTimersByTimeAsync(1500);
+    await assertion;
+    expect(
+      window.sessionStorage.getItem("lecturepilot:canvas-generation:course-1:lecture-01:draft"),
+    ).toBeNull();
+  } finally {
+    vi.useRealTimers();
+  }
+});

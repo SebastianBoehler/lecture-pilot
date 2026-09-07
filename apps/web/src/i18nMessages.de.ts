@@ -1,6 +1,11 @@
 import type { MessageKey } from "./i18nMessages.en";
 
 export const deMessages: Record<MessageKey, string> = {
+  "builder.plan.reload": "Gespeicherten Lernplan neu laden",
+  "lesson.draftPreview":
+    "Unveröffentlichter Entwurf · Prüfen Sie das Lehrmaterial vor der Freigabe.",
+  "lesson.draftTutor":
+    "Tutor-Gespräche und bewertete Aufgaben sind nach der Veröffentlichung verfügbar.",
   "app.loadingView": "Ansicht wird geladen...",
   "app.language": "Sprache",
   "app.switchToGerman": "Oberfläche auf Deutsch umstellen",
@@ -524,9 +529,20 @@ export const deMessages: Record<MessageKey, string> = {
   "courseUpdate.status.failed": "Entwurf fehlgeschlagen",
   "courseUpdate.status.publishing": "Wird veröffentlicht...",
   "courseUpdate.status.published": "Veröffentlicht",
+  "builder.plan.failed": "Erneut versuchen",
+  "builder.plan.stale": "Quellen bestätigen",
+  "builder.plan.lectures": "Vorlesungen im Lernplan",
+  "builder.plan.preparing":
+    "Lernziele für deine Vorlesungen werden vorbereitet. Du kannst jeden Plan prüfen, sobald er fertig ist.",
+  "builder.plan.queued": "Wartet",
+  "builder.plan.working": "Wird vorbereitet…",
+  "builder.plan.approved": "Freigegeben",
+  "builder.plan.review": "Bereit zur Prüfung",
+  "builder.plan.missing": "Vorschlag erforderlich",
   "builder.progress": "Fortschritt beim Kurserstellen",
   "builder.journey.course": "Kurs",
   "builder.journey.materials": "Materialien",
+  "builder.journey.media": "Medien",
   "builder.journey.plan": "Lernplan",
   "builder.journey.release": "Prüfen & veröffentlichen",
   "builder.materials.files": "Dateien und Vorlesungsplan",
@@ -719,13 +735,9 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.define.courseName": "Kursname",
   "builder.define.courseSearchError":
     "Alma-Vorschläge konnten gerade nicht geladen werden. Du kannst den Kursnamen weiter manuell eingeben.",
-  "builder.define.courseNameHelp":
-    "Verwende den exakten Kurstitel aus Alma oder ILIAS. LecturePilot gleicht Kurstitel und Semester mit den Belegungen der Studierenden ab.",
   "builder.define.courseLanguage": "Kurssprache",
   "builder.define.courseLanguage.german": "Deutsch",
   "builder.define.courseLanguage.english": "Englisch",
-  "builder.define.courseLanguage.help":
-    "Alle passenden Uploads bleiben als Quellen verfügbar; jedes Canvas wird in der gewählten Sprache erstellt.",
   "builder.define.visibility": "Kurssichtbarkeit",
   "builder.define.visibility.instructors": "Nur Lehrende",
   "builder.define.visibility.enrolled": "Nur Kursteilnehmende",
@@ -773,6 +785,10 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.upload.uploadingStatus": "Materialien werden hochgeladen und vorbereitet...",
   "builder.sources.title": "Quellenzuordnung bereit",
   "builder.sources.pendingTitle": "Quellenzuordnung erforderlich",
+  "builder.sources.loading": "Quellenzuordnungen werden geladen…",
+  "builder.sources.preparing": "Quellenzuordnungen werden vorbereitet…",
+  "builder.sources.preparingHelp":
+    "Deine indexierten Materialien werden Vorlesungen und kursweiten Themen zugeordnet. Der Vorschlag erscheint hier automatisch, sobald er fertig ist.",
   "builder.sources.pendingHelp":
     "Erstelle einen Vorschlag, der jede indexierte Datei einer Vorlesung, dem gesamten Kurs oder 'nicht verwenden' zuordnet. Bestätige die Zuordnung vor der Erstellung des Lehrplans.",
   "builder.sources.help":
@@ -867,7 +883,8 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.review.searchingYoutube": "YouTube wird durchsucht...",
   "builder.review.searchYoutube": "YouTube durchsuchen",
   "builder.review.noCustomSearch": "Noch keine eigene Suche ausgeführt.",
-  "builder.review.continue": "Weiter zum Canvas-Entwurf",
+  "builder.review.continue": "Weiter zum Lernplan",
+  "builder.review.skip": "Ohne Videos fortfahren",
   "builder.review.saving": "Videos für die ausgewählte Vorlesung werden aktualisiert...",
   "builder.generate.title": "Canvas-Entwurf erzeugen",
   "builder.generate.all": "Alle Vorlesungscanvases erzeugen",
@@ -880,9 +897,9 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.generate.timingLabel": "Dauer der Erzeugung",
   "builder.generate.estimateSingle": "Geschätzte Dauer: etwa 10–15 Minuten.",
   "builder.generate.estimateAll":
-    "Alle {count} Vorlesungen werden sofort eingereiht und nutzen das verfügbare Rate-Limit des Anbieters.",
+    "Alle {count} Vorlesungen starten gemeinsam. Modellanfragen richten sich nach den Rate-Limits des Anbieters.",
   "builder.generate.backgroundHelp":
-    "Die Erzeugung läuft auf dem Server weiter. Du kannst diese Seite verlassen und später zurückkommen; mit Arbeitsbereich aktualisieren werden fertige Entwürfe geladen.",
+    "Gestartete Arbeit läuft auf dem Server weiter. Arbeitsbereich aktualisieren lädt die neuesten Ergebnisse.",
   "builder.generate.fullReady": "{count} Vorlesungscanvases bereit zur Prüfung.",
   "builder.generate.singleReady": "{count} Abschnitte bereit zur Prüfung.",
   "builder.generate.preview": "Kursarbeitsbereich ansehen",
@@ -898,17 +915,17 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.generate.error.service": "Erzeugung fehlgeschlagen: {message}",
   "builder.generate.error.unknown": "Es wurden keine Fehlerdetails zurückgegeben.",
   "builder.generate.previousRunHelp":
-    "Dies sind Ergebnisse des letzten Erzeugungslaufs. Starte eine Vorlesung erneut, um die aktuelle Reparaturpipeline zu verwenden.",
+    "Einige Vorlesungen sind fehlgeschlagen. Die Details zeigen den Grund; wiederhole nur die betroffenen Vorlesungen.",
   "builder.generate.failureDetails": "Fehlerdetails anzeigen",
   "builder.generate.progressStatus.pending": "Ausstehend",
   "builder.generate.progressStatus.generating": "Wird erzeugt",
   "builder.generate.progressStatus.ready": "Bereit",
-  "builder.generate.progressStatus.error": "Vorheriger Versuch fehlgeschlagen",
+  "builder.generate.progressStatus.error": "Fehlgeschlagen",
   "builder.generate.regenerate": "Canvas-Entwurf erneut erzeugen",
   "builder.generate.resume": "Offene Vorlesungen fortsetzen",
-  "builder.generate.review": "Canvas-Entwürfe prüfen",
+  "builder.generate.review": "Vorlesungs-Canvases",
   "builder.generate.reviewHelp":
-    "Öffne jede Lernendenansicht in einem eigenen Tab. Prüfe das Lerndesign erst, wenn du es freigeben möchtest.",
+    "Die Lernziele wurden bereits freigegeben. Prüfe die erzeugten Erklärungen und Übungen in der Vorschau und gib dann jeden Vorlesungs-Canvas zur Veröffentlichung frei.",
   "builder.generate.reviewProgress": "{approved} von {total} freigegeben",
   "builder.generate.lectureSelector": "Zu prüfende Vorlesung",
   "builder.generate.reviewStatus.approved": "Freigegeben",
@@ -916,19 +933,19 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.generate.selectedLecture": "Ausgewählte Vorlesung",
   "builder.generate.openPreview": "Lernendenansicht öffnen",
   "builder.generate.openPreviewLecture": "Lernendenansicht für {lecture} öffnen",
-  "builder.generate.reviewDesign": "Lerndesign prüfen",
-  "builder.generate.reviewDesignLecture": "Lerndesign für {lecture} prüfen",
+  "builder.generate.reviewDesign": "Vorlesungs-Canvas prüfen",
+  "builder.generate.reviewDesignLecture": "Vorlesungs-Canvas für {lecture} prüfen",
   "builder.generate.closeDesign": "Prüfung schließen",
-  "builder.generate.closeDesignLecture": "Lerndesign für {lecture} schließen",
+  "builder.generate.closeDesignLecture": "Canvas-Prüfung für {lecture} schließen",
   "builder.generate.reviewViews": "Prüfansicht",
   "builder.generate.viewPreview": "Lernendenerlebnis ansehen",
-  "builder.generate.viewDesign": "Lerndesign prüfen",
+  "builder.generate.viewDesign": "Vorlesungs-Canvas prüfen",
   "builder.generate.previewHelp":
     "Dies ist exakt der Entwurf, den Studierende erhalten. Aktionen in dieser isolierten Professorenvorschau verändern keinen Lernfortschritt.",
   "builder.generate.publishGateHelp":
-    "Die Veröffentlichung wird erst freigeschaltet, wenn jede erzeugte Vorlesung validiert und ihr Lerndesign bestätigt wurde.",
+    "Veröffentliche den Kurs, sobald jeder Vorlesungs-Canvas die Validierung bestanden hat und seine erzeugten Inhalte freigegeben sind.",
   "builder.generate.continueToPublish": "Weiter zur Veröffentlichung",
-  "builder.warnings.title": "Prüfung erforderlich",
+  "builder.warnings.title": "Verarbeitungshinweise ({count})",
   "builder.publish.title": "Tutor-Arbeitsbereich veröffentlichen",
   "builder.publish.readyNote":
     "Veröffentlichte Arbeitsbereiche sind in den Studentendashboards verfügbar.",
@@ -947,17 +964,18 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.publish.published": "Veröffentlicht",
   "builder.publish.pending": "Ausstehend",
   "builder.publish.preview": "Ansehen",
-  "builder.learningDesign.title": "Lerndesign prüfen",
+  "builder.learningDesign.retry": "Canvas-Prüfung erneut laden",
+  "builder.learningDesign.title": "Vorlesungs-Canvas prüfen",
   "builder.learningDesign.preview": "Lernenden-Entwurfsvorschau",
-  "builder.learningDesign.loading": "Entwurfsgebundenes Lerndesign wird geladen...",
+  "builder.learningDesign.loading": "Canvas-Prüfung wird geladen…",
   "builder.learningDesign.factualSeparate":
-    "Diese Freigabe betrifft nur das Lerndesign. Quellen- und Faktenprüfung bleiben getrennt.",
+    "Die Freigabe gilt für diesen erzeugten Canvas. Quellen- und Faktenprüfung sind ebenfalls erforderlich.",
   "builder.learningDesign.reviewIntro":
-    "Öffnen Sie zuerst die Lernenden-Vorschau und bestätigen Sie dann das gewünschte Lernziel. Quellen- und Faktenprüfung bleiben getrennt.",
+    "Prüfe die erzeugten Erklärungen und Übungen in der Lernendenansicht und gib diesen Canvas zur Veröffentlichung frei.",
   "builder.learningDesign.objective": "Lernziel",
   "builder.learningDesign.objectiveHelp":
     "Was sollen Studierende nach dieser Vorlesung selbstständig können?",
-  "builder.learningDesign.editPlan": "Lernplan bearbeiten",
+  "builder.learningDesign.editPlan": "Übungsdetails bearbeiten",
   "builder.learningDesign.editPlanHelp":
     "Optional: Checkpoints, Transferaufgaben oder Voraussetzungen verfeinern.",
   "builder.learningDesign.prompt": "Checkpoint-Aufgabe",
@@ -965,11 +983,11 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.learningDesign.transfer": "Unbekannte Transferaufgabe",
   "builder.learningDesign.interval": "Wiederholungsintervall (Tage)",
   "builder.learningDesign.prerequisites": "Semantische Voraussetzungen",
-  "builder.learningDesign.save": "Lerndesign speichern",
+  "builder.learningDesign.save": "Übungsdetails speichern",
   "builder.learningDesign.saveBeforeApprove":
-    "Speichern Sie diese Änderungen, bevor Sie dieses Lerndesign freigeben.",
-  "builder.learningDesign.approve": "Lerndesign freigeben",
-  "builder.learningDesign.approved": "Lerndesign freigegeben",
+    "Speichere die Änderungen, bevor du diesen Canvas freigibst.",
+  "builder.learningDesign.approve": "Canvas zur Veröffentlichung freigeben",
+  "builder.learningDesign.approved": "Canvas zur Veröffentlichung freigegeben",
   "professor.tabs.scope": "Kursumfang",
   "professor.tabs.scopeHelp":
     "Wechsle zwischen Professorenkursen und veröffentlichten Tutor-Arbeitsbereichen.",

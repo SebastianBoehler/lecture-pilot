@@ -8,6 +8,39 @@ import { approveAllPracticeDesigns, openProfessorDemo } from "./testLessonAction
 import type { CourseSourceRoutingManifest, YoutubeVideoCandidate } from "./types";
 
 describe("Professor lecture media search", () => {
+  it("shows search service failures instead of an empty candidate result", async () => {
+    const user = userEvent.setup();
+    const baseFetch = professorFetchMock();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string, init?: RequestInit) => {
+        if (url.includes("/media/youtube/search"))
+          return Promise.resolve(
+            new Response(JSON.stringify({ detail: "YouTube search is unavailable." }), {
+              status: 503,
+            }),
+          );
+        return baseFetch(url, init);
+      }),
+    );
+    render(<App />);
+    await openProfessorDemo(user);
+    await user.type(screen.getByLabelText(/course name/i), "Demo ML Course");
+    await user.click(screen.getByRole("button", { name: /create course workspace/i }));
+    await user.upload(
+      await screen.findByLabelText(/^choose files$/i),
+      new File(["# lecture one"], "Lecture01-eng.tex", { type: "application/x-tex" }),
+    );
+    await user.click(screen.getByRole("button", { name: /upload and process materials/i }));
+    await user.click(await screen.findByRole("button", { name: /apply lecture schedule/i }));
+    await screen.findByRole("heading", { name: /source assignments ready/i });
+    await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
+    expect((await screen.findAllByText("YouTube search is unavailable.")).length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.queryByText("No strong candidates for this query.")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /continue without videos/i })).toBeEnabled();
+  });
   afterEach(() => {
     window.localStorage.clear();
     window.sessionStorage.clear();
@@ -30,10 +63,13 @@ describe("Professor lecture media search", () => {
     await user.click(await screen.findByRole("button", { name: /apply lecture schedule/i }));
     await screen.findByRole("heading", { name: /source assignments ready/i });
     await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
-    await screen.findByRole("heading", { name: /learning goals/i });
-    await approveAllPracticeDesigns(user);
-    await user.click(screen.getByRole("button", { name: /02 materials/i }));
-    await user.click(screen.getByText("Media (optional)", { selector: "summary" }));
+    expect(await screen.findByRole("heading", { name: /^media$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /03 media/i })).toHaveAttribute(
+      "aria-current",
+      "step",
+    );
+    expect(screen.getByRole("button", { name: /continue without videos/i })).toBeEnabled();
+    expect(screen.queryByRole("heading", { name: /learning goals/i })).not.toBeInTheDocument();
 
     const target = screen.getByLabelText(/choose videos for/i);
     const suggestions = screen.getByRole("region", { name: /suggested searches/i });
@@ -97,10 +133,12 @@ describe("Professor lecture media search", () => {
     await user.click(await screen.findByRole("button", { name: /apply lecture schedule/i }));
     await screen.findByRole("heading", { name: /source assignments ready/i });
     await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
+    await user.click(
+      await screen.findByRole("button", { name: /continue (?:without videos|to learning plan)/i }),
+    );
     await screen.findByRole("heading", { name: /learning goals/i });
     await approveAllPracticeDesigns(user);
-    await user.click(screen.getByRole("button", { name: /02 materials/i }));
-    await user.click(screen.getByText("Media (optional)", { selector: "summary" }));
+    await user.click(screen.getByRole("button", { name: /03 media/i }));
 
     await user.click(await screen.findByLabelText(/bayesian decision theory/i));
     await user.click(await screen.findByLabelText(/second machine-learning explanation/i));
@@ -135,17 +173,26 @@ describe("Professor lecture media search", () => {
     await user.click(await screen.findByRole("button", { name: /apply lecture schedule/i }));
     await screen.findByRole("heading", { name: /source assignments ready/i });
     await user.click(screen.getByRole("button", { name: /accept assignments and continue/i }));
+    await user.click(
+      await screen.findByRole("button", { name: /continue (?:without videos|to learning plan)/i }),
+    );
     await screen.findByRole("heading", { name: /learning goals/i });
     await approveAllPracticeDesigns(user);
-    await user.click(screen.getByRole("button", { name: /02 materials/i }));
-    await user.click(screen.getByText("Media (optional)", { selector: "summary" }));
+    await user.click(screen.getByRole("button", { name: /03 media/i }));
     await screen.findByRole("heading", { name: /review youtube candidates/i });
 
+    const generationCount = fetchMock.mock.calls.filter(
+      ([url, init]) => String(url).includes("/canvas/draft") && init?.method === "POST",
+    ).length;
     routingInvalidated = true;
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: /continue to canvas draft/i })).toBeEnabled(),
+      expect(
+        screen.getByRole("button", { name: /continue (?:without videos|to learning plan)/i }),
+      ).toBeEnabled(),
     );
-    await user.click(screen.getByRole("button", { name: /continue to canvas draft/i }));
+    await user.click(
+      screen.getByRole("button", { name: /continue (?:without videos|to learning plan)/i }),
+    );
 
     expect(await screen.findByRole("heading", { name: /source assignments ready/i })).toBeVisible();
     expect(
@@ -153,9 +200,9 @@ describe("Professor lecture media search", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText(/review and confirm source assignments again/i)).toBeInTheDocument();
     expect(
-      fetchMock.mock.calls.some(
+      fetchMock.mock.calls.filter(
         ([url, init]) => String(url).includes("/canvas/draft") && init?.method === "POST",
       ),
-    ).toBe(false);
+    ).toHaveLength(generationCount);
   });
 });

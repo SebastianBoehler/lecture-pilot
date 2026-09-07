@@ -1,8 +1,6 @@
 import type { CanvasDocument } from "./types";
 import { CanvasDraftRequestError } from "./canvasDraftApi";
-import { runBoundedTasks } from "./boundedTaskPool";
 
-export const CANVAS_DRAFT_CONCURRENCY = 2;
 const CANVAS_DRAFT_RETRY_DELAYS_MS = [1500, 3500];
 
 export type CanvasGenerationStatus = "pending" | "generating" | "ready" | "error";
@@ -84,7 +82,10 @@ async function draftWithRetry(
       onProgress?.({
         lectureId,
         status: "generating",
-        message: `Provider busy; retrying in ${Math.round(retryDelayMs / 1000)}s.`,
+        message:
+          describeCanvasGenerationError(error).errorKind === "network"
+            ? `Connection interrupted; reconnecting in ${Math.round(retryDelayMs / 1000)}s.`
+            : `Service request failed; retrying in ${Math.round(retryDelayMs / 1000)}s.`,
       });
       await wait(retryDelayMs);
     }
@@ -105,22 +106,24 @@ export async function generateLectureCanvasDrafts({
 }) {
   const canvases = new Array<CanvasDocument>(lectureIds.length);
   const failures: CanvasGenerationProgress[] = [];
-  await runBoundedTasks(lectureIds, CANVAS_DRAFT_CONCURRENCY, async (lectureId, currentIndex) => {
-    onProgress?.({ lectureId, status: "generating" });
-    try {
-      canvases[currentIndex] = await draftWithRetry(lectureId, draft, onProgress);
-      onDraftReady?.(lectureId, canvases[currentIndex]);
-      onProgress?.({ lectureId, status: "ready" });
-    } catch (error) {
-      const failure = {
-        lectureId,
-        status: "error",
-        ...describeCanvasGenerationError(error),
-      } satisfies CanvasGenerationProgress;
-      failures.push(failure);
-      onProgress?.(failure);
-    }
-  });
+  await Promise.all(
+    lectureIds.map(async (lectureId, currentIndex) => {
+      onProgress?.({ lectureId, status: "generating" });
+      try {
+        canvases[currentIndex] = await draftWithRetry(lectureId, draft, onProgress);
+        onDraftReady?.(lectureId, canvases[currentIndex]);
+        onProgress?.({ lectureId, status: "ready" });
+      } catch (error) {
+        const failure = {
+          lectureId,
+          status: "error",
+          ...describeCanvasGenerationError(error),
+        } satisfies CanvasGenerationProgress;
+        failures.push(failure);
+        onProgress?.(failure);
+      }
+    }),
+  );
   if (failures.length > 0) {
     throw new CanvasGenerationBatchError(failures);
   }

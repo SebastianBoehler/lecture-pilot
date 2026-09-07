@@ -1,12 +1,14 @@
+import type { ReactNode } from "react";
 import { useI18n } from "./i18n";
 import type { LearningDesignReview, LearningDesignUpdate } from "./learningDesignTypes";
 import { ProfessorCanvasReviewWorkspace } from "./ProfessorCanvasReviewWorkspace";
-import { PendingStatus, StepHeader } from "./ProfessorCourseBuilderParts";
+import { PendingStatus } from "./ProfessorCourseBuilderParts";
 import type { CanvasGenerationProgress } from "./professorCanvasGeneration";
 import type { CanvasDocument } from "./types";
 
 export function ProfessorCanvasDraftStep({
   canvas,
+  publicationAction,
   canGenerate,
   generationProgress,
   generatedCount,
@@ -14,15 +16,21 @@ export function ProfessorCanvasDraftStep({
   isGenerating,
   learningDesignReviews,
   learningDesignSaving,
+  learningDesignErrors = {},
+  onReloadLearningDesign,
   onApproveLearningDesign,
   onGenerate,
   onRetry,
   onSaveLearningDesign,
+  renderImplementationChanges,
   previewLectures,
+  lectures,
+  renderPublishedLecture,
   retryingLectureIds = new Set(),
   totalCount,
 }: {
   canvas: CanvasDocument | null;
+  publicationAction?: ReactNode;
   canGenerate: boolean;
   generationProgress: CanvasGenerationProgress[];
   generatedCount: number;
@@ -30,15 +38,20 @@ export function ProfessorCanvasDraftStep({
   isGenerating: boolean;
   learningDesignReviews: Record<string, LearningDesignReview>;
   learningDesignSaving: boolean;
+  learningDesignErrors?: Readonly<Record<string, string>>;
+  onReloadLearningDesign?: (lectureId: string) => void;
   onApproveLearningDesign: (lectureId: string) => void;
   onGenerate: () => void;
   onRetry: (lectureId: string) => void;
   onSaveLearningDesign: (lectureId: string, update: LearningDesignUpdate) => void;
+  renderImplementationChanges?: (lectureId: string) => ReactNode;
   previewLectures: {
     id: string;
     label: string;
     previewHref: string;
   }[];
+  lectures?: { id: string; label: string; previewHref: string; published: boolean }[];
+  renderPublishedLecture?: (lectureId: string) => ReactNode;
   retryingLectureIds?: ReadonlySet<string>;
   totalCount: number;
 }) {
@@ -54,8 +67,6 @@ export function ProfessorCanvasDraftStep({
       : t("builder.generate.statusSingle");
   const hasDraft = Boolean(canvas);
   const hasUnfinished = generationProgress.some((item) => item.status === "error");
-  const allDraftsReady =
-    generationProgress.length === 0 || generationProgress.every((item) => item.status === "ready");
   const timeEstimate = isFullCourse
     ? t("builder.generate.estimateAll", {
         count: totalCount,
@@ -63,111 +74,59 @@ export function ProfessorCanvasDraftStep({
     : t("builder.generate.estimateSingle");
   return (
     <section className="flow-card">
-      <StepHeader title={t("builder.generate.title")} done={hasDraft && allDraftsReady} />
-      <aside aria-label={t("builder.generate.timingLabel")} className="generation-time-notice">
-        <strong>{timeEstimate}</strong>
-        <span>{t("builder.generate.backgroundHelp")}</span>
-      </aside>
-      <button
-        className={hasDraft ? undefined : "primary-action"}
-        disabled={!canGenerate || isGenerating}
-        type="button"
-        onClick={onGenerate}
-      >
-        {isGenerating
-          ? busyLabel
-          : hasUnfinished
-            ? t("builder.generate.resume")
-            : hasDraft
-              ? t("builder.generate.regenerate")
-              : actionLabel}
-      </button>
-      {isGenerating ? <PendingStatus label={statusLabel} /> : null}
-      {generationProgress.length ? (
-        <GenerationProgressList
-          onRetry={onRetry}
-          progress={generationProgress}
-          retryingLectureIds={retryingLectureIds}
-        />
+      {!hasDraft || isGenerating ? (
+        <aside aria-label={t("builder.generate.timingLabel")} className="generation-time-notice">
+          <strong>{timeEstimate}</strong>
+          <span>{t("builder.generate.backgroundHelp")}</span>
+        </aside>
       ) : null}
+      <details className="builder-optional" open={!hasDraft || hasUnfinished || isGenerating}>
+        <summary>{t("builder.generate.title")}</summary>
+        <button
+          className={hasDraft ? undefined : "primary-action"}
+          disabled={!canGenerate || isGenerating}
+          type="button"
+          onClick={onGenerate}
+        >
+          {isGenerating
+            ? busyLabel
+            : hasUnfinished
+              ? t("builder.generate.resume")
+              : hasDraft
+                ? t("builder.generate.regenerate")
+                : actionLabel}
+        </button>
+        {isGenerating ? <PendingStatus label={statusLabel} /> : null}
+      </details>
       {hasDraft && isFullCourse ? (
         <p>{t("builder.generate.fullReady", { count: generatedCount })}</p>
       ) : null}
-      {canvas && !isFullCourse ? (
-        <p>{t("builder.generate.singleReady", { count: canvas.sections.length })}</p>
-      ) : null}
-      {hasDraft ? (
-        <ProfessorCanvasReviewWorkspace
-          lectures={previewLectures}
-          learningDesignReviews={learningDesignReviews}
-          learningDesignSaving={learningDesignSaving}
-          onApproveLearningDesign={onApproveLearningDesign}
-          onSaveLearningDesign={onSaveLearningDesign}
-        />
-      ) : null}
+      {publicationAction}
+      <ProfessorCanvasReviewWorkspace
+        lectures={
+          lectures ?? [
+            ...previewLectures,
+            ...generationProgress
+              .filter((item) => !previewLectures.some((lecture) => lecture.id === item.lectureId))
+              .map((item) => ({
+                id: item.lectureId,
+                label: item.lectureId.replace("lecture-", "Lecture "),
+                previewHref: "",
+              })),
+          ]
+        }
+        generationProgress={generationProgress}
+        retryingLectureIds={retryingLectureIds}
+        onRetry={onRetry}
+        renderPublishedLecture={renderPublishedLecture}
+        learningDesignReviews={learningDesignReviews}
+        learningDesignSaving={learningDesignSaving}
+        learningDesignErrors={learningDesignErrors}
+        onReloadLearningDesign={onReloadLearningDesign}
+        onApproveLearningDesign={onApproveLearningDesign}
+        onSaveLearningDesign={onSaveLearningDesign}
+        renderImplementationChanges={renderImplementationChanges}
+      />
     </section>
-  );
-}
-
-function GenerationProgressList({
-  onRetry,
-  progress,
-  retryingLectureIds,
-}: {
-  onRetry: (lectureId: string) => void;
-  progress: CanvasGenerationProgress[];
-  retryingLectureIds: ReadonlySet<string>;
-}) {
-  const { t } = useI18n();
-  const hasErrors = progress.some((item) => item.status === "error");
-  return (
-    <div
-      aria-label={t("builder.generate.progress")}
-      aria-live="polite"
-      className="generation-progress"
-    >
-      {hasErrors ? (
-        <p className="generation-progress-context">{t("builder.generate.previousRunHelp")}</p>
-      ) : null}
-      {progress.map((item) => {
-        const lectureLabel = item.lectureId.replace("lecture-", "Lecture ");
-        const canRepair = item.errorKind === "repair";
-        const message =
-          item.status === "error"
-            ? item.errorKind === "network"
-              ? t("builder.generate.error.network")
-              : t(canRepair ? "builder.generate.error.repair" : "builder.generate.error.service", {
-                  message: item.message ?? t("builder.generate.error.unknown"),
-                })
-            : item.message;
-        return (
-          <div className={`generation-progress-row is-${item.status}`} key={item.lectureId}>
-            <span>{lectureLabel}</span>
-            <strong>{t(`builder.generate.progressStatus.${item.status}`)}</strong>
-            {item.status === "error" ? (
-              <button
-                aria-label={t(
-                  canRepair ? "builder.generate.repairLecture" : "builder.generate.retryLecture",
-                  { lecture: lectureLabel },
-                )}
-                disabled={retryingLectureIds.has(item.lectureId)}
-                type="button"
-                onClick={() => onRetry(item.lectureId)}
-              >
-                {t(canRepair ? "builder.generate.repair" : "builder.generate.retry")}
-              </button>
-            ) : null}
-            {message && item.status === "error" ? (
-              <details className="generation-error-details">
-                <summary>{t("builder.generate.failureDetails")}</summary>
-                <small>{message}</small>
-              </details>
-            ) : message ? (
-              <small>{message}</small>
-            ) : null}
-          </div>
-        );
-      })}
-    </div>
   );
 }

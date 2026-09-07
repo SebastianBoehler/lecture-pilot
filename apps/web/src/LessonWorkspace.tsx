@@ -50,6 +50,7 @@ export function LessonWorkspace({
   learnerStateError,
   tutorModel,
   previewMode = false,
+  draftMode = false,
   workspaceMode = "learner",
   onSendMessage,
   onPracticeSubmitted,
@@ -72,6 +73,7 @@ export function LessonWorkspace({
   learnerStateError: string | null;
   tutorModel: string | null;
   previewMode?: boolean;
+  draftMode?: boolean;
   workspaceMode?: LearnerWorkspaceMode;
   onSendMessage: (message: string, options?: TutorMessageOptions) => Promise<void>;
   onPracticeSubmitted: (result: LearnerQuizAnswerResult) => void | Promise<void>;
@@ -159,10 +161,14 @@ export function LessonWorkspace({
       >
         <section className="lesson-main">
           {previewMode ? <ProfessorLearnerPreviewBanner /> : null}
+          {draftMode ? <p role="status">{t("lesson.draftPreview")}</p> : null}
           <div className="lesson-toolbar">
             <div className="lesson-toolbar-actions">
-              {!focused ? language.control : null}
-              <WorkspaceResetControl disabled={!canvasDocument} onReset={onResetWorkspace} />
+              {!focused && !draftMode ? language.control : null}
+              <WorkspaceResetControl
+                disabled={!canvasDocument || draftMode}
+                onReset={onResetWorkspace}
+              />
             </div>
             <span>{lecture.date}</span>
           </div>
@@ -201,6 +207,7 @@ export function LessonWorkspace({
             />
           ) : canvasDocument ? (
             <LessonAnnotations
+              enabled={!draftMode}
               key={`${session.tenant_id}:${session.username}:${workspaceMode}:${courseId}:${lecture.id}:${publishedCanvasView?.publication_version}`}
               courseId={courseId}
               lectureId={lecture.id}
@@ -225,7 +232,7 @@ export function LessonWorkspace({
                   quizStates={canvasLearnerState.quizStates}
                   publicationVersion={canvasLearnerState.publicationVersion}
                   onOpenResource={openWorkspaceResource}
-                  onSubmitCheckpoint={learningAttempts.submitCheckpoint}
+                  onSubmitCheckpoint={draftMode ? undefined : learningAttempts.submitCheckpoint}
                   onSubmitQuizAnswer={learningAttempts.submitQuiz}
                 />
               </CheckpointGuidanceContext.Provider>
@@ -241,6 +248,7 @@ export function LessonWorkspace({
 
         {!focused && panelMode === "chat" ? (
           <TutorDrawer
+            readOnlyNotice={draftMode ? t("lesson.draftTutor") : undefined}
             messages={messages}
             model={tutorModel}
             sessionGoal={canvasLearnerState.currentLearnerState?.active_session_goal ?? null}

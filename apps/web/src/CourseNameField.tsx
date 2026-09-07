@@ -20,7 +20,6 @@ export function CourseNameField({
   value: string;
 }) {
   const { locale, t } = useI18n();
-  const helpId = useId();
   const inputId = useId();
   const listId = useId();
   const [open, setOpen] = useState(false);
@@ -46,7 +45,6 @@ export function CourseNameField({
         aria-activedescendant={open && visible.length ? `${listId}-${activeIndex}` : undefined}
         aria-autocomplete="list"
         aria-controls={listId}
-        aria-describedby={helpId}
         aria-expanded={open && Boolean(visible.length)}
         autoComplete="off"
         role="combobox"
@@ -107,23 +105,22 @@ export function CourseNameField({
         </ul>
       ) : null}
       <span className="course-source-statuses" aria-live="polite">
-        {sourceStatuses ? (
-          <>
-            <small>
-              {copy.alma}: {copy.status[sourceStatuses.alma ?? "loading"]}
-            </small>
-            <small>
-              {copy.ilias}: {copy.status[sourceStatuses.ilias ?? "loading"]}
-            </small>
-          </>
+        {sourceStatuses?.alma === "error" ? (
+          <small>
+            {copy.alma}: {copy.unavailable}
+          </small>
         ) : null}
-        <small>
-          {copy.catalog}: {courseSearchFailed ? copy.status.error : copy.status.ready}
-        </small>
+        {sourceStatuses?.ilias === "error" ? (
+          <small>
+            {copy.ilias}: {copy.unavailable}
+          </small>
+        ) : null}
+        {courseSearchFailed ? (
+          <small>
+            {copy.catalog}: {copy.unavailable}
+          </small>
+        ) : null}
       </span>
-      <small className="course-name-match-note" id={helpId}>
-        {t("builder.define.courseNameHelp")}
-      </small>
     </div>
   );
 }
@@ -147,13 +144,13 @@ function sourceCopy(locale: "de" | "en") {
         ilias: "ILIAS Mitgliedschaften",
         catalog: "ALMA Katalog",
         source,
-        status: { loading: "wird geladen", ready: "verfügbar", error: "nicht verfügbar" },
+        unavailable: "nicht verfügbar",
       }
     : {
         alma: "Alma timetable",
         ilias: "ILIAS memberships",
         catalog: "Alma catalogue",
         source,
-        status: { loading: "loading", ready: "available", error: "unavailable" },
+        unavailable: "unavailable",
       };
 }

@@ -15,14 +15,13 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
     const notice = screen.getByLabelText("Generation timing");
     expect(notice).toHaveTextContent("about 10–15 minutes");
     expect(notice).toHaveTextContent("continues on the server");
-    expect(notice).toHaveTextContent("leave this page and come back later");
   });
 
-  it("explains that full-course generation uses the provider rate budget", () => {
+  it("explains provider-controlled model throughput", () => {
     renderStep({ isFullCourse: true, totalCount: 7 });
 
     expect(screen.getByLabelText("Generation timing")).toHaveTextContent(
-      "All 7 lectures are queued immediately and use the provider's available rate budget",
+      "All 7 lectures start together",
     );
     expect(screen.getByLabelText("Generation timing")).not.toHaveTextContent("up to 3");
   });
@@ -65,12 +64,12 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
     });
 
     openLearningDesign();
-    expect(screen.getByRole("heading", { name: "Learning design review" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Lecture canvas review" })).toBeInTheDocument();
     expect(screen.getByLabelText("Learning objective")).toHaveValue(
       "Explain the source-backed mechanism.",
     );
     expect(
-      screen.getByText(/start with the learner preview, then confirm the intended outcome/i),
+      screen.getByText(/review the generated explanations and practice in the learner preview/i),
     ).toBeInTheDocument();
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     expect(screen.queryByText("lecture.md#mechanism")).not.toBeInTheDocument();
@@ -96,11 +95,11 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
     fireEvent.change(screen.getByLabelText("Learning objective"), {
       target: { value: "Explain and transfer the mechanism." },
     });
-    fireEvent.click(screen.getByText("Edit learning plan"));
+    fireEvent.click(screen.getByText("Edit practice details"));
     fireEvent.change(screen.getByLabelText("Review interval (days)"), {
       target: { value: "5" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Save learning design" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save practice details" }));
     expect(onSaveLearningDesign).toHaveBeenCalledWith(
       "lecture-01",
       expect.objectContaining({
@@ -117,7 +116,7 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
         onSaveLearningDesign,
       }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Approve learning design" }));
+    fireEvent.click(screen.getByRole("button", { name: "Approve canvas for publication" }));
     expect(onApproveLearningDesign).toHaveBeenCalledWith("lecture-01");
 
     rerender(
@@ -138,7 +137,7 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
     });
 
     openLearningDesign();
-    fireEvent.click(screen.getByRole("button", { name: "Approve learning design" }));
+    fireEvent.click(screen.getByRole("button", { name: "Approve canvas for publication" }));
 
     rerender(
       step(learningDesignReview("prof01"), {
@@ -148,10 +147,10 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
     );
 
     expect(
-      screen.queryByRole("heading", { name: "Learning design review" }),
+      screen.queryByRole("heading", { name: "Lecture canvas review" }),
     ).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /review learning design for/i }));
-    expect(screen.getByRole("button", { name: "Learning design approved" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: /review lecture canvas for/i }));
+    expect(screen.getByRole("button", { name: "Canvas approved for publication" })).toBeDisabled();
   });
 
   it("does not approve local edits until the exact changes are saved", () => {
@@ -168,18 +167,19 @@ describe("ProfessorCanvasDraftStep generation timing", () => {
       target: { value: "Unsaved changed objective." },
     });
 
-    const approve = screen.getByRole("button", { name: "Approve learning design" });
+    const approve = screen.getByRole("button", { name: "Approve canvas for publication" });
     expect(approve).toBeDisabled();
-    expect(
-      screen.getByText("Save these changes before approving this learning design."),
-    ).toHaveAttribute("role", "status");
+    expect(screen.getByText("Save these changes before approving this canvas.")).toHaveAttribute(
+      "role",
+      "status",
+    );
     fireEvent.click(approve);
     expect(onApproveLearningDesign).not.toHaveBeenCalled();
   });
 });
 
 function openLearningDesign() {
-  fireEvent.click(screen.getByRole("button", { name: /review learning design for/i }));
+  fireEvent.click(screen.getByRole("button", { name: /review lecture canvas for/i }));
 }
 
 function renderStep({
