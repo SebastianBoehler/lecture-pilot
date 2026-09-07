@@ -23,8 +23,8 @@ def model_provider_error_message(
             f"{name} API credits are exhausted. "
             "Add credits to the configured provider account, then retry this request."
         )
-    status_code = getattr(exc, "status_code", None)
-    error_name = type(exc).__name__.casefold()
+    status_code = _status_code(exc)
+    error_name = " ".join(type(error).__name__.casefold() for error in _causes(exc))
     if is_provider_timeout(exc):
         return (
             f"{name} model request timed out before completing. "
@@ -40,6 +40,11 @@ def model_provider_error_message(
             f"{name} returned a temporary service error after {attempts} attempts. "
             "Retry this lecture; completed lectures are preserved."
         )
+    if _is_connection_error(exc):
+        return (
+            f"{name} model connection failed before completing. "
+            "Retry this lecture; completed lectures are preserved."
+        )
     if status_code in {401, 403}:
         return f"{name} rejected the configured API credentials. Check the provider key."
     return f"{name} rejected the model request. Check the model configuration."
@@ -48,12 +53,12 @@ def model_provider_error_message(
 def is_retryable_provider_error(exc: Exception) -> bool:
     if _credits_exhausted(exc):
         return False
-    if isinstance(exc, (TimeoutError, ConnectionError)):
+    if is_provider_timeout(exc) or _is_connection_error(exc):
         return True
-    status_code = getattr(exc, "status_code", None)
+    status_code = _status_code(exc)
     if status_code in {408, 409, 429, 500, 502, 503, 504}:
         return True
-    name = type(exc).__name__.lower()
+    name = " ".join(type(error).__name__.casefold() for error in _causes(exc))
     return any(
         marker in name
         for marker in (
@@ -67,19 +72,49 @@ def is_retryable_provider_error(exc: Exception) -> bool:
 
 
 def is_provider_timeout(exc: Exception) -> bool:
-    if isinstance(exc, TimeoutError) or getattr(exc, "status_code", None) == 408:
-        return True
-    return "timeout" in type(exc).__name__.casefold()
+    return any(
+        isinstance(error, TimeoutError)
+        or getattr(error, "status_code", None) == 408
+        or "timeout" in type(error).__name__.casefold()
+        for error in _causes(exc)
+    )
+
+
+def _is_connection_error(exc: Exception) -> bool:
+    return any(
+        isinstance(error, ConnectionError) or "apiconnection" in type(error).__name__.casefold()
+        for error in _causes(exc)
+    )
+
+
+def _causes(exc: Exception):
+    seen: set[int] = set()
+    while exc is not None and id(exc) not in seen:
+        seen.add(id(exc))
+        yield exc
+        exc = exc.__cause__
+
+
+def _status_code(exc: Exception):
+    return next(
+        (
+            code
+            for error in _causes(exc)
+            if (code := getattr(error, "status_code", None)) is not None
+        ),
+        None,
+    )
 
 
 def _credits_exhausted(exc: Exception) -> bool:
     text = " ".join(
         _error_text(value)
+        for error in _causes(exc)
         for value in (
-            exc,
-            getattr(exc, "code", None),
-            getattr(exc, "body", None),
-            getattr(exc, "detail", None),
+            error,
+            getattr(error, "code", None),
+            getattr(error, "body", None),
+            getattr(error, "detail", None),
         )
     ).casefold()
     return any(marker in text for marker in _CREDIT_MARKERS)
