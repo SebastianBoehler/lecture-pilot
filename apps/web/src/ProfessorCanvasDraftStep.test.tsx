@@ -8,22 +8,22 @@ import {
   learningDesignReportFixture,
 } from "./testLearningDesignReportFixture";
 
-describe("ProfessorCanvasDraftStep generation timing", () => {
-  it("sets expectations before a single-lecture generation starts", () => {
+describe("ProfessorCanvasDraftStep generation controls", () => {
+  it("shows generation directly without a disclosure or duplicate notice", () => {
     renderStep({ isFullCourse: false, totalCount: 1 });
-
-    const notice = screen.getByLabelText("Generation timing");
-    expect(notice).toHaveTextContent("about 10–15 minutes");
-    expect(notice).toHaveTextContent("continues on the server");
+    const button = screen.getByRole("button", { name: "Generate draft canvas" });
+    expect(button).toBeVisible();
+    expect(button).toBeEnabled();
+    expect(button.closest("details")).toBeNull();
+    expect(screen.queryByLabelText("Generation timing")).not.toBeInTheDocument();
   });
 
-  it("explains provider-controlled model throughput", () => {
-    renderStep({ isFullCourse: true, totalCount: 7 });
-
-    expect(screen.getByLabelText("Generation timing")).toHaveTextContent(
-      "All 7 lectures start together",
-    );
-    expect(screen.getByLabelText("Generation timing")).not.toHaveTextContent("up to 3");
+  it("updates and disables the generation button while running", () => {
+    renderStep({ isFullCourse: true, totalCount: 7, isGenerating: true });
+    const button = screen.getByRole("button", { name: "Generating lecture canvases..." });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute("aria-busy", "true");
+    expect(screen.queryByText(/Generating source-grounded/)).not.toBeInTheDocument();
   });
 
   it("keeps failed lectures retryable while other canvas work is running", () => {

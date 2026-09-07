@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { useI18n } from "./i18n";
 import type { LearningDesignReview, LearningDesignUpdate } from "./learningDesignTypes";
 import { ProfessorCanvasReviewWorkspace } from "./ProfessorCanvasReviewWorkspace";
-import { PendingStatus } from "./ProfessorCourseBuilderParts";
 import type { CanvasGenerationProgress } from "./professorCanvasGeneration";
 import type { CanvasDocument } from "./types";
 
@@ -58,46 +57,25 @@ export function ProfessorCanvasDraftStep({
   const { t } = useI18n();
   const actionLabel = isFullCourse ? t("builder.generate.all") : t("builder.generate.single");
   const busyLabel = isFullCourse ? t("builder.generate.busyAll") : t("builder.generate.busySingle");
-  const activeCount = generationProgress.filter(
-    (item) => item.status === "pending" || item.status === "generating",
-  ).length;
-  const statusLabel =
-    isFullCourse && activeCount !== 1
-      ? t("builder.generate.statusAll", { count: activeCount || totalCount })
-      : t("builder.generate.statusSingle");
   const hasDraft = Boolean(canvas);
   const hasUnfinished = generationProgress.some((item) => item.status === "error");
-  const timeEstimate = isFullCourse
-    ? t("builder.generate.estimateAll", {
-        count: totalCount,
-      })
-    : t("builder.generate.estimateSingle");
   return (
     <section className="flow-card">
-      {!hasDraft || isGenerating ? (
-        <aside aria-label={t("builder.generate.timingLabel")} className="generation-time-notice">
-          <strong>{timeEstimate}</strong>
-          <span>{t("builder.generate.backgroundHelp")}</span>
-        </aside>
-      ) : null}
-      <details className="builder-optional" open={!hasDraft || hasUnfinished || isGenerating}>
-        <summary>{t("builder.generate.title")}</summary>
-        <button
-          className={hasDraft ? undefined : "primary-action"}
-          disabled={!canGenerate || isGenerating}
-          type="button"
-          onClick={onGenerate}
-        >
-          {isGenerating
-            ? busyLabel
-            : hasUnfinished
-              ? t("builder.generate.resume")
-              : hasDraft
-                ? t("builder.generate.regenerate")
-                : actionLabel}
-        </button>
-        {isGenerating ? <PendingStatus label={statusLabel} /> : null}
-      </details>
+      <button
+        className={hasDraft ? undefined : "primary-action"}
+        aria-busy={isGenerating}
+        disabled={!canGenerate || isGenerating}
+        type="button"
+        onClick={onGenerate}
+      >
+        {isGenerating
+          ? busyLabel
+          : hasUnfinished
+            ? t("builder.generate.resume")
+            : hasDraft
+              ? t("builder.generate.regenerate")
+              : actionLabel}
+      </button>
       {hasDraft && isFullCourse ? (
         <p>{t("builder.generate.fullReady", { count: generatedCount })}</p>
       ) : null}
