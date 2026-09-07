@@ -203,7 +203,9 @@ export function useProfessorCourseBuilder({
   const publishLectures = workspace
     ? publishLectureRows({
         courseId: workspace.courseId,
-        lectureSchedule,
+        lectureSchedule: workspaceLectures.length
+          ? workspaceLectures.map(scheduleItemFromLecture)
+          : lectureSchedule,
         previewWorkspaceUrl,
         publishedLectureIds,
         setup,

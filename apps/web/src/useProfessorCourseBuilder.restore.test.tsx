@@ -23,6 +23,20 @@ const hookProps: ProfessorCourseBuilderProps = {
 };
 
 describe("Professor course builder restoration", () => {
+  it("uses saved backend lecture titles in release rows after a schedule changes", async () => {
+    saveRestorableFullCourse();
+    const key = "lecturepilot.professor-builder.current";
+    const saved = JSON.parse(window.sessionStorage.getItem(key)!);
+    saved.lectureSchedule = [{ number: "01", title: "Stale title", date: "2026-05-06" }];
+    window.sessionStorage.setItem(key, JSON.stringify(saved));
+    vi.stubGlobal("fetch", professorFetchMock());
+    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps));
+    await waitFor(() => expect(result.current.isRestoring).toBe(false));
+    expect(result.current.publishStep.lectures.map((lecture) => lecture.label)).toEqual([
+      "01 · Lecture 01",
+      "02 · Lecture 02",
+    ]);
+  });
   it("treats a not-yet-generated routing proposal as a normal materials step", async () => {
     saveRestorableFullCourse();
     const baseFetch = professorFetchMock();
