@@ -16,7 +16,12 @@ from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_usage import ModelUsageRecorder
 from lecturepilot.models import ProviderSettings
 from lecturepilot.course_practice_design_review_models import PracticeDesignReviewResult
-from lecturepilot.course_practice_design_validation import PracticeDesignValidationError
+from lecturepilot.canvas_models import CanvasDocument
+from lecturepilot.course_practice_design_models import PracticeDesignProposal
+from lecturepilot.course_practice_design_validation import (
+    PracticeDesignValidationError,
+    validate_practice_design_review,
+)
 from lecturepilot.practice_evidence_catalogue import EvidenceCatalogue, expand_evidence_ids
 
 
@@ -25,6 +30,8 @@ class PracticeDesignReviewModelClient(Protocol):
         self,
         *,
         settings: ProviderSettings,
+        source: CanvasDocument,
+        proposal: PracticeDesignProposal,
         messages: list[dict[str, str]],
         allowed_source_paths: Sequence[str],
         catalogue: EvidenceCatalogue,
@@ -41,11 +48,17 @@ class NativePracticeDesignReviewClient:
         self,
         *,
         settings: ProviderSettings,
+        source: CanvasDocument,
+        proposal: PracticeDesignProposal,
         messages: list[dict[str, str]],
         allowed_source_paths: Sequence[str],
         catalogue: EvidenceCatalogue,
     ) -> dict:
         schema = practice_design_review_response_format(catalogue)["json_schema"]["schema"]
+        schema["$defs"]["PracticeDesignReviewCheck"]["properties"]["target_ids"]["items"] = {
+            "type": "string",
+            "enum": [target.id for target in proposal.targets],
+        }
         async with self._model(settings) as model:
             agent = Agent(
                 model,
@@ -67,6 +80,9 @@ class NativePracticeDesignReviewClient:
                 try:
                     review = PracticeDesignReviewResult.model_validate_json(
                         json.dumps(expand_evidence_ids(output, catalogue))
+                    )
+                    validate_practice_design_review(
+                        review, proposal, source=source, allowed_source_paths=allowed_source_paths
                     )
                 except (ValidationError, PracticeDesignValidationError) as exc:
                     raise ModelRetry(

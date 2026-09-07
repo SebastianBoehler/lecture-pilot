@@ -158,6 +158,7 @@ def create_app() -> FastAPI:
             "Authorization",
             "Content-Type",
             "Idempotency-Key",
+            "Prefer",
             CLIENT_CONTRACT_HEADER,
             "X-Course-Ids",
             "X-CSRF-Token",

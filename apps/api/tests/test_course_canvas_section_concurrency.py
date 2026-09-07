@@ -15,7 +15,7 @@ from lecturepilot.providers import ProviderRegistry
 from practice_design_test_helpers import practice_design_for_canvas
 
 
-async def test_dense_section_plan_uses_three_provider_rounds_and_keeps_source_order() -> None:
+async def test_dense_section_plan_starts_all_work_and_keeps_source_order() -> None:
     client = _ControlledPlanClient()
 
     generation = asyncio.create_task(
@@ -26,17 +26,12 @@ async def test_dense_section_plan_uses_three_provider_rounds_and_keeps_source_or
             practice_design=practice_design_for_canvas(_source_document(6)),
         )
     )
-    await client.wait_until_started(2)
-    assert client.started == 2
-    client.release(2)
-    await client.wait_until_started(4)
-    assert client.started == 4
-    client.release(2)
     await client.wait_until_started(5)
-    client.release(1)
+    assert client.started == 5
+    client.release(5)
     planned = await asyncio.wait_for(generation, timeout=1)
 
-    assert client.max_active == 2
+    assert client.max_active == 5
     assert [section.id for section in planned.sections] == [
         f"learning-evidence-batch-{index}" for index in range(1, 6)
     ]
@@ -290,7 +285,7 @@ async def test_section_planner_cancels_sibling_provider_calls_after_fatal_failur
         )
 
     await asyncio.wait_for(client.in_flight_sibling_cancelled.wait(), timeout=1)
-    assert client.started < 4
+    assert client.started == 4
     assert "source-2" in client.cancelled_source_ids
 
 

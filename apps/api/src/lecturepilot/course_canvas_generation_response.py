@@ -14,5 +14,6 @@ class CanvasGenerationStatusResponse(BaseModel):
     updated_at: datetime
     error_code: str | None = None
     error_detail: str | None = None
+    repairable: bool = False
     canvas: CanvasDocument | None = None
     authoring_metrics: AuthoringMetrics | None = None

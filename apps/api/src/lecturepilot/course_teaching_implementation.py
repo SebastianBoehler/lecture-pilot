@@ -14,6 +14,8 @@ from lecturepilot.course_practice_design_models import PracticeDesignProposal
 from lecturepilot.course_practice_design_store import PracticeDesignStale
 from lecturepilot.course_update_recovery import locked_course_state
 from lecturepilot.lecture_source_manifest import read_lecture_source_manifest
+from lecturepilot.teaching_design_runtime import run_implementation_repair
+from lecturepilot.course_practice_design_store import PracticeDesignStore
 
 
 async def repair_implementation(app, *, source, design, ownership, feedback=None):
@@ -29,7 +31,31 @@ async def repair_implementation(app, *, source, design, ownership, feedback=None
         design.lecture_id,
     )
     paths = tuple(item.path for item in manifest.files)
-    reviewed = await app.state.practice_design_planner.propose(
+
+    def authorize():
+        require_generation_ownership(layout, ownership)
+        current = PracticeDesignStore(layout).read(
+            course_id=design.course_id, lecture_id=design.lecture_id
+        )
+        if (
+            current is None
+            or current.revision != design.revision
+            or lecture_source_revision(
+                layout, course_id=design.course_id, lecture_id=design.lecture_id
+            )
+            != design.source_revision
+        ):
+            raise PracticeDesignStale(
+                "Course sources or approved goals changed during teaching repair."
+            )
+
+    reviewed = await run_implementation_repair(
+        planner=app.state.practice_design_planner,
+        root=layout.course_root(design.course_id)
+        / "builder"
+        / "implementation-jobs"
+        / design.lecture_id,
+        authorize=authorize,
         source=source,
         source_revision=design.source_revision,
         allowed_source_paths=paths,

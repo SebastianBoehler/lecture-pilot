@@ -4,6 +4,7 @@ from collections.abc import Callable
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
+from fastapi.responses import JSONResponse
 
 from lecturepilot.api_auth import request_context, require_course_manager
 from lecturepilot.canvas_models import CanvasDocument
@@ -15,7 +16,8 @@ from lecturepilot.course_canvas_generation import (
 from lecturepilot import course_canvas_generation_ownership as ownership_store
 from lecturepilot.course_canvas_generation_failures import find_latest_canvas_failure
 from lecturepilot.course_canvas_generation_http import run_canvas_generation_request
-from lecturepilot.course_canvas_generation_jobs import CanvasGenerationStore
+from lecturepilot.course_canvas_generation_jobs import CanvasGenerationJob, CanvasGenerationStore
+from lecturepilot.course_canvas_async_response import accepted_generation_response
 from lecturepilot.course_canvas_repairs import lecture_source_revision
 from lecturepilot.course_canvas_generation_service import (
     CANVAS_GENERATION_LEASE_SECONDS,
@@ -49,7 +51,7 @@ def register_course_canvas_repair_routes(
         idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
         client_contract: Annotated[str | None, Header(alias=CLIENT_CONTRACT_HEADER)] = None,
         context: TenantContext = Depends(request_context),
-    ) -> CanvasDocument:
+    ) -> CanvasDocument | JSONResponse:
         require_course_manager(
             context,
             course_tenant_id=course_tenant_id,
@@ -108,6 +110,7 @@ def register_course_canvas_repair_routes(
             ),
         )
         outcome = await run_canvas_generation_request(
+            wait_for_completion=request.headers.get("Prefer") != "respond-async",
             app=app,
             store=store,
             course_id=course_id,
@@ -140,6 +143,8 @@ def register_course_canvas_repair_routes(
                 )
             ),
         )
+        if isinstance(outcome, CanvasGenerationJob):
+            return accepted_generation_response(outcome)
         response.headers["X-Generation-Id"] = outcome.job.generation_id
         response.headers["X-Repair-Source-Generation-Id"] = failure.generation_id
         return outcome.canvas

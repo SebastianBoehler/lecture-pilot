@@ -125,7 +125,7 @@ class AuthoringTools:
 
     def _invalid(self, digest: str, issues: list) -> dict:
         self.metrics.validation_failures += 1
-        key = repr(issues)
+        key = repr((digest, issues))
         self.failures[key] = self.failures.get(key, 0) + 1
         if self.failures[key] >= 3:
             raise AuthoringStalledError(

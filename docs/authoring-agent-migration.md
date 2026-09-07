@@ -72,6 +72,29 @@ intent; see [learning intent ownership](learning-intent-ownership.md). Model agr
 of correctness, and human approval is not silently overwritten.
 There is no claim that structured output guarantees semantic correctness.
 
+## Teaching implementation repair after intent approval
+
+The production implementation step uses `teaching_design_job` before canvas
+file authoring. Its persistent `read`, `write` and `validate` tools edit one
+AI-owned target at a time. The backend binds every approved goal and target
+order, preserves fixed tasks, and verifies source and intent revisions before
+model calls and saves. Valid sibling targets survive later repairs.
+
+Private `builder/implementation-jobs/<lecture>/<identity>/` stores `draft.json`
+and native `session.json`. Identity binds source, intent, model, starting design
+and repair context. Interrupted jobs resume saved targets and history. A cached
+review applies only to that exact draft; unchanged validation does not buy a
+second review. Publication still requires the exact-draft approval.
+
+Semantic findings are tool results, not a shared three-output retry budget.
+The current ceiling is 40 writer model turns per invocation; reviewer calls are
+separate and existing provider quotas still apply. Hitting the ceiling saves
+progress and reports an explicit resumable failure. Three framework retries
+remain for invalid completion/schema responses, not for all teaching defects.
+Metrics count writer calls, actual review rounds, rejected writes/reviews, and
+successful edits to existing targets separately. One edit may fix several
+findings; initial target creation is not counted as a repair.
+
 ## Learning-plan self-repair before approval
 
 `PracticeDesignPlanner.propose` now uses a native-schema Pydantic AI session.
@@ -91,6 +114,9 @@ givens must also be mutually consistent. Rubric and objective-alignment warnings
 are repaired automatically; other warnings remain visible for professor judgment.
 Critical issues cannot pass approval. Existing
 source-revision and concurrent-edit checks fence saving the resulting proposal.
+Review also distinguishes supplied task quantities from requested derivations;
+a rubric must not demand an unasked computation when the approved outcome and
+task treat that quantity as given.
 An explicitly refreshed plan invalidates its previous approval and draft binding.
 There is no special authority bypass for the `professor-demo` account.
 

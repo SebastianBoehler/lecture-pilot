@@ -148,7 +148,7 @@ async def test_practice_design_clients_preserve_schema_configuration_errors(
             messages=[{"role": "user", "content": "generate"}],
             **({"catalogue": CATALOGUE} if method_name != "complete_evaluation" else {}),
             **(
-                {"allowed_source_paths": ["Lecture.tex"]}
+                {"allowed_source_paths": ["Lecture.tex"], "source": None, "proposal": proposal()}
                 if method_name == "complete_review"
                 else {}
             ),

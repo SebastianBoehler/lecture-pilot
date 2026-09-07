@@ -59,6 +59,8 @@ async def test_native_review_client_uses_a_strict_dimension_complete_schema() ->
 
     payload = await client.complete_review(
         settings=_settings(),
+        source=_source(),
+        proposal=proposal(),
         messages=[
             {"role": "system", "content": "Review the supplied plan."},
             {"role": "user", "content": "review"},

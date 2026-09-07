@@ -142,22 +142,26 @@ def expand_evidence_ids(
 
     expanded = expand(payload)
     if derive_source_refs:
-        for target in _objects(expanded.get("targets", [])):
-            anchors = [target.get(key) for key in _DIRECT_ANCHORS]
-            anchors.extend(
-                item.get("source_anchor")
-                for key in (
-                    "evidence_criteria",
-                    "misconceptions",
-                    "hint_ladder",
-                    "supplemental_tasks",
-                )
-                for item in _objects(target.get(key, []))
-            )
-            target["source_refs"] = list(
-                dict.fromkeys(item["source_path"] for item in anchors if item is not None)
-            )
+        hydrate_source_refs(expanded)
     return expanded
+
+
+def hydrate_source_refs(expanded: dict) -> None:
+    for target in _objects(expanded.get("targets", [])):
+        anchors = [target.get(key) for key in _DIRECT_ANCHORS]
+        anchors.extend(
+            item.get("source_anchor")
+            for key in (
+                "evidence_criteria",
+                "misconceptions",
+                "hint_ladder",
+                "supplemental_tasks",
+            )
+            for item in _objects(target.get(key, []))
+        )
+        target["source_refs"] = list(
+            dict.fromkeys(item["source_path"] for item in anchors if item is not None)
+        )
 
 
 def _objects(value: Any) -> list[dict]:

@@ -23,7 +23,9 @@ from test_practice_design_generation_preflight import (
 
 @pytest.mark.anyio
 @pytest.mark.parametrize("racing", [None, "source", "cancel", "goal"])
-async def test_confirmed_conflict_repairs_owned_implementation_and_fences_races(tmp_path, racing):
+async def test_confirmed_conflict_repairs_owned_implementation_and_fences_races(
+    tmp_path, racing, monkeypatch
+):
     app = _app(tmp_path)
     _write_manifest(app, "a" * 64)
     design = _save_design(app, approved=False)
@@ -97,7 +99,10 @@ async def test_confirmed_conflict_repairs_owned_implementation_and_fences_races(
         return ReviewedPracticeDesignProposal(changed, passing_review())
 
     app.state.course_planner = SimpleNamespace(plan_canvas=plan_canvas)
-    app.state.practice_design_planner = SimpleNamespace(propose=repair)
+    app.state.practice_design_planner = SimpleNamespace()
+    monkeypatch.setattr(
+        "lecturepilot.course_teaching_implementation.run_implementation_repair", repair
+    )
     operation = author_with_implementation(
         app, source=source, design=design, ownership=owner, output_language="en"
     )

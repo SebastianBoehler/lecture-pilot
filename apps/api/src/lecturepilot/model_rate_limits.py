@@ -8,8 +8,6 @@ from time import monotonic
 from typing import Any
 
 
-MODEL_REQUEST_BOOTSTRAP_CONCURRENCY = 3
-MODEL_REQUEST_MAX_CONCURRENCY = 3
 DEFAULT_REQUEST_TOKEN_ESTIMATE = 32_000
 _conditions: dict[tuple[int, str], asyncio.Condition] = {}
 _active_requests: dict[tuple[int, str], int] = {}
@@ -26,7 +24,8 @@ async def model_request_slot(model: str) -> AsyncIterator[None]:
         await _wait_until_unblocked(key)
         async with condition:
             active = _active_requests.get(key, 0)
-            if active < _concurrency_limits.get(key, MODEL_REQUEST_BOOTSTRAP_CONCURRENCY):
+            limit = _concurrency_limits.get(key)
+            if limit is None or active < limit:
                 _active_requests[key] = active + 1
                 break
             await condition.wait()
@@ -61,13 +60,13 @@ def observe_provider_response(model: str, value: Any) -> float:
     )
     if delay > 0:
         _blocked_until[key] = max(_blocked_until.get(key, 0.0), monotonic() + delay)
-    _observe_concurrency_budget(key, headers, value, is_rate_limited=is_rate_limited)
+    _observe_concurrency_budget(key, headers, value)
     return delay
 
 
-def current_model_concurrency(model: str) -> int:
+def current_model_concurrency(model: str) -> int | None:
     key = (id(asyncio.get_running_loop()), model)
-    return _concurrency_limits.get(key, MODEL_REQUEST_BOOTSTRAP_CONCURRENCY)
+    return _concurrency_limits.get(key)
 
 
 def provider_headers(value: Any) -> dict[str, str]:
@@ -99,14 +98,7 @@ def _observe_concurrency_budget(
     key: tuple[int, str],
     headers: dict[str, str],
     value: Any,
-    *,
-    is_rate_limited: bool,
 ) -> None:
-    if is_rate_limited:
-        current = _concurrency_limits.get(key, MODEL_REQUEST_BOOTSTRAP_CONCURRENCY)
-        _concurrency_limits[key] = max(1, current // 2)
-        _notify_waiters(key)
-        return
     used_tokens = _usage_tokens(value)
     if used_tokens > 0:
         previous = _average_tokens.get(key, float(used_tokens))
@@ -122,7 +114,7 @@ def _observe_concurrency_budget(
     ]
     if requests is None and not token_values:
         return
-    candidates = [MODEL_REQUEST_MAX_CONCURRENCY]
+    candidates: list[int] = []
     if requests is not None:
         candidates.append(requests)
     if token_values:
@@ -137,7 +129,10 @@ def _usage_tokens(value: Any) -> int:
     if isinstance(value, Mapping):
         usage = value.get("usage", usage)
     if isinstance(usage, Mapping):
-        usage = usage.get("total_tokens")
+        usage = usage.get("total_tokens") or (
+            (_positive_int(str(usage.get("input_tokens", usage.get("prompt_tokens")))) or 0)
+            + (_positive_int(str(usage.get("output_tokens", usage.get("completion_tokens")))) or 0)
+        )
     else:
         usage = getattr(usage, "total_tokens", None)
     return _positive_int(str(usage)) or 0

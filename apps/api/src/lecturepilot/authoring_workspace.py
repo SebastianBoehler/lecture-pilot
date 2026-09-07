@@ -22,6 +22,7 @@ from lecturepilot.course_canvas_validation import validate_planned_document
 from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.course_slide_interleaving import interleave_original_slides
 from lecturepilot.durable_files import atomic_write_text
+from lecturepilot.learning_map import validate_learning_contract_ids
 from lecturepilot.quiz_identity import validate_unique_quiz_ids
 from lecturepilot.storage_layout import safe_id
 from lecturepilot.workspace_capability import CapabilityRoot, WorkspaceCapability
@@ -134,6 +135,7 @@ class AuthoringWorkspace:
         validate_planned_document(document, self.source)
         validate_practice_candidate(document, self.design, source_document=self.source)
         validate_unique_quiz_ids(document)
+        validate_learning_contract_ids(document)
         return document
 
 

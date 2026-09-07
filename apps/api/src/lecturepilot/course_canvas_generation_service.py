@@ -49,7 +49,8 @@ async def run_idempotent_canvas_generation(
     actor_user_id: str,
     request_key: str,
     generate: Callable[[str, int], Awaitable[CanvasDocument]],
-) -> CanvasGenerationOutcome:
+    wait_for_completion: bool = True,
+) -> CanvasGenerationOutcome | CanvasGenerationJob:
     job, owns_attempt = store.begin(
         course_id=course_id,
         lecture_id=lecture_id,
@@ -61,6 +62,8 @@ async def run_idempotent_canvas_generation(
     if job.status == "failed":
         raise CanvasGenerationReplayError(job.error_code)
     if not owns_attempt:
+        if not wait_for_completion:
+            return job
         active = _background_tasks(app).get(job.generation_id)
         if active is not None and not active.done():
             return await asyncio.shield(active)
@@ -103,7 +106,7 @@ async def run_idempotent_canvas_generation(
             completed,
         )
     )
-    return await asyncio.shield(task)
+    return await asyncio.shield(task) if wait_for_completion else job
 
 
 async def _execute(

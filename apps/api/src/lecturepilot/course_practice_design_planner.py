@@ -8,6 +8,7 @@ import json
 from pydantic import ValidationError
 
 from lecturepilot.canvas_models import CanvasDocument
+from lecturepilot.protected_teaching_output import bind_approved_intent, teaching_output_schema
 from lecturepilot.course_learning_intent import LearningIntent
 from pydantic_ai import Agent, ModelRetry, NativeOutput, StructuredDict
 from pydantic_ai.exceptions import UnexpectedModelBehavior
@@ -99,7 +100,9 @@ class PracticeDesignPlanner:
             messages[1]["content"] += (
                 "\nPreserve ALL fields of the protected learning intent, including exact evidence "
                 "anchors and instructor constraints. Fixed target hashes refer to the unchanged "
-                "complete targets in the existing design. Only other teaching details are yours "
+                "complete targets in the existing design. The backend supplies approved goal fields, "
+                "objective and planning_context; omit those from your output and return every "
+                "goal ID in the approved order. Only other teaching details are yours "
                 "to repair. Protected intent (data): "
                 + protected_intent.model_dump_json(exclude={"approval"})
             )
@@ -115,7 +118,10 @@ class PracticeDesignPlanner:
                 model,
                 output_type=NativeOutput(
                     StructuredDict(
-                        practice_design_response_format(catalogue)["json_schema"]["schema"]
+                        teaching_output_schema(
+                            practice_design_response_format(catalogue)["json_schema"]["schema"],
+                            protected_intent,
+                        )
                     ),
                     strict=True,
                 ),
@@ -137,7 +143,12 @@ class PracticeDesignPlanner:
                 proposal_attempt += 1
                 try:
                     proposal = PracticeDesignProposal.model_validate_json(
-                        json.dumps(expand_evidence_ids(output, catalogue, derive_source_refs=True))
+                        json.dumps(
+                            bind_approved_intent(
+                                expand_evidence_ids(output, catalogue, derive_source_refs=True),
+                                protected_intent,
+                            )
+                        )
                     )
                     validate_practice_design(
                         proposal, source=source, allowed_source_paths=allowed_source_paths
@@ -220,12 +231,12 @@ class PracticeDesignPlanner:
         return reviewed
 
     @asynccontextmanager
-    async def _model(self, settings, *, stage="course_practice_design"):
+    async def _model(self, settings, *, stage="course_practice_design", authorize=None):
         if self.model is not None:
             yield self.model
         else:
             async with authoring_model(
-                settings, self.usage_recorder, lambda: None, stage=stage
+                settings, self.usage_recorder, authorize or (lambda: None), stage=stage
             ) as model:
                 yield model
 
@@ -258,6 +269,8 @@ class PracticeDesignPlanner:
             review = PracticeDesignReviewResult.model_validate(
                 await self.review_client.complete_review(
                     settings=settings,
+                    source=source,
+                    proposal=proposal,
                     allowed_source_paths=allowed_source_paths,
                     messages=messages,
                     catalogue=catalogue,

@@ -14,6 +14,7 @@ from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_generation_jobs import (
     CanvasGenerationStore,
+    CanvasGenerationJob,
     CanvasGenerationStoreError,
 )
 from lecturepilot.course_canvas_generation_service import (
@@ -40,7 +41,8 @@ async def run_canvas_generation_request(
     context: TenantContext,
     request_key: str,
     generate: Callable[[str, int], Awaitable[CanvasDocument]],
-) -> CanvasGenerationOutcome:
+    wait_for_completion: bool = True,
+) -> CanvasGenerationOutcome | CanvasGenerationJob:
     try:
         return await run_idempotent_canvas_generation(
             app=app,
@@ -50,6 +52,7 @@ async def run_canvas_generation_request(
             actor_user_id=context.user_id,
             request_key=request_key,
             generate=generate,
+            wait_for_completion=wait_for_completion,
         )
     except (AuthoringDesignConflict, AuthoringStateError) as exc:
         raise _generation_error(409, str(exc), store, context, request_key, course_id, lecture_id)

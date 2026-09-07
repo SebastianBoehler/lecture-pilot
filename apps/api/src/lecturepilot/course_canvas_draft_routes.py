@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
+from fastapi.responses import JSONResponse
 
 from lecturepilot.api_auth import request_context, require_course_manager
 from lecturepilot.canvas_models import CanvasDocument
@@ -19,7 +21,8 @@ from lecturepilot.authoring_session import has_resumable_session
 from lecturepilot import course_canvas_generation_ownership as ownership_store
 from lecturepilot.course_canvas_generation_failures import find_latest_canvas_generation
 from lecturepilot.course_canvas_generation_http import run_canvas_generation_request
-from lecturepilot.course_canvas_generation_jobs import CanvasGenerationStore
+from lecturepilot.course_canvas_generation_jobs import CanvasGenerationJob, CanvasGenerationStore
+from lecturepilot.course_canvas_async_response import accepted_generation_response
 from lecturepilot.course_canvas_generation_response import CanvasGenerationStatusResponse
 from lecturepilot.course_canvas_generation_service import (
     CANVAS_GENERATION_LEASE_SECONDS,
@@ -81,13 +84,14 @@ def register_course_canvas_draft_routes(
         idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
         client_contract: Annotated[str | None, Header(alias=CLIENT_CONTRACT_HEADER)] = None,
         context: TenantContext = Depends(request_context),
-    ) -> CanvasDocument:
+    ) -> CanvasDocument | JSONResponse:
         _require_owner(request, context, course_id, course_tenant_id)
         require_current_client_contract(client_contract)
         request_key = _request_key(idempotency_key)
         _require_current_practice_design(app, course_id, lecture_id, source_document)
         store = _store(app)
         outcome = await run_canvas_generation_request(
+            wait_for_completion=request.headers.get("Prefer") != "respond-async",
             app=app,
             store=store,
             course_id=course_id,
@@ -104,6 +108,8 @@ def register_course_canvas_draft_routes(
                 attempt=attempt,
             ),
         )
+        if isinstance(outcome, CanvasGenerationJob):
+            return accepted_generation_response(outcome)
         response.headers["X-Generation-Id"] = outcome.job.generation_id
         return outcome.canvas
 
@@ -128,6 +134,15 @@ def register_course_canvas_draft_routes(
         )
         if job is None:
             raise HTTPException(status_code=404, detail="Canvas generation was not found.")
+        if (
+            job.status == "running"
+            and (datetime.now(UTC) - job.updated_at).total_seconds()
+            > CANVAS_GENERATION_LEASE_SECONDS
+        ):
+            raise HTTPException(
+                status_code=503,
+                detail="Generation service unavailable; retry to resume saved work.",
+            )
         return CanvasGenerationStatusResponse(
             generation_id=job.generation_id,
             status=job.status,
@@ -135,6 +150,10 @@ def register_course_canvas_draft_routes(
             updated_at=job.updated_at,
             error_code=job.error_code,
             error_detail=job.error_detail,
+            repairable=(
+                job.error_code == "canvas_generation_repairable_error"
+                or has_resumable_session(app.state.canvas_workspace.layout, job)
+            ),
             canvas=job.canvas,
             authoring_metrics=read_authoring_metrics(app.state.canvas_workspace.layout, job),
         )

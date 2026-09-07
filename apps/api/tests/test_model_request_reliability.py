@@ -115,7 +115,7 @@ async def test_usage_guard_follows_the_requested_provider_timeout(monkeypatch) -
 
 
 @pytest.mark.asyncio
-async def test_requests_for_one_model_share_a_concurrency_queue(monkeypatch) -> None:
+async def test_requests_have_no_fixed_cap_without_provider_budgets(monkeypatch) -> None:
     monkeypatch.setattr(model_rate_limits, "_conditions", {})
     monkeypatch.setattr(model_rate_limits, "_active_requests", {})
     monkeypatch.setattr(model_rate_limits, "_concurrency_limits", {})
@@ -129,7 +129,7 @@ async def test_requests_for_one_model_share_a_concurrency_queue(monkeypatch) -> 
         nonlocal active, peak_active
         active += 1
         peak_active = max(peak_active, active)
-        if active == model_rate_limits.MODEL_REQUEST_BOOTSTRAP_CONCURRENCY:
+        if active == 8:
             max_requests_started.set()
         await release.wait()
         active -= 1
@@ -137,11 +137,11 @@ async def test_requests_for_one_model_share_a_concurrency_queue(monkeypatch) -> 
 
     tasks = [
         asyncio.create_task(complete_with_usage(None, completion, model="openai/test-model"))
-        for _ in range(model_rate_limits.MODEL_REQUEST_BOOTSTRAP_CONCURRENCY + 1)
+        for _ in range(8)
     ]
     await asyncio.wait_for(max_requests_started.wait(), timeout=1)
 
-    assert peak_active == model_rate_limits.MODEL_REQUEST_BOOTSTRAP_CONCURRENCY
+    assert peak_active == 8
     release.set()
     await asyncio.gather(*tasks)
 
@@ -197,10 +197,7 @@ async def test_provider_headers_expand_concurrency_within_request_and_token_budg
         ),
     )
 
-    assert (
-        model_rate_limits.current_model_concurrency("openai/test-model")
-        == model_rate_limits.MODEL_REQUEST_MAX_CONCURRENCY
-    )
+    assert model_rate_limits.current_model_concurrency("openai/test-model") == 200
 
 
 @pytest.mark.asyncio
@@ -277,3 +274,64 @@ class _QuotaError(RuntimeError):
 class _RateLimitError(RuntimeError):
     status_code = 429
     headers = {"retry-after": "2", "x-ratelimit-reset-requests": "1s"}
+
+
+@pytest.mark.asyncio
+async def test_provider_budget_still_limits_in_flight_requests(monkeypatch):
+    for name in (
+        "_conditions",
+        "_active_requests",
+        "_concurrency_limits",
+        "_average_tokens",
+        "_blocked_until",
+    ):
+        monkeypatch.setattr(model_rate_limits, name, {})
+    model_rate_limits.observe_provider_response(
+        "openai/budget",
+        SimpleNamespace(
+            headers={"x-ratelimit-remaining-requests": "2"},
+            usage=None,
+        ),
+    )
+    release = asyncio.Event()
+    started = asyncio.Event()
+    active = peak = 0
+
+    async def completion(**kwargs):
+        nonlocal active, peak
+        active += 1
+        peak = max(peak, active)
+        if active == 2:
+            started.set()
+        await release.wait()
+        active -= 1
+        return SimpleNamespace(usage=None)
+
+    tasks = [
+        asyncio.create_task(complete_with_usage(None, completion, model="openai/budget"))
+        for _ in range(6)
+    ]
+    await asyncio.wait_for(started.wait(), 1)
+    assert peak == 2
+    release.set()
+    await asyncio.gather(*tasks)
+    assert peak == 2
+
+
+@pytest.mark.asyncio
+async def test_native_usage_calibrates_token_budget_without_an_application_ceiling(monkeypatch):
+    monkeypatch.setattr(model_rate_limits, "_concurrency_limits", {})
+    monkeypatch.setattr(model_rate_limits, "_average_tokens", {})
+    model_rate_limits.observe_provider_response(
+        "openai/native",
+        {
+            "usage": {"prompt_tokens": 15000, "completion_tokens": 5000},
+        },
+    )
+    model_rate_limits.observe_provider_response(
+        "openai/native",
+        SimpleNamespace(
+            headers={"x-ratelimit-remaining-tokens": "4000000"},
+        ),
+    )
+    assert model_rate_limits.current_model_concurrency("openai/native") == 200

@@ -94,3 +94,35 @@ async def test_duplicate_worker_cannot_enter_same_job(tmp_path):
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
             await task
+
+
+async def test_repairing_distinct_occurrences_is_not_a_stalled_draft(tmp_path):
+    text = "A justified conclusion connects relevant evidence to the claim.\n\n" + "\n\n".join(
+        f'<!-- block id="formula-{index}" type="formula" -->\n```math\nx={index}\n```'
+        for index in range(3)
+    )
+    steps = [("write", {"path": "/draft/topic.md", "text": text}), ("validate", {})]
+    for index in range(3):
+        steps.extend(
+            [
+                (
+                    "edit",
+                    {
+                        "path": "/draft/topic.md",
+                        "old": f'id="formula-{index}" type="formula"',
+                        "new": f'id="formula-{index}" type="math"',
+                    },
+                ),
+                ("validate", {}),
+            ]
+        )
+    steps.append(("final_result", {"ready": True}))
+    actions = iter(steps)
+
+    def respond(messages, info):
+        name, args = next(actions)
+        return ModelResponse(parts=[ToolCallPart(name, args)])
+
+    result = await run_authoring_job(authoring_job(tmp_path), model=FunctionModel(respond))
+    assert result.metrics.validation_failures == 3
+    assert result.metrics.repair_edits == 3

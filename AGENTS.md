@@ -77,6 +77,7 @@ database authority in Postgres and files on the persisted `/app/storage` volume.
     canvas/lectures/<lecture-id>/{index.md,sections/*.md,assets/}
     canvas-drafts/lectures/<lecture-id>/latest/{...,practice-design-binding.json}
     builder/{generations/,practice-designs/<lecture-id>.json,repairs/,source-manifests/,source-routing.json,updates/}
+    builder/implementation-jobs/<lecture-id>/<identity>/{draft.json,session.json}
 ```
 
 Official source material belongs to `courses/<tenant>/<course>/source`.
@@ -178,9 +179,14 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
   source, task, rubric and teaching: dismiss unsupported objections, repair missing
   teaching, and escalate only confirmed approved-design conflicts. Never rewrite
   genuine approvals. See `docs/authoring-agent-migration.md`.
+- AI-owned teaching implementation uses a persistent target-scoped `read`/`write`/`validate`
+  agent before canvas file authoring; semantic findings do not share the schema retry budget.
+  Saved targets and history resume under the same source/intent identity.
 - Learning-plan proposals and their reviewer use native-schema Pydantic AI sessions.
   Repair generated questions, rubrics, hints and variants before design approval;
-  missing reviewer evidence must be corrected by the reviewer. Schema validity is
+  missing reviewer evidence and unknown target IDs must be corrected by the reviewer.
+  Implementation output contains teaching details; the backend binds approved goal fields and
+  constraints unchanged instead of asking the provider to copy them. Schema validity is
   not semantic truth. Do not confuse "choose one" with a uniquely correct answer.
 
 - Keep lecture unlocks backend-enforced: `lecture.date <= today` is not a
@@ -216,7 +222,9 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
   every indexed course file exactly once as lecture-specific, course-wide, or
   not used. Professors review and may edit this complete proposal; generation
   remains blocked until they confirm the current source revision.
-- After source confirmation, propose source-backed learning goals without tasks.
+- After source confirmation, automatically propose missing source-backed learning goals without tasks.
+  Review one lecture at a time; the final current approval advances to draft generation.
+  Preserve explicit draft approval and publication.
   Professors approve outcomes, constraints and explicitly fixed tasks. Schema-2
   teaching implementations are AI-owned until publication and may be repaired
   without changing approved intent. Preserve schema-1 full approvals unless the
@@ -288,8 +296,9 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
 
 ## UI And Canvas Rules
 
-- Course creation has four visible stages: Course, Materials, Learning plan, and
-  Review & publish. Materials owns source confirmation and optional media; the
+- Course creation has five visible stages: Course, Materials, Media, Learning plan,
+  and Review & publish. Materials owns source confirmation; the separate Media
+  stage offers video selection or continuing without videos before learning-plan review. The
   final stage owns draft generation, exact-draft approval, and publication.
 
 - The canvas is the main learning surface and should remain the single ground
