@@ -1,6 +1,9 @@
 import type { MessageKey } from "./i18nMessages.en";
 
 export const deMessages: Record<MessageKey, string> = {
+  "builder.intent.sourcesChanged":
+    "Die Quellen wurden seit dem Vorschlag dieser Lernziele geändert. Erstellen Sie die Lernziele neu und prüfen und bestätigen Sie sie erneut.",
+  "builder.intent.regenerateSources": "Lernziele für aktuelle Quellen neu erstellen",
   "builder.plan.reload": "Gespeicherten Lernplan neu laden",
   "lesson.draftPreview":
     "Unveröffentlichter Entwurf · Prüfen Sie das Lehrmaterial vor der Freigabe.",
@@ -792,7 +795,7 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.sources.pendingHelp":
     "Erstelle einen Vorschlag, der jede indexierte Datei einer Vorlesung, dem gesamten Kurs oder 'nicht verwenden' zuordnet. Bestätige die Zuordnung vor der Erstellung des Lehrplans.",
   "builder.sources.help":
-    "LecturePilot hat jede indexierte Datei einer Vorlesung, dem gesamten Kurs oder 'nicht verwenden' zugeordnet. Übernimm den Vorschlag oder prüfe bei Bedarf einzelne Zuordnungen.",
+    "LecturePilot hat jede indexierte Datei einer Vorlesung, dem gesamten Kurs oder 'nicht verwenden' zugeordnet. Prüfe die Zuordnungen vor dem Fortfahren. Beim Übernehmen werden ungenutzte Uploads gelöscht; referenzierte Dateien und Abhängigkeiten bleiben erhalten.",
   "builder.sources.overviewAssigned": "{count} zugeordnet",
   "builder.sources.overviewExcluded": "{count} nicht verwendet",
   "builder.sources.overviewCoverage": "{covered} von {total} Vorlesungen abgedeckt",

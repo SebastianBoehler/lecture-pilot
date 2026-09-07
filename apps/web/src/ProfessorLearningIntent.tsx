@@ -21,6 +21,7 @@ export function ProfessorLearningIntent({
   onSave,
   onRefresh,
   onUseLatest,
+  onRegenerate,
 }: {
   design: PracticeDesign;
   draft: PracticeDesign;
@@ -33,6 +34,7 @@ export function ProfessorLearningIntent({
   onSave: () => void;
   onRefresh: () => void;
   onUseLatest: () => void;
+  onRegenerate?: () => void;
 }) {
   const { t } = useI18n();
   const [editing, setEditing] = useState(false);
@@ -57,6 +59,14 @@ export function ProfessorLearningIntent({
           {approved ? t("builder.intent.approved") : t("builder.status.pending")}
         </span>
       </header>
+      {onRegenerate ? (
+        <div role="alert">
+          <p>{t("builder.intent.sourcesChanged")}</p>
+          <button type="button" disabled={pending} onClick={onRegenerate}>
+            {t("builder.intent.regenerateSources")}
+          </button>
+        </div>
+      ) : null}
       <div className="learning-intent-actions">
         <button type="button" disabled={disabled || legacy} onClick={() => setEditing(!editing)}>
           {editing ? t("builder.design.finishEditing") : t("builder.intent.edit")}

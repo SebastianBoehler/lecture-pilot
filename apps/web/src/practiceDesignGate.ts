@@ -47,6 +47,7 @@ export function useProfessorPracticeDesignGate({
     designReady,
     practiceDesignStep: {
       designs: designs.designs,
+      readiness: designs.readiness,
       preparing,
       pendingByLecture: designs.pendingByLecture,
       error: designs.error,

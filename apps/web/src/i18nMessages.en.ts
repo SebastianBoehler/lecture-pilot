@@ -1,4 +1,7 @@
 export const enMessages = {
+  "builder.intent.sourcesChanged":
+    "Sources changed since these goals were proposed. Regenerate the goals, then review and approve them again.",
+  "builder.intent.regenerateSources": "Regenerate goals for current sources",
   "builder.plan.reload": "Reload saved learning plan",
   "lesson.draftPreview": "Unpublished draft · Review the teaching before approving publication.",
   "lesson.draftTutor": "Tutor conversations and assessed attempts are available after publication.",
@@ -772,7 +775,7 @@ export const enMessages = {
   "builder.sources.pendingHelp":
     "Generate a proposal to assign each indexed file to a lecture, the whole course, or not used. You will confirm the assignments before teaching-plan generation.",
   "builder.sources.help":
-    "LecturePilot assigned every indexed file to a lecture, the whole course, or not used. Continue with the proposal, or inspect individual assignments if needed.",
+    "LecturePilot assigned every indexed file to a lecture, the whole course, or not used. Review the assignments before continuing. Accepting deletes unused uploads; referenced files and dependencies are kept.",
   "builder.sources.overviewAssigned": "{count} assigned",
   "builder.sources.overviewExcluded": "{count} not used",
   "builder.sources.overviewCoverage": "{covered} of {total} lectures covered",

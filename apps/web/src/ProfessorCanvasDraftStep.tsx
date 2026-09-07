@@ -12,6 +12,7 @@ export function ProfessorCanvasDraftStep({
   canGenerate,
   generationProgress,
   generatedCount,
+  totalCount,
   isFullCourse,
   isGenerating,
   learningDesignReviews,
@@ -77,6 +78,13 @@ export function ProfessorCanvasDraftStep({
               ? t("builder.generate.regenerate")
               : actionLabel}
       </button>
+      {isGenerating ? (
+        <p role="status" className="visually-hidden">
+          {isFullCourse
+            ? t("builder.generate.statusAll", { count: totalCount })
+            : t("builder.generate.statusSingle")}
+        </p>
+      ) : null}
       {hasDraft && isFullCourse ? (
         <p>{t("builder.generate.fullReady", { count: generatedCount })}</p>
       ) : null}

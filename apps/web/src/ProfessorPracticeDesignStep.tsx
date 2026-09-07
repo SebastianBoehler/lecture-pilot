@@ -8,7 +8,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "./i18n";
 import { ProfessorPracticeLecturePlan } from "./ProfessorPracticeLecturePlan";
 import { isApproved, updateFor } from "./ProfessorPracticeDesignStep.helpers";
-import type { PracticeDesign, PracticeDesignUpdate } from "./practiceDesignTypes";
+import type {
+  PracticeDesign,
+  PracticeDesignReadiness,
+  PracticeDesignUpdate,
+} from "./practiceDesignTypes";
 import type { PracticeDesignPendingAction } from "./useProfessorPracticeDesigns";
 import { usePracticeDesignDrafts } from "./usePracticeDesignDrafts";
 
@@ -16,6 +20,7 @@ type Lecture = { id: string; label: string };
 
 export function ProfessorPracticeDesignStep({
   designs,
+  readiness = {},
   error,
   lectures,
   pendingAction,
@@ -31,6 +36,7 @@ export function ProfessorPracticeDesignStep({
   onSave,
 }: {
   designs: Readonly<Record<string, PracticeDesign>>;
+  readiness?: Readonly<Record<string, PracticeDesignReadiness>>;
   error: string | null;
   lectures: Lecture[];
   pendingAction: PracticeDesignPendingAction | null;
@@ -123,6 +129,11 @@ export function ProfessorPracticeDesignStep({
             .filter((lecture) => lecture.id === selected)
             .map((lecture) => {
               const design = designs[lecture.id];
+              const sourceChanged = Boolean(
+                design &&
+                readiness[lecture.id] &&
+                readiness[lecture.id].current_source_revision !== design.source_revision,
+              );
               const draft = draftState.drafts[lecture.id] ?? design;
               const pending =
                 Boolean(pendingByLecture[lecture.id]) || pendingLectureId === lecture.id;
@@ -159,7 +170,10 @@ export function ProfessorPracticeDesignStep({
                     draft={draft}
                     label={lecture.label}
                     pending={pending}
-                    stale={!routingReady}
+                    stale={!routingReady || sourceChanged}
+                    onRegenerate={
+                      sourceChanged && routingReady ? () => onPropose(lecture.id, false) : undefined
+                    }
                     conflict={draftState.conflicts[lecture.id] ?? false}
                     onChange={(next) => draftState.change(lecture.id, next)}
                     onApprove={(options) => approve(lecture.id, options)}

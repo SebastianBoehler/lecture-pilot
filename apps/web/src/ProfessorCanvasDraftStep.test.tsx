@@ -23,7 +23,10 @@ describe("ProfessorCanvasDraftStep generation controls", () => {
     const button = screen.getByRole("button", { name: "Generating lecture canvases..." });
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute("aria-busy", "true");
-    expect(screen.queryByText(/Generating source-grounded/)).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveClass("visually-hidden");
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Generating source-grounded canvases for 7 lectures...",
+    );
   });
 
   it("keeps failed lectures retryable while other canvas work is running", () => {
