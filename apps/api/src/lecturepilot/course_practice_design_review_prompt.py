@@ -14,6 +14,7 @@ from lecturepilot.course_practice_design_models import PracticeDesign, PracticeD
 from lecturepilot.course_practice_design_review_models import PracticeDesignReviewResult
 from lecturepilot.model_provider_schema import strict_pydantic_response_format
 from lecturepilot.assessment_alignment import assessment_alignment_instruction
+from lecturepilot.practice_task_freshness import task_freshness_instruction
 
 
 def practice_design_review_messages(
@@ -47,6 +48,7 @@ def practice_design_review_messages(
                 "or solutions during support is leakage even when the task text hides its answer. "
                 "Hints are delivered after an attempt: a faded or worked baseline step is legitimate "
                 "support, not leakage by itself. Hidden independent tasks must remain unaided. "
+                f"{task_freshness_instruction()} "
                 "A result deducible from supplied formulas and stated mathematical prerequisites "
                 "does not need to be quoted verbatim in the source; verify the deduction instead. "
                 "Check objective verbs against what tasks actually require. A source "

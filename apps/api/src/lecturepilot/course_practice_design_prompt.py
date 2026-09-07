@@ -14,6 +14,7 @@ from lecturepilot.course_practice_design_models import PracticeDesignProposal
 from lecturepilot.model_provider_schema import strict_pydantic_response_format
 from lecturepilot.course_teaching_instructions import capability_design_instruction
 from lecturepilot.assessment_alignment import assessment_alignment_instruction
+from lecturepilot.practice_task_freshness import task_freshness_instruction
 
 
 def practice_design_messages(
@@ -42,6 +43,7 @@ def practice_design_messages(
                 "Supply two to six supplemental_tasks per new target: at least one independent_exit "
                 "and one delayed_transfer. All share the exact required evidence rubric and source-backed "
                 "invariant; distinct IDs, full prompts and controlled surface changes are required. "
+                f"{task_freshness_instruction()} "
                 "Preserve professor-fixed targets exactly, including an absent legacy bank. "
                 "For numerical tasks include explicit bounded numeric_assertions where applicable; these "
                 "check only declared arithmetic, never the semantic correctness of the task. "
