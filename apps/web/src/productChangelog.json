@@ -2,6 +2,70 @@
   "repositoryUrl": "https://github.com/SebastianBoehler/lecture-pilot",
   "releases": [
     {
+      "version": "0.7.0",
+      "date": "2026-09-07",
+      "title": {
+        "en": "Guided onboarding and reliable teaching workflows",
+        "de": "Geführter Einstieg und zuverlässige Lehrabläufe"
+      },
+      "summary": {
+        "en": "A chaptered video introduces LecturePilot from course creation to student practice. This release also brings source-backed authoring, private annotations, focused learning evidence, and more reliable course recovery.",
+        "de": "Ein Video mit Kapiteln führt von der Kurserstellung bis zur Übung aus Studierendensicht. Die Version umfasst außerdem quellenbasierte Erstellung, private Kommentare, eigenständige Lernnachweise und zuverlässigere Wiederaufnahme der Kurserstellung."
+      },
+      "changes": [
+        {
+          "title": {
+            "en": "A guided video introduction",
+            "de": "Geführte Videoeinführung"
+          },
+          "description": {
+            "en": "Watch course creation, publication, and the student workflow with clickable chapters, captions, and English/German step descriptions.",
+            "de": "Kurserstellung, Veröffentlichung und Studierendenansicht mit anklickbaren Kapiteln, Untertiteln und deutschen/englischen Schrittbeschreibungen."
+          }
+        },
+        {
+          "title": {
+            "en": "Professor intent and reliable course generation",
+            "de": "Lernziele und zuverlässige Kurserstellung"
+          },
+          "description": {
+            "en": "Approve source-backed learning goals before the authoring agent builds and reviews teaching. Scoped repairs preserve approved intent and completed lectures; changed sources require current goals.",
+            "de": "Quellenbasierte Lernziele werden vor der Erstellung und Prüfung freigegeben. Gezielte Reparaturen erhalten freigegebene Ziele und fertige Vorlesungen; geänderte Quellen erfordern aktuelle Lernziele."
+          }
+        },
+        {
+          "title": {
+            "en": "Private annotations and focused learning",
+            "de": "Private Kommentare und fokussiertes Lernen"
+          },
+          "description": {
+            "en": "Create passage annotations and personalized canvas sections. Supported practice leads to a fresh independent check, while private saved attempts inform later tutor guidance.",
+            "de": "Kommentare an Textstellen und persönliche Canvas-Abschnitte erstellen. Nach unterstützter Übung folgt eine neue eigenständige Aufgabe; private gespeicherte Versuche unterstützen spätere Tutorhinweise."
+          }
+        },
+        {
+          "title": {
+            "en": "Retain useful sources without unused uploads",
+            "de": "Relevante Quellen ohne ungenutzte Uploads aufbewahren"
+          },
+          "description": {
+            "en": "Confirmed source routing removes unused files while retaining referenced material and source dependencies. Storage-only cleanup preserves the learning plan’s source provenance.",
+            "de": "Die bestätigte Quellenzuordnung entfernt ungenutzte Dateien und erhält referenzierte Materialien und Abhängigkeiten. Reine Speicherbereinigung erhält die Quellenherkunft des Lernplans."
+          }
+        },
+        {
+          "title": {
+            "en": "Clearer professor and learner workflows",
+            "de": "Klarere Abläufe für Lehrende und Lernende"
+          },
+          "description": {
+            "en": "Course review, publication states, usage history, source access, and generation recovery are easier to follow. Practice submissions and reviewed teaching languages remain tied to the correct course evidence.",
+            "de": "Kursprüfung, Veröffentlichungsstatus, Nutzungshistorie, Quellenzugriff und Wiederaufnahme der Generierung sind leichter nachvollziehbar. Übungsabgaben und geprüfte Sprachvarianten bleiben an die passenden Kursbelege gebunden."
+          }
+        }
+      ]
+    },
+    {
       "version": "0.6.0",
       "date": "2026-08-14",
       "title": {

@@ -15,18 +15,16 @@ describe("ChangelogPage", () => {
     expect(
       latestRelease.getByRole("heading", {
         level: 2,
-        name: "Mixed-format course material with faithful learning artifacts",
+        name: "Guided onboarding and reliable teaching workflows",
       }),
     ).toBeInTheDocument();
-    expect(latestRelease.getByText("14 August 2026")).toBeInTheDocument();
-    expect(latestRelease.getByRole("link", { name: /v0\.6\.0 on GitHub/i })).toHaveAttribute(
+    expect(latestRelease.getByText("7 September 2026")).toBeInTheDocument();
+    expect(latestRelease.getByRole("link", { name: /v0\.7\.0 on GitHub/i })).toHaveAttribute(
       "href",
-      "https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.6.0",
+      "https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.7.0",
     );
-    expect(
-      latestRelease.getByText("Office, code, and arbitrary folder structures"),
-    ).toBeInTheDocument();
-    expect(latestRelease.getByText("Selective, capacity-gated OCR")).toBeInTheDocument();
+    expect(latestRelease.getByText("A guided video introduction")).toBeInTheDocument();
+    expect(latestRelease.getByText("Private annotations and focused learning")).toBeInTheDocument();
     expect(
       latestRelease.queryByText(/students and lecturers sign in through Alma/i),
     ).not.toBeInTheDocument();
@@ -43,11 +41,11 @@ describe("ChangelogPage", () => {
 
     expect(screen.getByRole("heading", { name: "Neu in LecturePilot" })).toBeInTheDocument();
     const latestRelease = within(screen.getAllByRole("article")[0]);
-    expect(latestRelease.getByText("14. August 2026")).toBeInTheDocument();
+    expect(latestRelease.getByText("7. September 2026")).toBeInTheDocument();
+    expect(latestRelease.getByText("Geführte Videoeinführung")).toBeInTheDocument();
     expect(
-      latestRelease.getByText("Office, Quellcode und beliebige Ordnerstrukturen"),
+      latestRelease.getByText("Private Kommentare und fokussiertes Lernen"),
     ).toBeInTheDocument();
-    expect(latestRelease.getByText("Selektive, kapazitätsgeprüfte OCR")).toBeInTheDocument();
     expect(screen.queryByText("Aus Feedback")).not.toBeInTheDocument();
   });
 });

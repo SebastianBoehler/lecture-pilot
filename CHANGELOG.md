@@ -4,6 +4,32 @@ A product-level history of improvements for students and lecturers. Technical de
 
 [View all GitHub Releases](https://github.com/SebastianBoehler/lecture-pilot/releases)
 
+## [0.7.0](https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.7.0) — Guided onboarding and reliable teaching workflows
+
+Released 2026-09-07
+
+A chaptered video introduces LecturePilot from course creation to student practice. This release also brings source-backed authoring, private annotations, focused learning evidence, and more reliable course recovery.
+
+### What changed
+
+- **A guided video introduction** — Watch course creation, publication, and the student workflow with clickable chapters, captions, and English/German step descriptions.
+- **Professor intent and reliable course generation** — Approve source-backed learning goals before the authoring agent builds and reviews teaching. Scoped repairs preserve approved intent and completed lectures; changed sources require current goals.
+- **Private annotations and focused learning** — Create passage annotations and personalized canvas sections. Supported practice leads to a fresh independent check, while private saved attempts inform later tutor guidance.
+- **Retain useful sources without unused uploads** — Confirmed source routing removes unused files while retaining referenced material and source dependencies. Storage-only cleanup preserves the learning plan’s source provenance.
+- **Clearer professor and learner workflows** — Course review, publication states, usage history, source access, and generation recovery are easier to follow. Practice submissions and reviewed teaching languages remain tied to the correct course evidence.
+
+### Deutsch
+
+**Geführter Einstieg und zuverlässige Lehrabläufe**
+
+Ein Video mit Kapiteln führt von der Kurserstellung bis zur Übung aus Studierendensicht. Die Version umfasst außerdem quellenbasierte Erstellung, private Kommentare, eigenständige Lernnachweise und zuverlässigere Wiederaufnahme der Kurserstellung.
+
+- **Geführte Videoeinführung** — Kurserstellung, Veröffentlichung und Studierendenansicht mit anklickbaren Kapiteln, Untertiteln und deutschen/englischen Schrittbeschreibungen.
+- **Lernziele und zuverlässige Kurserstellung** — Quellenbasierte Lernziele werden vor der Erstellung und Prüfung freigegeben. Gezielte Reparaturen erhalten freigegebene Ziele und fertige Vorlesungen; geänderte Quellen erfordern aktuelle Lernziele.
+- **Private Kommentare und fokussiertes Lernen** — Kommentare an Textstellen und persönliche Canvas-Abschnitte erstellen. Nach unterstützter Übung folgt eine neue eigenständige Aufgabe; private gespeicherte Versuche unterstützen spätere Tutorhinweise.
+- **Relevante Quellen ohne ungenutzte Uploads aufbewahren** — Die bestätigte Quellenzuordnung entfernt ungenutzte Dateien und erhält referenzierte Materialien und Abhängigkeiten. Reine Speicherbereinigung erhält die Quellenherkunft des Lernplans.
+- **Klarere Abläufe für Lehrende und Lernende** — Kursprüfung, Veröffentlichungsstatus, Nutzungshistorie, Quellenzugriff und Wiederaufnahme der Generierung sind leichter nachvollziehbar. Übungsabgaben und geprüfte Sprachvarianten bleiben an die passenden Kursbelege gebunden.
+
 ## [0.6.0](https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.6.0) — Mixed-format course material with faithful learning artifacts
 
 Released 2026-08-14
