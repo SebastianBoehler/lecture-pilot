@@ -100,7 +100,9 @@ export function CheckpointBlock({
             </p>
           ) : null}
         </form>
-      ) : sourceMarker}
+      ) : (
+        sourceMarker
+      )}
     </aside>
   );
 }
