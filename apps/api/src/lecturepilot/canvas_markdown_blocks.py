@@ -24,7 +24,7 @@ def block_to_markdown(block: CanvasBlock, *, inline_components: bool = False) ->
         return f"{header}\n" + "\n".join(f"- {item}" for item in block.items)
     if block.type == "math":
         return f"{header}\n```math\n{block.text or ''}\n```"
-    if block.type in {"checkpoint", "quiz"}:
+    if block.type in {"checkpoint", "prediction", "quiz"}:
         return f"{header}\n{_rich_container(block)}"
     if block.type == "table":
         return f"{header}\n{block.text or ''}"
@@ -75,6 +75,7 @@ def type_suffix(block_type: str) -> str:
         "asset": "asset",
         "callout": "callout",
         "checkpoint": "checkpoint",
+        "prediction": "prediction",
         "component": "component",
         "list": "list",
         "math": "math",
@@ -158,9 +159,9 @@ def _read_block(
         return CanvasBlock(id=block_id, type="math", text=_read_math(chunk))
     if block_type == "callout":
         return CanvasBlock(id=block_id, type="callout", text=_read_callout(chunk))
-    if block_type == "checkpoint":
-        caption, text = _read_rich_text(chunk, "checkpoint")
-        return CanvasBlock(id=block_id, type="checkpoint", text=text, caption=caption)
+    if block_type in {"checkpoint", "prediction"}:
+        caption, text = _read_rich_text(chunk, block_type)
+        return CanvasBlock(id=block_id, type=block_type, text=text, caption=caption)
     if block_type == "quiz":
         caption, text, items, answer_index = _read_quiz(chunk)
         return CanvasBlock(
@@ -182,7 +183,7 @@ def _read_block(
 
 def _infer_block_type(chunk: str) -> str:
     rich = _rich_match(chunk)
-    if rich and rich.group("kind") in {"checkpoint", "component", "quiz"}:
+    if rich and rich.group("kind") in {"checkpoint", "prediction", "component", "quiz"}:
         return rich.group("kind")
     if _IMAGE_RE.search(chunk):
         return "asset"

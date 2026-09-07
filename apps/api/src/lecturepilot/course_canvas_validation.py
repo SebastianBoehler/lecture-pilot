@@ -10,6 +10,16 @@ from lecturepilot.course_canvas_math import validate_document_math
 def validate_planned_document(document: CanvasDocument, source_document: CanvasDocument) -> None:
     if not document.sections:
         raise CanvasGenerationRepairableError("Course planner returned no learning sections.")
+    predictions = [
+        block
+        for section in document.sections
+        for block in section.blocks
+        if block.type == "prediction"
+    ]
+    if len(predictions) > 1 or any(not (block.text or "").strip() for block in predictions):
+        raise CanvasGenerationRepairableError(
+            "Use at most one nonempty prediction card per lecture."
+        )
     validate_document_math(document)
     _validate_quizzes(document)
     _validate_components(document)

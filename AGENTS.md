@@ -144,6 +144,7 @@ Canvas Markdown supports these source-backed learning blocks:
 - YouTube links such as `[title](https://youtu.be/...)`
 - Markdown tables
 - math fences with ```math
+- `:::prediction Before you begin ... :::` for one optional ungraded first guess
 - `:::checkpoint Title ... :::`
 - `:::quiz Title ... - option :::`
 
@@ -284,6 +285,11 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
   observations, and `memory-trace.jsonl` for provenance.
 
 ## Learning Evidence And Teaching Languages
+
+- Prediction cards save a private first guess or skip, bound to the published
+  block digest and revision. They never pass gates or enter professor analytics.
+  New authoring may include at most one per lecture; professor preview is read-only.
+  See `docs/canvas-predictions.md`.
 
 - Reviewed supplemental task banks belong to private practice designs and learning
   maps. Never forward their hidden questions into teaching generation.

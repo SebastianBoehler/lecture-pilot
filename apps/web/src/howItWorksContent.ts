@@ -34,7 +34,7 @@ export const howItWorksContent: Record<"en" | "de", InfoArticleContent> = {
         id: "exams",
         title: "Practice and exam preparation",
         paragraphs: [
-          "Checkpoints are small checks within a lecture. Independent attempts hide teaching, chat and notes so your answer reflects what you can do without that support. If no fresh reviewed task remains, the app tells you.",
+          "A Before you begin card invites an optional first prediction. Save a short guess or skip, then revisit it after the explanation; it is private and ungraded. Checkpoints are small checks within a lecture. Independent attempts hide teaching, chat and notes so your answer reflects what you can do without that support. If no fresh reviewed task remains, the app tells you.",
           "Exam checks help you practise selected learning goals. Practice exams are a separate simulation with downloadable questions and solutions for self-review. Saved submissions can inform later tutor guidance; they are not server-graded university exams and do not automatically establish mastery.",
         ],
       },
@@ -111,7 +111,7 @@ export const howItWorksContent: Record<"en" | "de", InfoArticleContent> = {
         id: "exams",
         title: "Üben und auf Prüfungen vorbereiten",
         paragraphs: [
-          "Checkpoints sind kurze Aufgaben innerhalb einer Vorlesung. Bei selbstständigen Versuchen werden Erklärungen, Chat und Notizen ausgeblendet. So zeigt deine Antwort, was du ohne diese Unterstützung kannst. Ist keine neue geprüfte Aufgabe mehr verfügbar, zeigt die App das an.",
+          "Die Karte Bevor du beginnst lädt zu einer freiwilligen ersten Vermutung ein. Speichere eine kurze Idee oder überspringe die Frage und greife sie nach der Erklärung wieder auf; sie bleibt privat und unbewertet. Checkpoints sind kurze Aufgaben innerhalb einer Vorlesung. Bei selbstständigen Versuchen werden Erklärungen, Chat und Notizen ausgeblendet. So zeigt deine Antwort, was du ohne diese Unterstützung kannst. Ist keine neue geprüfte Aufgabe mehr verfügbar, zeigt die App das an.",
           "Prüfungschecks helfen beim Üben ausgewählter Lernziele. Übungsklausuren sind eine separate Simulation mit herunterladbaren Aufgaben und Lösungen zur Selbstkontrolle. Gespeicherte Abgaben können spätere Tutorhilfe ergänzen; sie sind keine serverseitig benoteten Hochschulprüfungen und belegen nicht automatisch die Beherrschung eines Themas.",
         ],
       },

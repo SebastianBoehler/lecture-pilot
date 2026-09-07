@@ -6,6 +6,7 @@ from collections.abc import Callable
 
 from fastapi import FastAPI, HTTPException
 
+from lecturepilot.canvas_predictions import prediction_context
 from lecturepilot.agent_state_access import (
     learner_state_store,
     observability as app_observability,
@@ -144,6 +145,9 @@ async def _complete_agent_turn_inner(
             turn = turn.model_copy(update={"canvas_context": document, "user_memory": memory})
             layout = getattr(app.state.canvas_workspace, "layout", None)
             if callable(getattr(layout, "user_canvas_dir", None)):
+                turn = turn.model_copy(
+                    update={"predictions": prediction_context(app.state.canvas_workspace, turn)}
+                )
                 activity("read assessment history")
                 history = load_assessment_history(
                     layout,

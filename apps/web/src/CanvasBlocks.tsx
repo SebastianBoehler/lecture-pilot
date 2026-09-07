@@ -1,3 +1,4 @@
+import { PredictionBlock } from "./PredictionBlock";
 import { CheckpointBlock, QuizBlock, TableBlock } from "./CanvasLearningBlocks";
 import { AnnotatedCanvasBlock } from "./AnnotatedCanvasBlock";
 import { ComponentBlock } from "./CanvasInteractiveComponents";
@@ -231,6 +232,17 @@ function renderBlock(
         <DisplayMath expression={block.text} />
         {sourceMarker}
       </div>
+    );
+  }
+
+  if (block.type === "prediction") {
+    return (
+      <PredictionBlock
+        key={`${block.id}:${block.text}`}
+        block={block}
+        className={className}
+        sourceMarker={sourceMarker}
+      />
     );
   }
 

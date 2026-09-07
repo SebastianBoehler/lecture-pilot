@@ -72,6 +72,7 @@ export type CanvasBlock = {
     | "math"
     | "video"
     | "checkpoint"
+    | "prediction"
     | "quiz"
     | "table"
     | "component";

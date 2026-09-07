@@ -14,6 +14,7 @@ from lecturepilot.agent_context_models import (
 )
 from lecturepilot.assessment_history_models import AssessmentHistoryContext
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
+from lecturepilot.canvas_prediction_models import CanvasPrediction
 from lecturepilot.coaching_assistance import NextCheck
 from lecturepilot.lecture_access_models import (
     CourseAccessPolicy,
@@ -219,6 +220,7 @@ class AgentAnalyticsContext(BaseModel):
 
 
 class AgentTurnInput(BaseModel):
+    predictions: list[CanvasPrediction] = Field(default_factory=list, max_length=1)
     user_id: str = Field(min_length=1)
     course_id: str = Field(min_length=1)
     lecture_id: str = Field(min_length=1)

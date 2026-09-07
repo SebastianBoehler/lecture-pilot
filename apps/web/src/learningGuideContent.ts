@@ -7,6 +7,15 @@ export const learningGuideContent: Record<"en" | "de", InfoArticleContent> = {
       "Use LecturePilot to do more of the thinking yourself. A useful session ends with something you can explain or solve without the tutor—not just an answer that looks convincing.",
     sections: [
       {
+        id: "prediction",
+        title: "Make a prediction before learning",
+        paragraphs: [
+          "When a lecture offers a Before you begin card, make a brief guess and explain why. It is fine to be wrong or skip. After reading the explanation, compare it with your first idea or ask the tutor to revisit it.",
+        ],
+        detail:
+          "Your first prediction is saved privately for that lecture version. It is not graded and does not count as independent evidence.",
+      },
+      {
         id: "attempt",
         title: "Start with your own attempt",
         paragraphs: [
@@ -93,6 +102,15 @@ export const learningGuideContent: Record<"en" | "de", InfoArticleContent> = {
     intro:
       "Nutze LecturePilot, um selbst mehr zu durchdenken. Am Ende einer hilfreichen Sitzung kannst du etwas ohne Tutor erklären oder lösen – nicht nur eine überzeugend klingende Antwort lesen.",
     sections: [
+      {
+        id: "prediction",
+        title: "Stelle vor dem Lernen eine Vermutung auf",
+        paragraphs: [
+          "Wenn eine Vorlesung die Karte Bevor du beginnst enthält, notiere eine kurze Vermutung und begründe sie. Du darfst falsch liegen oder überspringen. Vergleiche die Erklärung danach mit deiner ersten Idee oder sprich den Tutor darauf an.",
+        ],
+        detail:
+          "Deine erste Vermutung bleibt privat und ist an diese Vorlesungsversion gebunden. Sie wird nicht bewertet und zählt nicht als eigenständiger Leistungsnachweis.",
+      },
       {
         id: "attempt",
         title: "Beginne mit deinem eigenen Versuch",

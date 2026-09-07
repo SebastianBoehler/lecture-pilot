@@ -1,3 +1,4 @@
+import { LessonPredictions } from "./LessonPredictions";
 import { LessonSidebarResize, useLessonSidebarWidth } from "./LessonSidebarResize";
 import { CheckpointDrafts } from "./CheckpointDrafts";
 import { FocusedCheckpoint } from "./LearningEvidenceFlow";
@@ -215,27 +216,41 @@ export function LessonWorkspace({
               mode={workspaceMode}
               revision={navigationVersion}
             >
-              <CheckpointGuidanceContext.Provider value={canvasLearnerState.currentLearnerState}>
-                <LessonCanvas
-                  canvasDocument={canvasWithPendingCheck(
-                    language.document ?? canvasDocument,
-                    canvasLearnerState.currentLearnerState?.pending_check,
-                  )}
-                  focusedSectionId={focusedSectionId}
-                  highlightedBlockId={highlightedBlockId}
-                  highlightedText={highlightedText}
-                  activeAnchorId={activeAnchorId}
-                  navigationVersion={navigationVersion}
-                  outlinePulseId={outlinePulse?.id ?? null}
-                  outlinePulseVersion={outlinePulse?.version ?? 0}
-                  session={session}
-                  quizStates={canvasLearnerState.quizStates}
-                  publicationVersion={canvasLearnerState.publicationVersion}
-                  onOpenResource={openWorkspaceResource}
-                  onSubmitCheckpoint={draftMode ? undefined : learningAttempts.submitCheckpoint}
-                  onSubmitQuizAnswer={learningAttempts.submitQuiz}
-                />
-              </CheckpointGuidanceContext.Provider>
+              <LessonPredictions
+                courseId={courseId}
+                lectureId={lecture.id}
+                session={session}
+                mode={workspaceMode}
+                publicationVersion={canvasLearnerState.publicationVersion}
+                enabled={
+                  !draftMode &&
+                  canvasDocument.sections.some((section) =>
+                    section.blocks.some((block) => block.type === "prediction"),
+                  )
+                }
+              >
+                <CheckpointGuidanceContext.Provider value={canvasLearnerState.currentLearnerState}>
+                  <LessonCanvas
+                    canvasDocument={canvasWithPendingCheck(
+                      language.document ?? canvasDocument,
+                      canvasLearnerState.currentLearnerState?.pending_check,
+                    )}
+                    focusedSectionId={focusedSectionId}
+                    highlightedBlockId={highlightedBlockId}
+                    highlightedText={highlightedText}
+                    activeAnchorId={activeAnchorId}
+                    navigationVersion={navigationVersion}
+                    outlinePulseId={outlinePulse?.id ?? null}
+                    outlinePulseVersion={outlinePulse?.version ?? 0}
+                    session={session}
+                    quizStates={canvasLearnerState.quizStates}
+                    publicationVersion={canvasLearnerState.publicationVersion}
+                    onOpenResource={openWorkspaceResource}
+                    onSubmitCheckpoint={draftMode ? undefined : learningAttempts.submitCheckpoint}
+                    onSubmitQuizAnswer={learningAttempts.submitQuiz}
+                  />
+                </CheckpointGuidanceContext.Provider>
+              </LessonPredictions>
             </LessonAnnotations>
           ) : null}
         </section>

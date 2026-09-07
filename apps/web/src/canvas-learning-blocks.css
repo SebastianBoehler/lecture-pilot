@@ -179,3 +179,8 @@
   background: var(--color-bg-secondary);
   font-size: 13px;
 }
+
+.canvas-prediction {
+  display: grid;
+  gap: 10px;
+}

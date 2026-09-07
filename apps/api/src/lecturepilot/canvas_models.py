@@ -81,6 +81,7 @@ class CanvasBlock(BaseModel):
         "math",
         "video",
         "checkpoint",
+        "prediction",
         "quiz",
         "table",
         "component",
