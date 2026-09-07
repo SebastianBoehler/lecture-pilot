@@ -156,5 +156,7 @@ describe("Professor course builder generation retry", () => {
       } else await approveAllLearningDesigns(user);
       expect(screen.getByRole("button", { name: /publish .*tutor workspace/i })).toBeEnabled();
     },
+    // Includes cold App loading, every builder stage, and the bounded network retry.
+    10_000,
   );
 });
