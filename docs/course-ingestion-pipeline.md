@@ -107,7 +107,14 @@ selected non-primary sources. This second pass catches cross-group duplicates,
 derived conversions, submissions, answer keys, grading material, and temporary
 artifacts while retaining authoritative teaching material. The professor sees
 and may edit all assignments; Canvas generation remains blocked until that
-exact source revision is confirmed.
+exact source revision is confirmed. Confirmation deletes excluded uploads and their
+normalized copies, except selected sources' dependencies, scheduled source files,
+and files referenced by existing canvases, learning evidence or learner workspaces.
+The source index and confirmed routing are refreshed together. A private retention
+receipt preserves teaching revisions for this storage-only change; later inventory,
+schedule or routing edits invalidate that receipt. Interrupted cleanup
+uses the course-update recovery transaction to restore files and metadata.
+Removed material must be uploaded again to include it in a later revision.
 
 Draft generation uses only the confirmed lecture-specific and course-wide
 routes. Same-named files in different folders remain distinct. If the agent

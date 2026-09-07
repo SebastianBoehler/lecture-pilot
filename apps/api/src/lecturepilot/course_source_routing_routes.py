@@ -9,7 +9,6 @@ from lecturepilot.course_source_routing import (
     SourceRoutingError,
     SourceRoutingProposalRequired,
     StaleSourceRoutingError,
-    confirm_source_routing,
     review_source_routing,
     save_source_routing_proposal,
     source_revision,
@@ -19,6 +18,7 @@ from lecturepilot.course_source_routing_models import (
     CourseSourceRoutingManifest,
 )
 from lecturepilot.course_update_recovery import locked_course_state
+from lecturepilot.course_source_cleanup import confirm_and_prune_sources
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_usage import model_usage_scope
 from lecturepilot.providers import ProviderConfigurationError
@@ -160,11 +160,11 @@ def register_course_source_routing_routes(
         layout = app.state.canvas_workspace.layout
         try:
             with locked_course_state(layout.course_root(course_id)):
-                manifest = confirm_source_routing(
+                manifest = confirm_and_prune_sources(
+                    layout=layout,
                     course_id=course_id,
                     index=_refresh_index(layout, course_id),
                     lectures=_lectures(app, course_id),
-                    routing_path=layout.course_source_routing_path(course_id),
                     routing=routing,
                 )
                 return _processing_status(layout, course_id, manifest)

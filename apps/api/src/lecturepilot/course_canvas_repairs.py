@@ -15,6 +15,7 @@ from lecturepilot.course_source_routing import read_source_routing
 from lecturepilot.lecture_source_manifest import read_lecture_source_manifest
 from lecturepilot.source_index_models import CourseSourceIndex
 from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.source_retention_provenance import retained_provenance
 
 
 class CanvasRepairRecord(BaseModel):
@@ -130,7 +131,9 @@ def _course_provenance(layout: StorageLayout, course_id: str) -> str | None:
         }
     if not payload:
         return None
-    return json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return retained_provenance(
+        layout.course_root(course_id), json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    )
 
 
 def _read_record(path: Path) -> CanvasRepairRecord | None:
