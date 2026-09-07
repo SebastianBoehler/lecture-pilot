@@ -91,6 +91,7 @@ export function CheckpointBlock({
               {submitting ? t("checkpoint.submitting") : t("checkpoint.submit")}
             </button>
             {secondaryAction}
+            {sourceMarker}
           </div>
           {status ? <p role="status">{status}</p> : null}
           {error ? (
@@ -99,8 +100,7 @@ export function CheckpointBlock({
             </p>
           ) : null}
         </form>
-      ) : null}
-      {sourceMarker}
+      ) : sourceMarker}
     </aside>
   );
 }

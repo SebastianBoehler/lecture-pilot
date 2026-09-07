@@ -104,7 +104,7 @@
   gap: 10px;
   margin-top: 4px;
 }
-.canvas-checkpoint-actions button {
+.canvas-checkpoint-actions button:not(.inline-source-marker) {
   min-height: 38px;
   border: 1px solid var(--color-border-primary);
   border-radius: 5px;
@@ -122,7 +122,7 @@
   background: var(--color-bg-primary);
   color: var(--color-text-primary);
 }
-.canvas-checkpoint-actions button:disabled {
+.canvas-checkpoint-actions button:not(.inline-source-marker):disabled {
   background: var(--color-bg-secondary);
   color: var(--color-text-secondary);
   cursor: not-allowed;
@@ -131,7 +131,7 @@
   .focused-checkpoint {
     padding: 18px;
   }
-  .canvas-checkpoint-actions button {
+  .canvas-checkpoint-actions button:not(.inline-source-marker) {
     min-height: 44px;
     flex: 1 1 100%;
   }
