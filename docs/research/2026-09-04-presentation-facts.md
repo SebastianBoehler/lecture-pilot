@@ -40,7 +40,11 @@ totaling 6 GB before Postgres, OS and gateway. These ceilings are not measured
 minimum requirements, but the full authoring stack has **not** been validated
 to fit a 4 GB host. The read-only result does not change that.
 
-For active AI learners, the current same-model gate allows three concurrent
+The following capacity illustration reflects the September 4 configuration.
+The fixed model-call ceiling was removed on September 6; these numbers are not
+capacity estimates for the updated provider-budget scheduler.
+
+For active AI learners, that same-model gate allowed three concurrent
 provider requests per event loop. A planning estimate with explicit assumptions is
 `headroom × 3 × seconds-between-turns / provider-slot-seconds-per-turn`.
 For example, 50% headroom, one turn every 120 seconds and 10 provider-slot

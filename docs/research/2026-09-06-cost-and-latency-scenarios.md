@@ -109,7 +109,7 @@ calls and no helper-service load. It is **not 30 concurrent AI students on a $5 
 See [the full-stack capacity note](2026-09-04-vps-capacity-sources.md) for service
 limits, provider quotas and the distinction between registered and active users.
 
-Illustration using the current three-call provider ceiling, mean observed
+Historical illustration using the former three-call application ceiling, mean observed
 assessment time 5.606 s, one assessment per active learner every 60 s, and 50%
 headroom: `0.5 × 3 × 60 / 5.606 ≈ 16` active learners. At one call every 120 s,
 the same arithmetic gives about 32. These are queue-utilization scenarios, **not
