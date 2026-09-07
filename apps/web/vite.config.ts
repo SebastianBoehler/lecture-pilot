@@ -1,4 +1,5 @@
 import { defineConfig } from "vitest/config";
+import sirv from "sirv";
 import react from "@vitejs/plugin-react";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -25,6 +26,15 @@ export default defineConfig({
   envDir: repoRoot,
   plugins: [
     react(),
+    {
+      name: "lecturepilot-local-media",
+      configureServer(server) {
+        server.middlewares.use(
+          "/media/onboarding",
+          sirv(resolve(repoRoot, "docs/onboarding-media"), { dev: true }),
+        );
+      },
+    },
     {
       name: "lecturepilot-version-manifest",
       generateBundle() {

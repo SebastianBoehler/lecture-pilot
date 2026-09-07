@@ -1,0 +1,106 @@
+.onboarding-video-dialog {
+  width: min(1440px, calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  padding: 24px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  overflow: auto;
+}
+.onboarding-video-dialog::backdrop {
+  background: rgb(0 0 0 / 65%);
+}
+.onboarding-video-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.onboarding-video-header h2 {
+  margin: 0 0 6px;
+  font-size: 22px;
+}
+.onboarding-video-header p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+.onboarding-video-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 24px;
+}
+.onboarding-video-player {
+  min-width: 0;
+}
+.onboarding-video-player video {
+  display: block;
+  width: 100%;
+  background: #161616;
+  aspect-ratio: 1920 / 1024;
+  border-radius: 4px;
+}
+.onboarding-video-description {
+  padding: 16px 0 0;
+}
+.onboarding-video-description h3 {
+  margin: 0 0 8px;
+  font-size: 17px;
+}
+.onboarding-video-description ul {
+  margin: 0;
+  padding-left: 20px;
+  line-height: 1.6;
+}
+.onboarding-video-description li + li {
+  margin-top: 6px;
+}
+.onboarding-video-chapters {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.onboarding-video-chapters button {
+  display: flex;
+  gap: 12px;
+  text-align: left;
+  background: transparent;
+  color: inherit;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 12px;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.onboarding-video-chapters button span {
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+  flex: 0 0 34px;
+}
+.onboarding-video-chapters button:hover {
+  background: var(--color-bg-secondary);
+}
+.onboarding-video-chapters button[aria-current] {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-accent-primary);
+}
+.onboarding-video-chapters button:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}
+@media (max-width: 800px) {
+  .onboarding-video-dialog {
+    padding: 16px;
+  }
+  .onboarding-video-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .onboarding-video-header h2 {
+    font-size: 19px;
+  }
+}

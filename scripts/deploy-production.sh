@@ -64,6 +64,13 @@ main() {
     exit 1
   }
 
+  for media_file in lecturepilot-onboarding.mp4 poster.jpg captions.en.vtt chapters.vtt; do
+    [[ -s "docs/onboarding-media/2026-09-07-r3/${media_file}" ]] || {
+      echo "Missing onboarding media: ${media_file}. See docs/onboarding-video.md." >&2
+      exit 1
+    }
+  done
+
   trap on_exit EXIT
   compose config --quiet
   ensure_build_space

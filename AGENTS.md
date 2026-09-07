@@ -221,7 +221,9 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
 - Before canvas generation, the source-routing agent must semantically assign
   every indexed course file exactly once as lecture-specific, course-wide, or
   not used. Professors review and may edit this complete proposal; generation
-  remains blocked until they confirm the current source revision.
+  remains blocked until they confirm the current source revision. Confirmation prunes unused uploads and
+  normalized copies while preserving selected-source dependencies and existing
+  workspace references; index and routing revisions update transactionally.
 - After source confirmation, automatically propose missing source-backed learning goals without tasks.
   Review one lecture at a time; the final current approval advances to draft generation.
   Preserve explicit draft approval and publication.
@@ -252,6 +254,9 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
   checkpoints. Repair schemas bind exact target IDs/counts, and repair prompts
   receive only their section's targets. Cross-section approved source excerpts
   may support teaching, but hidden assessment wording must not be forwarded.
+- Source grounding permits accurate explanations of source-named concepts and derivations
+  from supplied definitions or formulas. Authoring and review must apply the same boundary;
+  missing verbatim wording alone is not an unsupported claim.
 - Shared authoring guidance lives in `course_teaching_instructions.py`. Forward
   approved learner context into canvas generation without exposing hidden exit
   tasks. Canonical diagnostics may precede worked examples; ordinary formative
@@ -295,6 +300,10 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
   `docs/learning-evidence-flow.md` for ownership and storage paths.
 
 ## UI And Canvas Rules
+
+- Professor onboarding video and chapter descriptions live in `OnboardingVideo.tsx`
+  and `onboardingChapters.ts`. Versioned public media is tracked under `docs/onboarding-media/`,
+  mounted read-only into the web service; see `docs/onboarding-video.md`.
 
 - Course creation has five visible stages: Course, Materials, Media, Learning plan,
   and Review & publish. Materials owns source confirmation; the separate Media

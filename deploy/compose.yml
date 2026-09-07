@@ -234,6 +234,8 @@ services:
       args:
         LECTUREPILOT_COMMIT_SHA: ${LECTUREPILOT_COMMIT_SHA:?Set the deployed Git commit SHA}
     expose: ["80"]
+    volumes:
+      - ../docs/onboarding-media:/srv/lecturepilot-media:ro
     restart: unless-stopped
     read_only: true
     tmpfs:

@@ -12,6 +12,7 @@ import {
   UserRound,
 } from "lucide-react";
 
+import { OnboardingVideo } from "./OnboardingVideo";
 import { canManageCourses, isStudentAccount } from "./authz";
 import { useI18n } from "./i18n";
 import { requestProfessorWalkthrough } from "./professorWalkthroughState";
@@ -136,6 +137,7 @@ export function AppHeader({
               <MessageSquarePlus size={17} />
               <span>{t("nav.feedback")}</span>
             </button>
+            {canManage && <OnboardingVideo />}
             {canManage ? (
               <button
                 className="top-icon-button"

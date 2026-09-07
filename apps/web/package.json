@@ -1,6 +1,6 @@
 {
   "name": "@lecture-pilot/web",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -31,6 +31,7 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "jsdom": "^27.3.0",
+    "sirv": "^3.0.2",
     "typescript": "^5.9.3",
     "vitest": "^4.0.15"
   }

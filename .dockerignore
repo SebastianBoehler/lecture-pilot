@@ -28,3 +28,6 @@ content/private
 content/courses
 data/courses
 workspaces
+
+# Public onboarding recordings are mounted from the checkout, not built into images.
+docs/onboarding-media
