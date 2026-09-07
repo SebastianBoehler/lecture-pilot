@@ -15,6 +15,7 @@ from lecturepilot.course_canvas_approved_checkpoints import assemble_approved_ch
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_practice_contract import (
     practice_source_sections,
+    original_practice_source_sections,
     section_target_assignments,
     validate_practice_candidate,
 )
@@ -42,7 +43,9 @@ class AuthoringWorkspace:
     ) -> None:
         self.source, self.design, self.authorize = source, design, authorize
         self.sections = practice_source_sections(source)
-        self.targets = section_target_assignments(design, self.sections)
+        self.targets = section_target_assignments(
+            design, self.sections, original_sections=original_practice_source_sections(source)
+        )
         self.paths = {f"/draft/{safe_id(s.id)}.md": s for s in self.sections}
         if len(self.paths) != len(self.sections) or not self.sections:
             raise ValueError("Authoring requires distinct source section paths.")

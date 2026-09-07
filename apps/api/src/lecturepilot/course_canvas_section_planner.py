@@ -9,6 +9,7 @@ from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_math import validate_section_math
 from lecturepilot.course_canvas_practice_contract import (
     practice_source_sections,
+    original_practice_source_sections,
     section_target_assignments,
     validate_section_practice,
 )
@@ -59,7 +60,11 @@ async def plan_sections_individually(
     if not source_sections:
         raise CanvasGenerationRepairableError("Section planner returned no usable sections.")
     trace = observability or Observability()
-    assignments = section_target_assignments(practice_design, source_sections)
+    assignments = section_target_assignments(
+        practice_design,
+        source_sections,
+        original_sections=original_practice_source_sections(source_document),
+    )
 
     async def plan_one(section_index: int, source_section: CanvasSection) -> SectionPlanResult:
         if checkpoint_store is not None:

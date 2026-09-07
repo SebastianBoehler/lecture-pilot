@@ -132,6 +132,7 @@ def practice_design_for_canvas(document: CanvasDocument) -> PracticeDesign:
     source_section = group_evidence_sections(
         source_topic_sections(document) or document.sections,
         document_source_ref=document.source_ref,
+        max_groups=max(1, len(document.sections)),
     )[0]
     source_excerpt = next(
         (

@@ -65,7 +65,10 @@ def practice_prompt_instruction(
 
 
 def section_target_assignments(
-    design: PracticeDesign, sections: Sequence[CanvasSection]
+    design: PracticeDesign,
+    sections: Sequence[CanvasSection],
+    *,
+    original_sections: Sequence[CanvasSection] | None = None,
 ) -> dict[str, tuple[PracticeTarget, ...]]:
     assignments: dict[str, list[PracticeTarget]] = {section.id: [] for section in sections}
     for target in design.targets:
@@ -74,7 +77,17 @@ def section_target_assignments(
             (
                 item
                 for item in sections
-                if source_anchor_matches_section(target.outcome_anchor, item, routed_paths)
+                if any(
+                    source_anchor_matches_section(target.outcome_anchor, original, routed_paths)
+                    and (
+                        original.id == item.id
+                        or (
+                            original.blocks
+                            and all(block in item.blocks for block in original.blocks)
+                        )
+                    )
+                    for original in (original_sections if original_sections is not None else [item])
+                )
             ),
             None,
         )
@@ -84,6 +97,14 @@ def section_target_assignments(
             )
         assignments[section.id].append(target)
     return {section_id: tuple(targets) for section_id, targets in assignments.items()}
+
+
+def original_practice_source_sections(source_document: CanvasDocument) -> list[CanvasSection]:
+    return group_evidence_sections(
+        source_document.sections,
+        max_groups=max(1, len(source_document.sections)),
+        document_source_ref=source_document.source_ref,
+    )
 
 
 def practice_source_sections(source_document: CanvasDocument) -> list[CanvasSection]:
@@ -124,7 +145,11 @@ def validate_practice_candidate(
         expected_source_sections = None
         if source_document is not None:
             source_sections = practice_source_sections(source_document)
-            assignments = section_target_assignments(design, source_sections)
+            assignments = section_target_assignments(
+                design,
+                source_sections,
+                original_sections=original_practice_source_sections(source_document),
+            )
             expected_source_sections = {
                 target.id: section.id
                 for section in source_sections

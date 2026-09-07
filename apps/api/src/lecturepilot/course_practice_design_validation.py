@@ -186,7 +186,10 @@ def validate_canvas_practice_contract(
                 f"Practice checkpoint practice-{target_id} must remain in its exact "
                 "anchor-bearing source section."
             )
-        if routed_source_owner(section.source_ref, set(target.source_refs)) is None:
+        if not any(
+            routed_source_owner(ref, set(target.source_refs)) is not None
+            for ref in (section.source_ref or "").split(" | ")
+        ):
             raise PracticeDesignValidationError(
                 f"Practice checkpoint practice-{target_id} must be in a section owned by its "
                 "approved source evidence."

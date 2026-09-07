@@ -195,3 +195,11 @@ async def test_failed_review_requires_an_edit_before_another_validation(workspac
     workspace.intent.require_matches(changed)
     metrics = json.loads((job.root / "session.json").read_text())["metrics"]
     assert metrics["repair_edits"] == 1
+
+
+def test_edit_identifies_protected_goal_text_instead_of_retrying_missing_span(workspace):
+    goal = workspace.goals["derive-conclusion"]
+    result = workspace.edit(goal.id, goal.target_invariant, "Different invariant")
+    assert not result["saved"]
+    assert result["error_code"] == "approved_intent_read_only"
+    assert "target_invariant" in result["protected_fields"]

@@ -124,6 +124,21 @@ class TeachingDesignWorkspace:
             return value
 
         changed = replace(wire)
+        if matches == 0:
+            protected = [
+                name
+                for name, value in self.goals[target_id].model_dump(mode="json").items()
+                if old_text in json.dumps(value, ensure_ascii=False)
+            ]
+            if protected:
+                return {
+                    "saved": False,
+                    "error_code": "approved_intent_read_only",
+                    "protected_fields": protected,
+                    "error": "This text belongs to approved learning intent, not editable teaching. "
+                    "Do not retry this edit. Check whether the review objection is supported by "
+                    "the source; a genuine intent conflict needs professor review.",
+                }
         if matches != 1:
             return {
                 "saved": False,

@@ -76,3 +76,19 @@ def media_review_instruction() -> str:
         "context, never approved task wording. Orientation before diagnostics must not reveal "
         "answers or count as substantive instruction. "
     )
+
+
+def source_explanation_instruction() -> str:
+    return (
+        "Source grounding is not verbatim-only teaching. Explanations may unpack the standard "
+        "meaning of concepts explicitly named in the source, derive consequences from its "
+        "formulas or definitions, and work through new numerical examples of its methods. "
+        "Check that reasoning and its assumptions; absence of the exact explanatory sentence "
+        "from terse lecture slides is not by itself an unsupported claim. Preserve qualifications "
+        "such as typical behavior versus a universal guarantee. Do not introduce unrelated "
+        "topics, empirical findings, historical claims or incompatible definitions. "
+        "Apply this same boundary to both requested teaching repairs and their later review: "
+        "do not demand an explanation and then reject it solely for not being quoted in the "
+        "source. If a protected assessment genuinely requires knowledge outside these bounds, "
+        "report the design conflict rather than repeatedly adding and removing that teaching. "
+    )
