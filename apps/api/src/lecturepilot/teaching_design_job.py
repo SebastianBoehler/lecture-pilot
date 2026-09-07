@@ -105,6 +105,15 @@ async def _run(job, *, model):
             state.metrics.repair_edits += 1
         return result
 
+    def edit(target_id: str, old_text: str, new_text: str) -> dict:
+        """Correct one unique AI-owned text span without rewriting the target's other tasks."""
+        result = workspace.edit(target_id, old_text, new_text)
+        if result["saved"]:
+            state.metrics.repair_edits += 1
+        else:
+            state.metrics.validation_failures += 1
+        return result
+
     async def validate() -> dict:
         """Review the complete current implementation; repair reported targets and validate again."""
         job.authorize()
@@ -129,20 +138,33 @@ async def _run(job, *, model):
             )
         return {"valid": workspace.accepted(), "review": workspace.feedback()}
 
+    async def prepare_validate(ctx, definition):
+        # A cached rejection cannot improve without a changed implementation.
+        if workspace.review is not None and workspace.defects():
+            if workspace.review_digest == digest(workspace.proposal().model_dump(mode="json")):
+                return None
+        return definition
+
     instructions = messages[0]["content"].replace(
         "Return only the requested structured proposal for one lecture. ", ""
     ) + (
-        "\nWork in the persistent teaching workspace using read, write and validate. "
+        "\nWork in the persistent teaching workspace using read, write, edit and validate. "
         "Implement each approved goal with write; its schema contains only AI-owned teaching. "
         "The backend binds goal fields, order, objective and context. Never omit a goal or edit "
         "professor-fixed tasks. Read existing targets before changing them. Write only targets "
-        "needing correction and preserve all valid sibling targets. Validate when all goals exist. "
+        "needing correction and preserve all valid sibling targets. Prefer edit for a numeric or "
+        "wording correction: replace one unique exact span, preserving every other task and value. "
+        "Use write for initial creation or a structural change, not to fix one number. "
+        "Recompute numerical claims from the unchanged givens before editing. "
+        "Validate when all goals exist. "
         "Validation findings are actionable tool results, not a request to restart the lecture. "
         "Verify objections against tasks and source, repair the actual defect, then validate again. "
         "Check every required rubric criterion is elicited in every parallel task; keep numeric "
         "assertions relevant to the task and include all operands, units and given values. "
         "Hints must use baseline or analogous values, never hidden exit/transfer values. "
-        "Do not repeat validation without changing the rejected draft. Only finish after valid=true."
+        "After rejection, validate is unavailable until a successful edit or write changes the "
+        "draft. Read the last review, correct its blocking findings, then validate again. "
+        "Only finish after valid=true."
     )
     agent = Agent(
         model,
@@ -167,7 +189,8 @@ async def _run(job, *, model):
                 json_schema=write_schema,
                 sequential=True,
             ),
-            Tool(validate, sequential=True),
+            Tool(edit, sequential=True),
+            Tool(validate, sequential=True, prepare=prepare_validate),
         ],
     )
 

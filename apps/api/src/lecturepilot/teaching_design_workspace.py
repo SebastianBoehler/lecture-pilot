@@ -97,6 +97,40 @@ class TeachingDesignWorkspace:
         self.save()
         return {"saved": True, "target_id": key, "missing": self.missing()}
 
+    def edit(self, target_id: str, old_text: str, new_text: str) -> dict:
+        """Replace one exact, unique text span in AI-owned teaching; preserve every other field."""
+        self.authorize()
+        if target_id not in self.targets or target_id in self.fixed:
+            return {"saved": False, "error": "Target must exist and be AI-owned."}
+        if not old_text or old_text == new_text:
+            return {
+                "saved": False,
+                "error": "Supply a nonempty text span and an actual correction.",
+            }
+        wire = compact_evidence_anchors(self.targets[target_id], self.catalogue)
+        for field in {*LearningGoal.model_fields, "source_refs"}:
+            wire.pop(field, None)
+        matches = 0
+
+        def replace(value):
+            nonlocal matches
+            if isinstance(value, str):
+                matches += value.count(old_text)
+                return value.replace(old_text, new_text)
+            if isinstance(value, dict):
+                return {key: replace(item) for key, item in value.items()}
+            if isinstance(value, list):
+                return [replace(item) for item in value]
+            return value
+
+        changed = replace(wire)
+        if matches != 1:
+            return {
+                "saved": False,
+                "error": f"Expected one AI-owned text match, found {matches}. Read the target and use a unique span.",
+            }
+        return self.write(id=target_id, **changed)
+
     def missing(self):
         return [key for key in self.goals if key not in self.targets]
 

@@ -75,10 +75,12 @@ There is no claim that structured output guarantees semantic correctness.
 ## Teaching implementation repair after intent approval
 
 The production implementation step uses `teaching_design_job` before canvas
-file authoring. Its persistent `read`, `write` and `validate` tools edit one
+file authoring. Its persistent `read`, `write`, `edit` and `validate` tools edit one
 AI-owned target at a time. The backend binds every approved goal and target
 order, preserves fixed tasks, and verifies source and intent revisions before
-model calls and saves. Valid sibling targets survive later repairs.
+model calls and saves. Valid sibling targets survive later repairs. Exact text edits correct one unique
+AI-owned span without rewriting other tasks. Rejected unchanged drafts cannot call
+`validate` again until an edit or write changes the implementation.
 
 Private `builder/implementation-jobs/<lecture>/<identity>/` stores `draft.json`
 and native `session.json`. Identity binds source, intent, model, starting design
