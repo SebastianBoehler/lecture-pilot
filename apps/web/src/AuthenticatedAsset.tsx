@@ -99,10 +99,8 @@ function useAuthenticatedAssetUrl(src: string, session: LoginSession): AssetStat
 
 function isProtectedApiAsset(url: string) {
   const parsed = new URL(url, window.location.href);
-  const apiOrigin = new URL(apiUrl("/"), window.location.href).origin;
-  return (
-    parsed.origin === apiOrigin &&
-    (parsed.pathname.startsWith("/course-assets/") ||
-      parsed.pathname.startsWith("/workspace-assets/"))
-  );
+  return ["/course-assets/", "/workspace-assets/"].some((path) => {
+    const root = new URL(apiUrl(path), window.location.href);
+    return parsed.origin === root.origin && parsed.pathname.startsWith(root.pathname);
+  });
 }
