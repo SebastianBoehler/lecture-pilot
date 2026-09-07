@@ -14,6 +14,7 @@
   --color-highlight-bg: #fff8c5;
   --color-highlight-border: #e3b34c;
   --color-danger: #cf222e;
+  --color-success: #1a7f37;
   --control-height: 36px;
   --control-height-compact: 30px;
   --control-radius: 5px;
@@ -44,6 +45,7 @@
   --color-highlight-bg: #3b2e00;
   --color-highlight-border: #9e6a03;
   --color-danger: #f85149;
+  --color-success: #56d364;
 }
 * {
   box-sizing: border-box;

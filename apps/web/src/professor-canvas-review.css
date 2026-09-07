@@ -149,3 +149,39 @@
     text-align: center;
   }
 }
+
+.draft-review-row .lecture-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.draft-review-row .lecture-status-error {
+  color: var(--color-danger);
+}
+
+.draft-review-row .lecture-status-approved,
+.draft-review-row .lecture-status-published {
+  color: var(--color-success);
+}
+
+.draft-review-row .lecture-status-generating,
+.draft-review-row .lecture-status-review {
+  color: var(--color-accent-primary);
+}
+
+.generation-spinner {
+  flex-shrink: 0;
+  vertical-align: middle;
+  animation: flow-spin 0.8s linear infinite;
+}
+
+button > .generation-spinner {
+  margin-inline-end: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .generation-spinner {
+    animation: none;
+  }
+}

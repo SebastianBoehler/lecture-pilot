@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useI18n } from "./i18n";
 import type { LearningDesignReview, LearningDesignUpdate } from "./learningDesignTypes";
 import { ProfessorCanvasReviewWorkspace } from "./ProfessorCanvasReviewWorkspace";
+import { GenerationSpinner } from "./ProfessorLectureStatus";
 import type { CanvasGenerationProgress } from "./professorCanvasGeneration";
 import type { CanvasDocument } from "./types";
 
@@ -26,7 +27,6 @@ export function ProfessorCanvasDraftStep({
   lectures,
   renderPublishedLecture,
   retryingLectureIds = new Set(),
-  totalCount,
 }: {
   canvas: CanvasDocument | null;
   publicationAction?: ReactNode;
@@ -68,6 +68,7 @@ export function ProfessorCanvasDraftStep({
         type="button"
         onClick={onGenerate}
       >
+        {isGenerating ? <GenerationSpinner /> : null}
         {isGenerating
           ? busyLabel
           : hasUnfinished

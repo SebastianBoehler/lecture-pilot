@@ -6,6 +6,7 @@ import type { LearningDesignReview, LearningDesignUpdate } from "./learningDesig
 import type { CanvasGenerationProgress } from "./professorCanvasGeneration";
 import { ProfessorGenerationRowDetails } from "./ProfessorGenerationRowDetails";
 import { ProfessorLearningDesignReview } from "./ProfessorLearningDesignReview";
+import { ProfessorLectureStatus } from "./ProfessorLectureStatus";
 
 type PreviewLecture = { id: string; label: string; previewHref: string; published?: boolean };
 
@@ -91,19 +92,21 @@ export function ProfessorCanvasReviewWorkspace({
               <div className="draft-review-row">
                 <div>
                   <strong>{lecture.label}</strong>
-                  <small aria-live="polite">
-                    {t(
-                      blocked
-                        ? `builder.generate.progressStatus.${progress.status}`
-                        : lecture.published && approved
-                          ? "builder.publish.published"
-                          : !hasDraft
-                            ? "builder.generate.progressStatus.pending"
-                            : approved
-                              ? "builder.generate.reviewStatus.approved"
-                              : "builder.generate.reviewStatus.pending",
-                    )}
-                  </small>
+                  <ProfessorLectureStatus
+                    state={
+                      retryingLectureIds.has(lecture.id)
+                        ? "generating"
+                        : progress && progress.status !== "ready"
+                          ? progress.status
+                          : lecture.published && approved
+                            ? "published"
+                            : !hasDraft
+                              ? "pending"
+                              : approved
+                                ? "approved"
+                                : "review"
+                    }
+                  />
                 </div>
                 <div className="draft-review-actions">
                   {hasDraft ? (
