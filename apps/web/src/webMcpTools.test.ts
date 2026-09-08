@@ -2,9 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import { createWebMcpTools, type WebMcpState } from "./webMcpTools";
 import { localDemoSession } from "./appDefaults";
 
+const authenticatedStudent = { ...localDemoSession, auth_transport: "cookie" as const };
+
 function fixture() {
   const state: WebMcpState = {
-    session: localDemoSession,
+    session: authenticatedStudent,
     theme: "light",
     locale: "en",
     busy: false,
@@ -24,11 +26,12 @@ function fixture() {
     releaseStatus: "released" as const,
   };
   const dependencies = {
+    refreshSession: vi.fn().mockResolvedValue(authenticatedStudent),
     getCourseLectures: vi.fn().mockResolvedValue([lecture]),
     getLearnerProfile: vi.fn().mockResolvedValue({
       courses: [
         {
-          course_id: localDemoSession.courses[0].id,
+          course_id: authenticatedStudent.courses[0].id,
           passed_lecture_ids: [lecture.id],
           memory: "PRIVATE",
         },
@@ -55,7 +58,14 @@ function fixture() {
   const tools = createWebMcpTools(() => state, dependencies);
   const call = (name: string, input = {}) =>
     tools.find((t) => t.name === `lecturepilot_${name}`)!.execute(input);
-  return { state, dependencies, tools, call, lecture, course_id: localDemoSession.courses[0].id };
+  return {
+    state,
+    dependencies,
+    tools,
+    call,
+    lecture,
+    course_id: authenticatedStudent.courses[0].id,
+  };
 }
 
 describe("student WebMCP boundary", () => {
@@ -69,6 +79,21 @@ describe("student WebMCP boundary", () => {
       "lecturepilot_get_display_settings",
       "lecturepilot_set_display_settings",
     ]);
+  });
+  it("rejects expired sessions before reading cached data or changing settings", async () => {
+    const f = fixture();
+    f.dependencies.refreshSession.mockRejectedValue(new Error("Session expired"));
+    await expect(f.call("list_courses")).rejects.toThrow("Session expired");
+    await expect(f.call("set_display_settings", { theme: "dark" })).rejects.toThrow(
+      "Session expired",
+    );
+    expect(f.state.setTheme).not.toHaveBeenCalled();
+  });
+  it("lists only server-verified courses", async () => {
+    const f = fixture();
+    f.dependencies.refreshSession.mockResolvedValue({ ...authenticatedStudent, courses: [] });
+    await expect(f.call("list_courses")).resolves.toEqual([]);
+    await expect(f.call("open_course", { course_id: f.course_id })).rejects.toThrow(/authorized/);
   });
   it("projects progress without answers, tasks or memory", async () => {
     const f = fixture();

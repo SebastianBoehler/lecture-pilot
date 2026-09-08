@@ -1,3 +1,6 @@
+import { hasStudentWebMcpCredentials } from "./webMcpSession";
+import { refreshSession } from "./sessionApi";
+import { validateWebMcpInput } from "./webMcpInput";
 import { getCourseLectures } from "./api";
 import { isStudentAccount } from "./authz";
 import { lessonPath } from "./appRoute";
@@ -18,7 +21,12 @@ export type WebMcpState = {
   setLocale: (locale: Locale) => void;
 };
 
-const dependencies = { getCourseLectures, getLearnerProfile, getLearnerLessonState };
+const dependencies = {
+  getCourseLectures,
+  getLearnerProfile,
+  getLearnerLessonState,
+  refreshSession,
+};
 const id = { type: "string", minLength: 1, maxLength: 200 };
 const courseProperties = { course_id: id };
 const lectureProperties = { ...courseProperties, lecture_id: id };
@@ -26,7 +34,7 @@ const lectureProperties = { ...courseProperties, lecture_id: id };
 export function createWebMcpTools(current: () => WebMcpState, api = dependencies): WebMcpTool[] {
   function session() {
     const value = current().session;
-    if (!value || !isStudentAccount(value))
+    if (!value || !hasStudentWebMcpCredentials(value))
       throw new Error("An active student session is required.");
     return value;
   }
@@ -60,7 +68,11 @@ export function createWebMcpTools(current: () => WebMcpState, api = dependencies
     properties: Record<string, unknown>,
     required: string[],
     readOnlyHint: boolean,
-    run: (input: Record<string, unknown>, active: LoginSession) => Promise<unknown>,
+    run: (
+      input: Record<string, unknown>,
+      active: LoginSession,
+      verified: LoginSession,
+    ) => Promise<unknown>,
   ): WebMcpTool {
     return {
       name: `lecturepilot_${name}`,
@@ -69,8 +81,18 @@ export function createWebMcpTools(current: () => WebMcpState, api = dependencies
       annotations: { readOnlyHint, untrustedContentHint: readOnlyHint },
       async execute(raw) {
         const active = session();
-        const input = validateInput(raw, properties, required);
-        const result = await run(input, active);
+        const input = validateWebMcpInput(raw, properties, required);
+        const verified = await api.refreshSession(active);
+        assertSession(active);
+        if (
+          !isStudentAccount(verified) ||
+          verified.username !== active.username ||
+          verified.tenant_id !== active.tenant_id
+        ) {
+          throw new Error("The authenticated student account changed. Sign in again.");
+        }
+        if (input.course_id !== undefined) course(input, verified);
+        const result = await run(input, active, verified);
         assertSession(active);
         return result;
       },
@@ -83,7 +105,7 @@ export function createWebMcpTools(current: () => WebMcpState, api = dependencies
       {},
       [],
       true,
-      async (_, active) => active.courses.map(courseSummary),
+      async (_, _active, verified) => verified.courses.map(courseSummary),
     ),
     tool(
       "get_course_context",
@@ -207,25 +229,4 @@ function available(lecture: Lecture) {
 
 function courseSummary(course: UniversityCourse) {
   return { id: course.id, title: course.title, professor: course.professor, term: course.term };
-}
-
-function validateInput(raw: unknown, properties: Record<string, unknown>, required: string[]) {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw))
-    throw new Error("Expected an input object.");
-  const input = raw as Record<string, unknown>;
-  for (const key of Object.keys(input)) {
-    if (!Object.hasOwn(properties, key)) throw new Error(`Unexpected input: ${key}.`);
-    const schema = properties[key] as { enum?: string[] };
-    const value = input[key];
-    if (
-      typeof value !== "string" ||
-      !value.length ||
-      value.length > 200 ||
-      (schema.enum && !schema.enum.includes(value))
-    ) {
-      throw new Error(`Invalid ${key}.`);
-    }
-  }
-  for (const key of required) if (!(key in input)) throw new Error(`Missing ${key}.`);
-  return input;
 }
