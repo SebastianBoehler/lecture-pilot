@@ -33,6 +33,14 @@ export const privacyContent: Record<"en" | "de", InfoArticleContent> = {
         ],
       },
       {
+        id: "browser-agents",
+        title: "External browser agents",
+        paragraphs: [
+          "While you are signed in as a student, supporting browser agents can use WebMCP tools to read your authorized course and lecture metadata, passed lectures and recorded gate evidence. They can open courses and lectures and change the interface theme or language. Your chosen agent may process the returned information under its own data policies.",
+          "These tools do not expose answers, assessment prompts, private notes or tutor conversations, and cannot submit learning work or change progress. Signing out removes the tools. This tool boundary does not prevent a general browser agent from reading or operating other visible parts of the page.",
+        ],
+      },
+      {
         id: "memory",
         title: "What does the tutor remember?",
         paragraphs: [
@@ -98,6 +106,14 @@ export const privacyContent: Record<"en" | "de", InfoArticleContent> = {
           "Die aktuelle Hochschulinstanz nutzt OpenAI für Tutor-Modellanfragen. Über das Backend können deine Frage, relevante Quellenauszüge, Canvas-Inhalte, bis zu acht jüngste Lernenden- und Tutornachrichten dieser Vorlesung, Lernstand, gespeicherte Vorlieben oder Erinnerungen und relevante gespeicherte Übungshistorie übermittelt werden. Auch bei der Kurserstellung werden relevante Lehrmaterialien und bestätigte Lernziele zur Generierung und Prüfung gesendet.",
           "Bildanfragen können den Prompt und den didaktischen Kontext enthalten. Hochschulhosting bedeutet nicht, dass die Modellverarbeitung auf dem Hochschulserver bleibt. Verarbeitung und Aufbewahrung beim Anbieter sind von LecturePilot getrennt; dieser Hinweis verspricht keine aufbewahrungsfreie Verarbeitung. Die Informationen des Anbieters sind unten verlinkt.",
           "Das Einführungsvideo wird von LecturePilot ausgeliefert. Beim Abspielen eingebetteter externer Kursvideos oder Öffnen externer Forschungslinks wird der jeweilige externe Dienst kontaktiert.",
+        ],
+      },
+      {
+        id: "browser-agents",
+        title: "Externe Browser-Agenten",
+        paragraphs: [
+          "Solange du als Student angemeldet bist, können unterstützte Browser-Agenten über WebMCP deine berechtigten Kurs- und Vorlesungsmetadaten, bestandene Vorlesungen und gespeicherte Lernnachweise lesen. Sie können Kurse und Vorlesungen öffnen sowie Sprache und Darstellung der Oberfläche ändern. Dein gewählter Agent kann diese Informationen nach seinen eigenen Datenschutzregeln verarbeiten.",
+          "Diese Werkzeuge geben keine Antworten, Prüfungsaufgaben, privaten Notizen oder Tutor-Gespräche weiter und können keine Lernarbeit abgeben oder Fortschritt verändern. Beim Abmelden werden sie entfernt. Diese Werkzeuggrenze verhindert nicht, dass ein allgemeiner Browser-Agent andere sichtbare Seitenbereiche liest oder bedient.",
         ],
       },
       {
