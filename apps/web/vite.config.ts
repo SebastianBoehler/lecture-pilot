@@ -1,5 +1,6 @@
 import { defineConfig } from "vitest/config";
 import sirv from "sirv";
+import { publicDiscovery } from "./tooling/publicDiscovery";
 import react from "@vitejs/plugin-react";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -26,6 +27,7 @@ export default defineConfig({
   envDir: repoRoot,
   plugins: [
     react(),
+    publicDiscovery(),
     {
       name: "lecturepilot-local-media",
       configureServer(server) {

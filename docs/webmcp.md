@@ -1,8 +1,31 @@
 # Student browser tools (WebMCP)
 
-LecturePilot registers seven tools while a student is signed in to an open tab.
+LecturePilot registers two public tools in every open tab, plus seven student tools
+while a student is signed in.
 They support navigation, display settings and bounded read-only learning context.
 The human student owns the learning interaction.
+
+Public tools require no sign-in and make no account API requests:
+
+- `lecturepilot_get_public_information`: accepts optional `page` (`how-it-works`,
+  `learning-science`, `privacy`) and `language` (`en`, `de`). Returns the existing
+  public guide and links to the other guides.
+- `lecturepilot_open_public_page`: accepts a required allowlisted `page` and opens
+  that guide. It respects the same active-learning navigation guard.
+
+Each student invocation first verifies the session through `/me`. Expired sessions,
+changed identities, non-student accounts and revoked course access fail closed,
+including browser-only tools. Course listings use the server-verified course list.
+Local demo sessions expose only public tools: development headers are not an
+authenticated student session. Production authentication is enforced by the backend.
+
+The production build emits readable HTML for the three public guides, with matching
+descriptions and WebPage structured data. React takes over the same public content
+when JavaScript runs; metadata follows page and language changes. `llms.txt` is a
+small index generated from the same guides for agents that support that convention.
+It is not an SEO ranking promise. No learner data or course sources enter these files.
+`publicInformation.ts` owns the shared catalogue; `tooling/publicDiscovery.ts` owns
+build output, and `usePublicMetadata.ts` updates metadata during app navigation.
 
 | Tool prefix: `lecturepilot_` | Input                              | Result or action                                                                                  |
 | ---------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------- |
@@ -55,7 +78,7 @@ Run `npm run test --workspace apps/web -- src/webMcpTools.test.ts src/useWebMcp.
 for input/access boundaries, progress redaction, navigation and registration lifecycle.
 In a supporting browser, sign in to a local student session and discover the seven
 tools. Call display settings and navigation tools, inspect the actual UI, then log
-out and verify that tool discovery is empty. Never submit learning work as a smoke test.
+out and verify that only the two public tools remain. Never submit learning work as a smoke test.
 
 Implementation: `webMcpTools.ts` owns the allowlist and data projections;
 `useWebMcp.ts` owns browser registration; `App.tsx` supplies existing UI actions.

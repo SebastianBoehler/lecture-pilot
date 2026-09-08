@@ -32,6 +32,7 @@ import { useStoredLoginSession } from "./loginSessionStorage";
 import { lectures } from "./sampleData";
 import { logoutSession } from "./sessionApi";
 import { clearAllPracticeExamDrafts } from "./practiceExamDraft";
+import { usePublicMetadata } from "./usePublicMetadata";
 import { useWebMcp } from "./useWebMcp";
 import { useAppRoute } from "./useAppRoute";
 import { usePublishedLectures } from "./usePublishedLectures";
@@ -60,6 +61,7 @@ function App() {
   const { navigate, route } = useAppRoute();
   const [session, setSession, restoringSession] = useStoredLoginSession();
   const view = !session && requiresSession(route.view) ? "login" : route.view;
+  usePublicMetadata(view, locale);
   const feedback = useFeedbackPrompt(session, view === "dashboard");
   const [availableLectures, setAvailableLectures] = useState(() =>
     import.meta.env.DEV ? lectures : [],

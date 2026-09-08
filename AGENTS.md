@@ -307,7 +307,8 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
 
 ## UI And Canvas Rules
 
-- Student WebMCP tools expose navigation, display settings and read-only progress only.
+- Public WebMCP tools expose the public guides without account access. Student tools
+  verify the backend session and expose navigation, display settings and read-only progress only.
   Keep assessments, tutor messages, attendance and learning mutations human-owned.
   See `docs/webmcp.md`; `webMcpTools.ts` owns the allowlist and `useWebMcp.ts` registration.
 

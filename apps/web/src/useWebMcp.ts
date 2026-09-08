@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { isStudentAccount } from "./authz";
+import { createPublicWebMcpTools } from "./publicWebMcpTools";
+import { hasStudentWebMcpCredentials } from "./webMcpSession";
 import { createWebMcpTools, type WebMcpState } from "./webMcpTools";
 import type { WebMcpContext } from "./webMcpTypes";
 
@@ -12,12 +13,16 @@ export function useWebMcp(state: WebMcpState) {
   useEffect(() => {
     setError(null);
     const context = (document as Document & { modelContext?: WebMcpContext }).modelContext;
-    if (!context || !isStudentAccount(state.session)) return;
+    if (!context) return;
     const controller = new AbortController();
-    const tools = createWebMcpTools(() => {
+    const current = () => {
       if (controller.signal.aborted) throw new Error("The student session is no longer active.");
       return latest.current;
-    });
+    };
+    const tools = [
+      ...createPublicWebMcpTools(current),
+      ...(hasStudentWebMcpCredentials(state.session) ? createWebMcpTools(current) : []),
+    ];
     async function register() {
       try {
         for (const tool of tools) {
