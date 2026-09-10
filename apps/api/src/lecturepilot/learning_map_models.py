@@ -53,6 +53,19 @@ class LearningMapHint(BaseModel):
     level: Literal["prompt", "cue", "faded_example", "worked_step"]
     content: str = Field(min_length=1, max_length=2_000)
 
+    evidence_ids: list[str] = Field(
+        default_factory=list,
+        max_length=40,
+        description="Rubric criterion IDs this hint directly supports; empty means general support.",
+    )
+
+    @model_serializer(mode="wrap")
+    def serialize_evidence_binding(self, handler):
+        payload = handler(self)
+        if not self.evidence_ids:
+            payload.pop("evidence_ids", None)
+        return payload
+
 
 class LearningMapGate(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
@@ -114,6 +127,12 @@ class LearningMapGate(BaseModel):
             f"misconception for gate '{self.id}'",
         )
         _require_ordered_hints(self.hint_ladder)
+        allowed_evidence = {criterion.id for criterion in self.evidence_criteria}
+        for hint in self.hint_ladder:
+            if len(set(hint.evidence_ids)) != len(hint.evidence_ids):
+                raise ValueError("Hint evidence IDs must be unique.")
+            if set(hint.evidence_ids) - allowed_evidence:
+                raise ValueError("Hint references unknown evidence criteria.")
         require_unique_ids((task.id for task in self.supplemental_tasks), "supplemental task")
         prompts = [self.prompt, self.independent_exit_task, self.transfer_prompt]
         for task in self.supplemental_tasks:

@@ -63,19 +63,13 @@ def _transition_contract(turn: AgentTurnInput) -> str:
         exposed_task_ids=turn.coaching_context.exposed_task_ids,
         current_task_id=turn.coaching_context.pending_check_task_id,
     )
-    needs_evidence = derive_next_transition(
-        gate,
-        current_stage=stage,
-        status=QualityGateStatus.NEEDS_EVIDENCE,
-        exposed_hint_levels=turn.coaching_context.exposed_hint_levels,
-        exposed_task_ids=turn.coaching_context.exposed_task_ids,
-        current_task_id=turn.coaching_context.pending_check_task_id,
-    )
     return (
         f"Current persisted assessment stage: {stage}\n"
         f"If passed, server-selected next check: {_describe_transition(passed)}\n"
-        "If needs_evidence, server-selected next check: "
-        f"{_describe_transition(needs_evidence)}\n"
+        "If needs_evidence, the server selects unexposed approved support matching your "
+        "missing_evidence_ids, in assistance order; general hints apply only when no "
+        "matching support remains. Judge each rubric criterion from the actual attempt; "
+        "do not infer a stable learner ability or choose evidence IDs to obtain a hint.\n"
         "These transitions are applied by the server after assessment. "
         "Do not return a next_check field or substitute tasks or support.\n"
     )

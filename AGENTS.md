@@ -293,6 +293,9 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
 
 - Reviewed supplemental task banks belong to private practice designs and learning
   maps. Never forward their hidden questions into teaching generation.
+- Approved hints may bind target-local rubric `evidence_ids`; assessment transitions
+  select unexposed relevant support and persist the triggering evidence and selected
+  level. Preserve legacy approval digests and independent-attempt rules.
 - Help requests bind gate revision, task ID and issuance time and persist support
   before revealing materials. Supported work needs a fresh reviewed task for
   independent evidence; bank exhaustion stays explicit.

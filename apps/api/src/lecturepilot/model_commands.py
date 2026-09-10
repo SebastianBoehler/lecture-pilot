@@ -117,6 +117,7 @@ def select_next_check(
         gate,
         current_stage=stage,
         status=decision.status,
+        missing_evidence_ids=decision.missing_evidence_ids,
         exposed_hint_levels=turn.coaching_context.exposed_hint_levels,
         exposed_task_ids=turn.coaching_context.exposed_task_ids,
         current_task_id=turn.coaching_context.pending_check_task_id,

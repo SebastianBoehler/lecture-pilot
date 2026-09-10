@@ -101,6 +101,7 @@ class CoachingTurnEvent(BaseModel):
     gate_id: str = Field(min_length=1, max_length=160)
     gate_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     gate_status: GateStatus
+    selected_support_level: AssistanceLevel | None = None
     support_profile: str = Field(min_length=1, max_length=160)
     process_label: str = Field(min_length=1, max_length=160)
     attempt_kind: AssessedAttemptKind

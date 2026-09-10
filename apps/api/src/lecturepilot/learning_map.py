@@ -145,7 +145,10 @@ def _checkpoint_gate(
             for item in target.misconceptions
         ],
         hint_ladder=[
-            LearningMapHint(level=item.level, content=item.content) for item in target.hint_ladder
+            LearningMapHint(
+                level=item.level, content=item.content, evidence_ids=list(item.evidence_ids)
+            )
+            for item in target.hint_ladder
         ],
         review_after_days=target.review_after_days,
         section_id=section.id,

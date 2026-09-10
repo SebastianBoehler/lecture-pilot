@@ -1,3 +1,4 @@
+import { ProfessorHintEvidence } from "./ProfessorHintEvidence";
 import { useI18n } from "./i18n";
 import { ProfessorPracticeEvidence } from "./ProfessorPracticeEvidence";
 import { TextField } from "./ProfessorPracticeEditorFields";
@@ -66,6 +67,19 @@ export function ProfessorPracticeHintEditor({
                 ...target,
                 hint_ladder: target.hint_ladder.map((item, itemIndex) =>
                   itemIndex === index ? { ...item, content } : item,
+                ),
+              })
+            }
+          />
+          <ProfessorHintEvidence
+            hint={hint}
+            target={target}
+            disabled={disabled}
+            onChange={(evidence_ids) =>
+              onChange({
+                ...target,
+                hint_ladder: target.hint_ladder.map((item, itemIndex) =>
+                  itemIndex === index ? { ...item, evidence_ids } : item,
                 ),
               })
             }

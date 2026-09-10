@@ -21,6 +21,7 @@ class _LearningMapMisconception(Protocol):
 class _LearningMapHint(Protocol):
     level: str
     content: str
+    evidence_ids: list[str]
 
 
 class _LearningMapGate(Protocol):
@@ -98,10 +99,12 @@ def validate_learning_map_practice_contract(
             for item in gate.misconceptions
         ]
         expected_hints = [
-            {"level": item.level, "content": item.content} for item in target.hint_ladder
+            {"level": item.level, "content": item.content, "evidence_ids": list(item.evidence_ids)}
+            for item in target.hint_ladder
         ]
         observed_hints = [
-            {"level": item.level, "content": item.content} for item in gate.hint_ladder
+            {"level": item.level, "content": item.content, "evidence_ids": list(item.evidence_ids)}
+            for item in gate.hint_ladder
         ]
         if (
             gate.prompt != target.baseline_task

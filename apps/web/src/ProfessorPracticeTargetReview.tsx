@@ -1,3 +1,4 @@
+import { ProfessorHintEvidence } from "./ProfessorHintEvidence";
 import { ProfessorTaskBankReview } from "./ProfessorTaskBankReview";
 import { useI18n } from "./i18n";
 import { ProfessorPracticeEvidence } from "./ProfessorPracticeEvidence";
@@ -113,6 +114,7 @@ export function ProfessorPracticeTargetReview({
                 <li key={hint.level}>
                   <strong>{t(`builder.design.hintLevels.${hint.level}`)}</strong>
                   <span>{hint.content}</span>
+                  <ProfessorHintEvidence hint={hint} target={target} />
                   <ProfessorPracticeEvidence anchor={hint.source_anchor} />
                 </li>
               ))}

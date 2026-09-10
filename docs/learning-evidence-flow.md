@@ -23,6 +23,33 @@ Bounded numeric checks in task variants verify supplied counts and derived
 values using explicit operations. They do not execute arbitrary expressions and
 do not replace semantic review of the question, evidence and rubric.
 
+## Evidence-targeted support
+
+Approved hints can bind `evidence_ids` to the rubric criteria they directly help
+produce. Unknown or duplicate IDs fail validation. The authoring agent proposes
+these bindings and the reviewer checks their pedagogical relevance; professors
+can inspect and edit them alongside the hint content. Source catalogue IDs remain
+separate from these target-local rubric IDs.
+
+After assessment, `coaching_transitions.py` selects the first unexposed hint
+matching `missing_evidence_ids`, preserving assistance order among matches. If no
+matching hint remains, only unbound general support is eligible. Unrelated bound
+hints are never substituted. Exhaustion retains the existing supported-retry
+behavior without inventing content. Explicit help before assessment retains its
+existing first-approved-hint behavior because no current answer has been assessed.
+
+`CoachingTurnEvent` stores the triggering missing evidence and
+`selected_support_level`; pending checks and exposures persist the exact content
+under the gate revision. Supported success still requires a fresh approved
+independent task. No stable learner-ability label is inferred from an error.
+
+Bindings participate in design and gate digests and exact publication validation.
+Empty bindings serialize as before, preserving existing approvals and published
+revisions. Existing approved designs are not automatically rewritten. New or
+explicitly updated implementations acquire bindings through normal review and
+publication. Deterministic tests verify selection and persistence; they do not
+establish that an intervention improves learning.
+
 ## Focus and help
 
 Independent and delayed attempts replace teaching with a focused canvas task.

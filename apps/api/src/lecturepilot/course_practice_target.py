@@ -72,6 +72,19 @@ class PracticeHint(StrictPracticeDesignModel):
     )
     source_anchor: PracticeSourceAnchor
 
+    evidence_ids: Annotated[tuple[str, ...], BeforeValidator(freeze_collection)] = Field(
+        default_factory=tuple,
+        max_length=40,
+        description="Rubric criterion IDs this hint directly supports; empty means general support.",
+    )
+
+    @model_serializer(mode="wrap")
+    def serialize_evidence_binding(self, handler):
+        payload = handler(self)
+        if not self.evidence_ids:
+            payload.pop("evidence_ids", None)
+        return payload
+
 
 class PracticeTarget(StrictPracticeDesignModel):
     id: str = Field(pattern=_ID_PATTERN)
@@ -173,6 +186,12 @@ class PracticeTarget(StrictPracticeDesignModel):
                 "Practice target source references must exactly match its field-level anchors."
             )
         _require_ordered_hints(self.hint_ladder)
+        allowed_evidence = {criterion.id for criterion in self.evidence_criteria}
+        for hint in self.hint_ladder:
+            if len(set(hint.evidence_ids)) != len(hint.evidence_ids):
+                raise ValueError("Hint evidence IDs must be unique.")
+            if set(hint.evidence_ids) - allowed_evidence:
+                raise ValueError("Hint references unknown evidence criteria.")
         return self
 
 

@@ -666,6 +666,10 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.design.hintsHelp":
     "Beginne mit minimaler Hilfe und verstärke sie nur, wenn Lernende weiterhin feststecken.",
   "builder.design.hintLevel": "Hinweisstufe {index}",
+  "builder.design.hintEvidence": "Unterstützt diesen Lernnachweis",
+  "builder.design.hintGeneral": "Allgemeine Planungshilfe",
+  "builder.design.hintEvidenceHelp":
+    "Wähle die Nachweise, bei denen dieser Hinweis hilft. Für allgemeine Planungshilfe nichts auswählen.",
   "builder.design.hintContent": "Hinweisinhalt {index}",
   "builder.design.hintLevels.prompt": "Impuls",
   "builder.design.hintLevels.cue": "Hinweis",

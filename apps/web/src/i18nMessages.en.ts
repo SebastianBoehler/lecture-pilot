@@ -648,6 +648,10 @@ export const enMessages = {
   "builder.design.hintsHelp":
     "Keep help minimal at first, then increase it only when the learner remains stuck.",
   "builder.design.hintLevel": "Hint level {index}",
+  "builder.design.hintEvidence": "Supports this learning evidence",
+  "builder.design.hintGeneral": "General planning support",
+  "builder.design.hintEvidenceHelp":
+    "Select the evidence this hint helps the learner produce. Leave empty for general planning support.",
   "builder.design.hintContent": "Hint content {index}",
   "builder.design.hintLevels.prompt": "Prompt",
   "builder.design.hintLevels.cue": "Cue",

@@ -42,6 +42,7 @@ export type PracticeMisconception = Readonly<{
 }>;
 
 export type PracticeHint = Readonly<{
+  evidence_ids?: readonly string[];
   level: "prompt" | "cue" | "faded_example" | "worked_step";
   content: string;
   source_anchor: PracticeSourceAnchor;

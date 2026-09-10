@@ -31,7 +31,10 @@ def derive_next_transition(
     exposed_hint_levels: Collection[str],
     exposed_task_ids: Collection[str] = (),
     current_task_id: str | None = None,
+    missing_evidence_ids: Collection[str] = (),
 ) -> CheckTransition | None:
+    if set(missing_evidence_ids) - {item.id for item in gate.evidence_criteria}:
+        raise ValueError("Unknown missing evidence IDs.")
     task_id = current_task_id or canonical_task_id(current_stage)
     if status == QualityGateStatus.PASSED:
         transition = _passed_transition(gate, current_stage)
@@ -56,7 +59,7 @@ def derive_next_transition(
             check=_check(
                 gate,
                 prompt=task_prompt(gate, task_id),
-                assistance=_next_assistance(gate, exposed_hint_levels),
+                assistance=_next_assistance(gate, exposed_hint_levels, missing_evidence_ids),
             ),
         )
     base_stage = "delayed_transfer" if current_stage.startswith("delayed") else "independent_exit"
@@ -70,7 +73,7 @@ def derive_next_transition(
         check=_check(
             gate,
             prompt=task_prompt(gate, task_id),
-            assistance=_next_assistance(gate, exposed_hint_levels),
+            assistance=_next_assistance(gate, exposed_hint_levels, missing_evidence_ids),
         ),
     )
 
@@ -131,10 +134,16 @@ def _prompt_for_stage(gate: LearningMapGate, stage: AssessmentStage) -> str:
 
 
 def _next_assistance(
-    gate: LearningMapGate, exposed_hint_levels: Collection[str]
+    gate: LearningMapGate,
+    exposed_hint_levels: Collection[str],
+    missing_evidence_ids: Collection[str],
 ) -> NextCheckAssistance:
     exposed = set(exposed_hint_levels)
-    hint = next((item for item in gate.hint_ladder if item.level not in exposed), None)
+    missing = set(missing_evidence_ids)
+    available = [item for item in gate.hint_ladder if item.level not in exposed]
+    targeted = [item for item in available if missing.intersection(item.evidence_ids)]
+    general = [item for item in available if not item.evidence_ids]
+    hint = next(iter(targeted or general), None)
     if hint is None:
         return NextCheckAssistance(level="none", content=None)
     return NextCheckAssistance(level=hint.level, content=hint.content)

@@ -94,6 +94,7 @@ def record_coaching_turn(
             current_task_id=pending.task_id,
             exposed_task_ids=exposed_ids(progress, gate.id, gate.revision),
             status=decision.status,
+            missing_evidence_ids=decision.missing_evidence_ids,
             exposed_hint_levels=[
                 item.assistance_level
                 for item in progress.hint_exposures.values()
@@ -101,6 +102,7 @@ def record_coaching_turn(
             ],
         )
         expected_check = transition.check if transition else None
+        event.selected_support_level = expected_check.assistance.level if expected_check else None
         if next_check != expected_check:
             raise ValueError("Tutor response substituted the server-selected next check.")
         if decision.status.value == "passed" and kind == "independent_exit":
