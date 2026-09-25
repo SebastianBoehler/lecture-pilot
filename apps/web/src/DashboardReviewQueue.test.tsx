@@ -35,6 +35,7 @@ it("opens the explicitly validated due gate target", async () => {
 
   await waitFor(() =>
     expect(onOpen).toHaveBeenCalledWith(
+      course.id,
       lectures[1],
       expect.objectContaining({
         gate_id: "risk-check",
@@ -46,6 +47,38 @@ it("opens the explicitly validated due gate target", async () => {
   expect(fetchMock).toHaveBeenCalledWith(
     expect.stringContaining("/review-queue/gates/lecture-02/risk-check/open"),
     expect.objectContaining({ method: "POST" }),
+  );
+});
+
+it("shows scheduled reviews this week and opens the lecture without binding the future gate", async () => {
+  const user = userEvent.setup();
+  const onOpen = vi.fn();
+  const fetchMock = vi.fn(async () => json({
+    course_id: course.id,
+    items: [],
+    upcoming: [{
+      id: "gate:lecture-02:risk-check",
+      kind: "gate_review",
+      course_id: course.id,
+      lecture_id: "lecture-02",
+      lecture_title: "Risk",
+      section_id: "risk",
+      section_title: "Risk transfer",
+      gate_id: "risk-check",
+      gate_revision: "revision-1",
+      due_at: "2026-09-27T10:00:00+00:00",
+    }],
+  }));
+  vi.stubGlobal("fetch", fetchMock);
+  renderDashboard(learner("student-a"), onOpen);
+
+  expect(await screen.findByRole("heading", { name: "Coming up this week" })).toBeVisible();
+  expect(screen.getByText("Risk transfer")).toBeVisible();
+  await user.click(screen.getByRole("button", { name: /open lecture for risk transfer/i }));
+  expect(onOpen).toHaveBeenCalledWith(course.id, lectures[1]);
+  expect(fetchMock).not.toHaveBeenCalledWith(
+    expect.stringContaining("/review-queue/gates/"),
+    expect.anything(),
   );
 });
 
@@ -121,7 +154,7 @@ function learner(username: string): LoginSession {
 
 function renderDashboard(
   session: LoginSession,
-  onOpen: (lecture: Lecture, review?: GateReviewOpening) => void,
+  onOpen: (courseId: string, lecture: Lecture, review?: GateReviewOpening) => void,
 ) {
   return renderWithI18n(
     <Dashboard
@@ -138,6 +171,7 @@ function renderDashboard(
 function queue(user: string, kind: "gate_review" | "readiness_repair") {
   return {
     course_id: course.id,
+    upcoming: [],
     items:
       kind === "gate_review"
         ? [

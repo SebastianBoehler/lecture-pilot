@@ -4,6 +4,17 @@ The learner canvas shows supported, independent and delayed evidence separately.
 These are records of attempts within LecturePilot, not a general mastery score or
 proof of learning outside the app.
 
+## Learner review dates
+
+Each published gate has an approved `review_after_days`. After a learner passes its
+independent exit, the backend records `scheduled_at` and `due_at` under that
+learner's revision-bound `tutor-state.json`. The authenticated course review API
+shows first attempts only when due and separately lists unfinished reviews due
+within seven days. The dashboard can open the lecture for preparation; the
+review-opening API still rejects an early attempt. Completed and stale-revision
+reviews do not become upcoming actions. These dates support return to practice;
+they are not a mastery estimate or a personalized optimal spacing claim.
+
 ## Reviewed task bank
 
 Practice designs may include a bounded bank of source-anchored exit and delayed

@@ -20,6 +20,12 @@ export type CourseWorkspaceGroup = {
   courseLectures: Lecture[];
 };
 
+export type LoadedCourseWorkspace = {
+  course: UniversityCourse;
+  lectures: Lecture[];
+  publishedLectureIds: string[];
+};
+
 type CourseGroupLabels = {
   aiTutorAvailable: string;
   noTutor: string;
@@ -31,6 +37,7 @@ export function buildCourseGroups(
   lectures: Lecture[],
   publishedLectureIds: string[],
   labels: CourseGroupLabels,
+  additionalWorkspaces: LoadedCourseWorkspace[] = [],
 ): CourseWorkspaceGroup[] {
   // University observations are display-only; only platform courses can authorize tutor access.
   const authorizedCourses = session?.courses ?? [];
@@ -38,35 +45,38 @@ export function buildCourseGroups(
   const enrolledCourses = observedCourses.length
     ? observedCourses
     : authorizedCourses.map((course) => ({ course, sources: [] }));
-  const workspaceAuthorized =
-    lectures.length > 0 ||
-    authorizedCourses.some((course) => isWorkspaceCourse(course, workspaceCourse)) ||
-    hasWorkspaceAccess(workspaceCourse);
+  const workspaces = [
+    { course: workspaceCourse, lectures, publishedLectureIds },
+    ...additionalWorkspaces.filter((item) => item.course.id !== workspaceCourse.id),
+  ];
   const courseGroups = enrolledCourses.length
-    ? enrolledCourses.map(({ course, sources }) =>
-        buildEnrolledCourseGroup(
+    ? enrolledCourses.map(({ course, sources }) => {
+        const matched = workspaces.find((item) => isWorkspaceCourse(course, item.course));
+        return buildEnrolledCourseGroup(
           course,
           sources,
-          workspaceCourse,
-          lectures,
-          publishedLectureIds,
-          workspaceAuthorized,
+          matched?.course ?? workspaceCourse,
+          matched?.lectures ?? [],
+          matched?.publishedLectureIds ?? [],
+          Boolean(matched && (matched.lectures.length || hasWorkspaceAccess(matched.course))),
           labels,
-        ),
-      )
+        );
+      })
     : hasWorkspaceAccess(workspaceCourse)
       ? [buildDiscoverableCourseGroup(workspaceCourse, lectures, publishedLectureIds, labels)]
       : [];
 
-  if (
-    enrolledCourses.length &&
-    !enrolledCourses.some(({ course }) => isWorkspaceCourse(course, workspaceCourse)) &&
-    workspaceAuthorized &&
-    publishedLectureIds.length > 0
-  ) {
-    courseGroups.push(
-      buildDiscoverableCourseGroup(workspaceCourse, lectures, publishedLectureIds, labels),
-    );
+  for (const item of workspaces) {
+    if (
+      item.publishedLectureIds.length > 0 &&
+      !courseGroups.some((group) => isWorkspaceCourse(group.course, item.course))
+    ) {
+      courseGroups.push(
+        buildDiscoverableCourseGroup(
+          item.course, item.lectures, item.publishedLectureIds, labels,
+        ),
+      );
+    }
   }
   return courseGroups.sort(
     (left, right) => Number(right.tutorAvailable) - Number(left.tutorAvailable),

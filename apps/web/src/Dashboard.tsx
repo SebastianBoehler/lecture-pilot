@@ -3,7 +3,9 @@ import {
   buildCourseGroups,
   publishedCourseLectures,
 } from "./dashboardCourses";
+import { useState } from "react";
 import { DashboardCourseWorkspaces } from "./DashboardCourseWorkspaces";
+import { DashboardUpcomingReviews } from "./DashboardUpcomingReviews";
 import { useI18n } from "./i18n";
 import type { Attendance, Lecture, LoginSession, UniversityCourse } from "./types";
 import { LearnerOnboarding } from "./LearnerOnboarding";
@@ -12,6 +14,7 @@ import type { GateReviewOpening, GateReviewQueueItem } from "./reviewQueueTypes"
 import { CourseSyncEmpty, CourseSyncSkeleton } from "./CourseSyncState";
 import type { LearnerProfileState } from "./useLearnerProfile";
 import { useReviewQueue } from "./useReviewQueue";
+import { useDashboardWorkspaces } from "./useDashboardWorkspaces";
 
 export function Dashboard({
   lectures,
@@ -29,29 +32,36 @@ export function Dashboard({
   workspaceCourse: UniversityCourse;
   workspaceLoadError?: string | null;
   learnerProfileState?: LearnerProfileState;
-  onOpen: (lecture: Lecture, review?: GateReviewOpening) => void;
+  onOpen: (courseId: string, lecture: Lecture, review?: GateReviewOpening) => void;
   onSetAttendance: (lectureId: string, attendance: Attendance) => void;
 }) {
   const { t } = useI18n();
   const studentName = session?.display_name?.trim();
   const syncStatus = session?.university_course_sync_status ?? "ready";
+  const [selectedCourseId, setSelectedCourseId] = useState(workspaceCourse.id);
+  const additional = useDashboardWorkspaces(session, workspaceCourse.id);
   const courseGroups = buildCourseGroups(session, workspaceCourse, lectures, publishedLectureIds, {
     aiTutorAvailable: t("dashboard.aiTutorAvailable"),
     noTutor: t("dashboard.noTutor"),
-  });
+  }, additional.workspaces);
   const visibleCourseGroups = syncStatus === "loading" ? [] : courseGroups;
-  const workspaceLectures = availableCourseLectures(
-    publishedCourseLectures(lectures, publishedLectureIds),
-  );
+  const singleCourse = visibleCourseGroups.filter((group) => group.tutorAvailable).length === 1;
+  const activeGroup = visibleCourseGroups.find((group) =>
+    group.tutorAvailable && group.course.id === selectedCourseId,
+  ) ?? visibleCourseGroups.find((group) => group.tutorAvailable);
+  const activeCourse = activeGroup?.course ?? workspaceCourse;
+  const workspaceLectures = activeGroup
+    ? availableCourseLectures(activeGroup.courseLectures)
+    : availableCourseLectures(publishedCourseLectures(lectures, publishedLectureIds));
   const courseProfile = learnerProfileState?.profile?.courses?.find(
-    (course) => course.course_id === workspaceCourse.id,
+    (course) => course.course_id === activeCourse.id,
   );
-  const reviewQueue = useReviewQueue(workspaceCourse.id, session);
+  const reviewQueue = useReviewQueue(activeCourse.id, session);
 
   async function openGateReview(item: GateReviewQueueItem) {
     const opening = await reviewQueue.open(item);
-    const lecture = lectures.find((candidate) => candidate.id === item.lecture_id);
-    if (opening && lecture) onOpen(lecture, opening);
+    const lecture = workspaceLectures.find((candidate) => candidate.id === item.lecture_id);
+    if (opening && lecture) onOpen(activeCourse.id, lecture, opening);
   }
 
   return (
@@ -72,12 +82,18 @@ export function Dashboard({
       ) : null}
 
       <NextStudyRecommendation
-        course={workspaceCourse}
+        course={activeCourse}
         lectures={workspaceLectures}
         passedLectureIds={courseProfile?.passed_lecture_ids ?? []}
         reviewQueue={reviewQueue.queue}
-        onOpen={onOpen}
+        onOpen={(lecture) => onOpen(activeCourse.id, lecture)}
         onOpenGateReview={(item) => void openGateReview(item)}
+      />
+
+      <DashboardUpcomingReviews
+        items={reviewQueue.queue?.upcoming ?? []}
+        lectures={workspaceLectures}
+        onOpen={(lecture) => onOpen(activeCourse.id, lecture)}
       />
 
       {reviewQueue.error ? (
@@ -85,12 +101,19 @@ export function Dashboard({
           {reviewQueue.error}
         </p>
       ) : null}
+      {additional.error ? (
+        <p className="form-error" role="alert">{additional.error}</p>
+      ) : null}
 
       <section className="course-panel" aria-labelledby="course-workspaces">
         <div className="panel-heading course-panel-heading">
           <div>
-            <h2 id="course-workspaces">{t("dashboard.courseWorkspaces")}</h2>
-            <p>{t("dashboard.courseWorkspacesHelp")}</p>
+            <h2 id="course-workspaces">
+              {t(singleCourse ? "dashboard.singleCourse" : "dashboard.courseWorkspaces")}
+            </h2>
+            <p>
+              {t(singleCourse ? "dashboard.singleCourseHelp" : "dashboard.courseWorkspacesHelp")}
+            </p>
           </div>
         </div>
         <div className="course-workspace-list">
@@ -101,10 +124,15 @@ export function Dashboard({
           {visibleCourseGroups.length ? (
             <DashboardCourseWorkspaces
               courseGroups={visibleCourseGroups}
+              selectedCourseId={activeCourse.id}
               session={session}
+              onSelectCourse={setSelectedCourseId}
               onOpen={onOpen}
               onProgress={reviewQueue.refresh}
-              onSetAttendance={onSetAttendance}
+              onSetAttendance={(courseId, lectureId, attendance) => {
+                if (courseId === workspaceCourse.id) onSetAttendance(lectureId, attendance);
+                else additional.setAttendance(courseId, lectureId, attendance);
+              }}
             />
           ) : null}
         </div>

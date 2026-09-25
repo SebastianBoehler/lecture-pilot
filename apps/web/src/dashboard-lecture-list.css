@@ -22,7 +22,7 @@
   background: var(--color-bg-secondary);
 }
 
-.lecture-row h3 {
+.lecture-row h4 {
   margin: 0;
 }
 
@@ -37,7 +37,7 @@
   min-width: 0;
 }
 
-.lecture-summary h3 {
+.lecture-summary h4 {
   overflow-wrap: anywhere;
   font-size: 15px;
   line-height: 1.3;

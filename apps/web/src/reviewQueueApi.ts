@@ -31,10 +31,17 @@ export async function openGateReview(item: GateReviewQueueItem, session: LoginSe
 }
 
 function isReviewQueue(payload: unknown, courseId: string): payload is CourseReviewQueue {
-  if (!isRecord(payload) || payload.course_id !== courseId || !Array.isArray(payload.items)) {
+  if (
+    !isRecord(payload) || payload.course_id !== courseId ||
+    !Array.isArray(payload.items) || !Array.isArray(payload.upcoming)
+  ) {
     return false;
   }
-  return payload.items.every((item) => isQueueItem(item, courseId));
+  return payload.items.every((item) => isQueueItem(item, courseId)) &&
+    payload.upcoming.every((item) =>
+      isQueueItem(item, courseId) && item.kind === "gate_review" &&
+      Number.isFinite(Date.parse(item.due_at)),
+    );
 }
 
 function isQueueItem(value: unknown, courseId: string): value is ReviewQueueItem {

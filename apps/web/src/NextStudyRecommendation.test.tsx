@@ -70,6 +70,7 @@ describe("NextStudyRecommendation", () => {
         passedLectureIds={[]}
         reviewQueue={{
           course_id: course.id,
+          upcoming: [],
           items: [
             {
               id: "gate:lecture-03:risk-check",
@@ -120,6 +121,7 @@ describe("NextStudyRecommendation", () => {
         passedLectureIds={[]}
         reviewQueue={{
           course_id: course.id,
+          upcoming: [],
           items: [
             {
               id: "readiness:repair-risk",

@@ -271,7 +271,7 @@ describe("Dashboard course workspace matching", () => {
       within(reopenedDialog).getByText(/expected risk combines posterior probabilities/i),
     ).toBeInTheDocument();
     await user.click(within(reopenedDialog).getByRole("button", { name: /review lecture 03/i }));
-    expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: "lecture-03" }));
+    expect(onOpen).toHaveBeenCalledWith("martius-ml", expect.objectContaining({ id: "lecture-03" }));
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/courses/martius-ml/exam-readiness"),
       expect.objectContaining({ headers: expect.any(Object) }),

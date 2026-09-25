@@ -4,12 +4,12 @@
 .next-study {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
-  gap: 32px;
+  gap: 24px;
   align-items: center;
-  margin-bottom: 24px;
-  padding: 22px 24px;
+  margin-bottom: 20px;
+  padding: 16px 20px;
   border-left: 3px solid var(--color-accent-primary);
-  background: var(--color-bg-primary);
+  background: var(--color-bg-secondary);
 }
 
 .next-study h2,
@@ -18,7 +18,7 @@
 }
 
 .next-study h2 {
-  font-size: 22px;
+  font-size: 18px;
 }
 
 .next-study p:last-child {

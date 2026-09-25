@@ -21,7 +21,7 @@ export function DashboardLectureRow({
     <article className={`lecture-row${scheduled ? " is-scheduled" : ""}`}>
       <div className="lecture-number">{lecture.number}</div>
       <div className="lecture-summary">
-        <h3>{lecture.title}</h3>
+        <h4>{lecture.title}</h4>
         {scheduled && availableAt ? (
           <p className="lecture-release-time">
             {t("courseAccess.status.scheduled", {

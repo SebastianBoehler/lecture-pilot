@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from lecturepilot.coaching_episode import matching_pending
 from lecturepilot.coaching_progress import CoachingProgressStore, InvalidCoachingStateError
@@ -37,6 +37,7 @@ class ReviewQueueStore:
     ) -> CourseReviewQueue:
         current_time = now or datetime.now(UTC)
         due: list[tuple[datetime, GateReviewQueueItem]] = []
+        upcoming: list[tuple[datetime, GateReviewQueueItem]] = []
         repairs: list[GateReviewQueueItem] = []
         maps_by_lecture = {lecture.id: lecture.learning_map for lecture in lectures}
         lecture_titles = {lecture.id: lecture.title for lecture in lectures}
@@ -77,6 +78,8 @@ class ReviewQueueStore:
                 )
                 if review.attempted_at is None and due_at <= current_time:
                     due.append((due_at, item))
+                elif review.attempted_at is None and due_at <= current_time + timedelta(days=7):
+                    upcoming.append((due_at, item))
                 elif review.attempted_at is not None and _has_active_repair(
                     progress.pending_check, gate.id, gate.revision
                 ):
@@ -113,6 +116,13 @@ class ReviewQueueStore:
         return CourseReviewQueue(
             course_id=course_id,
             items=[*ordered_due, *repairs, *readiness_items],
+            upcoming=[
+                item
+                for _, item in sorted(
+                    upcoming,
+                    key=lambda pair: (pair[0], pair[1].lecture_id, pair[1].gate_id),
+                )
+            ],
         )
 
 

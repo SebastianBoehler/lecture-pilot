@@ -146,7 +146,7 @@ export function AppRoutes(props: AppRoutesProps) {
         session={session}
         workspaceCourse={workspaceCourse}
         workspaceLoadError={props.workspaceLoadError}
-        onOpen={(lecture, review) => props.onOpenLecture(workspaceCourseId, lecture, review)}
+        onOpen={props.onOpenLecture}
         onSetAttendance={props.onSetAttendance}
       />
     );

@@ -28,6 +28,7 @@ export type ReviewQueueItem = GateReviewQueueItem | ReadinessReviewQueueItem;
 export type CourseReviewQueue = {
   course_id: string;
   items: ReviewQueueItem[];
+  upcoming: GateReviewQueueItem[];
 };
 
 export type GateReviewOpening = {

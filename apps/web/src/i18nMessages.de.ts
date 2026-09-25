@@ -132,6 +132,8 @@ export const deMessages: Record<MessageKey, string> = {
     "Wähle einen KI-Tutor-Arbeitsbereich oder mache mit einer vergangenen Vorlesung weiter.",
   "dashboard.courseWorkspaces": "Kursarbeitsbereiche",
   "dashboard.courseWorkspacesHelp": "Wähle einen Kurs und anschließend, wie du lernen möchtest.",
+  "dashboard.singleCourse": "Dein Kurs",
+  "dashboard.singleCourseHelp": "Öffne eine Vorlesung oder wähle ein Lernwerkzeug.",
   "dashboard.availableWorkspaces": "Verfügbare Arbeitsbereiche",
   "dashboard.openWorkspace": "Arbeitsbereich für {course} öffnen",
   "dashboard.publishedLectures": "Veröffentlichte Vorlesungen · {count}",

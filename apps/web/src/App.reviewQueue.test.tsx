@@ -33,6 +33,7 @@ it("opens a due review at its exact section and presents the bound transfer prom
 function queue() {
   return {
     course_id: "martius-ml",
+    upcoming: [],
     items: [
       {
         id: "gate:lecture-03:losses-and-risks-p-1",

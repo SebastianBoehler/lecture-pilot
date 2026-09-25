@@ -51,6 +51,7 @@ def test_review_queue_orders_due_gates_then_repairs_without_answer_text(tmp_path
 def test_review_queue_is_user_course_and_access_isolated(tmp_path: Path) -> None:
     client = _client(tmp_path)
     _write_review(client, "student-a", "lecture-a", "gate-a", NOW - timedelta(days=1))
+    _write_review(client, "student-a", "lecture-a", "gate-c", NOW + timedelta(days=2))
     _write_readiness_task(client, "student-a", course_id="other-course")
     url = f"/courses/{COURSE_ID}/review-queue"
 
@@ -68,11 +69,43 @@ def test_review_queue_is_user_course_and_access_isolated(tmp_path: Path) -> None
 
     assert own.status_code == 200
     assert len(own.json()["items"]) == 1
+    assert [item["gate_id"] for item in own.json()["upcoming"]] == ["gate-c"]
     assert other.status_code == 200
     assert other.json()["items"] == []
+    assert other.json()["upcoming"] == []
     assert unenrolled.status_code == 404
     assert professor.status_code == 403
     assert preview.status_code == 403
+
+
+def test_review_queue_shows_next_seven_days_without_opening_early(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    user_id = "student-a"
+    _write_review(client, user_id, "lecture-a", "gate-a", NOW + timedelta(days=2))
+    _write_review(client, user_id, "lecture-a", "gate-c", NOW + timedelta(days=9))
+    _write_review(client, user_id, "lecture-b", "gate-b", NOW - timedelta(days=1))
+    headers = student_headers(user_id, course_ids=[COURSE_ID])
+
+    response = client.get(f"/courses/{COURSE_ID}/review-queue", headers=headers)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [item["gate_id"] for item in payload["items"]] == ["gate-b"]
+    assert [item["gate_id"] for item in payload["upcoming"]] == ["gate-a"]
+    assert payload["upcoming"][0]["due_at"] == (NOW + timedelta(days=2)).isoformat()
+    assert "Apply A to an unfamiliar case." not in response.text
+    early = client.post(
+        f"/courses/{COURSE_ID}/review-queue/gates/lecture-a/gate-a/open",
+        headers=headers,
+    )
+    assert early.status_code == 409
+    progress = _read_progress(client, user_id, "lecture-a")
+    key = review_key("gate-a", _gate_revision(client, "lecture-a", "gate-a"))
+    progress.delayed_reviews[key] = progress.delayed_reviews[key].model_copy(
+        update={"completed_at": NOW}
+    )
+    _write_progress(client, user_id, "lecture-a", progress)
+    assert client.get(f"/courses/{COURSE_ID}/review-queue", headers=headers).json()["upcoming"] == []
 
 
 def test_open_due_gate_binds_exact_current_transfer_without_completing(tmp_path: Path) -> None:

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 
-import { getCourseLectures, publishLectureCanvas, sendAgentTurnStream } from "./api";
+import { getCourseLectures, getCourses, publishLectureCanvas, sendAgentTurnStream } from "./api";
 import {
   appendLiveToolTag,
   applyCanvasSection,
@@ -311,6 +311,17 @@ function App() {
       setLastTutorModel(null);
 
       try {
+        if (courseId !== workspaceCourseId && session) {
+          const [courses, courseLectures] = await Promise.all([
+            getCourses(session),
+            getCourseLectures(courseId, session),
+          ]);
+          const course = courses.find((item) => item.id === courseId);
+          if (!course) throw new Error("This course could not be found.");
+          setWorkspaceCourse(course);
+          setWorkspaceCourseId(courseId);
+          setAvailableLectures(courseLectures);
+        }
         const { document, publishedView } = await publishedCanvas.loadCanvasForMode(
           courseId,
           lecture.id,
@@ -326,7 +337,7 @@ function App() {
         setCanvasError(error instanceof Error ? error.message : "Canvas loading failed.");
       }
     },
-    [navigate, session],
+    [navigate, session, workspaceCourseId],
   );
 
   const restoreLessonRoute = useEffectEvent(
@@ -339,11 +350,15 @@ function App() {
         return;
       }
       try {
-        const nextLectures = await getCourseLectures(nextRoute.courseId, session);
+        const [nextLectures, courses] = await Promise.all([
+          getCourseLectures(nextRoute.courseId, session),
+          getCourses(session),
+        ]);
         const lecture = nextLectures.find((item) => item.id === nextRoute.lectureId);
         if (!lecture) throw new Error("This lecture could not be found.");
-        const course = session.courses.find((item) => item.id === nextRoute.courseId);
-        if (course) setWorkspaceCourse(course);
+        const course = courses.find((item) => item.id === nextRoute.courseId);
+        if (!course) throw new Error("This course could not be found.");
+        setWorkspaceCourse(course);
         setWorkspaceCourseId(nextRoute.courseId);
         setAvailableLectures(nextLectures);
         await handleOpenLecture(nextRoute.courseId, lecture, nextRoute.lessonMode, false);

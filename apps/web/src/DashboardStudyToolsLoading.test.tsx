@@ -23,7 +23,9 @@ describe("Dashboard study tool loading", () => {
             statusLabel: "AI tutor available",
           },
         ]}
+        selectedCourseId={course.id}
         session={{ username: "student", term: "2026", courses: [course] }}
+        onSelectCourse={vi.fn()}
         onOpen={vi.fn()}
         onProgress={vi.fn()}
         onSetAttendance={vi.fn()}

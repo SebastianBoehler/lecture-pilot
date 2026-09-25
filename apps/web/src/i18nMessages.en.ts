@@ -125,6 +125,8 @@ export const enMessages = {
   "dashboard.subtitle": "Choose an AI tutor workspace or continue with a past lecture.",
   "dashboard.courseWorkspaces": "Course workspaces",
   "dashboard.courseWorkspacesHelp": "Select a course, then choose how you want to study.",
+  "dashboard.singleCourse": "Your course",
+  "dashboard.singleCourseHelp": "Open a lecture or choose a study tool.",
   "dashboard.availableWorkspaces": "Available workspaces",
   "dashboard.openWorkspace": "Open {course} workspace",
   "dashboard.publishedLectures": "Published lectures · {count}",

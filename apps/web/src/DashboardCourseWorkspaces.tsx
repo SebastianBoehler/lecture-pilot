@@ -23,19 +23,22 @@ const LECTURE_PREVIEW_COUNT = 2;
 
 export function DashboardCourseWorkspaces({
   courseGroups,
+  selectedCourseId,
   session,
+  onSelectCourse,
   onOpen,
   onProgress,
   onSetAttendance,
 }: {
   courseGroups: CourseWorkspaceGroup[];
+  selectedCourseId: string;
   session: LoginSession | null;
-  onOpen: (lecture: Lecture) => void;
+  onSelectCourse: (courseId: string) => void;
+  onOpen: (courseId: string, lecture: Lecture) => void;
   onProgress: () => void | Promise<void>;
-  onSetAttendance: (lectureId: string, attendance: Attendance) => void;
+  onSetAttendance: (courseId: string, lectureId: string, attendance: Attendance) => void;
 }) {
   const { t } = useI18n();
-  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<CourseWorkspaceTool>("lectures");
   const [expandedLectureLists, setExpandedLectureLists] = useState<Record<string, boolean>>({});
   const availableGroups = courseGroups.filter((group) => group.tutorAvailable);
@@ -44,13 +47,13 @@ export function DashboardCourseWorkspaces({
     availableGroups.find((group) => group.course.id === selectedCourseId) ?? availableGroups[0];
 
   function selectCourse(courseId: string) {
-    setSelectedCourseId(courseId);
+    onSelectCourse(courseId);
     setActiveTool("lectures");
   }
 
   return (
     <>
-      {availableGroups.length ? (
+      {availableGroups.length > 1 ? (
         <section aria-label={t("dashboard.availableWorkspaces")} className="available-workspaces">
           <div className="course-card-grid" role="list">
             {availableGroups.map((group) => {
@@ -66,7 +69,7 @@ export function DashboardCourseWorkspaces({
                   >
                     <span className="course-card-copy">
                       <span className="course-card-title-line">
-                        <span className="course-card-title" role="heading" aria-level={4}>
+                        <span className="course-card-title">
                           {group.course.title}
                         </span>
                         <CourseSourceTags sources={group.sources} />
@@ -92,9 +95,11 @@ export function DashboardCourseWorkspaces({
           group={activeGroup}
           session={session}
           onActiveToolChange={setActiveTool}
-          onOpen={onOpen}
+          onOpen={(lecture) => onOpen(activeGroup.course.id, lecture)}
           onProgress={onProgress}
-          onSetAttendance={onSetAttendance}
+          onSetAttendance={(lectureId, attendance) =>
+            onSetAttendance(activeGroup.course.id, lectureId, attendance)
+          }
           onToggleLectures={() =>
             setExpandedLectureLists((current) => ({
               ...current,
@@ -144,7 +149,7 @@ function ActiveWorkspace({
       role="region"
     >
       <header className="workspace-toolbar">
-        <h3>{t("dashboard.studyTools")}</h3>
+        <h3>{group.course.title}</h3>
         <CourseWorkspaceTabs
           activeTool={activeTool}
           idBase={idBase}

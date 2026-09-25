@@ -41,6 +41,7 @@ ReviewQueueItem = Annotated[
 class CourseReviewQueue(BaseModel):
     course_id: str
     items: list[ReviewQueueItem] = Field(default_factory=list)
+    upcoming: list[GateReviewQueueItem] = Field(default_factory=list)
 
 
 class GateReviewOpening(BaseModel):
