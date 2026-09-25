@@ -32,3 +32,6 @@ content/private/
 content/courses/
 data/courses/
 workspaces/
+
+# Local research full texts (may include licensed or author manuscripts).
+docs/research/full-texts/
