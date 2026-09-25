@@ -6,12 +6,15 @@ from types import SimpleNamespace
 import pytest
 
 from lecturepilot import model_rate_limits
+from lecturepilot.agent_tool_loop import complete_tool_turn
 from lecturepilot.model_request_options import (
     MODEL_REQUEST_TIMEOUT_SECONDS,
     completion_options,
+    tool_reasoning_effort,
 )
 from lecturepilot.model_usage import complete_with_usage
 from lecturepilot.models import ProviderCapability, ProviderSettings
+from lecturepilot.observability import Observability
 
 
 def test_completion_options_disable_hidden_retries_and_allow_long_structured_output() -> None:
@@ -40,6 +43,67 @@ def test_completion_options_allow_a_shorter_workload_circuit_breaker() -> None:
     options = completion_options(settings, temperature=0.2, timeout_seconds=60)
 
     assert options["timeout"] == 60
+
+
+def test_gpt6_luna_uses_reasoning_options_without_temperature() -> None:
+    settings = ProviderSettings(
+        provider="openai",
+        model="openai/gpt-6-luna",
+        api_key_env="OPENAI_API_KEY",
+        capabilities={ProviderCapability.CHAT},
+    )
+
+    options = completion_options(settings, temperature=0.3, reasoning_effort="low")
+
+    assert options["reasoning_effort"] == "low"
+    assert options["allowed_openai_params"] == ["reasoning_effort"]
+    assert "temperature" not in options
+    assert tool_reasoning_effort(settings) == "none"
+
+
+def test_gpt5_tool_reasoning_remains_low() -> None:
+    settings = ProviderSettings(
+        provider="openai",
+        model="openai/gpt-5.6-luna",
+        api_key_env="OPENAI_API_KEY",
+        capabilities={ProviderCapability.CHAT},
+    )
+
+    assert tool_reasoning_effort(settings) == "low"
+
+
+@pytest.mark.asyncio
+async def test_gpt6_tutor_tool_request_uses_supported_reasoning(monkeypatch) -> None:
+    calls: list[dict] = []
+    result = object()
+
+    async def completion(**kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content="{}", tool_calls=None))]
+        )
+
+    monkeypatch.setattr("lecturepilot.agent_tool_loop.agent_result_from_content", lambda *_: result)
+    settings = ProviderSettings(
+        provider="openai",
+        model="openai/gpt-6-luna",
+        api_key_env="OPENAI_API_KEY",
+        capabilities={ProviderCapability.CHAT},
+    )
+
+    actual = await complete_tool_turn(
+        acompletion=completion,
+        settings=settings,
+        turn=object(),
+        tool_executor=SimpleNamespace(pending_canvas_edit_instruction=lambda: None),
+        observability=Observability(),
+        emit=None,
+        messages=[{"role": "system", "content": "Tutor."}],
+    )
+
+    assert actual is result
+    assert calls[0]["reasoning_effort"] == "none"
+    assert "temperature" not in calls[0]
 
 
 @pytest.mark.asyncio

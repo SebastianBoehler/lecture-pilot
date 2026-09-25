@@ -22,9 +22,11 @@ def completion_options(
         "timeout": timeout_seconds,
         "max_retries": 0,
     }
-    if _is_openai_gpt5(settings):
+    if _is_openai_reasoning_model(settings):
         if reasoning_effort:
             options["reasoning_effort"] = reasoning_effort
+            if settings.model.split("/", 1)[-1].lower().startswith("gpt-6"):
+                options["allowed_openai_params"] = ["reasoning_effort"]
     else:
         options["temperature"] = temperature
     if max_tokens is not None:
@@ -32,8 +34,17 @@ def completion_options(
     return options
 
 
-def _is_openai_gpt5(settings: ProviderSettings) -> bool:
+def _is_openai_reasoning_model(settings: ProviderSettings) -> bool:
     if settings.provider != "openai":
         return False
     model_id = settings.model.split("/", 1)[-1].lower()
-    return model_id == "gpt-5" or model_id.startswith("gpt-5-") or model_id.startswith("gpt-5.")
+    return any(
+        model_id == family or model_id.startswith((f"{family}-", f"{family}."))
+        for family in ("gpt-5", "gpt-6")
+    )
+
+
+def tool_reasoning_effort(settings: ProviderSettings) -> str:
+    if settings.provider == "openai" and settings.model.split("/", 1)[-1].lower().startswith("gpt-6"):
+        return "none"
+    return "low"
