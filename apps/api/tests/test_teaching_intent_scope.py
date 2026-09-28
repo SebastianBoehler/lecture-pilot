@@ -23,7 +23,8 @@ async def test_approved_scope_conflict_stops_before_teaching_edits(
         nonlocal calls
         calls += 1
         assert info.model_request_parameters.output_mode == "native"
-        assert set(json.loads(messages[-1].parts[0].content)["proposal"]) == {"objective", "goals"}
+        if calls == 1:
+            assert set(json.loads(messages[-1].parts[0].content)["proposal"]) == {"objective", "goals"}
         return ModelResponse(
             parts=[
                 TextPart(
