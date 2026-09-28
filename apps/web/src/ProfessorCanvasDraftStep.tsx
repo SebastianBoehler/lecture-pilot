@@ -62,28 +62,23 @@ export function ProfessorCanvasDraftStep({
   const busyLabel = isFullCourse ? t("builder.generate.busyAll") : t("builder.generate.busySingle");
   const hasDraft = Boolean(canvas);
   const hasUnfinished = generationProgress.some((item) => item.status === "error");
-  const hasDesignConflict = generationProgress.some(
-    (item) => item.status === "error" && item.errorKind === "design",
-  );
   return (
     <section className="flow-card">
       <button
         className={hasDraft ? undefined : "primary-action"}
         aria-busy={isGenerating}
-        disabled={isGenerating || (hasDesignConflict ? !onReviewLearningGoals : !canGenerate)}
+        disabled={!canGenerate || isGenerating}
         type="button"
-        onClick={hasDesignConflict ? onReviewLearningGoals : onGenerate}
+        onClick={onGenerate}
       >
         {isGenerating ? <GenerationSpinner /> : null}
         {isGenerating
           ? busyLabel
-          : hasDesignConflict
-            ? t("builder.generate.reviewGoals")
-            : hasUnfinished
-              ? t("builder.generate.resume")
-              : hasDraft
-                ? t("builder.generate.regenerate")
-                : actionLabel}
+          : hasUnfinished
+            ? t("builder.generate.resume")
+            : hasDraft
+              ? t("builder.generate.regenerate")
+              : actionLabel}
       </button>
       {isGenerating ? (
         <p role="status" className="visually-hidden">
