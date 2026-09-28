@@ -5,6 +5,7 @@ from pathlib import Path
 
 from lecturepilot.canvas_asset_refs import asset_markdown_target, parsed_asset_target
 from lecturepilot.canvas_component_blocks import component_to_markdown, read_component_block
+from lecturepilot.canvas_checkpoint_sequence import checkpoint_block
 from lecturepilot.canvas_models import CanvasBlock
 
 
@@ -159,7 +160,10 @@ def _read_block(
         return CanvasBlock(id=block_id, type="math", text=_read_math(chunk))
     if block_type == "callout":
         return CanvasBlock(id=block_id, type="callout", text=_read_callout(chunk))
-    if block_type in {"checkpoint", "prediction"}:
+    if block_type == "checkpoint":
+        caption, text = _read_rich_text(chunk, block_type)
+        return checkpoint_block(block_id, caption, text)
+    if block_type == "prediction":
         caption, text = _read_rich_text(chunk, block_type)
         return CanvasBlock(id=block_id, type=block_type, text=text, caption=caption)
     if block_type == "quiz":
@@ -201,7 +205,12 @@ def _infer_block_type(chunk: str) -> str:
 
 
 def _rich_container(block: CanvasBlock) -> str:
-    lines = [f":::{block.type}{f' {block.caption}' if block.caption else ''}", block.text or ""]
+    label = (
+        f"[sequence] {block.caption or ''}"
+        if block.type == "checkpoint" and block.items
+        else block.caption
+    )
+    lines = [f":::{block.type}{f' {label}' if label else ''}", block.text or ""]
     for index, item in enumerate(block.items):
         marker = "[x] " if block.type == "quiz" and block.answer_index == index else ""
         lines.append(f"- {marker}{item}")

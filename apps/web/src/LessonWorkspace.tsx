@@ -154,6 +154,7 @@ export function LessonWorkspace({
   return (
     <CheckpointDrafts
       key={`${session.tenant_id}:${session.username}:${workspaceMode}:${courseId}:${lecture.id}:${publishedCanvasView?.publication_version}`}
+      storageKey={`lecturepilot:drafts:${session.tenant_id}:${session.username}:${workspaceMode}:${courseId}:${lecture.id}:${publishedCanvasView?.publication_version}`}
     >
       <main
         ref={layoutRef}

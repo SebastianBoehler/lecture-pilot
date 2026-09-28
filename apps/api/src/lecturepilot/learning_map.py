@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.coaching_contract import MAX_APPROVED_TASK_LENGTH
 from lecturepilot.course_practice_design_models import PracticeDesign, PracticeTarget
 from lecturepilot.course_practice_design_validation import (
     PracticeDesignValidationError,
@@ -166,6 +167,10 @@ def _generic_checkpoint_gate(
     document: CanvasDocument, section: CanvasSection, block: CanvasBlock
 ) -> LearningMapGate:
     prompt = (block.text or block.caption or section.title)[:1_000]
+    if block.items:
+        prompt = (block.text or "") + "\nOptions:\n" + "\n".join(block.items)
+        if len(prompt) > MAX_APPROVED_TASK_LENGTH:
+            raise ValueError("Checkpoint sequence exceeds the approved task length.")
     return LearningMapGate.create(
         id=block.id,
         concept_id=section.id,

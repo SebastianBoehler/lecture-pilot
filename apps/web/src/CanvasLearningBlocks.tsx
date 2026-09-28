@@ -3,6 +3,7 @@ import { CheckpointGuidance } from "./CheckpointGuidance";
 import { useState, type FormEvent, type ReactNode } from "react";
 
 import { MathText } from "./MathText";
+import { CheckpointSequence } from "./CheckpointSequence";
 import { useI18n } from "./i18n";
 import type { LearnerQuizAnswerResult } from "./analyticsApi";
 import type { LearnerQuizState } from "./learnerLessonStateTypes";
@@ -45,6 +46,21 @@ export function CheckpointBlock({
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  if (block.items.length >= 2) {
+    return (
+      <CheckpointSequence
+        block={block}
+        className={className}
+        highlightedText={highlightedText}
+        sourceMarker={sourceMarker}
+        sectionId={sectionId}
+        onSubmitCheckpoint={onSubmitCheckpoint}
+        secondaryAction={secondaryAction}
+        disabled={disabled}
+      />
+    );
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();

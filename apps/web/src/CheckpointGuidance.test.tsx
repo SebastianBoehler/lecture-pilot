@@ -1,4 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { I18nProvider } from "./i18n";
+import { renderWithI18n } from "./test/renderWithI18n";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it } from "vitest";
 import { CheckpointGuidance, CheckpointGuidanceContext } from "./CheckpointGuidance";
@@ -24,7 +26,7 @@ it("shows guidance only at its own supported checkpoint and hides the hint until
       assistance_content: "Look for **labels**.",
     },
   };
-  const view = render(
+  const view = renderWithI18n(
     <CheckpointGuidanceContext.Provider value={state}>
       <CheckpointGuidance gateId="other" />
       <CheckpointGuidance gateId="check" />
@@ -35,11 +37,13 @@ it("shows guidance only at its own supported checkpoint and hides the hint until
   await userEvent.click(screen.getByText("Hint for this task"));
   expect(screen.getByText("labels")).toBeVisible();
   view.rerender(
-    <CheckpointGuidanceContext.Provider
-      value={{ ...state, pending_check: { ...state.pending_check!, focus_required: true } }}
-    >
-      <CheckpointGuidance gateId="check" />
-    </CheckpointGuidanceContext.Provider>,
+    <I18nProvider locale="en" setLocale={() => undefined}>
+      <CheckpointGuidanceContext.Provider
+        value={{ ...state, pending_check: { ...state.pending_check!, focus_required: true } }}
+      >
+        <CheckpointGuidance gateId="check" />
+      </CheckpointGuidanceContext.Provider>
+    </I18nProvider>,
   );
   expect(screen.queryByRole("status")).not.toBeInTheDocument();
   expect(screen.queryByText("labels")).not.toBeInTheDocument();
