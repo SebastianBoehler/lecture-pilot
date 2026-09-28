@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from lecturepilot.course_learning_intent import LearningIntent, LearningIntentApproval
+from lecturepilot.course_learning_intent import LearningGoal, LearningIntent, LearningIntentApproval
 from lecturepilot.course_practice_design_files import locked_design_file, write_design_file
 from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.course_practice_design_review_binding import with_quality_review
@@ -39,19 +39,17 @@ class LearningIntentStore(PracticeDesignStore):
             learning_intent=proposal.intent(source_revision),
         )
         if expected and expected.learning_intent and expected.source_revision == source_revision:
-            if [goal.id for goal in proposal.goals] != [
-                goal.id for goal in expected.learning_intent.goals
-            ]:
-                raise ValueError(
-                    "Protected goal identities cannot be added, removed or reordered during editing."
-                )
-            if expected.targets:
+            previous_by_id = {target.id: target for target in expected.targets}
+            if expected.targets and all(goal.id in previous_by_id for goal in proposal.goals):
                 from lecturepilot.course_practice_design_evidence import anchored_source_paths
                 from lecturepilot.course_practice_target import PracticeTarget
 
                 targets = []
-                for previous, goal in zip(expected.targets, proposal.goals, strict=True):
-                    target = previous.model_copy(update=goal.model_dump(mode="python"))
+                for goal in proposal.goals:
+                    previous = previous_by_id[goal.id]
+                    target = previous.model_copy(
+                        update={name: getattr(goal, name) for name in LearningGoal.model_fields}
+                    )
                     target = PracticeTarget.model_validate(
                         {
                             **target.model_dump(mode="python"),
@@ -63,7 +61,9 @@ class LearningIntentStore(PracticeDesignStore):
                 intent = LearningIntent.from_design(
                     changed,
                     fixed_target_ids=tuple(
-                        target.id for target in expected.learning_intent.fixed_targets
+                        target.id
+                        for target in expected.learning_intent.fixed_targets
+                        if target.id in {goal.id for goal in proposal.goals}
                     ),
                 )
                 changed = rebuild(changed, learning_intent=intent)

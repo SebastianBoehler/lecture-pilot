@@ -83,6 +83,29 @@ describe("professor learning intent", () => {
     expect(save.mock.calls[0][1].targets).toEqual([]);
   });
 
+  it("lets the professor rename and remove proposed goals before saving", async () => {
+    const initial = goalsOnly();
+    const first = initial.learning_intent!.goals[0];
+    const design = {
+      ...initial,
+      learning_intent: {
+        ...initial.learning_intent!,
+        goals: [first, { ...first, id: "second-goal", title: "Second goal" }],
+      },
+    };
+    const save = vi.fn();
+    show(design, vi.fn(), save);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Edit learning goals" }));
+    const title = screen.getByRole("textbox", { name: `Learning goal title: ${first.title}` });
+    await user.clear(title);
+    await user.type(title, "Updated learning goal");
+    await user.click(screen.getByRole("button", { name: "Delete learning goal: Second goal" }));
+    expect(screen.getByRole("button", { name: "Approve learning goals" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: /save learning plan/i }));
+    expect(save.mock.calls[0][1].goals).toEqual([{ ...first, title: "Updated learning goal" }]);
+  });
+
   it("requires explicit consent before converting an existing full approval", async () => {
     const design = practiceDesignFixture({ approvedBy: "professor" });
     const approve = vi.fn();

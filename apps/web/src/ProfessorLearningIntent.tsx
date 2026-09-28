@@ -4,6 +4,7 @@ import { useI18n } from "./i18n";
 import type { LearningIntentApprovalOptions } from "./learningIntentTypes";
 import type { PracticeDesign } from "./practiceDesignTypes";
 import { isApproved, sameEditableDesign } from "./ProfessorPracticeDesignStep.helpers";
+import { ProfessorLearningGoalEditor } from "./ProfessorLearningGoalEditor";
 import { ProfessorPracticeEvidence } from "./ProfessorPracticeEvidence";
 import { ProfessorPracticeLectureEditor } from "./ProfessorPracticeLectureEditor";
 import { ProfessorPracticePlanningContext } from "./ProfessorPracticePlanningContext";
@@ -125,36 +126,13 @@ export function ProfessorLearningIntent({
               <li key={target.id} className="practice-target">
                 <strong>{target.title}</strong>
                 {editing ? (
-                  <label>
-                    {t("builder.design.outcomeFor", { target: target.title })}
-                    <textarea
-                      value={target.outcome}
-                      disabled={disabled}
-                      onChange={(event) =>
-                        onChange({
-                          ...draft,
-                          ...(draft.learning_intent
-                            ? {
-                                learning_intent: {
-                                  ...draft.learning_intent,
-                                  goals: goals.map((item) =>
-                                    item.id === target.id
-                                      ? { ...item, outcome: event.target.value }
-                                      : item,
-                                  ),
-                                },
-                              }
-                            : {
-                                targets: draft.targets.map((item) =>
-                                  item.id === target.id
-                                    ? { ...item, outcome: event.target.value }
-                                    : item,
-                                ),
-                              }),
-                        })
-                      }
-                    />
-                  </label>
+                  <ProfessorLearningGoalEditor
+                    draft={draft}
+                    target={target}
+                    disabled={disabled}
+                    onChange={onChange}
+                    onRemove={() => setFixed((current) => current.filter((id) => id !== target.id))}
+                  />
                 ) : (
                   <p>{target.outcome}</p>
                 )}

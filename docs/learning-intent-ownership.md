@@ -44,7 +44,11 @@ Only professors/course managers may propose, edit, approve or convert intent.
 New routes extend `/admin/courses/{course}/lectures/{lecture}/practice-design`:
 
 - `POST /intent/proposal`: source-backed goals through native structured output.
-- `PUT /intent`: edit goals/context against current source and design revisions.
+- `PUT /intent`: professor edits to goal titles/outcomes, goal removal and context
+  use current source/design revisions and clear approval. Remaining teaching and
+  fixed-target bindings follow goal IDs; new identities require regenerated
+  implementation. AI repair still cannot change approved goals. The UI retains
+  at least one goal and allows its title/outcome to be overwritten.
 - `POST /intent/approve`: approve goals and explicitly selected fixed targets.
 
 The existing full-design routes remain available for legacy reviewed designs.
@@ -103,3 +107,8 @@ saved implementation passes review. Pending semantic repair stays in the normal
 tool loop rather than consuming output-schema retries by repeatedly finishing
 an unaccepted draft. Resumed sessions receive the current saved review alongside
 their history. The final validator still rechecks acceptance before completion.
+
+Teaching repair requires a native tool action until the draft is accepted.
+Thinking-only/text-only response exhaustion resumes the saved workspace within
+the same three-window limit. Invalid tool output, token truncation, content
+filters and genuine design conflicts are not covered by that continuation.

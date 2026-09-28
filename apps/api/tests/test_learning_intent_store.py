@@ -169,3 +169,39 @@ def test_implementation_report_records_exact_changes_without_changing_goals(tmp_
             "after": changed.targets[0].baseline_task,
         }
     ]
+
+
+def test_professor_removal_rebinds_remaining_teaching_and_fixed_targets(tmp_path):
+    from lecturepilot.course_learning_intent import LearningIntent
+    from lecturepilot.course_learning_intent_proposal import LearningIntentProposal
+    from lecturepilot.course_learning_intent_store import rebuild
+    from lecturepilot.course_practice_design_files import write_design_file
+
+    store, design = stored(tmp_path)
+    design = rebuild(
+        design,
+        targets=(design.targets[0], design.targets[0].model_copy(update={"id": "second-goal"})),
+    )
+    design = rebuild(design, learning_intent=LearningIntent.from_design(design))
+    write_design_file(store._path(design.course_id, design.lecture_id), design)
+    approved = approve(store, design, fixed_target_ids=tuple(t.id for t in design.targets))
+    intent = approved.learning_intent
+    edited = LearningIntentStore(store.layout).save_goals(
+        expected=approved,
+        course_id=design.course_id,
+        lecture_id=design.lecture_id,
+        source_revision=design.source_revision,
+        proposal=LearningIntentProposal(
+            lecture_title=design.lecture_title,
+            objective=intent.objective,
+            planning_context=intent.planning_context,
+            goals=intent.goals[:1],
+        ),
+        source=source_document(),
+        allowed_source_paths=("lecture-01.md",),
+    )
+    assert [t.id for t in edited.targets] == [design.targets[0].id]
+    assert [t.id for t in edited.learning_intent.fixed_targets] == [design.targets[0].id]
+    assert edited.learning_intent.approval is None
+    assert edited.quality_review is None
+    assert edited.revision != approved.revision

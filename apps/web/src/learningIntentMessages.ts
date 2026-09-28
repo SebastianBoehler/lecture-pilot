@@ -21,6 +21,10 @@ export const learningIntentMessages = {
     "builder.intent.confirmConversion": "I approve this change in responsibility",
     "builder.intent.repair":
       "AI will check and repair the teaching implementation during generation. Goal approval does not certify these generated details.",
+    "builder.intent.goalTitle": "Learning goal title: {target}",
+    "builder.intent.deleteGoal": "Delete learning goal: {target}",
+    "builder.intent.minimumGoal":
+      "Keep at least one learning goal. You can overwrite its title and outcome.",
     "builder.intent.edit": "Edit learning goals",
     "builder.intent.refresh": "Repair generated practice",
   },
@@ -46,6 +50,10 @@ export const learningIntentMessages = {
     "builder.intent.confirmConversion": "Ich stimme dieser Änderung der Zuständigkeit zu",
     "builder.intent.repair":
       "Die KI prüft und korrigiert die Umsetzung bei der Generierung. Die Freigabe der Lernziele bestätigt diese generierten Details nicht.",
+    "builder.intent.goalTitle": "Titel des Lernziels: {target}",
+    "builder.intent.deleteGoal": "Lernziel löschen: {target}",
+    "builder.intent.minimumGoal":
+      "Mindestens ein Lernziel ist erforderlich. Titel und Lernergebnis können überschrieben werden.",
     "builder.intent.edit": "Lernziele bearbeiten",
     "builder.intent.refresh": "Generierte Aufgaben korrigieren",
   },

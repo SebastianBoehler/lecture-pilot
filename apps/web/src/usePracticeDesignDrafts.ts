@@ -80,5 +80,6 @@ function editableContent(design: PracticeDesign) {
     planning_context: design.planning_context,
     source_revision: design.source_revision,
     targets: design.targets,
+    goals: design.learning_intent?.goals,
   };
 }

@@ -10,7 +10,7 @@ from practice_design_test_helpers import proposal
 from test_practice_design_semantic_review import _Registry
 
 
-def goal_client(tmp_path):
+def goal_client(tmp_path, *, goal_count=1):
     api = client(tmp_path)
     draft = proposal()
     goal = {
@@ -27,7 +27,7 @@ def goal_client(tmp_path):
         "lecture_title": "Practice lecture",
         "objective": draft.objective,
         "planning_context": draft.planning_context.model_dump(mode="json"),
-        "goals": [goal],
+        "goals": [{**goal, "id": f"goal-{index}"} for index in range(goal_count)],
     }
     calls = []
 
@@ -112,3 +112,33 @@ def test_goal_edit_requires_new_approval_and_rejects_stale_submission(tmp_path):
         api.put(design_path() + "/intent", headers=professor_headers(), json=update).status_code
         == 409
     )
+
+
+def test_professor_can_rename_and_remove_goals_with_fresh_approval_required(tmp_path):
+    api, _ = goal_client(tmp_path, goal_count=2)
+    design = api.post(design_path() + "/intent/proposal", headers=professor_headers()).json()
+    design = api.post(
+        design_path() + "/intent/approve",
+        headers=professor_headers(),
+        json={
+            "source_revision": design["source_revision"],
+            "practice_design_revision": design["revision"],
+        },
+    ).json()
+    update = {
+        "source_revision": design["source_revision"],
+        "practice_design_revision": design["revision"],
+        "lecture_title": design["lecture_title"],
+        "objective": design["objective"],
+        "planning_context": design["planning_context"],
+        "goals": [{**design["learning_intent"]["goals"][0], "title": "Professor revised goal"}],
+    }
+    changed = api.put(design_path() + "/intent", headers=professor_headers(), json=update)
+    assert changed.status_code == 200, changed.text
+    saved = changed.json()
+    assert len(saved["learning_intent"]["goals"]) == 1
+    assert saved["learning_intent"]["goals"][0]["title"] == "Professor revised goal"
+    assert saved["learning_intent"]["approval"] is None
+    assert not api.get(design_path() + "/readiness", headers=professor_headers()).json()[
+        "ready_for_generation"
+    ]
