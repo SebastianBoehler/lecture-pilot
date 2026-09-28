@@ -19,21 +19,29 @@ describe("Professor course builder generation retry", () => {
   });
 
   it.each([
-    { terminal: false, regenerate: false },
-    { terminal: true, regenerate: false },
-    { terminal: true, regenerate: true },
+    { terminal: false, regenerate: false, setupDelayMs: 0 },
+    // Exercise setup beyond Testing Library's default one-second query wait.
+    { terminal: true, regenerate: false, setupDelayMs: 1_100 },
+    { terminal: true, regenerate: true, setupDelayMs: 0 },
   ])(
     "recovers only the failed lecture (terminal: $terminal, regeneration: $regenerate)",
-    async ({ terminal, regenerate }) => {
+    async ({ terminal, regenerate, setupDelayMs }) => {
       const user = userEvent.setup();
       const baseFetch = professorFetchMock();
       const draftAttempts = new Map<string, number>();
       const requestKeys = new Map<string, string[]>();
+      let delayedSetup = false;
       let releaseRetry: (() => void) | undefined;
       const retryPause = new Promise<void>((resolve) => {
         releaseRetry = resolve;
       });
       const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+        if (setupDelayMs && !delayedSetup && url.endsWith("/source-bundle")) {
+          delayedSetup = true;
+          return new Promise<Awaited<ReturnType<typeof baseFetch>>>((resolve, reject) => {
+            setTimeout(() => void baseFetch(url, init).then(resolve, reject), setupDelayMs);
+          });
+        }
         const lectureId = url.match(/lectures\/(lecture-\d+)\/canvas\/draft/)?.[1];
         if (lectureId && init?.method === "POST") {
           const attempt = (draftAttempts.get(lectureId) ?? 0) + 1;
@@ -75,7 +83,7 @@ describe("Professor course builder generation retry", () => {
       await user.type(screen.getByLabelText(/course name/i), "Demo ML Course");
       await user.click(screen.getByRole("button", { name: /create course workspace/i }));
       await user.upload(
-        await screen.findByLabelText(/^choose files$/i),
+        await screen.findByLabelText(/^choose files$/i, {}, { timeout: 3_000 }),
         new File(["# extra note"], "supplement.md", { type: "text/markdown" }),
       );
       await user.click(screen.getByRole("button", { name: /upload and process materials/i }));
