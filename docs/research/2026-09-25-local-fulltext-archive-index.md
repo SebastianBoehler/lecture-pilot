@@ -2,7 +2,7 @@
 
 Collected 25 September 2026 for later LecturePilot research and implementation
 comparison. The 26 PDFs are stored in the gitignored
-[`full-texts/`](full-texts/) directory. The README inside that local directory
+`full-texts/` directory. The README inside that local directory
 records the source URL for each file. This index and bibliography are safe to
 track; do not add the PDFs to Git.
 

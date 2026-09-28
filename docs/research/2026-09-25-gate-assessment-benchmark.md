@@ -4,10 +4,10 @@ Run on 25 September 2026 against the current LecturePilot checkpoint harness and
 
 ## Result
 
-| Model | Matched expected gate status | False passes | False rejections | Provider/contract errors |
-| --- | ---: | ---: | ---: | ---: |
-| `openai/gpt-5.6-luna` | 10/10 | 0 | 0 | 0 |
-| `openai/gpt-6-luna` | 9/10 | 0 | 1 | 0 |
+| Model                 | Matched expected gate status | False passes | False rejections | Provider/contract errors |
+| --------------------- | ---------------------------: | -----------: | ---------------: | -----------------------: |
+| `openai/gpt-5.6-luna` |                        10/10 |            0 |                0 |                        0 |
+| `openai/gpt-6-luna`   |                         9/10 |            0 |                1 |                        0 |
 
 The GPT-6 disagreement was `paraphrase_intro`: the answer says that parameters are fitted on labeled examples “to reduce prediction error,” then evaluated on unseen examples. The fixture expects a pass for the required criterion “Explains model optimization using a loss.” GPT-6 did not credit the `loss` criterion on that run. On three further calls of **that same item**, GPT-5.6 credited all three required criteria 3/3 times; GPT-6 did so 1/3 times and omitted `loss` 2/3 times. This is sensitivity to the wording of one borderline semantic criterion, not proof of a population-level model difference. The fixture's expected label is author-written, not independently instructor adjudicated.
 
@@ -22,7 +22,7 @@ An earlier attempt gave ten GPT-6 provider errors. That was a model request comp
 
 ## Next calibration set
 
-Use approved LecturePilot tasks from several subjects and languages. Have at least two qualified human raters independently label the exact required evidence IDs in a pilot set of roughly 60–100 *de-identified or consented* answers, then adjudicate disagreements before comparing models. Include correct paraphrases, missing steps, wrong-direction reasoning, confident misconceptions, partial calculations, empty/uncertain replies and attempts after help. Report false-pass and false-rejection rates, criterion-level agreement, model variability on repeated items, and disagreement examples by subject/language. Evaluate feedback separately with a rubric and then test a learner-facing change on delayed independent changed tasks. The initial 60–100 item set is for error discovery and protocol refinement, not a precise rare-error estimate.
+Use approved LecturePilot tasks from several subjects and languages. Have at least two qualified human raters independently label the exact required evidence IDs in a pilot set of roughly 60–100 _de-identified or consented_ answers, then adjudicate disagreements before comparing models. Include correct paraphrases, missing steps, wrong-direction reasoning, confident misconceptions, partial calculations, empty/uncertain replies and attempts after help. Report false-pass and false-rejection rates, criterion-level agreement, model variability on repeated items, and disagreement examples by subject/language. Evaluate feedback separately with a rubric and then test a learner-facing change on delayed independent changed tasks. The initial 60–100 item set is for error discovery and protocol refinement, not a precise rare-error estimate.
 
 ## Verification
 

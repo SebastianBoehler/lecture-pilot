@@ -29,7 +29,7 @@ def canvas_teaching_instruction() -> str:
     return (
         "Include at most one optional prediction card per lecture before a suitable new concept, "
         "only when a concrete guess can prepare the learner for the explanation that follows. "
-        "Use <!-- block id=\"concept-prediction\" type=\"prediction\" --> followed by "
+        'Use <!-- block id="concept-prediction" type="prediction" --> followed by '
         ":::prediction Before you begin\n[a concrete source-grounded prediction question asking why]\n:::. "
         "Replace the bracketed text with the actual question; do not include its answer in the card. "
         "This is ungraded and skippable, not an approved checkpoint or hidden assessment. "

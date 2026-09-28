@@ -19,16 +19,18 @@ export function useDashboardWorkspaces(session: LoginSession | null, primaryCour
       try {
         const courses = await getCourses(session!);
         const additional = await Promise.all(
-          courses.filter((course) => course.id !== primaryCourseId).map(async (course) => {
-            const lectures = await getCourseLectures(course.id, session!);
-            return {
-              course,
-              lectures,
-              publishedLectureIds: lectures
-                .filter((lecture) => lecture.contentReady)
-                .map((lecture) => lecture.id),
-            };
-          }),
+          courses
+            .filter((course) => course.id !== primaryCourseId)
+            .map(async (course) => {
+              const lectures = await getCourseLectures(course.id, session!);
+              return {
+                course,
+                lectures,
+                publishedLectureIds: lectures
+                  .filter((lecture) => lecture.contentReady)
+                  .map((lecture) => lecture.id),
+              };
+            }),
         );
         if (!cancelled) {
           setWorkspaces(additional);
@@ -42,20 +44,24 @@ export function useDashboardWorkspaces(session: LoginSession | null, primaryCour
       }
     }
     void load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [session, primaryCourseId]);
 
   function setAttendance(courseId: string, lectureId: string, attendance: Attendance) {
-    setWorkspaces((current) => current.map((workspace) =>
-      workspace.course.id === courseId
-        ? {
-            ...workspace,
-            lectures: workspace.lectures.map((lecture) =>
-              lecture.id === lectureId ? { ...lecture, attendance } : lecture,
-            ),
-          }
-        : workspace,
-    ));
+    setWorkspaces((current) =>
+      current.map((workspace) =>
+        workspace.course.id === courseId
+          ? {
+              ...workspace,
+              lectures: workspace.lectures.map((lecture) =>
+                lecture.id === lectureId ? { ...lecture, attendance } : lecture,
+              ),
+            }
+          : workspace,
+      ),
+    );
   }
 
   return { workspaces, error, setAttendance };

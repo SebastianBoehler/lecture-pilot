@@ -57,12 +57,12 @@ describe("Dashboard supported course hierarchy", () => {
     const workspace = screen.getByRole("region", {
       name: `Study workspace for ${course.title}`,
     });
-    const courseCard = screen.getByRole("button", {
-      name: `Open ${course.title} workspace`,
-    });
-    expect(courseCard).toHaveAttribute("aria-pressed", "true");
-    expect(screen.queryByRole("heading", { name: "Available workspaces" })).not.toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Available workspaces" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: `Open ${course.title} workspace`,
+      }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Available workspaces" })).not.toBeInTheDocument();
 
     const tabs = within(workspace).getByRole("tablist", { name: "Study tools" });
     const lecturesTab = within(tabs).getByRole("tab", { name: "Lectures" });

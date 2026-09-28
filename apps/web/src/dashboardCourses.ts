@@ -72,9 +72,7 @@ export function buildCourseGroups(
       !courseGroups.some((group) => isWorkspaceCourse(group.course, item.course))
     ) {
       courseGroups.push(
-        buildDiscoverableCourseGroup(
-          item.course, item.lectures, item.publishedLectureIds, labels,
-        ),
+        buildDiscoverableCourseGroup(item.course, item.lectures, item.publishedLectureIds, labels),
       );
     }
   }

@@ -65,7 +65,7 @@ describe("LecturePilot app shell", () => {
     );
     await waitFor(() => {
       expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/courses"))).toHaveLength(
-        1,
+        2,
       );
     });
     expect(window.sessionStorage.getItem("lecturepilot.loginSession")).toBeNull();
@@ -148,8 +148,9 @@ describe("LecturePilot app shell", () => {
 
     await logIn(user);
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      /course workspaces could not be loaded/i,
+    expect(await screen.findByText(/course workspaces could not be loaded/i)).toHaveAttribute(
+      "role",
+      "alert",
     );
     expect(screen.queryByRole("button", { name: /open lecture 03/i })).not.toBeInTheDocument();
   });
@@ -305,7 +306,7 @@ describe("LecturePilot app shell", () => {
     expect(screen.getByText("student01")).toBeInTheDocument();
     expect(screen.getByText(/student01@uni-tuebingen\.de/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /workspaces/i }));
-    expect(screen.getByRole("heading", { name: /course workspaces/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^your course$/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /open profile/i }));
 

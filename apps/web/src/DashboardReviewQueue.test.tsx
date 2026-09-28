@@ -53,22 +53,26 @@ it("opens the explicitly validated due gate target", async () => {
 it("shows scheduled reviews this week and opens the lecture without binding the future gate", async () => {
   const user = userEvent.setup();
   const onOpen = vi.fn();
-  const fetchMock = vi.fn(async () => json({
-    course_id: course.id,
-    items: [],
-    upcoming: [{
-      id: "gate:lecture-02:risk-check",
-      kind: "gate_review",
+  const fetchMock = vi.fn(async () =>
+    json({
       course_id: course.id,
-      lecture_id: "lecture-02",
-      lecture_title: "Risk",
-      section_id: "risk",
-      section_title: "Risk transfer",
-      gate_id: "risk-check",
-      gate_revision: "revision-1",
-      due_at: "2026-09-27T10:00:00+00:00",
-    }],
-  }));
+      items: [],
+      upcoming: [
+        {
+          id: "gate:lecture-02:risk-check",
+          kind: "gate_review",
+          course_id: course.id,
+          lecture_id: "lecture-02",
+          lecture_title: "Risk",
+          section_id: "risk",
+          section_title: "Risk transfer",
+          gate_id: "risk-check",
+          gate_revision: "revision-1",
+          due_at: "2026-09-27T10:00:00+00:00",
+        },
+      ],
+    }),
+  );
   vi.stubGlobal("fetch", fetchMock);
   renderDashboard(learner("student-a"), onOpen);
 

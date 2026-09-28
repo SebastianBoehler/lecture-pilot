@@ -45,6 +45,8 @@ def _is_openai_reasoning_model(settings: ProviderSettings) -> bool:
 
 
 def tool_reasoning_effort(settings: ProviderSettings) -> str:
-    if settings.provider == "openai" and settings.model.split("/", 1)[-1].lower().startswith("gpt-6"):
+    if settings.provider == "openai" and settings.model.split("/", 1)[-1].lower().startswith(
+        "gpt-6"
+    ):
         return "none"
     return "low"

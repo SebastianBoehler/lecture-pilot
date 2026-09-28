@@ -46,7 +46,10 @@ it("loads the correct course draft without enabling unpublished tutor turns", as
       ]);
     }
     if (url.endsWith("/courses")) {
-      return jsonResponse(localProfessorSession.courses);
+      return jsonResponse([
+        ...localProfessorSession.courses,
+        { id: "security-course", title: "Security", professor: "Professor", term: "Sommer 2026" },
+      ]);
     }
     return jsonResponse([]);
   });

@@ -20,9 +20,9 @@ Access labels:
 - **Adesope, Trevisan & Sundararajan (2017), practice-testing meta-analysis —
   full text read.** The synthesis included 118 articles, 272 independent effect
   sizes and 15,427 participants, across laboratory and classroom contexts and
-  school levels. Practice testing showed a random-effects estimate of *g* = .70
+  school levels. Practice testing showed a random-effects estimate of _g_ = .70
   overall, with high heterogeneity (I² about 81%). Estimates differed by
-  comparator (about *g* = .51 versus restudy/rereading and .93 versus filler/no
+  comparator (about _g_ = .51 versus restudy/rereading and .93 versus filler/no
   activity); transfer and retention estimates were not significantly different.
   Most effects were from laboratory studies and retention tests. The pooled
   estimate is not a forecast for a particular tutor feature.
@@ -152,7 +152,7 @@ Access labels:
 - **“The impact of GenAI on learning outcomes” (2025), meta-analysis — partial
   publisher-index excerpt only.** The accessible excerpt says 71 studies were
   reviewed and 47 articles (74 effect sizes) entered the overall pooled
-  analysis. It reports *g* = .752 overall, with cognitive and affective
+  analysis. It reports _g_ = .752 overall, with cognitive and affective
   outcomes positive and a behavioral-engagement estimate near zero with a wide
   interval. The full paper, coding decisions and moderators were not read, so
   these are search-indexed figures, not independently checked results.
@@ -214,7 +214,7 @@ Access labels:
 - **Berney & Bétrancourt (2016), animation meta-analysis — full published
   article read from the UNIGE archive.** Fifty papers, 61 studies, 7,036
   participants and 140 animation/static comparisons yielded a small pooled
-  advantage for animation (*g* = .226, 95% CI .12–.33), with high heterogeneity
+  advantage for animation (_g_ = .226, 95% CI .12–.33), with high heterogeneity
   (I² = 78.38%). Display, domain and outcome varied; the mean effect does not
   justify animating every explanation.
   [Conference paper](https://tecfa.unige.ch/perso/sandra/pdf/Earli2016_berney_betrancourt_FINAL.pdf) ·
@@ -223,7 +223,7 @@ Access labels:
 ### Interface structure, navigation, and visual complexity
 
 - **Porta Simó et al. (2015), course map — full text read.** In a three-week online course (n=115), a map bundled outcomes, deadlines, progress and resource links. The interface group completed >4x as many optional tasks; posttest grades did not differ significantly. One-course bundle, no delayed test. [Full text](https://online-journals.org/index.php/i-jet/article/download/4620/3471).
-- **Karich et al. (2014), learner-control meta-analysis — full text read.** Across 18 studies/29 effects, adding learner-control options had a near-zero average academic effect (*g* = .05); heterogeneous settings do not support assuming unrestricted choice improves learning. [Author copy](https://www.researchgate.net/publication/270114089_Updated_Meta-Analysis_of_Learner_Control_Within_Educational_Technology).
+- **Karich et al. (2014), learner-control meta-analysis — full text read.** Across 18 studies/29 effects, adding learner-control options had a near-zero average academic effect (_g_ = .05); heterogeneous settings do not support assuming unrestricted choice improves learning. [Author copy](https://www.researchgate.net/publication/270114089_Updated_Meta-Analysis_of_Learner_Control_Within_Educational_Technology).
 - **Stoesz et al. (2020), LMS visual complexity — full text read.** Two small lab studies (n=29, n=16) rated LMS screenshots. Image metrics predicted perceived complexity, but learning and task completion were not measured; this is usability evidence, not learning efficacy. [ERIC full text](https://files.eric.ed.gov/fulltext/EJ1284134.pdf).
 - **Shapiro (2008), hypermedia scaffolding — full text read.** Narrative synthesis: novices may benefit from coherent structure, clear goals and navigation support; exploration can suit learners able to use prior knowledge. This is a framework across older studies, not a validated interface recipe. [Author copy](https://www.researchgate.net/publication/226692660_Hypermedia_design_as_learner_scaffolding).
 
@@ -243,7 +243,7 @@ Five more accessible studies were read for this update:
   association is not evidence that hippocampal activity measures course mastery.
   [Author full text](https://www.diva-portal.org/smash/get/diva2:1484125/FULLTEXT02.pdf).
 - **Payne et al. (2012), sleep and declarative memory — full PMC text read.**
-  Three separate interval cohorts (total *N* = 207) learned related or
+  Three separate interval cohorts (total _N_ = 207) learned related or
   unrelated word pairs. Sleep benefited novel/unrelated associations more than
   semantically related pairs in the 12-hour comparison; time awake was associated
   with more forgetting. Cohorts were not one randomized sleep-by-time factorial,

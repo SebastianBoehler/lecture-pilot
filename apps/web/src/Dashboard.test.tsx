@@ -271,7 +271,10 @@ describe("Dashboard course workspace matching", () => {
       within(reopenedDialog).getByText(/expected risk combines posterior probabilities/i),
     ).toBeInTheDocument();
     await user.click(within(reopenedDialog).getByRole("button", { name: /review lecture 03/i }));
-    expect(onOpen).toHaveBeenCalledWith("martius-ml", expect.objectContaining({ id: "lecture-03" }));
+    expect(onOpen).toHaveBeenCalledWith(
+      "martius-ml",
+      expect.objectContaining({ id: "lecture-03" }),
+    );
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/courses/martius-ml/exam-readiness"),
       expect.objectContaining({ headers: expect.any(Object) }),
@@ -314,7 +317,7 @@ function renderDashboard(
 }
 
 function workspaceCard(title: string) {
-  const card = screen.getByRole("heading", { name: title }).closest("button");
+  const card = screen.getByRole("region", { name: `Study workspace for ${title}` });
   expect(card).not.toBeNull();
   return card as HTMLElement;
 }

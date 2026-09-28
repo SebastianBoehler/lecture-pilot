@@ -118,7 +118,6 @@ export function AppRoutes(props: AppRoutesProps) {
     session,
     view,
     workspaceCourse,
-    workspaceCourseId,
   } = props;
   const learnerProfileEnabled = Boolean(
     !restoringSession &&

@@ -69,9 +69,7 @@ export function DashboardCourseWorkspaces({
                   >
                     <span className="course-card-copy">
                       <span className="course-card-title-line">
-                        <span className="course-card-title">
-                          {group.course.title}
-                        </span>
+                        <span className="course-card-title">{group.course.title}</span>
                         <CourseSourceTags sources={group.sources} />
                       </span>
                       <span>{group.course.professor}</span>

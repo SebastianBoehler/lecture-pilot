@@ -40,15 +40,23 @@ export function Dashboard({
   const syncStatus = session?.university_course_sync_status ?? "ready";
   const [selectedCourseId, setSelectedCourseId] = useState(workspaceCourse.id);
   const additional = useDashboardWorkspaces(session, workspaceCourse.id);
-  const courseGroups = buildCourseGroups(session, workspaceCourse, lectures, publishedLectureIds, {
-    aiTutorAvailable: t("dashboard.aiTutorAvailable"),
-    noTutor: t("dashboard.noTutor"),
-  }, additional.workspaces);
+  const courseGroups = buildCourseGroups(
+    session,
+    workspaceCourse,
+    lectures,
+    publishedLectureIds,
+    {
+      aiTutorAvailable: t("dashboard.aiTutorAvailable"),
+      noTutor: t("dashboard.noTutor"),
+    },
+    additional.workspaces,
+  );
   const visibleCourseGroups = syncStatus === "loading" ? [] : courseGroups;
   const singleCourse = visibleCourseGroups.filter((group) => group.tutorAvailable).length === 1;
-  const activeGroup = visibleCourseGroups.find((group) =>
-    group.tutorAvailable && group.course.id === selectedCourseId,
-  ) ?? visibleCourseGroups.find((group) => group.tutorAvailable);
+  const activeGroup =
+    visibleCourseGroups.find(
+      (group) => group.tutorAvailable && group.course.id === selectedCourseId,
+    ) ?? visibleCourseGroups.find((group) => group.tutorAvailable);
   const activeCourse = activeGroup?.course ?? workspaceCourse;
   const workspaceLectures = activeGroup
     ? availableCourseLectures(activeGroup.courseLectures)
@@ -102,7 +110,9 @@ export function Dashboard({
         </p>
       ) : null}
       {additional.error ? (
-        <p className="form-error" role="alert">{additional.error}</p>
+        <p className="form-error" role="alert">
+          {additional.error}
+        </p>
       ) : null}
 
       <section className="course-panel" aria-labelledby="course-workspaces">

@@ -105,7 +105,9 @@ def test_review_queue_shows_next_seven_days_without_opening_early(tmp_path: Path
         update={"completed_at": NOW}
     )
     _write_progress(client, user_id, "lecture-a", progress)
-    assert client.get(f"/courses/{COURSE_ID}/review-queue", headers=headers).json()["upcoming"] == []
+    assert (
+        client.get(f"/courses/{COURSE_ID}/review-queue", headers=headers).json()["upcoming"] == []
+    )
 
 
 def test_open_due_gate_binds_exact_current_transfer_without_completing(tmp_path: Path) -> None:
