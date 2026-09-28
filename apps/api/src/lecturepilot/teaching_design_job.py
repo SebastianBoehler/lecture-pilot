@@ -9,7 +9,7 @@ from time import perf_counter
 from pydantic_ai import Agent, ModelRetry, Tool
 from pydantic_ai.usage import UsageLimits
 from pydantic_ai.capabilities import PrepareOutputTools
-from pydantic_ai.exceptions import UsageLimitExceeded
+from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
 
 from lecturepilot.authoring_lock import exclusive_authoring_job
 from lecturepilot.authoring_state import AuthoringState, resume_messages, save_state
@@ -29,6 +29,7 @@ from lecturepilot.course_practice_design_models import PracticeDesignProposal
 from lecturepilot.course_practice_design_review_models import PracticeDesignReviewResult
 from lecturepilot.models import ProviderSettings
 from lecturepilot.model_client import ModelExecutionError
+from lecturepilot.teaching_response_recovery import no_action_response_exhausted
 
 IMPLEMENTATION_MODEL_TURN_LIMIT = 40
 IMPLEMENTATION_CONTINUATION_LIMIT = 3
@@ -194,8 +195,9 @@ async def _run(job, *, model):
         capabilities=[PrepareOutputTools(prepare_completion)],
         retries=3,
         instructions=instructions,
-        model_settings={
+        model_settings=lambda ctx: {
             "timeout": 120,
+            "tool_choice": "auto" if workspace.accepted() else "required",
             "parallel_tool_calls": True,
             **(
                 {"openai_reasoning_effort": "low", "openai_store": False}
@@ -257,6 +259,13 @@ async def _run(job, *, model):
                 node = await run.next(node)
                 checkpoint()
             state.completed = True
+        except UnexpectedModelBehavior as exc:
+            if not no_action_response_exhausted(exc, run.all_messages()):
+                raise
+            raise TeachingRepairBudgetExceeded(
+                "Teaching model returned no tool action after response retries. "
+                "The current targets and review are saved; retry resumes this work."
+            ) from exc
         except UsageLimitExceeded as exc:
             raise TeachingRepairBudgetExceeded(
                 f"Teaching repair reached its {IMPLEMENTATION_MODEL_TURN_LIMIT}-turn budget. "
