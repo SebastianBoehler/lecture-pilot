@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -116,9 +116,12 @@ describe("Professor course builder defaults", () => {
     await user.type(screen.getByLabelText(/course name/i), "Bilingual ML Course");
     await user.click(screen.getByRole("button", { name: /create course workspace/i }));
 
-    const createCall = fetchMock.mock.calls.find(([url]) =>
-      String(url).endsWith("/admin/course-workspaces"),
-    );
-    expect(JSON.parse(String(createCall?.[1]?.body))).toMatchObject({ canvas_language: "de" });
+    await waitFor(() => {
+      const createCall = fetchMock.mock.calls.find(([url]) =>
+        String(url).endsWith("/admin/course-workspaces"),
+      );
+      expect(createCall).toBeDefined();
+      expect(JSON.parse(String(createCall?.[1]?.body))).toMatchObject({ canvas_language: "de" });
+    });
   });
 });
