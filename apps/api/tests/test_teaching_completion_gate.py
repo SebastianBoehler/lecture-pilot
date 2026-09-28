@@ -5,7 +5,12 @@ from pydantic_ai.models.function import FunctionModel
 from lecturepilot.models import ProviderCapability, ProviderSettings
 from lecturepilot.teaching_design_job import TeachingDesignJob, run_teaching_design_job
 from practice_design_test_helpers import passing_review
-from test_teaching_design_workspace import workspace as teaching_workspace  # noqa: F401
+import test_teaching_design_workspace as workspace_fixtures
+
+
+@pytest.fixture
+def teaching_workspace(tmp_path):
+    return workspace_fixtures.workspace.__wrapped__(tmp_path)
 
 
 @pytest.mark.asyncio
