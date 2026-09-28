@@ -62,6 +62,8 @@ async def _benchmark_model(model: str) -> list[dict]:
                     "ok": status == scenario.expected_status,
                     "model_returned": result.model,
                     "message": result.message[:240],
+                    "evidence_ids": result.quality_gate.evidence_ids if result.quality_gate else [],
+                    "missing_evidence_ids": result.quality_gate.missing_evidence_ids if result.quality_gate else [],
                 }
             )
         except ModelExecutionError as exc:
