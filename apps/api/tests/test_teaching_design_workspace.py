@@ -203,3 +203,48 @@ def test_edit_identifies_protected_goal_text_instead_of_retrying_missing_span(wo
     assert not result["saved"]
     assert result["error_code"] == "approved_intent_read_only"
     assert "target_invariant" in result["protected_fields"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("finish", [True, False])
+async def test_turn_budget_continues_saved_work_but_remains_bounded(workspace, monkeypatch, finish):
+    import lecturepilot.teaching_design_job as module
+    from lecturepilot.model_client import ModelExecutionError
+
+    monkeypatch.setattr(module, "IMPLEMENTATION_MODEL_TURN_LIMIT", 2)
+    calls = 0
+    original = workspace.proposal()
+
+    async def review(proposal):
+        return passing_review()
+
+    def model(messages, info):
+        nonlocal calls
+        calls += 1
+        if finish and calls == 3:
+            assert len(messages) > 2, "Continuation must preserve native history"
+            return ModelResponse(parts=[ToolCallPart("validate", {})])
+        if finish and calls == 4:
+            return ModelResponse(parts=[ToolCallPart("final_result", {"ready": True})])
+        return ModelResponse(parts=[ToolCallPart("read", {"target_id": original.targets[0].id})])
+
+    job = TeachingDesignJob(
+        root=workspace.root / "agent", source=workspace.source, intent=workspace.intent,
+        initial=original, paths=workspace.paths, source_revision="a" * 64,
+        settings=ProviderSettings(
+            provider="openai", model="openai/test", api_key_env="OPENAI_API_KEY",
+            capabilities={ProviderCapability.CHAT, ProviderCapability.TOOL_CALLS},
+        ), review=review, authorize=lambda: None,
+    )
+    if finish:
+        changed, result = await run_teaching_design_job(job, model=FunctionModel(model))
+        assert changed == original
+        workspace.intent.require_matches(changed)
+        assert calls == 4
+    else:
+        with pytest.raises(ModelExecutionError, match="budget"):
+            await run_teaching_design_job(job, model=FunctionModel(model))
+        assert calls == 6
+    state = json.loads((job.root / "session.json").read_text())
+    assert state["metrics"]["model_requests"] == calls
+    assert state["metrics"]["resumes"] == (1 if finish else 2)

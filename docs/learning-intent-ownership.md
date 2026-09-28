@@ -90,3 +90,10 @@ intent and fixed task enforcement, goal edits, revision races, cancellation and
 publication binding. Provider output validity and passing critic reviews do not
 establish teaching correctness or learner efficacy. Replays must report all
 attempts, repair costs and instructor intervention against the same goal set.
+
+Teaching implementation repair automatically continues a saved native session
+across up to three 40-request windows within the same generation job. Each window
+rechecks ownership and source/intent identity; cancellation and other failures
+remain explicit. Exhausting the final window preserves targets and review for
+an explicit professor retry. Design conflicts cannot change approved intent or
+professor-fixed tasks through this continuation.

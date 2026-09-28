@@ -119,4 +119,4 @@ async def test_repair_can_resolve_more_than_three_review_findings(
     metrics = json.loads(next(tmp_path.glob("*/session.json")).read_text())["metrics"]
     assert metrics["repair_edits"] == 4
     assert metrics["quality_reviews"] == 5
-    assert metrics["resumes"] == int(bool(disconnect))
+    assert metrics["resumes"] == (3 if disconnect == "budget" else int(bool(disconnect)))

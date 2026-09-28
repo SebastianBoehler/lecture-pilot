@@ -30,6 +30,11 @@ from lecturepilot.models import ProviderSettings
 from lecturepilot.model_client import ModelExecutionError
 
 IMPLEMENTATION_MODEL_TURN_LIMIT = 40
+IMPLEMENTATION_CONTINUATION_LIMIT = 3
+
+
+class TeachingRepairBudgetExceeded(ModelExecutionError):
+    """A saved implementation can continue with another bounded native session."""
 
 
 @dataclass
@@ -49,7 +54,16 @@ class TeachingDesignJob:
 async def run_teaching_design_job(job: TeachingDesignJob, *, model):
     job.authorize()
     with exclusive_authoring_job(job.root):
-        return await _run(job, model=model)
+        for continuation in range(IMPLEMENTATION_CONTINUATION_LIMIT):
+            job.authorize()
+            try:
+                return await _run(job, model=model)
+            except TeachingRepairBudgetExceeded as exc:
+                if continuation + 1 == IMPLEMENTATION_CONTINUATION_LIMIT:
+                    raise ModelExecutionError(str(exc)) from exc
+                emit_metadata_event(
+                    "teaching_repair.continued", attempt=continuation + 2,
+                )
 
 
 async def _run(job, *, model):
@@ -234,7 +248,7 @@ async def _run(job, *, model):
                 checkpoint()
             state.completed = True
         except UsageLimitExceeded as exc:
-            raise ModelExecutionError(
+            raise TeachingRepairBudgetExceeded(
                 f"Teaching repair reached its {IMPLEMENTATION_MODEL_TURN_LIMIT}-turn budget. "
                 "The current targets and review "
                 "are saved; retry resumes this work instead of regenerating the lecture."
