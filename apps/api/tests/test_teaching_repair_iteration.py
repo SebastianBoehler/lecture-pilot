@@ -3,7 +3,7 @@
 import json
 import pytest
 
-from pydantic_ai.messages import ModelResponse, ToolCallPart
+from pydantic_ai.messages import ModelResponse, ToolCallPart, TextPart
 from pydantic_ai.models.function import FunctionModel
 
 from lecturepilot.course_practice_design_planner import PracticeDesignPlanner
@@ -55,6 +55,21 @@ async def test_repair_can_resolve_more_than_three_review_findings(
 
     def respond(messages, info):
         nonlocal calls, interrupted
+        output = info.model_request_parameters.output_object
+        if output and "coherent" in output.json_schema["properties"]:
+            return ModelResponse(
+                parts=[
+                    TextPart(
+                        json.dumps(
+                            {
+                                "coherent": True,
+                                "reason": "The goal covers the objective.",
+                                "evidence_ids": ["e0"],
+                            }
+                        )
+                    )
+                ]
+            )
         if disconnect is True and calls == 1 and not interrupted:
             interrupted = True
             raise RuntimeError("Provider connection interrupted after saved write")

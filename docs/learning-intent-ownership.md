@@ -44,6 +44,10 @@ Only professors/course managers may propose, edit, approve or convert intent.
 New routes extend `/admin/courses/{course}/lectures/{lecture}/practice-design`:
 
 - `POST /intent/proposal`: source-backed goals through native structured output.
+  An independent native scope review checks that the goals cover the lecture
+  objective. Up to three proposal/review rounds repair missing or unsupported
+  scope before requesting professor approval; semantic rounds are separate from
+  schema retries. Broader module objectives must be narrowed to these goals.
 - `PUT /intent`: professor edits to goal titles/outcomes, goal removal and context
   use current source/design revisions and clear approval. Remaining teaching and
   fixed-target bindings follow goal IDs; new identities require regenerated
@@ -112,3 +116,9 @@ Teaching repair requires a native tool action until the draft is accepted.
 Thinking-only/text-only response exhaustion resumes the saved workspace within
 the same three-window limit. Invalid tool output, token truncation, content
 filters and genuine design conflicts are not covered by that continuation.
+
+Before implementation repair, a source-backed scope review checks the protected
+objective and goals. An inconsistent approved scope raises a design conflict
+with a request to edit and reapprove the learning plan, rather than spending
+teaching turns trying to change protected intent. No approval is changed by this
+check. `learning_goal_scope_review.py` owns this shared native review contract.

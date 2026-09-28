@@ -10,7 +10,7 @@ from practice_design_test_helpers import proposal
 from test_practice_design_semantic_review import _Registry
 
 
-def goal_client(tmp_path, *, goal_count=1):
+def goal_client(tmp_path, *, goal_count=1, scope_reviews=(True,)):
     api = client(tmp_path)
     draft = proposal()
     goal = {
@@ -30,9 +30,29 @@ def goal_client(tmp_path, *, goal_count=1):
         "goals": [{**goal, "id": f"goal-{index}"} for index in range(goal_count)],
     }
     calls = []
+    reviewed = 0
 
     def respond(messages, info):
+        nonlocal reviewed
         calls.append(info.model_request_parameters)
+        if "coherent" in info.model_request_parameters.output_object.json_schema["properties"]:
+            coherent = scope_reviews[min(reviewed, len(scope_reviews) - 1)]
+            reviewed += 1
+            return ModelResponse(
+                parts=[
+                    TextPart(
+                        json.dumps(
+                            {
+                                "coherent": coherent,
+                                "reason": "An objective capability needs a goal or a narrower objective.",
+                                "evidence_ids": ["e0"],
+                            }
+                        )
+                    )
+                ]
+            )
+        if reviewed:
+            assert "Scope review" in messages[-1].parts[0].content
         return ModelResponse(parts=[TextPart(json.dumps(wire))])
 
     api.app.state.practice_design_planner = PracticeDesignPlanner(
@@ -42,6 +62,24 @@ def goal_client(tmp_path, *, goal_count=1):
     return api, calls
 
 
+def test_goal_scope_is_repaired_before_professor_review(tmp_path):
+    api, calls = goal_client(tmp_path, scope_reviews=(False, True))
+    response = api.post(design_path() + "/intent/proposal", headers=professor_headers())
+    assert response.status_code == 200, response.text
+    assert len(calls) == 4
+    assert response.json()["learning_intent"]["approval"] is None
+    assert response.json()["targets"] == []
+
+
+def test_inconsistent_goal_scope_cannot_be_saved_for_approval(tmp_path):
+    api, calls = goal_client(tmp_path, scope_reviews=(False,))
+    response = api.post(design_path() + "/intent/proposal", headers=professor_headers())
+    assert response.status_code == 502, response.text
+    assert "inconsistent after repair" in response.json()["detail"]
+    assert len(calls) == 6
+    assert api.get(design_path(), headers=professor_headers()).status_code == 404
+
+
 def test_source_to_goals_approval_does_not_generate_or_approve_tasks(tmp_path):
     api, calls = goal_client(tmp_path)
     response = api.post(design_path() + "/intent/proposal", headers=professor_headers())
@@ -49,7 +87,7 @@ def test_source_to_goals_approval_does_not_generate_or_approve_tasks(tmp_path):
     design = response.json()
     assert design["targets"] == []
     assert design["quality_review"] is None
-    assert len(calls) == 1
+    assert len(calls) == 2
     assert calls[0].output_mode == "native"
     assert "baseline_task" not in json.dumps(calls[0].output_object.json_schema)
     assert (
@@ -75,7 +113,7 @@ def test_source_to_goals_approval_does_not_generate_or_approve_tasks(tmp_path):
         ]
         is True
     )
-    assert len(calls) == 1
+    assert len(calls) == 2
     assert api.post(
         design_path() + "/intent/approve",
         json={
