@@ -229,12 +229,20 @@ async def test_turn_budget_continues_saved_work_but_remains_bounded(workspace, m
         return ModelResponse(parts=[ToolCallPart("read", {"target_id": original.targets[0].id})])
 
     job = TeachingDesignJob(
-        root=workspace.root / "agent", source=workspace.source, intent=workspace.intent,
-        initial=original, paths=workspace.paths, source_revision="a" * 64,
+        root=workspace.root / "agent",
+        source=workspace.source,
+        intent=workspace.intent,
+        initial=original,
+        paths=workspace.paths,
+        source_revision="a" * 64,
         settings=ProviderSettings(
-            provider="openai", model="openai/test", api_key_env="OPENAI_API_KEY",
+            provider="openai",
+            model="openai/test",
+            api_key_env="OPENAI_API_KEY",
             capabilities={ProviderCapability.CHAT, ProviderCapability.TOOL_CALLS},
-        ), review=review, authorize=lambda: None,
+        ),
+        review=review,
+        authorize=lambda: None,
     )
     if finish:
         changed, result = await run_teaching_design_job(job, model=FunctionModel(model))

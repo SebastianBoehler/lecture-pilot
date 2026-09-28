@@ -62,7 +62,8 @@ async def run_teaching_design_job(job: TeachingDesignJob, *, model):
                 if continuation + 1 == IMPLEMENTATION_CONTINUATION_LIMIT:
                     raise ModelExecutionError(str(exc)) from exc
                 emit_metadata_event(
-                    "teaching_repair.continued", attempt=continuation + 2,
+                    "teaching_repair.continued",
+                    attempt=continuation + 2,
                 )
 
 
