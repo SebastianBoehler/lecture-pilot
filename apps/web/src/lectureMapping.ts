@@ -34,6 +34,7 @@ type ApiCourseWorkspaceResult = Omit<CourseWorkspaceResult, "lectures"> & {
 
 type ApiManagedCourseWorkspaceResult = ApiCourseWorkspaceResult & {
   access_summary: CourseAccessSummary;
+  legacy_lecture_ids: string[];
 };
 
 export function normalizeCourseWorkspaceResult(
@@ -52,6 +53,7 @@ export function normalizeManagedCourseWorkspaceResult(
   return {
     ...normalizeCourseWorkspaceResult(payload),
     accessSummary: payload.access_summary,
+    legacyLectureIds: payload.legacy_lecture_ids,
   };
 }
 

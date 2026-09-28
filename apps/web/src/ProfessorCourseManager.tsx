@@ -1,3 +1,4 @@
+import { ProfessorCourseStatus } from "./ProfessorCourseStatus";
 import { ProfessorLanguageVariants } from "./ProfessorLanguageVariants";
 import { useI18n } from "./i18n";
 import {
@@ -120,6 +121,7 @@ export function ProfessorCourseManager({
                   </button>
                 </div>
               </div>
+              <ProfessorCourseStatus workspace={workspace} />
               <details className="created-course-lectures" open={workspaces.length === 1}>
                 <summary>{t("professor.preview.lectures")}</summary>
                 <ul>
@@ -136,7 +138,10 @@ export function ProfessorCourseManager({
                         <span className="created-lecture-copy">
                           <span className="created-lecture-title">{lecture.title}</span>
                         </span>
-                        <ProfessorLectureAccessStatus summary={accessSummary} />
+                        <ProfessorLectureAccessStatus
+                          legacy={workspace.legacyLectureIds?.includes(lecture.id)}
+                          summary={accessSummary}
+                        />
                         <span className="created-lecture-actions">
                           {accessSummary.content_ready ? (
                             <button

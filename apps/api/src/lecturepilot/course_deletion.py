@@ -12,7 +12,8 @@ from lecturepilot.course_repository import CourseRepository
 from lecturepilot.course_schedule_store import list_course_workspaces, read_course_workspace
 from lecturepilot.course_update_recovery import locked_course_state
 from lecturepilot.lecture_access_models import CourseAccessSummary
-from lecturepilot.lecture_access_routes import build_course_access_summary
+from lecturepilot.course_access_summary import build_course_access_summary
+from lecturepilot.course_legacy_publication import is_legacy_publication
 from lecturepilot.models import CourseWorkspaceResult
 from lecturepilot.storage_layout import StorageLayout, StorageLayoutError, safe_id
 from lecturepilot.tenancy import TenantContext
@@ -25,6 +26,7 @@ class CourseDeletionResult(BaseModel):
 
 class ManagedCourseWorkspaceResult(CourseWorkspaceResult):
     published_lecture_ids: list[str]
+    legacy_lecture_ids: list[str]
     access_summary: CourseAccessSummary
 
 
@@ -145,16 +147,17 @@ def _with_publication_state(
     app: FastAPI,
     workspace: CourseWorkspaceResult,
 ) -> ManagedCourseWorkspaceResult:
-    published = [
-        lecture.id
-        for lecture in workspace.lectures
-        if app.state.canvas_workspace.has_published_course_canvas(
-            course_id=workspace.course.id,
-            lecture_id=lecture.id,
-        )
-    ]
+    summary = build_course_access_summary(app, workspace)
+    published = [lecture.lecture_id for lecture in summary.lectures if lecture.content_ready]
     return ManagedCourseWorkspaceResult(
         **workspace.model_dump(),
         published_lecture_ids=published,
-        access_summary=build_course_access_summary(app, workspace),
+        legacy_lecture_ids=[
+            lecture.id
+            for lecture in workspace.lectures
+            if is_legacy_publication(
+                app.state.canvas_workspace.course_canvas_store.path(workspace.course.id, lecture.id)
+            )
+        ],
+        access_summary=summary,
     )

@@ -213,6 +213,7 @@ export type CourseWorkspaceResult = {
 
 export type ManagedCourseWorkspaceResult = CourseWorkspaceResult & {
   accessSummary: CourseAccessSummary;
+  legacyLectureIds?: string[];
 };
 
 export type YoutubeVideoCandidate = {

@@ -8,6 +8,10 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from lecturepilot.api_auth import request_context, require_course_manager
 from lecturepilot.audit import record_audit_event
 from lecturepilot.course_access import resolve_course
+from lecturepilot.course_access_summary import (
+    build_course_access_summary,
+    build_lecture_access_summary,
+)
 from lecturepilot.course_repository import CourseRepository, CourseRepositoryError
 from lecturepilot.course_schedule_store import (
     overwrite_course_workspace,
@@ -23,10 +27,7 @@ from lecturepilot.lecture_access_models import (
 )
 from lecturepilot.lecture_access_policy import (
     course_default_rule,
-    effective_publication_at,
-    effective_rule,
     is_university_audience,
-    release_status,
 )
 from lecturepilot.models import Course, CourseWorkspaceResult, Lecture
 from lecturepilot.tenancy import TenantContext
@@ -177,41 +178,6 @@ def register_lecture_access_routes(
         )
         course = resolve_course(app, course_id=course_id, seeded_course=seeded_course)
         return build_lecture_access_summary(app, course, updated_lecture)
-
-
-def build_course_access_summary(
-    app: FastAPI,
-    workspace: CourseWorkspaceResult,
-    *,
-    course: Course | None = None,
-) -> CourseAccessSummary:
-    canonical = course or workspace.course
-    return CourseAccessSummary(
-        course_id=canonical.id,
-        default_rule=course_default_rule(canonical),
-        lectures=[
-            build_lecture_access_summary(app, canonical, lecture) for lecture in workspace.lectures
-        ],
-    )
-
-
-def build_lecture_access_summary(
-    app: FastAPI,
-    course: Course,
-    lecture: Lecture,
-) -> LectureAccessSummary:
-    rule = effective_rule(course, lecture)
-    return LectureAccessSummary(
-        lecture_id=lecture.id,
-        rule_source="lecture_override" if lecture.access_override else "course_default",
-        rule=rule,
-        effective_publication_at=effective_publication_at(lecture, rule),
-        release_status=release_status(lecture, rule),
-        content_ready=app.state.canvas_workspace.has_published_course_canvas(
-            course_id=course.id,
-            lecture_id=lecture.id,
-        ),
-    )
 
 
 def _owned_workspace(app, request, context, course_id, tenant_id) -> CourseWorkspaceResult:

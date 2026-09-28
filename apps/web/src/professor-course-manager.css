@@ -246,3 +246,20 @@
     margin-top: 7px;
   }
 }
+
+.created-course-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: baseline;
+}
+
+.created-course-status strong {
+  font-size: 12px;
+  color: var(--color-text-primary);
+}
+
+.created-course-status p {
+  flex-basis: 100%;
+  margin: 0;
+}

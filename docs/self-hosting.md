@@ -163,3 +163,11 @@ Alma/ILIAS identifier matching across representative accounts, disposable stagin
 tests, matched backup restore, retention/deletion, privacy notice, and provider/subprocessor review
 remain unverified or incomplete. The pinned `tue-api-wrapper==0.3.0` and Pillow 12.3 dependency set
 passed the recorded Python audit.
+
+## Legacy course publications
+
+Course management lists obsolete July publication metadata as **Legacy**, with no student preview.
+It retains the owner's delete action; malformed publications never count as published content.
+**Private** appears only when the course default and every lecture audience are instructors-only.
+Keep archived source/draft files private. Regenerate and approve current designs before republication;
+do not invent revision bindings or weaken publication validation to restore old content.
