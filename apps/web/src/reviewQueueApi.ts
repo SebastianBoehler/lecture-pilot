@@ -39,8 +39,19 @@ function isReviewQueue(payload: unknown, courseId: string): payload is CourseRev
   ) {
     return false;
   }
+
   return (
     payload.items.every((item) => isQueueItem(item, courseId)) &&
+    (payload.completed === undefined ||
+      (Array.isArray(payload.completed) &&
+        payload.completed.every(
+          (item) =>
+            isRecord(item) &&
+            item.course_id === courseId &&
+            hasStrings(item, ["id", "lecture_id", "section_title", "completed_at"]) &&
+            typeof item.completed_at === "string" &&
+            Number.isFinite(Date.parse(item.completed_at)),
+        ))) &&
     payload.upcoming.every(
       (item) =>
         isQueueItem(item, courseId) &&

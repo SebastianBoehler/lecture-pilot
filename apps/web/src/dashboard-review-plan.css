@@ -1,0 +1,106 @@
+.review-plan {
+  margin: 18px 0 22px;
+}
+
+.review-plan-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.review-plan-heading h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.review-plan-heading p {
+  margin: 4px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.review-plan-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 20px;
+}
+
+.review-plan-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.review-plan-list li:last-child {
+  border-bottom: 0;
+}
+.review-plan-list li > div {
+  display: grid;
+  gap: 3px;
+}
+.review-plan-list strong {
+  font-size: 14px;
+}
+.review-plan-list span {
+  font-size: 12px;
+  font-weight: 700;
+}
+.review-plan-list small {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+.review-plan-due {
+  color: var(--color-accent-primary);
+}
+.review-plan-upcoming {
+  color: var(--color-text-secondary);
+}
+.review-plan-completed {
+  opacity: 0.75;
+}
+
+.review-plan-export,
+.review-plan-action {
+  min-height: 34px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--control-radius);
+  padding: 0 11px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.review-plan-export:hover,
+.review-plan-action:not(.is-due):hover {
+  background: var(--color-bg-secondary);
+}
+
+.review-plan-action.is-due {
+  border-color: var(--color-accent-primary);
+  color: var(--color-on-accent);
+  background: var(--color-accent-primary);
+}
+
+.review-plan-action.is-due:hover {
+  background: var(--color-accent-hover);
+}
+
+@media (max-width: 560px) {
+  .review-plan-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .review-plan-list li {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

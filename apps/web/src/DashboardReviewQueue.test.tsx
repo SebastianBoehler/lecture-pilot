@@ -76,9 +76,9 @@ it("shows scheduled reviews this week and opens the lecture without binding the 
   vi.stubGlobal("fetch", fetchMock);
   renderDashboard(learner("student-a"), onOpen);
 
-  expect(await screen.findByRole("heading", { name: "Coming up this week" })).toBeVisible();
+  expect(await screen.findByRole("heading", { name: "Review plan" })).toBeVisible();
   expect(screen.getByText("Risk transfer")).toBeVisible();
-  await user.click(screen.getByRole("button", { name: /open lecture for risk transfer/i }));
+  await user.click(screen.getByRole("button", { name: /^open lecture$/i }));
   expect(onOpen).toHaveBeenCalledWith(course.id, lectures[1]);
   expect(fetchMock).not.toHaveBeenCalledWith(
     expect.stringContaining("/review-queue/gates/"),

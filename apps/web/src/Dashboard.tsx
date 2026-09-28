@@ -5,7 +5,7 @@ import {
 } from "./dashboardCourses";
 import { useState } from "react";
 import { DashboardCourseWorkspaces } from "./DashboardCourseWorkspaces";
-import { DashboardUpcomingReviews } from "./DashboardUpcomingReviews";
+import { DashboardReviewPlan } from "./DashboardReviewPlan";
 import { useI18n } from "./i18n";
 import type { Attendance, Lecture, LoginSession, UniversityCourse } from "./types";
 import { LearnerOnboarding } from "./LearnerOnboarding";
@@ -98,10 +98,11 @@ export function Dashboard({
         onOpenGateReview={(item) => void openGateReview(item)}
       />
 
-      <DashboardUpcomingReviews
-        items={reviewQueue.queue?.upcoming ?? []}
+      <DashboardReviewPlan
+        queue={reviewQueue.queue}
         lectures={workspaceLectures}
         onOpen={(lecture) => onOpen(activeCourse.id, lecture)}
+        onOpenDue={(item) => void openGateReview(item)}
       />
 
       {reviewQueue.error ? (

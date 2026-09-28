@@ -20,6 +20,14 @@ class GateReviewQueueItem(BaseModel):
     due_at: str
 
 
+class CompletedGateReview(BaseModel):
+    id: str
+    course_id: str
+    lecture_id: str
+    section_title: str
+    completed_at: str
+
+
 class ReadinessReviewQueueItem(BaseModel):
     id: str
     kind: Literal["readiness_repair"] = "readiness_repair"
@@ -42,6 +50,7 @@ class CourseReviewQueue(BaseModel):
     course_id: str
     items: list[ReviewQueueItem] = Field(default_factory=list)
     upcoming: list[GateReviewQueueItem] = Field(default_factory=list)
+    completed: list[CompletedGateReview] = Field(default_factory=list)
 
 
 class GateReviewOpening(BaseModel):

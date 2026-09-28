@@ -29,6 +29,13 @@ export type CourseReviewQueue = {
   course_id: string;
   items: ReviewQueueItem[];
   upcoming: GateReviewQueueItem[];
+  completed?: {
+    id: string;
+    course_id: string;
+    lecture_id: string;
+    section_title: string;
+    completed_at: string;
+  }[];
 };
 
 export type GateReviewOpening = {

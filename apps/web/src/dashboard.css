@@ -1,3 +1,5 @@
+@import "./dashboard-review-plan.css";
+
 .dashboard {
   width: min(960px, calc(100% - 32px));
   margin: 0 auto;
@@ -12,78 +14,6 @@
 
 .dashboard-header {
   margin-bottom: 22px;
-}
-
-.course-panel.upcoming-reviews {
-  margin-bottom: 20px;
-  border: 0;
-  border-block: 1px solid var(--color-border-primary);
-  border-radius: 0;
-  background: transparent;
-}
-
-.upcoming-reviews .panel-heading {
-  padding: 12px 0 0;
-  border: 0;
-}
-
-.upcoming-reviews .panel-heading h2 {
-  font-size: 16px;
-}
-
-.upcoming-reviews ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.upcoming-reviews li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  padding: 10px 0 12px;
-  border-top: 1px solid var(--color-border-primary);
-}
-
-.upcoming-reviews li:first-child {
-  border-top: 0;
-}
-
-.upcoming-reviews li > div {
-  display: grid;
-  gap: 2px;
-}
-
-.upcoming-reviews li span,
-.upcoming-reviews li time {
-  color: var(--color-text-secondary);
-  font-size: 13px;
-}
-
-.upcoming-reviews button {
-  flex: none;
-  min-height: var(--control-height);
-  border: 1px solid var(--color-border-primary);
-  border-radius: var(--control-radius);
-  padding: 0 var(--control-padding-x);
-  color: var(--color-text-primary);
-  background: var(--color-bg-primary);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.upcoming-reviews button:hover {
-  border-color: var(--color-border-strong);
-  background: var(--color-bg-secondary);
-}
-
-@media (max-width: 500px) {
-  .upcoming-reviews li {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 10px;
-  }
 }
 
 .dashboard h1,

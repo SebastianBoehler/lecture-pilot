@@ -20,7 +20,7 @@ export const privacyContent: Record<"en" | "de", InfoArticleContent> = {
         paragraphs: [
           "Course workspaces contain uploaded materials, processed sources, source assignments, learning plans, generated drafts and published lectures. After source confirmation, unused uploads can be removed while referenced sources and required dependencies are retained. Private authoring records may contain source excerpts and generated drafts.",
           "Your private workspace can contain attendance mode, progress, checkpoint and exam-check attempts, recent tutor messages, annotations, personal sections, generated images, memories, practice exams and saved submissions. These support continuation and personalized guidance.",
-          "Optional imported exam-protocol archives and extracted text are stored privately within your course workspace until deleted. Their login credentials are request-only. Practice-exam answer drafts stay in the browser tab until you explicitly submit them.",
+          "Optional imported exam-protocol archives and extracted text are stored privately within your course workspace until deleted. Their login credentials are request-only. Practice-exam answer drafts stay in the browser tab until you explicitly submit them. Two-question checkpoint drafts are kept in that tab's session storage until submission or the browser clears the tab session.",
         ],
       },
       {
@@ -96,7 +96,7 @@ export const privacyContent: Record<"en" | "de", InfoArticleContent> = {
         paragraphs: [
           "Kursworkspaces enthalten hochgeladene Materialien, verarbeitete Quellen, Quellenzuordnungen, Lernpläne, erzeugte Entwürfe und veröffentlichte Vorlesungen. Nach Bestätigung der Quellen können ungenutzte Uploads entfernt werden; referenzierte Quellen und benötigte Abhängigkeiten bleiben erhalten. Private Erstellungsprotokolle können Quellenauszüge und erzeugte Entwürfe enthalten.",
           "Dein privater Workspace kann Anwesenheitsmodus, Fortschritt, Checkpoint- und Prüfungscheckversuche, jüngste Tutornachrichten, Annotationen, persönliche Abschnitte, erzeugte Bilder, Erinnerungen, Übungsklausuren und gespeicherte Abgaben enthalten. Damit kannst du später fortsetzen und passende Unterstützung erhalten.",
-          "Optional importierte Prüfungsprotokollarchive und extrahierte Texte bleiben bis zum Löschen privat in deinem Kursworkspace. Ihre Zugangsdaten werden nur für die Anfrage verwendet. Antwortentwürfe für Übungsklausuren bleiben bis zur ausdrücklichen Abgabe im Browser-Tab.",
+          "Optional importierte Prüfungsprotokollarchive und extrahierte Texte bleiben bis zum Löschen privat in deinem Kursworkspace. Ihre Zugangsdaten werden nur für die Anfrage verwendet. Antwortentwürfe für Übungsklausuren bleiben bis zur ausdrücklichen Abgabe im Browser-Tab. Entwürfe für zweiteilige Checkpoints bleiben bis zur Abgabe oder bis der Browser die Tab-Sitzung löscht im Sitzungsspeicher dieses Tabs.",
         ],
       },
       {

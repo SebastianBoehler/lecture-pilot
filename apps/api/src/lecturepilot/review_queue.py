@@ -8,6 +8,7 @@ from lecturepilot.coaching_progress import CoachingProgressStore, InvalidCoachin
 from lecturepilot.learning_map import LearningMap
 from lecturepilot.readiness_progress import ReadinessProgressStore
 from lecturepilot.review_queue_models import (
+    CompletedGateReview,
     CourseReviewQueue,
     GateReviewQueueItem,
     ReadinessReviewQueueItem,
@@ -39,6 +40,7 @@ class ReviewQueueStore:
         due: list[tuple[datetime, GateReviewQueueItem]] = []
         upcoming: list[tuple[datetime, GateReviewQueueItem]] = []
         repairs: list[GateReviewQueueItem] = []
+        completed: list[tuple[datetime, CompletedGateReview]] = []
         maps_by_lecture = {lecture.id: lecture.learning_map for lecture in lectures}
         lecture_titles = {lecture.id: lecture.title for lecture in lectures}
         for lecture in lectures:
@@ -58,6 +60,19 @@ class ReviewQueueStore:
                 if review.section_id not in sections or review.section_id != gate.section_id:
                     raise InvalidCoachingStateError("Persisted delayed review section is invalid.")
                 if review.completed_at is not None:
+                    if review.completed_at >= current_time - timedelta(days=7):
+                        completed.append(
+                            (
+                                review.completed_at,
+                                CompletedGateReview(
+                                    id=f"completed:{lecture.id}:{gate.id}",
+                                    course_id=course_id,
+                                    lecture_id=lecture.id,
+                                    section_title=sections[review.section_id],
+                                    completed_at=review.completed_at.isoformat(),
+                                ),
+                            )
+                        )
                     continue
                 due_at = review.due_at
                 item = GateReviewQueueItem(
@@ -122,6 +137,9 @@ class ReviewQueueStore:
                     upcoming,
                     key=lambda pair: (pair[0], pair[1].lecture_id, pair[1].gate_id),
                 )
+            ],
+            completed=[
+                item for _, item in sorted(completed, key=lambda pair: pair[0], reverse=True)
             ],
         )
 
