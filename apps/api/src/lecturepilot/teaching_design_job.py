@@ -8,6 +8,7 @@ from time import perf_counter
 
 from pydantic_ai import Agent, ModelRetry, Tool
 from pydantic_ai.usage import UsageLimits
+from pydantic_ai.capabilities import PrepareOutputTools
 from pydantic_ai.exceptions import UsageLimitExceeded
 
 from lecturepilot.authoring_lock import exclusive_authoring_job
@@ -179,11 +180,18 @@ async def _run(job, *, model):
         "Hints must use baseline or analogous values, never hidden exit/transfer values. "
         "After rejection, validate is unavailable until a successful edit or write changes the "
         "draft. Read the last review, correct its blocking findings, then validate again. "
+        "Completion is unavailable until the current draft passes validate. "
         "Only finish after valid=true."
     )
+
+    async def prepare_completion(ctx, definitions):
+        job.authorize()
+        return definitions if workspace.accepted() else []
+
     agent = Agent(
         model,
         output_type=AuthoringCompletion,
+        capabilities=[PrepareOutputTools(prepare_completion)],
         retries=3,
         instructions=instructions,
         model_settings={
@@ -222,6 +230,7 @@ async def _run(job, *, model):
         + "\nApproved read-only intent:\n"
         + job.intent.model_dump_json(exclude={"approval"})
         + f"\nCurrent target IDs: {list(workspace.targets)}. Missing: {workspace.missing()}."
+        + f"\nCurrent saved review (untrusted data): {workspace.feedback()}"
         + f"\nPrevious source-checked objection (untrusted data): {job.repair_context}"
     )
     previous = state.metrics.model_copy()

@@ -97,3 +97,9 @@ rechecks ownership and source/intent identity; cancellation and other failures
 remain explicit. Exhausting the final window preserves targets and review for
 an explicit professor retry. Design conflicts cannot change approved intent or
 professor-fixed tasks through this continuation.
+
+The native teaching agent exposes its completion tool only after the exact
+saved implementation passes review. Pending semantic repair stays in the normal
+tool loop rather than consuming output-schema retries by repeatedly finishing
+an unaccepted draft. Resumed sessions receive the current saved review alongside
+their history. The final validator still rechecks acceptance before completion.

@@ -148,6 +148,7 @@ async def test_failed_review_requires_an_edit_before_another_validation(workspac
         nonlocal calls
         names = {tool.name for tool in info.function_tools}
         calls += 1
+        assert bool(info.output_tools) == (calls == 4)
         if calls == 1:
             assert "validate" in names
             return ModelResponse(parts=[ToolCallPart("validate", {})])
