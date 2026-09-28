@@ -1,8 +1,10 @@
 export const courseAccessMessages = {
   en: {
     "courseAccess.status.legacy": "Legacy",
+    "courseAccess.status.legacyDisabled": "Disabled · Legacy",
+    "courseAccess.status.legacyRecreate": "Recreate this course",
     "courseAccess.status.legacyHelp":
-      "Older publications cannot be opened by students. Course files are preserved; regenerate and review before publishing again, or delete this workspace.",
+      "Older publications cannot be opened by students. This course is disabled; its files are preserved. Create a new course to publish current material.",
     "courseAccess.default": "Default access: {audience} · {release}",
     "courseAccess.manageDefault": "Manage default",
     "courseAccess.manageDefaultAria": "Manage default access for {course}",
@@ -63,8 +65,10 @@ export const courseAccessMessages = {
   },
   de: {
     "courseAccess.status.legacy": "Legacy",
+    "courseAccess.status.legacyDisabled": "Deaktiviert · Legacy",
+    "courseAccess.status.legacyRecreate": "Neu erstellen erforderlich",
     "courseAccess.status.legacyHelp":
-      "Ältere Veröffentlichungen können von Studierenden nicht geöffnet werden. Die Kursdateien bleiben erhalten; vor einer erneuten Veröffentlichung neu generieren und prüfen oder diesen Arbeitsbereich löschen.",
+      "Ältere Veröffentlichungen können von Studierenden nicht geöffnet werden. Dieser Kurs ist deaktiviert; seine Dateien bleiben erhalten. Für aktuelle Materialien einen neuen Kurs erstellen.",
     "courseAccess.default": "Standardzugriff: {audience} · {release}",
     "courseAccess.manageDefault": "Standard verwalten",
     "courseAccess.manageDefaultAria": "Standardzugriff für {course} verwalten",

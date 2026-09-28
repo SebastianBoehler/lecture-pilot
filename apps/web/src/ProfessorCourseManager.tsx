@@ -1,3 +1,4 @@
+import { ProfessorLegacyCourseRow } from "./ProfessorLegacyCourseRow";
 import { ProfessorCourseStatus } from "./ProfessorCourseStatus";
 import { ProfessorLanguageVariants } from "./ProfessorLanguageVariants";
 import { useI18n } from "./i18n";
@@ -56,128 +57,134 @@ export function ProfessorCourseManager({
       </div>
       {workspaces.length ? (
         <div className="created-course-list">
-          {workspaces.map((workspace) => (
-            <article className="created-course-row" key={workspace.course.id}>
-              <div className="created-course-summary">
-                <div className="created-course-title">
-                  <strong>{workspace.course.title}</strong>
-                  <span>{workspace.course.term}</span>
+          {workspaces.map((workspace) =>
+            workspace.legacyLectureIds?.length ? (
+              <ProfessorLegacyCourseRow
+                key={workspace.course.id}
+                workspace={workspace}
+                deleting={deletingCourseId === workspace.course.id}
+                onDelete={onDeleteCourse}
+              />
+            ) : (
+              <article className="created-course-row" key={workspace.course.id}>
+                <div className="created-course-summary">
+                  <div className="created-course-title">
+                    <strong>{workspace.course.title}</strong>
+                    <span>{workspace.course.term}</span>
+                  </div>
+                  <div className="created-course-meta">
+                    <strong>
+                      {t("professor.configuredLectures", { count: workspace.lectures.length })}
+                    </strong>
+                    <span>
+                      {t("courseAccess.default", {
+                        audience: accessAudienceLabel(
+                          workspace.accessSummary.default_rule.audience,
+                          t,
+                        ),
+                        release: defaultReleaseLabel(workspace.accessSummary.default_rule, t),
+                      })}
+                    </span>
+                  </div>
+                  <div className="created-course-actions">
+                    <button
+                      aria-label={t("courseAccess.manageDefaultAria", {
+                        course: workspace.course.title,
+                      })}
+                      className="refresh-button"
+                      id={`course-access-${workspace.course.id}`}
+                      type="button"
+                      onClick={(event) => onManageCourseAccess(workspace, event.currentTarget.id)}
+                    >
+                      {t("courseAccess.manageDefault")}
+                    </button>
+                    <button
+                      className="refresh-button"
+                      type="button"
+                      onClick={() => onUpdateCourse(workspace.course.id)}
+                    >
+                      {t("professor.update")}
+                    </button>
+                    {workspace.publishedLectureIds?.length ? (
+                      <ExamReadinessPanel
+                        compact
+                        course={workspace.course}
+                        lectures={workspace.lectures.filter((lecture) =>
+                          workspace.publishedLectureIds?.includes(lecture.id),
+                        )}
+                        mode="professor-preview"
+                        session={session}
+                        onOpenLecture={(lecture) => onPreviewLecture(workspace.course.id, lecture)}
+                      />
+                    ) : null}
+                    <button
+                      className="refresh-button delete-course-button"
+                      disabled={deletingCourseId === workspace.course.id}
+                      type="button"
+                      aria-label={t("professor.deleteCourse", { course: workspace.course.title })}
+                      onClick={() => onDeleteCourse(workspace.course.id)}
+                    >
+                      {deletingCourseId === workspace.course.id
+                        ? t("professor.deleting")
+                        : t("professor.delete")}
+                    </button>
+                  </div>
                 </div>
-                <div className="created-course-meta">
-                  <strong>
-                    {t("professor.configuredLectures", { count: workspace.lectures.length })}
-                  </strong>
-                  <span>
-                    {t("courseAccess.default", {
-                      audience: accessAudienceLabel(
-                        workspace.accessSummary.default_rule.audience,
-                        t,
-                      ),
-                      release: defaultReleaseLabel(workspace.accessSummary.default_rule, t),
-                    })}
-                  </span>
-                </div>
-                <div className="created-course-actions">
-                  <button
-                    aria-label={t("courseAccess.manageDefaultAria", {
-                      course: workspace.course.title,
-                    })}
-                    className="refresh-button"
-                    id={`course-access-${workspace.course.id}`}
-                    type="button"
-                    onClick={(event) => onManageCourseAccess(workspace, event.currentTarget.id)}
-                  >
-                    {t("courseAccess.manageDefault")}
-                  </button>
-                  <button
-                    className="refresh-button"
-                    type="button"
-                    onClick={() => onUpdateCourse(workspace.course.id)}
-                  >
-                    {t("professor.update")}
-                  </button>
-                  {workspace.publishedLectureIds?.length ? (
-                    <ExamReadinessPanel
-                      compact
-                      course={workspace.course}
-                      lectures={workspace.lectures.filter((lecture) =>
-                        workspace.publishedLectureIds?.includes(lecture.id),
-                      )}
-                      mode="professor-preview"
-                      session={session}
-                      onOpenLecture={(lecture) => onPreviewLecture(workspace.course.id, lecture)}
-                    />
-                  ) : null}
-                  <button
-                    className="refresh-button delete-course-button"
-                    disabled={deletingCourseId === workspace.course.id}
-                    type="button"
-                    aria-label={t("professor.deleteCourse", { course: workspace.course.title })}
-                    onClick={() => onDeleteCourse(workspace.course.id)}
-                  >
-                    {deletingCourseId === workspace.course.id
-                      ? t("professor.deleting")
-                      : t("professor.delete")}
-                  </button>
-                </div>
-              </div>
-              <ProfessorCourseStatus workspace={workspace} />
-              <details className="created-course-lectures" open={workspaces.length === 1}>
-                <summary>{t("professor.preview.lectures")}</summary>
-                <ul>
-                  {workspace.lectures.map((lecture) => {
-                    const accessSummary = workspace.accessSummary.lectures.find(
-                      (summary) => summary.lecture_id === lecture.id,
-                    );
-                    if (!accessSummary) {
-                      throw new Error(`Missing access summary for ${lecture.id}.`);
-                    }
-                    return (
-                      <li key={lecture.id}>
-                        <span className="created-lecture-number">{lecture.number}</span>
-                        <span className="created-lecture-copy">
-                          <span className="created-lecture-title">{lecture.title}</span>
-                        </span>
-                        <ProfessorLectureAccessStatus
-                          legacy={workspace.legacyLectureIds?.includes(lecture.id)}
-                          summary={accessSummary}
-                        />
-                        <span className="created-lecture-actions">
-                          {accessSummary.content_ready ? (
+                <ProfessorCourseStatus workspace={workspace} />
+                <details className="created-course-lectures" open={workspaces.length === 1}>
+                  <summary>{t("professor.preview.lectures")}</summary>
+                  <ul>
+                    {workspace.lectures.map((lecture) => {
+                      const accessSummary = workspace.accessSummary.lectures.find(
+                        (summary) => summary.lecture_id === lecture.id,
+                      );
+                      if (!accessSummary) {
+                        throw new Error(`Missing access summary for ${lecture.id}.`);
+                      }
+                      return (
+                        <li key={lecture.id}>
+                          <span className="created-lecture-number">{lecture.number}</span>
+                          <span className="created-lecture-copy">
+                            <span className="created-lecture-title">{lecture.title}</span>
+                          </span>
+                          <ProfessorLectureAccessStatus summary={accessSummary} />
+                          <span className="created-lecture-actions">
+                            {accessSummary.content_ready ? (
+                              <button
+                                className="refresh-button"
+                                type="button"
+                                onClick={() => onPreviewLecture(workspace.course.id, lecture)}
+                              >
+                                {t("professor.preview.open")}
+                              </button>
+                            ) : null}
                             <button
+                              aria-label={t("courseAccess.manageAria", { lecture: lecture.title })}
                               className="refresh-button"
+                              id={`lecture-access-${workspace.course.id}-${lecture.id}`}
                               type="button"
-                              onClick={() => onPreviewLecture(workspace.course.id, lecture)}
+                              onClick={(event) =>
+                                onManageLectureAccess(workspace, lecture, event.currentTarget.id)
+                              }
                             >
-                              {t("professor.preview.open")}
+                              {t("courseAccess.manage")}
                             </button>
+                          </span>
+                          {accessSummary.content_ready ? (
+                            <ProfessorLanguageVariants
+                              courseId={workspace.course.id}
+                              lectureId={lecture.id}
+                              session={session}
+                            />
                           ) : null}
-                          <button
-                            aria-label={t("courseAccess.manageAria", { lecture: lecture.title })}
-                            className="refresh-button"
-                            id={`lecture-access-${workspace.course.id}-${lecture.id}`}
-                            type="button"
-                            onClick={(event) =>
-                              onManageLectureAccess(workspace, lecture, event.currentTarget.id)
-                            }
-                          >
-                            {t("courseAccess.manage")}
-                          </button>
-                        </span>
-                        {accessSummary.content_ready ? (
-                          <ProfessorLanguageVariants
-                            courseId={workspace.course.id}
-                            lectureId={lecture.id}
-                            session={session}
-                          />
-                        ) : null}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </details>
-            </article>
-          ))}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </details>
+              </article>
+            ),
+          )}
         </div>
       ) : (
         <p className="empty-course-manager">{t("professor.noCreatedCourses")}</p>

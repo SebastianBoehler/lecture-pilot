@@ -35,13 +35,18 @@ it.each(["en", "de"] as const)(
     );
     const title = await screen.findByText("GDML preserved course");
     const row = title.closest("article")!;
+    expect(row).toHaveAttribute("data-state", "disabled");
     expect(
-      within(row.querySelector(".created-course-status")!).getByText("Legacy"),
+      within(row).getByText(locale === "en" ? "Disabled · Legacy" : "Deaktiviert · Legacy"),
     ).toBeInTheDocument();
+    expect(
+      within(row).getByText(
+        locale === "en" ? "Recreate this course" : "Neu erstellen erforderlich",
+      ),
+    ).toBeInTheDocument();
+    expect(within(row).getAllByRole("button")).toHaveLength(1);
     expect(within(row).queryByText(locale === "en" ? "Draft" : "Entwurf")).not.toBeInTheDocument();
-    expect(
-      within(row).getByText(locale === "en" ? "Private" : "Privat", { selector: "strong" }),
-    ).toBeInTheDocument();
+    expect(within(row).getByText(locale === "en" ? "Private" : "Privat")).toBeInTheDocument();
     expect(
       within(row).getByText(
         locale === "en"

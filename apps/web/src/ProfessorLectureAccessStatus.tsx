@@ -19,23 +19,14 @@ import type {
 
 export function ProfessorLectureAccessStatus({
   now,
-  legacy = false,
   summary,
 }: {
   now?: Date;
-  legacy?: boolean;
   summary: LectureAccessSummary;
 }) {
   const { locale, t } = useI18n();
   const visibility = audiencePresentation(summary.rule.audience, t);
-  const availability = legacy
-    ? {
-        Icon: FilePenLine,
-        primary: t("courseAccess.status.legacy"),
-        detail: t("courseAccess.status.hidden"),
-        state: "draft",
-      }
-    : availabilityPresentation(summary, locale, t, now);
+  const availability = availabilityPresentation(summary, locale, t, now);
   return (
     <span className="created-lecture-access-status">
       <span

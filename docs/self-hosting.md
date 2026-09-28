@@ -166,8 +166,8 @@ passed the recorded Python audit.
 
 ## Legacy course publications
 
-Course management lists obsolete July publication metadata as **Legacy**, with no student preview.
-It retains the owner's delete action; malformed publications never count as published content.
+Course management shows obsolete July publications as **Disabled · Legacy**, with a recreate notice.
+Deletion is the only course action; malformed publications never count as published content.
 **Private** appears only when the course default and every lecture audience are instructors-only.
 Keep archived source/draft files private. Regenerate and approve current designs before republication;
 do not invent revision bindings or weaken publication validation to restore old content.

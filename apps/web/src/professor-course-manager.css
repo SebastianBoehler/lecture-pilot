@@ -263,3 +263,25 @@
   flex-basis: 100%;
   margin: 0;
 }
+
+.created-course-row.is-legacy {
+  border: 1px dashed var(--color-border-primary);
+  border-radius: 6px;
+  padding: 16px;
+  background: var(--color-bg-secondary);
+}
+
+.is-legacy .created-course-title strong {
+  color: var(--color-text-secondary);
+}
+
+.legacy-course-state {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--color-text-secondary);
+}
+
+.legacy-course-state strong {
+  font-size: 16px;
+}

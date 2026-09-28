@@ -324,8 +324,8 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
   and `onboardingChapters.ts`. Versioned public media is tracked under `docs/onboarding-media/`,
   mounted read-only into the web service; see `docs/onboarding-video.md`.
 
-- Legacy publications remain visible to their owner in course management with a Legacy notice
-  and the existing delete action. `course_legacy_publication.py` identifies the obsolete metadata;
+- Legacy publications remain visible to their owner in course management as disabled Legacy courses
+  with a recreate notice and deletion as their only action. `course_legacy_publication.py` identifies the obsolete metadata;
   `course_access_summary.py` keeps invalid content unavailable while management stays usable.
   The Private label reflects instructor-only defaults and lecture audiences.
 
