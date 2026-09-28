@@ -173,6 +173,7 @@ def create_app() -> FastAPI:
             "X-Generation-Id",
             "X-Generation-Repairable",
             "X-Generation-Status",
+            "X-Generation-Error-Code",
             "Retry-After",
             "X-Request-ID",
         ],

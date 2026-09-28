@@ -45,6 +45,11 @@ async def review_learning_goal_scope(*, model, settings, proposal, catalogue):
         return review
 
     result = await agent.run(
-        json.dumps({"proposal": proposal.model_dump(mode="json"), "evidence": catalogue})
+        json.dumps(
+            {
+                "proposal": proposal.model_dump(mode="json", include={"objective", "goals"}),
+                "evidence": catalogue,
+            }
+        )
     )
     return result.output

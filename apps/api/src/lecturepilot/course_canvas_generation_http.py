@@ -142,6 +142,8 @@ def _generation_error(
     if job is not None:
         response_headers["X-Generation-Id"] = job.generation_id
         response_headers["X-Generation-Status"] = job.status
+        if job.error_code:
+            response_headers["X-Generation-Error-Code"] = job.error_code
         if has_resumable_session(store.layout, job):
             response_headers["X-Generation-Repairable"] = "true"
     return HTTPException(status_code=status_code, detail=detail, headers=response_headers)

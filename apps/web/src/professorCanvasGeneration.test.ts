@@ -11,6 +11,13 @@ import type { CanvasDocument } from "./types";
 const canvas = { id: "lecture-01-canvas" } as CanvasDocument;
 
 describe("professor canvas generation", () => {
+  it("sends approved design conflicts to learning-plan review even with saved repair work", () => {
+    expect(
+      describeCanvasGenerationError(
+        new CanvasDraftRequestError("Revise the plan", true, true, "authoring_design_conflict"),
+      ),
+    ).toEqual({ errorKind: "design", message: "Revise the plan" });
+  });
   it("distinguishes an unreadable network response from a service error", () => {
     expect(describeCanvasGenerationError(new TypeError("Failed to fetch"))).toEqual({
       errorKind: "network",

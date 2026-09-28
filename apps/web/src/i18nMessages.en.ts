@@ -902,6 +902,9 @@ export const enMessages = {
   "builder.generate.previousRunHelp":
     "Some lectures failed. Details below explain why; retry only the affected lectures.",
   "builder.generate.failureDetails": "View failure details",
+  "builder.generate.reviewGoals": "Review learning goals",
+  "builder.generate.goalConflict":
+    "The approved learning plan needs revision. Edit its goals or objective, then approve it again before generating a draft.",
   "builder.generate.progressStatus.pending": "Pending",
   "builder.generate.progressStatus.generating": "Generating",
   "builder.generate.progressStatus.ready": "Ready",

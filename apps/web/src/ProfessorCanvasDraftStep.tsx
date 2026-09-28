@@ -22,6 +22,7 @@ export function ProfessorCanvasDraftStep({
   onApproveLearningDesign,
   onGenerate,
   onRetry,
+  onReviewLearningGoals,
   onSaveLearningDesign,
   renderImplementationChanges,
   previewLectures,
@@ -43,6 +44,7 @@ export function ProfessorCanvasDraftStep({
   onApproveLearningDesign: (lectureId: string) => void;
   onGenerate: () => void;
   onRetry: (lectureId: string) => void;
+  onReviewLearningGoals?: () => void;
   onSaveLearningDesign: (lectureId: string, update: LearningDesignUpdate) => void;
   renderImplementationChanges?: (lectureId: string) => ReactNode;
   previewLectures: {
@@ -60,23 +62,28 @@ export function ProfessorCanvasDraftStep({
   const busyLabel = isFullCourse ? t("builder.generate.busyAll") : t("builder.generate.busySingle");
   const hasDraft = Boolean(canvas);
   const hasUnfinished = generationProgress.some((item) => item.status === "error");
+  const hasDesignConflict = generationProgress.some(
+    (item) => item.status === "error" && item.errorKind === "design",
+  );
   return (
     <section className="flow-card">
       <button
         className={hasDraft ? undefined : "primary-action"}
         aria-busy={isGenerating}
-        disabled={!canGenerate || isGenerating}
+        disabled={isGenerating || (hasDesignConflict ? !onReviewLearningGoals : !canGenerate)}
         type="button"
-        onClick={onGenerate}
+        onClick={hasDesignConflict ? onReviewLearningGoals : onGenerate}
       >
         {isGenerating ? <GenerationSpinner /> : null}
         {isGenerating
           ? busyLabel
-          : hasUnfinished
-            ? t("builder.generate.resume")
-            : hasDraft
-              ? t("builder.generate.regenerate")
-              : actionLabel}
+          : hasDesignConflict
+            ? t("builder.generate.reviewGoals")
+            : hasUnfinished
+              ? t("builder.generate.resume")
+              : hasDraft
+                ? t("builder.generate.regenerate")
+                : actionLabel}
       </button>
       {isGenerating ? (
         <p role="status" className="visually-hidden">
@@ -105,6 +112,7 @@ export function ProfessorCanvasDraftStep({
         generationProgress={generationProgress}
         retryingLectureIds={retryingLectureIds}
         onRetry={onRetry}
+        onReviewLearningGoals={onReviewLearningGoals}
         renderPublishedLecture={renderPublishedLecture}
         learningDesignReviews={learningDesignReviews}
         learningDesignSaving={learningDesignSaving}

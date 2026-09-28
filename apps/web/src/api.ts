@@ -24,18 +24,21 @@ export class CanvasDraftLoadError extends Error {
   readonly generationStatus: "running" | "completed" | "failed" | null;
   readonly repairable: boolean;
   readonly status: number;
+  readonly errorCode?: string;
 
   constructor(
     message: string,
     status: number,
     repairable = false,
     generationStatus: "running" | "completed" | "failed" | null = null,
+    errorCode?: string,
   ) {
     super(message);
     this.name = "CanvasDraftLoadError";
     this.generationStatus = generationStatus;
     this.status = status;
     this.repairable = repairable;
+    this.errorCode = errorCode;
   }
 }
 
@@ -201,6 +204,7 @@ export async function getDraftLectureCanvas(
       response.status,
       response.headers.get("X-Generation-Repairable") === "true",
       readCanvasGenerationStatus(response.headers.get("X-Generation-Status")),
+      response.headers.get("X-Generation-Error-Code") ?? undefined,
     );
   }
   return payload as CanvasDocument;

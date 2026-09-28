@@ -15,6 +15,7 @@ export function ProfessorCanvasReviewWorkspace({
   generationProgress = [],
   retryingLectureIds = new Set(),
   onRetry,
+  onReviewLearningGoals,
   renderPublishedLecture,
   learningDesignReviews,
   learningDesignSaving,
@@ -28,6 +29,7 @@ export function ProfessorCanvasReviewWorkspace({
   generationProgress?: CanvasGenerationProgress[];
   retryingLectureIds?: ReadonlySet<string>;
   onRetry?: (lectureId: string) => void;
+  onReviewLearningGoals?: () => void;
   renderPublishedLecture?: (lectureId: string) => ReactNode;
   learningDesignReviews: Record<string, LearningDesignReview>;
   learningDesignSaving: boolean;
@@ -149,6 +151,7 @@ export function ProfessorCanvasReviewWorkspace({
                   progress={progress}
                   retrying={retryingLectureIds.has(lecture.id)}
                   onRetry={onRetry}
+                  onReviewLearningGoals={onReviewLearningGoals}
                 />
               ) : null}
               {designOpen && hasDraft ? (

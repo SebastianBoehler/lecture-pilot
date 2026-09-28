@@ -151,7 +151,12 @@ it("preserves repairability and clears the request key for a failed polled job",
       .mockResolvedValueOnce(new Response(JSON.stringify({ status: "running" }), { status: 202 }))
       .mockResolvedValueOnce(
         new Response(
-          JSON.stringify({ status: "failed", error_detail: "Fix teaching", repairable: true }),
+          JSON.stringify({
+            status: "failed",
+            error_detail: "Fix teaching",
+            repairable: true,
+            error_code: "authoring_design_conflict",
+          }),
         ),
       ),
   );
@@ -161,6 +166,7 @@ it("preserves repairability and clears the request key for a failed polled job",
       message: "Fix teaching",
       terminalGeneration: true,
       repairable: true,
+      errorCode: "authoring_design_conflict",
     });
     await vi.advanceTimersByTimeAsync(1500);
     await assertion;

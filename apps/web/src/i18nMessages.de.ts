@@ -926,6 +926,9 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.generate.previousRunHelp":
     "Einige Vorlesungen sind fehlgeschlagen. Die Details zeigen den Grund; wiederhole nur die betroffenen Vorlesungen.",
   "builder.generate.failureDetails": "Fehlerdetails anzeigen",
+  "builder.generate.reviewGoals": "Lernziele prüfen",
+  "builder.generate.goalConflict":
+    "Der freigegebene Lernplan muss überarbeitet werden. Bearbeite Lernziele oder Zielsetzung und gib den Plan vor der Entwurfserstellung erneut frei.",
   "builder.generate.progressStatus.pending": "Ausstehend",
   "builder.generate.progressStatus.generating": "Wird erzeugt",
   "builder.generate.progressStatus.ready": "Bereit",

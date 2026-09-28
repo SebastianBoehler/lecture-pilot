@@ -122,3 +122,7 @@ objective and goals. An inconsistent approved scope raises a design conflict
 with a request to edit and reapprove the learning plan, rather than spending
 teaching turns trying to change protected intent. No approval is changed by this
 check. `learning_goal_scope_review.py` owns this shared native review contract.
+The review receives objective/goals and evidence only, without fixed assessment
+tasks. Generation errors expose a categorical code alongside status. An approved
+design conflict offers a direct learning-plan review action, including after
+workspace restoration, rather than another generation retry.

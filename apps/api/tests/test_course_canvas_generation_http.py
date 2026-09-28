@@ -9,6 +9,7 @@ from lecturepilot.course_canvas_generation_http import run_canvas_generation_req
 from lecturepilot.course_canvas_generation_jobs import CanvasGenerationStore
 from lecturepilot.course_canvas_generation_service import CANVAS_GENERATION_LEASE_SECONDS
 from lecturepilot.providers import ProviderConfigurationError
+from lecturepilot.authoring_models import AuthoringDesignConflict
 from lecturepilot.storage_layout import StorageLayout
 from lecturepilot.tenancy import TenantContext
 
@@ -19,6 +20,7 @@ from lecturepilot.tenancy import TenantContext
     [
         (CanvasGenerationRepairableError("Generated math is invalid."), True),
         (ProviderConfigurationError("Provider API key is missing."), False),
+        (AuthoringDesignConflict("Revise the approved learning goals."), False),
     ],
 )
 async def test_only_generated_content_failures_are_repairable(
@@ -46,3 +48,5 @@ async def test_only_generated_content_failures_are_repairable(
     assert (caught.value.headers or {}).get("X-Generation-Repairable") == (
         "true" if expected_repairable else None
     )
+    if isinstance(error, AuthoringDesignConflict):
+        assert caught.value.headers["X-Generation-Error-Code"] == "authoring_design_conflict"

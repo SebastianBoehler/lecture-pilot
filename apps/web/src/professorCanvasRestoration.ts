@@ -57,6 +57,10 @@ function restorationFailure(lectureId: string, error: unknown): CanvasGeneration
     );
   }
   const errorKind =
-    error instanceof CanvasDraftLoadError && error.repairable ? "repair" : "service";
+    error instanceof CanvasDraftLoadError && error.errorCode === "authoring_design_conflict"
+      ? "design"
+      : error instanceof CanvasDraftLoadError && error.repairable
+        ? "repair"
+        : "service";
   return { errorKind, lectureId, message, status: "error" };
 }

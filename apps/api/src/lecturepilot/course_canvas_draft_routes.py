@@ -185,6 +185,8 @@ def register_course_canvas_draft_routes(
                 actor_user_id=context.user_id,
             )
             headers = {"X-Generation-Status": generation.status} if generation else {}
+            if generation and generation.error_code:
+                headers["X-Generation-Error-Code"] = generation.error_code
             if generation and (
                 generation.error_code == "canvas_generation_repairable_error"
                 or has_resumable_session(app.state.canvas_workspace.layout, generation)

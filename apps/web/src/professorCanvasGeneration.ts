@@ -4,7 +4,7 @@ import { CanvasDraftRequestError } from "./canvasDraftApi";
 const CANVAS_DRAFT_RETRY_DELAYS_MS = [1500, 3500];
 
 export type CanvasGenerationStatus = "pending" | "generating" | "ready" | "error";
-export type CanvasGenerationErrorKind = "network" | "repair" | "service";
+export type CanvasGenerationErrorKind = "network" | "repair" | "service" | "design";
 
 export type CanvasGenerationProgress = {
   lectureId: string;
@@ -43,6 +43,9 @@ export function describeCanvasGenerationError(error: unknown): {
       /network ?error/i.test(message) ||
       /load failed/i.test(message));
   if (isNetworkFailure) return { errorKind: "network" };
+  if (error instanceof CanvasDraftRequestError && error.errorCode === "authoring_design_conflict") {
+    return { errorKind: "design", message };
+  }
   if (error instanceof CanvasDraftRequestError && error.terminalGeneration && error.repairable) {
     return { errorKind: "repair", message };
   }

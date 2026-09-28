@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { getDraftLectureCanvas } from "./api";
+import { CanvasDraftLoadError, getDraftLectureCanvas } from "./api";
 import { restoreFullCourseCanvasDrafts } from "./professorCanvasRestoration";
 import type { LoginSession } from "./types";
 
@@ -7,6 +7,18 @@ vi.mock("./api", async (original) => ({
   ...(await original<typeof import("./api")>()),
   getDraftLectureCanvas: vi.fn(),
 }));
+
+it("restores approved-scope conflicts as learning-plan review actions", async () => {
+  vi.mocked(getDraftLectureCanvas).mockRejectedValueOnce(
+    new CanvasDraftLoadError("Revise the plan", 404, true, "failed", "authoring_design_conflict"),
+  );
+  const result = await restoreFullCourseCanvasDrafts({
+    courseId: "course",
+    lectureIds: ["lecture-01"],
+    session: {} as LoginSession,
+  });
+  expect(result.progress[0]).toMatchObject({ status: "error", errorKind: "design" });
+});
 
 it("does not replace known generation results with failures when status retrieval loses connection", async () => {
   vi.mocked(getDraftLectureCanvas).mockRejectedValueOnce(new TypeError("Failed to fetch"));

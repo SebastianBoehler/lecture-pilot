@@ -5,12 +5,19 @@ import type { CanvasDocument, LoginSession } from "./types";
 export class CanvasDraftRequestError extends Error {
   readonly repairable: boolean;
   readonly terminalGeneration: boolean;
+  readonly errorCode?: string;
 
-  constructor(message: string, terminalGeneration: boolean, repairable = false) {
+  constructor(
+    message: string,
+    terminalGeneration: boolean,
+    repairable = false,
+    errorCode?: string,
+  ) {
     super(message);
     this.name = "CanvasDraftRequestError";
     this.terminalGeneration = terminalGeneration;
     this.repairable = repairable;
+    this.errorCode = errorCode;
   }
 }
 
@@ -57,6 +64,7 @@ async function requestLectureCanvas(
       readApiError(payload, "Canvas generation request failed."),
       terminalGeneration,
       response.headers.get("X-Generation-Repairable") === "true",
+      response.headers.get("X-Generation-Error-Code") ?? undefined,
     );
   }
   let canvas: CanvasDocument;
@@ -105,6 +113,7 @@ async function pollCanvasGeneration(
         status.error_detail ?? "Canvas generation failed.",
         true,
         status.repairable === true,
+        typeof status.error_code === "string" ? status.error_code : undefined,
       );
     }
     if (status?.status === "completed" && status.canvas) return status.canvas;

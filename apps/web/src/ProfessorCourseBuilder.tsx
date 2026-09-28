@@ -81,6 +81,7 @@ export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
         ) : null
       }
       {...builder.generateStep}
+      onReviewLearningGoals={() => builder.setActiveStep("design")}
       lectures={builder.publishStep.lectures}
       renderPublishedLecture={(lectureId) =>
         builder.workspace ? (
