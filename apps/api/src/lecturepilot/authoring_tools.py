@@ -128,7 +128,9 @@ class AuthoringTools:
         key = repr((digest, issues))
         self.failures[key] = self.failures.get(key, 0) + 1
         if self.failures[key] >= 3:
+            # Surface structural repair instructions without copying source-bearing critic output.
+            detail = " ".join(issue for issue in issues if isinstance(issue, str))[:2000]
             raise AuthoringStalledError(
-                "Authoring repeated the same invalid draft defect three times."
+                "Authoring repeated the same invalid draft defect three times. " + detail
             )
         return {"valid": False, "issues": issues}

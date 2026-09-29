@@ -23,9 +23,18 @@ def assemble_approved_checkpoints(
             continue
         target = expected.get(block.id)
         if target is None or block.type != "checkpoint" or block.text != target.baseline_task:
+            repair = (
+                "Rename this ordinary content block to an id without the practice- prefix; "
+                "preserve its teaching content."
+                if target is None and block.type != "checkpoint"
+                else "Remove this generated block; the server inserts the exact approved "
+                "checkpoint. Do not rewrite approved tasks."
+            )
             raise CanvasGenerationRepairableError(
-                "Generated content conflicts with the assigned approved practice checkpoints.",
+                f"Block {block.id!r} uses an id reserved for server-owned approved checkpoints. "
+                + repair,
                 section_id=section.id,
+                block_id=block.id,
             )
     contexts = {f"check-context-{target.id}" for target in targets}
     context_blocks = [block for block in section.blocks if block.id in contexts]
