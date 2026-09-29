@@ -55,7 +55,8 @@ async def _run(job: AuthoringJob, *, model: Model) -> AuthoringResult:
     workspace = AuthoringWorkspace(job.root, job.source, job.design, job.authorize, job.candidate)
     metrics = state.metrics
     actions = AuthoringTools(job, workspace, metrics)
-    actions.accepted_digest, actions.failures = state.accepted_digest, state.failures
+    actions.accepted_digest = state.accepted_digest
+    # Explicit retries get three fresh repeat checks; history and cumulative metrics persist.
     agent = Agent(
         model,
         output_type=AuthoringCompletion,
@@ -127,7 +128,9 @@ def _instructions(job: AuthoringJob, workspace: AuthoringWorkspace) -> str:
         '<!-- block id="explanation" type="paragraph" --> before each block. '
         "Math uses ```math fences. Use unique block ids across the lecture. "
         "Start each file with a concise # teaching title. Preserve correct existing sections and blocks. "
-        "Do not write canonical practice-* checkpoints: the server inserts approved tasks. "
+        "The practice- block-id prefix is reserved for server-owned approved checkpoints. "
+        "Never use it for generated paragraphs, examples or checks; use ids such as "
+        "transition-to-practice. The server inserts approved tasks. "
         "When a section has no approved target, include a concrete open task with exactly this syntax: "
         '<!-- block id="section-specific-check" type="checkpoint" -->\n'
         ":::checkpoint Apply it\nWhy does [the source-specific mechanism] produce [the outcome]?\n:::\n"

@@ -33,7 +33,10 @@ and teaching validation. Provider benchmarks are separate from deterministic CI.
 uses the framework's native tool loop and typed completion; `authoring_workspace`
 enforces paths and compiles Markdown; `authoring_tools` runs structural and
 independent semantic checks. Completion cannot bypass these checks. Approved
-checkpoints are inserted by the backend, not rewritten by the agent.
+checkpoints are inserted by the backend, not rewritten by the agent. The entire
+`practice-` block-id prefix is reserved for these checkpoints. Conflicting generated
+blocks report their draft file, block id and repair action: rename ordinary content
+or remove a generated checkpoint override so the backend can insert the approved task.
 
 The private course builder directory contains:
 
@@ -62,7 +65,10 @@ session rather than losing its files or accumulating reference chains.
 revokes ownership; a remote worker notices lease loss through its heartbeat.
 
 Unchanged review batches are reused within a run. Changed teaching is reviewed
-again. Repeated identical defects stop with an explicit stalled error. A critic
+again. Three repeated identical defects within one worker run stop with an explicit
+stalled error, including bounded structural repair details. An explicit retry retains
+the draft, native history and cumulative metrics but starts a fresh repeat budget;
+it cannot silently approve a draft or disable validation. A critic
 issue against an exact approved checkpoint is checked against its task, rubric,
 source and teaching. Unsupported objections are dismissed; missing explanation
 is repaired in the canvas. Only a source-checked conflict that requires changing

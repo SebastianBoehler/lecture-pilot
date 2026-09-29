@@ -121,8 +121,8 @@ class AuthoringWorkspace:
                 source_section_id=source_section.id,
                 blocks=blocks,
             )
-            section = assemble_approved_checkpoints(section, self.targets[source_section.id])
             try:
+                section = assemble_approved_checkpoints(section, self.targets[source_section.id])
                 validate_planned_document(
                     self.source.model_copy(update={"sections": [section]}), self.source
                 )
