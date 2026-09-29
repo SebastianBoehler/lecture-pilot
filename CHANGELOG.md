@@ -4,6 +4,32 @@ A product-level history of improvements for students and lecturers. Technical de
 
 [View all GitHub Releases](https://github.com/SebastianBoehler/lecture-pilot/releases)
 
+## [0.8.0](https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.8.0) — Your feedback, better course creation
+
+Released 2026-09-30
+
+Feedback from lecturers helped improve learning-plan editing, generation recovery, and error guidance. This release also makes student practice and review planning easier to follow.
+
+### What changed
+
+- **Rename and remove learning goals** _(From feedback)_ — Edit goal titles and outcomes or remove goals directly in the learning plan. Changes require fresh approval before generation.
+- **Repair failed lectures with clearer feedback** _(From feedback)_ — Checkpoint conflicts now identify the affected block and explain the correction. A new repair attempt keeps saved progress and receives a fresh bounded retry budget.
+- **Catch learning-plan conflicts before authoring** _(From feedback)_ — Source-backed review checks whether proposed goals match the objective. Conflicts in approved plans direct lecturers back to plan review before teaching is generated.
+- **Resume generation without losing completed lectures** _(From feedback)_ — Saved teaching work can continue after bounded request exhaustion. Completed drafts and professor approval requirements remain preserved.
+- **Clearer practice and review planning** — Staged choice and reasoning attempts keep practice progress intact. Review plans bring upcoming work across courses together and offer private calendar exports.
+
+### Deutsch
+
+**Euer Feedback, bessere Kurserstellung**
+
+Feedback von Lehrenden hat die Bearbeitung von Lernplänen, die Wiederaufnahme der Generierung und die Fehlerhinweise verbessert. Auch Übungen und die Wiederholungsplanung für Studierende werden übersichtlicher.
+
+- **Lernziele umbenennen und entfernen** _(Aus Feedback)_ — Titel und Ergebnisse von Lernzielen direkt im Lernplan bearbeiten oder Ziele entfernen. Änderungen erfordern eine neue Freigabe vor der Generierung.
+- **Fehlgeschlagene Vorlesungen mit klareren Hinweisen reparieren** _(Aus Feedback)_ — Konflikte mit Prüfpunkten benennen den betroffenen Block und die nötige Korrektur. Ein neuer Reparaturversuch erhält den gespeicherten Fortschritt und ein neues begrenztes Wiederholungsbudget.
+- **Lernplankonflikte vor der Erstellung erkennen** _(Aus Feedback)_ — Eine quellenbasierte Prüfung gleicht vorgeschlagene Lernziele mit dem Lernzielumfang ab. Konflikte in freigegebenen Plänen führen vor der Erstellung zurück zur Lernplanprüfung.
+- **Generierung ohne Verlust fertiger Vorlesungen fortsetzen** _(Aus Feedback)_ — Gespeicherte Lehrinhalte können nach Erreichen begrenzter Anfragefenster weiterbearbeitet werden. Fertige Entwürfe und die erforderlichen Freigaben bleiben erhalten.
+- **Übersichtlichere Übungen und Wiederholungsplanung** — Gestufte Auswahl- und Begründungsversuche erhalten den Übungsfortschritt. Wiederholungspläne bündeln anstehende Aufgaben über Kurse hinweg und bieten private Kalenderexporte.
+
 ## [0.7.0](https://github.com/SebastianBoehler/lecture-pilot/releases/tag/v0.7.0) — Guided onboarding and reliable teaching workflows
 
 Released 2026-09-07

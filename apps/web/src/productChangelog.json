@@ -2,6 +2,74 @@
   "repositoryUrl": "https://github.com/SebastianBoehler/lecture-pilot",
   "releases": [
     {
+      "version": "0.8.0",
+      "date": "2026-09-30",
+      "title": {
+        "en": "Your feedback, better course creation",
+        "de": "Euer Feedback, bessere Kurserstellung"
+      },
+      "summary": {
+        "en": "Feedback from lecturers helped improve learning-plan editing, generation recovery, and error guidance. This release also makes student practice and review planning easier to follow.",
+        "de": "Feedback von Lehrenden hat die Bearbeitung von Lernplänen, die Wiederaufnahme der Generierung und die Fehlerhinweise verbessert. Auch Übungen und die Wiederholungsplanung für Studierende werden übersichtlicher."
+      },
+      "changes": [
+        {
+          "title": {
+            "en": "Rename and remove learning goals",
+            "de": "Lernziele umbenennen und entfernen"
+          },
+          "description": {
+            "en": "Edit goal titles and outcomes or remove goals directly in the learning plan. Changes require fresh approval before generation.",
+            "de": "Titel und Ergebnisse von Lernzielen direkt im Lernplan bearbeiten oder Ziele entfernen. Änderungen erfordern eine neue Freigabe vor der Generierung."
+          },
+          "feedbackDriven": true
+        },
+        {
+          "title": {
+            "en": "Repair failed lectures with clearer feedback",
+            "de": "Fehlgeschlagene Vorlesungen mit klareren Hinweisen reparieren"
+          },
+          "description": {
+            "en": "Checkpoint conflicts now identify the affected block and explain the correction. A new repair attempt keeps saved progress and receives a fresh bounded retry budget.",
+            "de": "Konflikte mit Prüfpunkten benennen den betroffenen Block und die nötige Korrektur. Ein neuer Reparaturversuch erhält den gespeicherten Fortschritt und ein neues begrenztes Wiederholungsbudget."
+          },
+          "feedbackDriven": true
+        },
+        {
+          "title": {
+            "en": "Catch learning-plan conflicts before authoring",
+            "de": "Lernplankonflikte vor der Erstellung erkennen"
+          },
+          "description": {
+            "en": "Source-backed review checks whether proposed goals match the objective. Conflicts in approved plans direct lecturers back to plan review before teaching is generated.",
+            "de": "Eine quellenbasierte Prüfung gleicht vorgeschlagene Lernziele mit dem Lernzielumfang ab. Konflikte in freigegebenen Plänen führen vor der Erstellung zurück zur Lernplanprüfung."
+          },
+          "feedbackDriven": true
+        },
+        {
+          "title": {
+            "en": "Resume generation without losing completed lectures",
+            "de": "Generierung ohne Verlust fertiger Vorlesungen fortsetzen"
+          },
+          "description": {
+            "en": "Saved teaching work can continue after bounded request exhaustion. Completed drafts and professor approval requirements remain preserved.",
+            "de": "Gespeicherte Lehrinhalte können nach Erreichen begrenzter Anfragefenster weiterbearbeitet werden. Fertige Entwürfe und die erforderlichen Freigaben bleiben erhalten."
+          },
+          "feedbackDriven": true
+        },
+        {
+          "title": {
+            "en": "Clearer practice and review planning",
+            "de": "Übersichtlichere Übungen und Wiederholungsplanung"
+          },
+          "description": {
+            "en": "Staged choice and reasoning attempts keep practice progress intact. Review plans bring upcoming work across courses together and offer private calendar exports.",
+            "de": "Gestufte Auswahl- und Begründungsversuche erhalten den Übungsfortschritt. Wiederholungspläne bündeln anstehende Aufgaben über Kurse hinweg und bieten private Kalenderexporte."
+          }
+        }
+      ]
+    },
+    {
       "version": "0.7.0",
       "date": "2026-09-07",
       "title": {
