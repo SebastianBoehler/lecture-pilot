@@ -72,6 +72,21 @@ def test_gpt5_tool_reasoning_remains_low() -> None:
     assert tool_reasoning_effort(settings) == "low"
 
 
+@pytest.mark.parametrize("model", ["openai/gpt-6-sol", "openai/gpt-6.1-sol"])
+def test_gpt6_structured_requests_use_supported_completion_token_limit(model) -> None:
+    settings = ProviderSettings(
+        provider="openai",
+        model=model,
+        api_key_env="OPENAI_API_KEY",
+        capabilities={ProviderCapability.CHAT},
+    )
+    options = completion_options(
+        settings, temperature=0.2, max_tokens=12000, reasoning_effort="high"
+    )
+    assert options["max_completion_tokens"] == 12000
+    assert "max_tokens" not in options
+
+
 @pytest.mark.asyncio
 async def test_gpt6_tutor_tool_request_uses_supported_reasoning(monkeypatch) -> None:
     calls: list[dict] = []

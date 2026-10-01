@@ -30,7 +30,10 @@ def completion_options(
     else:
         options["temperature"] = temperature
     if max_tokens is not None:
-        options["max_tokens"] = max_tokens
+        is_gpt6 = settings.provider == "openai" and settings.model.split("/", 1)[
+            -1
+        ].lower().startswith("gpt-6")
+        options["max_completion_tokens" if is_gpt6 else "max_tokens"] = max_tokens
     return options
 
 
