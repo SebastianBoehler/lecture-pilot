@@ -129,7 +129,7 @@
 }
 @media (max-width: 860px) {
   .tutor-drawer {
-    height: min(78dvh, calc(100dvh - var(--lesson-header-offset)));
+    height: var(--lesson-drawer-height);
   }
   .tutor-drawer .drawer-close-button {
     position: absolute;

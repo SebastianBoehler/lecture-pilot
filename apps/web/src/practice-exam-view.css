@@ -196,3 +196,21 @@
   border-color: var(--color-danger);
   color: var(--color-danger);
 }
+
+@media (max-width: 1180px) {
+  .practice-question-list fieldset > label {
+    align-items: center;
+    min-height: 44px;
+    padding-block: 8px;
+  }
+
+  .practice-exam-dialog input,
+  .practice-question-list textarea {
+    font-size: 16px;
+  }
+
+  .practice-exam-view-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}

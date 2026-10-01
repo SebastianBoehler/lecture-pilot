@@ -65,7 +65,7 @@
 .chat-dock .form-error {
   margin-top: 8px;
 }
-@media (max-width: 860px) {
+@media (max-width: 1180px) {
   .chat-composer textarea {
     font-size: 16px;
   }
