@@ -188,6 +188,13 @@ Generation interleaves the bounded evidence budget across lectures and sections
 instead of filling it from the start of the course. Every lecture represented in
 the evidence must be covered before the exam is accepted.
 
+The independent solution review hides multiple-choice keys, solves each
+question, and supplies quotations verified against its cited course passages.
+Acceptance requires key agreement and complete source support; a source ID
+alone is insufficient. Existing immutable exams retain their original keys.
+See the [correctness benchmark](practice-exam-benchmark.md) for private
+fixtures, model comparison, cost accounting, and evaluation limits.
+
 An enrolled learner may optionally connect a separate PPI account. Credentials
 exist only for the active catalog/import request. If the selected PPI lecture is
 already borrowed, LecturePilot downloads it without spending a token. A new

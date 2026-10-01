@@ -182,6 +182,7 @@ class PracticeExamPlanner:
                     review,
                     exam=exam,
                     authoritative_source_ids=authoritative_ids,
+                    course_evidence=course_evidence,
                 )
                 return exam
             except (ValidationError, PracticeExamValidationError) as exc:
@@ -238,7 +239,7 @@ def _exam_output_token_budget(question_count: int) -> int:
 
 
 def _exam_review_token_budget(question_count: int) -> int:
-    return max(6_000, question_count * 200)
+    return max(12_000, question_count * 400)
 
 
 def _safe_validation_reason(error: ValidationError | PracticeExamValidationError) -> str:

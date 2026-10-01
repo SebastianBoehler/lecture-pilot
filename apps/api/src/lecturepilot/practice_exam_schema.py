@@ -59,6 +59,28 @@ def practice_exam_review_response_format(
                                 "question_id": {"type": "string", "enum": question_ids},
                                 "verdict": {"type": "string", "enum": ["pass", "fail"]},
                                 "issue": {"type": "string"},
+                                "solved_answer_index": {
+                                    "type": ["integer", "null"],
+                                    "minimum": 0,
+                                    "maximum": 5,
+                                },
+                                "reasoning": {"type": "string"},
+                                "evidence_quotes": {
+                                    "type": "array",
+                                    "maxItems": 8,
+                                    "items": {
+                                        "type": "object",
+                                        "additionalProperties": False,
+                                        "properties": {
+                                            "source_id": {
+                                                "type": "string",
+                                                "enum": sorted(authoritative_source_ids),
+                                            },
+                                            "quote": {"type": "string"},
+                                        },
+                                        "required": ["source_id", "quote"],
+                                    },
+                                },
                                 "source_ids": {
                                     "type": "array",
                                     "minItems": 1,
@@ -69,7 +91,15 @@ def practice_exam_review_response_format(
                                     },
                                 },
                             },
-                            "required": ["question_id", "verdict", "issue", "source_ids"],
+                            "required": [
+                                "question_id",
+                                "verdict",
+                                "issue",
+                                "source_ids",
+                                "solved_answer_index",
+                                "reasoning",
+                                "evidence_quotes",
+                            ],
                         },
                     }
                 },

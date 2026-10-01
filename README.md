@@ -178,6 +178,9 @@ npm run verify:full
 API suite needs the migrated disposable test database from `.env.local.example`;
 targeted unit tests do not all require Postgres. Provider benchmarks stay
 outside CI because they make real, non-deterministic model calls.
+The [practice-exam benchmark](docs/practice-exam-benchmark.md) compares scope,
+solution correctness, generation latency, and token cost using private,
+independently labelled course fixtures.
 
 ## Documentation and status
 

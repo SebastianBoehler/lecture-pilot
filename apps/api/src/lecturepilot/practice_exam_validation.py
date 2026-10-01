@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 
 from lecturepilot.practice_exam_models import PracticeExam
+from lecturepilot.practice_exam_options import has_equivalent_numeric_options
 
 
 _COPY_WINDOW = 60
@@ -48,6 +49,7 @@ def validate_practice_exam(
                 f"Question {question.id} cites an unselected PPI source."
             )
         if question.kind == "multiple_choice":
+            _reject_equivalent_options(question.id, question.options)
             options = [_normalized(option) for option in question.options]
             if any(not option for option in options) or len(options) != len(set(options)):
                 raise PracticeExamValidationError(
@@ -88,13 +90,18 @@ def validate_practice_exam_review(
     *,
     exam: PracticeExam,
     authoritative_source_ids: set[str],
+    course_evidence: str,
 ) -> None:
     reviews = payload.get("reviews")
     if not isinstance(reviews, list):
         raise PracticeExamValidationError("Independent exam review is missing reviews.")
     reviewed_ids = [item.get("question_id") for item in reviews if isinstance(item, dict)]
     expected_ids = [question.id for question in exam.questions]
-    if len(reviewed_ids) != len(set(reviewed_ids)) or set(reviewed_ids) != set(expected_ids):
+    if (
+        len(reviewed_ids) != len(reviews)
+        or len(reviewed_ids) != len(set(reviewed_ids))
+        or set(reviewed_ids) != set(expected_ids)
+    ):
         raise PracticeExamValidationError("Independent exam review must cover every question once.")
     for item in reviews:
         sources = set(item.get("source_ids") or [])
@@ -107,6 +114,62 @@ def validate_practice_exam_review(
             raise PracticeExamValidationError(
                 f"Independent answer review rejected {item.get('question_id')}: {issue}"
             )
+        question = next(q for q in exam.questions if q.id == item["question_id"])
+        _validate_review_support(item, question, course_evidence, authoritative_source_ids)
+
+
+def _validate_review_support(item, question, course_evidence: str, source_ids: set[str]) -> None:
+    prefix = f"Independent answer review rejected {question.id}: "
+    if question.kind == "multiple_choice":
+        _reject_equivalent_options(question.id, question.options)
+    if str(item.get("issue") or "").strip():
+        raise PracticeExamValidationError(prefix + "contradictory pass with an unresolved issue")
+    if not isinstance(item.get("reasoning"), str) or not item["reasoning"].strip():
+        raise PracticeExamValidationError(prefix + "missing solution reasoning")
+    if "solved_answer_index" not in item or item["solved_answer_index"] != question.answer_index:
+        raise PracticeExamValidationError(prefix + "independently solved answer disagrees with key")
+    if question.kind == "multiple_choice" and type(item["solved_answer_index"]) is not int:
+        raise PracticeExamValidationError(prefix + "invalid independently solved answer")
+    quotations = item.get("evidence_quotes")
+    if not isinstance(quotations, list) or not quotations:
+        raise PracticeExamValidationError(prefix + "missing source quotation")
+    markers = list(
+        re.finditer(
+            r"(?m)^\[(" + "|".join(re.escape(s) for s in sorted(source_ids)) + r")\] ",
+            course_evidence,
+        )
+    )
+    passages = {
+        marker.group(1): course_evidence[
+            marker.end() : markers[i + 1].start() if i + 1 < len(markers) else len(course_evidence)
+        ]
+        for i, marker in enumerate(markers)
+    }
+    quoted_ids = set()
+    for quotation in quotations:
+        if not isinstance(quotation, dict):
+            raise PracticeExamValidationError(prefix + "invalid source quotation")
+        source_id, quote = quotation.get("source_id"), quotation.get("quote")
+        if (
+            source_id not in question.source_ids
+            or source_id not in item["source_ids"]
+            or not isinstance(quote, str)
+            or not quote.strip()
+            or _normalized(quote) not in _normalized(passages.get(source_id, ""))
+        ):
+            raise PracticeExamValidationError(prefix + "unverified source quotation")
+        quoted_ids.add(source_id)
+    if quoted_ids != set(item["source_ids"]):
+        raise PracticeExamValidationError(
+            prefix + "every reviewed source needs a verified quotation"
+        )
+
+
+def _reject_equivalent_options(question_id: str, options: list[str]) -> None:
+    if has_equivalent_numeric_options(options):
+        raise PracticeExamValidationError(
+            f"Question {question_id} has numerically equivalent options."
+        )
 
 
 def _reject_protocol_copy(exam: PracticeExam, protocol_texts: list[str]) -> None:

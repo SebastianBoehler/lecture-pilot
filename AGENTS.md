@@ -426,6 +426,13 @@ Provider benchmark:
 python scripts/benchmark_gate_models.py --model gemini/gemini-3.1-flash-lite
 ```
 
+Practice-exam scope and solution-quality comparisons use
+`scripts/benchmark_practice_exams.py`; see
+[`docs/practice-exam-benchmark.md`](docs/practice-exam-benchmark.md).
+Keep human-labelled fixtures and source-bearing reports private below
+`.lecturepilot/benchmarks/`. Generated-exam acceptance is a diagnostic, not
+independent correctness or learner-efficacy evidence.
+
 File-size guard:
 
 ```bash
