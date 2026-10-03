@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "node tooling/prepareWhistle.mjs",
     "dev": "vite --host 127.0.0.1",
+    "prebuild": "node tooling/prepareWhistle.mjs",
     "build": "tsc -b && vite build",
     "test": "vitest run",
     "test:watch": "vitest"

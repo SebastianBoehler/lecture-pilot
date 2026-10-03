@@ -9,6 +9,8 @@ import {
 } from "react";
 import { useI18n } from "./i18n";
 import { useVersionUpdateActivity } from "./VersionUpdateBoundary";
+import { SpeechInputControls } from "./SpeechInputControls";
+import { useSpeechInput } from "./useSpeechInput";
 
 export function TutorComposer({
   pending,
@@ -24,7 +26,13 @@ export function TutorComposer({
   const sendingRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const busy = pending || sending;
-  useVersionUpdateActivity(busy || Boolean(draft.trim()));
+  const speech = useSpeechInput(busy, (text) => {
+    setDraft((current) => `${current}${current && !/\s$/.test(current) ? " " : ""}${text}`);
+    textareaRef.current?.focus();
+  });
+  const speechBusy = speech.state !== "idle";
+  const displayedError = error ?? speech.error;
+  useVersionUpdateActivity(busy || speechBusy || Boolean(draft.trim()));
   useLayoutEffect(() => {
     const field = textareaRef.current;
     if (!field) return;
@@ -32,13 +40,13 @@ export function TutorComposer({
     field.style.height = `${Math.min(field.scrollHeight, 180)}px`;
   }, [draft]);
   useEffect(() => {
-    if (error) textareaRef.current?.focus();
-  }, [error]);
+    if (displayedError) textareaRef.current?.focus();
+  }, [displayedError]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const message = draft.trim();
-    if (!message || pending || sendingRef.current) return;
+    if (!message || pending || sendingRef.current || speechBusy) return;
     sendingRef.current = true;
     setSending(true);
     setDraft("");
@@ -78,7 +86,7 @@ export function TutorComposer({
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={keyDown}
-            aria-describedby={error ? "tutor-error" : "tutor-keyboard"}
+            aria-describedby={displayedError ? "tutor-error" : "tutor-keyboard tutor-speech"}
             placeholder={t("chat.placeholder")}
             rows={2}
           />
@@ -86,11 +94,20 @@ export function TutorComposer({
             <span id="tutor-keyboard" className="visually-hidden">
               {t("chat.keyboard")}
             </span>
+            <SpeechInputControls
+              disabled={busy}
+              language={speech.language}
+              onLanguage={speech.setLanguage}
+              state={speech.state}
+              onStart={speech.start}
+              onStop={speech.stop}
+              onCancel={speech.cancel}
+            />
             <button
               aria-label={t("chat.send")}
               title={t("chat.send")}
               className="chat-send-button"
-              disabled={busy || !draft.trim()}
+              disabled={busy || speechBusy || !draft.trim()}
               type="submit"
             >
               <ArrowUp size={18} aria-hidden="true" />
@@ -98,9 +115,12 @@ export function TutorComposer({
           </div>
         </div>
       </form>
-      {error ? (
+      <p id="tutor-speech" className="chat-speech-status" role={speechBusy ? "status" : undefined}>
+        {t(speech.state === "idle" ? "speech.privacy" : `speech.${speech.state}`)}
+      </p>
+      {displayedError ? (
         <p id="tutor-error" className="form-error" role="alert">
-          {error}
+          {displayedError}
         </p>
       ) : null}
     </div>

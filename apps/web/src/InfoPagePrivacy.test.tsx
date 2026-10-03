@@ -28,6 +28,9 @@ it("explains disclosure, private analytics and incomplete retention details", ()
   expect(screen.getByText(/Professor preview activity is excluded/)).toBeInTheDocument();
   expect(screen.getByText(/does not promise zero provider retention/)).toBeInTheDocument();
   expect(
+    screen.getByText(/Audio is processed on your device, is not uploaded or saved/),
+  ).toBeInTheDocument();
+  expect(
     screen.getByText(/designated data controller.*still require institutional confirmation/),
   ).toBeInTheDocument();
 });

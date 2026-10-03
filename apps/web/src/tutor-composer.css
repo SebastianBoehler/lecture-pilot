@@ -65,12 +65,52 @@
 .chat-dock .form-error {
   margin-top: 8px;
 }
+.chat-speech-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-primary);
+}
+.chat-speech-button.is-recording {
+  color: var(--color-on-accent);
+  background: var(--color-accent-primary);
+}
+.chat-speech-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.chat-speech-language {
+  width: auto;
+  min-height: 36px;
+  padding: 4px 6px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  background: var(--color-bg-primary);
+}
+.chat-speech-status {
+  margin: 6px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
 @media (max-width: 1180px) {
   .chat-composer textarea {
     font-size: 16px;
   }
-  .chat-send-button {
+  .chat-send-button,
+  .chat-speech-button {
     width: 44px;
     height: 44px;
+  }
+  .chat-speech-language {
+    min-height: 44px;
   }
 }

@@ -33,6 +33,14 @@ export const privacyContent: Record<"en" | "de", InfoArticleContent> = {
         ],
       },
       {
+        id: "dictation",
+        title: "Optional voice input",
+        paragraphs: [
+          "Tutor dictation uses Whistle speech recognition in your browser. English and German are supported. The speech model and runtime download from LecturePilot when you first start dictation. Audio is processed on your device, is not uploaded or saved, and is discarded after transcription or cancellation. Microphone access requires your browser permission and each recording is limited to 30 seconds.",
+          "The transcript is added to your editable message draft. It is sent through the ordinary tutor request only when you choose Send. Sending that text has the same storage and model-provider disclosure as a typed message. Downloaded model files can remain in your browser cache.",
+        ],
+      },
+      {
         id: "browser-agents",
         title: "External browser agents",
         paragraphs: [
@@ -106,6 +114,14 @@ export const privacyContent: Record<"en" | "de", InfoArticleContent> = {
           "Die aktuelle Hochschulinstanz nutzt OpenAI für Tutor-Modellanfragen. Über das Backend können deine Frage, relevante Quellenauszüge, Canvas-Inhalte, bis zu acht jüngste Lernenden- und Tutornachrichten dieser Vorlesung, Lernstand, gespeicherte Vorlieben oder Erinnerungen und relevante gespeicherte Übungshistorie übermittelt werden. Auch bei der Kurserstellung werden relevante Lehrmaterialien und bestätigte Lernziele zur Generierung und Prüfung gesendet.",
           "Bildanfragen können den Prompt und den didaktischen Kontext enthalten. Hochschulhosting bedeutet nicht, dass die Modellverarbeitung auf dem Hochschulserver bleibt. Verarbeitung und Aufbewahrung beim Anbieter sind von LecturePilot getrennt; dieser Hinweis verspricht keine aufbewahrungsfreie Verarbeitung. Die Informationen des Anbieters sind unten verlinkt.",
           "Das Einführungsvideo wird von LecturePilot ausgeliefert. Beim Abspielen eingebetteter externer Kursvideos oder Öffnen externer Forschungslinks wird der jeweilige externe Dienst kontaktiert.",
+        ],
+      },
+      {
+        id: "dictation",
+        title: "Optionale Spracheingabe",
+        paragraphs: [
+          "Das Tutor-Diktat nutzt die Whistle-Spracherkennung in deinem Browser. Englisch und Deutsch werden unterstützt. Sprachmodell und Laufzeit werden beim ersten Diktat von LecturePilot geladen. Audio wird auf deinem Gerät verarbeitet, nicht hochgeladen oder gespeichert und nach der Erkennung oder einem Abbruch verworfen. Der Browser muss den Mikrofonzugriff erlauben. Jede Aufnahme ist auf 30 Sekunden begrenzt.",
+          "Der erkannte Text wird deinem bearbeitbaren Nachrichtenentwurf hinzugefügt. Erst wenn du Senden wählst, wird er als normale Tutor-Anfrage übertragen. Für den gesendeten Text gelten dieselbe Speicherung und Weitergabe an den Modellanbieter wie für eine getippte Nachricht. Die geladenen Modelldateien können im Browser-Cache verbleiben.",
         ],
       },
       {

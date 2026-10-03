@@ -20,6 +20,11 @@ student login -> enrolled courses -> past lectures only -> attendance mode
 The frontend never talks directly to model providers. Provider routing belongs
 behind the backend agent harness contract.
 
+Optional tutor dictation runs Whistle locally in the browser for English/German.
+It edits the message draft; only Send submits text through the existing backend.
+Audio never enters provider routing. See `docs/browser-dictation.md` for module
+ownership, pinned build assets and microphone/CSP requirements.
+
 ## Setup Commands
 
 ```bash
