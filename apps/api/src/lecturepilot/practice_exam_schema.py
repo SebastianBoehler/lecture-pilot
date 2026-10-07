@@ -8,6 +8,7 @@ def practice_exam_response_format(
     question_count: int,
     authoritative_source_ids: set[str],
     selected_ppi_source_ids: set[str],
+    choice_format: str = "single_answer",
 ) -> dict[str, Any]:
     return {
         "type": "json_schema",
@@ -27,6 +28,7 @@ def practice_exam_response_format(
                         "items": _question_schema(
                             authoritative_source_ids=authoritative_source_ids,
                             selected_ppi_source_ids=selected_ppi_source_ids,
+                            choice_format=choice_format,
                         ),
                     },
                 },
@@ -65,6 +67,11 @@ def practice_exam_review_response_format(
                                     "maximum": 5,
                                 },
                                 "reasoning": {"type": "string"},
+                                "solved_answer_indices": {
+                                    "type": "array",
+                                    "maxItems": 4,
+                                    "items": {"type": "integer", "minimum": 0, "maximum": 3},
+                                },
                                 "evidence_quotes": {
                                     "type": "array",
                                     "maxItems": 8,
@@ -97,6 +104,7 @@ def practice_exam_review_response_format(
                                 "issue",
                                 "source_ids",
                                 "solved_answer_index",
+                                "solved_answer_indices",
                                 "reasoning",
                                 "evidence_quotes",
                             ],
@@ -110,11 +118,17 @@ def practice_exam_review_response_format(
 
 
 def _question_schema(
-    *, authoritative_source_ids: set[str], selected_ppi_source_ids: set[str]
+    *, authoritative_source_ids: set[str], selected_ppi_source_ids: set[str], choice_format: str
 ) -> dict[str, Any]:
     properties: dict[str, Any] = {
         "id": {"type": "string"},
-        "kind": {"type": "string", "enum": ["multiple_choice", "open_ended"]},
+        "kind": {
+            "type": "string",
+            "enum": [
+                "multiple_select" if choice_format == "multiple_answers" else "multiple_choice",
+                "open_ended",
+            ],
+        },
         "prompt": {"type": "string"},
         "points": {"type": "integer", "minimum": 1, "maximum": 50},
         "difficulty": {
@@ -123,6 +137,11 @@ def _question_schema(
         },
         "options": {"type": "array", "items": {"type": "string"}, "maxItems": 6},
         "answer_index": {"type": ["integer", "null"], "minimum": 0, "maximum": 5},
+        "answer_indices": {
+            "type": "array",
+            "maxItems": 4,
+            "items": {"type": "integer", "minimum": 0, "maximum": 3},
+        },
         "rubric": {"type": "array", "items": {"type": "string"}, "maxItems": 8},
         "reference_answer": {"type": ["string", "null"]},
         "source_ids": {

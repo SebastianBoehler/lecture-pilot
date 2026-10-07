@@ -64,3 +64,84 @@ async def test_missing_usage_cannot_reuse_previous_response_usage(tmp_path):
     )
     with pytest.raises(ModelExecutionError, match="omitted usage"):
         await Agent(model).run("Report usage")
+
+
+async def test_nested_critics_share_provider_client_and_keep_stage(tmp_path):
+    from lecturepilot.authoring_provider import _pooled_model, authoring_model
+
+    job = authoring_job(tmp_path)
+    model = FunctionModel(lambda messages, info: ModelResponse(parts=[TextPart("Done")]))
+    async with _pooled_model(model, job.settings, None, job.authorize, None, "author") as author:
+        async with authoring_model(job.settings, None, job.authorize, stage="critic") as critic:
+            assert critic.wrapped is author.wrapped
+            assert critic.stage == "critic"
+            assert author.stage == "author"
+
+
+async def test_successful_over_budget_response_still_records_paid_usage(tmp_path):
+    from lecturepilot.authoring_limits import authoring_budget, AuthoringBudgetExceeded
+    from lecturepilot.model_usage_total import model_usage_total
+
+    job = authoring_job(tmp_path)
+    raw_usage = ContextVar("paid_usage", default=None)
+
+    async def respond(messages, info):
+        raw_usage.set({"input_tokens": 100, "output_tokens": 20})
+        return ModelResponse(parts=[TextPart("Done")])
+
+    model = MeteredAuthoringModel(
+        FunctionModel(respond), job.settings, None, job.authorize, raw_usage
+    )
+    with model_usage_total() as total, authoring_budget(input_tokens_limit=1):
+        with pytest.raises(AuthoringBudgetExceeded, match="token"):
+            await Agent(model).run("Report usage")
+        assert total.total_tokens == 120
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        None,
+        {},
+        {"input_tokens": 1},
+        {"input_tokens": -1, "output_tokens": 2},
+        {"prompt_tokens": True, "completion_tokens": 2},
+        {"prompt_tokens": 1, "completion_tokens": "2"},
+    ],
+)
+async def test_invalid_native_usage_retains_unknown_paid_cost(tmp_path, raw):
+    from lecturepilot.model_usage_total import model_usage_total
+
+    job = authoring_job(tmp_path)
+    response_usage = ContextVar("invalid_provider_usage", default=None)
+
+    async def respond(messages, info):
+        response_usage.set(raw)
+        return ModelResponse(parts=[TextPart("Done")])
+
+    model = MeteredAuthoringModel(
+        FunctionModel(respond), job.settings, None, job.authorize, response_usage
+    )
+    with model_usage_total() as total:
+        with pytest.raises(ModelExecutionError, match="usage accounting"):
+            await Agent(model).run("Report usage")
+        assert total.total_tokens is None
+
+
+async def test_explicit_zero_native_usage_is_valid(tmp_path):
+    from lecturepilot.model_usage_total import model_usage_total
+
+    job = authoring_job(tmp_path)
+    response_usage = ContextVar("zero_provider_usage", default=None)
+
+    async def respond(messages, info):
+        response_usage.set({"input_tokens": 0, "output_tokens": 0})
+        return ModelResponse(parts=[TextPart("Done")])
+
+    model = MeteredAuthoringModel(
+        FunctionModel(respond), job.settings, None, job.authorize, response_usage
+    )
+    with model_usage_total() as total:
+        result = await Agent(model).run("Report usage")
+        assert result.usage.input_tokens == result.usage.output_tokens == 0
+        assert total.total_tokens == 0

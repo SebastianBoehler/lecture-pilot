@@ -58,7 +58,7 @@ from lecturepilot.ppi_exam_source_routes import register_ppi_exam_source_routes
 from lecturepilot.ppi_exam_source_service import PpiExamSourceService
 from lecturepilot.ppi_exam_source_store import PpiExamSourceStore
 from lecturepilot.practice_exam_generation_jobs import PracticeExamGenerationStore
-from lecturepilot.practice_exam_planner import LiteLLMPracticeExamClient, PracticeExamPlanner
+from lecturepilot.practice_exam_planner import NativePracticeExamClient, PracticeExamPlanner
 from lecturepilot.practice_exam_pdf import PracticeExamPdfService
 from lecturepilot.practice_exam_routes import register_practice_exam_routes
 from lecturepilot.practice_exam_solution_routes import register_practice_exam_solution_routes
@@ -141,7 +141,7 @@ def create_app() -> FastAPI:
         app.state.canvas_workspace.layout, lease_seconds=180
     )
     app.state.practice_exam_planner = PracticeExamPlanner(
-        model_client=LiteLLMPracticeExamClient(app.state.model_usage)
+        model_client=NativePracticeExamClient(app.state.model_usage)
     )
     app.state.image_generator = image_generator_from_env()
     app.state.youtube_discovery = YoutubeDiscovery.from_env()

@@ -1,6 +1,8 @@
 import type { MessageKey } from "./i18nMessages.en";
+import { examChoiceDe } from "./practiceExamChoiceMessages";
 
 export const deMessages: Record<MessageKey, string> = {
+  ...examChoiceDe,
   "builder.intent.sourcesChanged":
     "Die Quellen wurden seit dem Vorschlag dieser Lernziele geändert. Erstellen Sie die Lernziele neu und prüfen und bestätigen Sie sie erneut.",
   "builder.intent.regenerateSources": "Lernziele für aktuelle Quellen neu erstellen",

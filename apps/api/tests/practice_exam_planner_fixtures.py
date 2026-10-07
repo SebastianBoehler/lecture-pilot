@@ -94,6 +94,12 @@ def _review_payload() -> dict:
     }
 
 
+def _solution_review_payload():
+    review = _review_payload()
+    review["reviews"] = [r for r in review["reviews"] if r["solved_answer_index"] is None]
+    return review
+
+
 class _Registry:
     def require_ready(self, required: list[ProviderCapability]) -> ProviderSettings:
         assert required == [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]

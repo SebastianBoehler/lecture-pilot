@@ -211,14 +211,30 @@ export function PracticeExamView({
                     <span className="practice-question-points">
                       {t("practice.points", { count: question.points })}
                     </span>
-                    {question.status === "invalid" ? null : question.kind === "multiple_choice" ? (
+                    {question.kind === "multiple_select" ? <p>{t("practice.selectAll")}</p> : null}
+                    {question.status === "invalid" ? null : question.kind === "multiple_choice" ||
+                      question.kind === "multiple_select" ? (
                       question.options.map((option, optionIndex) => (
                         <label key={option}>
                           <input
-                            checked={answers[question.id]?.selected_index === optionIndex}
+                            checked={
+                              question.kind === "multiple_select"
+                                ? (answers[question.id]?.selected_indices ?? []).includes(
+                                    optionIndex,
+                                  )
+                                : answers[question.id]?.selected_index === optionIndex
+                            }
                             name={question.id}
-                            type="radio"
-                            onChange={() => answer(question.id, { selected_index: optionIndex })}
+                            type={question.kind === "multiple_select" ? "checkbox" : "radio"}
+                            onChange={() => {
+                              if (question.kind === "multiple_select") {
+                                const current = answers[question.id]?.selected_indices ?? [];
+                                const next = current.includes(optionIndex)
+                                  ? current.filter((i) => i !== optionIndex)
+                                  : [...current, optionIndex].sort((a, b) => a - b);
+                                answer(question.id, { selected_indices: next });
+                              } else answer(question.id, { selected_index: optionIndex });
+                            }}
                           />
                           <span>
                             <MathText highlightedText={null} text={option} />

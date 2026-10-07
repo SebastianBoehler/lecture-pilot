@@ -18,6 +18,11 @@ from lecturepilot.metadata_events import emit_metadata_event
 from lecturepilot.model_rate_limits import model_request_slot, observe_provider_response
 from lecturepilot.model_provider_errors import is_retryable_provider_error
 from lecturepilot.model_request_options import MODEL_REQUEST_TIMEOUT_SECONDS
+from lecturepilot.model_usage_total import (
+    accumulate_model_usage,
+    mark_model_usage_unknown,
+    provider_usage_pair,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -153,16 +158,19 @@ async def _complete_with_attempts(
     request_id = uuid4().hex
     model = str(kwargs.get("model") or "unknown")
     timeout_seconds = float(kwargs.get("timeout") or MODEL_REQUEST_TIMEOUT_SECONDS)
-    _enable_litellm_response_headers()
     for attempt in range(1, max_attempts + 1):
         started_at = perf_counter()
         provider_started_at: float | None = None
         try:
-            async with model_request_slot(model):
-                provider_started_at = perf_counter()
-                async with asyncio.timeout(timeout_seconds + 5):
+            async with asyncio.timeout(timeout_seconds + 5):
+                async with model_request_slot(model):
+                    provider_started_at = perf_counter()
                     response = await completion(**kwargs)
+        except asyncio.CancelledError:
+            mark_model_usage_unknown()
+            raise
         except Exception as exc:
+            mark_model_usage_unknown()
             _emit_request_event(
                 model=model,
                 stage=usage_stage,
@@ -172,7 +180,8 @@ async def _complete_with_attempts(
                 error_type=type(exc).__name__[:80],
             )
             if recorder is not None:
-                recorder.record_failure(
+                await asyncio.to_thread(
+                    recorder.record_failure,
                     model=model,
                     request_id=request_id,
                     attempt=attempt,
@@ -193,6 +202,7 @@ async def _complete_with_attempts(
             continue
         observe_provider_response(model, response)
         tokens = usage_tokens_from_response(response)
+        accumulate_model_usage(response, tokens["total_tokens"])
         _emit_request_event(
             model=model,
             stage=usage_stage,
@@ -202,7 +212,8 @@ async def _complete_with_attempts(
             tokens=tokens,
         )
         if recorder is not None:
-            recorder.record_response(
+            await asyncio.to_thread(
+                recorder.record_response,
                 response,
                 model=model,
                 request_id=request_id,
@@ -239,24 +250,21 @@ def _emit_request_event(
     )
 
 
-def _enable_litellm_response_headers() -> None:
-    try:
-        import litellm
-    except ImportError:
-        return
-    litellm.return_response_headers = True
-
-
 def usage_tokens_from_response(response: Any) -> dict[str, int]:
     usage = _value(response, "usage")
     prompt_details = _value(usage, "prompt_tokens_details")
     completion_details = _value(usage, "completion_tokens_details")
-    input_tokens = _nonnegative(_value(usage, "prompt_tokens"))
-    output_tokens = _nonnegative(_value(usage, "completion_tokens"))
+    counters = provider_usage_pair(usage)
+    input_tokens, output_tokens = counters or (
+        _nonnegative(_value(usage, "prompt_tokens")),
+        _nonnegative(_value(usage, "completion_tokens")),
+    )
     return {
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
-        "total_tokens": _nonnegative(_value(usage, "total_tokens")) or input_tokens + output_tokens,
+        "total_tokens": max(
+            _nonnegative(_value(usage, "total_tokens")), input_tokens + output_tokens
+        ),
         "cached_input_tokens": _nonnegative(_value(prompt_details, "cached_tokens")),
         "reasoning_tokens": _nonnegative(_value(completion_details, "reasoning_tokens")),
     }
@@ -283,5 +291,5 @@ def _value(value: Any, name: str) -> Any:
 def _nonnegative(value: Any) -> int:
     try:
         return max(0, int(value or 0))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return 0

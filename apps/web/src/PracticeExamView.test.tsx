@@ -8,6 +8,66 @@ import type { PracticeExam } from "./practiceExamTypes";
 import type { LoginSession } from "./types";
 
 describe("PracticeExamView", () => {
+  it("submits all selected checkboxes and applies deductions in solution review", async () => {
+    const multipleExam: PracticeExam = {
+      ...exam,
+      id: "b".repeat(32),
+      total_points: 2,
+      questions: [
+        {
+          id: "multi-1",
+          kind: "multiple_select",
+          prompt: "Select the true statements.",
+          points: 2,
+          options: ["First correct", "First wrong", "Second correct", "Second wrong"],
+        },
+      ],
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith("/solutions"))
+        return json({
+          exam_id: multipleExam.id,
+          title: "Solutions",
+          total_points: 2,
+          questions: [
+            {
+              id: "multi-1",
+              kind: "multiple_select",
+              points: 2,
+              answer_index: null,
+              answer_indices: [0, 2],
+              reference_answer: null,
+              rubric: [],
+            },
+          ],
+        });
+      if (init?.method === "POST")
+        return json({ ...JSON.parse(String(init.body)), created_at: "2026-10-04T08:00:00Z" });
+      return json([]);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    renderWithI18n(
+      <PracticeExamView
+        courseId="course-1"
+        exam={multipleExam}
+        session={session}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.getAllByRole("checkbox")).toHaveLength(4);
+    await user.click(screen.getByRole("checkbox", { name: "First correct" }));
+    await user.click(screen.getByRole("checkbox", { name: "First wrong" }));
+    await user.click(screen.getByRole("checkbox", { name: "First correct" }));
+    await user.click(screen.getByRole("button", { name: "Finish and review" }));
+    expect(await screen.findByText("-1 of 2 multiple-choice points")).toBeInTheDocument();
+    expect(screen.getByText("First correct; Second correct")).toBeInTheDocument();
+    const posted = fetchMock.mock.calls.find(([, init]) => init?.method === "POST");
+    expect(JSON.parse(String(posted?.[1]?.body)).answers).toEqual({
+      "multi-1": { selected_indices: [1] },
+    });
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
   it("renders supported Markdown and LaTeX in learner-facing exam content", () => {
     renderWithI18n(
       <PracticeExamView courseId="course-1" exam={exam} session={session} onClose={vi.fn()} />,

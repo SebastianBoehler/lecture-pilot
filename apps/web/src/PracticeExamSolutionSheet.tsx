@@ -1,8 +1,11 @@
 import { MathText } from "./MathText";
 import { useI18n } from "./i18n";
+import { choiceResult } from "./practiceExamScoring";
 import type {
   PracticeExam,
   PracticeExamAnswers,
+  PracticeExamAnswer,
+  PracticeExamSolutionQuestion,
   PracticeExamSolutionSheet as SolutionSheet,
 } from "./practiceExamTypes";
 
@@ -38,6 +41,9 @@ export function PracticeExamSolutionSheet({
         </span>
       </div>
       <p className="practice-solution-note">{t("practice.solutions.openHelp")}</p>
+      {solutions.questions.some((q) => q.kind === "multiple_select") ? (
+        <p>{t("practice.multipleRule")}</p>
+      ) : null}
       <ol className="practice-solution-list">
         {solutions.questions.map((solution, index) => {
           const question = exam.questions.find((item) => item.id === solution.id);
@@ -52,11 +58,12 @@ export function PracticeExamSolutionSheet({
               <div className="practice-solution-prompt">
                 <MathText highlightedText={null} text={question.prompt} />
               </div>
-              {solution.status === "invalid" ? null : solution.kind === "multiple_choice" ? (
+              {solution.status === "invalid" ? null : solution.kind === "multiple_choice" ||
+                solution.kind === "multiple_select" ? (
                 <MultipleChoiceSolution
-                  answerIndex={solution.answer_index}
+                  solution={solution}
                   options={question.options}
-                  selectedIndex={answer?.selected_index}
+                  answer={answer}
                 />
               ) : (
                 <OpenAnswerSolution
@@ -74,29 +81,35 @@ export function PracticeExamSolutionSheet({
 }
 
 function MultipleChoiceSolution({
-  answerIndex,
+  solution,
   options,
-  selectedIndex,
+  answer,
 }: {
-  answerIndex: number | null;
+  solution: PracticeExamSolutionQuestion;
   options: string[];
-  selectedIndex?: number;
+  answer?: PracticeExamAnswer;
 }) {
   const { t } = useI18n();
-  const correct = answerIndex !== null && selectedIndex === answerIndex;
-  const status = selectedIndex === undefined ? "unanswered" : correct ? "correct" : "incorrect";
+  const result = choiceResult(solution, answer);
+  const status = result.unanswered ? "unanswered" : result.correct ? "correct" : "incorrect";
   return (
     <div className="practice-solution-detail">
       <strong className={`practice-solution-status is-${status}`}>
         {t(`practice.solutions.${status}`)}
       </strong>
+      <span>
+        {t("practice.solutions.questionScore", {
+          earned: result.points,
+          available: solution.points,
+        })}
+      </span>
       <SolutionValue
         label={t("practice.solutions.yourAnswer")}
-        value={selectedIndex === undefined ? null : options[selectedIndex]}
+        value={result.selected.map((i) => options[i]).join("; ") || null}
       />
       <SolutionValue
         label={t("practice.solutions.correctAnswer")}
-        value={answerIndex === null ? null : options[answerIndex]}
+        value={result.keys.map((i) => options[i]).join("; ") || null}
       />
     </div>
   );
@@ -148,14 +161,15 @@ function SolutionValue({ label, value }: { label: string; value?: string | null 
 
 function multipleChoiceScore(answers: PracticeExamAnswers, solutions: SolutionSheet) {
   const questions = solutions.questions.filter(
-    (question) => question.status !== "invalid" && question.kind === "multiple_choice",
+    (question) => question.status !== "invalid" && question.kind !== "open_ended",
   );
   return questions.reduce(
     (score, question) => {
-      if (answers[question.id]?.selected_index === question.answer_index) {
+      const result = choiceResult(question, answers[question.id]);
+      if (result.correct) {
         score.correctCount += 1;
-        score.earnedPoints += question.points;
       }
+      score.earnedPoints += result.points;
       score.availablePoints += question.points;
       return score;
     },

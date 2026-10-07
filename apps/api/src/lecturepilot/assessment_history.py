@@ -56,6 +56,8 @@ def load_assessment_history(
                 answer_text = answer.text
                 if answer.selected_index is not None:
                     answer_text = question.options[answer.selected_index]
+                elif answer.selected_indices:
+                    answer_text = "\n".join(question.options[i] for i in answer.selected_indices)
                 observations.append(
                     AssessmentObservation(
                         kind="practice_exam",

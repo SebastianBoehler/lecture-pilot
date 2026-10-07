@@ -68,3 +68,13 @@ def allowed_models() -> frozenset[str]:
     if configured:
         return frozenset(model.strip() for model in configured.split(",") if model.strip())
     return frozenset({os.getenv("LECTUREPILOT_MODEL") or DEFAULT_MODEL})
+
+
+def workload_settings(settings: ProviderSettings, tier: str) -> ProviderSettings:
+    env_names = {"utility": "LECTUREPILOT_UTILITY_MODEL", "critic": "LECTUREPILOT_CRITIC_MODEL"}
+    configured = os.getenv(env_names[tier], "").strip()
+    if not configured or configured == settings.model:
+        return settings
+    return ProviderRegistry.from_env(configured).require_ready(
+        [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
+    )

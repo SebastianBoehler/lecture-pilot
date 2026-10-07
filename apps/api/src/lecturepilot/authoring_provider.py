@@ -13,9 +13,11 @@ from pydantic_ai.models.wrapper import WrapperModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from lecturepilot.model_client import ModelExecutionError
+from lecturepilot.authoring_limits import current_authoring_budget
 from lecturepilot.model_provider_errors import model_provider_error_message
 from lecturepilot.model_request_options import CANVAS_PLAN_REQUEST_TIMEOUT_SECONDS
 from lecturepilot.model_usage import ModelUsageRecorder, complete_with_usage
+from lecturepilot.model_usage_total import provider_usage_pair
 from lecturepilot.models import ProviderSettings
 from lecturepilot.providers import ProviderConfigurationError
 
@@ -35,6 +37,9 @@ class MeteredAuthoringModel(WrapperModel):
     async def request(self, messages, model_settings, model_request_parameters):
         async def invoke(**kwargs):
             self.authorize()
+            budget = current_authoring_budget()
+            if budget is not None:
+                budget.reserve_request()
             if self.response_usage is not None:
                 self.response_usage.set(None)
             response = await self.wrapped.request(
@@ -43,10 +48,12 @@ class MeteredAuthoringModel(WrapperModel):
             usage = response.usage
             if self.response_usage is not None:
                 raw = self.response_usage.get()
-                if raw is None:
-                    raise ModelExecutionError("Provider response omitted usage accounting.")
-                usage.input_tokens = raw.get("input_tokens", raw.get("prompt_tokens", 0))
-                usage.output_tokens = raw.get("output_tokens", raw.get("completion_tokens", 0))
+                counts = provider_usage_pair(raw)
+                if counts is None:
+                    raise ModelExecutionError(
+                        "Provider response omitted usage accounting or returned invalid counters."
+                    )
+                usage.input_tokens, usage.output_tokens = counts
                 usage.cache_read_tokens = (
                     raw.get("input_tokens_details", raw.get("prompt_tokens_details")) or {}
                 ).get("cached_tokens", 0)
@@ -80,7 +87,22 @@ class MeteredAuthoringModel(WrapperModel):
                     provider=self.provider_settings.provider,
                 )
             ) from exc
+        budget = current_authoring_budget()
+        if budget is not None:
+            budget.record_tokens(envelope["response"].usage)
         return envelope["response"]
+
+
+_provider_session: ContextVar[tuple | None] = ContextVar("native_provider_session", default=None)
+
+
+@asynccontextmanager
+async def _pooled_model(model, settings, recorder, authorize, response_usage, stage):
+    token = _provider_session.set((settings, model, response_usage))
+    try:
+        yield MeteredAuthoringModel(model, settings, recorder, authorize, response_usage, stage)
+    finally:
+        _provider_session.reset(token)
 
 
 @asynccontextmanager
@@ -91,6 +113,10 @@ async def authoring_model(
     *,
     stage: str = "canvas_authoring",
 ) -> AsyncIterator[MeteredAuthoringModel]:
+    session = _provider_session.get()
+    if session is not None and session[0] == settings:
+        yield MeteredAuthoringModel(session[1], settings, recorder, authorize, session[2], stage)
+        return
     model_id = settings.model.partition("/")[2]
     api_key = os.environ.get(settings.api_key_env)
     if not api_key:
@@ -119,9 +145,10 @@ async def authoring_model(
                     OpenAIResponsesModel if settings.provider == "openai" else OpenAIChatModel
                 )
                 model = model_type(model_id, provider=OpenAIProvider(openai_client=client))
-                yield MeteredAuthoringModel(
+                async with _pooled_model(
                     model, settings, recorder, authorize, response_usage, stage
-                )
+                ) as gateway:
+                    yield gateway
     elif settings.provider in {"google", "gemini"}:
         from google import genai
         from google.genai.types import HttpOptions, HttpRetryOptions
@@ -137,7 +164,8 @@ async def authoring_model(
         )
         try:
             model = GoogleModel(model_id, provider=GoogleProvider(client=client))
-            yield MeteredAuthoringModel(model, settings, recorder, authorize, stage=stage)
+            async with _pooled_model(model, settings, recorder, authorize, None, stage) as gateway:
+                yield gateway
         finally:
             await client.aio.aclose()
             client.close()

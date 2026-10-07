@@ -9,6 +9,7 @@ from typing import Any
 
 
 DEFAULT_REQUEST_TOKEN_ESTIMATE = 32_000
+MAX_PROVIDER_COOLDOWN_SECONDS = 60.0
 _conditions: dict[tuple[int, str], asyncio.Condition] = {}
 _active_requests: dict[tuple[int, str], int] = {}
 _concurrency_limits: dict[tuple[int, str], int] = {}
@@ -53,10 +54,13 @@ def observe_provider_response(model: str, value: Any) -> float:
         or _is_zero(headers.get("x-ratelimit-remaining-project-tokens"))
     )
     is_rate_limited = getattr(value, "status_code", None) == 429
-    delay = max(
-        retry_after,
-        reset_requests if exhausted or is_rate_limited else 0.0,
-        reset_tokens if exhausted else 0.0,
+    delay = min(
+        MAX_PROVIDER_COOLDOWN_SECONDS,
+        max(
+            retry_after,
+            reset_requests if exhausted or is_rate_limited else 0.0,
+            reset_tokens if exhausted else 0.0,
+        ),
     )
     if delay > 0:
         _blocked_until[key] = max(_blocked_until.get(key, 0.0), monotonic() + delay)

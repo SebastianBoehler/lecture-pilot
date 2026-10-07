@@ -106,6 +106,22 @@ body:has(.practice-exam-dialog[open]) {
   gap: 16px;
 }
 
+.practice-exam-choice-format {
+  display: grid;
+  gap: 6px;
+  color: var(--color-text-secondary);
+}
+
+.practice-exam-choice-format select {
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 6px;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font: inherit;
+}
+
 .practice-exam-settings label,
 .practice-ppi-credentials label {
   display: grid;

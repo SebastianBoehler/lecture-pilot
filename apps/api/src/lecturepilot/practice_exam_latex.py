@@ -108,6 +108,11 @@ def render_practice_exam_tex(
     *,
     include_markup: bool = True,
 ) -> str:
+    duration, minutes, total, points, question_label = (
+        ("Dauer", "Minuten", "Gesamt", "Punkte", "Aufgabe")
+        if exam.language == "de"
+        else ("Duration", "minutes", "Total", "points", "Question")
+    )
     lines = [
         r"\documentclass[11pt,a4paper]{article}",
         r"\usepackage[margin=2.2cm]{geometry}",
@@ -119,12 +124,12 @@ def render_practice_exam_tex(
         r"\pagestyle{fancy}",
         r"\fancyhf{}",
         rf"\lhead{{{escape_tex(exam.title)}}}",
-        rf"\rhead{{{exam.duration_minutes} min · {exam.total_points} points}}",
+        rf"\rhead{{{exam.duration_minutes} min · {exam.total_points} {points}}}",
         r"\cfoot{\thepage}",
         r"\begin{document}",
         rf"\section*{{{escape_tex(exam.title)}}}",
-        rf"\textbf{{Duration:}} {exam.duration_minutes} minutes\quad "
-        rf"\textbf{{Total:}} {exam.total_points} points",
+        rf"\textbf{{{duration}:}} {exam.duration_minutes} {minutes}\quad "
+        rf"\textbf{{{total}:}} {exam.total_points} {points}",
         r"\vspace{0.5em}",
         r"\hrule",
         r"\vspace{0.8em}",
@@ -138,14 +143,14 @@ def render_practice_exam_tex(
             [
                 r"\vspace{1em}",
                 r"\noindent\begin{minipage}{\textwidth}",
-                rf"\subsection*{{Question {index} \hfill {question.points} points}}",
+                rf"\subsection*{{{question_label} {index} \hfill {question.points} {points}}}",
                 _render_text(question.prompt, include_markup=include_markup) + r"\par",
                 r"\vspace{0.6em}",
             ]
         )
         if question.status == "invalid":
             pass
-        elif question.kind == "multiple_choice":
+        elif question.kind in {"multiple_choice", "multiple_select"}:
             for option in question.options:
                 lines.append(
                     rf"$\square$\quad {_render_text(option, include_markup=include_markup)}\par\vspace{{0.35em}}"

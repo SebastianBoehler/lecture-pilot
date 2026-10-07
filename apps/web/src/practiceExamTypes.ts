@@ -1,6 +1,6 @@
 export type PracticeExamQuestion = {
   id: string;
-  kind: "multiple_choice" | "open_ended";
+  kind: "multiple_choice" | "multiple_select" | "open_ended";
   status?: "active" | "invalid";
   prompt: string;
   points: number;
@@ -23,17 +23,23 @@ export type PracticeExamGenerationInput = {
   question_count: number;
   duration_minutes: number;
   ppi_source_ids: [] | [string];
+  choice_format?: "single_answer" | "multiple_answers";
 };
 
-export type PracticeExamAnswer = { selected_index?: number; text?: string };
+export type PracticeExamAnswer = {
+  selected_index?: number;
+  selected_indices?: number[];
+  text?: string;
+};
 export type PracticeExamAnswers = Record<string, PracticeExamAnswer>;
 
 export type PracticeExamSolutionQuestion = {
   id: string;
-  kind: "multiple_choice" | "open_ended";
+  kind: "multiple_choice" | "multiple_select" | "open_ended";
   status?: "active" | "invalid";
   points: number;
   answer_index: number | null;
+  answer_indices?: number[];
   reference_answer: string | null;
   rubric: string[];
 };

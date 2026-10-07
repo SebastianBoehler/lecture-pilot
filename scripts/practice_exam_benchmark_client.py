@@ -3,18 +3,35 @@
 from __future__ import annotations
 
 import json
+from math import isfinite
 from time import perf_counter
 
 from lecturepilot.model_usage import usage_tokens_from_response
-from lecturepilot.practice_exam_planner import LiteLLMPracticeExamClient
+from lecturepilot.native_completion import native_completion
 
 
 class BenchmarkBudgetExceeded(ValueError):
     pass
 
 
+def verified_model_prices(prices, model):
+    price = prices.get(model) if isinstance(prices, dict) else None
+    if not isinstance(price, dict) or any(
+        type(price.get(key)) not in {int, float}
+        or not isfinite(price[key])
+        or price[key] < 0
+        for key in ("input", "cached_input", "output")
+    ):
+        raise BenchmarkBudgetExceeded(
+            f"Missing verified finite token prices for {model}."
+        )
+    return price
+
+
 class BenchmarkMeter:
     def __init__(self, prices: dict, budget_usd: float):
+        if not isfinite(budget_usd) or budget_usd <= 0:
+            raise BenchmarkBudgetExceeded("USD budget must be positive and finite.")
         self.prices = prices
         self.budget_usd = budget_usd
         self.spent_usd = 0.0
@@ -29,21 +46,24 @@ class BenchmarkMeter:
             len(json.dumps([messages, response_format], ensure_ascii=False).encode())
             + 4096
         )
-        price = self.prices[model]
+        price = verified_model_prices(self.prices, model)
         bound = (
-            2
-            * (input_bound * price["input"] + max_tokens * price["output"])
+            6
+            * (
+                (input_bound + 2 * max_tokens) * price["input"]
+                + max_tokens * price["output"]
+            )
             / 1_000_000
         )
         if self.spent_usd + self.unknown_cost_reserve + bound > self.budget_usd:
             raise BenchmarkBudgetExceeded(
-                "Next request and its retry would exceed the USD budget."
+                "Next request, schema repairs and retries would exceed the USD budget."
             )
         return bound
 
     def record_response(self, response, *, model, request_id=None, attempt=1):
         tokens = usage_tokens_from_response(response)
-        price = self.prices[model]
+        price = verified_model_prices(self.prices, model)
         cached = min(tokens["cached_input_tokens"], tokens["input_tokens"])
         cost = (
             (tokens["input_tokens"] - cached) * price["input"]
@@ -72,9 +92,8 @@ class BenchmarkMeter:
         )
 
 
-class BenchmarkExamClient(LiteLLMPracticeExamClient):
+class BenchmarkExamClient:
     def __init__(self, meter: BenchmarkMeter):
-        super().__init__(usage_recorder=meter)
         self.meter = meter
         self.outputs: list[dict] = []
 
@@ -85,11 +104,16 @@ class BenchmarkExamClient(LiteLLMPracticeExamClient):
         start = perf_counter()
         call_start = len(self.meter.calls)
         try:
-            payload = await super().complete_exam(
+            # Controlled comparisons always use the requested model, including critics.
+            payload = await native_completion(
                 settings=settings,
                 messages=messages,
                 response_format=response_format,
                 max_tokens=max_tokens,
+                stage="practice_exam_benchmark",
+                recorder=self.meter,
+                temperature=0.2,
+                reasoning_effort="high",
             )
             self.outputs.append(
                 {"schema": response_format["json_schema"]["name"], "payload": payload}

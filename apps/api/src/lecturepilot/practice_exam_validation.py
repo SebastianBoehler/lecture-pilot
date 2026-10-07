@@ -12,6 +12,10 @@ _COPY_WINDOW = 60
 class PracticeExamValidationError(ValueError):
     """Raised when a generated exam violates the authoritative-source contract."""
 
+    def __init__(self, message: str, *, question_ids: list[str] | None = None) -> None:
+        super().__init__(message)
+        self.question_ids = question_ids or []
+
 
 def validate_practice_exam(
     exam: PracticeExam,
@@ -20,6 +24,7 @@ def validate_practice_exam(
     question_count: int,
     selected_ppi_source_ids: set[str] | None = None,
     ppi_texts: list[str] | None = None,
+    choice_format: str = "single_answer",
 ) -> None:
     if len(exam.questions) != question_count:
         raise PracticeExamValidationError(
@@ -29,41 +34,25 @@ def validate_practice_exam(
         raise PracticeExamValidationError("No authoritative course sources are available.")
     prompts = [_normalized(question.prompt) for question in exam.questions]
     if len(prompts) != len(set(prompts)):
-        raise PracticeExamValidationError("Practice exam questions must have unique prompts.")
+        raise PracticeExamValidationError(
+            "Practice exam questions must have unique prompts.",
+            question_ids=[q.id for q in exam.questions if prompts.count(_normalized(q.prompt)) > 1],
+        )
     kinds = {question.kind for question in exam.questions}
-    if kinds != {"multiple_choice", "open_ended"}:
+    choice_kind = "multiple_select" if choice_format == "multiple_answers" else "multiple_choice"
+    if kinds != {choice_kind, "open_ended"}:
         raise PracticeExamValidationError(
             "Practice exams must mix multiple-choice and open-ended questions."
         )
     selected_ppi = selected_ppi_source_ids or set()
+    failures: dict[str, str] = {}
     for question in exam.questions:
-        if question.status != "active":
-            raise PracticeExamValidationError(f"Generated question {question.id} must be active.")
-        course_sources = set(question.source_ids)
-        if not course_sources or not course_sources.issubset(authoritative_source_ids):
-            raise PracticeExamValidationError(
-                f"Question {question.id} must cite at least one known course source."
-            )
-        if not set(question.ppi_pattern_ids).issubset(selected_ppi):
-            raise PracticeExamValidationError(
-                f"Question {question.id} cites an unselected PPI source."
-            )
-        if question.kind == "multiple_choice":
-            _reject_equivalent_options(question.id, question.options)
-            options = [_normalized(option) for option in question.options]
-            if any(not option for option in options) or len(options) != len(set(options)):
-                raise PracticeExamValidationError(
-                    f"Question {question.id} requires distinct non-empty options."
-                )
-        else:
-            if any(not item.strip() for item in question.rubric):
-                raise PracticeExamValidationError(
-                    f"Question {question.id} requires non-empty rubric criteria."
-                )
-            if not question.reference_answer or not question.reference_answer.strip():
-                raise PracticeExamValidationError(
-                    f"Question {question.id} requires a full-credit reference answer."
-                )
+        try:
+            _validate_question(question, authoritative_source_ids, selected_ppi)
+        except PracticeExamValidationError as exc:
+            failures[question.id] = str(exc)
+    if failures:
+        raise PracticeExamValidationError("; ".join(failures.values()), question_ids=list(failures))
     used_sources = {source_id for question in exam.questions for source_id in question.source_ids}
     available_lectures = {_lecture_id(source_id) for source_id in authoritative_source_ids}
     cited_lectures = {_lecture_id(source_id) for source_id in used_sources}
@@ -85,6 +74,34 @@ def validate_practice_exam(
     _reject_protocol_copy(exam, ppi_texts or [])
 
 
+def _validate_question(question, authoritative_source_ids, selected_ppi) -> None:
+    if question.status != "active":
+        raise PracticeExamValidationError(f"Generated question {question.id} must be active.")
+    course_sources = set(question.source_ids)
+    if not course_sources or not course_sources.issubset(authoritative_source_ids):
+        raise PracticeExamValidationError(
+            f"Question {question.id} must cite at least one known course source."
+        )
+    if not set(question.ppi_pattern_ids).issubset(selected_ppi):
+        raise PracticeExamValidationError(f"Question {question.id} cites an unselected PPI source.")
+    if question.kind in {"multiple_choice", "multiple_select"}:
+        _reject_equivalent_options(question.id, question.options)
+        options = [_normalized(option) for option in question.options]
+        if any(not option for option in options) or len(options) != len(set(options)):
+            raise PracticeExamValidationError(
+                f"Question {question.id} requires distinct non-empty options."
+            )
+    else:
+        if any(not item.strip() for item in question.rubric):
+            raise PracticeExamValidationError(
+                f"Question {question.id} requires non-empty rubric criteria."
+            )
+        if not question.reference_answer or not question.reference_answer.strip():
+            raise PracticeExamValidationError(
+                f"Question {question.id} requires a full-credit reference answer."
+            )
+
+
 def validate_practice_exam_review(
     payload: dict,
     *,
@@ -103,33 +120,63 @@ def validate_practice_exam_review(
         or set(reviewed_ids) != set(expected_ids)
     ):
         raise PracticeExamValidationError("Independent exam review must cover every question once.")
+    failures: dict[str, str] = {}
     for item in reviews:
-        sources = set(item.get("source_ids") or [])
-        if not sources or not sources.issubset(authoritative_source_ids):
-            raise PracticeExamValidationError(
-                f"Independent exam review cited invalid sources for {item.get('question_id')}."
-            )
-        if item.get("verdict") != "pass":
-            issue = str(item.get("issue") or "answer correctness could not be verified").strip()
-            raise PracticeExamValidationError(
-                f"Independent answer review rejected {item.get('question_id')}: {issue}"
-            )
-        question = next(q for q in exam.questions if q.id == item["question_id"])
-        _validate_review_support(item, question, course_evidence, authoritative_source_ids)
+        try:
+            _validate_review_item(item, exam, authoritative_source_ids, course_evidence)
+        except PracticeExamValidationError as exc:
+            failures[item["question_id"]] = str(exc)
+    if failures:
+        raise PracticeExamValidationError("; ".join(failures.values()), question_ids=list(failures))
+
+
+def _validate_review_item(item, exam, authoritative_source_ids, course_evidence) -> None:
+    sources = set(item.get("source_ids") or [])
+    if not sources or not sources.issubset(authoritative_source_ids):
+        raise PracticeExamValidationError(
+            f"Independent exam review cited invalid sources for {item.get('question_id')}."
+        )
+    if item.get("verdict") != "pass":
+        issue = str(item.get("issue") or "answer correctness could not be verified").strip()
+        raise PracticeExamValidationError(
+            f"Independent answer review rejected {item.get('question_id')}: {issue}"
+        )
+    question = next(q for q in exam.questions if q.id == item["question_id"])
+    _validate_review_support(item, question, course_evidence, authoritative_source_ids)
 
 
 def _validate_review_support(item, question, course_evidence: str, source_ids: set[str]) -> None:
     prefix = f"Independent answer review rejected {question.id}: "
-    if question.kind == "multiple_choice":
+    if question.kind in {"multiple_choice", "multiple_select"}:
         _reject_equivalent_options(question.id, question.options)
     if str(item.get("issue") or "").strip():
         raise PracticeExamValidationError(prefix + "contradictory pass with an unresolved issue")
     if not isinstance(item.get("reasoning"), str) or not item["reasoning"].strip():
         raise PracticeExamValidationError(prefix + "missing solution reasoning")
-    if "solved_answer_index" not in item or item["solved_answer_index"] != question.answer_index:
-        raise PracticeExamValidationError(prefix + "independently solved answer disagrees with key")
-    if question.kind == "multiple_choice" and type(item["solved_answer_index"]) is not int:
-        raise PracticeExamValidationError(prefix + "invalid independently solved answer")
+    if question.kind == "multiple_select":
+        solved = item.get("solved_answer_indices")
+        if (
+            not isinstance(solved, list)
+            or any(type(i) is not int for i in solved)
+            or len(set(solved)) != len(solved)
+            or set(solved) != set(question.answer_indices)
+            or item.get("solved_answer_index") is not None
+        ):
+            raise PracticeExamValidationError(
+                prefix + "independently solved answers disagree with key"
+            )
+    else:
+        if (
+            "solved_answer_index" not in item
+            or item["solved_answer_index"] != question.answer_index
+        ):
+            raise PracticeExamValidationError(
+                prefix + "independently solved answer disagrees with key"
+            )
+        if question.kind == "multiple_choice" and type(item["solved_answer_index"]) is not int:
+            raise PracticeExamValidationError(prefix + "invalid independently solved answer")
+        if item.get("solved_answer_indices"):
+            raise PracticeExamValidationError(prefix + "unexpected independently solved answers")
     quotations = item.get("evidence_quotes")
     if not isinstance(quotations, list) or not quotations:
         raise PracticeExamValidationError(prefix + "missing source quotation")

@@ -13,6 +13,7 @@ from lecturepilot.practice_exam_store import PracticeExamStore
 class PracticeAnswer(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     selected_index: int | None = Field(default=None, ge=0)
+    selected_indices: list[int] = Field(default_factory=list, max_length=4)
     text: str | None = Field(default=None, max_length=12000)
 
 
@@ -48,12 +49,24 @@ class PracticeAttemptStore:
                 if question is None or question.status == "invalid":
                     raise ValueError("Answers must refer to active questions in this exam.")
                 if question.kind == "multiple_choice":
-                    if answer.text is not None or (
-                        answer.selected_index is not None
-                        and answer.selected_index >= len(question.options)
+                    if (
+                        answer.text is not None
+                        or answer.selected_indices
+                        or (
+                            answer.selected_index is not None
+                            and answer.selected_index >= len(question.options)
+                        )
                     ):
                         raise ValueError("Invalid multiple-choice answer.")
-                elif answer.selected_index is not None:
+                elif question.kind == "multiple_select":
+                    if (
+                        answer.text is not None
+                        or answer.selected_index is not None
+                        or len(set(answer.selected_indices)) != len(answer.selected_indices)
+                        or any(i < 0 or i >= len(question.options) for i in answer.selected_indices)
+                    ):
+                        raise ValueError("Invalid multiple-answer selection.")
+                elif answer.selected_index is not None or answer.selected_indices:
                     raise ValueError("Open questions require a written answer.")
             root = self.exams.layout.practice_exam_dir(user_id, course_id, exam_id) / "attempts"
             path = root / f"{submission.id}.json"

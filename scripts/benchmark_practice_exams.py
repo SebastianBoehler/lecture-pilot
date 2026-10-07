@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+from math import isfinite
 import os
 from pathlib import Path
 import sys
@@ -13,7 +14,12 @@ sys.path.insert(0, str(ROOT / "apps/api/src"))
 
 from lecturepilot.runtime_env import load_project_env  # noqa: E402
 from practice_exam_benchmark import benchmark_model  # noqa: E402
-from practice_exam_benchmark_client import BenchmarkExamClient, BenchmarkMeter  # noqa: E402
+from practice_exam_benchmark_client import (  # noqa: E402
+    BenchmarkExamClient,
+    BenchmarkMeter,
+    BenchmarkBudgetExceeded,
+    verified_model_prices,
+)
 
 
 async def main() -> int:
@@ -21,7 +27,12 @@ async def main() -> int:
         description="Benchmark exam scope and solution review using a private labelled fixture."
     )
     parser.add_argument("--fixture", type=Path, required=True)
-    parser.add_argument("--model", action="append", required=True)
+    parser.add_argument(
+        "--model",
+        action="append",
+        required=True,
+        help="Exact model for every call in one comparison; production tiers are disabled.",
+    )
     parser.add_argument(
         "--prices",
         type=Path,
@@ -46,16 +57,15 @@ async def main() -> int:
         parser.error(
             "Reports contain private course evidence and must stay under .lecturepilot/benchmarks/."
         )
-    if args.budget_usd <= 0:
-        parser.error("Budget must be positive.")
+    if not isfinite(args.budget_usd) or args.budget_usd <= 0:
+        parser.error("Budget must be positive and finite.")
     load_project_env()
     prices = json.loads(args.prices.read_text())
     for model in args.model:
-        if model not in prices or any(
-            prices[model].get(key, -1) < 0
-            for key in ["input", "cached_input", "output"]
-        ):
-            parser.error(f"Missing verified token prices for {model}.")
+        try:
+            verified_model_prices(prices, model)
+        except BenchmarkBudgetExceeded as exc:
+            parser.error(str(exc))
     fixture = json.loads(args.fixture.read_text())
     # Scoped to this benchmark process; never changes the app's provider allowlist.
     os.environ["LECTUREPILOT_ALLOWED_MODELS"] = ",".join(args.model)

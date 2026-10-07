@@ -9,6 +9,7 @@ from practice_exam_planner_fixtures import (
     _payload,
     _plan_args,
     _review_payload,
+    _solution_review_payload,
 )
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
@@ -28,7 +29,7 @@ from lecturepilot.practice_exam_schema import practice_exam_response_format
 
 @pytest.mark.asyncio
 async def test_planner_generates_valid_grounded_exam() -> None:
-    client = _ModelClient([_payload(), _review_payload()])
+    client = _ModelClient([_payload(), _review_payload(), _solution_review_payload()])
     planner = PracticeExamPlanner(provider_registry=_Registry(), model_client=client)
 
     exam = await planner.plan(
@@ -45,7 +46,7 @@ async def test_planner_generates_valid_grounded_exam() -> None:
     assert exam.ppi_source_ids == ["ppi-42"]
     assert exam.source_ids == ["lecture-01:risk:definition"]
     assert len(exam.source_revision) == 64
-    assert client.calls == 2
+    assert client.calls == 3
     assert "non-authoritative pattern evidence" in client.messages[0][1]["content"]
     assert "independent correctness reviewer" in client.messages[1][0]["content"]
 
@@ -76,13 +77,15 @@ async def test_planner_rejects_malformed_payload() -> None:
 async def test_planner_repairs_duplicate_question_once() -> None:
     duplicate = _payload()
     duplicate["questions"][1]["prompt"] = duplicate["questions"][0]["prompt"]
-    client = _ModelClient([duplicate, _payload(), _review_payload()])
+    repairs = _payload()
+    repairs["questions"] = repairs["questions"][:2]
+    client = _ModelClient([duplicate, repairs, _review_payload(), _solution_review_payload()])
     planner = PracticeExamPlanner(provider_registry=_Registry(), model_client=client)
 
     exam = await planner.plan(**_plan_args())
 
     assert len(exam.questions) == 20
-    assert client.calls == 3
+    assert client.calls == 4
     assert "unique prompts" in client.messages[1][0]["content"]
 
 
@@ -95,13 +98,17 @@ async def test_planner_regenerates_after_independent_answer_review_failure() -> 
         "issue": "The keyed option contradicts the cited definition.",
         "source_ids": ["lecture-01:risk:definition"],
     }
-    client = _ModelClient([_payload(), failed_review, _payload(), _review_payload()])
+    repairs = _payload()
+    repairs["questions"] = repairs["questions"][:1]
+    client = _ModelClient(
+        [_payload(), failed_review, repairs, _review_payload(), _solution_review_payload()]
+    )
     planner = PracticeExamPlanner(provider_registry=_Registry(), model_client=client)
 
     exam = await planner.plan(**_plan_args())
 
     assert len(exam.questions) == 20
-    assert client.calls == 4
+    assert client.calls == 5
     assert "keyed option contradicts" in client.messages[2][0]["content"]
 
 
@@ -109,8 +116,10 @@ async def test_planner_regenerates_after_independent_answer_review_failure() -> 
 async def test_planner_fails_after_bounded_repair() -> None:
     duplicate = _payload()
     duplicate["questions"][1]["prompt"] = duplicate["questions"][0]["prompt"]
+    repeated = _payload()
+    repeated["questions"] = duplicate["questions"][:2]
     planner = PracticeExamPlanner(
-        provider_registry=_Registry(), model_client=_ModelClient([duplicate, duplicate])
+        provider_registry=_Registry(), model_client=_ModelClient([duplicate, repeated])
     )
 
     with pytest.raises(PracticeExamPlanningError, match="unique prompts"):

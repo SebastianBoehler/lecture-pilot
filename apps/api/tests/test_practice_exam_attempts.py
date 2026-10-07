@@ -179,7 +179,7 @@ def test_tutor_prompt_carries_historical_observations_without_gate_authority(tmp
         message="Help me revise.",
         assessment_history=AssessmentHistoryContext(observations=[observation]),
     )
-    content = _messages(turn)[-1]["content"]
+    content = "\n".join(message["content"] for message in _messages(turn))
     assert "Explain the difference." in content
     assert '"assessment":"ai_assessment"' in content
     assert "Do not infer independent mastery" in content

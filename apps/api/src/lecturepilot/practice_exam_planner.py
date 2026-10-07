@@ -11,14 +11,13 @@ from uuid import uuid4
 from pydantic import ValidationError
 
 from lecturepilot.canvas_models import CanvasDocument
-from lecturepilot.course_canvas_json import parse_model_json
-from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.model_request_options import completion_options
-from lecturepilot.model_usage import ModelUsageRecorder, complete_with_usage
+from lecturepilot.model_usage import ModelUsageRecorder
+from lecturepilot.native_completion import native_completion
 from lecturepilot.models import ProviderCapability, ProviderSettings
 from lecturepilot.practice_exam_models import (
     PracticeExam,
     PracticeExamQuestion,
+    MULTIPLE_SELECT_POINTS,
     sanitize_practice_exam_instructions,
 )
 from lecturepilot.practice_exam_prompt import (
@@ -36,7 +35,9 @@ from lecturepilot.practice_exam_validation import (
     validate_practice_exam,
     validate_practice_exam_review,
 )
-from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
+from lecturepilot.practice_exam_solution_review import verify_open_answer_sheet
+from lecturepilot.practice_exam_repair import repair_request, merge_question_repairs
+from lecturepilot.providers import ProviderRegistry
 
 
 logger = logging.getLogger(__name__)
@@ -58,7 +59,7 @@ class PracticeExamModelClient(Protocol):
         """Return a structured practice exam authoring payload."""
 
 
-class LiteLLMPracticeExamClient:
+class NativePracticeExamClient:
     def __init__(self, usage_recorder: ModelUsageRecorder | None = None) -> None:
         self.usage_recorder = usage_recorder
 
@@ -70,29 +71,18 @@ class LiteLLMPracticeExamClient:
         response_format: dict,
         max_tokens: int,
     ) -> dict:
-        try:
-            from litellm import acompletion
-        except ImportError as exc:
-            raise ProviderConfigurationError(
-                'litellm is not installed. Install the backend with the "agent" extra.'
-            ) from exc
-        try:
-            response = await complete_with_usage(
-                self.usage_recorder,
-                acompletion,
-                model=settings.model,
-                messages=messages,
-                response_format=response_format,
-                **completion_options(
-                    settings,
-                    temperature=0.2,
-                    max_tokens=max_tokens,
-                    reasoning_effort="high",
-                ),
-            )
-        except Exception as exc:
-            raise ModelExecutionError("Practice exam model request failed.") from exc
-        return parse_model_json(response.choices[0].message.content)
+        review = response_format["json_schema"].get("name") == "lecturepilot_practice_exam_review"
+        return await native_completion(
+            settings=settings,
+            messages=messages,
+            response_format=response_format,
+            stage="practice_exam_review" if review else "practice_exam",
+            tier="critic" if review else None,
+            recorder=self.usage_recorder,
+            temperature=0.2,
+            max_tokens=max_tokens,
+            reasoning_effort="high",
+        )
 
 
 class PracticeExamPlanner:
@@ -105,7 +95,7 @@ class PracticeExamPlanner:
         self.provider_registry = provider_registry or ProviderRegistry.from_env(
             model=os.getenv("LECTUREPILOT_PRACTICE_EXAM_MODEL") or None
         )
-        self.model_client = model_client or LiteLLMPracticeExamClient()
+        self.model_client = model_client or NativePracticeExamClient()
 
     async def plan(
         self,
@@ -117,6 +107,8 @@ class PracticeExamPlanner:
         question_count: int,
         documents: list[CanvasDocument],
         ppi_sources: dict[str, list[str]],
+        choice_format: str = "single_answer",
+        learner_focus: list[dict] | None = None,
     ) -> PracticeExam:
         course_evidence, authoritative_ids = authoritative_canvas_evidence(documents)
         if not authoritative_ids:
@@ -132,25 +124,39 @@ class PracticeExamPlanner:
             question_count=question_count,
             authoritative_source_ids=authoritative_ids,
             selected_ppi_source_ids=set(ppi_sources),
+            choice_format=choice_format,
         )
         repair_error: str | None = None
         last_error: Exception | None = None
+        candidate: dict | None = None
+        rejected_ids: list[str] = []
         for attempt in range(2):
+            messages = practice_exam_messages(
+                course_title=course_title,
+                language=language,
+                duration_minutes=duration_minutes,
+                question_count=question_count,
+                course_evidence=course_evidence,
+                ppi_evidence=ppi_evidence,
+                repair_error=repair_error,
+                choice_format=choice_format,
+                learner_focus=learner_focus,
+            )
+            current_format = response_format
+            if candidate is not None and rejected_ids:
+                messages, current_format = repair_request(
+                    messages, response_format, candidate, rejected_ids
+                )
             payload = await self.model_client.complete_exam(
                 settings=settings,
-                response_format=response_format,
-                max_tokens=_exam_output_token_budget(question_count),
-                messages=practice_exam_messages(
-                    course_title=course_title,
-                    language=language,
-                    duration_minutes=duration_minutes,
-                    question_count=question_count,
-                    course_evidence=course_evidence,
-                    ppi_evidence=ppi_evidence,
-                    repair_error=repair_error,
-                ),
+                response_format=current_format,
+                max_tokens=_exam_output_token_budget(len(rejected_ids) or question_count),
+                messages=messages,
             )
             try:
+                if candidate is not None and rejected_ids:
+                    payload = merge_question_repairs(candidate, payload, rejected_ids)
+                candidate = payload
                 exam = _exam_from_payload(
                     payload,
                     course_id=course_id,
@@ -165,6 +171,7 @@ class PracticeExamPlanner:
                     question_count=question_count,
                     selected_ppi_source_ids=set(ppi_sources),
                     ppi_texts=ppi_texts,
+                    choice_format=choice_format,
                 )
                 review = await self.model_client.complete_exam(
                     settings=settings,
@@ -184,10 +191,19 @@ class PracticeExamPlanner:
                     authoritative_source_ids=authoritative_ids,
                     course_evidence=course_evidence,
                 )
+                await verify_open_answer_sheet(
+                    self.model_client,
+                    settings=settings,
+                    exam=exam,
+                    blind_review=review,
+                    course_evidence=course_evidence,
+                    authoritative_ids=authoritative_ids,
+                )
                 return exam
             except (ValidationError, PracticeExamValidationError) as exc:
                 last_error = exc
                 repair_error = str(exc)
+                rejected_ids = getattr(exc, "question_ids", [])
                 logger.warning(
                     "Practice exam candidate rejected; attempt=%s error_type=%s reason=%s",
                     attempt + 1,
@@ -209,7 +225,26 @@ def _exam_from_payload(
     source_revision: str,
     ppi_source_ids: list[str],
 ) -> PracticeExam:
-    questions = [PracticeExamQuestion.model_validate(item) for item in payload["questions"]]
+    questions = []
+    failures: dict[str, str] = {}
+    for item in payload["questions"]:
+        try:
+            questions.append(
+                PracticeExamQuestion.model_validate(
+                    {
+                        **item,
+                        **(
+                            {"points": MULTIPLE_SELECT_POINTS}
+                            if item.get("kind") == "multiple_select"
+                            else {}
+                        ),
+                    }
+                )
+            )
+        except ValidationError as exc:
+            failures[item.get("id", "")] = str(exc)
+    if failures:
+        raise PracticeExamValidationError("; ".join(failures.values()), question_ids=list(failures))
     used_sources = sorted({source_id for item in questions for source_id in item.source_ids})
     return PracticeExam(
         id=uuid4().hex,

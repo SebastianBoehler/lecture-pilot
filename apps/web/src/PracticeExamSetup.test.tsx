@@ -8,6 +8,28 @@ import { renderWithI18n } from "./test/renderWithI18n";
 import type { LoginSession, UniversityCourse } from "./types";
 
 describe("PracticeExamSetup", () => {
+  it("lets the learner choose four-option multiple-answer practice with deductions", async () => {
+    const generate = vi.fn();
+    const user = userEvent.setup();
+    renderWithI18n(
+      <PracticeExamSetup
+        course={course}
+        error={null}
+        generating={false}
+        session={session}
+        sources={[]}
+        onClose={vi.fn()}
+        onGenerate={generate}
+        onSourceImported={vi.fn()}
+      />,
+    );
+    await user.selectOptions(screen.getByLabelText("Multiple-choice format"), "multiple_answers");
+    expect(screen.getByText(/4 points for the complete correct set/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Generate 25-question exam" }));
+    expect(generate).toHaveBeenCalledWith(
+      expect.objectContaining({ choice_format: "multiple_answers" }),
+    );
+  });
   it("blocks generation and hides other courses while one PPI source imports", async () => {
     let finishImport: ((response: Response) => void) | undefined;
     vi.stubGlobal(

@@ -96,12 +96,12 @@ def register_practice_exam_routes(
                 status="completed",
             )
             return public_practice_exam(exam)
-        except HTTPException:
+        except HTTPException as exc:
             store.fail(
                 job,
                 user_id=context.user_id,
                 request_key=request_key,
-                error_code="source_error",
+                error_code="quota_exceeded" if exc.status_code == 429 else "source_error",
             )
             raise
         except ProviderConfigurationError as exc:

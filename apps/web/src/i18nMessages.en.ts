@@ -1,4 +1,7 @@
+import { examChoiceEn } from "./practiceExamChoiceMessages";
+
 export const enMessages = {
+  ...examChoiceEn,
   "builder.intent.sourcesChanged":
     "Sources changed since these goals were proposed. Regenerate the goals, then review and approve them again.",
   "builder.intent.regenerateSources": "Regenerate goals for current sources",

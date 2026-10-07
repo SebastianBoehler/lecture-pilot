@@ -2,20 +2,22 @@ from __future__ import annotations
 
 from datetime import datetime
 import re
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
-PracticeExamQuestionKind = Literal["multiple_choice", "open_ended"]
+PracticeExamQuestionKind = Literal["multiple_choice", "multiple_select", "open_ended"]
+PracticeExamChoiceFormat = Literal["single_answer", "multiple_answers"]
 PracticeExamDifficulty = Literal["introductory", "standard", "advanced"]
 PracticeExamQuestionStatus = Literal["active", "invalid"]
 MIN_PRACTICE_EXAM_QUESTIONS = 20
 MAX_PRACTICE_EXAM_QUESTIONS = 50
+MULTIPLE_SELECT_POINTS = 4
 _ADMIN_INSTRUCTION = re.compile(
     r"\b(?:time\s*limit|duration|minutes?|total|answer(?:_|\s|-)?ind(?:ex|ices)|"
     r"zero(?:\s|-)?based|zeitlimit|dauer|minuten?|gesamt|antwortind(?:ex|izes)|"
-    r"nullbasiert)\b|\b\d+\s*(?:points?|punkte?)\b",
+    r"nullbasiert|scoring|penalties|deductions|punktabzug|wertung)\b|\b\d+\s*(?:points?|punkte?)\b",
     re.IGNORECASE,
 )
 
@@ -31,6 +33,9 @@ class PracticeExamQuestion(BaseModel):
     difficulty: PracticeExamDifficulty
     options: list[str] = Field(default_factory=list, max_length=6)
     answer_index: int | None = Field(default=None, ge=0, le=5)
+    answer_indices: list[Annotated[int, Field(strict=True, ge=0, le=3)]] = Field(
+        default_factory=list, max_length=4
+    )
     rubric: list[str] = Field(default_factory=list, max_length=8)
     reference_answer: str | None = Field(default=None, max_length=4_000)
     source_ids: list[str] = Field(min_length=1, max_length=8)
@@ -39,23 +44,40 @@ class PracticeExamQuestion(BaseModel):
     @model_validator(mode="after")
     def validate_question_shape(self) -> "PracticeExamQuestion":
         if self.status == "invalid":
-            if self.points or self.options or self.answer_index is not None:
+            if self.points or self.options or self.answer_index is not None or self.answer_indices:
                 raise ValueError("Invalid questions must be zero-point placeholders.")
             if self.rubric or self.reference_answer is not None:
                 raise ValueError("Invalid questions cannot contain private answer guidance.")
             return self
         if self.points < 1:
             raise ValueError("Active questions must be worth at least one point.")
-        if self.kind == "multiple_choice":
+        if self.kind in {"multiple_choice", "multiple_select"}:
             if len(self.options) < 2:
                 raise ValueError("Multiple-choice questions require at least two options.")
-            if self.answer_index is None or self.answer_index >= len(self.options):
-                raise ValueError("Multiple-choice questions require a valid answer index.")
+            if self.kind == "multiple_choice":
+                if (
+                    self.answer_index is None
+                    or self.answer_index >= len(self.options)
+                    or self.answer_indices
+                ):
+                    raise ValueError("Multiple-choice questions require one valid answer index.")
+            elif (
+                len(self.options) != 4
+                or self.answer_index is not None
+                or not self.answer_indices
+                or any(type(i) is not int or i < 0 or i >= 4 for i in self.answer_indices)
+                or len(set(self.answer_indices)) != len(self.answer_indices)
+            ):
+                raise ValueError(
+                    "Multiple-answer questions require four options, distinct valid keys."
+                )
             if self.rubric:
                 raise ValueError("Multiple-choice questions cannot contain an open-answer rubric.")
             if self.reference_answer is not None:
                 raise ValueError("Multiple-choice questions cannot contain a reference answer.")
-        elif self.options or self.answer_index is not None or not self.rubric:
+        elif (
+            self.options or self.answer_index is not None or self.answer_indices or not self.rubric
+        ):
             raise ValueError("Open-ended questions require a rubric and cannot contain options.")
         elif self.reference_answer is not None and not self.reference_answer.strip():
             raise ValueError("Open-ended reference answers cannot be blank.")
@@ -118,6 +140,7 @@ class PracticeExamSolutionQuestion(BaseModel):
     status: PracticeExamQuestionStatus = "active"
     points: int
     answer_index: int | None = None
+    answer_indices: list[int] = Field(default_factory=list)
     reference_answer: str | None = None
     rubric: list[str] = Field(default_factory=list)
 
@@ -139,25 +162,29 @@ class PracticeExamGenerationInput(BaseModel):
     )
     duration_minutes: int = Field(default=90, ge=30, le=300)
     ppi_source_ids: list[str] = Field(default_factory=list, max_length=1)
+    choice_format: PracticeExamChoiceFormat = "single_answer"
 
 
 def public_practice_exam(exam: PracticeExam) -> PracticeExamPublic:
+    instructions = sanitize_practice_exam_instructions(exam.instructions)
+    if any(question.kind == "multiple_select" for question in exam.questions):
+        instructions.append(multiple_select_scoring_instruction(exam.language))
     return PracticeExamPublic(
         id=exam.id,
         course_id=exam.course_id,
         title=exam.title,
         language=exam.language,
-        instructions=sanitize_practice_exam_instructions(exam.instructions),
+        instructions=instructions,
         duration_minutes=exam.duration_minutes,
         created_at=exam.created_at,
-        total_points=exam.total_points,
+        total_points=sum(question_display_points(q) for q in exam.questions),
         questions=[
             PracticeExamPublicQuestion(
                 id=question.id,
                 kind=question.kind,
                 status=question.status,
                 prompt=question.prompt,
-                points=question.points,
+                points=question_display_points(question),
                 options=question.options,
             )
             for question in exam.questions
@@ -177,15 +204,16 @@ def practice_exam_solution_sheet(exam: PracticeExam) -> PracticeExamSolutionShee
         raise ValueError("This practice exam predates full-credit reference answers.")
     return PracticeExamSolutionSheet(
         exam_id=exam.id,
-        title=f"{exam.title} — Solutions",
-        total_points=exam.total_points,
+        title=f"{exam.title} — {'Lösungen' if exam.language == 'de' else 'Solutions'}",
+        total_points=sum(question_display_points(q) for q in exam.questions),
         questions=[
             PracticeExamSolutionQuestion(
                 id=question.id,
                 kind=question.kind,
                 status=question.status,
-                points=question.points,
+                points=question_display_points(question),
                 answer_index=question.answer_index,
+                answer_indices=question.answer_indices,
                 reference_answer=question.reference_answer,
                 rubric=question.rubric,
             )
@@ -205,3 +233,19 @@ def sanitize_practice_exam_instructions(instructions: list[str]) -> list[str]:
         safe.append(normalized)
         seen.add(key)
     return safe
+
+
+def question_display_points(question: PracticeExamQuestion) -> int:
+    if question.kind == "multiple_select" and question.status == "active":
+        return MULTIPLE_SELECT_POINTS
+    return question.points
+
+
+def multiple_select_scoring_instruction(language: str) -> str:
+    return (
+        "Wähle alle richtigen Optionen. Übungswertung: 4 Punkte für die vollständig richtige Auswahl, "
+        "sonst −1 pro falscher Auswahl und 0 für unvollständige richtige Auswahlen. Negative Punkte sind möglich."
+        if language == "de"
+        else "Select all correct options. Practice scoring: 4 points for the complete correct set, "
+        "otherwise −1 per wrong selection and 0 for incomplete correct sets. Negative scores are possible."
+    )

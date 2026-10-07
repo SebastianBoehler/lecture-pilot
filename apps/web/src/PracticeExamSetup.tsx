@@ -34,6 +34,9 @@ export function PracticeExamSetup({
   const { t } = useI18n();
   const [questionCount, setQuestionCount] = useState(DEFAULT_PRACTICE_EXAM_QUESTIONS);
   const [duration, setDuration] = useState(90);
+  const [choiceFormat, setChoiceFormat] = useState<"single_answer" | "multiple_answers">(
+    "single_answer",
+  );
   const [selectedSource, setSelectedSource] = useState<PpiExamSource | null>(
     sources.length === 1 ? sources[0] : null,
   );
@@ -99,6 +102,18 @@ export function PracticeExamSetup({
             />
           </label>
         </div>
+        <label className="practice-exam-choice-format">
+          <span>{t("practice.setup.choiceFormat")}</span>
+          <select
+            value={choiceFormat}
+            disabled={generating || importingSource}
+            onChange={(event) => setChoiceFormat(event.currentTarget.value as typeof choiceFormat)}
+          >
+            <option value="single_answer">{t("practice.setup.singleAnswer")}</option>
+            <option value="multiple_answers">{t("practice.setup.multipleAnswers")}</option>
+          </select>
+        </label>
+        {choiceFormat === "multiple_answers" ? <p>{t("practice.multipleRule")}</p> : null}
         <p className="practice-exam-scope-help">{t("practice.setup.help")}</p>
         <section aria-labelledby="saved-ppi-sources">
           <div className="practice-exam-section-heading">
@@ -169,6 +184,7 @@ export function PracticeExamSetup({
               question_count: questionCount,
               duration_minutes: duration,
               ppi_source_ids: selectedSource ? [selectedSource.id] : [],
+              choice_format: choiceFormat,
             })
           }
         >
