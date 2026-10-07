@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import { renderWithI18n } from "./test/renderWithI18n";
@@ -50,9 +50,13 @@ it("loads speech only on demand and appends an editable transcript without submi
   expect(speech.load).not.toHaveBeenCalled();
   const field = screen.getByRole("textbox", { name: "Tutor message" });
   await userEvent.type(field, "My question:");
-  await userEvent.selectOptions(screen.getByRole("combobox", { name: "Speech language" }), "de");
+  const languages = screen.getByRole("radiogroup", { name: "Speech language" });
+  expect(within(languages).getByRole("radio", { name: "English" })).toBeChecked();
+  await userEvent.click(within(languages).getByRole("radio", { name: "Deutsch" }));
   await userEvent.click(screen.getByRole("button", { name: "Start dictation" }));
   expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled();
+  expect(within(languages).getByRole("radio", { name: "English" })).toBeDisabled();
+  expect(screen.getByText("0:00 / 0:30")).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "Stop dictation" }));
   await waitFor(() => expect(field).toHaveValue("My question: Explain gradient descent."));
   expect(speech.transcribe).toHaveBeenCalledWith(expect.any(Float32Array), "de");

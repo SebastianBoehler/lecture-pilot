@@ -107,7 +107,7 @@ it("updates the tutor dialog semantics when the viewport crosses the mobile brea
   await user.tab();
   expect(screen.getByRole("textbox", { name: "Tutor message" })).toHaveFocus();
   await user.tab();
-  expect(screen.getByRole("combobox", { name: "Speech language" })).toHaveFocus();
+  expect(screen.getByRole("radio", { name: "English" })).toHaveFocus();
   await user.tab();
   expect(screen.getByRole("button", { name: "Start dictation" })).toHaveFocus();
   await user.tab();
