@@ -206,6 +206,8 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
   filesystem tools. Even an incomplete answer requires an assessment. The
   backend derives the next approved check and assistance from that assessment;
   the provider must not choose or return `next_check`.
+  Chat requires a null assessment. Ordinary checkpoints without a reviewed
+  task bank or hint ladder allow an unassisted retry after a wrong answer.
 - Exam-readiness submissions use the typed API action and scaffold policy over
   the selected task, source excerpt, rubric, and course progress summary; they
   are not a general agent filesystem tool.
@@ -220,6 +222,8 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
   grading. A separate post-attempt solution sheet may score
   multiple choice locally and provide full-credit reference answers for
   self-review.
+  `practice_exam_generation_service.py` owns background generation and
+  `practice_exam_lease.py` renews its durable lease; HTTP 202 clients poll the same key.
   The tutor receives bounded, lecture-scoped history from saved readiness results
   and practice submissions. Practice answers remain ungraded, assistance unknown;
   history never passes gates. Students can review/delete their own submissions.

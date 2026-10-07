@@ -6,6 +6,11 @@ was run for these changes. The private review attachment is not copied into Git.
 
 ## Implemented
 
+This records the earlier remediation at `895d56c`, already present on `main` and
+the local `origin/main` tracking ref. The follow-up review found regressions and
+incomplete fixes in these changes. See
+[the follow-up ledger](2026-10-07-review-followup.md) for current behavior and checks.
+
 | Phase                     | Changes                                                                                                                                                                                                                                                                                                                                                                                                             | Main ownership                                                              |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | 1: Safety and validity    | Hide future tasks, unselected hints and learning maps; scope sources to current publication and verify file digests; retain newest memory with explicit consent and safe preference keys; fixed multiple-select points; remove TypeError replay; answer every tool call; bound paid requests, tokens, deadlines and cooldowns; move tools off the event loop.                                                       | Tutor context, workspace capabilities, memory, native tutor, shared gateway |
@@ -25,9 +30,10 @@ Multiple-select questions use four points independent of answer count. Legacy
 immutable storage stays intact; student, PDF and solution projections use the same
 point rule. Practice submissions remain ungraded. Their history never passes gates.
 
-Unknown or failed provider usage retains the quota reservation. Successful known
+Unknown usage after a dispatched provider request retains the quota reservation. Successful known
 usage reconciles actual totals across model/schema calls. Failed image generation
-refunds the image count. Job limits include nested paid retries and reviewers.
+refunds the image count. A budget refusal before dispatch does not record a paid
+request or unknown usage. Job limits include nested paid retries and reviewers.
 
 ## Deliberate limits and remaining work
 

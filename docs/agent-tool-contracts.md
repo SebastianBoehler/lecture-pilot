@@ -38,6 +38,16 @@ captured SHA-256 against actual bytes. Hidden learning maps
 are excluded from reads, listings, and searches. Private assessment quotations
 remain outside tutor roots and public analytics. Published canvases are read-only.
 
+`source_capability_guard.py` holds shared course/publication locks during source
+operations. It checks the captured authority-file identity without re-parsing the
+publication for every file. Professor changes retain exclusive locks. Source
+bytes still require the captured checksum. Grep's regex deadline counts matching
+time, not file or lock I/O. Hidden filenames are compared without case sensitivity.
+
+`agent_tool_arguments.py` validates every tool argument against its JSON schema
+before dispatch. Oversized limits, extra arguments and incorrect types fail as
+tool errors. `edit` requires exactly one non-empty match; ambiguous edits fail.
+
 ## Tool Semantics
 
 | Tool             | Required input                 | Side effect                                                                                                                               |

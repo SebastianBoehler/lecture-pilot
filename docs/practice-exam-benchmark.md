@@ -94,14 +94,26 @@ withheld. A separate answer-sheet review compares open answers and criteria
 against the blind solutions and exact source evidence. Both reviews fail closed.
 Question-level validation collects all failed IDs. One bounded repair receives
 the previous candidate and replaces only those IDs; passing questions remain
-unchanged. Whole-exam contract failures require a new complete candidate.
+unchanged. After the repair, questions rejected by their final review become
+zero-point invalid questions with no answer key, rubric or reference answer.
+Verified questions remain usable. Whole-exam contract failures still fail closed.
 
-Generation reserves the existing daily model-token and concurrency quota before
-provider requests. Idempotent replay does not consume quota twice. Completion
-reconciles the reservation with reported usage and releases concurrency, including
-on failure. Missing usage preserves the reservation. Existing immutable exams
+Generation reserves the existing daily model-token quota before provider requests.
+It does not occupy the tutor's concurrent-turn slot. Idempotent replay does not
+consume quota twice. Completion reconciles the reservation with reported usage,
+including on failure. Missing usage after dispatch preserves the reservation.
+Pre-dispatch budget refusals do not count as provider requests. Existing immutable exams
 keep their stored contents; public exam and solution projections normalize
 multiple-answer points and totals without exposing the private answer count.
+
+`practice_exam_generation_service.py` owns the background task. Generation returns
+the completed exam within one second, or HTTP 202 with its running job status.
+The web client polls that status using the same idempotency key and fetches the
+completed exam. `practice_exam_lease.py` renews the persisted job lease throughout
+generation. A healthy running job cannot be reclaimed by a retry after 180 seconds.
+The job record survives a process restart, but execution does not: an expired
+lease can be reclaimed, and provider work before a crash can incur another charge.
+This is not an exactly-once guarantee across process failure.
 
 Generation can emphasize up to twelve weak or due goals from current published
 learning-map revisions and saved independent attempts or scheduled reviews. The

@@ -29,6 +29,7 @@ and opening the real onboarding player. Verify layout and navigation in a browse
 
 Local update, 7 October 2026: checkpoint grading retains short verbatim answer
 quotations in the private lecture assessment audit. Progress reset removes them;
-account/course deletion removes their containing workspace. Both privacy locales
+No API account-deletion path was found in this review, so account deletion is not
+claimed as a verified removal mechanism. Both privacy locales
 now disclose these excerpts. This code update does not reverify university
 hosting, provider configuration or institutional retention policy.
