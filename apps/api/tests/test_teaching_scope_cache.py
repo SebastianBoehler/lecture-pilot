@@ -17,7 +17,8 @@ async def test_identical_accepted_implementation_reuses_scope_review(tmp_path, m
 
     def respond(messages, info):
         calls.append(info)
-        if len(calls) in {1, 4}:
+        output = info.model_request_parameters.output_object
+        if output and "coherent" in output.json_schema.get("properties", {}):
             scope_inputs.append(messages[-1].parts[-1].content)
             return ModelResponse(
                 parts=[
@@ -32,7 +33,7 @@ async def test_identical_accepted_implementation_reuses_scope_review(tmp_path, m
                     )
                 ]
             )
-        if len(calls) == 2:
+        if len(calls) in {2, 4}:
             return ModelResponse(parts=[ToolCallPart("validate", {})])
         return ModelResponse(parts=[ToolCallPart("final_result", {"ready": True})])
 
@@ -59,6 +60,15 @@ async def test_identical_accepted_implementation_reuses_scope_review(tmp_path, m
     second = await run_implementation_repair(**args)
     assert second == first
     assert len(calls) == count
+
+    # A new repair context creates another implementation session, but reuses the
+    # exact same intent/evidence scope verdict.
+    repaired = await run_implementation_repair(
+        **{**args, "repair_context": "Repair teaching details."}
+    )
+    assert repaired == first
+    assert len(scope_inputs) == 1
+    count = len(calls)
 
     assert list(json.loads(scope_inputs[0])) == ["evidence", "proposal"]
     assert calls[0].model_settings["openai_reasoning_effort"] == "high"

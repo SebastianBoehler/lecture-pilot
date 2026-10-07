@@ -70,3 +70,20 @@ def test_actual_usage_refunds_tokens_and_failed_image_can_be_retried() -> None:
     quota.release_turn(**scope, reserved_tokens=40, actual_tokens=None)
     with pytest.raises(UsageQuotaExceeded):
         quota.reserve_turn(**scope, reserved_tokens=1)
+
+
+def test_background_exam_reservation_does_not_occupy_or_release_the_tutor_slot():
+    database = Database()
+    account = IdentityRepository(database).record_login(
+        UniversityLoginResult(username="background-quota", term="Sommer 2026"),
+        tenant_id="tenant-tuebingen",
+    )
+    quota = UsageQuota(database, UsageLimits(5, 1000, 1, 1, 10), enabled=True)
+    scope = dict(tenant_id="tenant-tuebingen", user_id=str(account.user_id), course_id="course-3")
+    assert quota.reserve_turn(**scope, concurrent=False)
+    assert quota.reserve_turn(**scope)
+    quota.release_turn(**scope, concurrent=False, actual_tokens=2)
+    with pytest.raises(UsageQuotaExceeded, match="concurrent"):
+        quota.reserve_turn(**scope)
+    quota.release_turn(**scope)
+    assert quota.reserve_turn(**scope)

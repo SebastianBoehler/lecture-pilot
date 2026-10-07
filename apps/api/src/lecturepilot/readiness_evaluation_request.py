@@ -31,6 +31,7 @@ async def evaluate_readiness_answers(
         "user_id": user_id,
         "course_id": course_id,
         "usage_date": datetime.now(UTC).date(),
+        "concurrent": False,
     }
     input_limit, output_limit = readiness_token_reservation(items)
     reservation = input_limit + output_limit

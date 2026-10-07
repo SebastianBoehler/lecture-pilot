@@ -19,6 +19,7 @@ from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_provider_errors import is_retryable_provider_error
 from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
 from lecturepilot.source_index_models import IndexedSourceFile
+from lecturepilot.model_job_limits import bounded_model_job
 
 
 class CourseSourceRoutingPlanner:
@@ -30,6 +31,7 @@ class CourseSourceRoutingPlanner:
         self.provider_registry = provider_registry or ProviderRegistry.from_env()
         self.model_client = model_client or NativeSourceRoutingClient()
 
+    @bounded_model_job
     async def propose_routes(
         self,
         *,

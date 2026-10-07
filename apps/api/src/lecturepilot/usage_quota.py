@@ -59,6 +59,7 @@ class UsageQuota:
         course_id: str,
         reserved_tokens: int | None = None,
         usage_date: date | None = None,
+        concurrent: bool = True,
     ) -> bool:
         if not self.enabled or not self.database.configured:
             return False
@@ -76,7 +77,7 @@ class UsageQuota:
             agent_turns=1,
             reserved_tokens=reservation,
             images=0,
-            active_turns=1,
+            active_turns=int(concurrent),
             updated_at=datetime.now(UTC),
         )
         statement = statement.on_conflict_do_update(
@@ -84,12 +85,12 @@ class UsageQuota:
             set_={
                 "agent_turns": UsageCounterRecord.agent_turns + 1,
                 "reserved_tokens": UsageCounterRecord.reserved_tokens + reservation,
-                "active_turns": UsageCounterRecord.active_turns + 1,
+                "active_turns": UsageCounterRecord.active_turns + int(concurrent),
                 "updated_at": datetime.now(UTC),
             },
             where=(UsageCounterRecord.agent_turns < limits.turns_per_day)
             & (UsageCounterRecord.reserved_tokens + reservation <= limits.reserved_tokens_per_day)
-            & (UsageCounterRecord.active_turns < limits.concurrent_turns),
+            & ((UsageCounterRecord.active_turns < limits.concurrent_turns) if concurrent else True),
         ).returning(UsageCounterRecord.id)
         with self.database.session() as session:
             if session.scalar(statement) is None:
@@ -105,11 +106,12 @@ class UsageQuota:
         actual_tokens: int | None = None,
         reserved_tokens: int | None = None,
         usage_date: date | None = None,
+        concurrent: bool = True,
     ) -> None:
         if not self.enabled or not self.database.configured:
             return
         values = dict(
-            active_turns=func.greatest(UsageCounterRecord.active_turns - 1, 0),
+            active_turns=func.greatest(UsageCounterRecord.active_turns - int(concurrent), 0),
             updated_at=datetime.now(UTC),
         )
         if actual_tokens is not None:

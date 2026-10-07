@@ -2,9 +2,11 @@
 
 from contextlib import asynccontextmanager
 from collections.abc import Callable
+import httpx
+from openai import APIError
 
 from pydantic_ai import Agent, ModelRetry, NativeOutput, StructuredDict
-from pydantic_ai.exceptions import UnexpectedModelBehavior
+from pydantic_ai.exceptions import UnexpectedModelBehavior, ModelAPIError
 
 from lecturepilot.authoring_provider import authoring_model
 from lecturepilot.model_client import ModelExecutionError
@@ -70,6 +72,10 @@ async def native_completion(
         except (ModelExecutionError, ProviderConfigurationError):
             raise
         except Exception as exc:
-            raise ModelExecutionError(
-                model_provider_error_message(exc, provider=settings.provider)
-            ) from exc
+            if isinstance(exc, (APIError, ModelAPIError, httpx.HTTPError, TimeoutError)) or (
+                isinstance(getattr(exc, "status_code", None), int) and exc.status_code >= 400
+            ):
+                raise ModelExecutionError(
+                    model_provider_error_message(exc, provider=settings.provider)
+                ) from exc
+            raise

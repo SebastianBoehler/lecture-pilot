@@ -18,6 +18,7 @@ from lecturepilot.models import (
 )
 from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
 from lecturepilot.source_bundle import SourceBundleFile
+from lecturepilot.model_job_limits import bounded_model_job
 
 
 class LectureScheduleModelClient(Protocol):
@@ -56,6 +57,7 @@ class LectureSchedulePlanner:
         self.provider_registry = provider_registry or ProviderRegistry.from_env()
         self.model_client = model_client or NativeScheduleClient()
 
+    @bounded_model_job
     async def propose_schedule(
         self,
         *,

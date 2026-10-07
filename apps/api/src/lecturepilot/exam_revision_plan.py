@@ -176,7 +176,7 @@ def _question_result(
             correct=correct,
             score=1.0 if correct else 0.0,
             selected_index=answer.selected_index,
-            correct_index=question.answer_index,
+            correct_index=None,
             status="correct" if correct else "incorrect",
         )
     if evaluation is None:

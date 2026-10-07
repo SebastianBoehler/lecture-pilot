@@ -43,7 +43,9 @@ class LearnerProfileResponse(BaseModel):
     courses: list[LearnerCourseProfile] = Field(default_factory=list)
 
 
-def read_learner_profile(store: UserMemoryStore, user_id: str) -> LearnerProfileResponse:
+def read_learner_profile(
+    store: UserMemoryStore, user_id: str, *, canvas_store
+) -> LearnerProfileResponse:
     context = store.read_context(user_id)
     preferences = context.preferences
     raw_goal = preferences.get("learning_goal")
@@ -58,11 +60,11 @@ def read_learner_profile(store: UserMemoryStore, user_id: str) -> LearnerProfile
         preferences=preferences,
         global_notes=context.global_notes,
         global_files=_files(root, include=lambda path: path.parts[0] != "courses"),
-        courses=_course_profiles(courses_root),
+        courses=_course_profiles(courses_root, canvas_store),
     )
 
 
-def _course_profiles(courses_root: Path) -> list[LearnerCourseProfile]:
+def _course_profiles(courses_root: Path, canvas_store) -> list[LearnerCourseProfile]:
     if not courses_root.exists() or courses_root.is_symlink():
         return []
     profiles: list[LearnerCourseProfile] = []
@@ -74,7 +76,7 @@ def _course_profiles(courses_root: Path) -> list[LearnerCourseProfile]:
             LearnerCourseProfile(
                 course_id=course_root.name,
                 memory=_read_text(memory_path, limit=4000),
-                passed_lecture_ids=_passed_lecture_ids(course_root),
+                passed_lecture_ids=_passed_lecture_ids(course_root, canvas_store),
                 files=_files(course_root, include=_is_personal_course_file),
             )
         )
@@ -111,7 +113,7 @@ def _files(root: Path, include=None) -> list[LearnerFile]:
     return files
 
 
-def _passed_lecture_ids(course_root: Path) -> list[str]:
+def _passed_lecture_ids(course_root: Path, canvas_store) -> list[str]:
     lectures_root = course_root / "lectures"
     if not lectures_root.exists() or lectures_root.is_symlink():
         return []
@@ -121,8 +123,16 @@ def _passed_lecture_ids(course_root: Path) -> list[str]:
             continue
         payload = _read_json(lecture_root / "gates.json")
         gates = payload.get("gates") if isinstance(payload.get("gates"), dict) else {}
-        if any(
-            isinstance(gate, dict) and gate.get("status") == "passed" for gate in gates.values()
+        snapshot = canvas_store.read_current_published_snapshot(
+            course_id=course_root.name,
+            lecture_id=lecture_root.name,
+        )
+        required = snapshot.learning_map.gates if snapshot else []
+        if required and all(
+            isinstance(gates.get(gate.id), dict)
+            and gates[gate.id].get("status") == "passed"
+            and gates[gate.id].get("gate_revision") == gate.revision
+            for gate in required
         ):
             passed.append(lecture_root.name)
     return passed

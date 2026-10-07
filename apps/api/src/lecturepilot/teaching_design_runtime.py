@@ -81,7 +81,7 @@ async def _run_implementation_repair(
                 "settings": scope_review_settings(settings),
             }
         )
-        scope_path = root / identity / "scope-review.json"
+        scope_path = root / "scope-reviews" / f"{scope_key}.json"
         saved = json.loads(scope_path.read_text()) if scope_path.exists() else None
         if saved is not None and saved.get("identity") == scope_key:
             scope = LearningGoalScopeReview.model_validate(saved["review"])

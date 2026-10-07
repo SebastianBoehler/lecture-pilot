@@ -35,6 +35,7 @@ from lecturepilot.course_practice_design_review_prompt import practice_design_re
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import ProviderCapability, ProviderSettings
 from lecturepilot.providers import ProviderRegistry
+from lecturepilot.model_job_limits import bounded_model_job
 from lecturepilot.practice_evidence_catalogue import (
     evidence_catalogue,
     expand_evidence_ids,
@@ -61,6 +62,7 @@ class PracticeDesignPlanner:
         self.usage_recorder = usage_recorder
         self.review_client = review_client or NativePracticeDesignReviewClient(usage_recorder)
 
+    @bounded_model_job
     async def propose(
         self,
         *,
@@ -241,6 +243,7 @@ class PracticeDesignPlanner:
             ) as model:
                 yield model
 
+    @bounded_model_job
     async def review(
         self,
         *,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from lecturepilot.api_auth import request_context
@@ -26,7 +27,7 @@ from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.readiness_evaluation_request import evaluate_readiness_answers
 from lecturepilot.models import Course, Lecture
 from lecturepilot.lecture_access_policy import can_consume_lecture
-from lecturepilot.readiness_progress import ReadinessProgressStore
+from lecturepilot.readiness_progress import ReadinessProgressStore, InvalidReadinessProgressError
 from lecturepilot.professor_preview import resolve_learner_workspace_access
 from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.tenancy import TenantContext
@@ -39,6 +40,10 @@ def register_exam_readiness_routes(
     seeded_course: Course,
     lectures: list[Lecture],
 ) -> None:
+    @app.exception_handler(InvalidReadinessProgressError)
+    async def invalid_progress(request, exc):
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
+
     @app.get("/courses/{course_id}/exam-readiness", response_model=ExamReadinessPublicCheck)
     def exam_readiness_check(
         course_id: str,
@@ -87,6 +92,7 @@ def register_exam_readiness_routes(
         )
         check = _readiness_check(app, course_id, seeded_course, lectures, context)
         store = _progress_store(app)
+        previous_attempts = store.attempt_count(user_id=access.user_id, course_id=course_id)
         try:
             answers_by_question = validate_exam_readiness_answers(
                 check=check, answers=attempt.answers
@@ -118,7 +124,7 @@ def register_exam_readiness_routes(
                 check=check,
                 answers=attempt.answers,
                 open_evaluations={evaluation.question_id: evaluation for evaluation in evaluations},
-                previous_attempts=store.attempt_count(user_id=access.user_id, course_id=course_id),
+                previous_attempts=previous_attempts,
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from contextlib import nullcontext
+from contextlib import contextmanager
+from contextvars import ContextVar
 from hashlib import sha256
 import errno
 import os
@@ -21,13 +22,36 @@ class WorkspaceFS:
 
     def __init__(self, capability: WorkspaceCapability) -> None:
         self.capability = capability
+        self._guarded = ContextVar("workspace_read_guards", default=frozenset())
+
+    @contextmanager
+    def operation(self, logical_path):
+        if logical_path == "/":
+            yield
+            return
+        _, root, _ = self._select(logical_path, for_write=False)
+        with self._read_guard(root):
+            yield
+
+    @contextmanager
+    def _read_guard(self, root):
+        if root.read_guard is None or id(root) in self._guarded.get():
+            yield
+            return
+        with root.read_guard():
+            token = self._guarded.set(self._guarded.get() | {id(root)})
+            try:
+                yield
+            finally:
+                self._guarded.reset(token)
 
     def logical_roots(self) -> list[str]:
         return self.capability.logical_roots()
 
     def resolve(self, logical_path: str, *, for_write: bool = False) -> ToolPath:
         normalized, root, relative = self._select(logical_path, for_write=for_write)
-        self._verify_components(root, relative, allow_missing=for_write)
+        with self._read_guard(root):
+            self._verify_components(root, relative, allow_missing=for_write)
         return ToolPath(normalized, root.host_path.joinpath(*relative.parts))
 
     def logical_for(self, path: Path, *, allow_missing: bool = False) -> str:
@@ -51,7 +75,7 @@ class WorkspaceFS:
 
     def read_text(self, logical_path: str, *, errors: str = "strict") -> str:
         _, root, relative = self._select(logical_path, for_write=False)
-        with root.read_guard() if root.read_guard is not None else nullcontext():
+        with self._read_guard(root):
             fd = self._open_file(root, relative, os.O_RDONLY)
             with os.fdopen(fd, "rb") as handle:
                 content = handle.read()
@@ -138,7 +162,10 @@ class WorkspaceFS:
             if for_write and not root.writable:
                 raise WorkspaceFSError("This workspace root is read-only.")
             suffix = normalized.removeprefix(root.logical_path).lstrip("/")
-            if any(part in root.excluded_names for part in PurePosixPath(suffix).parts):
+            if any(
+                part.casefold() in {name.casefold() for name in root.excluded_names}
+                for part in PurePosixPath(suffix).parts
+            ):
                 raise WorkspaceFSError("Path is outside the workspace capability.")
             if (
                 root.allowed_files is not None
@@ -148,9 +175,6 @@ class WorkspaceFS:
                 )
             ):
                 raise WorkspaceFSError("Path is outside the workspace capability.")
-            if root.read_guard is not None:
-                with root.read_guard():
-                    pass
             return normalized, root, PurePosixPath(suffix)
         raise WorkspaceFSError("Path is outside the workspace capability.")
 

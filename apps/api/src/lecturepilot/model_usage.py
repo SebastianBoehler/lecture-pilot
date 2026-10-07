@@ -12,6 +12,10 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from lecturepilot.database import Database
+from lecturepilot.model_usage_tokens import (
+    usage_tokens_from_response as usage_tokens_from_response,
+    _empty_tokens,
+)
 from lecturepilot.db_models import ModelUsageEventRecord
 from lecturepilot.logging_observability import current_operation_id
 from lecturepilot.metadata_events import emit_metadata_event
@@ -21,7 +25,6 @@ from lecturepilot.model_request_options import MODEL_REQUEST_TIMEOUT_SECONDS
 from lecturepilot.model_usage_total import (
     accumulate_model_usage,
     mark_model_usage_unknown,
-    provider_usage_pair,
 )
 
 
@@ -136,6 +139,7 @@ async def complete_with_usage(
     *,
     usage_stage: str | None = None,
     max_attempts: int = MODEL_REQUEST_MAX_ATTEMPTS,
+    before_request: Callable[[], None] | None = None,
     **kwargs: Any,
 ) -> Any:
     return await _complete_with_attempts(
@@ -144,6 +148,7 @@ async def complete_with_usage(
         kwargs,
         usage_stage=usage_stage,
         max_attempts=max(1, max_attempts),
+        before_request=before_request,
     )
 
 
@@ -154,6 +159,7 @@ async def _complete_with_attempts(
     *,
     usage_stage: str | None,
     max_attempts: int = MODEL_REQUEST_MAX_ATTEMPTS,
+    before_request: Callable[[], None] | None = None,
 ) -> Any:
     request_id = uuid4().hex
     model = str(kwargs.get("model") or "unknown")
@@ -164,12 +170,17 @@ async def _complete_with_attempts(
         try:
             async with asyncio.timeout(timeout_seconds + 5):
                 async with model_request_slot(model):
+                    if before_request is not None:
+                        before_request()
                     provider_started_at = perf_counter()
                     response = await completion(**kwargs)
         except asyncio.CancelledError:
-            mark_model_usage_unknown()
+            if provider_started_at is not None:
+                mark_model_usage_unknown()
             raise
         except Exception as exc:
+            if provider_started_at is None:
+                raise
             mark_model_usage_unknown()
             _emit_request_event(
                 model=model,
@@ -248,48 +259,3 @@ def _emit_request_event(
         latency_ms=round((finished_at - provider_started_at) * 1000, 3),
         **(tokens or _empty_tokens()),
     )
-
-
-def usage_tokens_from_response(response: Any) -> dict[str, int]:
-    usage = _value(response, "usage")
-    prompt_details = _value(usage, "prompt_tokens_details")
-    completion_details = _value(usage, "completion_tokens_details")
-    counters = provider_usage_pair(usage)
-    input_tokens, output_tokens = counters or (
-        _nonnegative(_value(usage, "prompt_tokens")),
-        _nonnegative(_value(usage, "completion_tokens")),
-    )
-    return {
-        "input_tokens": input_tokens,
-        "output_tokens": output_tokens,
-        "total_tokens": max(
-            _nonnegative(_value(usage, "total_tokens")), input_tokens + output_tokens
-        ),
-        "cached_input_tokens": _nonnegative(_value(prompt_details, "cached_tokens")),
-        "reasoning_tokens": _nonnegative(_value(completion_details, "reasoning_tokens")),
-    }
-
-
-def _empty_tokens() -> dict[str, int]:
-    return {
-        "input_tokens": 0,
-        "output_tokens": 0,
-        "total_tokens": 0,
-        "cached_input_tokens": 0,
-        "reasoning_tokens": 0,
-    }
-
-
-def _value(value: Any, name: str) -> Any:
-    if value is None:
-        return None
-    if isinstance(value, dict):
-        return value.get(name)
-    return getattr(value, name, None)
-
-
-def _nonnegative(value: Any) -> int:
-    try:
-        return max(0, int(value or 0))
-    except (TypeError, ValueError, OverflowError):
-        return 0

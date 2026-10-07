@@ -92,24 +92,32 @@ def _learner_source_root(
 ) -> CapabilityRoot:
     from lecturepilot.course_update_recovery import locked_course_state
     from lecturepilot.workspace_fs import WorkspaceFSError
+    from lecturepilot.source_capability_guard import shared_source_access, source_state_identity
 
     course_root = workspace.layout.course_root(course_id)
     try:
         with locked_course_state(course_root):
+            identity = source_state_identity(workspace.layout, course_id, lecture_id)
             binding = _validated_source_binding(workspace, course_id, lecture_id)
+            if identity != source_state_identity(workspace.layout, course_id, lecture_id):
+                raise ValueError("Source identity changed during validation.")
     except (OSError, ValueError, RuntimeError):
         binding = None
 
     @contextmanager
     def guard() -> Iterator[None]:
-        with locked_course_state(course_root):
+        if binding is None:
+            raise WorkspaceFSError("Published source capability is unavailable or stale.")
+        with shared_source_access(
+            course_root, workspace.layout.course_canvas_dir(course_id, lecture_id)
+        ):
             try:
-                current = _validated_source_binding(workspace, course_id, lecture_id)
+                current = source_state_identity(workspace.layout, course_id, lecture_id)
             except (OSError, ValueError, RuntimeError) as exc:
                 raise WorkspaceFSError(
                     "Published source capability is unavailable or stale."
                 ) from exc
-            if binding is None or current != binding:
+            if binding is None or current != identity:
                 raise WorkspaceFSError("Published source capability is unavailable or stale.")
             yield
 

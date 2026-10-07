@@ -10,6 +10,7 @@ from lecturepilot.agent_image_placement import AgentImagePlacement, dedupe_markd
 from lecturepilot.agent_image_tool import AgentImageToolError
 from lecturepilot.agent_side_effect_tools import AgentSideEffectError, AgentSideEffectTools
 from lecturepilot.agent_tool_search import search_workspace
+from lecturepilot.agent_tool_arguments import validate_tool_arguments
 from lecturepilot.agent_tool_utils import (
     AgentToolArgumentError,
     ToolPath,
@@ -78,6 +79,10 @@ class AgentToolExecutor(AgentSideEffectTools):
 
     def execute(self, name: str, args: dict[str, Any]) -> dict[str, Any]:
         try:
+            validate_tool_arguments(name, args)
+            if name in {"read", "ls", "find", "grep"}:
+                with self.workspace_fs.operation(args.get("path", "/")):
+                    return {"ok": True, **self._execute(name, args)}
             return {"ok": True, **self._execute(name, args)}
         except (
             AgentToolError,
@@ -234,7 +239,7 @@ class AgentToolExecutor(AgentSideEffectTools):
         if not resolved.path.exists():
             raise AgentToolError("File does not exist.")
         current = self.workspace_fs.read_text(resolved.logical)
-        if old_text not in current:
+        if not old_text or current.count(old_text) != 1:
             raise AgentToolError("old_text was not found exactly once.")
         updated = current.replace(old_text, new_text, 1)
         if resolved.logical.startswith("/lecture/annotations/"):

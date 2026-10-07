@@ -4,11 +4,15 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from lecturepilot.durable_files import atomic_write_json, exclusive_file_lock
 from lecturepilot.exam_revision_plan import ExamReadinessAttemptResult, ExamRevisionTask
 from lecturepilot.storage_layout import StorageLayout
+
+
+class InvalidReadinessProgressError(ValueError):
+    pass
 
 
 class ReadinessProgressQuestionEvent(BaseModel):
@@ -47,11 +51,7 @@ class ReadinessProgressStore:
         path = self._path(user_id=user_id, course_id=course_id)
         if not path.exists():
             return ReadinessProgress()
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            return ReadinessProgress()
-        return ReadinessProgress.model_validate(payload)
+        return self._read_path(path)
 
     def record_attempt(
         self,
@@ -122,9 +122,11 @@ class ReadinessProgressStore:
     def _read_path(self, path: Path) -> ReadinessProgress:
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            return ReadinessProgress()
-        return ReadinessProgress.model_validate(payload)
+            return ReadinessProgress.model_validate(payload)
+        except (json.JSONDecodeError, ValidationError, OSError) as exc:
+            raise InvalidReadinessProgressError(
+                "Saved readiness progress is invalid. Restore it or explicitly reset progress."
+            ) from exc
 
 
 def _now() -> str:

@@ -60,6 +60,10 @@ def validate_goal_evidence(proposal, *, source, allowed_source_paths):
     )
 
 
+from lecturepilot.model_job_limits import bounded_model_job
+
+
+@bounded_model_job
 async def propose_learning_intent(planner, *, source, source_revision, allowed_source_paths):
     settings = planner.provider_registry.require_ready(
         [

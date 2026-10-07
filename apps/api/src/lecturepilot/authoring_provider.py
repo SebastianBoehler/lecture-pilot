@@ -35,11 +35,13 @@ class MeteredAuthoringModel(WrapperModel):
         self.stage = stage
 
     async def request(self, messages, model_settings, model_request_parameters):
-        async def invoke(**kwargs):
+        def before_request():
             self.authorize()
             budget = current_authoring_budget()
             if budget is not None:
                 budget.reserve_request()
+
+        async def invoke(**kwargs):
             if self.response_usage is not None:
                 self.response_usage.set(None)
             response = await self.wrapped.request(
@@ -79,6 +81,7 @@ class MeteredAuthoringModel(WrapperModel):
                 usage_stage=self.stage,
                 model=self.provider_settings.model,
                 timeout=CANVAS_PLAN_REQUEST_TIMEOUT_SECONDS,
+                before_request=before_request,
             )
         except (ModelAPIError, APIError, httpx.HTTPError, TimeoutError) as exc:
             raise ModelExecutionError(

@@ -23,7 +23,11 @@ def register_learner_profile_routes(app: FastAPI, *, course_tenant_id: str) -> N
         context: TenantContext = Depends(request_context),
     ) -> LearnerProfileResponse:
         _require_student(context, course_tenant_id)
-        return read_learner_profile(app.state.user_memory_store, context.user_id)
+        return read_learner_profile(
+            app.state.user_memory_store,
+            context.user_id,
+            canvas_store=app.state.canvas_workspace.course_canvas_store,
+        )
 
     @app.post("/me/learning-profile", response_model=LearnerProfileResponse)
     def update_learning_profile(
@@ -43,7 +47,11 @@ def register_learner_profile_routes(app: FastAPI, *, course_tenant_id: str) -> N
             target_id=context.user_id,
             details={"learning_goal": update.learning_goal},
         )
-        return read_learner_profile(app.state.user_memory_store, context.user_id)
+        return read_learner_profile(
+            app.state.user_memory_store,
+            context.user_id,
+            canvas_store=app.state.canvas_workspace.course_canvas_store,
+        )
 
     @app.delete("/me/learning-profile/preferences/{key}", status_code=204)
     def delete_learning_preference(

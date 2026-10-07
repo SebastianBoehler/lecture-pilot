@@ -13,7 +13,7 @@ def search_workspace(fs: WorkspaceFS, path: str, pattern: str, max_matches: int)
         expression = regex.compile(pattern, regex.IGNORECASE)
     except regex.error as exc:
         raise AgentToolArgumentError("Invalid search regular expression.") from exc
-    deadline = monotonic() + 0.1
+    remaining_budget = 0.1
     matches = []
     for item in fs.files(path):
         if not is_text_file(item.path):
@@ -21,10 +21,11 @@ def search_workspace(fs: WorkspaceFS, path: str, pattern: str, max_matches: int)
         text = fs.read_text(item.logical, errors="ignore")
         for line_number, line in enumerate(text.splitlines(), 1):
             try:
-                remaining = deadline - monotonic()
-                if remaining <= 0:
+                if remaining_budget <= 0:
                     raise TimeoutError
-                found = expression.search(line, timeout=remaining, concurrent=True)
+                started = monotonic()
+                found = expression.search(line, timeout=remaining_budget, concurrent=True)
+                remaining_budget -= monotonic() - started
             except TimeoutError as exc:
                 raise AgentToolArgumentError(
                     "Search regular expression exceeded its time limit."

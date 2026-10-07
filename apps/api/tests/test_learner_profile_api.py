@@ -48,7 +48,7 @@ def test_learner_profile_persists_goal_and_lists_owned_course_files(tmp_path) ->
     assert payload["onboarding_completed"] is True
     assert payload["preferences"]["learning_goal"] == "understand_deeply"
     course = next(item for item in payload["courses"] if item["course_id"] == "martius-ml")
-    assert course["passed_lecture_ids"] == ["lecture-01"]
+    assert course["passed_lecture_ids"] == []  # No current published gate contract exists.
     files = {item["path"]: item for item in course["files"]}
     assert set(files) == {
         "lectures/lecture-01/canvas/components/practice.yaml",
