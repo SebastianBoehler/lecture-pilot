@@ -145,7 +145,10 @@ alembic -c apps/api/alembic.ini upgrade head
 npm run dev:demo
 ```
 
-Open `http://127.0.0.1:5173` and select **Preview local demo**. Private course
+Open `http://127.0.0.1:5173` and select **Preview local demo**. In development,
+the demo student uses the accessible local course catalogue for enrollment,
+including imported courses. University-account enrollment remains backend-owned.
+Private course
 material belongs in a gitignored root such as `local-course-materials/`; use
 `LECTUREPILOT_COURSE_MATERIAL_ROOT` when the material lives elsewhere.
 

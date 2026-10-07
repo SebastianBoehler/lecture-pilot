@@ -6,6 +6,7 @@ import type { Lecture, LoginSession, UniversityCourse } from "./types";
 
 export type LoadedWorkspaceCourse = {
   course: UniversityCourse;
+  courses: UniversityCourse[];
   lectures: Lecture[];
 };
 
@@ -32,7 +33,7 @@ export async function findLoadableWorkspaceCourse(
     try {
       const lectures = await getCourseLectures(course.id, activeSession);
       successfulReads += 1;
-      if (lectures.length) return { course, lectures };
+      if (lectures.length) return { course, courses, lectures };
     } catch (error) {
       lastError = error;
     }

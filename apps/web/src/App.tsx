@@ -29,6 +29,7 @@ import { readLocalePreference, writeLocalePreference } from "./localePreference"
 import { useLessonState } from "./useLessonState";
 import { clearSavedFlow } from "./professorBuilderState";
 import { useStoredLoginSession } from "./loginSessionStorage";
+import { withLocalDemoCourses } from "./localDemoCourses";
 import { lectures } from "./sampleData";
 import { logoutSession } from "./sessionApi";
 import { clearAllPracticeExamDrafts } from "./practiceExamDraft";
@@ -60,6 +61,10 @@ function App() {
   const [locale, setLocale] = useState<Locale>(() => readLocalePreference());
   const { navigate, route } = useAppRoute();
   const [session, setSession, restoringSession] = useStoredLoginSession();
+  const sessionRef = useRef(session);
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
   const view = !session && requiresSession(route.view) ? "login" : route.view;
   usePublicMetadata(view, locale);
   const feedback = useFeedbackPrompt(session, view === "dashboard");
@@ -175,6 +180,10 @@ function App() {
         return;
       }
       setWorkspaceCourse(loaded.course);
+      if (sessionRef.current === activeSession) {
+        const nextSession = withLocalDemoCourses(activeSession, loaded.courses);
+        if (nextSession !== activeSession) setSession(nextSession);
+      }
       setWorkspaceCourseId(loaded.course.id);
       setSelectedCourseId(loaded.course.id);
       setAvailableLectures(loaded.lectures);
