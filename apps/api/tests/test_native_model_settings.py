@@ -22,6 +22,43 @@ def test_non_reasoning_openai_and_google_accept_temperature():
         assert "openai_reasoning_effort" not in result
 
 
+def test_openai_prompt_cache_key_is_stable_per_course_and_lecture():
+    from lecturepilot.native_model_settings import tutor_prompt_cache_key
+
+    key = tutor_prompt_cache_key(
+        settings("openai/gpt-6"),
+        course_id="course-1",
+        lecture_id="lecture-1",
+        publication_version=4,
+    )
+    assert key == "lp:openai/gpt-6:course-1:lecture-1:4"
+    assert "student" not in key
+    result = native_model_settings(settings("openai/gpt-6"), prompt_cache_key=key)
+    assert result["openai_prompt_cache_key"] == key
+    assert (
+        tutor_prompt_cache_key(
+            settings("gemini/gemini-3.1-flash-lite"),
+            course_id="course-1",
+            lecture_id="lecture-1",
+            publication_version=4,
+        )
+        is None
+    )
+    google = native_model_settings(
+        settings("gemini/gemini-3.1-flash-lite"), prompt_cache_key="lp:should-not-apply"
+    )
+    assert "openai_prompt_cache_key" not in google
+
+
+def test_tutor_output_caps_drop_when_the_turn_cannot_write():
+    from lecturepilot.native_tutor import tutor_output_limits
+
+    assert tutor_output_limits(writing_tools=False) == (1_500, 4_096)
+    max_tokens, output_limit = tutor_output_limits(writing_tools=True)
+    assert max_tokens == 8_192
+    assert output_limit < 32_768
+
+
 def test_critics_preserve_requested_reasoning_effort():
     result = native_model_settings(settings("openai/gpt-6"), reasoning_effort="medium")
     assert result["openai_reasoning_effort"] == "medium"

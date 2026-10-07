@@ -94,6 +94,34 @@ def test_failure_resets_next_interval_and_task_exhaustion_stays_completed():
     assert completed.completed_at == NOW
 
 
+def test_review_interval_caps_a_base_interval_above_sixty_days():
+    from lecturepilot.coaching_review_schedule import MAX_REVIEW_INTERVAL_DAYS, advance_review
+    from lecturepilot.coaching_state_models import DelayedReview
+    from lecturepilot.learning_map import LearningMapGate
+
+    gate = bank_gate()
+    long_gate = LearningMapGate.create(
+        **{**gate.model_dump(exclude={"revision"}), "review_after_days": 90}
+    )
+    current = DelayedReview(
+        gate_id=long_gate.id,
+        gate_revision=long_gate.revision,
+        section_id=long_gate.section_id,
+        transfer_prompt=long_gate.transfer_prompt,
+        scheduled_at=NOW,
+        due_at=NOW + timedelta(days=40),
+        planned_delay_seconds=40 * 86400,
+        attempted_at=NOW + timedelta(days=40),
+        completed_at=None,
+        observed_delay_seconds=40 * 86400,
+        failed_since_review=False,
+    )
+    advanced = advance_review(
+        current, gate=long_gate, exposed_task_ids=["delayed-transfer"], now=NOW
+    )
+    assert advanced.planned_delay_seconds == MAX_REVIEW_INTERVAL_DAYS * 86400
+
+
 def test_review_queue_interleaves_lectures_and_keeps_each_lecture_in_order():
     from lecturepilot.review_queue_order import interleave_lectures
 

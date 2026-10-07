@@ -100,18 +100,24 @@ def test_duplicate_bank_prompt_and_reserved_identity_are_rejected():
 
 
 def test_assessment_prompt_is_exact_fresh_task_and_uses_published_criteria():
+    from lecturepilot.checkpoint_assessment_prompt import assessment_messages
     from lecturepilot.tutor_gate_context import gate_rubric_context
     from test_strict_model_payload import _turn
     from practice_gate_coaching_test_helpers import bank_gate
 
     gate = bank_gate()
-    turn = _turn()
-    turn = turn.model_copy(
+    fresh = gate.supplemental_tasks[0].prompt
+    base = _turn()
+    turn = base.model_copy(
         update={
             "active_gate": gate,
-            "coaching_context": turn.coaching_context.model_copy(
+            "coaching_context": base.coaching_context.model_copy(
                 update={
-                    "pending_check_prompt": gate.supplemental_tasks[0].prompt,
+                    "active_gate_id": gate.id,
+                    "active_gate_revision": gate.revision,
+                    "pending_check_gate_id": gate.id,
+                    "pending_check_gate_revision": gate.revision,
+                    "pending_check_prompt": fresh,
                     "pending_check_stage": "independent_exit",
                     "pending_check_task_id": "exit-fresh",
                     "exposed_task_ids": ["baseline", "independent-exit", "exit-fresh"],
@@ -119,6 +125,13 @@ def test_assessment_prompt_is_exact_fresh_task_and_uses_published_criteria():
             ),
         }
     )
-    context = gate_rubric_context(turn)
-    assert f"Gate prompt: {gate.supplemental_tasks[0].prompt}" in context
-    assert all(criterion.description in context for criterion in gate.evidence_criteria)
+    assessment = assessment_messages(turn)[1]["content"]
+    assert fresh in assessment
+    assert all(criterion.description in assessment for criterion in gate.evidence_criteria)
+    stable = gate_rubric_context(turn)
+    assert f"Gate prompt: {gate.prompt}" in stable
+    assert fresh not in stable
+    chat = gate_rubric_context(turn.model_copy(update={"checkpoint_gate_id": None}))
+    assert fresh not in chat
+    assert all(criterion.description not in chat for criterion in gate.evidence_criteria)
+    assert "withheld" in chat

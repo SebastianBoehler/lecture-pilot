@@ -145,15 +145,24 @@ def test_chat_cannot_persist_a_gate_pass_even_when_a_check_is_pending(tmp_path):
     client, gate, ids, payload = setup(tmp_path)
     store = CoachingProgressStore(client.app.state.canvas_workspace.layout)
     store.bind_inline_checkpoint(**ids, gate=gate)
-    client.app.state.agent_harness = Assessor(passed=True)
+
+    class NoCall:
+        async def run_turn(self, *args, **kwargs):
+            raise AssertionError("Chat during an independent attempt must not reach the model.")
+
+    client.app.state.agent_harness = NoCall()
     del payload["checkpoint_gate_id"]
     result = client.post(
         "/agent/turn",
         headers=student_headers("u1"),
         json={**payload, "message": "The cause produces an observable effect."},
     )
-    assert result.status_code == 503
-    assert not store.read(**ids).turns
+    assert result.status_code == 409, result.text
+    assert result.json()["detail"] == "independent_attempt_in_progress"
+    progress = store.read(**ids)
+    assert not progress.turns
+    assert progress.pending_check.stage == "independent_exit"
+    assert progress.pending_check.assistance_level == "none"
     assert not client.app.state.learner_state.latest_gate_decisions(**ids)
 
 

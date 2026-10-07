@@ -7,10 +7,11 @@ from lecturepilot.agent_authorization import authorize_agent_turn
 from lecturepilot.agent_state_access import learner_state_store
 from lecturepilot.agent_turn_orchestration import agent_turn_events, complete_agent_turn
 from lecturepilot.api_auth import request_context
-from lecturepilot.models import AgentTurnRequest, AgentTurnResult, Course, Lecture
+from lecturepilot.models import AgentTurnInput, AgentTurnRequest, AgentTurnResult, Course, Lecture
 from lecturepilot.coaching_progress import CoachingProgressStore, InvalidCoachingStateError
 from lecturepilot.coaching_state_recovery import recovery_required_detail
 from lecturepilot.learner_state import InvalidLearnerGateStateError
+from lecturepilot.independent_attempt import reject_chat_during_independent_attempt
 from lecturepilot.learning_state_preflight import validate_coaching_bindings
 from lecturepilot.professor_preview import resolve_learner_workspace_access
 from lecturepilot.tenancy import TenantContext
@@ -44,7 +45,7 @@ def register_agent_routes(
             seeded_lectures=seeded_lectures,
             turn=turn,
         )
-        _preflight_learning_state(app, turn.user_id, turn.course_id, turn.lecture_id)
+        _preflight_learning_state(app, turn)
         return await complete_agent_turn(app, turn=turn, actor_user_id=access.actor_user_id)
 
     @app.post("/agent/turn/stream")
@@ -68,14 +69,15 @@ def register_agent_routes(
             seeded_lectures=seeded_lectures,
             turn=turn,
         )
-        _preflight_learning_state(app, turn.user_id, turn.course_id, turn.lecture_id)
+        _preflight_learning_state(app, turn)
         return StreamingResponse(
             agent_turn_events(app, turn=turn, actor_user_id=access.actor_user_id),
             media_type="application/x-ndjson",
         )
 
 
-def _preflight_learning_state(app: FastAPI, user_id: str, course_id: str, lecture_id: str) -> None:
+def _preflight_learning_state(app: FastAPI, turn: AgentTurnInput) -> None:
+    user_id, course_id, lecture_id = turn.user_id, turn.course_id, turn.lecture_id
     try:
         canvas_store = app.state.canvas_workspace.course_canvas_store
         with canvas_store.locked_published_learning_map(
@@ -90,6 +92,11 @@ def _preflight_learning_state(app: FastAPI, user_id: str, course_id: str, lectur
                 user_id=user_id, course_id=course_id, lecture_id=lecture_id
             )
             validate_coaching_bindings(progress, learning_map)
+            pending = progress.pending_check
+            reject_chat_during_independent_attempt(
+                checkpoint_gate_id=turn.checkpoint_gate_id,
+                stage=pending.stage if pending is not None else None,
+            )
     except InvalidCoachingStateError as exc:
         raise HTTPException(
             status_code=409,

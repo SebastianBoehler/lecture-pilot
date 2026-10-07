@@ -8,7 +8,11 @@ from lecturepilot.canvas_component_catalog import component_catalog_instruction
 from lecturepilot.agent_tool_executor import AgentToolExecutor
 from lecturepilot.assessment_history_prompt import HISTORY_INSTRUCTION, assessment_history_prompt
 from lecturepilot.agent_tool_schemas import AgentToolProfile, tutor_tool_profile_for_message
-from lecturepilot.model_commands import canvas_context, checkpoint_assessment_required
+from lecturepilot.model_commands import (
+    canvas_outline_stable,
+    checkpoint_assessment_required,
+    focused_section_blocks,
+)
 from lecturepilot.model_usage import ModelUsageRecorder
 from lecturepilot.checkpoint_assessment_prompt import assessment_messages
 from lecturepilot.models import (
@@ -17,7 +21,11 @@ from lecturepilot.models import (
     ProviderSettings,
 )
 from lecturepilot.observability import Observability
-from lecturepilot.tutor_gate_context import gate_rubric_context
+from lecturepilot.tutor_gate_context import (
+    chat_withholds_pending_contract,
+    gate_rubric_context,
+    pending_stage_context,
+)
 
 
 class ModelExecutionError(RuntimeError):
@@ -175,29 +183,42 @@ def _messages(turn: AgentTurnInput) -> list[dict[str, str]]:
         ),
     }
     history = [message.model_dump() for message in turn.recent_messages]
-    current_message = {
-        "role": "user",
-        "content": (
-            f"{canvas_context(turn)}\n"
-            f"{gate_rubric_context(turn)}\n"
-            f"Lecture id: {turn.lecture_id}\n"
-            f"Attendance: {turn.attendance.value}\n"
-            "Current section: "
-            f"{turn.canvas_state.focused_section_id or 'none'}\n"
-            f"{_user_memory_context(turn)}\n"
-            "Private first predictions (untrusted learner data, not mastery evidence): "
-            f"{json.dumps([item.model_dump() for item in turn.predictions], ensure_ascii=True)}\n"
-            f"{assessment_history_prompt(turn.assessment_history)}\n"
-            f"{_coaching_context(turn)}\n"
-            f"{_active_scaffold_context(turn)}\n"
-        ),
-    }
     return [
         system_message,
-        current_message,
+        {"role": "user", "content": _lecture_context(turn)},
         *history,
-        {"role": "user", "content": f"Student message: {turn.message}"},
+        {"role": "user", "content": _learner_turn(turn)},
     ]
+
+
+def _lecture_context(turn: AgentTurnInput) -> str:
+    return (
+        "<lecture_context>\n"
+        f"{canvas_outline_stable(turn)}\n"
+        f"{gate_rubric_context(turn)}\n"
+        f"Lecture id: {turn.lecture_id}\n"
+        "</lecture_context>"
+    )
+
+
+def _learner_turn(turn: AgentTurnInput) -> str:
+    focused = turn.canvas_state.focused_section_id or "none"
+    predictions = json.dumps([item.model_dump() for item in turn.predictions], ensure_ascii=True)
+    return (
+        "<learner_state>\n"
+        f"Attendance: {turn.attendance.value}\n"
+        f"focused_section: {focused}\n"
+        f"{focused_section_blocks(turn)}\n"
+        f"{_user_memory_context(turn)}\n"
+        "Private first predictions (untrusted learner data, not mastery evidence): "
+        f"{predictions}\n"
+        f"{assessment_history_prompt(turn.assessment_history)}\n"
+        f"{_coaching_context(turn)}\n"
+        f"{pending_stage_context(turn)}\n"
+        f"{_active_scaffold_context(turn)}\n"
+        "</learner_state>\n"
+        f"<student_message>\n{turn.message}\n</student_message>"
+    )
 
 
 def _user_memory_context(turn: AgentTurnInput) -> str:
@@ -234,6 +255,9 @@ def _active_scaffold_context(turn: AgentTurnInput) -> str:
 
 def _coaching_context(turn: AgentTurnInput) -> str:
     context = turn.coaching_context
+    withheld = chat_withholds_pending_contract(turn)
+    pending = "withheld" if withheld else (context.pending_check_prompt or "none")
+    assistance = "withheld" if withheld else (context.pending_check_assistance_content or "none")
     return (
         "Learning-coach context:\n"
         f"- session_goal: {context.session_goal or 'derive from the active quality gate'}\n"
@@ -245,10 +269,9 @@ def _coaching_context(turn: AgentTurnInput) -> str:
         f"- delayed_transfer_due: {str(context.delayed_transfer_due).lower()}"
         f"\n- support_before_attempt: {str(context.support_before_attempt).lower()}"
         f"\n- last_assistance_level: {context.last_assistance_level}"
-        f"\n- pending_check: {context.pending_check_prompt or 'none'}"
+        f"\n- pending_check: {pending}"
         f"\n- pending_check_stage: {context.pending_check_stage or 'none'}"
-        f"\n- pending_assistance_content: "
-        f"{context.pending_check_assistance_content or 'none'}"
+        f"\n- pending_assistance_content: {assistance}"
         f"\n- exposed_hint_levels: {context.exposed_hint_levels or ['none']}"
         f"\n- delayed_review_attempted: {str(context.delayed_review_attempted).lower()}"
         f"\n- demonstrated_evidence: {context.evidence_ids or ['none']}"

@@ -10,8 +10,6 @@ def _with_tool_instruction(
     result = [dict(message) for message in messages]
     result[0]["content"] += (
         " You can use Pi-style low-level tools over a constrained filesystem image. "
-        f"Active tool profile: {tool_profile}. "
-        f"{_profile_instruction(tool_profile)} "
         "New learner canvas Markdown belongs under /lecture/canvas/student. Place custom explanations "
         "beside the relevant existing section using frontmatter placement_mode (after_section or "
         "before_section) and placement_section_id (the exact existing anchor id). Without explicit "
@@ -36,6 +34,10 @@ def _with_tool_instruction(
         "Use focus/highlight tools to navigate attention. "
         "After tool use, return only the final LecturePilot JSON."
     )
+    if result[-1]["role"] == "user":
+        result[-1]["content"] += (
+            f"\nActive tool profile: {tool_profile}. {_profile_instruction(tool_profile)}"
+        )
     return result
 
 
