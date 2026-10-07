@@ -44,6 +44,8 @@ def derive_next_transition(
         candidates = task_ids_for_stage(gate, transition.stage)
         fresh = next((item for item in candidates if item not in exposed_task_ids), None)
         if fresh is not None:
+            if current_stage == "delayed_support":
+                return None  # The backend schedules this fresh task for a future review.
             return CheckTransition(
                 stage=transition.stage,
                 task_id=fresh,
@@ -57,7 +59,7 @@ def derive_next_transition(
             stage=_support_stage(current_stage),
             task_id=task_id,
             bank_exhausted=True,
-            support_exhausted=True,
+            support_exhausted=False,
             check=_check(
                 gate,
                 prompt=task_prompt(gate, task_id),
@@ -69,11 +71,18 @@ def derive_next_transition(
         item not in exposed_task_ids for item in task_ids_for_stage(gate, base_stage)
     )
     assistance = _next_assistance(gate, exposed_hint_levels, missing_evidence_ids)
+    unassisted_retry = (
+        not gate.hint_ladder
+        and gate.practice_target_id is None
+        and current_stage == "independent_exit"
+    )
     return CheckTransition(
-        stage=_support_stage(current_stage),
+        stage=current_stage if unassisted_retry else _support_stage(current_stage),
         task_id=task_id,
-        bank_exhausted=exhausted,
-        support_exhausted=assistance.level == "none",
+        bank_exhausted=exhausted and not unassisted_retry,
+        support_exhausted=bool(gate.hint_ladder)
+        and all(hint.level in exposed_hint_levels for hint in gate.hint_ladder)
+        and assistance.level == "none",
         check=_check(
             gate,
             prompt=task_prompt(gate, task_id),

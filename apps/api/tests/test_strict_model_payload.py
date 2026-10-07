@@ -35,6 +35,7 @@ def _turn(*, active_gate: bool = True, bound_check: bool = True) -> AgentTurnInp
         lecture_id="lecture-1",
         attendance=AttendanceStatus.PRESENT,
         message="My explanation.",
+        checkpoint_gate_id=gate.id if gate is not None and bound_check else None,
         active_gate=gate,
         coaching_context=(
             AgentCoachingContext(

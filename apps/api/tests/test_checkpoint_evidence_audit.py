@@ -21,6 +21,23 @@ def test_quote_validation_requires_verbatim_answer_and_claimed_criterion():
             validate_evidence_quotes(quotes, evidence_ids=["cause"], answer=answer, required=True)
 
 
+@pytest.mark.parametrize(
+    "quote,answer",
+    [
+        ("a", "a is part of a long unrelated answer"),
+        ("risk increases", "Selected option: risk increases\nReasoning: I do not know."),
+    ],
+)
+def test_quote_audit_rejects_trivial_or_option_only_anchors(quote, answer):
+    with pytest.raises(ProviderConfigurationError):
+        validate_evidence_quotes(
+            [CriterionQuote(evidence_id="cause", quote=quote)],
+            evidence_ids=["cause"],
+            answer=answer,
+            required=True,
+        )
+
+
 def test_private_quotations_are_excluded_from_decision_serialization(tmp_path):
     quote = CriterionQuote(evidence_id="cause", quote="the cause produces the effect")
     decision = QualityGateDecision(

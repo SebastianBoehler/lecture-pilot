@@ -21,6 +21,8 @@ from lecturepilot.model_payload import agent_result_from_content
 from lecturepilot.native_model_settings import native_model_settings
 from lecturepilot.providers import ProviderConfigurationError
 
+TUTOR_DEADLINE_SECONDS = 120
+
 
 async def _native_tutor_turn(
     *,
@@ -141,7 +143,7 @@ async def _native_tutor_turn(
 async def native_tutor_turn(**kwargs):
     with authoring_budget(request_limit=14, input_tokens_limit=150_000, output_tokens_limit=32_768):
         try:
-            async with asyncio.timeout(15 * 60):
+            async with asyncio.timeout(TUTOR_DEADLINE_SECONDS):
                 return await _native_tutor_turn(**kwargs)
         except TimeoutError as exc:
             raise ModelExecutionError("Tutor turn deadline reached.") from exc

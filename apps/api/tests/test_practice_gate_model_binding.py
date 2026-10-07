@@ -154,6 +154,7 @@ def _parse(gate: LearningMapGate, payload: dict, *, stage: str):
             lecture_id="lecture-1",
             attendance=AttendanceStatus.PRESENT,
             message="Learner attempt.",
+            checkpoint_gate_id=gate.id,
             active_gate=gate,
             coaching_context=AgentCoachingContext(
                 active_gate_id=gate.id,
@@ -208,6 +209,9 @@ def _payload(
             "gate_revision": gate.revision,
             "reason": "Evidence checked against the approved criterion.",
             "evidence_ids": evidence_ids,
+            "evidence_quotes": [
+                {"evidence_id": item, "quote": "Learner attempt."} for item in evidence_ids
+            ],
         },
     }
 

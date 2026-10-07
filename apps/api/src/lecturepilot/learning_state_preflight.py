@@ -91,18 +91,28 @@ def _validate_pending(progress: CoachingProgress, gate: LearningMapGate) -> None
     if pending.prompt != task_prompt(gate, task_id):
         raise InvalidCoachingStateError("Persisted tutor state is invalid.")
     exposure = progress.task_exposures.get(f"{gate.id}@{gate.revision}@{task_id}")
+    plain_retry = (
+        gate.practice_target_id is None
+        and not gate.hint_ladder
+        and pending.stage == "independent_exit"
+        and pending.assistance_level == "none"
+    )
     if (
         pending.stage in {"independent_exit", "delayed_transfer"}
         and exposure
-        and (exposure.supported or exposure.answered)
+        and (exposure.supported or (exposure.answered and not plain_retry))
     ):
         raise InvalidCoachingStateError("An exposed task cannot become fresh independent evidence.")
-    if pending.stage in {"independent_exit", "delayed_transfer"} and any(
-        turn.gate_id == gate.id
-        and turn.gate_revision == gate.revision
-        and turn.attempt_kind == pending.stage
-        and (turn.task_id or canonical_task_id(turn.attempt_kind)) == task_id
-        for turn in progress.turns
+    if (
+        not plain_retry
+        and pending.stage in {"independent_exit", "delayed_transfer"}
+        and any(
+            turn.gate_id == gate.id
+            and turn.gate_revision == gate.revision
+            and turn.attempt_kind == pending.stage
+            and (turn.task_id or canonical_task_id(turn.attempt_kind)) == task_id
+            for turn in progress.turns
+        )
     ):
         raise InvalidCoachingStateError(
             "An answered task cannot become fresh independent evidence."

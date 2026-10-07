@@ -69,7 +69,7 @@ def validate_quality_gate_decision(
     turn: AgentTurnInput,
 ) -> QualityGateDecision | None:
     active_gate = turn.active_gate
-    bound = assessment_required(turn)
+    bound = checkpoint_assessment_required(turn)
     if active_gate is None:
         if decision is not None:
             raise ProviderConfigurationError(

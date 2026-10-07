@@ -14,7 +14,7 @@ def test_success_without_fresh_independent_task_never_returns_a_hint():
         exposed_hint_levels=[],
     )
     assert transition.bank_exhausted
-    assert transition.support_exhausted
+    assert not transition.support_exhausted
     assert transition.check.assistance.level == "none"
     assert transition.check.assistance.content is None
 

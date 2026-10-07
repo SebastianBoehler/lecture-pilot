@@ -55,6 +55,8 @@ def assessment_messages(turn: AgentTurnInput) -> list[dict[str, str]]:
                 "Return only evidence_ids actually supported. For each claimed criterion return "
                 "one evidence_quotes entry with evidence_id and a short verbatim quote from "
                 "learner_answer supporting it. Use an empty list if no criterion is demonstrated. "
+                "Quote a substantive explanation or calculation, never a single token or merely "
+                "the echoed Selected option line. A selected option alone does not demonstrate reasoning. "
                 "Never quote the reference explanation as learner evidence. "
                 "The rubric is the complete pass contract. Do not invent extra required concepts. "
                 "The backend selects the outcome, next task and assistance. Do not propose them. "

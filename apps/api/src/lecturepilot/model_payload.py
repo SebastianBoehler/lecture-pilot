@@ -63,6 +63,8 @@ def _quality_gate_decision(
 ) -> QualityGateDecision | None:
     if assessment is None:
         return None
+    if not checkpoint_assessment_required(turn):
+        raise ProviderConfigurationError("Only explicit checkpoint submissions can be assessed.")
     gate = turn.active_gate
     validate_evidence_quotes(
         assessment.evidence_quotes,

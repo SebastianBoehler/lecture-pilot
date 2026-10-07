@@ -8,6 +8,7 @@ from fastapi import FastAPI, HTTPException
 from lecturepilot.agent_state_access import learner_state_store
 from lecturepilot.coaching_progress import CoachingProgressStore, CoachingTurnEvent
 from lecturepilot.coaching_state_models import CoachingProgress, review_key
+from lecturepilot.coaching_support_normalization import normalize_pending_support
 from lecturepilot.course_canvas_context import AnalyticsPublicationContext
 from lecturepilot.learning_gate_selector import select_active_gate
 from lecturepilot.learning_map import LearningMap, LearningMapGate
@@ -43,10 +44,17 @@ def prepare_coaching_turn(
             course_id=turn.course_id, lecture_id=turn.lecture_id
         )
     learning_map = analytics_context.learning_map
+    normalize_pending_support(progress, learning_map.gates)
     turn_analytics = AgentAnalyticsContext(
         publication_version=analytics_context.publication_version,
         learning_map_revision=analytics_context.learning_map_revision,
     )
+    if (
+        turn.checkpoint_gate_id is not None
+        and progress.pending_check is not None
+        and progress.pending_check.gate_id != turn.checkpoint_gate_id
+    ):
+        raise HTTPException(status_code=409, detail="Another checkpoint assessment is pending.")
     if (
         turn.checkpoint_gate_id is not None
         and progress.pending_check is not None

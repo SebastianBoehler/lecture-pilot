@@ -4,7 +4,7 @@ from typing import Any
 
 from lecturepilot.tutor_response_constraints import constrain_tutor_response
 from lecturepilot.learning_map import LearningMapGate
-from lecturepilot.model_commands import assessment_required, checkpoint_assessment_required
+from lecturepilot.model_commands import checkpoint_assessment_required
 from lecturepilot.models import AgentTurnInput
 from lecturepilot.provider_turn_schema import assessment_schema
 from lecturepilot.provider_turn_result import ProviderAgentTurnResult
@@ -13,7 +13,7 @@ from lecturepilot.provider_json_schema import provider_json_schema
 
 
 def lecturepilot_response_format(turn: AgentTurnInput) -> dict[str, Any]:
-    bound = assessment_required(turn)
+    bound = checkpoint_assessment_required(turn)
     schema = _agent_turn_schema(
         assessment_gate=(turn.active_gate if bound else None),
         required_assessment=checkpoint_assessment_required(turn),

@@ -4,6 +4,8 @@ from datetime import UTC, datetime
 
 
 from lecturepilot.coaching_goal_evidence import accumulate_goal_evidence
+from lecturepilot.coaching_support_normalization import normalize_pending_support
+from lecturepilot.coaching_supported_review import schedule_after_supported_review
 from lecturepilot.checkpoint_evidence_audit import append_assessment_audit
 from lecturepilot.coaching_task_bank import canonical_task_id, exposed_ids, record_task_exposure
 from lecturepilot.coaching_assistance import NextCheck
@@ -51,6 +53,7 @@ def record_coaching_turn(
     path = self._path(user_id=user_id, course_id=course_id, lecture_id=lecture_id)
     with exclusive_file_lock(path):
         progress = self.read(user_id=user_id, course_id=course_id, lecture_id=lecture_id)
+        normalize_pending_support(progress, [gate])
         pending = bound_pending(progress.pending_check, context, decision, decision.gate_revision)
         if pending is None:
             raise ValueError("Assessment is not bound to the persisted pending check.")
@@ -135,6 +138,13 @@ def record_coaching_turn(
             review = progress.delayed_reviews.get(review_key(gate.id, gate.revision))
             if review is not None:
                 review.failed_since_review = True
+        if decision.status.value == "passed" and pending.stage == "delayed_support":
+            schedule_after_supported_review(
+                progress,
+                gate=gate,
+                exposed_task_ids=exposed_ids(progress, gate.id, gate.revision),
+                now=current_time,
+            )
         if transition is not None and transition.check.assistance.level != "none":
             assistance = transition.check.assistance
             key = hint_exposure_key(gate.revision, assistance.level)

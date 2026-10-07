@@ -16,7 +16,9 @@ def test_bound_check_allows_an_unassessed_interruption() -> None:
     payload = _payload()
     payload["assessment"] = None
 
-    result = agent_result_from_content(json.dumps(payload), _turn(), "model")
+    result = agent_result_from_content(
+        json.dumps(payload), _turn().model_copy(update={"checkpoint_gate_id": None}), "model"
+    )
 
     assert result.quality_gate is None
     assert result.next_check is None
@@ -26,7 +28,7 @@ def test_provider_schema_allows_only_bound_or_null_assessments() -> None:
     bound = lecturepilot_response_format(_turn())["json_schema"]["schema"]
     unbound = lecturepilot_response_format(_turn(bound_check=False))["json_schema"]["schema"]
 
-    assert bound["properties"]["assessment"]["type"] == ["object", "null"]
+    assert bound["properties"]["assessment"]["type"] == "object"
     assert unbound["properties"]["assessment"] == {"type": "null"}
     assert "next_check" not in unbound["properties"]
 

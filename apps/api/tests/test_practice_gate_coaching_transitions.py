@@ -218,27 +218,30 @@ def test_delayed_failure_and_support_require_another_unaided_transfer(tmp_path) 
         store,
         gate,
         status=QualityGateStatus.PASSED,
-        next_check=_check(gate, gate.supplemental_tasks[1].prompt, "none", None),
+        next_check=None,
         now=due + timedelta(minutes=2),
     )
     progress = store.read(**IDS)
     [review] = progress.delayed_reviews.values()
     assert support.attempt_kind == "supported_retry"
     assert review.completed_at is None
-    assert progress.pending_check is not None
-    assert progress.pending_check.stage == "delayed_transfer"
+    assert progress.pending_check is None
+    assert review.due_at > due + timedelta(minutes=3)
+    bind_delayed_review(
+        store, **IDS, gate_id=gate.id, gate_revision=gate.revision, now=review.due_at
+    )
 
     passed = _record(
         store,
         gate,
         status=QualityGateStatus.PASSED,
         next_check=None,
-        now=due + timedelta(minutes=3),
+        now=review.due_at + timedelta(minutes=1),
     )
     [review] = store.read(**IDS).delayed_reviews.values()
     assert passed.attempt_kind == "delayed_transfer"
     assert passed.attempt_index == 2
-    assert review.completed_at == due + timedelta(minutes=3)
+    assert review.completed_at == passed.created_at
 
 
 def _bind_diagnostic(store: CoachingProgressStore, gate: LearningMapGate) -> None:

@@ -27,6 +27,10 @@ def provider_json_schema(model) -> dict:
             if "type" in concrete:
                 result = {**concrete, **{k: v for k, v in result.items() if k != "anyOf"}}
                 result["type"] = [concrete["type"], "null"]
+                if "enum" in result:
+                    result["enum"] = [*result["enum"], None]
+                if "const" in result:
+                    result["enum"] = [result.pop("const"), None]
         if result.get("type") in ("object", ["object", "null"]):
             result["additionalProperties"] = False
             result["required"] = list(result.get("properties", {}))

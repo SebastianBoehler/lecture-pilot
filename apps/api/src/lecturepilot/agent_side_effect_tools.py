@@ -113,16 +113,16 @@ def _explicit_memory_request(message: str) -> bool:
     normalized = message.casefold().replace("’", "'")
     if re.search(
         r"\b(?:do not|don't|cannot|can't|never)\b.{0,40}\b(?:remember|save|explain)\b"
-        r"|\b(?:merk(?:e)? dir|speicher\w*)\b.{0,40}\b(?:nicht|nie)\b"
-        r"|\b(?:nicht|nie)\b.{0,40}\b(?:merk(?:e)?|speicher\w*)\b",
+        r"|\b(?:merk(?:e)? dir|speicher\w*)\s+(?:bitte\s+)?(?:das\s+)?(?:nicht|nie)\b"
+        r"|\b(?:nicht|nie)\s+(?:bitte\s+)?(?:merk(?:e)?|speicher\w*)\b",
         normalized,
     ):
         return False
     return bool(
         re.search(
-            r"(?:^|[.!?;]\s*|\bplease\s+)(?:remember\b|save this preference\b|always explain\b)"
+            r"(?:^|[.!?;]\s*|\bplease\s+)(?:remember\s+(?:that|my|this|i)\b|save this preference\b|always explain\b)"
             r"|\b(?:can|could|will|would) you (?:please )?remember\b"
-            r"|\bmerk(?:e)? dir\b",
+            r"|\b(?:merk(?:e)? dir|speicher(?:e)?)\b",
             normalized,
         )
     )

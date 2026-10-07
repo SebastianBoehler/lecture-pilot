@@ -6,6 +6,7 @@ from lecturepilot.coaching_goal_evidence import accumulate_goal_evidence
 from lecturepilot.coaching_task_bank import canonical_task_id
 from lecturepilot.coaching_progress import CoachingProgressStore
 from lecturepilot.coaching_state_models import CoachingProgress
+from lecturepilot.coaching_support_normalization import normalize_pending_support
 from lecturepilot.learner_lesson_state_models import (
     LearnerDueGateReview,
     LearnerGoalEvidence,
@@ -34,6 +35,7 @@ def lesson_state_snapshot(
             course_id=course_id,
             lecture_id=lecture_id,
         )
+    normalize_pending_support(progress, learning_map.gates)
     decisions = learner_store.latest_gate_decisions(
         user_id=user_id,
         course_id=course_id,

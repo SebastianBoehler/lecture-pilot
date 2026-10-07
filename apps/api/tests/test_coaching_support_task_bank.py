@@ -139,9 +139,22 @@ def test_delayed_help_before_answer_selects_fresh_delayed_task(tmp_path):
     request_support(store, **IDS, gate=gate, request=help_request(pending), now=due)
     record_selected(store, gate, due + timedelta(minutes=1))
     progress = store.read(**IDS)
-    assert progress.pending_check.stage == "delayed_transfer"
-    assert progress.pending_check.task_id == "delayed-fresh"
-    record_selected(store, gate, due + timedelta(minutes=2))
+    assert progress.pending_check is None
+    review = progress.delayed_reviews[f"{gate.id}@{gate.revision}"]
+    assert review.task_id == "delayed-fresh"
+    assert review.due_at > due + timedelta(minutes=2)
+    with pytest.raises(ValueError, match="not due"):
+        bind_delayed_review(
+            store,
+            **IDS,
+            gate_id=gate.id,
+            gate_revision=gate.revision,
+            now=due + timedelta(minutes=2),
+        )
+    bind_delayed_review(
+        store, **IDS, gate_id=gate.id, gate_revision=gate.revision, now=review.due_at
+    )
+    record_selected(store, gate, review.due_at + timedelta(minutes=1))
     assert _goal_evidence(store.read(**IDS), [gate])[0].delayed
 
 

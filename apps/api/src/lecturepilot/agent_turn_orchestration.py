@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from collections.abc import Callable
 
 from fastapi import FastAPI, HTTPException
@@ -30,6 +31,9 @@ from lecturepilot.models import AgentTurnInput, AgentTurnResult
 from lecturepilot.observability import Observability
 from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.usage_quota import UsageQuotaExceeded
+
+STREAM_HEARTBEAT_SECONDS = 15
+logger = logging.getLogger(__name__)
 
 
 async def complete_agent_turn(
@@ -102,18 +106,30 @@ async def agent_turn_events(
             await queue.put({"type": "result", "result": result.model_dump(mode="json")})
         except HTTPException as exc:
             await queue.put({"type": "error", "message": str(exc.detail)})
+        except Exception:
+            logger.exception("Tutor stream failed")
+            await queue.put({"type": "error", "message": "Tutor turn failed. Please retry."})
         finally:
             await queue.put(None)
 
     task = asyncio.create_task(run_turn())
     try:
         while True:
-            event = await queue.get()
+            try:
+                event = await asyncio.wait_for(queue.get(), timeout=STREAM_HEARTBEAT_SECONDS)
+            except TimeoutError:
+                yield "\n"
+                continue
             if event is None:
                 break
             yield f"{json.dumps(event)}\n"
     finally:
-        await task
+        if not task.done():
+            task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
 
 async def _complete_agent_turn_inner(

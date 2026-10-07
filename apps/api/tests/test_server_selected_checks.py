@@ -46,7 +46,11 @@ def test_non_answer_chat_can_keep_pending_check_without_assessment() -> None:
     payload = _payload()
     payload.pop("next_check", None)
     payload["assessment"] = None
-    result = agent_result_from_content(json.dumps(payload), _turn(), "contract-model")
+    result = agent_result_from_content(
+        json.dumps(payload),
+        _turn().model_copy(update={"checkpoint_gate_id": None}),
+        "contract-model",
+    )
 
     assert result.quality_gate is None
     assert result.next_check is None

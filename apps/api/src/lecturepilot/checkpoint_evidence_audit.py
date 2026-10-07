@@ -6,6 +6,7 @@ from lecturepilot.checkpoint_evidence_models import CriterionQuote as CriterionQ
 
 from lecturepilot.durable_files import atomic_write_text
 from lecturepilot.providers import ProviderConfigurationError
+from lecturepilot.evidence_quote_validation import substantive_quote, learner_reasoning
 
 
 def validate_evidence_quotes(quotes, *, evidence_ids, answer, required):
@@ -18,9 +19,12 @@ def validate_evidence_quotes(quotes, *, evidence_ids, answer, required):
         raise ProviderConfigurationError(
             "Each demonstrated checkpoint criterion requires an answer quotation."
         )
-    if any(not item.quote.strip() or item.quote not in answer for item in quotes):
+    if any(
+        not substantive_quote(item.quote) or item.quote not in learner_reasoning(answer)
+        for item in quotes
+    ):
         raise ProviderConfigurationError(
-            "Assessment quotations must appear verbatim in the current answer."
+            "Assessment quotations must contain substantive verbatim learner reasoning."
         )
 
 
