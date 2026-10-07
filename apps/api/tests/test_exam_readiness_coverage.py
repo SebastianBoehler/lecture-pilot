@@ -1,6 +1,7 @@
 from lecturepilot.exam_readiness import build_exam_readiness_check
 from lecturepilot.canvas_models import CanvasBlock
 from test_exam_readiness import _document
+from test_readiness_approved_criteria import map_for_document
 
 
 def test_exam_readiness_includes_every_published_lecture_when_course_exceeds_ten() -> None:
@@ -16,6 +17,7 @@ def test_exam_readiness_includes_every_published_lecture_when_course_exceeds_ten
     check = build_exam_readiness_check(
         course_id="demo-ml-course",
         documents=documents,
+        learning_maps=[map_for_document(item) for item in documents],
         lectures=lectures,
     )
 
@@ -62,6 +64,7 @@ def test_exam_readiness_uses_only_standalone_source_assessments() -> None:
     check = build_exam_readiness_check(
         course_id="demo-ml-course",
         documents=[document],
+        learning_maps=[map_for_document(document)],
         lectures=[
             type("LectureRecord", (), {"id": document.lecture_id, "title": document.title})()
         ],

@@ -65,6 +65,7 @@ def lesson_state_snapshot(
                 assistance_content=pending.assistance_content,
                 focus_required=pending.stage in {"independent_exit", "delayed_transfer"},
                 bank_exhausted=pending.bank_exhausted,
+                support_exhausted=pending.support_exhausted,
             )
             if pending
             else None

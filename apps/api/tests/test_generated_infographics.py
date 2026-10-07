@@ -97,7 +97,7 @@ def test_workspace_asset_route_rejects_invalid_student_key(tmp_path: Path) -> No
 
 
 class _InfographicHarness:
-    async def run_turn(self, turn: AgentTurnInput) -> AgentTurnResult:
+    async def run_turn(self, turn: AgentTurnInput, **kwargs) -> AgentTurnResult:
         section = CanvasSection(
             id="student-bayes-soccer-infographic",
             title="Bayes soccer scouting flow",

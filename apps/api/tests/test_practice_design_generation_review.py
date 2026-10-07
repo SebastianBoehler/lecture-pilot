@@ -9,13 +9,10 @@ from lecturepilot import course_canvas_draft_routes
 from lecturepilot import course_canvas_generation as generation
 from lecturepilot import course_canvas_repair_routes
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import CanvasBlock
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_canvas_generation_ownership import CanvasGenerationOwnershipError
-from lecturepilot.course_canvas_planner import CourseCanvasPlanner
 from lecturepilot.course_canvas_repairs import lecture_source_revision
 from lecturepilot.course_practice_design_store import PracticeDesignStore
-from lecturepilot.providers import ProviderRegistry
 from practice_design_test_helpers import passing_review, proposal, source_document
 from test_learning_design_review_routes import _document
 
@@ -23,58 +20,6 @@ from test_learning_design_review_routes import _document
 COURSE_ID = "design-course"
 LECTURE_ID = "lecture-01"
 SOURCE_PATH = "lecture-01.md"
-
-
-@pytest.mark.anyio
-async def test_real_planner_accepts_frozen_practice_design(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    app, design = _approved_app(tmp_path, "a" * 64)
-    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
-
-    source = source_document(SOURCE_PATH)
-    template = _document()
-    target = design.targets[0]
-    section = template.sections[0]
-    document = template.model_copy(
-        update={
-            "sections": [
-                section.model_copy(
-                    update={
-                        "source_ref": target.source_refs[0],
-                        "source_section_id": source.sections[0].id,
-                        "blocks": [
-                            *section.blocks,
-                            CanvasBlock(
-                                id=f"practice-{target.id}",
-                                type="checkpoint",
-                                text=target.baseline_task,
-                            ),
-                        ],
-                    }
-                )
-            ]
-        }
-    )
-
-    async def plan_sections(**_kwargs):
-        return document
-
-    planner = CourseCanvasPlanner(
-        provider_registry=ProviderRegistry.from_env("gemini/test-model"),
-        quality_reviewer=_NoQualityReviewer(),
-    )
-    monkeypatch.setattr(
-        "lecturepilot.course_canvas_planner.plan_sections_individually", plan_sections
-    )
-    monkeypatch.setattr(
-        "lecturepilot.course_canvas_planner.validate_planned_document", lambda *_args: None
-    )
-
-    document = await planner.plan_canvas(source, practice_design=design)
-
-    assert document.title == "Learning design"
-    assert app.state.canvas_workspace.layout.course_root(COURSE_ID).exists()
 
 
 @pytest.mark.anyio

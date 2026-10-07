@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 
+from gate_benchmark_adversarial_cases import ADDITIONAL_SCENARIOS
+
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.learning_map_models import (
     LearningMap,
@@ -113,6 +115,12 @@ SCENARIOS += (
         "I am unsure: labels are targets, but I cannot explain loss or how to evaluate on unseen data.",
         "needs_evidence",
     ),
+)
+
+
+SCENARIOS += tuple(
+    GateScenario(attendance=AttendanceStatus.PRESENT, **item)
+    for item in ADDITIONAL_SCENARIOS
 )
 
 

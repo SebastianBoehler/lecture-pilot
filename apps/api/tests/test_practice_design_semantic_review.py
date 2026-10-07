@@ -224,3 +224,40 @@ def _source() -> CanvasDocument:
             )
         ],
     )
+
+
+async def test_semantic_findings_do_not_consume_schema_retry_budget():
+    from lecturepilot.course_practice_design_planner import PracticeDesignPlanner
+
+    events = []
+
+    class Critic:
+        calls = 0
+
+        async def complete_review(self, **kwargs):
+            self.calls += 1
+            payload = _review_payload()
+            if self.calls < 5:
+                payload["checks"][0].update(
+                    severity="critical",
+                    summary="Repair this source-grounded teaching claim.",
+                    target_ids=["derive-conclusion"],
+                    supporting_anchors=[
+                        {
+                            "source_path": "lecture-01.md",
+                            "excerpt": _source().sections[0].blocks[0].text,
+                        }
+                    ],
+                )
+            return payload
+
+    critic = Critic()
+    planner = PracticeDesignPlanner(
+        provider_registry=_Registry(), model=_proposal_model(events), review_client=critic
+    )
+    reviewed = await planner.propose(
+        source=_source(), source_revision=SOURCE_REVISION, allowed_source_paths=("lecture-01.md",)
+    )
+    assert critic.calls == 5
+    assert len(events) == 5
+    assert all(check.severity == "pass" for check in reviewed.review.checks)

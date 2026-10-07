@@ -1,16 +1,9 @@
-import pytest
-
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
-from lecturepilot.course_canvas_planner import CourseCanvasPlanner
 from lecturepilot.course_canvas_quality import (
     CanvasQualityReviewer,
     _quality_messages,
 )
 from lecturepilot.models import ProviderSettings
-from lecturepilot.providers import ProviderRegistry
-from targeted_repair_test_helpers import invalid_candidate
-from practice_design_test_helpers import canvas_with_practice_design, practice_design_for_canvas
 
 
 async def test_quality_reviewer_rejects_a_wrong_selected_quiz_answer() -> None:
@@ -27,12 +20,10 @@ async def test_quality_reviewer_rejects_a_wrong_selected_quiz_answer() -> None:
         )
     )
 
-    with pytest.raises(CanvasGenerationRepairableError, match="selected option contradicts"):
-        await reviewer.validate(
-            settings=_settings(),
-            source_document=document,
-            candidate_document=document,
-        )
+    issues = await reviewer.review(
+        settings=_settings(), source_document=document, candidate_document=document
+    )
+    assert "selected option contradicts" in issues[0].reason
 
 
 def test_quality_review_treats_checkpoints_as_open_answer_tasks() -> None:
@@ -61,14 +52,10 @@ async def test_quality_reviewer_preserves_detailed_issue_reasoning() -> None:
         )
     )
 
-    with pytest.raises(CanvasGenerationRepairableError) as caught:
-        await reviewer.validate(
-            settings=_settings(),
-            source_document=document,
-            candidate_document=document,
-        )
-
-    assert detailed_reason.strip() in str(caught.value)
+    issues = await reviewer.review(
+        settings=_settings(), source_document=document, candidate_document=document
+    )
+    assert issues[0].reason == detailed_reason
 
 
 async def test_quality_reviewer_reviews_each_section_without_cross_section_truncation() -> None:
@@ -136,56 +123,10 @@ async def test_quality_reviewer_targets_the_section_when_multiple_blocks_fail() 
         )
     )
 
-    with pytest.raises(CanvasGenerationRepairableError) as caught:
-        await reviewer.validate(
-            settings=_settings(),
-            source_document=document,
-            candidate_document=document,
-        )
-
-    assert caught.value.section_id == "topic"
-    assert caught.value.block_id is None
-
-
-async def test_quality_failure_forces_a_source_grounded_patch_of_valid_structure(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
-    model = _RepairClient()
-    source = _source_document()
-    design = practice_design_for_canvas(source)
-    candidate, _ = canvas_with_practice_design(invalid_candidate(source), design)
-    section = candidate.sections[0]
-    valid_math = section.blocks[1].model_copy(update={"text": r"w^\top x"})
-    candidate = candidate.model_copy(
-        update={
-            "sections": [
-                section.model_copy(
-                    update={"blocks": [section.blocks[0], valid_math, *section.blocks[2:]]}
-                ),
-                candidate.sections[1],
-            ]
-        }
+    issues = await reviewer.review(
+        settings=_settings(), source_document=document, candidate_document=document
     )
-    planner = CourseCanvasPlanner(
-        provider_registry=ProviderRegistry.from_env("gemini/test-model"),
-        model_client=model,
-        quality_reviewer=_AlwaysPassQualityReviewer(),
-    )
-
-    repaired = await planner.repair_section(
-        source,
-        candidate,
-        section_id="learning-optimization",
-        block_id="optimization-intro",
-        failure_context=(
-            "Canvas quality review failed: the teaching claim is not supported by the source."
-        ),
-        practice_design=design,
-    )
-
-    assert model.calls == 1
-    assert repaired.sections[0].blocks[0].text.startswith("The corrected explanation")
+    assert [issue.block_id for issue in issues] == ["quiz", "source"]
 
 
 class _QualityClient:

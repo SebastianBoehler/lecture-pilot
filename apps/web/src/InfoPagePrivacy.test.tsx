@@ -55,3 +55,12 @@ it("opens the real chaptered onboarding from the lecturer guide", () => {
   expect(screen.getByRole("dialog")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /Close/i })).toBeInTheDocument();
 });
+
+it.each(["en", "de"] as const)("discloses private assessment quotations in %s", (locale) => {
+  render(page("privacy", locale));
+  expect(
+    screen.getByText(
+      locale === "en" ? /short verbatim answer excerpts/ : /wörtliche Antwortauszüge/,
+    ),
+  ).toBeInTheDocument();
+});

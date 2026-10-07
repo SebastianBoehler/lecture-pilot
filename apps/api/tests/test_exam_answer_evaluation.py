@@ -1,9 +1,9 @@
 import json
-import sys
-from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
+from pydantic_ai.messages import ModelResponse, TextPart, UserPromptPart
+from pydantic_ai.models.function import FunctionModel
 
 from auth_helpers import professor_headers, student_headers
 from canvas_workspace_fixtures import publish_course_canvas
@@ -11,7 +11,7 @@ from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.exam_answer_evaluation import (
-    LiteLLMOpenAnswerEvaluationClient,
+    NativeOpenAnswerEvaluationClient,
     OpenAnswerEvaluation,
     OpenAnswerEvaluationInput,
     OpenAnswerEvaluator,
@@ -35,42 +35,46 @@ async def test_evaluator_returns_rubric_grounded_score_and_feedback(
 ) -> None:
     calls: list[dict] = []
 
-    async def fake_completion(**kwargs):
-        calls.append(kwargs)
-        return SimpleNamespace(
-            choices=[
-                SimpleNamespace(
-                    message=SimpleNamespace(
-                        content=json.dumps(
-                            {
-                                "evaluations": [
-                                    {
-                                        "question_id": "lecture-04:risk:open",
-                                        "score": 0.75,
-                                        "feedback": "Good explanation; add one concrete failure mode.",
-                                    }
-                                ]
-                            }
-                        )
+    def respond(messages, info):
+        calls.append((messages, info))
+        return ModelResponse(
+            parts=[
+                TextPart(
+                    json.dumps(
+                        {
+                            "evaluations": [
+                                {
+                                    "question_id": "lecture-04:risk:open",
+                                    "score": 0.75,
+                                    "feedback": "Good explanation; add one concrete failure mode.",
+                                }
+                            ]
+                        }
                     )
                 )
             ]
         )
 
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
-    monkeypatch.setitem(sys.modules, "litellm", SimpleNamespace(acompletion=fake_completion))
     evaluator = OpenAnswerEvaluator(
         provider_registry=ProviderRegistry.from_env("gemini/test-model"),
-        model_client=LiteLLMOpenAnswerEvaluationClient(),
+        model_client=NativeOpenAnswerEvaluationClient(model=FunctionModel(respond)),
     )
 
     evaluations = await evaluator.evaluate(items=[_item()])
 
     assert evaluations[0].score == 0.75
     assert evaluations[0].feedback
-    assert calls[0]["temperature"] == 0.1
-    assert calls[0]["response_format"]["json_schema"]["strict"] is True
-    assert "Expected risk combines" in calls[0]["messages"][1]["content"]
+    messages, info = calls[0]
+    assert info.model_settings["temperature"] == 0.1
+    assert info.model_request_parameters.output_mode == "native"
+    prompts = [
+        part.content
+        for message in messages
+        for part in message.parts
+        if isinstance(part, UserPromptPart)
+    ]
+    assert "Expected risk combines" in prompts[0]
 
 
 @pytest.mark.parametrize(

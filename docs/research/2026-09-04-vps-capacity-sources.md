@@ -74,7 +74,7 @@ Relevant implementation details:
   its model-usage recorder. [Model slots](../../apps/api/src/lecturepilot/model_rate_limits.py)
   permit at most **3 simultaneous calls per event loop and model** on this path;
   provider rate limits can reduce this to 1. This is not a cluster-wide quota.
-- [Tool loop](../../apps/api/src/lecturepilot/agent_tool_loop.py) allows multiple
+- [Tool loop](https://github.com/SebastianBoehler/lecture-pilot/blob/01f000e4be6b0dab2e2767a19647d4262f271fc9/apps/api/src/lecturepilot/agent_tool_loop.py) allows multiple
   sequential model calls per learner turn; do not assume one turn = one call.
   [Request accounting](../../apps/api/src/lecturepilot/model_usage.py) measures
   request attempts and retries, including wait versus provider timing.

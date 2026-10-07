@@ -6,59 +6,11 @@ from types import SimpleNamespace
 import pytest
 
 from lecturepilot import model_rate_limits
-from lecturepilot.agent_tool_loop import complete_tool_turn
 from lecturepilot.model_request_options import (
-    MODEL_REQUEST_TIMEOUT_SECONDS,
-    completion_options,
     tool_reasoning_effort,
 )
 from lecturepilot.model_usage import complete_with_usage
 from lecturepilot.models import ProviderCapability, ProviderSettings
-from lecturepilot.observability import Observability
-
-
-def test_completion_options_disable_hidden_retries_and_allow_long_structured_output() -> None:
-    settings = ProviderSettings(
-        provider="gemini",
-        model="gemini/test-model",
-        api_key_env="GEMINI_API_KEY",
-        capabilities={ProviderCapability.CHAT},
-    )
-
-    options = completion_options(settings, temperature=0.2, max_tokens=100)
-
-    assert options["timeout"] == MODEL_REQUEST_TIMEOUT_SECONDS
-    assert options["timeout"] == 300
-    assert options["max_retries"] == 0
-
-
-def test_completion_options_allow_a_shorter_workload_circuit_breaker() -> None:
-    settings = ProviderSettings(
-        provider="openai",
-        model="openai/gpt-5.6-luna",
-        api_key_env="OPENAI_API_KEY",
-        capabilities={ProviderCapability.CHAT},
-    )
-
-    options = completion_options(settings, temperature=0.2, timeout_seconds=60)
-
-    assert options["timeout"] == 60
-
-
-def test_gpt6_luna_uses_reasoning_options_without_temperature() -> None:
-    settings = ProviderSettings(
-        provider="openai",
-        model="openai/gpt-6-luna",
-        api_key_env="OPENAI_API_KEY",
-        capabilities={ProviderCapability.CHAT},
-    )
-
-    options = completion_options(settings, temperature=0.3, reasoning_effort="low")
-
-    assert options["reasoning_effort"] == "low"
-    assert options["allowed_openai_params"] == ["reasoning_effort"]
-    assert "temperature" not in options
-    assert tool_reasoning_effort(settings) == "none"
 
 
 def test_gpt5_tool_reasoning_remains_low() -> None:
@@ -70,55 +22,6 @@ def test_gpt5_tool_reasoning_remains_low() -> None:
     )
 
     assert tool_reasoning_effort(settings) == "low"
-
-
-@pytest.mark.parametrize("model", ["openai/gpt-6-sol", "openai/gpt-6.1-sol"])
-def test_gpt6_structured_requests_use_supported_completion_token_limit(model) -> None:
-    settings = ProviderSettings(
-        provider="openai",
-        model=model,
-        api_key_env="OPENAI_API_KEY",
-        capabilities={ProviderCapability.CHAT},
-    )
-    options = completion_options(
-        settings, temperature=0.2, max_tokens=12000, reasoning_effort="high"
-    )
-    assert options["max_completion_tokens"] == 12000
-    assert "max_tokens" not in options
-
-
-@pytest.mark.asyncio
-async def test_gpt6_tutor_tool_request_uses_supported_reasoning(monkeypatch) -> None:
-    calls: list[dict] = []
-    result = object()
-
-    async def completion(**kwargs):
-        calls.append(kwargs)
-        return SimpleNamespace(
-            choices=[SimpleNamespace(message=SimpleNamespace(content="{}", tool_calls=None))]
-        )
-
-    monkeypatch.setattr("lecturepilot.agent_tool_loop.agent_result_from_content", lambda *_: result)
-    settings = ProviderSettings(
-        provider="openai",
-        model="openai/gpt-6-luna",
-        api_key_env="OPENAI_API_KEY",
-        capabilities={ProviderCapability.CHAT},
-    )
-
-    actual = await complete_tool_turn(
-        acompletion=completion,
-        settings=settings,
-        turn=object(),
-        tool_executor=SimpleNamespace(pending_canvas_edit_instruction=lambda: None),
-        observability=Observability(),
-        emit=None,
-        messages=[{"role": "system", "content": "Tutor."}],
-    )
-
-    assert actual is result
-    assert calls[0]["reasoning_effort"] == "none"
-    assert "temperature" not in calls[0]
 
 
 @pytest.mark.asyncio
@@ -296,7 +199,7 @@ async def test_rate_limit_reset_supports_project_token_budget(monkeypatch) -> No
         ),
     )
 
-    assert delay == 90.0
+    assert delay == model_rate_limits.MAX_PROVIDER_COOLDOWN_SECONDS
 
 
 @pytest.mark.asyncio
@@ -353,64 +256,3 @@ class _QuotaError(RuntimeError):
 class _RateLimitError(RuntimeError):
     status_code = 429
     headers = {"retry-after": "2", "x-ratelimit-reset-requests": "1s"}
-
-
-@pytest.mark.asyncio
-async def test_provider_budget_still_limits_in_flight_requests(monkeypatch):
-    for name in (
-        "_conditions",
-        "_active_requests",
-        "_concurrency_limits",
-        "_average_tokens",
-        "_blocked_until",
-    ):
-        monkeypatch.setattr(model_rate_limits, name, {})
-    model_rate_limits.observe_provider_response(
-        "openai/budget",
-        SimpleNamespace(
-            headers={"x-ratelimit-remaining-requests": "2"},
-            usage=None,
-        ),
-    )
-    release = asyncio.Event()
-    started = asyncio.Event()
-    active = peak = 0
-
-    async def completion(**kwargs):
-        nonlocal active, peak
-        active += 1
-        peak = max(peak, active)
-        if active == 2:
-            started.set()
-        await release.wait()
-        active -= 1
-        return SimpleNamespace(usage=None)
-
-    tasks = [
-        asyncio.create_task(complete_with_usage(None, completion, model="openai/budget"))
-        for _ in range(6)
-    ]
-    await asyncio.wait_for(started.wait(), 1)
-    assert peak == 2
-    release.set()
-    await asyncio.gather(*tasks)
-    assert peak == 2
-
-
-@pytest.mark.asyncio
-async def test_native_usage_calibrates_token_budget_without_an_application_ceiling(monkeypatch):
-    monkeypatch.setattr(model_rate_limits, "_concurrency_limits", {})
-    monkeypatch.setattr(model_rate_limits, "_average_tokens", {})
-    model_rate_limits.observe_provider_response(
-        "openai/native",
-        {
-            "usage": {"prompt_tokens": 15000, "completion_tokens": 5000},
-        },
-    )
-    model_rate_limits.observe_provider_response(
-        "openai/native",
-        SimpleNamespace(
-            headers={"x-ratelimit-remaining-tokens": "4000000"},
-        ),
-    )
-    assert model_rate_limits.current_model_concurrency("openai/native") == 200

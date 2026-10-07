@@ -3,7 +3,7 @@ from datetime import date
 import pytest
 
 from lecturepilot.lecture_schedule_planner import (
-    LiteLLMScheduleClient,
+    NativeScheduleClient,
     _read_proposal,
     _source_evidence,
 )
@@ -103,13 +103,14 @@ def test_schedule_contract_rejects_duplicate_lecture_numbers() -> None:
 
 @pytest.mark.asyncio
 async def test_schedule_client_reports_exhausted_provider_credits(monkeypatch) -> None:
-    async def completion(**_kwargs):
+    async def completion(messages, info):
         raise _QuotaError(
             "You have no credits remaining.",
             code="credit_balance_exhausted",
         )
 
-    monkeypatch.setattr("litellm.acompletion", completion)
+    from pydantic_ai.models.function import FunctionModel
+
     settings = ProviderSettings(
         provider="openai",
         model="openai/gpt-5.6-luna",
@@ -124,7 +125,9 @@ async def test_schedule_client_reports_exhausted_provider_credits(monkeypatch) -
             "provider account, then retry this request."
         ),
     ):
-        await LiteLLMScheduleClient().complete_schedule(settings=settings, messages=[])
+        await NativeScheduleClient(model=FunctionModel(completion)).complete_schedule(
+            settings=settings, messages=[{"role": "user", "content": "Infer schedule"}]
+        )
 
 
 class _QuotaError(RuntimeError):

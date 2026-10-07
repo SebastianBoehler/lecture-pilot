@@ -30,6 +30,7 @@ class AuthoringStateError(RuntimeError):
 class AuthoringState(BaseModel):
     identity: str
     messages: list[dict] = Field(default_factory=list)
+    history_count: int = 0
     metrics: AuthoringMetrics = Field(default_factory=AuthoringMetrics)
     accepted_digest: str | None = None
     failures: dict[str, int] = Field(default_factory=dict)
@@ -53,16 +54,34 @@ def load_state(job: AuthoringJob) -> AuthoringState:
     identity = state_identity(job)
     if not path.exists():
         return AuthoringState(identity=identity)
-    state = AuthoringState.model_validate_json(path.read_text())
+    state = read_state(job.root)
     if state.identity != identity:
         raise AuthoringStateError("Authoring session source, design, model, or language changed.")
     state.metrics.resumes += 1
     return state
 
 
+def read_state(root: Path) -> AuthoringState:
+    state = AuthoringState.model_validate_json((root / "session.json").read_text())
+    sealed = [
+        json.loads((root / "history" / f"{index:08d}.json").read_text())
+        for index in range(state.history_count)
+    ]
+    state.messages = sealed + state.messages
+    return state
+
+
 def save_state(root: Path, state: AuthoringState, messages: list[ModelMessage]) -> None:
-    state.messages = ModelMessagesTypeAdapter.dump_python(messages, mode="json")
-    atomic_write_json(root / "session.json", state.model_dump(mode="json"))
+    # Only the trailing request/response can gain parts. Sealed messages never change.
+    delta = ModelMessagesTypeAdapter.dump_python(messages[state.history_count :], mode="json")
+    state.messages = state.messages[: state.history_count] + delta
+    sealed_count = max(0, len(messages) - 2)
+    for index in range(state.history_count, sealed_count):
+        atomic_write_json(root / "history" / f"{index:08d}.json", state.messages[index])
+    state.history_count = sealed_count
+    payload = state.model_dump(mode="json", exclude={"messages"})
+    payload["messages"] = state.messages[sealed_count:]
+    atomic_write_json(root / "session.json", payload)
 
 
 def resume_messages(state: AuthoringState) -> list[ModelMessage]:

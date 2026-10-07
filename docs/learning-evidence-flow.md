@@ -11,8 +11,14 @@ independent exit, the backend records `scheduled_at` and `due_at` under that
 learner's revision-bound `tutor-state.json`. The authenticated course review API
 shows first attempts only when due and separately lists unfinished reviews due
 within seven days. The dashboard can open the lecture for preparation; the
-review-opening API still rejects an early attempt. Completed and stale-revision
-reviews do not become upcoming actions. These dates support return to practice;
+review-opening API still rejects an early attempt. After a successful delayed attempt, a fresh reviewed delayed task schedules the
+next interval at twice the previous interval, capped at 60 days or a longer
+approved initial interval. A failed
+independent review clears current independent/delayed evidence and resets the
+next interval to the approved initial interval. Historical attempts remain saved.
+The queue interleaves lectures while preserving due order within each lecture.
+Completed reviews without fresh tasks and stale-revision reviews do not become
+upcoming actions. These dates support return to practice;
 they are not a mastery estimate or a personalized optimal spacing claim.
 
 ## Reviewed task bank
@@ -27,8 +33,8 @@ Every pending task has a stable task identity, gate revision and issuance time.
 The assessment uses the exact task's criteria. The backend chooses transitions
 and records which tasks have already appeared. A supported attempt cannot be
 reclassified as independent: another reviewed task is required. When the bank is
-exhausted, support remains available and the UI explicitly asks for a new reviewed
-task. No replacement task is generated in the learner session.
+exhausted, a successful attempt receives no extra hint and the UI asks for a new
+reviewed task. No replacement task is generated in the learner session.
 
 Bounded numeric checks in task variants verify supplied counts and derived
 values using explicit operations. They do not execute arbitrary expressions and
@@ -45,8 +51,9 @@ separate from these target-local rubric IDs.
 After assessment, `coaching_transitions.py` selects the first unexposed hint
 matching `missing_evidence_ids`, preserving assistance order among matches. If no
 matching hint remains, only unbound general support is eligible. Unrelated bound
-hints are never substituted. Exhaustion retains the existing supported-retry
-behavior without inventing content. Explicit help before assessment retains its
+hints are never substituted. If no eligible approved hint remains after failure, `support_exhausted` stops
+assessment retries. The learner can review teaching and ask the instructor for
+reviewed support or a new task. No worked example or replacement hint is invented. Explicit help before assessment retains its
 existing first-approved-hint behavior because no current answer has been assessed.
 
 `CoachingTurnEvent` stores the triggering missing evidence and
@@ -109,3 +116,22 @@ Published snapshot reads still validate the current artifacts on every request.
 A local profile measured approximately 0.7 ms for a one-section rehearsal and
 1.2 ms for a five-section publication. No additional cache was justified by
 those measurements. Authorization and private overlays remain request-specific.
+
+## Isolated checkpoint and readiness grading
+
+Explicit checkpoint grading receives only the issued task, approved criteria,
+bounded canonical section evidence and the JSON-delimited answer. Chat history,
+learner memory, first predictions and future task banks are excluded. Each
+claimed criterion needs a verbatim answer quotation. The backend verifies that
+the quotation exists, then stores it privately in the learner lecture's
+`assessment-audit.jsonl` with its task, publication and gate revision. Quotations
+do not enter categorical professor analytics or replace deterministic feedback.
+
+Readiness uses visible published checkpoints with their learning-map required
+criteria, plus published quizzes. It keeps hidden independent and delayed task
+banks reserved for coaching. Each open answer has a separate native grading
+context. Request and token budgets, a 180-second evaluation deadline and
+reconciled learner quota bound grading cost. Answer length and embedded grading
+instructions do not count as evidence. Repeated attempts alone never increase
+the support level. Readiness remains practice on familiar tasks, not a claim of
+unfamiliar transfer.

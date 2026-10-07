@@ -1,11 +1,9 @@
-from types import SimpleNamespace
 import json
-import sys
 
 import pytest
 
 from lecturepilot.course_practice_design_benchmark_evaluator import (
-    LiteLLMPracticeDesignBenchmarkClient,
+    NativePracticeDesignBenchmarkClient,
     practice_design_benchmark_messages,
     validate_practice_design_benchmark_evaluation,
 )
@@ -39,28 +37,24 @@ def test_evaluator_prompt_audits_the_production_proposal_and_semantic_review() -
 async def test_native_evaluator_client_requests_the_strict_benchmark_schema(monkeypatch) -> None:
     calls: list[dict] = []
 
-    async def fake_completion(**kwargs):
-        calls.append(kwargs)
-        return SimpleNamespace(
-            choices=[
-                SimpleNamespace(message=SimpleNamespace(content=json.dumps(_evaluation_payload())))
-            ],
-            usage=None,
-        )
+    from pydantic_ai.models.function import FunctionModel
+    from pydantic_ai.messages import ModelResponse, TextPart
 
-    monkeypatch.setitem(sys.modules, "litellm", SimpleNamespace(acompletion=fake_completion))
+    def fake_completion(messages, info):
+        calls.append(info)
+        return ModelResponse(parts=[TextPart(json.dumps(_evaluation_payload()))])
 
-    payload = await LiteLLMPracticeDesignBenchmarkClient().complete_evaluation(
-        settings=_settings(), messages=[{"role": "user", "content": "evaluate"}]
-    )
+    payload = await NativePracticeDesignBenchmarkClient(
+        model=FunctionModel(fake_completion)
+    ).complete_evaluation(settings=_settings(), messages=[{"role": "user", "content": "evaluate"}])
 
     assert tuple(score["dimension"] for score in payload["scores"]) == BENCHMARK_DIMENSIONS
     request = calls[0]
-    assert request["response_format"]["type"] == "json_schema"
-    assert request["response_format"]["json_schema"]["strict"] is True
-    score_schema = request["response_format"]["json_schema"]["schema"]["$defs"][
-        "PracticeDesignBenchmarkScore"
-    ]
+    assert request.model_request_parameters.output_mode == "native"
+    assert request.model_request_parameters.output_object.strict is True
+    score_schema = request.model_request_parameters.output_object.json_schema["properties"][
+        "scores"
+    ]["items"]
     assert tuple(score_schema["properties"]["dimension"]["enum"]) == BENCHMARK_DIMENSIONS
     assert score_schema["properties"]["score"]["minimum"] == 1
     assert score_schema["properties"]["score"]["maximum"] == 5

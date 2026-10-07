@@ -11,7 +11,7 @@ from lecturepilot.authoring_models import AuthoringMetrics
 from lecturepilot.authoring_provider import authoring_model
 from lecturepilot.authoring_checkpoint_review import CheckpointReviewer
 from lecturepilot.canvas_models import CanvasDocument
-from lecturepilot.course_canvas_quality import CanvasQualityReviewer, LiteLLMCanvasQualityClient
+from lecturepilot.course_canvas_quality import CanvasQualityReviewer, NativeCanvasQualityClient
 from lecturepilot.course_content_filter import filter_source_document_for_planning
 from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.model_usage import ModelUsageRecorder
@@ -44,7 +44,7 @@ class CourseCanvasAuthor:
     def __init__(self, usage_recorder: ModelUsageRecorder | None = None):
         self.provider_registry = ProviderRegistry.from_env()
         self.usage_recorder = usage_recorder
-        self.reviewer = CanvasQualityReviewer(LiteLLMCanvasQualityClient(usage_recorder))
+        self.reviewer = CanvasQualityReviewer(NativeCanvasQualityClient(usage_recorder))
 
     async def plan_canvas(
         self,

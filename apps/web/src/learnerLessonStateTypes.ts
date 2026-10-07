@@ -35,6 +35,7 @@ export type LearnerLessonState = {
     assistance_content?: string | null;
     focus_required?: boolean;
     bank_exhausted?: boolean;
+    support_exhausted?: boolean;
   } | null;
   goal_evidence?: Array<{
     gate_id: string;

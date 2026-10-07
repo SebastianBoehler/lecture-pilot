@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import Any, Protocol
 
 from lecturepilot.canvas_models import CanvasDocument
-from lecturepilot.course_canvas_json import parse_model_json
-from lecturepilot.course_canvas_prompt import source_evidence
+from lecturepilot.native_completion import native_completion
+from lecturepilot.canvas_source_evidence import source_evidence
 from lecturepilot.course_practice_design_benchmark_models import (
     BENCHMARK_DIMENSIONS,
     SCORE_ANCHORS,
@@ -16,13 +16,9 @@ from lecturepilot.course_practice_design_validation import (
     PracticeDesignValidationError,
     validate_source_anchors,
 )
-from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.model_provider_errors import model_provider_error_message
 from lecturepilot.model_provider_schema import strict_pydantic_response_format
-from lecturepilot.model_request_options import completion_options
-from lecturepilot.model_usage import ModelUsageRecorder, complete_with_usage
+from lecturepilot.model_usage import ModelUsageRecorder
 from lecturepilot.models import ProviderSettings
-from lecturepilot.providers import ProviderConfigurationError
 
 
 def practice_design_benchmark_messages(
@@ -91,36 +87,23 @@ class PracticeDesignBenchmarkModelClient(Protocol):
         """Return one strict pedagogical benchmark evaluation."""
 
 
-class LiteLLMPracticeDesignBenchmarkClient:
-    def __init__(self, usage_recorder: ModelUsageRecorder | None = None) -> None:
-        self.usage_recorder = usage_recorder
+class NativePracticeDesignBenchmarkClient:
+    def __init__(self, usage_recorder: ModelUsageRecorder | None = None, *, model=None) -> None:
+        self.usage_recorder, self.model = usage_recorder, model
 
     async def complete_evaluation(
         self, *, settings: ProviderSettings, messages: list[dict[str, str]]
     ) -> dict:
-        try:
-            from litellm import acompletion
-        except ImportError as exc:
-            raise ProviderConfigurationError(
-                'litellm is not installed. Install the backend with the "agent" extra.'
-            ) from exc
-        try:
-            response = await complete_with_usage(
-                self.usage_recorder,
-                acompletion,
-                usage_stage="course_practice_design_benchmark_review",
-                model=settings.model,
-                messages=messages,
-                response_format=practice_design_benchmark_response_format(),
-                **completion_options(settings, temperature=0.0, reasoning_effort="low"),
-            )
-        except ProviderConfigurationError:
-            raise
-        except Exception as exc:
-            raise ModelExecutionError(
-                model_provider_error_message(exc, provider=settings.provider)
-            ) from exc
-        return parse_model_json(response.choices[0].message.content)
+        return await native_completion(
+            settings=settings,
+            messages=messages,
+            response_format=practice_design_benchmark_response_format(),
+            stage="course_practice_design_benchmark_review",
+            tier="critic",
+            recorder=self.usage_recorder,
+            model=self.model,
+            reasoning_effort="medium",
+        )
 
 
 def validate_practice_design_benchmark_evaluation(

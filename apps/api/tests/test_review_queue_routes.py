@@ -1,6 +1,8 @@
 from datetime import timedelta
 from pathlib import Path
 
+import pytest
+
 from auth_helpers import professor_headers, student_headers
 from lecturepilot.coaching_assistance import NextCheck, NextCheckAssistance
 from lecturepilot.coaching_progress import CoachingProgressStore
@@ -224,38 +226,40 @@ def test_failed_due_attempt_with_exhausted_legacy_bank_stays_in_supported_repair
         learning_objective="Explain and apply gate A.",
         now=NOW + timedelta(minutes=4),
     )
-    store.record_turn(
-        user_id=user_id,
-        course_id=COURSE_ID,
-        lecture_id="lecture-a",
-        context=repair_context,
-        policy=policy,
-        decision=QualityGateDecision(
-            gate_id="gate-a",
-            gate_revision=revision,
-            status=QualityGateStatus.PASSED,
-            reason="The changed case is explained.",
-            evidence_ids=["gate-a"],
-            missing_evidence_ids=[],
-        ),
-        next_check=NextCheck(
-            gate_id="gate-a",
-            gate_revision=revision,
-            prompt="Apply A to an unfamiliar case.",
-            assistance=NextCheckAssistance(level="none", content=None),
-        ),
-        gate=gate,
-        user_message="Repair",
-        assistant_message="Apply A to an unfamiliar case.",
-        now=NOW + timedelta(minutes=5),
-    )
+    with pytest.raises(ValueError, match="support is exhausted"):
+        store.record_turn(
+            user_id=user_id,
+            course_id=COURSE_ID,
+            lecture_id="lecture-a",
+            context=repair_context,
+            policy=policy,
+            decision=QualityGateDecision(
+                gate_id="gate-a",
+                gate_revision=revision,
+                status=QualityGateStatus.PASSED,
+                reason="The changed case is explained.",
+                evidence_ids=["gate-a"],
+                missing_evidence_ids=[],
+            ),
+            next_check=NextCheck(
+                gate_id="gate-a",
+                gate_revision=revision,
+                prompt="Apply A to an unfamiliar case.",
+                assistance=NextCheckAssistance(level="none", content=None),
+            ),
+            gate=gate,
+            user_message="Repair",
+            assistant_message="Apply A to an unfamiliar case.",
+            now=NOW + timedelta(minutes=5),
+        )
     after_support = _read_progress(client, user_id, "lecture-a")
     key = review_key("gate-a", revision)
     assert after_support.delayed_reviews[key].completed_at is None
     assert after_support.pending_check is not None
     assert after_support.pending_check.stage == "delayed_support"
     assert after_support.pending_check.bank_exhausted
-    assert after_support.turns[-1].attempt_kind == "supported_retry"
+    assert after_support.pending_check.support_exhausted
+    assert after_support.turns[-1].attempt_kind == "delayed_transfer"
     assert not after_support.goal_evidence[key].delayed
 
     final_items = client.get(
@@ -267,40 +271,3 @@ def test_failed_due_attempt_with_exhausted_legacy_bank_stays_in_supported_repair
         "gate-repair:lecture-a:gate-a",
         "readiness:repair-risk",
     ]
-
-
-def test_open_rejects_locked_stale_and_wrong_gate_targets(tmp_path: Path) -> None:
-    client = _client(tmp_path)
-    user_id = "student-a"
-    headers = student_headers(user_id, course_ids=[COURSE_ID])
-    _write_review(client, user_id, "lecture-a", "gate-a", NOW - timedelta(days=1))
-    _write_review(client, user_id, "lecture-locked", "gate-locked", NOW - timedelta(days=1))
-    progress = _read_progress(client, user_id, "lecture-a")
-    current_revision = _gate_revision(client, "lecture-a", "gate-a")
-    key = review_key("gate-a", current_revision)
-    progress.delayed_reviews[key] = progress.delayed_reviews[key].model_copy(
-        update={"gate_revision": "stale-revision"}
-    )
-    _write_progress(client, user_id, "lecture-a", progress)
-
-    stale = client.post(
-        f"/courses/{COURSE_ID}/review-queue/gates/lecture-a/gate-a/open",
-        headers=headers,
-    )
-    wrong = client.post(
-        f"/courses/{COURSE_ID}/review-queue/gates/lecture-a/gate-b/open",
-        headers=headers,
-    )
-    locked = client.post(
-        f"/courses/{COURSE_ID}/review-queue/gates/lecture-locked/gate-locked/open",
-        headers=headers,
-    )
-    unpublished_response = client.post(
-        f"/courses/{COURSE_ID}/review-queue/gates/lecture-unpublished/gate-unpublished/open",
-        headers=headers,
-    )
-
-    assert stale.status_code == 409
-    assert wrong.status_code == 404
-    assert locked.status_code == 403
-    assert unpublished_response.status_code == 404

@@ -49,6 +49,7 @@ def canvas_teaching_instruction() -> str:
         "immediately before its exact approved checkpoint. Orientation is not teaching coverage. "
         "Never delete, merge, shorten or rewrite approved tasks to improve spacing. "
         "Place canonical practice-* diagnostics before substantive help on that capability. "
+        "Mark analogous worked-example blocks with stable ids beginning worked-example-. "
         "Then use an analogous worked example when useful and a later formative check; do not "
         "require a prediction or principle explanation at every step. Use one selectively when "
         "it exposes the intended relationship: inspect the givens, predict, reveal one change, "

@@ -8,11 +8,12 @@ from time import perf_counter
 
 from pydantic_ai import Agent, ModelRetry, Tool
 from pydantic_ai.usage import UsageLimits
-from pydantic_ai.capabilities import PrepareOutputTools
+from pydantic_ai.capabilities import PrepareOutputTools, ProcessHistory
+from lecturepilot.authoring_history import compact_authoring_history
 from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
 
 from lecturepilot.authoring_lock import exclusive_authoring_job
-from lecturepilot.authoring_state import AuthoringState, resume_messages, save_state
+from lecturepilot.authoring_state import AuthoringState, read_state, resume_messages, save_state
 from lecturepilot.authoring_models import AuthoringCompletion
 from lecturepilot.course_learning_intent import digest
 from lecturepilot.course_practice_design_prompt import (
@@ -27,6 +28,7 @@ from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.course_learning_intent import LearningIntent
 from lecturepilot.course_practice_design_models import PracticeDesignProposal
 from lecturepilot.course_practice_design_review_models import PracticeDesignReviewResult
+from lecturepilot.native_model_settings import native_model_settings
 from lecturepilot.models import ProviderSettings
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.teaching_response_recovery import no_action_response_exhausted
@@ -91,11 +93,7 @@ async def _run(job, *, model):
         }
     )
     state_path = job.root / "session.json"
-    state = (
-        AuthoringState.model_validate_json(state_path.read_text())
-        if state_path.exists()
-        else AuthoringState(identity=identity)
-    )
+    state = read_state(job.root) if state_path.exists() else AuthoringState(identity=identity)
     if state.identity != identity:
         raise ValueError("Teaching session source, intent, model or repair request changed.")
     if state_path.exists():
@@ -192,18 +190,15 @@ async def _run(job, *, model):
     agent = Agent(
         model,
         output_type=AuthoringCompletion,
-        capabilities=[PrepareOutputTools(prepare_completion)],
+        capabilities=[
+            PrepareOutputTools(prepare_completion),
+            ProcessHistory(compact_authoring_history),
+        ],
         retries=3,
         instructions=instructions,
         model_settings=lambda ctx: {
-            "timeout": 120,
+            **native_model_settings(job.settings, tool_calls=True),
             "tool_choice": "auto" if workspace.accepted() else "required",
-            "parallel_tool_calls": True,
-            **(
-                {"openai_reasoning_effort": "low", "openai_store": False}
-                if job.settings.provider == "openai"
-                else {"temperature": 0.4}
-            ),
         },
         tools=[
             Tool(workspace.read, sequential=True),

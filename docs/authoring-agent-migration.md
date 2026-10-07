@@ -42,7 +42,8 @@ The private course builder directory contains:
 
 ```text
 authoring-jobs/<lecture>/<generation>/
-  session.json                 # native message history, identity and metrics
+  session.json                 # trailing messages, history count, identity and metrics
+  history/<message-index>.json  # sealed incremental native history
   evidence/*.md                # read-only normalized source sections
   draft/*.md                   # assigned editable sections
   initial-draft.json           # optional revision-checked repair seed
@@ -89,7 +90,7 @@ AI-owned span without rewriting other tasks. Rejected unchanged drafts cannot ca
 `validate` again until an edit or write changes the implementation.
 
 Private `builder/implementation-jobs/<lecture>/<identity>/` stores `draft.json`
-and native `session.json`. Identity binds source, intent, model, starting design
+and native `session.json` plus incremental `history/*.json`. Identity binds source, intent, model, starting design
 and repair context. Interrupted jobs resume saved targets and history. A cached
 review applies only to that exact draft; unchanged validation does not buy a
 second review. Publication still requires the exact-draft approval.
@@ -139,8 +140,11 @@ medium reasoning and states concrete baseline solutions. This is not evidence
 of a measured quality improvement: the live reviewer still missed one literal
 count contradiction, which required developer correction in the demo design.
 Google and OpenRouter adapters exist but were not live-benchmarked here. Existing
-provider quotas, per-call timeouts and transport retries remain in force. There
-is no added total-job deadline or artificial paid-test budget.
+provider quotas, per-call timeouts and transport retries remain in force. Canvas authoring has a 15-minute job deadline and a shared budget, including
+nested critics: 60 paid requests, 1,000,000 input tokens and 120,000 output tokens.
+Exhaustion leaves the last private checkpoint resumable. Teaching implementation
+has its own shared limits; provider wait time is inside the request timeout, and
+cooldowns are capped at 60 seconds.
 
 ## Dependency decision
 
@@ -151,9 +155,9 @@ Use installed source for exact APIs; current online docs also describe newer API
 The paired paid measurements used OpenAI SDK 2.44.0. The local SDK was subsequently
 aligned to the repository's 2.54.0 pin for final regression and live smoke checks.
 
-The former planner modules remain available to the baseline benchmark and their
-regression tests, not the application's authoring path. They can be retired after
-the migration evidence is accepted; no second framework surrounds them at runtime.
+The legacy planner and its obsolete-only tests are retired. The authoring
+benchmark now exercises the native worker; historical comparison evidence
+remains in the measured results document.
 
 ## Benchmark protocol
 

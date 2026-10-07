@@ -152,7 +152,13 @@ def register_course_practice_design_routes(
                         allowed_source_paths=paths,
                         **({"initial": initial} if initial is not None else {}),
                         **(
-                            {"protected_intent": existing.learning_intent}
+                            {
+                                "protected_intent": existing.learning_intent,
+                                "root": layout.course_root(course_id)
+                                / "builder"
+                                / "implementation-jobs"
+                                / lecture_id,
+                            }
                             if existing
                             and existing.learning_intent
                             and existing.learning_intent.approval

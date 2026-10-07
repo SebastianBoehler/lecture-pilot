@@ -111,7 +111,7 @@ def _all_tool_schemas() -> list[dict]:
             "Create or overwrite a permitted learner file. Canvas Markdown under /lecture/canvas/student supports placement_mode and placement_section_id frontmatter for contextual insertion; returns the actual path plus section_id.",
             {
                 "path": _string(
-                    "Writable file path under /lecture/annotations, /lecture/canvas/student, /lecture/canvas/student-assets, /user/memories, or /user/course/memories."
+                    "Writable file path under /lecture/annotations, /lecture/canvas/student, or /lecture/canvas/student-assets. Memory writes require remember."
                 ),
                 "content": _string("Complete file content."),
             },
@@ -152,7 +152,10 @@ def _all_tool_schemas() -> list[dict]:
                     "enum": ["global", "course"],
                     "description": "Memory scope. Defaults to global when omitted.",
                 },
-                "preference_key": _string("Optional structured preference key."),
+                "preference_key": {
+                    "type": "string",
+                    "enum": ["language", "pace", "explanation_style", "analogy"],
+                },
                 "preference_value": _string("Optional structured preference value."),
             },
             ["note"],

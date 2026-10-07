@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from fnmatch import fnmatch
 from typing import Any
 
@@ -10,6 +9,7 @@ from lecturepilot.agent_canvas_placement import contextual_placement, learner_up
 from lecturepilot.agent_image_placement import AgentImagePlacement, dedupe_markdown_image_refs
 from lecturepilot.agent_image_tool import AgentImageToolError
 from lecturepilot.agent_side_effect_tools import AgentSideEffectError, AgentSideEffectTools
+from lecturepilot.agent_tool_search import search_workspace
 from lecturepilot.agent_tool_utils import (
     AgentToolArgumentError,
     ToolPath,
@@ -156,6 +156,7 @@ class AgentToolExecutor(AgentSideEffectTools):
                 file_entry(f"{resolved.logical.rstrip('/')}/{item.name}", item)
                 for item in sorted(resolved.path.iterdir(), key=lambda item: item.name)
                 if not item.name.startswith(".")
+                and self.workspace_fs.is_visible(f"{resolved.logical.rstrip('/')}/{item.name}")
             ][:80]
         }
 
@@ -182,26 +183,8 @@ class AgentToolExecutor(AgentSideEffectTools):
         return {"matches": matches}
 
     def _grep(self, pattern: str, logical_path: str, max_matches: int) -> dict[str, Any]:
-        regex = re.compile(pattern, re.IGNORECASE)
         resolved = self._resolve(logical_path)
-        files = self.workspace_fs.files(resolved.logical)
-        matches = []
-        for item in files:
-            if not is_text_file(item.path):
-                continue
-            text = self.workspace_fs.read_text(item.logical, errors="ignore")
-            for line_number, line in enumerate(text.splitlines(), 1):
-                if regex.search(line):
-                    matches.append(
-                        {
-                            "path": item.logical,
-                            "line": line_number,
-                            "text": line.strip()[:500],
-                        }
-                    )
-                    if len(matches) >= max_matches:
-                        return {"matches": matches}
-        return {"matches": matches}
+        return search_workspace(self.workspace_fs, resolved.logical, pattern, max_matches)
 
     def _read(self, logical_path: str, max_chars: int) -> dict[str, Any]:
         resolved = self._resolve(logical_path)

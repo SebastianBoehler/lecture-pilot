@@ -1,10 +1,11 @@
 import json
-from types import SimpleNamespace
 
 import pytest
 
 from lecturepilot.agent_response_schema import lecturepilot_response_format
-from lecturepilot.agent_tool_loop import complete_tool_turn
+from lecturepilot.native_tutor import native_tutor_turn
+from pydantic_ai.models.function import FunctionModel
+from pydantic_ai.messages import ModelResponse, TextPart
 from lecturepilot.model_payload import agent_result_from_content
 from lecturepilot.models import ProviderSettings
 from lecturepilot.observability import Observability
@@ -38,20 +39,18 @@ async def test_tool_loop_repair_rejects_provider_owned_next_check() -> None:
     corrected = _payload()
     calls: list[dict] = []
 
-    async def completion(**kwargs):
-        calls.append(kwargs)
+    def completion(messages, info):
+        calls.append(messages)
         content = invalid if len(calls) == 1 else corrected
-        return SimpleNamespace(
-            choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(content)))]
-        )
+        return ModelResponse(parts=[TextPart(json.dumps(content))])
 
     class Executor:
         @staticmethod
         def pending_canvas_edit_instruction():
             return None
 
-    result = await complete_tool_turn(
-        acompletion=completion,
+    result = await native_tutor_turn(
+        model=FunctionModel(completion),
         settings=ProviderSettings(
             provider="openai",
             model="gpt-5.6-luna",
@@ -62,10 +61,10 @@ async def test_tool_loop_repair_rejects_provider_owned_next_check() -> None:
         tool_executor=Executor(),
         observability=Observability(),
         emit=None,
-        messages=[{"role": "system", "content": "Tutor."}],
+        messages=[{"role": "system", "content": "Tutor."}, {"role": "user", "content": "Answer"}],
     )
 
-    repair_instruction = calls[1]["messages"][-1]["content"]
+    repair_instruction = str(calls[1][-1])
     assert "result contract" in repair_instruction
     assert result.message == (
         "More evidence is needed for the approved criterion: Names one boundary.\n\n"

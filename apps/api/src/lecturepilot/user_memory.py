@@ -10,6 +10,9 @@ from lecturepilot.models import UserMemoryContext
 from lecturepilot.storage_layout import StorageLayout
 
 
+TUTOR_PREFERENCE_KEYS = frozenset({"language", "pace", "explanation_style", "analogy"})
+
+
 class UserMemoryStore:
     """File-backed learner memory for cross-course tutor personalization."""
 
@@ -20,9 +23,9 @@ class UserMemoryStore:
         with exclusive_file_lock(self._lock_path(user_id)):
             global_path, course_path = self._ensure_context_files(user_id, course_id)
             return UserMemoryContext(
-                global_notes=global_path.read_text(encoding="utf-8")[:4000],
+                global_notes=global_path.read_text(encoding="utf-8")[-4000:],
                 course_notes=(
-                    course_path.read_text(encoding="utf-8")[:4000] if course_path else ""
+                    course_path.read_text(encoding="utf-8")[-4000:] if course_path else ""
                 ),
                 preferences=_read_preferences(
                     self.layout.user_memories_dir(user_id) / "preferences.json"
@@ -78,6 +81,10 @@ class UserMemoryStore:
         preference_key: str | None = None,
         preference_value: str | None = None,
     ) -> dict[str, Any]:
+        if preference_key and preference_key not in TUTOR_PREFERENCE_KEYS:
+            raise ValueError(
+                "Unsupported tutor preference key. Use the profile API for profile fields."
+            )
         scope = scope.strip().lower()
         if scope not in {"global", "course"}:
             raise ValueError("Memory scope must be global or course.")

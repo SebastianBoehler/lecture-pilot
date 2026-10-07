@@ -1,138 +1,63 @@
 from __future__ import annotations
 
 import json
-import sys
-from types import SimpleNamespace
 
-import pytest
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.course_canvas_quality import LiteLLMCanvasQualityClient, _quality_messages
-from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.providers import ProviderRegistry
+from lecturepilot.course_canvas_quality import NativeCanvasQualityClient, _quality_messages
 
 
-async def test_quality_review_does_not_impose_an_output_token_cap(monkeypatch) -> None:
-    calls: list[dict] = []
-    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+async def test_quality_review_native_schema_has_output_cap_and_critic_reasoning():
+    from pydantic_ai.messages import ModelResponse, TextPart
+    from pydantic_ai.models.function import FunctionModel
+    from lecturepilot.models import ProviderSettings
 
-    async def fake_completion(**kwargs):
-        calls.append(kwargs)
-        return SimpleNamespace(
-            choices=[
-                SimpleNamespace(
-                    finish_reason="stop",
-                    message=SimpleNamespace(content=json.dumps({"issues": []})),
-                )
-            ]
-        )
+    calls = []
 
-    monkeypatch.setitem(sys.modules, "litellm", SimpleNamespace(acompletion=fake_completion))
+    def respond(messages, info):
+        calls.append(info)
+        return ModelResponse(parts=[TextPart('{"issues": []}')])
+
+    settings = ProviderSettings(
+        provider="openai", model="openai/gpt-6", api_key_env="OPENAI_API_KEY", capabilities=set()
+    )
     document = _document()
-
-    payload = await LiteLLMCanvasQualityClient().complete_review(
-        settings=ProviderRegistry.from_env("openai/gpt-5.6-luna").require_ready([]),
+    payload = await NativeCanvasQualityClient(model=FunctionModel(respond)).complete_review(
+        settings=settings,
         source_document=document,
         candidate_document=document,
     )
-
     assert payload == {"issues": []}
-    assert "max_tokens" not in calls[0]
-    assert calls[0]["reasoning_effort"] == "low"
-    assert calls[0]["timeout"] == 120
+    assert calls[0].model_settings["max_tokens"] == 16_000
+    assert calls[0].model_settings["openai_reasoning_effort"] == "medium"
 
 
-async def test_quality_review_retries_an_empty_truncated_response(monkeypatch) -> None:
-    calls: list[dict] = []
-    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+async def test_quality_review_native_schema_repairs_unknown_coordinates():
+    from pydantic_ai.messages import ModelResponse, TextPart
+    from pydantic_ai.models.function import FunctionModel
+    from lecturepilot.models import ProviderSettings
 
-    async def fake_completion(**kwargs):
-        calls.append(kwargs)
-        if len(calls) == 2:
-            return SimpleNamespace(
-                choices=[
-                    SimpleNamespace(
-                        finish_reason="stop",
-                        message=SimpleNamespace(content=json.dumps({"issues": []})),
-                    )
-                ]
-            )
-        return SimpleNamespace(
-            choices=[
-                SimpleNamespace(
-                    finish_reason="length",
-                    message=SimpleNamespace(content=None, refusal=None),
-                )
-            ]
-        )
-
-    monkeypatch.setitem(sys.modules, "litellm", SimpleNamespace(acompletion=fake_completion))
-    document = _document()
-
-    payload = await LiteLLMCanvasQualityClient().complete_review(
-        settings=ProviderRegistry.from_env("openai/gpt-5.6-luna").require_ready([]),
-        source_document=document,
-        candidate_document=document,
-    )
-
-    assert payload == {"issues": []}
-    assert len(calls) == 2
-
-
-async def test_quality_review_reports_repeated_invalid_responses(monkeypatch) -> None:
-    calls: list[dict] = []
-    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-
-    async def fake_completion(**kwargs):
-        calls.append(kwargs)
-        return SimpleNamespace(
-            choices=[
-                SimpleNamespace(
-                    finish_reason="length",
-                    message=SimpleNamespace(content=None, refusal=None),
-                )
-            ]
-        )
-
-    monkeypatch.setitem(sys.modules, "litellm", SimpleNamespace(acompletion=fake_completion))
-    document = _document()
-
-    with pytest.raises(
-        ModelExecutionError,
-        match=r"Canvas quality review returned an empty response \(finish_reason=length\)",
-    ):
-        await LiteLLMCanvasQualityClient().complete_review(
-            settings=ProviderRegistry.from_env("openai/gpt-5.6-luna").require_ready([]),
-            source_document=document,
-            candidate_document=document,
-        )
-
-    assert len(calls) == 2
-
-
-async def test_quality_review_preserves_a_provider_timeout_message(monkeypatch) -> None:
     calls = 0
-    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
 
-    async def fake_completion(**_kwargs):
+    def respond(messages, info):
         nonlocal calls
         calls += 1
-        raise TimeoutError("provider timeout")
-
-    async def no_wait(_seconds: float) -> None:
-        return None
-
-    monkeypatch.setitem(sys.modules, "litellm", SimpleNamespace(acompletion=fake_completion))
-    monkeypatch.setattr("lecturepilot.model_usage.asyncio.sleep", no_wait)
-    document = _document()
-
-    with pytest.raises(ModelExecutionError, match="timed out"):
-        await LiteLLMCanvasQualityClient().complete_review(
-            settings=ProviderRegistry.from_env("openai/gpt-5.6-luna").require_ready([]),
-            source_document=document,
-            candidate_document=document,
+        payload = (
+            {"issues": [{"section_id": "unknown", "block_id": None, "reason": "Claim"}]}
+            if calls == 1
+            else {"issues": []}
         )
+        return ModelResponse(parts=[TextPart(json.dumps(payload))])
 
+    settings = ProviderSettings(
+        provider="openai", model="openai/gpt-6", api_key_env="OPENAI_API_KEY", capabilities=set()
+    )
+    document = _document()
+    assert await NativeCanvasQualityClient(model=FunctionModel(respond)).complete_review(
+        settings=settings,
+        source_document=document,
+        candidate_document=document,
+    ) == {"issues": []}
     assert calls == 2
 
 

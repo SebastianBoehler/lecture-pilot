@@ -52,6 +52,7 @@ class LearnerPendingCheck(BaseModel):
     assistance_content: str | None
     focus_required: bool
     bank_exhausted: bool
+    support_exhausted: bool = False
 
 
 class LearnerDueGateReview(BaseModel):

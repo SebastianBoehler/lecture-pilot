@@ -10,10 +10,21 @@ from pydantic_ai import Agent, ModelRetry, RunContext
 from pydantic_ai.models import Model
 from pydantic_ai.tools import Tool
 from pydantic_ai.usage import UsageLimits
+from pydantic_ai.exceptions import UsageLimitExceeded
+from pydantic_ai.capabilities import ProcessHistory
+from lecturepilot.authoring_history import compact_authoring_history
 
 from lecturepilot.authoring_models import AuthoringCompletion, AuthoringMetrics, AuthoringResult
 from lecturepilot.authoring_checkpoint_review import CheckpointReviewer
 from lecturepilot.authoring_lock import exclusive_authoring_job
+from lecturepilot.authoring_limits import (
+    AUTHORING_DEADLINE_SECONDS,
+    AUTHORING_REQUEST_LIMIT,
+    AUTHORING_INPUT_TOKEN_LIMIT,
+    AUTHORING_OUTPUT_TOKEN_LIMIT,
+    AuthoringBudgetExceeded,
+    authoring_budget,
+)
 from lecturepilot.authoring_workspace import AuthoringWorkspace
 from lecturepilot.authoring_tools import AuthoringTools
 from lecturepilot.authoring_state import load_state, resume_messages, save_state
@@ -23,6 +34,7 @@ from lecturepilot.course_canvas_quality import CanvasQualityReviewer
 from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.course_teaching_instructions import canvas_teaching_instruction
 from lecturepilot.course_canvas_math import generated_math_instructions
+from lecturepilot.native_model_settings import native_model_settings
 from lecturepilot.models import ProviderSettings
 
 
@@ -44,8 +56,18 @@ class AuthoringJob:
 
 async def run_authoring_job(job: AuthoringJob, *, model: Model) -> AuthoringResult:
     job.authorize()
-    with exclusive_authoring_job(job.root):
-        return await _run(job, model=model)
+    with exclusive_authoring_job(job.root), authoring_budget():
+        try:
+            async with asyncio.timeout(AUTHORING_DEADLINE_SECONDS):
+                return await _run(job, model=model)
+        except UsageLimitExceeded as exc:
+            raise AuthoringBudgetExceeded(
+                "Authoring usage budget exhausted; saved drafts can resume."
+            ) from exc
+        except TimeoutError as exc:
+            raise AuthoringBudgetExceeded(
+                "Authoring job deadline reached; saved drafts can resume."
+            ) from exc
 
 
 async def _run(job: AuthoringJob, *, model: Model) -> AuthoringResult:
@@ -61,16 +83,11 @@ async def _run(job: AuthoringJob, *, model: Model) -> AuthoringResult:
         model,
         output_type=AuthoringCompletion,
         retries=3,
+        capabilities=[ProcessHistory(compact_authoring_history)],
         instructions=_instructions(job, workspace),
-        model_settings={
-            "timeout": 120,
-            "parallel_tool_calls": True,
-            **(
-                {"openai_reasoning_effort": "low", "openai_store": False}
-                if job.settings.provider == "openai"
-                else {"temperature": 0.4}
-            ),
-        },
+        model_settings=native_model_settings(
+            job.settings, temperature=0.4, reasoning_effort="low", tool_calls=True
+        ),
         tools=[
             Tool(getattr(actions, name), name=name, sequential=True)
             for name in ("ls", "read", "search", "write", "edit", "validate")
@@ -91,7 +108,11 @@ async def _run(job: AuthoringJob, *, model: Model) -> AuthoringResult:
     async with agent.iter(
         "Create every assigned draft, validate it, and repair defects. Resume existing work if present.",
         message_history=history,
-        usage_limits=UsageLimits(request_limit=None),
+        usage_limits=UsageLimits(
+            request_limit=AUTHORING_REQUEST_LIMIT,
+            input_tokens_limit=AUTHORING_INPUT_TOKEN_LIMIT,
+            output_tokens_limit=AUTHORING_OUTPUT_TOKEN_LIMIT,
+        ),
     ) as run:
 
         def checkpoint():

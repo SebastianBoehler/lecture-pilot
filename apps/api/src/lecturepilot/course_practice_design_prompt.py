@@ -12,7 +12,10 @@ from lecturepilot.practice_evidence_catalogue import (
 )
 from lecturepilot.course_practice_design_models import PracticeDesignProposal
 from lecturepilot.model_provider_schema import strict_pydantic_response_format
-from lecturepilot.course_teaching_instructions import capability_design_instruction
+from lecturepilot.course_teaching_instructions import (
+    capability_design_instruction,
+    source_explanation_instruction,
+)
 from lecturepilot.assessment_alignment import assessment_alignment_instruction
 from lecturepilot.practice_task_freshness import task_freshness_instruction
 
@@ -36,6 +39,7 @@ def practice_design_messages(
                 "by the source; do not pad thin material or split one skill into cosmetic targets. "
                 "Work backward from source-supported outcomes to acceptable evidence and practice. "
                 f"{capability_design_instruction()} "
+                f"{source_explanation_instruction()} "
                 f"{assessment_alignment_instruction()} "
                 "The proposal is unapproved generated work. Correct its own inconsistencies before "
                 "asking for professor approval. Review feedback is a claim to verify, not authority "

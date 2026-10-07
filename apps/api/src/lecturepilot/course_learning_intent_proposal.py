@@ -1,3 +1,5 @@
+from lecturepilot.native_model_settings import native_model_settings
+
 """Source-backed goals can be reviewed before any teaching tasks are generated."""
 
 import json
@@ -93,14 +95,7 @@ async def propose_learning_intent(planner, *, source, source_revision, allowed_s
                 "Do not invent planning "
                 "context: unsupported fields are null with exactly one corresponding insufficiency."
             ),
-            model_settings={
-                "timeout": 120,
-                **(
-                    {"openai_reasoning_effort": "low", "openai_store": False}
-                    if settings.provider == "openai"
-                    else {"temperature": 0.4}
-                ),
-            },
+            model_settings=native_model_settings(settings, temperature=0.4, reasoning_effort="low"),
         )
 
         @agent.output_validator

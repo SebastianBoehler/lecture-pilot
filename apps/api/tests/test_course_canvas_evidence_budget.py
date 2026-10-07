@@ -1,5 +1,5 @@
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.course_canvas_prompt import MAX_SOURCE_EVIDENCE_CHARS, source_evidence
+from lecturepilot.canvas_source_evidence import MAX_SOURCE_EVIDENCE_CHARS, source_evidence
 
 
 def test_source_evidence_reserves_detail_for_late_outline_sections() -> None:

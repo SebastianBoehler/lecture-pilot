@@ -107,6 +107,7 @@ def _payload() -> dict:
             "gate_revision": gate.revision,
             "reason": "The boundary is missing.",
             "evidence_ids": ["causal-link"],
+            "evidence_quotes": [{"evidence_id": "causal-link", "quote": "My explanation."}],
         },
     }
 
@@ -277,8 +278,6 @@ def test_provider_schema_requires_gate_revision() -> None:
 
     assert "gate_revision" in gate_schema["properties"]
     assert "gate_revision" in gate_schema["required"]
-    assert gate_schema["properties"]["gate_id"] == {"type": "string", "const": _gate().id}
-    assert gate_schema["properties"]["gate_revision"] == {
-        "type": "string",
-        "const": _gate().revision,
-    }
+    assert gate_schema["properties"]["gate_id"]["const"] == _gate().id
+    assert gate_schema["properties"]["gate_revision"]["const"] == _gate().revision
+    assert gate_schema["properties"]["gate_revision"]["pattern"] == r"^[a-f0-9]{64}$"

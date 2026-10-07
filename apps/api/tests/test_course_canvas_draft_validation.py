@@ -4,9 +4,7 @@ import pytest
 
 from auth_helpers import professor_headers
 from canvas_workspace_fixtures import published_course_canvas, write_canvas_draft
-from lecturepilot.canvas_models import MAX_SOURCE_REF_LENGTH, CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.course_canvas_plan_parser import planned_document
 from lecturepilot.course_canvas_store import InvalidCanvasDraftError
 from lecturepilot.course_practice_design_store import PracticeDesignStore
 from test_course_canvas_draft_integrity import (
@@ -15,30 +13,6 @@ from test_course_canvas_draft_integrity import (
     _course_client,
     _revision,
 )
-
-
-def test_planned_source_ref_preserves_bounded_source_evidence() -> None:
-    source_ref = "s" * MAX_SOURCE_REF_LENGTH
-    source = published_course_canvas("demo-course", "lecture-01").model_copy(
-        update={"source_kind": "markdown", "source_ref": source_ref}
-    )
-    result = planned_document(
-        {
-            "sections": [
-                {
-                    "id": "introduction",
-                    "title": "Introduction",
-                    "source_ref": source_ref,
-                    "blocks": [{"type": "paragraph", "text": "Source-backed detail."}],
-                }
-            ]
-        },
-        source,
-    )
-
-    validated = CanvasDocument.model_validate(result.model_dump())
-    assert validated.source_ref == source_ref
-    assert len(validated.source_ref) == MAX_SOURCE_REF_LENGTH
 
 
 def test_invalid_draft_does_not_replace_existing_draft(tmp_path: Path) -> None:

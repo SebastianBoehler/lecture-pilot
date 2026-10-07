@@ -93,13 +93,12 @@ connections while the client polls the authenticated status endpoint. This avoid
 browser connection limits serializing model work. Closing the browser does not make the
 in-process generation task depend on the tab; after interruption or process
 loss, a stale lease can be claimed for another attempt. Dense source outlines
-are grouped into at most five pedagogical sections. Lecture and section jobs have no fixed model-call concurrency cap. Provider
-request/token budgets and cooldown headers govern model throughput; token estimates
-are calibrated from observed usage. A missing provider budget does not impose an
-application ceiling. Completed sections are revision-bound checkpoints, so a retry resumes
-instead of regenerating them. Quality repair batches all reported issues into
-one pass and one compact re-review; any remaining candidate stays available for
-targeted repair. Metadata logs record stage, attempt, queue wait, provider
+are grouped into at most five pedagogical sections. Native model calls share
+request accounting, rate-limit slots, transport retries and pooled provider clients.
+Canvas jobs have a 15-minute deadline and shared paid-request/token budgets,
+including nested critics. Private checkpoints preserve interrupted work; explicit
+retries still enforce source, intent and publication authority. Section critics
+reuse unchanged section results and changed teaching is reviewed again. Metadata logs record stage, attempt, queue wait, provider
 latency, and actual token counts without source or learner content. Repair also
 validates that the failed draft still refers to the current source revision and
 uses a surgical block replacement when the failure contains an exact target. See
@@ -119,11 +118,12 @@ notes, components, and generated images form a private overlay; `canvas.json`
 is a compiled cache, not the editable source of truth.
 
 `LecturePilotHarness.run_turn` is the provider-independent contract. The
-current provider-backed runtime runs inside FastAPI through LiteLLM. It selects
+current provider-backed runtime uses Pydantic AI native structured output through
+the shared metered provider gateway. It selects
 the configured server-allowlisted model, requests structured output, and may
 execute profile-scoped tools over logical roots:
 
-- tutor: known-path reads, learner writes/edits, canvas navigation, gate and
+- tutor: known-path reads, learner writes/edits, canvas navigation, explicit-request
   memory records, and generated raster images;
 - evidence tutor: tutor tools plus bounded `find` and `grep`; and
 - course builder: source search/read plus course-draft write/edit and image
@@ -166,3 +166,10 @@ see [self-hosting.md](self-hosting.md) and
 
 Reviewed task variants, focused attempts, teaching languages and exact implementation
 changes are documented in [learning-evidence-flow.md](learning-evidence-flow.md).
+
+Optional `LECTUREPILOT_UTILITY_MODEL` and `LECTUREPILOT_CRITIC_MODEL` select
+utility and independent-review workloads. Empty settings retain each workload's
+primary model. Explicit models require an entry in `LECTUREPILOT_ALLOWED_MODELS`
+and the matching provider credential; unavailable configuration fails clearly.
+Critics use higher reasoning effort where supported. These settings are routing
+controls, not evidence of improved model quality.

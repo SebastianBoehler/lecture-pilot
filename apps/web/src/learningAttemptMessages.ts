@@ -18,6 +18,8 @@ export const learningAttemptMessages = {
     "checkpoint.label": "Checkpoint",
     "checkpoint.answer": "Your checkpoint answer",
     "checkpoint.answerPlaceholder": "Explain your reasoning in your own words…",
+    "checkpoint.supportExhausted":
+      "Approved support is exhausted. Review the teaching and ask your instructor for reviewed support or a new task before another assessment.",
     "checkpoint.submit": "Submit checkpoint answer",
     "checkpoint.submitting": "Submitting…",
     "checkpoint.submitted": "Answer submitted. Tutor feedback is available in chat.",
@@ -42,6 +44,8 @@ export const learningAttemptMessages = {
     "checkpoint.label": "Lernzielkontrolle",
     "checkpoint.answer": "Deine Antwort zur Lernzielkontrolle",
     "checkpoint.answerPlaceholder": "Erkläre deine Begründung in eigenen Worten…",
+    "checkpoint.supportExhausted":
+      "Die freigegebene Unterstützung ist ausgeschöpft. Wiederhole den Lernstoff und bitte deine Lehrperson um geprüfte Unterstützung oder eine neue Aufgabe vor dem nächsten Versuch.",
     "checkpoint.submit": "Antwort zur Lernzielkontrolle senden",
     "checkpoint.submitting": "Wird gesendet…",
     "checkpoint.submitted": "Antwort gesendet. Das Tutorfeedback ist im Chat verfügbar.",

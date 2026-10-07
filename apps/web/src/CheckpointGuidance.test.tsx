@@ -48,3 +48,45 @@ it("shows guidance only at its own supported checkpoint and hides the hint until
   expect(screen.queryByRole("status")).not.toBeInTheDocument();
   expect(screen.queryByText("labels")).not.toBeInTheDocument();
 });
+
+it("stops checkpoint submissions when approved support is exhausted", async () => {
+  const { CheckpointBlock } = await import("./CanvasLearningBlocks");
+  const { vi } = await import("vitest");
+  const submit = vi.fn();
+  const state = {
+    course_id: "course",
+    lecture_id: "lecture",
+    publication_version: 1,
+    active_session_goal: null,
+    gate_statuses: {},
+    quiz_states: {},
+    due_gate_reviews: [],
+    pending_check: {
+      gate_id: "check",
+      gate_revision: "revision",
+      prompt: "Explain.",
+      assistance_level: "none",
+      kind: "standard",
+      focus_required: false,
+      support_exhausted: true,
+      bank_exhausted: true,
+      assistance_content: null,
+    },
+  } as LearnerLessonState;
+  renderWithI18n(
+    <CheckpointGuidanceContext.Provider value={state}>
+      <CheckpointBlock
+        block={{ id: "check", type: "checkpoint", text: "Explain.", items: [] }}
+        className=""
+        highlightedText={null}
+        sourceMarker={null}
+        sectionId="section"
+        onSubmitCheckpoint={submit}
+      />
+    </CheckpointGuidanceContext.Provider>,
+  );
+  expect(screen.getByRole("status")).toHaveTextContent("Approved support is exhausted");
+  expect(screen.getByRole("textbox")).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Submit checkpoint answer" })).toBeDisabled();
+  expect(submit).not.toHaveBeenCalled();
+});

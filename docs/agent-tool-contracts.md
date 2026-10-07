@@ -7,14 +7,14 @@ student-scoped storage.
 
 ## Profiles
 
-| Profile          | Tools                                                                                                   |
-| ---------------- | ------------------------------------------------------------------------------------------------------- |
-| `tutor`          | `pwd`, `ls`, `read`, `write`, `edit`, `focus`, `highlight`, `record_gate`, `remember`, `generate_image` |
-| `evidence`       | tutor tools plus `find`, `grep`                                                                         |
-| `course_builder` | `pwd`, `ls`, `find`, `grep`, `read`, `write`, `edit`, `generate_image`                                  |
+| Profile          | Tools                                                                                    |
+| ---------------- | ---------------------------------------------------------------------------------------- |
+| `tutor`          | `pwd`, `ls`, `read`, `write`, `edit`, `focus`, `highlight`, `remember`, `generate_image` |
+| `evidence`       | tutor tools plus `find`, `grep`                                                          |
+| `course_builder` | `pwd`, `ls`, `find`, `grep`, `read`, `write`, `edit`, `generate_image`                   |
 
 The course-builder profile intentionally has no learner-state tools such as
-`record_gate`, `remember`, `focus`, or `highlight`.
+`remember`, `focus`, or `highlight`.
 
 ## Logical Roots
 
@@ -22,15 +22,21 @@ The course-builder profile intentionally has no learner-state tools such as
 | ------------------------ | ---------------------------------------------------- |
 | `/lecture/canvas`        | learner-owned lecture canvas overlay                 |
 | `/course/canvas`         | professor-approved published canvas                  |
-| `/course/source/uploads` | professor-uploaded source bundle                     |
+| `/course/source/uploads` | active lecture confirmed source manifest             |
 | `/user/memories`         | cross-course learner memory and preferences          |
 | `/user/course/memories`  | course-specific learner memory for the active course |
 | `/user/profile.json`     | learner profile file                                 |
 
 Tutor writes are allowed only below `/lecture/canvas/student/`,
-`/lecture/canvas/components/`, `/lecture/canvas/student-assets/`, and
-`/user/memories/` or `/user/course/memories/`. Source material and published
-course canvases are read-only from tutor turns.
+`/lecture/canvas/student-assets/`, and `/lecture/annotations/`.
+Memory roots are read-only to file tools; use consent-checked `remember`. Structured
+keys are limited to `language`, `pace`, `explanation_style`, and `analogy`; profile
+control fields require the profile API. Source reads/searches use only the active
+lecture source manifest bound to the current publication, confirmed routing and
+source index. Missing or stale authority fails closed; each read verifies the
+captured SHA-256 against actual bytes. Hidden learning maps
+are excluded from reads, listings, and searches. Private assessment quotations
+remain outside tutor roots and public analytics. Published canvases are read-only.
 
 ## Tool Semantics
 
@@ -45,7 +51,6 @@ course canvases are read-only from tutor turns.
 | `edit`           | `path`, `old_text`, `new_text` | Replaces one exact text occurrence in a permitted learner file.                                                                           |
 | `focus`          | `section_id`                   | Queues a canvas focus command for the frontend.                                                                                           |
 | `highlight`      | `span_id`, `highlight_text`    | Queues a canvas highlight command for an existing block or phrase.                                                                        |
-| `record_gate`    | `gate_id`, `status`, `reason`  | Persists the learning-gate decision for the lecture.                                                                                      |
 | `remember`       | `note`, optional `scope`       | Appends durable learner memory and a trace record. `scope=global` writes cross-course memory; `scope=course` writes active-course memory. |
 | `generate_image` | `prompt`, `section_id`         | Stores a raster infographic asset in the learner workspace.                                                                               |
 
@@ -73,7 +78,6 @@ the assistant message, for example:
 
 ```txt
 write: /lecture/canvas/student/tool-loop-note.md
-record_gate: bayes-risk-check
 focus: losses-and-risks
 highlight: losses-and-risks-p-1
 ```
@@ -82,11 +86,11 @@ Assistant prose is not parsed as a tool call.
 
 ## Regression Proof
 
-The end-to-end backend regression is
-`apps/api/tests/test_agent_tool_e2e.py`. It streams a real tool loop, writes a
-student Markdown section, persists memory, records a gate, emits focus/highlight
-activity tags, reloads the student canvas through the API, and verifies the
-memory is loaded into a later tutor turn.
+`test_native_tutor.py` checks strict native output on tool rounds and replies for
+every requested tool call. `test_tutor_tool_contract.py` checks that slow tools
+leave the event loop responsive. `test_agent_tool_roots_security.py` verifies
+hidden assessments and unrouted sources are inaccessible. Explicit checkpoint
+grading uses isolated context, with no history, memory, predictions, or tools.
 
 Exam-readiness submission is a typed application endpoint, not a general agent
 filesystem tool. The backend reconstructs the canonical task before scoring and

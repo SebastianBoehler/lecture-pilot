@@ -30,7 +30,7 @@ from lecturepilot.course_practice_design_review_client import (
 from lecturepilot.course_deletion import register_course_deletion_routes
 from lecturepilot.course_routes import register_course_routes
 from lecturepilot.course_source_routing_routes import register_course_source_routing_routes
-from lecturepilot.course_source_routing_client import LiteLLMSourceRoutingClient
+from lecturepilot.course_source_routing_client import NativeSourceRoutingClient
 from lecturepilot.course_source_routing_planner import CourseSourceRoutingPlanner
 from lecturepilot.course_update_routes import register_course_update_routes
 from lecturepilot.csrf import CsrfProtectionMiddleware, allowed_origins
@@ -38,14 +38,14 @@ from lecturepilot.database import Database
 from lecturepilot.exam_readiness_routes import register_exam_readiness_routes
 from lecturepilot.practice_exam_attempt_routes import register_practice_exam_attempt_routes
 from lecturepilot.exam_answer_evaluation import (
-    LiteLLMOpenAnswerEvaluationClient,
+    NativeOpenAnswerEvaluationClient,
     OpenAnswerEvaluator,
 )
 from lecturepilot.harness import LecturePilotHarness
 from lecturepilot.image_generation_registry import image_generator_from_env
-from lecturepilot.lecture_schedule_planner import LectureSchedulePlanner, LiteLLMScheduleClient
+from lecturepilot.lecture_schedule_planner import LectureSchedulePlanner, NativeScheduleClient
 from lecturepilot.lecture_access_routes import register_lecture_access_routes
-from lecturepilot.model_client import LiteLLMModelClient
+from lecturepilot.model_client import NativeModelClient
 from lecturepilot.model_usage import ModelUsageRecorder
 from lecturepilot.learner_state import LearnerStateStore
 from lecturepilot.learner_lesson_state_routes import register_learner_lesson_state_routes
@@ -113,21 +113,21 @@ def create_app() -> FastAPI:
     app.state.tuebingen_adapter = TuebingenCourseAdapter()
     app.state.university_course_search = AlmaUniversityCourseSearch()
     app.state.agent_harness = LecturePilotHarness(
-        model_client=LiteLLMModelClient(app.state.model_usage)
+        model_client=NativeModelClient(app.state.model_usage)
     )
     app.state.course_planner = CourseCanvasAuthor(app.state.model_usage)
     app.state.lecture_schedule_planner = LectureSchedulePlanner(
-        model_client=LiteLLMScheduleClient(app.state.model_usage)
+        model_client=NativeScheduleClient(app.state.model_usage)
     )
     app.state.source_routing_planner = CourseSourceRoutingPlanner(
-        model_client=LiteLLMSourceRoutingClient(app.state.model_usage)
+        model_client=NativeSourceRoutingClient(app.state.model_usage)
     )
     app.state.practice_design_planner = PracticeDesignPlanner(
         usage_recorder=app.state.model_usage,
         review_client=NativePracticeDesignReviewClient(app.state.model_usage),
     )
     app.state.open_answer_evaluator = OpenAnswerEvaluator(
-        model_client=LiteLLMOpenAnswerEvaluationClient(app.state.model_usage)
+        model_client=NativeOpenAnswerEvaluationClient(app.state.model_usage)
     )
     app.state.canvas_workspace = CanvasWorkspace()
     app.state.learner_state = LearnerStateStore(app.state.canvas_workspace.layout)

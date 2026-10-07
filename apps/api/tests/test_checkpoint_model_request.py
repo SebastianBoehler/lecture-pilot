@@ -1,10 +1,8 @@
 import json
-import sys
-from types import SimpleNamespace
 
 import pytest
 
-from lecturepilot.model_client import LiteLLMModelClient
+from lecturepilot.model_client import NativeModelClient
 from lecturepilot.models import ProviderSettings
 from test_strict_model_payload import _payload, _turn
 
@@ -13,16 +11,16 @@ from test_strict_model_payload import _payload, _turn
 async def test_checkpoint_uses_one_structured_assessment_without_filesystem_tools(monkeypatch):
     calls = []
 
-    async def completion(**kwargs):
-        calls.append(kwargs)
-        return SimpleNamespace(
-            choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(_payload())))],
-        )
+    from pydantic_ai.models.function import FunctionModel
+    from pydantic_ai.messages import ModelResponse, TextPart
 
-    monkeypatch.setitem(sys.modules, "litellm", SimpleNamespace(acompletion=completion))
+    def completion(messages, info):
+        calls.append(info)
+        return ModelResponse(parts=[TextPart(json.dumps(_payload()))])
+
     turn = _turn()
     turn = turn.model_copy(update={"checkpoint_gate_id": turn.active_gate.id})
-    result = await LiteLLMModelClient().complete_turn(
+    result = await NativeModelClient(model=FunctionModel(completion)).complete_turn(
         settings=ProviderSettings(
             provider="openai",
             model="gpt-5.6-luna",
@@ -34,6 +32,6 @@ async def test_checkpoint_uses_one_structured_assessment_without_filesystem_tool
     )
 
     assert len(calls) == 1
-    assert "tools" not in calls[0]
-    assert calls[0]["response_format"]["json_schema"]["strict"] is True
+    assert calls[0].function_tools == []
+    assert calls[0].model_request_parameters.output_object.strict is True
     assert result.quality_gate.status.value == "needs_evidence"

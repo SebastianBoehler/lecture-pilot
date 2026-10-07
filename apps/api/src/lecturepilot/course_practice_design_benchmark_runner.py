@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from typing import Any, Protocol
 
 from lecturepilot.course_practice_design_benchmark_evaluator import (
-    LiteLLMPracticeDesignBenchmarkClient,
+    NativePracticeDesignBenchmarkClient,
     PracticeDesignBenchmarkModelClient,
     practice_design_benchmark_messages,
     validate_practice_design_benchmark_evaluation,
@@ -67,7 +67,7 @@ async def run_practice_design_benchmark(
     production_planner = planner or PracticeDesignPlanner(
         provider_registry=ProviderRegistry.from_env(proposal_model)
     )
-    client = evaluation_client or LiteLLMPracticeDesignBenchmarkClient()
+    client = evaluation_client or NativePracticeDesignBenchmarkClient()
     results = []
     for fixture in fixtures:
         results.append(

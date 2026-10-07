@@ -4,6 +4,7 @@ import hashlib
 import json
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.course_content_filter import is_learning_section
 from lecturepilot.learning_design_report_models import (
     DiagnosticCode,
     LearningDesignConceptReport,
@@ -94,7 +95,7 @@ def _concept_report(
     local_source = bool(section.source_ref and section.source_ref.strip())
     source_backed = assessment_ids if local_source else []
     diagnostics: list[LearningDesignDiagnostic] = []
-    if not assessment_ids:
+    if not assessment_ids and is_learning_section(section):
         diagnostics.append(
             _diagnostic(
                 "concept_without_assessment",

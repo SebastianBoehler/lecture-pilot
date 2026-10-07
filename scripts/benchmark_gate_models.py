@@ -15,7 +15,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from gate_benchmark_cases import SCENARIOS, _turn_for_scenario  # noqa: E402
 from lecturepilot.harness import LecturePilotHarness  # noqa: E402
-from lecturepilot.model_client import ModelExecutionError  # noqa: E402
+from lecturepilot.model_client import ModelExecutionError, NativeModelClient  # noqa: E402
 from lecturepilot.providers import (  # noqa: E402
     DEFAULT_MODEL,
     ProviderRegistry,
@@ -41,7 +41,9 @@ async def main() -> int:
 async def _benchmark_model(model: str) -> list[dict]:
     registry = ProviderRegistry.from_env(model)
     registry.require_ready([])
-    harness = LecturePilotHarness(provider_registry=registry)
+    harness = LecturePilotHarness(
+        provider_registry=registry, model_client=NativeModelClient()
+    )
     rows = []
     for scenario in SCENARIOS:
         row = {
@@ -62,8 +64,12 @@ async def _benchmark_model(model: str) -> list[dict]:
                     "ok": status == scenario.expected_status,
                     "model_returned": result.model,
                     "message": result.message[:240],
-                    "evidence_ids": result.quality_gate.evidence_ids if result.quality_gate else [],
-                    "missing_evidence_ids": result.quality_gate.missing_evidence_ids if result.quality_gate else [],
+                    "evidence_ids": result.quality_gate.evidence_ids
+                    if result.quality_gate
+                    else [],
+                    "missing_evidence_ids": result.quality_gate.missing_evidence_ids
+                    if result.quality_gate
+                    else [],
                 }
             )
         except ModelExecutionError as exc:

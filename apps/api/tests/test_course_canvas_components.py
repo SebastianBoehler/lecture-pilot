@@ -11,33 +11,6 @@ from lecturepilot.canvas_models import (
     CanvasSection,
 )
 from lecturepilot.component_response_schema import component_data_schema
-from lecturepilot.course_canvas_section_planner import plan_sections_individually
-from lecturepilot.models import ProviderSettings
-from practice_design_test_helpers import practice_design_for_canvas
-
-
-async def test_section_planner_creates_catalogued_interactive_chart() -> None:
-    source = _source_document()
-    planned = await plan_sections_individually(
-        model_client=_CatalogAwarePlanClient(),
-        settings=ProviderSettings(
-            provider="test",
-            model="test/model",
-            api_key_env="TEST_API_KEY",
-            capabilities=set(),
-        ),
-        source_document=source,
-        practice_design=practice_design_for_canvas(source),
-    )
-
-    component = next(block for block in planned.sections[0].blocks if block.type == "component")
-    assert component.type == "component"
-    assert component.component_id == component.id
-    assert component.component_ref == f"{component.id}.yaml"
-    assert component.component_type == "interactive_chart"
-    assert component.component_data is not None
-    assert component.component_data.labels == ["Prior", "Posterior"]
-    assert component.component_data.frames[1].values == [0.4, 0.6]
 
 
 def test_existing_component_ids_are_normalized_from_stable_block_ids() -> None:

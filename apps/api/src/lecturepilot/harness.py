@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from lecturepilot.agent_tool_executor import AgentToolExecutor
-from lecturepilot.model_client import LiteLLMModelClient, ModelClient
+from lecturepilot.model_client import NativeModelClient, ModelClient
 from lecturepilot.models import AgentTurnInput, AgentTurnResult, ProviderCapability
 from lecturepilot.observability import Observability
 from lecturepilot.providers import ProviderRegistry
@@ -18,7 +18,7 @@ class LecturePilotHarness:
         model_client: ModelClient | None = None,
     ) -> None:
         self.provider_registry = provider_registry or ProviderRegistry.from_env()
-        self.model_client = model_client or LiteLLMModelClient()
+        self.model_client = model_client or NativeModelClient()
 
     async def run_turn(
         self,

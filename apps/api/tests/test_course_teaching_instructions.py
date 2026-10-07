@@ -1,5 +1,3 @@
-from lecturepilot.course_canvas_prompt import planner_messages
-from lecturepilot.course_canvas_section_prompt import section_messages
 from lecturepilot.course_canvas_quality import _quality_messages
 from lecturepilot.course_practice_design_prompt import practice_design_messages
 from lecturepilot.course_practice_design_review_prompt import practice_design_review_messages
@@ -8,15 +6,14 @@ from practice_design_review_test_helpers import source_document
 from lecturepilot.practice_evidence_catalogue import evidence_catalogue
 
 
-def test_both_canvas_writers_receive_the_same_teaching_and_media_boundaries() -> None:
-    source = source_document()
-    design = practice_design_for_canvas(source)
-    prompts = [
-        planner_messages(source, design)[0]["content"],
-        section_messages(
-            source, source.sections[0], practice_design=design, applicable_targets=design.targets
-        )[0]["content"],
-    ]
+def test_canvas_author_receives_teaching_and_media_boundaries(tmp_path) -> None:
+    from lecturepilot.authoring_job import _instructions
+    from lecturepilot.authoring_workspace import AuthoringWorkspace
+    from test_authoring_job import authoring_job
+
+    job = authoring_job(tmp_path)
+    workspace = AuthoringWorkspace(job.root, job.source, job.design, job.authorize)
+    prompts = [_instructions(job, workspace)]
     for prompt in prompts:
         assert "assessment format from the capability" in prompt
         assert "concept-specific section title" in prompt
@@ -54,6 +51,9 @@ def test_planner_and_critic_distinguish_capability_from_administrative_recall() 
     assert "hidden exit or delayed-transfer values" in critic
     assert "after an attempt" in critic
     assert "deducible from supplied formulas" in critic
+    for prompt in (planner, critic):
+        assert "derive consequences from its formulas or definitions" in prompt
+        assert "Do not introduce unrelated topics" in prompt
 
 
 def test_canvas_critic_checks_media_claims_without_claiming_unseen_visual_verification() -> None:

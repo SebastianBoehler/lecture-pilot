@@ -3,7 +3,7 @@
 import asyncio
 from hashlib import sha256
 
-from lecturepilot.course_canvas_quality_prompt import quality_review_batches
+from lecturepilot.course_canvas_quality_prompt import compact_quality_evidence
 
 
 class AuthoringQualityMemo:
@@ -11,11 +11,11 @@ class AuthoringQualityMemo:
         self.results = {}
 
     async def review(self, reviewer, *, settings, source_document, candidate_document):
-        source_key = source_document.model_dump_json()
 
-        async def check(sections):
-            candidate = candidate_document.model_copy(update={"sections": sections})
-            key = sha256((source_key + candidate.model_dump_json()).encode()).hexdigest()
+        async def check(section):
+            candidate = candidate_document.model_copy(update={"sections": [section]})
+            evidence = compact_quality_evidence(source_document, candidate)
+            key = sha256((settings.model + evidence).encode()).hexdigest()
             if key not in self.results:
                 self.results[key] = await reviewer.review(
                     settings=settings,
@@ -24,13 +24,5 @@ class AuthoringQualityMemo:
                 )
             return self.results[key]
 
-        results = await asyncio.gather(
-            *(
-                check(sections)
-                for sections in quality_review_batches(
-                    source_document,
-                    candidate_document,
-                )
-            )
-        )
+        results = await asyncio.gather(*(check(section) for section in candidate_document.sections))
         return [issue for result in results for issue in result]

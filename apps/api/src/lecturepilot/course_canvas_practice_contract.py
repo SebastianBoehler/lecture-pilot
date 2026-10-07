@@ -33,6 +33,14 @@ def practice_prompt_instruction(
                 {"id": criterion.id, "description": criterion.description}
                 for criterion in target.evidence_criteria
             ],
+            "misconceptions": [
+                {
+                    "id": item.id,
+                    "description": item.description,
+                    "diagnostic_cue": item.diagnostic_cue,
+                }
+                for item in target.misconceptions
+            ],
             "source_refs": target.source_refs,
         }
         for target in scoped

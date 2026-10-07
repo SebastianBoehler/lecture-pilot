@@ -26,3 +26,9 @@ provider, tracing, storage or deletion behavior changes.
 
 Tests cover locale switching, chapter targets, important disclosure boundaries
 and opening the real onboarding player. Verify layout and navigation in a browser.
+
+Local update, 7 October 2026: checkpoint grading retains short verbatim answer
+quotations in the private lecture assessment audit. Progress reset removes them;
+account/course deletion removes their containing workspace. Both privacy locales
+now disclose these excerpts. This code update does not reverify university
+hosting, provider configuration or institutional retention policy.

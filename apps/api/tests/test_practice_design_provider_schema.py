@@ -1,7 +1,5 @@
 import json
-import sys
 from collections.abc import Callable
-from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -11,7 +9,7 @@ from pydantic import BaseModel, ValidationError
 import lecturepilot.course_practice_design_benchmark_evaluator as benchmark_client_module
 import lecturepilot.course_practice_design_review_client as review_client_module
 from lecturepilot.course_practice_design_benchmark_evaluator import (
-    LiteLLMPracticeDesignBenchmarkClient,
+    NativePracticeDesignBenchmarkClient,
     practice_design_benchmark_response_format,
 )
 from lecturepilot.course_practice_design_benchmark_models import (
@@ -116,7 +114,7 @@ def test_practice_design_strict_schema_preserves_nullable_semantic_fields() -> N
             "practice_design_review_response_format",
         ),
         (
-            LiteLLMPracticeDesignBenchmarkClient(),
+            NativePracticeDesignBenchmarkClient(),
             "complete_evaluation",
             benchmark_client_module,
             "practice_design_benchmark_response_format",
@@ -133,7 +131,6 @@ async def test_practice_design_clients_preserve_schema_configuration_errors(
     def unavailable_schema(*args) -> dict[str, Any]:
         raise ProviderConfigurationError("strict schema helper unavailable")
 
-    monkeypatch.setitem(sys.modules, "litellm", SimpleNamespace(acompletion=object()))
     monkeypatch.setattr(client_module, schema_function, unavailable_schema)
     complete = getattr(client, method_name)
 

@@ -3,70 +3,15 @@ from __future__ import annotations
 from pathlib import Path
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.course_canvas_prompt import planner_messages, repair_message, source_evidence
-from lecturepilot.course_canvas_section_prompt import section_evidence
-from lecturepilot.course_canvas_section_planner import (
-    _read_section_payload,
-    _section_messages,
-    plan_sections_individually,
-)
 from lecturepilot.course_canvas_validation import (
     source_topic_sections,
     validate_planned_document,
 )
 from lecturepilot.latex_canvas_importer import import_latex_canvas
-from lecturepilot.models import ProviderSettings
-from canvas_planner_test_helpers import RecordingFallbackPlanClient
-from practice_design_test_helpers import practice_design_for_canvas
-
-
-def test_planner_uses_source_driven_depth_without_content_quotas() -> None:
-    source = _source_document(10)
-    design = practice_design_for_canvas(source)
-    prompt = planner_messages(source, design)[0]["content"]
-    repair = repair_message("bad draft", source, design)["content"]
-    section_prompt = _section_messages(
-        source, source.sections[0], practice_design=design, applicable_targets=()
-    )[0]["content"]
-
-    assert "Let section count and depth follow the supplied evidence" in prompt
-    assert "fixed section, block, or character quota" in prompt
-    assert "fixed section, block, or character quota" in repair
-    assert "length or block-count quota" in section_prompt
 
 
 def test_validation_does_not_enforce_a_section_or_character_quota() -> None:
     validate_planned_document(_generated_document(1), _source_document(10))
-
-
-def test_section_parser_preserves_model_supported_depth_and_long_code() -> None:
-    source_section = _source_document(1).sections[0]
-    code = "```java\npublic class Example {\n" + "  int value;\n" * 300 + "}\n```"
-    blocks = [
-        {"type": "paragraph", "text": f"Source-supported block {index}."} for index in range(9)
-    ]
-    blocks.append({"type": "paragraph", "text": code})
-
-    section = _read_section_payload(
-        {"title": "Complete example", "blocks": blocks},
-        source_section,
-        {},
-    )
-
-    assert len(section.blocks) == 11
-    assert section.blocks[-2].text == code
-    assert section.blocks[-1].type == "checkpoint"
-
-
-def test_single_topic_lecture_uses_coherent_assessment_requirements() -> None:
-    source = _source_document(1)
-    design = practice_design_for_canvas(source)
-
-    validate_planned_document(_generated_document(1), source)
-    prompt = planner_messages(source, design)[0]["content"]
-    repair = repair_message("bad draft", source, design)["content"]
-    assert "at least one standalone assessment" in prompt
-    assert "at least one standalone assessment" in repair
 
 
 def test_asset_only_outline_section_does_not_inflate_fallback_topic_count() -> None:
@@ -87,56 +32,6 @@ def test_asset_only_outline_section_does_not_inflate_fallback_topic_count() -> N
     )
 
     assert len(source_topic_sections(source)) == 7
-
-
-async def test_section_fallback_skips_asset_only_outline_sections() -> None:
-    source = _source_document(7)
-    design = practice_design_for_canvas(source)
-    source.sections.append(
-        CanvasSection(
-            id="original-slides",
-            title="Original slides",
-            source_ref="Lecture.pdf",
-            blocks=[CanvasBlock(id="slide-1", type="asset", asset_path="slide-001.png")],
-        )
-    )
-    client = RecordingFallbackPlanClient()
-
-    planned = await plan_sections_individually(
-        model_client=client,
-        settings=ProviderSettings(
-            provider="test",
-            model="test/model",
-            api_key_env="TEST_API_KEY",
-            capabilities=set(),
-        ),
-        source_document=source,
-        practice_design=design,
-    )
-
-    assert len(planned.sections) == 5
-    assert "original-slides" not in client.source_ids
-    assert client.source_ids == [f"evidence-batch-{index}" for index in range(1, 6)]
-
-
-def test_planner_and_section_fallback_receive_materially_more_bounded_evidence() -> None:
-    source = _source_document(60, text_size=2_000)
-    full_evidence = source_evidence(source)
-    fallback_evidence = section_evidence(source, _dense_section(text_size=4_000, block_count=8))
-
-    assert 70_000 < len(full_evidence) <= 80_000
-    assert 20_000 < len(fallback_evidence) <= 24_000
-    assert (
-        "depth and structure follow the supplied evidence"
-        in (
-            _section_messages(
-                source,
-                source.sections[0],
-                practice_design=practice_design_for_canvas(source),
-                applicable_targets=(),
-            )[0]["content"]
-        )
-    )
 
 
 def test_latex_study_groups_keep_richer_paragraph_list_and_formula_evidence(

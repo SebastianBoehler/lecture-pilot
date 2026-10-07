@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path, PurePosixPath
 from lecturepilot.course_source_evidence import selection_detail_files, source_file_excerpt
 from lecturepilot.course_source_routing_client import (
-    LiteLLMSourceRoutingClient,
+    NativeSourceRoutingClient,
     SourceRoutingModelClient,
 )
 from lecturepilot.course_source_routing_models import CourseSourceRoute, SourceRouteRole
@@ -28,7 +28,7 @@ class CourseSourceRoutingPlanner:
         model_client: SourceRoutingModelClient | None = None,
     ) -> None:
         self.provider_registry = provider_registry or ProviderRegistry.from_env()
-        self.model_client = model_client or LiteLLMSourceRoutingClient()
+        self.model_client = model_client or NativeSourceRoutingClient()
 
     async def propose_routes(
         self,

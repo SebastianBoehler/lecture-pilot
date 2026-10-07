@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from contextlib import nullcontext
+from hashlib import sha256
 import errno
 import os
 from pathlib import Path, PurePosixPath
@@ -42,14 +44,24 @@ class WorkspaceFS:
                 root, PurePosixPath(relative.as_posix()), allow_missing=allow_missing
             )
             suffix = relative.as_posix()
-            return f"{root.logical_path}/{suffix}".rstrip("/")
+            logical = f"{root.logical_path}/{suffix}".rstrip("/")
+            self._select(logical, for_write=False)
+            return logical
         raise WorkspaceFSError("Host path is outside the workspace capability.")
 
     def read_text(self, logical_path: str, *, errors: str = "strict") -> str:
         _, root, relative = self._select(logical_path, for_write=False)
-        fd = self._open_file(root, relative, os.O_RDONLY)
-        with os.fdopen(fd, "r", encoding="utf-8", errors=errors) as handle:
-            return handle.read()
+        with root.read_guard() if root.read_guard is not None else nullcontext():
+            fd = self._open_file(root, relative, os.O_RDONLY)
+            with os.fdopen(fd, "rb") as handle:
+                content = handle.read()
+            if root.file_digests is not None:
+                expected = dict(root.file_digests).get(relative.as_posix())
+                if expected is None or sha256(content).hexdigest() != expected:
+                    raise WorkspaceFSError(
+                        "Workspace source no longer matches its publication digest."
+                    )
+            return content.decode("utf-8", errors=errors)
 
     def write_text(self, logical_path: str, content: str) -> None:
         _, root, relative = self._select(logical_path, for_write=True)
@@ -78,18 +90,35 @@ class WorkspaceFS:
         files: list[ToolPath] = []
         for directory, names, filenames in os.walk(resolved.path, followlinks=False):
             directory_path = Path(directory)
-            names[:] = [name for name in names if not name.startswith(".")]
+            names[:] = [
+                name
+                for name in names
+                if not name.startswith(".")
+                and self.is_visible(
+                    f"{resolved.logical}/{(directory_path / name).relative_to(resolved.path).as_posix()}"
+                )
+            ]
             for name in names:
                 self._assert_not_symlink(directory_path / name)
             for name in filenames:
                 if name.startswith("."):
                     continue
                 path = directory_path / name
+                logical = f"{resolved.logical}/{path.relative_to(resolved.path).as_posix()}"
+                if not self.is_visible(logical):
+                    continue
                 self._assert_regular_single_link(path)
                 logical = self.logical_for(path)
                 self.resolve(logical)
                 files.append(ToolPath(logical, path))
         return files
+
+    def is_visible(self, logical_path: str) -> bool:
+        try:
+            self._select(logical_path, for_write=False)
+        except WorkspaceFSError:
+            return False
+        return True
 
     def _select(
         self, logical_path: str, *, for_write: bool
@@ -109,6 +138,19 @@ class WorkspaceFS:
             if for_write and not root.writable:
                 raise WorkspaceFSError("This workspace root is read-only.")
             suffix = normalized.removeprefix(root.logical_path).lstrip("/")
+            if any(part in root.excluded_names for part in PurePosixPath(suffix).parts):
+                raise WorkspaceFSError("Path is outside the workspace capability.")
+            if (
+                root.allowed_files is not None
+                and suffix
+                and not any(
+                    path == suffix or path.startswith(f"{suffix}/") for path in root.allowed_files
+                )
+            ):
+                raise WorkspaceFSError("Path is outside the workspace capability.")
+            if root.read_guard is not None:
+                with root.read_guard():
+                    pass
             return normalized, root, PurePosixPath(suffix)
         raise WorkspaceFSError("Path is outside the workspace capability.")
 

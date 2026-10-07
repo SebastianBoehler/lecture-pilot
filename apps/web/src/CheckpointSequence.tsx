@@ -1,7 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 
 import { useCheckpointAnswer } from "./CheckpointDrafts";
-import { CheckpointGuidance } from "./CheckpointGuidance";
+import { CheckpointGuidance, useCheckpointExhausted } from "./CheckpointGuidance";
 import { useI18n } from "./i18n";
 import { MathText } from "./MathText";
 import type { CanvasBlock } from "./types";
@@ -26,6 +26,8 @@ export function CheckpointSequence({
   disabled: boolean;
 }) {
   const { t } = useI18n();
+  const supportExhausted = useCheckpointExhausted(block.id);
+  const effectiveDisabled = disabled || supportExhausted;
   const [pageDraft, setPageDraft] = useCheckpointAnswer(`${block.id}:${block.text}:sequence:page`);
   const [choiceDraft, setChoiceDraft] = useCheckpointAnswer(
     `${block.id}:${block.text}:sequence:choice`,
@@ -39,11 +41,18 @@ export function CheckpointSequence({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
-  const canAnswer = Boolean(onSubmitCheckpoint && sectionId && !disabled);
+  const canAnswer = Boolean(onSubmitCheckpoint && sectionId && !effectiveDisabled);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (choice === null || !reason.trim() || !sectionId || !onSubmitCheckpoint || disabled || busy)
+    if (
+      choice === null ||
+      !reason.trim() ||
+      !sectionId ||
+      !onSubmitCheckpoint ||
+      effectiveDisabled ||
+      busy
+    )
       return;
     setBusy(true);
     setError(null);

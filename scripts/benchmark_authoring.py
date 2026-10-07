@@ -1,4 +1,4 @@
-"""Paid authoring comparison on approved private course snapshots; no publication."""
+"""Paid native authoring benchmark on approved private course snapshots; no publication."""
 
 from __future__ import annotations
 
@@ -40,7 +40,6 @@ async def main(args):
     from lecturepilot.canvas_models import CanvasDocument
     from lecturepilot.canvas_workspace import CanvasWorkspace
     from lecturepilot.course_builder_source import course_builder_source_document
-    from lecturepilot.course_canvas_planner import CourseCanvasPlanner
     from lecturepilot.course_canvas_quality import CanvasQualityReviewer
     from lecturepilot.course_canvas_repairs import lecture_source_revision
     from lecturepilot.course_practice_design_models import PracticeDesign
@@ -72,8 +71,7 @@ async def main(args):
     environment = {
         "api_source_sha256": code_digest.hexdigest(),
         "packages": {
-            package: version(package)
-            for package in ("pydantic-ai-slim", "openai", "litellm")
+            package: version(package) for package in ("pydantic-ai-slim", "openai")
         },
     }
 
@@ -117,7 +115,7 @@ async def main(args):
             row = {
                 "started_at": datetime.now(UTC).isoformat(),
                 "environment": environment,
-                "engine": args.engine,
+                "engine": "agent",
                 "model": settings.model,
                 "course": args.course,
                 "lecture": lecture,
@@ -129,33 +127,22 @@ async def main(args):
             started = perf_counter()
             with operation_scope(job_id):
                 try:
-                    if args.engine == "baseline":
-                        document = await CourseCanvasPlanner(
-                            provider_registry=registry
-                        ).plan_canvas(
-                            source,
-                            practice_design=design,
-                            output_language=args.language,
-                        )
-                    else:
-                        job = AuthoringJob(
-                            root=case / job_id,
-                            source=source,
-                            design=design,
-                            source_revision=revision,
-                            settings=settings,
-                            reviewer=CanvasQualityReviewer(),
-                            output_language=args.language,
-                        )
-                        async with authoring_model(
-                            settings, None, job.authorize
-                        ) as model:
-                            result = await run_authoring_job(job, model=model)
-                        document = result.document
-                        row["agent_metrics"] = result.metrics.model_dump()
+                    job = AuthoringJob(
+                        root=case / job_id,
+                        source=source,
+                        design=design,
+                        source_revision=revision,
+                        settings=settings,
+                        reviewer=CanvasQualityReviewer(),
+                        output_language=args.language,
+                    )
+                    async with authoring_model(settings, None, job.authorize) as model:
+                        result = await run_authoring_job(job, model=model)
+                    document = result.document
+                    row["agent_metrics"] = result.metrics.model_dump()
                     row["success"] = True
                     atomic_write_json(
-                        case / f"{args.engine}-{job_id}-canvas.json",
+                        case / f"agent-{job_id}-canvas.json",
                         canvas_document_internal_payload(document),
                     )
                 except Exception as exc:
@@ -164,7 +151,7 @@ async def main(args):
                     )
                     if exc.__cause__:
                         atomic_write_json(
-                            case / f"{args.engine}-{job_id}-error.json",
+                            case / f"agent-{job_id}-error.json",
                             {"cause": str(exc.__cause__)},
                         )
                 row["elapsed_seconds"] = perf_counter() - started
@@ -186,13 +173,13 @@ async def main(args):
                 stage: sum(r.get("stage") == stage for r in requests)
                 for stage in sorted({r.get("stage", "unknown") for r in requests})
             }
-            atomic_write_json(case / f"{args.engine}-{job_id}-metrics.json", row)
-            atomic_write_json(case / f"{args.engine}-{job_id}-events.json", events)
+            atomic_write_json(case / f"agent-{job_id}-metrics.json", row)
+            atomic_write_json(case / f"agent-{job_id}-events.json", events)
             print(json.dumps(row), flush=True)
             return row
 
     results = await asyncio.gather(*(run_one(lecture) for lecture in args.lectures))
-    atomic_write_json(output / f"{args.engine}-{uuid4().hex}-results.json", results)
+    atomic_write_json(output / f"agent-{uuid4().hex}-results.json", results)
 
 
 if __name__ == "__main__":
@@ -202,7 +189,6 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--course", required=True)
     parser.add_argument("--lectures", nargs="+", required=True)
-    parser.add_argument("--engine", choices=["baseline", "agent"], required=True)
     parser.add_argument("--language", default="en")
     os.environ.setdefault("LECTUREPILOT_LATEX_COMPILER_URL", "http://127.0.0.1:8081")
     os.environ.setdefault(

@@ -5,6 +5,7 @@ import json
 from pydantic import ValidationError
 
 from lecturepilot.assessment_feedback import assessment_reason, compose_assessment_message
+from lecturepilot.checkpoint_evidence_audit import validate_evidence_quotes
 from lecturepilot.model_commands import (
     checkpoint_assessment_required,
     resolve_provider_canvas_commands,
@@ -63,6 +64,12 @@ def _quality_gate_decision(
     if assessment is None:
         return None
     gate = turn.active_gate
+    validate_evidence_quotes(
+        assessment.evidence_quotes,
+        evidence_ids=assessment.evidence_ids,
+        answer=turn.message,
+        required=checkpoint_assessment_required(turn),
+    )
     required = [
         criterion.id for criterion in (gate.evidence_criteria if gate else []) if criterion.required
     ]

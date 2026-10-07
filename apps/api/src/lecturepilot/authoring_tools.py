@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 
 from pydantic_ai import ModelRetry
@@ -110,14 +111,18 @@ class AuthoringTools:
             )
             if issues:
                 protected = {"practice-" + target.id for target in self.job.design.targets}
-                verified = []
-                for issue in issues:
+
+                async def resolve(issue):
                     if issue.block_id in protected:
-                        issue = await self.job.checkpoint_reviewer.resolve(
+                        return await self.job.checkpoint_reviewer.resolve(
                             job=self.job, document=document, issue=issue
                         )
-                    if issue is not None:
-                        verified.append(issue.model_dump(mode="json"))
+                    return issue
+
+                resolved = await asyncio.gather(*(resolve(issue) for issue in issues))
+                verified = [
+                    issue.model_dump(mode="json") for issue in resolved if issue is not None
+                ]
                 if verified:
                     return self._invalid(digest, verified)
             self.accepted_digest = digest

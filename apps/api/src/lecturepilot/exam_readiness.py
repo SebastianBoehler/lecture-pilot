@@ -8,6 +8,7 @@ from lecturepilot.assessment_prompts import readiness_prompt
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_content_filter import is_learning_section
 from lecturepilot.models import Lecture
+from lecturepilot.learning_map_models import LearningMap, LearningMapGate
 
 MAX_EXAM_QUESTIONS = 10
 PASSING_SCORE = 0.7
@@ -31,6 +32,7 @@ class ExamReadinessQuestion(BaseModel):
     options: list[str] = Field(default_factory=list)
     answer_index: int | None = Field(default=None, ge=0)
     rubric: list[str] = Field(default_factory=list)
+    source_excerpt: str = Field(default="", max_length=6000)
     source_ref: str | None = None
 
 
@@ -70,7 +72,7 @@ def public_exam_readiness_check(check: ExamReadinessCheck) -> ExamReadinessPubli
         coverage=check.coverage,
         questions=[
             ExamReadinessPublicQuestion.model_validate(
-                question.model_dump(exclude={"answer_index", "rubric"})
+                question.model_dump(exclude={"answer_index", "rubric", "source_excerpt"})
             )
             for question in check.questions
         ],
@@ -82,10 +84,18 @@ def build_exam_readiness_check(
     course_id: str,
     documents: list[CanvasDocument],
     lectures: list[Lecture],
+    learning_maps: list[LearningMap],
 ) -> ExamReadinessCheck:
     lecture_titles = {lecture.id: lecture.title for lecture in lectures}
+    maps = {item.lecture_id: item for item in learning_maps if item.course_id == course_id}
+    if any(document.lecture_id not in maps for document in documents):
+        raise ValueError("Readiness requires a published learning map for every lecture.")
     by_lecture = [
-        _questions_for_document(document, lecture_titles.get(document.lecture_id, document.title))
+        _questions_for_document(
+            document,
+            lecture_titles.get(document.lecture_id, document.title),
+            maps[document.lecture_id],
+        )
         for document in documents
     ]
     question_limit = max(MAX_EXAM_QUESTIONS, sum(bool(group) for group in by_lecture))
@@ -109,8 +119,9 @@ def build_exam_readiness_check(
 
 
 def _questions_for_document(
-    document: CanvasDocument, lecture_title: str
+    document: CanvasDocument, lecture_title: str, learning_map: LearningMap
 ) -> list[ExamReadinessQuestion]:
+    gates = {gate.id: gate for gate in learning_map.gates}
     multiple_choice = []
     open_ended = []
     for section in document.sections:
@@ -120,7 +131,9 @@ def _questions_for_document(
             if question := _quiz_question(document, lecture_title, section, block):
                 multiple_choice.append(question)
         for block in section.blocks:
-            if question := _open_question(document, lecture_title, section, block):
+            if question := _open_question(
+                document, lecture_title, section, block, gates.get(block.id)
+            ):
                 open_ended.append(question)
     return [*multiple_choice[:2], *open_ended[:2]]
 
@@ -158,13 +171,16 @@ def _open_question(
     lecture_title: str,
     section: CanvasSection,
     block: CanvasBlock,
+    gate: LearningMapGate | None,
 ) -> ExamReadinessQuestion | None:
     if block.type != "checkpoint":
         return None
     prompt = readiness_prompt(block.text, "checkpoint")
     if not prompt:
         return None
-    rubric = _section_rubric(section)
+    if gate is None or gate.section_id != section.id or gate.prompt != block.text:
+        return None
+    rubric = [item.description for item in gate.evidence_criteria if item.required]
     if not rubric:
         return None
     return ExamReadinessQuestion(
@@ -176,22 +192,13 @@ def _open_question(
         section_title=section.title,
         prompt=prompt,
         rubric=rubric,
+        source_excerpt="\n".join(
+            item.text or "\n".join(item.items)
+            for item in section.blocks
+            if item.type in {"paragraph", "callout", "list", "math", "table"}
+        )[:6000],
         source_ref=section.source_ref or document.source_ref,
     )
-
-
-def _section_rubric(section: CanvasSection) -> list[str]:
-    rubric = []
-    for block in section.blocks:
-        if block.type in {"paragraph", "callout", "checkpoint"} and block.text:
-            rubric.append(_trim(block.text, 220))
-        if block.type == "math" and block.text:
-            rubric.append(_trim(block.text, 160))
-        if block.type == "list":
-            rubric.extend(_trim(item, 140) for item in block.items[:3])
-        if len(rubric) >= 3:
-            return rubric[:3]
-    return rubric[:3]
 
 
 def _round_robin(

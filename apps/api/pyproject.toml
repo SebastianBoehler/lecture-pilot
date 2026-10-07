@@ -14,6 +14,7 @@ dependencies = [
   "PyYAML==6.0.2",
   "python-dotenv==1.2.2",
   "python-multipart==0.0.32",
+  "regex==2026.6.28",
   "SQLAlchemy==2.0.51",
   "uvicorn[standard]==0.38.0",
 ]
@@ -23,7 +24,6 @@ lecturepilot-bootstrap-admin = "lecturepilot.bootstrap_admin:main"
 
 [project.optional-dependencies]
 agent = [
-  "litellm==1.91.1",
   "openai==2.54.0",
   "pydantic-ai-slim[openai,google]==1.107.5",
 ]

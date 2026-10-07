@@ -81,6 +81,7 @@ def _reset_course_root(course_root: Path, request: LearnerWorkspaceResetInput) -
             deleted_paths += _delete_path(lecture_root / "gates.json")
             deleted_paths += _delete_path(lecture_root / "quizzes.json")
             deleted_paths += _delete_path(lecture_root / "tutor-state.json")
+            deleted_paths += _delete_path(lecture_root / "assessment-audit.jsonl")
     return deleted_paths
 
 

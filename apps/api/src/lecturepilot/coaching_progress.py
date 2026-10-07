@@ -53,8 +53,10 @@ class CoachingProgressStore:
         gate_revision: str,
         learning_objective: str,
         now: datetime | None = None,
+        progress: CoachingProgress | None = None,
     ) -> AgentCoachingContext:
-        progress = self.read(user_id=user_id, course_id=course_id, lecture_id=lecture_id)
+        if progress is None:
+            progress = self.read(user_id=user_id, course_id=course_id, lecture_id=lecture_id)
         gate_turns = [
             turn
             for turn in progress.turns
@@ -101,7 +103,7 @@ class CoachingProgressStore:
             pending_check_assistance_content=(pending.assistance_content if pending else None),
             exposed_hint_levels=[item.assistance_level for item in exposures],
             delayed_review_attempted=bool(transfer and transfer.attempted_at is not None),
-            evidence_ids=sorted({item for turn in gate_turns for item in turn.evidence_ids}),
+            evidence_ids=(latest_turn.evidence_ids if latest_turn else []),
             missing_evidence_ids=(latest_turn.missing_evidence_ids if latest_turn else []),
         )
 

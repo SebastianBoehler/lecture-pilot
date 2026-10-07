@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+from datetime import UTC, datetime
 from typing import Any
 
 from lecturepilot.agent_highlight import highlight_command_for
@@ -30,7 +32,7 @@ class AgentSideEffectTools:
         }
 
     def _remember(self, args: dict[str, Any]) -> dict[str, Any]:
-        if self.user_message is not None and not _explicit_memory_request(self.user_message):
+        if not _explicit_memory_request(self.user_message or ""):
             raise AgentSideEffectError(
                 "Durable memory requires an explicit request from the learner."
             )
@@ -53,18 +55,27 @@ class AgentSideEffectTools:
             raise AgentSideEffectError(
                 "Image generation requires an explicit raster image request from the learner."
             )
+        usage_date = datetime.now(UTC).date()
         if self.usage_quota and self.tenant_id:
             self.usage_quota.consume_image(
                 tenant_id=self.tenant_id,
                 user_id=self.quota_user_id,
                 course_id=self.course_id,
+                usage_date=usage_date,
             )
         placement = self._image_placement()
         placement.focused_section_id = self.focus_section_id or self.initial_focus_section_id
-        return placement.generate(
-            args,
-            image_generator=self.image_generator,
-        )
+        try:
+            return placement.generate(args, image_generator=self.image_generator)
+        except Exception:
+            if self.usage_quota and self.tenant_id:
+                self.usage_quota.refund_image(
+                    tenant_id=self.tenant_id,
+                    user_id=self.quota_user_id,
+                    course_id=self.course_id,
+                    usage_date=usage_date,
+                )
+            raise
 
     def pending_canvas_edit_instruction(self) -> str | None:
         return self.image_placement.pending_instruction() if self.image_placement else None
@@ -99,8 +110,19 @@ class AgentSideEffectTools:
 
 
 def _explicit_memory_request(message: str) -> bool:
-    normalized = message.casefold()
-    return any(
-        phrase in normalized
-        for phrase in ("remember", "save this preference", "always explain", "merke dir")
+    normalized = message.casefold().replace("’", "'")
+    if re.search(
+        r"\b(?:do not|don't|cannot|can't|never)\b.{0,40}\b(?:remember|save|explain)\b"
+        r"|\b(?:merk(?:e)? dir|speicher\w*)\b.{0,40}\b(?:nicht|nie)\b"
+        r"|\b(?:nicht|nie)\b.{0,40}\b(?:merk(?:e)?|speicher\w*)\b",
+        normalized,
+    ):
+        return False
+    return bool(
+        re.search(
+            r"(?:^|[.!?;]\s*|\bplease\s+)(?:remember\b|save this preference\b|always explain\b)"
+            r"|\b(?:can|could|will|would) you (?:please )?remember\b"
+            r"|\bmerk(?:e)? dir\b",
+            normalized,
+        )
     )

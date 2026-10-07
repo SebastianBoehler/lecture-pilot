@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from lecturepilot.models import CanvasCommand
+from lecturepilot.checkpoint_evidence_models import CriterionQuote
 from lecturepilot.provider_canvas_models import (
     ProviderCanvasSection,
     ProviderCanvasSectionPlacement,
@@ -47,12 +48,13 @@ class ProviderQualityGateDecision(BaseModel):
     gate_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     reason: str = Field(min_length=1, max_length=500)
     evidence_ids: list[str] = Field(max_length=40)
+    evidence_quotes: list[CriterionQuote] = Field(default_factory=list, max_length=40)
 
 
 class ProviderAgentTurnResult(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    message: str = Field(min_length=1)
+    message: str = Field(min_length=1, max_length=4000)
     session_goal: str | None = Field(max_length=500)
     canvas_commands: list[ProviderCanvasCommand]
     assessment: ProviderQualityGateDecision | None

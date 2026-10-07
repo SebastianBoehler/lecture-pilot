@@ -23,7 +23,7 @@ from lecturepilot.exam_revision_plan import (
     validate_exam_readiness_answers,
 )
 from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.model_usage import model_usage_scope
+from lecturepilot.readiness_evaluation_request import evaluate_readiness_answers
 from lecturepilot.models import Course, Lecture
 from lecturepilot.lecture_access_policy import can_consume_lecture
 from lecturepilot.readiness_progress import ReadinessProgressStore
@@ -99,17 +99,15 @@ def register_exam_readiness_routes(
                 prompt=question.prompt,
                 answer=answers_by_question[question.id].text or "",
                 rubric=question.rubric,
+                source_excerpt=question.source_excerpt,
             )
             for question in check.questions
             if question.kind == "open_ended"
         ]
         try:
-            with model_usage_scope(
-                actor_user_id=access.user_id,
-                course_id=course_id,
-                workload="readiness_evaluation",
-            ):
-                evaluations = await app.state.open_answer_evaluator.evaluate(items=items)
+            evaluations = await evaluate_readiness_answers(
+                app, user_id=access.user_id, course_id=course_id, items=items
+            )
         except (ModelExecutionError, ProviderConfigurationError, ValidationError) as exc:
             raise HTTPException(
                 status_code=503,
@@ -147,18 +145,15 @@ def _readiness_check(
         if can_consume_lecture(course, lecture, **actor.__dict__)
     ]
     documents = []
+    learning_maps = []
     for lecture in course_lectures:
-        if not app.state.canvas_workspace.has_published_course_canvas(
-            course_id=course_id,
-            lecture_id=lecture.id,
-        ):
-            continue
         snapshot = app.state.canvas_workspace.course_canvas_store.read_current_published_snapshot(
             course_id=course_id,
             lecture_id=lecture.id,
         )
         if snapshot is not None:
             documents.append(snapshot.document)
+            learning_maps.append(snapshot.learning_map)
     if not documents:
         raise HTTPException(
             status_code=404,
@@ -168,6 +163,7 @@ def _readiness_check(
         course_id=course_id,
         documents=documents,
         lectures=course_lectures,
+        learning_maps=learning_maps,
     )
     if not check.questions:
         raise HTTPException(

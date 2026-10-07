@@ -88,7 +88,7 @@ class PredictionStore:
             return saved
 
 
-def prediction_context(workspace, turn):
+def prediction_context(workspace, turn, *, snapshot=None):
     """Only current predictions reach the tutor, never an independent assessment."""
     from lecturepilot.agent_annotation import require_annotation_access
 
@@ -96,11 +96,12 @@ def prediction_context(workspace, turn):
         require_annotation_access(workspace.layout, turn.user_id, turn.course_id, turn.lecture_id)
     except ValueError:
         return []
-    snapshot = workspace.read_published_canvas_view(
-        user_id=turn.user_id,
-        course_id=turn.course_id,
-        lecture_id=turn.lecture_id,
-    )
+    if snapshot is None:
+        snapshot = workspace.read_published_canvas_view(
+            user_id=turn.user_id,
+            course_id=turn.course_id,
+            lecture_id=turn.lecture_id,
+        )
     if snapshot is None:
         return []
     return PredictionStore(workspace.layout, turn.user_id, turn.course_id, turn.lecture_id).list(

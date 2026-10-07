@@ -1,15 +1,12 @@
 import json
 
 import pytest
-from pydantic_ai.messages import ModelResponse, TextPart
-from pydantic_ai.models.function import FunctionModel
 
 from lecturepilot.course_learning_intent import LearningGoal, LearningIntent, goal_for, digest
-from lecturepilot.course_practice_design_planner import PracticeDesignPlanner
 from lecturepilot.practice_evidence_catalogue import compact_evidence_anchors, evidence_catalogue
 from practice_design_test_helpers import proposal, target
 from reviewed_task_bank_helpers import with_bank
-from test_practice_design_semantic_review import _Registry, _source, _review_payload
+from test_practice_design_semantic_review import _source
 
 
 @pytest.mark.parametrize("wrong_id", [False, True])
@@ -45,35 +42,26 @@ async def test_approved_goal_fields_are_backend_owned(wrong_id):
         for field in LearningGoal.model_fields:
             if field != "id":
                 item.pop(field)
-    calls = 0
+    from lecturepilot.protected_teaching_output import bind_approved_intent, teaching_output_schema
+    from lecturepilot.course_practice_design_prompt import practice_design_response_format
+    from lecturepilot.practice_evidence_catalogue import expand_evidence_ids
+    from lecturepilot.course_practice_design_models import PracticeDesignProposal
 
-    def respond(messages, info):
-        nonlocal calls
-        calls += 1
-        schema = info.model_request_parameters.output_object.json_schema
-        assert "objective" not in schema["properties"]
-        properties = schema["properties"]["targets"]["items"]["properties"]
-        assert "outcome" not in properties
-        assert properties["id"]["enum"] == [intent.goals[0].id]
-        wire["targets"][0]["id"] = (
-            "invented-goal" if wrong_id and calls == 1 else intent.goals[0].id
-        )
-        if calls > 1:
-            assert "approved goal IDs in their original order" in str(messages)
-        return ModelResponse(parts=[TextPart(json.dumps(wire))])
-
-    class Critic:
-        async def complete_review(self, **kwargs):
-            return _review_payload()
-
-    planner = PracticeDesignPlanner(
-        provider_registry=_Registry(), model=FunctionModel(respond), review_client=Critic()
+    catalogue = evidence_catalogue(source, ("lecture-01.md",))
+    schema = teaching_output_schema(
+        practice_design_response_format(catalogue)["json_schema"]["schema"], intent
     )
-    result = await planner.propose(
-        source=source,
-        source_revision="a" * 64,
-        allowed_source_paths=("lecture-01.md",),
-        protected_intent=intent,
+    assert "objective" not in schema["properties"]
+    properties = schema["$defs"]["PracticeTarget"]["properties"]
+    assert "outcome" not in properties
+    assert properties["id"]["enum"] == [intent.goals[0].id]
+    if wrong_id:
+        wire["targets"][0]["id"] = "invented-goal"
+        with pytest.raises(ValueError, match="approved goal IDs"):
+            bind_approved_intent(wire, intent)
+        wire["targets"][0]["id"] = intent.goals[0].id
+    hydrated = expand_evidence_ids(wire, catalogue, derive_source_refs=True)
+    result = PracticeDesignProposal.model_validate_json(
+        json.dumps(bind_approved_intent(hydrated, intent))
     )
-    intent.require_matches(result.proposal)
-    assert calls == (2 if wrong_id else 1)
+    intent.require_matches(result)

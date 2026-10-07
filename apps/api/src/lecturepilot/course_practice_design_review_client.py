@@ -14,7 +14,9 @@ from lecturepilot.course_practice_design_review_prompt import (
 )
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_usage import ModelUsageRecorder
+from lecturepilot.native_model_settings import native_model_settings
 from lecturepilot.models import ProviderSettings
+from lecturepilot.providers import workload_settings
 from lecturepilot.course_practice_design_review_models import PracticeDesignReviewResult
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.course_practice_design_models import PracticeDesignProposal
@@ -54,6 +56,7 @@ class NativePracticeDesignReviewClient:
         allowed_source_paths: Sequence[str],
         catalogue: EvidenceCatalogue,
     ) -> dict:
+        settings = workload_settings(settings, "critic")
         schema = practice_design_review_response_format(catalogue)["json_schema"]["schema"]
         schema["$defs"]["PracticeDesignReviewCheck"]["properties"]["target_ids"]["items"] = {
             "type": "string",
@@ -65,14 +68,9 @@ class NativePracticeDesignReviewClient:
                 output_type=NativeOutput(StructuredDict(schema), strict=True),
                 retries=2,
                 instructions=messages[0]["content"],
-                model_settings={
-                    "timeout": 120,
-                    **(
-                        {"openai_reasoning_effort": "medium", "openai_store": False}
-                        if settings.provider == "openai"
-                        else {"temperature": 0.0}
-                    ),
-                },
+                model_settings=native_model_settings(
+                    settings, temperature=0.0, reasoning_effort="high"
+                ),
             )
 
             @agent.output_validator

@@ -24,6 +24,9 @@ async def test_approved_scope_conflict_stops_before_teaching_edits(
         calls += 1
         assert info.model_request_parameters.output_mode == "native"
         if calls == 1:
+            instructions = info.instructions
+            assert "derive consequences from its formulas or definitions" in instructions
+            assert "Do not introduce unrelated topics" in instructions
             assert set(json.loads(messages[-1].parts[0].content)["proposal"]) == {
                 "objective",
                 "goals",

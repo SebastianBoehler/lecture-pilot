@@ -5,6 +5,7 @@ from lecturepilot.canvas_component_catalog import component_spec_issue
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_math import validate_document_math
+from lecturepilot.course_content_filter import is_learning_section
 
 
 def validate_planned_document(document: CanvasDocument, source_document: CanvasDocument) -> None:
@@ -34,10 +35,6 @@ def validate_planned_document(document: CanvasDocument, source_document: CanvasD
 
 def source_topic_sections(source_document: CanvasDocument) -> list[CanvasSection]:
     return [section for section in source_document.sections if _is_source_topic(section)]
-
-
-def required_section_ids(source_document: CanvasDocument) -> list[str]:
-    return []
 
 
 def section_ids(document: CanvasDocument) -> set[str]:
@@ -99,7 +96,7 @@ def validate_section_assessments(
                 section_id=section.id,
                 block_id=block.id,
             )
-    if not checkpoint_found:
+    if not checkpoint_found and is_learning_section(section):
         raise CanvasGenerationRepairableError(
             f"Section {section.id} needs at least one source-grounded open-response checkpoint.",
             candidate=candidate,

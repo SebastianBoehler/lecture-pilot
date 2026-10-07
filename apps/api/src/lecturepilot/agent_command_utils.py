@@ -34,7 +34,18 @@ def merge_tool_outputs(
     result: AgentTurnResult,
     tool_executor: AgentToolExecutor,
 ) -> AgentTurnResult:
-    commands = dedupe_commands([*result.canvas_commands, *tool_executor.canvas_update_commands()])
+    tool_commands = tool_executor.canvas_update_commands()
+    navigation = {
+        command.type
+        for command in tool_commands
+        if command.type in {"focus_section", "highlight_span"}
+    }
+    commands = dedupe_commands(
+        [
+            *(command for command in result.canvas_commands if command.type not in navigation),
+            *tool_commands,
+        ]
+    )
     return result.model_copy(update={"canvas_commands": commands})
 
 

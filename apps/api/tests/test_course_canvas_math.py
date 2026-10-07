@@ -5,36 +5,11 @@ import pytest
 from lecturepilot.canvas_markdown_blocks import block_to_markdown
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_math import (
-    generated_math_instructions,
     normalize_generated_math,
     validate_section_math,
 )
-from lecturepilot.course_canvas_prompt import planner_messages, repair_message
-from lecturepilot.course_canvas_plan_parser import planned_document as _planned_document
-from lecturepilot.course_canvas_section_planner import _section_messages
 from lecturepilot.course_canvas_validation import validate_planned_document
 from lecturepilot.providers import ProviderConfigurationError
-from practice_design_test_helpers import practice_design_for_canvas
-
-
-def test_generation_prompts_require_raw_portable_display_math() -> None:
-    source = _source_document()
-    design = practice_design_for_canvas(source)
-
-    prompts = [
-        planner_messages(source, design)[0]["content"],
-        repair_message("bad math", source, design)["content"],
-        _section_messages(
-            source, source.sections[0], practice_design=design, applicable_targets=()
-        )[0]["content"],
-        generated_math_instructions(),
-    ]
-
-    for prompt in prompts:
-        assert "portable KaTeX" in prompt
-        assert "raw LaTeX" in prompt
-        assert "explanatory prose" in prompt
-        assert "aligned" in prompt
 
 
 def test_clean_aligned_display_equation_is_accepted_unchanged() -> None:
@@ -146,53 +121,6 @@ def test_generated_math_normalization_marks_plain_formula_labels_as_text() -> No
 
     assert normalized == r"\text{Word probability estimate }\hat p(w_i)=\frac{c(w_i)}{N}"
     validate_section_math(_section_with_math(normalized))
-
-
-def test_planner_reclassifies_plain_prose_mislabeled_as_math() -> None:
-    document = _planned_document(
-        {
-            "sections": [
-                {
-                    "id": "word-estimates",
-                    "title": "Estimating word probabilities",
-                    "blocks": [
-                        {
-                            "id": "word-estimates-label",
-                            "type": "math",
-                            "text": "Estimating word probabilities",
-                        }
-                    ],
-                }
-            ]
-        },
-        _source_document(),
-    )
-
-    assert document.sections[0].blocks[0].type == "paragraph"
-    assert document.sections[0].blocks[0].text == "Estimating word probabilities"
-
-
-def test_planner_reclassifies_a_math_task_with_explanatory_prose() -> None:
-    task = (
-        r"\text{Calculate }P(C \mid X) from P(C)=0.10 and P(X)=0.05, "
-        "then explain whether the result exceeds the prior."
-    )
-
-    document = _planned_document(
-        {
-            "sections": [
-                {
-                    "id": "bayes-task",
-                    "title": "Bayes task",
-                    "blocks": [{"type": "math", "text": task}],
-                }
-            ]
-        },
-        _source_document(),
-    )
-
-    assert document.sections[0].blocks[0].type == "paragraph"
-    assert document.sections[0].blocks[0].text == task
 
 
 @pytest.mark.parametrize(

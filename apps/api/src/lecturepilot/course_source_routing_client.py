@@ -6,13 +6,9 @@ from lecturepilot.agent_response_schema import (
     source_routing_response_format,
     source_routing_review_response_format,
 )
-from lecturepilot.course_canvas_json import parse_model_json
-from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.model_provider_errors import model_provider_error_message
-from lecturepilot.model_request_options import completion_options
-from lecturepilot.model_usage import ModelUsageRecorder, complete_with_usage
+from lecturepilot.native_completion import native_completion
+from lecturepilot.model_usage import ModelUsageRecorder
 from lecturepilot.models import ProviderSettings
-from lecturepilot.providers import ProviderConfigurationError
 
 
 class SourceRoutingModelClient(Protocol):
@@ -27,9 +23,9 @@ class SourceRoutingModelClient(Protocol):
         """Return corrections after reviewing the complete proposed manifest."""
 
 
-class LiteLLMSourceRoutingClient:
-    def __init__(self, usage_recorder: ModelUsageRecorder | None = None) -> None:
-        self.usage_recorder = usage_recorder
+class NativeSourceRoutingClient:
+    def __init__(self, usage_recorder: ModelUsageRecorder | None = None, *, model=None) -> None:
+        self.usage_recorder, self.model = usage_recorder, model
 
     async def complete_routing(
         self, *, settings: ProviderSettings, messages: list[dict[str, str]]
@@ -38,6 +34,7 @@ class LiteLLMSourceRoutingClient:
             settings=settings,
             messages=messages,
             response_format=source_routing_response_format(),
+            tier="utility",
         )
 
     async def review_routing(
@@ -47,6 +44,7 @@ class LiteLLMSourceRoutingClient:
             settings=settings,
             messages=messages,
             response_format=source_routing_review_response_format(),
+            tier="critic",
         )
 
     async def _complete(
@@ -55,25 +53,16 @@ class LiteLLMSourceRoutingClient:
         settings: ProviderSettings,
         messages: list[dict[str, str]],
         response_format: dict,
+        tier: str,
     ) -> dict:
-        try:
-            from litellm import acompletion
-        except ImportError as exc:
-            raise ProviderConfigurationError(
-                'litellm is not installed. Install the backend with the "agent" extra.'
-            ) from exc
-        try:
-            response = await complete_with_usage(
-                self.usage_recorder,
-                acompletion,
-                usage_stage="course_source_routing",
-                model=settings.model,
-                messages=messages,
-                response_format=response_format,
-                **completion_options(settings, temperature=0.4, max_tokens=8000),
-            )
-        except Exception as exc:
-            raise ModelExecutionError(
-                model_provider_error_message(exc, provider=settings.provider)
-            ) from exc
-        return parse_model_json(response.choices[0].message.content)
+        return await native_completion(
+            settings=settings,
+            messages=messages,
+            response_format=response_format,
+            stage="course_source_routing",
+            tier=tier,
+            recorder=self.usage_recorder,
+            model=self.model,
+            temperature=0.4,
+            max_tokens=8000,
+        )

@@ -89,7 +89,7 @@ def bind_delayed_review(
             gate_id=gate_id,
             gate_revision=gate_revision,
             prompt=review.transfer_prompt,
-            task_id="delayed-transfer",
+            task_id=review.task_id,
             assistance_level="none",
             assistance_content=None,
             kind="delayed_transfer",

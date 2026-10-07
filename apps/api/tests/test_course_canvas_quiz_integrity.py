@@ -2,33 +2,7 @@ import pytest
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
-from lecturepilot.course_canvas_plan_parser import planned_document
 from lecturepilot.course_canvas_validation import validate_planned_document
-
-
-def test_planner_rejects_quiz_without_an_explicit_answer_index() -> None:
-    source = _document(_quiz(answer_index=1))
-    payload = {
-        "title": "Generated lecture",
-        "sections": [
-            {
-                "id": "generated-topic",
-                "title": "Generated topic",
-                "source_ref": "lecture.pdf page 1",
-                "blocks": [
-                    {
-                        "id": "quiz",
-                        "type": "quiz",
-                        "text": "Which statement follows from the lecture?",
-                        "items": ["Unsupported statement", "Source-backed statement"],
-                    }
-                ],
-            }
-        ],
-    }
-
-    with pytest.raises(CanvasGenerationRepairableError, match="explicit answer_index"):
-        planned_document(payload, source)
 
 
 def test_canvas_validation_rejects_quiz_without_two_options() -> None:

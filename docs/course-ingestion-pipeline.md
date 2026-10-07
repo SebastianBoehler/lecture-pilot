@@ -101,9 +101,9 @@ drag lectures into the intended order before saving.
 
 Folder and filename structure is evidence, not authority. A source-routing
 agent assigns every indexed file exactly once as lecture-specific, course-wide,
-or excluded. Large uploads are evaluated in bounded groups, followed by a
-global semantic review of the complete proposed manifest and the content of
-selected non-primary sources. This second pass catches cross-group duplicates,
+or excluded. The agent receives the indexed inventory with bounded content evidence, followed by a
+semantic review of the complete proposed manifest and the content of selected
+non-primary sources. This second pass catches duplicate or irrelevant sources,
 derived conversions, submissions, answer keys, grading material, and temporary
 artifacts while retaining authoritative teaching material. The professor sees
 and may edit all assignments; Canvas generation remains blocked until that

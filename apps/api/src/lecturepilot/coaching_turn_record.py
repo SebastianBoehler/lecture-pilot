@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 
 from lecturepilot.coaching_goal_evidence import accumulate_goal_evidence
+from lecturepilot.checkpoint_evidence_audit import append_assessment_audit
 from lecturepilot.coaching_task_bank import canonical_task_id, exposed_ids, record_task_exposure
 from lecturepilot.coaching_assistance import NextCheck
 from lecturepilot.coaching_episode import (
@@ -20,6 +21,7 @@ from lecturepilot.coaching_state_models import (
     HintExposure,
     attempt_key,
     hint_exposure_key,
+    review_key,
 )
 from lecturepilot.coaching_transitions import derive_next_transition
 from lecturepilot.durable_files import exclusive_file_lock
@@ -43,6 +45,7 @@ def record_coaching_turn(
     assistant_message: str,
     session_goal: str | None = None,
     now: datetime | None = None,
+    publication_version: int | None = None,
 ) -> CoachingTurnEvent:
     current_time = now or datetime.now(UTC)
     path = self._path(user_id=user_id, course_id=course_id, lecture_id=lecture_id)
@@ -51,6 +54,10 @@ def record_coaching_turn(
         pending = bound_pending(progress.pending_check, context, decision, decision.gate_revision)
         if pending is None:
             raise ValueError("Assessment is not bound to the persisted pending check.")
+        if pending.support_exhausted:
+            raise ValueError(
+                "Approved support is exhausted; another assessment requires reviewed support."
+            )
         kind = attempt_kind(pending, True)
         if kind == "none":
             raise ValueError("Assessment requires an attempt kind.")
@@ -121,7 +128,13 @@ def record_coaching_turn(
                 gate_id=decision.gate_id,
                 gate_revision=decision.gate_revision,
                 now=current_time,
+                gate=gate,
+                exposed_task_ids=exposed_ids(progress, gate.id, gate.revision),
             )
+        if decision.status.value == "needs_evidence" and kind == "delayed_transfer":
+            review = progress.delayed_reviews.get(review_key(gate.id, gate.revision))
+            if review is not None:
+                review.failed_since_review = True
         if transition is not None and transition.check.assistance.level != "none":
             assistance = transition.check.assistance
             key = hint_exposure_key(gate.revision, assistance.level)
@@ -145,5 +158,12 @@ def record_coaching_turn(
             course_id=course_id,
             lecture_id=lecture_id,
             progress=progress,
+        )
+        append_assessment_audit(
+            path.parent / "assessment-audit.jsonl",
+            pending=pending,
+            event=event,
+            quotes=decision.evidence_quotes,
+            publication_version=publication_version,
         )
         return event

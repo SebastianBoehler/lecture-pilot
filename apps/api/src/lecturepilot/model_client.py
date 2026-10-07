@@ -6,22 +6,17 @@ from typing import Protocol
 
 from lecturepilot.canvas_component_catalog import component_catalog_instruction
 from lecturepilot.agent_tool_executor import AgentToolExecutor
-from lecturepilot.assessment_history_prompt import assessment_history_prompt
-from lecturepilot.agent_tool_loop import complete_tool_turn
+from lecturepilot.assessment_history_prompt import HISTORY_INSTRUCTION, assessment_history_prompt
 from lecturepilot.agent_tool_schemas import AgentToolProfile, tutor_tool_profile_for_message
-from lecturepilot.agent_response_schema import lecturepilot_response_format
 from lecturepilot.model_commands import canvas_context, checkpoint_assessment_required
-from lecturepilot.model_payload import agent_result_from_content
-from lecturepilot.model_provider_errors import model_provider_error_message
-from lecturepilot.model_request_options import completion_options
 from lecturepilot.model_usage import ModelUsageRecorder
+from lecturepilot.checkpoint_assessment_prompt import assessment_messages
 from lecturepilot.models import (
     AgentTurnInput,
     AgentTurnResult,
     ProviderSettings,
 )
 from lecturepilot.observability import Observability
-from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.tutor_gate_context import gate_rubric_context
 
 
@@ -43,9 +38,9 @@ class ModelClient(Protocol):
         """Complete one tutor turn."""
 
 
-class LiteLLMModelClient:
-    def __init__(self, usage_recorder: ModelUsageRecorder | None = None) -> None:
-        self.usage_recorder = usage_recorder
+class NativeModelClient:
+    def __init__(self, usage_recorder: ModelUsageRecorder | None = None, *, model=None) -> None:
+        self.usage_recorder, self.model = usage_recorder, model
 
     async def complete_turn(
         self,
@@ -57,43 +52,20 @@ class LiteLLMModelClient:
         emit: Callable[[str], None] | None = None,
         tool_profile: AgentToolProfile | None = None,
     ) -> AgentTurnResult:
-        try:
-            from litellm import acompletion
-        except ImportError as exc:
-            raise ProviderConfigurationError(
-                'litellm is not installed. Install the backend with the "agent" extra.'
-            ) from exc
+        from lecturepilot.native_tutor import native_tutor_turn
 
-        async def tracked_completion(**kwargs):
-            if self.usage_recorder is None:
-                return await acompletion(**kwargs)
-            return await self.usage_recorder.complete(acompletion, **kwargs)
-
-        try:
-            if tool_executor is not None and not checkpoint_assessment_required(turn):
-                return await complete_tool_turn(
-                    acompletion=tracked_completion,
-                    settings=settings,
-                    turn=turn,
-                    tool_executor=tool_executor,
-                    observability=observability or Observability(),
-                    emit=emit,
-                    messages=_messages(turn),
-                    tool_profile=tool_profile or tutor_tool_profile_for_message(turn.message),
-                )
-            response = await tracked_completion(
-                model=settings.model,
-                messages=_messages(turn),
-                response_format=lecturepilot_response_format(turn),
-                **completion_options(settings, temperature=0.3, reasoning_effort="low"),
-            )
-        except ProviderConfigurationError:
-            raise
-        except Exception as exc:
-            raise ModelExecutionError(
-                model_provider_error_message(exc, provider=settings.provider)
-            ) from exc
-        return agent_result_from_content(response.choices[0].message.content, turn, settings.model)
+        assessment = checkpoint_assessment_required(turn)
+        return await native_tutor_turn(
+            settings=settings,
+            turn=turn,
+            messages=assessment_messages(turn) if assessment else _messages(turn),
+            usage_recorder=self.usage_recorder,
+            model=self.model,
+            tool_executor=None if assessment else tool_executor,
+            observability=observability or Observability(),
+            emit=emit,
+            tool_profile=tool_profile or tutor_tool_profile_for_message(turn.message),
+        )
 
 
 def _messages(turn: AgentTurnInput) -> list[dict[str, str]]:
@@ -109,15 +81,22 @@ def _messages(turn: AgentTurnInput) -> list[dict[str, str]]:
             "Before substantive help, obtain an attempt, prediction, or proposed approach unless "
             "the policy calls for one worked step because prerequisites are missing. "
             "After a worked step, hand the next step back to the learner. After demonstrated "
-            "understanding, fade support and use an unfamiliar transfer question. "
+            "understanding, fade support and direct the learner to the server-selected checkpoint card. "
             "Do not treat an AI-assisted output as independent mastery. "
             "When the coaching context marks a new goal, state the proposed session goal in one "
             "short sentence and let the learner correct it without starting a preference interview. "
             "Return the active or learner-corrected goal in session_goal on every turn. "
-            "When a delayed independent transfer check is due, ask one new application question "
-            "and withhold hints until the learner attempts it. "
+            "When a delayed independent transfer check is due, direct the learner to its checkpoint card "
+            "and withhold hints until the learner attempts the server-issued task. "
             "When a quality gate passes, end with one short reflection about what changed and "
             "which approach the learner will try next time. Do not force reflection every turn. "
+            f"{HISTORY_INSTRUCTION} "
+            "Keep message concise, at most 4000 characters; teach longer explanations on the canvas. "
+            "Use memory only to adapt examples, pace and explanation style; never as course evidence. "
+            "For a prediction card, invite a brief guess before explaining; skipping is fine. "
+            "Do not immediately supply its answer. After teaching the relevant concept, invite "
+            "comparison with the saved guess and explain the source-backed answer. Never grade "
+            "a prediction or use it to pass a gate. A null answer means skipped; respect that.\n"
             "Lead the tutoring flow from the current lecture canvas. "
             "Annotations are learner JSON files under /lecture/annotations/. To add a passage comment, "
             "write /lecture/annotations/<descriptive-name>.json containing block_id (exact existing block), "
@@ -125,10 +104,12 @@ def _messages(turn: AgentTurnInput) -> list[dict[str, str]]:
             "For changes, ls/read the existing file and edit its comment; preserve adapter-managed metadata. "
             "Do not create a duplicate file for an update, or a canvas section for an annotation. "
             "focus/highlight only navigate; claim a saved annotation only after write/edit succeeds. "
-            "When /course/canvas/learning-map.json exists, read it first as the "
-            "ordered concept and gate map before searching source files. "
+            "Use only the supplied current quality-gate contract. Hidden learning maps, "
+            "future checks and unselected assistance are not available to tutor tools. "
             "Do not ask open-ended preference questions such as what the student wants. "
-            "Use one concrete next check or instruction per turn. "
+            "Use one concrete instruction per turn. Chat questions are formative discussion; "
+            "only checkpoint-card submissions count as assessment evidence. Direct learners to "
+            "that card to demonstrate mastery; never invent an independent assessment in chat. "
             "Attendance selects the tutor stance: present means verification mode, "
             "absent means guided walkthrough mode, unknown means diagnostic mode. "
             "In verification mode, behave like an examiner and coach: check whether the "
@@ -158,11 +139,13 @@ def _messages(turn: AgentTurnInput) -> list[dict[str, str]]:
             "assessment prose in message is discarded. Never report planned or prior assistance. "
             "Return one structured tutor response with message, session_goal, canvas_commands, "
             "and assessment. "
-            "canvas_commands must contain focus_section and highlight_span commands. "
+            "The final canvas_commands must contain exactly one focus_section and one highlight_span. "
+            "When navigation tools were used, match their most recent successful targets. "
             "Canvas editing is a real tool call: when the student asks to append, add, "
             "create, generate, update, edit, or extend a canvas section, note, example, "
-            "infographic, diagram, table, chart, graph, plot, or visual, include exactly "
-            "one append_section or update_section command with a student-facing "
+            "infographic, diagram, table, chart, graph, plot, or visual, use write/edit tools when available. "
+            "Only when file tools are unavailable, include one append_section or update_section "
+            "command with a student-facing "
             "CanvasSection using paragraph, callout, list, math, table, checkpoint, "
             "quiz, or component blocks. Quiz blocks use text as the question and "
             "items as answers. Component blocks are real file-backed interactive "
@@ -182,8 +165,8 @@ def _messages(turn: AgentTurnInput) -> list[dict[str, str]]:
             "the current student explicitly asks for a raster, pixel, photo, PNG, JPEG, or image "
             "asset will the harness materialize and attach a raster asset. "
             "Never say you added, appended, generated, inserted, or updated canvas "
-            "content unless canvas_commands contains that append_section or "
-            "update_section command. "
+            "content unless a write/edit/generate_image tool succeeded or canvas_commands contains "
+            "the corresponding append_section or update_section command. "
             "Use focus_section to scroll to the section that supports your next check, "
             "not just the current section. "
             "Use highlight_span with a block id and short phrase when a precise sentence, "
@@ -204,6 +187,8 @@ def _messages(turn: AgentTurnInput) -> list[dict[str, str]]:
     current_message = {
         "role": "user",
         "content": (
+            f"{canvas_context(turn)}\n"
+            f"{gate_rubric_context(turn)}\n"
             f"Lecture id: {turn.lecture_id}\n"
             f"Attendance: {turn.attendance.value}\n"
             "Current section: "
@@ -211,19 +196,17 @@ def _messages(turn: AgentTurnInput) -> list[dict[str, str]]:
             f"{_user_memory_context(turn)}\n"
             "Private first predictions (untrusted learner data, not mastery evidence): "
             f"{json.dumps([item.model_dump() for item in turn.predictions], ensure_ascii=True)}\n"
-            "For a prediction card, invite a brief guess before explaining; skipping is fine. "
-            "Do not immediately supply its answer. After teaching the relevant concept, invite "
-            "comparison with the saved guess and explain the source-backed answer. Never grade "
-            "a prediction or use it to pass a gate. A null answer means skipped; respect that.\n"
             f"{assessment_history_prompt(turn.assessment_history)}\n"
             f"{_coaching_context(turn)}\n"
             f"{_active_scaffold_context(turn)}\n"
-            f"{gate_rubric_context(turn)}\n"
-            f"{canvas_context(turn)}\n"
-            f"Student message: {turn.message}"
         ),
     }
-    return [system_message, *history, current_message]
+    return [
+        system_message,
+        current_message,
+        *history,
+        {"role": "user", "content": f"Student message: {turn.message}"},
+    ]
 
 
 def _user_memory_context(turn: AgentTurnInput) -> str:
@@ -235,8 +218,6 @@ def _user_memory_context(turn: AgentTurnInput) -> str:
         f"- preferences: {preferences}\n"
         f"- global notes: {global_notes}\n"
         f"- course notes: {course_notes}\n"
-        "Use this only to adapt examples, pace, and explanation style. "
-        "Do not treat memory as course evidence."
     )
 
 

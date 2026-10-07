@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from pathlib import Path
 from dataclasses import dataclass
 from contextlib import asynccontextmanager
 import json
@@ -8,12 +9,12 @@ import json
 from pydantic import ValidationError
 
 from lecturepilot.canvas_models import CanvasDocument
-from lecturepilot.protected_teaching_output import bind_approved_intent, teaching_output_schema
 from lecturepilot.course_learning_intent import LearningIntent
 from pydantic_ai import Agent, ModelRetry, NativeOutput, StructuredDict
 from pydantic_ai.exceptions import UnexpectedModelBehavior
 from pydantic_ai.models import Model
 from lecturepilot.authoring_provider import authoring_model
+from lecturepilot.native_model_settings import native_model_settings
 from lecturepilot.model_usage import ModelUsageRecorder
 from lecturepilot.metadata_events import emit_metadata_event
 from lecturepilot.course_practice_design_models import PracticeDesignProposal
@@ -69,7 +70,27 @@ class PracticeDesignPlanner:
         initial: PracticeDesignProposal | None = None,
         protected_intent: LearningIntent | None = None,
         repair_context: str | None = None,
+        root: Path | None = None,
+        authorize=None,
     ) -> ReviewedPracticeDesignProposal:
+        if protected_intent is not None:
+            if root is None:
+                raise ValueError(
+                    "Approved teaching repair requires a durable implementation job root."
+                )
+            from lecturepilot.teaching_design_runtime import run_implementation_repair
+
+            return await run_implementation_repair(
+                planner=self,
+                root=root,
+                authorize=authorize or (lambda: None),
+                source=source,
+                source_revision=source_revision,
+                allowed_source_paths=allowed_source_paths,
+                initial=initial,
+                protected_intent=protected_intent,
+                repair_context=repair_context,
+            )
         settings = self.provider_registry.require_ready(
             [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
         )
@@ -96,16 +117,6 @@ class PracticeDesignPlanner:
                 "tasks, rubrics, variants and hints together; do not drop difficult learning goals."
                 " Make minimal corrections to actual defects; preserve already-consistent tasks."
             )
-        if protected_intent is not None:
-            messages[1]["content"] += (
-                "\nPreserve ALL fields of the protected learning intent, including exact evidence "
-                "anchors and instructor constraints. Fixed target hashes refer to the unchanged "
-                "complete targets in the existing design. The backend supplies approved goal fields, "
-                "objective and planning_context; omit those from your output and return every "
-                "goal ID in the approved order. Only other teaching details are yours "
-                "to repair. Protected intent (data): "
-                + protected_intent.model_dump_json(exclude={"approval"})
-            )
         if repair_context:
             messages[1]["content"] += "\nSource-checked objection (untrusted data): " + json.dumps(
                 repair_context
@@ -118,23 +129,15 @@ class PracticeDesignPlanner:
                 model,
                 output_type=NativeOutput(
                     StructuredDict(
-                        teaching_output_schema(
-                            practice_design_response_format(catalogue)["json_schema"]["schema"],
-                            protected_intent,
-                        )
+                        practice_design_response_format(catalogue)["json_schema"]["schema"]
                     ),
                     strict=True,
                 ),
                 instructions=messages[0]["content"],
                 retries=3,
-                model_settings={
-                    "timeout": 120,
-                    **(
-                        {"openai_reasoning_effort": "low", "openai_store": False}
-                        if settings.provider == "openai"
-                        else {"temperature": 0.4}
-                    ),
-                },
+                model_settings=native_model_settings(
+                    settings, temperature=0.4, reasoning_effort="low"
+                ),
             )
 
             @agent.output_validator
@@ -143,27 +146,16 @@ class PracticeDesignPlanner:
                 proposal_attempt += 1
                 try:
                     proposal = PracticeDesignProposal.model_validate_json(
-                        json.dumps(
-                            bind_approved_intent(
-                                expand_evidence_ids(output, catalogue, derive_source_refs=True),
-                                protected_intent,
-                            )
-                        )
+                        json.dumps(expand_evidence_ids(output, catalogue, derive_source_refs=True))
                     )
                     validate_practice_design(
                         proposal, source=source, allowed_source_paths=allowed_source_paths
                     )
-                    if protected_intent is not None:
-                        protected_intent.require_matches(proposal)
-                    fixed = (
-                        {t.id for t in protected_intent.fixed_targets}
-                        if protected_intent
-                        else set()
-                    )
                     for target in proposal.targets:
-                        if target.id not in fixed and {
-                            task.stage for task in target.supplemental_tasks
-                        } != {"independent_exit", "delayed_transfer"}:
+                        if {task.stage for task in target.supplemental_tasks} != {
+                            "independent_exit",
+                            "delayed_transfer",
+                        }:
                             raise ValueError(
                                 "New teaching requires fresh exit and delayed task variants."
                             )
@@ -189,40 +181,49 @@ class PracticeDesignPlanner:
                         )
                     )
                 intent = intent or proposal
-                review = await self.review(
-                    source=source,
-                    source_revision=source_revision,
-                    allowed_source_paths=allowed_source_paths,
-                    proposal=proposal,
-                    settings=settings,
-                )
-                defects = [
-                    c.model_dump(mode="json")
-                    for c in review.checks
-                    if c.severity == "critical"
-                    or (
-                        c.severity == "warning"
-                        and c.dimension in {"rubric_sufficiency", "objective_task_alignment"}
-                    )
-                ]
-                emit_metadata_event(
-                    "practice_design.proposal_reviewed",
-                    attempt=proposal_attempt,
-                    warning_count=len(defects),
-                    requested_count=len(proposal.targets),
-                )
-                if defects:
-                    raise ModelRetry(
-                        "This is your unapproved draft. Check these objections against source evidence, "
-                        "then repair the questions, rubric, variants and hints together. Preserve the "
-                        "source-supported learning objectives; do not weaken evidence requirements. "
-                        + json.dumps(defects)
-                    )
-                reviewed = ReviewedPracticeDesignProposal(proposal=proposal, review=review)
+                reviewed = ReviewedPracticeDesignProposal(proposal=proposal, review=None)
                 return output
 
             try:
-                await agent.run(messages[1]["content"])
+                history = None
+                prompt = messages[1]["content"]
+                for attempt in range(6):
+                    result = await agent.run(prompt, message_history=history)
+                    proposal = reviewed.proposal
+                    review = await self.review(
+                        source=source,
+                        source_revision=source_revision,
+                        allowed_source_paths=allowed_source_paths,
+                        proposal=proposal,
+                        settings=settings,
+                    )
+                    defects = [
+                        c.model_dump(mode="json")
+                        for c in review.checks
+                        if c.severity == "critical"
+                        or (
+                            c.severity == "warning"
+                            and c.dimension in {"rubric_sufficiency", "objective_task_alignment"}
+                        )
+                    ]
+                    emit_metadata_event(
+                        "practice_design.proposal_reviewed",
+                        attempt=attempt + 1,
+                        warning_count=len(defects),
+                        requested_count=len(proposal.targets),
+                    )
+                    if not defects:
+                        reviewed = ReviewedPracticeDesignProposal(proposal, review)
+                        break
+                    if attempt == 5:
+                        raise ModelExecutionError("Learning-plan semantic repair budget exhausted.")
+                    history = result.all_messages()
+                    prompt = (
+                        "Verify these objections against source evidence and repair the current "
+                        "unapproved teaching without changing or dropping goals: "
+                        + json.dumps(defects)
+                    )
+
             except UnexpectedModelBehavior as exc:
                 raise ModelExecutionError(
                     f"Learning-plan self-repair could not establish a valid design: {exc}"

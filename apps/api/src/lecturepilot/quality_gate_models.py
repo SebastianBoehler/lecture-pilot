@@ -4,6 +4,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from lecturepilot.checkpoint_evidence_models import CriterionQuote
+
 
 class QualityGateStatus(StrEnum):
     PASSED = "passed"
@@ -19,3 +21,4 @@ class QualityGateDecision(BaseModel):
     reason: str = Field(min_length=1, max_length=500)
     evidence_ids: list[str] = Field(max_length=40)
     missing_evidence_ids: list[str] = Field(max_length=40)
+    evidence_quotes: list[CriterionQuote] = Field(default_factory=list, max_length=40, exclude=True)

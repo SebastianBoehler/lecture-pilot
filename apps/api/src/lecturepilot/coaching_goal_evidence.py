@@ -23,6 +23,13 @@ def accumulate_goal_evidence(evidence, turn):
         ),
     )
     item.missing_evidence_ids = list(turn.missing_evidence_ids)
+    if turn.gate_status == "needs_evidence" and turn.attempt_kind in {
+        "independent",
+        "independent_exit",
+        "delayed_transfer",
+    }:
+        item.independent = False
+        item.delayed = False
     if turn.gate_status == "passed":
         if turn.attempt_kind == "supported_retry":
             item.supported = True

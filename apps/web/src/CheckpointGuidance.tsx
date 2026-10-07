@@ -5,6 +5,11 @@ import type { LearnerLessonState } from "./learnerLessonStateTypes";
 
 export const CheckpointGuidanceContext = createContext<LearnerLessonState | null>(null);
 
+export function useCheckpointExhausted(gateId: string) {
+  const check = useContext(CheckpointGuidanceContext)?.pending_check;
+  return check?.gate_id === gateId && check.support_exhausted === true;
+}
+
 export function CheckpointGuidance({ gateId }: { gateId: string }) {
   const { t } = useI18n();
   const state = useContext(CheckpointGuidanceContext);
@@ -28,7 +33,9 @@ export function CheckpointGuidance({ gateId }: { gateId: string }) {
           </ul>
         </div>
       ) : null}
-      {check?.gate_id === gateId && check.bank_exhausted ? (
+      {check?.gate_id === gateId && check.support_exhausted ? (
+        <p role="status">{t("checkpoint.supportExhausted")}</p>
+      ) : check?.gate_id === gateId && check.bank_exhausted ? (
         <p role="status">
           You can continue practising with help. A new reviewed task is needed for another
           independent attempt.

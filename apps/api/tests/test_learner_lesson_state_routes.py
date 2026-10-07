@@ -169,6 +169,7 @@ def test_lesson_state_hydrates_gate_quiz_goal_pending_check_and_due_review(
             "assistance_content": None,
             "focus_required": True,
             "bank_exhausted": False,
+            "support_exhausted": False,
         },
         "goal_evidence": _expected_goal_evidence(client, COURSE_ID),
         "due_gate_reviews": [

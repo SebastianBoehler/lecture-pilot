@@ -14,6 +14,7 @@ from lecturepilot.review_queue_models import (
     ReadinessReviewQueueItem,
 )
 from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.review_queue_order import interleave_lectures
 
 
 @dataclass(frozen=True)
@@ -59,20 +60,22 @@ class ReviewQueueStore:
                     )
                 if review.section_id not in sections or review.section_id != gate.section_id:
                     raise InvalidCoachingStateError("Persisted delayed review section is invalid.")
-                if review.completed_at is not None:
-                    if review.completed_at >= current_time - timedelta(days=7):
+                completion = review.last_completed_at or review.completed_at
+                if completion is not None:
+                    if completion >= current_time - timedelta(days=7):
                         completed.append(
                             (
-                                review.completed_at,
+                                completion,
                                 CompletedGateReview(
                                     id=f"completed:{lecture.id}:{gate.id}",
                                     course_id=course_id,
                                     lecture_id=lecture.id,
                                     section_title=sections[review.section_id],
-                                    completed_at=review.completed_at.isoformat(),
+                                    completed_at=completion.isoformat(),
                                 ),
                             )
                         )
+                if review.completed_at is not None:
                     continue
                 due_at = review.due_at
                 item = GateReviewQueueItem(
@@ -130,14 +133,20 @@ class ReviewQueueStore:
         readiness_items.sort(key=lambda item: (item.lecture_id, item.task_id))
         return CourseReviewQueue(
             course_id=course_id,
-            items=[*ordered_due, *repairs, *readiness_items],
-            upcoming=[
-                item
-                for _, item in sorted(
-                    upcoming,
-                    key=lambda pair: (pair[0], pair[1].lecture_id, pair[1].gate_id),
-                )
+            items=[
+                *interleave_lectures(ordered_due),
+                *interleave_lectures(repairs),
+                *interleave_lectures(readiness_items),
             ],
+            upcoming=interleave_lectures(
+                [
+                    item
+                    for _, item in sorted(
+                        upcoming,
+                        key=lambda pair: (pair[0], pair[1].lecture_id, pair[1].gate_id),
+                    )
+                ]
+            ),
             completed=[
                 item for _, item in sorted(completed, key=lambda pair: pair[0], reverse=True)
             ],

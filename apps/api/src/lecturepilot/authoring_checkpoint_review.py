@@ -12,8 +12,10 @@ from pydantic_ai import Agent, ModelRetry, NativeOutput
 from lecturepilot.assessment_alignment import assessment_alignment_instruction
 from lecturepilot.authoring_models import AuthoringDesignConflict
 from lecturepilot.authoring_provider import authoring_model
+from lecturepilot.native_model_settings import native_model_settings
 from lecturepilot.practice_evidence_catalogue import evidence_catalogue
 from lecturepilot.metadata_events import emit_metadata_event
+from lecturepilot.providers import workload_settings
 
 
 class CheckpointJudgment(BaseModel):
@@ -27,6 +29,7 @@ class CheckpointReviewer:
         self.usage_recorder, self.model = usage_recorder, model
 
     async def resolve(self, *, job, document, issue):
+        settings = workload_settings(job.settings, "critic")
         targets = {"practice-" + target.id: target for target in job.design.targets}
         target = targets[issue.block_id]
         catalogue = evidence_catalogue(job.source, tuple(target.source_refs))
@@ -39,7 +42,7 @@ class CheckpointReviewer:
             "rubric": [c.model_dump(mode="json") for c in target.evidence_criteria],
             "teaching": section.model_dump(mode="json"),
         }
-        async with self._model(job) as model:
+        async with self._model(job, settings) as model:
             agent = Agent(
                 model,
                 output_type=NativeOutput(CheckpointJudgment, strict=True),
@@ -58,14 +61,9 @@ class CheckpointReviewer:
                     "its rubric, or explain the missing information that makes assessment impossible. "
                     "Cite exact evidence IDs for every decision. Never invent source support."
                 ),
-                model_settings={
-                    "timeout": 120,
-                    **(
-                        {"openai_reasoning_effort": "low", "openai_store": False}
-                        if job.settings.provider == "openai"
-                        else {"temperature": 0.0}
-                    ),
-                },
+                model_settings=native_model_settings(
+                    settings, temperature=0.0, reasoning_effort="high"
+                ),
             )
 
             @agent.output_validator
@@ -93,12 +91,12 @@ class CheckpointReviewer:
         return None
 
     @asynccontextmanager
-    async def _model(self, job):
+    async def _model(self, job, settings):
         if self.model is not None:
             yield self.model
         else:
             async with authoring_model(
-                job.settings,
+                settings,
                 self.usage_recorder,
                 job.authorize,
                 stage="checkpoint_objection_review",

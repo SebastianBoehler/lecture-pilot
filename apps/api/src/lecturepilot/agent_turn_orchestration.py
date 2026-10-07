@@ -5,12 +5,14 @@ import json
 from collections.abc import Callable
 
 from fastapi import FastAPI, HTTPException
+import anyio
+from functools import partial
+from datetime import UTC, datetime
+from lecturepilot.model_usage_total import model_usage_total
+from lecturepilot.agent_turn_context import load_turn_context
 
-from lecturepilot.canvas_predictions import prediction_context
 from lecturepilot.agent_state_access import (
-    learner_state_store,
     observability as app_observability,
-    user_memory_store,
 )
 from lecturepilot.agent_gate_persistence import persist_quality_gate
 from lecturepilot.agent_command_utils import (
@@ -19,11 +21,8 @@ from lecturepilot.agent_command_utils import (
     without_generated_section_commands,
 )
 from lecturepilot.agent_tool_executor import AgentToolExecutor
-from lecturepilot.assessment_history import load_assessment_history
-from lecturepilot.canvas_workspace import CanvasWorkspaceError
 from lecturepilot.coaching_orchestration import (
     persist_coaching_turn,
-    prepare_coaching_turn,
 )
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_usage import model_usage_scope
@@ -42,11 +41,16 @@ async def complete_agent_turn(
 ) -> AgentTurnResult:
     actor_user_id = actor_user_id or turn.user_id
     reserved = False
+    usage_date = datetime.now(UTC).date()
     try:
-        reserved = app.state.usage_quota.reserve_turn(
-            tenant_id=app.state.course_tenant_id,
-            user_id=actor_user_id,
-            course_id=turn.course_id,
+        reserved = await anyio.to_thread.run_sync(
+            partial(
+                app.state.usage_quota.reserve_turn,
+                tenant_id=app.state.course_tenant_id,
+                user_id=actor_user_id,
+                course_id=turn.course_id,
+                usage_date=usage_date,
+            )
         )
     except (UsageQuotaExceeded, ValueError) as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from exc
@@ -55,7 +59,7 @@ async def complete_agent_turn(
         actor_user_id=actor_user_id, course_id=turn.course_id, workload="tutor"
     )
     try:
-        with usage, observability.agent_turn_span(turn) as span:
+        with usage, model_usage_total() as total, observability.agent_turn_span(turn) as span:
             result = await _complete_agent_turn_inner(
                 app,
                 turn=turn,
@@ -67,10 +71,15 @@ async def complete_agent_turn(
             return result
     finally:
         if reserved:
-            app.state.usage_quota.release_turn(
-                tenant_id=app.state.course_tenant_id,
-                user_id=actor_user_id,
-                course_id=turn.course_id,
+            await anyio.to_thread.run_sync(
+                partial(
+                    app.state.usage_quota.release_turn,
+                    tenant_id=app.state.course_tenant_id,
+                    user_id=actor_user_id,
+                    course_id=turn.course_id,
+                    usage_date=usage_date,
+                    actual_tokens=total.total_tokens,
+                )
             )
 
 
@@ -115,62 +124,15 @@ async def _complete_agent_turn_inner(
     observability: Observability,
     actor_user_id: str,
 ) -> AgentTurnResult:
+    loop = asyncio.get_running_loop()
+
     def activity(tag: str) -> None:
         if emit:
-            emit(tag)
+            loop.call_soon_threadsafe(emit, tag)
 
-    tool_executor = None
-    if turn.course_id:
-        activity("read canvas")
-        try:
-            activity("load learner memory")
-            with observability.tool_span(
-                "read_canvas", course_id=turn.course_id, lecture_id=turn.lecture_id
-            ):
-                document = app.state.canvas_workspace.read_document(
-                    course_id=turn.course_id,
-                    lecture_id=turn.lecture_id,
-                    user_id=turn.user_id,
-                )
-            with observability.tool_span("read_user_memory"):
-                memory = user_memory_store(app).read_context(turn.user_id, turn.course_id)
-            activity("save attendance")
-            with observability.tool_span("write_attendance", attendance=turn.attendance.value):
-                learner_state_store(app).write_attendance(
-                    course_id=turn.course_id,
-                    lecture_id=turn.lecture_id,
-                    user_id=turn.user_id,
-                    attendance=turn.attendance,
-                )
-            turn = turn.model_copy(update={"canvas_context": document, "user_memory": memory})
-            layout = getattr(app.state.canvas_workspace, "layout", None)
-            if callable(getattr(layout, "user_canvas_dir", None)):
-                turn = turn.model_copy(
-                    update={"predictions": prediction_context(app.state.canvas_workspace, turn)}
-                )
-                activity("read assessment history")
-                history = load_assessment_history(
-                    layout,
-                    user_id=turn.user_id,
-                    course_id=turn.course_id,
-                    lecture_id=turn.lecture_id,
-                )
-                turn = turn.model_copy(update={"assessment_history": history})
-                tool_executor = AgentToolExecutor(
-                    canvas_workspace=app.state.canvas_workspace,
-                    course_id=turn.course_id,
-                    lecture_id=turn.lecture_id,
-                    user_id=turn.user_id,
-                    quota_user_id=actor_user_id,
-                    image_generator=getattr(app.state, "image_generator", None),
-                    usage_quota=app.state.usage_quota,
-                    tenant_id=app.state.course_tenant_id,
-                    user_message=turn.message,
-                    initial_focus_section_id=turn.canvas_state.focused_section_id,
-                )
-        except CanvasWorkspaceError:
-            pass
-    turn = prepare_coaching_turn(app, turn, activity, observability)
+    turn, tool_executor = await anyio.to_thread.run_sync(
+        load_turn_context, app, turn, activity, observability, actor_user_id
+    )
     try:
         activity("call tutor model")
         with observability.model_span(course_id=turn.course_id, lecture_id=turn.lecture_id) as span:
@@ -187,13 +149,16 @@ async def _complete_agent_turn_inner(
     except ModelExecutionError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
-    return _persist_agent_turn_result(
-        app,
-        turn=turn,
-        result=result,
-        tool_executor=tool_executor,
-        activity=activity,
-        observability=observability,
+    return await anyio.to_thread.run_sync(
+        partial(
+            _persist_agent_turn_result,
+            app,
+            turn=turn,
+            result=result,
+            tool_executor=tool_executor,
+            activity=activity,
+            observability=observability,
+        )
     )
 
 
@@ -205,17 +170,12 @@ async def _run_agent_harness(
     observability: Observability,
     emit: Callable[[str], None],
 ) -> AgentTurnResult:
-    try:
-        return await harness.run_turn(
-            turn,
-            tool_executor=tool_executor,
-            observability=observability,
-            emit=emit,
-        )
-    except TypeError as exc:
-        if "unexpected keyword" not in str(exc):
-            raise
-        return await harness.run_turn(turn)
+    return await harness.run_turn(
+        turn,
+        tool_executor=tool_executor,
+        observability=observability,
+        emit=emit,
+    )
 
 
 def _persist_agent_turn_result(

@@ -6,7 +6,7 @@ import json
 from typing import Any
 
 from lecturepilot.canvas_models import CanvasDocument
-from lecturepilot.course_canvas_prompt import MAX_SOURCE_EVIDENCE_CHARS
+from lecturepilot.canvas_source_evidence import MAX_SOURCE_EVIDENCE_CHARS
 from lecturepilot.course_source_ownership import routed_source_owner
 from lecturepilot.course_practice_design_validation import PracticeDesignValidationError
 

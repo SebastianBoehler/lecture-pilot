@@ -1,5 +1,5 @@
 import { useCheckpointAnswer } from "./CheckpointDrafts";
-import { CheckpointGuidance } from "./CheckpointGuidance";
+import { CheckpointGuidance, useCheckpointExhausted } from "./CheckpointGuidance";
 import { useState, type FormEvent, type ReactNode } from "react";
 
 import { MathText } from "./MathText";
@@ -42,6 +42,8 @@ export function CheckpointBlock({
   disabled = false,
 }: LearningBlockProps) {
   const { t } = useI18n();
+  const supportExhausted = useCheckpointExhausted(block.id);
+  const effectiveDisabled = disabled || supportExhausted;
   const [answer, setAnswer] = useCheckpointAnswer(`${block.id}:${block.text}`);
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -57,14 +59,15 @@ export function CheckpointBlock({
         sectionId={sectionId}
         onSubmitCheckpoint={onSubmitCheckpoint}
         secondaryAction={secondaryAction}
-        disabled={disabled}
+        disabled={effectiveDisabled}
       />
     );
   }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!answer.trim() || !onSubmitCheckpoint || !sectionId || disabled || submitting) return;
+    if (!answer.trim() || !onSubmitCheckpoint || !sectionId || effectiveDisabled || submitting)
+      return;
     setSubmitting(true);
     setError(null);
     setStatus(null);
@@ -92,7 +95,7 @@ export function CheckpointBlock({
           <textarea
             id={`${block.id}-answer`}
             value={answer}
-            disabled={submitting || disabled}
+            disabled={submitting || effectiveDisabled}
             placeholder={t("checkpoint.answerPlaceholder")}
             required
             rows={4}
@@ -101,7 +104,7 @@ export function CheckpointBlock({
           <div className="canvas-checkpoint-actions">
             <button
               className="primary-button"
-              disabled={submitting || disabled || !answer.trim()}
+              disabled={submitting || effectiveDisabled || !answer.trim()}
               type="submit"
             >
               {submitting ? t("checkpoint.submitting") : t("checkpoint.submit")}

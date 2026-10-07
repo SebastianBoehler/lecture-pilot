@@ -55,6 +55,9 @@ npm run dev --workspace apps/web
 
 Open `http://127.0.0.1:5173`. Use **Preview local demo** for local UI and
 agent-flow checks without sending real credentials.
+The development demo student discovers accessible local courses for its
+development enrollment headers through `localDemoCourses.ts`. Authenticated
+university sessions retain their backend-provided enrollments.
 
 ## Agent Storage Image
 
@@ -73,7 +76,7 @@ database authority in Postgres and files on the persisted `/app/storage` volume.
       practice-exams/<exam-id>/{exam.json,exam.pdf,solutions.pdf,attempts/<uuid>.json}
       memories/{course.md,memory-trace.jsonl}
       lectures/<lecture-id>/
-        {attendance.json,gates.json,tutor-state.json}
+        {attendance.json,gates.json,tutor-state.json,assessment-audit.jsonl}
         annotations/<name>.json
         canvas/{student/*.md,components/*.yaml,student-assets/*}
   courses/<tenant-id>/<course-id>/
@@ -94,7 +97,7 @@ workspace.
 
 The agent uses a small set of low-level typed tools over this image. Default
 tutor gets `pwd`, `ls`, `read`, `write`, `edit`, `focus`, `highlight`,
-`generate_image`, `record_gate`, and `remember`.
+`generate_image`, and consent-checked `remember`.
 Evidence-heavy turns add `find` and `grep`; course-builder/admin agents use
 file and image tools without learner gate or memory tools. Product actions such
 as `append_section` and `update_section` compile to writes in
@@ -175,8 +178,7 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
 ## Agent Harness Rules
 
 - Canvas authoring uses `CourseCanvasAuthor` and the Pydantic AI loop in
-  `authoring_job.py`; do not route production through the retained benchmark-only
-  legacy planner. The framework owns execution, not authority or learner memory.
+  `authoring_job.py`; the retired legacy planner is removed. The framework owns execution, not authority or learner memory.
 - Private `builder/authoring-jobs/<lecture>/<generation>/` contains native history,
   read-only evidence and editable draft files. Status exposes metadata from
   `builder/authoring-metrics/`, never source-bearing histories. Keep these private.

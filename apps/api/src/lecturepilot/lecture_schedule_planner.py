@@ -7,12 +7,9 @@ from typing import Protocol
 from pydantic import ValidationError
 
 from lecturepilot.agent_response_schema import lecture_schedule_response_format
-from lecturepilot.course_canvas_json import parse_model_json
+from lecturepilot.native_completion import native_completion
 from lecturepilot.lecture_schedule_evidence import build_schedule_evidence
-from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.model_provider_errors import model_provider_error_message
-from lecturepilot.model_request_options import completion_options
-from lecturepilot.model_usage import ModelUsageRecorder, complete_with_usage
+from lecturepilot.model_usage import ModelUsageRecorder
 from lecturepilot.models import (
     LectureScheduleItem,
     LectureScheduleProposal,
@@ -30,33 +27,24 @@ class LectureScheduleModelClient(Protocol):
         """Return a source-grounded full-course lecture schedule proposal."""
 
 
-class LiteLLMScheduleClient:
-    def __init__(self, usage_recorder: ModelUsageRecorder | None = None) -> None:
-        self.usage_recorder = usage_recorder
+class NativeScheduleClient:
+    def __init__(self, usage_recorder: ModelUsageRecorder | None = None, *, model=None) -> None:
+        self.usage_recorder, self.model = usage_recorder, model
 
     async def complete_schedule(
         self, *, settings: ProviderSettings, messages: list[dict[str, str]]
     ) -> dict:
-        try:
-            from litellm import acompletion
-        except ImportError as exc:
-            raise ProviderConfigurationError(
-                'litellm is not installed. Install the backend with the "agent" extra.'
-            ) from exc
-        try:
-            response = await complete_with_usage(
-                self.usage_recorder,
-                acompletion,
-                model=settings.model,
-                messages=messages,
-                response_format=lecture_schedule_response_format(),
-                **completion_options(settings, temperature=0.1, max_tokens=8000),
-            )
-        except Exception as exc:
-            raise ModelExecutionError(
-                model_provider_error_message(exc, provider=settings.provider)
-            ) from exc
-        return parse_model_json(response.choices[0].message.content)
+        return await native_completion(
+            settings=settings,
+            messages=messages,
+            response_format=lecture_schedule_response_format(),
+            stage="lecture_schedule",
+            tier="utility",
+            recorder=self.usage_recorder,
+            model=self.model,
+            temperature=0.1,
+            max_tokens=8000,
+        )
 
 
 class LectureSchedulePlanner:
@@ -66,7 +54,7 @@ class LectureSchedulePlanner:
         model_client: LectureScheduleModelClient | None = None,
     ) -> None:
         self.provider_registry = provider_registry or ProviderRegistry.from_env()
-        self.model_client = model_client or LiteLLMScheduleClient()
+        self.model_client = model_client or NativeScheduleClient()
 
     async def propose_schedule(
         self,

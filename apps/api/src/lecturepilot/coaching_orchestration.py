@@ -8,6 +8,7 @@ from fastapi import FastAPI, HTTPException
 from lecturepilot.agent_state_access import learner_state_store
 from lecturepilot.coaching_progress import CoachingProgressStore, CoachingTurnEvent
 from lecturepilot.coaching_state_models import CoachingProgress, review_key
+from lecturepilot.course_canvas_context import AnalyticsPublicationContext
 from lecturepilot.learning_gate_selector import select_active_gate
 from lecturepilot.learning_map import LearningMap, LearningMapGate
 from lecturepilot.models import (
@@ -28,6 +29,7 @@ def prepare_coaching_turn(
     turn: AgentTurnInput,
     activity: Callable[[str], None],
     observability: Observability,
+    analytics_context: AnalyticsPublicationContext | None = None,
 ) -> AgentTurnInput:
     activity("load coaching progress")
     store = CoachingProgressStore(app.state.canvas_workspace.layout)
@@ -36,14 +38,30 @@ def prepare_coaching_turn(
         course_id=turn.course_id,
         lecture_id=turn.lecture_id,
     )
-    analytics_context = app.state.canvas_workspace.course_canvas_store.read_analytics_context(
-        course_id=turn.course_id, lecture_id=turn.lecture_id
-    )
+    if analytics_context is None:
+        analytics_context = app.state.canvas_workspace.course_canvas_store.read_analytics_context(
+            course_id=turn.course_id, lecture_id=turn.lecture_id
+        )
     learning_map = analytics_context.learning_map
     turn_analytics = AgentAnalyticsContext(
         publication_version=analytics_context.publication_version,
         learning_map_revision=analytics_context.learning_map_revision,
     )
+    if (
+        turn.checkpoint_gate_id is not None
+        and progress.pending_check is not None
+        and (
+            progress.pending_check.support_exhausted
+            and progress.pending_check.gate_id == turn.checkpoint_gate_id
+        )
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Approved support is exhausted for this task. Review the teaching and ask your "
+                "instructor for reviewed support or a new task before another assessment."
+            ),
+        )
     decisions = learner_state_store(app).latest_gate_decisions(
         user_id=turn.user_id,
         course_id=turn.course_id,
@@ -72,6 +90,9 @@ def prepare_coaching_turn(
             lecture_id=turn.lecture_id,
             gate=active_gate,
         )
+        progress = store.read(
+            user_id=turn.user_id, course_id=turn.course_id, lecture_id=turn.lecture_id
+        )
     else:
         if turn.requested_gate_id is not None:
             _validate_requested_gate(
@@ -96,6 +117,7 @@ def prepare_coaching_turn(
                 gate_id=active_gate.id,
                 gate_revision=active_gate.revision,
                 learning_objective=learning_map.objective,
+                progress=progress,
             )
         context = context.model_copy(
             update={
@@ -229,6 +251,9 @@ def persist_coaching_turn(
             decision=result.quality_gate,
             next_check=result.next_check,
             gate=active_gate,
+            publication_version=(
+                turn.analytics_context.publication_version if turn.analytics_context else None
+            ),
             user_message=turn.message,
             assistant_message=result.message,
             session_goal=result.session_goal,

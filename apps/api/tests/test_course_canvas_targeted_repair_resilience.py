@@ -75,12 +75,13 @@ def test_transient_repair_failure_retains_files_and_resumes_history(tmp_path, mo
 
 def test_quality_feedback_is_repaired_in_same_agent_history(tmp_path, monkeypatch):
     client, path = setup_failed_job(tmp_path)
-    review_calls = 0
+    reviewed_sections = []
 
     class Critic:
         async def complete_review(self, **kwargs):
-            nonlocal review_calls
-            review_calls += 1
+            sections = kwargs["candidate_document"].sections
+            assert len(sections) == 1
+            reviewed_sections.append(sections[0].id)
             return {
                 "issues": (
                     [
@@ -90,7 +91,8 @@ def test_quality_feedback_is_repaired_in_same_agent_history(tmp_path, monkeypatc
                             "reason": "Use x as the source-backed expression.",
                         }
                     ]
-                    if review_calls == 1
+                    if sections[0].id == "learning-optimization"
+                    and reviewed_sections.count("learning-optimization") == 1
                     else []
                 )
             }
@@ -122,7 +124,8 @@ def test_quality_feedback_is_repaired_in_same_agent_history(tmp_path, monkeypatc
     install_author(client, monkeypatch, respond, Critic())
     repaired = client.post(path + "/repair", headers=headers("quality-repair-0001"))
     assert repaired.status_code == 200, repaired.text
-    assert review_calls == 2
+    assert reviewed_sections.count("learning-optimization") == 2
+    assert len(reviewed_sections) == 3
 
 
 def test_completed_repair_replays_without_another_model_request(tmp_path, monkeypatch):

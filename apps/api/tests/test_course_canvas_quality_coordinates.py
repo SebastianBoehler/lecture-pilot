@@ -1,6 +1,5 @@
 import pytest
 
-from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_quality import (
     CanvasQualityReviewer,
     canvas_quality_response_format,
@@ -34,7 +33,7 @@ async def test_quality_reviewer_rejects_unknown_issue_coordinates() -> None:
     )
 
     with pytest.raises(ModelExecutionError, match="unknown section"):
-        await reviewer.validate(
+        await reviewer.review(
             settings=_settings(),
             source_document=document,
             candidate_document=document,
@@ -57,15 +56,11 @@ async def test_quality_reviewer_maps_mirrored_source_section_to_candidate() -> N
         )
     )
 
-    with pytest.raises(CanvasGenerationRepairableError) as caught:
-        await reviewer.validate(
-            settings=_settings(),
-            source_document=source,
-            candidate_document=candidate,
-        )
-
-    assert caught.value.section_id == "learning-1-topic"
-    assert caught.value.block_id is None
+    issues = await reviewer.review(
+        settings=_settings(), source_document=source, candidate_document=candidate
+    )
+    assert issues[0].section_id == "learning-1-topic"
+    assert issues[0].block_id is None
 
 
 async def test_quality_reviewer_falls_back_to_valid_section_for_unknown_block() -> None:
@@ -82,13 +77,9 @@ async def test_quality_reviewer_falls_back_to_valid_section_for_unknown_block() 
         )
     )
 
-    with pytest.raises(CanvasGenerationRepairableError) as caught:
-        await reviewer.validate(
-            settings=_settings(),
-            source_document=document,
-            candidate_document=document,
-        )
-
-    assert caught.value.section_id == "topic"
-    assert caught.value.block_id is None
-    assert "assessment answer is unsupported" in str(caught.value)
+    issues = await reviewer.review(
+        settings=_settings(), source_document=document, candidate_document=document
+    )
+    assert issues[0].section_id == "topic"
+    assert issues[0].block_id is None
+    assert "assessment answer is unsupported" in issues[0].reason

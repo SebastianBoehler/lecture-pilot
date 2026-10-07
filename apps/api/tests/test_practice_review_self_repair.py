@@ -14,7 +14,7 @@ async def test_reviewer_recovers_missing_evidence_without_restarting_proposal():
     def respond(messages, info):
         nonlocal calls
         calls += 1
-        assert info.model_settings["openai_reasoning_effort"] == "medium"
+        assert info.model_settings["openai_reasoning_effort"] == "high"
         payload = _review_payload()
         payload["checks"][4].update(severity="warning", supporting_anchors=[])
         if calls > 1:

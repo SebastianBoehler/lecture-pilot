@@ -6,12 +6,10 @@ from lecturepilot.course_teaching_instructions import (
 from lecturepilot.assessment_alignment import assessment_alignment_instruction
 
 import asyncio
-import json
 import re
 from typing import Any, Protocol
 
 from lecturepilot.canvas_models import CanvasDocument
-from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_quality_models import (
     CanvasQualityIssue,
     CanvasQualityPayload,
@@ -21,14 +19,9 @@ from lecturepilot.course_canvas_quality_prompt import (
     quality_review_batches,
 )
 from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.model_provider_errors import model_provider_error_message
-from lecturepilot.model_request_options import (
-    CANVAS_QUALITY_REQUEST_TIMEOUT_SECONDS,
-    completion_options,
-)
-from lecturepilot.model_usage import ModelUsageRecorder, complete_with_usage
+from lecturepilot.native_completion import native_completion
+from lecturepilot.model_usage import ModelUsageRecorder
 from lecturepilot.models import ProviderSettings
-from lecturepilot.providers import ProviderConfigurationError
 
 
 QUALITY_RESPONSE_ATTEMPTS = 2
@@ -44,9 +37,9 @@ class CanvasQualityModelClient(Protocol):
     ) -> dict[str, Any]: ...
 
 
-class LiteLLMCanvasQualityClient:
-    def __init__(self, usage_recorder: ModelUsageRecorder | None = None) -> None:
-        self.usage_recorder = usage_recorder
+class NativeCanvasQualityClient:
+    def __init__(self, usage_recorder: ModelUsageRecorder | None = None, *, model=None) -> None:
+        self.usage_recorder, self.model = usage_recorder, model
 
     async def complete_review(
         self,
@@ -55,49 +48,27 @@ class LiteLLMCanvasQualityClient:
         source_document: CanvasDocument,
         candidate_document: CanvasDocument,
     ) -> dict[str, Any]:
-        try:
-            from litellm import acompletion
-        except ImportError as exc:
-            raise ProviderConfigurationError(
-                'litellm is not installed. Install the backend with the "agent" extra.'
-            ) from exc
-        messages = _quality_messages(source_document, candidate_document)
-        last_error: ModelExecutionError | None = None
-        for attempt in range(QUALITY_RESPONSE_ATTEMPTS):
-            try:
-                response = await complete_with_usage(
-                    self.usage_recorder,
-                    acompletion,
-                    usage_stage="canvas_quality_review",
-                    model=settings.model,
-                    messages=messages,
-                    response_format=canvas_quality_response_format(candidate_document),
-                    **completion_options(
-                        settings,
-                        temperature=0.0,
-                        reasoning_effort="low",
-                        timeout_seconds=CANVAS_QUALITY_REQUEST_TIMEOUT_SECONDS,
-                    ),
-                )
-            except ProviderConfigurationError:
-                raise
-            except Exception as exc:
-                raise ModelExecutionError(
-                    model_provider_error_message(exc, provider=settings.provider)
-                ) from exc
-            try:
-                return _read_quality_response(response, source_document, candidate_document)
-            except ModelExecutionError as exc:
-                last_error = exc
-                if attempt == QUALITY_RESPONSE_ATTEMPTS - 1:
-                    raise
-                messages = [*messages, _quality_retry_message(str(exc))]
-        raise last_error or ModelExecutionError("Canvas quality review returned no response.")
+        def validate(payload):
+            parsed = CanvasQualityPayload.model_validate(payload)
+            issues = _normalize_coordinates(parsed.issues, source_document, candidate_document)
+            return {"issues": [issue.model_dump() for issue in issues]}
+
+        return await native_completion(
+            settings=settings,
+            messages=_quality_messages(source_document, candidate_document),
+            response_format=canvas_quality_response_format(candidate_document),
+            stage="canvas_quality_review",
+            tier="critic",
+            recorder=self.usage_recorder,
+            model=self.model,
+            reasoning_effort="medium",
+            validate=validate,
+        )
 
 
 class CanvasQualityReviewer:
     def __init__(self, model_client: CanvasQualityModelClient | None = None) -> None:
-        self.model_client = model_client or LiteLLMCanvasQualityClient()
+        self.model_client = model_client or NativeCanvasQualityClient()
 
     async def review(
         self,
@@ -124,30 +95,6 @@ class CanvasQualityReviewer:
             for issue in CanvasQualityPayload.model_validate(payload).issues
         ]
         return _normalize_coordinates(issues, source_document, candidate_document)
-
-    async def validate(
-        self,
-        *,
-        settings: ProviderSettings,
-        source_document: CanvasDocument,
-        candidate_document: CanvasDocument,
-    ) -> None:
-        issues = await self.review(
-            settings=settings,
-            source_document=source_document,
-            candidate_document=candidate_document,
-        )
-        if not issues:
-            return
-        first = issues[0]
-        details = "; ".join(issue.reason for issue in issues[:5])
-        same_section = len({issue.section_id for issue in issues}) == 1
-        raise CanvasGenerationRepairableError(
-            f"Canvas quality review failed: {details}",
-            candidate=candidate_document,
-            section_id=first.section_id,
-            block_id=None if len(issues) > 1 and same_section else first.block_id,
-        )
 
 
 def canvas_quality_response_format(candidate_document: CanvasDocument) -> dict[str, Any]:
@@ -223,38 +170,6 @@ def _quality_messages(
             "content": compact_quality_evidence(source_document, candidate_document),
         },
     ]
-
-
-def _read_quality_response(
-    response: Any,
-    source_document: CanvasDocument,
-    candidate_document: CanvasDocument,
-) -> dict[str, Any]:
-    choice = response.choices[0]
-    content = choice.message.content
-    if not content:
-        finish_reason = str(getattr(choice, "finish_reason", "") or "unknown")
-        raise ModelExecutionError(
-            f"Canvas quality review returned an empty response (finish_reason={finish_reason})."
-        )
-    try:
-        payload = CanvasQualityPayload.model_validate(json.loads(content))
-    except (json.JSONDecodeError, ValueError) as exc:
-        raise ModelExecutionError(
-            "Canvas quality review returned invalid structured JSON."
-        ) from exc
-    issues = _normalize_coordinates(payload.issues, source_document, candidate_document)
-    return {"issues": [issue.model_dump() for issue in issues]}
-
-
-def _quality_retry_message(error: str) -> dict[str, str]:
-    return {
-        "role": "user",
-        "content": (
-            f"The previous review response could not be used: {error} "
-            "Return one complete, non-truncated JSON response matching the required schema."
-        ),
-    }
 
 
 def _normalize_coordinates(

@@ -37,3 +37,29 @@ async def test_changed_batch_is_reviewed_but_unchanged_batch_is_reused(tmp_path)
         reviewer, settings=job.settings, source_document=source, candidate_document=changed
     )
     assert calls == ["topic", "second", "topic"]
+
+
+async def test_small_unchanged_section_reuses_review_when_sibling_changes(tmp_path):
+    job = authoring_job(tmp_path)
+    source = job.source
+    first = source.sections[0]
+    second = first.model_copy(deep=True, update={"id": "second"})
+    candidate = source.model_copy(update={"sections": [first, second]})
+    calls = []
+
+    class Client:
+        async def complete_review(self, **kwargs):
+            calls.append([s.id for s in kwargs["candidate_document"].sections])
+            return {"issues": []}
+
+    memo = AuthoringQualityMemo()
+    reviewer = CanvasQualityReviewer(Client())
+    await memo.review(
+        reviewer, settings=job.settings, source_document=source, candidate_document=candidate
+    )
+    changed = candidate.model_copy(deep=True)
+    changed.sections[0].blocks[0].text += " A changed explanation."
+    await memo.review(
+        reviewer, settings=job.settings, source_document=source, candidate_document=changed
+    )
+    assert calls == [["topic"], ["second"], ["topic"]]

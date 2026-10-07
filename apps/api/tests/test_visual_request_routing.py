@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from lecturepilot.agent_tool_loop import _with_tool_instruction
+from lecturepilot.agent_tool_instructions import _with_tool_instruction
 from lecturepilot.canvas_models import (
     CanvasComponentData,
     CanvasComponentFrame,

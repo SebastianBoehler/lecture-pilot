@@ -109,13 +109,33 @@ def test_model_prompt_includes_the_approved_practice_teaching_contract() -> None
 
     for value in (
         gate.target_invariant,
-        gate.independent_exit_task,
-        gate.independent_exit_surface_change,
-        gate.delayed_transfer_surface_change,
         gate.misconceptions[0].id,
         gate.misconceptions[0].description,
         gate.misconceptions[0].diagnostic_cue,
-        gate.hint_ladder[0].level,
-        gate.hint_ladder[0].content,
     ):
         assert value in prompt
+    for value in (
+        gate.independent_exit_task,
+        gate.independent_exit_surface_change,
+        gate.delayed_transfer_surface_change,
+        gate.transfer_prompt,
+        gate.hint_ladder[0].content,
+    ):
+        assert value not in prompt
+
+
+def test_prompt_does_not_preload_the_next_check_or_unselected_support() -> None:
+    turn = _turn().model_copy(
+        update={
+            "coaching_context": AgentCoachingContext(
+                pending_check_prompt="Currently issued question",
+                pending_check_stage="diagnostic",
+                pending_check_assistance_content="Selected support",
+            )
+        }
+    )
+    prompt = _messages(turn)[1]["content"]
+    assert "Currently issued question" in prompt
+    assert "Selected support" in prompt
+    assert turn.active_gate.transfer_prompt not in prompt
+    assert "server-selected next check" not in prompt

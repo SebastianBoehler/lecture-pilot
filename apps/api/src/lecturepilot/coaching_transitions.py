@@ -17,6 +17,7 @@ class CheckTransition:
     check: NextCheck
     task_id: str | None = None
     bank_exhausted: bool = False
+    support_exhausted: bool = False
 
 
 def initial_assessment_stage(gate: LearningMapGate) -> AssessmentStage:
@@ -56,24 +57,27 @@ def derive_next_transition(
             stage=_support_stage(current_stage),
             task_id=task_id,
             bank_exhausted=True,
+            support_exhausted=True,
             check=_check(
                 gate,
                 prompt=task_prompt(gate, task_id),
-                assistance=_next_assistance(gate, exposed_hint_levels, missing_evidence_ids),
+                assistance=NextCheckAssistance(level="none", content=None),
             ),
         )
     base_stage = "delayed_transfer" if current_stage.startswith("delayed") else "independent_exit"
     exhausted = not current_stage.startswith("diagnostic") and not any(
         item not in exposed_task_ids for item in task_ids_for_stage(gate, base_stage)
     )
+    assistance = _next_assistance(gate, exposed_hint_levels, missing_evidence_ids)
     return CheckTransition(
         stage=_support_stage(current_stage),
         task_id=task_id,
         bank_exhausted=exhausted,
+        support_exhausted=assistance.level == "none",
         check=_check(
             gate,
             prompt=task_prompt(gate, task_id),
-            assistance=_next_assistance(gate, exposed_hint_levels, missing_evidence_ids),
+            assistance=assistance,
         ),
     )
 

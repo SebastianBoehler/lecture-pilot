@@ -10,6 +10,7 @@ from lecturepilot.coaching_state_models import (
     review_key,
 )
 from lecturepilot.coaching_transitions import CheckTransition, attempt_kind_for_stage
+from lecturepilot.coaching_review_schedule import advance_review
 from lecturepilot.models import AgentCoachingContext, QualityGateDecision
 
 
@@ -78,13 +79,19 @@ def complete_delayed_review(
     gate_id: str,
     gate_revision: str,
     now: datetime,
+    gate=None,
+    exposed_task_ids=(),
 ) -> None:
     key = review_key(gate_id, gate_revision)
     current = progress.delayed_reviews.get(key)
     if current is None or current.attempted_at is None:
         raise ValueError("Delayed review cannot complete before an independent attempt.")
     if current.completed_at is None:
-        progress.delayed_reviews[key] = current.model_copy(update={"completed_at": now})
+        progress.delayed_reviews[key] = (
+            advance_review(current, gate=gate, exposed_task_ids=exposed_task_ids, now=now)
+            if gate is not None
+            else current.model_copy(update={"completed_at": now})
+        )
 
 
 def record_review_attempt(
@@ -127,6 +134,7 @@ def pending_from_transition(
         issued_at=now,
         task_id=transition.task_id,
         bank_exhausted=transition.bank_exhausted,
+        support_exhausted=transition.support_exhausted,
     )
 
 

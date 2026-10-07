@@ -80,6 +80,9 @@ _IMPERATIVE_WORDS = (
     "write",
     "analysiere",
     "beweise",
+    "begründe",
+    "zeige",
+    "gib an",
     "berechne",
     "beschreibe",
     "bestimme",
@@ -199,7 +202,7 @@ def _is_concrete_task(prompt: str) -> bool:
 
 def _starts_with(prompt: str, words: tuple[str, ...]) -> bool:
     plain = re.sub(r"^[`*_#\s]+", "", prompt).casefold()
-    return any(plain == word or plain.startswith(f"{word} ") for word in words)
+    return any(re.match(rf"^{re.escape(word)}(?:\b|$)", plain) for word in words)
 
 
 def _normalize(value: str) -> str:

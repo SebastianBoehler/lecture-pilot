@@ -46,6 +46,7 @@ class PendingCheck(BaseModel):
     stage: AssessmentStage
     task_id: str | None = Field(default=None, min_length=1, max_length=80)
     bank_exhausted: bool = False
+    support_exhausted: bool = False
     issued_at: AwareDatetime
 
     @model_validator(mode="after")
@@ -91,6 +92,9 @@ class DelayedReview(BaseModel):
     attempted_at: AwareDatetime | None
     completed_at: AwareDatetime | None
     observed_delay_seconds: int | None = Field(ge=0)
+    task_id: str = "delayed-transfer"
+    last_completed_at: AwareDatetime | None = None
+    failed_since_review: bool = False
 
 
 class CoachingTurnEvent(BaseModel):
