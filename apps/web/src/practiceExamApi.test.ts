@@ -9,6 +9,35 @@ import {
 import type { LoginSession } from "./types";
 
 describe("practice exam API", () => {
+  it("polls an accepted background job with the original key and reads its completed exam", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      if (String(input).endsWith("/status"))
+        return json({ status: "completed", exam_id: "a".repeat(32) });
+      if (String(input).endsWith("/practice-exam-generations")) return json({ status: "running" });
+      return json(examPayload());
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const pending = generatePracticeExam(
+        "course-1",
+        { question_count: 25, duration_minutes: 90, ppi_source_ids: [] },
+        "original-key",
+        session,
+      );
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(await pending).toEqual(examPayload());
+      expect(
+        fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/practice-exam-generations")),
+      ).toHaveLength(1);
+      expect(new Headers(fetchMock.mock.calls[1][1]?.headers).get("Idempotency-Key")).toBe(
+        "original-key",
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("sends typed generation input with an idempotency key", async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
       json(examPayload()),

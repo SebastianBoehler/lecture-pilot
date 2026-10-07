@@ -18,7 +18,7 @@ async def verify_open_answer_sheet(
     course_evidence: str,
     authoritative_ids: set[str],
 ) -> None:
-    questions = [q for q in exam.questions if q.kind == "open_ended"]
+    questions = [q for q in exam.questions if q.kind == "open_ended" and q.status == "active"]
     if not questions:
         return
     subset = exam.model_copy(update={"questions": questions})

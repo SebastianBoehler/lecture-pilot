@@ -22,11 +22,33 @@ export async function generatePracticeExam(
   idempotencyKey: string,
   session: LoginSession,
 ) {
-  return requestJson<PracticeExam>(`/courses/${courseId}/practice-exam-generations`, session, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
-    body: JSON.stringify(input),
-  });
+  const result = await requestJson<PracticeExam | PracticeExamGenerationStatus>(
+    `/courses/${courseId}/practice-exam-generations`,
+    session,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+      body: JSON.stringify(input),
+    },
+  );
+  if (!("status" in result)) return result;
+  const deadline = Date.now() + 16 * 60 * 1000;
+  let status = result;
+  while (status.status === "running" && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    status = await practiceExamGenerationStatus(courseId, idempotencyKey, session);
+  }
+  if (status.status === "completed" && status.exam_id) {
+    return requestJson<PracticeExam>(
+      `/courses/${courseId}/practice-exams/${status.exam_id}`,
+      session,
+    );
+  }
+  throw new Error(
+    status.status === "running"
+      ? "Practice exam generation is still running. Retry to check the same job."
+      : "Practice exam generation failed. Please retry.",
+  );
 }
 
 export async function practiceExamGenerationStatus(

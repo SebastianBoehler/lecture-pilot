@@ -38,6 +38,7 @@ from lecturepilot.practice_exam_validation import (
 from lecturepilot.practice_exam_solution_review import verify_open_answer_sheet
 from lecturepilot.practice_exam_repair import repair_request, merge_question_repairs
 from lecturepilot.providers import ProviderRegistry
+from lecturepilot.practice_exam_invalid_questions import invalidate_exam_questions
 
 
 logger = logging.getLogger(__name__)
@@ -185,20 +186,30 @@ class PracticeExamPlanner:
                     ),
                     max_tokens=_exam_review_token_budget(question_count),
                 )
-                validate_practice_exam_review(
-                    review,
-                    exam=exam,
-                    authoritative_source_ids=authoritative_ids,
-                    course_evidence=course_evidence,
-                )
-                await verify_open_answer_sheet(
-                    self.model_client,
-                    settings=settings,
-                    exam=exam,
-                    blind_review=review,
-                    course_evidence=course_evidence,
-                    authoritative_ids=authoritative_ids,
-                )
+                try:
+                    validate_practice_exam_review(
+                        review,
+                        exam=exam,
+                        authoritative_source_ids=authoritative_ids,
+                        course_evidence=course_evidence,
+                    )
+                except PracticeExamValidationError as exc:
+                    if attempt == 0 or not exc.question_ids:
+                        raise
+                    exam = invalidate_exam_questions(exam, exc.question_ids)
+                try:
+                    await verify_open_answer_sheet(
+                        self.model_client,
+                        settings=settings,
+                        exam=exam,
+                        blind_review=review,
+                        course_evidence=course_evidence,
+                        authoritative_ids=authoritative_ids,
+                    )
+                except PracticeExamValidationError as exc:
+                    if attempt == 0 or not exc.question_ids:
+                        raise
+                    exam = invalidate_exam_questions(exam, exc.question_ids)
                 return exam
             except (ValidationError, PracticeExamValidationError) as exc:
                 last_error = exc

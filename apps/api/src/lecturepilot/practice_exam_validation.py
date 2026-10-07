@@ -4,6 +4,7 @@ import re
 
 from lecturepilot.practice_exam_models import PracticeExam
 from lecturepilot.practice_exam_options import has_equivalent_numeric_options
+from lecturepilot.evidence_quote_validation import substantive_quote
 
 
 _COPY_WINDOW = 60
@@ -201,7 +202,7 @@ def _validate_review_support(item, question, course_evidence: str, source_ids: s
             source_id not in question.source_ids
             or source_id not in item["source_ids"]
             or not isinstance(quote, str)
-            or not quote.strip()
+            or not substantive_quote(quote)
             or _normalized(quote) not in _normalized(passages.get(source_id, ""))
         ):
             raise PracticeExamValidationError(prefix + "unverified source quotation")

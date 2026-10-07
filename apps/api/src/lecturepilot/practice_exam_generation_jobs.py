@@ -104,6 +104,9 @@ class PracticeExamGenerationStore:
             job, user_id=user_id, request_key=request_key, status="completed", exam_id=exam_id
         )
 
+    def renew(self, job, *, user_id: str, request_key: str) -> PracticeExamGenerationJob:
+        return self._finish(job, user_id=user_id, request_key=request_key, status="running")
+
     def fail(
         self,
         job: PracticeExamGenerationJob,
@@ -149,7 +152,8 @@ class PracticeExamGenerationStore:
                 }
             )
             self._write(path, updated)
-            self._prune(path)
+            if status != "running":
+                self._prune(path)
             return updated
 
     def _prune(self, current_path: Path) -> None:

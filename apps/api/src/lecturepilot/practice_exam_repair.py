@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 import json
+import re
 
 from lecturepilot.practice_exam_validation import PracticeExamValidationError
 
@@ -13,6 +14,12 @@ def repair_request(
     questions = schema["json_schema"]["schema"]["properties"]["questions"]
     questions["minItems"] = questions["maxItems"] = len(rejected_ids)
     questions["items"]["properties"]["id"]["enum"] = rejected_ids
+    messages[0]["content"] = re.sub(
+        r"Write exactly \d+ questions",
+        f"Write exactly {len(rejected_ids)} questions",
+        messages[0]["content"],
+        count=1,
+    )
     messages[0]["content"] += (
         " Repair only the rejected question IDs listed below. Return exactly those questions, "
         "preserving their IDs. Passing questions are immutable and the backend retains them. "

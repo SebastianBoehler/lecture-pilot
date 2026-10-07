@@ -36,6 +36,27 @@ async def test_repairs_all_rejected_ids_and_preserves_every_passing_question():
     repair_message = client.messages[2][1]["content"]
     assert "Previous candidate" in repair_message
     assert "q-01" in repair_message and "q-03" in repair_message
+    assert "Write exactly 2 questions" in client.messages[2][0]["content"]
+    assert "Write exactly 20 questions" not in client.messages[2][0]["content"]
+
+
+async def test_failed_final_review_invalidates_only_rejected_questions():
+    original = _payload()
+    failed = _review_payload()
+    failed["reviews"][0].update(verdict="fail", issue="Unsupported premise")
+    repairs = deepcopy(original)
+    repairs["questions"] = repairs["questions"][:1]
+    client = _ModelClient([original, failed, repairs, failed, _solution_review_payload()])
+    exam = await PracticeExamPlanner(provider_registry=_Registry(), model_client=client).plan(
+        **_plan_args()
+    )
+    assert exam.questions[0].status == "invalid"
+    assert exam.questions[0].points == 0
+    assert not exam.questions[0].options and exam.questions[0].answer_index is None
+    assert exam.total_points == 38
+    assert [q.prompt for q in exam.questions[1:]] == [
+        q["prompt"] for q in original["questions"][1:]
+    ]
 
 
 @pytest.mark.asyncio

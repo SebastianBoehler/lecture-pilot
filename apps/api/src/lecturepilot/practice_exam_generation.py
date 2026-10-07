@@ -99,6 +99,7 @@ async def generate_practice_exam(
         )
     learner_focus = bounded_exam_goal_focus(learner_focus)
     scope = dict(tenant_id=context.tenant_id, user_id=context.user_id, course_id=course_id)
+    scope["concurrent"] = False
     reservation = EXAM_RESERVED_TOKENS
     usage_date = datetime.now(UTC).date()
     try:

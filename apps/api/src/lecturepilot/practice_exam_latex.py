@@ -245,6 +245,8 @@ def _render_math(
 
 
 def _safe_math(expression: str) -> bool:
+    if "^^" in expression:
+        return False
     if not expression.strip() or any(character in expression for character in "$#%~\x00"):
         return False
     if not _balanced_braces(expression):
