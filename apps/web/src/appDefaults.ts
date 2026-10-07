@@ -1,9 +1,12 @@
+import type { Locale } from "./i18nContext";
+import { messages } from "./i18nMessages";
 import type { GateReviewOpening } from "./reviewQueueTypes";
-import type { Attendance, ChatMessage, LoginSession } from "./types";
+import type { Attendance, ChatMessage, LessonPanelMode, LoginSession } from "./types";
 
 export function initialMessagesForAttendance(
   attendance: Attendance,
   review?: GateReviewOpening,
+  locale: Locale = "en",
 ): ChatMessage[] {
   if (review) {
     return [
@@ -18,19 +21,18 @@ export function initialMessagesForAttendance(
     {
       id: "agent-welcome",
       role: "agent",
-      content: initialMessage(attendance),
+      content: messages[locale][`tutor.welcome.${attendance}`],
     },
   ];
 }
 
-function initialMessage(attendance: Attendance) {
-  if (attendance === "present") {
-    return "You marked this lecture as attended. I’ll verify the key learning goals and give feedback on what is secure or still missing.";
-  }
-  if (attendance === "absent") {
-    return "You marked this lecture as missed. I’ll teach the canvas step by step and lead you toward the quality gates without jumping straight into quizzes.";
-  }
-  return "Attendance is unknown for this lecture. I’ll start in diagnostic mode and locate the first missing concept.";
+/** Phones open on the lecture itself; wider screens show the tutor beside it. */
+export function defaultLessonPanel(): LessonPanelMode | null {
+  const compact =
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(max-width: 860px)").matches;
+  return compact ? null : "chat";
 }
 
 export const localDemoSession: LoginSession = {

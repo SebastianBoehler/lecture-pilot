@@ -10,6 +10,7 @@ import { interactiveComponentMessages } from "./interactiveComponentMessages";
 import { learnerStateMessages } from "./learnerStateMessages";
 import { learningAttemptMessages } from "./learningAttemptMessages";
 import { reviewQueueMessages } from "./reviewQueueMessages";
+import { lessonToolbarMessages } from "./lessonToolbarMessages";
 
 export const messages = {
   en: {
@@ -24,6 +25,7 @@ export const messages = {
     ...learnerStateMessages.en,
     ...learningAttemptMessages.en,
     ...reviewQueueMessages.en,
+    ...lessonToolbarMessages.en,
   },
   de: {
     ...practiceHistoryMessages.de,
@@ -37,6 +39,7 @@ export const messages = {
     ...learnerStateMessages.de,
     ...learningAttemptMessages.de,
     ...reviewQueueMessages.de,
+    ...lessonToolbarMessages.de,
   },
 } as const;
 

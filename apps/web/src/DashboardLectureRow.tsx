@@ -1,5 +1,6 @@
 import { formatAccessDate, formatRelativeAccess } from "./courseAccessStatus";
 import { useI18n } from "./i18n";
+import { formatLectureDate } from "./lectureDate";
 import type { Attendance, Lecture } from "./types";
 
 export function DashboardLectureRow({
@@ -31,7 +32,7 @@ export function DashboardLectureRow({
           </p>
         ) : (
           <p>
-            {lecture.date} ·{" "}
+            <time dateTime={lecture.date}>{formatLectureDate(lecture.date, locale)}</time> ·{" "}
             {t("dashboard.attendance", {
               status: attendanceLabel(lecture.attendance, t),
             })}

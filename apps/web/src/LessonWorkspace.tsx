@@ -21,7 +21,8 @@ import type { TutorMessageOptions } from "./canvasLearningActions";
 import type { LearnerLessonState } from "./learnerLessonStateTypes";
 import { TutorDrawer } from "./TutorDrawer";
 import { WorkspaceFilesPanel } from "./WorkspaceFilesPanel";
-import { WorkspaceResetControl, type WorkspaceResetSelection } from "./WorkspaceResetControl";
+import { LessonToolbar } from "./LessonToolbar";
+import type { WorkspaceResetSelection } from "./WorkspaceResetControl";
 import { useCanvasLearningAttempts } from "./useCanvasLearningAttempts";
 import type {
   CanvasDocument,
@@ -84,13 +85,6 @@ export function LessonWorkspace({
   const { t } = useI18n();
   const layoutRef = useRef<HTMLElement>(null);
   const sidebar = useLessonSidebarWidth(layoutRef);
-  const language = useTeachingLanguage(
-    courseId,
-    lecture.id,
-    session,
-    canvasDocument,
-    publishedCanvasView?.publication_version ?? null,
-  );
   const support = useCheckpointSupport(courseId, lecture.id, session, workspaceMode, learnerState);
   const waitingForState = Boolean(
     publishedCanvasView &&
@@ -103,7 +97,19 @@ export function LessonWorkspace({
         support.state.publication_version !== publishedCanvasView.publication_version)),
   );
   const focused = waitingForState || support.state?.pending_check?.focus_required === true;
-  const layoutClass = panelMode && !focused ? "lesson-layout panel-open" : "lesson-layout";
+  const language = useTeachingLanguage(
+    courseId,
+    lecture.id,
+    session,
+    canvasDocument,
+    publishedCanvasView?.publication_version ?? null,
+    !focused && !draftMode,
+  );
+  const layoutClass = focused
+    ? "lesson-layout is-focused"
+    : panelMode
+      ? "lesson-layout panel-open"
+      : "lesson-layout";
   const [activeAnchorId, setActiveAnchorId] = useState<DocumentAnchorId | null>(null);
   const [outlinePulse, setOutlinePulse] = useState<{
     id: DocumentAnchorId;
@@ -164,16 +170,12 @@ export function LessonWorkspace({
         <section className="lesson-main">
           {previewMode ? <ProfessorLearnerPreviewBanner /> : null}
           {draftMode ? <p role="status">{t("lesson.draftPreview")}</p> : null}
-          <div className="lesson-toolbar">
-            <div className="lesson-toolbar-actions">
-              {!focused && !draftMode ? language.control : null}
-              <WorkspaceResetControl
-                disabled={!canvasDocument || draftMode}
-                onReset={onResetWorkspace}
-              />
-            </div>
-            <span>{lecture.date}</span>
-          </div>
+          <LessonToolbar
+            lecture={lecture}
+            languageControl={language.control}
+            resetDisabled={!canvasDocument || draftMode}
+            onReset={onResetWorkspace}
+          />
           {canvasError ? <p className="form-error">{canvasError}</p> : null}
           {learnerStateError ? (
             <p className="form-error" role="alert">
@@ -197,7 +199,7 @@ export function LessonWorkspace({
             <p className="drawer-note">{t("lesson.loadingCanvas")}</p>
           ) : null}
           {waitingForState ? (
-            <p role="status">Checking the saved attempt before opening teaching…</p>
+            <p role="status">{t("lesson.waitingForAttempt")}</p>
           ) : canvasDocument && focused && canvasLearnerState.currentLearnerState ? (
             <FocusedCheckpoint
               state={canvasLearnerState.currentLearnerState}

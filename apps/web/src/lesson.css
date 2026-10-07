@@ -6,6 +6,10 @@
   min-height: calc(100dvh - var(--lesson-header-offset));
 }
 
+.lesson-layout.is-focused {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .lesson-layout.panel-open {
   grid-template-columns: minmax(0, 1fr) 56px calc(var(--lesson-sidebar-width, 436px) - 56px);
 }
@@ -21,8 +25,25 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 14px;
+  max-width: 860px;
+  margin: 0 auto 14px;
   color: var(--color-text-secondary);
+}
+
+.lesson-toolbar-context {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  min-width: 0;
+}
+
+.lesson-context {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
 }
 
 .lesson-toolbar-actions {
@@ -41,14 +62,21 @@
   align-items: center;
   gap: 6px;
   list-style: none;
-  border: 1px solid var(--color-border-primary);
+  border: 1px solid transparent;
   border-radius: 6px;
-  padding: 8px 10px;
+  padding: 6px 8px;
   color: var(--color-text-secondary);
-  background: var(--color-bg-primary);
-  font-size: 14px;
-  font-weight: 700;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
+}
+
+.workspace-reset-menu summary:hover,
+.workspace-reset-menu[open] summary {
+  border-color: var(--color-border-primary);
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
 }
 
 .workspace-reset-menu summary::-webkit-details-marker {
@@ -64,7 +92,7 @@
   position: absolute;
   z-index: 30;
   top: calc(100% + 8px);
-  left: 0;
+  right: 0;
   display: grid;
   gap: 10px;
   width: min(260px, calc(100vw - 48px));

@@ -16,6 +16,7 @@ import { FeedbackDialog } from "./FeedbackDialog";
 import { ProfessorWalkthrough } from "./ProfessorWalkthrough";
 import * as publishedCanvas from "./publishedCanvasView";
 import {
+  defaultLessonPanel,
   initialMessagesForAttendance,
   localDemoSession,
   localProfessorSession,
@@ -83,8 +84,8 @@ function App() {
     route.view === "lesson" ? route.lessonMode : "learner",
   );
   const loadedLessonRoute = useRef<string | null>(null);
-  const [panelMode, setPanelMode] = useState<LessonPanelMode | null>(
-    route.view === "lesson" ? "chat" : null,
+  const [panelMode, setPanelMode] = useState<LessonPanelMode | null>(() =>
+    route.view === "lesson" ? defaultLessonPanel() : null,
   );
   const [canvasDocument, setCanvasDocument] = useState<CanvasDocument | null>(null);
   const [publishedCanvasView, setPublishedCanvasView] =
@@ -96,7 +97,7 @@ function App() {
   const [highlightedText, setHighlightedText] = useState<string | null>(null);
   const [navigationVersion, setNavigationVersion] = useState(0);
   const [messages, setMessages] = useState<ChatMessage[]>(
-    initialMessagesForAttendance(lectures[2].attendance),
+    initialMessagesForAttendance(lectures[2].attendance, undefined, locale),
   );
   useVersionUpdateActivity(messages.some((message) => Boolean(message.isPending)));
   const [lastTutorModel, setLastTutorModel] = useState<string | null>(null);
@@ -291,7 +292,7 @@ function App() {
     setPublishedCanvasView(null);
     setCanvasError(null);
     setWorkspaceLoadError(null);
-    setMessages(initialMessagesForAttendance(lectures[2].attendance));
+    setMessages(initialMessagesForAttendance(lectures[2].attendance, undefined, locale));
     setLastTutorModel(null);
   }
 
@@ -308,7 +309,7 @@ function App() {
       setSelectedCourseId(courseId);
       setSelectedLecture(lecture);
       setLessonMode(mode);
-      setPanelMode("chat");
+      setPanelMode(defaultLessonPanel());
       setCanvasDocument(null);
       setPublishedCanvasView(null);
       setCanvasError(null);
@@ -316,7 +317,7 @@ function App() {
       setHighlightedBlockId(review?.gate_id ?? null);
       setHighlightedText(null);
       setNavigationVersion((current) => current + 1);
-      setMessages(initialMessagesForAttendance(lecture.attendance, review));
+      setMessages(initialMessagesForAttendance(lecture.attendance, review, locale));
       setLastTutorModel(null);
 
       try {
@@ -346,7 +347,7 @@ function App() {
         setCanvasError(error instanceof Error ? error.message : "Canvas loading failed.");
       }
     },
-    [navigate, session, workspaceCourseId],
+    [locale, navigate, session, workspaceCourseId],
   );
 
   const restoreLessonRoute = useEffectEvent(
@@ -431,7 +432,11 @@ function App() {
     setHighlightedBlockId(null);
     setHighlightedText(null);
     setMessages(
-      initialMessagesForAttendance(options.reset_progress ? "unknown" : selectedLecture.attendance),
+      initialMessagesForAttendance(
+        options.reset_progress ? "unknown" : selectedLecture.attendance,
+        undefined,
+        locale,
+      ),
     );
     setLastTutorModel(null);
     await lessonState.refresh();

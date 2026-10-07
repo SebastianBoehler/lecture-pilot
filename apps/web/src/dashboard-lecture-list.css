@@ -91,6 +91,12 @@
 }
 
 .lecture-open-button {
+  border-color: color-mix(in srgb, var(--color-accent-primary) 45%, var(--color-border-primary));
+  color: var(--color-accent-primary);
+}
+
+.lecture-open-button:hover,
+.lecture-open-button:focus-visible {
   border-color: var(--color-accent-primary);
   color: var(--color-on-accent);
   background: var(--color-accent-primary);
