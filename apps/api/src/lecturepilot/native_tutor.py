@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 from collections import defaultdict
 from contextlib import asynccontextmanager
 
@@ -18,10 +19,26 @@ from lecturepilot.authoring_provider import authoring_model
 from lecturepilot.authoring_limits import authoring_budget
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_payload import agent_result_from_content
-from lecturepilot.native_model_settings import native_model_settings
+from lecturepilot.native_model_settings import native_model_settings, tutor_prompt_cache_key
 from lecturepilot.providers import ProviderConfigurationError
 
 TUTOR_DEADLINE_SECONDS = 120
+CHAT_MAX_TOKENS = 1_500
+WRITING_MAX_TOKENS = 8_192
+CHAT_OUTPUT_TOKEN_LIMIT = 4_096
+WRITING_OUTPUT_TOKEN_LIMIT = 16_384
+logger = logging.getLogger(__name__)
+
+
+def tutor_output_limits(*, writing_tools: bool) -> tuple[int, int]:
+    """Return (max_tokens, output_tokens_limit).
+
+    Turns without write/edit tools, including checkpoint assessment, stay near 1500
+    output tokens. Canvas writes keep the larger per-request cap.
+    """
+    if writing_tools:
+        return WRITING_MAX_TOKENS, WRITING_OUTPUT_TOKEN_LIMIT
+    return CHAT_MAX_TOKENS, CHAT_OUTPUT_TOKEN_LIMIT
 
 
 async def _native_tutor_turn(
@@ -87,6 +104,10 @@ async def _native_tutor_turn(
         if tool_executor is not None
         else []
     )
+    max_tokens, output_limit = tutor_output_limits(writing_tools=bool(tools))
+    publication_version = (
+        turn.analytics_context.publication_version if turn.analytics_context else None
+    )
 
     @asynccontextmanager
     async def provider():
@@ -109,7 +130,16 @@ async def _native_tutor_turn(
             ),
             retries=2,
             model_settings=native_model_settings(
-                settings, temperature=0.3, max_tokens=8192, tool_calls=bool(tools)
+                settings,
+                temperature=0.3,
+                max_tokens=max_tokens,
+                tool_calls=bool(tools),
+                prompt_cache_key=tutor_prompt_cache_key(
+                    settings,
+                    course_id=turn.course_id,
+                    lecture_id=turn.lecture_id,
+                    publication_version=publication_version,
+                ),
             ),
         )
 
@@ -130,9 +160,10 @@ async def _native_tutor_turn(
                 prompt,
                 message_history=history,
                 usage_limits=UsageLimits(
-                    request_limit=7, input_tokens_limit=150_000, output_tokens_limit=32_768
+                    request_limit=7, input_tokens_limit=150_000, output_tokens_limit=output_limit
                 ),
             )
+            _log_cached_usage(settings.model, result.usage)
         except (UsageLimitExceeded, UnexpectedModelBehavior) as exc:
             raise ModelExecutionError(
                 f"Tutor could not finish within its turn budget: {exc}"
@@ -140,8 +171,21 @@ async def _native_tutor_turn(
     return agent_result_from_content(json.dumps(result.output), turn, settings.model)
 
 
+def _log_cached_usage(model: str, usage) -> None:
+    logger.info(
+        "tutor_provider_usage model=%s input_tokens=%s cached_input_tokens=%s output_tokens=%s",
+        model,
+        usage.input_tokens,
+        usage.cache_read_tokens,
+        usage.output_tokens,
+    )
+
+
 async def native_tutor_turn(**kwargs):
-    with authoring_budget(request_limit=14, input_tokens_limit=150_000, output_tokens_limit=32_768):
+    _, output_limit = tutor_output_limits(writing_tools=kwargs.get("tool_executor") is not None)
+    with authoring_budget(
+        request_limit=14, input_tokens_limit=150_000, output_tokens_limit=output_limit
+    ):
         try:
             async with asyncio.timeout(TUTOR_DEADLINE_SECONDS):
                 return await _native_tutor_turn(**kwargs)

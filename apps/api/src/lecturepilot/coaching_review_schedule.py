@@ -22,7 +22,7 @@ def advance_review(current, *, gate, exposed_task_ids, now):
     days = (
         gate.review_after_days
         if current.failed_since_review
-        else min(max(MAX_REVIEW_INTERVAL_DAYS, gate.review_after_days), previous_days * 2)
+        else min(MAX_REVIEW_INTERVAL_DAYS, max(gate.review_after_days, previous_days * 2))
     )
     seconds = days * 24 * 60 * 60
     return current.model_copy(

@@ -19,6 +19,11 @@ from lecturepilot.models import (
     AgentTurnResult,
 )
 from lecturepilot.observability import Observability
+from lecturepilot.independent_attempt import (
+    INDEPENDENT_ATTEMPT_STAGES,
+    reject_chat_during_independent_attempt,
+)
+from lecturepilot.readiness_task_resolution import issued_readiness_task
 from lecturepilot.scaffold_policy import (
     scaffold_policy_for_assessment_stage,
     scaffold_policy_for_tutor_turn,
@@ -134,8 +139,22 @@ def prepare_coaching_turn(
                 "active_gate_review_after_days": active_gate.review_after_days,
             }
         )
-    if turn.readiness_task is not None:
-        policy = turn.readiness_task.scaffold_policy
+    reject_chat_during_independent_attempt(
+        checkpoint_gate_id=turn.checkpoint_gate_id,
+        stage=context.pending_check_stage,
+    )
+    independent = context.pending_check_stage in INDEPENDENT_ATTEMPT_STAGES
+    resolved_task = None
+    if turn.readiness_task_id is not None and not independent:
+        resolved_task = issued_readiness_task(
+            app.state.canvas_workspace.layout,
+            user_id=turn.user_id,
+            course_id=turn.course_id,
+            lecture_id=turn.lecture_id,
+            task_id=turn.readiness_task_id,
+        )
+    if resolved_task is not None:
+        policy = resolved_task.scaffold_policy
     elif context.pending_check_stage is not None:
         policy = scaffold_policy_for_assessment_stage(
             stage=context.pending_check_stage,
@@ -154,6 +173,7 @@ def prepare_coaching_turn(
             "active_gate": active_gate,
             "analytics_context": turn_analytics,
             "coaching_context": context,
+            "readiness_task": resolved_task,
             "scaffold_policy": policy,
             "recent_messages": progress.messages,
         },

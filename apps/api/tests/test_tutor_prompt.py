@@ -76,7 +76,7 @@ def test_model_prompt_includes_derived_coaching_goal_and_support_policy() -> Non
         }
     )
 
-    user_prompt = _messages(turn)[1]["content"]
+    user_prompt = _messages(turn)[-1]["content"]
     assert "Explain causal transfer and apply it to a new setting." in user_prompt
     assert "goal_status: proposed" in user_prompt
     assert "profile: self_explanation" in user_prompt
@@ -137,7 +137,7 @@ def test_prompt_does_not_preload_the_next_check_or_unselected_support() -> None:
             )
         }
     )
-    prompt = _messages(turn)[1]["content"]
+    prompt = "\n".join(message["content"] for message in _messages(turn))
     assert "Currently issued question" in prompt
     assert "Selected support" in prompt
     assert turn.active_gate.transfer_prompt not in prompt

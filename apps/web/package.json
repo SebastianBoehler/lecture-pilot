@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.1.1",
-    "katex": "^0.17.0",
+    "katex": "^0.19.0",
     "lucide-react": "^0.561.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",

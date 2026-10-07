@@ -11,7 +11,8 @@ from lecturepilot.coaching_transitions import derive_next_transition
 from lecturepilot.providers import ProviderConfigurationError
 
 
-def canvas_context(turn: AgentTurnInput) -> str:
+def canvas_outline_stable(turn: AgentTurnInput) -> str:
+    """Document-order outline. Focus never reorders or expands this prefix."""
     document = turn.canvas_context
     if document is None:
         return "Canvas context: unavailable. Use the current section id only."
@@ -20,18 +21,36 @@ def canvas_context(turn: AgentTurnInput) -> str:
         f"Canvas source: {document.source_ref}",
         "Allowed canvas targets:",
     ]
-    focused = turn.canvas_state.focused_section_id
-    sections = sorted(document.sections, key=lambda section: section.id != focused)
-    for section in sections:
-        lines.append(f"- section_id={section.id}; title={section.title}")
-        blocks = section.blocks if section.id == focused else section.blocks[:5]
-        for block in blocks:
-            excerpt = _block_excerpt(
-                block.type, block.text, block.items, block.caption, block.asset_path
-            )
-            if excerpt:
-                lines.append(f"  span_id={block.id}; type={block.type}; text={excerpt}")
+    for section in document.sections:
+        lines.extend(_section_lines(section, block_limit=5))
     return _trim_text("\n".join(lines), 9000)
+
+
+def focused_section_blocks(turn: AgentTurnInput) -> str:
+    document = turn.canvas_context
+    focused_id = turn.canvas_state.focused_section_id
+    if document is None or not focused_id:
+        return "Focused section blocks: none."
+    section = next((item for item in document.sections if item.id == focused_id), None)
+    if section is None:
+        return "Focused section blocks: none."
+    lines = [
+        f"Focused section blocks for {section.id}:",
+        *_section_lines(section, block_limit=None),
+    ]
+    return _trim_text("\n".join(lines), 9000)
+
+
+def _section_lines(section, *, block_limit: int | None) -> list[str]:
+    lines = [f"- section_id={section.id}; title={section.title}"]
+    blocks = section.blocks if block_limit is None else section.blocks[:block_limit]
+    for block in blocks:
+        excerpt = _block_excerpt(
+            block.type, block.text, block.items, block.caption, block.asset_path
+        )
+        if excerpt:
+            lines.append(f"  span_id={block.id}; type={block.type}; text={excerpt}")
+    return lines
 
 
 def read_quality_gate(payload: dict, turn: AgentTurnInput) -> QualityGateDecision | None:

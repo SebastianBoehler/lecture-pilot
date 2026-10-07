@@ -7,7 +7,6 @@ import type {
   ExamReadinessAnswer,
   ExamReadinessAttemptResult,
   ExamReadinessCheck,
-  ExamRevisionTask,
   Lecture,
   LearnerWorkspaceMode,
   LoginSession,
@@ -76,7 +75,7 @@ export type AgentTurnInput = {
   canvas_state: {
     focused_section_id: string;
   };
-  readiness_task?: ExamRevisionTask | null;
+  readiness_task_id?: string | null;
 };
 
 type AgentTurnStreamEvent =
