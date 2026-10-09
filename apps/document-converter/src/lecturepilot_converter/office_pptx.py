@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from pptx import Presentation
+from pptx.shapes.group import GroupShape
 
 
 def pptx_supplemental_blocks(path: Path) -> list[dict]:
@@ -25,7 +26,7 @@ def pptx_supplemental_blocks(path: Path) -> list[dict]:
 
 def _slide_links(slide, *, slide_number: int) -> list[dict]:
     blocks = []
-    for shape in slide.shapes:
+    for shape in _leaf_shapes(slide.shapes):
         if address := shape.click_action.hyperlink.address:
             blocks.append(
                 _link_block(
@@ -47,6 +48,14 @@ def _slide_links(slide, *, slide_number: int) -> list[dict]:
                         )
                     )
     return list({(block["url"], block["text"]): block for block in blocks}.values())
+
+
+def _leaf_shapes(shapes):
+    for shape in shapes:
+        if isinstance(shape, GroupShape):
+            yield from _leaf_shapes(shape.shapes)
+        else:
+            yield shape
 
 
 def _link_block(address: str, *, label: str, slide_number: int) -> dict:
