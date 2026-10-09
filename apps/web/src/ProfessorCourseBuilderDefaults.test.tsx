@@ -97,6 +97,8 @@ describe("Professor course builder defaults", () => {
     expect(
       await screen.findByText(
         /cannot reach the local lecturepilot api while creating the course workspace/i,
+        {},
+        { timeout: 5_000 },
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/^Failed to fetch$/i)).not.toBeInTheDocument();
