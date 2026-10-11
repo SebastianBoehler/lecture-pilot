@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from lecturepilot.course_practice_design_route_context import _source_context, _require_manager
+from lecturepilot.course_practice_design_route_context import (
+    _require_manager,
+    _source_context,
+    _source_revision,
+)
 
 from collections.abc import Callable
 
@@ -71,7 +75,7 @@ def register_course_practice_design_routes(
         _require_manager(context, request, course_id, course_tenant_id)
         try:
             with locked_course_state(app.state.canvas_workspace.layout.course_root(course_id)):
-                _, source_revision, _ = _source_context(app, source_document, course_id, lecture_id)
+                source_revision = _source_revision(app, course_id, lecture_id)
                 design = _store(app).read(course_id=course_id, lecture_id=lecture_id)
         except PracticeDesignUnavailable as exc:
             raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -257,7 +261,7 @@ def register_course_practice_design_routes(
         layout = app.state.canvas_workspace.layout
         try:
             with locked_course_state(layout.course_root(course_id)):
-                _, revision, _ = _source_context(app, source_document, course_id, lecture_id)
+                revision = _source_revision(app, course_id, lecture_id)
                 if approval.source_revision != revision:
                     raise HTTPException(
                         status_code=409,
@@ -280,6 +284,7 @@ def register_course_practice_design_routes(
         course_tenant_id=course_tenant_id,
         source_document=source_document,
         source_context=_source_context,
+        source_revision=_source_revision,
         require_manager=_require_manager,
     )
     register_practice_design_review_route(

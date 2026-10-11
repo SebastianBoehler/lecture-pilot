@@ -93,12 +93,17 @@ def test_update_and_approval_hold_shared_lock_across_source_and_design_mutation(
     course_root = client.app.state.canvas_workspace.layout.course_root(COURSE_ID)
     observed: list[bool] = []
     original_context = course_practice_design_routes._source_context
+    original_revision = course_practice_design_routes._source_revision
     original_update = PracticeDesignStore.update
     original_approve = PracticeDesignStore.approve
 
     def locked_context(*args, **kwargs):
         observed.append(course_update_lock_held(course_root))
         return original_context(*args, **kwargs)
+
+    def locked_revision(*args, **kwargs):
+        observed.append(course_update_lock_held(course_root))
+        return original_revision(*args, **kwargs)
 
     def locked_update(self, **kwargs):
         observed.append(course_update_lock_held(course_root))
@@ -109,6 +114,7 @@ def test_update_and_approval_hold_shared_lock_across_source_and_design_mutation(
         return original_approve(self, **kwargs)
 
     monkeypatch.setattr(course_practice_design_routes, "_source_context", locked_context)
+    monkeypatch.setattr(course_practice_design_routes, "_source_revision", locked_revision)
     monkeypatch.setattr(PracticeDesignStore, "update", locked_update)
     monkeypatch.setattr(PracticeDesignStore, "approve", locked_approve)
     updated = client.put(

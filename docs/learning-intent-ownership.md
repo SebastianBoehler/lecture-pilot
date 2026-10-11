@@ -48,6 +48,22 @@ New routes extend `/admin/courses/{course}/lectures/{lecture}/practice-design`:
   objective. Up to three proposal/review rounds repair missing or unsupported
   scope before requesting professor approval; semantic rounds are separate from
   schema retries. Broader module objectives must be narrowed to these goals.
+  The scope reviewer lists exact `unsupported_goal_ids`; only those trigger full
+  proposal repair. Missing objective coverage is never a goal defect.
+  `learning_goal_objective_repair.py` narrows only an unapproved generated objective,
+  preserving every goal and planning constraint, then requires another scope review.
+  If the reviewer still objects after the repair budget, goals it names as unsupported
+  are dropped and the objective becomes the numbered outcomes (or titles, when long) of
+  the remaining reviewed goals, so an outlook lecture is never blocked by topics beyond
+  the eight-goal limit. The result stays unapproved for professor review; a proposal
+  without any supported goal still fails. A coherent proposal-time verdict is stored
+  under `builder/implementation-jobs/<lecture>/scope-reviews/` and reused by teaching
+  implementation for the identical intent, evidence, model and reviewer instructions.
+  `learning_goal_outcomes.py` returns generated outcomes such as "understand" or
+  "verstehen" for repair; stored and professor-edited goals keep the lenient validator.
+- Readiness and approval only hash confirmed source files
+  (`course_builder_source_revision`); they never parse or import documents, so they
+  stay fast while the course lock is shared with generation.
 - `PUT /intent`: professor edits to goal titles/outcomes, goal removal and context
   use current source/design revisions and clear approval. Remaining teaching and
   fixed-target bindings follow goal IDs; new identities require regenerated

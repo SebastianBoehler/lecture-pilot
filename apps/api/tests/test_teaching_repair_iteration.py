@@ -63,6 +63,7 @@ async def test_repair_can_resolve_more_than_three_review_findings(
                         json.dumps(
                             {
                                 "coherent": True,
+                                "unsupported_goal_ids": [],
                                 "reason": "The goal covers the objective.",
                                 "evidence_ids": ["e0"],
                             }

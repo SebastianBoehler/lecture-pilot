@@ -37,6 +37,7 @@ async def test_approved_scope_conflict_stops_before_teaching_edits(
                     json.dumps(
                         {
                             "coherent": False,
+                            "unsupported_goal_ids": [],
                             "reason": "The objective promises a capability absent from the approved goal set.",
                             "evidence_ids": [
                                 "unknown" if invalid_evidence_first and calls == 1 else "e0"

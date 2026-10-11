@@ -26,6 +26,7 @@ async def test_identical_accepted_implementation_reuses_scope_review(tmp_path, m
                         json.dumps(
                             {
                                 "coherent": True,
+                                "unsupported_goal_ids": [],
                                 "reason": "The goals cover the objective.",
                                 "evidence_ids": ["e0"],
                             }
@@ -72,11 +73,11 @@ async def test_identical_accepted_implementation_reuses_scope_review(tmp_path, m
 
     assert list(json.loads(scope_inputs[0])) == ["evidence", "proposal"]
     assert calls[0].model_settings["openai_reasoning_effort"] == "high"
-    from lecturepilot.teaching_design_runtime import scope_review_instructions
+    from lecturepilot.learning_goal_scope_review import scope_review_instructions
 
     original = scope_review_instructions()
     monkeypatch.setattr(
-        "lecturepilot.teaching_design_runtime.scope_review_instructions",
+        "lecturepilot.learning_goal_scope_review.scope_review_instructions",
         lambda: original + " Updated review guidance.",
     )
     third = await run_implementation_repair(**args)

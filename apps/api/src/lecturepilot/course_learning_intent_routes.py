@@ -3,6 +3,7 @@ from typing import Annotated
 from lecturepilot.teaching_implementation_change_routes import register_implementation_change_routes
 
 from fastapi import Depends, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BeforeValidator, Field
 
 from lecturepilot.api_auth import request_context
@@ -35,7 +36,7 @@ class LearningIntentUpdate(LearningIntentProposal):
 
 
 def register_learning_intent_routes(
-    app, *, course_tenant_id, source_document, source_context, require_manager
+    app, *, course_tenant_id, source_document, source_context, source_revision, require_manager
 ):
     register_implementation_change_routes(app, course_tenant_id=course_tenant_id)
 
@@ -54,7 +55,7 @@ def register_learning_intent_routes(
         layout = app.state.canvas_workspace.layout
         try:
             with locked_course_state(layout.course_root(course_id)):
-                _, revision, _ = source_context(app, source_document, course_id, lecture_id)
+                revision = source_revision(app, course_id, lecture_id)
                 if revision != approval.source_revision:
                     raise PracticeDesignStale("Course sources changed. Review the current goals.")
                 return LearningIntentStore(layout).approve(
@@ -82,23 +83,21 @@ def register_learning_intent_routes(
         require_manager(context, request, course_id, course_tenant_id)
         layout = app.state.canvas_workspace.layout
         store = LearningIntentStore(layout)
-        with locked_course_state(layout.course_root(course_id)):
-            source, revision, paths = source_context(app, source_document, course_id, lecture_id)
-            existing = store.read(course_id=course_id, lecture_id=lecture_id)
-            if existing is not None and existing.source_revision == revision:
-                return existing
-        try:
-            with model_usage_scope(
-                actor_user_id=context.user_id,
-                course_id=course_id,
-                workload="course_learning_intent",
-            ):
-                proposal = await propose_learning_intent(
-                    app.state.practice_design_planner,
-                    source=source,
-                    source_revision=revision,
-                    allowed_source_paths=paths,
-                )
+
+        def current_sources():
+            with locked_course_state(layout.course_root(course_id)):
+                revision = source_revision(app, course_id, lecture_id)
+                existing = store.read(course_id=course_id, lecture_id=lecture_id)
+                if existing is not None and existing.source_revision == revision:
+                    return existing, None
+                return existing, source_context(app, source_document, course_id, lecture_id)
+
+        existing, loaded = await run_in_threadpool(current_sources)
+        if loaded is None:
+            return existing
+        source, revision, paths = loaded
+
+        def save(proposal):
             with locked_course_state(layout.course_root(course_id)):
                 source, current, paths = source_context(app, source_document, course_id, lecture_id)
                 if current != revision:
@@ -112,6 +111,24 @@ def register_learning_intent_routes(
                     source=source,
                     allowed_source_paths=paths,
                 )
+
+        try:
+            with model_usage_scope(
+                actor_user_id=context.user_id,
+                course_id=course_id,
+                workload="course_learning_intent",
+            ):
+                proposal = await propose_learning_intent(
+                    app.state.practice_design_planner,
+                    source=source,
+                    source_revision=revision,
+                    allowed_source_paths=paths,
+                    scope_root=layout.course_root(course_id)
+                    / "builder"
+                    / "implementation-jobs"
+                    / lecture_id,
+                )
+            return await run_in_threadpool(save, proposal)
         except ProviderConfigurationError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         except ModelExecutionError as exc:

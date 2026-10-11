@@ -1,5 +1,4 @@
 import asyncio
-import json
 from lecturepilot.authoring_limits import (
     authoring_budget,
     AuthoringBudgetExceeded,
@@ -13,12 +12,11 @@ from lecturepilot.course_practice_design_planner import ReviewedPracticeDesignPr
 from lecturepilot.models import ProviderCapability
 from lecturepilot.authoring_models import AuthoringDesignConflict
 from lecturepilot.learning_goal_scope_review import (
-    LearningGoalScopeReview,
+    read_scope_review,
     review_learning_goal_scope,
-    scope_review_instructions,
-    scope_review_settings,
+    save_coherent_scope_review,
+    scope_review_record,
 )
-from lecturepilot.durable_files import atomic_write_json
 from lecturepilot.practice_evidence_catalogue import evidence_catalogue
 from lecturepilot.teaching_design_job import TeachingDesignJob, run_teaching_design_job
 
@@ -72,20 +70,11 @@ async def _run_implementation_repair(
     async with planner._model(settings, authorize=authorize) as model:
         authorize()
         catalogue = evidence_catalogue(source, allowed_source_paths)
-        scope_key = digest(
-            {
-                "intent": protected_intent.revision,
-                "evidence": catalogue,
-                "model": settings.model,
-                "instructions": scope_review_instructions(),
-                "settings": scope_review_settings(settings),
-            }
+        record = scope_review_record(
+            root, intent_revision=protected_intent.revision, catalogue=catalogue, settings=settings
         )
-        scope_path = root / "scope-reviews" / f"{scope_key}.json"
-        saved = json.loads(scope_path.read_text()) if scope_path.exists() else None
-        if saved is not None and saved.get("identity") == scope_key:
-            scope = LearningGoalScopeReview.model_validate(saved["review"])
-        else:
+        scope = read_scope_review(record)
+        if scope is None:
             scope = await review_learning_goal_scope(
                 model=model,
                 settings=settings,
@@ -93,10 +82,7 @@ async def _run_implementation_repair(
                 catalogue=catalogue,
             )
             authorize()
-            if scope.coherent:
-                atomic_write_json(
-                    scope_path, {"identity": scope_key, "review": scope.model_dump(mode="json")}
-                )
+            save_coherent_scope_review(record, scope)
         authorize()
         if not scope.coherent:
             raise AuthoringDesignConflict(
