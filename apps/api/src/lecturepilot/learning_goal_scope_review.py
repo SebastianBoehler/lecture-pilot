@@ -66,11 +66,44 @@ def scope_review_record(root, *, intent_revision, catalogue, settings):
             "settings": scope_review_settings(settings),
         }
     )
-    return root / "scope-reviews" / f"{key}.json", key
+    return (
+        root / "scope-reviews" / f"{key}.json",
+        key,
+        scope_approval_identity(intent_revision, settings),
+    )
+
+
+def scope_approval_identity(intent_revision, settings):
+    """Intent revision includes the exact source revision; callers verify current sources."""
+    return digest(
+        {
+            "intent": intent_revision,
+            "model": settings.model,
+            "instructions": scope_review_instructions(),
+            "settings": scope_review_settings(settings),
+        }
+    )
+
+
+def read_approval_scope_review(root, *, intent_revision, settings):
+    """Reuse an evidence-bound verdict without reimporting unchanged source documents."""
+    identity = scope_approval_identity(intent_revision, settings)
+    path = root / "scope-reviews" / f"approval-{identity}.json"
+    if not path.exists():
+        return None
+    saved = json.loads(path.read_text())
+    key = saved.get("review_identity", "")
+    if (
+        saved.get("identity") != identity
+        or len(key) != 64
+        or any(c not in "0123456789abcdef" for c in key)
+    ):
+        return None
+    return read_scope_review((path.parent / f"{key}.json", key, identity))
 
 
 def read_scope_review(record):
-    path, key = record
+    path, key, _ = record
     saved = json.loads(path.read_text()) if path.exists() else None
     if saved is None or saved.get("identity") != key:
         return None
@@ -79,8 +112,12 @@ def read_scope_review(record):
 
 def save_coherent_scope_review(record, review):
     if review.coherent:
-        path, key = record
+        path, key, approval_identity = record
         atomic_write_json(path, {"identity": key, "review": review.model_dump(mode="json")})
+        atomic_write_json(
+            path.parent / f"approval-{approval_identity}.json",
+            {"identity": approval_identity, "review_identity": key},
+        )
 
 
 async def review_learning_goal_scope(*, model, settings, proposal, catalogue):

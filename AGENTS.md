@@ -195,7 +195,9 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
   goal conflicts remain terminal; each window retains the existing request/token/deadline limits.
 - Learning-plan proposals and their reviewer use native-schema Pydantic AI sessions.
   Before approval, overbroad generated objectives use objective-only repair and another scope review;
-  only reviewer-named unsupported goal IDs use full proposal repair. After the budget, drop those
+  only reviewer-named unsupported goal IDs use full proposal repair. Intent approval requires a
+  coherent review bound to the exact intent, evidence and reviewer settings; edited or older
+  unreviewed goals are checked before approval. After the budget, drop those
   goals and derive the objective from the remaining outcomes. Never apply objective-only repair to
   approved intent. Revision-only checks use `course_builder_source_revision`, not document import.
   Repair generated questions, rubrics, hints and variants before design approval;

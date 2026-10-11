@@ -126,7 +126,11 @@ def test_coherent_proposal_verdict_is_reused_by_teaching_implementation(tmp_path
     assert response.status_code == 200, response.text
     root = api.app.state.canvas_workspace.layout.course_root(response.json()["course_id"])
     lecture = response.json()["lecture_id"]
-    saved = list((root / "builder" / "implementation-jobs" / lecture / "scope-reviews").iterdir())
+    saved = [
+        p
+        for p in (root / "builder" / "implementation-jobs" / lecture / "scope-reviews").iterdir()
+        if not p.name.startswith("approval-")
+    ]
     assert len(saved) == 1
     assert json.loads(saved[0].read_text())["review"]["coherent"] is True
 

@@ -8,6 +8,8 @@ from pydantic import BeforeValidator, Field
 
 from lecturepilot.api_auth import request_context
 from lecturepilot.course_learning_intent_store import LearningIntentStore
+from lecturepilot.course_learning_intent import LearningIntent
+from lecturepilot.learning_intent_approval_review import require_approvable_scope
 from lecturepilot.course_learning_intent_proposal import (
     LearningIntentProposal,
     propose_learning_intent,
@@ -44,7 +46,7 @@ def register_learning_intent_routes(
         "/admin/courses/{course_id}/lectures/{lecture_id}/practice-design/intent/approve",
         response_model=PracticeDesign,
     )
-    def approve_learning_intent(
+    async def approve_learning_intent(
         course_id: str,
         lecture_id: str,
         approval: LearningIntentApprovalInput,
@@ -53,7 +55,51 @@ def register_learning_intent_routes(
     ):
         require_manager(context, request, course_id, course_tenant_id)
         layout = app.state.canvas_workspace.layout
+
+        def candidate():
+            with locked_course_state(layout.course_root(course_id)):
+                revision = source_revision(app, course_id, lecture_id)
+                design = LearningIntentStore(layout).read(
+                    course_id=course_id, lecture_id=lecture_id
+                )
+                if (
+                    design is None
+                    or revision != approval.source_revision
+                    or design.source_revision != revision
+                    or design.revision != approval.practice_design_revision
+                ):
+                    raise PracticeDesignStale("Learning goals or sources changed. Reload them.")
+                if design.approval is not None and not approval.convert_legacy:
+                    raise ValueError("Existing full approval requires explicit conversion.")
+                return LearningIntent.from_design(
+                    design, fixed_target_ids=approval.fixed_target_ids
+                )
+
+        def load_sources():
+            with locked_course_state(layout.course_root(course_id)):
+                source, revision, paths = source_context(
+                    app, source_document, course_id, lecture_id
+                )
+                if revision != approval.source_revision:
+                    raise PracticeDesignStale("Course sources changed during scope review.")
+                return source, paths
+
         try:
+            intent = await run_in_threadpool(candidate)
+            with model_usage_scope(
+                actor_user_id=context.user_id,
+                course_id=course_id,
+                workload="course_learning_intent",
+            ):
+                await require_approvable_scope(
+                    app.state.practice_design_planner,
+                    root=layout.course_root(course_id)
+                    / "builder"
+                    / "implementation-jobs"
+                    / lecture_id,
+                    intent=intent,
+                    load_sources=lambda: run_in_threadpool(load_sources),
+                )
             with locked_course_state(layout.course_root(course_id)):
                 revision = source_revision(app, course_id, lecture_id)
                 if revision != approval.source_revision:
@@ -67,6 +113,10 @@ def register_learning_intent_routes(
                     fixed_target_ids=approval.fixed_target_ids,
                     convert_legacy=approval.convert_legacy,
                 )
+        except ProviderConfigurationError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except ModelExecutionError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
 
