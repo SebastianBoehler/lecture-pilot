@@ -11,6 +11,7 @@ export const learningIntentMessages = {
       "Decide what students should learn. AI develops and checks the teaching, practice and hints; you review the canvas before publication.",
     "builder.intent.approve": "Approve learning goals",
     "builder.intent.approved": "Learning goals approved",
+    "builder.intent.approveAll": "Approve all {count} open learning plans",
     "builder.intent.details": "Inspect generated practice and support",
     "builder.intent.fixed": "Keep these tasks and rubric fixed",
     "builder.intent.fixedHelp":
@@ -30,16 +31,17 @@ export const learningIntentMessages = {
   },
   de: {
     "builder.intent.reviewImplementation":
-      "Die Lernziele sind bereits freigegeben. Prüfe ihre Umsetzung in diesem Canvas und gib ihn zur Veröffentlichung frei. Für Änderungen an den Lernzielen gehe zum Lernplan zurück und erstelle einen neuen Entwurf.",
+      "Die Lernziele sind bereits freigegeben. Prüfen Sie ihre Umsetzung in diesem Canvas und geben Sie ihn zur Veröffentlichung frei. Für Änderungen an den Lernzielen gehen Sie zum Lernplan zurück und erstellen einen neuen Entwurf.",
     "builder.intent.title": "Lernziele",
     "builder.intent.empty":
-      "Lass quellenbasierte Lernziele zur Prüfung vorschlagen. Übungsaufgaben entstehen nach der Freigabe.",
+      "Lassen Sie quellenbasierte Lernziele zur Prüfung vorschlagen. Übungsaufgaben entstehen nach der Freigabe.",
     "builder.intent.generate": "Lernziele vorschlagen",
     "builder.intent.generating": "Lernziele werden vorgeschlagen...",
     "builder.intent.help":
       "Entscheiden Sie, was Studierende lernen sollen. Die KI entwickelt und prüft Erklärungen, Aufgaben und Hilfen. Vor der Veröffentlichung prüfen Sie den Canvas.",
     "builder.intent.approve": "Lernziele freigeben",
     "builder.intent.approved": "Lernziele freigegeben",
+    "builder.intent.approveAll": "Alle {count} offenen Lernpläne freigeben",
     "builder.intent.details": "Generierte Aufgaben und Hilfen ansehen",
     "builder.intent.fixed": "Diese Aufgaben und Bewertungskriterien festschreiben",
     "builder.intent.fixedHelp":

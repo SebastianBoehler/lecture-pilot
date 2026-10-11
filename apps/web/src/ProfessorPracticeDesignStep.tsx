@@ -7,7 +7,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useI18n } from "./i18n";
 import { ProfessorPracticeLecturePlan } from "./ProfessorPracticeLecturePlan";
-import { isApproved, updateFor } from "./ProfessorPracticeDesignStep.helpers";
+import {
+  isApproved,
+  openLearningIntentIds,
+  updateFor,
+} from "./ProfessorPracticeDesignStep.helpers";
 import type {
   PracticeDesign,
   PracticeDesignReadiness,
@@ -75,6 +79,25 @@ export function ProfessorPracticeDesignStep({
     designs,
     lectureIds,
   });
+  const openIntentIds = routingReady
+    ? openLearningIntentIds({
+        lectureIds,
+        designs,
+        drafts: draftState.drafts,
+        conflicts: draftState.conflicts,
+        readiness,
+        pending: pendingByLecture,
+      })
+    : [];
+  const approveOpenIntents = () => {
+    for (const id of openIntentIds) {
+      onApprove(id, {
+        fixed_target_ids:
+          designs[id].learning_intent?.fixed_targets.map((target) => target.id) ?? [],
+        convert_legacy: false,
+      });
+    }
+  };
   return (
     <section className="flow-card practice-design-step">
       <header className="practice-design-header">
@@ -88,6 +111,11 @@ export function ProfessorPracticeDesignStep({
             total: lectures.length,
           })}
         </span>
+        {openIntentIds.length > 1 ? (
+          <button type="button" className="primary-action" onClick={approveOpenIntents}>
+            {t("builder.intent.approveAll", { count: openIntentIds.length })}
+          </button>
+        ) : null}
       </header>
       {error ? (
         <p className="form-error" role="alert">

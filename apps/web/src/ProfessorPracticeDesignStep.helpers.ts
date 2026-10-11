@@ -1,4 +1,8 @@
-import type { PracticeDesign, PracticeDesignUpdate } from "./practiceDesignTypes";
+import type {
+  PracticeDesign,
+  PracticeDesignReadiness,
+  PracticeDesignUpdate,
+} from "./practiceDesignTypes";
 
 export function updateFor(design: PracticeDesign): PracticeDesignUpdate {
   return {
@@ -41,4 +45,28 @@ export function hasCriticalQualityFinding(design: PracticeDesign) {
   return Boolean(
     currentQualityReview(design)?.checks.some((check) => check.severity === "critical"),
   );
+}
+
+export function openLearningIntentIds(input: {
+  lectureIds: readonly string[];
+  designs: Readonly<Record<string, PracticeDesign>>;
+  drafts: Readonly<Record<string, PracticeDesign>>;
+  conflicts: Readonly<Record<string, boolean>>;
+  readiness: Readonly<Record<string, PracticeDesignReadiness>>;
+  pending: Readonly<Record<string, unknown>>;
+}) {
+  return input.lectureIds.filter((id) => {
+    const design = input.designs[id];
+    const draft = input.drafts[id];
+    const current = input.readiness[id]?.current_source_revision;
+    return Boolean(
+      design?.learning_intent &&
+      !design.approval &&
+      !isApproved(design) &&
+      !input.pending[id] &&
+      !input.conflicts[id] &&
+      (!draft || sameEditableDesign(design, draft)) &&
+      (!current || current === design.source_revision),
+    );
+  });
 }
