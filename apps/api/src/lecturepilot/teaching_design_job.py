@@ -9,7 +9,7 @@ from time import perf_counter
 from pydantic_ai import Agent, ModelRetry, Tool
 from pydantic_ai.usage import UsageLimits
 from pydantic_ai.capabilities import PrepareOutputTools, ProcessHistory
-from lecturepilot.authoring_history import compact_authoring_history
+from lecturepilot.teaching_history import compact_teaching_history
 from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
 
 from lecturepilot.authoring_lock import exclusive_authoring_job
@@ -192,7 +192,7 @@ async def _run(job, *, model):
         output_type=AuthoringCompletion,
         capabilities=[
             PrepareOutputTools(prepare_completion),
-            ProcessHistory(compact_authoring_history),
+            ProcessHistory(compact_teaching_history),
         ],
         retries=3,
         instructions=instructions,

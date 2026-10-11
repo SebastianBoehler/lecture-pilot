@@ -190,6 +190,8 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
 - AI-owned teaching implementation uses a persistent target-scoped `read`/`write`/`validate`
   agent before canvas file authoring; semantic findings do not share the schema retry budget.
   Saved targets and history resume under the same source/intent identity.
+  `teaching_history.py` removes superseded repeated source/intent prompts and validation
+  results from model context; current context, tool pairs and durable history remain intact.
   `teaching_recovery.py` permits at most three implementation windows for temporary provider
   failures or budgets with changed saved targets. Cancellation, stale ownership and approved
   goal conflicts remain terminal; each window retains the existing request/token/deadline limits.
