@@ -209,6 +209,7 @@ export type CourseWorkspaceResult = {
   lectures: Lecture[];
   active_lecture_id: string;
   publishedLectureIds?: string[];
+  setup_target?: "single-lecture" | "full-course" | null;
 };
 
 export type ManagedCourseWorkspaceResult = CourseWorkspaceResult & {

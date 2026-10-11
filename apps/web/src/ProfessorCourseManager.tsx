@@ -1,5 +1,5 @@
 import { ProfessorLegacyCourseRow } from "./ProfessorLegacyCourseRow";
-import { ProfessorCourseStatus } from "./ProfessorCourseStatus";
+import { courseSetupState, ProfessorCourseStatus } from "./ProfessorCourseStatus";
 import { ProfessorLanguageVariants } from "./ProfessorLanguageVariants";
 import { useI18n } from "./i18n";
 import {
@@ -23,6 +23,7 @@ type ProfessorCourseManagerProps = {
   ) => void;
   onRefresh: () => void;
   onPreviewLecture: (courseId: string, lecture: Lecture) => void;
+  onResumeCourse: (workspace: ManagedCourseWorkspaceResult) => void;
   onUpdateCourse: (courseId: string) => void;
   session: LoginSession;
   workspaces: ManagedCourseWorkspaceResult[];
@@ -37,6 +38,7 @@ export function ProfessorCourseManager({
   onManageLectureAccess,
   onRefresh,
   onPreviewLecture,
+  onResumeCourse,
   onUpdateCourse,
   session,
   workspaces,
@@ -98,13 +100,27 @@ export function ProfessorCourseManager({
                     >
                       {t("courseAccess.manageDefault")}
                     </button>
-                    <button
-                      className="refresh-button"
-                      type="button"
-                      onClick={() => onUpdateCourse(workspace.course.id)}
-                    >
-                      {t("professor.update")}
-                    </button>
+                    {courseSetupState(workspace).kind !== "published" ? (
+                      <button
+                        className="refresh-button primary-action"
+                        type="button"
+                        aria-label={t("professor.setup.resumeAria", {
+                          course: workspace.course.title,
+                        })}
+                        onClick={() => onResumeCourse(workspace)}
+                      >
+                        {t("professor.setup.resume")}
+                      </button>
+                    ) : null}
+                    {courseSetupState(workspace).published > 0 ? (
+                      <button
+                        className="refresh-button"
+                        type="button"
+                        onClick={() => onUpdateCourse(workspace.course.id)}
+                      >
+                        {t("professor.update")}
+                      </button>
+                    ) : null}
                     {workspace.publishedLectureIds?.length ? (
                       <ExamReadinessPanel
                         compact

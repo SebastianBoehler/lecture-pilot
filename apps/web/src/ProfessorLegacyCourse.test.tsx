@@ -28,6 +28,7 @@ it.each(["en", "de"] as const)(
     renderWithI18n(
       <ProfessorCourseManagement
         onCreateCourse={() => undefined}
+        onResumeCourse={() => undefined}
         onWorkspaceDeleted={() => undefined}
         session={localProfessorSession}
       />,

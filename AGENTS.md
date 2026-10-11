@@ -191,6 +191,10 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
   agent before canvas file authoring; semantic findings do not share the schema retry budget.
   Saved targets and history resume under the same source/intent identity.
 - Learning-plan proposals and their reviewer use native-schema Pydantic AI sessions.
+  Before approval, overbroad generated objectives use objective-only repair and another scope review;
+  only reviewer-named unsupported goal IDs use full proposal repair. After the budget, drop those
+  goals and derive the objective from the remaining outcomes. Never apply objective-only repair to
+  approved intent. Revision-only checks use `course_builder_source_revision`, not document import.
   Repair generated questions, rubrics, hints and variants before design approval;
   missing reviewer evidence and unknown target IDs must be corrected by the reviewer.
   Implementation output contains teaching details; the backend binds approved goal fields and
@@ -344,6 +348,9 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
   and Review & publish. Materials owns source confirmation; the separate Media
   stage offers video selection or continuing without videos before learning-plan review. The
   final stage owns draft generation, exact-draft approval, and publication.
+  Course management labels setup state (incomplete, partly published, published) and
+  offers "Continue setup"; `writeResumeFlow` seeds the builder and backend restore picks the
+  step. "Create course" there always starts empty; the builder names the course in progress.
 
 - The canvas is the main learning surface and should remain the single ground
   truth for generated explanations, quizzes, examples, figures, and summaries.

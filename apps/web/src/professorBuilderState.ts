@@ -1,4 +1,4 @@
-import type { LectureScheduleItem } from "./types";
+import type { CourseWorkspaceResult, LectureScheduleItem } from "./types";
 import type { CourseAccessPolicy } from "./courseAccessTypes";
 
 export type BuilderTarget = "single-lecture" | "full-course";
@@ -29,7 +29,7 @@ export type SavedProfessorFlow = {
   query: string;
 };
 
-const defaultCourseSetup: CourseSetup = {
+export const defaultCourseSetup: CourseSetup = {
   accessPolicy: "tuebingen_enrolled",
   canvasLanguage: "en",
   courseTitle: "",
@@ -79,6 +79,36 @@ export function writeSavedFlow(flow: SavedProfessorFlow) {
   try {
     window.sessionStorage.setItem(flowStorageKey, JSON.stringify(flow));
   } catch {}
+}
+
+export function writeResumeFlow(workspace: CourseWorkspaceResult) {
+  const { course, lectures, active_lecture_id } = workspace;
+  const single = resumeTarget(workspace) === "single-lecture" ? lectures[0] : null;
+  writeSavedFlow({
+    ...defaultFlow,
+    setup: {
+      ...defaultCourseSetup,
+      accessPolicy: course.access_policy ?? defaultCourseSetup.accessPolicy,
+      canvasLanguage: course.canvas_language ?? defaultCourseSetup.canvasLanguage,
+      courseTitle: course.title,
+      lectureTitle: single?.title ?? "",
+      lectureNumber: single?.number ?? "",
+      target: single ? "single-lecture" : "full-course",
+    },
+    workspace: { courseId: course.id, lectureId: active_lecture_id || lectures[0]?.id || "" },
+    courseReady: true,
+    // Backend restore decides the actual step from uploads, routing, plans and drafts.
+    bundleReady: true,
+  });
+}
+
+function resumeTarget({ lectures, setup_target }: CourseWorkspaceResult): BuilderTarget {
+  if (setup_target) return setup_target;
+  // Older courses: full-course setup starts with "Lecture NN" placeholders.
+  const [only] = lectures;
+  return lectures.length === 1 && !/^Lecture \d+$/.test(only.title)
+    ? "single-lecture"
+    : "full-course";
 }
 
 export function clearSavedFlow() {

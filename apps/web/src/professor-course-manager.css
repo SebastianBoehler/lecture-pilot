@@ -259,6 +259,16 @@
   color: var(--color-text-primary);
 }
 
+.created-course-status [data-setup-state] {
+  border: 1px solid var(--color-border-primary);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+.created-course-status [data-setup-state="setup"] {
+  border-color: var(--color-border-strong);
+}
+
 .created-course-status p {
   flex-basis: 100%;
   margin: 0;

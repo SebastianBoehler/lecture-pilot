@@ -15,6 +15,7 @@ import type { CourseWorkspaceResult, LoginSession, ManagedCourseWorkspaceResult 
 
 export function ProfessorCourseManagement({
   onCreateCourse,
+  onResumeCourse,
   onCloseCourseUpdate,
   onPreviewLecture = () => undefined,
   onUpdateCourse,
@@ -23,6 +24,7 @@ export function ProfessorCourseManagement({
   onWorkspaceDeleted,
 }: {
   onCreateCourse: () => void;
+  onResumeCourse: (workspace: ManagedCourseWorkspaceResult) => void;
   onCloseCourseUpdate?: () => void;
   onPreviewLecture?: (courseId: string, lecture: CourseWorkspaceResult["lectures"][number]) => void;
   onUpdateCourse?: (courseId: string) => void;
@@ -81,6 +83,7 @@ export function ProfessorCourseManagement({
         deletingCourseId={deletingCourseId}
         isLoading={isLoading}
         onCreateCourse={onCreateCourse}
+        onResumeCourse={onResumeCourse}
         onDeleteCourse={(courseId) => {
           void handleDeleteCourse(courseId);
         }}

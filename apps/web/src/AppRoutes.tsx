@@ -1,3 +1,4 @@
+import { clearSavedFlow, writeResumeFlow } from "./professorBuilderState";
 import { lazy, Suspense, type ReactNode } from "react";
 
 import { courseUpdatePath, type AppRoute } from "./appRoute";
@@ -173,7 +174,14 @@ export function AppRoutes(props: AppRoutesProps) {
   if (view === "course-management" && courseManagerSession) {
     return deferred(
       <ProfessorCourseManagement
-        onCreateCourse={() => props.onViewChange("professor")}
+        onCreateCourse={() => {
+          clearSavedFlow();
+          props.onViewChange("professor");
+        }}
+        onResumeCourse={(workspace) => {
+          writeResumeFlow(workspace);
+          props.onViewChange("professor");
+        }}
         onCloseCourseUpdate={() => props.onViewChange("course-management")}
         onPreviewLecture={props.onPreviewLecture}
         onUpdateCourse={(courseId) => props.onNavigatePath(courseUpdatePath(courseId))}

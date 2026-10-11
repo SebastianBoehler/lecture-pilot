@@ -162,6 +162,7 @@ describe("Professor course update", () => {
       <I18nProvider locale="en" setLocale={() => undefined}>
         <ProfessorCourseManagement
           onCreateCourse={() => undefined}
+          onResumeCourse={() => undefined}
           onCloseCourseUpdate={() => undefined}
           onWorkspaceDeleted={() => undefined}
           session={localProfessorSession}

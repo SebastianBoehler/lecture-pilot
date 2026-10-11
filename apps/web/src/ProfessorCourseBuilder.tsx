@@ -118,6 +118,21 @@ export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
           <p>{builderStageDescription(stage, t)}</p>
         </div>
         <div className="professor-header-actions">
+          {builder.workspace && builder.courseTitle ? (
+            <>
+              <p className="builder-current-course">
+                {t("builder.resume.current", { course: builder.courseTitle })}
+              </p>
+              <button
+                className="refresh-button"
+                disabled={builder.isRestoring || builder.uploadStep.pendingAction !== null}
+                type="button"
+                onClick={builder.startNewCourse}
+              >
+                {t("builder.resume.startNew")}
+              </button>
+            </>
+          ) : null}
           <button
             className="refresh-button"
             disabled={

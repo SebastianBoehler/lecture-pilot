@@ -141,6 +141,8 @@ class CourseWorkspaceResult(BaseModel):
     course: Course
     lectures: list[Lecture]
     active_lecture_id: str
+    # How the professor started setup; lets an unfinished course resume in any tab.
+    setup_target: Literal["single-lecture", "full-course"] | None = None
 
 
 class LectureScheduleItem(BaseModel):

@@ -33,6 +33,7 @@ def resolve_course_workspace(
         course=course,
         lectures=lectures,
         active_lecture_id=lectures[0].id,
+        setup_target=setup.target,
     )
 
 
@@ -46,6 +47,9 @@ def merge_course_workspace(
         return incoming
     course = incoming.course.model_copy(
         update={"default_publication_mode": existing.course.default_publication_mode}
+    )
+    incoming = incoming.model_copy(
+        update={"setup_target": existing.setup_target or incoming.setup_target}
     )
     incoming_by_id = {lecture.id: lecture for lecture in incoming.lectures}
     if replace_lectures:

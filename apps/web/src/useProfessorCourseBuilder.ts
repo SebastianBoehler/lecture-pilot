@@ -9,6 +9,7 @@ import {
   type CanvasGenerationProgress,
 } from "./professorCanvasGeneration";
 import { restoreFullCourseCanvasDrafts } from "./professorCanvasRestoration";
+import { useRestoredGenerationPolling } from "./useRestoredGenerationPolling";
 import { hasCanvasVideo, toggleSelected } from "./ProfessorCourseBuilderParts";
 import {
   createCourseWorkspace,
@@ -23,6 +24,7 @@ import {
 } from "./professorApi";
 import {
   clearSavedFlow,
+  defaultCourseSetup,
   isCourseSetupReady,
   readSavedFlow,
   writeSavedFlow,
@@ -109,6 +111,7 @@ export function useProfessorCourseBuilder({
   const [generationProgress, setGenerationProgress] = useState<CanvasGenerationProgress[]>([]);
   const [generationWarnings, setGenerationWarnings] = useState<string[]>([]);
   const [retryingLectureIds, setRetryingLectureIds] = useState<Set<string>>(new Set());
+  const [restoredGeneratingIds, setRestoredGeneratingIds] = useState<string[]>([]);
   const [query, setQuery] = useState(savedFlow.query);
   const [videos, setVideos] = useState<YoutubeVideoCandidate[]>([]);
   const [suggestedVideoGroups, setSuggestedVideoGroups] = useState<YoutubeCandidateGroup[]>([]);
@@ -126,6 +129,16 @@ export function useProfessorCourseBuilder({
   const [restored, setRestored] = useState(!savedFlow.bundleReady && !savedFlow.canvasReady);
   const [isRestoring, setIsRestoring] = useState(false);
   const restoreGeneratedState = useEffectEvent(restoreFromBackend);
+  useRestoredGenerationPolling({
+    courseId: workspace?.courseId ?? null,
+    lectureIds: restoredGeneratingIds,
+    session,
+    onDraftReady: recordGeneratedCanvas,
+    onProgress: updateGenerationItem,
+    onError: setError,
+    onSettled: (lectureId) =>
+      setRestoredGeneratingIds((current) => current.filter((id) => id !== lectureId)),
+  });
   const runAutomaticVideoSearch = useEffectEvent(searchSuggestedVideos);
 
   const setupReady = isCourseSetupReady(setup);
@@ -365,6 +378,7 @@ export function useProfessorCourseBuilder({
     setGenerationProgress([]);
     setGenerationWarnings([]);
     setRetryingLectureIds(new Set());
+    setRestoredGeneratingIds([]);
     setVideos([]);
     setSuggestedVideoGroups([]);
     suggestedSearchGeneration.current += 1;
@@ -452,6 +466,7 @@ export function useProfessorCourseBuilder({
     lectureIds: string[],
     options: { repair?: boolean; repairIds?: ReadonlySet<string> } = {},
   ) {
+    setRestoredGeneratingIds((current) => current.filter((id) => !lectureIds.includes(id)));
     try {
       return await generateLectureCanvasDrafts({
         lectureIds,
@@ -486,6 +501,13 @@ export function useProfessorCourseBuilder({
         return next;
       });
     }
+  }
+
+  function restoredStep(routingConfirmed: boolean): BuilderStep {
+    if (!routingConfirmed) return "sources";
+    // Media is optional; resumed setups continue with the learning plan.
+    setMediaReviewed(true);
+    return "design";
   }
 
   async function restoreFromBackend(
@@ -529,6 +551,10 @@ export function useProfessorCourseBuilder({
         setLectureSchedule(restoredLectures.map(scheduleItemFromLecture));
       }
       if (setup.target === "full-course") setScheduleApplied(restoredLectures.length > 0);
+      if (!restoredBundle.files.length) {
+        setActiveStep("upload");
+        return;
+      }
       let restoredRouting;
       try {
         restoredRouting = await sourceRouting.load(targetWorkspace.courseId);
@@ -558,6 +584,11 @@ export function useProfessorCourseBuilder({
         setCanvas(activeCanvas ?? null);
         setGeneratedLectureIds(restoredDrafts.restored.map((item) => item.lectureId));
         setGenerationProgress(restoredDrafts.progress);
+        setRestoredGeneratingIds(
+          restoredDrafts.progress
+            .filter((item) => item.status === "generating")
+            .map((item) => item.lectureId),
+        );
         setDraftRestoreRevision((revision) => revision + 1);
         setGenerationWarnings(
           Array.from(
@@ -565,7 +596,7 @@ export function useProfessorCourseBuilder({
           ),
         );
         setDraftReviewed(false);
-        setActiveStep(activeCanvas ? "generate" : restoredRouting.confirmed ? "review" : "sources");
+        setActiveStep(activeCanvas ? "generate" : restoredStep(restoredRouting.confirmed));
         return;
       }
       try {
@@ -581,7 +612,7 @@ export function useProfessorCourseBuilder({
         setDraftReviewed(false);
         setActiveStep("generate");
       } catch (canvasError) {
-        setActiveStep(restoredRouting.confirmed ? "review" : "sources");
+        setActiveStep(restoredStep(restoredRouting.confirmed));
         if (!options.quietDraftMiss) {
           setError(
             canvasError instanceof Error
@@ -942,6 +973,11 @@ export function useProfessorCourseBuilder({
     practiceDesignStep: practiceDesign.practiceDesignStep,
     routingStep,
     restoreWorkspace: () => void restoreFromBackend(workspace, { quietDraftMiss: true }),
+    courseTitle: setup.courseTitle,
+    startNewCourse: () => {
+      clearSavedFlow();
+      updateSetup(defaultCourseSetup);
+    },
     setActiveStep,
     steps,
     uploadStep,
