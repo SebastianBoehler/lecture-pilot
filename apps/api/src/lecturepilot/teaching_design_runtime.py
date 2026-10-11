@@ -1,12 +1,6 @@
-import asyncio
-from lecturepilot.authoring_limits import (
-    authoring_budget,
-    AuthoringBudgetExceeded,
-    AUTHORING_DEADLINE_SECONDS,
-)
-
 """Connect owned generation requests to resumable teaching implementation jobs."""
 
+from lecturepilot.teaching_recovery import continue_saved_implementation
 from lecturepilot.course_learning_intent import digest
 from lecturepilot.course_practice_design_planner import ReviewedPracticeDesignProposal
 from lecturepilot.models import ProviderCapability
@@ -94,11 +88,4 @@ async def _run_implementation_repair(
 
 
 async def run_implementation_repair(**kwargs):
-    with authoring_budget():
-        try:
-            async with asyncio.timeout(AUTHORING_DEADLINE_SECONDS):
-                return await _run_implementation_repair(**kwargs)
-        except TimeoutError as exc:
-            raise AuthoringBudgetExceeded(
-                "Teaching implementation deadline reached; saved targets can resume."
-            ) from exc
+    return await continue_saved_implementation(_run_implementation_repair, **kwargs)

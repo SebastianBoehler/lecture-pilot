@@ -190,6 +190,9 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
 - AI-owned teaching implementation uses a persistent target-scoped `read`/`write`/`validate`
   agent before canvas file authoring; semantic findings do not share the schema retry budget.
   Saved targets and history resume under the same source/intent identity.
+  `teaching_recovery.py` permits at most three implementation windows for temporary provider
+  failures or budgets with changed saved targets. Cancellation, stale ownership and approved
+  goal conflicts remain terminal; each window retains the existing request/token/deadline limits.
 - Learning-plan proposals and their reviewer use native-schema Pydantic AI sessions.
   Before approval, overbroad generated objectives use objective-only repair and another scope review;
   only reviewer-named unsupported goal IDs use full proposal repair. After the budget, drop those
