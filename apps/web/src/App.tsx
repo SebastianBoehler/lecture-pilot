@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useEffectEvent, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useEffectEvent, useState } from "react";
 
 import { publishLectureCanvas } from "./api";
 import { AppFooter } from "./AppFooter";
@@ -7,7 +7,6 @@ import { landingView } from "./appLanding";
 import { AppRoutes } from "./AppRoutes";
 import { pathForView, requiresSession } from "./appRoute";
 import { FeedbackDialog } from "./FeedbackDialog";
-import { ProfessorWalkthrough } from "./ProfessorWalkthrough";
 import { localDemoSession, localProfessorSession } from "./appDefaults";
 import { canManageCourses } from "./authz";
 import { clearDemoWorkspaceCourse } from "./demoWorkspaceAccess";
@@ -28,6 +27,11 @@ import { useFeedbackPrompt } from "./useFeedbackPrompt";
 import { useViewTransitionReset } from "./useViewTransitionReset";
 import { useVersionUpdateActivity } from "./VersionUpdateBoundary";
 import type { LoginSession, Theme, View } from "./types";
+
+// The guided tour (and its positioning library) only ever loads for course managers.
+const ProfessorWalkthrough = lazy(() =>
+  import("./ProfessorWalkthrough").then((module) => ({ default: module.ProfessorWalkthrough })),
+);
 
 type ManagedView = "performance" | "usage" | "course-management" | "professor";
 
@@ -182,11 +186,13 @@ function App() {
           />
         ) : null}
         {courseManagerSession && view !== "lesson" ? (
-          <ProfessorWalkthrough
-            key={courseManagerSession.username}
-            onViewChange={(nextView) => changeView(nextView)}
-            username={courseManagerSession.username}
-          />
+          <Suspense fallback={null}>
+            <ProfessorWalkthrough
+              key={courseManagerSession.username}
+              onViewChange={(nextView) => changeView(nextView)}
+              username={courseManagerSession.username}
+            />
+          </Suspense>
         ) : null}
 
         <AppRoutes

@@ -1,6 +1,9 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { localProfessorSession } from "./appDefaults";
+import { walkthroughStorageKey } from "./professorWalkthroughState";
+
 export async function showAllPublishedLectures(user: ReturnType<typeof userEvent.setup>) {
   if (screen.queryByRole("button", { name: /open lecture 03/i })) return;
   const showAll = screen.queryByRole("button", { name: /show all/i });
@@ -20,6 +23,8 @@ export async function openLecture03FromDashboard(
 }
 
 export async function openProfessorDemo(user: ReturnType<typeof userEvent.setup>) {
+  // The lazily loaded first-visit tour would otherwise take focus at an arbitrary point.
+  window.localStorage.setItem(walkthroughStorageKey(localProfessorSession.username), "seen");
   await user.click(screen.getByRole("button", { name: /preview professor account/i }));
   await screen.findByRole("navigation", { name: /course builder progress/i }, { timeout: 5_000 });
 }

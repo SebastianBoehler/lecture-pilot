@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import App from "./App";
+import { walkthroughStorageKey } from "./professorWalkthroughState";
 import { openLecture03FromDashboard } from "./testLessonActions";
 import { mockLoginAndTutorFetch, mockLoginFetch } from "./testFixtures";
 
@@ -217,6 +218,8 @@ describe("LecturePilot app shell", () => {
       roles: ["professor"],
       courses: [],
     };
+    // The lazily loaded first-visit tour would otherwise take focus from the course field.
+    window.localStorage.setItem(walkthroughStorageKey(professorAccount.username), "seen");
     vi.stubGlobal(
       "fetch",
       vi.fn((input: RequestInfo | URL) => {
