@@ -1,7 +1,7 @@
 import { useId } from "react";
 
-import { formatAccessDate } from "./courseAccessStatus";
 import { useI18n } from "./i18n";
+import { formatLectureDate } from "./lectureDate";
 import type {
   CourseAccessPolicy,
   CourseAccessRule,
@@ -115,9 +115,4 @@ export function CourseAccessFields({
       </fieldset>
     </>
   );
-}
-
-function formatLectureDate(value: string, locale: string) {
-  const date = new Date(`${value}T12:00:00`);
-  return Number.isNaN(date.getTime()) ? value : formatAccessDate(date, locale, false);
 }
