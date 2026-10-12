@@ -130,7 +130,12 @@ export function ProfessorLearningIntent({
                 <strong>{target.title}</strong>
                 {finding ? (
                   <p className="goal-finding" role="note">
-                    {t("builder.intent.finding", { reason: finding.reason })}
+                    {t(
+                      finding.status === "repaired_unchecked"
+                        ? "builder.intent.findingRepaired"
+                        : "builder.intent.finding",
+                      { reason: finding.reason },
+                    )}
                   </p>
                 ) : null}
                 {editing ? (

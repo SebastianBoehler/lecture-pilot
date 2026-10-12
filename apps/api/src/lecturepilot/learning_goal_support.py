@@ -2,11 +2,13 @@
 
 The lecture objective is derived from the goals, so objective/goal scope cannot diverge.
 Model findings only annotate goals for professor review; they never block a proposal,
-approval or teaching generation.
+approval or teaching generation. A repaired goal is not reviewed again: its finding stays
+visible as "repaired_unchecked" so the professor sees what the single repair addressed.
 """
 
 import json
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent, ModelRetry, NativeOutput
@@ -26,6 +28,29 @@ class GoalSupportFinding(BaseModel):
 class GoalSupportReview(BaseModel):
     findings: list[GoalSupportFinding] = Field(max_length=8)
     evidence_ids: list[str] = Field(max_length=12)
+
+
+class GoalFindingRecord(GoalSupportFinding):
+    """Stored professor-facing finding; `open` also covers a repair that left the goal unchanged."""
+
+    status: Literal["open", "repaired_unchecked"] = "open"
+
+
+def goal_finding_records(review: GoalSupportReview, before, after) -> list[GoalFindingRecord]:
+    """Attach first-review findings to the final goals without claiming a re-check."""
+    original = {goal.id: goal for goal in before}
+    final = {goal.id: goal for goal in after}
+    return [
+        GoalFindingRecord(
+            goal_id=finding.goal_id,
+            reason=finding.reason,
+            status="open"
+            if original.get(finding.goal_id) == final[finding.goal_id]
+            else "repaired_unchecked",
+        )
+        for finding in review.findings
+        if finding.goal_id in final
+    ]
 
 
 def goal_set_objective(goals) -> str:
@@ -84,13 +109,13 @@ def goal_findings_path(layout, course_id: str, lecture_id: str) -> Path:
     return layout.course_root(course_id) / "builder" / "goal-findings" / f"{lecture_id}.json"
 
 
-def save_goal_findings(path: Path, goals, review: GoalSupportReview) -> None:
+def save_goal_findings(path: Path, goals, findings: list[GoalFindingRecord]) -> None:
     by_id = {goal.id: goal for goal in goals}
     atomic_write_json(
         path,
         {
             _goal_key(by_id[finding.goal_id]): finding.model_dump(mode="json")
-            for finding in review.findings
+            for finding in findings
             if finding.goal_id in by_id
         },
     )
@@ -102,7 +127,12 @@ def read_goal_findings(path: Path, goals) -> list[dict]:
         return []
     saved = json.loads(path.read_text())
     return [
-        {"goal_id": goal.id, "reason": saved[_goal_key(goal)]["reason"]}
+        {
+            "goal_id": goal.id,
+            "reason": saved[_goal_key(goal)]["reason"],
+            # Findings saved before the single-review workflow were all open.
+            "status": saved[_goal_key(goal)].get("status", "open"),
+        }
         for goal in goals
         if _goal_key(goal) in saved
     ]
