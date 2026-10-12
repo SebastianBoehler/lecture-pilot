@@ -32,7 +32,9 @@ else:
 
 
 @pytest.fixture(autouse=True)
-def local_dev_auth_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+def local_dev_auth_defaults(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    # Apps built without an explicit root (and their startup migrations) never touch real data.
+    monkeypatch.setenv("LECTUREPILOT_WORKSPACE_ROOT", str(tmp_path / "default-workspace"))
     monkeypatch.setenv("LECTUREPILOT_ENV", "test")
     monkeypatch.setenv("LECTUREPILOT_AUTH_MODE", "dev")
     monkeypatch.setenv(

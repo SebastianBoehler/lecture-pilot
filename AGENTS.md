@@ -70,7 +70,7 @@ database authority in Postgres and files on the persisted `/app/storage` volume.
     profile.json
     memories/{global.md,preferences.json,memory-trace.jsonl}
     courses/<course-id>/
-      progress.json
+      {progress.json,last-visit.json}
       exam-sources/ppi/<ppi-lecture-id>/{manifest.json,source.zip,normalized/}
       practice-exam-generations/<request-key-hash>.json
       practice-exams/<exam-id>/{exam.json,exam.pdf,solutions.pdf,attempts/<uuid>.json}
@@ -86,6 +86,7 @@ database authority in Postgres and files on the persisted `/app/storage` volume.
     canvas-drafts/lectures/<lecture-id>/latest/{...,practice-design-binding.json}
     builder/{generations/,practice-designs/<lecture-id>.json,repairs/,source-manifests/,source-routing.json,updates/}
     builder/implementation-jobs/<lecture-id>/<identity>/{draft.json,session.json}
+  .storage-migrations.json
 ```
 
 Official source material belongs to `courses/<tenant>/<course>/source`.
@@ -136,13 +137,16 @@ The professor/admin staging endpoint accepts the file types listed in
 `WorkspacePolicy.allowed_course_material_uploads` and rejects unsafe paths,
 unsupported suffixes, oversized payloads, and non-professor roles.
 
-New learner writes use `users/<user-key>/courses/...`. The reader still accepts
-the older `.lecturepilot/workspaces/students/...` compiled canvas and asset
-paths for migration compatibility; do not add new writes to that legacy root.
+Learner writes use `users/<user-key>/courses/...`. The old
+`workspaces/students/` root and compiled `canvas.json` files are retired; nothing
+reads them. One-time storage changes are `storage_migration_<topic>.py` modules
+(`migrate(storage_root, *, apply)`, idempotent, dry run by default) registered in
+`storage_migrations.py`; the API applies pending ones in its lifespan before serving
+and records them in `.storage-migrations.json`. Inspect with
+`python -m lecturepilot.storage_migrations [--apply]`. Append new migrations; never
+reintroduce read-time rewrites of stored data.
 
-The Markdown files under `canvas/` are the editable source of truth. Treat
-`canvas.json` as a compiled API cache/artifact, not as the primary authoring
-format.
+The Markdown files under `canvas/` are the editable source of truth.
 
 Canvas Markdown supports these source-backed learning blocks:
 
@@ -166,6 +170,7 @@ must produce before a gate can pass.
 
 ```txt
 apps/api/                 FastAPI backend, policies, harness contracts
+apps/document-converter/  Optional (compose profile "authoring") Office/PDF/OCR conversion
 apps/latex-compiler/      Isolated, bounded TeX-to-PDF preview service
 apps/web/                 React/Vite app and UI tests
 docs/                     Architecture, workspaces, self-hosting, security notes
@@ -185,17 +190,23 @@ integrations/tuebingen/   TUE API wrapper integration notes
   sequences of structured calls. Repairs are stateless (current artifact + findings), never a
   replayed transcript. Saved artifacts are the resume points.
 - Goals (`course_learning_intent_proposal.py`): one proposal, one advisory source-support review
-  (`learning_goal_support.py`), at most one targeted repair. The lecture objective is derived
-  from the goal outcomes (also after professor edits); findings attach to unchanged goals and
-  are served by `GET .../practice-design/intent/findings`. Approval is deterministic.
+  (`learning_goal_support.py`), at most one targeted repair that is not re-reviewed. The lecture
+  objective is derived from the goal outcomes (also after professor edits); findings carry
+  status `open` or `repaired_unchecked` and are served by `GET .../practice-design/intent/findings`.
+  Approval is deterministic.
 - Teaching (`teaching_design_job.py`): one structured call per missing goal, bounded in parallel,
-  validated by `TeachingDesignWorkspace.write`; one lecture review; one repair per flagged goal;
-  one annotating review. AI-owned implementations keep unresolved critical findings as warnings.
+  validated by `TeachingDesignWorkspace.write`; one lecture review; one repair per flagged goal,
+  not re-reviewed (addressed findings are labelled). A canvas design conflict reuses that review
+  and repairs only the named goals. AI-owned implementations keep unresolved findings as warnings.
 - Canvas (`authoring_job.py`): one Markdown call per missing section with per-section
-  deterministic checks; colliding generated block ids are renamed lecture-wide; one critic pass;
-  one repair per flagged section; one annotating pass whose remaining notes become draft
-  warnings. A checkpoint judge's confirmed `design_conflict` triggers exactly one teaching
-  repair. Professor repair requests regenerate only sections they name. Prose writes formulas
+  deterministic checks; colliding generated block ids are renamed lecture-wide; one critic call
+  over the whole lecture (split only above a bounded size) that classifies checkpoint objections
+  (dismiss / repair_section / design_conflict) with deterministically verified evidence IDs
+  (`course_canvas_quality_checkpoints.py`); one repair per flagged section, never re-reviewed
+  (remaining notes become draft warnings). A verified `design_conflict` triggers exactly one
+  teaching repair; the follow-up job reuses sections whose input fingerprint
+  (`section-inputs.json`, `authoring_reuse.py`) is unchanged. Each section prompt sees only its
+  own checkpoint contracts. Professor repair requests regenerate only sections they name. Prose writes formulas
   as `$...$`; LaTeX inside inline code (`canvas_inline_code_math.py`) and source page citations
   in generated tasks (`assessment_prompts.py`) are deterministic, repairable section defects.
 - Private `builder/authoring-jobs/<lecture>/<generation>/` contains drafts and metrics.
@@ -205,6 +216,14 @@ integrations/tuebingen/   TUE API wrapper integration notes
   `course_builder_source_revision`, not document import. Schema validity is not semantic
   truth. Do not confuse "choose one" with a uniquely correct answer.
 
+- Tutor prompts are assembled by `tutor_prompt.py` in cache order: content shared by every
+  learner of a lecture (rules, tools, a learner-independent response schema, published outline)
+  first; learner sections, gate rubric, memory, coaching state and history only after the cache
+  boundary. Navigation ids are validated server-side after the response (fail closed), not via
+  per-learner schema enums. A turn makes at most 4 model requests; output caps follow the turn's
+  intent (`tutor_turn_budget.py`) and quota reservations follow the cap.
+- Background generation jobs (canvas drafts, practice exams) share the bounded slots in
+  `generation_slots.py`; extra jobs wait. Lease and heartbeat file I/O runs off the event loop.
 - Keep lecture unlocks backend-enforced: `lecture.date <= today` is not a
   prompt instruction.
 - Attendance changes agent behavior; it must not fork the workspace schema.
@@ -274,8 +293,8 @@ integrations/tuebingen/   TUE API wrapper integration notes
   learning-map revisions; it does not replace the earlier design approval or
   acknowledge generator diagnostics as a separate publication task.
 - Place each approved practice checkpoint in its outcome-anchor section, not
-  the first section matching an auxiliary hint. Validate exact task ids/text
-  before caching completed sections; generic formatting must preserve them.
+  the first section matching an auxiliary hint. The backend inserts approved checkpoints and
+  validates exact task ids/text document-wide; generic formatting must preserve them.
 - Section output has native exact-one cardinality; the backend inserts approved
   checkpoints. Repair schemas bind exact target IDs/counts, and repair prompts
   receive only their section's targets. Cross-section approved source excerpts
@@ -335,10 +354,18 @@ integrations/tuebingen/   TUE API wrapper integration notes
 
 ## UI And Canvas Rules
 
-- Public WebMCP tools expose the public guides without account access. Student tools
-  verify the backend session and expose navigation, display settings and read-only progress only.
-  Keep assessments, tutor messages, attendance and learning mutations human-owned.
-  See `docs/webmcp.md`; `webMcpTools.ts` owns the allowlist and `useWebMcp.ts` registration.
+- The student dashboard shows per-lecture and course progress, newest unlocked lectures first,
+  "New since your last visit" markers (`course_last_visit.py`, learner `last-visit.json`) and one
+  "Next up" card (best next action, due reviews, ICS export). The course workspace has two tabs:
+  Lectures and Exam prep, whose modes are the quick graded readiness check and the full mock
+  practice exam (with PPI import).
+- Course search (`lecture_search.py`, `learner_study_routes.py`) covers only released, published
+  teaching blocks the learner may access; never checkpoints, quizzes, predictions, components or
+  hidden assessment content, and never logs query text. Learners can export their own tutor
+  notes for a lecture as Markdown (`learner_notes_export.py`).
+- Frontend polling goes through `polling.ts` (backoff, pauses in hidden tabs, cancels on unmount,
+  overall deadline, honours Retry-After). Professors with courses land on course management;
+  the first-visit professor tour is lazy-loaded for course managers only.
 
 - Public information pages use `InfoArticle.tsx` with bilingual content modules.
   Keep privacy disclosures aligned with deployment, memory and deletion behavior;
@@ -389,6 +416,9 @@ integrations/tuebingen/   TUE API wrapper integration notes
 - Treat course uploads and LaTeX/PDF/image assets as untrusted input.
 - Never compile uploaded TeX inside the API process. Use the no-secret,
   internal-only compiler service; matching uploaded PDFs remain authoritative.
+- Office/PDF/OCR conversion runs only in the optional `document-converter` service (compose
+  profile `authoring`, started while courses are built). When it is unreachable, conversion and
+  drafting fail with an actionable 503; never fall back to degraded parsing.
 - Never commit private professor material, real credentials, provider keys, or
   learner workspace data.
 - PPI credentials are request-only. Retained PPI archives and normalized text
