@@ -13,7 +13,7 @@ it("loads the correct course draft without enabling unpublished tutor turns", as
   window.history.replaceState(
     {},
     "",
-    "/?preview=draft&courseId=security-course&lectureId=lecture-01&lectureNumber=01&lectureTitle=Security",
+    "/professor/courses/security-course/lectures/lecture-01/draft",
   );
   const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
     if (url.includes("/admin/courses/security-course/lectures/lecture-01/canvas/draft")) {
