@@ -159,3 +159,50 @@ async def test_missing_teaching_is_repaired_without_rewriting_approved_task(tmp_
     assert result.document.sections[0].blocks[0].text == job.design.targets[0].baseline_task
     assert result.metrics.repair_edits == 1
     assert not result.document.warnings
+
+
+async def test_repeat_conflict_after_teaching_repair_becomes_a_draft_warning(tmp_path):
+    job = authoring_job(tmp_path)
+    job.candidate = job.source.model_copy(deep=True)
+    job.candidate.sections[0].source_section_id = "topic"
+    job.escalate_design_conflicts = False
+
+    class Critic:
+        async def complete_review(self, **kwargs):
+            return {
+                "issues": [
+                    {
+                        "section_id": "topic",
+                        "block_id": "practice-" + job.design.targets[0].id,
+                        "reason": "The approved task requires unsupported evidence.",
+                    }
+                ]
+            }
+
+    job.reviewer = CanvasQualityReviewer(Critic())
+    job.checkpoint_reviewer = CheckpointReviewer(
+        model=FunctionModel(
+            lambda messages, info: ModelResponse(
+                parts=[
+                    TextPart(
+                        json.dumps(
+                            {
+                                "decision": "design_conflict",
+                                "reason": "The approved task requires unsupported evidence.",
+                                "evidence_ids": ["e0"],
+                            }
+                        )
+                    )
+                ]
+            )
+        )
+    )
+
+    def respond(messages, info):
+        return markdown(
+            str(messages[0].parts[-1].content).split("Current draft:\n")[1].split("\nNotes")[0]
+        )
+
+    result = await run_authoring_job(job, model=FunctionModel(respond))
+    assert result.document.sections[0].blocks[0].text == job.design.targets[0].baseline_task
+    assert any("open note" in warning for warning in result.document.warnings)

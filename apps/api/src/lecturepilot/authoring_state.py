@@ -3,6 +3,7 @@ from __future__ import annotations
 from hashlib import sha256
 import json
 from pathlib import Path
+import shutil
 from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
@@ -52,9 +53,18 @@ def load_state(job: AuthoringJob) -> AuthoringState:
         return AuthoringState(identity=identity)
     state = read_state(job.root)
     if state.identity != identity:
-        raise AuthoringStateError("Authoring session source, design, model, or language changed.")
+        # Saved drafts are resume points only for the exact inputs that produced them. A changed
+        # source document (e.g. OCR became available), design or model starts the job afresh.
+        _discard_resume_state(job.root)
+        return AuthoringState(identity=identity)
     state.metrics.resumes += 1
     return state
+
+
+def _discard_resume_state(root: Path) -> None:
+    (root / "session.json").unlink(missing_ok=True)
+    for name in ("history", "draft", "evidence"):
+        shutil.rmtree(root / name, ignore_errors=True)
 
 
 def read_state(root: Path) -> AuthoringState:

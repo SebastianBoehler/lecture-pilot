@@ -1,3 +1,5 @@
+import pytest
+
 from lecturepilot.assessment_prompts import (
     assessment_generation_instruction,
     assessment_prompt_issue,
@@ -45,4 +47,23 @@ def test_standalone_instruction_does_not_supply_the_knowledge_being_assessed() -
 def test_checkpoint_rejects_which_statement_without_options() -> None:
     assert assessment_prompt_issue("Which statement about softmax is correct?", "checkpoint") == (
         "must not ask the learner to choose from statements, tasks, or options that are not stated"
+    )
+
+
+@pytest.mark.parametrize(
+    "prompt",
+    [
+        "Explain how data improve the learned function in this statement: ML uses data. (PDF page 12)",
+        "Explain the claim on PDF pages 11–20 about experience.",
+        "Erkläre die Aussage (Folie 3) zur Generalisierung.",
+    ],
+)
+def test_checkpoint_rejects_source_page_citations(prompt) -> None:
+    assert "cite source pages" in assessment_prompt_issue(prompt, "checkpoint")
+
+
+def test_checkpoint_accepts_pages_as_task_content() -> None:
+    assert (
+        assessment_prompt_issue("Calculate how many pages a 3-level B-tree reads.", "checkpoint")
+        is None
     )

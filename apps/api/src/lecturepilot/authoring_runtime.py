@@ -26,6 +26,8 @@ class AuthoringScope:
     authorize: Callable[[], None]
     candidate: CanvasDocument | None = None
     report: Callable[[AuthoringMetrics], None] = lambda metrics: None
+    # After one teaching repair, further checkpoint conflicts become draft warnings.
+    escalate_design_conflicts: bool = True
 
 
 _scope: ContextVar[AuthoringScope | None] = ContextVar("canvas_authoring_scope", default=None)
@@ -71,6 +73,7 @@ class CourseCanvasAuthor:
             authorize=scope.authorize,
             repair_context=repair_context,
             candidate=scope.candidate,
+            escalate_design_conflicts=scope.escalate_design_conflicts,
             report=scope.report,
         )
         async with authoring_model(settings, self.usage_recorder, scope.authorize) as model:

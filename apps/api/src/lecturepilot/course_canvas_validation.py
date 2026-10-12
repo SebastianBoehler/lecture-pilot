@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from lecturepilot.assessment_prompts import assessment_prompt_issue
 from lecturepilot.canvas_component_catalog import component_spec_issue
+from lecturepilot.canvas_inline_code_math import validate_inline_code_math
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.course_canvas_math import validate_document_math
@@ -22,6 +23,7 @@ def validate_planned_document(document: CanvasDocument, source_document: CanvasD
             "Use at most one nonempty prediction card per lecture."
         )
     validate_document_math(document)
+    validate_inline_code_math(document)
     _validate_quizzes(document)
     _validate_components(document)
     if missing_refs := [section.title for section in document.sections if not section.source_ref]:

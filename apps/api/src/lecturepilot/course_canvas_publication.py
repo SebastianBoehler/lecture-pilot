@@ -17,6 +17,7 @@ from lecturepilot.canvas_internal_serialization import canvas_document_internal_
 from lecturepilot.canvas_learning_support import normalize_learning_support
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.course_learning_design_models import LearningDesignReview
+from lecturepilot.source_warnings import compact_source_warnings
 
 
 class CanvasPublicationMetadata(BaseModel):
@@ -53,8 +54,12 @@ class InvalidCanvasPublicationMetadataError(ValueError):
 
 
 def prepared_document(document: CanvasDocument, canvas_dir: Path) -> CanvasDocument:
+    # Warnings are advisory: an overflowing list must never cost the professor the draft.
     normalized = normalize_learning_support(document).model_copy(
-        update={"workspace_path": str(canvas_dir / "index.md")}
+        update={
+            "workspace_path": str(canvas_dir / "index.md"),
+            "warnings": compact_source_warnings(document.warnings),
+        }
     )
     return CanvasDocument.model_validate(canvas_document_internal_payload(normalized))
 

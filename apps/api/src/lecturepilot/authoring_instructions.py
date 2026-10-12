@@ -21,7 +21,8 @@ def section_instructions(job) -> str:
         "the section body as Markdown, not JSON, with no frontmatter. Start with a concise "
         "# teaching title. Use explicit block markers such as "
         '<!-- block id="explanation" type="paragraph" --> before each block. '
-        "Math uses ```math fences. Use block ids unique to this section, for example prefixed "
+        "Display math uses ```math fences; inline formulas use $...$, never backticks, which "
+        "show raw LaTeX as code. Use block ids unique to this section, for example prefixed "
         "with the section topic. The practice- block-id prefix is reserved for server-owned "
         "approved checkpoints; the server inserts approved tasks. When a section has no "
         "server-inserted checkpoint, include a concrete open task with exactly this syntax: "

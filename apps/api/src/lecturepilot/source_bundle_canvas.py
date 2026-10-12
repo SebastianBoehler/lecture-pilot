@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path, PurePosixPath
 
+from lecturepilot.source_warnings import compact_source_warnings
 from lecturepilot.canvas_models import CanvasDocument, CanvasSection
 from lecturepilot.compiled_slide_canvas import compiled_slide_preview
 from lecturepilot.latex_canvas_importer import CANVAS_IMPORT_VERSION, import_latex_canvas
@@ -148,7 +149,7 @@ def import_source_bundle_canvas(
         source_ref=_compact_source_ref(source_refs),
         workspace_path=workspace_path,
         sections=_dedupe_sections(sections),
-        warnings=list(dict.fromkeys(document_warnings))[:20],
+        warnings=compact_source_warnings(document_warnings),
     )
 
 

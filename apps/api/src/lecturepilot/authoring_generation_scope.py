@@ -9,7 +9,13 @@ from lecturepilot.durable_files import atomic_write_json
 
 
 def generation_authoring_scope(
-    app, *, ownership, source_revision, session_generation_id=None, candidate=None
+    app,
+    *,
+    ownership,
+    source_revision,
+    session_generation_id=None,
+    candidate=None,
+    escalate_design_conflicts=True,
 ):
     layout = app.state.canvas_workspace.layout
 
@@ -40,6 +46,7 @@ def generation_authoring_scope(
         source_revision=source_revision,
         authorize=authorize,
         candidate=candidate,
+        escalate_design_conflicts=escalate_design_conflicts,
         report=lambda metrics: atomic_write_json(
             authoring_metrics_path(
                 layout,

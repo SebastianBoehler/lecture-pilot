@@ -27,7 +27,7 @@ from lecturepilot.authoring_limits import (
 )
 from lecturepilot.authoring_instructions import defect_category, section_instructions
 from lecturepilot.authoring_lock import exclusive_authoring_job
-from lecturepilot.authoring_models import AuthoringMetrics, AuthoringResult
+from lecturepilot.authoring_models import AuthoringDesignConflict, AuthoringMetrics, AuthoringResult
 from lecturepilot.authoring_quality import AuthoringQualityMemo
 from lecturepilot.authoring_state import load_state, save_state
 from lecturepilot.authoring_workspace import AUTHORING_INPUT_ERRORS, AuthoringWorkspace
@@ -39,6 +39,7 @@ from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.metadata_events import emit_metadata_event
 from lecturepilot.models import ProviderSettings
 from lecturepilot.native_model_settings import native_model_settings
+from lecturepilot.source_warnings import compact_source_warnings
 
 SECTION_CONCURRENCY = 4
 
@@ -55,6 +56,7 @@ class AuthoringJob:
     output_language: str = "en"
     repair_context: str | None = None
     candidate: CanvasDocument | None = None
+    escalate_design_conflicts: bool = True
     authorize: Callable[[], None] = field(default=lambda: None, repr=False)
     report: Callable[[AuthoringMetrics], None] = field(default=lambda metrics: None, repr=False)
 
@@ -98,14 +100,18 @@ async def _run(job: AuthoringJob, *, model: Model) -> AuthoringResult:
         notes = await author.critic_notes(document, judge=False)
         document = document.model_copy(
             update={
-                "warnings": [
-                    *document.warnings,
-                    *(
-                        f"Quality review left {len(items)} open note(s) in "
-                        f"{workspace.paths[path].title!r}."
-                        for path, items in notes.items()
-                    ),
-                ]
+                # Bounded like every canvas warning list: source OCR gaps collapse to one line
+                # so open notes still fit beside a source already at the warning limit.
+                "warnings": compact_source_warnings(
+                    [
+                        *(
+                            f"Quality review left {len(items)} open note(s) in "
+                            f"{workspace.paths[path].title!r}."
+                            for path, items in notes.items()
+                        ),
+                        *document.warnings,
+                    ]
+                )
             }
         )
     state.metrics.elapsed_seconds += perf_counter() - started
@@ -207,12 +213,17 @@ class _SectionAuthor:
         protected = {"practice-" + target.id for target in self.job.design.targets}
 
         async def resolve(issue):
-            if judge and issue.block_id in protected:
+            if not (judge and issue.block_id in protected):
+                return issue
+            try:
                 # A confirmed design conflict raises and triggers one bounded teaching repair.
                 return await self.job.checkpoint_reviewer.resolve(
                     job=self.job, document=document, issue=issue
                 )
-            return issue
+            except AuthoringDesignConflict as conflict:
+                if self.job.escalate_design_conflicts:
+                    raise
+                return issue.model_copy(update={"reason": str(conflict)})
 
         resolved = await asyncio.gather(*(resolve(issue) for issue in issues))
         by_section = {section.id: section.source_section_id for section in document.sections}

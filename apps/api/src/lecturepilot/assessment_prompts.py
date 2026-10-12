@@ -153,6 +153,12 @@ def assessment_generation_instruction() -> str:
     )
 
 
+# Citations are server-owned evidence links; a task that cites pages usually pastes the source.
+_SOURCE_CITATION = re.compile(
+    r"\((?:PDF\s+)?(?:pages?|slides?|Seiten?|Folien?)\s*\d|\bPDF\s+(?:pages?|Seiten?)\s*\d", re.I
+)
+
+
 def assessment_prompt_issue(text: str | None, kind: AssessmentKind) -> str | None:
     prompt = _normalize(text or "")
     if not prompt:
@@ -163,6 +169,8 @@ def assessment_prompt_issue(text: str | None, kind: AssessmentKind) -> str | Non
         return "must ask a specific source-grounded task instead of generic assessment scaffolding"
     if kind == "checkpoint" and _UNSTATED_CHECKPOINT_CHOICES.match(prompt):
         return "must not ask the learner to choose from statements, tasks, or options that are not stated"
+    if _SOURCE_CITATION.search(prompt):
+        return "must not cite source pages or quote them; state the task in your own words"
     if _CONTEXTLESS_REFERENCE.search(prompt):
         return (
             "must be understandable without an exercise sheet, slide, or prior-question reference"

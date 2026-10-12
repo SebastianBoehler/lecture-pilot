@@ -1,6 +1,5 @@
 from pydantic_ai.models.function import FunctionModel
 import pytest
-from lecturepilot.authoring_state import AuthoringStateError
 from lecturepilot.authoring_provider import MeteredAuthoringModel
 
 from lecturepilot.authoring_job import AuthoringJob, run_authoring_job
@@ -108,17 +107,16 @@ async def test_saved_sections_are_not_rewritten_when_a_job_resumes(tmp_path):
     assert result.metrics.resumes == 1
 
 
-async def test_resuming_changed_source_is_rejected_before_model_call(tmp_path):
+async def test_changed_source_discards_stale_resume_state_and_starts_fresh(tmp_path):
     job = authoring_job(tmp_path)
-
-    def fail(messages, info):
-        raise RuntimeError("connection lost")
-
-    with pytest.raises(RuntimeError):
-        await run_authoring_job(job, model=FunctionModel(fail))
+    stale = VALID.replace("A justified conclusion", "A stale conclusion")
+    await run_authoring_job(job, model=FunctionModel(lambda m, i: markdown(stale)))
+    # E.g. OCR became available: same files, different extracted source document.
     job.source_revision = "b" * 64
-    with pytest.raises(AuthoringStateError, match="changed"):
-        await run_authoring_job(job, model=FunctionModel(fail))
+    result = await run_authoring_job(job, model=FunctionModel(lambda m, i: markdown(VALID)))
+    texts = [block.text or "" for section in result.document.sections for block in section.blocks]
+    assert not any("stale" in text for text in texts)
+    assert result.metrics.resumes == 0
 
 
 async def test_open_critic_notes_get_one_repair_then_become_draft_warnings(tmp_path):
@@ -141,3 +139,23 @@ async def test_open_critic_notes_get_one_repair_then_become_draft_warnings(tmp_p
     result = await run_authoring_job(job, model=FunctionModel(respond))
     assert repairs == 1
     assert any("open note" in warning for warning in result.document.warnings)
+
+
+async def test_quality_notes_fit_a_source_already_at_the_warning_limit(tmp_path):
+    job = authoring_job(tmp_path)
+    ocr = [
+        f"OCR required but unavailable for page {n}; the page image was preserved."
+        for n in range(1, 21)
+    ]
+    job.source = job.source.model_copy(update={"warnings": ocr})
+
+    class Critic:
+        async def complete_review(self, *, candidate_document, **kwargs):
+            section = candidate_document.sections[0]
+            return {"issues": [{"section_id": section.id, "reason": "Explain the claim link."}]}
+
+    job.reviewer = CanvasQualityReviewer(Critic())
+    result = await run_authoring_job(job, model=FunctionModel(lambda m, i: markdown(VALID)))
+    saved = CanvasDocument.model_validate(result.document.model_dump())
+    assert any("open note" in warning for warning in saved.warnings)
+    assert any("20 pages (1–20)" in warning for warning in saved.warnings)
