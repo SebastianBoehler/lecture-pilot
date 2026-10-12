@@ -37,7 +37,6 @@ import { lectures } from "./sampleData";
 import { logoutSession } from "./sessionApi";
 import { clearAllPracticeExamDrafts } from "./practiceExamDraft";
 import { usePublicMetadata } from "./usePublicMetadata";
-import { useWebMcp } from "./useWebMcp";
 import { useAppRoute } from "./useAppRoute";
 import { usePublishedLectures } from "./usePublishedLectures";
 import { useUniversityCourseSync } from "./useUniversityCourseSync";
@@ -111,26 +110,6 @@ function App() {
     enabled: view === "lesson",
   });
   const [publishedLectureIds, setPublishedLectureIds] = usePublishedLectures(availableLectures);
-  const webMcpError = useWebMcp({
-    session: restoringSession ? null : session,
-    theme,
-    locale,
-    setTheme,
-    setLocale,
-    navigate,
-    busy:
-      messages.some((message) => Boolean(message.isPending)) ||
-      (view === "lesson" &&
-        (!lessonState.state || Boolean(lessonState.state.pending_check?.focus_required))),
-    openCourse: (course, courseLectures) => {
-      setWorkspaceCourse(course);
-      setWorkspaceCourseId(course.id);
-      setSelectedCourseId(course.id);
-      setAvailableLectures(courseLectures);
-      setWorkspaceLoadError(null);
-      changeView("dashboard");
-    },
-  });
   useUniversityCourseSync(session, setSession);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -477,11 +456,6 @@ function App() {
               navigate(pathForView("login"), { replace: true });
             }}
           />
-        ) : null}
-        {webMcpError ? (
-          <p role="alert" className="form-error">
-            {webMcpError}
-          </p>
         ) : null}
         <AppHeader
           activeView={view}
