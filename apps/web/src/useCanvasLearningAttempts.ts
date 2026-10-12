@@ -5,6 +5,7 @@ import type { TutorMessageOptions } from "./canvasLearningActions";
 import { useI18n } from "./i18n";
 import { canonicalQuizId } from "./quizIdentity";
 import type { CanvasBlock, LearnerWorkspaceMode, LoginSession, Lecture } from "./types";
+import { errorMessage } from "./errorMessage";
 
 export function useCanvasLearningAttempts({
   courseId,
@@ -72,8 +73,4 @@ function quizAnswerMessage(block: CanvasBlock, answer: string, optionIndex: numb
   ]
     .filter(Boolean)
     .join("\n");
-}
-
-function errorMessage(reason: unknown, fallback: string) {
-  return reason instanceof Error ? reason.message : fallback;
 }

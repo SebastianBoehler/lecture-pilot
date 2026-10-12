@@ -23,13 +23,6 @@ export function buildWorkspaceTree(canvasDocument: CanvasDocument): WorkspaceTre
     "index.md",
     canvasResource(canvasDocument, `${courseCanvasDir}/index.md`),
   );
-  addFile(courseCanvas.children, "canvas.json", {
-    id: "compiled-canvas",
-    kind: "canvas",
-    label: "canvas.json",
-    path: `${courseCanvasDir}/canvas.json`,
-    displayPath: `${courseCanvasDir}/canvas.json`,
-  });
   addCanvasSections(
     courseCanvas.children,
     learnerFiles.children,
@@ -122,14 +115,6 @@ function addLearnerFiles(
   canvasDocument: CanvasDocument,
   learnerDir: string,
 ) {
-  addFile(roots, "canvas.json", {
-    id: "learner-compiled-canvas",
-    kind: "canvas",
-    label: "canvas.json",
-    path: `${learnerDir}/canvas.json`,
-    displayPath: `${learnerDir}/canvas.json`,
-    detail: "compiled learner overlay",
-  });
   addFile(roots, "canvas/index.md", {
     id: "learner-canvas-index",
     kind: "canvas",

@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -24,5 +24,17 @@ describe("LearnerOnboarding", () => {
     await user.click(screen.getByRole("button", { name: /go to dashboard/i }));
 
     expect(onComplete).toHaveBeenCalledWith("understand_deeply");
+  });
+
+  it("stays open as a modal dialog until a goal is chosen", () => {
+    renderWithI18n(<LearnerOnboarding onComplete={vi.fn()} />);
+    const dialog = screen.getByRole("dialog", { name: /what are you working toward/i });
+    expect(dialog).toHaveAttribute("open");
+
+    const cancel = new Event("cancel", { cancelable: true });
+    fireEvent(dialog, cancel);
+
+    expect(cancel.defaultPrevented).toBe(true);
+    expect(dialog).toHaveAttribute("open");
   });
 });

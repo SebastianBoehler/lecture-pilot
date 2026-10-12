@@ -1,49 +1,33 @@
 import { ExternalLink, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import { buildFeedbackMailto, type FeedbackCategory } from "./feedbackMailto";
 import { dismissDialogFromBackdrop } from "./dialogBackdrop";
 import { useI18n } from "./i18n";
 import type { FeedbackPromptSource } from "./useFeedbackPrompt";
+import { useModalDialog } from "./useModalDialog";
 
 export type FeedbackContext = {
   courseTitle?: string;
   lectureTitle?: string;
 };
 
+/** Rendered only while open; remount it (e.g. keyed by source) to start a fresh draft. */
 export function FeedbackDialog({
   accountType,
   context,
-  open,
   source,
   onClose,
 }: {
   accountType: "student" | "professor";
   context: FeedbackContext;
-  open: boolean;
   source: FeedbackPromptSource;
   onClose: () => void;
 }) {
   const { locale, t } = useI18n();
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const dialogRef = useModalDialog();
   const [category, setCategory] = useState<FeedbackCategory>("feedback");
   const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    if (open && !dialog.open) {
-      if (typeof dialog.showModal === "function") dialog.showModal();
-      else dialog.setAttribute("open", "");
-    }
-    if (!open && dialog.open) dialog.close();
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    setCategory("feedback");
-    setMessage("");
-  }, [open, source]);
 
   const href = buildFeedbackMailto({
     accountType,
@@ -69,9 +53,7 @@ export function FeedbackDialog({
         event.preventDefault();
         onClose();
       }}
-      onClose={onClose}
       ref={dialogRef}
-      role="dialog"
     >
       <header className="feedback-dialog-header">
         <h2 id="feedback-dialog-title">{title}</h2>

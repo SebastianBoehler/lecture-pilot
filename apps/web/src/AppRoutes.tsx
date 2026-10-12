@@ -4,27 +4,19 @@ import { clearSavedFlow, writeResumeFlow } from "./professorBuilderState";
 import { lazy, Suspense, type ReactNode } from "react";
 
 import { courseUpdatePath, type AppRoute } from "./appRoute";
-import type { LearnerQuizAnswerResult } from "./analyticsApi";
-import type { TutorMessageOptions } from "./canvasLearningActions";
 import { CourseManagementAccessRequired } from "./CourseManagementAccessRequired";
 import { Dashboard } from "./Dashboard";
 import { draftPreviewUrl } from "./draftPreviewUrl";
 import { LoginView } from "./LoginView";
 import { localDemoSession } from "./appDefaults";
 import { ProfileView } from "./ProfileView";
-import type { PublishedCanvasView } from "./publishedCanvasView";
 import { useI18n } from "./i18n";
-import type { LearnerLessonState } from "./learnerLessonStateTypes";
-import type { GateReviewOpening } from "./reviewQueueTypes";
+import type { CourseWorkspace } from "./useCourseWorkspace";
 import { useLearnerProfile } from "./useLearnerProfile";
-import type { WorkspaceResetSelection } from "./WorkspaceResetControl";
+import type { LessonSession } from "./useLessonSession";
 import type {
   Attendance,
-  CanvasDocument,
   CanvasPublicationResult,
-  ChatMessage,
-  LessonPanelMode,
-  LessonMode,
   Lecture,
   LoginSession,
   UniversityCourse,
@@ -56,78 +48,28 @@ const ProfessorUsage = lazy(() =>
 );
 
 type AppRoutesProps = {
-  availableLectures: Lecture[];
-  canvasDocument: CanvasDocument | null;
-  publishedCanvasView: PublishedCanvasView | null;
-  canvasError: string | null;
+  workspace: CourseWorkspace;
+  lesson: LessonSession;
   courseManagerSession: LoginSession | null;
-  focusedSectionId: string;
-  highlightedBlockId: string | null;
-  highlightedText: string | null;
-  lastTutorModel: string | null;
-  lessonMode: LessonMode;
-  messages: ChatMessage[];
-  navigationVersion: number;
-  panelMode: LessonPanelMode | null;
-  learnerState: LearnerLessonState | null;
-  learnerStateError: string | null;
-  publishedLectureIds: string[];
   restoringSession: boolean;
-  selectedCourseId: string;
-  selectedLecture: Lecture;
   route: AppRoute;
   session: LoginSession | null;
   view: View;
-  workspaceCourse: UniversityCourse;
-  workspaceCourseId: string;
-  workspaceLoadError: string | null;
   onLogout: () => void;
   onLogin: (session: LoginSession) => void;
   onNavigatePath: (path: string) => void;
   onOpenDemo: () => void;
-  onOpenLecture: (
-    courseId: string,
-    lecture: Lecture,
-    review?: GateReviewOpening,
-    focusSectionId?: string,
-  ) => void;
-  onPreviewLecture: (courseId: string, lecture: Lecture) => void;
   onOpenProfessorDemo: () => void;
   onOpenCourseLink: (courseId: string) => void;
-  onPracticeSubmitted: (result: LearnerQuizAnswerResult) => void | Promise<void>;
   onPublishWorkspace: (courseId: string, lectureId: string) => Promise<CanvasPublicationResult>;
-  onResetWorkspace: (options: WorkspaceResetSelection) => Promise<void>;
-  onSendMessage: (message: string, options?: TutorMessageOptions) => Promise<void>;
   onSetAttendance: (lectureId: string, attendance: Attendance) => void;
-  onTogglePanel: (mode: LessonPanelMode) => void;
   onViewChange: (view: View) => void;
   onWorkspaceDeleted: (courseId: string) => void;
   onWorkspacePublished: (course: UniversityCourse, lectures: Lecture[]) => void;
 };
 
 export function AppRoutes(props: AppRoutesProps) {
-  const {
-    availableLectures,
-    canvasDocument,
-    canvasError,
-    courseManagerSession,
-    focusedSectionId,
-    highlightedBlockId,
-    highlightedText,
-    lastTutorModel,
-    lessonMode,
-    messages,
-    navigationVersion,
-    panelMode,
-    publishedLectureIds,
-    restoringSession,
-    selectedCourseId,
-    selectedLecture,
-    route,
-    session,
-    view,
-    workspaceCourse,
-  } = props;
+  const { courseManagerSession, lesson, restoringSession, route, session, view, workspace } = props;
   const learnerProfileEnabled = Boolean(
     !restoringSession &&
     session?.roles?.includes("student") &&
@@ -150,6 +92,8 @@ export function AppRoutes(props: AppRoutesProps) {
       />
     );
   }
+  // A course manager on the login route is being forwarded once their courses are known.
+  if (view === "login" && courseManagerSession) return <ViewLoadingState />;
   if (view === "login") {
     return (
       <LoginView
@@ -162,13 +106,15 @@ export function AppRoutes(props: AppRoutesProps) {
   if (view === "dashboard") {
     return (
       <Dashboard
-        lectures={availableLectures}
-        publishedLectureIds={publishedLectureIds}
+        lectures={workspace.lectures}
+        publishedLectureIds={workspace.publishedLectureIds}
         learnerProfileState={learnerProfileState}
         session={session}
-        workspaceCourse={workspaceCourse}
-        workspaceLoadError={props.workspaceLoadError}
-        onOpen={props.onOpenLecture}
+        workspaceCourse={workspace.course}
+        workspaceLoadError={workspace.loadError}
+        onOpen={(courseId, lecture, review, focusSectionId) => {
+          void lesson.openLecture(courseId, lecture, "learner", true, review, focusSectionId);
+        }}
         onSetAttendance={props.onSetAttendance}
       />
     );
@@ -204,7 +150,9 @@ export function AppRoutes(props: AppRoutesProps) {
           props.onViewChange("professor");
         }}
         onCloseCourseUpdate={() => props.onViewChange("course-management")}
-        onPreviewLecture={props.onPreviewLecture}
+        onPreviewLecture={(courseId, lecture) => {
+          void lesson.openLecture(courseId, lecture, "professor-preview");
+        }}
         onUpdateCourse={(courseId) => props.onNavigatePath(courseUpdatePath(courseId))}
         session={courseManagerSession}
         updateCourseId={route.view === "course-management" ? route.updateCourseId : undefined}
@@ -243,30 +191,33 @@ export function AppRoutes(props: AppRoutesProps) {
   if (view === "how-it-works" || view === "learning-science" || view === "privacy") {
     return deferred(<InfoPage kind={view} />);
   }
+  if (!lesson.lecture) return <ViewLoadingState />;
   return deferred(
     <LessonWorkspace
-      canvasDocument={canvasDocument}
-      publishedCanvasView={props.publishedCanvasView}
-      canvasError={canvasError}
-      courseId={selectedCourseId}
-      focusedSectionId={focusedSectionId}
-      highlightedBlockId={highlightedBlockId}
-      highlightedText={highlightedText}
-      lecture={selectedLecture}
-      messages={messages}
+      canvasDocument={lesson.canvasDocument}
+      publishedCanvasView={lesson.publishedCanvasView}
+      canvasError={lesson.canvasError}
+      courseId={lesson.courseId}
+      focusedSectionId={lesson.navigation.focusedSectionId}
+      highlightedBlockId={lesson.navigation.highlightedBlockId}
+      highlightedText={lesson.navigation.highlightedText}
+      lecture={lesson.lecture}
+      messages={lesson.messages}
       session={session ?? localDemoSession}
-      tutorModel={lastTutorModel}
-      navigationVersion={navigationVersion}
-      panelMode={panelMode}
-      learnerState={props.learnerState}
-      learnerStateError={props.learnerStateError}
-      previewMode={lessonMode === "professor-preview"}
-      draftMode={lessonMode === "draft"}
-      workspaceMode={lessonMode === "professor-preview" ? "professor-preview" : "learner"}
-      onSendMessage={props.onSendMessage}
-      onPracticeSubmitted={props.onPracticeSubmitted}
-      onResetWorkspace={props.onResetWorkspace}
-      onTogglePanel={props.onTogglePanel}
+      tutorModel={lesson.lastTutorModel}
+      navigationVersion={lesson.navigation.version}
+      panelMode={lesson.panelMode}
+      learnerState={lesson.lessonState.state}
+      learnerStateError={lesson.lessonState.error}
+      previewMode={lesson.mode === "professor-preview"}
+      draftMode={lesson.mode === "draft"}
+      workspaceMode={lesson.mode === "professor-preview" ? "professor-preview" : "learner"}
+      onSendMessage={lesson.sendTutorMessage}
+      onPracticeSubmitted={lesson.lessonState.applyQuizResult}
+      onResetWorkspace={lesson.resetWorkspace}
+      onTogglePanel={(mode) => {
+        lesson.setPanelMode((current) => (current === mode ? null : mode));
+      }}
     />,
   );
 }

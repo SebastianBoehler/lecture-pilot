@@ -72,7 +72,7 @@ function publicAgentGuide() {
     .map(([page, content]) => `- [${content.en.title}](/${page}): ${content.en.intro}`)
     .join(
       "\n",
-    )}\n\n## Browser tools\n\nIn a supporting browser, public WebMCP tools can explain LecturePilot and open these guides without sign-in. Student tools require a backend-verified student session. They can navigate authorized courses, read bounded learning evidence, and change interface settings. They cannot submit answers, send tutor messages or change learning progress. The human student does the learning.\n\nPrivate course material, account data and learner work are not public discovery content.\n`;
+    )}\n\nPrivate course material, account data and learner work are not public discovery content.\n`;
 }
 
 function escapeHtml(value: string) {

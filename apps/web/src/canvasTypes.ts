@@ -1,4 +1,3 @@
-export type CanvasSectionId = string;
 export type DocumentAnchorId = string;
 
 export type CanvasComponentPoint = {
@@ -16,7 +15,7 @@ export type CanvasComponentFrame = {
   explanation: string;
 };
 
-export type CanvasComponentStep = {
+type CanvasComponentStep = {
   title: string;
   text: string;
 };

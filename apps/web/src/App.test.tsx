@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import App from "./App";
+import { walkthroughStorageKey } from "./professorWalkthroughState";
 import { openLecture03FromDashboard } from "./testLessonActions";
 import { mockLoginAndTutorFetch, mockLoginFetch } from "./testFixtures";
 
@@ -217,6 +218,8 @@ describe("LecturePilot app shell", () => {
       roles: ["professor"],
       courses: [],
     };
+    // The lazily loaded first-visit tour would otherwise take focus from the course field.
+    window.localStorage.setItem(walkthroughStorageKey(professorAccount.username), "seen");
     vi.stubGlobal(
       "fetch",
       vi.fn((input: RequestInfo | URL) => {
@@ -268,7 +271,10 @@ describe("LecturePilot app shell", () => {
     await user.click(screen.getByRole("button", { name: /continue with uni tübingen/i }));
 
     expect(
-      await screen.findByRole("navigation", { name: /professor workspace navigation/i }),
+      await screen.findByRole("navigation", { name: /course builder progress/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("navigation", { name: /professor workspace navigation/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^usage$/i })).not.toHaveAttribute("aria-current");
     expect(screen.getByRole("button", { name: /course builder/i })).toHaveAttribute(
@@ -278,9 +284,6 @@ describe("LecturePilot app shell", () => {
     expect(
       screen.queryByRole("navigation", { name: /student workspace navigation/i }),
     ).not.toBeInTheDocument();
-    expect(
-      await screen.findByRole("navigation", { name: /course builder progress/i }),
-    ).toBeInTheDocument();
     const courseName = screen.getByLabelText(/course name/i);
     await user.click(courseName);
     expect(await screen.findByRole("option", { name: /Advanced Systems/i })).toHaveTextContent(

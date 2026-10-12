@@ -3,13 +3,13 @@ import type { Locale } from "./i18n";
 
 type LocalizedText = Record<Locale, string>;
 
-export type ProductChange = {
+type ProductChange = {
   title: LocalizedText;
   description: LocalizedText;
   feedbackDriven?: boolean;
 };
 
-export type ProductRelease = {
+type ProductRelease = {
   version: string;
   date: string;
   title: LocalizedText;

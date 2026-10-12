@@ -35,10 +35,7 @@ const VIEW_PATHS: Record<Exclude<View, "lesson" | "course-link">, string> = {
   privacy: "/privacy",
 };
 
-export function readAppRoute(location: Pick<Location, "pathname" | "search">): AppRoute {
-  const legacyDraft = legacyDraftRoute(location.search);
-  if (legacyDraft) return legacyDraft;
-
+export function readAppRoute(location: Pick<Location, "pathname">): AppRoute {
   const segments = location.pathname.split("/").filter(Boolean).map(decodeSegment);
   if (
     segments[0] === "professor" &&
@@ -111,17 +108,6 @@ export function requiresSession(view: View) {
     "privacy",
     "course-link",
   ].includes(view);
-}
-
-function legacyDraftRoute(search: string): AppRoute | null {
-  const params = new URLSearchParams(search);
-  if (params.get("preview") !== "draft") return null;
-  return {
-    view: "lesson",
-    courseId: params.get("courseId") ?? "martius-ml",
-    lectureId: params.get("lectureId") ?? "lecture-03",
-    lessonMode: "draft",
-  };
 }
 
 function normalizePath(pathname: string) {

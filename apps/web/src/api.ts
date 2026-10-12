@@ -41,7 +41,7 @@ export class CanvasDraftLoadError extends Error {
   }
 }
 
-export type CanvasCommand = {
+type CanvasCommand = {
   type: "focus_section" | "highlight_span" | "open_artifact" | "append_section" | "update_section";
   section_id?: string | null;
   span_id?: string | null;
@@ -73,7 +73,7 @@ export type AgentTurnInput = {
   message: string;
   checkpoint_gate_id?: string;
   canvas_state: {
-    focused_section_id: string;
+    focused_section_id: string | null;
   };
   readiness_task_id?: string | null;
   /** UI language for backend-written learner text such as assessment results. */

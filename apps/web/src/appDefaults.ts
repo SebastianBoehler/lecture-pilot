@@ -1,7 +1,8 @@
+import type { AppRoute } from "./appRoute";
 import type { Locale } from "./i18nContext";
 import { messages } from "./i18nMessages";
 import type { GateReviewOpening } from "./reviewQueueTypes";
-import type { Attendance, ChatMessage, LessonPanelMode, LoginSession } from "./types";
+import type { Attendance, ChatMessage, Lecture, LessonPanelMode, LoginSession } from "./types";
 
 export function initialMessagesForAttendance(
   attendance: Attendance,
@@ -62,3 +63,21 @@ export const localProfessorSession: LoginSession = {
   account_type: "professor",
   roles: ["professor"],
 };
+
+/** Lesson routes name their course; development builds prefer the local demo course. */
+export function initialCourseId(route: AppRoute) {
+  if (route.view === "lesson") return route.courseId;
+  return import.meta.env.DEV ? localDemoSession.courses[0].id : "";
+}
+
+/** A lesson route starts from its lecture id until the backend lecture list arrives. */
+export function initialLecture(route: AppRoute): Lecture | null {
+  if (route.view !== "lesson") return null;
+  return {
+    id: route.lectureId,
+    number: route.lectureId.replace(/^lecture-/, ""),
+    title: "Lecture",
+    date: "",
+    attendance: "unknown",
+  };
+}
