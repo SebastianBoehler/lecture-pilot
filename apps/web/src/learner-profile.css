@@ -1,60 +1,6 @@
 @import "./profile-view.css";
 @import "./learner-profile-files.css";
 
-.next-study {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
-  gap: 24px;
-  align-items: center;
-  margin-bottom: 20px;
-  padding: 16px 20px;
-  border-left: 3px solid var(--color-accent-primary);
-  background: var(--color-bg-secondary);
-}
-
-.next-study h2,
-.next-study p {
-  margin: 0;
-}
-
-.next-study h2 {
-  font-size: 18px;
-}
-
-.next-study p:last-child {
-  margin-top: 7px;
-  color: var(--color-text-secondary);
-}
-
-.next-study-action {
-  display: grid;
-  gap: 3px;
-  align-items: center;
-}
-
-.next-study-course {
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.35;
-}
-
-.next-study-action strong {
-  overflow-wrap: anywhere;
-}
-
-.next-study-action button {
-  justify-self: start;
-  margin-top: 10px;
-  border: 1px solid var(--color-accent-primary);
-  border-radius: var(--control-radius);
-  min-height: var(--control-height);
-  padding: 0 var(--control-padding-x);
-  color: var(--color-on-accent);
-  background: var(--color-accent-primary);
-  font-weight: 700;
-}
-
 .learner-profile-controls {
   display: grid;
   gap: 16px;

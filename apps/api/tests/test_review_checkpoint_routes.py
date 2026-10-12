@@ -221,13 +221,19 @@ def test_profile_requires_every_current_published_gate_to_pass(tmp_path):
     ).gates
     records = {gates[0].id: {"status": "passed", "gate_revision": gates[0].revision}}
 
-    def passed():
+    def profile():
         (root / "gates.json").write_text(json.dumps({"gates": records}))
         result = client.get("/me/learning-profile", headers=student_headers("u1"))
         assert result.status_code == 200, result.text
-        return result.json()["courses"][0]["passed_lecture_ids"]
+        return result.json()["courses"][0]
+
+    def passed():
+        return profile()["passed_lecture_ids"]
 
     assert passed() == []
+    assert profile()["lecture_progress"] == [
+        {"lecture_id": "lecture-01", "passed_gates": 1, "total_gates": len(gates)}
+    ]
     records.update(
         {gate.id: {"status": "passed", "gate_revision": gate.revision} for gate in gates}
     )
@@ -235,3 +241,4 @@ def test_profile_requires_every_current_published_gate_to_pass(tmp_path):
     assert passed() == []
     records[gates[-1].id]["gate_revision"] = gates[-1].revision
     assert passed() == ["lecture-01"]
+    assert profile()["lecture_progress"][0]["passed_gates"] == len(gates)

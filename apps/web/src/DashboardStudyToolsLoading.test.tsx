@@ -23,17 +23,25 @@ describe("Dashboard study tool loading", () => {
             statusLabel: "AI tutor available",
           },
         ]}
+        newLectureIds={new Set()}
         selectedCourseId={course.id}
         session={{ username: "student", term: "2026", courses: [course] }}
         onSelectCourse={vi.fn()}
         onOpen={vi.fn()}
+        onOpenSection={vi.fn()}
         onProgress={vi.fn()}
         onSetAttendance={vi.fn()}
       />,
     );
 
     expect(fetchMock).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("tab", { name: "Practice exams" }));
+    await user.click(screen.getByRole("tab", { name: "Exam prep" }));
+    expect(await screen.findByRole("button", { name: /quick graded check/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: /full mock exam/i }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/courses/course-1/practice-exams"),
@@ -44,7 +52,11 @@ describe("Dashboard study tool loading", () => {
       expect.any(Object),
     );
     await user.click(screen.getByRole("tab", { name: "Lectures" }));
-    await user.click(screen.getByRole("tab", { name: "Practice exams" }));
+    await user.click(screen.getByRole("tab", { name: "Exam prep" }));
+    expect(screen.getByRole("button", { name: /full mock exam/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     expect(screen.getByRole("button", { name: "Generate exam" })).toBeVisible();
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });

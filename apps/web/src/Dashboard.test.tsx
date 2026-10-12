@@ -176,17 +176,17 @@ describe("Dashboard course workspace matching", () => {
     );
 
     const workspace = studyWorkspace("Grundlagen des Maschinellen Lernens");
-    expect(within(workspace).getByRole("button", { name: /open lecture 01/i })).toBeInTheDocument();
-    expect(within(workspace).getByRole("button", { name: /open lecture 02/i })).toBeInTheDocument();
-    expect(
-      within(workspace).queryByRole("button", { name: /open lecture 03/i }),
-    ).not.toBeInTheDocument();
+    const openButtons = () =>
+      within(workspace)
+        .getAllByRole("button", { name: /open lecture \d+/i })
+        .map((button) => button.textContent);
+    expect(openButtons()).toEqual(["Open lecture 03", "Open lecture 02"]);
 
     await user.click(within(workspace).getByRole("button", { name: /show all/i }));
 
-    expect(within(workspace).getByRole("button", { name: /open lecture 03/i })).toBeInTheDocument();
+    expect(openButtons()).toEqual(["Open lecture 01", "Open lecture 02", "Open lecture 03"]);
     expect(
-      within(workspace).getByRole("button", { name: /show first 2 lectures/i }),
+      within(workspace).getByRole("button", { name: /show latest lectures only/i }),
     ).toBeInTheDocument();
   });
 
@@ -215,7 +215,7 @@ describe("Dashboard course workspace matching", () => {
     const onOpen = renderDashboard(matchedSession, true);
 
     expect(screen.queryByRole("dialog", { name: /exam readiness check/i })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("tab", { name: /exam check/i }));
+    await user.click(screen.getByRole("tab", { name: /exam prep/i }));
     await user.click(await screen.findByRole("button", { name: /start exam check/i }));
 
     const dialog = await screen.findByRole("dialog", { name: /exam readiness check/i });
@@ -264,12 +264,8 @@ describe("Dashboard course workspace matching", () => {
     const resultSummary = within(reopenedDialog).getByRole("list", { name: /result summary/i });
     expect(resultSummary).toHaveTextContent(/1 priority/i);
     expect(
-      within(reopenedDialog).getByText(/expected risk combines posterior probabilities/i),
-    ).not.toBeVisible();
-    await user.click(within(reopenedDialog).getAllByText(/source detail/i)[0]);
-    expect(
-      within(reopenedDialog).getByText(/expected risk combines posterior probabilities/i),
-    ).toBeInTheDocument();
+      within(reopenedDialog).getByText(/1 review priority was added to next up/i),
+    ).toBeVisible();
     await user.click(within(reopenedDialog).getByRole("button", { name: /review lecture 03/i }));
     expect(onOpen).toHaveBeenCalledWith(
       "martius-ml",

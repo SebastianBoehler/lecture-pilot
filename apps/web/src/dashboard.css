@@ -1,4 +1,5 @@
-@import "./dashboard-review-plan.css";
+@import "./next-up.css";
+@import "./dashboard-study.css";
 
 .dashboard {
   width: min(960px, calc(100% - 32px));

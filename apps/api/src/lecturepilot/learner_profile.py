@@ -27,10 +27,17 @@ class LearnerFile(BaseModel):
     content: str | None = None
 
 
+class LectureGateProgress(BaseModel):
+    lecture_id: str
+    passed_gates: int = Field(ge=0)
+    total_gates: int = Field(ge=0)
+
+
 class LearnerCourseProfile(BaseModel):
     course_id: str
     memory: str = ""
     passed_lecture_ids: list[str] = Field(default_factory=list)
+    lecture_progress: list[LectureGateProgress] = Field(default_factory=list)
     files: list[LearnerFile] = Field(default_factory=list)
 
 
@@ -72,11 +79,17 @@ def _course_profiles(courses_root: Path, canvas_store) -> list[LearnerCourseProf
         if not course_root.is_dir() or course_root.is_symlink():
             continue
         memory_path = course_root / "memories" / "course.md"
+        progress = _lecture_progress(course_root, canvas_store)
         profiles.append(
             LearnerCourseProfile(
                 course_id=course_root.name,
                 memory=_read_text(memory_path, limit=4000),
-                passed_lecture_ids=_passed_lecture_ids(course_root, canvas_store),
+                passed_lecture_ids=[
+                    item.lecture_id
+                    for item in progress
+                    if item.total_gates and item.passed_gates == item.total_gates
+                ],
+                lecture_progress=progress,
                 files=_files(course_root, include=_is_personal_course_file),
             )
         )
@@ -113,11 +126,12 @@ def _files(root: Path, include=None) -> list[LearnerFile]:
     return files
 
 
-def _passed_lecture_ids(course_root: Path, canvas_store) -> list[str]:
+def _lecture_progress(course_root: Path, canvas_store) -> list[LectureGateProgress]:
+    """Count current-revision passed gates per lecture the learner has a workspace for."""
     lectures_root = course_root / "lectures"
     if not lectures_root.exists() or lectures_root.is_symlink():
         return []
-    passed: list[str] = []
+    progress: list[LectureGateProgress] = []
     for lecture_root in sorted(lectures_root.iterdir()):
         if not lecture_root.is_dir() or lecture_root.is_symlink():
             continue
@@ -128,14 +142,20 @@ def _passed_lecture_ids(course_root: Path, canvas_store) -> list[str]:
             lecture_id=lecture_root.name,
         )
         required = snapshot.learning_map.gates if snapshot else []
-        if required and all(
+        if not required:
+            continue
+        passed = sum(
             isinstance(gates.get(gate.id), dict)
             and gates[gate.id].get("status") == "passed"
             and gates[gate.id].get("gate_revision") == gate.revision
             for gate in required
-        ):
-            passed.append(lecture_root.name)
-    return passed
+        )
+        progress.append(
+            LectureGateProgress(
+                lecture_id=lecture_root.name, passed_gates=passed, total_gates=len(required)
+            )
+        )
+    return progress
 
 
 def _read_json(path: Path) -> dict[str, Any]:

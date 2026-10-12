@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 
 import { ExamOpenAnswerFeedback } from "./ExamOpenAnswerFeedback";
-import { ExamReviewPlan } from "./ExamReviewPlan";
 import { useI18n } from "./i18n";
 import type { ExamReadinessAttemptResult, ExamReadinessCheck, Lecture } from "./types";
 
@@ -20,6 +19,7 @@ export function ExamReadinessResult({
   const status = resultStatus(result);
   const ready = status === "ready";
   const reviewTasks = result.tasks.filter((task) => task.kind === "review_wrong_mc");
+  const firstLecture = lectures.find((lecture) => lecture.id === reviewTasks[0]?.lecture_id);
   const score =
     result.score === null ? t("exam.result.pendingScore") : `${Math.round(result.score * 100)}%`;
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -59,7 +59,18 @@ export function ExamReadinessResult({
       <ExamOpenAnswerFeedback check={check} results={result.results} />
 
       {reviewTasks.length ? (
-        <ExamReviewPlan lectures={lectures} tasks={reviewTasks} onOpenLecture={onOpenLecture} />
+        <div className="exam-result-next-up">
+          <p>
+            {reviewTasks.length === 1
+              ? t("exam.result.addedToNextUp.one")
+              : t("exam.result.addedToNextUp.many", { count: reviewTasks.length })}
+          </p>
+          {firstLecture ? (
+            <button type="button" onClick={() => onOpenLecture(firstLecture)}>
+              {t("exam.review.lecture", { number: firstLecture.number })}
+            </button>
+          ) : null}
+        </div>
       ) : (
         <p className="exam-result-empty">{t("exam.result.noPriorities")}</p>
       )}
