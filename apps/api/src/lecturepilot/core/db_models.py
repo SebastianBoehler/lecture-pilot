@@ -111,6 +111,27 @@ class ExternalCourseObservationRecord(Base):
     observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
+class CourseSupportRequestRecord(Base):
+    """A learner's request for LecturePilot support of one of their observed courses."""
+
+    __tablename__ = "course_support_requests"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "source", "external_course_id", "term", name="uq_user_course_support"
+        ),
+        Index("ix_course_support_course", "source", "external_course_id", "term"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    source: Mapped[str] = mapped_column(String(24), nullable=False)
+    external_course_id: Mapped[str] = mapped_column(String(240), nullable=False)
+    term: Mapped[str] = mapped_column(String(80), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
 class CourseRecord(Base):
     __tablename__ = "courses"
     __table_args__ = (Index("ix_courses_tenant_owner", "tenant_id", "owner_user_id"),)

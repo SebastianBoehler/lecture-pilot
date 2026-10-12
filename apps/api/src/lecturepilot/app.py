@@ -31,6 +31,7 @@ from lecturepilot.learning_design.course_practice_design_review_client import (
 )
 from lecturepilot.courses.course_deletion import register_course_deletion_routes
 from lecturepilot.courses.course_routes import register_course_routes
+from lecturepilot.courses.course_support_routes import register_course_support_routes
 from lecturepilot.sources.course_source_routing_routes import register_course_source_routing_routes
 from lecturepilot.sources.course_source_routing_client import NativeSourceRoutingClient
 from lecturepilot.sources.course_source_routing_planner import CourseSourceRoutingPlanner
@@ -221,6 +222,7 @@ def create_app() -> FastAPI:
     register_auth_routes(app, course_tenant_id=COURSE_TENANT_ID)
     register_university_course_routes(app, course_tenant_id=COURSE_TENANT_ID)
     register_account_admin_routes(app)
+    register_course_support_routes(app)
     register_learner_profile_routes(app, course_tenant_id=COURSE_TENANT_ID)
     register_admin_media_routes(
         app,
