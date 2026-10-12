@@ -138,9 +138,43 @@ async def test_unresolved_findings_are_repaired_once_then_kept_as_warnings(tmp_p
     result, checked = await run(tmp_path, source, intent, responder(wires, calls), review)
     assert calls.count(("repair", "derive-conclusion")) == 1
     assert ("repair", "another-goal") not in calls
-    assert any(check.severity == "critical" for check in checked.checks)
+    # The repair is not re-reviewed: its finding stays a warning, labelled truthfully.
+    assert len(reviews) == 1
+    critical = [check for check in checked.checks if check.severity == "critical"]
+    assert [check.summary for check in critical] == [
+        "Repaired once, not re-checked: The baseline does not elicit the outcome."
+    ]
     intent.require_matches(result)
 
     calls.clear()
     await run(tmp_path, source, intent, responder(wires, calls), review)
     assert calls == []
+    assert len(reviews) == 1
+
+
+@pytest.mark.asyncio
+async def test_interrupted_repairs_resume_without_a_second_review(tmp_path, setup):
+    source, intent, wires, anchor = setup
+    calls, reviews = [], []
+
+    async def review(proposal):
+        reviews.append(proposal)
+        checks = list(flagged("derive-conclusion", anchor).checks)
+        checks[1] = checks[1].model_copy(
+            update={"target_ids": ("derive-conclusion", "another-goal")}
+        )
+        return PracticeDesignReviewResult(checks=tuple(checks))
+
+    def interrupted(messages, info):
+        if "Repair the teaching for goal ID another-goal" in str(messages[0].parts[-1].content):
+            raise RuntimeError("provider disconnected")
+        return responder(wires, calls)(messages, info)
+
+    with pytest.raises(RuntimeError, match="provider disconnected"):
+        await run(tmp_path, source, intent, interrupted, review)
+    assert calls.count(("repair", "derive-conclusion")) == 1
+
+    calls.clear()
+    await run(tmp_path, source, intent, responder(wires, calls), review)
+    assert calls == [("repair", "another-goal")]
+    assert len(reviews) == 1
