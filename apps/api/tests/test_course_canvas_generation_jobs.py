@@ -1,4 +1,4 @@
-from lecturepilot import course_canvas_generation_jobs
+from lecturepilot import course_canvas_generation_jobs, durable_files
 from lecturepilot.course_canvas_generation_failures import find_latest_canvas_failure
 from lecturepilot.course_canvas_generation_jobs import CanvasGenerationStore
 from lecturepilot.storage_layout import StorageLayout
@@ -81,11 +81,7 @@ def test_latest_failed_generation_retains_actionable_detail_for_its_actor(tmp_pa
 
 def test_generation_record_replace_fsyncs_its_parent(tmp_path, monkeypatch) -> None:
     synced: list[object] = []
-    monkeypatch.setattr(
-        course_canvas_generation_jobs,
-        "fsync_directory",
-        lambda path: synced.append(path),
-    )
+    monkeypatch.setattr(durable_files, "fsync_directory", synced.append)
     store = CanvasGenerationStore(StorageLayout(tmp_path), lease_seconds=30)
 
     store.begin(
@@ -95,9 +91,9 @@ def test_generation_record_replace_fsyncs_its_parent(tmp_path, monkeypatch) -> N
         request_key="request-key-durable-0001",
     )
 
-    assert synced == [
+    assert synced[-1] == (
         store.layout.course_root("course-1") / "builder" / "generations" / "lecture-01"
-    ]
+    )
 
 
 def test_generation_store_durably_creates_its_private_directory(tmp_path, monkeypatch) -> None:

@@ -11,7 +11,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from lecturepilot.durable_files import ensure_durable_directory, fsync_directory
+from lecturepilot.durable_files import atomic_write_text, ensure_durable_directory, fsync_directory
 from lecturepilot.storage_layout import StorageLayout
 
 
@@ -205,14 +205,4 @@ class PracticeExamGenerationStore:
 
     @staticmethod
     def _write(path: Path, job: PracticeExamGenerationJob) -> None:
-        temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
-        try:
-            descriptor = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-            with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-                handle.write(job.model_dump_json())
-                handle.flush()
-                os.fsync(handle.fileno())
-            os.replace(temporary, path)
-            fsync_directory(path.parent)
-        finally:
-            temporary.unlink(missing_ok=True)
+        atomic_write_text(path, job.model_dump_json())

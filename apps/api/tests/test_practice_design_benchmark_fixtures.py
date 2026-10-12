@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from lecturepilot.course_practice_design_benchmark_fixtures import (
+from practice_design_benchmark.fixtures import (
     load_practice_design_benchmark_fixtures,
 )
 

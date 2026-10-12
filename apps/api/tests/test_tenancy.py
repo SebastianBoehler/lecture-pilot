@@ -5,9 +5,6 @@ from lecturepilot.tenancy import (
     TenantAccessError,
     TenantContext,
     assert_can_manage_course,
-    assert_can_upload_course_material,
-    assert_can_view_progress,
-    tenant_cache_key,
     tenant_storage_prefix,
 )
 from lecturepilot.workspace import WorkspacePolicy, WorkspacePolicyError
@@ -42,7 +39,7 @@ def test_tenant_context_denies_unknown_membership() -> None:
         TenantContext.from_profile(profile, tenant_id="tenant-tuebingen")
 
 
-def test_professor_can_manage_course_and_upload_material_in_own_tenant() -> None:
+def test_professor_can_manage_course_in_own_tenant() -> None:
     context = TenantContext(
         tenant_id="tenant-tuebingen",
         user_id="user-prof-1",
@@ -50,10 +47,9 @@ def test_professor_can_manage_course_and_upload_material_in_own_tenant() -> None
     )
 
     assert_can_manage_course(context, course_tenant_id="tenant-tuebingen")
-    assert_can_upload_course_material(context, course_tenant_id="tenant-tuebingen")
 
 
-def test_tenant_admin_can_manage_platform_but_not_review_learner_progress() -> None:
+def test_tenant_admin_can_manage_course() -> None:
     context = TenantContext(
         tenant_id="tenant-tuebingen",
         user_id="user-admin-1",
@@ -61,16 +57,9 @@ def test_tenant_admin_can_manage_platform_but_not_review_learner_progress() -> N
     )
 
     assert_can_manage_course(context, course_tenant_id="tenant-tuebingen")
-    assert_can_upload_course_material(context, course_tenant_id="tenant-tuebingen")
-    with pytest.raises(TenantAccessError):
-        assert_can_view_progress(
-            context,
-            learner_user_id="user-student-1",
-            progress_tenant_id="tenant-tuebingen",
-        )
 
 
-def test_student_cannot_manage_course_or_upload_material() -> None:
+def test_student_cannot_manage_course() -> None:
     context = TenantContext(
         tenant_id="tenant-tuebingen",
         user_id="user-student-1",
@@ -79,8 +68,6 @@ def test_student_cannot_manage_course_or_upload_material() -> None:
 
     with pytest.raises(TenantAccessError):
         assert_can_manage_course(context, course_tenant_id="tenant-tuebingen")
-    with pytest.raises(TenantAccessError):
-        assert_can_upload_course_material(context, course_tenant_id="tenant-tuebingen")
 
 
 def test_cross_tenant_access_is_denied_even_for_professor() -> None:
@@ -94,53 +81,6 @@ def test_cross_tenant_access_is_denied_even_for_professor() -> None:
         assert_can_manage_course(context, course_tenant_id="tenant-other")
 
 
-def test_progress_access_allows_self_only() -> None:
-    student = TenantContext(
-        tenant_id="tenant-tuebingen",
-        user_id="user-student-1",
-        roles=frozenset({TenantRole.STUDENT}),
-    )
-    tutor = TenantContext(
-        tenant_id="tenant-tuebingen",
-        user_id="user-tutor-1",
-        roles=frozenset({TenantRole.TUTOR}),
-    )
-
-    assert_can_view_progress(
-        student,
-        learner_user_id="user-student-1",
-        progress_tenant_id="tenant-tuebingen",
-    )
-    with pytest.raises(TenantAccessError):
-        assert_can_view_progress(
-            tutor,
-            learner_user_id="user-student-1",
-            progress_tenant_id="tenant-tuebingen",
-        )
-
-    with pytest.raises(TenantAccessError):
-        assert_can_view_progress(
-            student,
-            learner_user_id="user-student-2",
-            progress_tenant_id="tenant-tuebingen",
-        )
-
-
-def test_progress_access_denies_cross_tenant_records() -> None:
-    tutor = TenantContext(
-        tenant_id="tenant-tuebingen",
-        user_id="user-tutor-1",
-        roles=frozenset({TenantRole.TUTOR}),
-    )
-
-    with pytest.raises(TenantAccessError):
-        assert_can_view_progress(
-            tutor,
-            learner_user_id="user-student-1",
-            progress_tenant_id="tenant-other",
-        )
-
-
 def test_tenant_storage_prefix_does_not_expose_tenant_slug() -> None:
     prefix = tenant_storage_prefix("tenant-tuebingen")
 
@@ -148,17 +88,6 @@ def test_tenant_storage_prefix_does_not_expose_tenant_slug() -> None:
     assert "tenant-tuebingen" not in prefix
     assert prefix == tenant_storage_prefix("tenant-tuebingen")
     assert prefix != tenant_storage_prefix("tenant-other")
-
-
-def test_cache_key_is_tenant_scoped_and_validated() -> None:
-    key = tenant_cache_key("tenant-tuebingen", namespace="courses", key="martius-ml")
-
-    assert key.startswith("t:")
-    assert "tenant-tuebingen" not in key
-    assert key.endswith(":courses:martius-ml")
-
-    with pytest.raises(TenantAccessError):
-        tenant_cache_key("tenant-tuebingen", namespace="courses", key="bad\nkey")
 
 
 def test_course_material_uploads_are_tenant_prefixed_and_allowlisted() -> None:

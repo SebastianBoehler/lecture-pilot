@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import hashlib
-import json
 from collections.abc import Iterable
 from typing import Literal
 
@@ -15,6 +13,7 @@ from pydantic import (
     model_validator,
 )
 
+from lecturepilot.canonical_digest import canonical_json_digest
 from lecturepilot.coaching_contract import MAX_APPROVED_TASK_LENGTH
 from lecturepilot.practice_task_bank import SupplementalPracticeTask
 
@@ -163,7 +162,7 @@ class LearningMapGate(BaseModel):
             {**values, "revision": "0" * 64}, context={"build_revision": True}
         )
         payload = proposal.model_dump(mode="json", exclude={"revision"})
-        return cls.model_validate({**payload, "revision": digest_payload(payload)})
+        return cls.model_validate({**payload, "revision": canonical_json_digest(payload)})
 
 
 class LearningMapNode(BaseModel):
@@ -211,12 +210,7 @@ class LearningMap(BaseModel):
             {**values, "revision": "0" * 64}, context={"build_revision": True}
         )
         payload = proposal.model_dump(mode="json", exclude={"revision"})
-        return cls.model_validate({**payload, "revision": digest_payload(payload)})
-
-
-def digest_payload(payload: dict[str, object]) -> str:
-    canonical = json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        return cls.model_validate({**payload, "revision": canonical_json_digest(payload)})
 
 
 def require_unique_ids(ids: Iterable[str], label: str) -> None:
@@ -229,25 +223,25 @@ def require_unique_ids(ids: Iterable[str], label: str) -> None:
 
 def _valid_gate_revision(gate: LearningMapGate) -> bool:
     payload = gate.model_dump(mode="json", exclude={"revision"})
-    if gate.revision == digest_payload(payload):
+    if gate.revision == canonical_json_digest(payload):
         return True
     if HARDENING_GATE_FIELDS & gate.model_fields_set:
         return False
     for field in HARDENING_GATE_FIELDS:
         payload.pop(field)
-    return gate.revision == digest_payload(payload)
+    return gate.revision == canonical_json_digest(payload)
 
 
 def _valid_map_revision(learning_map: LearningMap) -> bool:
     payload = learning_map.model_dump(mode="json", exclude={"revision"})
-    if learning_map.revision == digest_payload(payload):
+    if learning_map.revision == canonical_json_digest(payload):
         return True
     if any(HARDENING_GATE_FIELDS & gate.model_fields_set for gate in learning_map.gates):
         return False
     for gate_payload in payload["gates"]:
         for field in HARDENING_GATE_FIELDS:
             gate_payload.pop(field)
-    return learning_map.revision == digest_payload(payload)
+    return learning_map.revision == canonical_json_digest(payload)
 
 
 def _require_ordered_hints(hints: list[LearningMapHint]) -> None:

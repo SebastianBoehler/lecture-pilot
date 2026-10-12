@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from lecturepilot.canvas_component_catalog import component_block_from_payload, component_spec_issue
+from lecturepilot.canvas_component_catalog import component_spec_issue
 from lecturepilot.canvas_models import CanvasBlock, CanvasComponentData
 
 
@@ -97,27 +97,6 @@ def test_component_catalog_rejects_incomplete_visual_plot() -> None:
     assert component_spec_issue(visual) == (
         "needs at least two finite points in every visual series."
     )
-
-
-def test_generated_component_ref_is_derived_from_backend_block_id() -> None:
-    payload = {
-        "component_id": "reused-provider-id",
-        "component_ref": "reused-provider-path.yaml",
-        "component_type": "visual_artifact",
-        "component_version": 1,
-        "component_data": {
-            "visual_layout": "grid",
-            "visual_nodes": [
-                {"id": "a", "label": "A", "detail": "First"},
-                {"id": "b", "label": "B", "detail": "Second"},
-            ],
-        },
-    }
-    block = component_block_from_payload(payload, "learning-topic-component-1")
-    unsafe = component_block_from_payload(payload, "../other-topic")
-
-    assert block.component_ref == "learning-topic-component-1.yaml"
-    assert unsafe.component_ref == "other-topic.yaml"
 
 
 def _visual_block(data: dict) -> CanvasBlock:

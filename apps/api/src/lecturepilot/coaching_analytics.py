@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
 from dataclasses import dataclass, field
 
 from pydantic import BaseModel
@@ -129,23 +128,6 @@ class GateMetricsAccumulator:
             supported_retry=_cell("supported_retry", state.outcomes["supported_retry"]),
             delayed_transfer=_cell("delayed_transfer", state.outcomes["delayed_transfer"]),
         )
-
-
-def gate_metrics(
-    events: Iterable[dict],
-    *,
-    current_publication_version: int,
-    current_learning_map_revision: str,
-    current_gate_revisions: dict[str, str],
-) -> list[AnalyticsGateMetric]:
-    accumulator = GateMetricsAccumulator(
-        current_publication_version=current_publication_version,
-        current_learning_map_revision=current_learning_map_revision,
-        current_gate_revisions=current_gate_revisions,
-    )
-    for event in events:
-        accumulator.record(event)
-    return accumulator.metrics()
 
 
 def _cell(evidence_type: str, attempts: dict[str, _LearnerAttempt]) -> AnalyticsOutcomeCell:
