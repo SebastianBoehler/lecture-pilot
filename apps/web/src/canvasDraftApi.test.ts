@@ -26,7 +26,7 @@ it("stops polling generation progress once its owner aborts, e.g. on logout", as
   const controller = new AbortController();
   const draft = draftLectureCanvas("course", "lecture-01", session, controller.signal);
   const rejected = expect(draft).rejects.toMatchObject({ name: "AbortError" });
-  await vi.advanceTimersByTimeAsync(3_100);
+  await vi.advanceTimersByTimeAsync(3_750); // status polls at 1.5 s and 3.75 s (backoff)
   expect(fetchMock).toHaveBeenCalledTimes(3);
 
   controller.abort();

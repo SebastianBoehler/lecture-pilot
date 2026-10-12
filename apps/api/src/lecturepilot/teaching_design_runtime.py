@@ -18,6 +18,7 @@ async def _run_implementation_repair(
     initial,
     protected_intent,
     repair_context,
+    initial_review=None,
 ):
     settings = planner.provider_registry.require_ready(
         [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
@@ -29,6 +30,7 @@ async def _run_implementation_repair(
             "initial": initial.model_dump(mode="json") if initial else None,
             "model": settings.model,
             "repair_context": repair_context,
+            "initial_review": initial_review.model_dump(mode="json") if initial_review else None,
         }
     )
 
@@ -52,6 +54,7 @@ async def _run_implementation_repair(
         review=review,
         authorize=authorize,
         repair_context=repair_context,
+        initial_review=initial_review,
     )
     async with planner._model(settings, authorize=authorize) as model:
         authorize()

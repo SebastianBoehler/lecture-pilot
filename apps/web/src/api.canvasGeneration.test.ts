@@ -126,7 +126,7 @@ it("polls accepted jobs without holding a generation connection open", async () 
   vi.stubGlobal("fetch", fetchMock);
   try {
     const result = draftLectureCanvas("course-1", "lecture-01", session);
-    await vi.advanceTimersByTimeAsync(3000);
+    await vi.advanceTimersByTimeAsync(3750); // status polls back off: 1.5 s, then 3.75 s
     await expect(result).resolves.toEqual(canvas);
     const firstHeaders = new Headers(fetchMock.mock.calls[0][1].headers);
     expect(firstHeaders.get("Prefer")).toBe("respond-async");

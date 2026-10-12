@@ -59,7 +59,7 @@ def test_normalizes_only_native_office_sources_by_revision(
 def test_office_source_requires_configured_converter(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.delenv("LECTUREPILOT_DOCUMENT_CONVERTER_URL", raising=False)
 
-    with pytest.raises(DocumentConverterError, match="not configured"):
+    with pytest.raises(DocumentConverterError, match="not running"):
         normalize_selected_documents(
             files=[
                 SourceBundleFile(

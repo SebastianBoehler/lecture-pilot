@@ -5,6 +5,7 @@ import json
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_quality import NativeCanvasQualityClient, _quality_messages
+from lecturepilot.course_canvas_quality_prompt import MAX_QUALITY_PROMPT_CHARS
 
 
 async def test_quality_review_native_schema_has_output_cap_and_critic_reasoning():
@@ -68,7 +69,7 @@ def test_quality_review_prompt_is_bounded_to_claims_and_relevant_evidence() -> N
     messages = _quality_messages(source, candidate)
     prompt = messages[1]["content"]
 
-    assert len(prompt) <= 20_000
+    assert len(prompt) <= MAX_QUALITY_PROMPT_CHARS
     assert "CANDIDATE SECTION topic-1" in prompt
     assert "SOURCE EVIDENCE lecture.pdf page 1" in prompt
     assert '"workspace_path"' not in prompt
@@ -86,7 +87,7 @@ def test_quality_review_prompt_never_clips_a_candidate_line_mid_expression() -> 
                                 CanvasBlock(
                                     id=f"filler-{index}",
                                     type="paragraph",
-                                    text="grounded detail " * 180,
+                                    text="grounded detail " * 600,
                                 )
                                 for index in range(6)
                             ],
@@ -106,6 +107,49 @@ def test_quality_review_prompt_never_clips_a_candidate_line_mid_expression() -> 
 
     assert "P(x\\mid C=0)P(C\n" not in prompt
     assert "P(x\\mid C=0)P(C=0)" in prompt or "decision-rule" not in prompt
+
+
+async def test_quality_review_retries_an_unverifiable_checkpoint_decision():
+    from pydantic_ai.messages import ModelResponse, TextPart
+    from pydantic_ai.models.function import FunctionModel
+    from lecturepilot.course_canvas_quality_checkpoints import CheckpointContract
+    from lecturepilot.models import ProviderSettings
+
+    contract = CheckpointContract(
+        block_id="claim",
+        section_id="topic",
+        target_id="goal",
+        outcome="Explain the claim.",
+        task="Explain the claim.",
+        rubric=("c1: names the claim",),
+        evidence={"goal:e0": "[lecture.pdf] A source claim."},
+    )
+    issue = {"section_id": "topic", "block_id": "claim", "reason": "Task needs revision."}
+    answers = iter(
+        [
+            {"issues": [{**issue, "decision": "design_conflict", "evidence_ids": []}]},
+            {"issues": [{**issue, "decision": "design_conflict", "evidence_ids": ["goal:e0"]}]},
+        ]
+    )
+    prompts = []
+
+    def respond(messages, info):
+        prompts.append(str(messages[-1].parts[-1].content))
+        return ModelResponse(parts=[TextPart(json.dumps(next(answers)))])
+
+    settings = ProviderSettings(
+        provider="openai", model="openai/gpt-6", api_key_env="OPENAI_API_KEY", capabilities=set()
+    )
+    document = _document()
+    payload = await NativeCanvasQualityClient(model=FunctionModel(respond)).complete_review(
+        settings=settings,
+        source_document=document,
+        candidate_document=document,
+        checkpoints={"claim": contract},
+    )
+    assert payload["issues"][0]["evidence_ids"] == ["goal:e0"]
+    assert len(prompts) == 2
+    assert "own evidence IDs" in prompts[1]
 
 
 def _document() -> CanvasDocument:

@@ -1,14 +1,17 @@
 """Bounded per-goal teaching implementation before canvas authoring.
 
-Workflow, not agent: one structured call per missing goal, one lecture review, at most one
-targeted repair per flagged goal and one annotating review. Deterministic validation rejects
-teaching; remaining model review findings stay visible as warnings and never fail the job.
+Workflow, not agent: one structured call per missing goal, one lecture review and at most one
+targeted repair per flagged goal. Repairs are not reviewed again. Deterministic validation
+rejects teaching; the single review's findings stay visible as warnings (labelled when a repair
+addressed them) and never fail the job. A canvas design conflict reuses the current
+implementation's review and repairs only the goals whose checkpoints it names.
 """
 
 import asyncio
 from copy import deepcopy
 from dataclasses import dataclass
 import json
+import re
 from pathlib import Path
 from collections.abc import Awaitable, Callable
 
@@ -56,6 +59,8 @@ class TeachingDesignJob:
     review: Callable[[PracticeDesignProposal], Awaitable[PracticeDesignReviewResult]]
     authorize: Callable[[], None]
     repair_context: str | None = None
+    # The review already bound to `initial`; set for a canvas design-conflict repair.
+    initial_review: PracticeDesignReviewResult | None = None
 
 
 async def run_teaching_design_job(job: TeachingDesignJob, *, model):
@@ -83,19 +88,51 @@ async def _run(job, *, model):
     repaired = set(progress.get("repaired", []))
     step = _TeachingStep(job, workspace, catalogue, model)
 
+    reviewed = job.initial_review is not None and not workspace.missing()
     await step.bounded(workspace.missing(), step.write_goal)
-    await step.ensure_review()
-    flagged = [goal for goal in step.flagged_goals() if goal not in repaired]
-    if flagged:
-        await step.bounded(flagged, step.repair_goal, on_done=repaired.add)
-        atomic_write_json(progress_path, {"repaired": sorted(repaired)})
+    if "flagged" not in progress and reviewed:
+        # The implementation's single review is spent: repair only the conflicting goals.
+        step.adopt_review(job.initial_review)
+        progress = {"flagged": step.conflict_goals()}
+    elif "flagged" not in progress:
+        # The single review. Saved progress makes a resumed job continue its repairs instead
+        # of reviewing partly repaired teaching again.
         await step.ensure_review()
+        progress = {"flagged": step.flagged_goals()}
+
+    def save_progress(goal_id=None):
+        if goal_id:
+            repaired.add(goal_id)
+        job.authorize()
+        atomic_write_json(progress_path, {**progress, "repaired": sorted(repaired)})
+
+    save_progress()
+    pending = [goal for goal in progress["flagged"] if goal not in repaired]
+    await step.bounded(pending, step.repair_goal, on_done=save_progress)
     emit_metadata_event(
         "teaching_implementation.completed",
-        repaired_count=len(flagged),
+        repaired_count=len(repaired),
         warning_count=len(workspace.defects()),
     )
-    return workspace.proposal(), workspace.review
+    return workspace.proposal(), repaired_review(workspace, repaired)
+
+
+REPAIRED_PREFIX = "Repaired once, not re-checked: "
+
+
+def repaired_review(workspace, repaired):
+    """Keep the single review's findings, labelling the ones a targeted repair addressed."""
+    defects = workspace.defects()
+    return workspace.review.model_copy(
+        update={
+            "checks": tuple(
+                check.model_copy(update={"summary": (REPAIRED_PREFIX + check.summary)[:2_000]})
+                if check in defects and repaired.intersection(check.target_ids)
+                else check
+                for check in workspace.review.checks
+            )
+        }
+    )
 
 
 class _TeachingStep:
@@ -205,6 +242,20 @@ class _TeachingStep:
             warning_count=len(self.workspace.defects()),
             requested_count=len(proposal.targets),
         )
+
+    def adopt_review(self, review):
+        self.workspace.review = review
+        self.workspace.review_digest = digest(self.workspace.proposal().model_dump(mode="json"))
+        self.workspace.save()
+
+    def conflict_goals(self):
+        context = self.job.repair_context or ""
+        return [
+            goal_id
+            for goal_id in self.workspace.goals
+            if goal_id not in self.workspace.fixed
+            and re.search(rf"(?<![\w-])practice-{re.escape(goal_id)}(?![\w-])", context)
+        ]
 
     def flagged_goals(self):
         editable = [goal for goal in self.workspace.goals if goal not in self.workspace.fixed]

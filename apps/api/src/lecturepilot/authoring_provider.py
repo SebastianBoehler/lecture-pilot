@@ -8,9 +8,11 @@ import os
 import httpx
 from openai import APIError, AsyncOpenAI
 from pydantic_ai.exceptions import ModelAPIError
-from pydantic_ai.models.openai import OpenAIChatModel, OpenAIResponsesModel
+from pydantic_ai.models.openai import OpenAIResponsesModel
+from pydantic_ai.models.openrouter import OpenRouterModel
 from pydantic_ai.models.wrapper import WrapperModel
 from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai.providers.openrouter import OpenRouterProvider
 
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.authoring_limits import current_authoring_budget
@@ -144,10 +146,14 @@ async def authoring_model(
             async with AsyncOpenAI(
                 api_key=api_key, base_url=base_url, max_retries=0, http_client=http_client
             ) as client:
-                model_type = (
-                    OpenAIResponsesModel if settings.provider == "openai" else OpenAIChatModel
+                model = (
+                    OpenAIResponsesModel(model_id, provider=OpenAIProvider(openai_client=client))
+                    if settings.provider == "openai"
+                    # OpenRouterModel maps CachePoint and openrouter_cache_* settings to cache_control.
+                    else OpenRouterModel(
+                        model_id, provider=OpenRouterProvider(openai_client=client)
+                    )
                 )
-                model = model_type(model_id, provider=OpenAIProvider(openai_client=client))
                 async with _pooled_model(
                     model, settings, recorder, authorize, response_usage, stage
                 ) as gateway:

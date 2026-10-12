@@ -88,6 +88,7 @@ export function useLessonSession(options: LessonSessionOptions) {
       nextMode: LessonMode = "learner",
       updateRoute = true,
       review?: GateReviewOpening,
+      focusSectionId?: string,
     ) => {
       loadedLessonRoute.current = lessonKey(nextCourseId, nextLecture.id, nextMode);
       if (updateRoute) navigate(lessonPath(nextCourseId, nextLecture.id, nextMode));
@@ -120,8 +121,14 @@ export function useLessonSession(options: LessonSessionOptions) {
         );
         setPublishedCanvasView(publishedView);
         setCanvasDocument(document);
-        const focusedSectionId = review?.section_id ?? document.sections[0]?.id ?? "";
-        setNavigation((current) => ({ ...current, focusedSectionId }));
+        const searchedSection = document.sections.find((section) => section.id === focusSectionId);
+        if (!review && searchedSection) {
+          // Section anchors share the canvas id space; targeting one scrolls a search hit into view.
+          focusCanvas(searchedSection.id, searchedSection.id);
+        } else {
+          const focusedSectionId = review?.section_id ?? document.sections[0]?.id ?? "";
+          setNavigation((current) => ({ ...current, focusedSectionId }));
+        }
       } catch (error) {
         setCanvasError(error instanceof Error ? error.message : "Canvas loading failed.");
       }

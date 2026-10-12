@@ -268,6 +268,7 @@ export type LearnerCourseProfile = {
   course_id: string;
   memory: string;
   passed_lecture_ids: string[];
+  lecture_progress?: { lecture_id: string; passed_gates: number; total_gates: number }[];
   files: LearnerFile[];
 };
 

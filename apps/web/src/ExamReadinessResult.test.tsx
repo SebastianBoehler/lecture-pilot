@@ -12,24 +12,22 @@ import type {
 } from "./types";
 
 describe("ExamReadinessResult", () => {
-  it("keeps a long review plan compact until the learner asks for more", async () => {
+  it("hands review priorities to Next up and links the top priority lecture", async () => {
     const user = userEvent.setup();
+    const onOpenLecture = vi.fn();
     renderWithI18n(
       <ExamReadinessResult
         check={check}
         lectures={[lecture]}
         result={resultWithTasks(5)}
-        onOpenLecture={vi.fn()}
+        onOpenLecture={onOpenLecture}
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "Topic 1" })).toBeVisible();
-    expect(screen.getByRole("heading", { name: "Topic 4" })).not.toBeVisible();
-    expect(screen.getAllByRole("button", { name: /review lecture 03/i })).toHaveLength(1);
-
-    await user.click(screen.getByText(/show 2 more priorities/i));
-
-    expect(screen.getByRole("heading", { name: "Topic 4" })).toBeVisible();
+    expect(screen.getByText(/5 review priorities were added to next up/i)).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "Topic 1" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /review lecture 03/i }));
+    expect(onOpenLecture).toHaveBeenCalledWith(lecture);
   });
 
   it("keeps an unscored legacy open-answer result neutral", () => {

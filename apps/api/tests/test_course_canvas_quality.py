@@ -66,7 +66,7 @@ async def test_quality_reviewer_reviews_each_section_without_cross_section_trunc
                 CanvasBlock(
                     id="large-first-claim",
                     type="paragraph",
-                    text="First source-grounded claim. " * 350,
+                    text="First source-grounded claim. " * 1_000,
                 )
             ]
         }
@@ -82,7 +82,7 @@ async def test_quality_reviewer_reviews_each_section_without_cross_section_trunc
                     type="math",
                     text=(
                         r"P(x\mid C=1)P(C=1) > P(x\mid C=0)P(C=0). "
-                        + "Second source-grounded derivation. " * 300
+                        + "Second source-grounded derivation. " * 800
                     ),
                 )
             ],
@@ -133,7 +133,7 @@ class _QualityClient:
     def __init__(self, issues: list[dict]) -> None:
         self.issues = issues
 
-    async def complete_review(self, *, settings, source_document, candidate_document):
+    async def complete_review(self, *, settings, source_document, candidate_document, **kwargs):
         return {"issues": self.issues}
 
 
@@ -141,7 +141,7 @@ class _SectionIsolatedQualityClient:
     def __init__(self) -> None:
         self.reviewed_sections: list[list[str]] = []
 
-    async def complete_review(self, *, settings, source_document, candidate_document):
+    async def complete_review(self, *, settings, source_document, candidate_document, **kwargs):
         section_ids = [section.id for section in candidate_document.sections]
         self.reviewed_sections.append(section_ids)
         assert len(candidate_document.sections) == 1

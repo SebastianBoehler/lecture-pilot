@@ -38,6 +38,9 @@ def load_turn_context(
                 if snapshot is None:
                     raise InvalidPublishedCanvasContextError("Canvas has not been published.")
                 document = snapshot.document
+                overlay = app.state.canvas_workspace.read_learner_overlay_sections(
+                    course_id=turn.course_id, lecture_id=turn.lecture_id, user_id=turn.user_id
+                )
                 analytics_context = AnalyticsPublicationContext(
                     snapshot.learning_map, snapshot.version, snapshot.learning_map_revision
                 )
@@ -51,7 +54,13 @@ def load_turn_context(
                     user_id=turn.user_id,
                     attendance=turn.attendance,
                 )
-            turn = turn.model_copy(update={"canvas_context": document, "user_memory": memory})
+            turn = turn.model_copy(
+                update={
+                    "canvas_context": document,
+                    "learner_section_ids": [section.id for section in overlay],
+                    "user_memory": memory,
+                }
+            )
             layout = getattr(app.state.canvas_workspace, "layout", None)
             if callable(getattr(layout, "user_canvas_dir", None)):
                 turn = turn.model_copy(

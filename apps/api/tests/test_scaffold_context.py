@@ -1,5 +1,5 @@
 from lecturepilot.exam_revision_plan import ExamRevisionTask
-from lecturepilot.model_client import _messages
+from lecturepilot.tutor_prompt import tutor_messages as _messages
 from lecturepilot.models import AgentTurnInput, AttendanceStatus, CanvasState
 
 

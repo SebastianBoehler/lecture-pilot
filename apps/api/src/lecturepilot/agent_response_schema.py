@@ -18,7 +18,7 @@ def lecturepilot_response_format(turn: AgentTurnInput) -> dict[str, Any]:
         assessment_gate=(turn.active_gate if bound else None),
         required_assessment=checkpoint_assessment_required(turn),
     )
-    constrain_tutor_response(schema, turn)
+    constrain_tutor_response(schema)
     return {
         "type": "json_schema",
         "json_schema": {

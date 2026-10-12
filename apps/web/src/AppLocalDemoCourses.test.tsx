@@ -33,7 +33,8 @@ describe("local demo course discovery", () => {
         name: "Open Natural Language Processing workspace",
       }),
     );
-    await user.click(screen.getByRole("tab", { name: "Practice exams" }));
+    await user.click(screen.getByRole("tab", { name: "Exam prep" }));
+    await user.click(await screen.findByRole("button", { name: /full mock exam/i }));
     expect(await screen.findByText("No practice exams yet.")).toBeVisible();
     await waitFor(() => {
       const examCalls = fetchMock.mock.calls.filter(([url]) =>

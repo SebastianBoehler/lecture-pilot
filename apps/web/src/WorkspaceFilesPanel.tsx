@@ -4,18 +4,26 @@ import { useMemo } from "react";
 import { assetPreviewUrl } from "./assetMedia";
 import { AuthenticatedImage } from "./AuthenticatedAsset";
 import { LessonDrawerClose } from "./LessonDrawerClose";
+import { NotesExportButton } from "./NotesExportButton";
 import { WorkspaceFileTree } from "./WorkspaceFileTree";
-import type { CanvasDocument, LoginSession, WorkspaceResource } from "./types";
+import type {
+  CanvasDocument,
+  LearnerWorkspaceMode,
+  LoginSession,
+  WorkspaceResource,
+} from "./types";
 import { buildWorkspaceTree } from "./workspaceTree";
 
 export function WorkspaceFilesPanel({
   canvasDocument,
+  mode,
   session,
   selectedResource,
   onClose,
   onSelectResource,
 }: {
   canvasDocument: CanvasDocument | null;
+  mode: LearnerWorkspaceMode;
   session: LoginSession;
   selectedResource: WorkspaceResource | null;
   onClose: () => void;
@@ -43,6 +51,12 @@ export function WorkspaceFilesPanel({
                 onSelectResource={onSelectResource}
               />
             </details>
+            <NotesExportButton
+              courseId={canvasDocument.course_id}
+              lectureId={canvasDocument.lecture_id}
+              mode={mode}
+              session={session}
+            />
           </>
         ) : (
           <p className="drawer-note">Canvas loading...</p>

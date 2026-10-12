@@ -7,7 +7,10 @@ from fastapi import FastAPI
 
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.compiled_slide_canvas import latex_preview_warning
-from lecturepilot.document_converter_client import DocumentConverterError
+from lecturepilot.document_converter_client import (
+    DocumentConverterError,
+    DocumentConverterUnavailable,
+)
 from lecturepilot.durable_files import exclusive_file_lock
 from lecturepilot.course_schedule_store import read_course_workspace
 from lecturepilot.course_source_routing import SourceRoutingError, selected_routed_files
@@ -140,6 +143,8 @@ def _derive_source_document(
             source_root=uploads_dir,
             normalized_root=normalized,
         )
+    except DocumentConverterUnavailable:
+        raise
     except DocumentConverterError as exc:
         raise SourceBundleCanvasError(str(exc)) from exc
     compiler_inputs = (

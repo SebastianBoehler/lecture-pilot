@@ -2,9 +2,9 @@ import type { KeyboardEvent } from "react";
 
 import { useI18n } from "./i18n";
 
-export type CourseWorkspaceTool = "lectures" | "readiness" | "practice";
+export type CourseWorkspaceTool = "lectures" | "exam";
 
-const TOOLS: CourseWorkspaceTool[] = ["lectures", "readiness", "practice"];
+const TOOLS: CourseWorkspaceTool[] = ["lectures", "exam"];
 
 export function CourseWorkspaceTabs({
   activeTool,
