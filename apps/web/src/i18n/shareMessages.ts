@@ -12,8 +12,12 @@ export const shareMessages = {
     "share.copy": "Copy link",
     "share.copied": "Copied",
     "share.slide": "Download slide with QR code",
-    "share.slidePitch":
-      "Scan to study this lecture with LecturePilot, your AI tutor for the course material.",
+    "share.slideEyebrow": "Your AI tutor for this course",
+    "share.slideStep1": "Scan the code or open the link",
+    "share.slideStep2": "Sign in with your university account",
+    "share.slideStep2Join": "Sign in with your university account and join",
+    "share.slideStep3": "Pick a lecture and start learning",
+    "share.slideScan": "Scan to open",
     "share.allowJoin": "Allow joining with this link",
     "share.allowJoinHelp":
       " Off by default. Turning it off makes the join link stop working immediately.",
@@ -52,8 +56,12 @@ export const shareMessages = {
     "share.copy": "Link kopieren",
     "share.copied": "Kopiert",
     "share.slide": "Folie mit QR-Code herunterladen",
-    "share.slidePitch":
-      "Scannen und diese Vorlesung mit LecturePilot vertiefen – deinem KI-Tutor für die Kursmaterialien.",
+    "share.slideEyebrow": "Dein KI-Tutor für diesen Kurs",
+    "share.slideStep1": "Code scannen oder Link öffnen",
+    "share.slideStep2": "Mit dem Uni-Account anmelden",
+    "share.slideStep2Join": "Mit dem Uni-Account anmelden und beitreten",
+    "share.slideStep3": "Vorlesung wählen und loslernen",
+    "share.slideScan": "Scannen zum Öffnen",
     "share.allowJoin": "Beitritt über diesen Link erlauben",
     "share.allowJoinHelp":
       " Standardmäßig aus. Beim Ausschalten wird der Beitrittslink sofort ungültig.",

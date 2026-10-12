@@ -11,9 +11,10 @@ import {
 } from "./courseInviteApi";
 import { dismissDialogFromBackdrop } from "../shared/dialogBackdrop";
 import "./share-course.css";
-import { useI18n } from "../i18n/i18n";
+import { translate, useI18n } from "../i18n/i18n";
 import { useModalDialog } from "../shared/useModalDialog";
 import type { LoginSession, ManagedCourseWorkspaceResult } from "../shared/types";
+import { renderShareSlide } from "./shareSlide";
 
 export function ProfessorShareCourseDialog({
   session,
@@ -24,7 +25,7 @@ export function ProfessorShareCourseDialog({
   workspace: ManagedCourseWorkspaceResult;
   onClose: () => void;
 }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const dialogRef = useModalDialog();
   const titleId = useId();
   // null: only enrolled students (Alma/ILIAS) can open the course; an invite also lets others join.
@@ -74,8 +75,24 @@ export function ProfessorShareCourseDialog({
   }
 
   async function downloadSlide() {
+    // Students read the slide in the lecture, so it follows the course's teaching language.
+    const slideT = translate(workspace.course.canvas_language ?? locale);
+    const { title, term, professor } = workspace.course;
     const link = document.createElement("a");
-    link.href = await slideImage(url, workspace.course.title, t("share.slidePitch"));
+    link.href = await renderShareSlide({
+      url,
+      title,
+      meta: [term, professor].filter(Boolean).join(" · "),
+      texts: {
+        eyebrow: slideT("share.slideEyebrow"),
+        steps: [
+          slideT("share.slideStep1"),
+          slideT(invite ? "share.slideStep2Join" : "share.slideStep2"),
+          slideT("share.slideStep3"),
+        ],
+        scan: slideT("share.slideScan"),
+      },
+    });
     link.download = `${workspace.course.title.replace(/[^\w-]+/g, "-")}-lecturepilot.png`;
     link.click();
   }
@@ -159,47 +176,4 @@ export function ProfessorShareCourseDialog({
       </footer>
     </dialog>
   );
-}
-
-async function slideImage(url: string, title: string, pitch: string): Promise<string> {
-  const canvas = document.createElement("canvas");
-  canvas.width = 1600;
-  canvas.height = 900;
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("Canvas is unavailable.");
-  context.fillStyle = "#ffffff";
-  context.fillRect(0, 0, canvas.width, canvas.height);
-  const qr = new Image();
-  qr.src = await QRCode.toDataURL(url, { margin: 1, width: 620 });
-  await qr.decode();
-  context.drawImage(qr, 900, 140, 620, 620);
-  context.fillStyle = "#111111";
-  context.font = "bold 64px system-ui, sans-serif";
-  wrap(context, title, 100, 260, 740, 76);
-  context.font = "40px system-ui, sans-serif";
-  wrap(context, pitch, 100, 520, 740, 52);
-  context.font = "28px system-ui, sans-serif";
-  context.fillStyle = "#555555";
-  context.fillText(new URL(url).host, 100, 780);
-  return canvas.toDataURL("image/png");
-}
-
-function wrap(
-  context: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  width: number,
-  lineHeight: number,
-) {
-  let line = "";
-  for (const word of text.split(" ")) {
-    if (context.measureText(`${line}${word} `).width > width && line) {
-      context.fillText(line.trim(), x, y);
-      line = "";
-      y += lineHeight;
-    }
-    line += `${word} `;
-  }
-  context.fillText(line.trim(), x, y);
 }
