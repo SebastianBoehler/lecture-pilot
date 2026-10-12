@@ -4,8 +4,7 @@ import { howItWorksContent } from "./howItWorksContent";
 import { OnboardingVideo } from "./OnboardingVideo";
 
 export function HowItWorksArticle() {
-  const { locale } = useI18n();
-  const de = locale === "de";
+  const { locale, t } = useI18n();
   return (
     <InfoArticle
       content={howItWorksContent[locale]}
@@ -13,52 +12,24 @@ export function HowItWorksArticle() {
         lecturers: (
           <div className="guide-video">
             <OnboardingVideo />
-            <span>
-              {de
-                ? "Einführung: Kurserstellung und Studierendenansicht, mit Kapiteln"
-                : "Watch the chaptered introduction: course setup and student experience"}
-            </span>
+            <span>{t("howItWorks.video")}</span>
           </div>
         ),
         behind: (
           <figure className="guide-workspace">
             <div>
-              <strong>
-                {de
-                  ? "Gemeinsamer Kurs · für den Tutor schreibgeschützt"
-                  : "Shared course · read-only for the tutor"}
-              </strong>
-              <p>
-                {de
-                  ? "Quellen → bestätigte Lernziele → veröffentlichte Vorlesungen"
-                  : "Sources → approved learning goals → published lectures"}
-              </p>
+              <strong>{t("howItWorks.workspace.course")}</strong>
+              <p>{t("howItWorks.workspace.courseDetail")}</p>
             </div>
             <div>
-              <strong>
-                {de ? "+ Dein privater Lernworkspace" : "+ Your private learner workspace"}
-              </strong>
-              <p>
-                {de
-                  ? "Versuche · Annotationen · eigene Abschnitte · Kurserinnerungen"
-                  : "Attempts · annotations · personal sections · course memory"}
-              </p>
+              <strong>{t("howItWorks.workspace.learner")}</strong>
+              <p>{t("howItWorks.workspace.learnerDetail")}</p>
             </div>
             <div>
-              <strong>
-                {de ? "+ Deine kursübergreifenden Vorlieben" : "+ Your cross-course preferences"}
-              </strong>
-              <p>
-                {de
-                  ? "Im Profil einsehbare und entfernbare Erinnerungen"
-                  : "Saved memory you can inspect and remove in your profile"}
-              </p>
+              <strong>{t("howItWorks.workspace.preferences")}</strong>
+              <p>{t("howItWorks.workspace.preferencesDetail")}</p>
             </div>
-            <figcaption>
-              {de
-                ? "Zusammen bilden sie den erlaubten Kontext für den Tutor. Dateien bleiben in getrennten Bereichen; es entsteht kein eigener Server pro Person."
-                : "Together these form the tutor’s permitted context. Files stay in separate areas; this does not create a separate server for each person."}
-            </figcaption>
+            <figcaption>{t("howItWorks.workspace.caption")}</figcaption>
           </figure>
         ),
       }}

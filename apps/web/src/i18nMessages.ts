@@ -16,6 +16,7 @@ import { learningAttemptMessages } from "./learningAttemptMessages";
 import { reviewQueueMessages } from "./reviewQueueMessages";
 import { lessonToolbarMessages } from "./lessonToolbarMessages";
 import { onboardingVideoMessages } from "./onboardingVideoMessages";
+import { infoPageMessages } from "./infoPageMessages";
 
 export const messages = {
   en: {
@@ -36,6 +37,7 @@ export const messages = {
     ...reviewQueueMessages.en,
     ...lessonToolbarMessages.en,
     ...onboardingVideoMessages.en,
+    ...infoPageMessages.en,
   },
   de: {
     ...practiceHistoryMessages.de,
@@ -55,6 +57,7 @@ export const messages = {
     ...reviewQueueMessages.de,
     ...lessonToolbarMessages.de,
     ...onboardingVideoMessages.de,
+    ...infoPageMessages.de,
   },
 } as const;
 
