@@ -11,16 +11,16 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "apps/api/src"))
 
-from lecturepilot.course_practice_design_benchmark_fixtures import (  # noqa: E402
+from practice_design_benchmark.fixtures import (  # noqa: E402
     load_practice_design_benchmark_fixtures,
 )
-from lecturepilot.course_practice_design_benchmark_report import (  # noqa: E402
+from practice_design_benchmark.report import (  # noqa: E402
     PracticeDesignBenchmarkReport,
 )
-from lecturepilot.course_practice_design_benchmark_models import (  # noqa: E402
+from practice_design_benchmark.models import (  # noqa: E402
     PracticeDesignBenchmarkReviewerSpec,
 )
-from lecturepilot.course_practice_design_benchmark_runner import (  # noqa: E402
+from practice_design_benchmark.runner import (  # noqa: E402
     run_practice_design_benchmark,
 )
 from lecturepilot.providers import DEFAULT_MODEL  # noqa: E402

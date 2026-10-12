@@ -2,12 +2,12 @@ import json
 
 import pytest
 
-from lecturepilot.course_practice_design_benchmark_evaluator import (
+from practice_design_benchmark.evaluator import (
     NativePracticeDesignBenchmarkClient,
     practice_design_benchmark_messages,
     validate_practice_design_benchmark_evaluation,
 )
-from lecturepilot.course_practice_design_benchmark_models import BENCHMARK_DIMENSIONS
+from practice_design_benchmark.models import BENCHMARK_DIMENSIONS
 from lecturepilot.course_practice_design_validation import PracticeDesignValidationError
 from lecturepilot.models import ProviderCapability, ProviderSettings
 from practice_design_review_test_helpers import passing_review, source_document

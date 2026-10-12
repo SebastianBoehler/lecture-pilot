@@ -47,7 +47,9 @@ SCORE_ANCHORS: dict[int, str] = {
 class PracticeDesignBenchmarkFailureExample(StrictPracticeDesignModel):
     scope: Literal["target", "global"]
     description: NonblankText = Field(max_length=2_000)
-    target_ids: Annotated[tuple[str, ...], BeforeValidator(freeze_collection)] = Field(max_length=8)
+    target_ids: Annotated[tuple[str, ...], BeforeValidator(freeze_collection)] = Field(
+        max_length=8
+    )
     supporting_anchors: Annotated[
         tuple[PracticeSourceAnchor, ...], BeforeValidator(freeze_collection)
     ] = Field(min_length=1, max_length=12)
@@ -57,7 +59,9 @@ class PracticeDesignBenchmarkFailureExample(StrictPracticeDesignModel):
         if len(set(self.target_ids)) != len(self.target_ids):
             raise ValueError("Benchmark failure-example target IDs must be unique.")
         if self.scope == "target" and not self.target_ids:
-            raise ValueError("Target-scoped failure examples need at least one target ID.")
+            raise ValueError(
+                "Target-scoped failure examples need at least one target ID."
+            )
         if self.scope == "global" and self.target_ids:
             raise ValueError("Global failure examples cannot name target IDs.")
         return self
@@ -68,13 +72,16 @@ class PracticeDesignBenchmarkScore(StrictPracticeDesignModel):
     score: int = Field(ge=1, le=5)
     rationale: NonblankText = Field(max_length=3_000)
     failure_examples: Annotated[
-        tuple[PracticeDesignBenchmarkFailureExample, ...], BeforeValidator(freeze_collection)
+        tuple[PracticeDesignBenchmarkFailureExample, ...],
+        BeforeValidator(freeze_collection),
     ] = Field(max_length=8)
 
     @model_validator(mode="after")
     def require_examples_for_limitations(self) -> PracticeDesignBenchmarkScore:
         if self.score < 5 and not self.failure_examples:
-            raise ValueError("Every submaximal score needs a source-supported failure example.")
+            raise ValueError(
+                "Every submaximal score needs a source-supported failure example."
+            )
         if self.score == 5 and self.failure_examples:
             raise ValueError("A maximum score cannot retain a failure example.")
         return self
@@ -83,7 +90,9 @@ class PracticeDesignBenchmarkScore(StrictPracticeDesignModel):
 class PracticeDesignBenchmarkEvaluation(StrictPracticeDesignModel):
     scores: Annotated[
         tuple[PracticeDesignBenchmarkScore, ...], BeforeValidator(freeze_collection)
-    ] = Field(min_length=len(BENCHMARK_DIMENSIONS), max_length=len(BENCHMARK_DIMENSIONS))
+    ] = Field(
+        min_length=len(BENCHMARK_DIMENSIONS), max_length=len(BENCHMARK_DIMENSIONS)
+    )
 
     @model_validator(mode="after")
     def require_complete_ordered_dimensions(self) -> PracticeDesignBenchmarkEvaluation:
@@ -133,7 +142,8 @@ class PracticeDesignBenchmarkReviewerScore(StrictPracticeDesignModel):
 class PracticeDesignBenchmarkDimensionSummary(StrictPracticeDesignModel):
     dimension: BenchmarkDimension
     reviewer_scores: Annotated[
-        tuple[PracticeDesignBenchmarkReviewerScore, ...], BeforeValidator(freeze_collection)
+        tuple[PracticeDesignBenchmarkReviewerScore, ...],
+        BeforeValidator(freeze_collection),
     ] = Field(min_length=1)
     mean_score: float = Field(ge=1, le=5)
     minimum_score: int = Field(ge=1, le=5)
@@ -144,7 +154,9 @@ class PracticeDesignBenchmarkDimensionSummary(StrictPracticeDesignModel):
 def summarize_dimension_scores(
     judgments: Sequence[PracticeDesignBenchmarkReviewerJudgment],
 ) -> tuple[PracticeDesignBenchmarkDimensionSummary, ...]:
-    validate_reviewer_specs(tuple(judgment.reviewer for judgment in judgments), minimum=1)
+    validate_reviewer_specs(
+        tuple(judgment.reviewer for judgment in judgments), minimum=1
+    )
     summaries = []
     for index, dimension in enumerate(BENCHMARK_DIMENSIONS):
         reviewer_scores = tuple(
@@ -180,7 +192,8 @@ def validate_reviewer_specs(
     if len(set(invocation_keys)) != len(invocation_keys):
         raise ValueError("Reviewer invocation model slugs must be distinct.")
     underlying_identity_keys = [
-        " ".join(reviewer.underlying_model_identity.split()).casefold() for reviewer in reviewers
+        " ".join(reviewer.underlying_model_identity.split()).casefold()
+        for reviewer in reviewers
     ]
     if len(set(underlying_identity_keys)) != len(underlying_identity_keys):
         raise ValueError("Underlying reviewer model identities must be distinct.")
@@ -196,15 +209,22 @@ def validate_benchmark_model_independence(
     proposal_invocation_key = _model_identity_key(proposal_model)
     proposal_underlying_key = _model_identity_key(proposal_underlying_model_identity)
     if not proposal_invocation_key or not proposal_underlying_key:
-        raise ValueError("Proposal invocation and underlying model identities must be nonblank.")
+        raise ValueError(
+            "Proposal invocation and underlying model identities must be nonblank."
+        )
     if proposal_invocation_key in {
         _model_identity_key(reviewer.invocation_model) for reviewer in reviewers
     }:
-        raise ValueError("Proposal and reviewer invocation model slugs must be distinct.")
+        raise ValueError(
+            "Proposal and reviewer invocation model slugs must be distinct."
+        )
     if proposal_underlying_key in {
-        _model_identity_key(reviewer.underlying_model_identity) for reviewer in reviewers
+        _model_identity_key(reviewer.underlying_model_identity)
+        for reviewer in reviewers
     }:
-        raise ValueError("Proposal and reviewer underlying model identities must be distinct.")
+        raise ValueError(
+            "Proposal and reviewer underlying model identities must be distinct."
+        )
     return reviewers
 
 
