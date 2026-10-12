@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Dashboard } from "./Dashboard";
-import { lectures } from "./sampleData";
+import { lectures } from "./testLectureFixture";
 import { renderWithI18n } from "./test/renderWithI18n";
 import type { LoginSession } from "./types";
 
