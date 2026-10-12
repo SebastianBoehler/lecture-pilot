@@ -51,6 +51,7 @@ from lecturepilot.model_usage import ModelUsageRecorder
 from lecturepilot.learner_state import LearnerStateStore
 from lecturepilot.learner_lesson_state_routes import register_learner_lesson_state_routes
 from lecturepilot.learner_profile_routes import register_learner_profile_routes
+from lecturepilot.learner_study_routes import register_learner_study_routes
 from lecturepilot.metadata_events import configure_metadata_file_logging, emit_metadata_event
 from lecturepilot.observability import observability_from_env
 from lecturepilot.professor_usage import ProfessorUsageRepository
@@ -234,6 +235,7 @@ def create_app() -> FastAPI:
     register_canvas_annotation_routes(app, **seeded_route_args)
     register_canvas_prediction_routes(app, **seeded_route_args)
     register_review_queue_routes(app, **seeded_route_args)
+    register_learner_study_routes(app, **seeded_route_args)
     register_professor_usage_routes(app, course_tenant_id=COURSE_TENANT_ID)
     register_course_canvas_routes(
         app,
