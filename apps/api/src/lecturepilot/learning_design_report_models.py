@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import hashlib
-import json
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, model_validator
 
+from lecturepilot.canonical_digest import canonical_json_digest
 
 CoverageStatus = Literal["complete", "incomplete", "not_applicable"]
 DiagnosticCode = Literal[
@@ -113,13 +112,8 @@ class LearningDesignReport(BaseModel):
             {**values, "report_revision": "0" * 64}, context={"build_revision": True}
         )
         payload = proposal.model_dump(mode="json", exclude={"report_revision"})
-        return cls.model_validate({**payload, "report_revision": _digest(payload)})
+        return cls.model_validate({**payload, "report_revision": canonical_json_digest(payload)})
 
 
 def learning_design_report_revision(report: LearningDesignReport) -> str:
-    return _digest(report.model_dump(mode="json", exclude={"report_revision"}))
-
-
-def _digest(payload: dict[str, object]) -> str:
-    canonical = json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    return canonical_json_digest(report.model_dump(mode="json", exclude={"report_revision"}))
