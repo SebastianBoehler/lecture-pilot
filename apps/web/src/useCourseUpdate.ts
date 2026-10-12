@@ -173,12 +173,8 @@ export function useCourseUpdate(
           setStatuses((current) => ({ ...current, [id]: "publishing" }));
           // Approve & publish the exact draft revision that is ready now.
           const review = await getLearningDesignReview(workspace.course.id, id, session);
-          await publishLectureCanvas(
-            workspace.course.id,
-            id,
-            session,
-            learningDesignApprovalInput(review),
-          );
+          const approval = learningDesignApprovalInput(review);
+          await publishLectureCanvas(workspace.course.id, id, session, approval);
           setStatuses((current) => ({ ...current, [id]: "published" }));
           activeId = null;
         }

@@ -119,6 +119,12 @@ def approve_and_publish(
     )
 
 
+def placeholder_approval_input() -> dict:
+    """A well-formed approval body that matches no stored draft."""
+    keys = ("draft_digest", "source_revision", "practice_design_revision", "learning_map_revision")
+    return dict.fromkeys(keys, "a" * 64)
+
+
 def approval_input(review: dict) -> dict:
     return {
         "draft_digest": review["draft_digest"],

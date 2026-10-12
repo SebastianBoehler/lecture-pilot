@@ -2,7 +2,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from auth_helpers import confirm_source_routing, professor_headers
+from auth_helpers import placeholder_approval_input, confirm_source_routing, professor_headers
 from canvas_planner_test_helpers import RepairingCoursePlanner
 from canvas_workspace_fixtures import published_course_canvas, write_canvas_draft
 from lecturepilot.app import create_app
@@ -102,12 +102,7 @@ def test_invalid_stored_draft_returns_actionable_error(tmp_path: Path) -> None:
     publish = client.post(
         "/admin/courses/draft-integrity/lectures/lecture-01/canvas/publish",
         headers=professor_headers(),
-        json={
-            "draft_digest": "a" * 64,
-            "source_revision": "a" * 64,
-            "practice_design_revision": "a" * 64,
-            "learning_map_revision": "a" * 64,
-        },
+        json=placeholder_approval_input(),
     )
 
     expected = "Stored canvas draft is invalid. Retry generation for this lecture."
