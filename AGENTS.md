@@ -475,6 +475,9 @@ professor/ profile/ shared/ shell/ speech/ test/
   and oversized files in backend file APIs.
 - Derive tenant/course/user authority from backend session/profile context, not
   browser-controlled ids.
+- A state change carrying an ended (revoked or unknown) session gets 401 from the CSRF
+  middleware, not 403; `apiRequest` reports 401s through `sessionSignals.ts` so the session
+  hook re-checks and shows the sign-in-again notice.
 - Keep raw user identifiers out of filesystem paths; use hashed prefixes.
 - Keep outcome events categorical and revision-bound. Gate outcomes may copy
   assistance and planned/observed delay only from the exact stored coaching

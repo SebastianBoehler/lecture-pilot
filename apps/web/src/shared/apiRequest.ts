@@ -1,6 +1,7 @@
 import { apiUrl } from "./api";
 import { readApiError } from "./apiError";
 import { authRequestInit } from "./authz";
+import { reportUnauthorized } from "./sessionSignals";
 import type { LoginSession } from "./types";
 
 /** A non-2xx API response, carrying the backend's detail message and HTTP status. */
@@ -26,6 +27,7 @@ export async function apiRequest<T = unknown>(
 ): Promise<T> {
   const response = await fetch(apiUrl(path), authRequestInit(session, init));
   const payload: unknown = await response.json().catch(() => null);
+  if (response.status === 401) reportUnauthorized();
   if (!response.ok) throw new ApiRequestError(readApiError(payload, fallback), response.status);
   return payload as T;
 }
