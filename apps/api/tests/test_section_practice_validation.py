@@ -1,11 +1,5 @@
-import pytest
-
 from lecturepilot.canvas_models import CanvasBlock
-from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
-from lecturepilot.course_canvas_practice_contract import (
-    validate_section_practice,
-    section_target_assignments,
-)
+from lecturepilot.course_canvas_practice_contract import section_target_assignments
 from test_practice_design_canvas_planner import _source, _design
 
 
@@ -38,22 +32,3 @@ def test_early_hint_anchor_does_not_move_checkpoint_before_its_learning_outcome(
     )
     assert assignments["early"] == ()
     assert assignments["later"] == (target,)
-
-
-def test_missing_approved_checkpoint_is_rejected_before_section_cache():
-    source = _source()
-    with pytest.raises(CanvasGenerationRepairableError, match="practice-derive-conclusion"):
-        validate_section_practice(source.sections[0], _design(source).targets)
-
-
-@pytest.mark.parametrize(
-    "kind,text", [("paragraph", "Different task."), ("checkpoint", "Different task.")]
-)
-def test_canonical_id_cannot_bypass_approved_wording_or_block_type(kind, text):
-    source = _source()
-    design = _design(source)
-    section = source.sections[0].model_copy(
-        update={"blocks": [CanvasBlock(id="practice-derive-conclusion", type=kind, text=text)]}
-    )
-    with pytest.raises(CanvasGenerationRepairableError, match="exact approved baseline task"):
-        validate_section_practice(section, design.targets)

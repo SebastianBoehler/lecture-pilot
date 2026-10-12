@@ -6,13 +6,13 @@ import pytest
 from openai.lib._pydantic import to_strict_json_schema
 from pydantic import BaseModel, ValidationError
 
-import lecturepilot.course_practice_design_benchmark_evaluator as benchmark_client_module
+import practice_design_benchmark.evaluator as benchmark_client_module
 import lecturepilot.course_practice_design_review_client as review_client_module
-from lecturepilot.course_practice_design_benchmark_evaluator import (
+from practice_design_benchmark.evaluator import (
     NativePracticeDesignBenchmarkClient,
     practice_design_benchmark_response_format,
 )
-from lecturepilot.course_practice_design_benchmark_models import (
+from practice_design_benchmark.models import (
     BENCHMARK_DIMENSIONS,
     PracticeDesignBenchmarkEvaluation,
 )

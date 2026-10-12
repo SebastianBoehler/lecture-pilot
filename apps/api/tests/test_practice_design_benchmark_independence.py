@@ -2,13 +2,13 @@ from pathlib import Path
 
 import pytest
 
-from lecturepilot.course_practice_design_benchmark_fixtures import (
+from practice_design_benchmark.fixtures import (
     load_practice_design_benchmark_fixtures,
 )
-from lecturepilot.course_practice_design_benchmark_models import (
+from practice_design_benchmark.models import (
     PracticeDesignBenchmarkReviewerSpec,
 )
-from lecturepilot.course_practice_design_benchmark_runner import run_practice_design_benchmark
+from practice_design_benchmark.runner import run_practice_design_benchmark
 
 
 FIXTURES = Path(__file__).resolve().parents[3] / "benchmarks/practice-design/fixtures.json"

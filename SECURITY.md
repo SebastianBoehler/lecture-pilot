@@ -38,7 +38,7 @@ public GitHub issue.
 - Representative real-account Alma/ILIAS matching, disposable staging security
   checks, and a matched database/storage restore rehearsal remain release gates.
 
-See [`security_best_practices_report.md`](security_best_practices_report.md) for
+See [`docs/security-best-practices-report.md`](docs/security-best-practices-report.md) for
 the evidence and risk decision, and
 [`docs/security-operations.md`](docs/security-operations.md) for operator
 procedures.
