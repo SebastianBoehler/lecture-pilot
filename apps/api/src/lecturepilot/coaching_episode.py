@@ -14,36 +14,6 @@ from lecturepilot.coaching_review_schedule import advance_review
 from lecturepilot.models import AgentCoachingContext, QualityGateDecision
 
 
-def record_passed_review(
-    progress: CoachingProgress,
-    *,
-    gate_id: str,
-    gate_revision: str,
-    section_id: str,
-    transfer_prompt: str,
-    delayed_attempt: bool,
-    review_after_days: int,
-    now: datetime,
-) -> None:
-    if delayed_attempt:
-        complete_delayed_review(
-            progress,
-            gate_id=gate_id,
-            gate_revision=gate_revision,
-            now=now,
-        )
-        return
-    schedule_delayed_review(
-        progress,
-        gate_id=gate_id,
-        gate_revision=gate_revision,
-        section_id=section_id,
-        transfer_prompt=transfer_prompt,
-        review_after_days=review_after_days,
-        now=now,
-    )
-
-
 def schedule_delayed_review(
     progress: CoachingProgress,
     *,
@@ -163,10 +133,3 @@ def attempt_kind(pending: PendingCheck | None, assessed: bool) -> AttemptKind:
     if not assessed or pending is None:
         return "none"
     return attempt_kind_for_stage(pending.stage)
-
-
-def parse_time(value: str) -> datetime:
-    parsed = datetime.fromisoformat(value)
-    if parsed.tzinfo is None:
-        raise ValueError("Persisted timestamp requires a timezone.")
-    return parsed

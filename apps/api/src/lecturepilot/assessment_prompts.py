@@ -130,29 +130,6 @@ _GENERIC_SCAFFOLD = (
 )
 
 
-def assessment_generation_instruction() -> str:
-    return (
-        "Assessment examples illustrate structure only; never copy their subject matter. "
-        'VALID checkpoint: {"type":"checkpoint","text":"Given f(x)=2x+1, compute '
-        'f(3) and show the substitution.","items":[],"caption":"Checkpoint",'
-        '"answer_index":null}. '
-        'VALID quiz: {"type":"quiz","text":"Which value equals f(3) when f(x)=2x+1?",'
-        '"items":["5","6","7","8"],"caption":"Quick check","answer_index":2}. '
-        'INVALID checkpoint text: "Checkpoint", "Check your understanding", or '
-        '"Reflect on this section"; these do not state what evidence the learner must produce. '
-        'Also invalid for a checkpoint: "Which statement/task/option is correct?" because '
-        "checkpoint blocks have no choices; rewrite it to ask the learner to state, explain, "
-        "calculate, or justify the source-backed answer. "
-        "Every assessment must be standalone: it must be answerable from its own text without "
-        "reading preceding blocks or opening the source. Restate necessary task givens and "
-        "permitted aids, such as scenario values, data or code to inspect. Do not supply the answer, "
-        "definition, formula or code behavior that the learner is meant to retrieve or infer. "
-        "Before returning JSON, verify every checkpoint starts with a direct question or an "
-        "imperative such as calculate, compare, derive, explain, identify, or justify; verify "
-        "every quiz ends in ? and has exactly one source-supported answer_index."
-    )
-
-
 # Citations are server-owned evidence links; a task that cites pages usually pastes the source.
 _SOURCE_CITATION = re.compile(
     r"\((?:PDF\s+)?(?:pages?|slides?|Seiten?|Folien?)\s*\d|\bPDF\s+(?:pages?|Seiten?)\s*\d", re.I

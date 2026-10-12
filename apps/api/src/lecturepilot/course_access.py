@@ -11,7 +11,7 @@ from lecturepilot.course_repository import CourseRepository
 from lecturepilot.course_schedule_store import read_course_workspace
 from lecturepilot.course_access_models import CourseActorAccess
 from lecturepilot.dev_seeded_course import discovered_seeded_lecture_views
-from lecturepilot.lecture_access_models import CourseAccessPolicy, LectureReleaseStatus
+from lecturepilot.lecture_access_models import LectureReleaseStatus
 from lecturepilot.lecture_access_policy import (
     audience_allows,
     can_list_lecture,
@@ -24,27 +24,6 @@ from lecturepilot.tenancy import TenantContext
 
 
 _COURSE_ACCESS_ROLES = frozenset({TenantRole.TENANT_ADMIN, TenantRole.PROFESSOR})
-
-
-def can_access_course(
-    context: TenantContext,
-    *,
-    course: Course,
-    course_tenant_id: str,
-) -> bool:
-    if context.tenant_id != course_tenant_id:
-        return False
-    if can_review_course(context):
-        return True
-    if course.access_policy in {
-        CourseAccessPolicy.PUBLIC,
-        CourseAccessPolicy.PLATFORM_AUTHENTICATED,
-    }:
-        return True
-    return (
-        course.access_policy is CourseAccessPolicy.TUEBINGEN_ENROLLED
-        and course.id in context.course_ids
-    )
 
 
 def require_course_id_access(

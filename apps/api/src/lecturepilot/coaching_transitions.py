@@ -101,10 +101,6 @@ def attempt_kind_for_stage(stage: AssessmentStage) -> AssessedAttemptKind:
     return "supported_retry"
 
 
-def prompt_for_stage(gate: LearningMapGate, stage: AssessmentStage) -> str:
-    return _prompt_for_stage(gate, stage)
-
-
 def _passed_transition(
     gate: LearningMapGate, current_stage: AssessmentStage
 ) -> CheckTransition | None:

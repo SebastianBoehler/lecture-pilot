@@ -1,49 +1,10 @@
-from lecturepilot.canvas_component_catalog import (
-    component_spec_issue,
-    normalize_document_component_identities,
-)
+from lecturepilot.canvas_component_catalog import component_spec_issue
 from lecturepilot.canvas_models import (
     CanvasBlock,
     CanvasComponentData,
     CanvasComponentFrame,
     CanvasComponentPoint,
-    CanvasDocument,
-    CanvasSection,
 )
-
-
-def test_existing_component_ids_are_normalized_from_stable_block_ids() -> None:
-    document = _source_document().model_copy(
-        update={
-            "sections": [
-                section.model_copy(
-                    update={
-                        "blocks": [
-                            CanvasBlock(
-                                id=f"choice-{index}",
-                                type="component",
-                                text="Choose one.",
-                                items=["A", "B"],
-                                answer_index=0,
-                                component_id="duplicate-model-id",
-                                component_type="single_choice_quiz",
-                                component_ref="duplicate-model-id.yaml",
-                                component_version=1,
-                                option_ids=["a", "b"],
-                            )
-                        ]
-                    }
-                )
-                for index, section in enumerate(_source_document().sections, start=1)
-            ]
-        }
-    )
-
-    normalized = normalize_document_component_identities(document)
-    component = normalized.sections[0].blocks[0]
-
-    assert component.component_id == component.id == "choice-1"
-    assert component.component_ref == "choice-1.yaml"
 
 
 def test_component_catalog_accepts_scatter_and_heatmap_data() -> None:
@@ -201,84 +162,4 @@ def test_component_catalog_rejects_malformed_new_chart_shapes() -> None:
     )
     assert component_spec_issue(heatmap) == (
         "needs a rectangular matrix matching row_labels and labels in every frame."
-    )
-
-
-class _CatalogAwarePlanClient:
-    async def complete_plan(self, *, settings, messages, response_format=None):
-        instruction = messages[0]["content"]
-        if not all(term in instruction for term in ("interactive_chart", "scatter", "heatmap")):
-            return {
-                "title": "Bayesian update",
-                "blocks": [
-                    {"type": "paragraph", "text": "No component catalogue received."},
-                    {
-                        "type": "checkpoint",
-                        "text": "Explain how evidence changes the posterior probability.",
-                    },
-                ],
-            }
-        return {
-            "title": "Bayesian update",
-            "blocks": [
-                {
-                    "type": "component",
-                    "component_id": "bayes-update-chart",
-                    "component_type": "interactive_chart",
-                    "component_version": 1,
-                    "caption": "Prior and posterior",
-                    "text": "Move the evidence-strength control and compare the probabilities.",
-                    "component_data": {
-                        "chart_type": "bar",
-                        "x_label": "Belief",
-                        "y_label": "Probability",
-                        "control_label": "Evidence strength",
-                        "labels": ["Prior", "Posterior"],
-                        "frames": [
-                            {
-                                "label": "Weak",
-                                "values": [0.5, 0.5],
-                                "explanation": "Weak evidence leaves the belief unchanged.",
-                            },
-                            {
-                                "label": "Strong",
-                                "values": [0.4, 0.6],
-                                "explanation": "Strong evidence shifts probability to the class.",
-                            },
-                        ],
-                        "steps": [],
-                    },
-                },
-                {
-                    "type": "checkpoint",
-                    "id": "practice-derive-conclusion",
-                    "text": "Derive the conclusion from the stated evidence and justify the reasoning.",
-                },
-            ],
-        }
-
-
-def _source_document() -> CanvasDocument:
-    return CanvasDocument(
-        id="course-lecture",
-        course_id="course",
-        lecture_id="lecture",
-        title="Lecture",
-        source_kind="latex",
-        source_ref="Lecture.tex",
-        workspace_path="canvas/index.md",
-        sections=[
-            CanvasSection(
-                id="source-topic",
-                title="Bayesian update",
-                source_ref="frame 1",
-                blocks=[
-                    CanvasBlock(
-                        id="source-paragraph",
-                        type="paragraph",
-                        text="Evidence changes the posterior probability.",
-                    )
-                ],
-            )
-        ],
     )
