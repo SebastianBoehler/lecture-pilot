@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 
 from pydantic import BeforeValidator, Field, model_validator
 
-from lecturepilot.course_practice_design_benchmark_models import (
+from practice_design_benchmark.models import (
     BENCHMARK_DIMENSIONS,
     SCORE_ANCHORS,
     BenchmarkDimension,
@@ -59,19 +59,25 @@ class PracticeDesignBenchmarkFixtureResult(StrictPracticeDesignModel):
     proposal: PracticeDesignProposal | None = None
     production_review: PracticeDesignReviewResult | None = None
     reviewer_results: Annotated[
-        tuple[PracticeDesignBenchmarkReviewerResult, ...], BeforeValidator(freeze_collection)
+        tuple[PracticeDesignBenchmarkReviewerResult, ...],
+        BeforeValidator(freeze_collection),
     ] = ()
     dimension_summaries: Annotated[
-        tuple[PracticeDesignBenchmarkDimensionSummary, ...], BeforeValidator(freeze_collection)
+        tuple[PracticeDesignBenchmarkDimensionSummary, ...],
+        BeforeValidator(freeze_collection),
     ] = ()
     pipeline_error: PracticeDesignBenchmarkError | None = None
 
     @model_validator(mode="after")
-    def require_complete_success_or_pipeline_error(self) -> PracticeDesignBenchmarkFixtureResult:
+    def require_complete_success_or_pipeline_error(
+        self,
+    ) -> PracticeDesignBenchmarkFixtureResult:
         has_output = self.proposal is not None or self.production_review is not None
         if self.pipeline_error is not None:
             if has_output or self.reviewer_results or self.dimension_summaries:
-                raise ValueError("A failed proposal pipeline cannot retain fabricated output.")
+                raise ValueError(
+                    "A failed proposal pipeline cannot retain fabricated output."
+                )
             if (
                 self.pipeline_error.stage != "proposal_pipeline"
                 or self.pipeline_error.model != self.proposal_model
@@ -79,7 +85,9 @@ class PracticeDesignBenchmarkFixtureResult(StrictPracticeDesignModel):
                 raise ValueError("Proposal-pipeline error identity is inconsistent.")
             return self
         if self.proposal is None or self.production_review is None:
-            raise ValueError("A successful fixture needs proposal and production review output.")
+            raise ValueError(
+                "A successful fixture needs proposal and production review output."
+            )
         for result in self.reviewer_results:
             if result.error is not None and (
                 result.error.stage != "benchmark_review"
@@ -96,7 +104,9 @@ class PracticeDesignBenchmarkFixtureResult(StrictPracticeDesignModel):
         )
         expected = summarize_dimension_scores(judgments) if judgments else ()
         if self.dimension_summaries != expected:
-            raise ValueError("Fixture dimension summaries do not match reviewer scores.")
+            raise ValueError(
+                "Fixture dimension summaries do not match reviewer scores."
+            )
         return self
 
 
@@ -106,19 +116,22 @@ class PracticeDesignBenchmarkReport(StrictPracticeDesignModel):
     proposal_model: NonblankText = Field(max_length=200)
     proposal_underlying_model_identity: NonblankText = Field(max_length=300)
     reviewers: Annotated[
-        tuple[PracticeDesignBenchmarkReviewerSpec, ...], BeforeValidator(freeze_collection)
+        tuple[PracticeDesignBenchmarkReviewerSpec, ...],
+        BeforeValidator(freeze_collection),
     ] = Field(min_length=2)
-    dimensions: Annotated[tuple[BenchmarkDimension, ...], BeforeValidator(freeze_collection)] = (
-        BENCHMARK_DIMENSIONS
-    )
+    dimensions: Annotated[
+        tuple[BenchmarkDimension, ...], BeforeValidator(freeze_collection)
+    ] = BENCHMARK_DIMENSIONS
     score_scale: Annotated[
-        tuple[PracticeDesignBenchmarkScaleAnchor, ...], BeforeValidator(freeze_collection)
+        tuple[PracticeDesignBenchmarkScaleAnchor, ...],
+        BeforeValidator(freeze_collection),
     ] = tuple(
         PracticeDesignBenchmarkScaleAnchor(score=score, meaning=meaning)
         for score, meaning in SCORE_ANCHORS.items()
     )
     fixtures: Annotated[
-        tuple[PracticeDesignBenchmarkFixtureResult, ...], BeforeValidator(freeze_collection)
+        tuple[PracticeDesignBenchmarkFixtureResult, ...],
+        BeforeValidator(freeze_collection),
     ] = Field(min_length=1)
 
     @model_validator(mode="after")
@@ -129,13 +142,22 @@ class PracticeDesignBenchmarkReport(StrictPracticeDesignModel):
             self.reviewers,
         )
         if self.dimensions != BENCHMARK_DIMENSIONS:
-            raise ValueError("Benchmark report dimensions must match the frozen contract.")
+            raise ValueError(
+                "Benchmark report dimensions must match the frozen contract."
+            )
         expected_scale = tuple(SCORE_ANCHORS.items())
-        if tuple((item.score, item.meaning) for item in self.score_scale) != expected_scale:
-            raise ValueError("Benchmark report score anchors must match the frozen scale.")
+        if (
+            tuple((item.score, item.meaning) for item in self.score_scale)
+            != expected_scale
+        ):
+            raise ValueError(
+                "Benchmark report score anchors must match the frozen scale."
+            )
         for fixture in self.fixtures:
             if fixture.proposal_model != self.proposal_model:
-                raise ValueError("Fixture proposal-model identity does not match the report.")
+                raise ValueError(
+                    "Fixture proposal-model identity does not match the report."
+                )
             if (
                 fixture.proposal_underlying_model_identity
                 != self.proposal_underlying_model_identity
@@ -145,7 +167,9 @@ class PracticeDesignBenchmarkReport(StrictPracticeDesignModel):
                 )
             result_reviewers = tuple(item.reviewer for item in fixture.reviewer_results)
             if fixture.pipeline_error is None and result_reviewers != self.reviewers:
-                raise ValueError("Fixture reviewer specifications do not match the report.")
+                raise ValueError(
+                    "Fixture reviewer specifications do not match the report."
+                )
         return self
 
     @property

@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import os
-import tempfile
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -13,7 +11,7 @@ from lecturepilot.course_source_routing_models import (
     CourseSourceRoutingManifest,
     SourceRouteRole,
 )
-from lecturepilot.durable_files import ensure_durable_directory, fsync_directory
+from lecturepilot.durable_files import atomic_write_text
 from lecturepilot.models import Lecture
 from lecturepilot.source_index_models import CourseSourceIndex, IndexedSourceFile
 
@@ -162,16 +160,4 @@ def read_source_routing(path: Path, course_id: str) -> CourseSourceRoutingManife
 
 
 def _write_source_routing(path: Path, routing: CourseSourceRoutingManifest) -> None:
-    ensure_durable_directory(path.parent)
-    descriptor, temporary = tempfile.mkstemp(prefix=".source-routing-", dir=path.parent)
-    temporary_path = Path(temporary)
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            handle.write(routing.model_dump_json(indent=2))
-            handle.flush()
-            os.fsync(handle.fileno())
-        temporary_path.replace(path)
-        fsync_directory(path.parent)
-    except BaseException:
-        temporary_path.unlink(missing_ok=True)
-        raise
+    atomic_write_text(path, routing.model_dump_json(indent=2))

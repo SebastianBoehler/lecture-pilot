@@ -113,8 +113,7 @@ is copied into the published canvas. See
 ## Canvas and agent runtime
 
 Published course Markdown is the official learning surface. Learner-specific
-notes, components, and generated images form a private overlay; `canvas.json`
-is a compiled cache, not the editable source of truth.
+notes, components, and generated images form a private overlay in Markdown.
 
 `LecturePilotHarness.run_turn` is the provider-independent contract. The
 current provider-backed runtime uses Pydantic AI native structured output through

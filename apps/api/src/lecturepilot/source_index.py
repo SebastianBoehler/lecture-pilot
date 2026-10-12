@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import hashlib
-import os
-import tempfile
 from pathlib import Path
 
 from pydantic import ValidationError
 
-from lecturepilot.durable_files import ensure_durable_directory, fsync_directory
+from lecturepilot.durable_files import atomic_write_text
 from lecturepilot.source_bundle import SourceBundleFile, scan_source_bundle
 from lecturepilot.source_index_models import CourseSourceIndex, IndexedSourceFile
 from lecturepilot.storage_layout import StorageLayout
@@ -87,19 +85,7 @@ def _read_index(path: Path, course_id: str) -> CourseSourceIndex | None:
 
 
 def _write_index(path: Path, index: CourseSourceIndex) -> None:
-    ensure_durable_directory(path.parent)
-    descriptor, temporary = tempfile.mkstemp(prefix=".source-index-", dir=path.parent)
-    temporary_path = Path(temporary)
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            handle.write(index.model_dump_json(indent=2))
-            handle.flush()
-            os.fsync(handle.fileno())
-        temporary_path.replace(path)
-        fsync_directory(path.parent)
-    except BaseException:
-        temporary_path.unlink(missing_ok=True)
-        raise
+    atomic_write_text(path, index.model_dump_json(indent=2))
 
 
 def _sha256(path: Path) -> str:

@@ -3,15 +3,15 @@ from pathlib import Path
 
 import pytest
 
-from lecturepilot.course_practice_design_benchmark_fixtures import (
+from practice_design_benchmark.fixtures import (
     load_practice_design_benchmark_fixtures,
 )
-from lecturepilot.course_practice_design_benchmark_models import (
+from practice_design_benchmark.models import (
     BENCHMARK_DIMENSIONS,
     PracticeDesignBenchmarkReviewerSpec,
 )
-from lecturepilot.course_practice_design_benchmark_report import PracticeDesignBenchmarkReport
-from lecturepilot.course_practice_design_benchmark_runner import run_practice_design_benchmark
+from practice_design_benchmark.report import PracticeDesignBenchmarkReport
+from practice_design_benchmark.runner import run_practice_design_benchmark
 from lecturepilot.course_practice_design_planner import ReviewedPracticeDesignProposal
 from lecturepilot.model_client import ModelExecutionError
 from practice_design_review_test_helpers import passing_review

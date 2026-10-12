@@ -6,7 +6,6 @@ from pathlib import Path
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.canvas_learner_workspace import CanvasLearnerWorkspaceMixin
 from lecturepilot.canvas_asset_store import CanvasAssetError, CanvasAssetStore
-from lecturepilot.canvas_learning_support import normalize_learning_support
 from lecturepilot.canvas_workspace_config import (
     default_material_root as _default_material_root,
     default_workspace_root as _default_workspace_root,
@@ -153,7 +152,7 @@ class CanvasWorkspace(CanvasLearnerWorkspaceMixin):
         document = self.course_canvas_store.read_draft(course_id=course_id, lecture_id=lecture_id)
         if document is None:
             raise CanvasWorkspaceError("No canvas draft exists for this lecture.")
-        document = apply_course_media(normalize_learning_support(document), self.material_root)
+        document = apply_course_media(document, self.material_root)
         return apply_course_media(document, self.course_media_root(course_id))
 
     def write_course_canvas_draft(

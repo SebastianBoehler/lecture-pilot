@@ -200,7 +200,7 @@ rendered into [`CHANGELOG.md`](CHANGELOG.md).
 
 LecturePilot has been deployed as a live pilot, but that is not blanket
 production-security approval. Review the
-[security status](security_best_practices_report.md) and
+[security status](docs/security-best-practices-report.md) and
 [operations runbook](docs/security-operations.md) before expanding access.
 The 0.5.0 evaluation workflow was validated locally with synthetic data; it was
 not itself a production deployment.

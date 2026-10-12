@@ -5,7 +5,7 @@ from typing import Any, Protocol
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.native_completion import native_completion
 from lecturepilot.canvas_source_evidence import source_evidence
-from lecturepilot.course_practice_design_benchmark_models import (
+from practice_design_benchmark.models import (
     BENCHMARK_DIMENSIONS,
     SCORE_ANCHORS,
     PracticeDesignBenchmarkEvaluation,
@@ -88,7 +88,9 @@ class PracticeDesignBenchmarkModelClient(Protocol):
 
 
 class NativePracticeDesignBenchmarkClient:
-    def __init__(self, usage_recorder: ModelUsageRecorder | None = None, *, model=None) -> None:
+    def __init__(
+        self, usage_recorder: ModelUsageRecorder | None = None, *, model=None
+    ) -> None:
         self.usage_recorder, self.model = usage_recorder, model
 
     async def complete_evaluation(
@@ -139,5 +141,7 @@ def validate_practice_design_benchmark_evaluation(
         allowed_source_paths=allowed_source_paths,
     )
     if tuple(score.dimension for score in parsed.scores) != BENCHMARK_DIMENSIONS:
-        raise PracticeDesignValidationError("Benchmark evaluation dimensions are incomplete.")
+        raise PracticeDesignValidationError(
+            "Benchmark evaluation dimensions are incomplete."
+        )
     return parsed

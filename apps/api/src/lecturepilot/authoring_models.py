@@ -1,13 +1,8 @@
 from dataclasses import dataclass
-from typing import Literal
 
 from pydantic import BaseModel
 
 from lecturepilot.canvas_models import CanvasDocument
-
-
-class AuthoringCompletion(BaseModel):
-    ready: Literal[True]
 
 
 class AuthoringMetrics(BaseModel):
