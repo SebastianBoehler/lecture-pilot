@@ -84,7 +84,7 @@ def test_refresh_conflicts_instead_of_erasing_a_concurrent_approval(tmp_path) ->
     assert client.get(_design_path(), headers=professor_headers()).json()["approval"] is not None
 
 
-def test_update_and_approval_hold_shared_lock_across_source_and_design_mutation(
+def test_update_and_approval_parse_unlocked_but_check_and_mutate_under_the_lock(
     tmp_path, monkeypatch
 ) -> None:
     client = _client(tmp_path)
@@ -149,7 +149,9 @@ def test_update_and_approval_hold_shared_lock_across_source_and_design_mutation(
     assert updated.status_code == 200
     assert reviewed.status_code == 200
     assert approved.status_code == 200
-    assert observed == [True, True, True, True]
+    # Parsing (which may OCR for minutes) runs unlocked; the revision check and every
+    # design mutation happen under the shared course lock.
+    assert observed == [False, True, True, True, True]
 
 
 class _PausingPlanner(_Planner):

@@ -3,8 +3,10 @@ from __future__ import annotations
 from datetime import date
 
 from fastapi import FastAPI
+from fastapi.concurrency import run_in_threadpool
 
 from lecturepilot.document_converter_client import DocumentConverterError
+from lecturepilot.durable_files import exclusive_file_lock
 from lecturepilot.course_update_recovery import locked_course_state
 from lecturepilot.model_usage import model_usage_scope
 from lecturepilot.models import LectureScheduleProposal
@@ -27,15 +29,22 @@ async def generate_lecture_schedule(
         include_seeded_materials=False,
     )
     layout = app.state.canvas_workspace.layout
-    with locked_course_state(layout.course_root(course_id)):
-        files = indexed_course_files(layout=layout, course_id=course_id)
     normalized_root = layout.course_normalized_dir(course_id)
+
+    def prepare():  # Hashing, conversion and lock waits stay off the event loop.
+        course_root = layout.course_root(course_id)
+        with locked_course_state(course_root):
+            files = indexed_course_files(layout=layout, course_id=course_id)
+        with exclusive_file_lock(course_root / "builder" / "source-derivation"):
+            normalize_selected_documents(
+                files=files,
+                source_root=layout.course_uploads_dir(course_id),
+                normalized_root=normalized_root,
+            )
+        return files
+
     try:
-        normalize_selected_documents(
-            files=files,
-            source_root=layout.course_uploads_dir(course_id),
-            normalized_root=normalized_root,
-        )
+        files = await run_in_threadpool(prepare)
     except DocumentConverterError as exc:
         raise ProviderConfigurationError(str(exc)) from exc
     roots = [*roots, normalized_root]

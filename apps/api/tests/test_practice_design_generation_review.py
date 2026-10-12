@@ -5,9 +5,8 @@ from types import SimpleNamespace
 import pytest
 from fastapi import HTTPException
 
-from lecturepilot import course_canvas_draft_routes
+from lecturepilot import course_canvas_generation_precheck
 from lecturepilot import course_canvas_generation as generation
-from lecturepilot import course_canvas_repair_routes
 from lecturepilot.app import create_app
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_canvas_generation_ownership import CanvasGenerationOwnershipError
@@ -53,15 +52,19 @@ async def test_targeted_repair_rejects_candidate_after_snapshot_source_changes(
     assert callback_calls == []
 
 
-@pytest.mark.parametrize("route_module", [course_canvas_draft_routes, course_canvas_repair_routes])
-def test_corrupt_practice_design_is_a_preflight_conflict(tmp_path: Path, route_module) -> None:
+async def test_corrupt_practice_design_is_a_preflight_conflict(tmp_path: Path, monkeypatch) -> None:
     app, _ = _approved_app(tmp_path, "a" * 64)
     path = app.state.canvas_workspace.layout.lecture_practice_design_path(COURSE_ID, LECTURE_ID)
     path.write_text("not json", encoding="utf-8")
+    monkeypatch.setattr(
+        course_canvas_generation_precheck,
+        "course_builder_source_revision",
+        lambda *_args: "a" * 64,
+    )
 
     with pytest.raises(HTTPException) as error:
-        route_module._require_current_practice_design(
-            app, COURSE_ID, LECTURE_ID, lambda _course_id, _lecture_id: _document()
+        await course_canvas_generation_precheck.require_current_practice_design(
+            app, COURSE_ID, LECTURE_ID
         )
 
     assert error.value.status_code == 409

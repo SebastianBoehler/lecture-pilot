@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from anyio import to_thread
+
 from datetime import date
 from pathlib import Path
 from typing import Protocol
@@ -70,7 +72,10 @@ class LectureSchedulePlanner:
         settings = self.provider_registry.require_ready(
             [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
         )
-        messages = _schedule_messages(course_id, files, roots, first_lecture_date, requested_count)
+        # Excerpts parse PDFs (and may run OCR): build prompts in a worker thread.
+        messages = await to_thread.run_sync(
+            _schedule_messages, course_id, files, roots, first_lecture_date, requested_count
+        )
         last_error: ProviderConfigurationError | None = None
         for _ in range(2):
             try:

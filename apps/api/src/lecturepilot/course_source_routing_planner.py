@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from anyio import to_thread
+
 from pathlib import Path, PurePosixPath
 from lecturepilot.course_source_evidence import selection_detail_files, source_file_excerpt
 from lecturepilot.course_source_routing_client import (
@@ -45,17 +47,16 @@ class CourseSourceRoutingPlanner:
         settings = self.provider_registry.require_ready(
             [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
         )
+        # Excerpts parse PDFs (and may run OCR): build prompts in a worker thread.
+        messages = await to_thread.run_sync(_routing_messages, course_id, files, lectures, roots)
         ordered = await self._propose_selection(
-            settings=settings,
-            messages=_routing_messages(course_id, files, lectures, roots),
-            files=files,
-            lectures=lectures,
+            settings=settings, messages=messages, files=files, lectures=lectures
+        )
+        review = await to_thread.run_sync(
+            routing_review_messages, course_id, files, lectures, roots, ordered
         )
         return await self._review_complete_manifest(
-            settings=settings,
-            messages=routing_review_messages(course_id, files, lectures, roots, ordered),
-            routes=ordered,
-            lectures=lectures,
+            settings=settings, messages=review, routes=ordered, lectures=lectures
         )
 
     async def _review_complete_manifest(

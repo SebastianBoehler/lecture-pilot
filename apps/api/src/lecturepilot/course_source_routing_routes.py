@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from fastapi.concurrency import run_in_threadpool
 from fastapi import Depends, FastAPI, HTTPException, Request
 
 from lecturepilot.document_converter_client import DocumentConverterError
@@ -18,6 +19,7 @@ from lecturepilot.course_source_routing_models import (
     CourseSourceRoutingManifest,
 )
 from lecturepilot.course_update_recovery import locked_course_state
+from lecturepilot.durable_files import exclusive_file_lock
 from lecturepilot.course_source_cleanup import confirm_and_prune_sources
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_usage import model_usage_scope
@@ -46,20 +48,16 @@ def register_course_source_routing_routes(
         layout = app.state.canvas_workspace.layout
         try:
             with locked_course_state(layout.course_root(course_id)):
-                index = _refresh_index(layout, course_id)
-                lectures = _lectures(app, course_id)
-                return _processing_status(
-                    layout,
-                    course_id,
-                    review_source_routing(
-                        course_id=course_id,
-                        index=index,
-                        lectures=lectures,
-                        routing_path=layout.course_source_routing_path(course_id),
-                    ),
+                manifest = review_source_routing(
+                    course_id=course_id,
+                    index=_refresh_index(layout, course_id),
+                    lectures=_lectures(app, course_id),
+                    routing_path=layout.course_source_routing_path(course_id),
                 )
         except SourceRoutingProposalRequired as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
+        # PDF triage reads files; it is content-addressed and needs no course lock.
+        return _processing_status(layout, course_id, manifest)
 
     @app.post(
         "/admin/courses/{course_id}/source-routing/proposal",
@@ -73,32 +71,41 @@ def register_course_source_routing_routes(
     ) -> CourseSourceRoutingManifest:
         _require_manager(context, request, course_id, course_tenant_id)
         layout = app.state.canvas_workspace.layout
-        with locked_course_state(layout.course_root(course_id)):
-            index = _refresh_index(layout, course_id)
-            lectures = _lectures(app, course_id)
-            if not refresh:
-                try:
-                    return _processing_status(
-                        layout,
-                        course_id,
-                        review_source_routing(
+
+        def current_state():  # Hashing and lock waits stay off the event loop.
+            with locked_course_state(layout.course_root(course_id)):
+                index = _refresh_index(layout, course_id)
+                lectures = _lectures(app, course_id)
+                if not refresh:
+                    try:
+                        manifest = review_source_routing(
                             course_id=course_id,
                             index=index,
                             lectures=lectures,
                             routing_path=layout.course_source_routing_path(course_id),
-                        ),
-                    )
-                except SourceRoutingProposalRequired:
-                    pass
-            expected_revision = source_revision(index, lectures)
+                        )
+                        return manifest, None
+                    except SourceRoutingProposalRequired:
+                        pass
+                return None, (index, lectures, source_revision(index, lectures))
+
+        existing, pending = await run_in_threadpool(current_state)
+        if existing is not None:
+            return await run_in_threadpool(_processing_status, layout, course_id, existing)
+        index, lectures, expected_revision = pending
+        normalized_root = layout.course_normalized_dir(course_id)
+
+        def normalize() -> None:
+            course_root = layout.course_root(course_id)
+            with exclusive_file_lock(course_root / "builder" / "source-derivation"):
+                normalize_selected_documents(
+                    files=[item.as_bundle_file() for item in index.files],
+                    source_root=layout.course_uploads_dir(course_id),
+                    normalized_root=normalized_root,
+                )
 
         try:
-            normalized_root = layout.course_normalized_dir(course_id)
-            normalize_selected_documents(
-                files=[item.as_bundle_file() for item in index.files],
-                source_root=layout.course_uploads_dir(course_id),
-                normalized_root=normalized_root,
-            )
+            await run_in_threadpool(normalize)
             with app.state.observability.tool_span(
                 "course_source_routing",
                 course_id=course_id,
@@ -129,22 +136,25 @@ def register_course_source_routing_routes(
         except DocumentConverterError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
 
-        with locked_course_state(layout.course_root(course_id)):
-            current_index = _refresh_index(layout, course_id)
-            current_lectures = _lectures(app, course_id)
-            if source_revision(current_index, current_lectures) != expected_revision:
-                raise HTTPException(
-                    status_code=409,
-                    detail="Course sources changed while the agent assigned them. Generate a new proposal.",
+        def save():
+            with locked_course_state(layout.course_root(course_id)):
+                current_index = _refresh_index(layout, course_id)
+                current_lectures = _lectures(app, course_id)
+                if source_revision(current_index, current_lectures) != expected_revision:
+                    raise HTTPException(
+                        status_code=409,
+                        detail="Course sources changed while the agent assigned them. Generate a new proposal.",
+                    )
+                manifest = save_source_routing_proposal(
+                    course_id=course_id,
+                    index=current_index,
+                    lectures=current_lectures,
+                    routing_path=layout.course_source_routing_path(course_id),
+                    routes=routes,
                 )
-            manifest = save_source_routing_proposal(
-                course_id=course_id,
-                index=current_index,
-                lectures=current_lectures,
-                routing_path=layout.course_source_routing_path(course_id),
-                routes=routes,
-            )
             return _processing_status(layout, course_id, manifest)
+
+        return await run_in_threadpool(save)
 
     @app.put(
         "/admin/courses/{course_id}/source-routing",
@@ -167,7 +177,7 @@ def register_course_source_routing_routes(
                     lectures=_lectures(app, course_id),
                     routing=routing,
                 )
-                return _processing_status(layout, course_id, manifest)
+            return _processing_status(layout, course_id, manifest)
         except StaleSourceRoutingError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         except SourceRoutingError as exc:

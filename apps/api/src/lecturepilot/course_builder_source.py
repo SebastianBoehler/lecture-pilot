@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.compiled_slide_canvas import latex_preview_warning
 from lecturepilot.document_converter_client import DocumentConverterError
+from lecturepilot.durable_files import exclusive_file_lock
 from lecturepilot.course_schedule_store import read_course_workspace
 from lecturepilot.course_source_routing import SourceRoutingError, selected_routed_files
 from lecturepilot.course_update_recovery import locked_course_state
@@ -31,9 +32,36 @@ logger = logging.getLogger("uvicorn.error.lecturepilot.compilation")
 
 
 def course_builder_source_document(app: FastAPI, course_id: str, lecture_id: str) -> CanvasDocument:
+    """Parse confirmed lecture sources without holding the course mutation lock.
+
+    Parsing (conversion, LaTeX, PDF text and OCR) can take minutes. The course lock only
+    snapshots the selection and later confirms it is unchanged; a separate per-course
+    derivation lock serializes writes to derived files. Call this from worker threads only.
+    """
     course_root = app.state.canvas_workspace.course_media_root(course_id)
     with locked_course_state(course_root):
-        return _course_builder_source_document_locked(app, course_id, lecture_id)
+        snapshot = _selected_lecture_files(app, course_id, lecture_id)
+    with exclusive_file_lock(course_root / "builder" / "source-derivation"):
+        document = _derive_source_document(app, course_id, lecture_id, *snapshot)
+    with locked_course_state(course_root):
+        source_index, _, selected = _selected_lecture_files(app, course_id, lecture_id)
+        if _selection_digest(source_index, selected) != _selection_digest(snapshot[0], snapshot[2]):
+            raise SourceBundleCanvasError(
+                "Course sources changed while they were being read. Try again."
+            )
+        write_lecture_source_manifest(
+            app.state.canvas_workspace.layout.lecture_source_manifest_path(course_id, lecture_id),
+            course_id=course_id,
+            lecture_id=lecture_id,
+            file_paths=[item.path for item in selected],
+            source_index=source_index,
+        )
+    return document
+
+
+def _selection_digest(source_index, selected) -> list[tuple[str, str]]:
+    indexed = {item.path: item.sha256 for item in source_index.files}
+    return sorted((item.path, indexed.get(item.path, "")) for item in selected)
 
 
 def course_builder_source_revision(app: FastAPI, course_id: str, lecture_id: str) -> str | None:
@@ -91,15 +119,13 @@ def _selected_lecture_files(app: FastAPI, course_id: str, lecture_id: str):
     return source_index, lectures, selected
 
 
-def _course_builder_source_document_locked(
-    app: FastAPI, course_id: str, lecture_id: str
+def _derive_source_document(
+    app: FastAPI, course_id: str, lecture_id: str, source_index, lectures, selected
 ) -> CanvasDocument:
     workspace = app.state.canvas_workspace
     workspace_path = f"course-planner/{lecture_id}/source.json"
     uploads_dir = workspace.layout.course_uploads_dir(course_id)
-    source_index, lectures, selected = _selected_lecture_files(app, course_id, lecture_id)
     scheduled = next((item for item in lectures if item.id == lecture_id), None)
-    manifest_path = workspace.layout.lecture_source_manifest_path(course_id, lecture_id)
     explicit_paths = {item.path for item in selected}
     slide_source = resolve_lecture_slide_source(
         files=selected,
@@ -152,13 +178,6 @@ def _course_builder_source_document_locked(
     )
     if scheduled:
         document = document.model_copy(update={"title": scheduled.title})
-    write_lecture_source_manifest(
-        manifest_path,
-        course_id=course_id,
-        lecture_id=lecture_id,
-        file_paths=[item.path for item in selected],
-        source_index=source_index,
-    )
     return document
 
 

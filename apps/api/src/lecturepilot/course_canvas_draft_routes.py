@@ -7,6 +7,7 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 
+from lecturepilot.source_warnings import compact_source_warnings
 from lecturepilot.api_auth import request_context, require_course_manager
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.canvas_workspace import CanvasWorkspaceError
@@ -18,23 +19,17 @@ from lecturepilot.course_canvas_generation import generate_course_canvas_draft
 from lecturepilot.course_canvas_generation_cancel import cancel_canvas_generation
 from lecturepilot.authoring_status import read_authoring_metrics
 from lecturepilot.authoring_session import has_resumable_session
-from lecturepilot import course_canvas_generation_ownership as ownership_store
 from lecturepilot.course_canvas_generation_failures import find_latest_canvas_generation
 from lecturepilot.course_canvas_generation_http import run_canvas_generation_request
 from lecturepilot.course_canvas_generation_jobs import CanvasGenerationJob, CanvasGenerationStore
 from lecturepilot.course_canvas_async_response import accepted_generation_response
 from lecturepilot.course_canvas_generation_response import CanvasGenerationStatusResponse
+from lecturepilot.course_canvas_generation_precheck import require_current_practice_design
 from lecturepilot.course_canvas_generation_service import (
     CANVAS_GENERATION_LEASE_SECONDS,
     validate_generation_request_key,
 )
 from lecturepilot.course_canvas_store import InvalidCanvasDraftError
-from lecturepilot.course_practice_design_store import (
-    PracticeDesignApprovalRequired,
-    PracticeDesignStale,
-    PracticeDesignUnavailable,
-)
-from lecturepilot.source_bundle_canvas import SourceBundleCanvasError
 from lecturepilot.tenancy import TenantContext
 
 
@@ -88,7 +83,7 @@ def register_course_canvas_draft_routes(
         _require_owner(request, context, course_id, course_tenant_id)
         require_current_client_contract(client_contract)
         request_key = _request_key(idempotency_key)
-        _require_current_practice_design(app, course_id, lecture_id, source_document)
+        await require_current_practice_design(app, course_id, lecture_id)
         store = _store(app)
         outcome = await run_canvas_generation_request(
             wait_for_completion=request.headers.get("Prefer") != "respond-async",
@@ -154,7 +149,11 @@ def register_course_canvas_draft_routes(
                 job.error_code == "canvas_generation_repairable_error"
                 or has_resumable_session(app.state.canvas_workspace.layout, job)
             ),
-            canvas=job.canvas,
+            canvas=job.canvas.model_copy(
+                update={"warnings": compact_source_warnings(job.canvas.warnings)}
+            )
+            if job.canvas
+            else None,
             authoring_metrics=read_authoring_metrics(app.state.canvas_workspace.layout, job),
         )
 
@@ -171,10 +170,12 @@ def register_course_canvas_draft_routes(
     ) -> CanvasDocument:
         try:
             _require_owner(request, context, course_id, course_tenant_id)
-            return app.state.canvas_workspace.read_course_canvas_draft(
+            draft = app.state.canvas_workspace.read_course_canvas_draft(
                 course_id=course_id,
                 lecture_id=lecture_id,
             )
+            # Drafts generated before warning compaction still read cleanly.
+            return draft.model_copy(update={"warnings": compact_source_warnings(draft.warnings)})
         except InvalidCanvasDraftError as exc:
             raise HTTPException(status_code=500, detail=str(exc)) from exc
         except CanvasWorkspaceError as exc:
@@ -201,10 +202,15 @@ def register_course_canvas_draft_routes(
                 headers["X-Generation-Error-Code"] = (
                     "interrupted" if interrupted else generation.error_code
                 )
-            if generation and (
-                interrupted
-                or generation.error_code == "canvas_generation_repairable_error"
-                or has_resumable_session(app.state.canvas_workspace.layout, generation)
+            # Interrupted work resumes through a retry with the same request key (the store
+            # takes over the expired lease); AI repair needs a stored failure.
+            if (
+                generation
+                and not interrupted
+                and (
+                    generation.error_code == "canvas_generation_repairable_error"
+                    or has_resumable_session(app.state.canvas_workspace.layout, generation)
+                )
             ):
                 headers["X-Generation-Repairable"] = "true"
             detail = (
@@ -242,27 +248,3 @@ def _require_owner(
         request=request,
         course_id=course_id,
     )
-
-
-def _require_current_practice_design(
-    app: FastAPI,
-    course_id: str,
-    lecture_id: str,
-    source_document: Callable[[str, str], CanvasDocument],
-) -> None:
-    try:
-        ownership_store.require_generation_practice_design(
-            app.state.canvas_workspace.layout,
-            app.state.canvas_workspace.course_media_root(course_id),
-            source_document,
-            course_id=course_id,
-            lecture_id=lecture_id,
-        )
-    except (
-        ownership_store.CanvasGenerationOwnershipError,
-        PracticeDesignApprovalRequired,
-        PracticeDesignStale,
-        PracticeDesignUnavailable,
-        SourceBundleCanvasError,
-    ) as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc

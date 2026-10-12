@@ -12,7 +12,7 @@ def test_readiness_and_approval_hash_sources_without_importing_documents(tmp_pat
     def no_import(*args, **kwargs):
         raise AssertionError("Revision checks must not parse or import source documents.")
 
-    monkeypatch.setattr(course_builder_source, "_course_builder_source_document_locked", no_import)
+    monkeypatch.setattr(course_builder_source, "_derive_source_document", no_import)
     readiness = api.get(design_path() + "/readiness", headers=professor_headers())
     assert readiness.status_code == 200, readiness.text
     assert readiness.json()["current_source_revision"] == design["source_revision"]
@@ -26,3 +26,15 @@ def test_readiness_and_approval_hash_sources_without_importing_documents(tmp_pat
     )
     assert approved.status_code == 200, approved.text
     assert approved.json()["learning_intent"]["approval"]
+
+    # Starting a draft is a revision check too; the parse runs later in the background job.
+    started = api.post(
+        design_path().removesuffix("/practice-design") + "/canvas/draft",
+        headers={
+            **professor_headers(),
+            "Idempotency-Key": "fast-path-draft-start",
+            "Prefer": "respond-async",
+            "X-LecturePilot-Client-Contract": "1",
+        },
+    )
+    assert started.status_code == 202, started.text

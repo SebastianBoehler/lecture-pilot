@@ -1,5 +1,7 @@
 """Bounded teaching repair within the existing owned canvas-generation request."""
 
+from anyio import to_thread
+
 from lecturepilot.authoring_models import AuthoringDesignConflict
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from lecturepilot.authoring_generation_scope import generation_authoring_scope
@@ -75,25 +77,28 @@ async def repair_implementation(app, *, source, design, ownership, feedback=None
         protected_intent=intent,
         repair_context=feedback,
     )
-    with locked_course_state(layout.course_root(design.course_id)):
-        require_generation_ownership(layout, ownership)
-        if (
-            lecture_source_revision(
-                layout, course_id=design.course_id, lecture_id=design.lecture_id
+
+    def save():  # The course lock is a blocking file lock: wait for it off the event loop.
+        with locked_course_state(layout.course_root(design.course_id)):
+            require_generation_ownership(layout, ownership)
+            if (
+                lecture_source_revision(
+                    layout, course_id=design.course_id, lecture_id=design.lecture_id
+                )
+                != design.source_revision
+            ):
+                raise PracticeDesignStale("Course sources changed during teaching repair.")
+            changed = LearningIntentStore(layout).save_implementation(
+                expected=design,
+                repair_reason=feedback,
+                proposal=reviewed.proposal,
+                review=reviewed.review,
+                source=source,
+                allowed_source_paths=paths,
             )
-            != design.source_revision
-        ):
-            raise PracticeDesignStale("Course sources changed during teaching repair.")
-        changed = LearningIntentStore(layout).save_implementation(
-            expected=design,
-            repair_reason=feedback,
-            proposal=reviewed.proposal,
-            review=reviewed.review,
-            source=source,
-            allowed_source_paths=paths,
-        )
-        owner = replace_generation_design(layout, ownership, changed)
-    return changed, owner
+            return changed, replace_generation_design(layout, ownership, changed)
+
+    return await to_thread.run_sync(save)
 
 
 async def author_with_implementation(
@@ -127,6 +132,7 @@ async def author_with_implementation(
                     ownership=ownership,
                     source_revision=design.source_revision,
                     session_generation_id=session_generation_id,
+                    escalate_design_conflicts=attempt == 0,
                 )
             ):
                 arguments = {"practice_design": design, "output_language": output_language}

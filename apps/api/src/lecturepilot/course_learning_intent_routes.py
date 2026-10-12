@@ -118,9 +118,10 @@ def register_learning_intent_routes(
             with locked_course_state(layout.course_root(course_id)):
                 revision = source_revision(app, course_id, lecture_id)
                 existing = store.read(course_id=course_id, lecture_id=lecture_id)
-                if existing is not None and existing.source_revision == revision:
-                    return existing, None
-                return existing, source_context(app, source_document, course_id, lecture_id)
+            if existing is not None and existing.source_revision == revision:
+                return existing, None
+            # Parsing (conversion, LaTeX, OCR) never holds the course lock.
+            return existing, source_context(app, source_document, course_id, lecture_id)
 
         existing, loaded = await run_in_threadpool(current_sources)
         if loaded is None:
@@ -129,8 +130,8 @@ def register_learning_intent_routes(
 
         def save(proposal):
             with locked_course_state(layout.course_root(course_id)):
-                source, current, paths = source_context(app, source_document, course_id, lecture_id)
-                if current != revision:
+                # Same revision means the same confirmed files, so the parsed source still holds.
+                if source_revision(app, course_id, lecture_id) != revision:
                     raise PracticeDesignStale("Course sources changed while goals were proposed.")
                 return store.save_goals(
                     expected=existing,
@@ -181,11 +182,11 @@ def register_learning_intent_routes(
         layout = app.state.canvas_workspace.layout
         store = LearningIntentStore(layout)
         try:
+            source, revision, paths = source_context(app, source_document, course_id, lecture_id)
             with locked_course_state(layout.course_root(course_id)):
-                source, revision, paths = source_context(
-                    app, source_document, course_id, lecture_id
-                )
                 existing = store.read(course_id=course_id, lecture_id=lecture_id)
+                if source_revision(app, course_id, lecture_id) != revision:
+                    raise PracticeDesignStale("Learning goals or sources changed. Reload them.")
                 if (
                     existing is None
                     or existing.revision != update.practice_design_revision

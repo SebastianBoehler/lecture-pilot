@@ -17,7 +17,9 @@ from lecturepilot.course_practice_design_models import (
     PracticeDesign,
     PracticeDesignApprovalInput,
     PracticeDesignUpdate,
-    PracticeDesignProposal,
+)
+from lecturepilot.course_practice_design_proposal_routes import (
+    register_practice_design_proposal_route,
 )
 from lecturepilot.course_practice_design_readiness import PracticeDesignReadiness
 from lecturepilot.course_practice_design_review_routes import (
@@ -31,9 +33,6 @@ from lecturepilot.course_practice_design_store import (
 )
 from lecturepilot.course_practice_design_validation import PracticeDesignValidationError
 from lecturepilot.course_update_recovery import locked_course_state
-from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.model_usage import model_usage_scope
-from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.tenancy import TenantContext
 
 
@@ -85,127 +84,6 @@ def register_course_practice_design_routes(
             design=design,
         )
 
-    @app.post(
-        "/admin/courses/{course_id}/lectures/{lecture_id}/practice-design/proposal",
-        response_model=PracticeDesign,
-    )
-    async def propose_practice_design(
-        course_id: str,
-        lecture_id: str,
-        request: Request,
-        refresh: bool = False,
-        context: TenantContext = Depends(request_context),
-    ) -> PracticeDesign:
-        _require_manager(context, request, course_id, course_tenant_id)
-        layout = app.state.canvas_workspace.layout
-        store = _store(app)
-        try:
-            with locked_course_state(layout.course_root(course_id)):
-                source, revision, paths = _source_context(
-                    app, source_document, course_id, lecture_id
-                )
-                snapshot = store.snapshot(course_id=course_id, lecture_id=lecture_id)
-        except PracticeDesignUnavailable as exc:
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
-        existing = snapshot.design
-        if not refresh and existing is not None and existing.source_revision == revision:
-            return existing
-        if (
-            existing is not None
-            and existing.approval is not None
-            and existing.source_revision == revision
-        ):
-            raise HTTPException(
-                status_code=409,
-                detail=(
-                    "This plan is approved in full. Explicitly convert to learning-goal approval "
-                    "before asking AI to change its protected teaching details."
-                ),
-            )
-        expected_design_revision = existing.revision if existing is not None else None
-        expected_design_approval = existing.approval if existing is not None else None
-        expected_design_review = existing.quality_review if existing is not None else None
-        try:
-            with app.state.observability.tool_span(
-                "course_practice_design",
-                course_id=course_id,
-                lecture_id=lecture_id,
-                source_count=len(paths),
-                workload="course_practice_design",
-            ) as span:
-                with model_usage_scope(
-                    actor_user_id=context.user_id,
-                    course_id=course_id,
-                    workload="course_practice_design",
-                ):
-                    initial = (
-                        PracticeDesignProposal(
-                            lecture_title=existing.lecture_title,
-                            objective=existing.objective,
-                            planning_context=existing.planning_context,
-                            targets=existing.targets,
-                        )
-                        if existing is not None
-                        and existing.targets
-                        and existing.source_revision == revision
-                        else None
-                    )
-                    reviewed = await app.state.practice_design_planner.propose(
-                        source=source,
-                        source_revision=revision,
-                        allowed_source_paths=paths,
-                        **({"initial": initial} if initial is not None else {}),
-                        **(
-                            {
-                                "protected_intent": existing.learning_intent,
-                                "root": layout.course_root(course_id)
-                                / "builder"
-                                / "implementation-jobs"
-                                / lecture_id,
-                            }
-                            if existing
-                            and existing.learning_intent
-                            and existing.learning_intent.approval
-                            else {}
-                        ),
-                    )
-                span.set_outputs({"target_count": len(reviewed.proposal.targets)})
-        except ProviderConfigurationError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-        except ModelExecutionError as exc:
-            raise HTTPException(status_code=502, detail=str(exc)) from exc
-        with locked_course_state(layout.course_root(course_id)):
-            current_source, current_revision, current_paths = _source_context(
-                app, source_document, course_id, lecture_id
-            )
-            if current_revision != revision:
-                raise HTTPException(
-                    status_code=409,
-                    detail="Course sources changed while the learning plan was proposed. Generate a new proposal.",
-                )
-            try:
-                return store.save_proposal(
-                    course_id=course_id,
-                    lecture_id=lecture_id,
-                    source_revision=revision,
-                    proposal=reviewed.proposal,
-                    review=reviewed.review,
-                    source=current_source,
-                    allowed_source_paths=current_paths,
-                    expected_design_revision=expected_design_revision,
-                    expected_design_approval=expected_design_approval,
-                    expected_design_review=expected_design_review,
-                    expected_invalid_digest=snapshot.invalid_digest,
-                    expected_learning_intent=existing.learning_intent if existing else None,
-                    goals_first=existing is None or existing.learning_intent is not None,
-                )
-            except PracticeDesignStale as exc:
-                raise HTTPException(status_code=409, detail=str(exc)) from exc
-            except PracticeDesignUnavailable as exc:
-                raise HTTPException(status_code=500, detail=str(exc)) from exc
-            except PracticeDesignValidationError as exc:
-                raise HTTPException(status_code=502, detail=str(exc)) from exc
-
     @app.put(
         "/admin/courses/{course_id}/lectures/{lecture_id}/practice-design",
         response_model=PracticeDesign,
@@ -220,10 +98,11 @@ def register_course_practice_design_routes(
         _require_manager(context, request, course_id, course_tenant_id)
         layout = app.state.canvas_workspace.layout
         try:
+            # Parse unlocked; the store rejects a design whose source revision moved on.
+            source, revision, paths = _source_context(app, source_document, course_id, lecture_id)
             with locked_course_state(layout.course_root(course_id)):
-                source, revision, paths = _source_context(
-                    app, source_document, course_id, lecture_id
-                )
+                if _source_revision(app, course_id, lecture_id) != revision:
+                    raise PracticeDesignStale("Course sources changed. Reload the learning plan.")
                 return _store(app).update(
                     course_id=course_id,
                     lecture_id=lecture_id,
@@ -286,6 +165,9 @@ def register_course_practice_design_routes(
         source_context=_source_context,
         source_revision=_source_revision,
         require_manager=_require_manager,
+    )
+    register_practice_design_proposal_route(
+        app, course_tenant_id=course_tenant_id, source_document=source_document
     )
     register_practice_design_review_route(
         app,

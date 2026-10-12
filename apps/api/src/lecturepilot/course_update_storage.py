@@ -29,6 +29,10 @@ _COURSE_LOCKS: dict[str, RLock] = {}
 _LOCK_DEPTH = local()
 
 
+class CourseLockBusy(RuntimeError):
+    """Another thread or process holds the course mutation lock."""
+
+
 class CourseUpdateRecoveryError(RuntimeError):
     """Raised when an update cannot be rolled back automatically."""
 
@@ -38,13 +42,15 @@ class CourseUpdateRecoveryError(RuntimeError):
 
 
 @contextmanager
-def course_update_lock(course_root: Path) -> Iterator[None]:
-    """Serialize course mutations across threads and API worker processes."""
+def course_update_lock(course_root: Path, *, blocking: bool = True) -> Iterator[None]:
+    """Serialize course mutations across threads and processes; non-blocking raises Busy."""
 
     key = str(course_root.resolve())
     with _LOCKS_GUARD:
         local_lock = _COURSE_LOCKS.setdefault(key, RLock())
-    with local_lock:
+    if not local_lock.acquire(blocking=blocking):
+        raise CourseLockBusy(key)
+    try:
         depths = getattr(_LOCK_DEPTH, "courses", None)
         if depths is None:
             depths = {}
@@ -66,7 +72,10 @@ def course_update_lock(course_root: Path) -> Iterator[None]:
             if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
                 raise WorkspaceFSError("Course update lock must be a single-link regular file.")
             os.fchmod(descriptor, 0o600)
-            fcntl.flock(descriptor, fcntl.LOCK_EX)
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB))
+            except BlockingIOError as exc:
+                raise CourseLockBusy(key) from exc
             depths[key] = 1
             try:
                 yield
@@ -75,6 +84,8 @@ def course_update_lock(course_root: Path) -> Iterator[None]:
                 fcntl.flock(descriptor, fcntl.LOCK_UN)
         finally:
             os.close(descriptor)
+    finally:
+        local_lock.release()
 
 
 def course_update_lock_held(course_root: Path) -> bool:

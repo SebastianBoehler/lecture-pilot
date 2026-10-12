@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from lecturepilot.course_source_routing_models import (
@@ -7,6 +8,7 @@ from lecturepilot.course_source_routing_models import (
     CourseSourceRoutingManifest,
     SourceProcessingStatus,
 )
+from lecturepilot.durable_files import atomic_write_json
 from lecturepilot.pdf_extract import pdf_requires_ocr
 from lecturepilot.source_normalization_store import (
     SourceNormalizationError,
@@ -52,6 +54,18 @@ def _status(
         if any(warning.startswith("OCR required") for warning in document.warnings):
             return SourceProcessingStatus.OCR_NEEDED
         return SourceProcessingStatus.CONVERTED
-    if route.kind == "pdf" and pdf_requires_ocr(str(source_root / route.path)):
+    if route.kind == "pdf" and _pdf_needs_ocr(route, source_root, normalized_root):
         return SourceProcessingStatus.OCR_NEEDED
     return SourceProcessingStatus.PRESERVED
+
+
+def _pdf_needs_ocr(route: CourseSourceRoute, source_root: Path, normalized_root: Path) -> bool:
+    """Triage opens and samples the PDF, so cache it by content hash for every later view."""
+    cached = normalized_root / "ocr-triage" / f"{route.sha256}.json"
+    try:
+        return bool(json.loads(cached.read_text(encoding="utf-8"))["ocr_needed"])
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    needed = pdf_requires_ocr(str(source_root / route.path))
+    atomic_write_json(cached, {"ocr_needed": needed})
+    return needed

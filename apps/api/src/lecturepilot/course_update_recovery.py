@@ -10,6 +10,7 @@ import shutil
 from uuid import uuid4
 
 from lecturepilot.course_update_storage import (
+    CourseLockBusy,
     CourseUpdateRecoveryError,
     cleanup_retired_recovery_artifact,
     course_update_lock,
@@ -34,10 +35,18 @@ def locked_course_state(course_root: Path) -> Iterator[None]:
 
 
 def recover_interrupted_course_updates(course_root: Path) -> None:
+    """Best-effort recovery on reads; never waits for the course lock.
+
+    A busy lock means another worker is mutating the course, and every lock holder
+    recovers on entry (see ``locked_course_state``), so readers can skip it safely.
+    """
     if course_update_lock_held(course_root):
         return
-    with course_update_lock(course_root):
-        _recover_locked(course_root)
+    try:
+        with course_update_lock(course_root, blocking=False):
+            _recover_locked(course_root)
+    except CourseLockBusy:
+        return
 
 
 def _recover_locked(course_root: Path) -> None:

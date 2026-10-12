@@ -163,7 +163,7 @@ class PracticeExamPlanner:
                     course_id=course_id,
                     language=language,
                     duration_minutes=duration_minutes,
-                    source_revision=_source_revision(course_evidence, ppi_sources),
+                    source_revision=_evidence_revision(course_evidence, ppi_sources),
                     ppi_source_ids=sorted(ppi_sources),
                 )
                 validate_practice_exam(
@@ -273,7 +273,7 @@ def _exam_from_payload(
     )
 
 
-def _source_revision(course_evidence: str, ppi_sources: dict[str, list[str]]) -> str:
+def _evidence_revision(course_evidence: str, ppi_sources: dict[str, list[str]]) -> str:
     canonical = json.dumps(
         {"course": course_evidence, "ppi": ppi_sources}, sort_keys=True, ensure_ascii=False
     )

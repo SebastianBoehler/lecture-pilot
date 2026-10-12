@@ -1,3 +1,4 @@
+from fastapi.concurrency import run_in_threadpool
 from fastapi import Depends, FastAPI, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -49,8 +50,12 @@ def register_canvas_language_routes(app: FastAPI, *, course_tenant_id, seeded_co
                 variant = await generate_language_variant(
                     app.state.practice_design_planner, snapshot, language
                 )
-            with locked_course_state(store().layout.course_root(course_id)):
-                store().write(course_id, lecture_id, variant)
+
+            def save() -> None:
+                with locked_course_state(store().layout.course_root(course_id)):
+                    store().write(course_id, lecture_id, variant)
+
+            await run_in_threadpool(save)
             return variant
         except ValueError as exc:
             raise HTTPException(409, str(exc)) from exc

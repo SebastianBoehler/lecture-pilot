@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from fastapi.concurrency import run_in_threadpool
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 
 from lecturepilot.api_auth import request_context, require_course_manager
@@ -67,11 +68,15 @@ def register_course_update_routes(app: FastAPI, *, course_tenant_id: str) -> Non
                 tenant_id=context.tenant_id,
                 requested_path=path,
             )
-            try:
+
+            def promote():  # Lock wait and file writes stay off the event loop.
                 with locked_course_state(course_root):
                     require_update_accepting_uploads(layout, course_id, update_id)
                     uploads = update_uploads_dir(layout, course_id, update_id)
-                    stored = promote_course_upload(staged, uploads_root=uploads)
+                    return promote_course_upload(staged, uploads_root=uploads)
+
+            try:
+                stored = await run_in_threadpool(promote)
             finally:
                 staged.discard()
             # Build the index once during analysis; rescanning here makes folder uploads quadratic.
