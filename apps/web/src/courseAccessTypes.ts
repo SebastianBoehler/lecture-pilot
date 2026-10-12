@@ -28,9 +28,6 @@ export type CourseAccessSummary = {
   lectures: LectureAccessSummary[];
 };
 
-export type CourseAccessTarget =
-  { courseId: string; kind: "course" } | { courseId: string; kind: "lecture"; lectureId: string };
-
 export type CourseAccessSaveInput = {
   confirmUniversityMembers: boolean;
   inheritCourseDefault: boolean;

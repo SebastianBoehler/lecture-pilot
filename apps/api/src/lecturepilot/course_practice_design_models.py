@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import hashlib
-import json
 from typing import Annotated, Literal
 
 from pydantic import (
@@ -11,6 +9,7 @@ from pydantic import (
     model_validator,
 )
 
+from lecturepilot.canonical_digest import canonical_json_digest
 from lecturepilot.course_learning_intent import LearningIntent
 from lecturepilot.course_practice_design_context import PracticePlanningContext
 from lecturepilot.course_practice_design_contract import (
@@ -85,12 +84,12 @@ class PracticeDesign(StrictPracticeDesignModel):
         )
         payload = _revision_payload(candidate)
         return cls.model_validate(
-            {**candidate.model_dump(mode="python"), "revision": _digest(payload)}
+            {**candidate.model_dump(mode="python"), "revision": canonical_json_digest(payload)}
         )
 
 
 def practice_design_revision(design: PracticeDesign) -> str:
-    return _digest(_revision_payload(design))
+    return canonical_json_digest(_revision_payload(design))
 
 
 def _revision_payload(design: PracticeDesign) -> dict:
@@ -98,8 +97,3 @@ def _revision_payload(design: PracticeDesign) -> dict:
     payload = design.model_dump(mode="json", exclude={"revision", "quality_review"})
     payload["learning_intent"].pop("approval", None)
     return payload
-
-
-def _digest(payload: dict[str, object]) -> str:
-    canonical = json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()

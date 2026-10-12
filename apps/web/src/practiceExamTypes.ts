@@ -1,4 +1,4 @@
-export type PracticeExamQuestion = {
+type PracticeExamQuestion = {
   id: string;
   kind: "multiple_choice" | "multiple_select" | "open_ended";
   status?: "active" | "invalid";
@@ -51,7 +51,7 @@ export type PracticeExamSolutionSheet = {
   questions: PracticeExamSolutionQuestion[];
 };
 
-export type PpiExamFile = {
+type PpiExamFile = {
   path: string;
   text_path: string;
   media_type: string;

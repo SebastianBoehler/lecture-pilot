@@ -10,7 +10,6 @@ import type {
 export type {
   AnalyticsGateMetric,
   AnalyticsOutcomeCell,
-  AnalyticsOptionMetric,
   AnalyticsQuizMetric,
   AnalyticsVersionStatus,
   CourseAnalyticsSummary,
@@ -22,7 +21,6 @@ export type {
   CanvasComponentData,
   CanvasComponentFrame,
   CanvasComponentPoint,
-  CanvasComponentStep,
   CanvasVisualAnnotation,
   CanvasVisualEdge,
   CanvasVisualNode,
@@ -30,7 +28,6 @@ export type {
   CanvasDocument,
   CanvasPublicationResult,
   CanvasSection,
-  CanvasSectionId,
   CanvasSectionPlacement,
   DocumentAnchorId,
 } from "./canvasTypes";
@@ -81,7 +78,7 @@ export type ExamReadinessQuestion = {
   source_ref?: string | null;
 };
 
-export type ExamReadinessCoverage = {
+type ExamReadinessCoverage = {
   lecture_id: string;
   lecture_title: string;
   question_count: number;
@@ -113,9 +110,9 @@ export type ExamReadinessQuestionResult = {
   score?: number | null;
   feedback?: string | null;
 };
-export type ExamReadinessGuidanceLevel = "challenge" | "standard" | "scaffolded";
+type ExamReadinessGuidanceLevel = "challenge" | "standard" | "scaffolded";
 
-export type TutorScaffoldPolicy = {
+type TutorScaffoldPolicy = {
   trigger: "readiness_task" | "conceptual" | "procedural" | "error" | "delayed_transfer";
   learner_stage: "novice" | "early_intermediate" | "late_intermediate";
   profile: "worked_example" | "faded_example" | "self_explanation" | "transfer";
@@ -154,7 +151,7 @@ export type ExamReadinessAttemptResult = {
   tasks: ExamRevisionTask[];
 };
 
-export type SourceBundleEntry = {
+type SourceBundleEntry = {
   path: string;
   kind: string;
   size_bytes: number;
@@ -271,6 +268,7 @@ export type LearnerCourseProfile = {
   course_id: string;
   memory: string;
   passed_lecture_ids: string[];
+  lecture_progress?: { lecture_id: string; passed_gates: number; total_gates: number }[];
   files: LearnerFile[];
 };
 

@@ -3,13 +3,11 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from hashlib import sha256
 import json
-import os
 from pathlib import Path
-from uuid import uuid4
 
 from pydantic import BaseModel, Field, ValidationError
 
-from lecturepilot.durable_files import ensure_durable_directory, fsync_directory
+from lecturepilot.durable_files import atomic_write_text
 from lecturepilot.course_schedule_store import read_course_workspace
 from lecturepilot.course_source_routing import read_source_routing
 from lecturepilot.lecture_source_manifest import read_lecture_source_manifest
@@ -65,7 +63,7 @@ def persist_repair_guidance(
         repaired_generation_id=generation_id,
         repaired_at=datetime.now(UTC),
     )
-    _atomic_write(
+    atomic_write_text(
         layout.lecture_canvas_repair_path(course_id, lecture_id),
         record.model_dump_json(indent=2),
     )
@@ -143,18 +141,3 @@ def _read_record(path: Path) -> CanvasRepairRecord | None:
         return CanvasRepairRecord.model_validate_json(path.read_text(encoding="utf-8"))
     except (OSError, ValidationError):
         return None
-
-
-def _atomic_write(path: Path, content: str) -> None:
-    ensure_durable_directory(path.parent)
-    temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
-    try:
-        descriptor = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            handle.write(content)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary, path)
-        fsync_directory(path.parent)
-    finally:
-        temporary.unlink(missing_ok=True)

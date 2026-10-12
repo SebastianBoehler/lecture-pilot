@@ -3,7 +3,7 @@ from __future__ import annotations
 from canvas_workspace_fixtures import published_martius_workspace
 from lecturepilot.agent_tool_executor import AgentToolExecutor
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
-from lecturepilot.canvas_signatures import official_canvas_signature
+from lecturepilot.canvas_signatures import is_student_section
 from lecturepilot.image_generation import GeneratedImage
 from lecturepilot.models import CanvasSectionPlacement
 
@@ -100,7 +100,11 @@ def test_official_target_resolves_to_its_learner_extension_without_mutating_sour
     assert result["section_id"] == learner.id
     assert "/student/" in result["target_path"]
     after = workspace.read_document(course_id="martius-ml", lecture_id="lecture-03", user_id="u1")
-    assert official_canvas_signature(after) == official_canvas_signature(before)
+    assert _official_sections(after) == _official_sections(before)
+
+
+def _official_sections(document):
+    return [section for section in document.sections if not is_student_section(section)]
 
 
 class _FakeImageGenerator:

@@ -159,7 +159,7 @@ def test_tutor_prompt_carries_historical_observations_without_gate_authority(tmp
         AssessmentHistoryContext,
         AssessmentObservation,
     )
-    from lecturepilot.model_client import _messages
+    from lecturepilot.tutor_prompt import tutor_messages as _messages
     from lecturepilot.models import AgentTurnInput
 
     observation = AssessmentObservation(

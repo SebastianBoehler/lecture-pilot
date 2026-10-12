@@ -5,6 +5,7 @@ import logging
 
 from fastapi import HTTPException
 
+from lecturepilot.generation_slots import background_generation_slot
 from lecturepilot.metadata_events import emit_metadata_event
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.practice_exam_generation import generate_practice_exam
@@ -45,9 +46,11 @@ async def _generate_owned(app, *, job, request_key, context, input_data, **kwarg
         async with practice_exam_lease(
             store, job, user_id=context.user_id, request_key=request_key
         ):
-            exam = await generate_practice_exam(
-                app, context=context, input_data=input_data, **kwargs
-            )
+            # The lease keeps renewing while the job waits for a shared generation slot.
+            async with background_generation_slot(app):
+                exam = await generate_practice_exam(
+                    app, context=context, input_data=input_data, **kwargs
+                )
         await asyncio.to_thread(
             app.state.practice_exam_store.write,
             user_id=context.user_id,

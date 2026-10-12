@@ -24,6 +24,7 @@ _PROVIDER_KEYS = {
 _PLACEHOLDERS = {"change-me", "changeme", "password", "replace-me", "secret"}
 _URL_SAFE_PASSWORD = re.compile(r"^[A-Za-z0-9._~-]+$")
 _COMMIT_SHA = re.compile(r"^[0-9a-fA-F]{7,64}$")
+_POSTGRESQL_URLS = ("postgresql://", "postgres://", "postgresql+psycopg://")
 
 
 def validate_production_environment(
@@ -74,6 +75,20 @@ def validate_production_environment(
     return errors
 
 
+def deployed_runtime_errors(env: Mapping[str, str | None]) -> list[str]:
+    """Checks for the deployed container, whose environment Compose sets.
+
+    Durable per-user quotas (``UsageQuota``) only apply in production with a database, so a
+    deployment without them would silently spend provider budget without limits.
+    """
+    errors: list[str] = []
+    if _value(env, "LECTUREPILOT_ENV").lower() != "production":
+        errors.append("LECTUREPILOT_ENV must be production so durable usage quotas are enforced.")
+    if not _value(env, "DATABASE_URL").startswith(_POSTGRESQL_URLS):
+        errors.append("DATABASE_URL must point to PostgreSQL so durable usage quotas are enforced.")
+    return errors
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Validate LecturePilot production configuration.")
     parser.add_argument("--env-file", default=".env.production", type=Path)
@@ -87,6 +102,8 @@ def main() -> int:
         values,
         build_commit_sha=release_info().commit_sha if args.require_build_identity else None,
     )
+    if args.require_build_identity:
+        errors.extend(deployed_runtime_errors(values))
     if args.env_file.is_file() and args.env_file.stat().st_mode & 0o077:
         errors.append(f"{args.env_file} must not be readable or writable by group/other users.")
     if errors:

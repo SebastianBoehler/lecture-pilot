@@ -286,6 +286,7 @@ export function LessonWorkspace({
         {!focused && panelMode === "files" ? (
           <WorkspaceFilesPanel
             canvasDocument={canvasDocument}
+            mode={workspaceMode}
             session={session}
             selectedResource={selectedResource}
             onClose={() => onTogglePanel("files")}

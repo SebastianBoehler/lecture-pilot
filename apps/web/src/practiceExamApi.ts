@@ -1,6 +1,13 @@
 import { apiUrl } from "./api";
 import { readApiError } from "./apiError";
 import { authRequestInit } from "./authz";
+import {
+  isTransientPollResponse,
+  pollUntil,
+  PollTimeoutError,
+  retryAfterMs,
+  type PollStep,
+} from "./polling";
 import type {
   PpiCatalog,
   PpiCredentials,
@@ -16,11 +23,16 @@ export async function listPracticeExams(courseId: string, session: LoginSession)
   return requestJson<PracticeExam[]>(`/courses/${courseId}/practice-exams`, session);
 }
 
+const EXAM_POLL_FIRST_MS = 3_000;
+const EXAM_POLL_MAX_MS = 10_000;
+const EXAM_POLL_TIMEOUT_MS = 16 * 60 * 1000;
+
 export async function generatePracticeExam(
   courseId: string,
   input: PracticeExamGenerationInput,
   idempotencyKey: string,
   session: LoginSession,
+  signal?: AbortSignal,
 ) {
   const result = await requestJson<PracticeExam | PracticeExamGenerationStatus>(
     `/courses/${courseId}/practice-exam-generations`,
@@ -29,19 +41,29 @@ export async function generatePracticeExam(
       method: "POST",
       headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
       body: JSON.stringify(input),
+      signal,
     },
   );
   if (!("status" in result)) return result;
-  const deadline = Date.now() + 16 * 60 * 1000;
   let status = result;
-  while (status.status === "running" && Date.now() < deadline) {
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-    status = await practiceExamGenerationStatus(courseId, idempotencyKey, session);
+  if (status.status === "running") {
+    try {
+      status = await pollUntil({
+        initialDelayMs: EXAM_POLL_FIRST_MS,
+        maxDelayMs: EXAM_POLL_MAX_MS,
+        timeoutMs: EXAM_POLL_TIMEOUT_MS,
+        signal,
+        poll: (pollSignal) => pollGenerationStatus(courseId, idempotencyKey, session, pollSignal),
+      });
+    } catch (error) {
+      if (!(error instanceof PollTimeoutError)) throw error;
+    }
   }
   if (status.status === "completed" && status.exam_id) {
     return requestJson<PracticeExam>(
       `/courses/${courseId}/practice-exams/${status.exam_id}`,
       session,
+      { signal },
     );
   }
   throw new Error(
@@ -49,6 +71,25 @@ export async function generatePracticeExam(
       ? "Practice exam generation is still running. Retry to check the same job."
       : "Practice exam generation failed. Please retry.",
   );
+}
+
+async function pollGenerationStatus(
+  courseId: string,
+  idempotencyKey: string,
+  session: LoginSession,
+  signal: AbortSignal | undefined,
+): Promise<PollStep<PracticeExamGenerationStatus>> {
+  const response = await fetch(
+    apiUrl(`/courses/${courseId}/practice-exam-generations/status`),
+    authRequestInit(session, { headers: { "Idempotency-Key": idempotencyKey }, signal }),
+  );
+  if (isTransientPollResponse(response)) {
+    return { done: false, retryAfterMs: retryAfterMs(response) };
+  }
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(readApiError(payload, "Practice exam request failed."));
+  const status = payload as PracticeExamGenerationStatus;
+  return status.status === "running" ? { done: false } : { done: true, value: status };
 }
 
 export async function practiceExamGenerationStatus(

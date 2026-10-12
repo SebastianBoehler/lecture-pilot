@@ -1,11 +1,14 @@
+from pathlib import Path
 import sys
 
 import pytest
+import yaml
 from fastapi.testclient import TestClient
 
 from lecturepilot.app import create_app
 from lecturepilot.csrf import allowed_origins
 from lecturepilot.database import DatabaseConfigurationError, DatabaseSettings
+from lecturepilot.production_preflight import deployed_runtime_errors
 from lecturepilot.production_preflight import main as production_preflight_main
 from lecturepilot.production_preflight import validate_production_environment
 from lecturepilot.security_headers import allowed_hosts, hsts_enabled, production_fastapi_kwargs
@@ -252,3 +255,21 @@ def test_production_preflight_rejects_invalid_dns_labels() -> None:
     assert any(
         "LECTUREPILOT_DOMAIN" in error for error in validate_production_environment(configured)
     )
+
+
+def test_container_preflight_requires_enforced_durable_quotas() -> None:
+    configured = {
+        "LECTUREPILOT_ENV": "production",
+        "DATABASE_URL": "postgresql://lecturepilot:secret@db:5432/lecturepilot",
+    }
+    assert deployed_runtime_errors(configured) == []
+    errors = " ".join(deployed_runtime_errors({"LECTUREPILOT_ENV": "staging"}))
+    assert "LECTUREPILOT_ENV" in errors and "DATABASE_URL" in errors
+
+
+def test_compose_preflight_runs_with_a_quota_enforcing_environment() -> None:
+    compose_path = Path(__file__).resolve().parents[3] / "deploy" / "compose.yml"
+    compose = yaml.safe_load(compose_path.read_text(encoding="utf-8"))
+    preflight = compose["services"]["preflight"]
+    assert "--require-build-identity" in preflight["command"]
+    assert deployed_runtime_errors(preflight["environment"]) == []

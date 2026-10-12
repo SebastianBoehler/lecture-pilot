@@ -10,6 +10,7 @@ from lecturepilot.client_contract import (
 )
 from lecturepilot.course_canvas_context import InvalidPublishedCanvasContextError
 from lecturepilot.course_update_storage import CourseUpdateRecoveryError
+from lecturepilot.document_converter_client import DocumentConverterUnavailable
 from lecturepilot.learner_state import InvalidLearnerQuizStateError
 from lecturepilot.quiz_identity import DuplicateCanonicalQuizIdError
 
@@ -30,6 +31,12 @@ def register_exception_handlers(app: FastAPI) -> None:
             content={"code": CLIENT_UPDATE_REQUIRED_CODE, "detail": str(exc)},
             headers={CLIENT_CONTRACT_HEADER: CLIENT_CONTRACT_VERSION},
         )
+
+    @app.exception_handler(DocumentConverterUnavailable)
+    async def document_converter_unavailable(
+        _request: Request, exc: DocumentConverterUnavailable
+    ) -> JSONResponse:
+        return JSONResponse(status_code=503, content={"detail": str(exc)})
 
     for error_type in (
         InvalidPublishedCanvasContextError,

@@ -32,23 +32,9 @@ describe("app routes", () => {
       updateCourseId: "machine learning",
     });
   });
-
-  it("keeps old draft-preview links readable during migration", () => {
-    expect(
-      readAppRoute({
-        pathname: "/",
-        search: "?preview=draft&courseId=security&lectureId=lecture-01",
-      } as Location),
-    ).toEqual({
-      view: "lesson",
-      courseId: "security",
-      lectureId: "lecture-01",
-      lessonMode: "draft",
-    });
-  });
 });
 
 function read(path: string) {
   const url = new URL(path, "https://lecturepilot.example");
-  return readAppRoute({ pathname: url.pathname, search: url.search } as Location);
+  return readAppRoute({ pathname: url.pathname });
 }

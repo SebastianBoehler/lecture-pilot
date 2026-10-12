@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
 from lecturepilot.teaching_implementation_change_routes import register_implementation_change_routes
 
@@ -35,6 +35,7 @@ from lecturepilot.tenancy import TenantContext
 class GoalFinding(BaseModel):
     goal_id: str
     reason: str
+    status: Literal["open", "repaired_unchecked"] = "open"
 
 
 class LearningIntentApprovalInput(StrictPracticeDesignModel):
@@ -166,7 +167,7 @@ def register_learning_intent_routes(
                 course_id=course_id,
                 workload="course_learning_intent",
             ):
-                proposal, review = await propose_learning_intent(
+                proposal, findings = await propose_learning_intent(
                     app.state.practice_design_planner,
                     source=source,
                     source_revision=revision,
@@ -174,7 +175,7 @@ def register_learning_intent_routes(
                 )
             saved = await run_in_threadpool(save, proposal)
             save_goal_findings(
-                goal_findings_path(layout, course_id, lecture_id), proposal.goals, review
+                goal_findings_path(layout, course_id, lecture_id), proposal.goals, findings
             )
             return saved
         except ProviderConfigurationError as exc:

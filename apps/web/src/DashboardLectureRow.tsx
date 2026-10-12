@@ -1,14 +1,19 @@
 import { formatAccessDate, formatRelativeAccess } from "./courseAccessStatus";
+import type { LectureProgress } from "./dashboardLectureProgress";
 import { useI18n } from "./i18n";
 import { formatLectureDate } from "./lectureDate";
 import type { Attendance, Lecture } from "./types";
 
 export function DashboardLectureRow({
+  isNew = false,
   lecture,
+  progress,
   onOpen,
   onSetAttendance,
 }: {
+  isNew?: boolean;
   lecture: Lecture;
+  progress?: LectureProgress;
   onOpen: (lecture: Lecture) => void;
   onSetAttendance: (lectureId: string, attendance: Attendance) => void;
 }) {
@@ -38,6 +43,16 @@ export function DashboardLectureRow({
             })}
           </p>
         )}
+        {!scheduled && (isNew || progress) ? (
+          <p className="lecture-status-tags">
+            {isNew ? (
+              <span className="lecture-tag is-new" title={t("dashboard.newBadgeTitle")}>
+                {t("dashboard.newBadge")}
+              </span>
+            ) : null}
+            {progress ? <ProgressTag progress={progress} /> : null}
+          </p>
+        ) : null}
       </div>
       {scheduled ? null : (
         <div
@@ -64,6 +79,19 @@ export function DashboardLectureRow({
         </button>
       )}
     </article>
+  );
+}
+
+function ProgressTag({ progress }: { progress: LectureProgress }) {
+  const { t } = useI18n();
+  if (progress.completed) {
+    return <span className="lecture-tag is-complete">{t("dashboard.progress.completed")}</span>;
+  }
+  if (!progress.total) return null;
+  return (
+    <span className="lecture-tag">
+      {t("dashboard.progress.checks", { passed: progress.passed, total: progress.total })}
+    </span>
   );
 }
 

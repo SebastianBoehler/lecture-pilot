@@ -3,6 +3,7 @@ import { useContext, useState, type ReactNode } from "react";
 
 import { CanvasAnnotationContext } from "./canvasAnnotationContext";
 import { MathText } from "./MathText";
+import { errorMessage } from "./errorMessage";
 import { useI18n } from "./i18n";
 import "./canvas-annotations.css";
 
@@ -14,12 +15,11 @@ export function AnnotatedCanvasBlock({
   children: ReactNode;
 }) {
   const context = useContext(CanvasAnnotationContext);
-  const { locale } = useI18n();
+  const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const notes = context?.annotations.filter((note) => note.block_id === blockId) ?? [];
   if (!notes.length) return children;
-  const german = locale === "de";
 
   async function remove(id: string) {
     setDeleting(id);
@@ -27,7 +27,7 @@ export function AnnotatedCanvasBlock({
     try {
       await context?.remove(id);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not delete comment.");
+      setError(errorMessage(reason, t("annotation.deleteFailed")));
     } finally {
       setDeleting(null);
     }
@@ -39,8 +39,8 @@ export function AnnotatedCanvasBlock({
       <details className="canvas-annotation">
         <summary
           tabIndex={0}
-          aria-label={`${german ? "Kommentare öffnen" : "Open comments"} (${notes.length})`}
-          title={german ? "Private Kommentare" : "Private comments"}
+          aria-label={t("annotation.open", { count: notes.length })}
+          title={t("annotation.title")}
         >
           <MessageSquare size={16} aria-hidden="true" />
           {notes.length > 1 ? <span>{notes.length}</span> : null}
@@ -49,12 +49,12 @@ export function AnnotatedCanvasBlock({
           {notes.map((note) => (
             <div key={note.id} className="canvas-annotation-comment">
               <div className="canvas-annotation-heading">
-                <strong>{german ? "Private Kommentare" : "Private comments"}</strong>
+                <strong>{t("annotation.title")}</strong>
                 <button
                   type="button"
                   className="icon-button"
                   disabled={deleting !== null}
-                  aria-label={german ? "Kommentar löschen" : "Delete comment"}
+                  aria-label={t("annotation.delete")}
                   onClick={() => void remove(note.id)}
                 >
                   <Trash2 size={14} aria-hidden="true" />

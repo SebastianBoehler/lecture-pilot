@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Download, Eye, FileCheck2, Trash2 } from "lucide-react";
 
 import { useI18n } from "./i18n";
@@ -33,6 +33,10 @@ export function PracticeExamPanel({
   const [pdfExamId, setPdfExamId] = useState<string | null>(null);
   const [solutionPdfExamId, setSolutionPdfExamId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const generation = useRef<AbortController | null>(null);
+
+  // The job keeps running server-side; leaving the panel only stops watching it.
+  useEffect(() => () => generation.current?.abort(), []);
 
   useEffect(() => {
     if (!session) return;
@@ -69,12 +73,21 @@ export function PracticeExamPanel({
     if (!session || !generationKey) return;
     setGenerating(true);
     setError(null);
+    const controller = new AbortController();
+    generation.current = controller;
     try {
-      const exam = await generatePracticeExam(course.id, input, generationKey, session);
+      const exam = await generatePracticeExam(
+        course.id,
+        input,
+        generationKey,
+        session,
+        controller.signal,
+      );
       setExams((current) => [exam, ...current.filter((item) => item.id !== exam.id)]);
       setSetupOpen(false);
       setActiveExam(exam);
     } catch (caught) {
+      if (controller.signal.aborted) return;
       const message = caught instanceof Error ? caught.message : t("practice.generateFailed");
       let retainGenerationKey = false;
       try {

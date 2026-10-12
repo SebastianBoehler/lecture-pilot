@@ -49,41 +49,37 @@ def test_transient_repair_failure_retains_files_and_resumes_history(tmp_path, mo
     )
 
 
-def test_quality_feedback_gets_one_targeted_repair(tmp_path, monkeypatch):
+def test_quality_feedback_gets_one_targeted_repair_without_a_second_review(tmp_path, monkeypatch):
     client, path = setup_failed_job(tmp_path)
-    reviewed_sections = []
+    reviews = []
+    repairs = []
 
     class Critic:
         async def complete_review(self, **kwargs):
-            sections = kwargs["candidate_document"].sections
-            assert len(sections) == 1
-            reviewed_sections.append(sections[0].id)
+            reviews.append([section.id for section in kwargs["candidate_document"].sections])
             return {
-                "issues": (
-                    [
-                        {
-                            "section_id": "learning-optimization",
-                            "block_id": "optimization-math",
-                            "reason": "Use x as the source-backed expression.",
-                        }
-                    ]
-                    if sections[0].id == "learning-optimization"
-                    and reviewed_sections.count("learning-optimization") == 1
-                    else []
-                )
+                "issues": [
+                    {
+                        "section_id": "learning-optimization",
+                        "block_id": "optimization-math",
+                        "reason": "Use x as the source-backed expression.",
+                    }
+                ]
             }
 
     def respond(messages, info):
         if "source-backed expression" in str(messages[0].parts[-1].content):
+            repairs.append(messages)
             return markdown(current_draft(messages).replace(r"w^\top x", "x"))
         return fix_math(messages, info)
 
     install_author(client, monkeypatch, respond, Critic())
     repaired = client.post(path + "/repair", headers=headers("quality-repair-0001"))
     assert repaired.status_code == 200, repaired.text
-    assert reviewed_sections.count("learning-optimization") == 2
-    assert len(reviewed_sections) == 3
-    assert not repaired.json().get("warnings")
+    # One critic call over the whole lecture, one repair, and no re-review of the repair.
+    assert len(reviews) == 1 and "learning-optimization" in reviews[0] and len(reviews[0]) > 1
+    assert len(repairs) == 1
+    assert any("repaired once, not re-checked" in w for w in repaired.json()["warnings"])
 
 
 def test_completed_repair_replays_without_another_model_request(tmp_path, monkeypatch):

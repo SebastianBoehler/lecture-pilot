@@ -1,11 +1,11 @@
 import type { SupplementalPracticeTask } from "./practiceTaskBankTypes";
-export type LearningDesignEvidenceCriterion = {
+type LearningDesignEvidenceCriterion = {
   id: string;
   description: string;
   required: boolean;
 };
 
-export type LearningDesignGate = {
+type LearningDesignGate = {
   supplemental_tasks?: readonly SupplementalPracticeTask[];
   id: string;
   concept_id: string;
@@ -19,7 +19,7 @@ export type LearningDesignGate = {
   source_ref: string | null;
 };
 
-export type LearningDesignNode = {
+type LearningDesignNode = {
   id: string;
   title: string;
   lecture_id: string;
@@ -30,7 +30,7 @@ export type LearningDesignNode = {
   quiz_ids: string[];
 };
 
-export type LearningDesignCoverage = {
+type LearningDesignCoverage = {
   covered: number;
   total: number;
   status: "complete" | "incomplete" | "not_applicable";

@@ -1,5 +1,4 @@
-import { apiUrl, readApiError } from "./api";
-import { authRequestInit } from "./authz";
+import { apiRequest } from "./apiRequest";
 import type { LearnerProfile, LearningGoal, LoginSession } from "./types";
 
 export async function getLearnerProfile(session: LoginSession): Promise<LearnerProfile> {
@@ -31,9 +30,7 @@ async function profileRequest(
   path: string,
   init: RequestInit = {},
 ): Promise<LearnerProfile> {
-  const response = await fetch(apiUrl(path), authRequestInit(session, init));
-  const payload = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(readApiError(payload, "Learning profile request failed."));
+  const payload = await apiRequest(session, path, "Learning profile request failed.", init);
   if (!isLearnerProfile(payload)) throw new Error("Learning profile response was invalid.");
   return payload;
 }
@@ -51,14 +48,5 @@ function isLearnerProfile(payload: unknown): payload is LearnerProfile {
 }
 
 async function emptyProfileRequest(session: LoginSession, path: string): Promise<void> {
-  const response = await fetch(
-    apiUrl(path),
-    authRequestInit(session, {
-      method: "DELETE",
-    }),
-  );
-  if (!response.ok) {
-    const payload = await response.json().catch(() => null);
-    throw new Error(readApiError(payload, "Learning profile update failed."));
-  }
+  await apiRequest(session, path, "Learning profile update failed.", { method: "DELETE" });
 }

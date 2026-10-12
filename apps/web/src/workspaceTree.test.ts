@@ -24,9 +24,10 @@ describe("workspace tree", () => {
       expect.arrayContaining([
         ".lecturepilot/users/<account>/courses/martius-ml/lectures/lecture-03/canvas/student/90-student-note.md",
         ".lecturepilot/users/<account>/courses/martius-ml/lectures/lecture-03/canvas/student-assets/student-diagram.png",
-        ".lecturepilot/users/<account>/courses/martius-ml/lectures/lecture-03/canvas.json",
       ]),
     );
+    // The backend no longer writes compiled canvas.json caches into either workspace.
+    expect(tree.flatMap(pathsFor).filter((path) => path.endsWith("canvas.json"))).toEqual([]);
     expect(pathsFor(tree[3])).toEqual(
       expect.arrayContaining([
         ".lecturepilot/users/<account>/memories/global.md",

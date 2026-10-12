@@ -11,6 +11,9 @@ import {
 import { getLearningDesignReview, saveLearningDesignReview } from "./learningDesignApi";
 import type { LearningDesignReview, LearningDesignUpdate } from "./learningDesignTypes";
 import type { LoginSession } from "./types";
+import { errorMessage } from "./errorMessage";
+
+const REVIEW_FAILED = "Learning-design review failed.";
 
 type OperationToken = { epoch: number; key: string; lectureId: string; operation: number };
 type Active = { epoch: number; key: string; operations: Record<string, number> };
@@ -80,10 +83,10 @@ export function useProfessorLearningDesignReviews({
       if (isCurrent(active, token))
         setErrorState((current) => ({
           key: identityKey,
-          message: errorMessage(error),
+          message: errorMessage(error, REVIEW_FAILED),
           byLecture: {
             ...(current.key === identityKey ? current.byLecture : {}),
-            [lectureId]: errorMessage(error),
+            [lectureId]: errorMessage(error, REVIEW_FAILED),
           },
         }));
     }
@@ -120,10 +123,10 @@ export function useProfessorLearningDesignReviews({
       if (isCurrent(active, token)) {
         setErrorState((current) => ({
           key: identityKey,
-          message: errorMessage(mutationError),
+          message: errorMessage(mutationError, REVIEW_FAILED),
           byLecture: {
             ...(current.key === identityKey ? current.byLecture : {}),
-            [lectureId]: errorMessage(mutationError),
+            [lectureId]: errorMessage(mutationError, REVIEW_FAILED),
           },
         }));
       }
@@ -158,8 +161,4 @@ function isCurrent(active: RefObject<Active>, token: OperationToken): boolean {
     active.current.epoch === token.epoch &&
     active.current.operations[token.lectureId] === token.operation
   );
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Learning-design review failed.";
 }

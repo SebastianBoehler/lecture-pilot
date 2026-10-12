@@ -1,6 +1,6 @@
 import type { CourseWorkspaceResult } from "./types";
 
-export type CourseUpdateFileChange = {
+type CourseUpdateFileChange = {
   path: string;
   kind: string;
   size_bytes: number;
@@ -18,7 +18,7 @@ export type CourseUpdateLectureCandidate = {
   file_paths: string[];
 };
 
-export type CourseUpdateLectureOption = {
+type CourseUpdateLectureOption = {
   lecture_id: string;
   number: string;
   title: string;

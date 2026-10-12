@@ -6,6 +6,7 @@ import pytest
 from lecturepilot.course_canvas_async_response import accepted_generation_response
 from lecturepilot.course_canvas_generation_jobs import CanvasGenerationJob, CanvasGenerationStore
 from lecturepilot.course_canvas_generation_service import run_idempotent_canvas_generation
+from lecturepilot.generation_slots import BACKGROUND_GENERATION_SLOTS
 from lecturepilot.storage_layout import StorageLayout
 from test_course_canvas_generation_service import _canvas
 
@@ -36,7 +37,8 @@ async def test_dispatch_releases_connections_before_generation_and_deduplicates(
 
     jobs = await asyncio.wait_for(asyncio.gather(*(dispatch(i) for i in range(1, 15))), 2)
     await asyncio.sleep(0)
-    assert len(started) == 14
+    # Every job is accepted at once; only the shared slots run, the rest queue.
+    assert len(started) == BACKGROUND_GENERATION_SLOTS
     assert all(isinstance(job, CanvasGenerationJob) for job in jobs)
     assert (await dispatch(1)).generation_id == jobs[0].generation_id
     response = accepted_generation_response(jobs[0])

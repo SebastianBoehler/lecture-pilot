@@ -1,13 +1,8 @@
 from dataclasses import dataclass
-from typing import Literal
 
 from pydantic import BaseModel
 
 from lecturepilot.canvas_models import CanvasDocument
-
-
-class AuthoringCompletion(BaseModel):
-    ready: Literal[True]
 
 
 class AuthoringMetrics(BaseModel):
@@ -20,6 +15,7 @@ class AuthoringMetrics(BaseModel):
     output_tokens: int = 0
     elapsed_seconds: float = 0
     resumes: int = 0
+    reused_sections: int = 0
 
 
 @dataclass(frozen=True)

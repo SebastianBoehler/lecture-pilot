@@ -1,5 +1,5 @@
 from lecturepilot.learning_map import LearningMapGate
-from lecturepilot.model_client import _messages
+from lecturepilot.tutor_prompt import tutor_messages as _messages
 from lecturepilot.models import (
     AgentCoachingContext,
     AgentTurnInput,
@@ -108,7 +108,7 @@ def test_model_prompt_includes_the_approved_practice_teaching_contract() -> None
         source_ref="lecture.md",
         practice_target_id="causal-transfer",
     )
-    prompt = _messages(_turn().model_copy(update={"active_gate": gate}))[1]["content"]
+    prompt = _messages(_turn().model_copy(update={"active_gate": gate}))[-1]["content"]
 
     for value in (
         gate.target_invariant,

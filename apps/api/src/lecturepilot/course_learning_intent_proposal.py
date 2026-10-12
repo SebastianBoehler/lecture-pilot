@@ -21,7 +21,11 @@ from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_provider_schema import strict_pydantic_response_format
 from lecturepilot.models import ProviderCapability
 from lecturepilot.learning_goal_outcomes import require_operational_outcomes
-from lecturepilot.learning_goal_support import goal_set_objective, review_goal_support
+from lecturepilot.learning_goal_support import (
+    goal_finding_records,
+    goal_set_objective,
+    review_goal_support,
+)
 from lecturepilot.practice_evidence_catalogue import (
     catalogue_schema,
     evidence_catalogue,
@@ -66,7 +70,10 @@ from lecturepilot.model_job_limits import bounded_model_job
 
 @bounded_model_job
 async def propose_learning_intent(planner, *, source, source_revision, allowed_source_paths):
-    """One proposal, one advisory support review and at most one targeted repair."""
+    """One proposal, one advisory support review and at most one targeted repair.
+
+    The repair is not reviewed again; returned findings say which goals it changed.
+    """
     settings = planner.provider_registry.require_ready(
         [
             ProviderCapability.CHAT,
@@ -143,6 +150,7 @@ async def propose_learning_intent(planner, *, source, source_revision, allowed_s
             review = await review_goal_support(
                 model=model, settings=settings, proposal=proposal, catalogue=catalogue
             )
+            before = proposal.goals
             if review.findings:
                 # Stateless repair: current artifact plus findings, never the prior transcript.
                 await agent.run(
@@ -157,9 +165,6 @@ async def propose_learning_intent(planner, *, source, source_revision, allowed_s
                     )
                 )
                 proposal = derived()
-                review = await review_goal_support(
-                    model=model, settings=settings, proposal=proposal, catalogue=catalogue
-                )
         except UnexpectedModelBehavior as exc:
             raise ModelExecutionError(f"Learning goals could not be grounded: {exc}") from exc
-    return proposal, review
+    return proposal, goal_finding_records(review, before, proposal.goals)

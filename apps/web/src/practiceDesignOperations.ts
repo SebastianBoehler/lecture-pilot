@@ -1,4 +1,5 @@
 import type { PracticeDesignPendingAction } from "./useProfessorPracticeDesigns";
+import { errorMessage } from "./errorMessage";
 
 export type PendingEntry = { action: PracticeDesignPendingAction; operation: number };
 export type Pending = { key: string; values: Readonly<Record<string, PendingEntry>> };
@@ -24,10 +25,6 @@ export function latestPending(
   );
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Practice design request failed.";
-}
-
 export type ErrorState = {
   key: string;
   message: string | null;
@@ -43,7 +40,7 @@ export function lectureError(
   lectureId: string,
   error: unknown,
 ): ErrorState {
-  const message = errorMessage(error);
+  const message = errorMessage(error, "Practice design request failed.");
   return {
     key,
     message,

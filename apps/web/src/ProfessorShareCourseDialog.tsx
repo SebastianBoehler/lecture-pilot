@@ -1,5 +1,5 @@
 import QRCode from "qrcode";
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import {
   courseUrl,
@@ -12,6 +12,7 @@ import {
 import { dismissDialogFromBackdrop } from "./dialogBackdrop";
 import "./share-course.css";
 import { useI18n } from "./i18n";
+import { useModalDialog } from "./useModalDialog";
 import type { LoginSession, ManagedCourseWorkspaceResult } from "./types";
 
 export function ProfessorShareCourseDialog({
@@ -24,7 +25,7 @@ export function ProfessorShareCourseDialog({
   onClose: () => void;
 }) {
   const { t } = useI18n();
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const dialogRef = useModalDialog();
   const titleId = useId();
   // null: only enrolled students (Alma/ILIAS) can open the course; an invite also lets others join.
   const [invite, setInvite] = useState<CourseInvite | null | undefined>(undefined);
@@ -35,16 +36,6 @@ export function ProfessorShareCourseDialog({
   const courseId = workspace.course.id;
   const instructorsOnly = workspace.accessSummary.default_rule.audience === "instructors_only";
   const url = invite ? inviteUrl(invite) : courseUrl(courseId);
-
-  useLayoutEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    if (typeof dialog.showModal === "function") dialog.showModal();
-    else dialog.setAttribute("open", "");
-    return () => {
-      if (typeof dialog.close === "function" && dialog.open) dialog.close();
-    };
-  }, []);
 
   useEffect(() => {
     let cancelled = false;

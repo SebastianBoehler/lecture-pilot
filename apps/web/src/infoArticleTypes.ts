@@ -1,4 +1,4 @@
-export interface InfoSection {
+interface InfoSection {
   id: string;
   title: string;
   paragraphs: string[];

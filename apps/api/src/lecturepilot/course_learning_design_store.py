@@ -1,5 +1,3 @@
-import hashlib
-import json
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
@@ -7,6 +5,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from lecturepilot.canonical_digest import canonical_json_digest
 from lecturepilot.canvas_markdown import read_document_source
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.canvas_snapshot import locked_canvas_paths
@@ -172,8 +171,7 @@ def approved_learning_design(
 
 def canvas_digest(document: CanvasDocument) -> str:
     payload = document.model_dump(mode="json", exclude={"workspace_path"})
-    canonical = json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    return canonical_json_digest(payload)
 
 
 def review_path(draft_dir: Path) -> Path:

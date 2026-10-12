@@ -6,6 +6,7 @@ import { useI18n } from "./i18n";
 import type { MessageKey } from "./i18nMessages";
 import type { LearnerQuizState } from "./learnerLessonStateTypes";
 import type { CanvasBlock } from "./types";
+import { errorMessage } from "./errorMessage";
 
 type QuizBlockProps = {
   block: CanvasBlock;
@@ -177,8 +178,4 @@ function guidance(result: LearnerQuizState, t: (key: MessageKey) => string) {
 
 function newAttemptId(blockId: string) {
   return `${blockId}:${crypto.randomUUID()}`;
-}
-
-function errorMessage(reason: unknown, fallback: string) {
-  return reason instanceof Error ? reason.message : fallback;
 }

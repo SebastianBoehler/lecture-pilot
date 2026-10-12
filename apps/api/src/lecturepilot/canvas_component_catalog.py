@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from pydantic import ValidationError
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasComponentData, CanvasDocument
-from lecturepilot.model_generated_ids import safe_generated_id, trim_generated_text
+from lecturepilot.canvas_models import CanvasBlock, CanvasComponentData
 
 
 SUPPORTED_COMPONENT_TYPES = (
@@ -51,61 +50,6 @@ def component_catalog_instruction() -> str:
         "option_ids for stable answer ids, answer_index for the one correct answer, and empty "
         "component_data arrays. Use component_data=null for non-component blocks. Never output "
         "code, JSX, HTML, scripts, URLs, or arbitrary React components."
-    )
-
-
-def component_block_from_payload(raw_block: dict, block_id: str) -> CanvasBlock:
-    component_type = str(
-        raw_block.get("component_type") or raw_block.get("kind") or "single_choice_quiz"
-    )[:120]
-    component_id = safe_generated_id(block_id)
-    items, option_ids, answer_index = _component_options(raw_block)
-    data = component_data_from_payload(raw_block.get("component_data", raw_block.get("data")))
-    return CanvasBlock(
-        id=block_id,
-        type="component",
-        text=trim_generated_text(str(raw_block.get("text") or raw_block.get("prompt") or ""), 1200)
-        or None,
-        items=items,
-        caption=str(raw_block.get("caption") or raw_block.get("title") or "")[:500] or None,
-        answer_index=answer_index,
-        component_id=component_id,
-        component_type=component_type,
-        component_ref=_component_ref(block_id),
-        component_version=_component_version(
-            raw_block.get("component_version", raw_block.get("version"))
-        ),
-        option_ids=option_ids,
-        component_data=data,
-    )
-
-
-def normalize_component_identity(block: CanvasBlock, *, block_id: str | None = None) -> CanvasBlock:
-    stable_block_id = block_id or block.id
-    if block.type != "component":
-        return block.model_copy(update={"id": stable_block_id})
-    stable_id = safe_generated_id(stable_block_id)
-    return block.model_copy(
-        update={
-            "id": stable_block_id,
-            "component_id": stable_id,
-            "component_ref": _component_ref(stable_id),
-        }
-    )
-
-
-def normalize_document_component_identities(document: CanvasDocument) -> CanvasDocument:
-    return document.model_copy(
-        update={
-            "sections": [
-                section.model_copy(
-                    update={
-                        "blocks": [normalize_component_identity(block) for block in section.blocks]
-                    }
-                )
-                for section in document.sections
-            ]
-        }
     )
 
 
@@ -219,57 +163,3 @@ def _chart_spec_issue(data: CanvasComponentData) -> str | None:
     ):
         return "needs a rectangular matrix matching row_labels and labels in every frame."
     return None
-
-
-def _component_options(raw_block: dict) -> tuple[list[str], list[str], int | None]:
-    value = raw_block.get("options")
-    if not isinstance(value, list):
-        return _schema_component_options(raw_block)
-    items: list[str] = []
-    option_ids: list[str] = []
-    answer_index = None
-    for option in value[:8]:
-        if not isinstance(option, dict):
-            continue
-        text = trim_generated_text(str(option.get("text") or option.get("label") or ""), 240)
-        if not text:
-            continue
-        if option.get("correct") is True:
-            answer_index = len(items)
-        option_ids.append(safe_generated_id(str(option.get("id") or chr(65 + len(items)))))
-        items.append(text)
-    return items, option_ids, answer_index
-
-
-def _schema_component_options(raw_block: dict) -> tuple[list[str], list[str], int | None]:
-    raw_items = raw_block.get("items")
-    if not isinstance(raw_items, list):
-        return [], [], None
-    items = [text for item in raw_items[:8] if (text := trim_generated_text(str(item), 240))]
-    raw_ids = raw_block.get("option_ids")
-    option_ids = [
-        safe_generated_id(
-            str(
-                raw_ids[index]
-                if isinstance(raw_ids, list) and index < len(raw_ids)
-                else chr(65 + index)
-            )
-        )
-        for index in range(len(items))
-    ]
-    answer_index = raw_block.get("answer_index")
-    if not isinstance(answer_index, int) or not 0 <= answer_index < len(items):
-        answer_index = None
-    return items, option_ids, answer_index
-
-
-def _component_ref(block_id: str) -> str:
-    return f"{safe_generated_id(block_id)}.yaml"
-
-
-def _component_version(value: object) -> int:
-    if isinstance(value, int) and value >= 1:
-        return value
-    if isinstance(value, str) and value.isdigit() and int(value) >= 1:
-        return int(value)
-    return 1

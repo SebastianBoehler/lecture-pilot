@@ -16,6 +16,7 @@ def generation_authoring_scope(
     session_generation_id=None,
     candidate=None,
     escalate_design_conflicts=True,
+    reuse_design_revision=None,
 ):
     layout = app.state.canvas_workspace.layout
 
@@ -35,13 +36,17 @@ def generation_authoring_scope(
             design_revision=ownership.practice_design_revision,
         )
 
-    root = (
-        bind_session(layout, ownership, session_generation_id)
-        / "implementations"
-        / ownership.practice_design_revision
+    session = bind_session(layout, ownership, session_generation_id)
+    root = session / "implementations" / ownership.practice_design_revision
+    # After a teaching repair, sections with unchanged inputs are reused from here.
+    reuse_root = (
+        session / "implementations" / reuse_design_revision
+        if reuse_design_revision is not None
+        else None
     )
     return AuthoringScope(
         root=root,
+        reuse_root=reuse_root,
         source_revision=source_revision,
         authorize=authorize,
         candidate=candidate,

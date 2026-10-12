@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { useI18n } from "./i18n";
 import type { LearningGoal } from "./types";
+import { useModalDialog } from "./useModalDialog";
 
 const goals: LearningGoal[] = ["keep_up", "understand_deeply", "exam_preparation"];
 
@@ -15,6 +16,7 @@ export function LearnerOnboarding({
   const [goal, setGoal] = useState<LearningGoal | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const dialogRef = useModalDialog();
 
   async function finish() {
     if (!goal) return;
@@ -30,74 +32,74 @@ export function LearnerOnboarding({
   }
 
   return (
-    <div className="onboarding-backdrop">
-      <section
-        aria-labelledby="onboarding-heading"
-        aria-modal="true"
-        className="onboarding-dialog"
-        role="dialog"
-      >
-        <div className="onboarding-progress">
-          <span>{t("onboarding.step", { current: step })}</span>
-          <div aria-hidden="true">
-            <i className={step === 2 ? "is-complete" : undefined} />
-          </div>
+    <dialog
+      aria-labelledby="onboarding-heading"
+      aria-modal="true"
+      className="onboarding-dialog"
+      ref={dialogRef}
+      // Choosing a goal is required before the dashboard opens, so Escape does not dismiss it.
+      onCancel={(event) => event.preventDefault()}
+    >
+      <div className="onboarding-progress">
+        <span>{t("onboarding.step", { current: step })}</span>
+        <div aria-hidden="true">
+          <i className={step === 2 ? "is-complete" : undefined} />
         </div>
+      </div>
 
-        {step === 1 ? (
-          <>
-            <h1 id="onboarding-heading">{t("onboarding.goal.title")}</h1>
-            <p className="onboarding-copy">{t("onboarding.goal.help")}</p>
-            <div className="onboarding-options">
-              {goals.map((item) => (
-                <button
-                  aria-pressed={goal === item}
-                  className={goal === item ? "is-selected" : undefined}
-                  key={item}
-                  type="button"
-                  onClick={() => {
-                    setGoal(item);
-                    setStep(2);
-                  }}
-                >
-                  <strong>{goalLabel(item, t)}</strong>
-                  <span>{goalHelp(item, t)}</span>
-                </button>
-              ))}
-            </div>
-          </>
-        ) : (
-          <>
-            <h1 id="onboarding-heading">{t("onboarding.evidence.title")}</h1>
-            <p className="onboarding-copy">{t("onboarding.evidence.help")}</p>
-            <ul className="onboarding-evidence">
-              <li>{t("onboarding.evidence.attempts")}</li>
-              <li>{t("onboarding.evidence.adaptation")}</li>
-              <li>{t("onboarding.evidence.control")}</li>
-            </ul>
-            {error ? <p className="form-error">{error}</p> : null}
-            <div className="onboarding-actions">
+      {step === 1 ? (
+        <>
+          <h1 id="onboarding-heading">{t("onboarding.goal.title")}</h1>
+          <p className="onboarding-copy">{t("onboarding.goal.help")}</p>
+          <div className="onboarding-options">
+            {goals.map((item) => (
               <button
-                className="ghost-button"
-                disabled={pending}
+                aria-pressed={goal === item}
+                className={goal === item ? "is-selected" : undefined}
+                key={item}
                 type="button"
-                onClick={() => setStep(1)}
+                onClick={() => {
+                  setGoal(item);
+                  setStep(2);
+                }}
               >
-                {t("onboarding.back")}
+                <strong>{goalLabel(item, t)}</strong>
+                <span>{goalHelp(item, t)}</span>
               </button>
-              <button
-                className="onboarding-primary"
-                disabled={pending}
-                type="button"
-                onClick={() => void finish()}
-              >
-                {pending ? t("onboarding.saving") : t("onboarding.goToDashboard")}
-              </button>
-            </div>
-          </>
-        )}
-      </section>
-    </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <h1 id="onboarding-heading">{t("onboarding.evidence.title")}</h1>
+          <p className="onboarding-copy">{t("onboarding.evidence.help")}</p>
+          <ul className="onboarding-evidence">
+            <li>{t("onboarding.evidence.attempts")}</li>
+            <li>{t("onboarding.evidence.adaptation")}</li>
+            <li>{t("onboarding.evidence.control")}</li>
+          </ul>
+          {error ? <p className="form-error">{error}</p> : null}
+          <div className="onboarding-actions">
+            <button
+              className="ghost-button"
+              disabled={pending}
+              type="button"
+              onClick={() => setStep(1)}
+            >
+              {t("onboarding.back")}
+            </button>
+            <button
+              className="onboarding-primary"
+              disabled={pending}
+              type="button"
+              onClick={() => void finish()}
+            >
+              {pending ? t("onboarding.saving") : t("onboarding.goToDashboard")}
+            </button>
+          </div>
+        </>
+      )}
+    </dialog>
   );
 }
 

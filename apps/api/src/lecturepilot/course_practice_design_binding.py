@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
-from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -17,7 +15,7 @@ from lecturepilot.course_practice_design_validation import (
     validate_learning_map_practice_contract,
 )
 from lecturepilot.course_canvas_repairs import lecture_source_revision
-from lecturepilot.durable_files import ensure_durable_directory, fsync_directory
+from lecturepilot.durable_files import atomic_write_text
 from lecturepilot.learning_map import LearningMap, read_learning_map
 from lecturepilot.storage_layout import StorageLayout
 
@@ -61,18 +59,7 @@ def write_practice_design_binding(
         learning_intent_revision=design.learning_intent.revision,
     )
     path = binding_path(canvas_dir)
-    ensure_durable_directory(path.parent)
-    temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
-    try:
-        descriptor = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            handle.write(binding.model_dump_json(indent=2))
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary, path)
-        fsync_directory(path.parent)
-    finally:
-        temporary.unlink(missing_ok=True)
+    atomic_write_text(path, binding.model_dump_json(indent=2))
     return binding
 
 

@@ -12,15 +12,14 @@ export function InfoArticle({
   children?: ReactNode;
   afterSection?: Record<string, ReactNode>;
 }) {
-  const { locale } = useI18n();
-  const de = locale === "de";
+  const { t } = useI18n();
   return (
     <article className="how-article guide-article">
       <header className="how-hero">
         <h1>{content.title}</h1>
         <p>{content.intro}</p>
       </header>
-      <nav className="guide-nav" aria-label={de ? "Auf dieser Seite" : "On this page"}>
+      <nav className="guide-nav" aria-label={t("info.onThisPage")}>
         {content.sections.map((section) => (
           <a key={section.id} href={`#${section.id}`}>
             {section.title}
@@ -45,13 +44,13 @@ export function InfoArticle({
           )}
           {section.example && (
             <aside className="guide-example">
-              <strong>{de ? "In LecturePilot ausprobieren" : "Try this in LecturePilot"}</strong>
+              <strong>{t("info.tryIt")}</strong>
               <p>{section.example}</p>
             </aside>
           )}
           {section.detail && (
             <details className="guide-detail">
-              <summary>{de ? "Mehr dazu" : "More detail"}</summary>
+              <summary>{t("info.moreDetail")}</summary>
               <p>{section.detail}</p>
             </details>
           )}

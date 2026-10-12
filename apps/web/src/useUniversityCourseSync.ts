@@ -1,9 +1,11 @@
 import { useEffect, useRef } from "react";
 
+import { pollUntil, PollTimeoutError } from "./polling";
 import { refreshSession } from "./sessionApi";
 import type { LoginSession } from "./types";
 
-const POLL_INTERVAL_MS = 750;
+const FIRST_POLL_MS = 2_000;
+const MAX_POLL_MS = 8_000;
 const SYNC_TIMEOUT_MS = 60_000;
 
 export function useUniversityCourseSync(
@@ -24,33 +26,32 @@ export function useUniversityCourseSync(
     const pollingSession: LoginSession = activeSession;
 
     const controller = new AbortController();
-    const deadline = Date.now() + SYNC_TIMEOUT_MS;
     let latestSession = activeSession;
-    let timer: ReturnType<typeof setTimeout> | undefined;
 
-    async function poll() {
-      if (Date.now() >= deadline) {
-        setSession({ ...latestSession, university_course_sync_status: "error" });
-        return;
-      }
-      try {
-        const refreshed = await refreshSession(pollingSession, controller.signal);
-        if (controller.signal.aborted) return;
-        latestSession = refreshed;
-        setSession(refreshed);
-        if (refreshed.university_course_sync_status !== "loading") {
-          return;
+    pollUntil({
+      initialDelayMs: FIRST_POLL_MS,
+      maxDelayMs: MAX_POLL_MS,
+      timeoutMs: SYNC_TIMEOUT_MS,
+      signal: controller.signal,
+      poll: async (signal) => {
+        try {
+          const refreshed = await refreshSession(pollingSession, signal);
+          if (signal?.aborted) return { done: true, value: undefined };
+          latestSession = refreshed;
+          setSession(refreshed);
+          return refreshed.university_course_sync_status === "loading"
+            ? { done: false }
+            : { done: true, value: undefined };
+        } catch (error) {
+          if (signal?.aborted) throw error;
+          return { done: false };
         }
-      } catch {
-        if (controller.signal.aborted) return;
+      },
+    }).catch((error: unknown) => {
+      if (error instanceof PollTimeoutError) {
+        setSession({ ...latestSession, university_course_sync_status: "error" });
       }
-      timer = setTimeout(poll, POLL_INTERVAL_MS);
-    }
-
-    timer = setTimeout(poll, POLL_INTERVAL_MS);
-    return () => {
-      controller.abort();
-      if (timer) clearTimeout(timer);
-    };
+    });
+    return () => controller.abort();
   }, [setSession, syncStatus, username]);
 }

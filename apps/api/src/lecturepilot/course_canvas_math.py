@@ -34,39 +34,7 @@ _TEXT_ARGUMENT_RE = re.compile(
     r"\\(?:operatorname|text|textrm|textsf|texttt|mathrm|mathsf|mathtt|mathit)\*?\{[^{}]*\}"
 )
 _SCRIPT_IDENTIFIER_RE = re.compile(r"[_^]\{[A-Za-z0-9,+\-=&\s]*\}")
-_BOOLEAN_LITERAL_RE = re.compile(r"(?<![\\A-Za-z])(?P<literal>true|false)(?![A-Za-z])")
 _PLAIN_PHRASE_RE = re.compile(r"(?<![\\.])\b[A-Za-z]{3,}\b(?:\s+|[-–—]\s*)\b[A-Za-z]{3,}\b(?!\.)")
-_LEADING_LABEL_RE = re.compile(
-    r"^(?P<label>[A-Za-z][A-Za-z0-9 ,.'’()/-]*[A-Za-z][ :]\s*)"
-    r"(?P<formula>(?:\\[A-Za-z]+|[A-Za-z]\s*[_^(]).*)$",
-    re.DOTALL,
-)
-_SOURCE_SHORTHANDS = (
-    (re.compile(r"\\P\b"), r"\\Pr"),
-    (re.compile(r"\\K\b"), "K"),
-    (re.compile(r"\\Q\b"), "Q"),
-    (re.compile(r"\\V\b"), "V"),
-)
-_GENERATED_MATH_WRAPPERS = (
-    re.compile(
-        r"^```(?:math|latex)?\s*(?P<formula>(?:(?!```).)*)\s*```$",
-        re.DOTALL | re.IGNORECASE,
-    ),
-    re.compile(
-        r"^~~~(?:math|latex)?\s*(?P<formula>(?:(?!~~~).)*)\s*~~~$",
-        re.DOTALL | re.IGNORECASE,
-    ),
-    re.compile(r"^\$\$(?P<formula>.*?)\$\$$", re.DOTALL),
-    re.compile(r"^\$(?P<formula>.*?)\$$", re.DOTALL),
-    re.compile(r"^\\\[(?P<formula>.*?)\\\]$", re.DOTALL),
-    re.compile(r"^\\\((?P<formula>.*?)\\\)$", re.DOTALL),
-)
-_DISPLAY_SEGMENT_RE = re.compile(
-    r"\s*(?:```(?:math|latex)?\s*(?P<fence>.*?)\s*```|"
-    r"~~~(?:math|latex)?\s*(?P<tilde>.*?)\s*~~~|"
-    r"\$\$(?P<dollar>.*?)\$\$|\\\[(?P<bracket>.*?)\\\])\s*",
-    re.DOTALL | re.IGNORECASE,
-)
 
 
 def generated_math_instructions() -> str:
@@ -82,101 +50,6 @@ def generated_math_instructions() -> str:
         "Keep a single equation as one expression. For a multi-line derivation, use "
         "\\begin{aligned} ... \\\\ ... \\end{aligned} inside the math block."
     )
-
-
-def normalize_generated_math(value: str) -> str:
-    """Apply unambiguous display-math repairs before strict validation."""
-    formula = value.strip()
-    for wrapper in _GENERATED_MATH_WRAPPERS:
-        if match := wrapper.fullmatch(formula):
-            formula = match.group("formula").strip()
-            break
-    else:
-        formula = _combine_display_segments(formula)
-    formula = formula.replace(r"\[", "").replace(r"\]", "")
-    formula = formula.replace(r"\(", "").replace(r"\)", "")
-    formula = _remove_orphan_closing_environments(formula)
-    for pattern, replacement in _SOURCE_SHORTHANDS:
-        formula = pattern.sub(replacement, formula)
-    formula = _replace_boolean_literals(formula)
-    match = _LEADING_LABEL_RE.match(formula)
-    if not match or not _looks_like_expression(match.group("formula")):
-        return formula
-    label = match.group("label").replace("{", r"\{").replace("}", r"\}")
-    return rf"\text{{{label}}}{match.group('formula')}"
-
-
-def _remove_orphan_closing_environments(formula: str) -> str:
-    environments: list[str] = []
-    orphaned: list[tuple[int, int]] = []
-    for match in _ENVIRONMENT_RE.finditer(formula):
-        command = match.group(0).split("{", 1)[0]
-        environment = match.group("environment")
-        if command == r"\begin":
-            environments.append(environment)
-        elif not environments:
-            orphaned.append(match.span())
-        elif environments[-1] == environment:
-            environments.pop()
-    if not orphaned:
-        return formula
-    parts: list[str] = []
-    cursor = 0
-    for start, end in orphaned:
-        parts.append(formula[cursor:start])
-        cursor = end
-    parts.append(formula[cursor:])
-    return "".join(parts).strip()
-
-
-def _replace_boolean_literals(formula: str) -> str:
-    parts: list[str] = []
-    cursor = 0
-    for match in _TEXT_ARGUMENT_RE.finditer(formula):
-        parts.append(
-            _BOOLEAN_LITERAL_RE.sub(
-                lambda literal: rf"\mathrm{{{literal.group('literal')}}}",
-                formula[cursor : match.start()],
-            )
-        )
-        parts.append(match.group(0))
-        cursor = match.end()
-    parts.append(
-        _BOOLEAN_LITERAL_RE.sub(
-            lambda literal: rf"\mathrm{{{literal.group('literal')}}}",
-            formula[cursor:],
-        )
-    )
-    return "".join(parts)
-
-
-def _combine_display_segments(value: str) -> str:
-    matches = list(_DISPLAY_SEGMENT_RE.finditer(value))
-    if len(matches) < 2:
-        return value
-    cursor = 0
-    formulas: list[str] = []
-    for match in matches:
-        if value[cursor : match.start()].strip():
-            return value
-        formulas.append(
-            (
-                match.group("fence")
-                or match.group("tilde")
-                or match.group("dollar")
-                or match.group("bracket")
-                or ""
-            ).strip()
-        )
-        cursor = match.end()
-    if value[cursor:].strip() or any(not formula for formula in formulas):
-        return value
-    joined = r" \\ ".join(formulas)
-    return rf"\begin{{gathered}}{joined}\end{{gathered}}"
-
-
-def _looks_like_expression(value: str) -> bool:
-    return bool(re.search(r"\\[A-Za-z]+|[=_^]|[A-Za-z]\s*\(", value))
 
 
 def validate_document_math(document: CanvasDocument) -> None:

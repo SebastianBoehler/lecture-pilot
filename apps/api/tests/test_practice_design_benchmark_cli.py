@@ -7,7 +7,7 @@ import sys
 
 import pytest
 
-from lecturepilot.course_practice_design_benchmark_models import (
+from practice_design_benchmark.models import (
     BENCHMARK_DIMENSIONS,
     PracticeDesignBenchmarkEvaluation,
     PracticeDesignBenchmarkReviewerJudgment,
@@ -15,7 +15,7 @@ from lecturepilot.course_practice_design_benchmark_models import (
     summarize_dimension_scores,
     validate_reviewer_specs,
 )
-from lecturepilot.course_practice_design_benchmark_report import (
+from practice_design_benchmark.report import (
     PracticeDesignBenchmarkError,
     PracticeDesignBenchmarkFixtureResult,
     PracticeDesignBenchmarkReport,

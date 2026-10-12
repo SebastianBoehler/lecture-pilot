@@ -5,7 +5,7 @@ import type {
   LectureAnalyticsSummary,
 } from "./types";
 
-export type EvidenceStatus = "available" | "insufficient-data" | "historical-only" | "no-data";
+type EvidenceStatus = "available" | "insufficient-data" | "historical-only" | "no-data";
 
 export type LectureSnapshot = {
   events: number;

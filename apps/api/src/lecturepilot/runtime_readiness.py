@@ -27,9 +27,10 @@ class RuntimeReadiness:
         self.database = database
 
     def check(self) -> ReadinessResult:
+        # The document converter runs only while courses are built (Compose profile
+        # "authoring"); learners never need it, so it must not gate API readiness.
         checks = {
             "database": _database_status(self.database),
-            "document_converter": _service_status("LECTUREPILOT_DOCUMENT_CONVERTER_URL"),
             "latex_compiler": _compiler_status(),
         }
         return ReadinessResult(ready=all(value == "ok" for value in checks.values()), checks=checks)

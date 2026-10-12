@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from lecturepilot.canvas_internal_serialization import canvas_generation_job_internal_payload
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.course_canvas_repair_target import CanvasGenerationRepairTarget
-from lecturepilot.durable_files import ensure_durable_directory, fsync_directory
+from lecturepilot.durable_files import atomic_write_text, ensure_durable_directory, fsync_directory
 from lecturepilot.metadata_events import emit_metadata_event
 from lecturepilot.storage_layout import StorageLayout, safe_id
 
@@ -283,16 +283,6 @@ class CanvasGenerationStore:
 
     @staticmethod
     def _write(path: Path, job: CanvasGenerationJob) -> None:
-        temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
-        try:
-            descriptor = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-            with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-                handle.write(
-                    json.dumps(canvas_generation_job_internal_payload(job), separators=(",", ":"))
-                )
-                handle.flush()
-                os.fsync(handle.fileno())
-            os.replace(temporary, path)
-            fsync_directory(path.parent)
-        finally:
-            temporary.unlink(missing_ok=True)
+        atomic_write_text(
+            path, json.dumps(canvas_generation_job_internal_payload(job), separators=(",", ":"))
+        )

@@ -1,0 +1,225 @@
+.workspace-title {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.workspace-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.workspace-progress-bar {
+  position: relative;
+  flex: 0 0 72px;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-bg-tertiary);
+}
+
+.workspace-progress-bar::after {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--progress, 0%);
+  border-radius: inherit;
+  background: var(--color-accent-primary);
+  content: "";
+}
+
+.lecture-status-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.lecture-tag {
+  border: 1px solid var(--color-border-primary);
+  border-radius: 999px;
+  padding: 1px 7px;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.lecture-tag.is-new {
+  border-color: var(--color-accent-primary);
+  color: var(--color-accent-primary);
+  background: var(--color-bg-primary);
+}
+
+.lecture-tag.is-complete {
+  border-color: color-mix(in srgb, var(--color-success) 55%, transparent);
+  color: var(--color-success);
+}
+
+.course-search {
+  position: relative;
+  margin-bottom: 10px;
+}
+
+.course-search-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--control-radius);
+  padding: 0 10px;
+  color: var(--color-text-tertiary);
+  background: var(--color-bg-primary);
+}
+
+.course-search-field:focus-within {
+  border-color: var(--color-accent-primary);
+}
+
+.course-search-field input {
+  flex: 1;
+  min-width: 0;
+  min-height: 34px;
+  border: 0;
+  padding: 0;
+  color: var(--color-text-primary);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.course-search-results {
+  margin-top: 6px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 7px;
+  background: var(--color-bg-primary);
+}
+
+.course-search-results > p {
+  margin: 0;
+  padding: 10px 12px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.course-search-results ul {
+  max-height: 320px;
+  margin: 0;
+  overflow-y: auto;
+  padding: 0;
+  list-style: none;
+}
+
+.course-search-results li + li {
+  border-top: 1px solid var(--color-border-primary);
+}
+
+.course-search-results button {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  border: 0;
+  padding: 9px 12px;
+  color: var(--color-text-secondary);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.course-search-results button:hover,
+.course-search-results button:focus-visible {
+  background: var(--color-bg-secondary);
+}
+
+.course-search-hit-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+}
+
+.course-search-hit-title strong {
+  color: var(--color-text-primary);
+  font-size: 13px;
+}
+
+.course-search-hit-title small {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+}
+
+.exam-prep-modes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.exam-prep-modes button {
+  display: grid;
+  gap: 3px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 7px;
+  padding: 10px 12px;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-primary);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.exam-prep-modes button strong {
+  color: var(--color-text-primary);
+  font-size: 14px;
+}
+
+.exam-prep-modes button.is-active {
+  border-color: var(--color-accent-primary);
+  box-shadow: inset 0 0 0 1px var(--color-accent-primary);
+}
+
+.notes-export {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  border-top: 1px solid var(--color-border-primary);
+  padding-top: 12px;
+}
+
+.notes-export p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.notes-export button {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 6px;
+  min-height: 32px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--control-radius);
+  padding: 0 10px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 620px) {
+  .exam-prep-modes {
+    grid-template-columns: 1fr;
+  }
+}

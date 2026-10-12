@@ -233,6 +233,7 @@ class AgentTurnInput(BaseModel):
     model: str | None = Field(default=None, min_length=3, max_length=200)
     canvas_state: CanvasState = Field(default_factory=CanvasState)
     canvas_context: CanvasDocument | None = None
+    learner_section_ids: list[str] = Field(default_factory=list)  # Server-read overlay ids.
     user_memory: UserMemoryContext = Field(default_factory=UserMemoryContext)
     assessment_history: AssessmentHistoryContext = Field(default_factory=AssessmentHistoryContext)
     readiness_task_id: str | None = Field(default=None, min_length=1, max_length=220)

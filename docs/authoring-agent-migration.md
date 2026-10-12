@@ -24,26 +24,39 @@ and teaching validation. Provider benchmarks are separate from deterministic CI.
 - Framework history is private job state, not a replacement learner memory store.
 - Hidden exit/transfer tasks remain outside authoring prompts and file tools.
 - Existing background jobs, leases and final ownership checks remain authoritative.
-- A configuration file or working directory alone is not an OS sandbox. This
-  worker has typed file tools, no general shell or arbitrary network tools.
+- A configuration file or working directory alone is not an OS sandbox. Authoring
+  model calls have no tools at all (no file, shell or network tools): each call returns
+  one section's Markdown, which the backend validates and writes to its assigned draft.
 
 ## Runtime and recovery
 
 `CourseCanvasAuthor` replaces the production planner entry point. `authoring_job` runs a
 bounded per-section workflow: one Markdown call per missing section with per-section
-deterministic checks (`AuthoringWorkspace.section`), a lecture-level check, one critic pass,
-at most one repair per flagged section and an annotating pass whose remaining notes become
-draft warnings. Model calls have no tools. Approved checkpoints are inserted by the backend,
-not rewritten by the model. The entire `practice-` block-id prefix is reserved for these
-checkpoints. Colliding generated block ids are renamed lecture-wide.
+deterministic checks (`AuthoringWorkspace.section`), a lecture-level check, ONE critic call
+over the whole lecture (`course_canvas_quality.py`; split by section only above
+`MAX_QUALITY_PROMPT_CHARS`) and at most one repair per flagged section. Repaired sections are
+not reviewed again: each becomes a "repaired once, not re-checked" draft warning, and the
+lecture-level deterministic check runs again after repairs. Model calls have no tools.
+Approved checkpoints are inserted by the backend, not rewritten by the model. The entire
+`practice-` block-id prefix is reserved for these checkpoints. Colliding generated block ids
+are renamed lecture-wide. Each section prompt carries only that section's approved target
+contracts, objective and planning context.
+
+Call budget for a four-goal, five-section lecture (pinned by `test_authoring_call_budget.py`
+and `test_generation_call_budget.py`): goals 2-3 calls (was 2-4), teaching 5-9 (was 5-10),
+canvas 6 on the happy path and 11 when every section is flagged (was 10-20 plus a checkpoint
+judge per objection). A design conflict adds one teaching repair per named goal and rewrites
+only the affected sections plus one critic call (previously a teaching review and a complete
+canvas re-run).
 
 The private course builder directory contains:
 
 ```text
 authoring-jobs/<lecture>/<generation>/
-  session.json                 # job identity, completion and metrics
+  session.json                 # job identity, completion, metrics and the saved critique
   evidence/*.md                # read-only normalized source sections
   draft/*.md                   # assigned editable sections
+  section-inputs.json          # per-section input digest for reuse after a teaching repair
   initial-draft.json           # optional revision-checked repair seed
   session-reference.json       # repair attempts point directly to the original session
 authoring-metrics/<lecture>/<generation>.json
@@ -62,33 +75,44 @@ session rather than losing its files or accumulating reference chains.
 `POST .../canvas/draft/cancel` uses the existing actor-scoped idempotency key and
 revokes ownership; a remote worker notices lease loss through its heartbeat.
 
-Unchanged review batches are reused within a run. Changed teaching is reviewed
-again. Three repeated identical defects within one worker run stop with an explicit
+The critique (notes per section and which were repaired) is saved in `session.json`, so a
+resumed job finishes its pending repairs without another critic call. Three repeated
+identical defects within one worker run stop with an explicit
 stalled error, including bounded structural repair details. An explicit retry retains
 the draft, native history and cumulative metrics but starts a fresh repeat budget;
-it cannot silently approve a draft or disable validation. A critic
-issue against an exact approved checkpoint is checked against its task, rubric,
-source and teaching. Unsupported objections are dismissed; missing explanation
-is repaired in the canvas. Only a source-checked conflict that requires changing
-a fully professor-protected task/rubric stops with HTTP 409. AI-owned unpublished
-implementation can instead receive one bounded repair while preserving approved
-intent; see [learning intent ownership](learning-intent-ownership.md). Model agreement is still not proof
-of correctness, and human approval is not silently overwritten.
+it cannot silently approve a draft or disable validation. The critic receives each
+approved checkpoint's contract (outcome, task, rubric and exact source anchors with
+request-local evidence IDs, never hidden exit/transfer wording) and classifies its own
+objections in the same call (`course_canvas_quality_checkpoints.py`): `dismiss`,
+`repair_section` (missing explanation, repaired in the canvas) or `design_conflict`. A
+checkpoint decision is verified deterministically: it must name an approved checkpoint in its
+own section and cite only that checkpoint's evidence IDs; the native client retries otherwise,
+and an unverifiable decision never escalates or disappears but stays a section note. A
+verified conflict that requires changing a fully professor-protected task/rubric stops with
+HTTP 409. AI-owned unpublished implementation instead receives one bounded teaching repair of
+the named goals while preserving approved intent; see
+[learning intent ownership](learning-intent-ownership.md). That repair reuses the
+implementation's existing review. The new implementation's job then reuses every section whose
+`section-inputs.json` digest is unchanged and writes only the affected sections; the draft
+binds to the new implementation revision. Old sessions without digests regenerate fully.
+Further conflicts become draft warnings. Model agreement is still not proof of correctness,
+and human approval is not silently overwritten.
 There is no claim that structured output guarantees semantic correctness.
 
 ## Teaching implementation repair after intent approval
 
 The production implementation step uses `teaching_design_job` before canvas
 authoring: one structured call per missing approved goal, validated by
-`TeachingDesignWorkspace.write`, then one lecture review, one stateless repair per
-flagged goal and an annotating review. The backend binds every approved goal and
+`TeachingDesignWorkspace.write`, then one lecture review and one stateless repair per
+flagged goal. Repairs are not reviewed again; findings they addressed are labelled
+"Repaired once, not re-checked". The backend binds every approved goal and
 target order, preserves fixed tasks, and verifies source and intent revisions before
 model calls and saves. Valid sibling targets survive repairs.
 
 Private `builder/implementation-jobs/<lecture>/<identity>/` stores `draft.json`
-and `progress.json` (goals already repaired). Identity binds source, intent, model,
-starting design and repair context. Interrupted jobs resume saved targets. A cached
-review applies only to that exact draft. Unresolved findings remain warnings.
+and `progress.json` (flagged and repaired goals). Identity binds source, intent, model,
+starting design, its review and repair context. Interrupted jobs resume saved targets and
+pending repairs without another review. Unresolved findings remain warnings.
 Publication still requires the exact-draft approval.
 
 Metrics count model requests, review rounds, rejected writes and repairs.

@@ -1,6 +1,6 @@
 from lecturepilot.agent_context_models import AgentConversationMessage
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.model_client import _messages
+from lecturepilot.tutor_prompt import tutor_messages as _messages
 from lecturepilot.models import (
     AgentCoachingContext,
     AgentTurnInput,
