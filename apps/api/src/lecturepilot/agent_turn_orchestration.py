@@ -30,6 +30,7 @@ from lecturepilot.model_usage import model_usage_scope
 from lecturepilot.models import AgentTurnInput, AgentTurnResult
 from lecturepilot.observability import Observability
 from lecturepilot.providers import ProviderConfigurationError
+from lecturepilot.tutor_turn_budget import tutor_quota_reservation
 from lecturepilot.usage_quota import UsageQuotaExceeded
 
 STREAM_HEARTBEAT_SECONDS = 15
@@ -46,6 +47,9 @@ async def complete_agent_turn(
     actor_user_id = actor_user_id or turn.user_id
     reserved = False
     usage_date = datetime.now(UTC).date()
+    reservation = tutor_quota_reservation(
+        turn, writing_turn_reservation=app.state.usage_quota.limits.tokens_per_turn
+    )
     try:
         reserved = await anyio.to_thread.run_sync(
             partial(
@@ -53,6 +57,7 @@ async def complete_agent_turn(
                 tenant_id=app.state.course_tenant_id,
                 user_id=actor_user_id,
                 course_id=turn.course_id,
+                reserved_tokens=reservation,
                 usage_date=usage_date,
             )
         )
@@ -83,6 +88,7 @@ async def complete_agent_turn(
                     course_id=turn.course_id,
                     usage_date=usage_date,
                     actual_tokens=total.total_tokens,
+                    reserved_tokens=reservation,
                 )
             )
 

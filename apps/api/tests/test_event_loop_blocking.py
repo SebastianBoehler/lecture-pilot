@@ -80,3 +80,33 @@ def test_source_parsing_never_runs_while_the_course_lock_is_held() -> None:
 
 def _name(func: ast.AST) -> str | None:
     return getattr(func, "id", None) or getattr(func, "attr", None)
+
+
+LEASE_STORE_CALLS = {"begin", "touch", "renew", "complete", "fail"}
+LEASE_MODULES = (
+    "course_canvas_generation_service.py",
+    "practice_exam_generation_service.py",
+    "practice_exam_lease.py",
+)
+# One claim per HTTP request; it must stay atomic with registering the background task, so
+# a cancelled request cannot leave a claimed attempt without a worker.
+ATOMIC_CLAIMS = {"run_idempotent_canvas_generation": {"begin"}}
+
+
+def test_generation_lease_file_io_runs_off_the_event_loop() -> None:
+    """Job stores take a blocking file lock and fsync JSON on every heartbeat and poll."""
+    offenders = []
+    root = Path(lecturepilot.__file__).parent
+    for module in LEASE_MODULES:
+        for node in ast.walk(ast.parse((root / module).read_text(encoding="utf-8"))):
+            if not isinstance(node, ast.AsyncFunctionDef):
+                continue
+            allowed = ATOMIC_CLAIMS.get(node.name, set())
+            for call in ast.walk(node):
+                if (
+                    isinstance(call, ast.Call)
+                    and isinstance(call.func, ast.Attribute)
+                    and call.func.attr in LEASE_STORE_CALLS - allowed
+                ):
+                    offenders.append(f"{module}:{call.lineno} {node.name} -> {call.func.attr}")
+    assert not offenders, "\n".join(offenders)

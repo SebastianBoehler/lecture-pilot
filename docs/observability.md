@@ -36,6 +36,17 @@ docker compose --env-file .env.production -f deploy/compose.yml exec -T latex-co
 Uvicorn's duplicate access log is disabled in the production image; the safe
 request events are the canonical API access diagnostics.
 
+Each tutor turn emits one `tutor.turn_usage` event with the turn kind (`chat`,
+`canvas_write`, or `assessment`), request count, and input, cached-input, and
+output tokens. The per-request `model.request_finished` events carry the same
+counters. Prefix-cache hit rate is the sum of `cached_input_tokens` over the sum
+of `input_tokens`:
+
+```bash
+docker compose --env-file .env.production -f deploy/compose.yml exec -T api \
+  grep '"event":"tutor.turn_usage"' /app/logs/api-metadata.jsonl | tail -n 50
+```
+
 To trace agent turns, model calls, low-level workspace tools, canvas writes,
 and quality-gate decisions into a self-hosted MLflow tracking server, install
 the optional backend dependency and enable it:

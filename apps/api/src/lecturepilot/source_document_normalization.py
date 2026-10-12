@@ -6,6 +6,7 @@ from pathlib import Path
 from lecturepilot.document_converter_client import (
     DocumentConverterClient,
     DocumentConverterError,
+    DocumentConverterUnavailable,
 )
 from lecturepilot.source_bundle import SourceBundleFile
 
@@ -24,7 +25,7 @@ def normalize_selected_documents(
         return
     configured = os.getenv("LECTUREPILOT_DOCUMENT_CONVERTER_URL", "").strip()
     if not configured:
-        raise DocumentConverterError("Document converter is not configured.")
+        raise DocumentConverterUnavailable()
     client = DocumentConverterClient(configured)
     for file in selected:
         if not file.sha256:

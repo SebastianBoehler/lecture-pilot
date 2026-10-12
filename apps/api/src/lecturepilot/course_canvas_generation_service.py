@@ -15,6 +15,7 @@ from lecturepilot.course_canvas_generation_jobs import (
     CanvasGenerationStoreError,
 )
 from lecturepilot.course_canvas_repair_target import CanvasGenerationRepairTarget
+from lecturepilot.generation_slots import background_generation_slot
 
 
 CANVAS_GENERATION_LEASE_SECONDS = 45
@@ -87,6 +88,7 @@ async def run_idempotent_canvas_generation(
 
     task = asyncio.create_task(
         _execute(
+            app,
             store,
             job,
             actor_user_id=actor_user_id,
@@ -110,6 +112,7 @@ async def run_idempotent_canvas_generation(
 
 
 async def _execute(
+    app: Any,
     store: CanvasGenerationStore,
     job: CanvasGenerationJob,
     *,
@@ -133,16 +136,25 @@ async def _execute(
 
     heartbeat.add_done_callback(stop_on_lease_loss)
     try:
-        canvas = await generate(job.generation_id, job.attempt)
+        # The heartbeat keeps the lease while the job waits for a shared generation slot.
+        async with background_generation_slot(app):
+            canvas = await generate(job.generation_id, job.attempt)
     except asyncio.CancelledError:
         with suppress(CanvasGenerationStoreError):
-            store.fail(
-                job, actor_user_id=actor_user_id, request_key=request_key, error_code="interrupted"
+            await asyncio.shield(
+                asyncio.to_thread(
+                    store.fail,
+                    job,
+                    actor_user_id=actor_user_id,
+                    request_key=request_key,
+                    error_code="interrupted",
+                )
             )
         raise
     except Exception as exc:
         repair = _repair_metadata(exc)
-        store.fail(
+        await asyncio.to_thread(
+            store.fail,
             job,
             actor_user_id=actor_user_id,
             request_key=request_key,
@@ -155,7 +167,8 @@ async def _execute(
         heartbeat.cancel()
         with suppress(asyncio.CancelledError, OSError, CanvasGenerationStoreError):
             await heartbeat
-    completed = store.complete(
+    completed = await asyncio.to_thread(
+        store.complete,
         job,
         canvas,
         actor_user_id=actor_user_id,
@@ -173,7 +186,9 @@ async def _heartbeat(
 ) -> None:
     while True:
         await asyncio.sleep(CANVAS_GENERATION_HEARTBEAT_SECONDS)
-        store.touch(
+        # File lock plus durable JSON write: keep it off the event loop.
+        await asyncio.to_thread(
+            store.touch,
             job,
             actor_user_id=actor_user_id,
             request_key=request_key,
@@ -190,7 +205,8 @@ async def _wait_for_existing_or_claim(
 ) -> tuple[CanvasGenerationJob, bool]:
     while True:
         await asyncio.sleep(0.25)
-        job, owns_attempt = store.begin(
+        job, owns_attempt = await asyncio.to_thread(
+            store.begin,
             course_id=course_id,
             lecture_id=lecture_id,
             actor_user_id=actor_user_id,

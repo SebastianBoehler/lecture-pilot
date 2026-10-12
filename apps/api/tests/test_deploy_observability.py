@@ -85,11 +85,35 @@ def test_production_runtime_uses_only_the_production_env_file() -> None:
     assert '--env-file "${ENV_FILE}"' in deploy_script
 
 
-def test_deploy_builds_and_starts_document_converter_before_api() -> None:
+def test_deploy_builds_the_converter_but_starts_it_only_for_authoring() -> None:
     deploy_script = (REPO_ROOT / "scripts" / "deploy-production.sh").read_text()
+    compose = yaml.safe_load((REPO_ROOT / "deploy" / "compose.yml").read_text())
 
-    converter_build = deploy_script.index("compose build document-converter")
+    converter_build = deploy_script.index("compose --profile authoring build document-converter")
     api_build = deploy_script.index("compose build api")
-    converter_start = deploy_script.index("--wait document-converter")
+    converter_refresh = deploy_script.index("grep -qx document-converter")
     api_start = deploy_script.index("compose up -d --no-deps --no-build api web")
-    assert converter_build < api_build < converter_start < api_start
+    assert converter_build < api_build < converter_refresh < api_start
+    assert compose["services"]["document-converter"]["profiles"] == ["authoring"]
+    assert "document-converter" not in compose["services"]["api"]["depends_on"]
+    assert "latex-compiler" in compose["services"]["api"]["depends_on"]
+
+
+def test_compose_fits_one_small_host() -> None:
+    compose = yaml.safe_load((REPO_ROOT / "deploy" / "compose.yml").read_text())
+    services = compose["services"]
+    limits = {
+        name: services[name]["mem_limit"] for name in services if "mem_limit" in services[name]
+    }
+
+    assert limits == {
+        "gateway": "128m",
+        "api": "1g",
+        "latex-compiler": "768m",
+        "document-converter": "1536m",
+        "db": "512m",
+        "web": "96m",
+    }
+    # One bounded PDF worker (768 MB address-space cap) runs beside the API process.
+    assert compose["x-api-environment"]["LECTUREPILOT_PROCESSING_WORKERS"] == "1"
+    assert compose["x-api-environment"]["LECTUREPILOT_ENV"] == "production"

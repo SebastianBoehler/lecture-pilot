@@ -23,6 +23,7 @@ from lecturepilot.course_canvas_generation_service import (
     run_idempotent_canvas_generation,
 )
 from lecturepilot.course_canvas_store import InvalidCanvasDraftError
+from lecturepilot.document_converter_client import DocumentConverterUnavailable
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.providers import ProviderConfigurationError
 from lecturepilot.source_bundle_canvas import SourceBundleCanvasError
@@ -75,7 +76,7 @@ async def run_canvas_generation_request(
             lecture_id,
             headers={"X-Generation-Repairable": "true"},
         )
-    except ProviderConfigurationError as exc:
+    except (ProviderConfigurationError, DocumentConverterUnavailable) as exc:
         raise _generation_error(503, str(exc), store, context, request_key, course_id, lecture_id)
     except ModelExecutionError as exc:
         raise _generation_error(502, str(exc), store, context, request_key, course_id, lecture_id)
@@ -87,6 +88,7 @@ async def run_canvas_generation_request(
             "canvas_workspace_error": 404,
             "source_bundle_canvas_error": 400,
             "provider_configuration_error": 503,
+            "document_converter_unavailable": 503,
             "interrupted": 503,
             "timeout": 504,
         }.get(exc.error_code, 502)

@@ -14,7 +14,11 @@ import json
 import os
 from pathlib import Path
 
-from lecturepilot.document_converter_client import DocumentConverterClient, DocumentConverterError
+from lecturepilot.document_converter_client import (
+    DocumentConverterClient,
+    DocumentConverterError,
+    DocumentConverterUnavailable,
+)
 from lecturepilot.durable_files import atomic_write_json
 
 OCR_CACHE_VERSION = 1
@@ -66,6 +70,8 @@ def _recognized_text(record: PdfPageRecord, cache_dir: Path | None) -> tuple[str
                 width=record.width,
                 height=record.height,
             )
+        except DocumentConverterUnavailable:
+            raise  # A stopped authoring service must fail clearly, not drop page text.
         except (DocumentConverterError, RuntimeError):
             return record.native_text, ocr_unavailable_warning(record.number)
         cached = {
