@@ -1,40 +1,32 @@
-import { lazy, Suspense, useState } from "react";
+import { useState } from "react";
 
+import type { CourseWorkspaceTool } from "./CourseWorkspaceTabs";
+import { DashboardActiveWorkspace } from "./DashboardActiveWorkspace";
 import type { CourseWorkspaceGroup } from "./dashboardCourses";
-import { availableCourseLectures } from "./dashboardCourses";
-import { DashboardLectureRow } from "./DashboardLectureRow";
-import {
-  CourseWorkspaceTabs,
-  panelId,
-  tabId,
-  type CourseWorkspaceTool,
-} from "./CourseWorkspaceTabs";
 import { useI18n } from "./i18n";
-import type { Attendance, Lecture, LoginSession } from "./types";
-
-const ExamReadinessPanel = lazy(() =>
-  import("./ExamReadinessPanel").then((module) => ({ default: module.ExamReadinessPanel })),
-);
-const PracticeExamPanel = lazy(() =>
-  import("./PracticeExamPanel").then((module) => ({ default: module.PracticeExamPanel })),
-);
-
-const LECTURE_PREVIEW_COUNT = 2;
+import type { Attendance, LearnerCourseProfile, Lecture, LoginSession } from "./types";
 
 export function DashboardCourseWorkspaces({
   courseGroups,
+  newLectureIds,
+  profileCourses,
   selectedCourseId,
   session,
   onSelectCourse,
   onOpen,
+  onOpenSection,
   onProgress,
   onSetAttendance,
 }: {
   courseGroups: CourseWorkspaceGroup[];
+  newLectureIds: Set<string>;
+  /** Undefined while the learner profile is unavailable; progress is then hidden. */
+  profileCourses?: LearnerCourseProfile[];
   selectedCourseId: string;
   session: LoginSession | null;
   onSelectCourse: (courseId: string) => void;
   onOpen: (courseId: string, lecture: Lecture) => void;
+  onOpenSection: (courseId: string, lecture: Lecture, sectionId: string) => void;
   onProgress: () => void | Promise<void>;
   onSetAttendance: (courseId: string, lectureId: string, attendance: Attendance) => void;
 }) {
@@ -86,14 +78,28 @@ export function DashboardCourseWorkspaces({
       ) : null}
 
       {activeGroup ? (
-        <ActiveWorkspace
+        <DashboardActiveWorkspace
           key={activeGroup.course.id}
           activeTool={activeTool}
           expanded={expandedLectureLists[activeGroup.course.id] ?? false}
           group={activeGroup}
+          newLectureIds={newLectureIds}
+          profile={
+            profileCourses
+              ? (profileCourses.find((item) => item.course_id === activeGroup.course.id) ?? {
+                  course_id: activeGroup.course.id,
+                  memory: "",
+                  passed_lecture_ids: [],
+                  files: [],
+                })
+              : undefined
+          }
           session={session}
           onActiveToolChange={setActiveTool}
           onOpen={(lecture) => onOpen(activeGroup.course.id, lecture)}
+          onOpenSection={(lecture, sectionId) =>
+            onOpenSection(activeGroup.course.id, lecture, sectionId)
+          }
           onProgress={onProgress}
           onSetAttendance={(lectureId, attendance) =>
             onSetAttendance(activeGroup.course.id, lectureId, attendance)
@@ -109,118 +115,6 @@ export function DashboardCourseWorkspaces({
 
       {unavailableGroups.length ? <UnavailableCourses groups={unavailableGroups} /> : null}
     </>
-  );
-}
-
-function ActiveWorkspace({
-  activeTool,
-  expanded,
-  group,
-  session,
-  onActiveToolChange,
-  onOpen,
-  onProgress,
-  onSetAttendance,
-  onToggleLectures,
-}: {
-  activeTool: CourseWorkspaceTool;
-  expanded: boolean;
-  group: CourseWorkspaceGroup;
-  session: LoginSession | null;
-  onActiveToolChange: (tool: CourseWorkspaceTool) => void;
-  onOpen: (lecture: Lecture) => void;
-  onProgress: () => void | Promise<void>;
-  onSetAttendance: (lectureId: string, attendance: Attendance) => void;
-  onToggleLectures: () => void;
-}) {
-  const { t } = useI18n();
-  const [openedTools, setOpenedTools] = useState<CourseWorkspaceTool[]>([]);
-  const idBase = `course-tools-${group.course.id.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
-  const visibleLectures = expanded
-    ? group.courseLectures
-    : group.courseLectures.slice(0, LECTURE_PREVIEW_COUNT);
-
-  return (
-    <section
-      aria-label={t("dashboard.studyWorkspaceFor", { course: group.course.title })}
-      className="course-workspace-body"
-      role="region"
-    >
-      <header className="workspace-toolbar">
-        <h3>{group.course.title}</h3>
-        <CourseWorkspaceTabs
-          activeTool={activeTool}
-          idBase={idBase}
-          onChange={(tool) => {
-            setOpenedTools((current) => (current.includes(tool) ? current : [...current, tool]));
-            onActiveToolChange(tool);
-          }}
-        />
-      </header>
-
-      <div
-        aria-labelledby={tabId(idBase, "lectures")}
-        className="workspace-tab-panel"
-        hidden={activeTool !== "lectures"}
-        id={panelId(idBase, "lectures")}
-        role="tabpanel"
-      >
-        <div
-          aria-label={t("dashboard.availableLectures", { course: group.course.title })}
-          className="lecture-list"
-        >
-          {visibleLectures.map((lecture) => (
-            <DashboardLectureRow
-              key={lecture.id}
-              lecture={lecture}
-              onOpen={onOpen}
-              onSetAttendance={onSetAttendance}
-            />
-          ))}
-        </div>
-        {group.courseLectures.length > LECTURE_PREVIEW_COUNT ? (
-          <button className="lecture-list-toggle" type="button" onClick={onToggleLectures}>
-            {expanded
-              ? t("dashboard.showFirstLectures", { count: LECTURE_PREVIEW_COUNT })
-              : t("dashboard.showAllLectures", { count: group.courseLectures.length })}
-          </button>
-        ) : null}
-      </div>
-
-      <div
-        aria-labelledby={tabId(idBase, "readiness")}
-        className="workspace-tab-panel"
-        hidden={activeTool !== "readiness"}
-        id={panelId(idBase, "readiness")}
-        role="tabpanel"
-      >
-        {openedTools.includes("readiness") ? (
-          <Suspense fallback={<p role="status">{t("app.loadingView")}</p>}>
-            <ExamReadinessPanel
-              course={group.course}
-              lectures={availableCourseLectures(group.courseLectures)}
-              session={session}
-              onOpenLecture={onOpen}
-              onProgress={onProgress}
-            />
-          </Suspense>
-        ) : null}
-      </div>
-
-      <div
-        aria-labelledby={tabId(idBase, "practice")}
-        className="workspace-tab-panel"
-        hidden={activeTool !== "practice"}
-        id={panelId(idBase, "practice")}
-        role="tabpanel"
-      >
-        {openedTools.includes("practice") ? (
-          <Suspense fallback={<p role="status">{t("app.loadingView")}</p>}>
-            <PracticeExamPanel course={group.course} session={session} />
-          </Suspense>
-        ) : null}
-      </div>
-    </section>
   );
 }
 

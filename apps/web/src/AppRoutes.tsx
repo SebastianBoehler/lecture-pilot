@@ -85,7 +85,12 @@ type AppRoutesProps = {
   onLogin: (session: LoginSession) => void;
   onNavigatePath: (path: string) => void;
   onOpenDemo: () => void;
-  onOpenLecture: (courseId: string, lecture: Lecture, review?: GateReviewOpening) => void;
+  onOpenLecture: (
+    courseId: string,
+    lecture: Lecture,
+    review?: GateReviewOpening,
+    focusSectionId?: string,
+  ) => void;
   onPreviewLecture: (courseId: string, lecture: Lecture) => void;
   onOpenProfessorDemo: () => void;
   onOpenCourseLink: (courseId: string) => void;

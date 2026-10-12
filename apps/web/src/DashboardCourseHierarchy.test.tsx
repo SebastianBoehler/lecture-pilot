@@ -66,8 +66,8 @@ describe("Dashboard supported course hierarchy", () => {
 
     const tabs = within(workspace).getByRole("tablist", { name: "Study tools" });
     const lecturesTab = within(tabs).getByRole("tab", { name: "Lectures" });
-    const readinessTab = within(tabs).getByRole("tab", { name: "Exam check" });
-    const practiceTab = within(tabs).getByRole("tab", { name: "Practice exams" });
+    const examTab = within(tabs).getByRole("tab", { name: "Exam prep" });
+    expect(within(tabs).getAllByRole("tab")).toHaveLength(2);
     expect(lecturesTab).toHaveAttribute("aria-selected", "true");
     expect(
       within(workspace).getByLabelText(`Available lectures for ${course.title}`),
@@ -79,8 +79,8 @@ describe("Dashboard supported course hierarchy", () => {
 
     lecturesTab.focus();
     await user.keyboard("{ArrowRight}");
-    expect(readinessTab).toHaveFocus();
-    expect(readinessTab).toHaveAttribute("aria-selected", "true");
+    expect(examTab).toHaveFocus();
+    expect(examTab).toHaveAttribute("aria-selected", "true");
     expect(
       await within(workspace).findByLabelText(`Exam readiness check for ${course.title}`),
     ).toBeVisible();
@@ -88,8 +88,10 @@ describe("Dashboard supported course hierarchy", () => {
       within(workspace).getByLabelText(`Available lectures for ${course.title}`),
     ).not.toBeVisible();
 
-    await user.click(practiceTab);
-    expect(practiceTab).toHaveAttribute("aria-selected", "true");
+    await user.click(within(workspace).getByRole("button", { name: /full mock exam/i }));
+    expect(
+      within(workspace).getByLabelText(`Exam readiness check for ${course.title}`),
+    ).not.toBeVisible();
     expect(
       await within(workspace).findByLabelText(`Practice exams for ${course.title}`),
     ).toBeVisible();

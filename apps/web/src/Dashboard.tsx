@@ -5,17 +5,17 @@ import {
 } from "./dashboardCourses";
 import { useState } from "react";
 import { DashboardCourseWorkspaces } from "./DashboardCourseWorkspaces";
-import { DashboardReviewPlan } from "./DashboardReviewPlan";
 import { useI18n } from "./i18n";
 import type { Attendance, Lecture, LoginSession, UniversityCourse } from "./types";
 import { LearnerOnboarding } from "./LearnerOnboarding";
-import { NextStudyRecommendation } from "./NextStudyRecommendation";
+import { NextUpCard } from "./NextUpCard";
 import type { GateReviewOpening, GateReviewQueueItem } from "./reviewQueueTypes";
 import { CourseSyncEmpty, CourseSyncSkeleton } from "./CourseSyncState";
 import type { LearnerProfileState } from "./useLearnerProfile";
 import { useReviewQueue } from "./useReviewQueue";
 import { useDashboardWorkspaces } from "./useDashboardWorkspaces";
 import { saveLectureAttendance } from "./learnerWorkspaceApi";
+import { useCourseVisit } from "./useCourseVisit";
 
 export function Dashboard({
   lectures,
@@ -33,7 +33,12 @@ export function Dashboard({
   workspaceCourse: UniversityCourse;
   workspaceLoadError?: string | null;
   learnerProfileState?: LearnerProfileState;
-  onOpen: (courseId: string, lecture: Lecture, review?: GateReviewOpening) => void;
+  onOpen: (
+    courseId: string,
+    lecture: Lecture,
+    review?: GateReviewOpening,
+    focusSectionId?: string,
+  ) => void;
   onSetAttendance: (lectureId: string, attendance: Attendance) => void;
 }) {
   const { t } = useI18n();
@@ -66,11 +71,17 @@ export function Dashboard({
     (course) => course.course_id === activeCourse.id,
   );
   const reviewQueue = useReviewQueue(activeCourse.id, session);
+  const visit = useCourseVisit(activeCourse.id, session);
+
+  function openLecture(...args: Parameters<typeof onOpen>) {
+    visit.markOpened(args[0], args[1].id);
+    onOpen(...args);
+  }
 
   async function openGateReview(item: GateReviewQueueItem) {
     const opening = await reviewQueue.open(item);
     const lecture = workspaceLectures.find((candidate) => candidate.id === item.lecture_id);
-    if (opening && lecture) onOpen(activeCourse.id, lecture, opening);
+    if (opening && lecture) openLecture(activeCourse.id, lecture, opening);
   }
 
   return (
@@ -90,20 +101,13 @@ export function Dashboard({
         </p>
       ) : null}
 
-      <NextStudyRecommendation
+      <NextUpCard
         course={activeCourse}
         lectures={workspaceLectures}
         passedLectureIds={courseProfile?.passed_lecture_ids ?? []}
         reviewQueue={reviewQueue.queue}
-        onOpen={(lecture) => onOpen(activeCourse.id, lecture)}
+        onOpen={(lecture) => openLecture(activeCourse.id, lecture)}
         onOpenGateReview={(item) => void openGateReview(item)}
-      />
-
-      <DashboardReviewPlan
-        queue={reviewQueue.queue}
-        lectures={workspaceLectures}
-        onOpen={(lecture) => onOpen(activeCourse.id, lecture)}
-        onOpenDue={(item) => void openGateReview(item)}
       />
 
       {reviewQueue.error ? (
@@ -136,10 +140,15 @@ export function Dashboard({
           {visibleCourseGroups.length ? (
             <DashboardCourseWorkspaces
               courseGroups={visibleCourseGroups}
+              newLectureIds={visit.newLectureIds}
+              profileCourses={learnerProfileState?.profile?.courses}
               selectedCourseId={activeCourse.id}
               session={session}
               onSelectCourse={setSelectedCourseId}
-              onOpen={onOpen}
+              onOpen={(courseId, lecture) => openLecture(courseId, lecture)}
+              onOpenSection={(courseId, lecture, sectionId) =>
+                openLecture(courseId, lecture, undefined, sectionId)
+              }
               onProgress={reviewQueue.refresh}
               onSetAttendance={(courseId, lectureId, attendance) => {
                 if (courseId === workspaceCourse.id) onSetAttendance(lectureId, attendance);
