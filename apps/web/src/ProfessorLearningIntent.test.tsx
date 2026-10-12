@@ -8,29 +8,7 @@ import type { PracticeDesign } from "./practiceDesignTypes";
 import { practiceDesignFixture } from "./practiceDesignTestFixtures";
 
 function goalsOnly(): PracticeDesign {
-  const full = practiceDesignFixture({ approvedBy: null });
-  return {
-    ...full,
-    schema_version: 2,
-    targets: [],
-    quality_review: null,
-    learning_intent: {
-      source_revision: full.source_revision,
-      objective: full.objective,
-      planning_context: full.planning_context,
-      revision: "i".repeat(64),
-      approval: null,
-      fixed_targets: [],
-      goals: full.targets.map((target) => ({
-        id: target.id,
-        title: target.title,
-        outcome: target.outcome,
-        outcome_anchor: target.outcome_anchor,
-        target_invariant: target.target_invariant,
-        target_invariant_anchor: target.target_invariant_anchor,
-      })),
-    },
-  };
+  return { ...practiceDesignFixture({ approvedBy: null }), targets: [], quality_review: null };
 }
 
 function show(design: PracticeDesign, onApprove = vi.fn(), onSave = vi.fn(), onPropose = vi.fn()) {
@@ -46,7 +24,6 @@ function show(design: PracticeDesign, onApprove = vi.fn(), onSave = vi.fn(), onP
         onApprove={onApprove}
         onSave={onSave}
         onPropose={onPropose}
-        onReview={vi.fn()}
       />
     </I18nProvider>,
   );
@@ -62,10 +39,7 @@ describe("professor learning intent", () => {
     ).toBeVisible();
     expect(screen.queryByText(/inspect generated practice/i)).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Approve learning goals" }));
-    expect(approve).toHaveBeenCalledWith(design.lecture_id, {
-      fixed_target_ids: [],
-      convert_legacy: false,
-    });
+    expect(approve).toHaveBeenCalledWith(design.lecture_id, { fixed_target_ids: [] });
   });
 
   it("regenerates unapproved goals through a new goal proposal", async () => {
@@ -132,24 +106,5 @@ describe("professor learning intent", () => {
     expect(screen.getByRole("button", { name: "Approve learning goals" })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: /save learning plan/i }));
     expect(save.mock.calls[0][1].goals).toEqual([{ ...first, title: "Updated learning goal" }]);
-  });
-
-  it("requires explicit consent before converting an existing full approval", async () => {
-    const design = practiceDesignFixture({ approvedBy: "professor" });
-    const approve = vi.fn();
-    show(design, approve);
-    const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: "Review learning goals instead" }));
-    const button = screen.getByRole("button", { name: "Approve learning goals" });
-    expect(button).toBeDisabled();
-    expect(screen.getByText(/existing approval is retained in history/i)).toBeVisible();
-    await user.click(
-      screen.getByRole("checkbox", { name: "I approve this change in responsibility" }),
-    );
-    await user.click(button);
-    expect(approve).toHaveBeenCalledWith(design.lecture_id, {
-      fixed_target_ids: [],
-      convert_legacy: true,
-    });
   });
 });

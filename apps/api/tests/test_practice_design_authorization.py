@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 
 from lecturepilot.app import create_app
 from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.course_learning_intent import goal_for
 from practice_design_test_helpers import proposal
 from security_db_helpers import FakeUniversityAdapter, login, mutation_headers
 
@@ -31,21 +32,25 @@ def test_practice_design_routes_are_private_to_the_owner_professor(tmp_path) -> 
     app.state.tuebingen_adapter.roles_by_user["other"] = "lecturer"
     other = login(other_client, "other")
     path = f"/admin/courses/{course_id}/lectures/lecture-01/practice-design"
-    plan = proposal().model_dump(mode="json")
-    update = {
-        "source_revision": "a" * 64,
-        "practice_design_revision": "b" * 64,
-        **plan,
+    revisions = {"source_revision": "a" * 64, "practice_design_revision": "b" * 64}
+    plan = proposal()
+    goals = {
+        "lecture_title": plan.lecture_title,
+        "objective": plan.objective,
+        "planning_context": plan.planning_context.model_dump(mode="json"),
+        "goals": [goal_for(target).model_dump(mode="json") for target in plan.targets],
     }
 
     denied = (
         other_client.get(path),
-        other_client.post(f"{path}/proposal", headers=mutation_headers(other)),
-        other_client.put(path, headers=mutation_headers(other), json=update),
+        other_client.get(f"{path}/readiness"),
+        other_client.get(f"{path}/intent/findings"),
+        other_client.post(f"{path}/intent/proposal", headers=mutation_headers(other)),
+        other_client.put(
+            f"{path}/intent", headers=mutation_headers(other), json={**revisions, **goals}
+        ),
         other_client.post(
-            f"{path}/approve",
-            headers=mutation_headers(other),
-            json={"source_revision": "a" * 64, "practice_design_revision": "b" * 64},
+            f"{path}/intent/approve", headers=mutation_headers(other), json=revisions
         ),
     )
 

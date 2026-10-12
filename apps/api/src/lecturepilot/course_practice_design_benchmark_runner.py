@@ -26,6 +26,7 @@ from lecturepilot.course_practice_design_benchmark_report import (
     PracticeDesignBenchmarkReviewerResult,
 )
 from lecturepilot.course_practice_design_models import PracticeDesignProposal
+from lecturepilot.course_practice_design_pipeline import GoalsFirstPracticeDesignPipeline
 from lecturepilot.course_practice_design_planner import (
     PracticeDesignPlanner,
     ReviewedPracticeDesignProposal,
@@ -64,8 +65,8 @@ async def run_practice_design_benchmark(
     reviewers = validate_benchmark_model_independence(
         proposal_model, proposal_underlying_model_identity, reviewers
     )
-    production_planner = planner or PracticeDesignPlanner(
-        provider_registry=ProviderRegistry.from_env(proposal_model)
+    production_planner = planner or GoalsFirstPracticeDesignPipeline(
+        PracticeDesignPlanner(provider_registry=ProviderRegistry.from_env(proposal_model))
     )
     client = evaluation_client or NativePracticeDesignBenchmarkClient()
     results = []

@@ -22,8 +22,11 @@ from lecturepilot.course_learning_intent_proposal import (
 from lecturepilot.model_usage import model_usage_scope
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.providers import ProviderConfigurationError
-from lecturepilot.course_practice_design_contract import freeze_collection
-from lecturepilot.course_practice_design_models import PracticeDesign, PracticeDesignApprovalInput
+from lecturepilot.course_practice_design_contract import (
+    StrictPracticeDesignModel,
+    freeze_collection,
+)
+from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.course_practice_design_store import PracticeDesignStale
 from lecturepilot.course_update_recovery import locked_course_state
 from lecturepilot.tenancy import TenantContext
@@ -34,12 +37,13 @@ class GoalFinding(BaseModel):
     reason: str
 
 
-class LearningIntentApprovalInput(PracticeDesignApprovalInput):
+class LearningIntentApprovalInput(StrictPracticeDesignModel):
+    source_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
+    practice_design_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     fixed_target_ids: Annotated[tuple[str, ...], BeforeValidator(freeze_collection)] = Field(
         default_factory=tuple,
         max_length=8,
     )
-    convert_legacy: bool = False
 
 
 class LearningIntentUpdate(LearningIntentProposal):
@@ -77,7 +81,6 @@ def register_learning_intent_routes(
                     design_revision=approval.practice_design_revision,
                     approved_by=context.user_id,
                     fixed_target_ids=approval.fixed_target_ids,
-                    convert_legacy=approval.convert_legacy,
                 )
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -95,7 +98,7 @@ def register_learning_intent_routes(
         require_manager(context, request, course_id, course_tenant_id)
         layout = app.state.canvas_workspace.layout
         design = LearningIntentStore(layout).read(course_id=course_id, lecture_id=lecture_id)
-        if design is None or design.learning_intent is None:
+        if design is None:
             return []
         return read_goal_findings(
             goal_findings_path(layout, course_id, lecture_id), design.learning_intent.goals
@@ -120,21 +123,23 @@ def register_learning_intent_routes(
         def current_sources():
             with locked_course_state(layout.course_root(course_id)):
                 revision = source_revision(app, course_id, lecture_id)
-                existing = store.read(course_id=course_id, lecture_id=lecture_id)
+                snapshot = store.snapshot(course_id=course_id, lecture_id=lecture_id)
+            existing = snapshot.design
             current = existing is not None and existing.source_revision == revision
             if current and refresh and has_approved_intent(existing):
                 raise PracticeDesignStale(
                     "These learning goals are approved. Edit them to propose new goals."
                 )
             if current and not refresh:
-                return existing, None
+                return snapshot, None
             # Parsing (conversion, LaTeX, OCR) never holds the course lock.
-            return existing, source_context(app, source_document, course_id, lecture_id)
+            return snapshot, source_context(app, source_document, course_id, lecture_id)
 
         try:
-            existing, loaded = await run_in_threadpool(current_sources)
+            snapshot, loaded = await run_in_threadpool(current_sources)
         except PracticeDesignStale as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
+        existing = snapshot.design
         if loaded is None:
             return existing
         source, revision, paths = loaded
@@ -146,6 +151,7 @@ def register_learning_intent_routes(
                     raise PracticeDesignStale("Course sources changed while goals were proposed.")
                 return store.save_goals(
                     expected=existing,
+                    expected_invalid_digest=snapshot.invalid_digest,
                     course_id=course_id,
                     lecture_id=lecture_id,
                     source_revision=revision,

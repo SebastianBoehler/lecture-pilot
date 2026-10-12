@@ -1,14 +1,6 @@
-from reviewed_task_bank_helpers import with_bank
-import json
-from pydantic_ai.models.function import FunctionModel
-from pydantic_ai.messages import ModelResponse, TextPart
-
-import pytest
-
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.models import ProviderCapability, ProviderSettings
-from practice_design_test_helpers import passing_review, proposal, target
-from lecturepilot.practice_evidence_catalogue import evidence_catalogue, compact_evidence_anchors
+from practice_design_test_helpers import proposal, target
+from lecturepilot.practice_evidence_catalogue import evidence_catalogue
 
 
 SOURCE_REVISION = "a" * 64
@@ -34,67 +26,26 @@ def _source() -> CanvasDocument:
     )
 
 
-@pytest.mark.asyncio
-async def test_planner_uses_native_schema_and_exact_authoritative_source_paths() -> None:
-    from lecturepilot.course_practice_design_planner import PracticeDesignPlanner
+def test_teaching_prompt_states_the_contract_and_exact_authoritative_source_paths() -> None:
+    from lecturepilot.course_practice_design_prompt import practice_design_messages
+    from lecturepilot.course_practice_design_review_prompt import practice_design_review_messages
 
-    calls: list[dict] = []
-
-    def fake_completion(messages, info):
-        calls.append({"messages": messages, "instructions": info.instructions})
-        catalogue = evidence_catalogue(_source(), ("lecture.md",))
-        payload = (
-            proposal()
-            .model_copy(
-                update={
-                    "targets": (
-                        with_bank(
-                            target(
-                                source_refs=("lecture.md",), source_excerpt="Posterior evidence."
-                            )
-                        ),
-                    )
-                }
-            )
-            .model_dump(mode="json")
-        )
-        wire = compact_evidence_anchors(payload, catalogue)
-        wire["targets"][0].pop("source_refs")
-        return ModelResponse(parts=[TextPart(json.dumps(wire))])
-
-    class ReviewClient:
-        async def complete_review(self, **kwargs):
-            calls.append(kwargs)
-            return passing_review().model_dump(mode="json")
-
-    settings = ProviderSettings(
-        provider="openai",
-        model="openai/gpt-5.6-luna",
-        api_key_env="OPENAI_API_KEY",
-        capabilities={ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON},
+    source = _source().model_copy(
+        update={
+            "sections": [
+                *_source().sections,
+                _source().sections[0].model_copy(update={"id": "x", "source_ref": "unrouted.md"}),
+            ]
+        }
     )
-
-    class Registry:
-        def require_ready(self, _required):
-            return settings
-
-    planner = PracticeDesignPlanner(
-        provider_registry=Registry(),
-        model=FunctionModel(fake_completion),
-        review_client=ReviewClient(),
+    catalogue = evidence_catalogue(source, ("lecture.md",))
+    messages = practice_design_messages(
+        source,
+        source_revision=SOURCE_REVISION,
+        allowed_source_paths=("lecture.md",),
+        catalogue=catalogue,
     )
-
-    reviewed = await planner.propose(
-        source=_source(), source_revision=SOURCE_REVISION, allowed_source_paths=("lecture.md",)
-    )
-
-    assert reviewed.proposal.targets[0].source_refs == ("lecture.md",)
-    assert len(reviewed.review.checks) == 8
-    assert (
-        reviewed.proposal.planning_context.learner_level
-        == "Undergraduate learners in this lecture."
-    )
-    request = calls[0]
+    request = {"instructions": messages[0]["content"], "messages": messages[1:]}
     instruction = request["instructions"]
     assert "minimum set of distinct capabilities supported by the source" in instruction
     assert "3 to 6 targets" not in instruction
@@ -109,9 +60,21 @@ async def test_planner_uses_native_schema_and_exact_authoritative_source_paths()
     assert "Contradictory givens make a task unassessable" in instruction
     assert "lecture.md" in str(request["messages"])
     assert "unrouted.md" not in str(request["messages"])
-    review_request = calls[1]
-    assert "SOURCE EVIDENCE" in review_request["messages"][1]["content"]
-    assert "solve it from its stated givens" in review_request["messages"][0]["content"]
+    review = practice_design_review_messages(
+        source,
+        proposal().model_copy(
+            update={
+                "targets": (
+                    target(source_refs=("lecture.md",), source_excerpt="Posterior evidence."),
+                )
+            }
+        ),
+        source_revision=SOURCE_REVISION,
+        allowed_source_paths=("lecture.md",),
+        catalogue=catalogue,
+    )
+    assert "SOURCE EVIDENCE" in review[1]["content"]
+    assert "solve it from its stated givens" in review[0]["content"]
 
 
 def test_response_schema_describes_the_assessment_and_scaffold_contract() -> None:

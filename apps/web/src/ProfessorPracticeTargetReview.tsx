@@ -2,19 +2,14 @@ import { ProfessorHintEvidence } from "./ProfessorHintEvidence";
 import { ProfessorTaskBankReview } from "./ProfessorTaskBankReview";
 import { useI18n } from "./i18n";
 import { ProfessorPracticeEvidence } from "./ProfessorPracticeEvidence";
-import { ProfessorPracticeTargetEditor } from "./ProfessorPracticeTargetEditor";
 import type { PracticeTarget } from "./practiceDesignTypes";
 
 export function ProfessorPracticeTargetReview({
-  disabled,
   index,
   target,
-  onChange,
 }: {
-  disabled: boolean;
   index: number;
   target: PracticeTarget;
-  onChange: (target: PracticeTarget) => void;
 }) {
   const { t } = useI18n();
   const stages = [
@@ -125,9 +120,6 @@ export function ProfessorPracticeTargetReview({
       <p className="practice-source-note">
         {t("builder.design.sourceGrounding", { sources: target.source_refs.join(", ") })}
       </p>
-      {!disabled ? (
-        <ProfessorPracticeTargetEditor disabled={false} target={target} onChange={onChange} />
-      ) : null}
     </section>
   );
 }

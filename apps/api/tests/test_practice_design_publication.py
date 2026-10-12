@@ -10,11 +10,9 @@ from lecturepilot.course_canvas_publication import publication_path
 from lecturepilot.course_canvas_store import InvalidCanvasDraftError
 from lecturepilot.course_learning_design_store import CourseLearningDesignStore
 from lecturepilot.course_practice_design_binding import PracticeDesignBinding, binding_path
-from lecturepilot.course_practice_design_models import PracticeDesignUpdate
-from lecturepilot.course_practice_design_store import PracticeDesignStore
 from test_practice_design_canvas_binding import _approved_design, _document
 from lecturepilot.canvas_workspace import CanvasWorkspace
-from practice_design_test_helpers import source_document
+from approved_practice_design_helpers import revised_design, store_design
 
 
 def test_draft_rejects_post_generation_only_design_approval(tmp_path: Path) -> None:
@@ -22,21 +20,11 @@ def test_draft_rejects_post_generation_only_design_approval(tmp_path: Path) -> N
         workspace_root=tmp_path / "workspaces", material_root=tmp_path / "materials"
     )
     design = _approved_design(workspace)
-    store = PracticeDesignStore(workspace.layout)
-    changed = store.update(
-        course_id=design.course_id,
-        lecture_id=design.lecture_id,
-        current_source_revision=design.source_revision,
-        update=PracticeDesignUpdate(
-            source_revision=design.source_revision,
-            practice_design_revision=design.revision,
-            lecture_title=design.lecture_title,
-            objective="Derive a revised conclusion independently.",
-            planning_context=design.planning_context,
-            targets=design.targets,
+    changed = store_design(
+        workspace.layout,
+        revised_design(
+            design, objective="Derive a revised conclusion independently.", approved=False
         ),
-        source=source_document("lecture.md"),
-        allowed_source_paths=("lecture.md",),
     )
 
     with pytest.raises(InvalidCanvasDraftError, match="approved practice design"):
@@ -114,6 +102,7 @@ def test_legacy_published_snapshot_reads_and_republish_restores_binding(tmp_path
     metadata_path = publication_path(published_dir)
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     metadata.pop("practice_design_revision")
+    metadata.pop("learning_intent_revision")
     metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
     binding_path(published_dir).unlink()
 

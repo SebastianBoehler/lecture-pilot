@@ -7,19 +7,15 @@ from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSectio
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_canvas_store import InvalidCanvasDraftError
 from lecturepilot.course_practice_design_binding import read_practice_design_binding
-from lecturepilot.course_practice_design_models import (
-    PracticeDesign,
-    PracticeDesignProposal,
-    PracticeDesignUpdate,
-)
-from lecturepilot.course_practice_design_store import PracticeDesignStore
+from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.course_canvas_repairs import lecture_source_revision
 from lecturepilot.course_practice_design_validation import (
     PracticeDesignValidationError,
     validate_learning_map_practice_contract,
 )
 from lecturepilot.learning_map import LearningMapEvidenceCriterion, build_learning_map
-from practice_design_test_helpers import passing_review, source_document, target
+from approved_practice_design_helpers import approved_practice_design, revised_design, store_design
+from practice_design_test_helpers import target
 
 
 COURSE_ID = "practice-course"
@@ -139,21 +135,7 @@ def test_draft_learning_map_rejects_superseded_practice_design(tmp_path: Path) -
         expected_source_revision=design.source_revision,
         practice_design=design,
     )
-    PracticeDesignStore(workspace.layout).update(
-        course_id=design.course_id,
-        lecture_id=design.lecture_id,
-        current_source_revision=design.source_revision,
-        update=PracticeDesignUpdate(
-            source_revision=design.source_revision,
-            practice_design_revision=design.revision,
-            lecture_title=design.lecture_title,
-            objective="Revised approved objective.",
-            planning_context=design.planning_context,
-            targets=design.targets,
-        ),
-        source=source_document("lecture.md"),
-        allowed_source_paths=("lecture.md",),
-    )
+    store_design(workspace.layout, revised_design(design, objective="Revised approved objective."))
 
     with pytest.raises(InvalidCanvasDraftError, match="Stored canvas draft is invalid"):
         workspace.course_canvas_store.learning_map(
@@ -165,54 +147,22 @@ def _approved_design(workspace: CanvasWorkspace) -> PracticeDesign:
     _write_source_manifest(workspace)
     revision = lecture_source_revision(workspace.layout, course_id=COURSE_ID, lecture_id=LECTURE_ID)
     assert revision is not None
-    design = PracticeDesign.create(
-        course_id=COURSE_ID,
-        lecture_id=LECTURE_ID,
-        lecture_title="Practice lecture",
-        objective="Derive the conclusion independently from the cited evidence.",
-        planning_context={
-            "learner_level": "Undergraduate learners in this lecture.",
-            "prerequisites": ["Interpret the supplied evidence."],
-            "time_budget_minutes": 30,
-            "allowed_aids": ["Course notes"],
-            "assessment_conditions": "Complete each assessment individually.",
-            "insufficiencies": [],
-        },
-        source_revision=revision,
-        targets=[
-            target(
-                source_refs=("lecture.md",),
-                baseline_task="Derive the conclusion from the stated evidence and justify it.",
-                independent_exit_task="Derive a conclusion from parallel evidence and justify it.",
-                delayed_transfer_task="Derive a conclusion after details change and justify it.",
-            )
-        ],
-    )
-    store = PracticeDesignStore(workspace.layout)
-    proposed = PracticeDesignProposal(
-        lecture_title=design.lecture_title,
-        objective=design.objective,
-        planning_context=design.planning_context,
-        targets=design.targets,
-    )
-    stored = store.save_proposal(
-        course_id=COURSE_ID,
-        lecture_id=LECTURE_ID,
-        source_revision=revision,
-        proposal=proposed,
-        review=passing_review(),
-        source=source_document("lecture.md"),
-        allowed_source_paths=("lecture.md",),
-        expected_design_revision=None,
-        expected_design_approval=None,
-        expected_design_review=None,
-    )
-    return store.approve(
-        course_id=COURSE_ID,
-        lecture_id=LECTURE_ID,
-        source_revision=revision,
-        design_revision=stored.revision,
-        approved_by="professor",
+    return store_design(
+        workspace.layout,
+        approved_practice_design(
+            course_id=COURSE_ID,
+            lecture_id=LECTURE_ID,
+            lecture_title="Practice lecture",
+            source_revision=revision,
+            targets=[
+                target(
+                    source_refs=("lecture.md",),
+                    baseline_task="Derive the conclusion from the stated evidence and justify it.",
+                    independent_exit_task="Derive a conclusion from parallel evidence and justify it.",
+                    delayed_transfer_task="Derive a conclusion after details change and justify it.",
+                )
+            ],
+        ),
     )
 
 

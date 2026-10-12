@@ -19,5 +19,4 @@ export type LearningIntent = Readonly<{
 
 export type LearningIntentApprovalOptions = {
   fixed_target_ids: readonly string[];
-  convert_legacy: boolean;
 };

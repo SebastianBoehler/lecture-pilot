@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime
 from typing import Annotated, Literal
 
 from pydantic import (
@@ -46,16 +45,9 @@ class PracticeDesignProposal(StrictPracticeDesignModel):
         return self
 
 
-class PracticeDesignApproval(StrictPracticeDesignModel):
-    approved_by: NonblankText = Field(min_length=1, max_length=160)
-    approved_at: datetime
-    source_revision: str = Field(pattern=_REVISION_PATTERN)
-    practice_design_revision: str = Field(pattern=_REVISION_PATTERN)
-
-
 class PracticeDesign(StrictPracticeDesignModel):
-    schema_version: Literal[1, 2] = 1
-    learning_intent: LearningIntent | None = None
+    schema_version: Literal[2] = 2
+    learning_intent: LearningIntent
     course_id: str = Field(min_length=1, max_length=120)
     lecture_id: str = Field(min_length=1, max_length=120)
     lecture_title: NonblankText = Field(min_length=1, max_length=200)
@@ -67,7 +59,6 @@ class PracticeDesign(StrictPracticeDesignModel):
     )
     revision: str = Field(pattern=_REVISION_PATTERN)
     quality_review: PracticeDesignQualityReview | None = None
-    approval: PracticeDesignApproval | None = None
 
     @model_validator(mode="after")
     def validate_revision(self, info: ValidationInfo) -> PracticeDesign:
@@ -76,26 +67,19 @@ class PracticeDesign(StrictPracticeDesignModel):
         ) and self.revision != practice_design_revision(self):
             raise ValueError("Practice design revision is invalid.")
         require_unique_ids(self.targets, "practice target")
-        if (self.schema_version == 2) != (self.learning_intent is not None):
-            raise ValueError("Practice design schema does not match its ownership contract.")
-        if self.learning_intent is not None:
-            if self.learning_intent.source_revision != self.source_revision:
-                raise ValueError("Learning intent source revision is stale.")
-            if self.targets:
-                self.learning_intent.require_matches(self)
-            elif (
-                self.objective != self.learning_intent.objective
-                or self.planning_context != self.learning_intent.planning_context
-            ):
-                raise ValueError("Pending teaching must retain protected learning intent.")
-        elif not self.targets:
-            raise ValueError("Practice designs require learning goals or teaching targets.")
+        if self.learning_intent.source_revision != self.source_revision:
+            raise ValueError("Learning intent source revision is stale.")
+        if self.targets:
+            self.learning_intent.require_matches(self)
+        elif (
+            self.objective != self.learning_intent.objective
+            or self.planning_context != self.learning_intent.planning_context
+        ):
+            raise ValueError("Pending teaching must retain protected learning intent.")
         return self
 
     @classmethod
     def create(cls, **values: object) -> PracticeDesign:
-        if values.get("learning_intent") is not None:
-            values["schema_version"] = 2
         candidate = cls.model_validate(
             {**values, "revision": "0" * 64}, context={"build_revision": True}
         )
@@ -105,38 +89,14 @@ class PracticeDesign(StrictPracticeDesignModel):
         )
 
 
-class PracticeDesignUpdate(StrictPracticeDesignModel):
-    source_revision: str = Field(pattern=_REVISION_PATTERN)
-    practice_design_revision: str = Field(pattern=_REVISION_PATTERN)
-    lecture_title: NonblankText = Field(min_length=1, max_length=200)
-    objective: NonblankText = Field(min_length=1, max_length=1_000)
-    planning_context: PracticePlanningContext
-    targets: Annotated[tuple[PracticeTarget, ...], BeforeValidator(freeze_collection)] = Field(
-        min_length=1, max_length=8
-    )
-
-    @model_validator(mode="after")
-    def validate_target_ids(self) -> PracticeDesignUpdate:
-        require_unique_ids(self.targets, "practice target")
-        return self
-
-
-class PracticeDesignApprovalInput(StrictPracticeDesignModel):
-    source_revision: str = Field(pattern=_REVISION_PATTERN)
-    practice_design_revision: str = Field(pattern=_REVISION_PATTERN)
-
-
 def practice_design_revision(design: PracticeDesign) -> str:
     return _digest(_revision_payload(design))
 
 
 def _revision_payload(design: PracticeDesign) -> dict:
-    payload = design.model_dump(mode="json", exclude={"revision", "quality_review", "approval"})
-    intent = payload.get("learning_intent")
-    if intent is None:
-        payload.pop("learning_intent", None)  # Preserve existing approved revision hashes.
-    else:
-        intent.pop("approval", None)
+    # Goal approval is excluded: approving identical content keeps the design revision.
+    payload = design.model_dump(mode="json", exclude={"revision", "quality_review"})
+    payload["learning_intent"].pop("approval", None)
     return payload
 
 

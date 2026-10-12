@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from approved_practice_design_helpers import approved_practice_design
+
 from pathlib import Path
 
 import pytest
@@ -7,7 +9,6 @@ from pydantic import ValidationError
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_learning_design_store import canvas_digest
-from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.learning_map import LearningMapGate, build_learning_map
 from practice_design_test_helpers import practice_design_for_canvas, target as practice_target
 
@@ -224,7 +225,7 @@ def _report(document: CanvasDocument):
     practice_design = base_design.model_copy(
         update={"targets": (practice_target(**target_payload),)}
     )
-    practice_design = PracticeDesign.create(
+    practice_design = approved_practice_design(
         course_id=document.course_id,
         lecture_id=document.lecture_id,
         lecture_title=document.title,

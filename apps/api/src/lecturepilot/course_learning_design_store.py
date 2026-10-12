@@ -146,9 +146,7 @@ def initialize_learning_design(
         draft_digest=draft_digest,
         source_revision=source_revision,
         practice_design_revision=practice_design.revision,
-        learning_intent_revision=practice_design.learning_intent.revision
-        if practice_design.learning_intent
-        else None,
+        learning_intent_revision=practice_design.learning_intent.revision,
         learning_map=learning_map,
         report=report,
     )
@@ -217,8 +215,7 @@ def _current_review(
         or stored.draft_digest != canvas_digest(document)
         or stored.source_revision != current_source
         or stored.practice_design_revision != design.revision
-        or stored.learning_intent_revision
-        != (design.learning_intent.revision if design.learning_intent else None)
+        or stored.learning_intent_revision != design.learning_intent.revision
         or stored.report.draft_digest != stored.draft_digest
         or stored.report.source_revision != stored.source_revision
         or stored.report.learning_map_revision != stored.learning_map.revision

@@ -22,9 +22,11 @@ from lecturepilot.course_practice_design_store import PracticeDesignStore
 
 async def repair_implementation(app, *, source, design, ownership, feedback=None):
     intent = design.learning_intent
-    if intent is None or design.approval is not None or intent.approval is None:
+    fixed = {target.id for target in intent.fixed_targets}
+    if intent.approval is None or (design.targets and {t.id for t in design.targets} <= fixed):
+        # Professor-fixed tasks cannot be repaired by AI; the conflict needs plan review.
         raise AuthoringDesignConflict(
-            feedback or "The full practice design is professor-protected."
+            feedback or "The approved practice design is professor-protected."
         )
     layout = app.state.canvas_workspace.layout
     manifest = read_lecture_source_manifest(
@@ -112,11 +114,7 @@ async def author_with_implementation(
     session_generation_id=None,
 ):
     review = design.quality_review
-    if (
-        design.learning_intent
-        and design.approval is None
-        and (review is None or review.practice_design_revision != design.revision)
-    ):
+    if review is None or review.practice_design_revision != design.revision:
         design, ownership = await repair_implementation(
             app,
             source=source,
@@ -145,7 +143,7 @@ async def author_with_implementation(
                 design.revision
             )
         except AuthoringDesignConflict as exc:
-            if attempt or design.learning_intent is None or design.approval is not None:
+            if attempt:
                 raise
             design, ownership = await repair_implementation(
                 app,

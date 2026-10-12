@@ -5,8 +5,6 @@ from pydantic import ValidationError
 
 from lecturepilot.course_practice_design_models import (
     PracticeDesign,
-    PracticeDesignApprovalInput,
-    PracticeDesignUpdate,
     PracticeDesignProposal,
     PracticeHint,
     PracticeTarget,
@@ -24,66 +22,24 @@ from lecturepilot.course_practice_design_validation import (
 from lecturepilot.storage_layout import StorageLayout
 from practice_design_test_helpers import document as _document
 from practice_design_test_helpers import proposal as _proposal
-from practice_design_test_helpers import passing_review, source_document
+from approved_practice_design_helpers import approved_practice_design, store_design
 
 
 SRC = "a" * 64
-PATHS = {"lecture-01.md"}
 
 
-def test_save_proposal_round_trips_a_canonical_revision(tmp_path: Path) -> None:
-    store = PracticeDesignStore(StorageLayout(tmp_path))
-    proposal = _proposal()
-
-    saved = store.save_proposal(
-        course_id="course-01",
-        lecture_id="lecture-01",
-        source_revision=SRC,
-        proposal=proposal,
-        review=passing_review(),
-        source=source_document(),
-        allowed_source_paths=PATHS,
-        expected_design_revision=None,
-        expected_design_approval=None,
-        expected_design_review=None,
+def test_stored_design_round_trips_and_revision_excludes_goal_approval(tmp_path: Path) -> None:
+    layout = StorageLayout(tmp_path)
+    store = PracticeDesignStore(layout)
+    approved = store_design(layout, _design())
+    pending = _design(reviewed=False)
+    unapproved = pending.model_copy(
+        update={"learning_intent": pending.learning_intent.model_copy(update={"approval": None})}
     )
 
-    assert len(saved.revision) == 64
-    assert store.read(course_id="course-01", lecture_id="lecture-01") == saved
-
-
-def test_revision_is_canonical_and_excludes_approval(tmp_path: Path) -> None:
-    store = PracticeDesignStore(StorageLayout(tmp_path))
-    proposal = _proposal()
-    saved = store.save_proposal(
-        course_id="course-01",
-        lecture_id="lecture-01",
-        source_revision=SRC,
-        proposal=proposal,
-        review=passing_review(),
-        source=source_document(),
-        allowed_source_paths=PATHS,
-        expected_design_revision=None,
-        expected_design_approval=None,
-        expected_design_review=None,
-    )
-
-    approved = store.approve(
-        course_id="course-01",
-        lecture_id="lecture-01",
-        source_revision=SRC,
-        design_revision=saved.revision,
-        approved_by="professor-01",
-    )
-    rebuilt = PracticeDesign.create(
-        course_id="course-01",
-        lecture_id="lecture-01",
-        source_revision=SRC,
-        **proposal.model_dump(mode="python"),
-    )
-
-    assert approved.revision == saved.revision == rebuilt.revision
-    assert approved.approval is not None
+    assert store.read(course_id="course-01", lecture_id="lecture-01") == approved
+    assert approved.revision == PracticeDesign.create(**_payload(unapproved)).revision
+    assert approved.learning_intent.approval is not None
 
 
 @pytest.mark.parametrize("count", [0, 9])
@@ -197,43 +153,36 @@ def test_contract_collections_are_immutable() -> None:
         target.source_refs.append("other-lecture.md")
 
 
-def test_update_clears_approval_and_requires_current_versions(tmp_path: Path) -> None:
-    store = PracticeDesignStore(StorageLayout(tmp_path))
-    saved = _save(store)
-    approved = store.approve(
+def test_generation_requires_current_goal_approval_and_reviewed_teaching(tmp_path: Path) -> None:
+    layout = StorageLayout(tmp_path)
+    store = PracticeDesignStore(layout)
+    design = _design(reviewed=False)
+    store_design(
+        layout,
+        PracticeDesign.create(
+            **{
+                **_payload(design),
+                "learning_intent": design.learning_intent.model_copy(update={"approval": None}),
+            }
+        ),
+    )
+    with pytest.raises(PracticeDesignApprovalRequired, match="learning goals"):
+        store.require_approved(course_id="course-01", lecture_id="lecture-01", source_revision=SRC)
+    store_design(layout, design)
+    with pytest.raises(PracticeDesignApprovalRequired, match="automatic repair"):
+        store.require_approved(course_id="course-01", lecture_id="lecture-01", source_revision=SRC)
+    assert store.require_approved(
         course_id="course-01",
         lecture_id="lecture-01",
         source_revision=SRC,
-        design_revision=saved.revision,
-        approved_by="professor-01",
-    )
-    changed = store.update(
-        course_id="course-01",
-        lecture_id="lecture-01",
-        current_source_revision=SRC,
-        update=_update(approved, objective="Derive a changed, independent conclusion."),
-        source=source_document(),
-        allowed_source_paths=PATHS,
-    )
-    assert changed.approval is None
-    assert changed.revision != approved.revision
-    with pytest.raises(PracticeDesignApprovalRequired):
-        store.require_approved(course_id="course-01", lecture_id="lecture-01", source_revision=SRC)
-    with pytest.raises(PracticeDesignStale):
-        store.update(
-            course_id="course-01",
-            lecture_id="lecture-01",
-            current_source_revision=SRC,
-            update=_update(approved),
-            source=source_document(),
-            allowed_source_paths=PATHS,
-        )
+        allow_pending_implementation=True,
+    ) == design
 
 
 def test_store_rejects_stale_and_corrupt_persisted_designs(tmp_path: Path) -> None:
     layout = StorageLayout(tmp_path)
     store = PracticeDesignStore(layout)
-    saved = _save(store)
+    saved = store_design(layout, _design())
 
     with pytest.raises(PracticeDesignStale):
         store.require_approved(
@@ -248,48 +197,22 @@ def test_store_rejects_stale_and_corrupt_persisted_designs(tmp_path: Path) -> No
         store.read(course_id="course-01", lecture_id="lecture-01")
 
 
-def test_approval_input_and_canvas_contract_are_exact() -> None:
-    design = PracticeDesign.create(
-        course_id="course-01",
-        lecture_id="lecture-01",
-        source_revision=SRC,
-        **_proposal().model_dump(mode="python"),
-    )
-    approval = PracticeDesignApprovalInput(
-        source_revision=SRC, practice_design_revision=design.revision
-    )
-    document = _document(design.targets[0].baseline_task)
-
-    assert approval.practice_design_revision == design.revision
-    validate_canvas_practice_contract(document, design)
+def test_canvas_contract_is_exact() -> None:
+    design = _design()
+    validate_canvas_practice_contract(_document(design.targets[0].baseline_task), design)
     with pytest.raises(PracticeDesignValidationError, match="baseline task"):
-        validate_canvas_practice_contract(
-            _document("Altered task"),
-            design,
-        )
+        validate_canvas_practice_contract(_document("Altered task"), design)
 
 
-def _save(store: PracticeDesignStore) -> PracticeDesign:
-    return store.save_proposal(
+def _design(*, reviewed: bool = True) -> PracticeDesign:
+    return approved_practice_design(
         course_id="course-01",
         lecture_id="lecture-01",
         source_revision=SRC,
-        proposal=_proposal(),
-        review=passing_review(),
-        source=source_document(),
-        allowed_source_paths=PATHS,
-        expected_design_revision=None,
-        expected_design_approval=None,
-        expected_design_review=None,
+        targets=_proposal().targets,
+        reviewed=reviewed,
     )
 
 
-def _update(design: PracticeDesign, *, objective: str | None = None) -> PracticeDesignUpdate:
-    return PracticeDesignUpdate(
-        source_revision=design.source_revision,
-        practice_design_revision=design.revision,
-        lecture_title=design.lecture_title,
-        objective=objective or design.objective,
-        planning_context=design.planning_context,
-        targets=design.targets,
-    )
+def _payload(design: PracticeDesign) -> dict:
+    return design.model_dump(mode="python", exclude={"revision", "quality_review"})

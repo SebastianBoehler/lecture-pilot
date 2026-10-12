@@ -4,7 +4,6 @@ import {
   approvePracticeDesign,
   getPracticeDesign,
   proposePracticeDesign,
-  reviewPracticeDesign,
   updatePracticeDesign,
 } from "./practiceDesignApi";
 import type { PracticeDesign, PracticeDesignUpdate } from "./practiceDesignTypes";
@@ -23,9 +22,13 @@ describe("practice-design API", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("uses the exact authenticated routes and revision-bound bodies", async () => {
-    const fetchMock = vi.fn<typeof fetch>(async (_input, _init) => response(design()));
+    const fetchMock = vi.fn<typeof fetch>(async (input) =>
+      String(input).endsWith("/intent/findings") ? response([]) : response(design()),
+    );
     vi.stubGlobal("fetch", fetchMock);
     const current = design();
+    const calls = () =>
+      fetchMock.mock.calls.filter(([input]) => !String(input).endsWith("/intent/findings"));
 
     await getPracticeDesign({ courseId: "course-1", lectureId: "lecture-01", session });
     await proposePracticeDesign({
@@ -40,39 +43,28 @@ describe("practice-design API", () => {
       session,
       update: update(current),
     });
-    await reviewPracticeDesign({
-      courseId: "course-1",
-      lectureId: "lecture-01",
-      design: current,
-      session,
-    });
     await approvePracticeDesign({
       courseId: "course-1",
       lectureId: "lecture-01",
       design: current,
+      intent: { fixed_target_ids: ["posterior"] },
       session,
     });
 
-    expect(String(fetchMock.mock.calls[0][0])).toMatch(
+    const [get, propose, put, approve] = calls();
+    expect(String(get[0])).toMatch(
       /\/admin\/courses\/course-1\/lectures\/lecture-01\/practice-design$/,
     );
-    expect(new Headers(fetchMock.mock.calls[0][1]?.headers).get("Authorization")).toBe(
-      "Bearer professor-token",
-    );
-    expect(String(fetchMock.mock.calls[1][0])).toMatch(
-      /\/practice-design\/intent\/proposal\?refresh=true$/,
-    );
-    expect(fetchMock.mock.calls[1][1]?.method).toBe("POST");
-    expect(fetchMock.mock.calls[2][1]?.method).toBe("PUT");
-    expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toEqual(update(current));
-    expect(String(fetchMock.mock.calls[3][0])).toMatch(/\/review$/);
-    expect(fetchMock.mock.calls[3][1]?.method).toBe("POST");
-    expect(JSON.parse(String(fetchMock.mock.calls[3][1]?.body))).toEqual({
-      source_revision: current.source_revision,
-      practice_design_revision: current.revision,
-    });
-    expect(fetchMock.mock.calls[4][1]?.method).toBe("POST");
-    expect(JSON.parse(String(fetchMock.mock.calls[4][1]?.body))).toEqual({
+    expect(new Headers(get[1]?.headers).get("Authorization")).toBe("Bearer professor-token");
+    expect(String(propose[0])).toMatch(/\/practice-design\/intent\/proposal\?refresh=true$/);
+    expect(propose[1]?.method).toBe("POST");
+    expect(String(put[0])).toMatch(/\/practice-design\/intent$/);
+    expect(put[1]?.method).toBe("PUT");
+    const { targets: _targets, ...goals } = update(current);
+    expect(JSON.parse(String(put[1]?.body))).toEqual(goals);
+    expect(String(approve[0])).toMatch(/\/practice-design\/intent\/approve$/);
+    expect(JSON.parse(String(approve[1]?.body))).toEqual({
+      fixed_target_ids: ["posterior"],
       source_revision: current.source_revision,
       practice_design_revision: current.revision,
     });
@@ -91,6 +83,7 @@ describe("practice-design API", () => {
         courseId: "course-1",
         lectureId: "lecture-01",
         design: design(),
+        intent: { fixed_target_ids: [] },
         session,
       }),
     ).rejects.toMatchObject({
@@ -106,6 +99,7 @@ function design(): PracticeDesign {
 
 function update(current: PracticeDesign): PracticeDesignUpdate {
   return {
+    goals: current.learning_intent.goals,
     source_revision: current.source_revision,
     practice_design_revision: current.revision,
     lecture_title: current.lecture_title,

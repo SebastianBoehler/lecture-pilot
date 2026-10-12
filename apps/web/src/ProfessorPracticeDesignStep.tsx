@@ -6,7 +6,6 @@ import { ProfessorLearningIntent } from "./ProfessorLearningIntent";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useI18n } from "./i18n";
-import { ProfessorPracticeLecturePlan } from "./ProfessorPracticeLecturePlan";
 import {
   isApproved,
   openLearningIntentIds,
@@ -35,7 +34,6 @@ export function ProfessorPracticeDesignStep({
   routingReady,
   onApprove,
   onPropose,
-  onReview,
   onReload,
   onSave,
 }: {
@@ -49,14 +47,12 @@ export function ProfessorPracticeDesignStep({
   errorsByLecture?: Readonly<Record<string, string>>;
   pendingLectureId: string | null;
   routingReady: boolean;
-  onApprove: (lectureId: string, options?: LearningIntentApprovalOptions) => void;
+  onApprove: (lectureId: string, options: LearningIntentApprovalOptions) => void;
   onPropose: (lectureId: string, refresh?: boolean) => void;
-  onReview: (lectureId: string) => void;
   onReload?: (lectureId: string) => void;
   onSave: (lectureId: string, update: PracticeDesignUpdate) => void;
 }) {
   const { t } = useI18n();
-  const [converting, setConverting] = useState<Readonly<Record<string, boolean>>>({});
   const [selectedId, setSelectedId] = useState(lectures[0]?.id ?? "");
   const selected = lectures.some(({ id }) => id === selectedId) ? selectedId : lectures[0]?.id;
   const approving = useRef<string | null>(null);
@@ -70,8 +66,8 @@ export function ProfessorPracticeDesignStep({
     );
     if (next) setSelectedId(next.id);
   }, [designs, lectures, selected]);
-  const approve = (id: string, options?: LearningIntentApprovalOptions) => {
-    approving.current = designs[id]?.learning_intent ? id : null;
+  const approve = (id: string, options: LearningIntentApprovalOptions) => {
+    approving.current = id;
     onApprove(id, options);
   };
   const lectureIds = useMemo(() => lectures.map(({ id }) => id), [lectures]);
@@ -92,9 +88,7 @@ export function ProfessorPracticeDesignStep({
   const approveOpenIntents = () => {
     for (const id of openIntentIds) {
       onApprove(id, {
-        fixed_target_ids:
-          designs[id].learning_intent?.fixed_targets.map((target) => target.id) ?? [],
-        convert_legacy: false,
+        fixed_target_ids: designs[id].learning_intent.fixed_targets.map((target) => target.id),
       });
     }
   };
@@ -190,55 +184,24 @@ export function ProfessorPracticeDesignStep({
                     </button>
                   </article>
                 );
-              if (design.learning_intent || converting[lecture.id])
-                return (
-                  <ProfessorLearningIntent
-                    key={`${lecture.id}:${design.revision}`}
-                    design={design}
-                    draft={draft}
-                    label={lecture.label}
-                    pending={pending}
-                    stale={!routingReady || sourceChanged}
-                    onRegenerate={
-                      sourceChanged && routingReady ? () => onPropose(lecture.id, false) : undefined
-                    }
-                    conflict={draftState.conflicts[lecture.id] ?? false}
-                    onChange={(next) => draftState.change(lecture.id, next)}
-                    onApprove={(options) => approve(lecture.id, options)}
-                    onSave={() => onSave(lecture.id, updateFor(draft))}
-                    onRefresh={() => onPropose(lecture.id, true)}
-                    onUseLatest={() => draftState.useLatest(lecture.id)}
-                  />
-                );
               return (
-                <div key={lecture.id}>
-                  <button
-                    type="button"
-                    disabled={
-                      pending || (preparing && !errorsByLecture[lecture.id]) || !routingReady
-                    }
-                    onClick={() => setConverting({ ...converting, [lecture.id]: true })}
-                  >
-                    {t("builder.intent.convert")}
-                  </button>
-                  <ProfessorPracticeLecturePlan
-                    conflict={draftState.conflicts[lecture.id] ?? false}
-                    defaultOpen
-                    design={design}
-                    draft={draft}
-                    key={lecture.id}
-                    label={lecture.label}
-                    pending={pending}
-                    pendingAction={action}
-                    stale={!routingReady}
-                    onApprove={() => approve(lecture.id)}
-                    onChange={(next) => draftState.change(lecture.id, next)}
-                    onRefresh={() => onPropose(lecture.id, true)}
-                    onReview={() => onReview(lecture.id)}
-                    onSave={() => onSave(lecture.id, updateFor(draft))}
-                    onUseLatest={() => draftState.useLatest(lecture.id)}
-                  />
-                </div>
+                <ProfessorLearningIntent
+                  key={`${lecture.id}:${design.revision}`}
+                  design={design}
+                  draft={draft}
+                  label={lecture.label}
+                  pending={pending}
+                  stale={!routingReady || sourceChanged}
+                  onRegenerate={
+                    sourceChanged && routingReady ? () => onPropose(lecture.id, false) : undefined
+                  }
+                  conflict={draftState.conflicts[lecture.id] ?? false}
+                  onChange={(next) => draftState.change(lecture.id, next)}
+                  onApprove={(options) => approve(lecture.id, options)}
+                  onSave={() => onSave(lecture.id, updateFor(draft))}
+                  onRefresh={() => onPropose(lecture.id, true)}
+                  onUseLatest={() => draftState.useLatest(lecture.id)}
+                />
               );
             })}
         </div>

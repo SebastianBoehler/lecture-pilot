@@ -11,8 +11,8 @@ from lecturepilot.app import create_app
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_canvas_generation_ownership import CanvasGenerationOwnershipError
 from lecturepilot.course_canvas_repairs import lecture_source_revision
-from lecturepilot.course_practice_design_store import PracticeDesignStore
-from practice_design_test_helpers import passing_review, proposal, source_document
+from approved_practice_design_helpers import approved_practice_design, store_design
+from practice_design_test_helpers import proposal
 from test_learning_design_review_routes import _document
 
 
@@ -89,29 +89,18 @@ def _replace_approved_design(app, previous):
 
 
 def _save_design(app, *, expected):
-    store = PracticeDesignStore(app.state.canvas_workspace.layout)
     revision = lecture_source_revision(
         app.state.canvas_workspace.layout, course_id=COURSE_ID, lecture_id=LECTURE_ID
     )
     assert revision is not None
-    design = store.save_proposal(
-        course_id=COURSE_ID,
-        lecture_id=LECTURE_ID,
-        source_revision=revision,
-        proposal=proposal(),
-        review=passing_review(),
-        source=source_document(SOURCE_PATH),
-        allowed_source_paths=(SOURCE_PATH,),
-        expected_design_revision=expected.revision if expected else None,
-        expected_design_approval=expected.approval if expected else None,
-        expected_design_review=expected.quality_review if expected else None,
-    )
-    return store.approve(
-        course_id=COURSE_ID,
-        lecture_id=LECTURE_ID,
-        source_revision=revision,
-        design_revision=design.revision,
-        approved_by="prof01",
+    return store_design(
+        app.state.canvas_workspace.layout,
+        approved_practice_design(
+            course_id=COURSE_ID,
+            lecture_id=LECTURE_ID,
+            source_revision=revision,
+            targets=proposal().targets,
+        ),
     )
 
 

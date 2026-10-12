@@ -17,8 +17,9 @@ and approves that intent. Approval does not certify generated task quality.
 `course_learning_intent.py` owns the immutable `LearningIntent`, its goals and
 approval. `course_practice_target.py` owns generated teaching targets.
 `PracticeDesign` schema 2 holds the intent and a versioned implementation;
-`targets: []` means teaching has not been generated yet. Schema 1 remains the
-fully protected legacy contract, with its original revision hashes unchanged.
+`targets: []` means teaching has not been generated yet. Schema 2 is the only
+stored contract: the one-time `storage_migration_practice_design_schema.py`
+converts retired schema-1 full-plan approvals before deployment (see below).
 
 The intent revision covers sources, objective, ordered goals, constraints and
 explicitly fixed target hashes. Its approval pins that revision. The design
@@ -40,11 +41,14 @@ cannot silently reenter the new revision through model conversation history.
 
 ## Authority and repair
 
-Only professors/course managers may propose, edit, approve or convert intent.
+Only professors/course managers may propose, edit or approve intent.
 New routes extend `/admin/courses/{course}/lectures/{lecture}/practice-design`:
 
 - `POST /intent/proposal`: one native structured proposal, one advisory source-support
   review (`learning_goal_support.py`) and at most one stateless repair of goals it names.
+  It returns the saved goals for the current source revision; `?refresh=true` replaces
+  unapproved goals (and an unreadable stored design observed by the request) with a new
+  proposal. Approved goals are never replaced by a refresh (409); professors edit them.
   The lecture objective is the numbered list of goal outcomes (titles when long), so it can
   never promise more than the goals. Remaining findings never block: they are stored per
   unchanged goal and served by `GET /intent/findings` as professor-facing hints.
@@ -62,11 +66,15 @@ New routes extend `/admin/courses/{course}/lectures/{lecture}/practice-design`:
 - `POST /intent/approve`: approve goals and explicitly selected fixed targets. Approval is
   deterministic and makes no model call.
 
-The existing full-design routes remain available for legacy reviewed designs.
-An existing full approval requires explicit conversion consent. The UI explains
-that goals and constraints stay protected while unselected unpublished teaching
-may change. Selected tasks/rubrics stay protected in full; published material
-and previous approvals are retained. Source revisions still require new review.
+The retired full-plan routes (`/proposal`, `/review`, `/approve`, `PUT` of the full
+design) and their blocking model-review loop are removed. The migration turns a
+current schema-1 full approval into an approved learning intent by the same
+professor at the same time with every task fixed, so goals, their order,
+constraints and all approved tasks/rubrics stay professor-owned. Unapproved or
+stale schema-1 designs keep their goals and tasks as unapproved intent. The
+previous file is archived in the design history. Converted designs get a new
+revision, so their unpublished drafts fail closed and must be regenerated;
+published canvases keep their own binding and are unaffected.
 
 The generation preflight accepts approved intent even when tasks do not exist.
 `course_teaching_implementation.py` then uses the existing native practice planner
@@ -75,8 +83,8 @@ intent, fixed task hashes, source excerpts and review structure before saving.
 Missing or critical implementation review triggers bounded automatic repair.
 
 A source-checked task conflict during canvas authoring may trigger one repair
-and one fresh authoring attempt for AI-owned implementation. Legacy full designs
-remain protected. The planner's own schema/semantic retries remain bounded.
+and one fresh authoring attempt for AI-owned implementation. A design whose every
+task is professor-fixed cannot be repaired by AI; its conflict asks for plan review. The planner's own schema/semantic retries remain bounded.
 Repeated conflicts, unsupported protected goals and unavailable providers fail
 explicitly; no task dropping, fabricated source, or default rubric is used.
 
@@ -100,7 +108,7 @@ reinterpret old learner answers.
 
 ## Verification boundaries
 
-Deterministic tests cover goal-only proposals, explicit conversion, protected
+Deterministic tests cover goal-only proposals, the schema-1 migration, protected
 intent and fixed task enforcement, goal edits, revision races, cancellation and
 publication binding. Provider output validity and passing critic reviews do not
 establish teaching correctness or learner efficacy. Replays must report all

@@ -1,8 +1,8 @@
+from approved_practice_design_helpers import approved_practice_design
 import pytest
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
-from lecturepilot.course_practice_design_models import PracticeDesign
 from practice_design_test_helpers import proposal, target as build_target
 
 
@@ -72,7 +72,7 @@ def _design(source: CanvasDocument):
         delayed_transfer_task="Derive a conclusion after details change and justify it.",
         source_refs=("lecture.md",),
     )
-    return PracticeDesign.create(
+    return approved_practice_design(
         course_id=source.course_id,
         lecture_id=source.lecture_id,
         lecture_title=source.title,

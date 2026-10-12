@@ -73,22 +73,18 @@ export async function updatePracticeDesign(input: {
   session: LoginSession;
   update: PracticeDesignUpdate;
 }): Promise<PracticeDesign> {
+  const { update } = input;
   return request(
-    `${path(input.courseId, input.lectureId)}${input.update.goals ? "/intent" : ""}`,
+    `${path(input.courseId, input.lectureId)}/intent`,
     input.session,
-    json(
-      "PUT",
-      input.update.goals
-        ? {
-            source_revision: input.update.source_revision,
-            practice_design_revision: input.update.practice_design_revision,
-            lecture_title: input.update.lecture_title,
-            objective: input.update.objective,
-            planning_context: input.update.planning_context,
-            goals: input.update.goals,
-          }
-        : input.update,
-    ),
+    json("PUT", {
+      source_revision: update.source_revision,
+      practice_design_revision: update.practice_design_revision,
+      lecture_title: update.lecture_title,
+      objective: update.objective,
+      planning_context: update.planning_context,
+      goals: update.goals,
+    }),
     "Practice design failed to save.",
   );
 }
@@ -97,11 +93,11 @@ export async function approvePracticeDesign(input: {
   courseId: string;
   lectureId: string;
   design: PracticeDesign;
-  intent?: LearningIntentApprovalOptions;
+  intent: LearningIntentApprovalOptions;
   session: LoginSession;
 }): Promise<PracticeDesign> {
   return request(
-    `${path(input.courseId, input.lectureId)}/${input.intent ? "intent/approve" : "approve"}`,
+    `${path(input.courseId, input.lectureId)}/intent/approve`,
     input.session,
     json("POST", {
       ...input.intent,
@@ -109,23 +105,6 @@ export async function approvePracticeDesign(input: {
       practice_design_revision: input.design.revision,
     }),
     "Practice design approval failed.",
-  );
-}
-
-export async function reviewPracticeDesign(input: {
-  courseId: string;
-  lectureId: string;
-  design: PracticeDesign;
-  session: LoginSession;
-}): Promise<PracticeDesign> {
-  return request(
-    `${path(input.courseId, input.lectureId)}/review`,
-    input.session,
-    json("POST", {
-      source_revision: input.design.source_revision,
-      practice_design_revision: input.design.revision,
-    }),
-    "Practice design review failed.",
   );
 }
 
@@ -153,7 +132,6 @@ async function request(
     throw new PracticeDesignRequestError(readApiError(payload, fallback), response.status);
   }
   const design = payload as PracticeDesign;
-  if (!design.learning_intent) return design;
   const findings = await fetch(
     apiUrl(`${path(design.course_id, design.lecture_id)}/intent/findings`),
     authRequestInit(session),

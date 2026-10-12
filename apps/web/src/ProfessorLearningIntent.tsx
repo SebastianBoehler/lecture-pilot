@@ -39,16 +39,14 @@ export function ProfessorLearningIntent({
 }) {
   const { t } = useI18n();
   const [editing, setEditing] = useState(false);
-  const [conversionConfirmed, setConversionConfirmed] = useState(false);
-  const initialFixed = design.learning_intent?.fixed_targets.map(({ id }) => id) ?? [];
+  const initialFixed = design.learning_intent.fixed_targets.map(({ id }) => id);
   const [fixed, setFixed] = useState<readonly string[]>(initialFixed);
   const fixedChanged =
     JSON.stringify([...fixed].sort()) !== JSON.stringify([...initialFixed].sort());
   const dirty = !sameEditableDesign(design, draft);
-  const legacy = Boolean(design.approval);
-  const approved = isApproved(design) && !legacy && !dirty && !fixedChanged && !stale;
+  const approved = isApproved(design) && !dirty && !fixedChanged && !stale;
   const disabled = pending || stale || conflict;
-  const goals = draft.learning_intent?.goals ?? draft.targets;
+  const goals = draft.learning_intent.goals;
   return (
     <article className="practice-design-lecture">
       <header className="practice-design-proposal-heading">
@@ -69,7 +67,7 @@ export function ProfessorLearningIntent({
         </div>
       ) : null}
       <div className="learning-intent-actions">
-        <button type="button" disabled={disabled || legacy} onClick={() => setEditing(!editing)}>
+        <button type="button" disabled={disabled} onClick={() => setEditing(!editing)}>
           {editing ? t("builder.design.finishEditing") : t("builder.intent.edit")}
         </button>
 
@@ -82,32 +80,19 @@ export function ProfessorLearningIntent({
           <button
             type="button"
             className="primary-action"
-            disabled={disabled || dirty || (legacy && !conversionConfirmed)}
-            onClick={() => onApprove({ fixed_target_ids: fixed, convert_legacy: legacy })}
+            disabled={disabled || dirty}
+            onClick={() => onApprove({ fixed_target_ids: fixed })}
           >
             {t("builder.intent.approve")}
           </button>
         ) : null}
-        {!legacy && !approved && !dirty && !stale ? (
+        {!approved && !dirty && !stale ? (
           <button type="button" disabled={disabled} onClick={onRefresh}>
             {t("builder.intent.refresh")}
           </button>
         ) : null}
       </div>
       <div className="practice-design-lecture-body">
-        {legacy ? (
-          <div className="practice-design-conflict">
-            <p>{t("builder.intent.conversion")}</p>
-            <label>
-              <input
-                type="checkbox"
-                checked={conversionConfirmed}
-                onChange={(event) => setConversionConfirmed(event.target.checked)}
-              />
-              {t("builder.intent.confirmConversion")}
-            </label>
-          </div>
-        ) : null}
         {conflict ? (
           <div role="alert">
             <p>{t("builder.design.revisionConflict")}</p>
@@ -117,9 +102,7 @@ export function ProfessorLearningIntent({
           </div>
         ) : null}
 
-        {editing ? (
-          <ProfessorPracticeLectureEditor draft={draft} objectiveDerived onChange={onChange} />
-        ) : null}
+        {editing ? <ProfessorPracticeLectureEditor draft={draft} onChange={onChange} /> : null}
 
         <ol className="practice-target-summary">
           {goals.map((target, index) => {
@@ -150,12 +133,7 @@ export function ProfessorLearningIntent({
                 {implementation ? (
                   <details>
                     <summary>{t("builder.intent.details")}</summary>
-                    <ProfessorPracticeTargetReview
-                      disabled
-                      index={index}
-                      target={implementation}
-                      onChange={() => {}}
-                    />
+                    <ProfessorPracticeTargetReview index={index} target={implementation} />
                     <label>
                       <input
                         type="checkbox"

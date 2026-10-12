@@ -95,16 +95,9 @@ export type PracticeDesignQualityReview = Readonly<{
   checks: readonly PracticeDesignReviewCheck[];
 }>;
 
-export type PracticeDesignApproval = Readonly<{
-  approved_by: string;
-  approved_at: string;
-  source_revision: string;
-  practice_design_revision: string;
-}>;
-
 export type PracticeDesign = Readonly<{
-  schema_version: 1 | 2;
-  learning_intent?: LearningIntent | null;
+  schema_version: 2;
+  learning_intent: LearningIntent;
   course_id: string;
   lecture_id: string;
   lecture_title: string;
@@ -114,7 +107,6 @@ export type PracticeDesign = Readonly<{
   targets: readonly PracticeTarget[];
   revision: string;
   quality_review: PracticeDesignQualityReview | null;
-  approval: PracticeDesignApproval | null;
   /** Advisory source-support findings for learning goals; never block approval. */
   goal_findings?: readonly GoalFinding[];
 }>;
@@ -122,7 +114,7 @@ export type PracticeDesign = Readonly<{
 export type GoalFinding = Readonly<{ goal_id: string; reason: string }>;
 
 export type PracticeDesignUpdate = Readonly<{
-  goals?: LearningIntent["goals"];
+  goals: LearningIntent["goals"];
   source_revision: string;
   practice_design_revision: string;
   lecture_title: string;

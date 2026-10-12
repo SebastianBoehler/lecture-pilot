@@ -10,20 +10,17 @@ from lecturepilot.course_canvas_generation_service import (
     CANVAS_GENERATION_LEASE_SECONDS,
     run_idempotent_canvas_generation,
 )
-from lecturepilot.course_practice_design_models import PracticeDesignUpdate
-from lecturepilot.course_practice_design_store import PracticeDesignStore
 from test_learning_design_review_routes import _document
 from test_practice_design_generation_preflight import (
     COURSE_ID,
     LECTURE_ID,
-    SOURCE_PATH,
     _app,
     _context,
     _save_design,
     _targeted_failure,
     _write_manifest,
 )
-from practice_design_test_helpers import passing_review, source_document
+from approved_practice_design_helpers import revised_design, store_design
 
 
 @pytest.mark.anyio
@@ -167,37 +164,9 @@ def _failure_with_revisions(source_revision: str, practice_design_revision: str)
 
 
 def _replace_and_approve_design(app, approved):
-    store = PracticeDesignStore(app.state.canvas_workspace.layout)
-    changed = store.update(
-        course_id=COURSE_ID,
-        lecture_id=LECTURE_ID,
-        current_source_revision=approved.source_revision,
-        update=PracticeDesignUpdate(
-            source_revision=approved.source_revision,
-            practice_design_revision=approved.revision,
-            lecture_title=approved.lecture_title,
-            objective="Derive a revised conclusion independently from the cited evidence.",
-            planning_context=approved.planning_context,
-            targets=approved.targets,
+    return store_design(
+        app.state.canvas_workspace.layout,
+        revised_design(
+            approved, objective="Derive a revised conclusion independently from the cited evidence."
         ),
-        source=source_document(SOURCE_PATH),
-        allowed_source_paths=(SOURCE_PATH,),
-    )
-    changed = store.save_review(
-        course_id=COURSE_ID,
-        lecture_id=LECTURE_ID,
-        source_revision=changed.source_revision,
-        design_revision=changed.revision,
-        review=passing_review(),
-        source=source_document(SOURCE_PATH),
-        allowed_source_paths=(SOURCE_PATH,),
-        expected_design_review=None,
-        expected_design_approval=None,
-    )
-    return store.approve(
-        course_id=COURSE_ID,
-        lecture_id=LECTURE_ID,
-        source_revision=changed.source_revision,
-        design_revision=changed.revision,
-        approved_by="prof01",
     )

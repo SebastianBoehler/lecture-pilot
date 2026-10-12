@@ -162,7 +162,6 @@ def test_source_to_goals_approval_does_not_generate_or_approve_tasks(tmp_path):
         },
     )
     assert approval.status_code == 200, approval.text
-    assert approval.json()["approval"] is None
     assert approval.json()["learning_intent"]["approval"]
     assert (
         api.get(design_path() + "/readiness", headers=professor_headers()).json()[

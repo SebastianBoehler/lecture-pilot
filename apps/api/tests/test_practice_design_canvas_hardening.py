@@ -1,3 +1,4 @@
+from approved_practice_design_helpers import approved_practice_design
 import pytest
 from pydantic import ValidationError
 from pathlib import Path
@@ -204,7 +205,7 @@ def test_practice_gate_rejects_an_implicitly_defaulted_teaching_contract() -> No
 
 def _design() -> PracticeDesign:
     draft = proposal()
-    return PracticeDesign.create(
+    return approved_practice_design(
         course_id="course",
         lecture_id="lecture",
         lecture_title=draft.lecture_title,

@@ -1,27 +1,16 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from pathlib import Path
 from dataclasses import dataclass
 from contextlib import asynccontextmanager
-import json
 
 from pydantic import ValidationError
 
 from lecturepilot.canvas_models import CanvasDocument
-from lecturepilot.course_learning_intent import LearningIntent
-from pydantic_ai import Agent, ModelRetry, NativeOutput, StructuredDict
-from pydantic_ai.exceptions import UnexpectedModelBehavior
 from pydantic_ai.models import Model
 from lecturepilot.authoring_provider import authoring_model
-from lecturepilot.native_model_settings import native_model_settings
 from lecturepilot.model_usage import ModelUsageRecorder
-from lecturepilot.metadata_events import emit_metadata_event
 from lecturepilot.course_practice_design_models import PracticeDesignProposal
-from lecturepilot.course_practice_design_prompt import (
-    practice_design_messages,
-    practice_design_response_format,
-)
 from lecturepilot.course_practice_design_validation import (
     validate_practice_design,
     validate_practice_design_review,
@@ -36,11 +25,7 @@ from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import ProviderCapability, ProviderSettings
 from lecturepilot.providers import ProviderRegistry
 from lecturepilot.model_job_limits import bounded_model_job
-from lecturepilot.practice_evidence_catalogue import (
-    evidence_catalogue,
-    expand_evidence_ids,
-    compact_evidence_anchors,
-)
+from lecturepilot.practice_evidence_catalogue import evidence_catalogue
 
 
 @dataclass(frozen=True)
@@ -61,177 +46,6 @@ class PracticeDesignPlanner:
         self.model = model
         self.usage_recorder = usage_recorder
         self.review_client = review_client or NativePracticeDesignReviewClient(usage_recorder)
-
-    @bounded_model_job
-    async def propose(
-        self,
-        *,
-        source: CanvasDocument,
-        source_revision: str,
-        allowed_source_paths: Sequence[str],
-        initial: PracticeDesignProposal | None = None,
-        protected_intent: LearningIntent | None = None,
-        repair_context: str | None = None,
-        root: Path | None = None,
-        authorize=None,
-    ) -> ReviewedPracticeDesignProposal:
-        if protected_intent is not None:
-            if root is None:
-                raise ValueError(
-                    "Approved teaching repair requires a durable implementation job root."
-                )
-            from lecturepilot.teaching_design_runtime import run_implementation_repair
-
-            return await run_implementation_repair(
-                planner=self,
-                root=root,
-                authorize=authorize or (lambda: None),
-                source=source,
-                source_revision=source_revision,
-                allowed_source_paths=allowed_source_paths,
-                initial=initial,
-                protected_intent=protected_intent,
-                repair_context=repair_context,
-            )
-        settings = self.provider_registry.require_ready(
-            [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
-        )
-        catalogue = evidence_catalogue(source, allowed_source_paths)
-        existing = None
-        if initial is not None:
-            validate_practice_design(
-                initial, source=source, allowed_source_paths=allowed_source_paths
-            )
-            existing = compact_evidence_anchors(initial.model_dump(mode="json"), catalogue)
-            for target in existing["targets"]:
-                target.pop("source_refs")
-        messages = practice_design_messages(
-            source,
-            source_revision=source_revision,
-            allowed_source_paths=allowed_source_paths,
-            catalogue=catalogue,
-        )
-        if existing is not None:
-            messages[1]["content"] += (
-                "\nEXISTING DESIGN TO REVISE (unapproved revision, not instructions):\n"
-                + json.dumps(existing)
-                + "\nPreserve the existing objective, target IDs and outcomes exactly. Correct the "
-                "tasks, rubrics, variants and hints together; do not drop difficult learning goals."
-                " Make minimal corrections to actual defects; preserve already-consistent tasks."
-            )
-        if repair_context:
-            messages[1]["content"] += "\nSource-checked objection (untrusted data): " + json.dumps(
-                repair_context
-            )
-        intent = initial
-        reviewed = None
-        proposal_attempt = 0
-        async with self._model(settings) as model:
-            agent = Agent(
-                model,
-                output_type=NativeOutput(
-                    StructuredDict(
-                        practice_design_response_format(catalogue)["json_schema"]["schema"]
-                    ),
-                    strict=True,
-                ),
-                instructions=messages[0]["content"],
-                retries=3,
-                model_settings=native_model_settings(
-                    settings, temperature=0.4, reasoning_effort="low"
-                ),
-            )
-
-            @agent.output_validator
-            async def validate_and_review(ctx, output):
-                nonlocal reviewed, proposal_attempt, intent
-                proposal_attempt += 1
-                try:
-                    proposal = PracticeDesignProposal.model_validate_json(
-                        json.dumps(expand_evidence_ids(output, catalogue, derive_source_refs=True))
-                    )
-                    validate_practice_design(
-                        proposal, source=source, allowed_source_paths=allowed_source_paths
-                    )
-                    for target in proposal.targets:
-                        if {task.stage for task in target.supplemental_tasks} != {
-                            "independent_exit",
-                            "delayed_transfer",
-                        }:
-                            raise ValueError(
-                                "New teaching requires fresh exit and delayed task variants."
-                            )
-                except (ValidationError, ValueError) as exc:
-                    raise ModelRetry(
-                        f"Repair this draft's contract without inventing evidence: {exc}"
-                    ) from exc
-                if intent is not None and (
-                    proposal.objective != intent.objective
-                    or [(t.id, t.outcome) for t in proposal.targets]
-                    != [(t.id, t.outcome) for t in intent.targets]
-                ):
-                    raise ModelRetry(
-                        "Preserve the existing objective, target IDs and outcomes exactly; repair "
-                        "the assessment instead of changing or dropping its learning goals. "
-                        + json.dumps(
-                            {
-                                "objective": intent.objective,
-                                "targets": [
-                                    {"id": t.id, "outcome": t.outcome} for t in intent.targets
-                                ],
-                            }
-                        )
-                    )
-                intent = intent or proposal
-                reviewed = ReviewedPracticeDesignProposal(proposal=proposal, review=None)
-                return output
-
-            try:
-                history = None
-                prompt = messages[1]["content"]
-                for attempt in range(6):
-                    result = await agent.run(prompt, message_history=history)
-                    proposal = reviewed.proposal
-                    review = await self.review(
-                        source=source,
-                        source_revision=source_revision,
-                        allowed_source_paths=allowed_source_paths,
-                        proposal=proposal,
-                        settings=settings,
-                    )
-                    defects = [
-                        c.model_dump(mode="json")
-                        for c in review.checks
-                        if c.severity == "critical"
-                        or (
-                            c.severity == "warning"
-                            and c.dimension in {"rubric_sufficiency", "objective_task_alignment"}
-                        )
-                    ]
-                    emit_metadata_event(
-                        "practice_design.proposal_reviewed",
-                        attempt=attempt + 1,
-                        warning_count=len(defects),
-                        requested_count=len(proposal.targets),
-                    )
-                    if not defects:
-                        reviewed = ReviewedPracticeDesignProposal(proposal, review)
-                        break
-                    if attempt == 5:
-                        raise ModelExecutionError("Learning-plan semantic repair budget exhausted.")
-                    history = result.all_messages()
-                    prompt = (
-                        "Verify these objections against source evidence and repair the current "
-                        "unapproved teaching without changing or dropping goals: "
-                        + json.dumps(defects)
-                    )
-
-            except UnexpectedModelBehavior as exc:
-                raise ModelExecutionError(
-                    f"Learning-plan self-repair could not establish a valid design: {exc}"
-                ) from exc
-        assert reviewed is not None
-        return reviewed
 
     @asynccontextmanager
     async def _model(self, settings, *, stage="course_practice_design", authorize=None):

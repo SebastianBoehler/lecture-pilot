@@ -1,3 +1,4 @@
+from approved_practice_design_helpers import approved_practice_design
 import json
 
 import pytest
@@ -16,7 +17,7 @@ from practice_gate_coaching_test_helpers import practice_gate
 
 
 def design_for(target):
-    return PracticeDesign.create(
+    return approved_practice_design(
         course_id="course-01",
         lecture_id="lecture-01",
         source_revision="a" * 64,

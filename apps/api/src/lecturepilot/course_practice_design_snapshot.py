@@ -72,57 +72,10 @@ def _parse_design(payload: bytes, *, course_id: str, lecture_id: str) -> Practic
     if design.course_id != course_id or design.lecture_id != lecture_id:
         raise PracticeDesignUnavailable("Stored practice design identity is invalid.")
     review = design.quality_review
-    if review is not None:
-        if (
-            review.source_revision != design.source_revision
-            or review.practice_design_revision != design.revision
-        ):
-            raise PracticeDesignUnavailable("Stored practice design review is stale.")
-        if design.approval is not None and review.has_critical_issues:
-            raise PracticeDesignUnavailable("Stored practice design review blocks approval.")
-    elif design.approval is not None:
-        raise PracticeDesignUnavailable("Stored approved practice design has no quality review.")
+    if review is not None and (
+        review.source_revision != design.source_revision
+        or review.practice_design_revision != design.revision
+    ):
+        raise PracticeDesignUnavailable("Stored practice design review is stale.")
     return design
 
-
-def require_proposal_snapshot(
-    path,
-    *,
-    course_id,
-    lecture_id,
-    expected_design_revision,
-    expected_design_approval,
-    expected_design_review,
-    expected_learning_intent,
-    expected_invalid_digest,
-):
-    snapshot = snapshot_practice_design(path, course_id=course_id, lecture_id=lecture_id)
-    message = "The practice design changed while the learning plan was proposed. Reload it."
-    if expected_invalid_digest is not None:
-        if snapshot.invalid_digest != expected_invalid_digest:
-            raise PracticeDesignStale(message)
-        return
-    if snapshot.invalid_digest is not None:
-        raise PracticeDesignUnavailable(
-            "Stored practice design is invalid. Generate a new learning plan."
-        )
-    current = snapshot.design
-    if expected_design_revision is None:
-        if any(
-            item is not None
-            for item in (
-                current,
-                expected_design_approval,
-                expected_design_review,
-                expected_learning_intent,
-            )
-        ):
-            raise PracticeDesignStale(message)
-    elif (
-        current is None
-        or current.revision != expected_design_revision
-        or current.approval != expected_design_approval
-        or current.quality_review != expected_design_review
-        or current.learning_intent != expected_learning_intent
-    ):
-        raise PracticeDesignStale(message)

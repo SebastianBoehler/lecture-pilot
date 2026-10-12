@@ -20,10 +20,6 @@ export const learningIntentMessages = {
     "builder.intent.fixed": "Keep these tasks and rubric fixed",
     "builder.intent.fixedHelp":
       "Selected targets remain professor-owned in full. AI may repair other generated tasks while preserving every learning goal and constraint.",
-    "builder.intent.convert": "Review learning goals instead",
-    "builder.intent.conversion":
-      "This plan was approved in full. Switching keeps the learning goals and constraints protected, but lets AI revise unselected tasks, rubrics and hints in unpublished drafts. The existing approval is retained in history; published material stays unchanged.",
-    "builder.intent.confirmConversion": "I approve this change in responsibility",
     "builder.intent.repair":
       "AI will check and repair the teaching implementation during generation. Goal approval does not certify these generated details.",
     "builder.intent.goalTitle": "Learning goal title: {target}",
@@ -54,10 +50,6 @@ export const learningIntentMessages = {
     "builder.intent.fixed": "Diese Aufgaben und Bewertungskriterien festschreiben",
     "builder.intent.fixedHelp":
       "Ausgewählte Ziele bleiben mit allen Aufgabendetails unter Ihrer Kontrolle. Andere generierte Aufgaben darf die KI bei unveränderten Lernzielen und Rahmenbedingungen korrigieren.",
-    "builder.intent.convert": "Stattdessen Lernziele prüfen",
-    "builder.intent.conversion":
-      "Dieser Plan wurde vollständig freigegeben. Beim Wechsel bleiben Lernziele und Rahmenbedingungen geschützt. Nicht ausgewählte Aufgaben, Kriterien und Hilfen darf die KI in unveröffentlichten Entwürfen ändern. Die bisherige Freigabe bleibt im Verlauf erhalten; veröffentlichte Inhalte bleiben unverändert.",
-    "builder.intent.confirmConversion": "Ich stimme dieser Änderung der Zuständigkeit zu",
     "builder.intent.repair":
       "Die KI prüft und korrigiert die Umsetzung bei der Generierung. Die Freigabe der Lernziele bestätigt diese generierten Details nicht.",
     "builder.intent.goalTitle": "Titel des Lernziels: {target}",
