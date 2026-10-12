@@ -99,3 +99,28 @@ def _write_scanned_pdf(path: Path, text: str) -> None:
     scanned_page.insert_image(scanned_page.rect, stream=png)
     scanned.save(path)
     scanned.close()
+
+
+def test_native_text_stays_verbatim_and_ocr_only_adds_new_lines(monkeypatch, tmp_path) -> None:
+    from lecturepilot.pdf_page_ocr import PdfPageRecord, page_text
+
+    monkeypatch.setenv("LECTUREPILOT_DOCUMENT_CONVERTER_URL", "http://converter:8080")
+    monkeypatch.setattr(
+        "lecturepilot.pdf_page_ocr.DocumentConverterClient.ocr_page",
+        lambda _self, **request: _ocr_result(request, "Choosing a colour map\nGrayscale for CT"),
+    )
+    record = PdfPageRecord(
+        number=12,
+        native_text="Choosing a colour map 12\n",
+        links=(),
+        raster_ratio=0.9,
+        width=600,
+        height=800,
+        image=b"png",
+    )
+
+    text, warning = page_text(record, tmp_path / "cache")
+
+    # Approved source anchors quote native text, so it must stay first and unchanged.
+    assert text == "Choosing a colour map 12\n[OCR-derived text]\nGrayscale for CT"
+    assert warning is None

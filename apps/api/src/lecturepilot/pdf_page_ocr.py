@@ -75,8 +75,21 @@ def _recognized_text(record: PdfPageRecord, cache_dir: Path | None) -> tuple[str
         # A warning means recognition was degraded or unavailable: retry it next time.
         if cache_path is not None and result.warning is None:
             atomic_write_json(cache_path, cached)
-    text = f"[OCR-derived text]\n{cached['text']}" if cached["text"] else record.native_text
-    return text, cached["warning"]
+    return _with_recognized_lines(record.native_text, cached["text"] or ""), cached["warning"]
+
+
+def _with_recognized_lines(native: str, recognized: str) -> str:
+    """Native text stays verbatim (approved source anchors quote it); OCR only adds lines."""
+    known = " ".join(native.split()).casefold()
+    extra = [
+        line
+        for line in recognized.splitlines()
+        if line.strip() and " ".join(line.split()).casefold() not in known
+    ]
+    if not extra:
+        return native
+    prefix = f"{native.rstrip()}\n" if native.strip() else ""
+    return prefix + "[OCR-derived text]\n" + "\n".join(extra)
 
 
 def _read_cache(path: Path | None) -> dict | None:
