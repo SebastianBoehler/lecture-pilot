@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import logging
 import os
 import re
 from collections.abc import Callable
 from typing import Any
 from urllib.parse import urlencode
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from lecturepilot.models import YoutubeDuration, YoutubeSearchResponse, YoutubeVideoCandidate
@@ -14,6 +16,7 @@ class YoutubeDiscoveryError(RuntimeError):
     """Raised when YouTube candidate discovery cannot complete."""
 
 
+_logger = logging.getLogger(__name__)
 FetchJson = Callable[[str, dict[str, str | int]], dict[str, Any]]
 
 _WORD_RE = re.compile(r"[a-z0-9]+")
@@ -125,8 +128,35 @@ class YoutubeDiscovery:
 
             with urlopen(request, timeout=15) as response:
                 return json.loads(response.read().decode("utf-8"))
-        except Exception as exc:  # noqa: BLE001 - surface provider detail to admin UI.
-            raise YoutubeDiscoveryError(f"YouTube API request failed: {exc}") from exc
+        except Exception as exc:  # noqa: BLE001 - every provider failure gets a next step.
+            raise YoutubeDiscoveryError(_failure_message(exc)) from exc
+
+
+def _failure_message(exc: Exception) -> str:
+    """Professors see what happened and what to do; raw provider detail stays in logs."""
+    reasons: set[str] = set()
+    if isinstance(exc, HTTPError):
+        try:
+            import json
+
+            errors = json.loads(exc.read().decode("utf-8"))["error"].get("errors") or []
+            reasons = {str(item.get("reason")) for item in errors}
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            pass
+        _logger.warning("YouTube API request failed: HTTP %s %s", exc.code, sorted(reasons))
+        if exc.code == 400 or reasons & {"keyInvalid", "keyExpired", "accessNotConfigured"}:
+            return (
+                "YouTube rejected the configured API key. Ask the administrator to renew it, "
+                "or continue without videos."
+            )
+        if reasons & {"quotaExceeded", "dailyLimitExceeded", "rateLimitExceeded"}:
+            return (
+                "The daily YouTube search quota is used up. Try again tomorrow "
+                "or continue without videos."
+            )
+    else:
+        _logger.warning("YouTube API request failed: %s", type(exc).__name__)
+    return "YouTube search is unavailable right now. Try again later or continue without videos."
 
 
 def _candidate_from_item(item: dict[str, Any], *, query: str) -> YoutubeVideoCandidate:

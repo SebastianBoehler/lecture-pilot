@@ -1,4 +1,10 @@
-from lecturepilot.youtube_discovery import YoutubeDiscovery
+import io
+import json
+from urllib.error import HTTPError
+
+import pytest
+
+from lecturepilot.youtube_discovery import YoutubeDiscovery, YoutubeDiscoveryError
 
 
 def test_youtube_discovery_normalizes_and_ranks_video_candidates() -> None:
@@ -73,3 +79,30 @@ def _video(video_id: str, title: str, duration: str, views: int) -> dict:
         "contentDetails": {"duration": duration},
         "statistics": {"viewCount": str(views)},
     }
+
+
+def _http_error(status: int, reason: str):
+    body = json.dumps({"error": {"errors": [{"reason": reason}], "message": "raw detail"}})
+    return HTTPError("https://www.googleapis.com", status, "Bad", {}, io.BytesIO(body.encode()))
+
+
+@pytest.mark.parametrize(
+    ("error", "message"),
+    [
+        (_http_error(400, "badRequest"), "YouTube rejected the configured API key"),
+        (_http_error(403, "quotaExceeded"), "daily YouTube search quota is used up"),
+        (OSError("connection reset"), "YouTube search is unavailable right now"),
+    ],
+)
+def test_youtube_failures_explain_the_next_step_without_raw_http_detail(
+    monkeypatch, error, message
+) -> None:
+    def fail(*args, **kwargs):
+        raise error
+
+    monkeypatch.setattr("lecturepilot.youtube_discovery.urlopen", fail)
+    with pytest.raises(YoutubeDiscoveryError) as raised:
+        YoutubeDiscovery(api_key="test").search("clustering", max_results=1)
+    assert message in str(raised.value)
+    assert "continue without videos" in str(raised.value)
+    assert "HTTP Error" not in str(raised.value)
