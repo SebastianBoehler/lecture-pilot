@@ -435,7 +435,8 @@ professor/ profile/ shared/ shell/ speech/ test/
   `course_support_requests` (cascade from `users`). Requests accept only the `source`,
   `external_course_id` and `term` of the session user's own stored observation (404 otherwise);
   title matching reuses `course_title_key`. Every surface returns tenant-scoped counts only, never
-  identities; audit rows carry only request ID and source.
+  identities; the professor builder match reports request counts only from 3 upward; audit rows
+  carry only request ID and source.
 - Sharing: course management "Share" shows the course link `/courses/<id>` with a local QR code
   and a slide image; access follows Alma/ILIAS enrollment. "Allow joining with this link" is an
   explicit opt-in (`course_invites.py`) that creates a revocable `/join/<id>/<secret>` link;

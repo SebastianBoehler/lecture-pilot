@@ -8,6 +8,9 @@ from lecturepilot.courses.course_support_requests import Observation, Request, t
 from lecturepilot.courses.external_course_sync import course_title_key
 from lecturepilot.database import Database
 
+# Any professor can query any title, so smaller request counts could point at individuals.
+MIN_PROFESSOR_REQUEST_COUNT = 3
+
 
 def course_support_demand(
     database: Database, *, tenant_id: str, limit: int
@@ -133,7 +136,8 @@ def course_support_match(
                 ),
             )
         )
-    return CourseSupportMatch(request_count=requests or 0, enrolled_user_count=enrolled or 0)
+    visible_requests = requests if (requests or 0) >= MIN_PROFESSOR_REQUEST_COUNT else 0
+    return CourseSupportMatch(request_count=visible_requests, enrolled_user_count=enrolled or 0)
 
 
 def _same_course(left, right):

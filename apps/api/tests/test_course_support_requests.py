@@ -190,16 +190,19 @@ def test_professor_builder_match_uses_course_title_key(tmp_path: Path) -> None:
     for name in ("student-a", "student-c"):
         client = _client(app)
         assert _put(client, login(client, name), ALMA).status_code == 200
-    login(_client(app), "student-b")
+    late_client = _client(app)
+    late_session = login(late_client, "student-b")
     prof_client = _client(app)
     _professor_login(app, prof_client, "prof")
+    params = {"title": " secure   systems ", "term": "Sommer 2026"}
 
-    matched = prof_client.get(
-        "/admin/course-support-demand/match",
-        params={"title": " secure   systems ", "term": "Sommer 2026"},
-    )
+    matched = prof_client.get("/admin/course-support-demand/match", params=params)
     assert matched.status_code == 200, matched.text
-    assert matched.json() == {"request_count": 2, "enrolled_user_count": 3}
+    # Fewer than three requests could point at individuals, so professors see none yet.
+    assert matched.json() == {"request_count": 0, "enrolled_user_count": 3}
+    assert _put(late_client, late_session, ALMA).status_code == 200
+    matched = prof_client.get("/admin/course-support-demand/match", params=params)
+    assert matched.json() == {"request_count": 3, "enrolled_user_count": 3}
     other_term = prof_client.get(
         "/admin/course-support-demand/match",
         params={"title": "Secure Systems", "term": "Winter 2025"},
