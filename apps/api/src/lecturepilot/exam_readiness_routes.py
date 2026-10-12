@@ -16,6 +16,7 @@ from lecturepilot.exam_readiness import (
     build_exam_readiness_check,
     public_exam_readiness_check,
 )
+from lecturepilot.course_schedule_store import read_course_workspace
 from lecturepilot.exam_answer_evaluation import OpenAnswerEvaluationInput
 from lecturepilot.exam_revision_plan import (
     ExamReadinessAttemptInput,
@@ -99,6 +100,7 @@ def register_exam_readiness_routes(
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+        feedback_language = attempt.feedback_locale or _course_language(app, course_id)
         items = [
             OpenAnswerEvaluationInput(
                 question_id=question.id,
@@ -106,6 +108,7 @@ def register_exam_readiness_routes(
                 answer=answers_by_question[question.id].text or "",
                 rubric=question.rubric,
                 source_excerpt=question.source_excerpt,
+                feedback_language=feedback_language,
             )
             for question in check.questions
             if question.kind == "open_ended"
@@ -181,3 +184,10 @@ def _readiness_check(
 
 def _progress_store(app: FastAPI) -> ReadinessProgressStore:
     return ReadinessProgressStore(app.state.canvas_workspace.layout)
+
+
+def _course_language(app: FastAPI, course_id: str) -> str:
+    workspace = read_course_workspace(
+        app.state.canvas_workspace.course_media_root(course_id), course_id
+    )
+    return workspace.course.canvas_language if workspace else "en"

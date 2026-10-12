@@ -32,6 +32,8 @@ class ExamReadinessAnswer(BaseModel):
 
 class ExamReadinessAttemptInput(BaseModel):
     answers: list[ExamReadinessAnswer] = Field(min_length=1)
+    # The learner's UI language for feedback; defaults to the course language.
+    feedback_locale: Literal["en", "de"] | None = None
 
 
 class ExamReadinessQuestionResult(BaseModel):

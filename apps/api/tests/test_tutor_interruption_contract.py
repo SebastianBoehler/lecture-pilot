@@ -69,6 +69,6 @@ async def test_tool_loop_repair_rejects_provider_owned_next_check() -> None:
     repair_instruction = str(calls[1][-1])
     assert "result contract" in repair_instruction
     assert result.message == (
-        "More evidence is needed for the approved criterion: Names one boundary.\n\n"
+        "Not quite yet. Your answer still needs to show: Names one boundary.\n\n"
         "Next check:\nExplain the mechanism."
     )

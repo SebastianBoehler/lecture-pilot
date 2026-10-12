@@ -44,7 +44,9 @@ def agent_result_from_content(
     next_check = select_next_check(turn, decision)
     message = provider_result.message.strip()
     if decision is not None:
-        message = compose_assessment_message(decision, next_check)
+        message = compose_assessment_message(
+            decision, next_check, gate=turn.active_gate, locale=turn.locale
+        )
     result = AgentTurnResult(
         message=message,
         session_goal=(

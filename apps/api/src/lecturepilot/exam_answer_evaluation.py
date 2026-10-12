@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Protocol
+from typing import Literal, Any, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -20,6 +20,8 @@ class OpenAnswerEvaluationInput(BaseModel):
     answer: str = Field(min_length=1, max_length=4000)
     rubric: list[str] = Field(min_length=1, max_length=40)
     source_excerpt: str = Field(default="", max_length=6000)
+    # Set by the backend from the learner's UI locale or the course language; never guessed.
+    feedback_language: Literal["en", "de"] = "en"
 
 
 class OpenAnswerEvaluation(BaseModel):
@@ -127,7 +129,11 @@ def open_answer_evaluation_response_format() -> dict[str, Any]:
     }
 
 
+_LANGUAGE_NAMES = {"en": "English", "de": "German"}
+
+
 def _evaluation_messages(items: list[OpenAnswerEvaluationInput]) -> list[dict[str, str]]:
+    language = _LANGUAGE_NAMES[items[0].feedback_language]
     return [
         {
             "role": "system",
@@ -141,8 +147,8 @@ def _evaluation_messages(items: list[OpenAnswerEvaluationInput]) -> list[dict[st
                 "1.0 means all required evidence is demonstrated without substantive errors. "
                 "Use intermediate scores for partial evidence, not verbosity. Answer length, "
                 "confidence and rubric keywords alone earn no credit. Accept concise correct "
-                "paraphrases and equivalent source-supported reasoning. Write feedback in the "
-                "language of the learner answer. "
+                "paraphrases and equivalent source-supported reasoning. "
+                f"Write all feedback in {language}. "
                 "Feedback must identify the most useful next improvement without revealing a full answer."
             ),
         },

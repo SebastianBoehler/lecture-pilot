@@ -76,6 +76,8 @@ export type AgentTurnInput = {
     focused_section_id: string;
   };
   readiness_task_id?: string | null;
+  /** UI language for backend-written learner text such as assessment results. */
+  locale?: "en" | "de";
 };
 
 type AgentTurnStreamEvent =
@@ -248,13 +250,14 @@ export async function submitExamReadinessAttempt(
   answers: ExamReadinessAnswer[],
   session: LoginSession,
   mode: LearnerWorkspaceMode = "learner",
+  feedbackLocale?: "en" | "de",
 ): Promise<ExamReadinessAttemptResult> {
   const response = await fetch(
     apiUrl(`/courses/${courseId}/exam-readiness/attempts`),
     learnerRequestInit(session, mode, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ answers }),
+      body: JSON.stringify({ answers, feedback_locale: feedbackLocale }),
     }),
   );
   const payload = await response.json();

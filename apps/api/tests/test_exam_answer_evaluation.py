@@ -197,7 +197,10 @@ def test_evaluation_failure_returns_retryable_response_without_persisting(tmp_pa
 
 
 class _FailingEvaluator:
-    async def evaluate(self, **_kwargs) -> list[OpenAnswerEvaluation]:
+    items: list[OpenAnswerEvaluationInput] = []
+
+    async def evaluate(self, *, items, **_kwargs) -> list[OpenAnswerEvaluation]:
+        self.items = items
         raise ProviderConfigurationError("Evaluation provider is unavailable.")
 
 

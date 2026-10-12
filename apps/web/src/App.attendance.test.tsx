@@ -17,7 +17,8 @@ describe("LecturePilot attendance tutor intro", () => {
 
   it("seeds the tutor intro from the dashboard attendance choice", async () => {
     const user = userEvent.setup();
-    vi.stubGlobal("fetch", mockLoginFetch({ published: true }));
+    const fetchMock = mockLoginFetch({ published: true });
+    vi.stubGlobal("fetch", fetchMock);
     render(<App />);
 
     await logIn(user);
@@ -27,6 +28,12 @@ describe("LecturePilot attendance tutor intro", () => {
     ).closest("article");
     expect(lectureRow).not.toBeNull();
     await user.click(within(lectureRow as HTMLElement).getByRole("button", { name: "present" }));
+    const saved = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/attendance"));
+    expect(String(saved?.[0])).toMatch(/\/lectures\/lecture-03\/attendance$/);
+    expect(saved?.[1]).toMatchObject({
+      method: "PUT",
+      body: JSON.stringify({ attendance: "present" }),
+    });
     await openLecture03FromDashboard(user);
 
     expect(screen.getByText(/you marked this lecture as attended/i)).toBeInTheDocument();
@@ -99,6 +106,7 @@ describe("LecturePilot attendance tutor intro", () => {
     const agentCall = fetchMock.mock.calls.find(([url]) => String(url).includes("/agent/turn"));
     const agentRequest = JSON.parse(String(agentCall?.[1]?.body));
     expect(agentRequest).toMatchObject({
+      locale: "en",
       attendance: "absent",
       canvas_state: { focused_section_id: "bayesian-decision-theory-the-aim" },
     });

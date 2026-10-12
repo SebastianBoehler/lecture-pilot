@@ -31,7 +31,7 @@ export function ExamReadinessPanel({
   onProgress?: () => void | Promise<void>;
   session: LoginSession | null;
 }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const [check, setCheck] = useState<ExamReadinessCheck | null>(null);
   const [answers, setAnswers] = useState<ExamAnswerMap>({});
   const [attemptResult, setAttemptResult] = useState<ExamReadinessAttemptResult | null>(null);
@@ -82,6 +82,7 @@ export function ExamReadinessPanel({
         answersForCheck(check, answers),
         session,
         mode,
+        locale,
       );
       setAttemptResult(result);
       await onProgress?.();

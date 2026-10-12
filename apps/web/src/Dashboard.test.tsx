@@ -286,6 +286,8 @@ describe("Dashboard course workspace matching", () => {
         method: "POST",
       }),
     );
+    const attempt = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/attempts"));
+    expect(JSON.parse(String(attempt?.[1]?.body)).feedback_locale).toBe("en");
   });
 });
 

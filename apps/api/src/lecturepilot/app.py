@@ -14,6 +14,7 @@ from lecturepilot.analytics_routes import register_analytics_routes
 from lecturepilot.app_exception_handlers import register_exception_handlers
 from lecturepilot.asset_routes import register_asset_routes
 from lecturepilot.agent_routes import register_agent_routes
+from lecturepilot.attendance_routes import register_attendance_routes
 from lecturepilot.auth_routes import register_auth_routes
 from lecturepilot.body_limits import RequestBodyLimitMiddleware
 from lecturepilot.canvas_workspace import CanvasWorkspace
@@ -227,6 +228,7 @@ def create_app() -> FastAPI:
         "seeded_lectures": LECTURES,
     }
     register_agent_routes(app, **seeded_route_args)
+    register_attendance_routes(app, **seeded_route_args)
     register_analytics_routes(app, **seeded_route_args)
     register_learner_lesson_state_routes(app, **seeded_route_args)
     register_canvas_annotation_routes(app, **seeded_route_args)

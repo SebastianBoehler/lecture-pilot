@@ -5,6 +5,7 @@ from uuid import UUID
 
 from fastapi import FastAPI, HTTPException
 
+from lecturepilot.agent_state_access import learner_state_store
 from lecturepilot.course_publication_visibility import published_canvas_is_ready
 from lecturepilot.course_repository import CourseRepository
 from lecturepilot.course_schedule_store import read_course_workspace
@@ -166,8 +167,10 @@ def lecture_views_for_context(
     *,
     course_tenant_id: str,
     invalid_publication_is_unavailable: bool = False,
+    learner_user_id: str | None = None,
 ) -> list[LectureView]:
     actor = course_actor_access(app, context, course.id, course_tenant_id)
+    learner_state = learner_state_store(app) if learner_user_id else None
     views = []
     for lecture in lectures:
         ready = published_canvas_is_ready(
@@ -184,7 +187,13 @@ def lecture_views_for_context(
             LectureView(
                 lecture=lecture,
                 unlocked=status is LectureReleaseStatus.RELEASED,
-                attendance=AttendanceStatus.UNKNOWN,
+                attendance=(
+                    learner_state.read_attendance(
+                        course_id=course.id, lecture_id=lecture.id, user_id=learner_user_id
+                    )
+                    if learner_state
+                    else AttendanceStatus.UNKNOWN
+                ),
                 release_status=status,
                 effective_publication_at=effective_publication_at(lecture, rule),
                 content_ready=ready,

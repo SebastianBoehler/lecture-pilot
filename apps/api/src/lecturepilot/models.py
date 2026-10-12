@@ -236,6 +236,7 @@ class AgentTurnInput(BaseModel):
     user_memory: UserMemoryContext = Field(default_factory=UserMemoryContext)
     assessment_history: AssessmentHistoryContext = Field(default_factory=AssessmentHistoryContext)
     readiness_task_id: str | None = Field(default=None, min_length=1, max_length=220)
+    locale: Literal["en", "de"] = "en"
     readiness_task: AgentReadinessTask | None = None
     scaffold_policy: TutorScaffoldPolicy | None = None
     coaching_context: AgentCoachingContext = Field(default_factory=AgentCoachingContext)
@@ -261,6 +262,7 @@ class AgentTurnRequest(BaseModel):
     canvas_context: CanvasDocument | None = None
     user_memory: UserMemoryContext = Field(default_factory=UserMemoryContext)
     readiness_task_id: str | None = Field(default=None, min_length=1, max_length=220)
+    locale: Literal["en", "de"] = "en"  # The learner's UI language for backend-written text.
 
     def for_user(self, user_id: str) -> AgentTurnInput:
         return AgentTurnInput(user_id=user_id, model=None, **self.model_dump())

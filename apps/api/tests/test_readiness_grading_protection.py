@@ -13,7 +13,7 @@ def test_grader_treats_answer_as_untrusted_and_uses_score_anchors():
     assert "untrusted data" in system
     assert "0.0" in system and "0.5" in system and "1.0" in system
     assert "length" in system
-    assert "language" in system
+    assert "Write all feedback in English" in system
     assert json.loads(messages[1]["content"])["items"][0]["answer"] == _item().answer
 
 

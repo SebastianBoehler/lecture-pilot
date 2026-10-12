@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+import json
 from pathlib import Path
 from pydantic import ValidationError
 
@@ -40,6 +41,13 @@ class LearnerStateStore:
                     "updated_at": _now(),
                 },
             )
+
+    def read_attendance(self, *, course_id: str, lecture_id: str, user_id: str) -> AttendanceStatus:
+        path = self.layout.user_lecture_root(user_id, course_id, lecture_id) / "attendance.json"
+        try:
+            return AttendanceStatus(json.loads(path.read_text(encoding="utf-8"))["attendance"])
+        except (OSError, ValueError, KeyError, TypeError):
+            return AttendanceStatus.UNKNOWN
 
     def record_quality_gate(
         self,

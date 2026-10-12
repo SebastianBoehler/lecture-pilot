@@ -1,6 +1,6 @@
 import { learnerRequestInit } from "./authz";
 import { apiUrl, readApiError } from "./api";
-import type { LearnerWorkspaceMode, LoginSession } from "./types";
+import type { Attendance, LearnerWorkspaceMode, LoginSession } from "./types";
 
 export type LearnerWorkspaceResetOptions = {
   reset_canvas: boolean;
@@ -30,4 +30,24 @@ export async function resetLearnerWorkspace(
   const payload = await response.json().catch(() => null);
   if (!response.ok) throw new Error(readApiError(payload, "Workspace reset failed."));
   return payload as LearnerWorkspaceResetResult;
+}
+
+export async function saveLectureAttendance(
+  courseId: string,
+  lectureId: string,
+  attendance: Attendance,
+  session: LoginSession,
+): Promise<void> {
+  const response = await fetch(
+    apiUrl(`/courses/${courseId}/lectures/${lectureId}/attendance`),
+    learnerRequestInit(session, "learner", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ attendance }),
+    }),
+  );
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw new Error(readApiError(payload, "Attendance could not be saved."));
+  }
 }

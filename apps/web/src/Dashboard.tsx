@@ -15,6 +15,7 @@ import { CourseSyncEmpty, CourseSyncSkeleton } from "./CourseSyncState";
 import type { LearnerProfileState } from "./useLearnerProfile";
 import { useReviewQueue } from "./useReviewQueue";
 import { useDashboardWorkspaces } from "./useDashboardWorkspaces";
+import { saveLectureAttendance } from "./learnerWorkspaceApi";
 
 export function Dashboard({
   lectures,
@@ -143,6 +144,12 @@ export function Dashboard({
               onSetAttendance={(courseId, lectureId, attendance) => {
                 if (courseId === workspaceCourse.id) onSetAttendance(lectureId, attendance);
                 else additional.setAttendance(courseId, lectureId, attendance);
+                // Persist across reloads; a failed save is retried by the next tutor turn.
+                if (session) {
+                  void saveLectureAttendance(courseId, lectureId, attendance, session).catch(
+                    () => undefined,
+                  );
+                }
               }}
             />
           ) : null}

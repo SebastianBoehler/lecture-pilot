@@ -4,12 +4,12 @@ from collections import Counter
 from datetime import date
 from uuid import UUID
 
+from fastapi.concurrency import run_in_threadpool
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 
 from lecturepilot.api_auth import (
     request_context,
     require_professor,
-    require_course_manager,
     require_same_tenant,
 )
 from lecturepilot.audit import record_audit_event
@@ -26,6 +26,7 @@ from lecturepilot.course_schedule_store import (
     write_course_workspace,
 )
 from lecturepilot.course_schedule_generation import generate_lecture_schedule
+from lecturepilot.course_practice_design_route_context import _require_manager
 from lecturepilot.course_update_recovery import locked_course_state
 from lecturepilot.course_workspace import resolve_course_workspace
 from lecturepilot.model_client import ModelExecutionError
@@ -122,6 +123,7 @@ def register_course_routes(
                 course,
                 lecture_items,
                 course_tenant_id=course_tenant_id,
+                learner_user_id=context.user_id,
             )
         ]
 
@@ -255,7 +257,8 @@ def register_course_routes(
                 tenant_id=context.tenant_id,
                 requested_path=path,
             )
-            try:
+
+            def promote():  # Lock wait and file hashing stay off the event loop.
                 with locked_course_state(course_root):
                     _require_manager(context, request, course_id, course_tenant_id)
                     stored = promote_course_upload(
@@ -268,6 +271,10 @@ def register_course_routes(
                             course_id=course_id,
                             known_hashes={stored.path: stored.sha256},
                         )
+                    return stored
+
+            try:
+                stored = await run_in_threadpool(promote)
             finally:
                 staged.discard()
         except WorkspacePolicyError as exc:
@@ -287,12 +294,3 @@ def register_course_routes(
             kind=stored.kind,
             size_bytes=stored.size_bytes,
         )
-
-
-def _require_manager(context, request, course_id, course_tenant_id) -> None:
-    require_course_manager(
-        context,
-        course_tenant_id=course_tenant_id,
-        request=request,
-        course_id=course_id,
-    )

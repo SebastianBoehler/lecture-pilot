@@ -98,8 +98,8 @@ def test_assessed_response_replaces_provider_help_with_server_owned_feedback() -
     result = _parse(gate, payload, stage="diagnostic")
 
     assert result.message == (
-        "More evidence is needed for the approved criterion: Names the causal boundary.\n\n"
-        "Approved support:\nName the invariant first.\n\n"
+        "Not quite yet. Your answer still needs to show: Names the causal boundary.\n\n"
+        "Hint:\nName the invariant first.\n\n"
         "Next check:\nDiagnose the mechanism in the canonical case."
     )
     assert result.quality_gate is not None
@@ -107,6 +107,23 @@ def test_assessed_response_replaces_provider_help_with_server_owned_feedback() -
         "More evidence is needed for the approved criterion: Names the causal boundary."
     )
     assert "Invented" not in result.model_dump_json()
+
+
+def test_learner_assessment_message_follows_the_requested_language() -> None:
+    gate = practice_gate()
+    payload = _payload(
+        gate,
+        evidence_ids=["boundary"],
+        next_prompt=gate.independent_exit_task,
+        assistance_level="none",
+        assistance_content=None,
+    )
+
+    result = _parse(gate, payload, stage="diagnostic", locale="de")
+
+    assert result.message.startswith("Gut gemacht: Deine Antwort zeigt alles")
+    assert f"Nächste Aufgabe:\n{gate.independent_exit_task}" in result.message
+    assert result.quality_gate.reason == "Assessment passed against the approved required evidence."
 
 
 def test_server_composes_unassisted_next_check_when_provider_omits_it_from_message() -> None:
@@ -123,7 +140,7 @@ def test_server_composes_unassisted_next_check_when_provider_omits_it_from_messa
     result = _parse(gate, payload, stage="diagnostic")
 
     assert result.message == (
-        "Assessment passed against the approved required evidence.\n\n"
+        "Well done: your answer shows everything this check asks for.\n\n"
         f"Next check:\n{gate.independent_exit_task}"
     )
 
@@ -145,10 +162,11 @@ def test_exact_two_thousand_character_exit_task_is_not_truncated() -> None:
     assert result.next_check.prompt == task
 
 
-def _parse(gate: LearningMapGate, payload: dict, *, stage: str):
+def _parse(gate: LearningMapGate, payload: dict, *, stage: str, locale: str = "en"):
     return agent_result_from_content(
         json.dumps(payload),
         AgentTurnInput(
+            locale=locale,
             user_id="student-1",
             course_id="course-1",
             lecture_id="lecture-1",
