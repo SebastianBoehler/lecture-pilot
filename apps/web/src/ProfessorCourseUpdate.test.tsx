@@ -151,7 +151,9 @@ describe("Professor course update", () => {
           sections: [],
         });
       }
+      if (url.endsWith("/lectures/lecture-02/canvas/learning-design")) return json(draftReview);
       if (url.endsWith("/lectures/lecture-02/canvas/publish")) {
+        expect(JSON.parse(String(init?.body))).toEqual(draftApproval);
         return json({ course_id: "machine-learning", lecture_id: "lecture-02", published: true });
       }
       throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${url}`);
@@ -189,7 +191,7 @@ describe("Professor course update", () => {
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/canvas/publish"))).toBe(
       false,
     );
-    await user.click(screen.getByRole("button", { name: "Publish 1 ready drafts" }));
+    await user.click(screen.getByRole("button", { name: "Approve & publish 1 ready drafts" }));
     expect(await screen.findByText("Published")).toBeInTheDocument();
   });
 
@@ -256,6 +258,7 @@ describe("Professor course update", () => {
           sections: [],
         });
       }
+      if (url.endsWith("/canvas/learning-design")) return json(draftReview);
       if (url.endsWith("/canvas/publish")) return json({ detail: "Provider unavailable." }, 502);
       throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${url}`);
     });
@@ -279,13 +282,26 @@ describe("Professor course update", () => {
     await user.click(
       await screen.findByRole("button", { name: "Apply changes and create drafts" }),
     );
-    await user.click(await screen.findByRole("button", { name: "Publish 1 ready drafts" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Approve & publish 1 ready drafts" }),
+    );
 
     expect(await screen.findByText("Provider unavailable.")).toBeInTheDocument();
     expect(screen.getByText("Draft ready")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Publish 1 ready drafts" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Approve & publish 1 ready drafts" })).toBeEnabled();
   });
 });
+
+const draftApproval = {
+  draft_digest: "d".repeat(64),
+  source_revision: "s".repeat(64),
+  practice_design_revision: "p".repeat(64),
+  learning_map_revision: "m".repeat(64),
+};
+const draftReview = {
+  ...draftApproval,
+  learning_map: { revision: draftApproval.learning_map_revision },
+};
 
 function json(value: unknown, status = 200) {
   return new Response(JSON.stringify(value), {

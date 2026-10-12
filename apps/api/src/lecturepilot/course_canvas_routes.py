@@ -20,7 +20,12 @@ from lecturepilot.course_canvas_store import InvalidCanvasDraftError
 from lecturepilot.course_practice_design_routes import register_course_practice_design_routes
 from lecturepilot.course_canvas_publication import CanvasPublicationMetadata
 from lecturepilot.course_learning_design_routes import register_course_learning_design_routes
-from lecturepilot.course_learning_design_store import LearningDesignError
+from lecturepilot.course_canvas_approval_publication import approve_and_publish
+from lecturepilot.course_learning_design_models import LearningDesignApprovalInput
+from lecturepilot.course_learning_design_store import (
+    LearningDesignError,
+    LearningDesignUnavailableError,
+)
 from lecturepilot.learner_workspace_reset import (
     LearnerWorkspaceResetInput,
     LearnerWorkspaceResetResult,
@@ -71,14 +76,18 @@ def register_course_canvas_routes(
     def publish_course_canvas_draft(
         course_id: str,
         lecture_id: str,
+        approval: LearningDesignApprovalInput,
         request: Request,
         context: TenantContext = Depends(request_context),
     ) -> CanvasPublicationResult:
+        """Approve & publish the exact reviewed draft in one fail-closed action."""
         try:
             _require_owner(request, context, course_id, course_tenant_id)
-            metadata = app.state.canvas_workspace.publish_course_canvas_draft(
+            metadata = approve_and_publish(
+                app.state.canvas_workspace,
                 course_id=course_id,
                 lecture_id=lecture_id,
+                approval=approval,
                 published_by=context.user_id,
             )
             record_audit_event(
@@ -91,10 +100,10 @@ def register_course_canvas_routes(
             return _publication_result(course_id, lecture_id, metadata)
         except InvalidCanvasDraftError as exc:
             raise HTTPException(status_code=500, detail=str(exc)) from exc
+        except (LearningDesignUnavailableError, CanvasWorkspaceError) as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
         except LearningDesignError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
-        except CanvasWorkspaceError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @app.get(
         "/courses/{course_id}/lectures/{lecture_id}/canvas/publication",

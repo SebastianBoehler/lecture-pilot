@@ -528,7 +528,7 @@ export const deMessages: Record<MessageKey, string> = {
   "courseUpdate.draftsHelp":
     "Die geänderten Quellen sind gespeichert, die Studierendenansicht bleibt aber bis zur Veröffentlichung unverändert.",
   "courseUpdate.retryDrafts": "Fehlgeschlagene Entwürfe erneut erstellen",
-  "courseUpdate.publishDrafts": "{count} fertige Entwürfe veröffentlichen",
+  "courseUpdate.publishDrafts": "{count} fertige Entwürfe freigeben und veröffentlichen",
   "courseUpdate.publishing": "Wird veröffentlicht...",
   "courseUpdate.done": "Fertig",
   "courseUpdate.status.waiting": "Wartet",
@@ -853,8 +853,8 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.publish.notReadyNote":
     "Studentendashboards zeigen den KI-Tutor erst, nachdem dieser Kursarbeitsbereich veröffentlicht wurde.",
   "builder.publish.progress": "{published} von {total} Vorlesungsarbeitsbereichen veröffentlicht.",
-  "builder.publish.all": "Alle Tutor-Arbeitsbereiche veröffentlichen",
-  "builder.publish.single": "Tutor-Arbeitsbereich veröffentlichen",
+  "builder.publish.all": "Alle fertigen Vorlesungen freigeben und veröffentlichen",
+  "builder.publish.single": "Diese Vorlesung freigeben und veröffentlichen",
   "builder.publish.busyAll": "Tutor-Arbeitsbereiche werden veröffentlicht...",
   "builder.publish.busySingle": "Arbeitsbereich wird veröffentlicht...",
   "builder.publish.statusAll":
@@ -887,8 +887,8 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.learningDesign.save": "Übungsdetails speichern",
   "builder.learningDesign.saveBeforeApprove":
     "Speichere die Änderungen, bevor du diesen Canvas freigibst.",
-  "builder.learningDesign.approve": "Canvas zur Veröffentlichung freigeben",
-  "builder.learningDesign.approved": "Canvas zur Veröffentlichung freigegeben",
+  "builder.learningDesign.approve": "Freigeben und veröffentlichen",
+  "builder.learningDesign.approved": "Freigegeben",
   "professor.tabs.scope": "Kursumfang",
   "professor.tabs.scopeHelp":
     "Wechsle zwischen Professorenkursen und veröffentlichten Tutor-Arbeitsbereichen.",

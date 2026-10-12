@@ -175,12 +175,18 @@ export function professorFetchMock({
     if (url.includes("/canvas/learning-design")) {
       const { courseId, lectureId } = courseAndLectureFromUrl(url);
       const key = `${courseId}:${lectureId}`;
-      if (init?.method === "POST") learningDesignApprovals.add(key);
       return json(learningDesignPayload(courseId, lectureId, learningDesignApprovals.has(key)));
     }
     if (url.includes("/canvas/publication"))
       return json(publicationPayload(url, publishedLectures));
-    if (url.includes("/canvas/publish")) return json(publishPayload(url, publishedLectures));
+    if (url.includes("/canvas/publish")) {
+      // Approve & publish binds the reviewed draft revisions sent in the body.
+      const { courseId, lectureId } = courseAndLectureFromUrl(url);
+      const approval = JSON.parse(String(init?.body ?? "null"));
+      if (!approval?.draft_digest) return json({ detail: "Approval is required." }, 422);
+      learningDesignApprovals.add(`${courseId}:${lectureId}`);
+      return json(publishPayload(url, publishedLectures));
+    }
     if (url.includes("/canvas/draft")) return json(canvasPayload());
     if (url.includes("/canvas")) return json(canvasPayload());
     if (url.includes("/media/youtube/search")) return json({ items: [youtubeCandidate()] });

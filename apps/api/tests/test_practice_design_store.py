@@ -171,12 +171,15 @@ def test_generation_requires_current_goal_approval_and_reviewed_teaching(tmp_pat
     store_design(layout, design)
     with pytest.raises(PracticeDesignApprovalRequired, match="automatic repair"):
         store.require_approved(course_id="course-01", lecture_id="lecture-01", source_revision=SRC)
-    assert store.require_approved(
-        course_id="course-01",
-        lecture_id="lecture-01",
-        source_revision=SRC,
-        allow_pending_implementation=True,
-    ) == design
+    assert (
+        store.require_approved(
+            course_id="course-01",
+            lecture_id="lecture-01",
+            source_revision=SRC,
+            allow_pending_implementation=True,
+        )
+        == design
+    )
 
 
 def test_store_rejects_stale_and_corrupt_persisted_designs(tmp_path: Path) -> None:

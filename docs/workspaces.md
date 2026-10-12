@@ -127,7 +127,9 @@ goals concurrently, with per-lecture status. Model calls follow provider budgets
 there is no fixed lecture or model-call concurrency ceiling. Existing plans are preserved. A lecture
 navigator shows one plan at a time, with evidence and planning details collapsed. The last required
 approval advances to Review & publish and starts generation once for that saved plan revision.
-Failed runs remain explicitly retryable. Publication still requires approval of each current draft.
+Failed runs remain explicitly retryable. Each lecture is published with one "Approve & publish"
+action that approves its exact current draft; "Approve & publish all ready" does this for every
+reviewed, unpublished draft.
 
 `builder/practice-designs/<lecture-id>.json` is the course-owned,
 source-grounded learning-plan record: lecture objective, observable targets,

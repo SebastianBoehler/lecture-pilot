@@ -20,9 +20,7 @@ export function learningDesignPayload(courseId: string, lectureId: string, appro
           approved_at: "2026-08-09T12:00:00Z",
           draft_digest: "d".repeat(64),
           source_revision: "s".repeat(64),
-          learning_map_revision: "m".repeat(64),
-          report_revision: "r".repeat(64),
-          acknowledged_warning_ids: [],
+          practice_design_revision: "a".repeat(64),
         }
       : null,
     learning_map: {

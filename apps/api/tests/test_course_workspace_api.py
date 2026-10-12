@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from auth_helpers import (
-    approve_learning_design,
+    approve_and_publish,
     confirm_source_routing,
     pending_university_login,
     professor_headers,
@@ -259,11 +259,7 @@ def test_dynamic_course_workspace_uses_uploaded_source(tmp_path: Path) -> None:
     )
     assert student.status_code == 404
 
-    approve_learning_design(client, "demo-ml-course", "lecture-07")
-    publish = client.post(
-        "/admin/courses/demo-ml-course/lectures/lecture-07/canvas/publish",
-        headers=professor_headers(),
-    )
+    publish = approve_and_publish(client, "demo-ml-course", "lecture-07")
     assert publish.status_code == 200
     assert publish.json()["published"] is True
     assert publish.json()["version"] == 1
@@ -408,11 +404,7 @@ def test_course_canvas_draft_can_use_markdown_text_and_pdf_without_latex(tmp_pat
         draft.json()["source_ref"]
         == "course planner from notes/overview.md, notes/risk.txt, slides/risk.pdf"
     )
-    approve_learning_design(client, "mixed-source-course", "lecture-01")
-    publish = client.post(
-        "/admin/courses/mixed-source-course/lectures/lecture-01/canvas/publish",
-        headers=professor_headers(),
-    )
+    publish = approve_and_publish(client, "mixed-source-course", "lecture-01")
     assert publish.status_code == 200
 
     asset = client.get(

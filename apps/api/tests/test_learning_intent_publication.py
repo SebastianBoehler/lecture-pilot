@@ -1,3 +1,4 @@
+from lecturepilot.course_learning_design_models import LearningDesignApprovalInput
 import json
 
 import pytest
@@ -58,11 +59,12 @@ def test_publication_binds_intent_and_rejects_a_tampered_intent_binding(tmp_path
     store.approve(
         course_id=design.course_id,
         lecture_id=design.lecture_id,
-        draft_digest=review.draft_digest,
-        source_revision=review.source_revision,
-        practice_design_revision=review.practice_design_revision,
-        learning_map_revision=review.learning_map.revision,
-        report_revision=review.report.report_revision,
+        approval=LearningDesignApprovalInput(
+            draft_digest=review.draft_digest,
+            source_revision=review.source_revision,
+            practice_design_revision=review.practice_design_revision,
+            learning_map_revision=review.learning_map.revision,
+        ),
         approved_by="professor",
     )
     workspace.publish_course_canvas_draft(

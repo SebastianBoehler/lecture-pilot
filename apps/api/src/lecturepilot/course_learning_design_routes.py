@@ -4,7 +4,6 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 
 from lecturepilot.api_auth import request_context, require_course_manager
 from lecturepilot.course_learning_design_models import (
-    LearningDesignApprovalInput,
     LearningDesignReview,
     LearningDesignUpdate,
 )
@@ -52,31 +51,6 @@ def register_course_learning_design_routes(
                 course_id=course_id,
                 lecture_id=lecture_id,
                 update=update,
-            )
-        )
-
-    @app.post(
-        "/admin/courses/{course_id}/lectures/{lecture_id}/canvas/learning-design/approve",
-        response_model=LearningDesignReview,
-    )
-    def approve_learning_design(
-        course_id: str,
-        lecture_id: str,
-        approval: LearningDesignApprovalInput,
-        request: Request,
-        context: TenantContext = Depends(request_context),
-    ) -> LearningDesignReview:
-        _require_owner(request, context, course_id, course_tenant_id)
-        return _run(
-            lambda: _store(app).approve(
-                course_id=course_id,
-                lecture_id=lecture_id,
-                draft_digest=approval.draft_digest,
-                source_revision=approval.source_revision,
-                practice_design_revision=approval.practice_design_revision,
-                learning_map_revision=approval.learning_map_revision,
-                report_revision=approval.report_revision,
-                approved_by=context.user_id,
             )
         )
 

@@ -12,6 +12,7 @@ import type {
   LoginSession,
   UniversityCourse,
 } from "./types";
+import type { LearningDesignApprovalInput } from "./learningDesignTypes";
 import { authRequestInit, learnerRequestInit } from "./authz";
 import { readApiError } from "./apiError";
 import { resolveApiBaseUrl } from "./apiBaseUrl";
@@ -215,15 +216,19 @@ function readCanvasGenerationStatus(value: string | null) {
   return value === "running" || value === "completed" || value === "failed" ? value : null;
 }
 
+/** Approve & publish the exact reviewed draft in one backend action. */
 export async function publishLectureCanvas(
   courseId: string,
   lectureId: string,
   session: LoginSession,
+  approval: LearningDesignApprovalInput,
 ): Promise<CanvasPublicationResult> {
   const response = await fetch(
     apiUrl(`/admin/courses/${courseId}/lectures/${lectureId}/canvas/publish`),
     authRequestInit(session, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(approval),
     }),
   );
   const payload = await response.json();

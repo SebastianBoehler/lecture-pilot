@@ -78,4 +78,3 @@ def _parse_design(payload: bytes, *, course_id: str, lecture_id: str) -> Practic
     ):
         raise PracticeDesignUnavailable("Stored practice design review is stale.")
     return design
-

@@ -1,3 +1,4 @@
+from lecturepilot.course_learning_design_models import LearningDesignApprovalInput
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
@@ -110,11 +111,12 @@ def review_client(
         reviews.approve(
             course_id=COURSE_ID,
             lecture_id=lecture_id,
-            draft_digest=changed.draft_digest,
-            source_revision=changed.source_revision,
-            practice_design_revision=changed.practice_design_revision,
-            learning_map_revision=changed.learning_map.revision,
-            report_revision=changed.report.report_revision,
+            approval=LearningDesignApprovalInput(
+                draft_digest=changed.draft_digest,
+                source_revision=changed.source_revision,
+                practice_design_revision=changed.practice_design_revision,
+                learning_map_revision=changed.learning_map.revision,
+            ),
             approved_by="professor",
         )
         app.state.canvas_workspace.publish_course_canvas_draft(

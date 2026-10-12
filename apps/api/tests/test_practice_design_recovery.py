@@ -86,6 +86,4 @@ def _save(store, *, expected_invalid_digest=None):
 
 
 def _route_design_file(api) -> Path:
-    return api.app.state.canvas_workspace.layout.lecture_practice_design_path(
-        COURSE_ID, LECTURE_ID
-    )
+    return api.app.state.canvas_workspace.layout.lecture_practice_design_path(COURSE_ID, LECTURE_ID)

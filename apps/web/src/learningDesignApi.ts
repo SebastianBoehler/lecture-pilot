@@ -32,24 +32,15 @@ export async function saveLearningDesignReview(
   });
 }
 
-export async function approveLearningDesignReview(
-  courseId: string,
-  lectureId: string,
-  session: LoginSession,
+export function learningDesignApprovalInput(
   review: LearningDesignReview,
-): Promise<LearningDesignReview> {
-  const approval: LearningDesignApprovalInput = {
+): LearningDesignApprovalInput {
+  return {
     draft_digest: review.draft_digest,
     source_revision: review.source_revision,
     practice_design_revision: review.practice_design_revision,
     learning_map_revision: review.learning_map.revision,
-    report_revision: review.report.report_revision,
   };
-  return request(`${path(courseId, lectureId)}/approve`, session, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(approval),
-  });
 }
 
 async function request(

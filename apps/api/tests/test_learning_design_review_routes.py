@@ -3,7 +3,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from auth_helpers import professor_headers
+from auth_helpers import approval_input, professor_headers
 from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.canvas_workspace import CanvasWorkspace
@@ -34,24 +34,15 @@ def test_professor_edits_approves_and_publishes_the_exact_learning_design(tmp_pa
     assert edited["learning_map"]["objective"] == review["learning_map"]["objective"]
     assert edited["approval"] is None
 
-    approved = client.post(
-        f"{path}/approve",
-        headers=professor_headers(),
-        json={
-            "draft_digest": edited["draft_digest"],
-            "source_revision": edited["source_revision"],
-            "practice_design_revision": edited["practice_design_revision"],
-            "learning_map_revision": edited["learning_map"]["revision"],
-            "report_revision": edited["report"]["report_revision"],
-        },
+    published = client.post(
+        _publish_path(), headers=professor_headers(), json=approval_input(edited)
     )
-    assert approved.status_code == 200, approved.json()
+    assert published.status_code == 200, published.json()
+    approved = client.get(path, headers=professor_headers())
     approval = approved.json()["approval"]
     assert approval["approved_by"] == "prof01"
-    assert approval["learning_map_revision"] == approved.json()["learning_map"]["revision"]
-
-    published = client.post(_publish_path(), headers=professor_headers())
-    assert published.status_code == 200, published.json()
+    assert approval["draft_digest"] == edited["draft_digest"]
+    assert approval["practice_design_revision"] == edited["practice_design_revision"]
     published_dir = client.app.state.canvas_workspace.course_canvas_store.path(
         "design-course", "lecture-01"
     )

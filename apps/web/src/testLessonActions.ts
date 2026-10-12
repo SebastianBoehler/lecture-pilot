@@ -24,16 +24,15 @@ export async function openProfessorDemo(user: ReturnType<typeof userEvent.setup>
   await screen.findByRole("navigation", { name: /course builder progress/i }, { timeout: 5_000 });
 }
 
-export async function approveAllLearningDesigns(user: ReturnType<typeof userEvent.setup>) {
+/** Approve & publish each lecture from its review panel. */
+export async function approveAndPublishEachLecture(user: ReturnType<typeof userEvent.setup>) {
   const review = await screen.findByRole("region", { name: /lecture canvases/i });
   const lectureNames = within(review)
     .getAllByRole("button", { name: /review lecture canvas for/i })
     .map((button) => button.getAttribute("aria-label") ?? "");
   for (const [index, name] of lectureNames.entries()) {
     await user.click(within(review).getByRole("button", { name }));
-    await user.click(
-      await screen.findByRole("button", { name: /approve canvas for publication/i }),
-    );
+    await user.click(await screen.findByRole("button", { name: "Approve & publish" }));
     await within(review).findByText(
       new RegExp(`${index + 1} of ${lectureNames.length} approved`, "i"),
     );

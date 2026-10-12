@@ -95,10 +95,17 @@ A model's agreement cannot override any of those checks.
 
 ## Publication and learners
 
-Draft binding pins source, learning-intent and implementation revisions. Final
-professor approval also pins the exact canvas, learning map and diagnostic report.
-Publication metadata retains the intent revision; published readers verify its
-binding. A changed draft or intent cannot inherit an older publication approval.
+Draft binding pins source, learning-intent and implementation revisions. The
+professor's single "Approve & publish" action (`POST .../canvas/publish` with the
+reviewed draft digest, source, design and learning-map revisions) approves that exact
+draft and publishes it under one course lock; a failed publication restores the
+previous review. The stored approval keeps the draft digest, source and design
+revisions: the learning map and derived report share its review file and every edit
+clears the approval, and the intent is part of the design revision.
+`storage_migration_learning_design_approval.py` reduces older approvals, keeping only
+those whose removed bindings still matched exactly. Publication metadata retains the
+intent revision; published readers verify its binding. A changed draft or intent
+cannot inherit an older publication approval.
 
 The backend still inserts exact checkpoint text. Canvas authors never receive
 hidden exit/transfer tasks through the intent contract. Learner assessments keep

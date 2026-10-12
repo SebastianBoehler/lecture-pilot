@@ -102,6 +102,12 @@ def test_invalid_stored_draft_returns_actionable_error(tmp_path: Path) -> None:
     publish = client.post(
         "/admin/courses/draft-integrity/lectures/lecture-01/canvas/publish",
         headers=professor_headers(),
+        json={
+            "draft_digest": "a" * 64,
+            "source_revision": "a" * 64,
+            "practice_design_revision": "a" * 64,
+            "learning_map_revision": "a" * 64,
+        },
     )
 
     expected = "Stored canvas draft is invalid. Retry generation for this lecture."

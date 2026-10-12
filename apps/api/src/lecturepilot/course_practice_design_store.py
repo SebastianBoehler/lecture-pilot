@@ -75,4 +75,3 @@ class PracticeDesignStore:
     @staticmethod
     def _read(path: Path, course_id: str, lecture_id: str) -> PracticeDesign | None:
         return read_practice_design(path, course_id=course_id, lecture_id=lecture_id)
-

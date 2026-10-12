@@ -586,10 +586,15 @@ function App() {
           }}
           onNavigatePath={navigate}
           onSetAttendance={handleSetAttendance}
-          onPublishWorkspace={async (courseId, lectureId) => {
+          onPublishWorkspace={async (courseId, lectureId, approval) => {
             if (!courseManagerSession)
               throw new Error("Course management requires a professor account.");
-            const result = await publishLectureCanvas(courseId, lectureId, courseManagerSession);
+            const result = await publishLectureCanvas(
+              courseId,
+              lectureId,
+              courseManagerSession,
+              approval,
+            );
             setPublishedLectureIds((current) => Array.from(new Set([...current, lectureId])));
             return result;
           }}

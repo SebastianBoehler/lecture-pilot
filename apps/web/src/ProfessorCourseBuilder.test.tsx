@@ -4,11 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
 import { professorFetchMock } from "./ProfessorCourseBuilder.testFixtures";
-import {
-  approveAllLearningDesigns,
-  approveAllPracticeDesigns,
-  openProfessorDemo,
-} from "./testLessonActions";
+import { approveAllPracticeDesigns, openProfessorDemo } from "./testLessonActions";
 
 describe("Professor course builder", () => {
   afterEach(() => {
@@ -187,15 +183,12 @@ describe("Professor course builder", () => {
     expect(
       await screen.findByRole("heading", { name: /lecture canvas review/i }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /publish .*tutor workspace/i })).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: /approve canvas for publication/i }));
-    expect(await screen.findByText(/^approved$/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /approve & publish this lecture/i })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "Approve & publish" }));
+    expect(await screen.findByText(/tutor workspace published/i)).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: /lecture canvas review/i }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /publish tutor workspace/i })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /publish tutor workspace/i }));
-    expect(await screen.findByText(/tutor workspace published/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/lecture generation progress/i)).toBeInTheDocument();
     expect(
       within(screen.getByLabelText(/lecture generation progress/i)).getByRole("link", {
@@ -355,10 +348,10 @@ describe("Professor course builder", () => {
     await openProfessorDemo(user);
 
     expect(await screen.findByText(/2 lecture canvases ready to review/i)).toBeInTheDocument();
-    await approveAllLearningDesigns(user);
-    await waitFor(() => expect(screen.getByText(/2 of 2 approved/i)).toBeInTheDocument());
     expect(await screen.findByText(/0 of 2 lecture workspaces published/i)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /publish all tutor workspaces/i }));
+    await user.click(
+      await screen.findByRole("button", { name: /approve & publish all ready lectures/i }),
+    );
 
     expect(await screen.findByText(/2 tutor workspaces published/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/lecture generation progress/i)).toHaveTextContent("Lecture 01");

@@ -1,3 +1,4 @@
+from lecturepilot.course_learning_design_models import LearningDesignApprovalInput
 import json
 from datetime import UTC, datetime
 from pathlib import Path
@@ -135,11 +136,12 @@ def _published_workspace(tmp_path: Path) -> tuple[CanvasWorkspace, object]:
     CourseLearningDesignStore(workspace.layout).approve(
         course_id=design.course_id,
         lecture_id=design.lecture_id,
-        draft_digest=review.draft_digest,
-        source_revision=review.source_revision,
-        practice_design_revision=review.practice_design_revision,
-        learning_map_revision=review.learning_map.revision,
-        report_revision=review.report.report_revision,
+        approval=LearningDesignApprovalInput(
+            draft_digest=review.draft_digest,
+            source_revision=review.source_revision,
+            practice_design_revision=review.practice_design_revision,
+            learning_map_revision=review.learning_map.revision,
+        ),
         approved_by="professor",
     )
     workspace.publish_course_canvas_draft(

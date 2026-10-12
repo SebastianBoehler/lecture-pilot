@@ -8,8 +8,8 @@ export const courseSetupMessages = {
     "builder.resume.current":
       "You are setting up “{course}”. It stays in course management until you publish it.",
     "builder.resume.startNew": "Start a new course",
-    "builder.publish.ready": "Publish {count} ready lectures",
-    "builder.publish.readyOne": "Publish the ready lecture",
+    "builder.publish.ready": "Approve & publish {count} ready lectures",
+    "builder.publish.readyOne": "Approve & publish the ready lecture",
   },
   de: {
     "professor.setup.incomplete": "Einrichtung unvollständig",
@@ -20,7 +20,7 @@ export const courseSetupMessages = {
     "builder.resume.current":
       "Sie richten „{course}“ ein. Der Kurs bleibt bis zur Veröffentlichung unter „Kurse verwalten“ erhalten.",
     "builder.resume.startNew": "Neuen Kurs beginnen",
-    "builder.publish.ready": "{count} fertige Vorlesungen veröffentlichen",
-    "builder.publish.readyOne": "Fertige Vorlesung veröffentlichen",
+    "builder.publish.ready": "{count} fertige Vorlesungen freigeben und veröffentlichen",
+    "builder.publish.readyOne": "Fertige Vorlesung freigeben und veröffentlichen",
   },
 } as const;

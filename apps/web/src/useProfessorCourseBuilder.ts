@@ -56,6 +56,7 @@ import {
   type YoutubeCandidateGroup,
   youtubeSuggestionQueries,
 } from "./professorYoutubeSuggestions";
+import type { LearningDesignApprovalInput } from "./learningDesignTypes";
 import type {
   CanvasDocument,
   CanvasPublicationResult,
@@ -69,7 +70,11 @@ import type {
 
 export type ProfessorCourseBuilderProps = {
   session: LoginSession;
-  onPublishWorkspace: (courseId: string, lectureId: string) => Promise<CanvasPublicationResult>;
+  onPublishWorkspace: (
+    courseId: string,
+    lectureId: string,
+    approval: LearningDesignApprovalInput,
+  ) => Promise<CanvasPublicationResult>;
   onWorkspacePublished: (
     course: UniversityCourse,
     lectures: ReturnType<typeof lectureFromWorkspace>[],
@@ -957,20 +962,15 @@ export function useProfessorCourseBuilder({
     canPublish: Boolean(canvas && workspace),
     isFullCourse: setup.target === "full-course",
     isPublishing: pendingAction === "publish",
-    onPublish: (readyLectureIds?: readonly string[]) =>
+    /** Approve & publish each reviewed draft; one failure never blocks the others. */
+    onPublish: (items: readonly { lectureId: string; approval: LearningDesignApprovalInput }[]) =>
       run("publish", async () => {
         const activeWorkspace = requireWorkspace(workspace);
-        const lectureIds =
-          setup.target === "full-course"
-            ? (readyLectureIds ??
-              (generatedLectureIds.length ? generatedLectureIds : generationTargetLectureIds))
-            : [activeWorkspace.lectureId];
         const published = [];
         const failed: string[] = [];
-        // Publish each ready lecture independently; one failure never blocks the others.
-        for (const lectureId of lectureIds) {
+        for (const { lectureId, approval } of items) {
           try {
-            published.push(await onPublishWorkspace(activeWorkspace.courseId, lectureId));
+            published.push(await onPublishWorkspace(activeWorkspace.courseId, lectureId, approval));
             setCoursePublished((current) => ({
               courseId: activeWorkspace.courseId,
               ids: [

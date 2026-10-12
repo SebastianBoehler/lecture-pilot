@@ -1,3 +1,4 @@
+from auth_helpers import approval_input
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -52,15 +53,9 @@ def test_learning_design_review_is_private_to_the_owner_professor(tmp_path: Path
         json=_update_payload(owner_review.json()),
     )
     denied_approval = other_client.post(
-        f"{path}/approve",
+        f"/admin/courses/{course_id}/lectures/lecture-01/canvas/publish",
         headers=mutation_headers(other),
-        json={
-            "draft_digest": owner_review.json()["draft_digest"],
-            "source_revision": owner_review.json()["source_revision"],
-            "practice_design_revision": owner_review.json()["practice_design_revision"],
-            "learning_map_revision": owner_review.json()["learning_map"]["revision"],
-            "report_revision": owner_review.json()["report"]["report_revision"],
-        },
+        json=approval_input(owner_review.json()),
     )
 
     for denied in (denied_get, denied_update, denied_approval):
