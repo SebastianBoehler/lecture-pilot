@@ -96,8 +96,8 @@ are grouped into at most five pedagogical sections. Native model calls share
 request accounting, rate-limit slots, transport retries and pooled provider clients.
 Canvas jobs have a 15-minute deadline and shared paid-request/token budgets,
 including nested critics. Private checkpoints preserve interrupted work; explicit
-retries still enforce source, intent and publication authority. Section critics
-reuse unchanged section results and changed teaching is reviewed again. Metadata logs record stage, attempt, queue wait, provider
+retries still enforce source, intent and publication authority. One critic call reviews the
+whole lecture; repaired sections are not reviewed again and stay draft warnings. Metadata logs record stage, attempt, queue wait, provider
 latency, and actual token counts without source or learner content. Repair also
 validates that the failed draft still refers to the current source revision and
 uses a surgical block replacement when the failure contains an exact target. See

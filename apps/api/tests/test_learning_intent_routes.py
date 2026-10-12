@@ -10,8 +10,11 @@ from practice_design_test_helpers import proposal
 from test_practice_design_semantic_review import _Registry
 
 
-def goal_client(tmp_path, *, goal_count=1, findings=((),), finding_ids=None):
-    """`findings` lists the goal IDs the support reviewer flags on each review call."""
+def goal_client(tmp_path, *, goal_count=1, findings=((),), finding_ids=None, repaired=None):
+    """`findings` lists the goal IDs the support reviewer flags on each review call.
+
+    `repaired` is the outcome the repair call writes for goal-0 (None keeps it unchanged).
+    """
     api = client(tmp_path)
     draft = proposal()
     goal = {
@@ -52,6 +55,9 @@ def goal_client(tmp_path, *, goal_count=1, findings=((),), finding_ids=None):
             )
         if reviewed:
             assert "current_proposal" in messages[-1].parts[0].content
+            if repaired:
+                goals = [{**wire["goals"][0], "outcome": repaired}, *wire["goals"][1:]]
+                return ModelResponse(parts=[TextPart(json.dumps({**wire, "goals": goals}))])
         return ModelResponse(parts=[TextPart(json.dumps(wire))])
 
     api.app.state.practice_design_planner = PracticeDesignPlanner(
@@ -75,7 +81,7 @@ def test_objective_is_derived_from_the_proposed_goals(tmp_path):
     assert findings_for(api) == []
 
 
-def test_flagged_goals_get_one_repair_then_stay_as_professor_findings(tmp_path):
+def test_unchanged_goal_after_repair_keeps_an_open_finding(tmp_path):
     api, calls = goal_client(tmp_path, goal_count=2, findings=(("goal-0",),))
     response = api.post(design_path() + "/intent/proposal", headers=professor_headers())
     assert response.status_code == 200, response.text
@@ -83,15 +89,29 @@ def test_flagged_goals_get_one_repair_then_stay_as_professor_findings(tmp_path):
         "goal-0",
         "goal-1",
     ]
-    assert len(calls) == 4
-    assert findings_for(api) == [{"goal_id": "goal-0", "reason": "The source only names this."}]
+    # Proposal, one support review and one repair: the repair is never re-reviewed.
+    assert len(calls) == 3
+    assert findings_for(api) == [
+        {"goal_id": "goal-0", "reason": "The source only names this.", "status": "open"}
+    ]
 
 
-def test_repaired_goals_without_findings_are_clean(tmp_path):
-    api, calls = goal_client(tmp_path, findings=(("goal-0",), ()))
-    assert api.post(design_path() + "/intent/proposal", headers=professor_headers()).is_success
-    assert len(calls) == 4
-    assert findings_for(api) == []
+def test_changed_goal_after_repair_is_shown_as_repaired_not_rechecked(tmp_path):
+    api, calls = goal_client(
+        tmp_path, findings=(("goal-0",), ()), repaired="Explain the cited source claim."
+    )
+    response = api.post(design_path() + "/intent/proposal", headers=professor_headers())
+    assert response.status_code == 200, response.text
+    goal = response.json()["learning_intent"]["goals"][0]
+    assert goal["outcome"] == "Explain the cited source claim."
+    assert len(calls) == 3
+    assert findings_for(api) == [
+        {
+            "goal_id": "goal-0",
+            "reason": "The source only names this.",
+            "status": "repaired_unchecked",
+        }
+    ]
 
 
 def test_support_reviewer_must_name_existing_goals(tmp_path):

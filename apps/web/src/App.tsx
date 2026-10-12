@@ -307,6 +307,7 @@ function App() {
       mode: LessonMode = "learner",
       updateRoute = true,
       review?: GateReviewOpening,
+      focusSectionId?: string,
     ) => {
       loadedLessonRoute.current = lessonKey(courseId, lecture.id, mode);
       if (updateRoute) navigate(lessonPath(courseId, lecture.id, mode));
@@ -344,9 +345,15 @@ function App() {
         );
         setPublishedCanvasView(publishedView);
         setCanvasDocument(document);
+        const searchedSection = document.sections.find((section) => section.id === focusSectionId);
         setFocusedSectionId(
-          review?.section_id ?? document.sections[0]?.id ?? "bayesian-decision-theory-the-aim",
+          review?.section_id ??
+            searchedSection?.id ??
+            document.sections[0]?.id ??
+            "bayesian-decision-theory-the-aim",
         );
+        // Section anchors share the canvas id space; targeting one scrolls a search hit into view.
+        if (!review && searchedSection) setHighlightedBlockId(searchedSection.id);
       } catch (error) {
         setCanvasError(error instanceof Error ? error.message : "Canvas loading failed.");
       }
@@ -578,8 +585,8 @@ function App() {
           onOpenDemo={() => setSession(localDemoSession)}
           onOpenCourseLink={openCourseLink}
           onOpenProfessorDemo={() => setSession(localProfessorSession)}
-          onOpenLecture={(courseId, lecture, review) => {
-            void handleOpenLecture(courseId, lecture, "learner", true, review);
+          onOpenLecture={(courseId, lecture, review, focusSectionId) => {
+            void handleOpenLecture(courseId, lecture, "learner", true, review, focusSectionId);
           }}
           onPreviewLecture={(courseId, lecture) => {
             void handleOpenLecture(courseId, lecture, "professor-preview");

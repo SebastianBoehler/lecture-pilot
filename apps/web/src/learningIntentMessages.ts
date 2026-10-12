@@ -14,6 +14,8 @@ export const learningIntentMessages = {
     "builder.intent.approveAll": "Approve all {count} open learning plans",
     "builder.intent.finding":
       "Source check: the materials may not fully support this goal. {reason} Edit or remove it, or approve it as is.",
+    "builder.intent.findingRepaired":
+      "Source check: the materials may not fully support this goal. {reason} AI revised this goal once; the revision was not re-checked. Edit or remove it, or approve it as is.",
     "builder.intent.objectiveDerived":
       "The lecture objective is the list of these learning goals and updates automatically.",
     "builder.intent.details": "Inspect generated practice and support",
@@ -48,6 +50,8 @@ export const learningIntentMessages = {
     "builder.intent.approveAll": "Alle {count} offenen Lernpläne freigeben",
     "builder.intent.finding":
       "Quellenprüfung: Die Materialien stützen dieses Ziel möglicherweise nicht vollständig. {reason} Sie können es bearbeiten, entfernen oder so freigeben.",
+    "builder.intent.findingRepaired":
+      "Quellenprüfung: Die Materialien stützen dieses Ziel möglicherweise nicht vollständig. {reason} Die KI hat dieses Ziel einmal überarbeitet; die Überarbeitung wurde nicht erneut geprüft. Sie können es bearbeiten, entfernen oder so freigeben.",
     "builder.intent.objectiveDerived":
       "Das Vorlesungsziel ist die Liste dieser Lernziele und wird automatisch aktualisiert.",
     "builder.intent.details": "Generierte Aufgaben und Hilfen ansehen",

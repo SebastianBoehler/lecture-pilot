@@ -35,5 +35,9 @@ def section_instructions(job) -> str:
         + canvas_teaching_instruction()
         + generated_math_instructions()
         + "These math rules describe the formula INSIDE the required Markdown ```math fence. "
-        + practice_prompt_instruction(job.design, server_owned_checkpoints=True)
     )
+
+
+def section_contracts(job, targets) -> str:
+    """Only this section's approved targets: other goals' teaching changes cannot affect it."""
+    return practice_prompt_instruction(job.design, targets=targets, server_owned_checkpoints=True)

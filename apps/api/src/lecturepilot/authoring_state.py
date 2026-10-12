@@ -24,6 +24,15 @@ class AuthoringStateError(RuntimeError):
     pass
 
 
+class AuthoringCritique(BaseModel):
+    """The single critic pass: notes get one repair each and are never reviewed again."""
+
+    notes: dict[str, list[str]] = Field(default_factory=dict)
+    # Checkpoint conflicts left after the one teaching repair: shown, never section-repaired.
+    disputed: dict[str, list[str]] = Field(default_factory=dict)
+    repaired: list[str] = Field(default_factory=list)
+
+
 class AuthoringState(BaseModel):
     identity: str
     messages: list[dict] = Field(default_factory=list)
@@ -32,6 +41,8 @@ class AuthoringState(BaseModel):
     accepted_digest: str | None = None
     failures: dict[str, int] = Field(default_factory=dict)
     completed: bool = False
+    # Sessions saved before the single-critic workflow have none and are critiqued once.
+    critique: AuthoringCritique | None = None
 
 
 def state_identity(job: AuthoringJob) -> str:
