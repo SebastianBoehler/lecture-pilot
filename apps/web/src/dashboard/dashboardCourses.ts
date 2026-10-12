@@ -2,6 +2,7 @@ import { readDemoWorkspaceCourse } from "../auth/demoWorkspaceAccess";
 import { hasDevelopmentWorkspaceAccess } from "../auth/devWorkspaceAccess";
 import type { Lecture, LoginSession, UniversityCourse } from "../shared/types";
 import type { UniversityEnrollmentCourse } from "../auth/universityCourseTypes";
+import type { CourseSupportKey } from "./courseSupportApi";
 
 type CourseWorkspaceStatus = "matched" | "unmatched";
 type CourseSource = UniversityEnrollmentCourse["source"];
@@ -9,6 +10,8 @@ type CourseSource = UniversityEnrollmentCourse["source"];
 type DisplayUniversityCourse = {
   course: UniversityCourse;
   sources: CourseSource[];
+  /** The first observed Alma/ILIAS record, used to request LecturePilot support. */
+  universityCourse?: CourseSupportKey;
 };
 
 export type CourseWorkspaceGroup = {
@@ -18,6 +21,7 @@ export type CourseWorkspaceGroup = {
   statusLabel: string;
   tutorAvailable: boolean;
   courseLectures: Lecture[];
+  universityCourse?: CourseSupportKey;
 };
 
 export type LoadedCourseWorkspace = {
@@ -44,17 +48,18 @@ export function buildCourseGroups(
   const observedCourses = displayUniversityCourses(session?.university_courses ?? []);
   const enrolledCourses = observedCourses.length
     ? observedCourses
-    : authorizedCourses.map((course) => ({ course, sources: [] }));
+    : authorizedCourses.map((course): DisplayUniversityCourse => ({ course, sources: [] }));
   const workspaces = [
     { course: workspaceCourse, lectures, publishedLectureIds },
     ...additionalWorkspaces.filter((item) => item.course.id !== workspaceCourse.id),
   ];
   const courseGroups = enrolledCourses.length
-    ? enrolledCourses.map(({ course, sources }) => {
+    ? enrolledCourses.map(({ course, sources, universityCourse }) => {
         const matched = workspaces.find((item) => isWorkspaceCourse(course, item.course));
         return buildEnrolledCourseGroup(
           course,
           sources,
+          universityCourse,
           matched?.course ?? workspaceCourse,
           matched?.lectures ?? [],
           matched?.publishedLectureIds ?? [],
@@ -112,6 +117,7 @@ export function findUniversityWorkspaceCourse(
 function buildEnrolledCourseGroup(
   course: UniversityCourse,
   sources: CourseSource[],
+  universityCourse: CourseSupportKey | undefined,
   workspaceCourse: UniversityCourse,
   lectures: Lecture[],
   publishedLectureIds: string[],
@@ -130,6 +136,7 @@ function buildEnrolledCourseGroup(
     statusLabel: tutorAvailable ? labels.aiTutorAvailable : labels.noTutor,
     tutorAvailable,
     courseLectures: tutorAvailable ? publishedLectures : [],
+    universityCourse,
   };
 }
 
@@ -202,6 +209,11 @@ function displayUniversityCourses(
         term: course.term,
       },
       sources: [course.source],
+      universityCourse: {
+        source: course.source,
+        external_course_id: course.external_course_id,
+        term: course.term,
+      },
     });
   }
   return [...unique.values()];

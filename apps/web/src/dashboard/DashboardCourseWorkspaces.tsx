@@ -1,8 +1,11 @@
 import { useState } from "react";
 
 import type { CourseWorkspaceTool } from "./CourseWorkspaceTabs";
+import { courseSupportKeyId } from "./courseSupportApi";
+import { CourseSupportRequest } from "./CourseSupportRequest";
 import { DashboardActiveWorkspace } from "./DashboardActiveWorkspace";
 import type { CourseWorkspaceGroup } from "./dashboardCourses";
+import { useCourseSupportRequests } from "./useCourseSupportRequests";
 import { useI18n } from "../i18n/i18n";
 import type { Attendance, LearnerCourseProfile, Lecture, LoginSession } from "../shared/types";
 
@@ -113,13 +116,25 @@ export function DashboardCourseWorkspaces({
         />
       ) : null}
 
-      {unavailableGroups.length ? <UnavailableCourses groups={unavailableGroups} /> : null}
+      {unavailableGroups.length ? (
+        <UnavailableCourses groups={unavailableGroups} session={session} />
+      ) : null}
     </>
   );
 }
 
-function UnavailableCourses({ groups }: { groups: CourseWorkspaceGroup[] }) {
+function UnavailableCourses({
+  groups,
+  session,
+}: {
+  groups: CourseWorkspaceGroup[];
+  session: LoginSession | null;
+}) {
   const { t } = useI18n();
+  const requestable = Boolean(
+    session?.roles?.includes("student") && groups.some((group) => group.universityCourse),
+  );
+  const support = useCourseSupportRequests(session, requestable);
   return (
     <details className="unavailable-courses">
       <summary>
@@ -127,14 +142,32 @@ function UnavailableCourses({ groups }: { groups: CourseWorkspaceGroup[] }) {
         <span>{t("dashboard.otherCoursesCount", { count: groups.length })}</span>
       </summary>
       <div className="unavailable-courses-body">
-        <p>{t("dashboard.otherCoursesHelp")}</p>
+        <p>
+          {t("dashboard.otherCoursesHelp")}
+          {support.statuses ? ` ${t("courseSupport.help")}` : null}
+        </p>
         <ul>
-          {groups.map((group) => (
-            <li className="unavailable-course" key={group.course.id}>
-              <h4>{group.course.title}</h4>
-              <CourseSourceTags sources={group.sources} />
-            </li>
-          ))}
+          {groups.map((group) => {
+            const key = group.universityCourse ? courseSupportKeyId(group.universityCourse) : null;
+            const status = key ? support.statuses?.get(key) : undefined;
+            return (
+              <li className="unavailable-course" key={group.course.id}>
+                <div className="unavailable-course-heading">
+                  <h4>{group.course.title}</h4>
+                  <CourseSourceTags sources={group.sources} />
+                </div>
+                {key && status ? (
+                  <CourseSupportRequest
+                    courseTitle={group.course.title}
+                    failed={support.failedKey === key}
+                    pending={support.pendingKey === key}
+                    status={status}
+                    onToggle={(requested) => void support.toggle(status, requested)}
+                  />
+                ) : null}
+              </li>
+            );
+          })}
         </ul>
       </div>
     </details>
