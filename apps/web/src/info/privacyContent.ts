@@ -24,6 +24,14 @@ export const privacyContent: Record<"en" | "de", InfoArticleContent> = {
         ],
       },
       {
+        id: "course-requests",
+        title: "Requesting LecturePilot for a course",
+        paragraphs: [
+          "If you choose Request LecturePilot for one of your synced Alma or ILIAS courses, the request is stored with your account together with the course identifier and term. Other students and lecturers creating that course only see how many students asked. Platform administrators see per-course request counts and how many LecturePilot accounts have the course in their synced list, never names or accounts.",
+          "You can withdraw a request at any time with the same control. Requests are deleted when your LecturePilot account is deleted.",
+        ],
+      },
+      {
         id: "provider",
         title: "What reaches an AI provider?",
         paragraphs: [
@@ -97,6 +105,14 @@ export const privacyContent: Record<"en" | "de", InfoArticleContent> = {
           "Kursworkspaces enthalten hochgeladene Materialien, verarbeitete Quellen, Quellenzuordnungen, Lernpläne, erzeugte Entwürfe und veröffentlichte Vorlesungen. Nach Bestätigung der Quellen können ungenutzte Uploads entfernt werden; referenzierte Quellen und benötigte Abhängigkeiten bleiben erhalten. Private Erstellungsprotokolle können Quellenauszüge und erzeugte Entwürfe enthalten.",
           "Dein privater Workspace kann Anwesenheitsmodus, Fortschritt, Checkpoint- und Prüfungscheckversuche, jüngste Tutornachrichten, Annotationen, persönliche Abschnitte, erzeugte Bilder, Erinnerungen, Übungsklausuren und gespeicherte Abgaben enthalten. Damit kannst du später fortsetzen und passende Unterstützung erhalten. Kurze wörtliche Antwortauszüge können privat dokumentieren, welche Checkpoint-Kriterien anerkannt wurden. Beim Zurücksetzen des Kursfortschritts werden diese Auszüge entfernt.",
           "Optional importierte Prüfungsprotokollarchive und extrahierte Texte bleiben bis zum Löschen privat in deinem Kursworkspace. Ihre Zugangsdaten werden nur für die Anfrage verwendet. Antwortentwürfe für Übungsklausuren bleiben bis zur ausdrücklichen Abgabe im Browser-Tab. Entwürfe für zweiteilige Checkpoints bleiben bis zur Abgabe oder bis der Browser die Tab-Sitzung löscht im Sitzungsspeicher dieses Tabs.",
+        ],
+      },
+      {
+        id: "course-requests",
+        title: "LecturePilot für einen Kurs anfragen",
+        paragraphs: [
+          "Wenn du für einen deiner synchronisierten Alma- oder ILIAS-Kurse „LecturePilot anfragen“ wählst, wird die Anfrage mit Kurskennung und Semester in deinem Konto gespeichert. Andere Studierende und Lehrende, die diesen Kurs anlegen, sehen nur, wie viele Studierende angefragt haben. Plattformadministratoren sehen je Kurs die Zahl der Anfragen und wie viele LecturePilot-Konten den Kurs in ihrer synchronisierten Liste haben, nie Namen oder Konten.",
+          "Du kannst eine Anfrage jederzeit über dieselbe Schaltfläche zurückziehen. Mit dem Löschen deines LecturePilot-Kontos werden auch deine Anfragen gelöscht.",
         ],
       },
       {

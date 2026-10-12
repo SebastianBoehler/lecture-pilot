@@ -203,7 +203,7 @@ integration tests and global entry stylesheets stay at the root; tests and CSS s
 beside their owners):
 
 ```txt
-auth/ canvas/ dashboard/ exam/ i18n/ info/ lesson/ performance/
+admin/ auth/ canvas/ dashboard/ exam/ i18n/ info/ lesson/ performance/
 professor/ profile/ shared/ shell/ speech/ test/
 ```
 
@@ -427,6 +427,15 @@ professor/ profile/ shared/ shell/ speech/ test/
   step. "Create course" there always starts empty; the builder names the course in progress.
   Each lecture drafts as soon as its goals are approved (a changed, re-approved plan drafts
   again); ready lectures are approved and published independently.
+- Course support requests: unmatched Alma/ILIAS courses in the student dashboard offer "Request
+  LecturePilot" (`CourseSupportRequest.tsx`, `courseSupportApi.ts`) with an aggregate count; platform
+  admins (`tenant_admin`) get the "Course demand" page (`admin/CourseDemandPage.tsx`,
+  `/platform/course-demand`); the builder course step shows `CourseDemandHint.tsx`. Backend:
+  `courses/course_support_{requests,demand,routes,models}.py` over Postgres
+  `course_support_requests` (cascade from `users`). Requests accept only the `source`,
+  `external_course_id` and `term` of the session user's own stored observation (404 otherwise);
+  title matching reuses `course_title_key`. Every surface returns tenant-scoped counts only, never
+  identities; audit rows carry only request ID and source.
 - Sharing: course management "Share" shows the course link `/courses/<id>` with a local QR code
   and a slide image; access follows Alma/ILIAS enrollment. "Allow joining with this link" is an
   explicit opt-in (`course_invites.py`) that creates a revocable `/join/<id>/<secret>` link;

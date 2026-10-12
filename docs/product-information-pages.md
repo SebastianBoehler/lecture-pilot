@@ -33,3 +33,9 @@ No API account-deletion path was found in this review, so account deletion is no
 claimed as a verified removal mechanism. Both privacy locales
 now disclose these excerpts. This code update does not reverify university
 hosting, provider configuration or institutional retention policy.
+
+Local update, 12 October 2026: both locales disclose course support requests
+(`course_support_requests`): stored per account, shown to students, lecturers and
+platform administrators only as counts, withdrawable with the same control and removed
+by the database cascade when an account row is deleted. This still does not claim a
+self-service account-deletion path.
