@@ -1,8 +1,8 @@
 import QRCode from "qrcode";
 
-import { fitTitle, fitUrl, LINE_HEIGHT, wrapWords, type Measure } from "./shareSlideLayout";
+import { fitTitle, LINE_HEIGHT, wrapWords, type Measure } from "./shareSlideLayout";
 
-/** 16:9 slide a lecturer can drop into the deck: course, three steps, QR code and link. */
+/** 16:9 slide a lecturer can drop into the deck: course, three steps and the QR code. */
 export type ShareSlideTexts = {
   eyebrow: string;
   steps: [string, string, string];
@@ -35,7 +35,7 @@ const LOGO_PATHS = [
 ];
 const LEFT = 112;
 const TEXT_WIDTH = 740;
-const CARD = { x: 968, y: 104, width: 520, height: 692, padding: 52 };
+const CARD = { x: 968, y: 154, width: 520, height: 592, padding: 52 };
 
 export async function renderShareSlide(input: ShareSlideInput): Promise<string> {
   const canvas = document.createElement("canvas");
@@ -142,26 +142,6 @@ async function drawQrCard(context: CanvasRenderingContext2D, input: ShareSlideIn
   context.fillStyle = COLORS.text;
   context.font = font(30, 700);
   context.fillText(input.texts.scan, center, CARD.y + CARD.padding + qrSize + 64);
-  const urlMeasure: Measure = (text, size) => {
-    context.font = font(size, 500);
-    return context.measureText(text).width;
-  };
-  // A truncated link would not work when typed, so a link that does not fit is left to the QR code.
-  const link = fitUrl(urlMeasure, input.url, CARD.width - CARD.padding * 2, [
-    { size: 22, maxLines: 3 },
-    { size: 19, maxLines: 4 },
-  ]);
-  if (link) {
-    context.fillStyle = COLORS.muted;
-    context.font = font(link.size, 500);
-    link.lines.forEach((line, index) =>
-      context.fillText(
-        line,
-        center,
-        CARD.y + CARD.padding + qrSize + 108 + index * Math.round(link.size * 1.36),
-      ),
-    );
-  }
   context.textAlign = "left";
 }
 

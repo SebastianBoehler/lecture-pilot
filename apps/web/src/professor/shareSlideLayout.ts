@@ -43,45 +43,6 @@ export function fitTitle(
   return { size, lines: kept };
 }
 
-/** Breaks a URL (shown without its scheme) at slashes, falling back to characters. */
-export function wrapUrl(measure: Measure, url: string, size: number, maxWidth: number) {
-  const text = url.replace(/^https?:\/\//, "");
-  const segments = text.split(/(?=\/)/);
-  const lines: string[] = [];
-  let line = "";
-  for (const segment of segments) {
-    if (measure(line + segment, size) <= maxWidth) {
-      line += segment;
-      continue;
-    }
-    if (line) lines.push(line);
-    line = "";
-    for (const char of segment) {
-      if (line && measure(line + char, size) > maxWidth) {
-        lines.push(line);
-        line = "";
-      }
-      line += char;
-    }
-  }
-  if (line) lines.push(line);
-  return lines;
-}
-
-/** The first size whose wrapped link stays within its line limit; null if none fits. */
-export function fitUrl(
-  measure: Measure,
-  url: string,
-  maxWidth: number,
-  options: { size: number; maxLines: number }[],
-): FittedText | null {
-  for (const { size, maxLines } of options) {
-    const lines = wrapUrl(measure, url, size, maxWidth);
-    if (lines.length <= maxLines) return { size, lines };
-  }
-  return null;
-}
-
 function ellipsize(measure: Measure, line: string, size: number, maxWidth: number) {
   let text = line;
   while (text && measure(`${text}…`, size) > maxWidth) text = text.slice(0, -1);
