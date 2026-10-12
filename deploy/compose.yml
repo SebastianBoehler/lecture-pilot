@@ -138,6 +138,9 @@ services:
     expose: ["8080"]
     environment:
       LECTUREPILOT_OCR_URL: ${LECTUREPILOT_OCR_URL:-}
+      # Set to "rapidocr" to recognize image-only slides and pages in-process on the CPU
+      # (small PP-OCR models baked into the image). Off by default; see docs/self-hosting.md.
+      LECTUREPILOT_OCR_ENGINE: ${LECTUREPILOT_OCR_ENGINE:-}
     networks:
       - document-converter
     healthcheck:

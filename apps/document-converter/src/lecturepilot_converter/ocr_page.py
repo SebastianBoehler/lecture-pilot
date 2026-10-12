@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from lecturepilot_converter.ocr_client import PaddleOcrClient, PaddleOcrError
+from lecturepilot_converter.ocr_local import LocalOcrEngine
 from lecturepilot_converter.ocr_triage import decide_ocr
 
 
@@ -45,21 +46,32 @@ def process_ocr_page(
             text=native_text,
             locator=locator,
         )
-    configured = os.getenv("LECTUREPILOT_OCR_URL", "").strip()
-    if client is None and configured:
-        client = PaddleOcrClient(configured)
+    client = client or configured_ocr_client()
     if client is None:
         return _unavailable(native_text, locator, page)
     try:
         text = client.extract_markdown(image)
     except PaddleOcrError:
         return _unavailable(native_text, locator, page)
+    if not text.strip():
+        # OCR ran but found no confident text (e.g. a photo); the page image stays the source.
+        return OcrPageResult(required=True, extraction="native", text=native_text, locator=locator)
     return OcrPageResult(
         required=True,
         extraction="ocr",
         text=text,
         locator=locator,
     )
+
+
+def configured_ocr_client():
+    """A remote PaddleOCR-VL worker when configured, else the in-process CPU engine if enabled."""
+    configured = os.getenv("LECTUREPILOT_OCR_URL", "").strip()
+    if configured:
+        return PaddleOcrClient(configured)
+    if os.getenv("LECTUREPILOT_OCR_ENGINE", "").strip().casefold() == "rapidocr":
+        return LocalOcrEngine()
+    return None
 
 
 def _replacement_ratio(text: str) -> float:

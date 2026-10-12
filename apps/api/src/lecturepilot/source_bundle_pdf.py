@@ -47,7 +47,7 @@ def pdf_sections(
     sections = []
     for index, (start, end) in enumerate(ranges, start=1):
         section_id = base_id if len(ranges) == 1 else f"{base_id}-pages-{start + 1}-{end}"
-        extraction = _page_text(path, start, end)
+        extraction = _page_text(path, start, end, derived_root / "ocr-cache")
         if warnings is not None:
             warnings.extend(extraction.warnings)
         blocks = pdf_text_blocks(section_id, extraction.text)
@@ -100,13 +100,16 @@ def slide_number(block: CanvasBlock) -> int:
     return 0
 
 
-def _page_text(path: Path, start_page: int, end_page: int) -> PdfTextExtraction:
+def _page_text(
+    path: Path, start_page: int, end_page: int, ocr_cache_dir: Path
+) -> PdfTextExtraction:
     try:
         return read_pdf_page_range_result(
             str(path),
             start_page=start_page,
             end_page=end_page,
             max_chars=MAX_TEXT_CHARS_PER_FILE,
+            ocr_cache_dir=ocr_cache_dir,
         )
     except (BoundedProcessingError, ImportError) as exc:
         raise PdfSourceError("PDF text extraction failed safely.") from exc

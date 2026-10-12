@@ -21,7 +21,9 @@ WORKDIR /app
 COPY apps/document-converter/pyproject.toml ./pyproject.toml
 COPY apps/document-converter/requirements.lock ./requirements.lock
 COPY apps/document-converter/src ./src
+# Bake the small OCR models into the image: the runtime has no network and a read-only root.
 RUN pip install --no-cache-dir -c requirements.lock . \
+    && python -c "from rapidocr import RapidOCR; RapidOCR(params={'Global.log_level': 'error'})" \
     && groupadd --gid 10003 document-converter \
     && useradd --no-create-home --uid 10003 --gid 10003 \
       --shell /usr/sbin/nologin document-converter

@@ -144,14 +144,24 @@ and rendered text is never duplicated as source evidence.
 
 OCR is deterministic fallback work, not the default parser. A page or slide is
 sent through the converter's internal OCR gateway only when native text is
-missing, too sparse for a raster-dominant page, or visibly corrupt. The selected
-adapter uses the official PaddleOCR-VL layout-parsing API, marks returned text as
-`ocr`, and keeps a page/slide bounding locator. If no OCR worker is configured or
-the worker fails, ingestion keeps the rendered artifact and reports
-`OCR required but unavailable`; unrelated files continue. Production OCR remains
-disabled until the private six-stratum quality corpus and intended worker's
-RAM/VRAM and latency gates pass. See
+missing, too sparse for a raster-dominant page, or visibly corrupt. The bounded
+PDF parser only extracts native text and renders those candidate pages; the
+calling worker thread then requests recognition per page, outside the parser's
+time budget, and caches clean results by page-image hash in
+`source/normalized/ocr-cache/`. The converter uses either in-process RapidOCR
+(`LECTUREPILOT_OCR_ENGINE=rapidocr`, confident lines only) or the PaddleOCR-VL
+layout-parsing API (`LECTUREPILOT_OCR_URL`), marks returned text as `ocr`, and
+keeps a page/slide bounding locator. If OCR is not configured or fails,
+ingestion keeps the rendered artifact and reports `OCR required but unavailable`,
+compacted to one line per unit with page ranges; unrelated files continue. OCR
+is off by default. See
 [`benchmarks/document-ocr/README.md`](../benchmarks/document-ocr/README.md).
+
+Source parsing (conversion, LaTeX, PDF text and OCR) never runs while the course
+mutation lock is held and never on the API event loop. The lock only snapshots
+the confirmed selection and later re-checks its revision; a separate per-course
+derivation lock serializes writes to derived files. Tests in
+`apps/api/tests/test_event_loop_blocking.py` enforce both rules.
 
 Notebook import reads at most 120 cells and 60,000 characters, ignores execution
 counts, outputs, embedded image payloads, and remote images, and derives fenced

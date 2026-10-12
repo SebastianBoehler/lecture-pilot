@@ -128,10 +128,16 @@ under the normalized source directory.
 
 DOCX, PPTX, and XLSX normalization runs in the separate `document-converter` service with no
 application secrets, a read-only root filesystem, dropped capabilities, bounded temporary storage,
-and explicit CPU/RAM/process limits. Selective OCR calls an additional worker only when
-`LECTUREPILOT_OCR_URL` is configured. Leave it unset until the private quality corpus and the
-worker's measured deployment envelope pass; the converter remains healthy and preserves page
-artifacts with an explicit warning when OCR is unavailable.
+and explicit CPU/RAM/process limits. Selective OCR is off by default. To enable it on CPU, set
+`LECTUREPILOT_OCR_ENGINE=rapidocr`: the converter then recognizes image-only pages in-process
+with small PP-OCR models baked into the image, keeps only lines with confidence ≥ 0.85, and sizes
+its ONNX thread pool to the container's CPU quota (not the host's cores). Measured in the
+hardened container (2 CPUs, 3 GB): about 1.5–2 s per text slide, about 0.2 s for a blank page,
+~250 MB RAM. Alternatively, `LECTUREPILOT_OCR_URL` selects a remote PaddleOCR-VL worker.
+Recognized pages are cached under the course's normalized sources by page-image hash; failures
+and degraded results retry on the next parse. Without OCR the converter stays healthy and
+preserves page artifacts with one compact warning per unit (for example "OCR required but
+unavailable for 6 pages (3–5, 7, 9–10)").
 
 ## Storage and recovery
 

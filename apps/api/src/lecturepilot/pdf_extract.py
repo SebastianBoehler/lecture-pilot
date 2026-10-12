@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import os
+from pathlib import Path
 from urllib.parse import urlsplit
 
 from lecturepilot.bounded_processing import run_bounded
 from lecturepilot.bounded_sampling import evenly_sampled_indexes
-from lecturepilot.document_converter_client import DocumentConverterClient, DocumentConverterError
+from lecturepilot.document_converter_client import MAX_OCR_IMAGE_BYTES
+from lecturepilot.pdf_page_ocr import PdfPageRecord, page_text
 
 
 @dataclass(frozen=True)
@@ -15,8 +16,11 @@ class PdfTextExtraction:
     warnings: tuple[str, ...]
 
 
-def read_pdf_text(path: str, *, max_pages: int, max_chars: int) -> str:
-    return run_bounded(_read_pdf_text, path, max_pages, max_chars)
+def read_pdf_text(
+    path: str, *, max_pages: int, max_chars: int, ocr_cache_dir: Path | None = None
+) -> str:
+    records = run_bounded(_sampled_page_records, path, max_pages)
+    return _assemble(records, max_chars, ocr_cache_dir).text
 
 
 def read_pdf_page_range_result(
@@ -25,8 +29,11 @@ def read_pdf_page_range_result(
     start_page: int,
     end_page: int,
     max_chars: int,
+    ocr_cache_dir: Path | None = None,
 ) -> PdfTextExtraction:
-    return run_bounded(_read_pdf_page_range_result, path, start_page, end_page, max_chars)
+    # The bounded worker only parses and renders; recognition runs here, outside its budget.
+    records = run_bounded(_page_range_records, path, start_page, end_page)
+    return _assemble(records, max_chars, ocr_cache_dir)
 
 
 def pdf_page_count(path: str) -> int:
@@ -37,23 +44,61 @@ def pdf_requires_ocr(path: str, *, max_pages: int = 20) -> bool:
     return run_bounded(_pdf_requires_ocr, path, max_pages)
 
 
-def _read_pdf_text(path: str, max_pages: int, max_chars: int) -> str:
+def _assemble(
+    records: list[PdfPageRecord], max_chars: int, ocr_cache_dir: Path | None
+) -> PdfTextExtraction:
+    labels = [f"[PDF page {record.number}]\n" for record in records]
+    separators_size = max(0, len(records) - 1) * 2
+    content_budget = max(0, max_chars - sum(map(len, labels)) - separators_size)
+    page_budget = content_budget // len(records) if records else 0
+    warnings, chunks = [], []
+    for record, label in zip(records, labels, strict=True):
+        text, warning = page_text(record, ocr_cache_dir)
+        chunks.append(f"{label}{text[:page_budget]}")
+        if warning:
+            warnings.append(warning)
+    return PdfTextExtraction("\n\n".join(chunks), tuple(dict.fromkeys(warnings)))
+
+
+def _sampled_page_records(path: str, max_pages: int) -> list[PdfPageRecord]:
     import fitz
 
     document = fitz.open(path)
     try:
         indexes = evenly_sampled_indexes(len(document), max_pages)
-        labels = [f"[PDF page {index + 1}]\n" for index in indexes]
-        separators_size = max(0, len(indexes) - 1) * 2
-        content_budget = max(0, max_chars - sum(map(len, labels)) - separators_size)
-        page_budget = content_budget // len(indexes) if indexes else 0
-        chunks = []
-        for index, label in zip(indexes, labels, strict=True):
-            text, _warning = _page_text_with_ocr(document.load_page(index), index + 1)
-            chunks.append(f"{label}{text[:page_budget]}")
-        return "\n\n".join(chunks)
+        return [_page_record(document.load_page(index), index + 1) for index in indexes]
     finally:
         document.close()
+
+
+def _page_range_records(path: str, start_page: int, end_page: int) -> list[PdfPageRecord]:
+    import fitz
+
+    document = fitz.open(path)
+    try:
+        start = max(0, start_page)
+        end = min(len(document), max(start, end_page))
+        return [_page_record(document.load_page(index), index + 1) for index in range(start, end)]
+    finally:
+        document.close()
+
+
+def _page_record(page: object, page_number: int) -> PdfPageRecord:
+    native_text = page.get_text("text")
+    raster_ratio = _raster_ratio(page)
+    image = None
+    if _ocr_candidate(native_text, raster_ratio):
+        rendered = page.get_pixmap(matrix=_render_matrix(page), alpha=False).tobytes("png")
+        image = rendered if len(rendered) <= MAX_OCR_IMAGE_BYTES else None
+    return PdfPageRecord(
+        number=page_number,
+        native_text=native_text,
+        links=tuple(_safe_page_links(page)),
+        raster_ratio=raster_ratio,
+        width=float(page.rect.width),
+        height=float(page.rect.height),
+        image=image,
+    )
 
 
 def _pdf_page_count(path: str) -> int:
@@ -78,81 +123,6 @@ def _pdf_requires_ocr(path: str, max_pages: int) -> bool:
         )
     finally:
         document.close()
-
-
-def _read_pdf_page_range(path: str, start_page: int, end_page: int, max_chars: int) -> str:
-    return _read_pdf_page_range_result(path, start_page, end_page, max_chars).text
-
-
-def _read_pdf_page_range_result(
-    path: str,
-    start_page: int,
-    end_page: int,
-    max_chars: int,
-) -> PdfTextExtraction:
-    import fitz
-
-    document = fitz.open(path)
-    try:
-        start = max(0, start_page)
-        end = min(len(document), max(start, end_page))
-        indexes = list(range(start, end))
-        labels = [f"[PDF page {index + 1}]\n" for index in indexes]
-        separators_size = max(0, len(indexes) - 1) * 2
-        content_budget = max(0, max_chars - sum(map(len, labels)) - separators_size)
-        page_budget = content_budget // len(indexes) if indexes else 0
-        warnings = []
-        chunks = []
-        for index, label in zip(indexes, labels, strict=True):
-            text, warning = _page_text_with_ocr(document.load_page(index), index + 1)
-            chunks.append(f"{label}{text[:page_budget]}")
-            if warning:
-                warnings.append(warning)
-        return PdfTextExtraction("\n\n".join(chunks), tuple(dict.fromkeys(warnings)))
-    finally:
-        document.close()
-
-
-def _page_text(page: object, max_chars: int) -> str:
-    text = page.get_text("text")
-    links = _safe_page_links(page)
-    if not links:
-        return text[:max_chars]
-    link_section = "\n[Embedded links]\n" + "\n".join(f"- {uri}" for uri in links)
-    link_section = link_section[: min(max_chars, max(256, max_chars // 3))]
-    return f"{text[: max(0, max_chars - len(link_section))].rstrip()}{link_section}"[:max_chars]
-
-
-def _page_text_with_ocr(page: object, page_number: int) -> tuple[str, str | None]:
-    native_text = page.get_text("text")
-    raster_ratio = _raster_ratio(page)
-    warning = None
-    text = native_text
-    if _ocr_candidate(native_text, raster_ratio):
-        configured = os.getenv("LECTUREPILOT_DOCUMENT_CONVERTER_URL", "").strip()
-        if not configured:
-            warning = _ocr_unavailable_warning(page_number)
-        else:
-            try:
-                pixmap = page.get_pixmap(matrix=_render_matrix(page), alpha=False)
-                result = DocumentConverterClient(configured).ocr_page(
-                    image=pixmap.tobytes("png"),
-                    native_text=native_text,
-                    raster_ratio=raster_ratio,
-                    page=page_number,
-                    width=float(page.rect.width),
-                    height=float(page.rect.height),
-                )
-            except (DocumentConverterError, RuntimeError):
-                warning = _ocr_unavailable_warning(page_number)
-            else:
-                warning = result.warning
-                if result.extraction == "ocr":
-                    text = f"[OCR-derived text]\n{result.text}"
-    links = _safe_page_links(page)
-    if links:
-        text = f"{text.rstrip()}\n[Embedded links]\n" + "\n".join(f"- {uri}" for uri in links)
-    return text, warning
 
 
 def _ocr_candidate(text: str, raster_ratio: float) -> bool:
@@ -187,10 +157,6 @@ def _render_matrix(page: object):
 
     scale = 2 if page.rect.width * page.rect.height * 4 <= 20_000_000 else 1
     return fitz.Matrix(scale, scale)
-
-
-def _ocr_unavailable_warning(page_number: int) -> str:
-    return f"OCR required but unavailable for page {page_number}; the page image was preserved."
 
 
 def _safe_page_links(page: object) -> list[str]:
