@@ -68,3 +68,10 @@
   flex-wrap: wrap;
   gap: 5px 12px;
 }
+
+.course-demand-hint {
+  margin: -4px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}

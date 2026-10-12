@@ -47,6 +47,7 @@
 @import "./professor/professor-learning-map-tree.css";
 @import "./performance/professor-usage.css";
 @import "./performance/professor-usage-responsive.css";
+@import "./admin/course-demand.css";
 @import "./professor/professor-walkthrough.css";
 @import "./shell/feedback.css";
 @import "./lesson/lesson.css";

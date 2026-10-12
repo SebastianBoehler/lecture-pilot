@@ -43,6 +43,7 @@ export type View =
   | "professor"
   | "performance"
   | "usage"
+  | "course-demand"
   | "course-management"
   | "course-link"
   | InfoPageKind;

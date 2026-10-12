@@ -1,3 +1,4 @@
+import { CourseDemandHint } from "./CourseDemandHint";
 import { CourseNameField } from "./CourseNameField";
 import { useI18n } from "../i18n/i18n";
 import type { CourseSetup } from "./professorBuilderState";
@@ -14,6 +15,7 @@ export function ProfessorCourseSetupStep({
   isReady,
   onCreate,
   onSetupChange,
+  session,
   setup,
 }: {
   courseSearchFailed: boolean;
@@ -24,6 +26,7 @@ export function ProfessorCourseSetupStep({
   isReady: boolean;
   onCreate: () => void;
   onSetupChange: (setup: CourseSetup) => void;
+  session: LoginSession;
   setup: CourseSetup;
 }) {
   const { t } = useI18n();
@@ -37,6 +40,9 @@ export function ProfessorCourseSetupStep({
         value={setup.courseTitle}
         onChange={(courseTitle) => onSetupChange({ ...setup, courseTitle })}
       />
+      {courseReady ? null : (
+        <CourseDemandHint session={session} term={session.term} title={setup.courseTitle} />
+      )}
       <label>
         {t("builder.define.courseLanguage")}
         <select

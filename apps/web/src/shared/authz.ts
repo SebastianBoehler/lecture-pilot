@@ -8,6 +8,11 @@ export function canManageCourses(session: LoginSession | null) {
   return Boolean(courseManagerRole(session));
 }
 
+/** Platform administrators (tenant_admin) may view cross-course aggregates such as course demand. */
+export function isPlatformAdmin(session: LoginSession | null) {
+  return Boolean(session?.roles?.includes("tenant_admin"));
+}
+
 export function isStudentAccount(session: LoginSession | null) {
   return Boolean(session && (session.account_type ?? "student") === "student");
 }

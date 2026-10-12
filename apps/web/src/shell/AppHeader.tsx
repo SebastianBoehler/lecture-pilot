@@ -10,10 +10,11 @@ import {
   Moon,
   Sun,
   UserRound,
+  Users,
 } from "lucide-react";
 
 import { OnboardingVideo } from "../info/OnboardingVideo";
-import { canManageCourses, isStudentAccount } from "../shared/authz";
+import { canManageCourses, isPlatformAdmin, isStudentAccount } from "../shared/authz";
 import { useI18n } from "../i18n/i18n";
 import { requestProfessorWalkthrough } from "../professor/professorWalkthroughState";
 import type { LoginSession, Theme, View } from "../shared/types";
@@ -27,6 +28,7 @@ export function AppHeader({
   onOpenCourseManagement,
   onOpenPerformance,
   onOpenUsage,
+  onOpenCourseDemand,
   onOpenProfile,
   onOpenProfessor,
   onOpenFeedback,
@@ -40,6 +42,7 @@ export function AppHeader({
   onOpenCourseManagement: () => void;
   onOpenPerformance: () => void;
   onOpenUsage: () => void;
+  onOpenCourseDemand: () => void;
   onOpenProfile: () => void;
   onOpenProfessor: () => void;
   onOpenFeedback: () => void;
@@ -50,6 +53,18 @@ export function AppHeader({
   const nextThemeLabel = nextTheme === "light" ? t("app.theme.light") : t("app.theme.dark");
   const nextLocale = locale === "en" ? "de" : "en";
   const canManage = canManageCourses(session);
+  const courseDemandNav = isPlatformAdmin(session) ? (
+    <button
+      aria-current={activeView === "course-demand" ? "page" : undefined}
+      aria-label={t("nav.courseDemand")}
+      className={`top-nav-button ${activeView === "course-demand" ? "is-active" : ""}`}
+      type="button"
+      onClick={onOpenCourseDemand}
+    >
+      <Users size={16} />
+      <span>{t("nav.courseDemand")}</span>
+    </button>
+  ) : null;
   return (
     <header className="top-bar">
       <div className="top-brand-zone">
@@ -107,6 +122,7 @@ export function AppHeader({
             <FilePlus2 size={16} />
             <span>{t("nav.courseBuilder")}</span>
           </button>
+          {courseDemandNav}
         </nav>
       ) : isStudentAccount(session) ? (
         <nav className="top-primary-nav" aria-label={t("nav.student")}>
@@ -120,6 +136,7 @@ export function AppHeader({
             <Home size={16} />
             <span>{t("nav.workspaces")}</span>
           </button>
+          {courseDemandNav}
         </nav>
       ) : (
         <div />
