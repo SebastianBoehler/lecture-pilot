@@ -4,8 +4,8 @@ import {
   publicPageMetadata,
   productDescription,
   type PublicInformationPage,
-} from "../src/publicInformation";
-import type { InfoArticleContent } from "../src/infoArticleTypes";
+} from "../src/info/publicInformation";
+import type { InfoArticleContent } from "../src/info/infoArticleTypes";
 
 export function publicDiscovery(): Plugin {
   return {

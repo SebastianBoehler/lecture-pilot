@@ -24,7 +24,7 @@ it("continues to a shared join link after signing in from it", async () => {
 });
 
 it("forgets a pending destination on explicit logout", async () => {
-  const { rememberReturnPath, takeReturnPath } = await import("./returnPath");
+  const { rememberReturnPath, takeReturnPath } = await import("./shell/returnPath");
   const user = userEvent.setup();
   window.history.replaceState({}, "", "/profile");
   window.localStorage.setItem(

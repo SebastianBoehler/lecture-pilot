@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 
 import App from "./App";
-import { mockLoginFetch } from "./testFixtures";
+import { mockLoginFetch } from "./shared/testFixtures";
 
 it("uses the browser history across several page transitions", async () => {
   const user = userEvent.setup();

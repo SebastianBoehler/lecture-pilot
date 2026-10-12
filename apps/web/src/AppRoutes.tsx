@@ -1,20 +1,20 @@
-import type { LearningDesignApprovalInput } from "./learningDesignTypes";
-import { CourseLinkView } from "./CourseLinkView";
-import { rememberReturnPath } from "./returnPath";
-import { clearSavedFlow, writeResumeFlow } from "./professorBuilderState";
+import type { LearningDesignApprovalInput } from "./professor/learningDesignTypes";
+import { CourseLinkView } from "./professor/CourseLinkView";
+import { rememberReturnPath } from "./shell/returnPath";
+import { clearSavedFlow, writeResumeFlow } from "./professor/professorBuilderState";
 import { lazy, Suspense, type ReactNode } from "react";
 
-import { courseUpdatePath, type AppRoute } from "./appRoute";
-import { CourseManagementAccessRequired } from "./CourseManagementAccessRequired";
-import { Dashboard } from "./Dashboard";
-import { draftPreviewUrl } from "./draftPreviewUrl";
-import { LoginView } from "./LoginView";
-import { localDemoSession } from "./appDefaults";
-import { ProfileView } from "./ProfileView";
-import { useI18n } from "./i18n";
-import type { CourseWorkspace } from "./useCourseWorkspace";
-import { useLearnerProfile } from "./useLearnerProfile";
-import type { LessonSession } from "./useLessonSession";
+import { courseUpdatePath, type AppRoute } from "./shell/appRoute";
+import { CourseManagementAccessRequired } from "./professor/CourseManagementAccessRequired";
+import { Dashboard } from "./dashboard/Dashboard";
+import { draftPreviewUrl } from "./lesson/draftPreviewUrl";
+import { LoginView } from "./auth/LoginView";
+import { localDemoSession } from "./shell/appDefaults";
+import { ProfileView } from "./profile/ProfileView";
+import { useI18n } from "./i18n/i18n";
+import type { CourseWorkspace } from "./dashboard/useCourseWorkspace";
+import { useLearnerProfile } from "./profile/useLearnerProfile";
+import type { LessonSession } from "./lesson/useLessonSession";
 import type {
   Attendance,
   CanvasPublicationResult,
@@ -22,30 +22,34 @@ import type {
   LoginSession,
   UniversityCourse,
   View,
-} from "./types";
+} from "./shared/types";
 
-const InfoPage = lazy(() => import("./InfoPage").then((module) => ({ default: module.InfoPage })));
+const InfoPage = lazy(() =>
+  import("./info/InfoPage").then((module) => ({ default: module.InfoPage })),
+);
 const ChangelogPage = lazy(() =>
-  import("./ChangelogPage").then((module) => ({ default: module.ChangelogPage })),
+  import("./info/ChangelogPage").then((module) => ({ default: module.ChangelogPage })),
 );
 const LessonWorkspace = lazy(() =>
-  import("./LessonWorkspace").then((module) => ({ default: module.LessonWorkspace })),
+  import("./lesson/LessonWorkspace").then((module) => ({ default: module.LessonWorkspace })),
 );
 const ProfessorCourseBuilder = lazy(() =>
-  import("./ProfessorCourseBuilder").then((module) => ({ default: module.ProfessorCourseBuilder })),
+  import("./professor/ProfessorCourseBuilder").then((module) => ({
+    default: module.ProfessorCourseBuilder,
+  })),
 );
 const ProfessorCourseManagement = lazy(() =>
-  import("./ProfessorCourseManagement").then((module) => ({
+  import("./professor/ProfessorCourseManagement").then((module) => ({
     default: module.ProfessorCourseManagement,
   })),
 );
 const ProfessorCoursePerformance = lazy(() =>
-  import("./ProfessorPerformanceDashboard").then((module) => ({
+  import("./performance/ProfessorPerformanceDashboard").then((module) => ({
     default: module.ProfessorPerformanceDashboard,
   })),
 );
 const ProfessorUsage = lazy(() =>
-  import("./ProfessorUsage").then((module) => ({ default: module.ProfessorUsage })),
+  import("./performance/ProfessorUsage").then((module) => ({ default: module.ProfessorUsage })),
 );
 
 type AppRoutesProps = {

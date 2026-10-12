@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 
 import App from "./App";
-import { mockLoginFetch } from "./testFixtures";
+import { mockLoginFetch } from "./shared/testFixtures";
 
 it("opens a due review at its exact section and presents the bound transfer prompt", async () => {
   const baseFetch = mockLoginFetch({ published: true });

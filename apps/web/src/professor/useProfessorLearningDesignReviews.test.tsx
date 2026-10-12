@@ -1,0 +1,244 @@
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
+
+import type { LearningDesignReview } from "./learningDesignTypes";
+import type { LoginSession } from "../shared/types";
+import { useProfessorLearningDesignReviews } from "./useProfessorLearningDesignReviews";
+import { learningDesignReportFixture } from "./testLearningDesignReportFixture";
+
+const session = {
+  account_type: "professor",
+  courses: [],
+  roles: ["professor"],
+  term: "Sommer 2026",
+  username: "professor-demo",
+} as LoginSession;
+
+afterEach(() => vi.unstubAllGlobals());
+
+it("loads, edits, reloads and refreshes draft-bound reviews per lecture", async () => {
+  let serverReview = review("d", null);
+  const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+    if (init?.method === "PUT") {
+      const body = JSON.parse(String(init.body));
+      serverReview = {
+        ...serverReview,
+        learning_map: { ...serverReview.learning_map, objective: body.objective },
+        approval: null,
+      };
+    }
+    return response(serverReview);
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  const { result, rerender } = renderHook(
+    ({ revisionKey }) =>
+      useProfessorLearningDesignReviews({
+        courseId: "course-1",
+        lectureIds: ["lecture-01"],
+        revisionKey,
+        session,
+      }),
+    { initialProps: { revisionKey: "generation-1" } },
+  );
+
+  await waitFor(() => expect(result.current.reviews["lecture-01"]).toBeDefined());
+  await act(() =>
+    result.current.save("lecture-01", {
+      draft_digest: serverReview.draft_digest,
+      source_revision: serverReview.source_revision,
+      practice_design_revision: serverReview.practice_design_revision,
+      learning_map_revision: serverReview.learning_map.revision,
+      objective: "Edited objective",
+      gates: [],
+      prerequisites: [],
+    }),
+  );
+  expect(result.current.reviews["lecture-01"].learning_map.objective).toBe("Edited objective");
+  // Approve & publish happens on the server; the hook reloads the approved review.
+  serverReview = { ...serverReview, approval: review("d", "professor-demo").approval };
+  await act(() => result.current.reload("lecture-01"));
+  expect(result.current.reviews["lecture-01"].approval?.approved_by).toBe("professor-demo");
+
+  serverReview = review("e", null);
+  rerender({ revisionKey: "generation-2" });
+  await waitFor(() =>
+    expect(result.current.reviews["lecture-01"].draft_digest).toBe("e".repeat(64)),
+  );
+  expect(result.current.reviews["lecture-01"].approval).toBeNull();
+});
+
+it.each(["resolve", "reject"] as const)(
+  "ignores an old GET %s after switching courses with the same lecture ids",
+  async (outcome) => {
+    const oldGet = deferred<Response>();
+    const newGet = deferred<Response>();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => (url.includes("course-old") ? oldGet.promise : newGet.promise)),
+    );
+    const { result, rerender } = renderHook(
+      ({ courseId }) =>
+        useProfessorLearningDesignReviews({
+          courseId,
+          lectureIds: ["lecture-01"],
+          revisionKey: "generation-1",
+          session,
+        }),
+      { initialProps: { courseId: "course-old" } },
+    );
+
+    rerender({ courseId: "course-new" });
+    await act(() =>
+      outcome === "resolve"
+        ? oldGet.resolve(response(review("a", "professor-demo")) as Response)
+        : oldGet.reject(new Error("old load failed")),
+    );
+    expect(result.current.reviews).toEqual({});
+    expect(result.current.error).toBeNull();
+
+    await act(() => newGet.resolve(response(review("b", null)) as Response));
+    await waitFor(() =>
+      expect(result.current.reviews["lecture-01"].draft_digest).toBe("b".repeat(64)),
+    );
+  },
+);
+
+it.each(["resolve", "reject"] as const)(
+  "ignores an old save %s after a revision switch",
+  async (outcome) => {
+    const mutation = deferred<Response>();
+    let getCount = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: string, init?: RequestInit) => {
+        if (init?.method === "PUT") return mutation.promise;
+        getCount += 1;
+        return Promise.resolve(response(review(getCount === 1 ? "a" : "b", null)));
+      }),
+    );
+    const { result, rerender } = renderHook(
+      ({ revisionKey }) =>
+        useProfessorLearningDesignReviews({
+          courseId: "course-1",
+          lectureIds: ["lecture-01"],
+          revisionKey,
+          session,
+        }),
+      { initialProps: { revisionKey: "generation-1" } },
+    );
+    await waitFor(() => expect(result.current.reviews["lecture-01"]).toBeDefined());
+
+    void result.current.save("lecture-01", updateFor(result.current.reviews["lecture-01"]));
+    rerender({ revisionKey: "generation-2" });
+    await waitFor(() =>
+      expect(result.current.reviews["lecture-01"].draft_digest).toBe("b".repeat(64)),
+    );
+
+    await act(() =>
+      outcome === "resolve"
+        ? mutation.resolve(response(review("a", "professor-demo")) as Response)
+        : mutation.reject(new Error("old save failed")),
+    );
+    expect(result.current.reviews["lecture-01"].draft_digest).toBe("b".repeat(64));
+    expect(result.current.reviews["lecture-01"].approval).toBeNull();
+    expect(result.current.error).toBeNull();
+  },
+);
+
+function review(digest: string, approvedBy: string | null): LearningDesignReview {
+  return {
+    schema_version: 2,
+    course_id: "course-1",
+    lecture_id: "lecture-01",
+    draft_digest: digest.repeat(64),
+    source_revision: "s".repeat(64),
+    practice_design_revision: "a".repeat(64),
+    factual_quality_separate: true,
+    report: learningDesignReportFixture({
+      draftDigest: digest.repeat(64),
+      sourceRevision: "s".repeat(64),
+      learningMapRevision: "m".repeat(64),
+    }),
+    approval: approvedBy
+      ? {
+          approved_by: approvedBy,
+          approved_at: "2026-08-09T12:00:00Z",
+          draft_digest: digest.repeat(64),
+          source_revision: "s".repeat(64),
+          practice_design_revision: "a".repeat(64),
+        }
+      : null,
+    learning_map: {
+      course_id: "course-1",
+      lecture_id: "lecture-01",
+      title: "Lecture",
+      objective: "Initial objective",
+      revision: "m".repeat(64),
+      nodes: [],
+      gates: [],
+    },
+  };
+}
+
+function updateFor(current: LearningDesignReview) {
+  return {
+    draft_digest: current.draft_digest,
+    source_revision: current.source_revision,
+    practice_design_revision: current.practice_design_revision,
+    learning_map_revision: current.learning_map.revision,
+    objective: current.learning_map.objective,
+    gates: [],
+    prerequisites: [],
+  };
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((onResolve, onReject) => {
+    resolve = onResolve;
+    reject = onReject;
+  });
+  return { promise, reject, resolve };
+}
+
+function response(payload: unknown) {
+  return { ok: true, json: async () => payload };
+}
+
+it("retains successful reviews when another lecture fails and permits a targeted retry", async () => {
+  let fail = true;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === "PUT") throw new Error("Save unavailable");
+      if (url.includes("lecture-02") && fail) throw new Error("Review unavailable");
+      return response({
+        ...review("d", null),
+        lecture_id: url.includes("lecture-02") ? "lecture-02" : "lecture-01",
+      });
+    }),
+  );
+  const { result } = renderHook(() =>
+    useProfessorLearningDesignReviews({
+      courseId: "course-1",
+      lectureIds: ["lecture-01", "lecture-02"],
+      revisionKey: "one",
+      session,
+    }),
+  );
+  await waitFor(() =>
+    expect(result.current.errorsByLecture["lecture-02"]).toBe("Review unavailable"),
+  );
+  expect(result.current.reviews["lecture-01"]).toBeDefined();
+  await act(() =>
+    result.current.save("lecture-01", updateFor(result.current.reviews["lecture-01"])),
+  );
+  expect(result.current.error).toBe("Save unavailable");
+  expect(result.current.errorsByLecture["lecture-01"]).toBe("Save unavailable");
+  expect(result.current.errorsByLecture["lecture-02"]).toBe("Review unavailable");
+  fail = false;
+  await act(() => result.current.reload("lecture-02"));
+  expect(result.current.reviews["lecture-02"]).toBeDefined();
+  expect(result.current.errorsByLecture["lecture-02"]).toBeUndefined();
+});

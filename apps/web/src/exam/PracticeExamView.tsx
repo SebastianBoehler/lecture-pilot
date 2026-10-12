@@ -1,0 +1,278 @@
+import { useState } from "react";
+import { PracticeAttemptHistory } from "./PracticeAttemptHistory";
+import { savePracticeAttempt, type PracticeAttempt } from "./practiceAttemptApi";
+
+import { useI18n } from "../i18n/i18n";
+import { dismissDialogFromBackdrop } from "../shared/dialogBackdrop";
+import { MathText } from "../canvas/MathText";
+import { loadPracticeExamSolutions } from "./practiceExamApi";
+import { savePracticeExamPdf, savePracticeExamSolutionPdf } from "./practiceExamDownload";
+import { readPracticeExamDraft, savePracticeExamDraft } from "./practiceExamDraft";
+import type {
+  PracticeExam,
+  PracticeExamAnswers,
+  PracticeExamSolutionSheet,
+} from "./practiceExamTypes";
+import { PracticeExamSolutionSheet as SolutionSheetView } from "./PracticeExamSolutionSheet";
+import type { LoginSession } from "../shared/types";
+import { useModalDialog } from "../shared/useModalDialog";
+
+export function PracticeExamView({
+  courseId,
+  exam,
+  session,
+  onClose,
+}: {
+  courseId: string;
+  exam: PracticeExam;
+  session: LoginSession;
+  onClose: () => void;
+}) {
+  const { t } = useI18n();
+  const [answers, setAnswers] = useState<PracticeExamAnswers>(() =>
+    readPracticeExamDraft(session.username, courseId, exam.id),
+  );
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [submissionId] = useState(() => crypto.randomUUID());
+  const [submittedAnswers, setSubmittedAnswers] = useState<PracticeExamAnswers | null>(null);
+  const [savedAttempt, setSavedAttempt] = useState<PracticeAttempt | null>(null);
+  const [solutions, setSolutions] = useState<PracticeExamSolutionSheet | null>(null);
+  const [solutionPdfBusy, setSolutionPdfBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const dialogRef = useModalDialog();
+
+  function answer(questionId: string, value: PracticeExamAnswers[string]) {
+    const next = { ...answers, [questionId]: value };
+    setAnswers(next);
+    savePracticeExamDraft(session.username, courseId, exam.id, next);
+  }
+
+  async function downloadPdf() {
+    setPdfBusy(true);
+    setError(null);
+    try {
+      await savePracticeExamPdf(courseId, exam.id, session);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : t("practice.pdfFailed"));
+    } finally {
+      setPdfBusy(false);
+    }
+  }
+
+  async function finishAndReview() {
+    setReviewBusy(true);
+    setError(null);
+    try {
+      const snapshot = submittedAnswers ?? answers;
+      setSubmittedAnswers(snapshot);
+      if (!savedAttempt) {
+        setSavedAttempt(
+          await savePracticeAttempt(courseId, exam.id, session, {
+            id: submissionId,
+            answers: snapshot,
+          }),
+        );
+      }
+      setSolutions(await loadPracticeExamSolutions(courseId, exam.id, session));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : t("practice.solutions.loadFailed"));
+    } finally {
+      setReviewBusy(false);
+    }
+  }
+
+  async function reviewAttempt(attempt: PracticeAttempt) {
+    setReviewBusy(true);
+    setError(null);
+    try {
+      const sheet = await loadPracticeExamSolutions(courseId, exam.id, session);
+      setAnswers(attempt.answers);
+      setSubmittedAnswers(attempt.answers);
+      setSavedAttempt(attempt);
+      setSolutions(sheet);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : t("practice.solutions.loadFailed"));
+    } finally {
+      setReviewBusy(false);
+    }
+  }
+
+  async function downloadSolutionPdf() {
+    setSolutionPdfBusy(true);
+    setError(null);
+    try {
+      await savePracticeExamSolutionPdf(courseId, exam.id, session);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : t("practice.solutions.pdfFailed"));
+    } finally {
+      setSolutionPdfBusy(false);
+    }
+  }
+
+  return (
+    <dialog
+      aria-labelledby="practice-exam-view-title"
+      aria-modal="true"
+      className="practice-exam-dialog practice-exam-view"
+      ref={dialogRef}
+      onClick={(event) => dismissDialogFromBackdrop(event, onClose)}
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
+    >
+      <header>
+        <div>
+          <p>
+            {t("practice.view.eyebrow", {
+              minutes: exam.duration_minutes,
+              points: exam.total_points,
+            })}
+          </p>
+          <h2 id="practice-exam-view-title">{exam.title}</h2>
+        </div>
+        <div className="practice-exam-view-actions">
+          {solutions ? (
+            <button
+              disabled={solutionPdfBusy}
+              type="button"
+              onClick={() => void downloadSolutionPdf()}
+            >
+              {solutionPdfBusy ? t("practice.solutions.pdfPreparing") : t("practice.solutions.pdf")}
+            </button>
+          ) : (
+            <button disabled={pdfBusy} type="button" onClick={() => void downloadPdf()}>
+              {pdfBusy ? t("practice.pdfPreparing") : t("practice.pdf")}
+            </button>
+          )}
+          <button aria-label={t("practice.closeDialog")} type="button" onClick={onClose}>
+            ×
+          </button>
+        </div>
+      </header>
+      <div className="practice-exam-dialog-body">
+        <PracticeAttemptHistory
+          key={savedAttempt?.id ?? "unsaved"}
+          courseId={courseId}
+          examId={exam.id}
+          session={session}
+          disabled={reviewBusy}
+          onDelete={(id) => {
+            if (savedAttempt?.id === id) setSavedAttempt(null);
+          }}
+          onReview={(attempt) => void reviewAttempt(attempt)}
+        />
+        {savedAttempt ? (
+          <p role="status">
+            {t("practice.history.saved", {
+              date: new Date(savedAttempt.created_at).toLocaleString(),
+            })}
+          </p>
+        ) : null}
+        {error ? (
+          <p className="practice-exam-error" role="alert">
+            {error}
+          </p>
+        ) : null}
+        {solutions ? (
+          <SolutionSheetView answers={answers} exam={exam} solutions={solutions} />
+        ) : (
+          <>
+            <div className="practice-exam-instructions">
+              {exam.instructions.map((instruction) => (
+                <p key={instruction}>
+                  <MathText highlightedText={null} text={instruction} />
+                </p>
+              ))}
+              <div
+                aria-labelledby="practice-exam-privacy-title"
+                className="practice-exam-privacy"
+                role="note"
+              >
+                <div>
+                  <strong id="practice-exam-privacy-title">{t("practice.privacy.title")}</strong>
+                  <p>{t("practice.view.localDraft")}</p>
+                </div>
+              </div>
+            </div>
+            <ol className="practice-question-list">
+              {exam.questions.map((question, index) => (
+                <li key={question.id}>
+                  <fieldset disabled={reviewBusy || submittedAnswers !== null}>
+                    <legend>
+                      <span aria-hidden="true" className="practice-question-number">
+                        {index + 1}.
+                      </span>
+                      <span className="practice-question-prompt">
+                        <MathText highlightedText={null} text={question.prompt} />
+                      </span>
+                    </legend>
+                    <span className="practice-question-points">
+                      {t("practice.points", { count: question.points })}
+                    </span>
+                    {question.kind === "multiple_select" ? <p>{t("practice.selectAll")}</p> : null}
+                    {question.status === "invalid" ? null : question.kind === "multiple_choice" ||
+                      question.kind === "multiple_select" ? (
+                      question.options.map((option, optionIndex) => (
+                        <label key={option}>
+                          <input
+                            checked={
+                              question.kind === "multiple_select"
+                                ? (answers[question.id]?.selected_indices ?? []).includes(
+                                    optionIndex,
+                                  )
+                                : answers[question.id]?.selected_index === optionIndex
+                            }
+                            name={question.id}
+                            type={question.kind === "multiple_select" ? "checkbox" : "radio"}
+                            onChange={() => {
+                              if (question.kind === "multiple_select") {
+                                const current = answers[question.id]?.selected_indices ?? [];
+                                const next = current.includes(optionIndex)
+                                  ? current.filter((i) => i !== optionIndex)
+                                  : [...current, optionIndex].sort((a, b) => a - b);
+                                answer(question.id, { selected_indices: next });
+                              } else answer(question.id, { selected_index: optionIndex });
+                            }}
+                          />
+                          <span>
+                            <MathText highlightedText={null} text={option} />
+                          </span>
+                        </label>
+                      ))
+                    ) : (
+                      <textarea
+                        aria-label={t("practice.answerLabel", { number: index + 1 })}
+                        rows={6}
+                        value={answers[question.id]?.text ?? ""}
+                        onChange={(event) =>
+                          answer(question.id, { text: event.currentTarget.value })
+                        }
+                      />
+                    )}
+                  </fieldset>
+                </li>
+              ))}
+            </ol>
+          </>
+        )}
+      </div>
+      <footer>
+        <button type="button" onClick={onClose}>
+          {t("practice.closeExam")}
+        </button>
+        {!solutions ? (
+          <button
+            className="practice-primary"
+            disabled={reviewBusy}
+            type="button"
+            onClick={() => void finishAndReview()}
+          >
+            {reviewBusy ? t("practice.history.saving") : t("practice.solutions.finish")}
+          </button>
+        ) : null}
+      </footer>
+    </dialog>
+  );
+}

@@ -1,0 +1,102 @@
+import { formatAccessDate, formatRelativeAccess } from "../professor/courseAccessStatus";
+import type { LectureProgress } from "./dashboardLectureProgress";
+import { useI18n } from "../i18n/i18n";
+import { formatLectureDate } from "../shared/lectureDate";
+import type { Attendance, Lecture } from "../shared/types";
+
+export function DashboardLectureRow({
+  isNew = false,
+  lecture,
+  progress,
+  onOpen,
+  onSetAttendance,
+}: {
+  isNew?: boolean;
+  lecture: Lecture;
+  progress?: LectureProgress;
+  onOpen: (lecture: Lecture) => void;
+  onSetAttendance: (lectureId: string, attendance: Attendance) => void;
+}) {
+  const { locale, t } = useI18n();
+  const scheduled = lecture.releaseStatus === "scheduled";
+  const availableAt = lecture.effectivePublicationAt
+    ? new Date(lecture.effectivePublicationAt)
+    : null;
+
+  return (
+    <article className={`lecture-row${scheduled ? " is-scheduled" : ""}`}>
+      <div className="lecture-number">{lecture.number}</div>
+      <div className="lecture-summary">
+        <h4>{lecture.title}</h4>
+        {scheduled && availableAt ? (
+          <p className="lecture-release-time">
+            {t("courseAccess.status.scheduled", {
+              date: formatAccessDate(availableAt, locale, true),
+              relative: formatRelativeAccess(availableAt, locale),
+            })}
+          </p>
+        ) : (
+          <p>
+            <time dateTime={lecture.date}>{formatLectureDate(lecture.date, locale)}</time> ·{" "}
+            {t("dashboard.attendance", {
+              status: attendanceLabel(lecture.attendance, t),
+            })}
+          </p>
+        )}
+        {!scheduled && (isNew || progress) ? (
+          <p className="lecture-status-tags">
+            {isNew ? (
+              <span className="lecture-tag is-new" title={t("dashboard.newBadgeTitle")}>
+                {t("dashboard.newBadge")}
+              </span>
+            ) : null}
+            {progress ? <ProgressTag progress={progress} /> : null}
+          </p>
+        ) : null}
+      </div>
+      {scheduled ? null : (
+        <div
+          className="attendance-control"
+          role="group"
+          aria-label={t("dashboard.attendanceFor", { lecture: lecture.title })}
+        >
+          {(["present", "absent", "unknown"] as const).map((status) => (
+            <button
+              aria-pressed={lecture.attendance === status}
+              className={lecture.attendance === status ? "is-active" : undefined}
+              key={status}
+              onClick={() => onSetAttendance(lecture.id, status)}
+              type="button"
+            >
+              {attendanceLabel(status, t)}
+            </button>
+          ))}
+        </div>
+      )}
+      {scheduled ? null : (
+        <button className="lecture-open-button" type="button" onClick={() => onOpen(lecture)}>
+          {t("dashboard.openLecture", { number: lecture.number })}
+        </button>
+      )}
+    </article>
+  );
+}
+
+function ProgressTag({ progress }: { progress: LectureProgress }) {
+  const { t } = useI18n();
+  if (progress.completed) {
+    return <span className="lecture-tag is-complete">{t("dashboard.progress.completed")}</span>;
+  }
+  if (!progress.total) return null;
+  return (
+    <span className="lecture-tag">
+      {t("dashboard.progress.checks", { passed: progress.passed, total: progress.total })}
+    </span>
+  );
+}
+
+function attendanceLabel(status: Attendance, t: ReturnType<typeof useI18n>["t"]) {
+  if (status === "present") return t("attendance.present");
+  if (status === "absent") return t("attendance.absent");
+  return t("attendance.unknown");
+}

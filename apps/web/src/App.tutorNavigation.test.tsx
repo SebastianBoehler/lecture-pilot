@@ -3,8 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
-import { openLecture03FromDashboard, soccerCanvasSection } from "./testLessonActions";
-import { mockLoginAndTutorFetch } from "./testFixtures";
+import { openLecture03FromDashboard, soccerCanvasSection } from "./lesson/testLessonActions";
+import { mockLoginAndTutorFetch } from "./shared/testFixtures";
 
 describe("Tutor canvas navigation", () => {
   afterEach(() => {

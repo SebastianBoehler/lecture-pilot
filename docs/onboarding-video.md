@@ -20,7 +20,7 @@ it read-only into the web container at `/srv/lecturepilot-media`. Nginx serves
 correct media types and byte ranges, so the player can seek without downloading
 the entire file. Files have immutable caching: publish a new versioned directory
 for subsequent edits and update `ONBOARDING_MEDIA` and chapter timestamps in
-`apps/web/src/onboardingChapters.ts`. Never replace bytes at an existing URL.
+`apps/web/src/info/onboardingChapters.ts`. Never replace bytes at an existing URL.
 
 The files are public onboarding assets. Do not place private course uploads,
 learner data, credentials, or raw recordings in this directory. Include this

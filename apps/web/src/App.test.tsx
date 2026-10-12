@@ -3,9 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import App from "./App";
-import { walkthroughStorageKey } from "./professorWalkthroughState";
-import { openLecture03FromDashboard } from "./testLessonActions";
-import { mockLoginAndTutorFetch, mockLoginFetch } from "./testFixtures";
+import { walkthroughStorageKey } from "./professor/professorWalkthroughState";
+import { openLecture03FromDashboard } from "./lesson/testLessonActions";
+import { mockLoginAndTutorFetch, mockLoginFetch } from "./shared/testFixtures";
 
 describe("LecturePilot app shell", () => {
   it("starts with the university login form", () => {

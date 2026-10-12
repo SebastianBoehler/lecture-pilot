@@ -3,8 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 
 import App from "./App";
-import { FEEDBACK_TURN_THRESHOLD, feedbackPromptStorageKey } from "./useFeedbackPrompt";
-import { mockLoginFetch } from "./testFixtures";
+import { FEEDBACK_TURN_THRESHOLD, feedbackPromptStorageKey } from "./shell/useFeedbackPrompt";
+import { mockLoginFetch } from "./shared/testFixtures";
 
 it("shows the feedback entry point only after sign-in", async () => {
   const user = userEvent.setup();
