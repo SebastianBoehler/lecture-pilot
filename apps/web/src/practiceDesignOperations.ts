@@ -24,7 +24,7 @@ export function latestPending(
   );
 }
 
-export function errorMessage(error: unknown): string {
+function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Practice design request failed.";
 }
 

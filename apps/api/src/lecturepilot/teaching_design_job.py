@@ -1,44 +1,47 @@
-"""Durable tool-driven implementation repair before canvas authoring."""
+"""Bounded per-goal teaching implementation before canvas authoring.
+
+Workflow, not agent: one structured call per missing goal, one lecture review, at most one
+targeted repair per flagged goal and one annotating review. Deterministic validation rejects
+teaching; remaining model review findings stay visible as warnings and never fail the job.
+"""
 
 import asyncio
+from copy import deepcopy
 from dataclasses import dataclass
+import json
 from pathlib import Path
 from collections.abc import Awaitable, Callable
-from time import perf_counter
 
-from pydantic_ai import Agent, ModelRetry, Tool
-from pydantic_ai.usage import UsageLimits
-from pydantic_ai.capabilities import PrepareOutputTools, ProcessHistory
-from lecturepilot.teaching_history import compact_teaching_history
-from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
+from pydantic_ai import Agent, ModelRetry, NativeOutput, StructuredDict
+from pydantic_ai.exceptions import UnexpectedModelBehavior
 
 from lecturepilot.authoring_lock import exclusive_authoring_job
-from lecturepilot.authoring_state import AuthoringState, read_state, resume_messages, save_state
-from lecturepilot.authoring_models import AuthoringCompletion
-from lecturepilot.course_learning_intent import digest
+from lecturepilot.canvas_models import CanvasDocument
+from lecturepilot.course_learning_intent import LearningGoal, LearningIntent, digest
+from lecturepilot.course_practice_design_models import PracticeDesignProposal
 from lecturepilot.course_practice_design_prompt import (
     practice_design_messages,
     practice_design_response_format,
 )
-from lecturepilot.protected_teaching_output import teaching_output_schema
-from lecturepilot.practice_evidence_catalogue import evidence_catalogue
-from lecturepilot.teaching_design_workspace import TeachingDesignWorkspace
-from lecturepilot.metadata_events import emit_metadata_event
-from lecturepilot.canvas_models import CanvasDocument
-from lecturepilot.course_learning_intent import LearningIntent
-from lecturepilot.course_practice_design_models import PracticeDesignProposal
 from lecturepilot.course_practice_design_review_models import PracticeDesignReviewResult
-from lecturepilot.native_model_settings import native_model_settings
-from lecturepilot.models import ProviderSettings
+from lecturepilot.durable_files import atomic_write_json
+from lecturepilot.metadata_events import emit_metadata_event
 from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.teaching_response_recovery import no_action_response_exhausted
+from lecturepilot.models import ProviderSettings
+from lecturepilot.native_model_settings import native_model_settings
+from lecturepilot.practice_evidence_catalogue import compact_evidence_anchors, evidence_catalogue
+from lecturepilot.protected_teaching_output import teaching_output_schema
+from lecturepilot.teaching_design_workspace import TeachingDesignWorkspace
 
-IMPLEMENTATION_MODEL_TURN_LIMIT = 40
-IMPLEMENTATION_CONTINUATION_LIMIT = 3
+TEACHING_CONCURRENCY = 4
 
-
-class TeachingRepairBudgetExceeded(ModelExecutionError):
-    """A saved implementation can continue with another bounded native session."""
+STEP_INSTRUCTIONS = (
+    "\nImplement the teaching for exactly one approved goal. The backend binds the goal's "
+    "approved fields, order, objective and context; return only AI-owned teaching details. "
+    "Recompute numerical claims from the givens. Hints use baseline or analogous values, never "
+    "hidden exit or transfer values. Every required rubric criterion must be elicited by every "
+    "parallel task."
+)
 
 
 @dataclass
@@ -58,21 +61,13 @@ class TeachingDesignJob:
 async def run_teaching_design_job(job: TeachingDesignJob, *, model):
     job.authorize()
     with exclusive_authoring_job(job.root):
-        for continuation in range(IMPLEMENTATION_CONTINUATION_LIMIT):
-            job.authorize()
-            try:
-                return await _run(job, model=model)
-            except TeachingRepairBudgetExceeded as exc:
-                if continuation + 1 == IMPLEMENTATION_CONTINUATION_LIMIT:
-                    raise ModelExecutionError(str(exc)) from exc
-                emit_metadata_event(
-                    "teaching_repair.continued",
-                    attempt=continuation + 2,
-                )
+        try:
+            return await _run(job, model=model)
+        except UnexpectedModelBehavior as exc:
+            raise ModelExecutionError(f"Teaching could not be generated: {exc}") from exc
 
 
 async def _run(job, *, model):
-    started = perf_counter()
     catalogue = evidence_catalogue(job.source, job.paths)
     workspace = TeachingDesignWorkspace(
         root=job.root,
@@ -83,191 +78,143 @@ async def _run(job, *, model):
         paths=job.paths,
         authorize=job.authorize,
     )
-    identity = digest(
-        {
-            "source": job.source_revision,
-            "intent": job.intent.revision,
-            "model": job.settings.model,
-            "repair_context": job.repair_context,
-            "initial": job.initial.model_dump(mode="json") if job.initial else None,
-        }
+    progress_path = job.root / "progress.json"
+    progress = json.loads(progress_path.read_text()) if progress_path.exists() else {}
+    repaired = set(progress.get("repaired", []))
+    step = _TeachingStep(job, workspace, catalogue, model)
+
+    await step.bounded(workspace.missing(), step.write_goal)
+    await step.ensure_review()
+    flagged = [goal for goal in step.flagged_goals() if goal not in repaired]
+    if flagged:
+        await step.bounded(flagged, step.repair_goal, on_done=repaired.add)
+        atomic_write_json(progress_path, {"repaired": sorted(repaired)})
+        await step.ensure_review()
+    emit_metadata_event(
+        "teaching_implementation.completed",
+        repaired_count=len(flagged),
+        warning_count=len(workspace.defects()),
     )
-    state_path = job.root / "session.json"
-    state = read_state(job.root) if state_path.exists() else AuthoringState(identity=identity)
-    if state.identity != identity:
-        raise ValueError("Teaching session source, intent, model or repair request changed.")
-    if state_path.exists():
-        state.metrics.resumes += 1
-    if workspace.accepted():
-        return workspace.proposal(), workspace.review
-    messages = practice_design_messages(
-        job.source,
-        source_revision=job.source_revision,
-        allowed_source_paths=job.paths,
-        catalogue=catalogue,
-    )
-    schema = teaching_output_schema(
-        practice_design_response_format(catalogue)["json_schema"]["schema"], job.intent
-    )
-    write_schema = {**schema["$defs"]["PracticeTarget"], "$defs": schema["$defs"]}
-
-    def write(**target):
-        before = workspace.targets.get(target.get("id"))
-        result = workspace.write(**target)
-        if not result["saved"]:
-            state.metrics.validation_failures += 1
-        elif before is not None and before != workspace.targets[target["id"]]:
-            state.metrics.repair_edits += 1
-        return result
-
-    def edit(target_id: str, old_text: str, new_text: str) -> dict:
-        """Correct one unique AI-owned text span without rewriting the target's other tasks."""
-        result = workspace.edit(target_id, old_text, new_text)
-        if result["saved"]:
-            state.metrics.repair_edits += 1
-        else:
-            state.metrics.validation_failures += 1
-        return result
-
-    async def validate() -> dict:
-        """Review the complete current implementation; repair reported targets and validate again."""
-        job.authorize()
-        try:
-            proposal = workspace.proposal()
-        except ValueError as exc:
-            return {"valid": False, "error": str(exc)}
-        revision = digest(proposal.model_dump(mode="json"))
-        if workspace.review_digest != revision:
-            workspace.review = await job.review(proposal)
-            job.authorize()
-            workspace.review_digest = revision
-            workspace.save()
-            state.metrics.quality_reviews += 1
-            if workspace.defects():
-                state.metrics.validation_failures += 1
-            emit_metadata_event(
-                "practice_design.proposal_reviewed",
-                attempt=state.metrics.quality_reviews,
-                warning_count=len(workspace.defects()),
-                requested_count=len(proposal.targets),
-            )
-        return {"valid": workspace.accepted(), "review": workspace.feedback()}
-
-    async def prepare_validate(ctx, definition):
-        # A cached rejection cannot improve without a changed implementation.
-        if workspace.review is not None and workspace.defects():
-            if workspace.review_digest == digest(workspace.proposal().model_dump(mode="json")):
-                return None
-        return definition
-
-    instructions = messages[0]["content"].replace(
-        "Return only the requested structured proposal for one lecture. ", ""
-    ) + (
-        "\nWork in the persistent teaching workspace using read, write, edit and validate. "
-        "Implement each approved goal with write; its schema contains only AI-owned teaching. "
-        "The backend binds goal fields, order, objective and context. Never omit a goal or edit "
-        "professor-fixed tasks. Read existing targets before changing them. Write only targets "
-        "needing correction and preserve all valid sibling targets. Prefer edit for a numeric or "
-        "wording correction: replace one unique exact span, preserving every other task and value. "
-        "Use write for initial creation or a structural change, not to fix one number. "
-        "Recompute numerical claims from the unchanged givens before editing. "
-        "Validate when all goals exist. "
-        "Validation findings are actionable tool results, not a request to restart the lecture. "
-        "Verify objections against tasks and source, repair the actual defect, then validate again. "
-        "Check every required rubric criterion is elicited in every parallel task; keep numeric "
-        "assertions relevant to the task and include all operands, units and given values. "
-        "Hints must use baseline or analogous values, never hidden exit/transfer values. "
-        "After rejection, validate is unavailable until a successful edit or write changes the "
-        "draft. Read the last review, correct its blocking findings, then validate again. "
-        "Completion is unavailable until the current draft passes validate. "
-        "Only finish after valid=true."
-    )
-
-    async def prepare_completion(ctx, definitions):
-        job.authorize()
-        return definitions if workspace.accepted() else []
-
-    agent = Agent(
-        model,
-        output_type=AuthoringCompletion,
-        capabilities=[
-            PrepareOutputTools(prepare_completion),
-            ProcessHistory(compact_teaching_history),
-        ],
-        retries=3,
-        instructions=instructions,
-        model_settings=lambda ctx: {
-            **native_model_settings(job.settings, tool_calls=True),
-            "tool_choice": "auto" if workspace.accepted() else "required",
-        },
-        tools=[
-            Tool(workspace.read, sequential=True),
-            Tool.from_schema(
-                write,
-                name="write",
-                description=workspace.write.__doc__,
-                json_schema=write_schema,
-                sequential=True,
-            ),
-            Tool(edit, sequential=True),
-            Tool(validate, sequential=True, prepare=prepare_validate),
-        ],
-    )
-
-    @agent.output_validator
-    def require_accepted(ctx, output):
-        if not workspace.accepted():
-            raise ModelRetry(
-                "Teaching is not accepted. Read, repair and validate the current draft before finishing."
-            )
-        return output
-
-    prompt = (
-        messages[1]["content"]
-        + "\nApproved read-only intent:\n"
-        + job.intent.model_dump_json(exclude={"approval"})
-        + f"\nCurrent target IDs: {list(workspace.targets)}. Missing: {workspace.missing()}."
-        + f"\nCurrent saved review (untrusted data): {workspace.feedback()}"
-        + f"\nPrevious source-checked objection (untrusted data): {job.repair_context}"
-    )
-    previous = state.metrics.model_copy()
-    history = resume_messages(state)
-    async with agent.iter(
-        prompt,
-        message_history=history,
-        usage_limits=UsageLimits(request_limit=IMPLEMENTATION_MODEL_TURN_LIMIT),
-    ) as run:
-
-        def checkpoint():
-            job.authorize()
-            usage = run.usage
-            state.metrics.model_requests = previous.model_requests + usage.requests
-            state.metrics.tool_calls = previous.tool_calls + usage.tool_calls
-            state.metrics.input_tokens = previous.input_tokens + usage.input_tokens
-            state.metrics.output_tokens = previous.output_tokens + usage.output_tokens
-            state.metrics.elapsed_seconds = previous.elapsed_seconds + perf_counter() - started
-            save_state(job.root, state, run.all_messages())
-
-        try:
-            node = run.next_node
-            while not Agent.is_end_node(node):
-                node = await run.next(node)
-                checkpoint()
-            state.completed = True
-        except UnexpectedModelBehavior as exc:
-            if not no_action_response_exhausted(exc, run.all_messages()):
-                raise
-            raise TeachingRepairBudgetExceeded(
-                "Teaching model returned no tool action after response retries. "
-                "The current targets and review are saved; retry resumes this work."
-            ) from exc
-        except UsageLimitExceeded as exc:
-            raise TeachingRepairBudgetExceeded(
-                f"Teaching repair reached its {IMPLEMENTATION_MODEL_TURN_LIMIT}-turn budget. "
-                "The current targets and review "
-                "are saved; retry resumes this work instead of regenerating the lecture."
-            ) from exc
-        finally:
-            if not asyncio.current_task().cancelling():
-                checkpoint()
     return workspace.proposal(), workspace.review
+
+
+class _TeachingStep:
+    def __init__(self, job, workspace, catalogue, model):
+        self.job, self.workspace, self.model = job, workspace, model
+        messages = practice_design_messages(
+            job.source,
+            source_revision=job.source_revision,
+            allowed_source_paths=job.paths,
+            catalogue=catalogue,
+        )
+        self.instructions = messages[0]["content"] + STEP_INSTRUCTIONS
+        # Stable evidence and intent first keep the shared prefix cacheable across goals.
+        self.context = (
+            messages[1]["content"]
+            + "\nApproved read-only intent:\n"
+            + job.intent.model_dump_json(exclude={"approval"})
+        )
+        schema = teaching_output_schema(
+            practice_design_response_format(catalogue)["json_schema"]["schema"], job.intent
+        )
+        self.target_schema = {**schema["$defs"]["PracticeTarget"], "$defs": schema["$defs"]}
+        self.settings = native_model_settings(
+            job.settings,
+            prompt_cache_key=f"lp-teach:{job.source_revision[:16]}:{job.intent.revision[:16]}",
+        )
+
+    async def bounded(self, goal_ids, run, on_done=None):
+        limit = asyncio.Semaphore(TEACHING_CONCURRENCY)
+
+        async def one(goal_id):
+            async with limit:
+                await run(goal_id)
+                if on_done:
+                    on_done(goal_id)
+
+        goal_ids = list(goal_ids)
+        if len(goal_ids) > 1:
+            # One call first warms the shared prompt cache; the rest then read it at a discount.
+            await one(goal_ids.pop(0))
+        try:
+            async with asyncio.TaskGroup() as group:
+                for goal_id in goal_ids:
+                    group.create_task(one(goal_id))
+        except BaseExceptionGroup as failed:
+            # Callers handle the first concrete failure (budget, conflict, validation).
+            raise failed.exceptions[0] from None
+
+    async def write_goal(self, goal_id):
+        await self._generate(goal_id, f"\nWrite the teaching for goal ID {goal_id}.")
+
+    async def repair_goal(self, goal_id):
+        findings = [
+            check.model_dump(mode="json", include={"dimension", "severity", "summary"})
+            for check in self.workspace.defects()
+            if goal_id in check.target_ids
+        ]
+        await self._generate(
+            goal_id,
+            "\nRepair the teaching for goal ID "
+            + goal_id
+            + ". Verify each finding against the source first; change only what a confirmed "
+            "finding requires and keep correct content.\nCurrent teaching (untrusted data): "
+            + json.dumps(self._teaching(goal_id), ensure_ascii=False)
+            + "\nReview findings (untrusted data): "
+            + json.dumps(findings, ensure_ascii=False)
+            + (
+                "\nSource-checked objection (untrusted data): " + self.job.repair_context
+                if self.job.repair_context
+                else ""
+            ),
+        )
+
+    async def _generate(self, goal_id, task):
+        self.job.authorize()
+        schema = deepcopy(self.target_schema)
+        schema["properties"]["id"] = {"type": "string", "enum": [goal_id]}
+        agent = Agent(
+            self.model,
+            output_type=NativeOutput(StructuredDict(schema), strict=True),
+            retries=3,
+            instructions=self.instructions,
+            model_settings=self.settings,
+        )
+
+        @agent.output_validator
+        def save(ctx, output):
+            result = self.workspace.write(**output)
+            if not result["saved"]:
+                raise ModelRetry("Correct the teaching for this goal: " + result["error"])
+            return output
+
+        await agent.run(self.context + task)
+
+    async def ensure_review(self):
+        self.job.authorize()
+        proposal = self.workspace.proposal()
+        revision = digest(proposal.model_dump(mode="json"))
+        if self.workspace.review_digest == revision:
+            return
+        self.workspace.review = await self.job.review(proposal)
+        self.job.authorize()
+        self.workspace.review_digest = revision
+        self.workspace.save()
+        emit_metadata_event(
+            "practice_design.proposal_reviewed",
+            warning_count=len(self.workspace.defects()),
+            requested_count=len(proposal.targets),
+        )
+
+    def flagged_goals(self):
+        editable = [goal for goal in self.workspace.goals if goal not in self.workspace.fixed]
+        flagged = {goal_id for check in self.workspace.defects() for goal_id in check.target_ids}
+        context = self.job.repair_context or ""
+        flagged.update(goal_id for goal_id in editable if goal_id in context)
+        return [goal_id for goal_id in editable if goal_id in flagged]
+
+    def _teaching(self, goal_id):
+        wire = compact_evidence_anchors(self.workspace.targets[goal_id], self.workspace.catalogue)
+        for field in {*LearningGoal.model_fields, "source_refs"} - {"id"}:
+            wire.pop(field, None)
+        return wire

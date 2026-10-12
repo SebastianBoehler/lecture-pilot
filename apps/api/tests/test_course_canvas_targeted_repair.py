@@ -10,8 +10,7 @@ from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT
 from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
 from practice_design_test_helpers import save_approved_design, write_manifest
 from targeted_repair_test_helpers import invalid_candidate
-from authoring_test_helpers import assigned_drafts, install_author
-from pydantic_ai.messages import ModelResponse, ToolCallPart
+from authoring_test_helpers import fix_math, install_author
 
 
 def test_ai_repair_replaces_only_the_failed_block_and_preserves_neighboring_sections(
@@ -40,20 +39,7 @@ def test_ai_repair_replaces_only_the_failed_block_and_preserves_neighboring_sect
     def respond(messages, info):
         nonlocal calls
         calls += 1
-        if calls == 1:
-            return ModelResponse(
-                parts=[
-                    ToolCallPart(
-                        "edit",
-                        {
-                            "path": assigned_drafts(info)[0],
-                            "old": r"The score is computed as w^\top x.",
-                            "new": r"w^\top x",
-                        },
-                    )
-                ]
-            )
-        return ModelResponse(parts=[ToolCallPart("final_result", {"ready": True})])
+        return fix_math(messages, info)
 
     install_author(client, monkeypatch, respond, Reviewer())
     repaired = client.post(
@@ -68,7 +54,7 @@ def test_ai_repair_replaces_only_the_failed_block_and_preserves_neighboring_sect
     assert failed.status_code == 503
     assert failed.headers["X-Generation-Repairable"] == "true"
     assert repaired.status_code == 200, repaired.text
-    assert calls == 2
+    assert calls == 1
     status = client.get(
         path + "/status",
         headers={

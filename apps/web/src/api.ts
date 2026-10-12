@@ -92,7 +92,7 @@ export function apiUrl(path: string): string {
   return `${apiBaseUrl}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
-export async function sendAgentTurn(
+async function sendAgentTurn(
   input: AgentTurnInput,
   session: LoginSession,
   mode: LearnerWorkspaceMode = "learner",
@@ -226,22 +226,6 @@ export async function publishLectureCanvas(
   );
   const payload = await response.json();
   if (!response.ok) throw new Error(readApiError(payload, "Canvas publish failed."));
-  return payload as CanvasPublicationResult;
-}
-
-export async function getCanvasPublication(
-  courseId: string,
-  lectureId: string,
-  session: LoginSession,
-): Promise<CanvasPublicationResult> {
-  const response = await fetch(
-    apiUrl(`/courses/${courseId}/lectures/${lectureId}/canvas/publication`),
-    {
-      ...authRequestInit(session),
-    },
-  );
-  const payload = await response.json();
-  if (!response.ok) throw new Error(readApiError(payload, "Canvas publication status failed."));
   return payload as CanvasPublicationResult;
 }
 

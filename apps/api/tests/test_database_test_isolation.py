@@ -5,11 +5,6 @@ import os
 import pytest
 from sqlalchemy.engine import make_url
 
-from lecturepilot.runtime_env import load_project_env
-
-
-load_project_env()
-
 
 def test_api_suite_uses_dedicated_pytest_database() -> None:
     database_url = os.getenv("DATABASE_URL")

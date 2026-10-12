@@ -12,6 +12,10 @@ export const learningIntentMessages = {
     "builder.intent.approve": "Approve learning goals",
     "builder.intent.approved": "Learning goals approved",
     "builder.intent.approveAll": "Approve all {count} open learning plans",
+    "builder.intent.finding":
+      "Source check: the materials may not fully support this goal. {reason} Edit or remove it, or approve it as is.",
+    "builder.intent.objectiveDerived":
+      "The lecture objective is the list of these learning goals and updates automatically.",
     "builder.intent.details": "Inspect generated practice and support",
     "builder.intent.fixed": "Keep these tasks and rubric fixed",
     "builder.intent.fixedHelp":
@@ -42,6 +46,10 @@ export const learningIntentMessages = {
     "builder.intent.approve": "Lernziele freigeben",
     "builder.intent.approved": "Lernziele freigegeben",
     "builder.intent.approveAll": "Alle {count} offenen Lernpläne freigeben",
+    "builder.intent.finding":
+      "Quellenprüfung: Die Materialien stützen dieses Ziel möglicherweise nicht vollständig. {reason} Sie können es bearbeiten, entfernen oder so freigeben.",
+    "builder.intent.objectiveDerived":
+      "Das Vorlesungsziel ist die Liste dieser Lernziele und wird automatisch aktualisiert.",
     "builder.intent.details": "Generierte Aufgaben und Hilfen ansehen",
     "builder.intent.fixed": "Diese Aufgaben und Bewertungskriterien festschreiben",
     "builder.intent.fixedHelp":

@@ -33,5 +33,5 @@ export function useProfessorWorkflowRun() {
     }
   }, []);
 
-  return { error, notice, pendingAction, run, setError };
+  return { error, notice, pendingAction, run, setError, setNotice };
 }

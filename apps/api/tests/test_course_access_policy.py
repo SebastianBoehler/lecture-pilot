@@ -4,14 +4,13 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_schedule_store import write_course_workspace
 from lecturepilot.models import Course, CourseWorkspaceResult, Lecture
 from lecturepilot.metadata_events import LOGGER_NAME
 from auth_helpers import professor_headers, student_headers
 from canvas_workspace_fixtures import publish_course_canvas
+from api_test_client import workspace_client as _client
 
 
 def test_created_course_requires_enrollment(tmp_path: Path) -> None:
@@ -101,15 +100,6 @@ def test_future_dynamic_lecture_is_locked_for_enrolled_student(tmp_path: Path) -
     assert lectures.json()[0]["unlocked"] is False
     assert canvas.status_code == 403
     assert professor_canvas.status_code == 403
-
-
-def _client(tmp_path: Path) -> TestClient:
-    app = create_app()
-    app.state.canvas_workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=tmp_path / "materials",
-    )
-    return TestClient(app)
 
 
 def _write_workspace(

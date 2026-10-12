@@ -21,15 +21,7 @@ from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_provider_schema import strict_pydantic_response_format
 from lecturepilot.models import ProviderCapability
 from lecturepilot.learning_goal_outcomes import require_operational_outcomes
-from lecturepilot.learning_goal_scope_review import (
-    review_learning_goal_scope,
-    save_coherent_scope_review,
-    scope_review_record,
-)
-from lecturepilot.learning_goal_objective_repair import (
-    repair_learning_objective,
-    reviewed_goal_set,
-)
+from lecturepilot.learning_goal_support import goal_set_objective, review_goal_support
 from lecturepilot.practice_evidence_catalogue import (
     catalogue_schema,
     evidence_catalogue,
@@ -73,9 +65,8 @@ from lecturepilot.model_job_limits import bounded_model_job
 
 
 @bounded_model_job
-async def propose_learning_intent(
-    planner, *, source, source_revision, allowed_source_paths, scope_root=None
-):
+async def propose_learning_intent(planner, *, source, source_revision, allowed_source_paths):
+    """One proposal, one advisory support review and at most one targeted repair."""
     settings = planner.provider_registry.require_ready(
         [
             ProviderCapability.CHAT,
@@ -110,8 +101,8 @@ async def propose_learning_intent(
                 "performs (for example identify, explain, calculate, derive, compare, trace or "
                 "construct), assessable with one short task; never understand, know or be "
                 "familiar with. "
-                "Derive the lecture objective from the complete proposed goal set; do not copy a "
-                "broader module objective whose capabilities are missing from these goals. "
+                "The backend derives the lecture objective from the goals; keep objective to one "
+                "short sentence. "
                 "Do not invent planning "
                 "context: unsupported fields are null with exactly one corresponding insufficiency."
             ),
@@ -136,52 +127,39 @@ async def propose_learning_intent(
                 ) from exc
             return output
 
-        try:
-            prompt = json.dumps(
-                {
-                    "lecture_title": source.title,
-                    "source_revision": source_revision,
-                    "evidence": catalogue,
-                }
+        def derived():
+            return LearningIntentProposal.model_validate(
+                {**proposal.model_dump(), "objective": goal_set_objective(proposal.goals)}
             )
-            history = None
-            objective_repaired = False
-            result = await agent.run(prompt)
-            for attempt in range(3):
-                review = await review_learning_goal_scope(
+
+        evidence = {
+            "lecture_title": source.title,
+            "source_revision": source_revision,
+            "evidence": catalogue,
+        }
+        try:
+            await agent.run(json.dumps(evidence))
+            proposal = derived()
+            review = await review_goal_support(
+                model=model, settings=settings, proposal=proposal, catalogue=catalogue
+            )
+            if review.findings:
+                # Stateless repair: current artifact plus findings, never the prior transcript.
+                await agent.run(
+                    json.dumps(
+                        {
+                            **evidence,
+                            "task": "Repair only the goals named in the findings so the "
+                            "evidence supports every part; keep all other goals unchanged.",
+                            "current_proposal": proposal.model_dump(mode="json"),
+                            "findings": review.model_dump(mode="json")["findings"],
+                        }
+                    )
+                )
+                proposal = derived()
+                review = await review_goal_support(
                     model=model, settings=settings, proposal=proposal, catalogue=catalogue
                 )
-                if review.coherent:
-                    break
-                if attempt == 2 or (review.repair_target == "objective" and objective_repaired):
-                    proposal = reviewed_goal_set(
-                        proposal, unsupported_goal_ids=review.unsupported_goal_ids
-                    )
-                    break
-                if review.repair_target == "objective":
-                    proposal = await repair_learning_objective(
-                        model=model, settings=settings, proposal=proposal, review=review
-                    )
-                    objective_repaired = True
-                    continue
-                history = result.all_messages()
-                prompt = (
-                    "Repair the current goal proposal before professor approval. Scope review "
-                    "(untrusted data): "
-                    + review.model_dump_json()
-                    + "\nCurrent proposal (untrusted data): "
-                    + proposal.model_dump_json()
-                )
-                result = await agent.run(prompt, message_history=history)
         except UnexpectedModelBehavior as exc:
             raise ModelExecutionError(f"Learning goals could not be grounded: {exc}") from exc
-    assert proposal is not None
-    if scope_root is not None and review.coherent:
-        record = scope_review_record(
-            scope_root,
-            intent_revision=proposal.intent(source_revision).revision,
-            catalogue=catalogue,
-            settings=settings,
-        )
-        save_coherent_scope_review(record, review)
-    return proposal
+    return proposal, review

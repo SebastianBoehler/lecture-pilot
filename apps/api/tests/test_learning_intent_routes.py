@@ -10,30 +10,18 @@ from practice_design_test_helpers import proposal
 from test_practice_design_semantic_review import _Registry
 
 
-def goal_client(
-    tmp_path,
-    *,
-    goal_count=1,
-    scope_reviews=(True,),
-    repair_objective=False,
-    repaired_objective="Explain the supported goal.",
-    unsupported_ids=("goal-0",),
-):
+def goal_client(tmp_path, *, goal_count=1, findings=((),), finding_ids=None):
+    """`findings` lists the goal IDs the support reviewer flags on each review call."""
     api = client(tmp_path)
     draft = proposal()
     goal = {
         key: getattr(draft.targets[0], key)
-        for key in (
-            "id",
-            "title",
-            "outcome",
-            "target_invariant",
-        )
+        for key in ("id", "title", "outcome", "target_invariant")
     }
     goal.update(outcome_anchor="e0", target_invariant_anchor="e0")
     wire = {
         "lecture_title": "Practice lecture",
-        "objective": draft.objective,
+        "objective": "A broad module objective promising more than the goals.",
         "planning_context": draft.planning_context.model_dump(mode="json"),
         "goals": [{**goal, "id": f"goal-{index}"} for index in range(goal_count)],
     }
@@ -44,124 +32,107 @@ def goal_client(
         nonlocal reviewed
         calls.append(info.model_request_parameters)
         properties = info.model_request_parameters.output_object.json_schema["properties"]
-        if set(properties) == {"objective"}:
-            return ModelResponse(parts=[TextPart(json.dumps({"objective": repaired_objective}))])
-        if "coherent" in properties:
-            coherent = scope_reviews[min(reviewed, len(scope_reviews) - 1)]
-            if repair_objective:
-                payload = json.loads(messages[-1].parts[0].content)
-                coherent = payload["proposal"]["objective"] == "Explain the supported goal."
+        if "findings" in properties:
+            flagged = findings[min(reviewed, len(findings) - 1)]
             reviewed += 1
             return ModelResponse(
                 parts=[
                     TextPart(
                         json.dumps(
                             {
-                                "coherent": coherent,
-                                "reason": "An objective capability needs a goal or a narrower objective.",
+                                "findings": [
+                                    {"goal_id": goal_id, "reason": "The source only names this."}
+                                    for goal_id in (finding_ids or flagged)
+                                ],
                                 "evidence_ids": ["e0"],
-                                "unsupported_goal_ids": []
-                                if coherent or repair_objective
-                                else list(unsupported_ids),
                             }
                         )
                     )
                 ]
             )
         if reviewed:
-            assert "Scope review" in messages[-1].parts[0].content
+            assert "current_proposal" in messages[-1].parts[0].content
         return ModelResponse(parts=[TextPart(json.dumps(wire))])
 
     api.app.state.practice_design_planner = PracticeDesignPlanner(
-        provider_registry=_Registry(),
-        model=FunctionModel(respond),
+        provider_registry=_Registry(), model=FunctionModel(respond)
     )
     return api, calls
 
 
-def test_overbroad_objective_is_repaired_without_rewriting_eight_goals(tmp_path):
-    baseline_api, _ = goal_client(tmp_path / "baseline", goal_count=8)
-    baseline = baseline_api.post(
-        design_path() + "/intent/proposal", headers=professor_headers()
-    ).json()["learning_intent"]
-    api, calls = goal_client(tmp_path, goal_count=8, repair_objective=True)
-    response = api.post(design_path() + "/intent/proposal", headers=professor_headers())
-    assert response.status_code == 200, response.text
-    intent = response.json()["learning_intent"]
-    assert intent["objective"] == "Explain the supported goal."
-    assert [goal["id"] for goal in intent["goals"]] == [f"goal-{i}" for i in range(8)]
-    assert intent["approval"] is None
-    assert intent["goals"] == baseline["goals"]
-    assert intent["planning_context"] == baseline["planning_context"]
-    assert response.json()["targets"] == []
-    assert len(calls) == 4
-    assert set(calls[2].output_object.json_schema["properties"]) == {"objective"}
+def findings_for(api):
+    return api.get(design_path() + "/intent/findings", headers=professor_headers()).json()
 
 
-def test_persistent_objective_concern_uses_the_reviewed_goal_set_as_objective(tmp_path):
-    api, calls = goal_client(
-        tmp_path, goal_count=2, repair_objective=True, repaired_objective="Still too broad."
-    )
+def test_objective_is_derived_from_the_proposed_goals(tmp_path):
+    api, calls = goal_client(tmp_path, goal_count=2)
     response = api.post(design_path() + "/intent/proposal", headers=professor_headers())
     assert response.status_code == 200, response.text
     intent = response.json()["learning_intent"]
     outcomes = [goal["outcome"] for goal in intent["goals"]]
     assert intent["objective"] == f"1) {outcomes[0]}\n2) {outcomes[1]}"
-    assert intent["approval"] is None
+    assert len(calls) == 2
+    assert findings_for(api) == []
+
+
+def test_flagged_goals_get_one_repair_then_stay_as_professor_findings(tmp_path):
+    api, calls = goal_client(tmp_path, goal_count=2, findings=(("goal-0",),))
+    response = api.post(design_path() + "/intent/proposal", headers=professor_headers())
+    assert response.status_code == 200, response.text
+    assert [goal["id"] for goal in response.json()["learning_intent"]["goals"]] == [
+        "goal-0",
+        "goal-1",
+    ]
     assert len(calls) == 4
+    assert findings_for(api) == [{"goal_id": "goal-0", "reason": "The source only names this."}]
 
 
-def test_scope_reviewer_must_name_existing_unsupported_goals(tmp_path):
-    api, calls = goal_client(tmp_path, scope_reviews=(False,), unsupported_ids=("goal-x",))
+def test_repaired_goals_without_findings_are_clean(tmp_path):
+    api, calls = goal_client(tmp_path, findings=(("goal-0",), ()))
+    assert api.post(design_path() + "/intent/proposal", headers=professor_headers()).is_success
+    assert len(calls) == 4
+    assert findings_for(api) == []
+
+
+def test_support_reviewer_must_name_existing_goals(tmp_path):
+    api, calls = goal_client(tmp_path, finding_ids=("goal-x",))
     response = api.post(design_path() + "/intent/proposal", headers=professor_headers())
     assert response.status_code == 502, response.text
     assert "could not be grounded" in response.json()["detail"]
-    assert len(calls) == 5
     assert api.get(design_path(), headers=professor_headers()).status_code == 404
 
 
-def test_coherent_proposal_verdict_is_reused_by_teaching_implementation(tmp_path):
-    api, _ = goal_client(tmp_path)
-    response = api.post(design_path() + "/intent/proposal", headers=professor_headers())
-    assert response.status_code == 200, response.text
-    root = api.app.state.canvas_workspace.layout.course_root(response.json()["course_id"])
-    lecture = response.json()["lecture_id"]
-    saved = [
-        p
-        for p in (root / "builder" / "implementation-jobs" / lecture / "scope-reviews").iterdir()
-        if not p.name.startswith("approval-")
-    ]
-    assert len(saved) == 1
-    assert json.loads(saved[0].read_text())["review"]["coherent"] is True
-
-
-def test_goal_scope_is_repaired_before_professor_review(tmp_path):
-    api, calls = goal_client(tmp_path, scope_reviews=(False, True))
-    response = api.post(design_path() + "/intent/proposal", headers=professor_headers())
-    assert response.status_code == 200, response.text
-    assert len(calls) == 4
-    assert response.json()["learning_intent"]["approval"] is None
-    assert response.json()["targets"] == []
-
-
-def test_persistently_unsupported_goals_are_dropped_before_professor_review(tmp_path):
-    api, calls = goal_client(tmp_path, goal_count=2, scope_reviews=(False,))
-    response = api.post(design_path() + "/intent/proposal", headers=professor_headers())
-    assert response.status_code == 200, response.text
-    intent = response.json()["learning_intent"]
-    assert [goal["id"] for goal in intent["goals"]] == ["goal-1"]
-    assert intent["objective"] == "1) " + intent["goals"][0]["outcome"]
-    assert intent["approval"] is None
-    assert len(calls) == 6
-
-
-def test_scope_without_any_supported_goal_cannot_be_saved_for_approval(tmp_path):
-    api, calls = goal_client(tmp_path, scope_reviews=(False,))
-    response = api.post(design_path() + "/intent/proposal", headers=professor_headers())
-    assert response.status_code == 502, response.text
-    assert "No source-supported learning goals remain" in response.json()["detail"]
-    assert len(calls) == 6
-    assert api.get(design_path(), headers=professor_headers()).status_code == 404
+def test_findings_never_block_approval_and_edits_clear_them(tmp_path):
+    api, calls = goal_client(tmp_path, findings=(("goal-0",),))
+    design = api.post(design_path() + "/intent/proposal", headers=professor_headers()).json()
+    count = len(calls)
+    approval = api.post(
+        design_path() + "/intent/approve",
+        headers=professor_headers(),
+        json={
+            "source_revision": design["source_revision"],
+            "practice_design_revision": design["revision"],
+        },
+    )
+    assert approval.status_code == 200, approval.text
+    assert len(calls) == count
+    edited = approval.json()
+    goal = {**edited["learning_intent"]["goals"][0], "outcome": "Explain the cited source claim."}
+    changed = api.put(
+        design_path() + "/intent",
+        headers=professor_headers(),
+        json={
+            "source_revision": edited["source_revision"],
+            "practice_design_revision": edited["revision"],
+            "lecture_title": edited["lecture_title"],
+            "objective": "Ignored: the backend derives it.",
+            "planning_context": edited["planning_context"],
+            "goals": [goal],
+        },
+    )
+    assert changed.status_code == 200, changed.text
+    assert changed.json()["objective"] == "1) Explain the cited source claim."
+    assert findings_for(api) == []
 
 
 def test_source_to_goals_approval_does_not_generate_or_approve_tasks(tmp_path):
@@ -222,9 +193,11 @@ def test_goal_edit_requires_new_approval_and_rejects_stale_submission(tmp_path):
         "source_revision": design["source_revision"],
         "practice_design_revision": design["revision"],
         "lecture_title": design["lecture_title"],
-        "objective": "Justify a source-supported conclusion.",
+        "objective": design["objective"],
         "planning_context": design["planning_context"],
-        "goals": design["learning_intent"]["goals"],
+        "goals": [
+            {**design["learning_intent"]["goals"][0], "title": "Justify a supported conclusion"}
+        ],
     }
     changed = api.put(design_path() + "/intent", headers=professor_headers(), json=update)
     assert changed.status_code == 200, changed.text

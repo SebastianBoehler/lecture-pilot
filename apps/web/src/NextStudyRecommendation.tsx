@@ -91,7 +91,7 @@ function RecommendationShell({
   );
 }
 
-export function recommendLecture(lectures: Lecture[], passedLectureIds: string[]) {
+function recommendLecture(lectures: Lecture[], passedLectureIds: string[]) {
   if (!lectures.length) return null;
   const passed = new Set(passedLectureIds);
   const incomplete = lectures.filter((lecture) => !passed.has(lecture.id));

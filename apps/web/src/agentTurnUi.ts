@@ -69,7 +69,7 @@ export function completePendingTutorMessage(
   });
 }
 
-export function toolTagsFromResult(result: AgentTurnResult): string[] {
+function toolTagsFromResult(result: AgentTurnResult): string[] {
   const commandTags = result.canvas_commands.flatMap((command) => {
     if (command.type === "focus_section" && command.section_id) {
       return [`focus: ${command.section_id}`];

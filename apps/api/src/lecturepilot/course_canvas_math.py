@@ -211,12 +211,6 @@ def _combine_display_segments(value: str) -> str:
     return rf"\begin{{gathered}}{joined}\end{{gathered}}"
 
 
-def normalize_generated_math_block(value: str) -> tuple[str, str]:
-    formula = normalize_generated_math(value)
-    block_type = "paragraph" if _contains_plain_prose(formula) else "math"
-    return block_type, formula
-
-
 def _looks_like_expression(value: str) -> bool:
     return bool(re.search(r"\\[A-Za-z]+|[=_^]|[A-Za-z]\s*\(", value))
 

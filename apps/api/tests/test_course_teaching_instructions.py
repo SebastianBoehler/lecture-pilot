@@ -7,13 +7,10 @@ from lecturepilot.practice_evidence_catalogue import evidence_catalogue
 
 
 def test_canvas_author_receives_teaching_and_media_boundaries(tmp_path) -> None:
-    from lecturepilot.authoring_job import _instructions
-    from lecturepilot.authoring_workspace import AuthoringWorkspace
+    from lecturepilot.authoring_instructions import section_instructions as _instructions
     from test_authoring_job import authoring_job
 
-    job = authoring_job(tmp_path)
-    workspace = AuthoringWorkspace(job.root, job.source, job.design, job.authorize)
-    prompts = [_instructions(job, workspace)]
+    prompts = [_instructions(authoring_job(tmp_path))]
     for prompt in prompts:
         assert "assessment format from the capability" in prompt
         assert "concept-specific section title" in prompt

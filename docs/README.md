@@ -34,24 +34,10 @@ snapshot identified in the security status report.
 - [`../apps/api/README.md`](../apps/api/README.md) — current API responsibilities.
 - [`../integrations/tuebingen/README.md`](../integrations/tuebingen/README.md) —
   current university-integration boundary.
-- `packages/*/README.md` and `services/agent/README.md` — explicitly reserved
-  boundaries; they are not deployed packages/services.
 
 ## Historical records
 
-The following files preserve the reasoning or implementation sequence from a
-specific date. Their headers link back to the current source of truth; they are
-not runtime, setup, or security guidance.
-
-- [`glm-5.1-ui-design.md`](glm-5.1-ui-design.md)
-- [`../design-qa.md`](../design-qa.md)
-- [`security-remediation-implementation-plan.md`](security-remediation-implementation-plan.md)
-- [`superpowers/specs/2026-06-10-workspace-storage-redesign.md`](superpowers/specs/2026-06-10-workspace-storage-redesign.md)
-- [`superpowers/plans/2026-06-18-interleaved-slides.md`](superpowers/plans/2026-06-18-interleaved-slides.md)
-- [`superpowers/plans/2026-07-01-adaptive-exam-readiness.md`](superpowers/plans/2026-07-01-adaptive-exam-readiness.md)
-- [`superpowers/specs/2026-07-31-private-practice-exam-generation-design.md`](superpowers/specs/2026-07-31-private-practice-exam-generation-design.md)
-- [`superpowers/plans/2026-07-31-private-practice-exam-generation.md`](superpowers/plans/2026-07-31-private-practice-exam-generation.md)
-
-When behavior changes, update the current document that owns the contract in
-the same pull request. Do not revise historical records to describe a newer
-implementation; add a status note or link instead.
+Dated design plans, demo logs and superseded implementation records were archived
+out of the repository on 2026-10-11 to keep the documentation current. Git history
+retains them. When behavior changes, update the current document that owns the
+contract in the same pull request.

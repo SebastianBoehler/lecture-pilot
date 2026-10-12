@@ -6,6 +6,7 @@ export function ProfessorPublishStep({
   isFullCourse,
   isPublishing,
   onPublish,
+  publishableCount = 0,
   publishedCount,
   ready,
   totalCount,
@@ -14,12 +15,21 @@ export function ProfessorPublishStep({
   isFullCourse: boolean;
   isPublishing: boolean;
   onPublish: () => void;
+  publishableCount?: number;
   publishedCount: number;
   ready: boolean;
   totalCount: number;
 }) {
   const { t } = useI18n();
-  const actionLabel = isFullCourse ? t("builder.publish.all") : t("builder.publish.single");
+  const partial =
+    isFullCourse && publishableCount > 0 && publishableCount < totalCount - publishedCount;
+  const actionLabel = partial
+    ? publishableCount === 1
+      ? t("builder.publish.readyOne")
+      : t("builder.publish.ready", { count: publishableCount })
+    : isFullCourse
+      ? t("builder.publish.all")
+      : t("builder.publish.single");
   const busyLabel = isFullCourse ? t("builder.publish.busyAll") : t("builder.publish.busySingle");
   const statusLabel = isFullCourse
     ? t("builder.publish.statusAll", { count: totalCount })

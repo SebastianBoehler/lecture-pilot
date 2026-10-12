@@ -3,18 +3,26 @@ from __future__ import annotations
 from collections.abc import Iterator
 from contextlib import contextmanager
 import os
+from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
+from dotenv import dotenv_values
+
 from lecturepilot.database import Database, _psycopg_url
-from lecturepilot.runtime_env import load_project_env
+from lecturepilot.runtime_env import _nearest_local_env
 
-
-load_project_env()
-_TEST_DATABASE_URL = os.getenv("LECTUREPILOT_TEST_DATABASE_URL", "").strip()
+# Tests never inherit local provider keys or service URLs; only the dedicated test DB.
+os.environ["LECTUREPILOT_ENV"] = "test"
+_LOCAL_ENV = _nearest_local_env(Path(__file__).resolve())
+_TEST_DATABASE_URL = (
+    os.getenv("LECTUREPILOT_TEST_DATABASE_URL")
+    or (dotenv_values(_LOCAL_ENV).get("LECTUREPILOT_TEST_DATABASE_URL") if _LOCAL_ENV else "")
+    or ""
+).strip()
 if _TEST_DATABASE_URL and not (make_url(_TEST_DATABASE_URL).database or "").endswith("_pytest"):
     raise RuntimeError("LECTUREPILOT_TEST_DATABASE_URL must name a dedicated *_pytest database.")
 if _TEST_DATABASE_URL:

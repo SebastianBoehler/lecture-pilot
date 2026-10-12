@@ -140,8 +140,7 @@ class LearningIntentStore(PracticeDesignStore):
             validate_practice_design_review(
                 review, changed, source=source, allowed_source_paths=allowed_source_paths
             )
-            if any(check.severity == "critical" for check in review.checks):
-                raise ValueError("Implementation repair still has critical semantic issues.")
+            # AI-owned teaching keeps unresolved review findings as visible warnings.
             changed = with_quality_review(changed, review)
             from lecturepilot.teaching_implementation_changes import record_implementation_changes
 

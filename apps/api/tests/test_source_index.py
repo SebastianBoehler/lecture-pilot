@@ -3,13 +3,11 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-from fastapi.testclient import TestClient
 
 from auth_helpers import professor_headers
 import lecturepilot.course_routes as course_routes
-from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.source_index_models import CourseSourceIndex
+from api_test_client import workspace_client as _client
 
 
 def test_upload_updates_hash_addressed_course_source_index(tmp_path: Path) -> None:
@@ -113,12 +111,3 @@ def test_rejected_replacement_preserves_the_existing_material(tmp_path: Path) ->
     assert response.status_code == 400
     assert target.read_bytes() == b"existing lecture material"
     assert not list(target.parent.glob(".upload-*"))
-
-
-def _client(tmp_path: Path) -> TestClient:
-    app = create_app()
-    app.state.canvas_workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=tmp_path / "materials",
-    )
-    return TestClient(app)

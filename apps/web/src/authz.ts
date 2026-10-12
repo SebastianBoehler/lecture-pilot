@@ -12,15 +12,7 @@ export function isStudentAccount(session: LoginSession | null) {
   return Boolean(session && (session.account_type ?? "student") === "student");
 }
 
-export function courseManagerHeaders(session: LoginSession): Record<string, string> {
-  const role = courseManagerRole(session);
-  if (!role) {
-    throw new Error("Course management requires a professor account.");
-  }
-  return authHeaders(session, role);
-}
-
-export function authHeaders(
+function authHeaders(
   session: LoginSession,
   role = session.roles?.[0] ?? "student",
 ): Record<string, string> {

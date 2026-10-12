@@ -58,9 +58,7 @@ class CourseCanvasAuthor:
         if scope is None:
             raise RuntimeError("Canvas authoring requires an authorized durable job scope.")
         scope.authorize()
-        settings = self.provider_registry.require_ready(
-            [ProviderCapability.CHAT, ProviderCapability.TOOL_CALLS]
-        )
+        settings = self.provider_registry.require_ready([ProviderCapability.CHAT])
         job = AuthoringJob(
             root=scope.root,
             source=filter_source_document_for_planning(source_document),

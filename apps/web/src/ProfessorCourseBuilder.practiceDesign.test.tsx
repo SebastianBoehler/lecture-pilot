@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { builderSteps } from "./ProfessorBuilderStepper";
 import { professorFetchMock } from "./ProfessorCourseBuilder.testFixtures";
-import { approveAllPracticeDesigns, openProfessorDemo } from "./testLessonActions";
+import { openProfessorDemo } from "./testLessonActions";
 
 describe("practice-design builder blocking", () => {
   it("places learning plans between sources and media and blocks generation until every plan is approved", () => {
@@ -71,7 +71,7 @@ it("rejects a practice proposal without current confirmed lecture evidence", asy
   expect(proposal.status).toBe(409);
 });
 
-it("requires every full-course plan approval and keeps a stale approval conflict visible", async () => {
+it("drafts each approved plan while others are reviewed and keeps a stale approval conflict visible", async () => {
   const user = userEvent.setup();
   const fetchMock = professorFetchMock({ staleApprovalOnceFor: "lecture-02" });
   vi.stubGlobal("fetch", fetchMock);
@@ -104,7 +104,6 @@ it("requires every full-course plan approval and keeps a stale approval conflict
       within(firstPlan).queryByRole("button", { name: /approve learning plan/i }),
     ).not.toBeInTheDocument(),
   );
-  expect(screen.getByRole("button", { name: /05 review & publish/i })).toBeDisabled();
 
   await user.click(within(firstPlan).getByRole("button", { name: /edit this target/i }));
   const outcome = within(firstPlan).getByLabelText(/outcome for posterior/i);
@@ -114,7 +113,6 @@ it("requires every full-course plan approval and keeps a stale approval conflict
   expect(
     await within(firstPlan).findByRole("button", { name: /approve learning plan/i }),
   ).toBeDisabled();
-  expect(screen.getByRole("button", { name: /05 review & publish/i })).toBeDisabled();
   await user.click(within(firstPlan).getByRole("button", { name: /review edited plan/i }));
   await waitFor(() =>
     expect(within(firstPlan).getByRole("button", { name: /approve learning plan/i })).toBeEnabled(),
@@ -147,11 +145,14 @@ it("requires every full-course plan approval and keeps a stale approval conflict
     .map(([, init]) => JSON.parse(String(init?.body)).practice_design_revision);
   expect(approvalRevisions).toEqual(["d".repeat(64), "f".repeat(64)]);
   expect(await screen.findByText(/2 lecture canvases ready to review/i)).toBeInTheDocument();
-  expect(
-    fetchMock.mock.calls.filter(
-      ([url, init]) => String(url).endsWith("/canvas/draft") && init?.method === "POST",
-    ),
-  ).toHaveLength(2);
+  // Lecture 01 drafts again after its approved plan changed; lecture 02 drafts once.
+  await waitFor(() =>
+    expect(
+      fetchMock.mock.calls.filter(
+        ([url, init]) => String(url).endsWith("/canvas/draft") && init?.method === "POST",
+      ),
+    ).toHaveLength(3),
+  );
 });
 
 it("marks an approved design stale after a source update removes current routing", async () => {
@@ -174,9 +175,15 @@ it("marks an approved design stale after a source update removes current routing
   await user.click(
     await screen.findByRole("button", { name: /continue (?:without videos|to learning plan)/i }),
   );
-  await approveAllPracticeDesigns(user);
+  const toggle = await screen.findByRole("button", { name: /review plan for/i });
+  if (toggle.getAttribute("aria-expanded") !== "true") await user.click(toggle);
+  await user.click(
+    await within(toggle.closest("article")!).findByRole("button", {
+      name: /approve learning plan/i,
+    }),
+  );
+  // The approved lecture starts drafting at once and discovers the changed routing.
   expect(await screen.findByText(/source assignments changed/i)).toBeInTheDocument();
-  await user.click(screen.getByRole("button", { name: /04 learning plan/i }));
 
   expect(await screen.findAllByText(/source routing is stale/i)).toHaveLength(1);
   expect(screen.queryByText(/^approved$/i)).not.toBeInTheDocument();

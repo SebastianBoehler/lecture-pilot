@@ -12,12 +12,11 @@ import lecturepilot.course_builder_source as builder_source
 import lecturepilot.course_routes as course_routes
 import lecturepilot.course_update_routes as course_update_routes
 import lecturepilot.lecture_access_routes as access_routes
-from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_schedule_store import write_course_workspace
 from lecturepilot.course_update_storage import course_update_lock
 from lecturepilot.models import Course, CourseWorkspaceResult, Lecture
 from lecturepilot.source_bundle_canvas import SourceBundleCanvasError
+from api_test_client import workspace_client as _client
 
 
 def test_visibility_read_modify_write_uses_course_lock(tmp_path: Path, monkeypatch) -> None:
@@ -148,15 +147,6 @@ def _locks_course_state(node: ast.With) -> bool:
         and item.context_expr.func.id == "locked_course_state"
         for item in node.items
     )
-
-
-def _client(tmp_path: Path) -> TestClient:
-    app = create_app()
-    app.state.canvas_workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=tmp_path / "materials",
-    )
-    return TestClient(app)
 
 
 def _seed(client: TestClient, course_id: str) -> None:

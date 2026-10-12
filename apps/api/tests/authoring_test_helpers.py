@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 import re
 
+from pydantic_ai.messages import ModelResponse, TextPart
 from pydantic_ai.models.function import FunctionModel
 
 from lecturepilot.authoring_runtime import CourseCanvasAuthor
@@ -22,5 +23,27 @@ def install_author(client, monkeypatch, respond, reviewer):
     client.app.state.course_planner = author
 
 
-def assigned_drafts(info):
-    return list(dict.fromkeys(re.findall(r"'(/draft/[^']+\.md)'", info.instructions)))
+def drafted_path(messages):
+    """The section a per-section authoring call writes or repairs."""
+    prompt = str(messages[0].parts[-1].content)
+    return re.search(r"Section evidence \((/draft/[^)]+\.md)\)", prompt).group(1)
+
+
+def is_repair(messages):
+    return "Repair this drafted section" in str(messages[0].parts[-1].content)
+
+
+def markdown(text):
+    return ModelResponse(parts=[TextPart(text)])
+
+
+def current_draft(messages):
+    prompt = str(messages[0].parts[-1].content)
+    return prompt.split("Current draft:\n", 1)[1].split("\nNotes (untrusted", 1)[0]
+
+
+def fix_math(messages, info):
+    """Repair the targeted-repair fixture's prose-in-math block."""
+    return markdown(
+        current_draft(messages).replace(r"The score is computed as w^\top x.", r"w^\top x")
+    )

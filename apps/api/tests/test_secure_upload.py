@@ -1,13 +1,11 @@
 from pathlib import Path, PurePosixPath
 import unicodedata
 
-from fastapi.testclient import TestClient
 import pytest
 
 import lecturepilot.secure_upload as secure_upload
 from auth_helpers import professor_headers
-from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
+from api_test_client import workspace_client as _client
 
 
 def test_upload_rejects_mime_mismatch_without_publishing_partial_file(tmp_path: Path) -> None:
@@ -220,12 +218,3 @@ def test_upload_promotion_crash_never_leaves_two_live_links(tmp_path: Path, monk
     assert target.read_text(encoding="utf-8") == "source"
     assert target.stat().st_nlink == 1
     assert not source.exists()
-
-
-def _client(tmp_path: Path) -> TestClient:
-    app = create_app()
-    app.state.canvas_workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=tmp_path / "materials",
-    )
-    return TestClient(app)

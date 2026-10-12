@@ -4,12 +4,16 @@ from lecturepilot.teaching_implementation_change_routes import register_implemen
 
 from fastapi import Depends, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
-from pydantic import BeforeValidator, Field
+from pydantic import BaseModel, BeforeValidator, Field
 
 from lecturepilot.api_auth import request_context
 from lecturepilot.course_learning_intent_store import LearningIntentStore
-from lecturepilot.course_learning_intent import LearningIntent
-from lecturepilot.learning_intent_approval_review import require_approvable_scope
+from lecturepilot.learning_goal_support import (
+    goal_findings_path,
+    goal_set_objective,
+    read_goal_findings,
+    save_goal_findings,
+)
 from lecturepilot.course_learning_intent_proposal import (
     LearningIntentProposal,
     propose_learning_intent,
@@ -22,6 +26,11 @@ from lecturepilot.course_practice_design_models import PracticeDesign, PracticeD
 from lecturepilot.course_practice_design_store import PracticeDesignStale
 from lecturepilot.course_update_recovery import locked_course_state
 from lecturepilot.tenancy import TenantContext
+
+
+class GoalFinding(BaseModel):
+    goal_id: str
+    reason: str
 
 
 class LearningIntentApprovalInput(PracticeDesignApprovalInput):
@@ -46,7 +55,7 @@ def register_learning_intent_routes(
         "/admin/courses/{course_id}/lectures/{lecture_id}/practice-design/intent/approve",
         response_model=PracticeDesign,
     )
-    async def approve_learning_intent(
+    def approve_learning_intent(
         course_id: str,
         lecture_id: str,
         approval: LearningIntentApprovalInput,
@@ -55,51 +64,7 @@ def register_learning_intent_routes(
     ):
         require_manager(context, request, course_id, course_tenant_id)
         layout = app.state.canvas_workspace.layout
-
-        def candidate():
-            with locked_course_state(layout.course_root(course_id)):
-                revision = source_revision(app, course_id, lecture_id)
-                design = LearningIntentStore(layout).read(
-                    course_id=course_id, lecture_id=lecture_id
-                )
-                if (
-                    design is None
-                    or revision != approval.source_revision
-                    or design.source_revision != revision
-                    or design.revision != approval.practice_design_revision
-                ):
-                    raise PracticeDesignStale("Learning goals or sources changed. Reload them.")
-                if design.approval is not None and not approval.convert_legacy:
-                    raise ValueError("Existing full approval requires explicit conversion.")
-                return LearningIntent.from_design(
-                    design, fixed_target_ids=approval.fixed_target_ids
-                )
-
-        def load_sources():
-            with locked_course_state(layout.course_root(course_id)):
-                source, revision, paths = source_context(
-                    app, source_document, course_id, lecture_id
-                )
-                if revision != approval.source_revision:
-                    raise PracticeDesignStale("Course sources changed during scope review.")
-                return source, paths
-
         try:
-            intent = await run_in_threadpool(candidate)
-            with model_usage_scope(
-                actor_user_id=context.user_id,
-                course_id=course_id,
-                workload="course_learning_intent",
-            ):
-                await require_approvable_scope(
-                    app.state.practice_design_planner,
-                    root=layout.course_root(course_id)
-                    / "builder"
-                    / "implementation-jobs"
-                    / lecture_id,
-                    intent=intent,
-                    load_sources=lambda: run_in_threadpool(load_sources),
-                )
             with locked_course_state(layout.course_root(course_id)):
                 revision = source_revision(app, course_id, lecture_id)
                 if revision != approval.source_revision:
@@ -113,12 +78,27 @@ def register_learning_intent_routes(
                     fixed_target_ids=approval.fixed_target_ids,
                     convert_legacy=approval.convert_legacy,
                 )
-        except ProviderConfigurationError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-        except ModelExecutionError as exc:
-            raise HTTPException(status_code=502, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @app.get(
+        "/admin/courses/{course_id}/lectures/{lecture_id}/practice-design/intent/findings",
+        response_model=list[GoalFinding],
+    )
+    def goal_findings(
+        course_id: str,
+        lecture_id: str,
+        request: Request,
+        context: TenantContext = Depends(request_context),
+    ):
+        require_manager(context, request, course_id, course_tenant_id)
+        layout = app.state.canvas_workspace.layout
+        design = LearningIntentStore(layout).read(course_id=course_id, lecture_id=lecture_id)
+        if design is None or design.learning_intent is None:
+            return []
+        return read_goal_findings(
+            goal_findings_path(layout, course_id, lecture_id), design.learning_intent.goals
+        )
 
     @app.post(
         "/admin/courses/{course_id}/lectures/{lecture_id}/practice-design/intent/proposal",
@@ -168,17 +148,17 @@ def register_learning_intent_routes(
                 course_id=course_id,
                 workload="course_learning_intent",
             ):
-                proposal = await propose_learning_intent(
+                proposal, review = await propose_learning_intent(
                     app.state.practice_design_planner,
                     source=source,
                     source_revision=revision,
                     allowed_source_paths=paths,
-                    scope_root=layout.course_root(course_id)
-                    / "builder"
-                    / "implementation-jobs"
-                    / lecture_id,
                 )
-            return await run_in_threadpool(save, proposal)
+            saved = await run_in_threadpool(save, proposal)
+            save_goal_findings(
+                goal_findings_path(layout, course_id, lecture_id), proposal.goals, review
+            )
+            return saved
         except ProviderConfigurationError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         except ModelExecutionError as exc:
@@ -217,7 +197,10 @@ def register_learning_intent_routes(
                     course_id=course_id,
                     lecture_id=lecture_id,
                     source_revision=revision,
-                    proposal=update,
+                    # The objective always promises exactly the edited goal set.
+                    proposal=update.model_copy(
+                        update={"objective": goal_set_objective(update.goals)}
+                    ),
                     source=source,
                     allowed_source_paths=paths,
                 )

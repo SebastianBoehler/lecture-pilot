@@ -6,7 +6,6 @@ from lecturepilot.course_canvas_practice_contract import (
     validate_section_practice,
     section_target_assignments,
 )
-from lecturepilot.course_canvas_assessment_normalizer import normalize_section_assessments
 from test_practice_design_canvas_planner import _source, _design
 
 
@@ -45,19 +44,6 @@ def test_missing_approved_checkpoint_is_rejected_before_section_cache():
     source = _source()
     with pytest.raises(CanvasGenerationRepairableError, match="practice-derive-conclusion"):
         validate_section_practice(source.sections[0], _design(source).targets)
-
-
-def test_approved_task_text_is_not_rewritten_by_generic_prompt_normalization():
-    task = "Two classifiers predict four labels. Compute each error count and justify your choice."
-    section = (
-        _source()
-        .sections[0]
-        .model_copy(
-            update={"blocks": [CanvasBlock(id="practice-target-1", type="checkpoint", text=task)]}
-        )
-    )
-    normalized = normalize_section_assessments(section, output_language="en")
-    assert normalized.blocks[0].text == task
 
 
 @pytest.mark.parametrize(

@@ -24,12 +24,10 @@ export function useProfessorPracticeDesignGate({
   const lectureKey = lectureIds.join("|");
   const [preparing, setPreparing] = useState(false);
   const load = useEffectEvent(() => designs.loadAll(lectureIds, routingReady));
-  const designReady = Boolean(
-    lectureIds.length &&
-    lectureIds.every((lectureId) =>
-      isPracticeDesignReady(designs.designs[lectureId], designs.readiness[lectureId]),
-    ),
+  const readyLectureIds = lectureIds.filter((lectureId) =>
+    isPracticeDesignReady(designs.designs[lectureId], designs.readiness[lectureId]),
   );
+  const designReady = Boolean(lectureIds.length && readyLectureIds.length === lectureIds.length);
 
   useEffect(() => {
     if (!courseId || !lectureKey) return;
@@ -45,6 +43,7 @@ export function useProfessorPracticeDesignGate({
 
   return {
     designReady,
+    readyLectureIds,
     practiceDesignStep: {
       designs: designs.designs,
       readiness: designs.readiness,
@@ -64,12 +63,8 @@ export function useProfessorPracticeDesignGate({
       onSave: (lectureId: string, update: Parameters<typeof designs.save>[1]) =>
         void designs.save(lectureId, update),
     },
-    requireCurrentApprovals: () =>
-      requireCurrentPracticeApprovals({
-        courseId,
-        lectureIds,
-        session,
-      }),
+    requireCurrentApprovals: (ids: readonly string[] = lectureIds) =>
+      requireCurrentPracticeApprovals({ courseId, lectureIds: ids, session }),
     reset: () => designs.reset(lectureIds),
   };
 }

@@ -71,7 +71,6 @@ export type ProfessorCourseBuilderProps = {
     courseId: string,
     lecture: ReturnType<typeof lectureFromWorkspace>,
   ) => string;
-  publishedLectureIds: string[];
 };
 
 export function useProfessorCourseBuilder({
@@ -79,7 +78,6 @@ export function useProfessorCourseBuilder({
   onPublishWorkspace,
   onWorkspacePublished,
   previewWorkspaceUrl,
-  publishedLectureIds,
 }: ProfessorCourseBuilderProps) {
   const [savedFlow] = useState(readSavedFlow);
   const [setup, setSetup] = useState(savedFlow.setup);
@@ -125,7 +123,7 @@ export function useProfessorCourseBuilder({
   const [mediaReviewed, setMediaReviewed] = useState(false);
   const [scheduleApplied, setScheduleApplied] = useState(setup.target !== "full-course");
   const sourceRouting = useProfessorSourceRouting(session);
-  const { error, notice, pendingAction, run, setError } = useProfessorWorkflowRun();
+  const { error, notice, pendingAction, run, setError, setNotice } = useProfessorWorkflowRun();
   const [restored, setRestored] = useState(!savedFlow.bundleReady && !savedFlow.canvasReady);
   const [isRestoring, setIsRestoring] = useState(false);
   const restoreGeneratedState = useEffectEvent(restoreFromBackend);
@@ -177,6 +175,10 @@ export function useProfessorCourseBuilder({
     })),
   });
   const designReady = routingReady && practiceDesign.designReady;
+  // Publication state of this builder's own course (not the learner workspace course).
+  const [coursePublished, setCoursePublished] = useState({ courseId: "", ids: [] as string[] });
+  const publishedLectureIds =
+    workspace && coursePublished.courseId === workspace.courseId ? coursePublished.ids : [];
   const fullCoursePublishedCount = generationTargetLectureIds.filter((lectureId) =>
     publishedLectureIds.includes(lectureId),
   ).length;
@@ -423,21 +425,46 @@ export function useProfessorCourseBuilder({
     return flattenVideoGroups(groups).length;
   }
 
-  async function requireConfirmedRouting(courseId: string) {
+  async function requireConfirmedRouting(courseId: string, navigate = true) {
     const current = await sourceRouting.load(courseId);
     if (current.confirmed && !hasNoAssignedEvidence(current.routes)) return current;
-    setActiveStep("sources");
+    if (navigate) setActiveStep("sources");
     throw new Error(
       "Source assignments changed. Review and confirm source assignments again before generating canvases.",
     );
   }
 
-  async function requireApprovedDesigns() {
+  async function requireApprovedDesigns(ids?: readonly string[], navigate = true) {
     try {
-      await practiceDesign.requireCurrentApprovals();
+      await practiceDesign.requireCurrentApprovals(ids);
     } catch (approvalError) {
-      setActiveStep("design");
+      if (navigate) setActiveStep("design");
       throw approvalError;
+    }
+  }
+
+  /** Start drafts for lectures whose goals are approved; other lectures keep their state. */
+  async function startLectureGeneration(lectureIds: readonly string[]) {
+    if (!workspace || !lectureIds.length) return;
+    const ids = [...lectureIds];
+    setGenerationProgress((current) => [
+      ...current.filter((item) => !ids.includes(item.lectureId)),
+      ...ids.map((lectureId) => ({ lectureId, status: "generating" as const })),
+    ]);
+    try {
+      // Background start: report problems without moving the professor away from their step.
+      await requireConfirmedRouting(workspace.courseId, false);
+      await requireApprovedDesigns(ids, false);
+      const canvases = await generateCanvases(workspace.courseId, ids);
+      if (canvases)
+        setNotice(
+          ids.length === 1
+            ? "Course-builder agent generated a source-grounded canvas draft."
+            : `Course-builder agent generated ${ids.length} source-grounded lecture canvases.`,
+        );
+    } catch (startError) {
+      setGenerationProgress((current) => current.filter((item) => !ids.includes(item.lectureId)));
+      setError(startError instanceof Error ? startError.message : "Canvas generation failed.");
     }
   }
 
@@ -521,11 +548,15 @@ export function useProfessorCourseBuilder({
     setIsRestoring(true);
     setError(null);
     try {
+      const ownWorkspace = (await listCourseWorkspaces(session)).find(
+        (item) => item.course.id === targetWorkspace.courseId,
+      );
+      setCoursePublished({
+        courseId: targetWorkspace.courseId,
+        ids: ownWorkspace?.publishedLectureIds ?? [],
+      });
       if (options.skipWhenMissing) {
-        const savedWorkspaceExists = (await listCourseWorkspaces(session)).some(
-          (item) => item.course.id === targetWorkspace.courseId,
-        );
-        if (!savedWorkspaceExists) {
+        if (!ownWorkspace) {
           clearSavedFlow();
           setQuery("");
           updateSetup({
@@ -736,12 +767,22 @@ export function useProfessorCourseBuilder({
   const generateStep = {
     canvas,
     canGenerate: Boolean(
-      bundleReady && routingReady && designReady && workspace && !retryingLectureIds.size,
+      bundleReady &&
+      routingReady &&
+      practiceDesign.readyLectureIds.length &&
+      workspace &&
+      !retryingLectureIds.size,
     ),
+    readyLectureIds: practiceDesign.readyLectureIds,
+    startLectureGeneration: (ids: readonly string[]) => void startLectureGeneration(ids),
     generationProgress,
     generatedCount: generatedLectureIds.length,
+    generatedIds: generatedLectureIds,
+    allGoalsApproved: designReady,
     isFullCourse: setup.target === "full-course",
-    isGenerating: pendingAction === "generate",
+    isGenerating:
+      pendingAction === "generate" ||
+      generationProgress.some((item) => item.status === "generating"),
     retryingLectureIds,
     onContinueToPublish: () => {
       setDraftReviewed(true);
@@ -767,13 +808,14 @@ export function useProfessorCourseBuilder({
       run("generate", async () => {
         const activeWorkspace = requireWorkspace(workspace);
         await requireConfirmedRouting(activeWorkspace.courseId);
-        await requireApprovedDesigns();
-        const unfinished = generationTargetLectureIds.filter(
+        const ready = practiceDesign.readyLectureIds;
+        await requireApprovedDesigns(ready);
+        const unfinished = ready.filter(
           (id) =>
             !generatedLectureIds.includes(id) ||
             generationProgress.some((item) => item.lectureId === id && item.status === "error"),
         );
-        const lectureIds = unfinished.length ? unfinished : generationTargetLectureIds;
+        const lectureIds = unfinished.length ? unfinished : ready;
         const repairIds = new Set(
           generationProgress
             .filter((item) => lectureIds.includes(item.lectureId) && item.errorKind === "repair")
@@ -792,7 +834,7 @@ export function useProfessorCourseBuilder({
         });
         if (!canvases) return;
         setCanvas(canvases[0] ?? null);
-        setGeneratedLectureIds(generationTargetLectureIds);
+        setGeneratedLectureIds((current) => [...new Set([...current, ...lectureIds])]);
         if (lectureIds.length === 1)
           return "Course-builder agent generated a source-grounded canvas draft.";
         return `Course-builder agent generated ${lectureIds.length} source-grounded lecture canvases.`;
@@ -885,25 +927,42 @@ export function useProfessorCourseBuilder({
     canPublish: Boolean(canvas && workspace),
     isFullCourse: setup.target === "full-course",
     isPublishing: pendingAction === "publish",
-    onPublish: () =>
+    onPublish: (readyLectureIds?: readonly string[]) =>
       run("publish", async () => {
         const activeWorkspace = requireWorkspace(workspace);
         const lectureIds =
           setup.target === "full-course"
-            ? generatedLectureIds.length
-              ? generatedLectureIds
-              : generationTargetLectureIds
+            ? (readyLectureIds ??
+              (generatedLectureIds.length ? generatedLectureIds : generationTargetLectureIds))
             : [activeWorkspace.lectureId];
         const published = [];
+        const failed: string[] = [];
+        // Publish each ready lecture independently; one failure never blocks the others.
         for (const lectureId of lectureIds) {
-          published.push(await onPublishWorkspace(activeWorkspace.courseId, lectureId));
+          try {
+            published.push(await onPublishWorkspace(activeWorkspace.courseId, lectureId));
+            setCoursePublished((current) => ({
+              courseId: activeWorkspace.courseId,
+              ids: [
+                ...(current.courseId === activeWorkspace.courseId ? current.ids : []),
+                lectureId,
+              ],
+            }));
+          } catch (publishError) {
+            failed.push(
+              publishError instanceof Error ? publishError.message : "Publishing failed.",
+            );
+          }
         }
+        const failure = [...new Set(failed)].join("\n");
+        if (!published.length) throw new Error(failure || "Publishing failed.");
         onWorkspacePublished(
           workspaceCourse ?? courseFromSetup(activeWorkspace.courseId, setup, session),
           workspaceLectures.length
             ? workspaceLectures
             : activationLectures(activeWorkspace, setup, lectureSchedule),
         );
+        if (failure) setError(failure);
         const lastPublished = published[published.length - 1];
         const when = lastPublished?.published_at
           ? ` at ${new Date(lastPublished.published_at).toLocaleString()}`

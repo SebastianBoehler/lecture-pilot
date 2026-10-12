@@ -115,7 +115,11 @@ export type PracticeDesign = Readonly<{
   revision: string;
   quality_review: PracticeDesignQualityReview | null;
   approval: PracticeDesignApproval | null;
+  /** Advisory source-support findings for learning goals; never block approval. */
+  goal_findings?: readonly GoalFinding[];
 }>;
+
+export type GoalFinding = Readonly<{ goal_id: string; reason: string }>;
 
 export type PracticeDesignUpdate = Readonly<{
   goals?: LearningIntent["goals"];

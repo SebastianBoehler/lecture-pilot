@@ -54,7 +54,7 @@ export function ProfessorLearningIntent({
       <header className="practice-design-proposal-heading">
         <div>
           <h3>{label}</h3>
-          <p>{draft.objective}</p>
+          <p className="learning-intent-objective">{draft.objective}</p>
         </div>
         <span role="status">
           {approved ? t("builder.intent.approved") : t("builder.status.pending")}
@@ -117,14 +117,22 @@ export function ProfessorLearningIntent({
           </div>
         ) : null}
 
-        {editing ? <ProfessorPracticeLectureEditor draft={draft} onChange={onChange} /> : null}
+        {editing ? (
+          <ProfessorPracticeLectureEditor draft={draft} objectiveDerived onChange={onChange} />
+        ) : null}
 
         <ol className="practice-target-summary">
           {goals.map((target, index) => {
             const implementation = draft.targets.find(({ id }) => id === target.id);
+            const finding = design.goal_findings?.find(({ goal_id }) => goal_id === target.id);
             return (
               <li key={target.id} className="practice-target">
                 <strong>{target.title}</strong>
+                {finding ? (
+                  <p className="goal-finding" role="note">
+                    {t("builder.intent.finding", { reason: finding.reason })}
+                  </p>
+                ) : null}
                 {editing ? (
                   <ProfessorLearningGoalEditor
                     draft={draft}

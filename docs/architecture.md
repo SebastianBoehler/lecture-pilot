@@ -2,8 +2,7 @@
 
 LecturePilot is a same-origin web application with backend-enforced teaching,
 authorization, workspace, and provider policy. The deployed runtime is the
-checked-in Compose topology; the reserved `packages/` and `services/agent/`
-directories are not separate runtime components.
+checked-in Compose topology.
 
 ```txt
 browser

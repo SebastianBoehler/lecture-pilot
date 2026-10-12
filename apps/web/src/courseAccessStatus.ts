@@ -25,7 +25,7 @@ export function lectureAvailability(
   return { availableAt, state: availableAt.getTime() > now.getTime() ? "scheduled" : "available" };
 }
 
-export function accessDate(rule: CourseAccessRule, lectureDate: string, now = new Date()) {
+function accessDate(rule: CourseAccessRule, lectureDate: string, now = new Date()) {
   if (rule.publication_mode === "hidden") return null;
   if (rule.publication_mode === "published_now") {
     const immediate = new Date(rule.publication_at ?? now.toISOString());

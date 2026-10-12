@@ -9,10 +9,6 @@ from pydantic import BaseModel, Field
 from pydantic_ai.messages import (
     ModelMessage,
     ModelMessagesTypeAdapter,
-    ModelRequest,
-    ModelResponse,
-    ToolCallPart,
-    ToolReturnPart,
 )
 
 from lecturepilot.authoring_models import AuthoringMetrics
@@ -82,35 +78,3 @@ def save_state(root: Path, state: AuthoringState, messages: list[ModelMessage]) 
     payload = state.model_dump(mode="json", exclude={"messages"})
     payload["messages"] = state.messages[sealed_count:]
     atomic_write_json(root / "session.json", payload)
-
-
-def resume_messages(state: AuthoringState) -> list[ModelMessage]:
-    messages = ModelMessagesTypeAdapter.validate_python(state.messages)
-    # An interrupted tool batch has uncertain side effects. Never blindly replay an
-    # edit: return uncertainty to the model, which can inspect the atomic draft files.
-    pending: dict[str, ToolCallPart] = {}
-    for message in messages:
-        if isinstance(message, ModelResponse):
-            for part in message.parts:
-                if isinstance(part, ToolCallPart):
-                    pending[part.tool_call_id] = part
-        elif isinstance(message, ModelRequest):
-            for part in message.parts:
-                call_id = getattr(part, "tool_call_id", None)
-                if call_id:
-                    pending.pop(call_id, None)
-    if pending:
-        messages.append(
-            ModelRequest(
-                parts=[
-                    ToolReturnPart(
-                        tool_name=part.tool_name,
-                        tool_call_id=part.tool_call_id,
-                        content="Worker interrupted; operation may have completed. Read current draft before editing.",
-                        outcome="failed",
-                    )
-                    for part in pending.values()
-                ]
-            )
-        )
-    return messages

@@ -256,3 +256,15 @@
   color: var(--color-text-secondary);
   font-size: 13px;
 }
+
+.learning-intent-objective {
+  white-space: pre-line;
+}
+
+.goal-finding {
+  margin: 4px 0;
+  border-left: 3px solid var(--color-border-strong);
+  padding-left: 8px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}

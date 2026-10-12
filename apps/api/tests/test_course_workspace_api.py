@@ -13,14 +13,13 @@ from auth_helpers import (
 )
 from practice_design_test_helpers import save_approved_design
 from canvas_workspace_fixtures import publish_course_canvas, published_course_canvas
-from lecturepilot.app import create_app
 from lecturepilot.canvas_models import CanvasBlock, CanvasSection
-from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_builder_source import course_builder_source_document
 from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT_VERSION
 from lecturepilot.logging_observability import LOGGER_NAME, LoggingObservability
 from lecturepilot.models import LectureScheduleItem, LectureScheduleProposal
 from lecturepilot.university_models import ExternalCourseCandidate, UniversityLoginResult
+from api_test_client import workspace_client as _client
 
 
 def test_professor_creates_stable_course_workspace_ids(tmp_path: Path) -> None:
@@ -428,15 +427,6 @@ def test_course_canvas_draft_can_use_markdown_text_and_pdf_without_latex(tmp_pat
     )
     assert video.status_code == 200
     assert video.content.startswith(b"\x00\x00\x00\x18ftyp")
-
-
-def _client(tmp_path: Path) -> TestClient:
-    app = create_app()
-    app.state.canvas_workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=tmp_path / "materials",
-    )
-    return TestClient(app)
 
 
 def _create_workspace(

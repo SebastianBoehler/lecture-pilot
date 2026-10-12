@@ -1,6 +1,4 @@
-from pydantic_ai.messages import ModelResponse, ToolCallPart
-
-from authoring_test_helpers import assigned_drafts, install_author
+from authoring_test_helpers import current_draft, fix_math, install_author, markdown
 from auth_helpers import professor_headers
 from lecturepilot.model_client import ModelExecutionError
 from test_course_canvas_targeted_repair import (
@@ -28,41 +26,17 @@ class Reviewer:
         return {"issues": []}
 
 
-def math_edit(info):
-    return ToolCallPart(
-        "edit",
-        {
-            "path": assigned_drafts(info)[0],
-            "old": r"The score is computed as w^\top x.",
-            "new": r"w^\top x",
-        },
-    )
-
-
 def test_transient_repair_failure_retains_files_and_resumes_history(tmp_path, monkeypatch):
     client, path = setup_failed_job(tmp_path)
-    calls = 0
 
     def interrupted(messages, info):
-        nonlocal calls
-        calls += 1
-        if calls == 1:
-            return ModelResponse(parts=[math_edit(info)])
         raise ModelExecutionError("Connection interrupted")
 
     install_author(client, monkeypatch, interrupted, Reviewer())
     failed = client.post(path + "/repair", headers=headers("transient-repair-0001"))
     assert failed.status_code == 502, failed.text
 
-    def resumed(messages, info):
-        assert any(
-            getattr(part, "tool_name", None) == "edit"
-            for message in messages
-            for part in message.parts
-        )
-        return ModelResponse(parts=[ToolCallPart("final_result", {"ready": True})])
-
-    install_author(client, monkeypatch, resumed, Reviewer())
+    install_author(client, monkeypatch, fix_math, Reviewer())
     repaired = client.post(path + "/repair", headers=headers("resumed-repair-0001"))
     assert repaired.status_code == 200, repaired.text
     assert (
@@ -73,7 +47,7 @@ def test_transient_repair_failure_retains_files_and_resumes_history(tmp_path, mo
     )
 
 
-def test_quality_feedback_is_repaired_in_same_agent_history(tmp_path, monkeypatch):
+def test_quality_feedback_gets_one_targeted_repair(tmp_path, monkeypatch):
     client, path = setup_failed_job(tmp_path)
     reviewed_sections = []
 
@@ -97,35 +71,17 @@ def test_quality_feedback_is_repaired_in_same_agent_history(tmp_path, monkeypatc
                 )
             }
 
-    calls = 0
-
     def respond(messages, info):
-        nonlocal calls
-        calls += 1
-        if calls == 1:
-            return ModelResponse(parts=[math_edit(info)])
-        if calls == 2:
-            return ModelResponse(parts=[ToolCallPart("validate", {})])
-        if calls == 3:
-            assert any(
-                "source-backed expression" in str(getattr(p, "content", ""))
-                for m in messages
-                for p in m.parts
-            )
-            return ModelResponse(
-                parts=[
-                    ToolCallPart(
-                        "edit", {"path": assigned_drafts(info)[0], "old": r"w^\top x", "new": "x"}
-                    )
-                ]
-            )
-        return ModelResponse(parts=[ToolCallPart("final_result", {"ready": True})])
+        if "source-backed expression" in str(messages[0].parts[-1].content):
+            return markdown(current_draft(messages).replace(r"w^\top x", "x"))
+        return fix_math(messages, info)
 
     install_author(client, monkeypatch, respond, Critic())
     repaired = client.post(path + "/repair", headers=headers("quality-repair-0001"))
     assert repaired.status_code == 200, repaired.text
     assert reviewed_sections.count("learning-optimization") == 2
     assert len(reviewed_sections) == 3
+    assert not repaired.json().get("warnings")
 
 
 def test_completed_repair_replays_without_another_model_request(tmp_path, monkeypatch):
@@ -135,11 +91,7 @@ def test_completed_repair_replays_without_another_model_request(tmp_path, monkey
     def respond(messages, info):
         nonlocal calls
         calls += 1
-        return ModelResponse(
-            parts=[math_edit(info)]
-            if calls == 1
-            else [ToolCallPart("final_result", {"ready": True})]
-        )
+        return fix_math(messages, info)
 
     install_author(client, monkeypatch, respond, Reviewer())
     request_headers = headers("idempotent-repair-0001")
@@ -147,7 +99,7 @@ def test_completed_repair_replays_without_another_model_request(tmp_path, monkey
     second = client.post(path + "/repair", headers=request_headers)
     assert first.status_code == second.status_code == 200, first.text
     assert first.json() == second.json()
-    assert calls == 2
+    assert calls == 1
 
 
 def test_approved_design_conflict_replays_as_review_required(tmp_path):

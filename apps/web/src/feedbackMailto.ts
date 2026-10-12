@@ -1,4 +1,4 @@
-export const FEEDBACK_EMAIL = "s.boehler@student.uni-tuebingen.de";
+const FEEDBACK_EMAIL = "s.boehler@student.uni-tuebingen.de";
 
 export type FeedbackCategory = "feedback" | "feature" | "bug";
 

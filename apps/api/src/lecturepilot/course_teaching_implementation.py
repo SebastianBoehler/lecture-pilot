@@ -110,7 +110,7 @@ async def author_with_implementation(
     if (
         design.learning_intent
         and design.approval is None
-        and (review is None or review.has_critical_issues)
+        and (review is None or review.practice_design_revision != design.revision)
     ):
         design, ownership = await repair_implementation(
             app,

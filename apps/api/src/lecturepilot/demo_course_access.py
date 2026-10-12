@@ -5,28 +5,10 @@ import re
 from pathlib import Path
 
 from lecturepilot.course_schedule_store import list_course_workspaces
-from lecturepilot.account_models import TuebingenLoginResult
 from lecturepilot.models import Course
 from lecturepilot.university_models import ExternalCourseCandidate
 
 DEMO_CREATED_COURSES_FLAG = "LECTUREPILOT_DEMO_INCLUDE_CREATED_COURSES"
-
-
-def include_created_courses_for_demo(
-    result: TuebingenLoginResult,
-    *,
-    tenant_id: str,
-    workspace_root: Path,
-) -> TuebingenLoginResult:
-    if not _enabled():
-        return result
-    created_courses = [
-        workspace.course for workspace in list_course_workspaces(workspace_root, tenant_id)
-    ]
-    merged_courses = _merge_courses(result.courses, created_courses)
-    if len(merged_courses) == len(result.courses):
-        return result
-    return result.model_copy(update={"courses": merged_courses})
 
 
 def matched_created_course_ids_for_demo(

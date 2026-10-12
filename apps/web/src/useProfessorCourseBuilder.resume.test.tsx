@@ -19,7 +19,6 @@ const hookProps: ProfessorCourseBuilderProps = {
   onPublishWorkspace: vi.fn(),
   onWorkspacePublished: vi.fn(),
   previewWorkspaceUrl: (_courseId, lecture) => `/preview/${lecture.id}`,
-  publishedLectureIds: [],
   session,
 };
 

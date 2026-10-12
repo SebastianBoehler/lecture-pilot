@@ -52,14 +52,6 @@ class InvalidCanvasPublicationMetadataError(ValueError):
     pass
 
 
-def clear_sections(canvas_dir: Path) -> None:
-    sections_dir = canvas_dir / "sections"
-    if not sections_dir.exists():
-        return
-    for path in sections_dir.glob("*.md"):
-        path.unlink()
-
-
 def prepared_document(document: CanvasDocument, canvas_dir: Path) -> CanvasDocument:
     normalized = normalize_learning_support(document).model_copy(
         update={"workspace_path": str(canvas_dir / "index.md")}

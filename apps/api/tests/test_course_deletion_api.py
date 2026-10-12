@@ -3,8 +3,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from auth_helpers import professor_headers, student_headers
-from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
+from api_test_client import workspace_client as _client
 
 
 def test_professor_lists_created_course_workspaces(tmp_path: Path) -> None:
@@ -62,15 +61,6 @@ def test_course_deletion_rejects_invalid_course_id(tmp_path: Path) -> None:
     response = client.delete("/admin/courses/...", headers=professor_headers())
 
     assert response.status_code == 400
-
-
-def _client(tmp_path: Path) -> TestClient:
-    app = create_app()
-    app.state.canvas_workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=tmp_path / "materials",
-    )
-    return TestClient(app)
 
 
 def _create_workspace(client: TestClient) -> None:

@@ -40,22 +40,6 @@ class StagedCourseUpload:
         self.quarantine_path.unlink(missing_ok=True)
 
 
-async def store_course_upload(
-    upload: UploadFile,
-    *,
-    uploads_root: Path,
-    tenant_id: str,
-    requested_path: str,
-) -> StoredUpload:
-    staged = await stage_course_upload(
-        upload,
-        quarantine_root=uploads_root / ".quarantine",
-        tenant_id=tenant_id,
-        requested_path=requested_path,
-    )
-    return promote_course_upload(staged, uploads_root=uploads_root)
-
-
 async def stage_course_upload(
     upload: UploadFile,
     *,

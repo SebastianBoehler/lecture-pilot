@@ -18,7 +18,6 @@ const hookProps: ProfessorCourseBuilderProps = {
   onPublishWorkspace: vi.fn(),
   onWorkspacePublished: vi.fn(),
   previewWorkspaceUrl: (_courseId, lecture) => `/preview/${lecture.id}`,
-  publishedLectureIds: [],
   session,
 };
 
@@ -196,7 +195,8 @@ describe("Professor course builder restoration", () => {
           String(url).includes("/source-routing/proposal") && init?.method === "POST",
       ),
     ).toHaveLength(0);
-    expect(onPublishWorkspace).toHaveBeenCalledOnce();
+    // Every ready lecture is attempted; one rejection never blocks the others.
+    expect(onPublishWorkspace).toHaveBeenCalledTimes(2);
   });
 });
 

@@ -1,11 +1,9 @@
 from pathlib import Path
 
-from fastapi.testclient import TestClient
 
 from auth_helpers import professor_headers, student_headers
 from canvas_workspace_fixtures import publish_course_canvas, published_course_canvas
-from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
+from api_test_client import workspace_client as _client
 
 
 def test_single_lecture_workspace_update_keeps_existing_course_schedule(tmp_path: Path) -> None:
@@ -120,12 +118,3 @@ def test_full_course_schedule_can_replace_inferred_lectures(tmp_path: Path) -> N
 
     assert response.status_code == 200
     assert [lecture["id"] for lecture in response.json()["lectures"]] == ["lecture-01"]
-
-
-def _client(tmp_path: Path) -> TestClient:
-    app = create_app()
-    app.state.canvas_workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=tmp_path / "materials",
-    )
-    return TestClient(app)

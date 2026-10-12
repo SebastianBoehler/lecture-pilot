@@ -15,6 +15,7 @@ def test_load_project_env_reads_only_nearest_local_env_without_overriding(
         encoding="utf-8",
     )
     monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("LECTUREPILOT_ENV", "development")
     monkeypatch.delenv("LECTUREPILOT_MODEL", raising=False)
     monkeypatch.setenv("GEMINI_API_KEY", "from-shell")
 

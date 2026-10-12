@@ -252,9 +252,7 @@ class PracticeDesignStore:
             if current.approval is None and has_approved_intent(current):
                 review = current.quality_review
                 if not allow_pending_implementation and (
-                    review is None
-                    or review.has_critical_issues
-                    or review.practice_design_revision != current.revision
+                    review is None or review.practice_design_revision != current.revision
                 ):
                     raise PracticeDesignApprovalRequired(
                         "Teaching implementation needs automatic repair."

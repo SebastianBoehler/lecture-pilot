@@ -1,12 +1,13 @@
 import pytest
 import json
-from pydantic_ai.messages import ModelResponse, ToolCallPart, TextPart
+from pydantic_ai.messages import ModelResponse, TextPart
 from pydantic_ai.models.function import FunctionModel
 
 from lecturepilot.authoring_job import run_authoring_job
 from lecturepilot.authoring_models import AuthoringDesignConflict
 from lecturepilot.authoring_checkpoint_review import CheckpointReviewer
 from lecturepilot.course_canvas_quality import CanvasQualityReviewer
+from authoring_test_helpers import markdown
 from test_authoring_job import authoring_job
 
 
@@ -50,11 +51,11 @@ async def test_agent_cannot_rewrite_approved_task_to_satisfy_critic(tmp_path):
     def respond(messages, info):
         nonlocal calls
         calls += 1
-        return ModelResponse(parts=[ToolCallPart("validate", {})])
+        raise AssertionError("A confirmed design conflict needs no section rewrite.")
 
     with pytest.raises(AuthoringDesignConflict, match="approved practice design"):
         await run_authoring_job(job, model=FunctionModel(respond))
-    assert calls == 1
+    assert calls == 0
 
 
 async def test_false_checkpoint_objection_does_not_veto_completion(tmp_path):
@@ -93,14 +94,10 @@ async def test_false_checkpoint_objection_does_not_veto_completion(tmp_path):
         )
     )
     result = await run_authoring_job(
-        job,
-        model=FunctionModel(
-            lambda messages, info: ModelResponse(
-                parts=[ToolCallPart("final_result", {"ready": True})]
-            )
-        ),
+        job, model=FunctionModel(lambda messages, info: pytest.fail("no rewrite needed"))
     )
     assert result.document.sections[0].blocks[0].text == job.design.targets[0].baseline_task
+    assert not result.document.warnings
 
 
 async def test_missing_teaching_is_repaired_without_rewriting_approved_task(tmp_path):
@@ -148,22 +145,17 @@ async def test_missing_teaching_is_repaired_without_rewriting_approved_task(tmp_
     def respond(messages, info):
         nonlocal calls
         calls += 1
-        if calls == 2:
-            assert "Add a worked example" in str(messages)
-            return ModelResponse(
-                parts=[
-                    ToolCallPart(
-                        "edit",
-                        {
-                            "path": "/draft/topic.md",
-                            "old": "The variable x denotes evidence.",
-                            "new": "The variable x denotes evidence. Worked example: use x to justify the claim.",
-                        },
-                    )
-                ]
+        assert "Add a worked example" in str(messages)
+        draft = str(messages[0].parts[-1].content).split("Current draft:\n")[1].split("\nNotes")[0]
+        return markdown(
+            draft.replace(
+                "The variable x denotes evidence.",
+                "The variable x denotes evidence. Worked example: use x to justify the claim.",
             )
-        return ModelResponse(parts=[ToolCallPart("final_result", {"ready": True})])
+        )
 
     result = await run_authoring_job(job, model=FunctionModel(respond))
+    assert calls == 1
     assert result.document.sections[0].blocks[0].text == job.design.targets[0].baseline_task
     assert result.metrics.repair_edits == 1
+    assert not result.document.warnings

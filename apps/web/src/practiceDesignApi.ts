@@ -2,6 +2,7 @@ import type { LearningIntentApprovalOptions } from "./learningIntentTypes";
 import { apiUrl, readApiError } from "./api";
 import { authRequestInit } from "./authz";
 import type {
+  GoalFinding,
   PracticeDesign,
   PracticeDesignReadiness,
   PracticeDesignUpdate,
@@ -150,5 +151,18 @@ async function request(
   if (!response.ok) {
     throw new PracticeDesignRequestError(readApiError(payload, fallback), response.status);
   }
-  return payload as PracticeDesign;
+  const design = payload as PracticeDesign;
+  if (!design.learning_intent) return design;
+  const findings = await fetch(
+    apiUrl(`${path(design.course_id, design.lecture_id)}/intent/findings`),
+    authRequestInit(session),
+  );
+  const goalFindings = await findings.json().catch(() => null);
+  if (!findings.ok) {
+    throw new PracticeDesignRequestError(
+      readApiError(goalFindings, "Learning goal findings failed to load."),
+      findings.status,
+    );
+  }
+  return { ...design, goal_findings: goalFindings as GoalFinding[] };
 }

@@ -154,8 +154,13 @@ export function useProfessorLearningDesignReviews({
     reviewState.key === identityKey &&
     lectureIds.length > 0 &&
     lectureIds.every((lectureId) => reviewState.values[lectureId]?.approval);
+  const approvedLectureIds =
+    identityKey && reviewState.key === identityKey
+      ? lectureIds.filter((lectureId) => reviewState.values[lectureId]?.approval)
+      : [];
   return {
     allApproved,
+    approvedLectureIds,
     approve,
     error: errorState.key === identityKey ? errorState.message : null,
     reviews,

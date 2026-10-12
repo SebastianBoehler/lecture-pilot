@@ -68,25 +68,6 @@ def learner_workspace_capability(
     )
 
 
-def course_builder_capability(
-    canvas_workspace: CanvasWorkspace,
-    *,
-    course_id: str,
-    lecture_id: str,
-) -> WorkspaceCapability:
-    layout = canvas_workspace.layout
-    return WorkspaceCapability(
-        roots=(
-            CapabilityRoot("/course/source/uploads", layout.course_uploads_dir(course_id)),
-            CapabilityRoot(
-                "/course/canvas-draft",
-                layout.course_canvas_draft_dir(course_id, lecture_id),
-                writable=True,
-            ),
-        )
-    )
-
-
 def _learner_source_root(
     workspace: CanvasWorkspace, course_id: str, lecture_id: str
 ) -> CapabilityRoot:

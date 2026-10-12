@@ -96,6 +96,7 @@ export function professorFetchMock({
       }
       return json(routing);
     }
+    if (path.endsWith("/intent/findings")) return json([]);
     if (url.includes("/practice-design")) {
       const lectureId = path.match(/lectures\/([^/]+)\/practice-design/)?.[1] ?? "lecture-03";
       const design = practiceDesigns.get(lectureId);

@@ -184,15 +184,36 @@ def register_course_canvas_draft_routes(
                 lecture_id=lecture_id,
                 actor_user_id=context.user_id,
             )
-            headers = {"X-Generation-Status": generation.status} if generation else {}
-            if generation and generation.error_code:
-                headers["X-Generation-Error-Code"] = generation.error_code
+            # A running job whose lease expired lost its worker (e.g. a restart): report it
+            # as interrupted so the professor can resume instead of waiting forever.
+            interrupted = bool(
+                generation
+                and generation.status == "running"
+                and (datetime.now(UTC) - generation.updated_at).total_seconds()
+                > CANVAS_GENERATION_LEASE_SECONDS
+            )
+            headers = (
+                {"X-Generation-Status": "failed" if interrupted else generation.status}
+                if generation
+                else {}
+            )
+            if generation and (generation.error_code or interrupted):
+                headers["X-Generation-Error-Code"] = (
+                    "interrupted" if interrupted else generation.error_code
+                )
             if generation and (
-                generation.error_code == "canvas_generation_repairable_error"
+                interrupted
+                or generation.error_code == "canvas_generation_repairable_error"
                 or has_resumable_session(app.state.canvas_workspace.layout, generation)
             ):
                 headers["X-Generation-Repairable"] = "true"
-            detail = generation.error_detail if generation and generation.error_detail else str(exc)
+            detail = (
+                "Generation was interrupted; retry resumes the saved work."
+                if interrupted
+                else generation.error_detail
+                if generation and generation.error_detail
+                else str(exc)
+            )
             raise HTTPException(status_code=404, detail=detail, headers=headers) from exc
 
 

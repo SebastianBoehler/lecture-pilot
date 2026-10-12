@@ -53,17 +53,6 @@ def _section_lines(section, *, block_limit: int | None) -> list[str]:
     return lines
 
 
-def read_quality_gate(payload: dict, turn: AgentTurnInput) -> QualityGateDecision | None:
-    active_gate = turn.active_gate
-    if active_gate is None:
-        return None
-    raw_gate = payload.get("quality_gate")
-    if not isinstance(raw_gate, dict):
-        raise ProviderConfigurationError("Model omitted the active quality-gate decision.")
-    gate = QualityGateDecision.model_validate(raw_gate)
-    return validate_quality_gate_decision(gate, turn)
-
-
 def assessment_required(turn: AgentTurnInput) -> bool:
     active_gate = turn.active_gate
     context = turn.coaching_context

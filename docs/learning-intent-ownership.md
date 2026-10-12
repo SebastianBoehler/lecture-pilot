@@ -43,33 +43,24 @@ cannot silently reenter the new revision through model conversation history.
 Only professors/course managers may propose, edit, approve or convert intent.
 New routes extend `/admin/courses/{course}/lectures/{lecture}/practice-design`:
 
-- `POST /intent/proposal`: source-backed goals through native structured output.
-  An independent native scope review checks that the goals cover the lecture
-  objective. Up to three proposal/review rounds repair missing or unsupported
-  scope before requesting professor approval; semantic rounds are separate from
-  schema retries. Broader module objectives must be narrowed to these goals.
-  The scope reviewer lists exact `unsupported_goal_ids`; only those trigger full
-  proposal repair. Missing objective coverage is never a goal defect.
-  `learning_goal_objective_repair.py` narrows only an unapproved generated objective,
-  preserving every goal and planning constraint, then requires another scope review.
-  If the reviewer still objects after the repair budget, goals it names as unsupported
-  are dropped and the objective becomes the numbered outcomes (or titles, when long) of
-  the remaining reviewed goals, so an outlook lecture is never blocked by topics beyond
-  the eight-goal limit. The result stays unapproved for professor review; a proposal
-  without any supported goal still fails. A coherent proposal-time verdict is stored
-  under `builder/implementation-jobs/<lecture>/scope-reviews/` and reused by teaching
-  implementation for the identical intent, evidence, model and reviewer instructions.
+- `POST /intent/proposal`: one native structured proposal, one advisory source-support
+  review (`learning_goal_support.py`) and at most one stateless repair of goals it names.
+  The lecture objective is the numbered list of goal outcomes (titles when long), so it can
+  never promise more than the goals. Remaining findings never block: they are stored per
+  unchanged goal and served by `GET /intent/findings` as professor-facing hints.
   `learning_goal_outcomes.py` returns generated outcomes such as "understand" or
   "verstehen" for repair; stored and professor-edited goals keep the lenient validator.
 - Readiness and approval only hash confirmed source files
   (`course_builder_source_revision`); they never parse or import documents, so they
   stay fast while the course lock is shared with generation.
 - `PUT /intent`: professor edits to goal titles/outcomes, goal removal and context
-  use current source/design revisions and clear approval. Remaining teaching and
+  use current source/design revisions and clear approval; the objective is re-derived from
+  the edited goals. Remaining teaching and
   fixed-target bindings follow goal IDs; new identities require regenerated
   implementation. AI repair still cannot change approved goals. The UI retains
   at least one goal and allows its title/outcome to be overwritten.
-- `POST /intent/approve`: approve goals and explicitly selected fixed targets.
+- `POST /intent/approve`: approve goals and explicitly selected fixed targets. Approval is
+  deterministic and makes no model call.
 
 The existing full-design routes remain available for legacy reviewed designs.
 An existing full approval requires explicit conversion consent. The UI explains
@@ -128,17 +119,10 @@ tool loop rather than consuming output-schema retries by repeatedly finishing
 an unaccepted draft. Resumed sessions receive the current saved review alongside
 their history. The final validator still rechecks acceptance before completion.
 
-Teaching repair requires a native tool action until the draft is accepted.
-Thinking-only/text-only response exhaustion resumes the saved workspace within
-the same three-window limit. Invalid tool output, token truncation, content
-filters and genuine design conflicts are not covered by that continuation.
-
-Before implementation repair, a source-backed scope review checks the protected
-objective and goals. An inconsistent approved scope raises a design conflict
-with a request to edit and reapprove the learning plan, rather than spending
-teaching turns trying to change protected intent. No approval is changed by this
-check. `learning_goal_scope_review.py` owns this shared native review contract.
-The review receives objective/goals and evidence only, without fixed assessment
-tasks. Generation errors expose a categorical code alongside status. An approved
+Teaching implementation is a bounded workflow (`teaching_design_job.py`): one structured
+call per missing goal, a lecture review, one repair per flagged goal and an annotating
+review. Saved targets are the resume points. Unresolved review findings, including
+critical ones, stay attached as warnings for professor review instead of failing
+generation. No approval is changed by teaching. Generation errors expose a categorical code alongside status. An approved
 design conflict offers a direct learning-plan review action, including after
 workspace restoration, rather than another generation retry.

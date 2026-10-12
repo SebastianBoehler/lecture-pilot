@@ -6,10 +6,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from auth_helpers import install_test_source_routing_planner, professor_headers
-from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
 from lecturepilot.course_builder_source import course_builder_source_document
 from lecturepilot.source_bundle import scan_source_bundle
+from api_test_client import workspace_client as _client
 
 
 def test_nested_markdown_sources_follow_applied_lecture_schedule(tmp_path: Path) -> None:
@@ -208,15 +207,6 @@ def test_corrupt_pdf_is_rejected_before_it_reaches_the_source_index(tmp_path: Pa
 
     assert response.status_code == 400
     assert response.json()["detail"] == "File contents do not match the requested file type."
-
-
-def _client(tmp_path: Path) -> TestClient:
-    app = create_app()
-    app.state.canvas_workspace = CanvasWorkspace(
-        workspace_root=tmp_path / "workspaces",
-        material_root=tmp_path / "materials",
-    )
-    return TestClient(app)
 
 
 def _create_full_course(client: TestClient, paths: tuple[str, ...]) -> None:

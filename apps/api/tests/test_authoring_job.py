@@ -1,4 +1,3 @@
-from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models.function import FunctionModel
 import pytest
 from lecturepilot.authoring_state import AuthoringStateError
@@ -8,6 +7,7 @@ from lecturepilot.authoring_job import AuthoringJob, run_authoring_job
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_quality import CanvasQualityReviewer
 from lecturepilot.models import ProviderSettings
+from authoring_test_helpers import drafted_path, is_repair, markdown
 from practice_design_test_helpers import practice_design_for_canvas
 
 
@@ -56,31 +56,24 @@ def authoring_job(tmp_path):
     )
 
 
-async def test_authoring_agent_repairs_invalid_math_and_preserves_approved_task(tmp_path):
+VALID = (
+    '<!-- block id="explanation" type="paragraph" -->\n'
+    "A justified conclusion connects relevant evidence to the claim.\n"
+)
+
+
+async def test_section_author_repairs_invalid_math_and_preserves_approved_task(tmp_path):
     job = authoring_job(tmp_path)
-    steps = iter(
+    outputs = iter(
         [
-            (
-                "write",
-                {
-                    "path": "/draft/topic.md",
-                    "text": (
-                        '<!-- block id="explanation" type="paragraph" -->\n'
-                        "A justified conclusion connects relevant evidence to the claim.\n\n"
-                        '<!-- block id="formula" type="math" -->\n```math\n\\custom{x}\n```\n'
-                    ),
-                },
-            ),
-            ("validate", {}),
-            ("edit", {"path": "/draft/topic.md", "old": "\\custom{x}", "new": "x"}),
-            ("validate", {}),
-            ("final_result", {"ready": True}),
+            VALID + '\n<!-- block id="formula" type="math" -->\n```math\n\\custom{x}\n```\n',
+            VALID + '\n<!-- block id="formula" type="math" -->\n```math\nx\n```\n',
         ]
     )
 
     def respond(messages, info):
-        name, args = next(steps)
-        return ModelResponse(parts=[ToolCallPart(name, args)])
+        assert drafted_path(messages) == "/draft/topic.md"
+        return markdown(next(outputs))
 
     model = MeteredAuthoringModel(FunctionModel(respond), job.settings, None, job.authorize)
     result = await run_authoring_job(job, model=model)
@@ -88,43 +81,30 @@ async def test_authoring_agent_repairs_invalid_math_and_preserves_approved_task(
     assert result.document.sections[0].blocks[-1].text == "x"
     assert result.document.sections[0].blocks[0].text == job.design.targets[0].baseline_task
     assert result.metrics.validation_failures == 1
-    assert result.metrics.repair_edits == 1
+    assert not result.document.warnings
 
 
-async def test_job_resumes_saved_tools_and_draft_after_worker_failure(tmp_path):
+async def test_saved_sections_are_not_rewritten_when_a_job_resumes(tmp_path):
     job = authoring_job(tmp_path)
     calls = 0
 
-    def interrupted(messages, info):
+    class FailingReview:
+        async def complete_review(self, **kwargs):
+            raise RuntimeError("critic disconnected")
+
+    def respond(messages, info):
         nonlocal calls
         calls += 1
-        if calls == 1:
-            return ModelResponse(
-                parts=[
-                    ToolCallPart(
-                        "write",
-                        {
-                            "path": "/draft/topic.md",
-                            "text": '<!-- block id="explanation" type="paragraph" -->\nA justified conclusion connects evidence to the claim.',
-                        },
-                    )
-                ]
-            )
-        raise RuntimeError("worker disconnected")
+        return markdown(VALID)
 
-    with pytest.raises(RuntimeError, match="worker disconnected"):
-        await run_authoring_job(job, model=FunctionModel(interrupted))
+    job.reviewer = CanvasQualityReviewer(FailingReview())
+    with pytest.raises(RuntimeError, match="critic disconnected"):
+        await run_authoring_job(job, model=FunctionModel(respond))
+    assert calls == 1
 
-    def resume(messages, info):
-        assert any(
-            getattr(part, "tool_name", "") == "write"
-            for message in messages
-            for part in message.parts
-        )
-        return ModelResponse(parts=[ToolCallPart("final_result", {"ready": True})])
-
-    result = await run_authoring_job(authoring_job(tmp_path), model=FunctionModel(resume))
-    assert result.document.sections[0].blocks[-1].text.endswith("evidence to the claim.")
+    result = await run_authoring_job(authoring_job(tmp_path), model=FunctionModel(respond))
+    assert calls == 1
+    assert result.document.sections[-1].blocks[-1].text.endswith("evidence to the claim.")
     assert result.metrics.resumes == 1
 
 
@@ -141,19 +121,23 @@ async def test_resuming_changed_source_is_rejected_before_model_call(tmp_path):
         await run_authoring_job(job, model=FunctionModel(fail))
 
 
-@pytest.mark.parametrize(
-    "path", ["/etc/passwd", "/user/memories/global.md", "/evidence/../secret", "/draft/.env"]
-)
-async def test_agent_receives_denial_for_unauthorized_reads(tmp_path, path):
-    calls = 0
+async def test_open_critic_notes_get_one_repair_then_become_draft_warnings(tmp_path):
+    job = authoring_job(tmp_path)
+    repairs = 0
+
+    class Critic:
+        async def complete_review(self, *, candidate_document, **kwargs):
+            section = candidate_document.sections[0]
+            return {"issues": [{"section_id": section.id, "reason": "Explain the claim link."}]}
 
     def respond(messages, info):
-        nonlocal calls
-        calls += 1
-        if calls == 1:
-            return ModelResponse(parts=[ToolCallPart("read", {"path": path})])
-        assert messages[-1].parts[0].part_kind == "retry-prompt"
-        raise RuntimeError("denial observed")
+        nonlocal repairs
+        repairs += is_repair(messages)
+        if is_repair(messages):
+            assert "Explain the claim link." in str(messages[0].parts[-1].content)
+        return markdown(VALID)
 
-    with pytest.raises(RuntimeError, match="denial observed"):
-        await run_authoring_job(authoring_job(tmp_path), model=FunctionModel(respond))
+    job.reviewer = CanvasQualityReviewer(Critic())
+    result = await run_authoring_job(job, model=FunctionModel(respond))
+    assert repairs == 1
+    assert any("open note" in warning for warning in result.document.warnings)

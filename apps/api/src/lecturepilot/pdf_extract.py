@@ -19,10 +19,6 @@ def read_pdf_text(path: str, *, max_pages: int, max_chars: int) -> str:
     return run_bounded(_read_pdf_text, path, max_pages, max_chars)
 
 
-def read_pdf_page_range(path: str, *, start_page: int, end_page: int, max_chars: int) -> str:
-    return run_bounded(_read_pdf_page_range, path, start_page, end_page, max_chars)
-
-
 def read_pdf_page_range_result(
     path: str,
     *,

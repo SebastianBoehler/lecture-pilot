@@ -25,19 +25,6 @@ from lecturepilot.tenancy import TenantContext
 _COURSE_ACCESS_ROLES = frozenset({TenantRole.TENANT_ADMIN, TenantRole.PROFESSOR})
 
 
-def filter_accessible_courses(
-    context: TenantContext,
-    courses: list[Course],
-    *,
-    course_tenant_id: str,
-) -> list[Course]:
-    return [
-        course
-        for course in courses
-        if can_access_course(context, course=course, course_tenant_id=course_tenant_id)
-    ]
-
-
 def can_access_course(
     context: TenantContext,
     *,
@@ -57,20 +44,6 @@ def can_access_course(
         course.access_policy is CourseAccessPolicy.TUEBINGEN_ENROLLED
         and course.id in context.course_ids
     )
-
-
-def require_course_access(
-    context: TenantContext,
-    *,
-    course: Course,
-    course_tenant_id: str,
-) -> None:
-    if context.tenant_id != course_tenant_id:
-        raise HTTPException(
-            status_code=403, detail="Resource does not belong to the active tenant."
-        )
-    if not can_access_course(context, course=course, course_tenant_id=course_tenant_id):
-        raise HTTPException(status_code=403, detail="Course enrollment is required.")
 
 
 def require_course_id_access(

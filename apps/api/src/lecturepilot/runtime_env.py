@@ -7,7 +7,8 @@ from dotenv import load_dotenv
 
 
 def load_project_env() -> None:
-    if os.getenv("LECTUREPILOT_ENV", "").strip().casefold() == "production":
+    # Production uses real environment variables; tests must stay hermetic.
+    if os.getenv("LECTUREPILOT_ENV", "").strip().casefold() in {"production", "test"}:
         return
     env_path = _nearest_local_env(Path.cwd()) or _nearest_local_env(Path(__file__).resolve())
     if env_path:

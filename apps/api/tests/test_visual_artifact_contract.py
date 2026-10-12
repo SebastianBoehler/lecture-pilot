@@ -3,7 +3,6 @@ from pydantic import ValidationError
 
 from lecturepilot.canvas_component_catalog import component_block_from_payload, component_spec_issue
 from lecturepilot.canvas_models import CanvasBlock, CanvasComponentData
-from lecturepilot.component_response_schema import component_data_schema
 
 
 def test_component_catalog_accepts_composable_visual_artifact() -> None:
@@ -98,24 +97,6 @@ def test_component_catalog_rejects_incomplete_visual_plot() -> None:
     assert component_spec_issue(visual) == (
         "needs at least two finite points in every visual series."
     )
-
-
-def test_component_response_schema_exposes_visual_grammar() -> None:
-    schema = component_data_schema()
-
-    assert {"flow", "timeline", "grid", "plot"}.issubset(
-        schema["properties"]["visual_layout"]["enum"]
-    )
-    assert schema["properties"]["visual_nodes"]["maxItems"] == 12
-    assert schema["properties"]["visual_edges"]["maxItems"] == 16
-    assert schema["properties"]["visual_series"]["maxItems"] == 6
-    assert {
-        "visual_layout",
-        "visual_nodes",
-        "visual_edges",
-        "visual_series",
-        "visual_annotations",
-    }.issubset(schema["required"])
 
 
 def test_generated_component_ref_is_derived_from_backend_block_id() -> None:

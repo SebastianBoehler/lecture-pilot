@@ -6,7 +6,7 @@ See [measured results](research/2026-09-06-authoring-agent-results.md).
 
 ## Scope and acceptance
 
-Replace canvas authoring and repair orchestration with a Pydantic AI tool loop.
+Replace canvas authoring and repair orchestration with bounded Pydantic AI workflows.
 Preserve source routing, approved practice designs, source/design revision checks,
 professor publication approval, learner storage, and the explicit assessment path.
 
@@ -17,7 +17,7 @@ and teaching validation. Provider benchmarks are separate from deterministic CI.
 
 ## Ownership
 
-- Pydantic AI owns the model/tool loop, not course authority or teaching policy.
+- Pydantic AI owns model calls and structured output, not course authority or teaching policy.
 - LecturePilot supplies capability-scoped tools and independent validators.
 - Source evidence and approved instructions are read-only. Agent writes go to a
   generation-private draft staging directory, never the published canvas.
@@ -29,21 +29,19 @@ and teaching validation. Provider benchmarks are separate from deterministic CI.
 
 ## Runtime and recovery
 
-`CourseCanvasAuthor` replaces the production planner entry point. `authoring_job`
-uses the framework's native tool loop and typed completion; `authoring_workspace`
-enforces paths and compiles Markdown; `authoring_tools` runs structural and
-independent semantic checks. Completion cannot bypass these checks. Approved
-checkpoints are inserted by the backend, not rewritten by the agent. The entire
-`practice-` block-id prefix is reserved for these checkpoints. Conflicting generated
-blocks report their draft file, block id and repair action: rename ordinary content
-or remove a generated checkpoint override so the backend can insert the approved task.
+`CourseCanvasAuthor` replaces the production planner entry point. `authoring_job` runs a
+bounded per-section workflow: one Markdown call per missing section with per-section
+deterministic checks (`AuthoringWorkspace.section`), a lecture-level check, one critic pass,
+at most one repair per flagged section and an annotating pass whose remaining notes become
+draft warnings. Model calls have no tools. Approved checkpoints are inserted by the backend,
+not rewritten by the model. The entire `practice-` block-id prefix is reserved for these
+checkpoints. Colliding generated block ids are renamed lecture-wide.
 
 The private course builder directory contains:
 
 ```text
 authoring-jobs/<lecture>/<generation>/
-  session.json                 # trailing messages, history count, identity and metrics
-  history/<message-index>.json  # sealed incremental native history
+  session.json                 # job identity, completion and metrics
   evidence/*.md                # read-only normalized source sections
   draft/*.md                   # assigned editable sections
   initial-draft.json           # optional revision-checked repair seed
@@ -51,13 +49,12 @@ authoring-jobs/<lecture>/<generation>/
 authoring-metrics/<lecture>/<generation>.json
 ```
 
-History includes course content; it must stay private and follow course deletion
-and retention policy. The status response exposes only `authoring_metrics`, never
-the history. There is no global auto-evolving memory or learner-memory access.
+Drafts include course content; they must stay private and follow course deletion
+and retention policy. The status response exposes only `authoring_metrics`. There is no global auto-evolving memory or learner-memory access.
 
 Atomic writes, an exclusive job lock, existing durable generation leases, and
-source/design/ownership checks protect resume and final publication. Interrupted
-tool batches return uncertainty to the model so it reads before replaying edits.
+source/design/ownership checks protect resume and final publication. A resumed job keeps
+saved sections and only writes missing ones.
 Targeted repair uses the same worker and resumes the failed generation's history.
 Fresh framework failures with saved state also expose the existing AI repair
 action. Successive failed retries retain a direct reference to the original
@@ -82,27 +79,19 @@ There is no claim that structured output guarantees semantic correctness.
 ## Teaching implementation repair after intent approval
 
 The production implementation step uses `teaching_design_job` before canvas
-file authoring. Its persistent `read`, `write`, `edit` and `validate` tools edit one
-AI-owned target at a time. The backend binds every approved goal and target
-order, preserves fixed tasks, and verifies source and intent revisions before
-model calls and saves. Valid sibling targets survive later repairs. Exact text edits correct one unique
-AI-owned span without rewriting other tasks. Rejected unchanged drafts cannot call
-`validate` again until an edit or write changes the implementation.
+authoring: one structured call per missing approved goal, validated by
+`TeachingDesignWorkspace.write`, then one lecture review, one stateless repair per
+flagged goal and an annotating review. The backend binds every approved goal and
+target order, preserves fixed tasks, and verifies source and intent revisions before
+model calls and saves. Valid sibling targets survive repairs.
 
 Private `builder/implementation-jobs/<lecture>/<identity>/` stores `draft.json`
-and native `session.json` plus incremental `history/*.json`. Identity binds source, intent, model, starting design
-and repair context. Interrupted jobs resume saved targets and history. A cached
-review applies only to that exact draft; unchanged validation does not buy a
-second review. Publication still requires the exact-draft approval.
+and `progress.json` (goals already repaired). Identity binds source, intent, model,
+starting design and repair context. Interrupted jobs resume saved targets. A cached
+review applies only to that exact draft. Unresolved findings remain warnings.
+Publication still requires the exact-draft approval.
 
-Semantic findings are tool results, not a shared three-output retry budget.
-The current ceiling is 40 writer model turns per invocation; reviewer calls are
-separate and existing provider quotas still apply. Hitting the ceiling saves
-progress and reports an explicit resumable failure. Three framework retries
-remain for invalid completion/schema responses, not for all teaching defects.
-Metrics count writer calls, actual review rounds, rejected writes/reviews, and
-successful edits to existing targets separately. One edit may fix several
-findings; initial target creation is not counted as a repair.
+Metrics count model requests, review rounds, rejected writes and repairs.
 
 ## Learning-plan self-repair before approval
 

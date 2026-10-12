@@ -1,4 +1,4 @@
-export function isPdfAsset(path?: string | null) {
+function isPdfAsset(path?: string | null) {
   return Boolean(path?.toLowerCase().split("?")[0].endsWith(".pdf"));
 }
 

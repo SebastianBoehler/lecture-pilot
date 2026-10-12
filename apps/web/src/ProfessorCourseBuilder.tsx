@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { ProfessorLanguageVariants } from "./ProfessorLanguageVariants";
 import { ProfessorReviewStep } from "./ProfessorReviewStep";
 import { useAutomaticCanvasGeneration } from "./useAutomaticCanvasGeneration";
@@ -21,28 +22,49 @@ import { useVersionUpdateActivity } from "./VersionUpdateBoundary";
 export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
   const { t } = useI18n();
   const builder = useProfessorCourseBuilder(props);
+  // Each lecture drafts as soon as its goals are approved; the professor keeps reviewing others.
+  // A re-approved, changed plan drafts again; an unchanged failed draft waits for Retry.
+  const [draftedRevisions, setDraftedRevisions] = useState<Record<string, string>>({});
+  const waitingLectureIds = builder.generateStep.readyLectureIds.filter((id) => {
+    const progress = builder.generateStep.generationProgress.find((item) => item.lectureId === id);
+    const revision = builder.practiceDesignStep.designs[id]?.revision;
+    if (id in draftedRevisions && draftedRevisions[id] !== revision) {
+      return progress?.status !== "generating";
+    }
+    return progress
+      ? progress.status === "pending"
+      : !builder.generateStep.generatedIds.includes(id);
+  });
   useAutomaticCanvasGeneration({
     revision: JSON.stringify([
       builder.workspace?.courseId,
-      builder.practiceDesignStep.lectures.map(({ id }) => [
-        id,
-        builder.practiceDesignStep.designs[id]?.revision,
-      ]),
+      waitingLectureIds.map((id) => [id, builder.practiceDesignStep.designs[id]?.revision]),
     ]),
     ready:
-      builder.activeStep === "design" &&
+      waitingLectureIds.length > 0 &&
       builder.generateStep.canGenerate &&
       !builder.isRestoring &&
       builder.uploadStep.pendingAction === null &&
-      !builder.practiceDesignStep.preparing &&
-      builder.practiceDesignStep.pendingLectureId === null &&
-      !builder.generateStep.canvas &&
-      builder.generateStep.generationProgress.length === 0,
+      !builder.practiceDesignStep.preparing,
     start: () => {
-      builder.setActiveStep("generate");
-      void builder.generateStep.onGenerate();
+      setDraftedRevisions((current) => ({
+        ...current,
+        ...Object.fromEntries(
+          waitingLectureIds.map((id) => [id, builder.practiceDesignStep.designs[id]?.revision]),
+        ),
+      }));
+      builder.generateStep.startLectureGeneration(waitingLectureIds);
     },
   });
+  const allGoalsApproved = builder.generateStep.allGoalsApproved;
+  const wasApproved = useRef(allGoalsApproved);
+  useEffect(() => {
+    // After the last goal approval, continue to drafts; later visits to the plan stay put.
+    if (allGoalsApproved && !wasApproved.current && builder.activeStep === "design") {
+      builder.setActiveStep("generate");
+    }
+    wasApproved.current = allGoalsApproved;
+  }, [allGoalsApproved, builder]);
   const reviewLectureIds = builder.generateStep.previewLectures.map((lecture) => lecture.id);
   const learningDesign = useProfessorLearningDesignReviews({
     courseId: builder.workspace?.courseId ?? null,
@@ -57,14 +79,16 @@ export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
   );
 
   const stage = builderStage(builder.activeStep);
+  // Publish lectures that are drafted, approved and not yet live; others stay in review.
+  const publishableIds = learningDesign.approvedLectureIds.filter(
+    (id) =>
+      !builder.publishStep.lectures.some((lecture) => lecture.id === id && lecture.published) &&
+      !builder.generateStep.retryingLectureIds.has(id) &&
+      builder.generateStep.generationProgress.find((item) => item.lectureId === id)?.status !==
+        "generating",
+  );
   const canPublish =
-    builder.publishStep.canPublish &&
-    !learningDesign.saving &&
-    learningDesign.allApproved &&
-    reviewLectureIds.length > 0 &&
-    !builder.generateStep.isGenerating &&
-    builder.generateStep.retryingLectureIds.size === 0 &&
-    builder.generateStep.generationProgress.every((item) => item.status === "ready");
+    builder.publishStep.canPublish && !learningDesign.saving && publishableIds.length > 0;
   const draft = (
     <ProfessorCanvasDraftStep
       publicationAction={
@@ -72,10 +96,11 @@ export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
           <ProfessorPublishStep
             {...builder.publishStep}
             canPublish={canPublish}
+            publishableCount={publishableIds.length}
             onPublish={() => {
               if (!canPublish) return;
               builder.generateStep.onContinueToPublish();
-              void builder.publishStep.onPublish();
+              void builder.publishStep.onPublish(publishableIds);
             }}
           />
         ) : null

@@ -10,7 +10,6 @@ from lecturepilot.canvas_models import (
     CanvasDocument,
     CanvasSection,
 )
-from lecturepilot.component_response_schema import component_data_schema
 
 
 def test_existing_component_ids_are_normalized_from_stable_block_ids() -> None:
@@ -159,19 +158,6 @@ def test_component_catalog_rejects_single_mechanism_comparison() -> None:
     )
 
     assert component_spec_issue(comparison) == "needs two to four mechanism frames."
-
-
-def test_component_response_schema_exposes_new_chart_shapes() -> None:
-    schema = component_data_schema()
-    chart_types = schema["properties"]["chart_type"]["enum"]
-    control_types = schema["properties"]["control_type"]["enum"]
-    frame_properties = schema["properties"]["frames"]["items"]["properties"]
-
-    assert {"bar", "line", "scatter", "heatmap"}.issubset(chart_types)
-    assert {"buttons", "slider"}.issubset(control_types)
-    assert "control_type" in schema["required"]
-    assert "row_labels" in schema["required"]
-    assert {"points", "matrix"}.issubset(frame_properties)
 
 
 def test_component_catalog_rejects_malformed_new_chart_shapes() -> None:

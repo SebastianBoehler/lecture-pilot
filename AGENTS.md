@@ -171,42 +171,37 @@ apps/web/                 React/Vite app and UI tests
 docs/                     Architecture, workspaces, self-hosting, security notes
 deploy/                   Docker Compose starter
 integrations/tuebingen/   TUE API wrapper integration notes
-packages/                 Reserved package boundaries; no runtime code yet
-services/agent/           Reserved external-runtime boundary; runtime is in API
 ```
 
 ## Agent Harness Rules
 
-- Canvas authoring uses `CourseCanvasAuthor` and the Pydantic AI loop in
-  `authoring_job.py`; the retired legacy planner is removed. The framework owns execution, not authority or learner memory.
-- Private `builder/authoring-jobs/<lecture>/<generation>/` contains native history,
-  read-only evidence and editable draft files. Status exposes metadata from
-  `builder/authoring-metrics/`, never source-bearing histories. Keep these private.
-- Authoring tools have no shell, arbitrary network or learner-memory access.
-  Approved checkpoints are backend-inserted. Verify a critic's objection against
-  source, task, rubric and teaching: dismiss unsupported objections, repair missing
-  teaching, and escalate only confirmed approved-design conflicts. Never rewrite
-  genuine approvals. See `docs/authoring-agent-migration.md`.
-- AI-owned teaching implementation uses a persistent target-scoped `read`/`write`/`validate`
-  agent before canvas file authoring; semantic findings do not share the schema retry budget.
-  Saved targets and history resume under the same source/intent identity.
-  `teaching_history.py` removes superseded repeated source/intent prompts and validation
-  results from model context; current context, tool pairs and durable history remain intact.
-  `teaching_recovery.py` permits at most three implementation windows for temporary provider
-  failures or budgets with changed saved targets. Cancellation, stale ownership and approved
-  goal conflicts remain terminal; each window retains the existing request/token/deadline limits.
-- Learning-plan proposals and their reviewer use native-schema Pydantic AI sessions.
-  Before approval, overbroad generated objectives use objective-only repair and another scope review;
-  only reviewer-named unsupported goal IDs use full proposal repair. Intent approval requires a
-  coherent review bound to the exact intent, evidence and reviewer settings; edited or older
-  unreviewed goals are checked before approval. After the budget, drop those
-  goals and derive the objective from the remaining outcomes. Never apply objective-only repair to
-  approved intent. Revision-only checks use `course_builder_source_revision`, not document import.
-  Repair generated questions, rubrics, hints and variants before design approval;
-  missing reviewer evidence and unknown target IDs must be corrected by the reviewer.
-  Implementation output contains teaching details; the backend binds approved goal fields and
-  constraints unchanged instead of asking the provider to copy them. Schema validity is
-  not semantic truth. Do not confuse "choose one" with a uniquely correct answer.
+- Authoring contract: every lecture ends as a professor-reviewable draft or one concrete
+  question. Deterministic invariants (schema, source anchors, approved goal IDs/order,
+  backend-inserted checkpoints, math/asset validity) may block; model reviewers and critics
+  only annotate and trigger at most one targeted repair. Remaining findings are shown to the
+  professor as warnings and never fail a job. Do not add new LLM vetoes after incidents;
+  improve prompts against the golden-course benchmarks instead.
+- Workflows, not agents: goal proposal, teaching implementation and canvas authoring are fixed
+  sequences of structured calls. Repairs are stateless (current artifact + findings), never a
+  replayed transcript. Saved artifacts are the resume points.
+- Goals (`course_learning_intent_proposal.py`): one proposal, one advisory source-support review
+  (`learning_goal_support.py`), at most one targeted repair. The lecture objective is derived
+  from the goal outcomes (also after professor edits); findings attach to unchanged goals and
+  are served by `GET .../practice-design/intent/findings`. Approval is deterministic.
+- Teaching (`teaching_design_job.py`): one structured call per missing goal, bounded in parallel,
+  validated by `TeachingDesignWorkspace.write`; one lecture review; one repair per flagged goal;
+  one annotating review. AI-owned implementations keep unresolved critical findings as warnings.
+- Canvas (`authoring_job.py`): one Markdown call per missing section with per-section
+  deterministic checks; colliding generated block ids are renamed lecture-wide; one critic pass;
+  one repair per flagged section; one annotating pass whose remaining notes become draft
+  warnings. A checkpoint judge's confirmed `design_conflict` triggers exactly one teaching
+  repair. Professor repair requests regenerate only sections they name.
+- Private `builder/authoring-jobs/<lecture>/<generation>/` contains drafts and metrics.
+  Status exposes metadata from `builder/authoring-metrics/`, never source-bearing content.
+- Authoring calls have no tools, shell, network or learner-memory access. Approved checkpoints
+  are backend-inserted. Never rewrite genuine approvals. Revision-only checks use
+  `course_builder_source_revision`, not document import. Schema validity is not semantic
+  truth. Do not confuse "choose one" with a uniquely correct answer.
 
 - Keep lecture unlocks backend-enforced: `lecture.date <= today` is not a
   prompt instruction.
@@ -358,6 +353,13 @@ services/agent/           Reserved external-runtime boundary; runtime is in API
   Course management labels setup state (incomplete, partly published, published) and
   offers "Continue setup"; `writeResumeFlow` seeds the builder and backend restore picks the
   step. "Create course" there always starts empty; the builder names the course in progress.
+  Each lecture drafts as soon as its goals are approved (a changed, re-approved plan drafts
+  again); "Publish ready lectures" publishes approved, unpublished lectures independently.
+- Sharing: course management "Share" shows the course link `/courses/<id>` with a local QR code
+  and a slide image; access follows Alma/ILIAS enrollment. "Allow joining with this link" is an
+  explicit opt-in (`course_invites.py`) that creates a revocable `/join/<id>/<secret>` link;
+  joining writes an `invite` enrollment that university sync never deactivates. Unauthenticated
+  link visitors see only a generic intro; join previews show title, term and lecture count.
 
 - The canvas is the main learning surface and should remain the single ground
   truth for generated explanations, quizzes, examples, figures, and summaries.

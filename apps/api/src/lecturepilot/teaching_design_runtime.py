@@ -4,14 +4,6 @@ from lecturepilot.teaching_recovery import continue_saved_implementation
 from lecturepilot.course_learning_intent import digest
 from lecturepilot.course_practice_design_planner import ReviewedPracticeDesignProposal
 from lecturepilot.models import ProviderCapability
-from lecturepilot.authoring_models import AuthoringDesignConflict
-from lecturepilot.learning_goal_scope_review import (
-    read_scope_review,
-    review_learning_goal_scope,
-    save_coherent_scope_review,
-    scope_review_record,
-)
-from lecturepilot.practice_evidence_catalogue import evidence_catalogue
 from lecturepilot.teaching_design_job import TeachingDesignJob, run_teaching_design_job
 
 
@@ -28,7 +20,7 @@ async def _run_implementation_repair(
     repair_context,
 ):
     settings = planner.provider_registry.require_ready(
-        [ProviderCapability.CHAT, ProviderCapability.TOOL_CALLS, ProviderCapability.STRUCTURED_JSON]
+        [ProviderCapability.CHAT, ProviderCapability.STRUCTURED_JSON]
     )
     identity = digest(
         {
@@ -63,26 +55,6 @@ async def _run_implementation_repair(
     )
     async with planner._model(settings, authorize=authorize) as model:
         authorize()
-        catalogue = evidence_catalogue(source, allowed_source_paths)
-        record = scope_review_record(
-            root, intent_revision=protected_intent.revision, catalogue=catalogue, settings=settings
-        )
-        scope = read_scope_review(record)
-        if scope is None:
-            scope = await review_learning_goal_scope(
-                model=model,
-                settings=settings,
-                proposal=protected_intent,
-                catalogue=catalogue,
-            )
-            authorize()
-            save_coherent_scope_review(record, scope)
-        authorize()
-        if not scope.coherent:
-            raise AuthoringDesignConflict(
-                "The approved learning goals do not match the lecture objective. "
-                "Review and edit the learning plan, then approve its new revision: " + scope.reason
-            )
         proposal, reviewed = await run_teaching_design_job(job, model=model)
     return ReviewedPracticeDesignProposal(proposal, reviewed)
 

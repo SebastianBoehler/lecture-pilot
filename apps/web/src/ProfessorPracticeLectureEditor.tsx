@@ -6,9 +6,11 @@ import type { PracticeDesign } from "./practiceDesignTypes";
 
 export function ProfessorPracticeLectureEditor({
   draft,
+  objectiveDerived = false,
   onChange,
 }: {
   draft: PracticeDesign;
+  objectiveDerived?: boolean;
   onChange: (design: PracticeDesign) => void;
 }) {
   const { t } = useI18n();
@@ -34,14 +36,18 @@ export function ProfessorPracticeLectureEditor({
               onChange={(event) => onChange({ ...draft, lecture_title: event.target.value })}
             />
           </label>
-          <label>
-            {t("builder.design.objective")}
-            <span>{t("builder.design.objectiveHelp")}</span>
-            <textarea
-              value={draft.objective}
-              onChange={(event) => onChange({ ...draft, objective: event.target.value })}
-            />
-          </label>
+          {objectiveDerived ? (
+            <p>{t("builder.intent.objectiveDerived")}</p>
+          ) : (
+            <label>
+              {t("builder.design.objective")}
+              <span>{t("builder.design.objectiveHelp")}</span>
+              <textarea
+                value={draft.objective}
+                onChange={(event) => onChange({ ...draft, objective: event.target.value })}
+              />
+            </label>
+          )}
           <ProfessorPracticePlanningContextEditor
             context={draft.planning_context}
             onChange={(planning_context) => onChange({ ...draft, planning_context })}
