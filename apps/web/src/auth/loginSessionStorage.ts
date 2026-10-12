@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { refreshSession, SessionRefreshError } from "./sessionApi";
+import { onUnauthorized } from "../shared/sessionSignals";
 import type { LoginSession } from "../shared/types";
 
 const loginSessionKey = "lecturepilot.loginSession";
@@ -57,9 +58,11 @@ export function useStoredLoginSession() {
     };
     const timer = window.setInterval(check, SESSION_CHECK_MS);
     window.addEventListener("focus", check);
+    const stopUnauthorized = onUnauthorized(check);
     return () => {
       window.clearInterval(timer);
       window.removeEventListener("focus", check);
+      stopUnauthorized();
     };
   }, [session]);
 

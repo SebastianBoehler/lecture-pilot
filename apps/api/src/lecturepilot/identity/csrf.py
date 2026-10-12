@@ -44,6 +44,9 @@ class CsrfProtectionMiddleware(BaseHTTPMiddleware):
                 request.headers.get("x-csrf-token"),
             )
         except SessionStoreError as exc:
+            if exc.reason == "invalid_session":
+                # The session ended (revoked or unknown): tell the client to sign in again.
+                return JSONResponse(status_code=401, content={"detail": str(exc)})
             return _forbidden(str(exc))
         return await call_next(request)
 

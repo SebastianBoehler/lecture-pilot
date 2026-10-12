@@ -117,7 +117,12 @@ export function DashboardCourseWorkspaces({
       ) : null}
 
       {unavailableGroups.length ? (
-        <UnavailableCourses groups={unavailableGroups} session={session} />
+        <UnavailableCourses
+          groups={unavailableGroups}
+          // With no tutor course yet, these courses (and their request buttons) are the content.
+          initiallyOpen={availableGroups.length === 0}
+          session={session}
+        />
       ) : null}
     </>
   );
@@ -125,9 +130,11 @@ export function DashboardCourseWorkspaces({
 
 function UnavailableCourses({
   groups,
+  initiallyOpen,
   session,
 }: {
   groups: CourseWorkspaceGroup[];
+  initiallyOpen: boolean;
   session: LoginSession | null;
 }) {
   const { t } = useI18n();
@@ -136,7 +143,7 @@ function UnavailableCourses({
   );
   const support = useCourseSupportRequests(session, requestable);
   return (
-    <details className="unavailable-courses">
+    <details className="unavailable-courses" open={initiallyOpen}>
       <summary>
         <span>{t("dashboard.otherCourses")}</span>
         <span>{t("dashboard.otherCoursesCount", { count: groups.length })}</span>

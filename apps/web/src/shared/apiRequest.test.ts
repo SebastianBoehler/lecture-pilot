@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { apiRequest, ApiRequestError } from "./apiRequest";
+import { onUnauthorized } from "./sessionSignals";
 import { errorMessage } from "./errorMessage";
 import type { LoginSession } from "./types";
 
@@ -66,5 +67,18 @@ describe("errorMessage", () => {
   it("prefers the thrown error's message over the fallback", () => {
     expect(errorMessage(new Error("Exact."), "Fallback.")).toBe("Exact.");
     expect(errorMessage("not an error", "Fallback.")).toBe("Fallback.");
+  });
+
+  it("reports an ended session so the app can ask the user to sign in again", async () => {
+    stubFetch(JSON.stringify({ detail: "Session is invalid or revoked." }), 401);
+    const listener = vi.fn();
+    const stop = onUnauthorized(listener);
+
+    await expect(apiRequest(session, "/me/thing", "Thing failed.")).rejects.toBeInstanceOf(
+      ApiRequestError,
+    );
+    stop();
+
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 });
