@@ -1,14 +1,15 @@
-import { useId, useLayoutEffect, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { PlayCircle, X } from "lucide-react";
 
 import { useI18n } from "./i18n";
 import { ONBOARDING_MEDIA, onboardingChapters } from "./onboardingChapters";
+import { useModalDialog } from "./useModalDialog";
 import "./onboarding-video.css";
 
 export function OnboardingVideo() {
-  const { locale } = useI18n();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
-  const label = locale === "de" ? "Einführung ansehen" : "Watch introduction";
+  const label = t("onboardingVideo.open");
   return (
     <>
       <button
@@ -26,20 +27,15 @@ export function OnboardingVideo() {
 }
 
 function OnboardingDialog({ onClose }: { onClose: () => void }) {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const chapters = onboardingChapters(locale);
-  const dialog = useRef<HTMLDialogElement>(null);
+  const dialog = useModalDialog();
   const video = useRef<HTMLVideoElement>(null);
   const titleId = useId();
   const [time, setTime] = useState(0);
   const [error, setError] = useState(false);
   const active = Math.max(0, chapters.filter((chapter) => chapter.start <= time).length - 1);
   const chapter = chapters[active];
-  useLayoutEffect(() => {
-    const element = dialog.current!;
-    element.showModal();
-    return () => element.close();
-  }, []);
   function seek(start: number) {
     if (!video.current) return;
     video.current.currentTime = start;
@@ -50,23 +46,21 @@ function OnboardingDialog({ onClose }: { onClose: () => void }) {
       ref={dialog}
       className="onboarding-video-dialog"
       aria-labelledby={titleId}
-      onCancel={onClose}
+      aria-modal="true"
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
     >
       <header className="onboarding-video-header">
         <div>
-          <h2 id={titleId}>
-            {locale === "de" ? "LecturePilot kennenlernen" : "Getting started with LecturePilot"}
-          </h2>
-          <p>
-            {locale === "de"
-              ? "Vom ersten Kurs zur Studierendenansicht · Video auf Englisch"
-              : "From your first course to the student experience · English video"}
-          </p>
+          <h2 id={titleId}>{t("onboardingVideo.title")}</h2>
+          <p>{t("onboardingVideo.subtitle")}</p>
         </div>
         <button
           className="top-icon-button"
           type="button"
-          aria-label={locale === "de" ? "Schließen" : "Close"}
+          aria-label={t("onboardingVideo.close")}
           onClick={onClose}
         >
           <X size={20} />
@@ -76,7 +70,7 @@ function OnboardingDialog({ onClose }: { onClose: () => void }) {
         <div className="onboarding-video-player">
           <video
             ref={video}
-            aria-label={locale === "de" ? "Einführungsvideo" : "Introduction video"}
+            aria-label={t("onboardingVideo.video")}
             controls
             playsInline
             preload="metadata"
@@ -98,13 +92,7 @@ function OnboardingDialog({ onClose }: { onClose: () => void }) {
               label="Chapters"
             />
           </video>
-          {error && (
-            <p role="alert">
-              {locale === "de"
-                ? "Das Video konnte nicht geladen werden. Bitte versuchen Sie es erneut."
-                : "The video could not be loaded. Please try again."}
-            </p>
-          )}
+          {error && <p role="alert">{t("onboardingVideo.loadFailed")}</p>}
           <section className="onboarding-video-description" aria-label={chapter.title}>
             <h3>{chapter.title}</h3>
             <ul>
@@ -113,10 +101,7 @@ function OnboardingDialog({ onClose }: { onClose: () => void }) {
             </ul>
           </section>
         </div>
-        <nav
-          className="onboarding-video-chapters"
-          aria-label={locale === "de" ? "Videokapitel" : "Video chapters"}
-        >
+        <nav className="onboarding-video-chapters" aria-label={t("onboardingVideo.chapters")}>
           {chapters.map((item, index) => (
             <button
               key={item.start}

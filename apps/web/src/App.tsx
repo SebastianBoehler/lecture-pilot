@@ -200,7 +200,7 @@ function App() {
                 ? { courseTitle: workspace.course.title, lectureTitle: lesson.lecture.title }
                 : {}
             }
-            open
+            key={feedback.source}
             source={feedback.source}
             onClose={feedback.close}
           />

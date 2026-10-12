@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import { CourseAccessFields } from "./CourseAccessFields";
 import {
@@ -11,6 +11,7 @@ import {
 } from "./courseAccessStatus";
 import { dismissDialogFromBackdrop } from "./dialogBackdrop";
 import { useI18n } from "./i18n";
+import { useModalDialog } from "./useModalDialog";
 import type { CourseAccessRule, CourseAccessSaveInput } from "./courseAccessTypes";
 import type { Lecture, ManagedCourseWorkspaceResult } from "./types";
 
@@ -37,7 +38,7 @@ export function ProfessorCourseAccessDialog({
   onSave: (input: CourseAccessSaveInput) => void;
 }) {
   const { t } = useI18n();
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const dialogRef = useModalDialog();
   const titleId = useId();
   const descriptionId = useId();
   const customErrorId = useId();
@@ -54,16 +55,6 @@ export function ProfessorCourseAccessDialog({
     setInheritCourseDefault(isInherited(target));
     setConfirmUniversityMembers(false);
   }, [target]);
-
-  useLayoutEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    if (typeof dialog.showModal === "function") dialog.showModal();
-    else dialog.setAttribute("open", "");
-    return () => {
-      if (typeof dialog.close === "function" && dialog.open) dialog.close();
-    };
-  }, []);
 
   const title =
     target.kind === "course"

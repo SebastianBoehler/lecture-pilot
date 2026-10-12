@@ -9,7 +9,7 @@ describe("FeedbackDialog", () => {
   it("closes only when the dialog backdrop is clicked", () => {
     const onClose = vi.fn();
     renderWithI18n(
-      <FeedbackDialog accountType="student" context={{}} open source="manual" onClose={onClose} />,
+      <FeedbackDialog accountType="student" context={{}} source="manual" onClose={onClose} />,
     );
     const dialog = screen.getByRole("dialog", { name: /send feedback/i });
 
@@ -20,13 +20,27 @@ describe("FeedbackDialog", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
+  it("opens as a modal dialog and closes on Escape", () => {
+    const onClose = vi.fn();
+    renderWithI18n(
+      <FeedbackDialog accountType="student" context={{}} source="manual" onClose={onClose} />,
+    );
+    const dialog = screen.getByRole("dialog", { name: /send feedback/i });
+    expect(dialog).toHaveAttribute("open");
+
+    const cancel = new Event("cancel", { cancelable: true });
+    fireEvent(dialog, cancel);
+
+    expect(cancel.defaultPrevented).toBe(true);
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it("offers feedback, feature request, and bug report categories", async () => {
     const user = userEvent.setup();
     renderWithI18n(
       <FeedbackDialog
         accountType="student"
         context={{ courseTitle: "Machine Learning", lectureTitle: "Introduction" }}
-        open
         source="manual"
         onClose={vi.fn()}
       />,
