@@ -79,7 +79,6 @@ export function ProfessorLearningIntent({
         {!approved ? (
           <button
             type="button"
-            className="primary-action"
             disabled={disabled || dirty}
             onClick={() => onApprove({ fixed_target_ids: fixed })}
           >

@@ -105,7 +105,8 @@ export function ProfessorPracticeDesignStep({
             total: lectures.length,
           })}
         </span>
-        {openIntentIds.length > 1 ? (
+        {openIntentIds.length ? (
+          // The default action: approve every open, current goal set at once.
           <button type="button" className="primary-action" onClick={approveOpenIntents}>
             {t("builder.intent.approveAll", { count: openIntentIds.length })}
           </button>

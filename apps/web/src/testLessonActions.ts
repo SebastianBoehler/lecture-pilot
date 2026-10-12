@@ -42,21 +42,17 @@ export async function approveAndPublishEachLecture(user: ReturnType<typeof userE
 export async function approveAllPracticeDesigns(user: ReturnType<typeof userEvent.setup>) {
   const navigation = await screen.findByRole("navigation", { name: "Learning plan lectures" });
   const count = within(navigation).getAllByRole("button").length;
-  for (let index = 0; index < count; index += 1) {
-    // The last approval continues to drafting, which leaves the learning-plan stage.
-    if (!navigation.isConnected) return;
-    await user.click(within(navigation).getAllByRole("button")[index]);
-    const approval = screen.queryByRole("button", { name: /^approve learning goals$/i });
-    if (!approval) continue;
-    await user.click(approval);
-    await waitFor(() => {
-      if (
-        navigation.isConnected &&
-        within(navigation).queryAllByText(/^Approved$/).length !== index + 1
-      )
-        throw new Error("Approval pending");
-    });
-  }
+  // "Approve all open goals" is the default action once every lecture's goals are ready.
+  const approveAll = await screen.findByRole(
+    "button",
+    { name: `Approve all open goals (${count})` },
+    { timeout: 5_000 },
+  );
+  await user.click(approveAll);
+  await waitFor(() => {
+    if (navigation.isConnected && within(navigation).queryAllByText(/^Approved$/).length < count)
+      throw new Error("Approval pending");
+  });
 }
 
 export function soccerCanvasSection() {

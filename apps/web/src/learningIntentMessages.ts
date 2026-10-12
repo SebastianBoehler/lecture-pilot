@@ -11,7 +11,7 @@ export const learningIntentMessages = {
       "Decide what students should learn. AI develops and checks the teaching, practice and hints; you review the canvas before publication.",
     "builder.intent.approve": "Approve learning goals",
     "builder.intent.approved": "Learning goals approved",
-    "builder.intent.approveAll": "Approve all {count} open learning plans",
+    "builder.intent.approveAll": "Approve all open goals ({count})",
     "builder.intent.finding":
       "Source check: the materials may not fully support this goal. {reason} Edit or remove it, or approve it as is.",
     "builder.intent.objectiveDerived":
@@ -41,7 +41,7 @@ export const learningIntentMessages = {
       "Entscheiden Sie, was Studierende lernen sollen. Die KI entwickelt und prüft Erklärungen, Aufgaben und Hilfen. Vor der Veröffentlichung prüfen Sie den Canvas.",
     "builder.intent.approve": "Lernziele freigeben",
     "builder.intent.approved": "Lernziele freigegeben",
-    "builder.intent.approveAll": "Alle {count} offenen Lernpläne freigeben",
+    "builder.intent.approveAll": "Alle offenen Lernziele freigeben ({count})",
     "builder.intent.finding":
       "Quellenprüfung: Die Materialien stützen dieses Ziel möglicherweise nicht vollständig. {reason} Sie können es bearbeiten, entfernen oder so freigeben.",
     "builder.intent.objectiveDerived":
