@@ -19,6 +19,7 @@ import type {
   LoginSession,
   UniversityCourse,
 } from "./types";
+import { errorMessage } from "./errorMessage";
 
 export function ProfessorCoursePerformance({
   lectures,
@@ -63,7 +64,8 @@ export function ProfessorCoursePerformance({
       const summary = await getCourseAnalytics(course.id, session);
       if (version === requestVersion.current) setCourseAnalytics(summary);
     } catch (error) {
-      if (version === requestVersion.current) setAnalyticsError(errorMessage(error, "course"));
+      if (version === requestVersion.current)
+        setAnalyticsError(errorMessage(error, "Course analytics loading failed."));
     } finally {
       if (version === requestVersion.current) setLoading(false);
     }
@@ -81,7 +83,8 @@ export function ProfessorCoursePerformance({
         const summary = await getLectureAnalytics(course.id, lecture.id, session);
         if (version === requestVersion.current) setLectureAnalytics(summary);
       } catch (error) {
-        if (version === requestVersion.current) setAnalyticsError(errorMessage(error, "lecture"));
+        if (version === requestVersion.current)
+          setAnalyticsError(errorMessage(error, "Lecture analytics loading failed."));
       } finally {
         if (version === requestVersion.current) setLoading(false);
       }
@@ -199,12 +202,6 @@ function snapshotFor(
   if (selected?.lecture_id === lecture.id) return lectureSnapshot(lecture, selected);
   const rollup = course?.lectures.find((item) => item.lecture_id === lecture.id);
   return rollup ? courseLectureSnapshot(rollup) : null;
-}
-
-function errorMessage(error: unknown, scope: "course" | "lecture") {
-  return error instanceof Error
-    ? error.message
-    : `${scope === "course" ? "Course" : "Lecture"} analytics loading failed.`;
 }
 
 function isWorkspaceCourse(course: UniversityCourse, workspaceCourse: UniversityCourse) {

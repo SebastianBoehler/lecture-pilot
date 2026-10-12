@@ -1,5 +1,8 @@
 import type { CanvasDocument } from "./types";
 import { CanvasDraftRequestError } from "./canvasDraftApi";
+import { errorMessage } from "./errorMessage";
+
+const CANVAS_GENERATION_FAILED = "Canvas generation failed.";
 
 const CANVAS_DRAFT_RETRY_DELAYS_MS = [1500, 3500];
 
@@ -28,15 +31,11 @@ const wait = (delayMs: number) =>
     window.setTimeout(resolve, delayMs);
   });
 
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Canvas generation failed.";
-}
-
 export function describeCanvasGenerationError(error: unknown): {
   errorKind: CanvasGenerationErrorKind;
   message?: string;
 } {
-  const message = errorMessage(error);
+  const message = errorMessage(error, CANVAS_GENERATION_FAILED);
   const isNetworkFailure =
     error instanceof TypeError &&
     (/failed to fetch/i.test(message) ||
@@ -54,7 +53,7 @@ export function describeCanvasGenerationError(error: unknown): {
 
 function shouldRetryCanvasDraft(error: unknown) {
   if (error instanceof CanvasDraftRequestError && error.terminalGeneration) return false;
-  const message = errorMessage(error).toLowerCase();
+  const message = errorMessage(error, CANVAS_GENERATION_FAILED).toLowerCase();
   return (
     (error instanceof TypeError &&
       (message.includes("failed to fetch") ||

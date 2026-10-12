@@ -1,5 +1,4 @@
-import { apiUrl, readApiError } from "./api";
-import { authRequestInit } from "./authz";
+import { apiRequest } from "./apiRequest";
 import type {
   LearningDesignApprovalInput,
   LearningDesignReview,
@@ -57,8 +56,10 @@ async function request(
   session: LoginSession,
   init?: RequestInit,
 ): Promise<LearningDesignReview> {
-  const response = await fetch(apiUrl(requestPath), authRequestInit(session, init));
-  const payload = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(readApiError(payload, "Learning-design review failed."));
-  return payload as LearningDesignReview;
+  return apiRequest<LearningDesignReview>(
+    session,
+    requestPath,
+    "Learning-design review failed.",
+    init,
+  );
 }

@@ -8,6 +8,7 @@ import { useI18n } from "./i18n";
 import type { LearnerQuizAnswerResult } from "./analyticsApi";
 import type { LearnerQuizState } from "./learnerLessonStateTypes";
 import type { CanvasBlock } from "./types";
+import { errorMessage } from "./errorMessage";
 
 export { QuizBlock } from "./CanvasQuizBlock";
 
@@ -190,8 +191,4 @@ function splitRow(line: string) {
     .replace(/\|$/, "")
     .split("|")
     .map((cell) => cell.trim());
-}
-
-function errorMessage(reason: unknown, fallback: string) {
-  return reason instanceof Error ? reason.message : fallback;
 }
