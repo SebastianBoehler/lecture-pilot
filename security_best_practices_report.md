@@ -8,7 +8,7 @@ blocked by the operational and privacy gates below**
 
 This is the current status document. The older implementation sequence is
 preserved as a historical record in
-[`docs/security-remediation-implementation-plan.md`](docs/security-remediation-implementation-plan.md).
+the archived security remediation plan (historical, not in the repository).
 
 ## Scope and evidence
 

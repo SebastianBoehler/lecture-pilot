@@ -1,8 +1,8 @@
 # Same learning goal, different paths, independent evidence
 
 Presentation argument for Georg Martius, prepared 6 September 2026.
-This extends the [learning-science brief](2026-09-04-learning-science-presentation-brief.md)
-and [economics and scale](2026-09-06-presentation-economics.md).
+This extends the learning-science brief
+and economics and scale notes (archived presentation material).
 
 ## Recommended central framing
 
