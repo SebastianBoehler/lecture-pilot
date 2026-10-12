@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
-import tempfile
 
 from pydantic import BaseModel, Field, ValidationError
 
-from lecturepilot.durable_files import ensure_durable_directory, fsync_directory
+from lecturepilot.durable_files import atomic_write_text
 from lecturepilot.source_index_models import CourseSourceIndex
 
 
@@ -53,21 +51,5 @@ def write_lecture_source_manifest(
             if file_path in indexed
         ],
     )
-    _atomic_write(path, manifest.model_dump_json(indent=2))
+    atomic_write_text(path, manifest.model_dump_json(indent=2))
     return manifest
-
-
-def _atomic_write(path: Path, content: str) -> None:
-    ensure_durable_directory(path.parent)
-    descriptor, temporary = tempfile.mkstemp(prefix=".source-manifest-", dir=path.parent)
-    temporary_path = Path(temporary)
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            handle.write(content)
-            handle.flush()
-            os.fsync(handle.fileno())
-        temporary_path.replace(path)
-        fsync_directory(path.parent)
-    except BaseException:
-        temporary_path.unlink(missing_ok=True)
-        raise

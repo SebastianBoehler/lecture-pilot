@@ -4,22 +4,22 @@ from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from typing import Any, Protocol
 
-from lecturepilot.course_practice_design_benchmark_evaluator import (
+from practice_design_benchmark.evaluator import (
     NativePracticeDesignBenchmarkClient,
     PracticeDesignBenchmarkModelClient,
     practice_design_benchmark_messages,
     validate_practice_design_benchmark_evaluation,
 )
-from lecturepilot.course_practice_design_benchmark_fixtures import (
+from practice_design_benchmark.fixtures import (
     PracticeDesignBenchmarkFixture,
 )
-from lecturepilot.course_practice_design_benchmark_models import (
+from practice_design_benchmark.models import (
     PracticeDesignBenchmarkReviewerJudgment,
     PracticeDesignBenchmarkReviewerSpec,
     summarize_dimension_scores,
     validate_benchmark_model_independence,
 )
-from lecturepilot.course_practice_design_benchmark_report import (
+from practice_design_benchmark.report import (
     PracticeDesignBenchmarkError,
     PracticeDesignBenchmarkFixtureResult,
     PracticeDesignBenchmarkReport,
@@ -150,10 +150,14 @@ async def _run_fixture(
                 allowed_source_paths=fixture.allowed_source_paths,
             )
             results.append(
-                PracticeDesignBenchmarkReviewerResult(reviewer=reviewer, evaluation=evaluation)
+                PracticeDesignBenchmarkReviewerResult(
+                    reviewer=reviewer, evaluation=evaluation
+                )
             )
             judgments.append(
-                PracticeDesignBenchmarkReviewerJudgment(reviewer=reviewer, evaluation=evaluation)
+                PracticeDesignBenchmarkReviewerJudgment(
+                    reviewer=reviewer, evaluation=evaluation
+                )
             )
         except Exception as exc:
             results.append(

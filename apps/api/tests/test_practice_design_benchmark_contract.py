@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from lecturepilot.course_practice_design_benchmark_models import (
+from practice_design_benchmark.models import (
     BENCHMARK_DIMENSIONS,
     SCORE_ANCHORS,
     PracticeDesignBenchmarkEvaluation,

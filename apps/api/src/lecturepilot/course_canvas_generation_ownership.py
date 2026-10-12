@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-import os
 from pathlib import Path
 from uuid import uuid4
 
@@ -12,7 +11,7 @@ from lecturepilot.course_canvas_repairs import lecture_source_revision
 from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.course_practice_design_store import PracticeDesignStore
 from lecturepilot.course_update_recovery import locked_course_state
-from lecturepilot.durable_files import ensure_durable_directory, fsync_directory
+from lecturepilot.durable_files import atomic_write_text
 from lecturepilot.storage_layout import StorageLayout, safe_id
 
 
@@ -163,18 +162,7 @@ def _read(path: Path) -> CanvasGenerationOwnership | None:
 
 
 def _write(path: Path, owner: CanvasGenerationOwnership) -> None:
-    ensure_durable_directory(path.parent)
-    temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
-    try:
-        descriptor = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            handle.write(owner.model_dump_json(indent=2))
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary, path)
-        fsync_directory(path.parent)
-    finally:
-        temporary.unlink(missing_ok=True)
+    atomic_write_text(path, owner.model_dump_json(indent=2))
 
 
 def replace_generation_design(layout, ownership, design):

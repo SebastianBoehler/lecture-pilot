@@ -48,7 +48,6 @@ def delete_course_files(*, layout: StorageLayout, course_id: str) -> None:
     for parent in (
         layout.root / "users",
         layout.root / "previews" / "professors",
-        layout.root / "workspaces" / "students",
     ):
         for user_root in parent.glob("*"):
             _delete_tree(user_root / relative)

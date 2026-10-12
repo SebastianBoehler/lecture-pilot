@@ -6,7 +6,6 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from lecturepilot import learning_map as learning_maps
-from lecturepilot.canvas_learning_support import normalize_learning_support
 from lecturepilot.canvas_markdown import CanvasMarkdownError, read_document_source
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.canvas_snapshot import locked_canvas_access
@@ -114,7 +113,7 @@ def read_published_snapshot_locked(
     try:
         publication = read_publication(published_dir)
         learning_map = learning_maps.read_strict_published_learning_map(published_dir)
-        document = normalize_learning_support(read_document_source(published_dir))
+        document = read_document_source(published_dir)
     except (
         CanvasMarkdownError,
         InvalidCanvasPublicationMetadataError,

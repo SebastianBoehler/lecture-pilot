@@ -5,7 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from lecturepilot.agent_context_models import AgentConversationMessage
-from lecturepilot.coaching_episode import parse_time, record_passed_review
+from lecturepilot.coaching_episode import schedule_delayed_review
 from lecturepilot.coaching_progress import CoachingProgressStore
 from lecturepilot.coaching_state_models import (
     CoachingProgress,
@@ -107,8 +107,6 @@ def test_delayed_review_requires_exact_contract_and_aware_times() -> None:
                 "due_at": "2026-08-11T08:00:00+00:00",
             }
         )
-    with pytest.raises(ValueError, match="timezone"):
-        parse_time("2026-08-11T08:00:00")
 
 
 def test_delayed_reviews_keep_each_revision_and_stored_delay(tmp_path) -> None:
@@ -117,23 +115,21 @@ def test_delayed_reviews_keep_each_revision_and_stored_delay(tmp_path) -> None:
     first_revision = "a" * 64
     second_revision = "b" * 64
 
-    record_passed_review(
+    schedule_delayed_review(
         progress,
         gate_id="gate-1",
         gate_revision=first_revision,
         section_id="section-1",
         transfer_prompt="Apply gate 1 to changed case A.",
-        delayed_attempt=False,
         review_after_days=2,
         now=now,
     )
-    record_passed_review(
+    schedule_delayed_review(
         progress,
         gate_id="gate-1",
         gate_revision=second_revision,
         section_id="section-1-revised",
         transfer_prompt="Apply gate 1 to changed case B.",
-        delayed_attempt=False,
         review_after_days=4,
         now=now + timedelta(days=1),
     )
