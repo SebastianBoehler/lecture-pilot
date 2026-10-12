@@ -6,6 +6,8 @@ import { lazy, Suspense, type ReactNode } from "react";
 
 import { courseUpdatePath, type AppRoute } from "./shell/appRoute";
 import { CourseManagementAccessRequired } from "./professor/CourseManagementAccessRequired";
+import { PlatformAdminRequired } from "./admin/PlatformAdminRequired";
+import { isPlatformAdmin } from "./shared/authz";
 import { Dashboard } from "./dashboard/Dashboard";
 import { draftPreviewUrl } from "./lesson/draftPreviewUrl";
 import { LoginView } from "./auth/LoginView";
@@ -47,6 +49,9 @@ const ProfessorCoursePerformance = lazy(() =>
   import("./performance/ProfessorPerformanceDashboard").then((module) => ({
     default: module.ProfessorPerformanceDashboard,
   })),
+);
+const CourseDemandPage = lazy(() =>
+  import("./admin/CourseDemandPage").then((module) => ({ default: module.CourseDemandPage })),
 );
 const ProfessorUsage = lazy(() =>
   import("./performance/ProfessorUsage").then((module) => ({ default: module.ProfessorUsage })),
@@ -171,6 +176,13 @@ export function AppRoutes(props: AppRoutesProps) {
   }
   if (view === "performance" && courseManagerSession) {
     return deferred(<ProfessorCoursePerformance session={courseManagerSession} />);
+  }
+  if (view === "course-demand") {
+    return session && isPlatformAdmin(session) ? (
+      deferred(<CourseDemandPage session={session} />)
+    ) : (
+      <PlatformAdminRequired onBack={() => props.onViewChange(session ? "dashboard" : "login")} />
+    );
   }
   if (view === "usage" && courseManagerSession) {
     return deferred(<ProfessorUsage session={courseManagerSession} />);

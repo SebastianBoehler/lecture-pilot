@@ -50,6 +50,20 @@ it("puts the routed page into feedback diagnostics", async () => {
   expect(decodeURIComponent(mailto)).toContain(`Page: ${window.location.origin}/profile`);
 });
 
+it("keeps the course demand page behind the platform administrator role", async () => {
+  const user = userEvent.setup();
+  vi.stubGlobal("fetch", mockLoginFetch());
+  render(<App />);
+
+  await logIn(user);
+  expect(screen.queryByRole("button", { name: "Course demand" })).not.toBeInTheDocument();
+  window.history.pushState({}, "", "/platform/course-demand");
+  window.dispatchEvent(new PopStateEvent("popstate"));
+  expect(
+    await screen.findByRole("heading", { name: "Platform administrator required" }),
+  ).toBeInTheDocument();
+});
+
 async function logIn(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/zdv username/i), "student01");
   await user.type(screen.getByLabelText(/^password$/i), "very-secret-password");

@@ -91,6 +91,7 @@ export function useBuilderSetupSteps(deps: {
             });
       }),
     onSetupChange: deps.onSetupChange,
+    session,
     setup,
   };
 

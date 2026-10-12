@@ -56,6 +56,20 @@ it("opens the real chaptered onboarding from the lecturer guide", () => {
   expect(screen.getByRole("button", { name: /Close/i })).toBeInTheDocument();
 });
 
+it.each(["en", "de"] as const)("discloses aggregate-only course requests in %s", (locale) => {
+  render(page("privacy", locale));
+  expect(
+    screen.getByText(locale === "en" ? /never names or accounts/ : /nie Namen oder Konten/),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText(
+      locale === "en"
+        ? /Requests are deleted when your LecturePilot account is deleted/
+        : /Kontos werden auch deine Anfragen gelöscht/,
+    ),
+  ).toBeInTheDocument();
+});
+
 it.each(["en", "de"] as const)("discloses private assessment quotations in %s", (locale) => {
   render(page("privacy", locale));
   expect(

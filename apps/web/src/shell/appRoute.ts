@@ -28,6 +28,7 @@ const VIEW_PATHS: Record<Exclude<View, "lesson" | "course-link">, string> = {
   professor: "/professor/courses/new",
   performance: "/professor/performance",
   usage: "/professor/usage",
+  "course-demand": "/platform/course-demand",
   "course-management": "/professor/courses",
   changelog: "/changelog",
   "how-it-works": "/how-it-works",

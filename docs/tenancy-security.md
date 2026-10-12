@@ -6,13 +6,13 @@ authentication.
 
 ## Principals
 
-| Principal              | Authority                                                                         |
-| ---------------------- | --------------------------------------------------------------------------------- |
-| Public                 | Health/readiness checks and university login                                      |
-| Enrolled student       | Own unlocked lectures, canvas, assets, tutor turns, quiz events, readiness, reset |
-| Alma professor         | May create a course; gains no tenant-wide content access                          |
-| Course owner           | Manages only the course whose `owner_user_id` matches the session user            |
-| Platform administrator | May disable accounts; gains no course or learner-content access                   |
+| Principal              | Authority                                                                           |
+| ---------------------- | ----------------------------------------------------------------------------------- |
+| Public                 | Health/readiness checks and university login                                        |
+| Enrolled student       | Own unlocked lectures, canvas, assets, tutor turns, quiz events, readiness, reset   |
+| Alma professor         | May create a course; gains no tenant-wide content access                            |
+| Course owner           | Manages only the course whose `owner_user_id` matches the session user              |
+| Platform administrator | May disable accounts and view aggregate course demand; no course or learner content |
 
 Tutor and co-instructor delegation is not implemented. Platform course search and join requests are
 also deferred.
@@ -25,15 +25,15 @@ Production web builds do not render either development demo login.
 
 ## Route inventory
 
-| Class                       | Routes                                                                                                                                  | Required object check                                                      |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Public                      | `GET /health`, `POST /auth/login`                                                                                                       | Rate-limited; submitted credentials are never logged or returned           |
-| Self-service                | `GET /me`, learning-profile routes, `POST /auth/logout`                                                                                 | Current opaque session                                                     |
-| Platform administration     | `POST /platform/users/{id}/disable`                                                                                                     | `platform_admin`; no course-content capability                             |
-| Course discovery            | `GET /courses`, `GET /courses/{course}/lectures`                                                                                        | Database visibility or enrollment; lecture unlock server-side              |
-| Learner-only                | `POST /agent/turn*`, canvas, learning map, quiz answer, readiness, practice exams, private PPI imports, learner reset, workspace assets | Current session user plus active course enrollment; no learner ID accepted |
-| Course-owner administration | Course creation, source bundle, schedule, staged updates, draft/repair/publish, media, preview, aggregates, deletion                    | Verified non-student Alma role; exact `courses.owner_user_id` thereafter   |
-| Published course assets     | `GET /course-assets/{course}/{lecture}/{path}`                                                                                          | Course access, publication/unlock policy, confined path                    |
+| Class                       | Routes                                                                                                                                  | Required object check                                                                    |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Public                      | `GET /health`, `POST /auth/login`                                                                                                       | Rate-limited; submitted credentials are never logged or returned                         |
+| Self-service                | `GET /me`, learning-profile routes, `POST /auth/logout`, `GET\|PUT\|DELETE /me/course-support-requests`                                 | Current opaque session; course requests need a student and an own Alma/ILIAS observation |
+| Platform administration     | `POST /platform/users/{id}/disable`, `GET /platform/course-support-demand`                                                              | `platform_admin`; no course-content capability; demand is counts only                    |
+| Course discovery            | `GET /courses`, `GET /courses/{course}/lectures`                                                                                        | Database visibility or enrollment; lecture unlock server-side                            |
+| Learner-only                | `POST /agent/turn*`, canvas, learning map, quiz answer, readiness, practice exams, private PPI imports, learner reset, workspace assets | Current session user plus active course enrollment; no learner ID accepted               |
+| Course-owner administration | Course creation, source bundle, schedule, staged updates, draft/repair/publish, media, preview, aggregates, deletion                    | Verified non-student Alma role; exact `courses.owner_user_id` thereafter                 |
+| Published course assets     | `GET /course-assets/{course}/{lecture}/{path}`                                                                                          | Course access, publication/unlock policy, confined path                                  |
 
 The learner-only class includes:
 
@@ -53,6 +53,13 @@ The learner-only class includes:
 - `GET /courses/{course}/practice-exam-generations/status`
 - `GET|DELETE /courses/{course}/practice-exams/{exam}`
 - `GET /courses/{course}/practice-exams/{exam}/pdf`
+
+Course support requests reference only the session user's stored Alma/ILIAS observation
+(`source`, `external_course_id`, `term`; anything else is 404). Platform demand and the professor
+builder hint (`GET /admin/course-support-demand/match`, any professor) return tenant-scoped counts
+only: no names, usernames or user IDs. Requests live in the Postgres table
+`course_support_requests` (one row per user, source, course ID and term; `ON DELETE CASCADE` from
+`users`); audit events record only the request ID and source, never course titles.
 
 The course-owner class includes every `/admin/courses/{course}/*` route plus course deletion. Staged
 course updates compare server-computed hashes, never interpret missing upload paths as deletions,

@@ -180,8 +180,8 @@ def _match_and_link_course(
             CourseRecord.access_policy == CourseAccessPolicy.TUEBINGEN_ENROLLED.value,
         )
     ).all()
-    title_key = _course_title_key(observation.title)
-    matches = [course for course in candidates if _course_title_key(course.title) == title_key]
+    title_key = course_title_key(observation.title)
+    matches = [course for course in candidates if course_title_key(course.title) == title_key]
     if len(matches) != 1:
         return None
     external_ref = CourseExternalRefRecord(
@@ -211,7 +211,7 @@ def _match_and_link_course(
     return external_ref
 
 
-def _course_title_key(value: str) -> str:
+def course_title_key(value: str) -> str:
     normalized = unicodedata.normalize("NFKC", value).casefold()
     normalized = _MODULE_CODE_PREFIX.sub("", normalized)
     return "".join(character for character in normalized if character.isalnum())

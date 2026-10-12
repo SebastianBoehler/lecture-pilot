@@ -5,6 +5,7 @@
 @import "./dashboard/dashboard-course-workspace.css";
 @import "./dashboard/dashboard-lecture-list.css";
 @import "./dashboard/dashboard-course-status.css";
+@import "./dashboard/course-support.css";
 @import "./professor/course-sync.css";
 @import "./profile/learner-profile.css";
 @import "./profile/profile-responsive.css";
@@ -46,6 +47,7 @@
 @import "./professor/professor-learning-map-tree.css";
 @import "./performance/professor-usage.css";
 @import "./performance/professor-usage-responsive.css";
+@import "./admin/course-demand.css";
 @import "./professor/professor-walkthrough.css";
 @import "./shell/feedback.css";
 @import "./lesson/lesson.css";

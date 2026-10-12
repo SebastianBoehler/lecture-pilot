@@ -64,14 +64,21 @@
 }
 
 .unavailable-course {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: var(--color-bg-secondary);
+}
+
+.unavailable-course-heading {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
   min-width: 0;
-  border-radius: 6px;
-  padding: 10px 12px;
-  background: var(--color-bg-secondary);
 }
 
 .unavailable-course h4 {

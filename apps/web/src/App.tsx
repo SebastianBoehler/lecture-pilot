@@ -188,6 +188,7 @@ function App() {
           onOpenDashboard={() => changeView(session ? "dashboard" : "login")}
           onOpenPerformance={() => openManagedView("performance")}
           onOpenUsage={() => openManagedView("usage")}
+          onOpenCourseDemand={() => changeView("course-demand")}
           onOpenCourseManagement={() => openManagedView("course-management")}
           onOpenProfile={() => changeView("profile")}
           onOpenProfessor={() => openManagedView("professor")}
