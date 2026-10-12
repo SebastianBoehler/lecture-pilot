@@ -76,14 +76,20 @@ main() {
   ensure_build_space
 
   echo "Building document converter ${LECTUREPILOT_COMMIT_SHA}..."
-  compose build document-converter
+  compose --profile authoring build document-converter
   echo "Building API ${LECTUREPILOT_COMMIT_SHA}..."
   compose build api
   echo "Building web ${LECTUREPILOT_COMMIT_SHA}..."
   compose build web
 
-  echo "Starting the document converter..."
-  compose up -d --no-deps --no-build --wait document-converter
+  # The converter belongs to the "authoring" profile and runs only while courses are built.
+  # Refresh it when an operator left it running; otherwise leave it stopped.
+  local running_services
+  running_services="$(compose ps --status running --services)"
+  if grep -qx document-converter <<<"${running_services}"; then
+    echo "Restarting the running document converter..."
+    compose --profile authoring up -d --no-deps --no-build --wait document-converter
+  fi
 
   echo "Checking the application against the running infrastructure..."
   compose run --rm --no-deps preflight

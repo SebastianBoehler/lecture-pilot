@@ -23,8 +23,22 @@ MAX_OCR_IMAGE_BYTES = 20 * 1024 * 1024
 MAX_OCR_RESPONSE_BYTES = 128 * 1024
 
 
+CONVERTER_UNAVAILABLE_MESSAGE = (
+    "Document conversion is unavailable: the document-converter service is not running. "
+    "An operator must start the authoring services "
+    "(docker compose --profile authoring up -d) before course materials can be processed."
+)
+
+
 class DocumentConverterError(RuntimeError):
     pass
+
+
+class DocumentConverterUnavailable(DocumentConverterError):
+    """The optional authoring service is stopped or unreachable; never degrade silently."""
+
+    def __init__(self) -> None:
+        super().__init__(CONVERTER_UNAVAILABLE_MESSAGE)
 
 
 class OcrPageResult(BaseModel):
@@ -69,6 +83,8 @@ class DocumentConverterClient:
                     data={"source_path": source_path, "source_sha256": sha256},
                     files={"file": (path.name, source, "application/octet-stream")},
                 )
+        except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+            raise DocumentConverterUnavailable() from exc
         except (OSError, httpx.HTTPError) as exc:
             raise DocumentConverterError("Document converter is unavailable.") from exc
         if response.status_code != 200:
@@ -104,6 +120,8 @@ class DocumentConverterClient:
                     },
                     files={"file": (f"page-{page}.png", image, "image/png")},
                 )
+        except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+            raise DocumentConverterUnavailable() from exc
         except httpx.HTTPError as exc:
             raise DocumentConverterError("Document OCR gateway is unavailable.") from exc
         content_type = response.headers.get("content-type", "").split(";", 1)[0]

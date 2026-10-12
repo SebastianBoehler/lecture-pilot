@@ -60,8 +60,8 @@ The API package version is read from the installed package metadata.
 
 `/api/health` is the cheap process/build liveness check. `/api/ready` additionally verifies a live
 Postgres query and the isolated compiler health response; Compose requires both the build-identity
-check and runtime readiness before marking the API healthy. Neither endpoint returns connection
-details.
+check and runtime readiness before marking the API healthy. The optional document converter is not
+part of readiness. Neither endpoint returns connection details.
 
 The preflight reports missing setting names but never prints their values:
 
@@ -102,15 +102,18 @@ scripts/deploy-production.sh
 
 The deployment script checks Docker's filesystem for at least 4 GiB of free space before building,
 then builds the document converter, API, and web images one at a time. It does not rebuild the
-database, gateway, or LaTeX compiler during an application-only release. The converter starts and
-passes its healthcheck before preflight and migration run against the existing infrastructure;
-Compose then recreates the API and web services. If a build fails, incomplete BuildKit cache and
+database, gateway, or LaTeX compiler during an application-only release. A converter that an
+operator left running is recreated from the new image and must pass its healthcheck; a stopped
+converter stays stopped. Preflight and migration then run against the existing infrastructure, and
+Compose recreates the API and web services. If a build fails, incomplete BuildKit cache and
 dangling images are removed automatically; named volumes are never pruned. Old unused cache and
 images are retained for seven days after a successful release to keep one recent rollback path and
 useful dependency layers without allowing Docker storage to grow indefinitely.
 
 Compose runs the preflight as a one-shot service before database migration and API startup, with
-image-identity verification enabled. Missing or unsafe configuration and stale API images therefore
+image-identity verification enabled. In the container it also requires `LECTUREPILOT_ENV=production`
+and a PostgreSQL `DATABASE_URL`, the two conditions under which durable per-user turn, token,
+image, and concurrency quotas are enforced. Missing or unsafe configuration and stale API images therefore
 stop the deployment instead of degrading to development behavior. Rebuild infrastructure services
 explicitly only when their Dockerfile or runtime configuration changes and the host has sufficient
 headroom.
@@ -139,6 +142,31 @@ Recognized pages are cached under the course's normalized sources by page-image 
 and degraded results retry on the next parse. Without OCR the converter stays healthy and
 preserves page artifacts with one compact warning per unit (for example "OCR required but
 unavailable for 6 pages (3–5, 7, 9–10)").
+
+The converter belongs to the Compose profile `authoring` because only course building needs it.
+Start it before professors upload or confirm course materials, and stop it afterwards to return its
+memory to learners:
+
+```bash
+docker compose --env-file .env.production -f deploy/compose.yml --profile authoring up -d document-converter
+docker compose --env-file .env.production -f deploy/compose.yml stop document-converter
+```
+
+While it is stopped, source routing, schedule and goal proposals, draft generation, and image-only
+PDF page recognition fail with HTTP 503 and an explanation naming this command. Nothing falls back
+to partial text extraction.
+
+## Small-host sizing
+
+The Compose limits target one 4 GB / 2 vCPU VM: API 1 GB, LaTeX compiler 768 MB, Postgres 512 MB,
+gateway 128 MB, web 96 MB, and the document converter 1.5 GB only while the authoring profile runs.
+Container `tmpfs` usage counts against the same limits. The API runs one bounded PDF worker
+(`LECTUREPILOT_PROCESSING_WORKERS=1`, 768 MB address-space cap). The converter has 1.5 CPUs, so
+OCR uses one ONNX thread and leaves the API responsive.
+
+Inside the API, canvas draft generation (including repairs) and practice exams share two background
+generation slots. Further jobs queue instead of failing; their durable leases keep renewing and their
+status remains `running` until a slot frees. Tutor turns are not queued behind them.
 
 ## Storage and recovery
 

@@ -19,6 +19,8 @@ x-api-environment: &api-environment
   LECTUREPILOT_MAX_REQUEST_BYTES: ${LECTUREPILOT_MAX_REQUEST_BYTES:-629145600}
   LECTUREPILOT_RATE_LIMIT_ENABLED: "true"
   LECTUREPILOT_BOUNDED_PROCESSING: "true"
+  # One bounded PDF worker (768 MB address-space cap) fits beside the API inside its 1 GB limit.
+  LECTUREPILOT_PROCESSING_WORKERS: "1"
   LECTUREPILOT_LATEX_COMPILER_URL: http://latex-compiler:8080
   LECTUREPILOT_DOCUMENT_CONVERTER_URL: http://document-converter:8080
   LECTUREPILOT_MODEL: ${LECTUREPILOT_MODEL:?Set the production model}
@@ -51,6 +53,7 @@ services:
     cap_drop: [ALL]
     cap_add: [NET_BIND_SERVICE]
     security_opt: [no-new-privileges:true]
+    mem_limit: 128m
 
   api:
     image: *api-image
@@ -62,9 +65,9 @@ services:
     volumes:
       - lecturepilot-api-logs:/app/logs
       - lecturepilot-storage:/app/storage
+    # The document converter is optional (profile "authoring"); conversions fail with a clear
+    # 503 while it is stopped, and readiness does not depend on it.
     depends_on:
-      document-converter:
-        condition: service_healthy
       latex-compiler:
         condition: service_healthy
       migrate:
@@ -95,7 +98,9 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     pids_limit: 256
-    mem_limit: 2g
+    # Sized for one 4 GB / 2 vCPU host: api 1g, latex-compiler 768m, db 512m, gateway 128m,
+    # web 96m, plus document-converter 1.5g only while the authoring profile runs.
+    mem_limit: 1g
     cpus: 2
 
   latex-compiler:
@@ -123,15 +128,20 @@ services:
       retries: 5
     restart: unless-stopped
     read_only: true
+    # tmpfs pages count against mem_limit; keep room for Tectonic itself.
     tmpfs:
-      - /tmp:size=768m,mode=1777,noexec,nosuid,nodev
+      - /tmp:size=384m,mode=1777,noexec,nosuid,nodev
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     pids_limit: 64
-    mem_limit: 1g
+    mem_limit: 768m
     cpus: 1
 
   document-converter:
+    # Only needed while professors build courses (DOCX/PPTX/XLSX normalization and OCR):
+    #   docker compose --profile authoring up -d document-converter
+    #   docker compose stop document-converter
+    profiles: [authoring]
     build:
       context: ..
       dockerfile: apps/document-converter/Dockerfile
@@ -157,12 +167,14 @@ services:
     restart: unless-stopped
     read_only: true
     tmpfs:
-      - /tmp:size=1g,mode=1777,noexec,nosuid,nodev
+      - /tmp:size=512m,mode=1777,noexec,nosuid,nodev
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     pids_limit: 128
-    mem_limit: 3g
-    cpus: 2
+    mem_limit: 1536m
+    # OCR sizes its ONNX thread pool from this quota: 1.5 CPUs -> one OCR thread, leaving
+    # the API responsive on a 2 vCPU host.
+    cpus: 1.5
 
   preflight:
     image: *api-image
@@ -229,6 +241,8 @@ services:
       timeout: 3s
       retries: 10
     restart: unless-stopped
+    # Default shared_buffers (128 MB) plus per-connection work memory.
+    mem_limit: 512m
 
   web:
     build:
@@ -247,6 +261,7 @@ services:
     cap_drop: [ALL]
     cap_add: [CHOWN, DAC_OVERRIDE, SETGID, SETUID, NET_BIND_SERVICE]
     security_opt: [no-new-privileges:true]
+    mem_limit: 96m
 
 volumes:
   lecturepilot-api-logs:
