@@ -1,15 +1,23 @@
+"""One semantic critic pass over a generated lecture, batched only above a bounded size."""
+
 from __future__ import annotations
-from lecturepilot.course_teaching_instructions import (
-    media_review_instruction,
-    source_explanation_instruction,
-)
-from lecturepilot.assessment_alignment import assessment_alignment_instruction
 
 import asyncio
 import re
 from typing import Any, Protocol
 
+from lecturepilot.assessment_alignment import assessment_alignment_instruction
 from lecturepilot.canvas_models import CanvasDocument
+from lecturepilot.course_canvas_quality_checkpoints import (
+    CHECKPOINT_DECISIONS,
+    CheckpointContract,
+    checkpoint_contract_text,
+    checkpoint_contracts,
+    checkpoint_decision_error,
+    checkpoint_evidence_ids,
+    checkpoint_review_instruction,
+    verified_decisions,
+)
 from lecturepilot.course_canvas_quality_models import (
     CanvasQualityIssue,
     CanvasQualityPayload,
@@ -17,6 +25,11 @@ from lecturepilot.course_canvas_quality_models import (
 from lecturepilot.course_canvas_quality_prompt import (
     compact_quality_evidence,
     quality_review_batches,
+)
+from lecturepilot.course_practice_design_models import PracticeDesign
+from lecturepilot.course_teaching_instructions import (
+    media_review_instruction,
+    source_explanation_instruction,
 )
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.native_completion import native_completion
@@ -34,6 +47,7 @@ class CanvasQualityModelClient(Protocol):
         settings: ProviderSettings,
         source_document: CanvasDocument,
         candidate_document: CanvasDocument,
+        checkpoints: dict[str, CheckpointContract] | None = None,
     ) -> dict[str, Any]: ...
 
 
@@ -47,16 +61,22 @@ class NativeCanvasQualityClient:
         settings: ProviderSettings,
         source_document: CanvasDocument,
         candidate_document: CanvasDocument,
+        checkpoints: dict[str, CheckpointContract] | None = None,
     ) -> dict[str, Any]:
+        checkpoints = checkpoints or {}
+
         def validate(payload):
             parsed = CanvasQualityPayload.model_validate(payload)
             issues = _normalize_coordinates(parsed.issues, source_document, candidate_document)
+            for issue in issues:
+                if error := checkpoint_decision_error(issue, checkpoints):
+                    raise ValueError(error)
             return {"issues": [issue.model_dump() for issue in issues]}
 
         return await native_completion(
             settings=settings,
-            messages=_quality_messages(source_document, candidate_document),
-            response_format=canvas_quality_response_format(candidate_document),
+            messages=_quality_messages(source_document, candidate_document, checkpoints),
+            response_format=canvas_quality_response_format(candidate_document, checkpoints),
             stage="canvas_quality_review",
             tier="critic",
             recorder=self.usage_recorder,
@@ -76,15 +96,28 @@ class CanvasQualityReviewer:
         settings: ProviderSettings,
         source_document: CanvasDocument,
         candidate_document: CanvasDocument,
+        design: PracticeDesign | None = None,
     ) -> list[CanvasQualityIssue]:
+        contracts = checkpoint_contracts(design, candidate_document)
+
+        def scoped(section_ids):
+            return {k: c for k, c in contracts.items() if c.section_id in section_ids}
+
         documents = [
             candidate_document.model_copy(update={"sections": sections})
-            for sections in quality_review_batches(source_document, candidate_document)
+            for sections in quality_review_batches(
+                source_document,
+                candidate_document,
+                extra_size=lambda section: len(checkpoint_contract_text(scoped({section.id}))),
+            )
         ]
         payloads = await asyncio.gather(
             *[
                 self.model_client.complete_review(
-                    settings=settings, source_document=source_document, candidate_document=document
+                    settings=settings,
+                    source_document=source_document,
+                    candidate_document=document,
+                    checkpoints=scoped({section.id for section in document.sections}),
                 )
                 for document in documents
             ]
@@ -94,12 +127,17 @@ class CanvasQualityReviewer:
             for payload in payloads
             for issue in CanvasQualityPayload.model_validate(payload).issues
         ]
-        return _normalize_coordinates(issues, source_document, candidate_document)
+        issues = _normalize_coordinates(issues, source_document, candidate_document)
+        return verified_decisions(issues, contracts)
 
 
-def canvas_quality_response_format(candidate_document: CanvasDocument) -> dict[str, Any]:
+def canvas_quality_response_format(
+    candidate_document: CanvasDocument,
+    checkpoints: dict[str, CheckpointContract] | None = None,
+) -> dict[str, Any]:
     section_ids = [section.id for section in candidate_document.sections]
     block_ids = [block.id for section in candidate_document.sections for block in section.blocks]
+    evidence_ids = checkpoint_evidence_ids(checkpoints or {})
     return {
         "type": "json_schema",
         "json_schema": {
@@ -121,8 +159,19 @@ def canvas_quality_response_format(candidate_document: CanvasDocument) -> dict[s
                                     "enum": [None, *block_ids],
                                 },
                                 "reason": {"type": "string"},
+                                "decision": {"type": "string", "enum": list(CHECKPOINT_DECISIONS)},
+                                "evidence_ids": {
+                                    "type": "array",
+                                    "items": {"type": "string", "enum": evidence_ids or [""]},
+                                },
                             },
-                            "required": ["section_id", "block_id", "reason"],
+                            "required": [
+                                "section_id",
+                                "block_id",
+                                "reason",
+                                "decision",
+                                "evidence_ids",
+                            ],
                         },
                     }
                 },
@@ -135,7 +184,10 @@ def canvas_quality_response_format(candidate_document: CanvasDocument) -> dict[s
 def _quality_messages(
     source_document: CanvasDocument,
     candidate_document: CanvasDocument,
+    checkpoints: dict[str, CheckpointContract] | None = None,
 ) -> list[dict[str, str]]:
+    evidence = compact_quality_evidence(source_document, candidate_document)
+    contracts = checkpoint_contract_text(checkpoints or {})
     return [
         {
             "role": "system",
@@ -162,13 +214,13 @@ def _quality_messages(
                 "never construct an id from a section or source pattern. If the issue applies to "
                 "the section as a whole or no exact candidate block id applies, use null. Return "
                 "an empty issues array only when no material issue "
-                "remains." + assessment_alignment_instruction() + source_explanation_instruction()
+                "remains."
+                + checkpoint_review_instruction()
+                + assessment_alignment_instruction()
+                + source_explanation_instruction()
             ),
         },
-        {
-            "role": "user",
-            "content": compact_quality_evidence(source_document, candidate_document),
-        },
+        {"role": "user", "content": f"{evidence}\n\n{contracts}".rstrip()},
     ]
 
 

@@ -119,7 +119,12 @@ export type PracticeDesign = Readonly<{
   goal_findings?: readonly GoalFinding[];
 }>;
 
-export type GoalFinding = Readonly<{ goal_id: string; reason: string }>;
+export type GoalFinding = Readonly<{
+  goal_id: string;
+  reason: string;
+  /** "repaired_unchecked": AI revised the goal once after this note; it was not re-reviewed. */
+  status?: "open" | "repaired_unchecked";
+}>;
 
 export type PracticeDesignUpdate = Readonly<{
   goals?: LearningIntent["goals"];

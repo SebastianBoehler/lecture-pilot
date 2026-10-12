@@ -13,6 +13,7 @@ from lecturepilot.course_canvas_generation_ownership import (
 from lecturepilot.course_canvas_repairs import lecture_source_revision
 from lecturepilot.course_learning_intent_store import LearningIntentStore
 from lecturepilot.course_practice_design_models import PracticeDesignProposal
+from lecturepilot.course_practice_design_review_models import PracticeDesignReviewResult
 from lecturepilot.course_practice_design_store import PracticeDesignStale
 from lecturepilot.course_update_recovery import locked_course_state
 from lecturepilot.lecture_source_manifest import read_lecture_source_manifest
@@ -20,7 +21,9 @@ from lecturepilot.teaching_design_runtime import run_implementation_repair
 from lecturepilot.course_practice_design_store import PracticeDesignStore
 
 
-async def repair_implementation(app, *, source, design, ownership, feedback=None):
+async def repair_implementation(
+    app, *, source, design, ownership, feedback=None, reuse_review=False
+):
     intent = design.learning_intent
     if intent is None or design.approval is not None or intent.approval is None:
         raise AuthoringDesignConflict(
@@ -76,6 +79,10 @@ async def repair_implementation(app, *, source, design, ownership, feedback=None
         else None,
         protected_intent=intent,
         repair_context=feedback,
+        # A design conflict repairs the reviewed implementation without a second review.
+        initial_review=PracticeDesignReviewResult(checks=design.quality_review.checks)
+        if reuse_review and design.targets
+        else None,
     )
 
     def save():  # The course lock is a blocking file lock: wait for it off the event loop.
@@ -101,6 +108,11 @@ async def repair_implementation(app, *, source, design, ownership, feedback=None
     return await to_thread.run_sync(save)
 
 
+def review_current(design):
+    review = design.quality_review
+    return review is not None and review.practice_design_revision == design.revision
+
+
 async def author_with_implementation(
     app,
     *,
@@ -111,12 +123,7 @@ async def author_with_implementation(
     repair_context=None,
     session_generation_id=None,
 ):
-    review = design.quality_review
-    if (
-        design.learning_intent
-        and design.approval is None
-        and (review is None or review.practice_design_revision != design.revision)
-    ):
+    if design.learning_intent and design.approval is None and not review_current(design):
         design, ownership = await repair_implementation(
             app,
             source=source,
@@ -124,6 +131,7 @@ async def author_with_implementation(
             ownership=ownership,
             feedback="Repair the current implementation before authoring teaching material.",
         )
+    previous_revision = None
     for attempt in range(2):
         try:
             with authoring_scope(
@@ -133,6 +141,7 @@ async def author_with_implementation(
                     source_revision=design.source_revision,
                     session_generation_id=session_generation_id,
                     escalate_design_conflicts=attempt == 0,
+                    reuse_design_revision=previous_revision,
                 )
             ):
                 arguments = {"practice_design": design, "output_language": output_language}
@@ -147,11 +156,13 @@ async def author_with_implementation(
         except AuthoringDesignConflict as exc:
             if attempt or design.learning_intent is None or design.approval is not None:
                 raise
+            previous_revision = design.revision
             design, ownership = await repair_implementation(
                 app,
                 source=source,
                 design=design,
                 ownership=ownership,
                 feedback=str(exc),
+                reuse_review=review_current(design),
             )
     raise AssertionError("Unreachable authoring retry state.")

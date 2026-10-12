@@ -9,7 +9,6 @@ from pathlib import Path
 from lecturepilot.authoring_job import AuthoringJob, run_authoring_job
 from lecturepilot.authoring_models import AuthoringMetrics
 from lecturepilot.authoring_provider import authoring_model
-from lecturepilot.authoring_checkpoint_review import CheckpointReviewer
 from lecturepilot.canvas_models import CanvasDocument
 from lecturepilot.course_canvas_quality import CanvasQualityReviewer, NativeCanvasQualityClient
 from lecturepilot.course_content_filter import filter_source_document_for_planning
@@ -28,6 +27,8 @@ class AuthoringScope:
     report: Callable[[AuthoringMetrics], None] = lambda metrics: None
     # After one teaching repair, further checkpoint conflicts become draft warnings.
     escalate_design_conflicts: bool = True
+    # The pre-repair implementation's job; unaffected section drafts are reused from it.
+    reuse_root: Path | None = None
 
 
 _scope: ContextVar[AuthoringScope | None] = ContextVar("canvas_authoring_scope", default=None)
@@ -68,12 +69,12 @@ class CourseCanvasAuthor:
             source_revision=scope.source_revision,
             settings=settings,
             reviewer=self.reviewer,
-            checkpoint_reviewer=CheckpointReviewer(self.usage_recorder),
             output_language=output_language,
             authorize=scope.authorize,
             repair_context=repair_context,
             candidate=scope.candidate,
             escalate_design_conflicts=scope.escalate_design_conflicts,
+            reuse_root=scope.reuse_root,
             report=scope.report,
         )
         async with authoring_model(settings, self.usage_recorder, scope.authorize) as model:

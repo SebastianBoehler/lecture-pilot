@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from lecturepilot.authoring_models import AuthoringDesignConflict
+from lecturepilot.authoring_runtime import _scope as authoring_scope_var
 from lecturepilot.course_canvas_generation_ownership import (
     begin_owned_generation_source,
     revoke_generation_ownership,
@@ -56,16 +57,19 @@ async def test_confirmed_conflict_repairs_owned_implementation_and_fences_races(
         generation_id="c" * 32,
         attempt=1,
     )
-    authored = []
+    authored, scopes = [], []
 
     async def plan_canvas(source, *, practice_design, **kwargs):
         authored.append(practice_design)
+        scopes.append(authoring_scope_var.get())
         if len(authored) == 1:
             raise AuthoringDesignConflict("The generated diagnostic has contradictory counts.")
         return source
 
     async def repair(**kwargs):
         assert kwargs["protected_intent"] == design.learning_intent
+        # The design conflict reuses the implementation's single review; no second review.
+        assert kwargs["initial_review"].checks == design.quality_review.checks
         if racing == "source":
             _write_manifest(app, "b" * 64)
         if racing == "cancel":
@@ -116,6 +120,9 @@ async def test_confirmed_conflict_repairs_owned_implementation_and_fences_races(
     else:
         _, changed, changed_owner = await operation
         assert len(authored) == 2
+        # The new implementation's job reuses unaffected drafts from the pre-repair job.
+        assert scopes[0].reuse_root is None
+        assert scopes[1].reuse_root == scopes[0].root != scopes[1].root
         assert changed.learning_intent == design.learning_intent
         assert changed.revision != design.revision
         assert changed_owner.practice_design_revision == changed.revision
