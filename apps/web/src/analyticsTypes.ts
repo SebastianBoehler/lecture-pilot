@@ -9,7 +9,7 @@ export type AnalyticsOutcomeCell = {
 
 export type AnalyticsVersionStatus = "current" | "historical";
 
-export type AnalyticsOptionMetric = {
+type AnalyticsOptionMetric = {
   option_index: number;
   option_id?: string | null;
   text: string;

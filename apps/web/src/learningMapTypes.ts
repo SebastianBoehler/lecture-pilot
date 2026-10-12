@@ -33,9 +33,3 @@ export type LearningMap = {
   nodes: LearningMapNode[];
   gates: LearningMapGate[];
 };
-
-export type LearnerLearningMapGate = Pick<
-  LearningMapGate,
-  "id" | "concept_id" | "title" | "revision" | "section_id"
->;
-export type LearnerLearningMap = Omit<LearningMap, "gates"> & { gates: LearnerLearningMapGate[] };

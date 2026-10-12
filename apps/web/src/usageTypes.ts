@@ -1,4 +1,4 @@
-export type UsageTotals = {
+type UsageTotals = {
   model_requests: number;
   input_tokens: number;
   output_tokens: number;

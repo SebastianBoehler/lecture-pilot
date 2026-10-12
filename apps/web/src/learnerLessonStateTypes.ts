@@ -1,4 +1,4 @@
-export type LearnerGateStatus = "passed" | "needs_evidence";
+type LearnerGateStatus = "passed" | "needs_evidence";
 
 export type LearnerQuizState = {
   selected_index: number;

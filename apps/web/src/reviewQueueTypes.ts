@@ -11,7 +11,7 @@ export type GateReviewQueueItem = {
   due_at: string;
 };
 
-export type ReadinessReviewQueueItem = {
+type ReadinessReviewQueueItem = {
   id: string;
   kind: "readiness_repair";
   course_id: string;
