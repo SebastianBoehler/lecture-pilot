@@ -1,5 +1,7 @@
 from authoring_test_helpers import current_draft, fix_math, install_author, markdown
 from auth_helpers import professor_headers
+from approved_practice_design_helpers import revised_design, store_design
+from lecturepilot.course_practice_design_store import PracticeDesignStore
 from lecturepilot.model_client import ModelExecutionError
 from test_course_canvas_targeted_repair import (
     _TargetedRepairPlanner,
@@ -102,6 +104,10 @@ def test_approved_design_conflict_replays_as_review_required(tmp_path):
     from lecturepilot.authoring_models import AuthoringDesignConflict
 
     client, path = setup_failed_job(tmp_path)
+    layout = client.app.state.canvas_workspace.layout
+    current = PracticeDesignStore(layout).read(course_id="targeted-repair", lecture_id="lecture-01")
+    # Every task is professor-fixed (e.g. a migrated full approval): AI repair cannot help.
+    store_design(layout, revised_design(current, fixed=True))
 
     class ConflictingAuthor:
         async def plan_canvas(self, source, **kwargs):

@@ -56,9 +56,7 @@ def write_practice_design_binding(
     binding = PracticeDesignBinding(
         source_revision=design.source_revision,
         practice_design_revision=design.revision,
-        learning_intent_revision=design.learning_intent.revision
-        if design.learning_intent
-        else None,
+        learning_intent_revision=design.learning_intent.revision,
     )
     path = binding_path(canvas_dir)
     atomic_write_text(path, binding.model_dump_json(indent=2))
@@ -75,8 +73,7 @@ def validate_practice_design_binding(
         binding.source_revision != source_revision
         or design.source_revision != source_revision
         or binding.practice_design_revision != design.revision
-        or binding.learning_intent_revision
-        != (design.learning_intent.revision if design.learning_intent else None)
+        or binding.learning_intent_revision != design.learning_intent.revision
     ):
         raise PracticeDesignBindingError(
             "The practice-design binding is stale. Regenerate the draft."

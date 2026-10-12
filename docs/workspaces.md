@@ -74,7 +74,8 @@ separate authenticated solution-sheet response exposes multiple-choice keys,
 full-credit reference answers, and rubrics. `solutions.pdf` is compiled lazily
 and never replaces the answer-free `exam.pdf`.
 
-`builder/source-routing.json` is the professor-confirmed pre-generation map.
+`builder/source-routing.json` is the confirmed pre-generation map (confirmed by the
+professor, or automatically for a complete proposal that would delete no upload).
 It binds every uploaded source to one lecture, the whole course, reference-only
 storage, or exclusion, and is invalidated when either the indexed sources or
 lecture schedule changes. Per-lecture source manifests record what a completed
@@ -126,7 +127,9 @@ goals concurrently, with per-lecture status. Model calls follow provider budgets
 there is no fixed lecture or model-call concurrency ceiling. Existing plans are preserved. A lecture
 navigator shows one plan at a time, with evidence and planning details collapsed. The last required
 approval advances to Review & publish and starts generation once for that saved plan revision.
-Failed runs remain explicitly retryable. Publication still requires approval of each current draft.
+Failed runs remain explicitly retryable. Each lecture is published with one "Approve & publish"
+action that approves its exact current draft; "Approve & publish all ready" does this for every
+reviewed, unpublished draft.
 
 `builder/practice-designs/<lecture-id>.json` is the course-owned,
 source-grounded learning-plan record: lecture objective, observable targets,

@@ -1,8 +1,9 @@
 from pathlib import Path
 
-from auth_helpers import professor_headers
+from auth_helpers import approval_input, professor_headers
 from test_learning_design_review_routes import (
     _client_with_draft,
+    _publish_path,
     _review_path,
     _update_payload,
 )
@@ -31,15 +32,7 @@ def test_put_and_approve_reject_a_stale_learning_map_revision(tmp_path: Path) ->
         json=_update_payload(initial),
     )
     stale_approval = client.post(
-        f"{path}/approve",
-        headers=professor_headers(),
-        json={
-            "draft_digest": initial["draft_digest"],
-            "source_revision": initial["source_revision"],
-            "practice_design_revision": initial["practice_design_revision"],
-            "learning_map_revision": initial["learning_map"]["revision"],
-            "report_revision": initial["report"]["report_revision"],
-        },
+        _publish_path(), headers=professor_headers(), json=approval_input(initial)
     )
 
     assert stale_update.status_code == 409

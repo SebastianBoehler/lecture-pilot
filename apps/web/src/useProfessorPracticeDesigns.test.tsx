@@ -17,8 +17,7 @@ const session = {
 afterEach(() => vi.unstubAllGlobals());
 
 it("loads every lecture independently and records a 404 as absent", async () => {
-  vi.stubGlobal(
-    "fetch",
+  stubFetch(
     vi.fn((url: string) => {
       const current = design("lecture-01");
       return Promise.resolve(
@@ -34,7 +33,7 @@ it("loads every lecture independently and records a 404 as absent", async () => 
 
   await act(() => result.current.loadAll(["lecture-01", "lecture-02"]));
 
-  expect(result.current.designs).toEqual({ "lecture-01": design("lecture-01") });
+  expect(result.current.designs).toEqual({ "lecture-01": loaded(design("lecture-01")) });
   expect(result.current.error).toBeNull();
   expect(result.current.allApproved(["lecture-01", "lecture-02"])).toBe(false);
   expect(result.current.allApproved([])).toBe(false);
@@ -42,8 +41,7 @@ it("loads every lecture independently and records a 404 as absent", async () => 
 
 it("replaces only the saved lecture and reflects approval clearing", async () => {
   let saved = false;
-  vi.stubGlobal(
-    "fetch",
+  stubFetch(
     vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "PUT") {
         saved = true;
@@ -61,57 +59,12 @@ it("replaces only the saved lecture and reflects approval clearing", async () =>
 
   expect(saved).toBe(true);
   expect(result.current.designs["lecture-01"].revision).toBe("e".repeat(64));
-  expect(result.current.designs["lecture-01"].approval).toBeNull();
+  expect(result.current.designs["lecture-01"].learning_intent.approval).toBeNull();
   expect(result.current.allApproved(["lecture-01"])).toBe(false);
 });
 
-it("requests a revision-bound semantic review and stores the reviewed design", async () => {
-  const requests: string[] = [];
-  const reviewed = deferred<Response>();
-  vi.stubGlobal(
-    "fetch",
-    vi.fn((url: string, init?: RequestInit) => {
-      requests.push(`${init?.method ?? "GET"} ${url}`);
-      const current = design("lecture-01");
-      if (url.endsWith("/review")) return reviewed.promise;
-      return Promise.resolve(resourceResponse(url, current));
-    }),
-  );
-  const { result } = renderHook(() =>
-    useProfessorPracticeDesigns({ courseId: "course-1", session }),
-  );
-  await act(() => result.current.loadAll(["lecture-01"]));
-
-  let review: Promise<void>;
-  act(() => {
-    review = result.current.review("lecture-01");
-  });
-  await waitFor(() => expect(result.current.pendingAction).toBe("review"));
-  const current = design("lecture-01");
-  await act(() =>
-    reviewed.resolve(
-      response({
-        ...current,
-        quality_review: {
-          source_revision: current.source_revision,
-          practice_design_revision: current.revision,
-          checks: [],
-        },
-      }),
-    ),
-  );
-  await act(() => review!);
-
-  expect(requests).toContainEqual(expect.stringMatching(/^POST .*\/practice-design\/review$/));
-  expect(result.current.pendingAction).toBeNull();
-  expect(result.current.designs["lecture-01"].quality_review?.practice_design_revision).toBe(
-    "d".repeat(64),
-  );
-});
-
 it("requires approval revisions to match the current design", async () => {
-  vi.stubGlobal(
-    "fetch",
+  stubFetch(
     vi.fn((url: string) =>
       Promise.resolve(resourceResponse(url, design("lecture-01", "professor-demo"))),
     ),
@@ -122,17 +75,15 @@ it("requires approval revisions to match the current design", async () => {
   await act(() => result.current.loadAll(["lecture-01"]));
 
   expect(result.current.allApproved(["lecture-01"])).toBe(true);
+  const current = result.current.designs["lecture-01"];
   const mismatched = {
-    ...result.current.designs["lecture-01"],
-    approval: {
-      ...result.current.designs["lecture-01"].approval!,
-      practice_design_revision: "x".repeat(64),
+    ...current,
+    learning_intent: {
+      ...current.learning_intent,
+      approval: { ...current.learning_intent.approval!, intent_revision: "x".repeat(64) },
     },
   };
-  vi.stubGlobal(
-    "fetch",
-    vi.fn((url: string) => Promise.resolve(resourceResponse(url, mismatched))),
-  );
+  stubFetch(vi.fn((url: string) => Promise.resolve(resourceResponse(url, mismatched))));
   await act(() => result.current.loadAll(["lecture-01"]));
 
   expect(result.current.allApproved(["lecture-01"])).toBe(false);
@@ -141,8 +92,7 @@ it("requires approval revisions to match the current design", async () => {
 it("reloads a stale approval conflict and posts the refreshed revision on retry", async () => {
   const approvalRevisions: string[] = [];
   let approvalAttempts = 0;
-  vi.stubGlobal(
-    "fetch",
+  stubFetch(
     vi.fn((_url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         approvalAttempts += 1;
@@ -166,24 +116,20 @@ it("reloads a stale approval conflict and posts the refreshed revision on retry"
   );
   await act(() => result.current.loadAll(["lecture-01"]));
 
-  await act(() => result.current.approve("lecture-01"));
+  await act(() => result.current.approve("lecture-01", { fixed_target_ids: [] }));
   expect(result.current.error).toBe("The practice design or source revision changed. Reload it.");
   expect(result.current.designs["lecture-01"].revision).toBe("e".repeat(64));
 
-  await act(() => result.current.approve("lecture-01"));
+  await act(() => result.current.approve("lecture-01", { fixed_target_ids: [] }));
   expect(approvalRevisions).toEqual(["d".repeat(64), "e".repeat(64)]);
-  expect(result.current.designs["lecture-01"].approval?.practice_design_revision).toBe(
-    "e".repeat(64),
-  );
+  expect(result.current.designs["lecture-01"].revision).toBe("e".repeat(64));
+  expect(result.current.designs["lecture-01"].learning_intent.approval).not.toBeNull();
 });
 
 it("does not let an older lecture request overwrite a newer lecture state", async () => {
   const first = deferred<Response>();
   const second = deferred<Response>();
-  vi.stubGlobal(
-    "fetch",
-    vi.fn((url: string) => (url.includes("lecture-01") ? first.promise : second.promise)),
-  );
+  stubFetch(vi.fn((url: string) => (url.includes("lecture-01") ? first.promise : second.promise)));
   const { result } = renderHook(() =>
     useProfessorPracticeDesigns({ courseId: "course-1", session }),
   );
@@ -197,17 +143,14 @@ it("does not let an older lecture request overwrite a newer lecture state", asyn
   await act(() => first.resolve(response(design("lecture-01"))));
 
   expect(result.current.designs).toEqual({
-    "lecture-01": design("lecture-01"),
-    "lecture-02": design("lecture-02"),
+    "lecture-01": loaded(design("lecture-01")),
+    "lecture-02": loaded(design("lecture-02")),
   });
 });
 
 it("does not restore an unseen in-flight lecture after a full reset", async () => {
   const request = deferred<Response>();
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(() => request.promise),
-  );
+  stubFetch(vi.fn(() => request.promise));
   const { result } = renderHook(() =>
     useProfessorPracticeDesigns({ courseId: "course-1", session }),
   );
@@ -223,10 +166,7 @@ it("does not restore an unseen in-flight lecture after a full reset", async () =
 
 it("ignores an in-flight completion after unmount", async () => {
   const request = deferred<Response>();
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(() => request.promise),
-  );
+  stubFetch(vi.fn(() => request.promise));
   const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
   const { result, unmount } = renderHook(() =>
     useProfessorPracticeDesigns({ courseId: "course-1", session }),
@@ -257,6 +197,7 @@ function design(
 
 function update(current: PracticeDesign) {
   return {
+    goals: current.learning_intent.goals,
     source_revision: current.source_revision,
     practice_design_revision: current.revision,
     lecture_title: current.lecture_title,
@@ -283,15 +224,25 @@ function response(payload: unknown, status = 200) {
 
 function resourceResponse(url: string, current: PracticeDesign) {
   if (!url.endsWith("/readiness")) return response(current);
-  const approval = current.approval;
+  const intent = current.learning_intent;
   return response({
     lecture_id: current.lecture_id,
     current_source_revision: current.source_revision,
     practice_design_revision: current.revision,
-    ready_for_generation: Boolean(
-      approval &&
-      approval.source_revision === current.source_revision &&
-      approval.practice_design_revision === current.revision,
-    ),
+    ready_for_generation: Boolean(intent.approval?.intent_revision === intent.revision),
   });
+}
+
+/** Goal findings are fetched alongside every design; these designs have none. */
+function stubFetch(handler: (url: string, init?: RequestInit) => Promise<Response>) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) =>
+      url.endsWith("/intent/findings") ? Promise.resolve(response([])) : handler(url, init),
+    ),
+  );
+}
+
+function loaded(current: PracticeDesign): PracticeDesign {
+  return { ...current, goal_findings: [] };
 }

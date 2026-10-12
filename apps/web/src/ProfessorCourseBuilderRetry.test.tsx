@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { professorFetchMock } from "./ProfessorCourseBuilder.testFixtures";
 import {
-  approveAllLearningDesigns,
+  approveAndPublishEachLecture,
   approveAllPracticeDesigns,
   openProfessorDemo,
 } from "./testLessonActions";
@@ -112,9 +112,7 @@ describe("Professor course builder generation retry", () => {
         await screen.findByRole("button", { name: /continue unfinished lectures/i });
         if (!regenerate) {
           await user.click(screen.getByRole("button", { name: /review lecture canvas for 01/i }));
-          await user.click(
-            await screen.findByRole("button", { name: /approve canvas for publication/i }),
-          );
+          await user.click(await screen.findByRole("button", { name: "Approve & publish" }));
           await screen.findByText("1 of 2 approved");
           fetchMock.mockClear();
         }
@@ -157,12 +155,10 @@ describe("Professor course builder generation retry", () => {
       );
       if (terminal && !regenerate) {
         await user.click(screen.getByRole("button", { name: /review lecture canvas for 02/i }));
-        await user.click(
-          await screen.findByRole("button", { name: /approve canvas for publication/i }),
-        );
+        await user.click(await screen.findByRole("button", { name: "Approve & publish" }));
         await screen.findByText("2 of 2 approved");
-      } else await approveAllLearningDesigns(user);
-      expect(screen.getByRole("button", { name: /publish .*tutor workspace/i })).toBeEnabled();
+      } else await approveAndPublishEachLecture(user);
+      await screen.findByText(/2 tutor workspaces published|tutor workspace published/i);
     },
     // Includes cold App loading, every builder stage, and the bounded network retry.
     10_000,

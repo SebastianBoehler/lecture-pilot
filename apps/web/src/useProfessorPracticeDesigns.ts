@@ -16,7 +16,6 @@ import {
   getPracticeDesign,
   getPracticeDesignReadiness,
   proposePracticeDesign,
-  reviewPracticeDesign,
   updatePracticeDesign,
 } from "./practiceDesignApi";
 import type {
@@ -28,8 +27,7 @@ import type {
 import { isPracticeDesignReady } from "./practiceDesignReadiness";
 import type { LoginSession } from "./types";
 
-export type PracticeDesignPendingAction =
-  "load" | "propose" | "refresh" | "save" | "review" | "approve";
+export type PracticeDesignPendingAction = "load" | "propose" | "refresh" | "save" | "approve";
 
 type Token = { epoch: number; key: string; lectureId: string; operation: number };
 type Active = {
@@ -219,19 +217,11 @@ export function useProfessorPracticeDesigns({
     );
   }
 
-  async function approve(lectureId: string, intent?: LearningIntentApprovalOptions) {
+  async function approve(lectureId: string, intent: LearningIntentApprovalOptions) {
     const design = designs[lectureId];
     if (!courseId || !identityKey || !design) return;
     await mutate(lectureId, "approve", () =>
       approvePracticeDesign({ courseId, lectureId, design, session, intent }),
-    );
-  }
-
-  async function review(lectureId: string) {
-    const design = designs[lectureId];
-    if (!courseId || !identityKey || !design) return;
-    await mutate(lectureId, "review", () =>
-      reviewPracticeDesign({ courseId, lectureId, design, session }),
     );
   }
 
@@ -292,7 +282,6 @@ export function useProfessorPracticeDesigns({
     pendingLectureId: currentPending?.lectureId ?? null,
     readiness: state.key === identityKey ? state.readiness : {},
     propose,
-    review,
     reset,
     save,
   };

@@ -16,9 +16,14 @@ import {
 import { learningDesignPayload } from "./testLearningDesignReviewFixture";
 
 export function professorFetchMock({
+  autoConfirmRouting,
   staleApprovalOnceFor,
   staleRoutingAfterApproval,
-}: { staleApprovalOnceFor?: string; staleRoutingAfterApproval?: boolean } = {}) {
+}: {
+  autoConfirmRouting?: boolean;
+  staleApprovalOnceFor?: string;
+  staleRoutingAfterApproval?: boolean;
+} = {}) {
   const publishedLectures = new Set<string>();
   const deletedCourses = new Set<string>();
   const selectedMedia = new Map<string, { video: ReturnType<typeof youtubeCandidate> }>();
@@ -83,7 +88,7 @@ export function professorFetchMock({
       if (
         staleRoutingAfterApproval &&
         init?.method !== "PUT" &&
-        [...practiceDesigns.values()].some((design) => design.approval)
+        [...practiceDesigns.values()].some((design) => design.learning_intent.approval)
       ) {
         return json(
           { detail: "Source assignments changed. Regenerate and reconfirm source routing." },
@@ -94,6 +99,8 @@ export function professorFetchMock({
         const body = JSON.parse(String(init.body));
         routing = { ...routing, ...body, confirmed: true };
       }
+      // The backend accepts a complete, non-destructive first proposal by itself.
+      if (autoConfirmRouting && init?.method === "POST") routing = { ...routing, confirmed: true };
       return json(routing);
     }
     if (path.endsWith("/intent/findings")) return json([]);
@@ -107,10 +114,7 @@ export function professorFetchMock({
           current_source_revision: currentSourceRevision,
           practice_design_revision: design?.revision ?? null,
           ready_for_generation: Boolean(
-            design?.approval &&
-            design.source_revision === currentSourceRevision &&
-            design.approval.source_revision === currentSourceRevision &&
-            design.approval.practice_design_revision === design.revision,
+            design?.learning_intent.approval && design.source_revision === currentSourceRevision,
           ),
         });
       }
@@ -121,11 +125,6 @@ export function professorFetchMock({
         const proposed = practiceDesignPayload(lectureId, currentSourceRevision);
         practiceDesigns.set(lectureId, proposed);
         return json(proposed);
-      }
-      if (path.endsWith("/review") && design) {
-        const reviewed = reviewPracticeDesign(design);
-        practiceDesigns.set(lectureId, reviewed);
-        return json(reviewed);
       }
       if (path.endsWith("/approve") && design) {
         const approval = JSON.parse(String(init?.body));
@@ -142,7 +141,7 @@ export function professorFetchMock({
           staleApprovalConsumed = true;
           const changed = reviewPracticeDesign({
             ...design,
-            approval: null,
+            learning_intent: { ...design.learning_intent, approval: null },
             quality_review: null,
             revision: "f".repeat(64),
           });
@@ -160,8 +159,10 @@ export function professorFetchMock({
         const update = JSON.parse(String(init.body));
         const saved = {
           ...design,
-          ...update,
-          approval: null,
+          lecture_title: update.lecture_title,
+          objective: update.objective,
+          planning_context: update.planning_context,
+          learning_intent: { ...design.learning_intent, goals: update.goals, approval: null },
           quality_review: null,
           revision: "e".repeat(64),
         };
@@ -181,12 +182,18 @@ export function professorFetchMock({
     if (url.includes("/canvas/learning-design")) {
       const { courseId, lectureId } = courseAndLectureFromUrl(url);
       const key = `${courseId}:${lectureId}`;
-      if (init?.method === "POST") learningDesignApprovals.add(key);
       return json(learningDesignPayload(courseId, lectureId, learningDesignApprovals.has(key)));
     }
     if (url.includes("/canvas/publication"))
       return json(publicationPayload(url, publishedLectures));
-    if (url.includes("/canvas/publish")) return json(publishPayload(url, publishedLectures));
+    if (url.includes("/canvas/publish")) {
+      // Approve & publish binds the reviewed draft revisions sent in the body.
+      const { courseId, lectureId } = courseAndLectureFromUrl(url);
+      const approval = JSON.parse(String(init?.body ?? "null"));
+      if (!approval?.draft_digest) return json({ detail: "Approval is required." }, 422);
+      learningDesignApprovals.add(`${courseId}:${lectureId}`);
+      return json(publishPayload(url, publishedLectures));
+    }
     if (url.includes("/canvas/draft")) return json(canvasPayload());
     if (url.includes("/canvas")) return json(canvasPayload());
     if (url.includes("/media/youtube/search")) return json({ items: [youtubeCandidate()] });
@@ -334,11 +341,13 @@ function lectureSourceRevision(lectureId: string) {
 function approvePracticeDesign(design: PracticeDesign): PracticeDesign {
   return {
     ...design,
-    approval: {
-      approved_by: "professor-demo",
-      approved_at: "2026-08-26T12:00:00Z",
-      source_revision: design.source_revision,
-      practice_design_revision: design.revision,
+    learning_intent: {
+      ...design.learning_intent,
+      approval: {
+        approved_by: "professor-demo",
+        approved_at: "2026-08-26T12:00:00Z",
+        intent_revision: design.learning_intent.revision,
+      },
     },
   };
 }

@@ -30,6 +30,44 @@ type FixtureOptions = {
 };
 
 export function practiceDesignFixture(options: FixtureOptions = {}): PracticeDesign {
+  const design = implementationFixture(options);
+  return withLearningIntent(design, options.approvedBy ?? null);
+}
+
+/** Schema-2 intent derived from the fixture targets; approval is a professor goal approval. */
+export function withLearningIntent(
+  design: Omit<PracticeDesign, "learning_intent">,
+  approvedBy: string | null,
+): PracticeDesign {
+  const revision = "i".repeat(64);
+  return {
+    ...design,
+    learning_intent: {
+      source_revision: design.source_revision,
+      objective: design.objective,
+      planning_context: design.planning_context,
+      goals: design.targets.map((target) => ({
+        id: target.id,
+        title: target.title,
+        outcome: target.outcome,
+        outcome_anchor: target.outcome_anchor,
+        target_invariant: target.target_invariant,
+        target_invariant_anchor: target.target_invariant_anchor,
+      })),
+      fixed_targets: [],
+      revision,
+      approval: approvedBy
+        ? {
+            approved_by: approvedBy,
+            approved_at: "2026-08-26T12:00:00Z",
+            intent_revision: revision,
+          }
+        : null,
+    },
+  };
+}
+
+function implementationFixture(options: FixtureOptions): Omit<PracticeDesign, "learning_intent"> {
   const courseId = options.courseId ?? "course-1";
   const lectureId = options.lectureId ?? "lecture-03";
   const revision = options.revision ?? "d".repeat(64);
@@ -41,7 +79,7 @@ export function practiceDesignFixture(options: FixtureOptions = {}): PracticeDes
       "Choose the action with lower expected loss using the posterior probabilities.",
   };
   return {
-    schema_version: 1,
+    schema_version: 2,
     course_id: courseId,
     lecture_id: lectureId,
     lecture_title: options.lectureTitle ?? "Bayesian decision theory",
@@ -65,14 +103,6 @@ export function practiceDesignFixture(options: FixtureOptions = {}): PracticeDes
             options.reviewSeverity ?? "pass",
             sourceAnchor,
           ),
-    approval: options.approvedBy
-      ? {
-          approved_at: "2026-08-26T12:00:00Z",
-          approved_by: options.approvedBy,
-          practice_design_revision: revision,
-          source_revision: sourceRevision,
-        }
-      : null,
     targets: [
       {
         id: "posterior",

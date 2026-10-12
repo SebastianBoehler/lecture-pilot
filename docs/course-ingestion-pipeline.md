@@ -107,7 +107,12 @@ non-primary sources. This second pass catches duplicate or irrelevant sources,
 derived conversions, submissions, answer keys, grading material, and temporary
 artifacts while retaining authoritative teaching material. The professor sees
 and may edit all assignments; Canvas generation remains blocked until that
-exact source revision is confirmed. Confirmation deletes excluded uploads and their
+exact source revision is confirmed. A first (not regenerated) proposal is confirmed
+automatically, through the same confirmation, only when it needs no decision: every
+lecture has its own evidence, each scheduled primary file is routed to its lecture, no
+source needs OCR, and confirming would delete no upload
+(`course_source_routing_auto_accept.py`; no model call). It stays editable and can be
+confirmed again. Confirmation deletes excluded uploads and their
 normalized copies, except selected sources' dependencies, scheduled source files,
 and files referenced by existing canvases, learning evidence or learner workspaces.
 The source index and confirmed routing are refreshed together. A private retention

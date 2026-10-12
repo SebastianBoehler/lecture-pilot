@@ -1,3 +1,4 @@
+from lecturepilot.course_learning_design_models import LearningDesignApprovalInput
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Barrier
@@ -80,11 +81,12 @@ def test_approval_racing_real_regeneration_cannot_approve_different_draft(
             return reviews.approve(
                 course_id="design-course",
                 lecture_id="lecture-01",
-                draft_digest=current.draft_digest,
-                source_revision=current.source_revision,
-                practice_design_revision=current.practice_design_revision,
-                learning_map_revision=current.learning_map.revision,
-                report_revision=current.report.report_revision,
+                approval=LearningDesignApprovalInput(
+                    draft_digest=current.draft_digest,
+                    source_revision=current.source_revision,
+                    practice_design_revision=current.practice_design_revision,
+                    learning_map_revision=current.learning_map.revision,
+                ),
                 approved_by="professor",
             )
         except LearningDesignStaleError:

@@ -1,3 +1,4 @@
+from approved_practice_design_helpers import approved_practice_design
 from datetime import timedelta
 
 import pytest
@@ -158,7 +159,6 @@ def test_provider_assessment_drives_server_selection():
 
 def test_learning_map_preserves_binding_and_rejects_changed_approved_binding():
     from lecturepilot.learning_map import build_learning_map, LearningMap
-    from lecturepilot.course_practice_design_models import PracticeDesign
     from lecturepilot.course_practice_design_validation import (
         validate_learning_map_practice_contract,
         PracticeDesignValidationError,
@@ -166,9 +166,18 @@ def test_learning_map_preserves_binding_and_rejects_changed_approved_binding():
     from test_practice_design_canvas_hardening import _design, _generated_document
 
     original = _design()
-    payload = original.model_dump(exclude={"revision"})
+    payload = original.model_dump(
+        include={
+            "course_id",
+            "lecture_id",
+            "lecture_title",
+            "objective",
+            "source_revision",
+            "targets",
+        }
+    )
     payload["targets"][0]["hint_ladder"][0]["evidence_ids"] = ["cite-evidence"]
-    design = PracticeDesign.create(**payload)
+    design = approved_practice_design(**payload)
     learning_map = build_learning_map(_generated_document(design), design)
     assert learning_map.gates[0].hint_ladder[0].evidence_ids == ["cite-evidence"]
     validate_learning_map_practice_contract(learning_map, design)

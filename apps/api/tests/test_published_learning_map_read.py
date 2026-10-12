@@ -2,7 +2,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from auth_helpers import professor_headers, student_headers
+from auth_helpers import approval_input, professor_headers, student_headers
 from lecturepilot.app import create_app
 from lecturepilot.canvas_workspace import CanvasWorkspace
 from canvas_workspace_fixtures import write_canvas_draft
@@ -33,21 +33,10 @@ def test_learning_map_get_reads_the_approved_published_snapshot_without_rewritin
     generic_gate["transfer_prompt"] = "Apply the mechanism to a changed case."
     changed = client.put(path, headers=professor_headers(), json=update)
     assert changed.status_code == 200
-    approved = client.post(
-        f"{path}/approve",
-        headers=professor_headers(),
-        json={
-            "draft_digest": changed.json()["draft_digest"],
-            "source_revision": changed.json()["source_revision"],
-            "practice_design_revision": changed.json()["practice_design_revision"],
-            "learning_map_revision": changed.json()["learning_map"]["revision"],
-            "report_revision": changed.json()["report"]["report_revision"],
-        },
-    )
-    assert approved.status_code == 200
     published = client.post(
         "/admin/courses/martius-ml/lectures/lecture-01/canvas/publish",
         headers=professor_headers(),
+        json=approval_input(changed.json()),
     )
     assert published.status_code == 200
     map_path = (

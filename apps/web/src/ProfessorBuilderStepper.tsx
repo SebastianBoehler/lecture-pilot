@@ -2,7 +2,7 @@ import { useI18n } from "./i18n";
 import { builderStage, builderStages } from "./builderStages";
 
 export type BuilderStep =
-  "define" | "upload" | "sources" | "design" | "review" | "generate" | "publish";
+  "define" | "upload" | "sources" | "design" | "media" | "generate" | "publish";
 
 export type StepState = {
   available: boolean;
@@ -46,7 +46,7 @@ export function builderSteps({
       id: "design",
       ready: designReady,
     },
-    { available: routingReady, id: "review", ready: reviewReady },
+    { available: routingReady, id: "media", ready: reviewReady },
     {
       available: (routingReady && designReady) || canvasReady,
       id: "generate",

@@ -30,14 +30,16 @@ def goal_client(tmp_path, *, goal_count=1, findings=((),), finding_ids=None, rep
     }
     calls = []
     reviewed = 0
+    repairing = False
 
     def respond(messages, info):
-        nonlocal reviewed
+        nonlocal reviewed, repairing
         calls.append(info.model_request_parameters)
         properties = info.model_request_parameters.output_object.json_schema["properties"]
         if "findings" in properties:
             flagged = findings[min(reviewed, len(findings) - 1)]
             reviewed += 1
+            repairing = bool(finding_ids or flagged)
             return ModelResponse(
                 parts=[
                     TextPart(
@@ -53,8 +55,9 @@ def goal_client(tmp_path, *, goal_count=1, findings=((),), finding_ids=None, rep
                     )
                 ]
             )
-        if reviewed:
-            assert "current_proposal" in messages[-1].parts[0].content
+        assert ("current_proposal" in messages[-1].parts[0].content) == repairing
+        if repairing:
+            repairing = False
             if repaired:
                 goals = [{**wire["goals"][0], "outcome": repaired}, *wire["goals"][1:]]
                 return ModelResponse(parts=[TextPart(json.dumps({**wire, "goals": goals}))])
@@ -180,7 +183,6 @@ def test_source_to_goals_approval_does_not_generate_or_approve_tasks(tmp_path):
         },
     )
     assert approval.status_code == 200, approval.text
-    assert approval.json()["approval"] is None
     assert approval.json()["learning_intent"]["approval"]
     assert (
         api.get(design_path() + "/readiness", headers=professor_headers()).json()[
@@ -257,3 +259,41 @@ def test_professor_can_rename_and_remove_goals_with_fresh_approval_required(tmp_
     assert not api.get(design_path() + "/readiness", headers=professor_headers()).json()[
         "ready_for_generation"
     ]
+
+
+def test_refresh_regenerates_unapproved_goals_through_the_goal_proposal(tmp_path):
+    api, calls = goal_client(tmp_path)
+    first = api.post(design_path() + "/intent/proposal", headers=professor_headers())
+    assert first.status_code == 200, first.text
+    assert len(calls) == 2
+    cached = api.post(design_path() + "/intent/proposal", headers=professor_headers())
+    assert cached.json() == first.json()
+    assert len(calls) == 2
+    refreshed = api.post(
+        design_path() + "/intent/proposal?refresh=true", headers=professor_headers()
+    )
+    assert refreshed.status_code == 200, refreshed.text
+    # One goal proposal plus one advisory support review: no full-plan model loop.
+    assert len(calls) == 4
+    assert all("baseline_task" not in json.dumps(call.output_object.json_schema) for call in calls)
+    assert refreshed.json()["targets"] == []
+    assert refreshed.json()["learning_intent"]["approval"] is None
+
+
+def test_refresh_keeps_approved_goals(tmp_path):
+    api, calls = goal_client(tmp_path)
+    design = api.post(design_path() + "/intent/proposal", headers=professor_headers()).json()
+    approved = api.post(
+        design_path() + "/intent/approve",
+        headers=professor_headers(),
+        json={
+            "source_revision": design["source_revision"],
+            "practice_design_revision": design["revision"],
+        },
+    ).json()
+    response = api.post(
+        design_path() + "/intent/proposal?refresh=true", headers=professor_headers()
+    )
+    assert response.status_code == 409, response.text
+    assert len(calls) == 2
+    assert api.get(design_path(), headers=professor_headers()).json() == approved

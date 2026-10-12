@@ -37,15 +37,13 @@ def generation_authoring_scope(
         )
 
     session = bind_session(layout, ownership, session_generation_id)
-    design = PracticeDesignStore(layout).read(
-        course_id=ownership.course_id, lecture_id=ownership.lecture_id
+    root = session / "implementations" / ownership.practice_design_revision
+    # After a teaching repair, sections with unchanged inputs are reused from here.
+    reuse_root = (
+        session / "implementations" / reuse_design_revision
+        if reuse_design_revision is not None
+        else None
     )
-    root, reuse_root = session, None
-    if design is not None and design.learning_intent is not None:
-        root = session / "implementations" / ownership.practice_design_revision
-        if reuse_design_revision is not None:
-            # After a teaching repair, sections with unchanged inputs are reused from here.
-            reuse_root = session / "implementations" / reuse_design_revision
     return AuthoringScope(
         root=root,
         reuse_root=reuse_root,

@@ -5,7 +5,7 @@ import { builderSteps, ProfessorBuilderStepper } from "./ProfessorBuilderStepper
 import { renderWithI18n } from "./test/renderWithI18n";
 
 describe("five-stage course creation", () => {
-  it.each(["upload", "sources", "review"] as const)(
+  it.each(["upload", "sources", "media"] as const)(
     "gives %s its own appropriate stage without requiring a video",
     (activeStep) => {
       const onStepChange = vi.fn();
@@ -34,7 +34,7 @@ describe("five-stage course creation", () => {
         "04 Learning plan",
         "05 Review & publish",
       ]);
-      expect(buttons[activeStep === "review" ? 2 : 1]).toHaveAttribute("aria-current", "step");
+      expect(buttons[activeStep === "media" ? 2 : 1]).toHaveAttribute("aria-current", "step");
       expect(buttons[4]).toBeEnabled();
       fireEvent.click(buttons[4]);
       expect(onStepChange).toHaveBeenCalledWith("generate");

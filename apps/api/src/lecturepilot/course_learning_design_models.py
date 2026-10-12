@@ -11,6 +11,9 @@ from lecturepilot.learning_map import LearningMap, LearningMapEvidenceCriterion
 
 
 class LearningDesignApproval(BaseModel):
+    """Exact-draft approval. The learning map and report live in the same review file and
+    every change to them clears the approval; the intent is part of the design revision."""
+
     model_config = ConfigDict(extra="forbid")
 
     approved_by: str = Field(min_length=1, max_length=160)
@@ -18,10 +21,6 @@ class LearningDesignApproval(BaseModel):
     draft_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
     source_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     practice_design_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
-    learning_intent_revision: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
-    learning_map_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
-    report_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
-    acknowledged_warning_ids: list[str] = Field(default_factory=list, max_length=200)
 
 
 class LearningDesignReview(BaseModel):
@@ -66,8 +65,9 @@ class LearningDesignUpdate(BaseModel):
 
 
 class LearningDesignApprovalInput(BaseModel):
+    """The reviewed draft the professor approves and publishes (the report is derived)."""
+
     draft_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
     source_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     practice_design_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
     learning_map_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
-    report_revision: str = Field(pattern=r"^[a-f0-9]{64}$")

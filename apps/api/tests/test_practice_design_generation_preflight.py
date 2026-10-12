@@ -15,14 +15,14 @@ from lecturepilot.course_canvas_generation_jobs import CanvasGenerationJob
 from lecturepilot.course_canvas_repair_target import CanvasGenerationRepairTarget
 from lecturepilot.course_canvas_repairs import lecture_source_revision
 from lecturepilot.course_canvas_store import InvalidCanvasDraftError
-from lecturepilot.course_practice_design_models import PracticeDesignUpdate
 from lecturepilot.course_practice_design_store import (
     PracticeDesignApprovalRequired,
     PracticeDesignStale,
     PracticeDesignStore,
 )
 from lecturepilot.tenancy import TenantContext, TenantRole
-from practice_design_test_helpers import passing_review, proposal, source_document
+from approved_practice_design_helpers import approved_practice_design, revised_design, store_design
+from practice_design_test_helpers import proposal
 from test_learning_design_review_routes import _document
 
 
@@ -139,51 +139,26 @@ def _app(tmp_path: Path):
 
 
 def _save_design(app, *, approved: bool):
-    store = PracticeDesignStore(app.state.canvas_workspace.layout)
     revision = lecture_source_revision(
         app.state.canvas_workspace.layout, course_id=COURSE_ID, lecture_id=LECTURE_ID
     )
     assert revision is not None
-    design = store.save_proposal(
-        course_id=COURSE_ID,
-        lecture_id=LECTURE_ID,
-        source_revision=revision,
-        proposal=proposal(),
-        review=passing_review(),
-        source=source_document(SOURCE_PATH),
-        allowed_source_paths=(SOURCE_PATH,),
-        expected_design_revision=None,
-        expected_design_approval=None,
-        expected_design_review=None,
-    )
-    return (
-        store.approve(
+    return store_design(
+        app.state.canvas_workspace.layout,
+        approved_practice_design(
             course_id=COURSE_ID,
             lecture_id=LECTURE_ID,
             source_revision=revision,
-            design_revision=design.revision,
-            approved_by="prof01",
-        )
-        if approved
-        else design
+            targets=proposal().targets,
+            approved=approved,
+        ),
     )
 
 
 def _edit_design(store: PracticeDesignStore, design, app) -> None:
-    store.update(
-        course_id=COURSE_ID,
-        lecture_id=LECTURE_ID,
-        current_source_revision=design.source_revision,
-        update=PracticeDesignUpdate(
-            source_revision=design.source_revision,
-            practice_design_revision=design.revision,
-            lecture_title=design.lecture_title,
-            objective="Derive a revised conclusion from the cited evidence.",
-            planning_context=design.planning_context,
-            targets=design.targets,
-        ),
-        source=source_document(SOURCE_PATH),
-        allowed_source_paths=(SOURCE_PATH,),
+    store_design(
+        store.layout,
+        revised_design(design, objective="Derive a revised conclusion from the cited evidence."),
     )
 
 

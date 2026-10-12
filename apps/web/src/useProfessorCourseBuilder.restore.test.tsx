@@ -195,7 +195,18 @@ describe("Professor course builder restoration", () => {
     );
     await waitFor(() => expect(result.current.isRestoring).toBe(false));
 
-    await act(async () => result.current.publishStep.onPublish());
+    const approval = {
+      draft_digest: "d".repeat(64),
+      source_revision: "s".repeat(64),
+      practice_design_revision: "a".repeat(64),
+      learning_map_revision: "m".repeat(64),
+    };
+    await act(async () =>
+      result.current.publishStep.onPublish([
+        { lectureId: "lecture-01", approval },
+        { lectureId: "lecture-02", approval },
+      ]),
+    );
 
     expect(result.current.error).toBe("Publish rejected.");
     expect(

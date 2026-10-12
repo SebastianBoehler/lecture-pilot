@@ -55,10 +55,9 @@ export function useProfessorPracticeDesignGate({
       pendingAction: designs.pendingAction,
       pendingLectureId: designs.pendingLectureId,
       routingReady,
-      onApprove: (lectureId: string, intent?: LearningIntentApprovalOptions) =>
+      onApprove: (lectureId: string, intent: LearningIntentApprovalOptions) =>
         void designs.approve(lectureId, intent),
       onPropose: (lectureId: string, refresh = false) => void designs.propose(lectureId, refresh),
-      onReview: (lectureId: string) => void designs.review(lectureId),
       onReload: (lectureId: string) => designs.load(lectureId),
       onSave: (lectureId: string, update: Parameters<typeof designs.save>[1]) =>
         void designs.save(lectureId, update),

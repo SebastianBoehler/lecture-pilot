@@ -16,6 +16,7 @@ import {
   useProfessorCourseBuilder,
   type ProfessorCourseBuilderProps,
 } from "./useProfessorCourseBuilder";
+import { learningDesignApprovalInput } from "./learningDesignApi";
 import { useProfessorLearningDesignReviews } from "./useProfessorLearningDesignReviews";
 import { useVersionUpdateActivity } from "./VersionUpdateBoundary";
 
@@ -79,16 +80,28 @@ export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
   );
 
   const stage = builderStage(builder.activeStep);
-  // Publish lectures that are drafted, approved and not yet live; others stay in review.
-  const publishableIds = learningDesign.approvedLectureIds.filter(
+  // "Approve & publish" covers reviewed drafts that are not live and not regenerating.
+  const publishableIds = reviewLectureIds.filter(
     (id) =>
+      learningDesign.reviews[id] &&
       !builder.publishStep.lectures.some((lecture) => lecture.id === id && lecture.published) &&
       !builder.generateStep.retryingLectureIds.has(id) &&
-      builder.generateStep.generationProgress.find((item) => item.lectureId === id)?.status !==
-        "generating",
+      (builder.generateStep.generationProgress.find((item) => item.lectureId === id)?.status ??
+        "ready") === "ready",
   );
   const canPublish =
     builder.publishStep.canPublish && !learningDesign.saving && publishableIds.length > 0;
+  const approveAndPublish = async (ids: readonly string[]) => {
+    builder.generateStep.onContinueToPublish();
+    // Each approval binds the exact draft revisions the professor is looking at.
+    await builder.publishStep.onPublish(
+      ids.map((lectureId) => ({
+        lectureId,
+        approval: learningDesignApprovalInput(learningDesign.reviews[lectureId]),
+      })),
+    );
+    await Promise.all(ids.map((id) => learningDesign.reload(id)));
+  };
   const draft = (
     <ProfessorCanvasDraftStep
       publicationAction={
@@ -98,9 +111,7 @@ export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
             canPublish={canPublish}
             publishableCount={publishableIds.length}
             onPublish={() => {
-              if (!canPublish) return;
-              builder.generateStep.onContinueToPublish();
-              void builder.publishStep.onPublish(publishableIds);
+              if (canPublish) void approveAndPublish(publishableIds);
             }}
           />
         ) : null
@@ -131,7 +142,7 @@ export function ProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
       learningDesignErrors={learningDesign.errorsByLecture}
       onReloadLearningDesign={(id) => void learningDesign.reload(id)}
       learningDesignSaving={learningDesign.saving}
-      onApproveLearningDesign={(lectureId) => void learningDesign.approve(lectureId)}
+      onApproveLearningDesign={(lectureId) => void approveAndPublish([lectureId])}
       onSaveLearningDesign={(lectureId, update) => void learningDesign.save(lectureId, update)}
     />
   );

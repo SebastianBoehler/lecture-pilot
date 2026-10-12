@@ -8,11 +8,7 @@ import {
   type RefObject,
 } from "react";
 
-import {
-  approveLearningDesignReview,
-  getLearningDesignReview,
-  saveLearningDesignReview,
-} from "./learningDesignApi";
+import { getLearningDesignReview, saveLearningDesignReview } from "./learningDesignApi";
 import type { LearningDesignReview, LearningDesignUpdate } from "./learningDesignTypes";
 import type { LoginSession } from "./types";
 import { errorMessage } from "./errorMessage";
@@ -101,15 +97,6 @@ export function useProfessorLearningDesignReviews({
     await mutate(lectureId, () => saveLearningDesignReview(courseId, lectureId, session, update));
   }
 
-  async function approve(lectureId: string) {
-    if (!courseId || !identityKey) return;
-    const review = reviews[lectureId];
-    if (!review) return;
-    await mutate(lectureId, () =>
-      approveLearningDesignReview(courseId, lectureId, session, review),
-    );
-  }
-
   async function mutate(lectureId: string, operation: () => Promise<LearningDesignReview>) {
     const token = beginOperation(active, identityKey, lectureId);
     setPending((current) => ({
@@ -152,19 +139,7 @@ export function useProfessorLearningDesignReviews({
     }
   }
 
-  const allApproved =
-    Boolean(identityKey) &&
-    reviewState.key === identityKey &&
-    lectureIds.length > 0 &&
-    lectureIds.every((lectureId) => reviewState.values[lectureId]?.approval);
-  const approvedLectureIds =
-    identityKey && reviewState.key === identityKey
-      ? lectureIds.filter((lectureId) => reviewState.values[lectureId]?.approval)
-      : [];
   return {
-    allApproved,
-    approvedLectureIds,
-    approve,
     error: errorState.key === identityKey ? errorState.message : null,
     reviews,
     errorsByLecture: errorState.key === identityKey ? (errorState.byLecture ?? {}) : {},

@@ -64,7 +64,6 @@ export function readSavedFlow(): SavedProfessorFlow {
     const saved = window.sessionStorage.getItem(flowStorageKey);
     if (!saved) return defaultFlow;
     const parsed = JSON.parse(saved) as Partial<SavedProfessorFlow>;
-    if (isUntouchedLegacyDemoFlow(parsed)) return defaultFlow;
     return {
       ...defaultFlow,
       ...parsed,
@@ -115,22 +114,4 @@ export function clearSavedFlow() {
   try {
     window.sessionStorage.removeItem(flowStorageKey);
   } catch {}
-}
-
-function isUntouchedLegacyDemoFlow(flow: Partial<SavedProfessorFlow>) {
-  const setup = flow.setup;
-  const hasLegacyDemoValue =
-    setup?.courseTitle === "Grundlagen des Maschinellen Lernens" ||
-    setup?.lectureNumber === "03" ||
-    setup?.lectureTitle === "Bayesian Decision Theory" ||
-    setup?.firstLectureDate === "2026-06-07" ||
-    flow.query === "Bayesian decision theory machine learning Tübingen";
-  return Boolean(
-    !flow.workspace &&
-    !flow.courseReady &&
-    !flow.bundleReady &&
-    !flow.canvasReady &&
-    !flow.lectureSchedule?.length &&
-    hasLegacyDemoValue,
-  );
 }

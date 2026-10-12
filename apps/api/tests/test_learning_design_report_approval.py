@@ -1,6 +1,8 @@
 from pathlib import Path
 
-from auth_helpers import professor_headers
+import pytest
+
+from auth_helpers import approval_input, professor_headers
 from test_learning_design_review_routes import (
     _client_with_draft,
     _publish_path,
@@ -9,37 +11,48 @@ from test_learning_design_review_routes import (
 )
 
 
-def test_approval_requires_the_exact_report_without_diagnostic_acknowledgements(
-    tmp_path: Path,
-) -> None:
+def test_approve_and_publish_binds_the_exact_reviewed_draft(tmp_path: Path) -> None:
     client = _client_with_draft(tmp_path)
     review = client.get(_review_path(), headers=professor_headers()).json()
-    assert "report" in review
-    warning_ids = [item["id"] for item in review["report"]["diagnostics"]]
-    assert warning_ids
+    assert review["report"]["diagnostics"]
 
-    payload = _approval_payload(review)
+    payload = approval_input(review)
     stale = client.post(
-        f"{_review_path()}/approve",
+        _publish_path(),
         headers=professor_headers(),
-        json={**payload, "report_revision": "0" * 64},
+        json={**payload, "learning_map_revision": "0" * 64},
     )
     assert stale.status_code == 409
-    approved = client.post(
-        f"{_review_path()}/approve",
-        headers=professor_headers(),
-        json=payload,
-    )
-    assert approved.status_code == 200, approved.json()
-    approval = approved.json()["approval"]
-    assert approval["report_revision"] == review["report"]["report_revision"]
-    assert approval["acknowledged_warning_ids"] == []
+    assert client.get(_review_path(), headers=professor_headers()).json()["approval"] is None
+    published = client.post(_publish_path(), headers=professor_headers(), json=payload)
+    assert published.status_code == 200, published.json()
+    approval = client.get(_review_path(), headers=professor_headers()).json()["approval"]
+    assert set(approval) == {
+        "approved_by",
+        "approved_at",
+        "draft_digest",
+        "source_revision",
+        "practice_design_revision",
+    }
+
+
+def test_failed_publication_does_not_keep_the_approval(tmp_path: Path, monkeypatch) -> None:
+    client = _client_with_draft(tmp_path)
+    review = client.get(_review_path(), headers=professor_headers()).json()
+    workspace = client.app.state.canvas_workspace
+
+    def fail(**_kwargs):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(workspace, "publish_course_canvas_draft", fail)
+    with pytest.raises(OSError, match="disk full"):
+        client.post(_publish_path(), headers=professor_headers(), json=approval_input(review))
+    assert client.get(_review_path(), headers=professor_headers()).json() == review
 
 
 def test_update_recomputes_the_report_and_publication_keeps_it_private(tmp_path: Path) -> None:
     client = _client_with_draft(tmp_path)
     initial = client.get(_review_path(), headers=professor_headers()).json()
-    assert "report" in initial
     changed = client.put(
         _review_path(),
         headers=professor_headers(),
@@ -47,25 +60,11 @@ def test_update_recomputes_the_report_and_publication_keeps_it_private(tmp_path:
     )
     assert changed.status_code == 409, changed.json()
 
-    approved = client.post(
-        f"{_review_path()}/approve",
-        headers=professor_headers(),
-        json=_approval_payload(initial),
+    published = client.post(
+        _publish_path(), headers=professor_headers(), json=approval_input(initial)
     )
-    assert approved.status_code == 200, approved.json()
-    published = client.post(_publish_path(), headers=professor_headers())
     assert published.status_code == 200, published.json()
     published_dir = client.app.state.canvas_workspace.course_canvas_store.path(
         "design-course", "lecture-01"
     )
     assert not (published_dir / "learning-design.json").exists()
-
-
-def _approval_payload(review: dict) -> dict:
-    return {
-        "draft_digest": review["draft_digest"],
-        "source_revision": review["source_revision"],
-        "practice_design_revision": review["practice_design_revision"],
-        "learning_map_revision": review["learning_map"]["revision"],
-        "report_revision": review["report"]["report_revision"],
-    }

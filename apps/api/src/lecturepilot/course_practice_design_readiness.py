@@ -24,18 +24,8 @@ class PracticeDesignReadiness(StrictPracticeDesignModel):
         source_revision: str,
         design: PracticeDesign | None,
     ) -> "PracticeDesignReadiness":
-        approval = design.approval if design is not None else None
         ready = bool(
-            design
-            and design.source_revision == source_revision
-            and (
-                (approval is None and has_approved_intent(design))
-                or (
-                    approval
-                    and approval.source_revision == source_revision
-                    and approval.practice_design_revision == design.revision
-                )
-            )
+            design and design.source_revision == source_revision and has_approved_intent(design)
         )
         return cls(
             lecture_id=lecture_id,

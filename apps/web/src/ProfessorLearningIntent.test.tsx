@@ -8,32 +8,10 @@ import type { PracticeDesign } from "./practiceDesignTypes";
 import { practiceDesignFixture } from "./practiceDesignTestFixtures";
 
 function goalsOnly(): PracticeDesign {
-  const full = practiceDesignFixture({ approvedBy: null });
-  return {
-    ...full,
-    schema_version: 2,
-    targets: [],
-    quality_review: null,
-    learning_intent: {
-      source_revision: full.source_revision,
-      objective: full.objective,
-      planning_context: full.planning_context,
-      revision: "i".repeat(64),
-      approval: null,
-      fixed_targets: [],
-      goals: full.targets.map((target) => ({
-        id: target.id,
-        title: target.title,
-        outcome: target.outcome,
-        outcome_anchor: target.outcome_anchor,
-        target_invariant: target.target_invariant,
-        target_invariant_anchor: target.target_invariant_anchor,
-      })),
-    },
-  };
+  return { ...practiceDesignFixture({ approvedBy: null }), targets: [], quality_review: null };
 }
 
-function show(design: PracticeDesign, onApprove = vi.fn(), onSave = vi.fn()) {
+function show(design: PracticeDesign, onApprove = vi.fn(), onSave = vi.fn(), onPropose = vi.fn()) {
   render(
     <I18nProvider locale="en" setLocale={() => {}}>
       <ProfessorPracticeDesignStep
@@ -45,8 +23,7 @@ function show(design: PracticeDesign, onApprove = vi.fn(), onSave = vi.fn()) {
         routingReady
         onApprove={onApprove}
         onSave={onSave}
-        onPropose={vi.fn()}
-        onReview={vi.fn()}
+        onPropose={onPropose}
       />
     </I18nProvider>,
   );
@@ -62,10 +39,35 @@ describe("professor learning intent", () => {
     ).toBeVisible();
     expect(screen.queryByText(/inspect generated practice/i)).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Approve learning goals" }));
-    expect(approve).toHaveBeenCalledWith(design.lecture_id, {
-      fixed_target_ids: [],
-      convert_legacy: false,
-    });
+    expect(approve).toHaveBeenCalledWith(design.lecture_id, { fixed_target_ids: [] });
+  });
+
+  it("regenerates unapproved goals through a new goal proposal", async () => {
+    const design = goalsOnly();
+    const propose = vi.fn();
+    show(design, vi.fn(), vi.fn(), propose);
+    await userEvent.click(screen.getByRole("button", { name: "Propose new learning goals" }));
+    expect(propose).toHaveBeenCalledWith(design.lecture_id, true);
+  });
+
+  it("offers no goal regeneration once goals are approved", () => {
+    const pending = goalsOnly();
+    const design = {
+      ...pending,
+      targets: practiceDesignFixture({ approvedBy: null }).targets,
+      learning_intent: {
+        ...pending.learning_intent!,
+        approval: {
+          approved_by: "professor",
+          approved_at: "2026-08-26T12:00:00Z",
+          intent_revision: pending.learning_intent!.revision,
+        },
+      },
+    };
+    show(design);
+    expect(screen.getByText("Learning goals approved")).toBeVisible();
+    expect(screen.queryByRole("button", { name: /propose new learning goals/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /repair generated practice/i })).toBeNull();
   });
 
   it("saves an edited goal and disables approval until its new revision is saved", async () => {
@@ -104,24 +106,5 @@ describe("professor learning intent", () => {
     expect(screen.getByRole("button", { name: "Approve learning goals" })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: /save learning plan/i }));
     expect(save.mock.calls[0][1].goals).toEqual([{ ...first, title: "Updated learning goal" }]);
-  });
-
-  it("requires explicit consent before converting an existing full approval", async () => {
-    const design = practiceDesignFixture({ approvedBy: "professor" });
-    const approve = vi.fn();
-    show(design, approve);
-    const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: "Review learning goals instead" }));
-    const button = screen.getByRole("button", { name: "Approve learning goals" });
-    expect(button).toBeDisabled();
-    expect(screen.getByText(/existing approval is retained in history/i)).toBeVisible();
-    await user.click(
-      screen.getByRole("checkbox", { name: "I approve this change in responsibility" }),
-    );
-    await user.click(button);
-    expect(approve).toHaveBeenCalledWith(design.lecture_id, {
-      fixed_target_ids: [],
-      convert_legacy: true,
-    });
   });
 });

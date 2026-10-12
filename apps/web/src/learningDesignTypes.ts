@@ -98,9 +98,7 @@ export type LearningDesignReview = {
     approved_at: string;
     draft_digest: string;
     source_revision: string;
-    learning_map_revision: string;
-    report_revision: string;
-    acknowledged_warning_ids: string[];
+    practice_design_revision: string;
   } | null;
   learning_map: {
     course_id: string;
@@ -126,9 +124,8 @@ export type LearningDesignUpdate = {
   prerequisites: { section_id: string; prerequisite_ids: string[] }[];
 };
 
+/** The exact reviewed draft that "Approve & publish" approves (the report is derived). */
 export type LearningDesignApprovalInput = Pick<
   LearningDesignUpdate,
   "draft_digest" | "source_revision" | "practice_design_revision" | "learning_map_revision"
-> & {
-  report_revision: string;
-};
+>;

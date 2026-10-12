@@ -5,8 +5,8 @@ from pydantic_ai.models.function import FunctionModel
 from lecturepilot.authoring_job import AuthoringJob
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from lecturepilot.course_canvas_quality import CanvasQualityReviewer
-from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.models import ProviderSettings
+from approved_practice_design_helpers import approved_practice_design
 from authoring_test_helpers import drafted_path, is_repair, markdown
 from practice_design_test_helpers import proposal, target
 
@@ -59,7 +59,7 @@ def lecture_design(*, changed_goal=None):
         goal_target(n, task_suffix=" Name the rule." if n == changed_goal else "")
         for n in range(1, GOAL_COUNT + 1)
     )
-    return PracticeDesign.create(
+    return approved_practice_design(
         course_id=source.course_id,
         lecture_id=source.lecture_id,
         lecture_title=source.title,

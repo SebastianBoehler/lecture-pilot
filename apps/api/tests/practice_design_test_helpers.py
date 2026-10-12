@@ -13,8 +13,11 @@ from lecturepilot.canvas_models import CanvasBlock, CanvasDocument
 from lecturepilot.course_canvas_evidence_batches import group_evidence_sections
 from lecturepilot.course_canvas_repairs import lecture_source_revision
 from lecturepilot.course_canvas_validation import source_topic_sections
+from approved_practice_design_helpers import approved_practice_design, store_design
 from lecturepilot.course_practice_design_store import PracticeDesignStore
 from practice_design_review_test_helpers import passing_review, source_document
+
+__all__ = ["passing_review", "source_document"]
 from lecturepilot.storage_layout import StorageLayout
 
 
@@ -150,13 +153,10 @@ def practice_design_for_canvas(document: CanvasDocument) -> PracticeDesign:
         source_refs=(source_section.source_ref or document.source_ref,),
         source_excerpt=source_excerpt,
     )
-    draft = proposal()
-    return PracticeDesign.create(
+    return approved_practice_design(
         course_id=document.course_id,
         lecture_id=document.lecture_id,
         lecture_title=document.title,
-        objective="Derive the conclusion independently from the cited evidence.",
-        planning_context=draft.planning_context,
         source_revision="a" * 64,
         targets=(design_target,),
     )
@@ -182,29 +182,17 @@ def write_manifest(
 
 def save_approved_design(
     layout: StorageLayout, *, course_id: str, lecture_id: str, source_path: str
-) -> None:
+) -> PracticeDesign:
     revision = lecture_source_revision(layout, course_id=course_id, lecture_id=lecture_id)
     assert revision is not None
-    design_target = target(source_refs=(source_path,))
-    store = PracticeDesignStore(layout)
-    design = store.save_proposal(
-        course_id=course_id,
-        lecture_id=lecture_id,
-        source_revision=revision,
-        proposal=proposal().model_copy(update={"targets": (design_target,)}),
-        review=passing_review(),
-        source=source_document(source_path),
-        allowed_source_paths=(source_path,),
-        expected_design_revision=None,
-        expected_design_approval=None,
-        expected_design_review=None,
-    )
-    store.approve(
-        course_id=course_id,
-        lecture_id=lecture_id,
-        source_revision=revision,
-        design_revision=design.revision,
-        approved_by="prof01",
+    return store_design(
+        layout,
+        approved_practice_design(
+            course_id=course_id,
+            lecture_id=lecture_id,
+            source_revision=revision,
+            targets=(target(source_refs=(source_path,)),),
+        ),
     )
 
 
@@ -234,15 +222,6 @@ def approved_design_document(
         ),
         source_refs=(source_path,),
     )
-    design = PracticeDesign.create(
-        course_id=document.course_id,
-        lecture_id=document.lecture_id,
-        lecture_title=document.title,
-        objective="Apply the approved source-grounded reasoning independently.",
-        planning_context=proposal().planning_context,
-        source_revision=source_revision,
-        targets=(design_target,),
-    )
     store = PracticeDesignStore(layout)
     current = store.read(course_id=document.course_id, lecture_id=document.lecture_id)
     if current is not None:
@@ -252,29 +231,16 @@ def approved_design_document(
             source_revision=source_revision,
         )
     else:
-        stored = store.save_proposal(
-            course_id=document.course_id,
-            lecture_id=document.lecture_id,
-            source_revision=source_revision,
-            proposal=PracticeDesignProposal(
-                lecture_title=design.lecture_title,
-                objective=design.objective,
-                planning_context=design.planning_context,
-                targets=design.targets,
+        design = store_design(
+            layout,
+            approved_practice_design(
+                course_id=document.course_id,
+                lecture_id=document.lecture_id,
+                lecture_title=document.title,
+                objective="Apply the approved source-grounded reasoning independently.",
+                source_revision=source_revision,
+                targets=(design_target,),
             ),
-            review=passing_review(),
-            source=source_document(source_path),
-            allowed_source_paths=(source_path,),
-            expected_design_revision=None,
-            expected_design_approval=None,
-            expected_design_review=None,
-        )
-        design = store.approve(
-            course_id=document.course_id,
-            lecture_id=document.lecture_id,
-            source_revision=source_revision,
-            design_revision=stored.revision,
-            approved_by="professor",
         )
     first = document.sections[0]
     blocks = [

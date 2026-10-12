@@ -119,7 +119,7 @@ describe("ProfessorCanvasDraftStep generation controls", () => {
         onSaveLearningDesign,
       }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Approve canvas for publication" }));
+    fireEvent.click(screen.getByRole("button", { name: "Approve & publish" }));
     expect(onApproveLearningDesign).toHaveBeenCalledWith("lecture-01");
 
     rerender(
@@ -140,7 +140,7 @@ describe("ProfessorCanvasDraftStep generation controls", () => {
     });
 
     openLearningDesign();
-    fireEvent.click(screen.getByRole("button", { name: "Approve canvas for publication" }));
+    fireEvent.click(screen.getByRole("button", { name: "Approve & publish" }));
 
     rerender(
       step(learningDesignReview("prof01"), {
@@ -153,7 +153,7 @@ describe("ProfessorCanvasDraftStep generation controls", () => {
       screen.queryByRole("heading", { name: "Lecture canvas review" }),
     ).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /review lecture canvas for/i }));
-    expect(screen.getByRole("button", { name: "Canvas approved for publication" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Approved" })).toBeDisabled();
   });
 
   it("does not approve local edits until the exact changes are saved", () => {
@@ -170,7 +170,7 @@ describe("ProfessorCanvasDraftStep generation controls", () => {
       target: { value: "Unsaved changed objective." },
     });
 
-    const approve = screen.getByRole("button", { name: "Approve canvas for publication" });
+    const approve = screen.getByRole("button", { name: "Approve & publish" });
     expect(approve).toBeDisabled();
     expect(screen.getByText("Save these changes before approving this canvas.")).toHaveAttribute(
       "role",
@@ -300,9 +300,7 @@ function learningDesignReview(approvedBy: string | null) {
           approved_at: "2026-08-09T12:00:00Z",
           draft_digest: "d".repeat(64),
           source_revision: "s".repeat(64),
-          learning_map_revision: "m".repeat(64),
-          report_revision: "r".repeat(64),
-          acknowledged_warning_ids: [`concept_without_assessment:${"a".repeat(64)}`],
+          practice_design_revision: "a".repeat(64),
         }
       : null,
     learning_map: {

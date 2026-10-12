@@ -4,24 +4,24 @@ from lecturepilot.course_learning_intent_store import LearningIntentStore
 from lecturepilot.course_practice_design_models import PracticeDesignProposal
 from lecturepilot.course_practice_design_store import PracticeDesignStore
 from lecturepilot.storage_layout import StorageLayout
+from approved_practice_design_helpers import approved_practice_design, store_design
 from practice_design_test_helpers import passing_review, proposal, source_document
 
 
 def stored(tmp_path):
-    store = PracticeDesignStore(StorageLayout(tmp_path))
-    design = store.save_proposal(
-        course_id="course-01",
-        lecture_id="lecture-01",
-        source_revision="a" * 64,
-        proposal=proposal(),
-        review=passing_review(),
-        source=source_document(),
-        allowed_source_paths=("lecture-01.md",),
-        expected_design_revision=None,
-        expected_design_approval=None,
-        expected_design_review=None,
+    """AI-generated teaching for goals that are not approved yet."""
+    layout = StorageLayout(tmp_path)
+    design = store_design(
+        layout,
+        approved_practice_design(
+            course_id="course-01",
+            lecture_id="lecture-01",
+            source_revision="a" * 64,
+            targets=proposal().targets,
+            approved=False,
+        ),
     )
-    return store, design
+    return PracticeDesignStore(layout), design
 
 
 def approve(store, design, **kwargs):
@@ -67,7 +67,6 @@ def test_repair_preserves_approved_intent_but_changes_implementation(tmp_path):
     )
     assert changed.learning_intent == approved.learning_intent
     assert changed.revision != approved.revision
-    assert changed.approval is None
     assert (
         store.require_approved(
             course_id=changed.course_id,
@@ -106,24 +105,12 @@ def test_repair_cannot_change_protected_intent_even_with_passing_review(tmp_path
     assert store.read(course_id=design.course_id, lecture_id=design.lecture_id) == approved
 
 
-def test_legacy_approval_requires_explicit_conversion_and_is_archived(tmp_path):
+def test_goal_approval_archives_the_previous_design(tmp_path):
     store, design = stored(tmp_path)
-    legacy = store.approve(
-        course_id=design.course_id,
-        lecture_id=design.lecture_id,
-        source_revision=design.source_revision,
-        design_revision=design.revision,
-        approved_by="professor",
-    )
-    with pytest.raises(ValueError, match="conversion"):
-        approve(store, legacy)
-    converted = approve(store, legacy, convert_legacy=True)
-    assert converted.approval is None
-    assert converted.learning_intent.approval is not None
-    assert any(
-        '"approved_by": "professor"' in path.read_text()
-        for path in tmp_path.rglob("history/*.json")
-    )
+    approved = approve(store, design)
+    assert approved.learning_intent.approval is not None
+    assert approved.revision == design.revision
+    assert any('"approval": null' in path.read_text() for path in tmp_path.rglob("history/*.json"))
 
 
 def test_racing_intent_approval_invalidates_pending_implementation(tmp_path):
@@ -172,18 +159,21 @@ def test_implementation_report_records_exact_changes_without_changing_goals(tmp_
 
 
 def test_professor_removal_rebinds_remaining_teaching_and_fixed_targets(tmp_path):
-    from lecturepilot.course_learning_intent import LearningIntent
     from lecturepilot.course_learning_intent_proposal import LearningIntentProposal
-    from lecturepilot.course_learning_intent_store import rebuild
-    from lecturepilot.course_practice_design_files import write_design_file
 
     store, design = stored(tmp_path)
-    design = rebuild(
-        design,
-        targets=(design.targets[0], design.targets[0].model_copy(update={"id": "second-goal"})),
+    first = design.targets[0]
+    design = store_design(
+        store.layout,
+        approved_practice_design(
+            course_id=design.course_id,
+            lecture_id=design.lecture_id,
+            source_revision=design.source_revision,
+            targets=(first, first.model_copy(update={"id": "second-goal"})),
+            approved=False,
+            reviewed=False,
+        ),
     )
-    design = rebuild(design, learning_intent=LearningIntent.from_design(design))
-    write_design_file(store._path(design.course_id, design.lecture_id), design)
     approved = approve(store, design, fixed_target_ids=tuple(t.id for t in design.targets))
     intent = approved.learning_intent
     edited = LearningIntentStore(store.layout).save_goals(

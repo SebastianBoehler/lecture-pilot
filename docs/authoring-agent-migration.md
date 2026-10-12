@@ -117,17 +117,13 @@ Publication still requires the exact-draft approval.
 
 Metrics count model requests, review rounds, rejected writes and repairs.
 
-## Learning-plan self-repair before approval
+## Learning-plan proposals
 
-`PracticeDesignPlanner.propose` now uses a native-schema Pydantic AI session.
-Its output validator hydrates exact evidence IDs, checks the contract, and runs
-the independent semantic reviewer. Critical issues return to the same proposal
-session so it can revise questions, rubrics, variants and hints together before
-the plan is offered for approval. The reviewer has its own schema-correction
-loop; malformed review output no longer discards an otherwise usable proposal.
-The former single-call proposal adapter was removed, not wrapped. Refreshing a
-same-source design seeds that design and preserves its exact objective, ordered
-target IDs and outcomes. Repair cannot pass by dropping a difficult target.
+The former full-plan proposal (`PracticeDesignPlanner.propose`) and its blocking
+review loop with transcript replay are removed. Professors refresh unapproved goals
+through the goal proposal (`POST .../intent/proposal?refresh=true`); teaching is
+generated afterwards by the bounded `teaching_design_job.py` workflow. The planner
+keeps only the independent semantic reviewer that this workflow calls.
 
 Shared assessment guidance distinguishes a requested single answer from a
 uniquely correct answer. Review must try a source-supported alternative against

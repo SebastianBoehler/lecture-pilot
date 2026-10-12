@@ -38,11 +38,11 @@ describe("practice-design builder blocking", () => {
       "upload",
       "sources",
       "design",
-      "review",
+      "media",
       "generate",
       "publish",
     ]);
-    expect(blocked.find((step) => step.id === "review")?.available).toBe(true);
+    expect(blocked.find((step) => step.id === "media")?.available).toBe(true);
     expect(blocked.find((step) => step.id === "generate")?.available).toBe(false);
     expect(ready.find((step) => step.id === "generate")?.available).toBe(true);
   });
@@ -96,51 +96,34 @@ it("drafts each approved plan while others are reviewed and keeps a stale approv
   );
 
   const navigation = await screen.findByRole("navigation", { name: "Learning plan lectures" });
-  const firstToggle = await screen.findByRole("button", { name: /review plan for/i });
-  const firstPlan = firstToggle.closest("article")!;
-  await user.click(within(firstPlan).getByRole("button", { name: /approve learning plan/i }));
-  await waitFor(() =>
-    expect(
-      within(firstPlan).queryByRole("button", { name: /approve learning plan/i }),
-    ).not.toBeInTheDocument(),
-  );
+  await user.click(await screen.findByRole("button", { name: /^approve learning goals$/i }));
+  // Approval advances to the next open lecture.
+  expect(await screen.findByRole("heading", { name: /02 · lecture 02/i })).toBeVisible();
 
-  await user.click(within(firstPlan).getByRole("button", { name: /edit this target/i }));
-  const outcome = within(firstPlan).getByLabelText(/outcome for posterior/i);
+  await user.click(within(navigation).getAllByRole("button")[0]);
+  await screen.findByRole("heading", { name: /01 · lecture 01/i });
+  await user.click(screen.getByRole("button", { name: /edit learning goals/i }));
+  const outcome = screen.getByRole("textbox", { name: /outcome for posterior/i });
   await user.clear(outcome);
   await user.type(outcome, "Calculate a revised posterior from evidence.");
-  await user.click(within(firstPlan).getByRole("button", { name: /save learning plan/i }));
-  expect(
-    await within(firstPlan).findByRole("button", { name: /approve learning plan/i }),
-  ).toBeDisabled();
-  await user.click(within(firstPlan).getByRole("button", { name: /review edited plan/i }));
+  await user.click(screen.getByRole("button", { name: /save learning plan/i }));
   await waitFor(() =>
-    expect(within(firstPlan).getByRole("button", { name: /approve learning plan/i })).toBeEnabled(),
+    expect(screen.getByRole("button", { name: /^approve learning goals$/i })).toBeEnabled(),
   );
-  await user.click(within(firstPlan).getByRole("button", { name: /approve learning plan/i }));
-  await waitFor(() =>
-    expect(
-      within(firstPlan).queryByRole("button", { name: /approve learning plan/i }),
-    ).not.toBeInTheDocument(),
-  );
+  await user.click(screen.getByRole("button", { name: /^approve learning goals$/i }));
+  expect(await screen.findByRole("heading", { name: /02 · lecture 02/i })).toBeVisible();
 
-  await user.click(within(navigation).getAllByRole("button")[1]);
-  const secondToggle = await screen.findByRole("button", { name: /review plan for/i });
-  const secondPlan = secondToggle.closest("article")!;
-  await user.click(within(secondPlan).getByRole("button", { name: /approve learning plan/i }));
+  await user.click(screen.getByRole("button", { name: /^approve learning goals$/i }));
   expect(await screen.findByRole("alert")).toHaveTextContent(/revision changed/i);
-  expect(within(secondPlan).getByRole("button", { name: /approve learning plan/i })).toBeEnabled();
-
-  await user.click(within(secondPlan).getByRole("button", { name: /approve learning plan/i }));
   await waitFor(() =>
-    expect(
-      within(secondPlan).queryByRole("button", { name: /approve learning plan/i }),
-    ).not.toBeInTheDocument(),
+    expect(screen.getByRole("button", { name: /^approve learning goals$/i })).toBeEnabled(),
   );
+  await user.click(screen.getByRole("button", { name: /^approve learning goals$/i }));
   const approvalRevisions = fetchMock.mock.calls
     .filter(
       ([url, init]) =>
-        String(url).includes("lecture-02/practice-design/approve") && init?.method === "POST",
+        String(url).includes("lecture-02/practice-design/intent/approve") &&
+        init?.method === "POST",
     )
     .map(([, init]) => JSON.parse(String(init?.body)).practice_design_revision);
   expect(approvalRevisions).toEqual(["d".repeat(64), "f".repeat(64)]);
@@ -175,18 +158,37 @@ it("marks an approved design stale after a source update removes current routing
   await user.click(
     await screen.findByRole("button", { name: /continue (?:without videos|to learning plan)/i }),
   );
-  const toggle = await screen.findByRole("button", { name: /review plan for/i });
-  if (toggle.getAttribute("aria-expanded") !== "true") await user.click(toggle);
-  await user.click(
-    await within(toggle.closest("article")!).findByRole("button", {
-      name: /approve learning plan/i,
-    }),
-  );
+  await user.click(await screen.findByRole("button", { name: /^approve learning goals$/i }));
   // The approved lecture starts drafting at once and discovers the changed routing.
   expect(await screen.findByText(/source assignments changed/i)).toBeInTheDocument();
 
-  expect(await screen.findAllByText(/source routing is stale/i)).toHaveLength(1);
-  expect(screen.queryByText(/^approved$/i)).not.toBeInTheDocument();
-  expect(screen.getByRole("button", { name: /approve learning plan/i })).toBeDisabled();
-  expect(screen.getByRole("button", { name: /refresh proposal/i })).toBeDisabled();
+  await user.click(screen.getByRole("button", { name: /learning plan/i }));
+  expect((await screen.findAllByText(/reconfirm source routing/i))[0]).toBeVisible();
+  expect(screen.queryByText(/learning goals approved/i)).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /^approve learning goals$/i })).toBeDisabled();
+});
+
+it("continues to media when the backend accepts a non-destructive source assignment", async () => {
+  const user = userEvent.setup();
+  vi.stubGlobal("fetch", professorFetchMock({ autoConfirmRouting: true }));
+  render(<App />);
+
+  await openProfessorDemo(user);
+  await user.type(screen.getByLabelText(/course name/i), "Demo ML Course");
+  await user.click(screen.getByRole("button", { name: /create course workspace/i }));
+  await user.upload(
+    await screen.findByLabelText(/^choose files$/i),
+    new File(["# lecture one"], "Lecture01-eng.tex", { type: "application/x-tex" }),
+  );
+  await user.click(screen.getByRole("button", { name: /upload and process materials/i }));
+  await user.click(await screen.findByRole("button", { name: /apply lecture schedule/i }));
+
+  expect(await screen.findByText(/accepted automatically/i)).toBeInTheDocument();
+  expect(
+    await screen.findByRole("button", { name: /continue (?:without videos|to learning plan)/i }),
+  ).toBeInTheDocument();
+  // The accepted assignment stays reviewable under Materials.
+  await user.click(screen.getByRole("button", { name: /02 materials/i }));
+  await user.click(await screen.findByText(/review source assignments/i));
+  expect(await screen.findByLabelText(/route lecture01-eng\.tex/i)).toHaveValue("lecture");
 });

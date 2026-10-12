@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from lecturepilot.course_learning_design_models import LearningDesignApprovalInput
+
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -184,11 +186,12 @@ def approve_canvas_draft(
     reviews.approve(
         course_id=course_id,
         lecture_id=lecture_id,
-        draft_digest=current.draft_digest,
-        source_revision=current.source_revision,
-        practice_design_revision=current.practice_design_revision,
-        learning_map_revision=current.learning_map.revision,
-        report_revision=current.report.report_revision,
+        approval=LearningDesignApprovalInput(
+            draft_digest=current.draft_digest,
+            source_revision=current.source_revision,
+            practice_design_revision=current.practice_design_revision,
+            learning_map_revision=current.learning_map.revision,
+        ),
         approved_by="professor",
     )
 

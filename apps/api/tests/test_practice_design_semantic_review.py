@@ -10,37 +10,9 @@ from lecturepilot.course_practice_design_review_models import REVIEW_DIMENSIONS
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.models import ProviderCapability, ProviderSettings
 from practice_design_test_helpers import proposal
-from lecturepilot.practice_evidence_catalogue import compact_evidence_anchors
 
 
 SOURCE_REVISION = "a" * 64
-
-
-@pytest.mark.asyncio
-async def test_planner_runs_a_complete_second_semantic_critic_after_anchor_validation() -> None:
-    from lecturepilot.course_practice_design_planner import PracticeDesignPlanner
-
-    events: list[str] = []
-    review_client = _ReviewClient(events)
-    planner = PracticeDesignPlanner(
-        provider_registry=_Registry(),
-        model=_proposal_model(events),
-        review_client=review_client,
-    )
-
-    reviewed = await planner.propose(
-        source=_source(),
-        source_revision=SOURCE_REVISION,
-        allowed_source_paths=("lecture-01.md",),
-    )
-
-    assert events == ["proposal", "review"]
-    assert reviewed.proposal.targets[0].outcome == proposal().targets[0].outcome
-    assert tuple(check.dimension for check in reviewed.review.checks) == REVIEW_DIMENSIONS
-    assert "untrusted data" in review_client.messages[0]["content"]
-    assert "derive-conclusion" in review_client.messages[1]["content"]
-    assert "SOURCE EVIDENCE" in review_client.messages[1]["content"]
-    assert "Allowed exact source paths: lecture-01.md" in review_client.messages[1]["content"]
 
 
 @pytest.mark.asyncio
@@ -86,15 +58,15 @@ async def test_review_provider_failure_is_returned_without_a_reviewed_proposal()
 
     planner = PracticeDesignPlanner(
         provider_registry=_Registry(),
-        model=_proposal_model([]),
         review_client=_FailingReviewClient(),
     )
 
     with pytest.raises(ModelExecutionError, match="critic unavailable"):
-        await planner.propose(
+        await planner.review(
             source=_source(),
             source_revision=SOURCE_REVISION,
             allowed_source_paths=("lecture-01.md",),
+            proposal=_banked_proposal(),
         )
 
 
@@ -117,39 +89,21 @@ async def test_critic_issue_support_must_quote_the_exact_routed_source() -> None
     )
     planner = PracticeDesignPlanner(
         provider_registry=_Registry(),
-        model=_proposal_model([]),
         review_client=_StaticReviewClient(payload),
     )
 
     with pytest.raises(ModelExecutionError, match="verbatim excerpt"):
-        await planner.propose(
+        await planner.review(
             source=_source(),
             source_revision=SOURCE_REVISION,
             allowed_source_paths=("lecture-01.md",),
+            proposal=_banked_proposal(),
         )
 
 
-def _proposal_model(events):
-    def respond(messages, info):
-        events.append("proposal")
-        draft = proposal()
-        draft = draft.model_copy(update={"targets": tuple(with_bank(t) for t in draft.targets)})
-        payload = compact_evidence_anchors(draft.model_dump(mode="json"), {})
-        payload["targets"][0].pop("source_refs")
-        return ModelResponse(parts=[TextPart(json.dumps(payload))])
-
-    return FunctionModel(respond)
-
-
-class _ReviewClient:
-    def __init__(self, events: list[str]) -> None:
-        self.events = events
-        self.messages: list[dict[str, str]] = []
-
-    async def complete_review(self, *, messages, **_kwargs) -> dict:
-        self.events.append("review")
-        self.messages = messages
-        return _review_payload()
+def _banked_proposal():
+    draft = proposal()
+    return draft.model_copy(update={"targets": tuple(with_bank(t) for t in draft.targets)})
 
 
 class _FailingReviewClient:
@@ -195,7 +149,6 @@ def _review_payload() -> dict:
 
 
 def _review_payload_json() -> str:
-    import json
 
     return json.dumps(_review_payload())
 
@@ -224,40 +177,3 @@ def _source() -> CanvasDocument:
             )
         ],
     )
-
-
-async def test_semantic_findings_do_not_consume_schema_retry_budget():
-    from lecturepilot.course_practice_design_planner import PracticeDesignPlanner
-
-    events = []
-
-    class Critic:
-        calls = 0
-
-        async def complete_review(self, **kwargs):
-            self.calls += 1
-            payload = _review_payload()
-            if self.calls < 5:
-                payload["checks"][0].update(
-                    severity="critical",
-                    summary="Repair this source-grounded teaching claim.",
-                    target_ids=["derive-conclusion"],
-                    supporting_anchors=[
-                        {
-                            "source_path": "lecture-01.md",
-                            "excerpt": _source().sections[0].blocks[0].text,
-                        }
-                    ],
-                )
-            return payload
-
-    critic = Critic()
-    planner = PracticeDesignPlanner(
-        provider_registry=_Registry(), model=_proposal_model(events), review_client=critic
-    )
-    reviewed = await planner.propose(
-        source=_source(), source_revision=SOURCE_REVISION, allowed_source_paths=("lecture-01.md",)
-    )
-    assert critic.calls == 5
-    assert len(events) == 5
-    assert all(check.severity == "pass" for check in reviewed.review.checks)

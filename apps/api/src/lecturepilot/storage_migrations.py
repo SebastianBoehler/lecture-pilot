@@ -20,8 +20,10 @@ from starlette.concurrency import run_in_threadpool
 
 from lecturepilot import (
     storage_migration_canvas_boilerplate,
+    storage_migration_learning_design_approval,
     storage_migration_legacy_publications,
     storage_migration_legacy_workspaces,
+    storage_migration_practice_design_schema,
 )
 from lecturepilot.canvas_workspace_config import default_workspace_root
 from lecturepilot.durable_files import atomic_write_json
@@ -36,6 +38,9 @@ Migration = Callable[..., dict]
 MIGRATIONS: tuple[tuple[str, Migration], ...] = (
     ("2026-10-canvas-boilerplate", storage_migration_canvas_boilerplate.migrate),
     ("2026-10-legacy-workspaces", storage_migration_legacy_workspaces.migrate),
+    # Draft approvals are reduced after designs reach schema 2.
+    ("2026-10-practice-design-schema-2", storage_migration_practice_design_schema.migrate),
+    ("2026-10-learning-design-approval", storage_migration_learning_design_approval.migrate),
 )
 
 

@@ -20,6 +20,7 @@ from lecturepilot.course_learning_design_errors import (
 )
 from lecturepilot.course_learning_design_models import (
     LearningDesignApproval,
+    LearningDesignApprovalInput,
     LearningDesignReview,
     LearningDesignUpdate,
 )
@@ -84,35 +85,29 @@ class CourseLearningDesignStore:
         *,
         course_id: str,
         lecture_id: str,
-        draft_digest: str,
-        source_revision: str,
-        practice_design_revision: str,
-        learning_map_revision: str,
-        report_revision: str,
+        approval: LearningDesignApprovalInput,
         approved_by: str,
     ) -> LearningDesignReview:
         with self._locked_draft(course_id, lecture_id) as draft_dir:
             current = _current_review(self.layout, draft_dir, course_id, lecture_id)
             _require_request_version(
                 current,
-                draft_digest,
-                source_revision,
-                practice_design_revision,
-                learning_map_revision,
+                approval.draft_digest,
+                approval.source_revision,
+                approval.practice_design_revision,
+                approval.learning_map_revision,
             )
-            _require_report_revision(current, report_revision=report_revision)
-            approval = LearningDesignApproval(
-                approved_by=approved_by,
-                approved_at=datetime.now(UTC),
-                draft_digest=current.draft_digest,
-                source_revision=current.source_revision,
-                practice_design_revision=current.practice_design_revision,
-                learning_intent_revision=current.learning_intent_revision,
-                learning_map_revision=current.learning_map.revision,
-                report_revision=current.report.report_revision,
-                acknowledged_warning_ids=[],
+            approved = current.model_copy(
+                update={
+                    "approval": LearningDesignApproval(
+                        approved_by=approved_by,
+                        approved_at=datetime.now(UTC),
+                        draft_digest=current.draft_digest,
+                        source_revision=current.source_revision,
+                        practice_design_revision=current.practice_design_revision,
+                    )
+                }
             )
-            approved = current.model_copy(update={"approval": approval})
             _write_review(review_path(draft_dir), approved)
             return approved
 
@@ -145,9 +140,7 @@ def initialize_learning_design(
         draft_digest=draft_digest,
         source_revision=source_revision,
         practice_design_revision=practice_design.revision,
-        learning_intent_revision=practice_design.learning_intent.revision
-        if practice_design.learning_intent
-        else None,
+        learning_intent_revision=practice_design.learning_intent.revision,
         learning_map=learning_map,
         report=report,
     )
@@ -164,13 +157,11 @@ def approved_learning_design(
 ) -> LearningDesignReview:
     current = _current_review(layout, draft_dir, course_id, lecture_id)
     approval = current.approval
+    # The current review is verified against the live draft, sources and design.
     if approval is None or (
         approval.draft_digest != current.draft_digest
         or approval.source_revision != current.source_revision
         or approval.practice_design_revision != current.practice_design_revision
-        or approval.learning_intent_revision != current.learning_intent_revision
-        or approval.learning_map_revision != current.learning_map.revision
-        or approval.report_revision != current.report.report_revision
     ):
         raise LearningDesignApprovalRequiredError(
             "Approve the current learning design before publishing this draft."
@@ -215,8 +206,7 @@ def _current_review(
         or stored.draft_digest != canvas_digest(document)
         or stored.source_revision != current_source
         or stored.practice_design_revision != design.revision
-        or stored.learning_intent_revision
-        != (design.learning_intent.revision if design.learning_intent else None)
+        or stored.learning_intent_revision != design.learning_intent.revision
         or stored.report.draft_digest != stored.draft_digest
         or stored.report.source_revision != stored.source_revision
         or stored.report.learning_map_revision != stored.learning_map.revision
@@ -242,17 +232,6 @@ def _require_request_version(
     ):
         raise LearningDesignStaleError(
             "The draft or its source revision changed. Reload the learning design."
-        )
-
-
-def _require_report_revision(
-    review: LearningDesignReview,
-    *,
-    report_revision: str,
-) -> None:
-    if report_revision != review.report.report_revision:
-        raise LearningDesignStaleError(
-            "The learning-design report changed. Reload the current draft before approval."
         )
 
 

@@ -1,3 +1,4 @@
+import type { LearningDesignApprovalInput } from "./learningDesignTypes";
 import { CourseLinkView } from "./CourseLinkView";
 import { rememberReturnPath } from "./returnPath";
 import { clearSavedFlow, writeResumeFlow } from "./professorBuilderState";
@@ -61,7 +62,11 @@ type AppRoutesProps = {
   onOpenDemo: () => void;
   onOpenProfessorDemo: () => void;
   onOpenCourseLink: (courseId: string) => void;
-  onPublishWorkspace: (courseId: string, lectureId: string) => Promise<CanvasPublicationResult>;
+  onPublishWorkspace: (
+    courseId: string,
+    lectureId: string,
+    approval: LearningDesignApprovalInput,
+  ) => Promise<CanvasPublicationResult>;
   onSetAttendance: (lectureId: string, attendance: Attendance) => void;
   onViewChange: (view: View) => void;
   onWorkspaceDeleted: (courseId: string) => void;

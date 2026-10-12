@@ -6,6 +6,7 @@ from lecturepilot.course_learning_intent import LearningGoal, LearningIntent, Le
 from lecturepilot.course_practice_design_files import locked_design_file, write_design_file
 from lecturepilot.course_practice_design_models import PracticeDesign
 from lecturepilot.course_practice_design_review_binding import with_quality_review
+from lecturepilot.course_practice_design_snapshot import snapshot_practice_design
 from lecturepilot.course_practice_design_store import PracticeDesignStore, PracticeDesignStale
 from lecturepilot.course_practice_design_validation import (
     validate_practice_design,
@@ -24,6 +25,7 @@ class LearningIntentStore(PracticeDesignStore):
         proposal,
         source,
         allowed_source_paths,
+        expected_invalid_digest=None,
     ):
         from lecturepilot.course_learning_intent_proposal import validate_goal_evidence
 
@@ -38,7 +40,7 @@ class LearningIntentStore(PracticeDesignStore):
             targets=(),
             learning_intent=proposal.intent(source_revision),
         )
-        if expected and expected.learning_intent and expected.source_revision == source_revision:
+        if expected and expected.source_revision == source_revision:
             previous_by_id = {target.id: target for target in expected.targets}
             if expected.targets and all(goal.id in previous_by_id for goal in proposal.goals):
                 from lecturepilot.course_practice_design_evidence import anchored_source_paths
@@ -69,17 +71,10 @@ class LearningIntentStore(PracticeDesignStore):
                 changed = rebuild(changed, learning_intent=intent)
         path = self._path(course_id, lecture_id)
         with locked_design_file(path):
-            current = self._read(path, course_id, lecture_id)
-            if current != expected:
+            current = snapshot_practice_design(path, course_id=course_id, lecture_id=lecture_id)
+            # An unreadable design may only be replaced exactly as it was observed.
+            if current.design != expected or current.invalid_digest != expected_invalid_digest:
                 raise PracticeDesignStale("Learning goals changed. Reload them.")
-            if (
-                current is not None
-                and current.approval is not None
-                and current.source_revision == source_revision
-            ):
-                raise ValueError(
-                    "Existing full approval requires explicit conversion before editing goals."
-                )
             write_design_file(path, changed)
         return changed
 
@@ -92,17 +87,12 @@ class LearningIntentStore(PracticeDesignStore):
         design_revision,
         approved_by,
         fixed_target_ids=(),
-        convert_legacy=False,
     ):
         path = self._path(course_id, lecture_id)
         with locked_design_file(path):
             current = self._required(path, course_id, lecture_id)
             if current.source_revision != source_revision or current.revision != design_revision:
                 raise PracticeDesignStale("Learning goals or sources changed. Reload them.")
-            if current.approval is not None and not convert_legacy:
-                raise ValueError(
-                    "Existing full approval requires explicit conversion to goal approval."
-                )
             intent = LearningIntent.from_design(current, fixed_target_ids=fixed_target_ids)
             intent = intent.model_copy(
                 update={
@@ -128,7 +118,7 @@ class LearningIntentStore(PracticeDesignStore):
             if current != expected:
                 raise PracticeDesignStale("Learning goals or implementation changed during repair.")
             intent = current.learning_intent
-            if current.approval is not None or intent is None or intent.approval is None:
+            if intent.approval is None:
                 raise ValueError(
                     "Only an AI-owned implementation with approved goals can be repaired."
                 )
@@ -152,7 +142,7 @@ class LearningIntentStore(PracticeDesignStore):
 def rebuild(current, **changes):
     return PracticeDesign.create(
         **{
-            **current.model_dump(mode="python", exclude={"revision", "quality_review", "approval"}),
+            **current.model_dump(mode="python", exclude={"revision", "quality_review"}),
             **changes,
         }
     )

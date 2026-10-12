@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 
 import { publishLectureCanvas } from "./api";
 import { draftLectureCanvas } from "./canvasDraftApi";
+import { getLearningDesignReview, learningDesignApprovalInput } from "./learningDesignApi";
 import {
   applyCourseUpdate,
   createCourseUpdate,
@@ -170,7 +171,10 @@ export function useCourseUpdate(
         for (const id of targets) {
           activeId = id;
           setStatuses((current) => ({ ...current, [id]: "publishing" }));
-          await publishLectureCanvas(workspace.course.id, id, session);
+          // Approve & publish the exact draft revision that is ready now.
+          const review = await getLearningDesignReview(workspace.course.id, id, session);
+          const approval = learningDesignApprovalInput(review);
+          await publishLectureCanvas(workspace.course.id, id, session, approval);
           setStatuses((current) => ({ ...current, [id]: "published" }));
           activeId = null;
         }

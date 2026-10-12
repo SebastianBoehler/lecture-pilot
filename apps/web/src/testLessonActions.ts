@@ -31,16 +31,15 @@ export async function openProfessorDemo(user: ReturnType<typeof userEvent.setup>
   await screen.findByRole("navigation", { name: /course builder progress/i }, { timeout: 5_000 });
 }
 
-export async function approveAllLearningDesigns(user: ReturnType<typeof userEvent.setup>) {
+/** Approve & publish each lecture from its review panel. */
+export async function approveAndPublishEachLecture(user: ReturnType<typeof userEvent.setup>) {
   const review = await screen.findByRole("region", { name: /lecture canvases/i });
   const lectureNames = within(review)
     .getAllByRole("button", { name: /review lecture canvas for/i })
     .map((button) => button.getAttribute("aria-label") ?? "");
   for (const [index, name] of lectureNames.entries()) {
     await user.click(within(review).getByRole("button", { name }));
-    await user.click(
-      await screen.findByRole("button", { name: /approve canvas for publication/i }),
-    );
+    await user.click(await screen.findByRole("button", { name: "Approve & publish" }));
     await within(review).findByText(
       new RegExp(`${index + 1} of ${lectureNames.length} approved`, "i"),
     );
@@ -50,19 +49,17 @@ export async function approveAllLearningDesigns(user: ReturnType<typeof userEven
 export async function approveAllPracticeDesigns(user: ReturnType<typeof userEvent.setup>) {
   const navigation = await screen.findByRole("navigation", { name: "Learning plan lectures" });
   const count = within(navigation).getAllByRole("button").length;
-  for (let index = 0; index < count; index += 1) {
-    await user.click(within(navigation).getAllByRole("button")[index]);
-    const toggle = await screen.findByRole("button", { name: /review plan for/i });
-    if (toggle.getAttribute("aria-expanded") !== "true") await user.click(toggle);
-    const plan = toggle.closest("article");
-    if (!plan) throw new Error("Practice plan container is missing.");
-    const approval = await within(plan).findByRole("button", { name: /approve learning plan/i });
-    await user.click(approval);
-    await waitFor(() => {
-      if (within(navigation).queryAllByText(/^Approved$/).length !== index + 1)
-        throw new Error("Approval pending");
-    });
-  }
+  // "Approve all open goals" is the default action once every lecture's goals are ready.
+  const approveAll = await screen.findByRole(
+    "button",
+    { name: `Approve all open goals (${count})` },
+    { timeout: 5_000 },
+  );
+  await user.click(approveAll);
+  await waitFor(() => {
+    if (navigation.isConnected && within(navigation).queryAllByText(/^Approved$/).length < count)
+      throw new Error("Approval pending");
+  });
 }
 
 export function soccerCanvasSection() {

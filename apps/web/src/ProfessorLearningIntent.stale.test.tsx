@@ -40,7 +40,6 @@ it("blocks stale goal approval and offers a current-source proposal", async () =
         onApprove={vi.fn()}
         onSave={vi.fn()}
         onPropose={propose}
-        onReview={vi.fn()}
       />
     </I18nProvider>,
   );

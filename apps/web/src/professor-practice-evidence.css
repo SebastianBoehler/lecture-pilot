@@ -1,19 +1,15 @@
-.practice-planning-context,
-.practice-quality {
+.practice-planning-context {
   border-block: 1px solid var(--color-border-primary);
   padding-block: 16px;
 }
 
 .practice-planning-context h4,
-.practice-quality h4,
 .practice-target-invariant h4,
-.practice-quality p,
 .practice-target-invariant p {
   margin: 0;
 }
 
 .practice-planning-context h4,
-.practice-quality h4,
 .practice-target-invariant h4 {
   font-size: 15px;
 }
@@ -41,13 +37,11 @@
   overflow-wrap: anywhere;
 }
 
-.practice-context-gaps,
-.practice-quality-all-checks {
+.practice-context-gaps {
   margin-block-start: 12px;
 }
 
 .practice-context-gaps summary,
-.practice-quality-all-checks summary,
 .practice-source-evidence summary {
   width: fit-content;
   min-height: 32px;
@@ -57,8 +51,7 @@
   font-weight: 650;
 }
 
-.practice-context-gaps ul,
-.practice-quality-all-checks ul {
+.practice-context-gaps ul {
   margin-block: 6px 0;
   color: var(--color-text-secondary);
   font-size: 13px;
@@ -128,67 +121,8 @@
   font-size: 12px;
 }
 
-.practice-quality {
-  display: grid;
-  gap: 14px;
-}
-
-.practice-quality > header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.practice-quality > header p,
-.practice-quality.is-required > p,
-.practice-quality-passed {
-  color: var(--color-text-secondary);
-  font-size: 13px;
-}
-
-.practice-quality-findings {
-  display: grid;
-  gap: 14px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.practice-quality-findings > li {
-  border-inline-start: 3px solid var(--color-border-strong);
-  padding-inline-start: 12px;
-}
-
-.practice-quality-findings > li.is-critical {
-  border-inline-start-color: var(--color-danger);
-}
-
-.practice-quality-findings > li > div {
-  display: flex;
-  gap: 8px;
-  font-size: 13px;
-}
-
-.practice-quality-findings > li > div span,
-.practice-quality-findings > li > p {
-  color: var(--color-text-secondary);
-  font-size: 13px;
-}
-
-.practice-quality-findings > li > p {
-  margin-block-start: 5px;
-}
-
-.practice-quality-all-checks li {
-  display: grid;
-  grid-template-columns: minmax(70px, auto) 1fr;
-  gap: 12px;
-}
-
 .practice-source-evidence summary:focus-visible,
-.practice-context-gaps summary:focus-visible,
-.practice-quality-all-checks summary:focus-visible {
+.practice-context-gaps summary:focus-visible {
   outline: 2px solid var(--color-accent-primary);
   outline-offset: 2px;
 }
@@ -200,8 +134,7 @@
 }
 
 @media (max-width: 520px) {
-  .practice-planning-context dl,
-  .practice-quality > header {
+  .practice-planning-context dl {
     display: grid;
     grid-template-columns: 1fr;
   }
