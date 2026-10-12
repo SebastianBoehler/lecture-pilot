@@ -266,16 +266,21 @@ integrations/tuebingen/   TUE API wrapper integration notes
 - Before canvas generation, the source-routing agent must semantically assign
   every indexed course file exactly once as lecture-specific, course-wide, or
   not used. Professors review and may edit this complete proposal; generation
-  remains blocked until they confirm the current source revision. Confirmation prunes unused uploads and
+  remains blocked until the current source revision is confirmed. A first proposal is
+  confirmed automatically (`course_source_routing_auto_accept.py`, no model call) only when it
+  deletes no upload, needs no OCR, gives every lecture its own material and routes each
+  scheduled main file to its lecture; it stays editable. Confirmation prunes unused uploads and
   normalized copies while preserving selected-source dependencies and existing
   workspace references; index and routing revisions update transactionally.
 - After source confirmation, automatically propose missing source-backed learning goals without tasks.
-  Review one lecture at a time; the final current approval advances to draft generation.
-  Preserve explicit draft approval and publication.
-  Professors approve outcomes, constraints and explicitly fixed tasks. Schema-2
-  teaching implementations are AI-owned until publication and may be repaired
-  without changing approved intent. Preserve schema-1 full approvals unless the
-  professor explicitly converts them; archive earlier snapshots privately.
+  "Approve all open goals" is the primary action; per-lecture approval stays available, and each
+  current approval advances that lecture to draft generation. Refresh
+  (`intent/proposal?refresh=true`) replaces unapproved goals only.
+  Professors approve outcomes, constraints and explicitly fixed tasks. Teaching
+  implementations are AI-owned until publication and may be repaired without changing
+  approved intent; a design whose tasks are all professor-fixed is never AI-repaired (a
+  conflict asks for plan review). Schema 1 is retired: its full approvals were migrated to
+  fully fixed goal approvals (`storage_migration_practice_design_schema.py`).
   See `docs/learning-intent-ownership.md`.
 - Same-source implementation repair preserves every approved goal, ordered ID,
   constraint and fixed task. It cannot evade an assessment by dropping its goal.
@@ -288,10 +293,11 @@ integrations/tuebingen/   TUE API wrapper integration notes
   publication fail closed when that binding, design approval, or source
   revision is no longer current; regenerate rather than infer a replacement.
 - A generated canvas may become ready only after deterministic learning-design
-  defects have passed validation or targeted repair. Professor approval confirms
-  the implementation for the exact draft, source, practice-design, report, and
-  learning-map revisions; it does not replace the earlier design approval or
-  acknowledge generator diagnostics as a separate publication task.
+  defects have passed validation or targeted repair. "Approve & publish"
+  (`course_canvas_approval_publication.py`) binds the exact draft digest, source revision and
+  practice-design revision and publishes in one course lock, rolling the approval back if
+  publication fails; map or report edits clear it. It does not replace the earlier goal
+  approval or acknowledge generator diagnostics as a separate publication task.
 - Place each approved practice checkpoint in its outcome-anchor section, not
   the first section matching an auxiliary hint. The backend inserts approved checkpoints and
   validates exact task ids/text document-wide; generic formatting must preserve them.
@@ -384,12 +390,14 @@ integrations/tuebingen/   TUE API wrapper integration notes
 - Course creation has five visible stages: Course, Materials, Media, Learning plan,
   and Review & publish. Materials owns source confirmation; the separate Media
   stage offers video selection or continuing without videos before learning-plan review. The
-  final stage owns draft generation, exact-draft approval, and publication.
+  final stage owns draft generation and per-lecture "Approve & publish" plus "Approve &
+  publish all ready". Builder resume/retry decisions live in the pure reducer
+  `builderFlowMachine.ts`; the builder hooks are split by stage (`useBuilder*.ts`).
   Course management labels setup state (incomplete, partly published, published) and
   offers "Continue setup"; `writeResumeFlow` seeds the builder and backend restore picks the
   step. "Create course" there always starts empty; the builder names the course in progress.
   Each lecture drafts as soon as its goals are approved (a changed, re-approved plan drafts
-  again); "Publish ready lectures" publishes approved, unpublished lectures independently.
+  again); ready lectures are approved and published independently.
 - Sharing: course management "Share" shows the course link `/courses/<id>` with a local QR code
   and a slide image; access follows Alma/ILIAS enrollment. "Allow joining with this link" is an
   explicit opt-in (`course_invites.py`) that creates a revocable `/join/<id>/<secret>` link;
