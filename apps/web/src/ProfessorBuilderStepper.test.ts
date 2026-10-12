@@ -37,12 +37,12 @@ describe("professor builder source-routing gate", () => {
       "upload",
       "sources",
       "design",
-      "review",
+      "media",
       "generate",
       "publish",
     ]);
     expect(locked.find((step) => step.id === "sources")?.available).toBe(true);
-    expect(locked.find((step) => step.id === "review")?.available).toBe(false);
+    expect(locked.find((step) => step.id === "media")?.available).toBe(false);
     expect(locked.find((step) => step.id === "generate")?.available).toBe(false);
 
     const confirmed = builderSteps({
@@ -56,6 +56,6 @@ describe("professor builder source-routing gate", () => {
       routingReady: true,
       workspacePublished: false,
     });
-    expect(confirmed.find((step) => step.id === "review")?.available).toBe(true);
+    expect(confirmed.find((step) => step.id === "media")?.available).toBe(true);
   });
 });

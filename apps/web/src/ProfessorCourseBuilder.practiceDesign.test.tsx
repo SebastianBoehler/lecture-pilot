@@ -38,11 +38,11 @@ describe("practice-design builder blocking", () => {
       "upload",
       "sources",
       "design",
-      "review",
+      "media",
       "generate",
       "publish",
     ]);
-    expect(blocked.find((step) => step.id === "review")?.available).toBe(true);
+    expect(blocked.find((step) => step.id === "media")?.available).toBe(true);
     expect(blocked.find((step) => step.id === "generate")?.available).toBe(false);
     expect(ready.find((step) => step.id === "generate")?.available).toBe(true);
   });

@@ -1,72 +1,34 @@
-import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useReducer, useState } from "react";
 
-import { getCourseLectures, getDraftLectureCanvas } from "./api";
-import {
-  draftLectureCanvas,
-  forgetCanvasGenerationRequest,
-  repairLectureCanvas,
-  retryStartsFresh,
-} from "./canvasDraftApi";
+import { builderFlowReducer, initialBuilderFlow } from "./builderFlowMachine";
+import type { LearningDesignApprovalInput } from "./learningDesignTypes";
 import { builderSteps, initialBuilderStep, type BuilderStep } from "./ProfessorBuilderStepper";
-import {
-  CanvasGenerationBatchError,
-  generateLectureCanvasDrafts,
-  type CanvasGenerationProgress,
-} from "./professorCanvasGeneration";
-import { restoreFullCourseCanvasDrafts } from "./professorCanvasRestoration";
-import { useRestoredGenerationPolling } from "./useRestoredGenerationPolling";
-import { useUnmountSignal } from "./useUnmountSignal";
-import { useI18n } from "./i18n";
-import { hasCanvasVideo, toggleSelected } from "./ProfessorCourseBuilderParts";
-import {
-  createCourseWorkspace,
-  getSourceBundle,
-  includeYoutubeMedia,
-  listCourseWorkspaces,
-  listYoutubeMedia,
-  proposeLectureSchedule,
-  removeYoutubeMedia,
-  searchYoutubeMedia,
-  SourceRoutingRequestError,
-} from "./professorApi";
 import {
   clearSavedFlow,
   defaultCourseSetup,
-  isCourseSetupReady,
   readSavedFlow,
-  writeSavedFlow,
   type CourseSetup,
 } from "./professorBuilderState";
-import {
-  activationLectures,
-  courseFromSetup,
-  scheduleItemFromLecture,
-} from "./professorWorkspaceActivation";
-import { publishLectureRows } from "./professorPublishRows";
-import { useCourseTitleSuggestions } from "./useCourseTitleSuggestions";
 import { useProfessorWorkflowRun } from "./professorWorkflowRun";
-import { useProfessorSourceRouting } from "./useProfessorSourceRouting";
+import type { lectureFromWorkspace } from "./professorWorkspaceView";
 import { useProfessorPracticeDesignGate } from "./practiceDesignGate";
-import { lectureFromWorkspace, requireWorkspace } from "./professorWorkspaceView";
-import { uploadProfessorMaterials } from "./professorMaterialUpload";
-import { ignoredUploadNotice } from "./professorUpload";
 import { hasNoAssignedEvidence } from "./sourceRoutingView";
-import {
-  flattenVideoGroups,
-  type YoutubeCandidateGroup,
-  youtubeSuggestionQueries,
-} from "./professorYoutubeSuggestions";
-import type { LearningDesignApprovalInput } from "./learningDesignTypes";
 import type {
-  CanvasDocument,
   CanvasPublicationResult,
-  CourseMaterialUploadType,
-  LectureScheduleItem,
+  CourseSourceRoutingManifest,
+  CourseWorkspaceResult,
   LoginSession,
-  SourceBundleManifest,
   UniversityCourse,
-  YoutubeVideoCandidate,
 } from "./types";
+import { useBuilderGeneration } from "./useBuilderGeneration";
+import { useBuilderMedia } from "./useBuilderMedia";
+import { useBuilderPublish } from "./useBuilderPublish";
+import { useBuilderRestore } from "./useBuilderRestore";
+import { useBuilderSetupSteps } from "./useBuilderSetupSteps";
+import { useBuilderWorkspace } from "./useBuilderWorkspace";
+import { useProfessorSourceRouting } from "./useProfessorSourceRouting";
+
+type WorkspaceLecture = ReturnType<typeof lectureFromWorkspace>;
 
 export type ProfessorCourseBuilderProps = {
   session: LoginSession;
@@ -75,369 +37,68 @@ export type ProfessorCourseBuilderProps = {
     lectureId: string,
     approval: LearningDesignApprovalInput,
   ) => Promise<CanvasPublicationResult>;
-  onWorkspacePublished: (
-    course: UniversityCourse,
-    lectures: ReturnType<typeof lectureFromWorkspace>[],
-  ) => void;
-  previewWorkspaceUrl: (
-    courseId: string,
-    lecture: ReturnType<typeof lectureFromWorkspace>,
-  ) => string;
+  onWorkspacePublished: (course: UniversityCourse, lectures: WorkspaceLecture[]) => void;
+  previewWorkspaceUrl: (courseId: string, lecture: WorkspaceLecture) => string;
 };
 
-export function useProfessorCourseBuilder({
-  session,
-  onPublishWorkspace,
-  onWorkspacePublished,
-  previewWorkspaceUrl,
-}: ProfessorCourseBuilderProps) {
-  const { locale, t } = useI18n();
+/**
+ * Composes the course builder from focused hooks. Where the builder resumes and how drafts
+ * retry is decided by the pure `builderFlowMachine` reducer.
+ */
+export function useProfessorCourseBuilder(props: ProfessorCourseBuilderProps) {
+  const { session } = props;
   const [savedFlow] = useState(readSavedFlow);
-  const [setup, setSetup] = useState(savedFlow.setup);
-  const [workspace, setWorkspace] = useState(savedFlow.workspace);
-  const [workspaceCourse, setWorkspaceCourse] = useState<UniversityCourse | null>(null);
-  const [workspaceLectures, setWorkspaceLectures] = useState<
-    ReturnType<typeof lectureFromWorkspace>[]
-  >([]);
-  const [courseReady, setCourseReady] = useState(
-    savedFlow.courseReady && Boolean(savedFlow.workspace),
+  const course = useBuilderWorkspace({
+    savedFlow,
+    session,
+    previewWorkspaceUrl: props.previewWorkspaceUrl,
+  });
+  const { setup, workspace, fullCourse, bundleReady, targetIds } = course;
+  const [flow, dispatch] = useReducer(builderFlowReducer, savedFlow, (saved) =>
+    initialBuilderFlow(
+      initialBuilderStep({
+        bundleReady: saved.bundleReady,
+        canvasReady: saved.canvasReady,
+        courseReady: saved.courseReady && Boolean(saved.workspace),
+      }),
+    ),
   );
-  const [activeStep, setActiveStep] = useState<BuilderStep>(() =>
-    initialBuilderStep({
-      bundleReady: savedFlow.bundleReady,
-      canvasReady: savedFlow.canvasReady,
-      courseReady: savedFlow.courseReady && Boolean(savedFlow.workspace),
-    }),
-  );
-  const [bundle, setBundle] = useState<SourceBundleManifest | null>(null);
-  const [supportedUploads, setSupportedUploads] = useState<CourseMaterialUploadType[]>([]);
-  const [lectureSchedule, setLectureSchedule] = useState<LectureScheduleItem[]>(
-    savedFlow.lectureSchedule,
-  );
-  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
-  const [canvas, setCanvas] = useState<CanvasDocument | null>(null);
-  const [generatedLectureIds, setGeneratedLectureIds] = useState<string[]>([]);
-  const [draftReviewed, setDraftReviewed] = useState(false);
-  const [draftRestoreRevision, setDraftRestoreRevision] = useState(0);
-  const [generationProgress, setGenerationProgress] = useState<CanvasGenerationProgress[]>([]);
-  const [generationWarnings, setGenerationWarnings] = useState<string[]>([]);
-  const [retryingLectureIds, setRetryingLectureIds] = useState<Set<string>>(new Set());
-  const [restoredGeneratingIds, setRestoredGeneratingIds] = useState<string[]>([]);
-  const [query, setQuery] = useState(savedFlow.query);
-  const [videos, setVideos] = useState<YoutubeVideoCandidate[]>([]);
-  const [suggestedVideoGroups, setSuggestedVideoGroups] = useState<YoutubeCandidateGroup[]>([]);
-  const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
-  const [autoSuggestedSearchKey, setAutoSuggestedSearchKey] = useState<string | null>(null);
-  const suggestedSearchGeneration = useRef(0);
-  const mediaSelectionGeneration = useRef(0);
-  const [, setAutoSuggesting] = useState(false);
-  const [mediaLectureId, setMediaLectureId] = useState(savedFlow.workspace?.lectureId ?? "");
-  const [mediaIncluded, setMediaIncluded] = useState(false);
-  const [mediaReviewed, setMediaReviewed] = useState(false);
-  const [scheduleApplied, setScheduleApplied] = useState(setup.target !== "full-course");
-  // Status polling stops when the builder unmounts; the server-side jobs keep running.
-  const generationSignal = useUnmountSignal();
+  const setActiveStep = (step: BuilderStep) => dispatch({ type: "navigate", step });
+  const workflow = useProfessorWorkflowRun();
   const sourceRouting = useProfessorSourceRouting(session);
-  const { error, notice, pendingAction, run, setError, setNotice } = useProfessorWorkflowRun();
-  const [restored, setRestored] = useState(!savedFlow.bundleReady && !savedFlow.canvasReady);
-  const [isRestoring, setIsRestoring] = useState(false);
-  const restoreGeneratedState = useEffectEvent(restoreFromBackend);
-  useRestoredGenerationPolling({
-    courseId: workspace?.courseId ?? null,
-    lectureIds: restoredGeneratingIds,
-    session,
-    onDraftReady: recordGeneratedCanvas,
-    onProgress: updateGenerationItem,
-    onError: setError,
-    onSettled: (lectureId) =>
-      setRestoredGeneratingIds((current) => current.filter((id) => id !== lectureId)),
-  });
-  const runAutomaticVideoSearch = useEffectEvent(searchSuggestedVideos);
-
-  const setupReady = isCourseSetupReady(setup);
-  const { courseSearchFailed, courseSuggestions } = useCourseTitleSuggestions({
-    enabled: activeStep === "define" && !courseReady,
-    personalCourses: session.university_courses ?? [],
-    query: setup.courseTitle,
-    session,
-  });
-  const bundleReady = Boolean(bundle?.files.length);
-  const mediaReady = mediaIncluded || selectedVideos.size > 0 || hasCanvasVideo(canvas);
-  const reviewReady = mediaReady || mediaReviewed;
-  const reviewAvailable = bundleReady && (setup.target !== "full-course" || scheduleApplied);
   const routingReady = Boolean(
     sourceRouting.routing?.confirmed && !hasNoAssignedEvidence(sourceRouting.routing.routes),
   );
-  const generationTargetLectures = workspace
-    ? setup.target === "full-course"
-      ? workspaceLectures.length
-        ? workspaceLectures
-        : activationLectures(workspace, setup, lectureSchedule)
-      : [lectureFromWorkspace(workspace, setup, lectureSchedule)]
-    : [];
-  const generationTargetLectureIds = generationTargetLectures.map((lecture) => lecture.id);
-  const mediaTargetLectureKey = generationTargetLectureIds.join("|");
-  const mediaTargetLecture =
-    generationTargetLectures.find((lecture) => lecture.id === mediaLectureId) ??
-    generationTargetLectures[0];
   const practiceDesign = useProfessorPracticeDesignGate({
     courseId: workspace?.courseId ?? null,
     routingReady,
     session,
-    targetLectures: generationTargetLectures.map((lecture) => ({
+    targetLectures: course.targetLectures.map((lecture) => ({
       id: lecture.id,
       label: `${lecture.number} · ${lecture.title}`,
     })),
   });
   const designReady = routingReady && practiceDesign.designReady;
-  // Publication state of this builder's own course (not the learner workspace course).
-  const [coursePublished, setCoursePublished] = useState({ courseId: "", ids: [] as string[] });
-  const publishedLectureIds =
-    workspace && coursePublished.courseId === workspace.courseId ? coursePublished.ids : [];
-  const fullCoursePublishedCount = generationTargetLectureIds.filter((lectureId) =>
-    publishedLectureIds.includes(lectureId),
-  ).length;
-  const suggestedQueries = youtubeSuggestionQueries(setup, mediaTargetLecture);
-  const defaultYoutubeQuery = suggestedQueries[0] ?? setup.courseTitle.trim();
-  const mediaCourseId = workspace?.courseId ?? "";
-  const mediaTargetLectureId = mediaTargetLecture?.id ?? "";
-  const mediaSearchScopeKey =
-    mediaCourseId && mediaTargetLectureId ? `${mediaCourseId}:${mediaTargetLectureId}` : "";
-  const suggestedSearchKey =
-    workspace && suggestedQueries.length
-      ? [
-          workspace.courseId,
-          mediaTargetLecture?.id ?? "no-lecture",
-          bundle?.files.map((file) => `${file.path}:${file.size_bytes}`).join(",") ?? "no-bundle",
-          suggestedQueries.join("|"),
-        ].join("::")
-      : "";
-  const availableVideos = flattenVideoGroups([
-    ...suggestedVideoGroups,
-    { query: query.trim() || defaultYoutubeQuery, videos },
-  ]);
-  const workspacePublished = Boolean(
-    workspace &&
-    (setup.target === "full-course"
-      ? generationTargetLectureIds.length > 0 &&
-        fullCoursePublishedCount === generationTargetLectureIds.length
-      : publishedLectureIds.includes(workspace.lectureId)),
-  );
-  const previewHref =
-    canvas && workspace
-      ? previewWorkspaceUrl(
-          workspace.courseId,
-          lectureFromWorkspace(workspace, setup, lectureSchedule),
-        )
-      : null;
-  const publishLectures = workspace
-    ? publishLectureRows({
-        courseId: workspace.courseId,
-        lectureSchedule: workspaceLectures.length
-          ? workspaceLectures.map(scheduleItemFromLecture)
-          : lectureSchedule,
-        previewWorkspaceUrl,
-        publishedLectureIds,
-        setup,
-        workspaceLecture: lectureFromWorkspace(workspace, setup, lectureSchedule),
-      })
-    : [];
-  const steps = builderSteps({
-    bundleReady,
-    canvasReady: !!canvas,
-    courseReady,
-    designAvailable: sourceRouting.status === "stale",
-    designReady,
-    draftReviewed,
-    reviewAvailable,
-    reviewReady,
-    routingReady,
-    workspacePublished,
-  });
-  useEffect(() => {
-    let cancelled = false;
-    async function restoreSavedWorkspace() {
-      await restoreGeneratedState(savedFlow.workspace, {
-        quietDraftMiss: !savedFlow.canvasReady,
-        skipWhenMissing: true,
-      });
-      if (!cancelled) setRestored(true);
-    }
-    if (!restored) void restoreSavedWorkspace();
-    return () => {
-      cancelled = true;
-    };
-  }, [restored, savedFlow]);
-
-  useEffect(() => {
-    if (!mediaTargetLectureKey) {
-      if (mediaLectureId) setMediaLectureId("");
-      return;
-    }
-    const ids = mediaTargetLectureKey.split("|");
-    if (!ids.includes(mediaLectureId)) setMediaLectureId(ids[0]);
-  }, [mediaLectureId, mediaTargetLectureKey]);
-
-  useEffect(() => {
-    if (!mediaSearchScopeKey) return;
-    suggestedSearchGeneration.current += 1;
-    const selectionGeneration = ++mediaSelectionGeneration.current;
-    setQuery(defaultYoutubeQuery);
-    setVideos([]);
-    setSuggestedVideoGroups([]);
-    setSelectedVideos(new Set());
-    setMediaIncluded(false);
-    setAutoSuggestedSearchKey(null);
-    if (!mediaCourseId || !mediaTargetLectureId) return;
-    void listYoutubeMedia({
-      courseId: mediaCourseId,
-      lectureId: mediaTargetLectureId,
-      session,
-    })
-      .then((selections) => {
-        if (selectionGeneration !== mediaSelectionGeneration.current) return;
-        setSelectedVideos(new Set(selections.map((selection) => selection.video.video_id)));
-        setMediaIncluded(selections.length > 0);
-      })
-      .catch((selectionError) => {
-        if (selectionGeneration === mediaSelectionGeneration.current) {
-          setError(
-            selectionError instanceof Error
-              ? selectionError.message
-              : "YouTube selections failed to load.",
-          );
-        }
-      });
-  }, [
-    defaultYoutubeQuery,
-    mediaCourseId,
-    mediaSearchScopeKey,
-    mediaTargetLectureId,
+  const media = useBuilderMedia({
     session,
-    setError,
-  ]);
-
-  useEffect(() => {
-    if (!restored) return;
-    writeSavedFlow({
-      setup,
-      workspace,
-      courseReady,
-      bundleReady,
-      canvasReady: Boolean(canvas),
-      lectureSchedule,
-      query,
-    });
-  }, [bundleReady, canvas, courseReady, lectureSchedule, query, restored, setup, workspace]);
-
-  useEffect(() => {
-    if (
-      activeStep !== "review" ||
-      !workspace ||
-      !setupReady ||
-      !suggestedQueries.length ||
-      !suggestedSearchKey ||
-      pendingAction !== null ||
-      autoSuggestedSearchKey === suggestedSearchKey
-    )
-      return;
-    let cancelled = false;
-    setAutoSuggestedSearchKey(suggestedSearchKey);
-    setAutoSuggesting(true);
-    setError(null);
-    void runAutomaticVideoSearch(workspace.courseId)
-      .catch((autoError) => {
-        if (!cancelled)
-          setError(autoError instanceof Error ? autoError.message : "YouTube suggestions failed.");
-      })
-      .finally(() => {
-        if (!cancelled) setAutoSuggesting(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    activeStep,
-    autoSuggestedSearchKey,
-    pendingAction,
-    setError,
-    setupReady,
-    suggestedQueries.length,
-    suggestedSearchKey,
+    initialQuery: savedFlow.query,
+    setup,
     workspace,
-  ]);
+    bundle: course.bundle,
+    canvas: flow.canvas,
+    lectures: course.targetLectures,
+    active: flow.activeStep === "media",
+    workflow,
+    onContinue: async () => {
+      await requireConfirmedRouting(workspaceId());
+      dispatch({ type: "media-continued" });
+    },
+    onMediaChanged: () => dispatch({ type: "media-changed" }),
+  });
 
-  function updateSetup(nextSetup: CourseSetup) {
-    setSetup(nextSetup);
-    resetGeneratedState();
-    setWorkspace(null);
-    setWorkspaceCourse(null);
-    setWorkspaceLectures([]);
-    setCourseReady(false);
-    setBundle(null);
-    setSupportedUploads([]);
-    setLectureSchedule([]);
-    setMediaLectureId("");
-    setScheduleApplied(nextSetup.target !== "full-course");
-    setActiveStep("define");
-  }
-
-  function resetGeneratedState() {
-    sourceRouting.reset();
-    practiceDesign.reset();
-    resetCanvasState();
-  }
-
-  function resetCanvasState() {
-    setCanvas(null);
-    setGeneratedLectureIds([]);
-    setDraftReviewed(false);
-    setGenerationProgress([]);
-    setGenerationWarnings([]);
-    setRetryingLectureIds(new Set());
-    setRestoredGeneratingIds([]);
-    setVideos([]);
-    setSuggestedVideoGroups([]);
-    suggestedSearchGeneration.current += 1;
-    mediaSelectionGeneration.current += 1;
-    setAutoSuggestedSearchKey(null);
-    setAutoSuggesting(false);
-    setSelectedVideos(new Set());
-    setMediaIncluded(false);
-    setMediaReviewed(false);
-  }
-
-  async function searchSuggestedVideos(courseId: string) {
-    const generation = ++suggestedSearchGeneration.current;
-    const responses = await Promise.all(
-      suggestedQueries.map(async (searchQuery) => {
-        try {
-          const response = await withTimeout(
-            searchYoutubeMedia(courseId, searchQuery, session, 3),
-            6000,
-          );
-          return { query: searchQuery, videos: response.items };
-        } catch (error) {
-          return {
-            query: searchQuery,
-            videos: [],
-            error: error instanceof Error ? error.message : "Video search failed.",
-          };
-        }
-      }),
-    );
-    const groups: YoutubeCandidateGroup[] = [];
-    const seenVideoIds = new Set<string>();
-    for (const response of responses) {
-      const groupVideos = response.videos.filter((video) => {
-        if (seenVideoIds.has(video.video_id)) return false;
-        seenVideoIds.add(video.video_id);
-        return true;
-      });
-      groups.push({ query: response.query, videos: groupVideos, error: response.error });
-    }
-    if (generation === suggestedSearchGeneration.current) setSuggestedVideoGroups(groups);
-    return flattenVideoGroups(groups).length;
+  function workspaceId() {
+    if (!workspace) throw new Error("Create the course workspace first.");
+    return workspace.courseId;
   }
 
   async function requireConfirmedRouting(courseId: string, navigate = true) {
@@ -449,660 +110,180 @@ export function useProfessorCourseBuilder({
     );
   }
 
-  async function requireApprovedDesigns(ids?: readonly string[], navigate = true) {
-    try {
-      await practiceDesign.requireCurrentApprovals(ids);
-    } catch (approvalError) {
-      if (navigate) setActiveStep("design");
-      throw approvalError;
-    }
+  function resetCanvasState() {
+    dispatch({ type: "canvas-reset" });
+    media.reset();
   }
 
-  /** Start drafts for lectures whose goals are approved; other lectures keep their state. */
-  async function startLectureGeneration(lectureIds: readonly string[]) {
-    if (!workspace || !lectureIds.length) return;
-    const ids = [...lectureIds];
-    setGenerationProgress((current) => [
-      ...current.filter((item) => !ids.includes(item.lectureId)),
-      ...ids.map((lectureId) => ({ lectureId, status: "generating" as const })),
-    ]);
-    try {
-      // Background start: report problems without moving the professor away from their step.
-      await requireConfirmedRouting(workspace.courseId, false);
-      await requireApprovedDesigns(ids, false);
-      const canvases = await generateCanvases(workspace.courseId, ids);
-      if (canvases)
-        setNotice(
-          ids.length === 1
-            ? "Course-builder agent generated a source-grounded canvas draft."
-            : `Course-builder agent generated ${ids.length} source-grounded lecture canvases.`,
-        );
-    } catch (startError) {
-      setGenerationProgress((current) => current.filter((item) => !ids.includes(item.lectureId)));
-      setError(startError instanceof Error ? startError.message : "Canvas generation failed.");
-    }
+  function resetGeneratedState() {
+    sourceRouting.reset();
+    practiceDesign.reset();
+    resetCanvasState();
   }
 
-  function updateGenerationItem(progress: CanvasGenerationProgress) {
-    setGenerationProgress((current) =>
-      current.map((item) =>
-        item.lectureId === progress.lectureId
-          ? { ...item, ...progress, errorKind: progress.errorKind, message: progress.message }
-          : item,
-      ),
-    );
-  }
-
-  function recordGeneratedCanvas(lectureId: string, generatedCanvas: CanvasDocument) {
-    setCanvas(generatedCanvas);
-    setGeneratedLectureIds((current) =>
-      current.includes(lectureId) ? current : [...current, lectureId],
-    );
-    setGenerationWarnings((current) =>
-      Array.from(new Set([...current, ...(generatedCanvas.warnings ?? [])])),
-    );
-  }
-
-  async function generateCanvases(
-    courseId: string,
-    lectureIds: string[],
-    options: { repair?: boolean; repairIds?: ReadonlySet<string> } = {},
-  ) {
-    setRestoredGeneratingIds((current) => current.filter((id) => !lectureIds.includes(id)));
-    for (const item of generationProgress) {
-      if (
-        item.status === "error" &&
-        retryStartsFresh(item) &&
-        lectureIds.includes(item.lectureId)
-      ) {
-        forgetCanvasGenerationRequest(courseId, item.lectureId);
-      }
-    }
-    try {
-      return await generateLectureCanvasDrafts({
-        lectureIds,
-        draft: (lectureId) =>
-          options.repair || options.repairIds?.has(lectureId)
-            ? repairLectureCanvas(courseId, lectureId, session, generationSignal())
-            : draftLectureCanvas(courseId, lectureId, session, generationSignal()),
-        onDraftReady: recordGeneratedCanvas,
-        onProgress: updateGenerationItem,
-      });
-    } catch (generationError) {
-      if (generationError instanceof CanvasGenerationBatchError) return null;
-      throw generationError;
-    }
-  }
-
-  async function retryCanvas(lectureId: string) {
-    if (retryingLectureIds.has(lectureId)) return;
-    setRetryingLectureIds((current) => new Set(current).add(lectureId));
-    setError(null);
-    try {
-      const activeWorkspace = requireWorkspace(workspace);
-      const repair =
-        generationProgress.find((item) => item.lectureId === lectureId)?.errorKind === "repair";
-      await generateCanvases(activeWorkspace.courseId, [lectureId], { repair });
-    } catch (retryError) {
-      setError(retryError instanceof Error ? retryError.message : "Canvas retry failed.");
-    } finally {
-      setRetryingLectureIds((current) => {
-        const next = new Set(current);
-        next.delete(lectureId);
-        return next;
-      });
-    }
+  function routingConfirmed() {
+    practiceDesign.reset();
+    media.reset();
+    dispatch({ type: "routing-confirmed" });
   }
 
   /** An automatically accepted assignment continues like a confirmed one; it stays editable. */
-  function continueAfterProposal(proposed: { confirmed: boolean }) {
-    if (!proposed.confirmed) {
-      setActiveStep("sources");
-      return false;
-    }
-    practiceDesign.reset();
-    resetCanvasState();
-    setMediaReviewed(false);
-    setActiveStep("review");
-    return true;
+  function continueAfterProposal(proposed: CourseSourceRoutingManifest) {
+    if (proposed.confirmed) routingConfirmed();
+    else setActiveStep("sources");
+    return proposed.confirmed;
   }
 
-  function restoredStep(routingConfirmed: boolean): BuilderStep {
-    if (!routingConfirmed) return "sources";
-    // Media is optional; resumed setups continue with the learning plan.
-    setMediaReviewed(true);
-    return "design";
+  function updateSetup(nextSetup: CourseSetup) {
+    resetGeneratedState();
+    course.clear(nextSetup);
+    media.selectLecture("");
+    setActiveStep("define");
   }
 
-  async function restoreFromBackend(
-    targetWorkspace: { courseId: string; lectureId: string } | null,
-    options: { quietDraftMiss?: boolean; skipWhenMissing?: boolean } = {},
-  ) {
-    if (!targetWorkspace) {
-      if (!options.skipWhenMissing) setError("Create a course workspace before refreshing state.");
-      return;
-    }
-    setIsRestoring(true);
-    setError(null);
-    try {
-      const ownWorkspace = (await listCourseWorkspaces(session)).find(
-        (item) => item.course.id === targetWorkspace.courseId,
-      );
-      setCoursePublished({
-        courseId: targetWorkspace.courseId,
-        ids: ownWorkspace?.publishedLectureIds ?? [],
+  function workspaceCreated(created: CourseWorkspaceResult) {
+    course.created(created);
+    media.selectLecture(created.active_lecture_id);
+    resetGeneratedState();
+  }
+
+  const restore = useBuilderRestore({
+    savedFlow,
+    current: {
+      setup,
+      workspace,
+      courseReady: course.courseReady,
+      bundleReady,
+      canvasReady: Boolean(flow.canvas),
+      lectureSchedule: course.lectureSchedule,
+      query: media.query,
+    },
+    session,
+    setup,
+    dispatch,
+    loadRouting: sourceRouting.load,
+    onRestored: course.restored,
+    onWorkspaceMissing: () => {
+      clearSavedFlow();
+      media.setQuery("");
+      updateSetup({
+        ...setup,
+        courseTitle: "",
+        firstLectureDate: "",
+        lectureCount: "",
+        lectureNumber: "",
+        lectureTitle: "",
       });
-      if (options.skipWhenMissing) {
-        if (!ownWorkspace) {
-          clearSavedFlow();
-          setQuery("");
-          updateSetup({
-            ...setup,
-            courseTitle: "",
-            firstLectureDate: "",
-            lectureCount: "",
-            lectureNumber: "",
-            lectureTitle: "",
-          });
-          return;
-        }
-      }
-      const restoredBundle = await getSourceBundle(targetWorkspace.courseId, session);
-      setBundle(restoredBundle);
-      setSupportedUploads(restoredBundle.supported_uploads ?? []);
-      const restoredLectures = await getCourseLectures(targetWorkspace.courseId, session);
-      setWorkspaceLectures(restoredLectures);
-      setWorkspaceCourse(
-        (current) => current ?? courseFromSetup(targetWorkspace.courseId, setup, session),
-      );
-      if (setup.target === "full-course" && !lectureSchedule.length) {
-        setLectureSchedule(restoredLectures.map(scheduleItemFromLecture));
-      }
-      if (setup.target === "full-course") setScheduleApplied(restoredLectures.length > 0);
-      if (!restoredBundle.files.length) {
-        setActiveStep("upload");
-        return;
-      }
-      let restoredRouting;
-      try {
-        restoredRouting = await sourceRouting.load(targetWorkspace.courseId);
-      } catch (routingError) {
-        const unproposed =
-          routingError instanceof SourceRoutingRequestError &&
-          routingError.status === 409 &&
-          routingError.message ===
-            "Generate an agent source-assignment proposal before reviewing it.";
-        setActiveStep("sources");
-        setError(
-          unproposed
-            ? null
-            : routingError instanceof Error
-              ? routingError.message
-              : "Source assignments failed to load.",
-        );
-        return;
-      }
-      if (setup.target === "full-course") {
-        const restoredDrafts = await restoreFullCourseCanvasDrafts({
-          courseId: targetWorkspace.courseId,
-          lectureIds: restoredLectures.map((lecture) => lecture.id),
-          session,
-        });
-        const activeCanvas =
-          restoredDrafts.restored.find((item) => item.lectureId === targetWorkspace.lectureId)
-            ?.canvas ?? restoredDrafts.restored[0]?.canvas;
-        setCanvas(activeCanvas ?? null);
-        setGeneratedLectureIds(restoredDrafts.restored.map((item) => item.lectureId));
-        setGenerationProgress(restoredDrafts.progress);
-        setRestoredGeneratingIds(
-          restoredDrafts.progress
-            .filter((item) => item.status === "generating")
-            .map((item) => item.lectureId),
-        );
-        setDraftRestoreRevision((revision) => revision + 1);
-        setGenerationWarnings(
-          Array.from(
-            new Set(restoredDrafts.restored.flatMap((item) => item.canvas.warnings ?? [])),
-          ),
-        );
-        setDraftReviewed(false);
-        // Any started draft (ready, running or failed) means the next action lives in review.
-        const draftingStarted = restoredDrafts.progress.some((item) => item.status !== "pending");
-        setActiveStep(draftingStarted ? "generate" : restoredStep(restoredRouting.confirmed));
-        return;
-      }
-      try {
-        const restoredCanvas = await getDraftLectureCanvas(
-          targetWorkspace.courseId,
-          targetWorkspace.lectureId,
-          session,
-        );
-        setCanvas(restoredCanvas);
-        setDraftRestoreRevision((revision) => revision + 1);
-        setGeneratedLectureIds([targetWorkspace.lectureId]);
-        setGenerationWarnings(restoredCanvas.warnings ?? []);
-        setDraftReviewed(false);
-        setActiveStep("generate");
-      } catch (canvasError) {
-        setActiveStep(restoredStep(restoredRouting.confirmed));
-        if (!options.quietDraftMiss) {
-          setError(
-            canvasError instanceof Error
-              ? canvasError.message
-              : "Could not restore professor preview.",
-          );
-        }
-      }
-    } catch (restoreError) {
-      if (!options.skipWhenMissing) {
-        setError(
-          restoreError instanceof Error
-            ? restoreError.message
-            : "Could not refresh workspace state.",
-        );
-      }
-    } finally {
-      setIsRestoring(false);
-    }
-  }
-
-  const defineStep = {
-    courseSearchFailed,
-    courseSuggestions,
-    courseSourceStatuses: session.university_course_source_statuses,
-    courseReady,
-    isCreating: pendingAction === "create",
-    isReady: setupReady,
-    onCreate: () =>
-      run("create", async () => {
-        const schedule = setup.target === "full-course" ? lectureSchedule : [];
-        const created = await createCourseWorkspace(setup, session, schedule);
-        setWorkspace({ courseId: created.course.id, lectureId: created.active_lecture_id });
-        setMediaLectureId(created.active_lecture_id);
-        setWorkspaceCourse(created.course);
-        setWorkspaceLectures(created.lectures);
-        resetGeneratedState();
-        const sourceBundle = await getSourceBundle(created.course.id, session);
-        setSupportedUploads(sourceBundle.supported_uploads ?? []);
-        setScheduleApplied(setup.target !== "full-course");
-        setCourseReady(true);
-        setActiveStep("upload");
-        return setup.target === "full-course"
-          ? t("builder.status.createdCourse", { course: created.course.id })
-          : t("builder.status.createdLecture", {
-              course: created.course.id,
-              lecture: created.active_lecture_id,
-            });
-      }),
-    onSetupChange: updateSetup,
-    setup,
-  };
-
-  const uploadStep = {
-    bundle,
-    courseReady,
-    lectureSchedule,
-    pendingAction,
-    setup,
-    uploadFiles,
-    supportedUploads,
-    workspaceReady: Boolean(workspace),
-    onUploadFilesChange: setUploadFiles,
-    onScheduleChange: setLectureSchedule,
-    onUpload: () =>
-      run("upload", async () => {
-        const activeWorkspace = requireWorkspace(workspace);
-        const result = await uploadProfessorMaterials({
-          courseId: activeWorkspace.courseId,
-          files: uploadFiles,
-          session,
-          supportedUploads,
-        });
-        if (result.bundle) {
-          setBundle(result.bundle);
-          setSupportedUploads(result.bundle.supported_uploads ?? supportedUploads);
-        }
-        if (result.uploaded.length > 0 || result.mutationUncertain) {
-          resetGeneratedState();
-          if (setup.target === "full-course") setScheduleApplied(false);
-        }
-        if (result.error) throw result.error;
-        if (setup.target === "full-course") {
-          const proposal = await proposeLectureSchedule({
-            courseId: activeWorkspace.courseId,
-            count: Number(setup.lectureCount) || null,
-            firstLectureDate: setup.firstLectureDate,
-            session,
-          });
-          setLectureSchedule(proposal.lectures);
-        }
-        const autoConfirmed =
-          setup.target !== "full-course" &&
-          continueAfterProposal(await sourceRouting.propose(activeWorkspace.courseId));
-        setUploadFiles([]);
-        const ignoredText = ignoredUploadNotice(result.ignored, t);
-        if (autoConfirmed) return t("builder.status.routingAutoConfirmed");
-        if (result.uploaded.length === 1) {
-          return `${t("builder.status.uploadedOne", { path: result.uploaded[0].path, kind: result.uploaded[0].kind })}${ignoredText}`;
-        }
-        return `${t("builder.status.uploadedMany", { count: result.uploaded.length })}${ignoredText}`;
-      }),
-    onApplySchedule: () =>
-      run("apply-schedule", async () => {
-        const activeWorkspace = requireWorkspace(workspace);
-        const created = await createCourseWorkspace(
-          setup,
-          session,
-          lectureSchedule,
-          activeWorkspace.courseId,
-        );
-        setWorkspace({ courseId: created.course.id, lectureId: created.active_lecture_id });
-        setMediaLectureId(created.active_lecture_id);
-        setWorkspaceCourse(created.course);
-        setWorkspaceLectures(created.lectures);
-        resetGeneratedState();
-        setScheduleApplied(true);
-        setActiveStep("sources");
-        if (continueAfterProposal(await sourceRouting.propose(created.course.id)))
-          return t("builder.status.routingAutoConfirmed");
-        return t("builder.status.scheduleApplied", { count: created.lectures.length });
-      }),
-  };
-
-  const generateStep = {
-    canvas,
-    canGenerate: Boolean(
-      bundleReady &&
-      routingReady &&
-      practiceDesign.readyLectureIds.length &&
-      workspace &&
-      !retryingLectureIds.size,
-    ),
+    },
+    setError: workflow.setError,
+  });
+  const generateStep = useBuilderGeneration({
+    session,
+    workspace,
+    flow,
+    dispatch,
+    workflow,
     readyLectureIds: practiceDesign.readyLectureIds,
-    startLectureGeneration: (ids: readonly string[]) => void startLectureGeneration(ids),
-    generationProgress,
-    generatedCount: generatedLectureIds.length,
-    generatedIds: generatedLectureIds,
+    targetLectureIds: targetIds,
+    requireReady: async (ids, navigate) => {
+      await requireConfirmedRouting(workspaceId(), navigate);
+      try {
+        await practiceDesign.requireCurrentApprovals(ids);
+      } catch (approvalError) {
+        if (navigate) setActiveStep("design");
+        throw approvalError;
+      }
+    },
+    canGenerate: Boolean(
+      bundleReady && routingReady && practiceDesign.readyLectureIds.length && workspace,
+    ),
     allGoalsApproved: designReady,
-    isFullCourse: setup.target === "full-course",
-    isGenerating:
-      pendingAction === "generate" ||
-      generationProgress.some((item) => item.status === "generating"),
-    retryingLectureIds,
-    onContinueToPublish: () => {
-      setDraftReviewed(true);
-      setActiveStep("publish");
-    },
-    previewLectures:
-      setup.target === "full-course"
-        ? publishLectures
-            .filter((lecture) => generatedLectureIds.includes(lecture.id))
-            .map(({ id, label, previewHref: href }) => ({ id, label, previewHref: href }))
-        : workspace && previewHref
-          ? [
-              {
-                id: workspace.lectureId,
-                label: `${lectureFromWorkspace(workspace, setup, lectureSchedule).number} · ${lectureFromWorkspace(workspace, setup, lectureSchedule).title}`,
-                previewHref,
-              },
-            ]
-          : [],
-    totalCount: generationTargetLectureIds.length,
-    onRetry: (lectureId: string) => void retryCanvas(lectureId),
-    onGenerate: () =>
-      run("generate", async () => {
-        const activeWorkspace = requireWorkspace(workspace);
-        await requireConfirmedRouting(activeWorkspace.courseId);
-        const ready = practiceDesign.readyLectureIds;
-        await requireApprovedDesigns(ready);
-        const unfinished = ready.filter(
-          (id) =>
-            !generatedLectureIds.includes(id) ||
-            generationProgress.some((item) => item.lectureId === id && item.status === "error"),
-        );
-        const lectureIds = unfinished.length ? unfinished : ready;
-        const repairIds = new Set(
-          generationProgress
-            .filter((item) => lectureIds.includes(item.lectureId) && item.errorKind === "repair")
-            .map((item) => item.lectureId),
-        );
-        setDraftReviewed(false);
-        setGenerationProgress(
-          generationTargetLectureIds.map((lectureId) => ({
-            lectureId,
-            status: lectureIds.includes(lectureId) ? "pending" : "ready",
-          })),
-        );
-        if (!unfinished.length) setGenerationWarnings([]);
-        const canvases = await generateCanvases(activeWorkspace.courseId, lectureIds, {
-          repairIds,
-        });
-        if (!canvases) return;
-        setCanvas(canvases[0] ?? null);
-        setGeneratedLectureIds((current) => [...new Set([...current, ...lectureIds])]);
-        if (lectureIds.length === 1) return t("builder.status.generatedOne");
-        return t("builder.status.generatedMany", { count: lectureIds.length });
-      }),
-  };
-
-  const mediaStep = {
-    canContinue: Boolean(bundleReady && routingReady && workspace),
-    canSearch: Boolean(setupReady && workspace),
-    canSuggest: Boolean(suggestedQueries.length && setupReady && workspace),
-    pendingAction,
-    onContinue: () =>
-      void run("validate-routing", async () => {
-        const activeWorkspace = requireWorkspace(workspace);
-        await requireConfirmedRouting(activeWorkspace.courseId);
-        setAutoSuggesting(false);
-        setMediaReviewed(true);
-        setActiveStep("design");
-      }),
-    onQueryChange: setQuery,
-    onSearch: () =>
-      run("search", async () => {
-        const searchQuery = query.trim() || defaultYoutubeQuery;
-        if (!query.trim()) setQuery(searchQuery);
-        const activeWorkspace = requireWorkspace(workspace);
-        const response = await searchYoutubeMedia(activeWorkspace.courseId, searchQuery, session);
-        setVideos(response.items);
-        return t("builder.status.videosFound", { count: response.items.length });
-      }),
-    onSuggest: () =>
-      run("suggest-videos", async () => {
-        const activeWorkspace = requireWorkspace(workspace);
-        const count = await searchSuggestedVideos(activeWorkspace.courseId);
-        setAutoSuggestedSearchKey(suggestedSearchKey || null);
-        return t("builder.status.videosSuggested", {
-          count,
-          searches: suggestedQueries.length,
-        });
-      }),
-    onTargetLectureChange: setMediaLectureId,
-    onToggleVideo: (videoId: string) => {
-      const activeWorkspace = requireWorkspace(workspace);
-      const target = mediaTargetLecture ?? generationTargetLectures[0];
-      const video = availableVideos.find((candidate) => candidate.video_id === videoId);
-      if (!target || !video) return;
-      const wasSelected = selectedVideos.has(videoId);
-      const nextSelected = toggleSelected(selectedVideos, videoId);
-      mediaSelectionGeneration.current += 1;
-      setSelectedVideos(nextSelected);
-      void run("include-videos", async () => {
-        try {
-          if (wasSelected) {
-            await removeYoutubeMedia({
-              courseId: activeWorkspace.courseId,
-              lectureId: target.id,
-              videoId,
-              session,
-            });
-          } else {
-            await includeYoutubeMedia({
-              courseId: activeWorkspace.courseId,
-              lectureId: target.id,
-              video,
-              session,
-            });
-          }
-        } catch (saveError) {
-          setSelectedVideos((current) => toggleSelected(current, videoId));
-          throw saveError;
-        }
-        setMediaIncluded(nextSelected.size > 0);
-        setMediaReviewed(true);
-        if (canvas) setCanvas(null);
-        setGeneratedLectureIds([]);
-        setGenerationProgress([]);
-        setGenerationWarnings([]);
-        if (wasSelected) return t("builder.status.videoRemoved", { lecture: target.number });
-        const selectedCount = nextSelected.size;
-        return selectedCount === 1
-          ? t("builder.status.videoSavedOne", { lecture: target.number })
-          : t("builder.status.videoSavedMany", { count: selectedCount, lecture: target.number });
-      });
-    },
-    query,
-    ready: mediaReady,
-    selectedVideos,
-    suggestedGroups: suggestedVideoGroups,
-    suggestedQueries,
-    targetLectureId: mediaLectureId,
-    targetLectures: generationTargetLectures,
-    videos,
-  };
-
-  const publishStep = {
-    canPublish: Boolean(canvas && workspace),
-    isFullCourse: setup.target === "full-course",
-    isPublishing: pendingAction === "publish",
-    /** Approve & publish each reviewed draft; one failure never blocks the others. */
-    onPublish: (items: readonly { lectureId: string; approval: LearningDesignApprovalInput }[]) =>
-      run("publish", async () => {
-        const activeWorkspace = requireWorkspace(workspace);
-        const published = [];
-        const failed: string[] = [];
-        for (const { lectureId, approval } of items) {
-          try {
-            published.push(await onPublishWorkspace(activeWorkspace.courseId, lectureId, approval));
-            setCoursePublished((current) => ({
-              courseId: activeWorkspace.courseId,
-              ids: [
-                ...(current.courseId === activeWorkspace.courseId ? current.ids : []),
-                lectureId,
-              ],
-            }));
-          } catch (publishError) {
-            failed.push(
-              publishError instanceof Error ? publishError.message : "Publishing failed.",
-            );
-          }
-        }
-        const failure = [...new Set(failed)].join("\n");
-        if (!published.length) throw new Error(failure || "Publishing failed.");
-        onWorkspacePublished(
-          workspaceCourse ?? courseFromSetup(activeWorkspace.courseId, setup, session),
-          workspaceLectures.length
-            ? workspaceLectures
-            : activationLectures(activeWorkspace, setup, lectureSchedule),
-        );
-        if (failure) setError(failure);
-        const lastPublished = published[published.length - 1];
-        const when = lastPublished?.published_at
-          ? new Date(lastPublished.published_at).toLocaleString(locale)
-          : null;
-        const version = lastPublished.version ?? 1;
-        if (published.length === 1)
-          return when
-            ? t("builder.status.publishedOneAt", { version, when })
-            : t("builder.status.publishedOne", { version });
-        return when
-          ? t("builder.status.publishedManyAt", { count: published.length, when })
-          : t("builder.status.publishedMany", { count: published.length });
-      }),
-    publishedCount: fullCoursePublishedCount,
-    lectures: publishLectures,
-    ready: workspacePublished,
-    totalCount: generationTargetLectureIds.length,
-  };
-
-  const routingLectures = lectureSchedule.length
-    ? lectureSchedule
-    : workspaceLectures.map(scheduleItemFromLecture);
-  const routingStep = {
-    isLoading: isRestoring,
-    isProposing:
-      pendingAction === "apply-schedule" ||
-      pendingAction === "upload" ||
-      pendingAction === "regenerate-routing",
-    isSaving: pendingAction === "confirm-routing" || pendingAction === "regenerate-routing",
-    lectures: routingLectures,
-    routing: sourceRouting.routing,
-    onRouteChange: (
-      path: string,
-      role: Parameters<typeof sourceRouting.updateRoute>[1],
-      lectureId: string | null,
-    ) => {
-      sourceRouting.updateRoute(path, role, lectureId);
+    isFullCourse: fullCourse,
+    previewLectures: course.previewLectures(flow.generatedIds, Boolean(flow.canvas)),
+  });
+  const setupSteps = useBuilderSetupSteps({
+    session,
+    setup,
+    workspace,
+    courseReady: course.courseReady,
+    defining: flow.activeStep === "define",
+    isRestoring: restore.isRestoring,
+    bundle: course.bundle,
+    supportedUploads: course.supportedUploads,
+    lectureSchedule: course.lectureSchedule,
+    workspaceLectures: course.workspaceLectures,
+    workflow,
+    sourceRouting,
+    onSetupChange: updateSetup,
+    onWorkspaceCreated: workspaceCreated,
+    onSupportedUploads: course.setSupportedUploads,
+    onBundle: course.bundleChanged,
+    onScheduleChange: course.setLectureSchedule,
+    onScheduleApplied: course.setScheduleApplied,
+    onSourcesChanged: resetGeneratedState,
+    onRoutingChanged: () => {
       practiceDesign.reset();
       resetCanvasState();
     },
-    onRegenerate: () =>
-      run("regenerate-routing", async () => {
-        const activeWorkspace = requireWorkspace(workspace);
-        await sourceRouting.regenerate(activeWorkspace.courseId);
-        practiceDesign.reset();
-        resetCanvasState();
-        return t("builder.status.routingRebuilt");
-      }),
-    onConfirm: () =>
-      run("confirm-routing", async () => {
-        const activeWorkspace = requireWorkspace(workspace);
-        await sourceRouting.confirm(activeWorkspace.courseId);
-        practiceDesign.reset();
-        resetCanvasState();
-        setMediaReviewed(false);
-        setActiveStep("review");
-        return t("builder.status.routingConfirmed");
-      }),
-  };
+    onRoutingConfirmed: routingConfirmed,
+    continueAfterProposal,
+    onCourseReady: () => {
+      course.markCourseReady();
+      setActiveStep("upload");
+    },
+    navigateToSources: () => setActiveStep("sources"),
+  });
+  const publishStep = useBuilderPublish({
+    ...props,
+    setup,
+    workspace,
+    workspaceCourse: course.workspaceCourse,
+    workspaceLectures: course.workspaceLectures,
+    lectureSchedule: course.lectureSchedule,
+    workflow,
+    canPublish: Boolean(flow.canvas && workspace),
+    lectures: course.publishLectures,
+    publishedCount: course.publishedCount,
+    ready: course.published,
+    totalCount: targetIds.length,
+    onLecturePublished: course.lecturePublished,
+  });
 
   return {
-    activeStep,
-    draftRestoreRevision,
-    defineStep,
-    error,
+    activeStep: flow.activeStep,
+    draftRestoreRevision: flow.draftRestoreRevision,
+    ...setupSteps,
+    error: workflow.error,
     generateStep,
-    generationWarnings,
-    isRestoring,
-    mediaStep,
-    notice,
+    generationWarnings: [...flow.warnings],
+    isRestoring: restore.isRestoring,
+    mediaStep: {
+      ...media.step,
+      canContinue: Boolean(bundleReady && routingReady && workspace),
+      ready: media.ready,
+    },
+    notice: workflow.notice,
     publishStep,
     practiceDesignStep: practiceDesign.practiceDesignStep,
-    routingStep,
-    restoreWorkspace: () => void restoreFromBackend(workspace, { quietDraftMiss: true }),
+    restoreWorkspace: () => void restore.restore(workspace, { quietDraftMiss: true }),
     courseTitle: setup.courseTitle,
     startNewCourse: () => {
       clearSavedFlow();
       updateSetup(defaultCourseSetup);
     },
     setActiveStep,
-    steps,
-    uploadStep,
+    steps: builderSteps({
+      bundleReady,
+      canvasReady: Boolean(flow.canvas),
+      courseReady: course.courseReady,
+      designAvailable: sourceRouting.status === "stale",
+      designReady,
+      draftReviewed: flow.draftReviewed,
+      reviewAvailable: bundleReady && (!fullCourse || course.scheduleApplied),
+      reviewReady: media.ready || flow.mediaReviewed,
+      routingReady,
+      workspacePublished: course.published,
+    }),
     workspace,
   };
-}
-
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  try {
-    return await Promise.race([
-      promise,
-      new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(() => reject(new Error("Timed out.")), timeoutMs);
-      }),
-    ]);
-  } finally {
-    if (timeoutId) clearTimeout(timeoutId);
-  }
 }
