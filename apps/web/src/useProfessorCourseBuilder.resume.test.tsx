@@ -5,6 +5,7 @@ import { professorFetchMock } from "./ProfessorCourseBuilder.testFixtures";
 import { readSavedFlow, writeResumeFlow } from "./professorBuilderState";
 import type { ProfessorCourseBuilderProps } from "./useProfessorCourseBuilder";
 import { useProfessorCourseBuilder } from "./useProfessorCourseBuilder";
+import { I18nWrapper } from "./test/renderWithI18n";
 import type { CourseWorkspaceResult, Lecture, LoginSession } from "./types";
 
 const session: LoginSession = {
@@ -76,7 +77,9 @@ it("resumes a confirmed course at the learning plan instead of optional media", 
       return result;
     }),
   );
-  const { result } = renderHook(() => useProfessorCourseBuilder(hookProps));
+  const { result } = renderHook(() => useProfessorCourseBuilder(hookProps), {
+    wrapper: I18nWrapper,
+  });
   await waitFor(() => expect(result.current.isRestoring).toBe(false));
   expect(result.current.activeStep).toBe("design");
   expect(result.current.error).toBeNull();
@@ -97,7 +100,9 @@ it("resumes a course without uploads at the materials upload", async () => {
       return result;
     }),
   );
-  const { result } = renderHook(() => useProfessorCourseBuilder(hookProps));
+  const { result } = renderHook(() => useProfessorCourseBuilder(hookProps), {
+    wrapper: I18nWrapper,
+  });
   await waitFor(() => expect(result.current.isRestoring).toBe(false));
   expect(result.current.activeStep).toBe("upload");
 });
@@ -120,4 +125,35 @@ it("resumes an unscheduled full course despite its single placeholder lecture", 
     setup_target: "full-course",
   });
   expect(readSavedFlow().setup.target).toBe("full-course");
+});
+
+it("resumes at review and publish when drafts failed, so retry is the next action", async () => {
+  writeResumeFlow(fullCourse);
+  const base = professorFetchMock();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/canvas/draft") && !init?.method) {
+        return new Response(JSON.stringify({ detail: "Model request timed out." }), {
+          status: 404,
+          headers: { "X-Generation-Status": "failed", "X-Generation-Repairable": "false" },
+        });
+      }
+      const result = await base(url, init);
+      if (url.endsWith("/source-routing") && !init?.method) {
+        return new Response(
+          JSON.stringify({
+            ...((await result.json()) as Record<string, unknown>),
+            confirmed: true,
+          }),
+        );
+      }
+      return result;
+    }),
+  );
+  const { result } = renderHook(() => useProfessorCourseBuilder(hookProps), {
+    wrapper: I18nWrapper,
+  });
+  await waitFor(() => expect(result.current.isRestoring).toBe(false));
+  expect(result.current.activeStep).toBe("generate");
 });

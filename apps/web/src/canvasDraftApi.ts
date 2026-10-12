@@ -1,5 +1,6 @@
 import { apiUrl, readApiError } from "./api";
 import { authRequestInit } from "./authz";
+import type { CanvasGenerationErrorKind } from "./professorCanvasGeneration";
 import type { CanvasDocument, LoginSession } from "./types";
 
 export class CanvasDraftRequestError extends Error {
@@ -25,16 +26,18 @@ export async function draftLectureCanvas(
   courseId: string,
   lectureId: string,
   session: LoginSession,
+  signal?: AbortSignal,
 ): Promise<CanvasDocument> {
-  return requestLectureCanvas(courseId, lectureId, session, "draft");
+  return requestLectureCanvas(courseId, lectureId, session, "draft", signal);
 }
 
 export async function repairLectureCanvas(
   courseId: string,
   lectureId: string,
   session: LoginSession,
+  signal?: AbortSignal,
 ): Promise<CanvasDocument> {
-  return requestLectureCanvas(courseId, lectureId, session, "repair");
+  return requestLectureCanvas(courseId, lectureId, session, "repair", signal);
 }
 
 async function requestLectureCanvas(
@@ -42,6 +45,7 @@ async function requestLectureCanvas(
   lectureId: string,
   session: LoginSession,
   action: "draft" | "repair",
+  signal?: AbortSignal,
 ): Promise<CanvasDocument> {
   const storageKey = canvasGenerationStorageKey(courseId, lectureId, action);
   const requestKey = window.sessionStorage.getItem(storageKey) ?? globalThis.crypto.randomUUID();
@@ -52,6 +56,7 @@ async function requestLectureCanvas(
     authRequestInit(session, {
       method: "POST",
       headers: { "Idempotency-Key": requestKey, Prefer: "respond-async" },
+      signal,
     }),
   );
   const payload = await response.json().catch(() => null);
@@ -71,7 +76,7 @@ async function requestLectureCanvas(
   try {
     canvas =
       response.status === 202
-        ? await pollCanvasGeneration(courseId, lectureId, session, requestKey)
+        ? await pollCanvasGeneration(courseId, lectureId, session, requestKey, signal)
         : (payload as CanvasDocument);
   } catch (error) {
     if (
@@ -94,12 +99,14 @@ async function pollCanvasGeneration(
   lectureId: string,
   session: LoginSession,
   requestKey: string,
+  signal?: AbortSignal,
 ): Promise<CanvasDocument> {
+  // The job keeps running server-side; an aborted owner (unmount, logout) only stops watching.
   while (true) {
-    await new Promise((resolve) => window.setTimeout(resolve, 1500));
+    await abortableDelay(1500, signal);
     const response = await fetch(
       apiUrl(`/admin/courses/${courseId}/lectures/${lectureId}/canvas/draft/status`),
-      authRequestInit(session, { headers: { "Idempotency-Key": requestKey } }),
+      authRequestInit(session, { headers: { "Idempotency-Key": requestKey }, signal }),
     );
     const status = await response.json().catch(() => null);
     if (!response.ok) {
@@ -121,6 +128,33 @@ async function pollCanvasGeneration(
       throw new CanvasDraftRequestError("Invalid canvas generation status.", false);
     }
   }
+}
+
+/** An interrupted job (lost worker) or lost connection resumes under its key; failures restart. */
+export function retryStartsFresh(progress: { errorKind?: CanvasGenerationErrorKind }) {
+  return progress.errorKind !== "interrupted" && progress.errorKind !== "network";
+}
+
+/** A retry after a failed attempt is a new request: forget the replayable idempotency keys. */
+export function forgetCanvasGenerationRequest(courseId: string, lectureId: string) {
+  for (const action of ["draft", "repair"] as const) {
+    window.sessionStorage.removeItem(canvasGenerationStorageKey(courseId, lectureId, action));
+  }
+}
+
+function abortableDelay(ms: number, signal?: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    signal?.throwIfAborted();
+    const timer = window.setTimeout(() => {
+      signal?.removeEventListener("abort", stop);
+      resolve();
+    }, ms);
+    function stop() {
+      window.clearTimeout(timer);
+      reject(signal?.reason);
+    }
+    signal?.addEventListener("abort", stop, { once: true });
+  });
 }
 
 function canvasGenerationStorageKey(

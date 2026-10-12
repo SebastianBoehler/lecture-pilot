@@ -1,5 +1,8 @@
 import { fileRelativePath } from "./materialDrop";
 import type { CourseMaterialUploadType } from "./types";
+import type { MessageKey } from "./i18nMessages";
+
+type Translate = (key: MessageKey, params?: Record<string, string | number>) => string;
 
 const courseMaterialUploadRoot = "uploads";
 
@@ -56,10 +59,17 @@ export function isSkippableUploadError(error: unknown) {
   );
 }
 
-export function ignoredUploadNotice(paths: string[]) {
+export function ignoredUploadNotice(paths: string[], t: Translate) {
   if (!paths.length) return "";
   const names = paths.map((path) => path.split("/").at(-1) || path);
-  const shown = names.slice(0, 5).join(", ");
   const remaining = Math.max(0, names.length - 5);
-  return ` Ignored ${names.length} ${names.length === 1 ? "file" : "files"}: ${shown}${remaining ? `, and ${remaining} more` : ""}.`;
+  const shown = names.slice(0, 5).join(", ");
+  const listed = remaining
+    ? t("builder.status.ignoredMore", { names: shown, count: remaining })
+    : shown;
+  return ` ${
+    names.length === 1
+      ? t("builder.status.ignoredOne", { names: listed })
+      : t("builder.status.ignoredMany", { count: names.length, names: listed })
+  }`;
 }

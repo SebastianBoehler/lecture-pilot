@@ -26,7 +26,7 @@ export function useI18n() {
   return context;
 }
 
-function translate(locale: Locale) {
+export function translate(locale: Locale) {
   return (key: MessageKey, params: Record<string, string | number> = {}) => {
     const template = messages[locale][key] ?? messages.en[key];
     return Object.entries(params).reduce(

@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { CheckpointBlock } from "./CanvasLearningBlocks";
+import { useI18n } from "./i18n";
 import type { LearnerLessonState } from "./learnerLessonStateTypes";
 import type { CanvasDocument } from "./types";
 
@@ -18,6 +19,7 @@ export function FocusedCheckpoint({
   busy: boolean;
   error: string | null;
 }) {
+  const { t } = useI18n();
   const actionInFlight = useRef(false);
   const [submitting, setSubmitting] = useState(false);
   async function submit(gateId: string, sectionId: string, answer: string) {
@@ -44,20 +46,18 @@ export function FocusedCheckpoint({
   const section = document.sections.find((item) =>
     item.blocks.some((block) => block.id === check?.gate_id),
   );
-  if (!check || !section)
-    return <p role="alert">The task no longer matches this canvas. Reload the lecture.</p>;
+  if (!check || !section) return <p role="alert">{t("focused.taskChanged")}</p>;
   return (
-    <section className="focused-checkpoint" aria-label="Independent attempt">
+    <section className="focused-checkpoint" aria-label={t("focused.label")}>
       {state.active_session_goal ? (
         <p>
-          <strong>Goal:</strong> {state.active_session_goal}
+          <strong>{t("focused.goal")}</strong> {state.active_session_goal}
         </p>
       ) : null}
-      <h2>{check.stage === "delayed_transfer" ? "Later review" : "Try independently"}</h2>
-      <p>
-        Teaching, notes, sources and chat are closed during this attempt. Request help to reopen
-        them; this attempt will then be recorded as supported.
-      </p>
+      <h2>
+        {t(check.stage === "delayed_transfer" ? "focused.laterReview" : "focused.tryIndependently")}
+      </h2>
+      <p>{t("focused.closedNotice")}</p>
       <CheckpointBlock
         key={`${check.task_id}:${check.issued_at}`}
         block={{
@@ -65,7 +65,7 @@ export function FocusedCheckpoint({
           type: "checkpoint",
           text: check.prompt,
           items: [],
-          caption: "Your attempt",
+          caption: t("focused.yourAttempt"),
         }}
         className="canvas-block"
         highlightedText={null}
@@ -80,7 +80,7 @@ export function FocusedCheckpoint({
             disabled={busy || submitting}
             onClick={() => void help()}
           >
-            {busy ? "Recording help…" : "Request help and open materials"}
+            {busy ? t("focused.recordingHelp") : t("focused.requestHelp")}
           </button>
         }
       />

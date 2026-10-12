@@ -449,6 +449,7 @@ export const enMessages = {
   "professor.createCourse": "Create course",
   "professor.courseWorkspace": "Course workspace",
   "professor.configuredLectures": "{count} lectures configured",
+  "professor.loadingCourses": "Loading your courses…",
   "professor.noCreatedCourses": "No created course workspaces yet.",
   "professor.delete": "Delete",
   "professor.deleting": "Deleting...",
@@ -898,6 +899,8 @@ export const enMessages = {
   "builder.generate.repair": "Repair with AI",
   "builder.generate.repairLecture": "Repair {lecture} with AI",
   "builder.generate.error.network": "LecturePilot could not reach the API. Retry this lecture.",
+  "builder.generate.error.interrupted":
+    "Generation was interrupted (for example by a server restart). Retry resumes the saved work.",
   "builder.generate.error.repair":
     "Draft failed source or format checks: {message} AI repair checks the affected source and remembers the validated correction for this source version.",
   "builder.generate.error.service": "Generation failed: {message}",

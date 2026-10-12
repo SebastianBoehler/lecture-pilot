@@ -16,6 +16,7 @@ import type {
   CourseUpdateLectureSelection,
 } from "./courseUpdateTypes";
 import { isSkippableUploadError, uploadDestination } from "./professorUpload";
+import { useUnmountSignal } from "./useUnmountSignal";
 import type { CourseWorkspaceResult, LoginSession } from "./types";
 
 type WorkStatus = "waiting" | "drafting" | "ready" | "failed" | "publishing" | "published";
@@ -27,6 +28,7 @@ export function useCourseUpdate(
   onApplied: (workspace: CourseWorkspaceResult) => void,
 ) {
   const [files, setFiles] = useState<File[]>([]);
+  const generationSignal = useUnmountSignal();
   const [analysis, setAnalysis] = useState<CourseUpdateAnalysis | null>(null);
   const [candidates, setCandidates] = useState<CourseUpdateLectureCandidate[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -195,7 +197,7 @@ export function useCourseUpdate(
     for (const id of ids) {
       setStatuses((current) => ({ ...current, [id]: "drafting" }));
       try {
-        await draftLectureCanvas(workspace.course.id, id, session);
+        await draftLectureCanvas(workspace.course.id, id, session, generationSignal());
         setStatuses((current) => ({ ...current, [id]: "ready" }));
       } catch {
         failed = true;

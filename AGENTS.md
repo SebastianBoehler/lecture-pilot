@@ -195,7 +195,9 @@ integrations/tuebingen/   TUE API wrapper integration notes
   deterministic checks; colliding generated block ids are renamed lecture-wide; one critic pass;
   one repair per flagged section; one annotating pass whose remaining notes become draft
   warnings. A checkpoint judge's confirmed `design_conflict` triggers exactly one teaching
-  repair. Professor repair requests regenerate only sections they name.
+  repair. Professor repair requests regenerate only sections they name. Prose writes formulas
+  as `$...$`; LaTeX inside inline code (`canvas_inline_code_math.py`) and source page citations
+  in generated tasks (`assessment_prompts.py`) are deterministic, repairable section defects.
 - Private `builder/authoring-jobs/<lecture>/<generation>/` contains drafts and metrics.
   Status exposes metadata from `builder/authoring-metrics/`, never source-bearing content.
 - Authoring calls have no tools, shell, network or learner-memory access. Approved checkpoints
@@ -206,6 +208,8 @@ integrations/tuebingen/   TUE API wrapper integration notes
 - Keep lecture unlocks backend-enforced: `lecture.date <= today` is not a
   prompt instruction.
 - Attendance changes agent behavior; it must not fork the workspace schema.
+  It persists in the learner's `attendance.json` (dashboard `PUT .../attendance`
+  or a tutor turn) and is returned by `/courses/{id}/lectures`.
 - The tutor should lead the session, ask targeted checks, and only pass quality
   gates after meaningful evidence from the student.
 - Explicit checkpoint submissions use one structured assessment call, without
@@ -214,6 +218,10 @@ integrations/tuebingen/   TUE API wrapper integration notes
   the provider must not choose or return `next_check`.
   Chat requires a null assessment. Ordinary checkpoints without a reviewed
   task bank or hint ladder allow an unassisted retry after a wrong answer.
+- Tutor turns carry the learner's UI `locale`; backend-written learner text such as
+  assessment results uses it, while stored gate reasons stay stable English audit text.
+- Readiness feedback is written in the request's `feedback_locale` (else the
+  course language), stated to the grader rather than inferred from the answer.
 - Exam-readiness submissions use the typed API action and scaffold policy over
   the selected task, source excerpt, rubric, and course progress summary; they
   are not a general agent filesystem tool.
@@ -402,6 +410,10 @@ integrations/tuebingen/   TUE API wrapper integration notes
 
 - Prefer test-driven changes: write or update the failing regression test first
   when behavior is specified, then implement the smallest fix that passes it.
+- Never take the course lock (`locked_course_state`, a blocking flock) or parse
+  course sources inside `async def`; use `run_in_threadpool`. Never parse sources
+  (conversion, LaTeX, PDF, OCR) while holding the course lock: snapshot, parse,
+  then re-check the revision. `test_event_loop_blocking.py` enforces both.
 - Keep files under 300 lines. Split by ownership before adding more behavior to
   large files. This rule applies to code and authored repo docs, not ignored
   course material.

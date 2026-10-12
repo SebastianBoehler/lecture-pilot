@@ -43,6 +43,9 @@ function restorationFailure(lectureId: string, error: unknown): CanvasGeneration
   if (error instanceof CanvasDraftLoadError && error.generationStatus === "running") {
     return { lectureId, status: "generating" };
   }
+  if (error instanceof CanvasDraftLoadError && error.errorCode === "interrupted") {
+    return { errorKind: "interrupted", lectureId, message, status: "error" };
+  }
   if (
     error instanceof CanvasDraftLoadError &&
     error.status === 404 &&

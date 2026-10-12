@@ -212,6 +212,10 @@ export function ProfessorCourseManager({
             ),
           )}
         </div>
+      ) : isLoading ? (
+        <p className="empty-course-manager" role="status">
+          {t("professor.loadingCourses")}
+        </p>
       ) : (
         <p className="empty-course-manager">{t("professor.noCreatedCourses")}</p>
       )}

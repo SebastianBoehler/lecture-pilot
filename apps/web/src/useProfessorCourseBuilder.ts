@@ -1,7 +1,12 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 
 import { getCourseLectures, getDraftLectureCanvas } from "./api";
-import { draftLectureCanvas, repairLectureCanvas } from "./canvasDraftApi";
+import {
+  draftLectureCanvas,
+  forgetCanvasGenerationRequest,
+  repairLectureCanvas,
+  retryStartsFresh,
+} from "./canvasDraftApi";
 import { builderSteps, initialBuilderStep, type BuilderStep } from "./ProfessorBuilderStepper";
 import {
   CanvasGenerationBatchError,
@@ -10,6 +15,8 @@ import {
 } from "./professorCanvasGeneration";
 import { restoreFullCourseCanvasDrafts } from "./professorCanvasRestoration";
 import { useRestoredGenerationPolling } from "./useRestoredGenerationPolling";
+import { useUnmountSignal } from "./useUnmountSignal";
+import { useI18n } from "./i18n";
 import { hasCanvasVideo, toggleSelected } from "./ProfessorCourseBuilderParts";
 import {
   createCourseWorkspace,
@@ -79,6 +86,7 @@ export function useProfessorCourseBuilder({
   onWorkspacePublished,
   previewWorkspaceUrl,
 }: ProfessorCourseBuilderProps) {
+  const { locale, t } = useI18n();
   const [savedFlow] = useState(readSavedFlow);
   const [setup, setSetup] = useState(savedFlow.setup);
   const [workspace, setWorkspace] = useState(savedFlow.workspace);
@@ -122,6 +130,8 @@ export function useProfessorCourseBuilder({
   const [mediaIncluded, setMediaIncluded] = useState(false);
   const [mediaReviewed, setMediaReviewed] = useState(false);
   const [scheduleApplied, setScheduleApplied] = useState(setup.target !== "full-course");
+  // Status polling stops when the builder unmounts; the server-side jobs keep running.
+  const generationSignal = useUnmountSignal();
   const sourceRouting = useProfessorSourceRouting(session);
   const { error, notice, pendingAction, run, setError, setNotice } = useProfessorWorkflowRun();
   const [restored, setRestored] = useState(!savedFlow.bundleReady && !savedFlow.canvasReady);
@@ -494,13 +504,22 @@ export function useProfessorCourseBuilder({
     options: { repair?: boolean; repairIds?: ReadonlySet<string> } = {},
   ) {
     setRestoredGeneratingIds((current) => current.filter((id) => !lectureIds.includes(id)));
+    for (const item of generationProgress) {
+      if (
+        item.status === "error" &&
+        retryStartsFresh(item) &&
+        lectureIds.includes(item.lectureId)
+      ) {
+        forgetCanvasGenerationRequest(courseId, item.lectureId);
+      }
+    }
     try {
       return await generateLectureCanvasDrafts({
         lectureIds,
         draft: (lectureId) =>
           options.repair || options.repairIds?.has(lectureId)
-            ? repairLectureCanvas(courseId, lectureId, session)
-            : draftLectureCanvas(courseId, lectureId, session),
+            ? repairLectureCanvas(courseId, lectureId, session, generationSignal())
+            : draftLectureCanvas(courseId, lectureId, session, generationSignal()),
         onDraftReady: recordGeneratedCanvas,
         onProgress: updateGenerationItem,
       });
@@ -590,12 +609,14 @@ export function useProfessorCourseBuilder({
       try {
         restoredRouting = await sourceRouting.load(targetWorkspace.courseId);
       } catch (routingError) {
+        const unproposed =
+          routingError instanceof SourceRoutingRequestError &&
+          routingError.status === 409 &&
+          routingError.message ===
+            "Generate an agent source-assignment proposal before reviewing it.";
         setActiveStep("sources");
         setError(
-          routingError instanceof SourceRoutingRequestError &&
-            routingError.status === 409 &&
-            routingError.message ===
-              "Generate an agent source-assignment proposal before reviewing it."
+          unproposed
             ? null
             : routingError instanceof Error
               ? routingError.message
@@ -627,7 +648,9 @@ export function useProfessorCourseBuilder({
           ),
         );
         setDraftReviewed(false);
-        setActiveStep(activeCanvas ? "generate" : restoredStep(restoredRouting.confirmed));
+        // Any started draft (ready, running or failed) means the next action lives in review.
+        const draftingStarted = restoredDrafts.progress.some((item) => item.status !== "pending");
+        setActiveStep(draftingStarted ? "generate" : restoredStep(restoredRouting.confirmed));
         return;
       }
       try {
@@ -687,8 +710,11 @@ export function useProfessorCourseBuilder({
         setCourseReady(true);
         setActiveStep("upload");
         return setup.target === "full-course"
-          ? `Course workspace ${created.course.id} ready. Upload materials to infer the lecture schedule.`
-          : `Course workspace ${created.course.id}/${created.active_lecture_id} ready.`;
+          ? t("builder.status.createdCourse", { course: created.course.id })
+          : t("builder.status.createdLecture", {
+              course: created.course.id,
+              lecture: created.active_lecture_id,
+            });
       }),
     onSetupChange: updateSetup,
     setup,
@@ -737,11 +763,11 @@ export function useProfessorCourseBuilder({
           setActiveStep("sources");
         }
         setUploadFiles([]);
-        const ignoredText = ignoredUploadNotice(result.ignored);
+        const ignoredText = ignoredUploadNotice(result.ignored, t);
         if (result.uploaded.length === 1) {
-          return `Uploaded ${result.uploaded[0].path} as ${result.uploaded[0].kind}.${ignoredText}`;
+          return `${t("builder.status.uploadedOne", { path: result.uploaded[0].path, kind: result.uploaded[0].kind })}${ignoredText}`;
         }
-        return `Uploaded ${result.uploaded.length} materials into the source bundle.${ignoredText}`;
+        return `${t("builder.status.uploadedMany", { count: result.uploaded.length })}${ignoredText}`;
       }),
     onApplySchedule: () =>
       run("apply-schedule", async () => {
@@ -760,7 +786,7 @@ export function useProfessorCourseBuilder({
         setScheduleApplied(true);
         setActiveStep("sources");
         await sourceRouting.propose(created.course.id);
-        return `Lecture schedule applied with ${created.lectures.length} dated lectures.`;
+        return t("builder.status.scheduleApplied", { count: created.lectures.length });
       }),
   };
 
@@ -835,9 +861,8 @@ export function useProfessorCourseBuilder({
         if (!canvases) return;
         setCanvas(canvases[0] ?? null);
         setGeneratedLectureIds((current) => [...new Set([...current, ...lectureIds])]);
-        if (lectureIds.length === 1)
-          return "Course-builder agent generated a source-grounded canvas draft.";
-        return `Course-builder agent generated ${lectureIds.length} source-grounded lecture canvases.`;
+        if (lectureIds.length === 1) return t("builder.status.generatedOne");
+        return t("builder.status.generatedMany", { count: lectureIds.length });
       }),
   };
 
@@ -862,14 +887,17 @@ export function useProfessorCourseBuilder({
         const activeWorkspace = requireWorkspace(workspace);
         const response = await searchYoutubeMedia(activeWorkspace.courseId, searchQuery, session);
         setVideos(response.items);
-        return `Found ${response.items.length} YouTube candidates.`;
+        return t("builder.status.videosFound", { count: response.items.length });
       }),
     onSuggest: () =>
       run("suggest-videos", async () => {
         const activeWorkspace = requireWorkspace(workspace);
         const count = await searchSuggestedVideos(activeWorkspace.courseId);
         setAutoSuggestedSearchKey(suggestedSearchKey || null);
-        return `Found ${count} suggested YouTube candidates from ${suggestedQueries.length} searches.`;
+        return t("builder.status.videosSuggested", {
+          count,
+          searches: suggestedQueries.length,
+        });
       }),
     onTargetLectureChange: setMediaLectureId,
     onToggleVideo: (videoId: string) => {
@@ -908,9 +936,11 @@ export function useProfessorCourseBuilder({
         setGeneratedLectureIds([]);
         setGenerationProgress([]);
         setGenerationWarnings([]);
-        if (wasSelected) return `Removed video from lecture ${target.number}.`;
+        if (wasSelected) return t("builder.status.videoRemoved", { lecture: target.number });
         const selectedCount = nextSelected.size;
-        return `Saved ${selectedCount} approved ${selectedCount === 1 ? "video" : "videos"} for lecture ${target.number}.`;
+        return selectedCount === 1
+          ? t("builder.status.videoSavedOne", { lecture: target.number })
+          : t("builder.status.videoSavedMany", { count: selectedCount, lecture: target.number });
       });
     },
     query,
@@ -965,11 +995,16 @@ export function useProfessorCourseBuilder({
         if (failure) setError(failure);
         const lastPublished = published[published.length - 1];
         const when = lastPublished?.published_at
-          ? ` at ${new Date(lastPublished.published_at).toLocaleString()}`
-          : "";
+          ? new Date(lastPublished.published_at).toLocaleString(locale)
+          : null;
+        const version = lastPublished.version ?? 1;
         if (published.length === 1)
-          return `Tutor workspace published as version ${lastPublished.version ?? 1}${when}.`;
-        return `${published.length} tutor workspaces published for students${when}.`;
+          return when
+            ? t("builder.status.publishedOneAt", { version, when })
+            : t("builder.status.publishedOne", { version });
+        return when
+          ? t("builder.status.publishedManyAt", { count: published.length, when })
+          : t("builder.status.publishedMany", { count: published.length });
       }),
     publishedCount: fullCoursePublishedCount,
     lectures: publishLectures,
@@ -1004,7 +1039,7 @@ export function useProfessorCourseBuilder({
         await sourceRouting.regenerate(activeWorkspace.courseId);
         practiceDesign.reset();
         resetCanvasState();
-        return "Source assignments rebuilt from the indexed course evidence.";
+        return t("builder.status.routingRebuilt");
       }),
     onConfirm: () =>
       run("confirm-routing", async () => {
@@ -1014,7 +1049,7 @@ export function useProfessorCourseBuilder({
         resetCanvasState();
         setMediaReviewed(false);
         setActiveStep("review");
-        return "Source assignments confirmed for Canvas generation.";
+        return t("builder.status.routingConfirmed");
       }),
   };
 

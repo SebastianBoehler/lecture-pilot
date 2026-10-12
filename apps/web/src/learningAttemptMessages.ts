@@ -23,6 +23,16 @@ export const learningAttemptMessages = {
     "checkpoint.submit": "Submit checkpoint answer",
     "checkpoint.submitting": "Submitting…",
     "checkpoint.submitted": "Answer submitted. Tutor feedback is available in chat.",
+    "focused.label": "Independent attempt",
+    "focused.goal": "Goal:",
+    "focused.laterReview": "Later review",
+    "focused.tryIndependently": "Try independently",
+    "focused.closedNotice":
+      "Teaching, notes, sources and chat are closed during this attempt. Request help to reopen them; this attempt will then be recorded as supported.",
+    "focused.yourAttempt": "Your attempt",
+    "focused.recordingHelp": "Recording help…",
+    "focused.requestHelp": "Request help and open materials",
+    "focused.taskChanged": "The task no longer matches this canvas. Reload the lecture.",
   },
   de: {
     "attempt.failed": "Senden fehlgeschlagen. Bitte versuche es erneut.",
@@ -49,5 +59,15 @@ export const learningAttemptMessages = {
     "checkpoint.submit": "Antwort zur Lernzielkontrolle senden",
     "checkpoint.submitting": "Wird gesendet…",
     "checkpoint.submitted": "Antwort gesendet. Das Tutorfeedback ist im Chat verfügbar.",
+    "focused.label": "Eigenständiger Versuch",
+    "focused.goal": "Ziel:",
+    "focused.laterReview": "Spätere Wiederholung",
+    "focused.tryIndependently": "Versuche es eigenständig",
+    "focused.closedNotice":
+      "Lernstoff, Notizen, Quellen und Chat sind während dieses Versuchs geschlossen. Fordere Hilfe an, um sie wieder zu öffnen; der Versuch wird dann als unterstützt gespeichert.",
+    "focused.yourAttempt": "Dein Versuch",
+    "focused.recordingHelp": "Hilfe wird gespeichert…",
+    "focused.requestHelp": "Hilfe anfordern und Material öffnen",
+    "focused.taskChanged": "Die Aufgabe passt nicht mehr zu diesem Canvas. Lade die Vorlesung neu.",
   },
 } as const;

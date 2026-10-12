@@ -83,7 +83,7 @@ describe("Professor course builder generation retry", () => {
       await user.type(screen.getByLabelText(/course name/i), "Demo ML Course");
       await user.click(screen.getByRole("button", { name: /create course workspace/i }));
       await user.upload(
-        await screen.findByLabelText(/^choose files$/i, {}, { timeout: 3_000 }),
+        await screen.findByLabelText(/^choose files$/i),
         new File(["# extra note"], "supplement.md", { type: "text/markdown" }),
       );
       await user.click(screen.getByRole("button", { name: /upload and process materials/i }));
@@ -133,7 +133,7 @@ describe("Professor course builder generation retry", () => {
         ).toBe(true);
       }
 
-      await screen.findByText(/2 lecture canvases ready to review/i, {}, { timeout: 3000 });
+      await screen.findByText(/2 lecture canvases ready to review/i);
       expect(screen.queryByText(/could not reach the API/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/^Failed to fetch$/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/lecture canvas drafts? failed/i)).not.toBeInTheDocument();

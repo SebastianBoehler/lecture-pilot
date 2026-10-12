@@ -19,9 +19,11 @@ export function ProfessorGenerationRowDetails({
   const message =
     progress.errorKind === "network"
       ? t("builder.generate.error.network")
-      : t(repair ? "builder.generate.error.repair" : "builder.generate.error.service", {
-          message: progress.message ?? t("builder.generate.error.unknown"),
-        });
+      : progress.errorKind === "interrupted"
+        ? t("builder.generate.error.interrupted")
+        : t(repair ? "builder.generate.error.repair" : "builder.generate.error.service", {
+            message: progress.message ?? t("builder.generate.error.unknown"),
+          });
   return (
     <div className="generation-progress-row is-error">
       <button

@@ -20,6 +20,18 @@ it("restores approved-scope conflicts as learning-plan review actions", async ()
   expect(result.progress[0]).toMatchObject({ status: "error", errorKind: "design" });
 });
 
+it("restores an interrupted job as a resumable retry, not an AI repair", async () => {
+  vi.mocked(getDraftLectureCanvas).mockRejectedValueOnce(
+    new CanvasDraftLoadError("Interrupted", 404, false, "failed", "interrupted"),
+  );
+  const result = await restoreFullCourseCanvasDrafts({
+    courseId: "course",
+    lectureIds: ["lecture-01"],
+    session: {} as LoginSession,
+  });
+  expect(result.progress[0]).toMatchObject({ status: "error", errorKind: "interrupted" });
+});
+
 it("does not replace known generation results with failures when status retrieval loses connection", async () => {
   vi.mocked(getDraftLectureCanvas).mockRejectedValueOnce(new TypeError("Failed to fetch"));
   await expect(

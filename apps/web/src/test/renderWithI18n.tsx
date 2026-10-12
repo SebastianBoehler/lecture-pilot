@@ -1,5 +1,5 @@
 import { render, type RenderOptions } from "@testing-library/react";
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 
 import { I18nProvider, type Locale } from "../i18n";
 
@@ -16,5 +16,14 @@ export function renderWithI18n(
       {ui}
     </I18nProvider>,
     options,
+  );
+}
+
+/** `wrapper` for renderHook when a hook reads translations. */
+export function I18nWrapper({ children }: { children: ReactNode }) {
+  return (
+    <I18nProvider locale="en" setLocale={() => undefined}>
+      {children}
+    </I18nProvider>
   );
 }

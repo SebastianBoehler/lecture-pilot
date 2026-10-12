@@ -57,9 +57,7 @@ it("loads the correct course draft without enabling unpublished tutor turns", as
 
   render(<App />);
 
-  expect(
-    await screen.findByRole("heading", { name: "Scoped draft" }, { timeout: 3_000 }),
-  ).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Scoped draft" })).toBeInTheDocument();
   expect(
     screen.getByText(/Tutor conversations and assessed attempts are available after publication/),
   ).toBeInTheDocument();

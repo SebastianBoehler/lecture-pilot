@@ -460,6 +460,7 @@ export const deMessages: Record<MessageKey, string> = {
   "professor.createCourse": "Kurs erstellen",
   "professor.courseWorkspace": "Kursarbeitsbereich",
   "professor.configuredLectures": "{count} Vorlesungen eingerichtet",
+  "professor.loadingCourses": "Deine Kurse werden geladen…",
   "professor.noCreatedCourses": "Noch keine erstellten Kursarbeitsbereiche.",
   "professor.delete": "Löschen",
   "professor.deleting": "Wird gelöscht...",
@@ -921,6 +922,8 @@ export const deMessages: Record<MessageKey, string> = {
   "builder.generate.repairLecture": "{lecture} mit KI reparieren",
   "builder.generate.error.network":
     "LecturePilot konnte die API nicht erreichen. Versuche diese Vorlesung erneut.",
+  "builder.generate.error.interrupted":
+    "Die Generierung wurde unterbrochen (zum Beispiel durch einen Serverneustart). Erneut versuchen setzt die gespeicherte Arbeit fort.",
   "builder.generate.error.repair":
     "Entwurf hat Quellen- oder Formatprüfung nicht bestanden: {message} Die KI-Reparatur prüft die betroffene Quelle und merkt sich die validierte Korrektur für diese Quellversion.",
   "builder.generate.error.service": "Erzeugung fehlgeschlagen: {message}",

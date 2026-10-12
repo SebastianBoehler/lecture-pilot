@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { apiUrl, readApiError } from "./api";
 import { authRequestInit } from "./authz";
+import { useI18n } from "./i18n";
 import type { LoginSession } from "./types";
 
 type Report = {
@@ -25,6 +26,7 @@ export function ProfessorImplementationChanges({
   lectureId: string;
   session: LoginSession;
 }) {
+  const { t } = useI18n();
   const [report, setReport] = useState<Report | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -41,45 +43,37 @@ export function ProfessorImplementationChanges({
         authRequestInit(session),
       );
       const payload = await response.json();
-      if (!response.ok)
-        throw new Error(readApiError(payload, "Implementation changes could not be loaded."));
+      if (!response.ok) throw new Error(readApiError(payload, t("review.changes.failed")));
       setReport(payload.report);
       setLoaded(true);
     } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : "Implementation changes could not be loaded.",
-      );
+      setError(reason instanceof Error ? reason.message : t("review.changes.failed"));
     } finally {
       setBusy(false);
     }
   }
   return (
     <details className="implementation-changes">
-      <summary>Teaching implementation changes</summary>
+      <summary>{t("review.changes.title")}</summary>
       <button type="button" disabled={busy} onClick={() => void load()}>
-        {busy ? "Loading changes…" : "Inspect current implementation changes"}
+        {busy ? t("review.changes.loading") : t("review.changes.load")}
       </button>
       {error ? (
         <p role="alert" className="form-error">
           {error}
         </p>
       ) : null}
-      {loaded && !report ? (
-        <p>No recorded implementation change is available for this revision.</p>
-      ) : null}
+      {loaded && !report ? <p>{t("review.changes.none")}</p> : null}
       {loaded && report ? (
         <>
           {report.reason ? (
             <p>
-              <strong>Recorded reason:</strong> {report.reason}
+              <strong>{t("review.changes.reason")}</strong> {report.reason}
             </p>
           ) : (
-            <p>No repair reason was recorded for this change.</p>
+            <p>{t("review.changes.noReason")}</p>
           )}
-          <p>
-            These are exact changes to teaching under the approved goals. Review their correctness
-            against the sources.
-          </p>
+          <p>{t("review.changes.help")}</p>
           {report.changes.map((change) => (
             <details key={`${change.target_id}:${change.field}`}>
               <summary>
@@ -87,12 +81,12 @@ export function ProfessorImplementationChanges({
               </summary>
               <div className="language-comparison">
                 <div>
-                  <strong>Before</strong>
-                  <pre>{display(change.before)}</pre>
+                  <strong>{t("review.changes.before")}</strong>
+                  <pre>{display(change.before, t("review.changes.unset"))}</pre>
                 </div>
                 <div>
-                  <strong>After</strong>
-                  <pre>{display(change.after)}</pre>
+                  <strong>{t("review.changes.after")}</strong>
+                  <pre>{display(change.after, t("review.changes.unset"))}</pre>
                 </div>
               </div>
             </details>
@@ -102,10 +96,6 @@ export function ProfessorImplementationChanges({
     </details>
   );
 }
-function display(value: unknown) {
-  return value == null
-    ? "Not previously set"
-    : typeof value === "string"
-      ? value
-      : JSON.stringify(value, null, 2);
+function display(value: unknown, unset: string) {
+  return value == null ? unset : typeof value === "string" ? value : JSON.stringify(value, null, 2);
 }

@@ -63,9 +63,7 @@ it("restores a canvas session without loading learner-profile data", async () =>
   render(<App />);
 
   // The restored route also loads the canvas module on a cold test run.
-  expect(
-    await screen.findByLabelText(/close tutor chat/i, {}, { timeout: 5000 }),
-  ).toBeInTheDocument();
+  expect(await screen.findByLabelText(/close tutor chat/i)).toBeInTheDocument();
   await waitFor(() => {
     expect(
       fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/me/learning-profile")),

@@ -83,3 +83,50 @@
 .course-link-card button {
   justify-self: start;
 }
+
+.share-course-dialog .course-access-dialog-body button,
+.course-link-card button {
+  min-height: 40px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--control-radius);
+  padding: 0 14px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  font: inherit;
+  font-weight: 680;
+  cursor: pointer;
+}
+
+.share-course-dialog .course-access-dialog-body button:hover:not(:disabled),
+.course-link-card button:hover:not(:disabled) {
+  background: var(--color-bg-secondary);
+}
+
+.share-course-dialog .course-access-dialog-body .primary-action,
+.course-link-card .primary-action {
+  border-color: var(--color-accent-primary);
+  color: var(--color-on-accent);
+  background: var(--color-accent-primary);
+}
+
+.share-course-dialog .course-access-dialog-body .primary-action:hover:not(:disabled),
+.course-link-card .primary-action:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent-primary) 88%, var(--color-text-primary));
+}
+
+.share-course-dialog .course-access-dialog-body button:disabled,
+.course-link-card button:disabled {
+  color: var(--color-text-tertiary);
+  background: var(--color-bg-secondary);
+  cursor: not-allowed;
+}
+
+.share-course-dialog .course-access-dialog-body button:focus-visible,
+.course-link-card button:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}
+
+.share-course-dialog .course-access-dialog-body > button {
+  justify-self: start;
+}

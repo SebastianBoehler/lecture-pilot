@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { professorFetchMock } from "./ProfessorCourseBuilder.testFixtures";
 import type { ProfessorCourseBuilderProps } from "./useProfessorCourseBuilder";
 import { useProfessorCourseBuilder } from "./useProfessorCourseBuilder";
+import { I18nWrapper } from "./test/renderWithI18n";
 import type { LoginSession } from "./types";
 
 const session: LoginSession = {
@@ -29,7 +30,9 @@ describe("Professor course builder restoration", () => {
     saved.lectureSchedule = [{ number: "01", title: "Stale title", date: "2026-05-06" }];
     window.sessionStorage.setItem(key, JSON.stringify(saved));
     vi.stubGlobal("fetch", professorFetchMock());
-    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps));
+    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps), {
+      wrapper: I18nWrapper,
+    });
     await waitFor(() => expect(result.current.isRestoring).toBe(false));
     expect(result.current.publishStep.lectures.map((lecture) => lecture.label)).toEqual([
       "01 · Lecture 01",
@@ -55,7 +58,9 @@ describe("Professor course builder restoration", () => {
         return baseFetch(url, init);
       }),
     );
-    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps));
+    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps), {
+      wrapper: I18nWrapper,
+    });
     await waitFor(() => expect(result.current.isRestoring).toBe(false));
     expect(result.current.activeStep).toBe("sources");
     expect(result.current.error).toBeNull();
@@ -79,7 +84,9 @@ describe("Professor course builder restoration", () => {
       }),
     );
 
-    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps));
+    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps), {
+      wrapper: I18nWrapper,
+    });
 
     await waitFor(() => expect(result.current.isRestoring).toBe(false));
     await waitFor(() => expect(result.current.generateStep.generatedCount).toBe(1));
@@ -107,7 +114,9 @@ describe("Professor course builder restoration", () => {
       }),
     );
 
-    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps));
+    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps), {
+      wrapper: I18nWrapper,
+    });
 
     await waitFor(() => expect(result.current.isRestoring).toBe(false));
     await waitFor(() => expect(result.current.activeStep).toBe("define"));
@@ -131,7 +140,9 @@ describe("Professor course builder restoration", () => {
         return baseFetch(url, init);
       }),
     );
-    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps));
+    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps), {
+      wrapper: I18nWrapper,
+    });
     await waitFor(() => expect(result.current.isRestoring).toBe(false));
     unavailable = true;
     act(() => result.current.restoreWorkspace());
@@ -160,7 +171,9 @@ describe("Professor course builder restoration", () => {
       }),
     );
 
-    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps));
+    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps), {
+      wrapper: I18nWrapper,
+    });
 
     await waitFor(() => expect(result.current.isRestoring).toBe(false));
 
@@ -176,8 +189,9 @@ describe("Professor course builder restoration", () => {
     const fetchMock = vi.fn(baseFetch);
     vi.stubGlobal("fetch", fetchMock);
     const onPublishWorkspace = vi.fn().mockRejectedValue(new Error("Publish rejected."));
-    const { result } = renderHook(() =>
-      useProfessorCourseBuilder({ ...hookProps, onPublishWorkspace }),
+    const { result } = renderHook(
+      () => useProfessorCourseBuilder({ ...hookProps, onPublishWorkspace }),
+      { wrapper: I18nWrapper },
     );
     await waitFor(() => expect(result.current.isRestoring).toBe(false));
 

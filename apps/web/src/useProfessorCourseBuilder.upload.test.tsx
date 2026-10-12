@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { professorFetchMock } from "./ProfessorCourseBuilder.testFixtures";
 import type { ProfessorCourseBuilderProps } from "./useProfessorCourseBuilder";
 import { useProfessorCourseBuilder } from "./useProfessorCourseBuilder";
+import { I18nWrapper } from "./test/renderWithI18n";
 import type { LoginSession } from "./types";
 
 const session: LoginSession = {
@@ -45,7 +46,9 @@ describe("Professor course builder upload invalidation", () => {
         return baseFetch(url, init);
       }),
     );
-    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps));
+    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps), {
+      wrapper: I18nWrapper,
+    });
     await restoredDraft(result);
 
     act(() => {
@@ -80,7 +83,9 @@ describe("Professor course builder upload invalidation", () => {
         return baseFetch(url, init);
       }),
     );
-    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps));
+    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps), {
+      wrapper: I18nWrapper,
+    });
     await restoredDraft(result);
 
     act(() => {
@@ -121,7 +126,9 @@ describe("Professor course builder upload invalidation", () => {
         return baseFetch(url, init);
       }),
     );
-    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps));
+    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps), {
+      wrapper: I18nWrapper,
+    });
     await restoredDraft(result);
 
     act(() => {
@@ -162,7 +169,9 @@ describe("Professor course builder upload invalidation", () => {
         return baseFetch(url, init);
       }),
     );
-    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps));
+    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps), {
+      wrapper: I18nWrapper,
+    });
     await restoredDraft(result);
 
     await uploadFiles(result, [new File(["ready"], "ready.md")]);
@@ -191,7 +200,9 @@ describe("Professor course builder upload invalidation", () => {
         return baseFetch(url, init);
       }),
     );
-    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps));
+    const { result } = renderHook(() => useProfessorCourseBuilder(hookProps), {
+      wrapper: I18nWrapper,
+    });
     await restoredDraft(result);
 
     await uploadFiles(result, [new File(["ready"], "ready.md")]);

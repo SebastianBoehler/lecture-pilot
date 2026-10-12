@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { translate } from "./i18n";
 import { materialFilesFromDrop } from "./materialDrop";
 import {
   ignoredUploadNotice,
@@ -52,7 +53,7 @@ describe("professor material uploads", () => {
   });
 
   it("names ignored companion files without presenting the batch as failed", () => {
-    expect(ignoredUploadNotice(["course/main.aux", "course/slides.log"])).toBe(
+    expect(ignoredUploadNotice(["course/main.aux", "course/slides.log"], translate("en"))).toBe(
       " Ignored 2 files: main.aux, slides.log.",
     );
   });

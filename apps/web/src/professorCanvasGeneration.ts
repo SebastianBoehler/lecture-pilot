@@ -4,7 +4,7 @@ import { CanvasDraftRequestError } from "./canvasDraftApi";
 const CANVAS_DRAFT_RETRY_DELAYS_MS = [1500, 3500];
 
 export type CanvasGenerationStatus = "pending" | "generating" | "ready" | "error";
-export type CanvasGenerationErrorKind = "network" | "repair" | "service" | "design";
+export type CanvasGenerationErrorKind = "network" | "repair" | "service" | "design" | "interrupted";
 
 export type CanvasGenerationProgress = {
   lectureId: string;

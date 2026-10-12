@@ -51,5 +51,9 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: "./src/test/setup.ts",
+    // Full-app tests render lazy route chunks in parallel workers; 5 s flakes under load.
+    testTimeout: 15_000,
+    // Full-app jsdom tests are CPU-bound; one worker per core starves them and causes timeouts.
+    maxWorkers: "50%",
   },
 });

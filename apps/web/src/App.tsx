@@ -220,6 +220,7 @@ function App() {
           message,
           checkpoint_gate_id: options.checkpointGateId,
           canvas_state: { focused_section_id: options.focusedSectionId ?? focusedSectionId },
+          locale,
         },
         session ?? localDemoSession,
         {
@@ -284,6 +285,7 @@ function App() {
     setSession(null);
     clearSavedFlow();
     clearAllPracticeExamDrafts();
+    takeReturnPath(); // An explicit logout ends the previous user's pending destination.
     navigate(pathForView("login"), { replace: true });
     setPanelMode(null);
     setFocusedSectionId("bayesian-decision-theory-the-aim");
@@ -570,19 +572,12 @@ function App() {
           workspaceCourseId={workspaceCourseId}
           workspaceLoadError={workspaceLoadError}
           onLogout={handleLogout}
-          onLogin={(nextSession) => {
-            setSession(nextSession);
-            if (route.view === "login") changeView(landingView(nextSession), true);
-          }}
-          onOpenDemo={() => {
-            setSession(localDemoSession);
-            if (route.view === "login") changeView("dashboard", true);
-          }}
+          // The login effect then continues to a remembered return path (e.g. a shared
+          // course link) or the account's landing view.
+          onLogin={setSession}
+          onOpenDemo={() => setSession(localDemoSession)}
           onOpenCourseLink={openCourseLink}
-          onOpenProfessorDemo={() => {
-            setSession(localProfessorSession);
-            if (route.view === "login") changeView("professor", true);
-          }}
+          onOpenProfessorDemo={() => setSession(localProfessorSession)}
           onOpenLecture={(courseId, lecture, review) => {
             void handleOpenLecture(courseId, lecture, "learner", true, review);
           }}

@@ -4,6 +4,8 @@ import { outlineMessages } from "./outlineMessages";
 import { learningIntentMessages } from "./learningIntentMessages";
 import { courseSetupMessages } from "./courseSetupMessages";
 import { shareMessages } from "./shareMessages";
+import { builderStatusMessages } from "./builderStatusMessages";
+import { professorReviewMessages } from "./professorReviewMessages";
 import { tutorMessages } from "./tutorMessages";
 import { deMessages } from "./i18nMessages.de";
 import { enMessages } from "./i18nMessages.en";
@@ -24,6 +26,8 @@ export const messages = {
     ...learningIntentMessages.en,
     ...courseSetupMessages.en,
     ...shareMessages.en,
+    ...builderStatusMessages.en,
+    ...professorReviewMessages.en,
     ...courseAccessMessages.en,
     ...interactiveComponentMessages.en,
     ...learnerStateMessages.en,
@@ -40,6 +44,8 @@ export const messages = {
     ...learningIntentMessages.de,
     ...courseSetupMessages.de,
     ...shareMessages.de,
+    ...builderStatusMessages.de,
+    ...professorReviewMessages.de,
     ...courseAccessMessages.de,
     ...interactiveComponentMessages.de,
     ...learnerStateMessages.de,
