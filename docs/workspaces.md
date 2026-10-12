@@ -75,7 +75,8 @@ separate authenticated solution-sheet response exposes multiple-choice keys,
 full-credit reference answers, and rubrics. `solutions.pdf` is compiled lazily
 and never replaces the answer-free `exam.pdf`.
 
-`builder/source-routing.json` is the professor-confirmed pre-generation map.
+`builder/source-routing.json` is the confirmed pre-generation map (confirmed by the
+professor, or automatically for a complete proposal that would delete no upload).
 It binds every uploaded source to one lecture, the whole course, reference-only
 storage, or exclusion, and is invalidated when either the indexed sources or
 lecture schedule changes. Per-lecture source manifests record what a completed

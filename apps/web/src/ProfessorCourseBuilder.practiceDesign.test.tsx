@@ -167,3 +167,28 @@ it("marks an approved design stale after a source update removes current routing
   expect(screen.queryByText(/learning goals approved/i)).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: /^approve learning goals$/i })).toBeDisabled();
 });
+
+it("continues to media when the backend accepts a non-destructive source assignment", async () => {
+  const user = userEvent.setup();
+  vi.stubGlobal("fetch", professorFetchMock({ autoConfirmRouting: true }));
+  render(<App />);
+
+  await openProfessorDemo(user);
+  await user.type(screen.getByLabelText(/course name/i), "Demo ML Course");
+  await user.click(screen.getByRole("button", { name: /create course workspace/i }));
+  await user.upload(
+    await screen.findByLabelText(/^choose files$/i),
+    new File(["# lecture one"], "Lecture01-eng.tex", { type: "application/x-tex" }),
+  );
+  await user.click(screen.getByRole("button", { name: /upload and process materials/i }));
+  await user.click(await screen.findByRole("button", { name: /apply lecture schedule/i }));
+
+  expect(await screen.findByText(/accepted automatically/i)).toBeInTheDocument();
+  expect(
+    await screen.findByRole("button", { name: /continue (?:without videos|to learning plan)/i }),
+  ).toBeInTheDocument();
+  // The accepted assignment stays reviewable under Materials.
+  await user.click(screen.getByRole("button", { name: /02 materials/i }));
+  await user.click(await screen.findByText(/review source assignments/i));
+  expect(await screen.findByLabelText(/route lecture01-eng\.tex/i)).toHaveValue("lecture");
+});

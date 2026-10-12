@@ -187,8 +187,10 @@ def test_replacing_the_lecture_schedule_invalidates_confirmed_routing(tmp_path: 
         f"/admin/courses/{COURSE_ID}/source-routing", headers=professor_headers()
     )
     assert unavailable.status_code == 409
+    # A regenerated proposal is never accepted automatically.
     refreshed = client.post(
-        f"/admin/courses/{COURSE_ID}/source-routing/proposal", headers=professor_headers()
+        f"/admin/courses/{COURSE_ID}/source-routing/proposal?refresh=true",
+        headers=professor_headers(),
     )
     assert refreshed.status_code == 200
     assert refreshed.json()["confirmed"] is False

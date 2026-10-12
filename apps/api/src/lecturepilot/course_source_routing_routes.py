@@ -21,6 +21,10 @@ from lecturepilot.course_source_routing_models import (
 from lecturepilot.course_update_recovery import locked_course_state
 from lecturepilot.durable_files import exclusive_file_lock
 from lecturepilot.course_source_cleanup import confirm_and_prune_sources
+from lecturepilot.course_source_routing_auto_accept import (
+    accept_without_review,
+    needs_no_review,
+)
 from lecturepilot.model_client import ModelExecutionError
 from lecturepilot.model_usage import model_usage_scope
 from lecturepilot.providers import ProviderConfigurationError
@@ -154,7 +158,22 @@ def register_course_source_routing_routes(
                 )
             return _processing_status(layout, course_id, manifest)
 
-        return await run_in_threadpool(save)
+        proposed = await run_in_threadpool(save)
+        if refresh or not needs_no_review(proposed, lectures):
+            return proposed  # A regenerated or flagged proposal is always reviewed.
+
+        def accept():
+            with locked_course_state(layout.course_root(course_id)):
+                accepted = accept_without_review(
+                    layout=layout,
+                    course_id=course_id,
+                    index=_refresh_index(layout, course_id),
+                    lectures=_lectures(app, course_id),
+                    manifest=proposed,
+                )
+            return proposed if accepted is None else _processing_status(layout, course_id, accepted)
+
+        return await run_in_threadpool(accept)
 
     @app.put(
         "/admin/courses/{course_id}/source-routing",

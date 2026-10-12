@@ -16,9 +16,14 @@ import {
 import { learningDesignPayload } from "./testLearningDesignReviewFixture";
 
 export function professorFetchMock({
+  autoConfirmRouting,
   staleApprovalOnceFor,
   staleRoutingAfterApproval,
-}: { staleApprovalOnceFor?: string; staleRoutingAfterApproval?: boolean } = {}) {
+}: {
+  autoConfirmRouting?: boolean;
+  staleApprovalOnceFor?: string;
+  staleRoutingAfterApproval?: boolean;
+} = {}) {
   const publishedLectures = new Set<string>();
   const deletedCourses = new Set<string>();
   const selectedMedia = new Map<string, { video: ReturnType<typeof youtubeCandidate> }>();
@@ -94,6 +99,8 @@ export function professorFetchMock({
         const body = JSON.parse(String(init.body));
         routing = { ...routing, ...body, confirmed: true };
       }
+      // The backend accepts a complete, non-destructive first proposal by itself.
+      if (autoConfirmRouting && init?.method === "POST") routing = { ...routing, confirmed: true };
       return json(routing);
     }
     if (path.endsWith("/intent/findings")) return json([]);

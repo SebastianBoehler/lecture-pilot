@@ -25,6 +25,8 @@ export const builderStatusMessages = {
     "builder.status.publishedManyAt": "{count} tutor workspaces published for students at {when}.",
     "builder.status.routingRebuilt": "Source assignments rebuilt from the indexed course evidence.",
     "builder.status.routingConfirmed": "Source assignments confirmed for Canvas generation.",
+    "builder.status.routingAutoConfirmed":
+      "Every source was assigned to its lecture and accepted automatically. You can review or change the assignments under Materials.",
   },
   de: {
     "builder.status.createdCourse":
@@ -55,5 +57,7 @@ export const builderStatusMessages = {
     "builder.status.routingRebuilt":
       "Quellenzuordnungen aus den indexierten Kursquellen neu erstellt.",
     "builder.status.routingConfirmed": "Quellenzuordnungen für die Canvas-Erstellung bestätigt.",
+    "builder.status.routingAutoConfirmed":
+      "Alle Quellen wurden ihren Vorlesungen zugeordnet und automatisch übernommen. Unter Materialien können Sie die Zuordnung prüfen oder ändern.",
   },
 } as const;

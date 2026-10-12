@@ -554,6 +554,19 @@ export function useProfessorCourseBuilder({
     }
   }
 
+  /** An automatically accepted assignment continues like a confirmed one; it stays editable. */
+  function continueAfterProposal(proposed: { confirmed: boolean }) {
+    if (!proposed.confirmed) {
+      setActiveStep("sources");
+      return false;
+    }
+    practiceDesign.reset();
+    resetCanvasState();
+    setMediaReviewed(false);
+    setActiveStep("review");
+    return true;
+  }
+
   function restoredStep(routingConfirmed: boolean): BuilderStep {
     if (!routingConfirmed) return "sources";
     // Media is optional; resumed setups continue with the learning plan.
@@ -763,12 +776,12 @@ export function useProfessorCourseBuilder({
           });
           setLectureSchedule(proposal.lectures);
         }
-        if (setup.target !== "full-course") {
-          await sourceRouting.propose(activeWorkspace.courseId);
-          setActiveStep("sources");
-        }
+        const autoConfirmed =
+          setup.target !== "full-course" &&
+          continueAfterProposal(await sourceRouting.propose(activeWorkspace.courseId));
         setUploadFiles([]);
         const ignoredText = ignoredUploadNotice(result.ignored, t);
+        if (autoConfirmed) return t("builder.status.routingAutoConfirmed");
         if (result.uploaded.length === 1) {
           return `${t("builder.status.uploadedOne", { path: result.uploaded[0].path, kind: result.uploaded[0].kind })}${ignoredText}`;
         }
@@ -790,7 +803,8 @@ export function useProfessorCourseBuilder({
         resetGeneratedState();
         setScheduleApplied(true);
         setActiveStep("sources");
-        await sourceRouting.propose(created.course.id);
+        if (continueAfterProposal(await sourceRouting.propose(created.course.id)))
+          return t("builder.status.routingAutoConfirmed");
         return t("builder.status.scheduleApplied", { count: created.lectures.length });
       }),
   };
