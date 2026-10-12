@@ -7,8 +7,9 @@ from time import sleep
 
 import httpx
 
-from lecturepilot import agent_turn_orchestration, workspace_capability
-from lecturepilot.source_capability_guard import shared_source_access
+from lecturepilot.core import workspace_capability
+from lecturepilot.tutor import agent_turn_orchestration
+from lecturepilot.sources.source_capability_guard import shared_source_access
 from source_capability_test_helpers import published_source_workspace
 from test_practice_exam_api import _client
 from test_source_capability_binding import _executor

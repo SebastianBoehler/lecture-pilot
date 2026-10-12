@@ -3,10 +3,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from lecturepilot.course_canvas_generation_cancel import cancel_canvas_generation
-from lecturepilot.course_canvas_generation_jobs import CanvasGenerationStore
-from lecturepilot.course_canvas_generation_service import run_idempotent_canvas_generation
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.authoring.course_canvas_generation_cancel import cancel_canvas_generation
+from lecturepilot.authoring.course_canvas_generation_jobs import CanvasGenerationStore
+from lecturepilot.authoring.course_canvas_generation_service import run_idempotent_canvas_generation
+from lecturepilot.core.storage_layout import StorageLayout
 
 
 async def test_explicit_cancel_stops_worker_and_persists_cancelled_status(tmp_path):

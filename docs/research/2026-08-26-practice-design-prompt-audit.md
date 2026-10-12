@@ -50,29 +50,29 @@ proof that this implementation improves learning.
 Primary code evidence:
 
 - The proposal prompt is a compact set of prose requirements:
-  `apps/api/src/lecturepilot/course_practice_design_prompt.py:20-30`.
+  `apps/api/src/lecturepilot/learning_design/course_practice_design_prompt.py:20-30`.
 - Structural constraints are in
-  `apps/api/src/lecturepilot/course_practice_design_models.py:45-98` and
-  `apps/api/src/lecturepilot/course_practice_design_models.py:184-209`.
+  `apps/api/src/lecturepilot/learning_design/course_practice_design_models.py:45-98` and
+  `apps/api/src/lecturepilot/learning_design/course_practice_design_models.py:184-209`.
 - Source validation checks only membership in the allowed path set:
-  `apps/api/src/lecturepilot/course_practice_design_validation.py:49-59`.
+  `apps/api/src/lecturepilot/learning_design/course_practice_design_validation.py:49-59`.
 - The source packet is capped at 80 sections/80,000 characters and 1,600
   characters for most blocks:
   `apps/api/src/lecturepilot/course_canvas_prompt.py:12-14` and
   `apps/api/src/lecturepilot/course_canvas_prompt.py:110-147`.
 - Target-to-section assignment falls back to the first section when no source
   reference matches:
-  `apps/api/src/lecturepilot/course_canvas_practice_contract.py:42-60`.
+  `apps/api/src/lecturepilot/authoring/course_canvas_practice_contract.py:42-60`.
 - The exact baseline, criteria, exit, transfer, and delay survive into the map:
-  `apps/api/src/lecturepilot/learning_map.py:211-237`.
+  `apps/api/src/lecturepilot/learning_design/learning_map.py:211-237`.
 - Active tutor context includes baseline, criteria, transfer, and delay, but not
   the independent-exit task, hint ladder, or misconceptions:
-  `apps/api/src/lecturepilot/model_client.py:270-287`.
+  `apps/api/src/lecturepilot/llm/model_client.py:270-287`.
 - Standard attempts preceded by `prompt` assistance are currently classified as
-  independent: `apps/api/src/lecturepilot/coaching_episode.py:110-115`.
+  independent: `apps/api/src/lecturepilot/learner/coaching_episode.py:110-115`.
 - Revision-bound professor approval and generation preflight are enforced in
-  `apps/api/src/lecturepilot/course_practice_design_store.py:92-160` and
-  `apps/api/src/lecturepilot/course_practice_design_binding.py:77-152`.
+  `apps/api/src/lecturepilot/learning_design/course_practice_design_store.py:92-160` and
+  `apps/api/src/lecturepilot/learning_design/course_practice_design_binding.py:77-152`.
 
 ## Prioritized findings
 

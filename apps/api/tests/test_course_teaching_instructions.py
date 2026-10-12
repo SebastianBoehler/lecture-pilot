@@ -1,13 +1,15 @@
-from lecturepilot.course_canvas_quality import _quality_messages
-from lecturepilot.course_practice_design_prompt import practice_design_messages
-from lecturepilot.course_practice_design_review_prompt import practice_design_review_messages
+from lecturepilot.authoring.course_canvas_quality import _quality_messages
+from lecturepilot.learning_design.course_practice_design_prompt import practice_design_messages
+from lecturepilot.learning_design.course_practice_design_review_prompt import (
+    practice_design_review_messages,
+)
 from practice_design_test_helpers import practice_design_for_canvas
 from practice_design_review_test_helpers import source_document
-from lecturepilot.practice_evidence_catalogue import evidence_catalogue
+from lecturepilot.learning_design.practice_evidence_catalogue import evidence_catalogue
 
 
 def test_canvas_author_receives_teaching_and_media_boundaries(tmp_path) -> None:
-    from lecturepilot.authoring_instructions import section_instructions as _instructions
+    from lecturepilot.authoring.authoring_instructions import section_instructions as _instructions
     from test_authoring_job import authoring_job
 
     prompts = [_instructions(authoring_job(tmp_path))]

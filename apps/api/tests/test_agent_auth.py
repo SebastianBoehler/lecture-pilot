@@ -5,11 +5,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy import text
 
 from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.identity_repository import IdentityRepository
-from lecturepilot.university_models import UniversityLoginResult
-from lecturepilot.providers import DEFAULT_MODEL
-from lecturepilot.session_auth import SESSION_COOKIE_NAME, SessionAuthError
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.identity.identity_repository import IdentityRepository
+from lecturepilot.courses.university_models import UniversityLoginResult
+from lecturepilot.llm.providers import DEFAULT_MODEL
+from lecturepilot.identity.session_auth import SESSION_COOKIE_NAME, SessionAuthError
 from auth_helpers import student_headers
 from canvas_workspace_fixtures import (
     configure_canvas_workspace,

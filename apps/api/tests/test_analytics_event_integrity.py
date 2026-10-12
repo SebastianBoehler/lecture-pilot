@@ -7,10 +7,13 @@ from pathlib import Path
 
 import pytest
 
-from lecturepilot.analytics_events import InvalidAnalyticsEventError, parse_analytics_event
-from lecturepilot.coaching_progress import CoachingTurnEvent
-from lecturepilot.durable_files import atomic_write_text
-from lecturepilot.models import AttendanceStatus, QualityGateDecision, QualityGateStatus
+from lecturepilot.analytics.analytics_events import (
+    InvalidAnalyticsEventError,
+    parse_analytics_event,
+)
+from lecturepilot.learner.coaching_progress import CoachingTurnEvent
+from lecturepilot.core.durable_files import atomic_write_text
+from lecturepilot.core.models import AttendanceStatus, QualityGateDecision, QualityGateStatus
 from test_analytics_review_contract import _answer
 from test_analytics_routes import _client
 

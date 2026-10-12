@@ -3,16 +3,19 @@ import json
 
 import pytest
 
-from lecturepilot.authoring_limits import AuthoringBudgetExceeded, current_authoring_budget
-from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.teaching_design_runtime import run_implementation_repair
+from lecturepilot.authoring.authoring_limits import (
+    AuthoringBudgetExceeded,
+    current_authoring_budget,
+)
+from lecturepilot.llm.model_client import ModelExecutionError
+from lecturepilot.learning_design.teaching_design_runtime import run_implementation_repair
 
 
 @pytest.mark.parametrize("failure", ["timeout", "deadline", "tokens"])
 async def test_saved_implementation_continues_without_replacing_owned_arguments(
     tmp_path, monkeypatch, failure
 ):
-    import lecturepilot.teaching_design_runtime as runtime
+    import lecturepilot.learning_design.teaching_design_runtime as runtime
 
     calls = []
     budgets = []
@@ -42,7 +45,7 @@ async def test_saved_implementation_continues_without_replacing_owned_arguments(
 
 
 async def test_no_progress_budget_failure_is_not_repeated(tmp_path, monkeypatch):
-    import lecturepilot.teaching_design_runtime as runtime
+    import lecturepilot.learning_design.teaching_design_runtime as runtime
 
     calls = []
 
@@ -57,7 +60,7 @@ async def test_no_progress_budget_failure_is_not_repeated(tmp_path, monkeypatch)
 
 
 async def test_provider_failure_has_bounded_continuation(tmp_path, monkeypatch):
-    import lecturepilot.teaching_design_runtime as runtime
+    import lecturepilot.learning_design.teaching_design_runtime as runtime
 
     calls = []
 
@@ -76,7 +79,7 @@ async def test_provider_failure_has_bounded_continuation(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize("error", [ValueError("changed identity"), asyncio.CancelledError()])
 async def test_ownership_and_cancellation_are_never_retried(tmp_path, monkeypatch, error):
-    import lecturepilot.teaching_design_runtime as runtime
+    import lecturepilot.learning_design.teaching_design_runtime as runtime
 
     calls = []
 
@@ -91,8 +94,8 @@ async def test_ownership_and_cancellation_are_never_retried(tmp_path, monkeypatc
 
 
 async def test_scope_conflict_is_not_retried_even_with_saved_progress(tmp_path, monkeypatch):
-    import lecturepilot.teaching_design_runtime as runtime
-    from lecturepilot.authoring_models import AuthoringDesignConflict
+    import lecturepilot.learning_design.teaching_design_runtime as runtime
+    from lecturepilot.authoring.authoring_models import AuthoringDesignConflict
 
     calls = []
 
@@ -110,8 +113,8 @@ async def test_scope_conflict_is_not_retried_even_with_saved_progress(tmp_path, 
 
 
 async def test_real_deadline_continues_saved_targets(tmp_path, monkeypatch):
-    import lecturepilot.teaching_design_runtime as runtime
-    import lecturepilot.teaching_recovery as recovery
+    import lecturepilot.learning_design.teaching_design_runtime as runtime
+    import lecturepilot.learning_design.teaching_recovery as recovery
 
     calls = []
 
@@ -131,7 +134,7 @@ async def test_real_deadline_continues_saved_targets(tmp_path, monkeypatch):
 
 
 async def test_progress_does_not_remove_the_attempt_limit(tmp_path, monkeypatch):
-    import lecturepilot.teaching_design_runtime as runtime
+    import lecturepilot.learning_design.teaching_design_runtime as runtime
 
     calls = []
 

@@ -8,14 +8,14 @@ from fastapi.testclient import TestClient
 import pytest
 
 from auth_helpers import professor_headers
-import lecturepilot.course_builder_source as builder_source
-import lecturepilot.course_routes as course_routes
-import lecturepilot.course_update_routes as course_update_routes
-import lecturepilot.lecture_access_routes as access_routes
-from lecturepilot.course_schedule_store import write_course_workspace
-from lecturepilot.course_update_storage import course_update_lock
-from lecturepilot.models import Course, CourseWorkspaceResult, Lecture
-from lecturepilot.source_bundle_canvas import SourceBundleCanvasError
+import lecturepilot.sources.course_builder_source as builder_source
+import lecturepilot.courses.course_routes as course_routes
+import lecturepilot.courses.course_update_routes as course_update_routes
+import lecturepilot.courses.lecture_access_routes as access_routes
+from lecturepilot.courses.course_schedule_store import write_course_workspace
+from lecturepilot.courses.course_update_storage import course_update_lock
+from lecturepilot.core.models import Course, CourseWorkspaceResult, Lecture
+from lecturepilot.sources.source_bundle_canvas import SourceBundleCanvasError
 from api_test_client import workspace_client as _client
 
 

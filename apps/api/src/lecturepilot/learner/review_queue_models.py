@@ -1,0 +1,63 @@
+from __future__ import annotations
+
+from typing import Annotated, Literal
+
+from pydantic import BaseModel, Field
+
+from lecturepilot.learner.coaching_contract import MAX_APPROVED_TASK_LENGTH
+
+
+class GateReviewQueueItem(BaseModel):
+    id: str
+    kind: Literal["gate_review", "gate_repair"]
+    course_id: str
+    lecture_id: str
+    lecture_title: str
+    section_id: str
+    section_title: str
+    gate_id: str
+    gate_revision: str
+    due_at: str
+
+
+class CompletedGateReview(BaseModel):
+    id: str
+    course_id: str
+    lecture_id: str
+    section_title: str
+    completed_at: str
+
+
+class ReadinessReviewQueueItem(BaseModel):
+    id: str
+    kind: Literal["readiness_repair"] = "readiness_repair"
+    course_id: str
+    lecture_id: str
+    lecture_title: str
+    section_id: str
+    section_title: str
+    task_id: str
+    next_action: str
+
+
+ReviewQueueItem = Annotated[
+    GateReviewQueueItem | ReadinessReviewQueueItem,
+    Field(discriminator="kind"),
+]
+
+
+class CourseReviewQueue(BaseModel):
+    course_id: str
+    items: list[ReviewQueueItem] = Field(default_factory=list)
+    upcoming: list[GateReviewQueueItem] = Field(default_factory=list)
+    completed: list[CompletedGateReview] = Field(default_factory=list)
+
+
+class GateReviewOpening(BaseModel):
+    course_id: str
+    lecture_id: str
+    section_id: str
+    gate_id: str
+    gate_revision: str
+    prompt: str = Field(min_length=1, max_length=MAX_APPROVED_TASK_LENGTH)
+    stage: Literal["due", "repair"]

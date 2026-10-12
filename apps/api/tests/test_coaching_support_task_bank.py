@@ -2,13 +2,13 @@ from datetime import timedelta
 
 import pytest
 
-from lecturepilot.coaching_progress import CoachingProgressStore
-from lecturepilot.coaching_support import CoachingSupportRequest, request_support
-from lecturepilot.coaching_task_bank import exposed_ids
-from lecturepilot.coaching_transitions import derive_next_transition
-from lecturepilot.learner_lesson_state import _goal_evidence
-from lecturepilot.quality_gate_models import QualityGateStatus
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.learner.coaching_progress import CoachingProgressStore
+from lecturepilot.learner.coaching_support import CoachingSupportRequest, request_support
+from lecturepilot.learner.coaching_task_bank import exposed_ids
+from lecturepilot.learner.coaching_transitions import derive_next_transition
+from lecturepilot.learner.learner_lesson_state import _goal_evidence
+from lecturepilot.learner.quality_gate_models import QualityGateStatus
+from lecturepilot.core.storage_layout import StorageLayout
 from practice_gate_coaching_test_helpers import IDS, NOW, bank_gate, practice_gate
 from test_practice_gate_coaching_transitions import _record, _check
 
@@ -128,7 +128,7 @@ def test_legacy_bank_exhaustion_stays_supported_and_never_schedules_review(tmp_p
 
 
 def test_delayed_help_before_answer_selects_fresh_delayed_task(tmp_path):
-    from lecturepilot.coaching_check_binding import bind_delayed_review
+    from lecturepilot.learner.coaching_check_binding import bind_delayed_review
 
     store, gate = setup_exit(tmp_path)
     record_selected(store, gate, NOW + timedelta(minutes=2))

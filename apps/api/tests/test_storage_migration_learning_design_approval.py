@@ -1,7 +1,7 @@
 import json
 
-from lecturepilot.course_learning_design_store import review_path
-from lecturepilot.storage_migration_learning_design_approval import migrate
+from lecturepilot.learning_design.course_learning_design_store import review_path
+from lecturepilot.migrations_storage.storage_migration_learning_design_approval import migrate
 from test_learning_design_review_routes import _client_with_draft
 
 

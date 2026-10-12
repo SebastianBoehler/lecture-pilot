@@ -1,6 +1,6 @@
 from test_practice_exam_api import _client, _generate
-from lecturepilot.usage_quota import UsageQuotaExceeded
-from lecturepilot.model_client import ModelExecutionError
+from lecturepilot.llm.usage_quota import UsageQuotaExceeded
+from lecturepilot.llm.model_client import ModelExecutionError
 
 
 class Quota:
@@ -53,8 +53,8 @@ def test_exam_provider_failure_releases_concurrency(tmp_path):
 
 
 def test_exam_generation_has_cumulative_budget_and_deadline(tmp_path, monkeypatch):
-    from lecturepilot.authoring_limits import current_authoring_budget
-    from lecturepilot import practice_exam_generation
+    from lecturepilot.authoring.authoring_limits import current_authoring_budget
+    from lecturepilot.exams import practice_exam_generation
 
     client, planner = _client(tmp_path)
     original = planner.plan

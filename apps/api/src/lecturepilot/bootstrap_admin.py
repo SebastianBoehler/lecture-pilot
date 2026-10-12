@@ -6,12 +6,12 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 
 from lecturepilot.database import Database
-from lecturepilot.db_models import (
+from lecturepilot.core.db_models import (
     AuditEventRecord,
     ExternalIdentityRecord,
     TenantMembershipRecord,
 )
-from lecturepilot.session_store import SessionStore
+from lecturepilot.identity.session_store import SessionStore
 
 
 def main() -> None:

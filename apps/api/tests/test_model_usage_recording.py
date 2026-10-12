@@ -3,7 +3,7 @@ from threading import Event
 
 import pytest
 
-from lecturepilot.model_usage import _scope, complete_with_usage, model_usage_scope
+from lecturepilot.llm.model_usage import _scope, complete_with_usage, model_usage_scope
 
 
 @pytest.mark.parametrize("failed", [False, True])

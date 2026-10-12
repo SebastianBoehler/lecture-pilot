@@ -2,11 +2,11 @@ from pathlib import Path
 
 import pytest
 
-from lecturepilot import course_canvas_generation as generation
-from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
-from lecturepilot.course_canvas_generation_jobs import CanvasGenerationStore
-from lecturepilot.course_canvas_generation_ownership import CanvasGenerationOwnershipError
-from lecturepilot.course_canvas_generation_service import (
+from lecturepilot.authoring import course_canvas_generation as generation
+from lecturepilot.authoring.course_canvas_errors import CanvasGenerationRepairableError
+from lecturepilot.authoring.course_canvas_generation_jobs import CanvasGenerationStore
+from lecturepilot.authoring.course_canvas_generation_ownership import CanvasGenerationOwnershipError
+from lecturepilot.authoring.course_canvas_generation_service import (
     CANVAS_GENERATION_LEASE_SECONDS,
     run_idempotent_canvas_generation,
 )

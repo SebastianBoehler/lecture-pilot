@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from lecturepilot.source_bundle import scan_source_bundle
-from lecturepilot.workspace_fs import WorkspaceFSError
+from lecturepilot.sources.source_bundle import scan_source_bundle
+from lecturepilot.core.workspace_fs import WorkspaceFSError
 
 
 def test_source_bundle_scans_professor_material_types(tmp_path: Path) -> None:

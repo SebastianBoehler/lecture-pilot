@@ -7,9 +7,9 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.course_learning_design_store import canvas_digest
-from lecturepilot.learning_map import LearningMapGate, build_learning_map
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.learning_design.course_learning_design_store import canvas_digest
+from lecturepilot.learning_design.learning_map import LearningMapGate, build_learning_map
 from practice_design_test_helpers import practice_design_for_canvas, target as practice_target
 
 
@@ -191,7 +191,7 @@ def test_report_identifies_unassessed_concepts_and_late_examples_without_sequenc
 
 def _report(document: CanvasDocument):
     try:
-        from lecturepilot.learning_design_report import build_learning_design_report
+        from lecturepilot.learning_design.learning_design_report import build_learning_design_report
     except ModuleNotFoundError:
         pytest.fail("learning-design report module is missing", pytrace=False)
     source_sections = [section for section in document.sections if section.source_ref]

@@ -4,13 +4,13 @@ from threading import Event, Thread
 from fastapi.testclient import TestClient
 import pytest
 
-import lecturepilot.course_update_storage as storage
-import lecturepilot.course_update_routes as update_routes
+import lecturepilot.courses.course_update_storage as storage
+import lecturepilot.courses.course_update_routes as update_routes
 from auth_helpers import professor_headers
 from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.course_update import begin_course_update_apply, discard_course_update
-from lecturepilot.course_update_storage import (
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.courses.course_update import begin_course_update_apply, discard_course_update
+from lecturepilot.courses.course_update_storage import (
     CourseUpdateRecoveryError,
     course_update_lock,
     staged_file_transaction,

@@ -1,4 +1,4 @@
-from lecturepilot.course_learning_design_models import LearningDesignApprovalInput
+from lecturepilot.learning_design.course_learning_design_models import LearningDesignApprovalInput
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
@@ -6,16 +6,16 @@ from fastapi.testclient import TestClient
 
 from canvas_workspace_fixtures import published_course_canvas, write_canvas_draft
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import CanvasBlock
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.coaching_progress import CoachingProgressStore
-from lecturepilot.coaching_state_models import CoachingProgress, DelayedReview, review_key
-from lecturepilot.course_schedule_store import write_course_workspace
-from lecturepilot.course_learning_design_store import CourseLearningDesignStore
-from lecturepilot.course_learning_design_models import LearningDesignUpdate
-from lecturepilot.durable_files import atomic_write_json
-from lecturepilot.exam_revision_plan import ExamRevisionTask
-from lecturepilot.models import Course, CourseWorkspaceResult, Lecture
+from lecturepilot.canvas.canvas_models import CanvasBlock
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.learner.coaching_progress import CoachingProgressStore
+from lecturepilot.learner.coaching_state_models import CoachingProgress, DelayedReview, review_key
+from lecturepilot.courses.course_schedule_store import write_course_workspace
+from lecturepilot.learning_design.course_learning_design_store import CourseLearningDesignStore
+from lecturepilot.learning_design.course_learning_design_models import LearningDesignUpdate
+from lecturepilot.core.durable_files import atomic_write_json
+from lecturepilot.exams.exam_revision_plan import ExamRevisionTask
+from lecturepilot.core.models import Course, CourseWorkspaceResult, Lecture
 
 COURSE_ID = "review-course"
 NOW = datetime.now(UTC)

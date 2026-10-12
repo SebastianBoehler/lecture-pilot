@@ -1,0 +1,104 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime
+from pathlib import Path
+from pydantic import (
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    Field,
+    PositiveInt,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
+
+from lecturepilot.canvas.canvas_internal_serialization import canvas_document_internal_payload
+from lecturepilot.canvas.canvas_models import CanvasDocument
+from lecturepilot.learning_design.course_learning_design_models import LearningDesignReview
+from lecturepilot.sources.source_warnings import compact_source_warnings
+
+
+class CanvasPublicationMetadata(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    schema_version: int
+    course_id: str = Field(min_length=1, max_length=120)
+    lecture_id: str = Field(min_length=1, max_length=120)
+    version: PositiveInt
+    source_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
+    draft_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
+    learning_map_revision: str = Field(pattern=r"^[a-f0-9]{64}$")
+    practice_design_revision: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+    learning_intent_revision: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+    published_at: AwareDatetime
+    published_by: str = Field(min_length=1, max_length=160)
+
+    @model_validator(mode="after")
+    def require_intent_implementation(self) -> CanvasPublicationMetadata:
+        if self.learning_intent_revision is not None and self.practice_design_revision is None:
+            raise ValueError("Learning intent publication requires an implementation revision")
+        return self
+
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def require_current_schema_version(cls, value: object) -> int:
+        if type(value) is not int or value != 1:
+            raise ValueError("schema_version must be the integer 1")
+        return value
+
+
+class InvalidCanvasPublicationMetadataError(ValueError):
+    pass
+
+
+def prepared_document(document: CanvasDocument, canvas_dir: Path) -> CanvasDocument:
+    # Warnings are advisory: an overflowing list must never cost the professor the draft.
+    normalized = document.model_copy(
+        update={
+            "workspace_path": str(canvas_dir / "index.md"),
+            "warnings": compact_source_warnings(document.warnings),
+        }
+    )
+    return CanvasDocument.model_validate(canvas_document_internal_payload(normalized))
+
+
+def publication_path(canvas_dir: Path) -> Path:
+    return canvas_dir / "publication.json"
+
+
+def read_publication(published_dir: Path) -> CanvasPublicationMetadata | None:
+    path = publication_path(published_dir)
+    if not path.exists():
+        return None
+    try:
+        return CanvasPublicationMetadata.model_validate_json(path.read_text(encoding="utf-8"))
+    except (OSError, ValidationError) as exc:
+        raise InvalidCanvasPublicationMetadataError(
+            "Published canvas metadata is invalid. Publish the canvas again."
+        ) from exc
+
+
+def publication_metadata(
+    *,
+    course_id: str,
+    lecture_id: str,
+    published_by: str,
+    version: int,
+    review: LearningDesignReview,
+) -> CanvasPublicationMetadata:
+    approval = review.approval
+    assert approval is not None
+    return CanvasPublicationMetadata(
+        schema_version=1,
+        course_id=course_id,
+        lecture_id=lecture_id,
+        version=version,
+        published_at=datetime.now(UTC),
+        published_by=published_by,
+        draft_digest=review.draft_digest,
+        source_revision=review.source_revision,
+        learning_map_revision=review.learning_map.revision,
+        practice_design_revision=review.practice_design_revision,
+        learning_intent_revision=review.learning_intent_revision,
+    )

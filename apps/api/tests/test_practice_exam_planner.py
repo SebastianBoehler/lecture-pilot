@@ -12,19 +12,19 @@ from practice_exam_planner_fixtures import (
     _solution_review_payload,
 )
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasSection
-from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.practice_exam_planner import (
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasSection
+from lecturepilot.llm.model_client import ModelExecutionError
+from lecturepilot.exams.practice_exam_planner import (
     PracticeExamPlanner,
     PracticeExamPlanningError,
     _exam_output_token_budget,
 )
-from lecturepilot.practice_exam_prompt import (
+from lecturepilot.exams.practice_exam_prompt import (
     MAX_COURSE_EVIDENCE_CHARS,
     authoritative_canvas_evidence,
     practice_exam_messages,
 )
-from lecturepilot.practice_exam_schema import practice_exam_response_format
+from lecturepilot.exams.practice_exam_schema import practice_exam_response_format
 
 
 @pytest.mark.asyncio

@@ -3,11 +3,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from lecturepilot.course_canvas_async_response import accepted_generation_response
-from lecturepilot.course_canvas_generation_jobs import CanvasGenerationJob, CanvasGenerationStore
-from lecturepilot.course_canvas_generation_service import run_idempotent_canvas_generation
-from lecturepilot.generation_slots import BACKGROUND_GENERATION_SLOTS
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.authoring.course_canvas_async_response import accepted_generation_response
+from lecturepilot.authoring.course_canvas_generation_jobs import (
+    CanvasGenerationJob,
+    CanvasGenerationStore,
+)
+from lecturepilot.authoring.course_canvas_generation_service import run_idempotent_canvas_generation
+from lecturepilot.llm.generation_slots import BACKGROUND_GENERATION_SLOTS
+from lecturepilot.core.storage_layout import StorageLayout
 from test_course_canvas_generation_service import _canvas
 
 

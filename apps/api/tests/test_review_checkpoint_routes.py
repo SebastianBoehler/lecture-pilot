@@ -4,12 +4,12 @@ from datetime import UTC, datetime
 from fastapi.testclient import TestClient
 
 from auth_helpers import student_headers
-from lecturepilot.coaching_progress import CoachingProgressStore
-from lecturepilot.coaching_state_models import PendingCheck
-from lecturepilot.model_payload import agent_result_from_content
+from lecturepilot.learner.coaching_progress import CoachingProgressStore
+from lecturepilot.learner.coaching_state_models import PendingCheck
+from lecturepilot.llm.model_payload import agent_result_from_content
 from test_agent_stream import _published_app
 from canvas_workspace_fixtures import publish_course_canvas, published_course_canvas
-from lecturepilot.canvas_models import CanvasBlock
+from lecturepilot.canvas.canvas_models import CanvasBlock
 
 
 class Assessor:

@@ -1,4 +1,4 @@
-from lecturepilot.agent_tool_executor import AgentToolExecutor
+from lecturepilot.tutor.agent_tool_executor import AgentToolExecutor
 from test_canvas_api import _workspace
 
 

@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from lecturepilot.storage_layout import StorageLayout
-from lecturepilot.storage_migration_legacy_workspaces import migrate
+from lecturepilot.core.storage_layout import StorageLayout
+from lecturepilot.migrations_storage.storage_migration_legacy_workspaces import migrate
 
 
 def _seed(tmp_path: Path) -> tuple[Path, Path, Path]:

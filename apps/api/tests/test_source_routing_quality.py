@@ -2,11 +2,11 @@ from datetime import date
 
 import pytest
 
-from lecturepilot.course_source_routing_planner import CourseSourceRoutingPlanner
-from lecturepilot.course_source_routing_models import SourceRouteRole
-from lecturepilot.models import Lecture
-from lecturepilot.providers import ProviderRegistry
-from lecturepilot.source_index_models import IndexedSourceFile
+from lecturepilot.sources.course_source_routing_planner import CourseSourceRoutingPlanner
+from lecturepilot.sources.course_source_routing_models import SourceRouteRole
+from lecturepilot.core.models import Lecture
+from lecturepilot.llm.providers import ProviderRegistry
+from lecturepilot.sources.source_index_models import IndexedSourceFile
 
 
 @pytest.mark.asyncio

@@ -3,9 +3,17 @@ import json
 import pytest
 
 
-from lecturepilot.course_learning_intent import LearningGoal, LearningIntent, digest, goal_for
-from lecturepilot.practice_evidence_catalogue import compact_evidence_anchors, evidence_catalogue
-from lecturepilot.teaching_design_workspace import TeachingDesignWorkspace
+from lecturepilot.learning_design.course_learning_intent import (
+    LearningGoal,
+    LearningIntent,
+    digest,
+    goal_for,
+)
+from lecturepilot.learning_design.practice_evidence_catalogue import (
+    compact_evidence_anchors,
+    evidence_catalogue,
+)
+from lecturepilot.learning_design.teaching_design_workspace import TeachingDesignWorkspace
 from practice_design_test_helpers import proposal, target
 from reviewed_task_bank_helpers import with_bank
 from test_practice_design_semantic_review import _source

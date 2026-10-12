@@ -1,7 +1,7 @@
 from auth_helpers import professor_headers, student_headers
 from learner_study_test_helpers import COURSE_ID, learner, study_client
-from lecturepilot.canvas_models import CanvasBlock, CanvasSection
-from lecturepilot.learner_notes_export import notes_filename
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasSection
+from lecturepilot.learner.learner_notes_export import notes_filename
 
 URL = f"/courses/{COURSE_ID}/lectures/lecture-open/notes.md"
 

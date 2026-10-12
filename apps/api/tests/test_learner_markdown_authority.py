@@ -2,8 +2,8 @@ import json
 from pathlib import Path
 
 from auth_helpers import student_headers
-from lecturepilot.canvas_models import CanvasBlock, CanvasSection
-from lecturepilot.models import CanvasSectionPlacement
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasSection
+from lecturepilot.core.models import CanvasSectionPlacement
 from test_quiz_learner_overlay import COURSE_ID, LECTURE_ID, _client, _submit
 
 

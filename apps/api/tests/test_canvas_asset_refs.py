@@ -1,6 +1,6 @@
 import pytest
 
-from lecturepilot.canvas_asset_refs import parsed_asset_target
+from lecturepilot.canvas.canvas_asset_refs import parsed_asset_target
 
 
 def test_relative_course_asset_builds_an_authenticated_route() -> None:

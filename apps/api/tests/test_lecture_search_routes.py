@@ -8,8 +8,8 @@ from learner_study_test_helpers import (
     learner,
     study_client,
 )
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.lecture_search import (
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.learner.lecture_search import (
     MAX_RESULTS,
     SearchableLecture,
     normalize_query,

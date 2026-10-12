@@ -8,13 +8,13 @@ from fastapi.testclient import TestClient
 
 from auth_helpers import student_headers
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.course_canvas_store import InvalidCanvasDraftError
-from lecturepilot.course_schedule_store import write_course_workspace
-from lecturepilot.learning_map import build_learning_map
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.canvas.course_canvas_store import InvalidCanvasDraftError
+from lecturepilot.courses.course_schedule_store import write_course_workspace
+from lecturepilot.learning_design.learning_map import build_learning_map
 from practice_design_test_helpers import practice_design_for_canvas
-from lecturepilot.models import Course, CourseWorkspaceResult, Lecture
+from lecturepilot.core.models import Course, CourseWorkspaceResult, Lecture
 from canvas_workspace_fixtures import (
     configure_canvas_workspace,
     publish_course_canvas,

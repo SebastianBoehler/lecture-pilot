@@ -1,5 +1,5 @@
 from auth_helpers import student_headers
-from lecturepilot.coaching_progress import CoachingProgressStore
+from lecturepilot.learner.coaching_progress import CoachingProgressStore
 from test_learner_lesson_state_routes import _client, _gate, COURSE_ID, STATE_URL
 
 

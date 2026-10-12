@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
-from lecturepilot.coaching_assistance import NextCheck, NextCheckAssistance
-from lecturepilot.learning_map import LearningMapGate
+from lecturepilot.learner.coaching_assistance import NextCheck, NextCheckAssistance
+from lecturepilot.learning_design.learning_map import LearningMapGate
 
 IDS = {"user_id": "student-1", "course_id": "course-1", "lecture_id": "lecture-1"}
 NOW = datetime(2026, 8, 26, 9, tzinfo=UTC)

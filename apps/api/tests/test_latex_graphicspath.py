@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from lecturepilot.latex_canvas_importer import import_latex_canvas
+from lecturepilot.sources.latex_canvas_importer import import_latex_canvas
 
 
 def test_latex_import_resolves_graphicspath_assets_from_nested_source(tmp_path: Path) -> None:

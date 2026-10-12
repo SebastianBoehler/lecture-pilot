@@ -6,14 +6,14 @@ from fastapi.testclient import TestClient
 from auth_helpers import professor_headers, student_headers
 from canvas_workspace_fixtures import publish_course_canvas
 from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.course_schedule_store import write_course_workspace
-from lecturepilot.lecture_access_models import (
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.courses.course_schedule_store import write_course_workspace
+from lecturepilot.courses.lecture_access_models import (
     CourseAccessPolicy,
     LectureAccessRule,
     PublicationMode,
 )
-from lecturepilot.models import Course, CourseWorkspaceResult, Lecture
+from lecturepilot.core.models import Course, CourseWorkspaceResult, Lecture
 from test_asset_auth import _document
 
 

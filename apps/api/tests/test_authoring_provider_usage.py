@@ -5,8 +5,8 @@ from pydantic_ai.messages import ModelResponse, TextPart
 from pydantic_ai.models.function import FunctionModel
 import pytest
 
-from lecturepilot.authoring_provider import MeteredAuthoringModel
-from lecturepilot.model_client import ModelExecutionError
+from lecturepilot.authoring.authoring_provider import MeteredAuthoringModel
+from lecturepilot.llm.model_client import ModelExecutionError
 from test_authoring_job import authoring_job
 
 
@@ -67,7 +67,7 @@ async def test_missing_usage_cannot_reuse_previous_response_usage(tmp_path):
 
 
 async def test_nested_critics_share_provider_client_and_keep_stage(tmp_path):
-    from lecturepilot.authoring_provider import _pooled_model, authoring_model
+    from lecturepilot.authoring.authoring_provider import _pooled_model, authoring_model
 
     job = authoring_job(tmp_path)
     model = FunctionModel(lambda messages, info: ModelResponse(parts=[TextPart("Done")]))
@@ -79,8 +79,8 @@ async def test_nested_critics_share_provider_client_and_keep_stage(tmp_path):
 
 
 async def test_successful_over_budget_response_still_records_paid_usage(tmp_path):
-    from lecturepilot.authoring_limits import authoring_budget, AuthoringBudgetExceeded
-    from lecturepilot.model_usage_total import model_usage_total
+    from lecturepilot.authoring.authoring_limits import authoring_budget, AuthoringBudgetExceeded
+    from lecturepilot.llm.model_usage_total import model_usage_total
 
     job = authoring_job(tmp_path)
     raw_usage = ContextVar("paid_usage", default=None)
@@ -110,7 +110,7 @@ async def test_successful_over_budget_response_still_records_paid_usage(tmp_path
     ],
 )
 async def test_invalid_native_usage_retains_unknown_paid_cost(tmp_path, raw):
-    from lecturepilot.model_usage_total import model_usage_total
+    from lecturepilot.llm.model_usage_total import model_usage_total
 
     job = authoring_job(tmp_path)
     response_usage = ContextVar("invalid_provider_usage", default=None)
@@ -129,7 +129,7 @@ async def test_invalid_native_usage_retains_unknown_paid_cost(tmp_path, raw):
 
 
 async def test_explicit_zero_native_usage_is_valid(tmp_path):
-    from lecturepilot.model_usage_total import model_usage_total
+    from lecturepilot.llm.model_usage_total import model_usage_total
 
     job = authoring_job(tmp_path)
     response_usage = ContextVar("zero_provider_usage", default=None)

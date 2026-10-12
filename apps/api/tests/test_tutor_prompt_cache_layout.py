@@ -1,14 +1,14 @@
-from lecturepilot.agent_context_models import AgentConversationMessage
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.tutor_prompt import tutor_messages as _messages
-from lecturepilot.models import (
+from lecturepilot.tutor.agent_context_models import AgentConversationMessage
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.tutor.tutor_prompt import tutor_messages as _messages
+from lecturepilot.core.models import (
     AgentCoachingContext,
     AgentTurnInput,
     AttendanceStatus,
     CanvasState,
     UserMemoryContext,
 )
-from lecturepilot.learning_map import LearningMapGate
+from lecturepilot.learning_design.learning_map import LearningMapGate
 
 
 def test_tutor_prompt_prefix_is_byte_stable_across_turns_and_focus_changes():

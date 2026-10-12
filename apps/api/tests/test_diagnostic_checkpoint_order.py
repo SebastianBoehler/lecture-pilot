@@ -1,9 +1,9 @@
 import pytest
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasSection
-from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
-from lecturepilot.course_canvas_validation import validate_section_assessments
-from lecturepilot.learning_design_report import _worked_example_diagnostics
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasSection
+from lecturepilot.authoring.course_canvas_errors import CanvasGenerationRepairableError
+from lecturepilot.authoring.course_canvas_validation import validate_section_assessments
+from lecturepilot.learning_design.learning_design_report import _worked_example_diagnostics
 
 
 def section(*blocks: CanvasBlock) -> CanvasSection:

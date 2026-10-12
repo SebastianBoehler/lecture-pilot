@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from lecturepilot.latex_canvas_importer import import_latex_canvas
-from lecturepilot.latex_canvas_text import clean_inline, read_math_blocks
+from lecturepilot.sources.latex_canvas_importer import import_latex_canvas
+from lecturepilot.sources.latex_canvas_text import clean_inline, read_math_blocks
 
 
 def test_latex_import_keeps_long_lists_formulas_and_pdf_assets(tmp_path: Path) -> None:

@@ -10,13 +10,13 @@ from fastapi.testclient import TestClient
 from auth_helpers import professor_headers, student_headers
 from canvas_workspace_fixtures import publish_course_canvas
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.ppi_exam_source_store import PpiExamSourceStore
-from lecturepilot.practice_exam_generation_jobs import PracticeExamGenerationStore
-from lecturepilot.practice_exam_models import PracticeExam, PracticeExamQuestion
-from lecturepilot.practice_exam_store import PracticeExamStore
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.llm.model_client import ModelExecutionError
+from lecturepilot.exams.ppi_exam_source_store import PpiExamSourceStore
+from lecturepilot.exams.practice_exam_generation_jobs import PracticeExamGenerationStore
+from lecturepilot.exams.practice_exam_models import PracticeExam, PracticeExamQuestion
+from lecturepilot.exams.practice_exam_store import PracticeExamStore
 
 
 def test_generation_returns_public_exam_and_replays_idempotently(tmp_path: Path) -> None:

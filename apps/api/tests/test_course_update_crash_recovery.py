@@ -5,30 +5,30 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 import pytest
 
-import lecturepilot.course_update_recovery as update_recovery
-import lecturepilot.course_update_storage as update_storage
+import lecturepilot.courses.course_update_recovery as update_recovery
+import lecturepilot.courses.course_update_storage as update_storage
 from auth_helpers import professor_headers
 from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.course_schedule_store import (
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.courses.course_schedule_store import (
     overwrite_course_workspace,
     read_course_workspace,
     write_course_workspace,
 )
-from lecturepilot.course_update import (
+from lecturepilot.courses.course_update import (
     CourseUpdateError,
     begin_course_update_apply,
     finish_course_update_apply,
     mark_course_update_committed,
     require_update_accepting_uploads,
 )
-from lecturepilot.course_update_recovery import retire_committed_course_update
-from lecturepilot.course_update_storage import (
+from lecturepilot.courses.course_update_recovery import retire_committed_course_update
+from lecturepilot.courses.course_update_storage import (
     CourseUpdateRecoveryError,
     staged_file_transaction,
 )
-from lecturepilot.models import Course, CourseWorkspaceResult, Lecture
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.core.models import Course, CourseWorkspaceResult, Lecture
+from lecturepilot.core.storage_layout import StorageLayout
 
 
 def test_workspace_read_rolls_back_update_interrupted_before_commit(tmp_path: Path) -> None:

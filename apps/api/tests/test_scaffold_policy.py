@@ -1,4 +1,4 @@
-from lecturepilot.scaffold_policy import (
+from lecturepilot.learner.scaffold_policy import (
     scaffold_policy_for_assessment_stage,
     scaffold_policy_for_revision_task,
     scaffold_policy_for_tutor_turn,

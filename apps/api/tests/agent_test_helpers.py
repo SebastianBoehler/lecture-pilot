@@ -1,9 +1,9 @@
 from fastapi.testclient import TestClient
 
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import CanvasDocument, CanvasSection
-from lecturepilot.canvas_workspace import CanvasWorkspaceError
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.canvas.canvas_models import CanvasDocument, CanvasSection
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspaceError
+from lecturepilot.core.storage_layout import StorageLayout
 
 
 class CanvasContextWorkspace:

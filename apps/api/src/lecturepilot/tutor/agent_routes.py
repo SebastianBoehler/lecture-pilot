@@ -1,0 +1,112 @@
+from __future__ import annotations
+
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import StreamingResponse
+
+from lecturepilot.tutor.agent_authorization import authorize_agent_turn
+from lecturepilot.tutor.agent_state_access import learner_state_store
+from lecturepilot.tutor.agent_turn_orchestration import agent_turn_events, complete_agent_turn
+from lecturepilot.identity.api_auth import request_context
+from lecturepilot.core.models import (
+    AgentTurnInput,
+    AgentTurnRequest,
+    AgentTurnResult,
+    Course,
+    Lecture,
+)
+from lecturepilot.learner.coaching_progress import CoachingProgressStore, InvalidCoachingStateError
+from lecturepilot.learner.coaching_state_recovery import recovery_required_detail
+from lecturepilot.learner.learner_state import InvalidLearnerGateStateError
+from lecturepilot.learner.independent_attempt import reject_chat_during_independent_attempt
+from lecturepilot.learner.learning_state_preflight import validate_coaching_bindings
+from lecturepilot.courses.professor_preview import resolve_learner_workspace_access
+from lecturepilot.identity.tenancy import TenantContext
+
+
+def register_agent_routes(
+    app: FastAPI,
+    *,
+    course_tenant_id: str,
+    seeded_course: Course,
+    seeded_lectures: list[Lecture],
+) -> None:
+    @app.post("/agent/turn", response_model=AgentTurnResult)
+    async def agent_turn(
+        input_data: AgentTurnRequest,
+        request: Request,
+        context: TenantContext = Depends(request_context),
+    ) -> AgentTurnResult:
+        access = resolve_learner_workspace_access(
+            request,
+            context,
+            course_id=input_data.course_id,
+            course_tenant_id=course_tenant_id,
+        )
+        turn = input_data.for_user(access.user_id)
+        authorize_agent_turn(
+            app,
+            context,
+            course_tenant_id=course_tenant_id,
+            seeded_course=seeded_course,
+            seeded_lectures=seeded_lectures,
+            turn=turn,
+        )
+        _preflight_learning_state(app, turn)
+        return await complete_agent_turn(app, turn=turn, actor_user_id=access.actor_user_id)
+
+    @app.post("/agent/turn/stream")
+    async def agent_turn_stream(
+        input_data: AgentTurnRequest,
+        request: Request,
+        context: TenantContext = Depends(request_context),
+    ) -> StreamingResponse:
+        access = resolve_learner_workspace_access(
+            request,
+            context,
+            course_id=input_data.course_id,
+            course_tenant_id=course_tenant_id,
+        )
+        turn = input_data.for_user(access.user_id)
+        authorize_agent_turn(
+            app,
+            context,
+            course_tenant_id=course_tenant_id,
+            seeded_course=seeded_course,
+            seeded_lectures=seeded_lectures,
+            turn=turn,
+        )
+        _preflight_learning_state(app, turn)
+        return StreamingResponse(
+            agent_turn_events(app, turn=turn, actor_user_id=access.actor_user_id),
+            media_type="application/x-ndjson",
+        )
+
+
+def _preflight_learning_state(app: FastAPI, turn: AgentTurnInput) -> None:
+    user_id, course_id, lecture_id = turn.user_id, turn.course_id, turn.lecture_id
+    try:
+        canvas_store = app.state.canvas_workspace.course_canvas_store
+        with canvas_store.locked_published_learning_map(
+            course_id=course_id, lecture_id=lecture_id
+        ) as learning_map:
+            if learning_map is None:
+                raise InvalidCoachingStateError("Published learning map is missing.")
+            progress = CoachingProgressStore(app.state.canvas_workspace.layout).read(
+                user_id=user_id, course_id=course_id, lecture_id=lecture_id
+            )
+            learner_state_store(app).latest_gate_decisions(
+                user_id=user_id, course_id=course_id, lecture_id=lecture_id
+            )
+            validate_coaching_bindings(progress, learning_map)
+            pending = progress.pending_check
+            reject_chat_during_independent_attempt(
+                checkpoint_gate_id=turn.checkpoint_gate_id,
+                stage=pending.stage if pending is not None else None,
+            )
+    except InvalidCoachingStateError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=recovery_required_detail(course_id, lecture_id),
+        ) from exc
+    except InvalidLearnerGateStateError as exc:
+        raise HTTPException(status_code=409, detail="Persisted learning state is invalid.") from exc

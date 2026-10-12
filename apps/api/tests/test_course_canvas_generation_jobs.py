@@ -1,7 +1,8 @@
-from lecturepilot import course_canvas_generation_jobs, durable_files
-from lecturepilot.course_canvas_generation_failures import find_latest_canvas_failure
-from lecturepilot.course_canvas_generation_jobs import CanvasGenerationStore
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.authoring import course_canvas_generation_jobs
+from lecturepilot.core import durable_files
+from lecturepilot.authoring.course_canvas_generation_failures import find_latest_canvas_failure
+from lecturepilot.authoring.course_canvas_generation_jobs import CanvasGenerationStore
+from lecturepilot.core.storage_layout import StorageLayout
 
 
 def test_stale_running_job_is_reclaimed_after_worker_disappears(tmp_path) -> None:

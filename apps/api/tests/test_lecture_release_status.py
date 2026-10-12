@@ -1,8 +1,8 @@
 from datetime import date, datetime, timedelta
 
-from lecturepilot.lecture_access_models import LectureAccessRule, LectureReleaseStatus
-from lecturepilot.lecture_access_policy import TENANT_TIMEZONE, release_status
-from lecturepilot.models import Lecture
+from lecturepilot.courses.lecture_access_models import LectureAccessRule, LectureReleaseStatus
+from lecturepilot.courses.lecture_access_policy import TENANT_TIMEZONE, release_status
+from lecturepilot.core.models import Lecture
 
 
 def _lecture(day: date) -> Lecture:

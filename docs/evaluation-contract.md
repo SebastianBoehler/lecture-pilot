@@ -29,7 +29,7 @@ builder state and are excluded from the published learner canvas.
 
 Implementation authority: `CourseLearningDesignStore.approve` and
 `approved_learning_design` in
-`apps/api/src/lecturepilot/course_learning_design_store.py`, with practice-design
+`apps/api/src/lecturepilot/learning_design/course_learning_design_store.py`, with practice-design
 binding validated by `course_practice_design_binding.py` (reviewed at `8e656e2`).
 
 ## Outcome contract

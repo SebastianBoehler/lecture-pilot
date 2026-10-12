@@ -4,10 +4,10 @@ from uuid import UUID
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from lecturepilot import external_course_sync
+from lecturepilot.courses import external_course_sync
 from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.db_models import (
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.core.db_models import (
     CourseEnrollmentRecord,
     CourseExternalRefRecord,
     ExternalIdentityRecord,

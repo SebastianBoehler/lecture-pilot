@@ -14,9 +14,9 @@ sys.path.insert(0, str(ROOT / "apps/api/src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from gate_benchmark_cases import SCENARIOS, _turn_for_scenario  # noqa: E402
-from lecturepilot.harness import LecturePilotHarness  # noqa: E402
-from lecturepilot.model_client import ModelExecutionError, NativeModelClient  # noqa: E402
-from lecturepilot.providers import (  # noqa: E402
+from lecturepilot.tutor.harness import LecturePilotHarness  # noqa: E402
+from lecturepilot.llm.model_client import ModelExecutionError, NativeModelClient  # noqa: E402
+from lecturepilot.llm.providers import (  # noqa: E402
     DEFAULT_MODEL,
     ProviderRegistry,
     ProviderConfigurationError,

@@ -1,6 +1,6 @@
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.course_content_filter import filter_source_document_for_planning
-from lecturepilot.course_content_filter import is_learning_section
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.authoring.course_content_filter import filter_source_document_for_planning
+from lecturepilot.authoring.course_content_filter import is_learning_section
 
 
 def test_global_german_course_admin_sections_are_not_repeated_in_lecture_canvas() -> None:

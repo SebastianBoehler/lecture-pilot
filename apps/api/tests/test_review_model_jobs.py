@@ -3,15 +3,15 @@ import asyncio
 import pytest
 from pydantic_ai.models.function import FunctionModel
 
-from lecturepilot.authoring_limits import (
+from lecturepilot.authoring.authoring_limits import (
     AuthoringBudgetExceeded,
     authoring_budget,
     current_authoring_budget,
 )
-from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.models import ProviderCapability
-from lecturepilot.model_job_limits import bounded_model_job
-from lecturepilot.native_completion import native_completion
+from lecturepilot.llm.model_client import ModelExecutionError
+from lecturepilot.core.models import ProviderCapability
+from lecturepilot.llm.model_job_limits import bounded_model_job
+from lecturepilot.llm.native_completion import native_completion
 from practice_exam_planner_fixtures import _Registry
 
 
@@ -77,7 +77,7 @@ async def test_planning_job_and_nested_reviewer_share_the_same_request_budget():
 
 
 async def test_planning_job_cancels_work_at_its_deadline(monkeypatch):
-    monkeypatch.setattr("lecturepilot.model_job_limits.AUTHORING_DEADLINE_SECONDS", 0.01)
+    monkeypatch.setattr("lecturepilot.llm.model_job_limits.AUTHORING_DEADLINE_SECONDS", 0.01)
     cancelled = asyncio.Event()
 
     @bounded_model_job

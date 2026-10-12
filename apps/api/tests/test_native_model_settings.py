@@ -1,5 +1,5 @@
-from lecturepilot.native_model_settings import native_model_settings
-from lecturepilot.models import ProviderSettings
+from lecturepilot.llm.native_model_settings import native_model_settings
+from lecturepilot.core.models import ProviderSettings
 
 
 def settings(model):
@@ -23,7 +23,7 @@ def test_non_reasoning_openai_and_google_accept_temperature():
 
 
 def test_prompt_cache_key_is_stable_per_course_and_lecture():
-    from lecturepilot.native_model_settings import tutor_prompt_cache_key
+    from lecturepilot.llm.native_model_settings import tutor_prompt_cache_key
 
     key = tutor_prompt_cache_key(
         settings("openai/gpt-6"),

@@ -3,9 +3,9 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-from lecturepilot.latex_dependency_bundle import resolve_latex_compiler_inputs
-from lecturepilot.source_bundle import SOURCE_SUFFIXES
-from lecturepilot.source_index_models import CourseSourceIndex, IndexedSourceFile
+from lecturepilot.sources.latex_dependency_bundle import resolve_latex_compiler_inputs
+from lecturepilot.sources.source_bundle import SOURCE_SUFFIXES
+from lecturepilot.sources.source_index_models import CourseSourceIndex, IndexedSourceFile
 
 
 def test_resolver_includes_reachable_tex_theme_and_graphics_only(tmp_path: Path) -> None:

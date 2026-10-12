@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from lecturepilot.learner_lesson_state_models import LearnerQuizState
+from lecturepilot.learner.learner_lesson_state_models import LearnerQuizState
 
 
 VALID_STATE = {

@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from lecturepilot.pdf_slide_assets import MAX_RENDERED_SLIDES
-from lecturepilot.source_bundle_canvas import import_source_bundle_canvas
-from lecturepilot.source_bundle_pdf import PDF_PAGES_PER_SECTION
+from lecturepilot.sources.pdf_slide_assets import MAX_RENDERED_SLIDES
+from lecturepilot.sources.source_bundle_canvas import import_source_bundle_canvas
+from lecturepilot.sources.source_bundle_pdf import PDF_PAGES_PER_SECTION
 
 
 def test_source_bundle_canvas_imports_markdown_text_pdf_and_assets(tmp_path: Path) -> None:

@@ -5,14 +5,14 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from lecturepilot.agent_gate_persistence import persist_quality_gate
-from lecturepilot.analytics_events import outcome_event_id, parse_analytics_event
-from lecturepilot.coaching_analytics import GateMetricsAccumulator
-from lecturepilot.coaching_progress import CoachingTurnEvent
-from lecturepilot.canonical_digest import canonical_json_digest
-from lecturepilot.learning_map_models import HARDENING_GATE_FIELDS, LearningMapGate
-from lecturepilot.models import AgentTurnResult, QualityGateDecision, QualityGateStatus
-from lecturepilot.observability import Observability
+from lecturepilot.tutor.agent_gate_persistence import persist_quality_gate
+from lecturepilot.analytics.analytics_events import outcome_event_id, parse_analytics_event
+from lecturepilot.analytics.coaching_analytics import GateMetricsAccumulator
+from lecturepilot.learner.coaching_progress import CoachingTurnEvent
+from lecturepilot.learning_design.canonical_digest import canonical_json_digest
+from lecturepilot.learning_design.learning_map_models import HARDENING_GATE_FIELDS, LearningMapGate
+from lecturepilot.core.models import AgentTurnResult, QualityGateDecision, QualityGateStatus
+from lecturepilot.core.observability import Observability
 from test_analytics_routes import _client
 from test_learning_outcome_analytics import _prepare_gate
 

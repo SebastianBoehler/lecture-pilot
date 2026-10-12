@@ -4,7 +4,7 @@ import time
 
 import pytest
 
-from lecturepilot.course_canvas_generation_jobs import CanvasGenerationStore
+from lecturepilot.authoring.course_canvas_generation_jobs import CanvasGenerationStore
 
 from test_course_canvas_generation_service import _canvas
 from test_course_canvas_targeted_repair import _course_client
@@ -27,7 +27,7 @@ def test_async_http_returns_job_and_status_preserves_authority(tmp_path, monkeyp
 
     module = "course_canvas_repair_routes" if repair else "course_canvas_draft_routes"
     method = "repair_targeted_course_canvas_draft" if repair else "generate_course_canvas_draft"
-    monkeypatch.setattr(f"lecturepilot.{module}.{method}", generate)
+    monkeypatch.setattr(f"lecturepilot.authoring.{module}.{method}", generate)
     request_headers = {**headers("async-http-request-0001"), "Prefer": "respond-async"}
     with client:
         response = client.post(path + ("/repair" if repair else ""), headers=request_headers)

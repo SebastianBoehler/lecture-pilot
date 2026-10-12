@@ -1,17 +1,17 @@
-from lecturepilot.course_learning_design_models import LearningDesignApprovalInput
+from lecturepilot.learning_design.course_learning_design_models import LearningDesignApprovalInput
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Barrier
 
 from canvas_workspace_fixtures import publish_course_canvas, published_course_canvas
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.course_canvas_repairs import lecture_source_revision
-from lecturepilot.course_learning_design_store import (
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.authoring.course_canvas_repairs import lecture_source_revision
+from lecturepilot.learning_design.course_learning_design_store import (
     CourseLearningDesignStore,
     LearningDesignApprovalRequiredError,
     LearningDesignStaleError,
 )
-from lecturepilot.course_practice_design_store import PracticeDesignStore
+from lecturepilot.learning_design.course_practice_design_store import PracticeDesignStore
 
 
 def test_republish_racing_real_regeneration_never_publishes_unapproved_draft(

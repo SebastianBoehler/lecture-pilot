@@ -1,0 +1,151 @@
+from __future__ import annotations
+
+from collections.abc import Awaitable, Callable
+import logging
+from typing import Any
+
+from fastapi import HTTPException
+from lecturepilot.authoring.authoring_models import AuthoringDesignConflict, AuthoringStalledError
+from lecturepilot.authoring.authoring_state import AuthoringStateError
+from lecturepilot.authoring.authoring_session import has_resumable_session
+
+from lecturepilot.canvas.canvas_models import CanvasDocument
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspaceError
+from lecturepilot.authoring.course_canvas_errors import CanvasGenerationRepairableError
+from lecturepilot.authoring.course_canvas_generation_jobs import (
+    CanvasGenerationStore,
+    CanvasGenerationJob,
+    CanvasGenerationStoreError,
+)
+from lecturepilot.authoring.course_canvas_generation_service import (
+    CanvasGenerationOutcome,
+    CanvasGenerationReplayError,
+    run_idempotent_canvas_generation,
+)
+from lecturepilot.canvas.course_canvas_store import InvalidCanvasDraftError
+from lecturepilot.sources.document_converter_client import DocumentConverterUnavailable
+from lecturepilot.llm.model_client import ModelExecutionError
+from lecturepilot.llm.providers import ProviderConfigurationError
+from lecturepilot.sources.source_bundle_canvas import SourceBundleCanvasError
+from lecturepilot.identity.tenancy import TenantContext
+
+
+logger = logging.getLogger(__name__)
+
+
+async def run_canvas_generation_request(
+    *,
+    app: Any,
+    store: CanvasGenerationStore,
+    course_id: str,
+    lecture_id: str,
+    context: TenantContext,
+    request_key: str,
+    generate: Callable[[str, int], Awaitable[CanvasDocument]],
+    wait_for_completion: bool = True,
+) -> CanvasGenerationOutcome | CanvasGenerationJob:
+    try:
+        return await run_idempotent_canvas_generation(
+            app=app,
+            store=store,
+            course_id=course_id,
+            lecture_id=lecture_id,
+            actor_user_id=context.user_id,
+            request_key=request_key,
+            generate=generate,
+            wait_for_completion=wait_for_completion,
+        )
+    except (AuthoringDesignConflict, AuthoringStateError) as exc:
+        raise _generation_error(409, str(exc), store, context, request_key, course_id, lecture_id)
+    except AuthoringStalledError as exc:
+        raise _generation_error(503, str(exc), store, context, request_key, course_id, lecture_id)
+    except InvalidCanvasDraftError as exc:
+        raise _generation_error(502, str(exc), store, context, request_key, course_id, lecture_id)
+    except CanvasWorkspaceError as exc:
+        raise _generation_error(404, str(exc), store, context, request_key, course_id, lecture_id)
+    except SourceBundleCanvasError as exc:
+        raise _generation_error(400, str(exc), store, context, request_key, course_id, lecture_id)
+    except CanvasGenerationRepairableError as exc:
+        raise _generation_error(
+            503,
+            str(exc),
+            store,
+            context,
+            request_key,
+            course_id,
+            lecture_id,
+            headers={"X-Generation-Repairable": "true"},
+        )
+    except (ProviderConfigurationError, DocumentConverterUnavailable) as exc:
+        raise _generation_error(503, str(exc), store, context, request_key, course_id, lecture_id)
+    except ModelExecutionError as exc:
+        raise _generation_error(502, str(exc), store, context, request_key, course_id, lecture_id)
+    except CanvasGenerationReplayError as exc:
+        status = {
+            "authoring_design_conflict": 409,
+            "authoring_state_error": 409,
+            "authoring_stalled_error": 503,
+            "canvas_workspace_error": 404,
+            "source_bundle_canvas_error": 400,
+            "provider_configuration_error": 503,
+            "document_converter_unavailable": 503,
+            "interrupted": 503,
+            "timeout": 504,
+        }.get(exc.error_code, 502)
+        raise _generation_error(
+            status,
+            "The previous canvas generation attempt failed. Start a new retry.",
+            store,
+            context,
+            request_key,
+            course_id,
+            lecture_id,
+        ) from exc
+    except CanvasGenerationStoreError as exc:
+        raise HTTPException(
+            status_code=500, detail="Canvas generation state could not be read."
+        ) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001 - retain traceback but return a safe API error.
+        logger.exception("Unexpected course canvas generation failure")
+        raise _generation_error(
+            502,
+            "Canvas generation failed unexpectedly.",
+            store,
+            context,
+            request_key,
+            course_id,
+            lecture_id,
+        ) from exc
+
+
+def _generation_error(
+    status_code: int,
+    detail: str,
+    store: CanvasGenerationStore,
+    context: TenantContext,
+    request_key: str,
+    course_id: str,
+    lecture_id: str,
+    *,
+    headers: dict[str, str] | None = None,
+) -> HTTPException:
+    response_headers = dict(headers or {})
+    try:
+        job = store.read(
+            course_id=course_id,
+            lecture_id=lecture_id,
+            actor_user_id=context.user_id,
+            request_key=request_key,
+        )
+    except CanvasGenerationStoreError:
+        job = None
+    if job is not None:
+        response_headers["X-Generation-Id"] = job.generation_id
+        response_headers["X-Generation-Status"] = job.status
+        if job.error_code:
+            response_headers["X-Generation-Error-Code"] = job.error_code
+        if has_resumable_session(store.layout, job):
+            response_headers["X-Generation-Repairable"] = "true"
+    return HTTPException(status_code=status_code, detail=detail, headers=response_headers)

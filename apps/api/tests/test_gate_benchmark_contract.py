@@ -1,8 +1,8 @@
 import runpy
 from pathlib import Path
 
-from lecturepilot.model_commands import checkpoint_assessment_required
-from lecturepilot.coaching_task_bank import task_prompt
+from lecturepilot.tutor.model_commands import checkpoint_assessment_required
+from lecturepilot.learner.coaching_task_bank import task_prompt
 
 SCRIPT = Path(__file__).resolve().parents[3] / "scripts/benchmark_gate_models.py"
 

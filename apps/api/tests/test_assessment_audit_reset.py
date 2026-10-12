@@ -1,5 +1,8 @@
-from lecturepilot.learner_workspace_reset import LearnerWorkspaceResetInput, reset_learner_workspace
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.learner.learner_workspace_reset import (
+    LearnerWorkspaceResetInput,
+    reset_learner_workspace,
+)
+from lecturepilot.core.storage_layout import StorageLayout
 
 
 def test_progress_reset_deletes_private_answer_quotations(tmp_path):

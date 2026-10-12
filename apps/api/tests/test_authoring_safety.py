@@ -4,9 +4,9 @@ import pytest
 from pydantic_ai.models.function import FunctionModel
 
 from authoring_test_helpers import markdown
-from lecturepilot.authoring_job import run_authoring_job
-from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
-from lecturepilot.course_canvas_quality import CanvasQualityReviewer
+from lecturepilot.authoring.authoring_job import run_authoring_job
+from lecturepilot.authoring.course_canvas_errors import CanvasGenerationRepairableError
+from lecturepilot.authoring.course_canvas_quality import CanvasQualityReviewer
 from test_authoring_job import VALID, authoring_job
 
 

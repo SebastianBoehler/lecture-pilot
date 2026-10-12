@@ -1,4 +1,4 @@
-from lecturepilot.authoring_workspace import AuthoringWorkspace
+from lecturepilot.authoring.authoring_workspace import AuthoringWorkspace
 from practice_design_test_helpers import practice_design_for_canvas
 from test_authoring_job import authoring_job
 

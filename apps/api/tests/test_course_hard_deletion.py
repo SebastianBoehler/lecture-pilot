@@ -6,8 +6,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 
 from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.db_models import (
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.core.db_models import (
     AuditEventRecord,
     CourseEnrollmentRecord,
     CourseExternalRefRecord,

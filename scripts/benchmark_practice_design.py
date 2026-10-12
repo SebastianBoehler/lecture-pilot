@@ -23,7 +23,7 @@ from practice_design_benchmark.models import (  # noqa: E402
 from practice_design_benchmark.runner import (  # noqa: E402
     run_practice_design_benchmark,
 )
-from lecturepilot.providers import DEFAULT_MODEL  # noqa: E402
+from lecturepilot.llm.providers import DEFAULT_MODEL  # noqa: E402
 from lecturepilot.runtime_env import load_project_env  # noqa: E402
 
 

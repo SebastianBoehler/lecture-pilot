@@ -1,9 +1,9 @@
 from fastapi.testclient import TestClient
 
 from lecturepilot.app import create_app
-from lecturepilot.session_auth import SESSION_COOKIE_NAME
-from lecturepilot.tuebingen_adapter import TuebingenIntegrationUnavailable
-from lecturepilot.university_models import ExternalCourseCandidate, UniversityLoginResult
+from lecturepilot.identity.session_auth import SESSION_COOKIE_NAME
+from lecturepilot.identity.tuebingen_adapter import TuebingenIntegrationUnavailable
+from lecturepilot.courses.university_models import ExternalCourseCandidate, UniversityLoginResult
 from auth_helpers import pending_university_login
 
 

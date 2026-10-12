@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import io
 
-import lecturepilot.runtime_readiness as readiness_module
-from lecturepilot.runtime_readiness import RuntimeReadiness
+import lecturepilot.core.runtime_readiness as readiness_module
+from lecturepilot.core.runtime_readiness import RuntimeReadiness
 
 
 class _Database:

@@ -3,9 +3,9 @@ from __future__ import annotations
 import pytest
 
 from lecturepilot.database import Database
-from lecturepilot.identity_repository import IdentityRepository
-from lecturepilot.university_models import UniversityLoginResult
-from lecturepilot.usage_quota import UsageLimits, UsageQuota, UsageQuotaExceeded
+from lecturepilot.identity.identity_repository import IdentityRepository
+from lecturepilot.courses.university_models import UniversityLoginResult
+from lecturepilot.llm.usage_quota import UsageLimits, UsageQuota, UsageQuotaExceeded
 
 
 def test_durable_agent_and_image_quotas_survive_service_instances() -> None:

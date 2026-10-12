@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from lecturepilot.agent_tool_executor import AgentToolExecutor
+from lecturepilot.tutor.agent_tool_executor import AgentToolExecutor
 from source_capability_test_helpers import published_source_workspace
 
 

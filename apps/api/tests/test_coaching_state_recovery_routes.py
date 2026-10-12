@@ -3,14 +3,14 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-import lecturepilot.learner_lesson_state_routes as lesson_state_routes
+import lecturepilot.learner.learner_lesson_state_routes as lesson_state_routes
 from auth_helpers import student_headers
-from lecturepilot.coaching_progress import CoachingProgressStore
-from lecturepilot.coaching_state_models import CoachingProgress
-from lecturepilot.durable_files import atomic_write_json
-from lecturepilot.learner_state import LearnerStateStore
-from lecturepilot.models import AttendanceStatus, QualityGateDecision
-from lecturepilot.quality_gate_models import QualityGateStatus
+from lecturepilot.learner.coaching_progress import CoachingProgressStore
+from lecturepilot.learner.coaching_state_models import CoachingProgress
+from lecturepilot.core.durable_files import atomic_write_json
+from lecturepilot.learner.learner_state import LearnerStateStore
+from lecturepilot.core.models import AttendanceStatus, QualityGateDecision
+from lecturepilot.learner.quality_gate_models import QualityGateStatus
 from test_learner_lesson_state_routes import COURSE_ID, QUIZ_ANSWER, STATE_URL, _client, _gate
 
 

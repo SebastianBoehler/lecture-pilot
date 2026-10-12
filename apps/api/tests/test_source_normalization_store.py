@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from lecturepilot.source_normalization_models import NormalizedDocument
-from lecturepilot.source_normalization_store import (
+from lecturepilot.sources.source_normalization_models import NormalizedDocument
+from lecturepilot.sources.source_normalization_store import (
     SourceNormalizationError,
     load_normalized_document,
 )

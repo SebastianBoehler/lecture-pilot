@@ -3,13 +3,19 @@
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
-from lecturepilot.course_learning_intent import LearningIntent, LearningIntentApproval
-from lecturepilot.course_practice_design_context import PracticePlanningContext
-from lecturepilot.course_practice_design_files import locked_design_file, write_design_file
-from lecturepilot.course_practice_design_models import PracticeDesign
-from lecturepilot.course_practice_design_review_binding import with_quality_review
-from lecturepilot.course_practice_target import PracticeTarget
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.learning_design.course_learning_intent import (
+    LearningIntent,
+    LearningIntentApproval,
+)
+from lecturepilot.learning_design.course_practice_design_context import PracticePlanningContext
+from lecturepilot.learning_design.course_practice_design_files import (
+    locked_design_file,
+    write_design_file,
+)
+from lecturepilot.learning_design.course_practice_design_models import PracticeDesign
+from lecturepilot.learning_design.course_practice_design_review_binding import with_quality_review
+from lecturepilot.learning_design.course_practice_target import PracticeTarget
+from lecturepilot.core.storage_layout import StorageLayout
 from practice_design_review_test_helpers import passing_review
 
 PLANNING_CONTEXT = PracticePlanningContext(

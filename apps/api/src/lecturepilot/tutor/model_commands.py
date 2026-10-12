@@ -1,0 +1,219 @@
+from __future__ import annotations
+
+from lecturepilot.core.models import (
+    AgentTurnInput,
+    CanvasCommand,
+    QualityGateDecision,
+    QualityGateStatus,
+)
+from lecturepilot.learner.coaching_assistance import NextCheck
+from lecturepilot.learner.coaching_transitions import derive_next_transition
+from lecturepilot.llm.providers import ProviderConfigurationError
+
+
+def canvas_outline_stable(turn: AgentTurnInput) -> str:
+    """Published document-order outline, identical for every learner of one publication.
+
+    Focus never reorders or expands it, and learner-owned sections are listed separately
+    after the cache boundary by ``learner_sections_outline``.
+    """
+    document = turn.canvas_context
+    if document is None:
+        return "Canvas context: unavailable. Use the current section id only."
+    learner_ids = set(turn.learner_section_ids)
+    lines = [
+        f"Canvas title: {document.title}",
+        f"Canvas source: {document.source_ref}",
+        "Allowed canvas targets:",
+    ]
+    for section in document.sections:
+        if section.id not in learner_ids:
+            lines.extend(_section_lines(section, block_limit=5))
+    return _trim_text("\n".join(lines), 9000)
+
+
+def learner_sections_outline(turn: AgentTurnInput) -> str:
+    document = turn.canvas_context
+    learner_ids = set(turn.learner_section_ids)
+    if document is None or not learner_ids:
+        return "Learner-owned canvas sections: none."
+    lines = ["Learner-owned canvas sections (also allowed canvas targets):"]
+    previous = "start"
+    for section in document.sections:
+        if section.id in learner_ids:
+            lines.append(f"- placed after section_id={previous}")
+            lines.extend(_section_lines(section, block_limit=5))
+        previous = section.id
+    return _trim_text("\n".join(lines), 6000)
+
+
+def focused_section_blocks(turn: AgentTurnInput) -> str:
+    document = turn.canvas_context
+    focused_id = turn.canvas_state.focused_section_id
+    if document is None or not focused_id:
+        return "Focused section blocks: none."
+    section = next((item for item in document.sections if item.id == focused_id), None)
+    if section is None:
+        return "Focused section blocks: none."
+    lines = [
+        f"Focused section blocks for {section.id}:",
+        *_section_lines(section, block_limit=None),
+    ]
+    return _trim_text("\n".join(lines), 9000)
+
+
+def _section_lines(section, *, block_limit: int | None) -> list[str]:
+    lines = [f"- section_id={section.id}; title={section.title}"]
+    blocks = section.blocks if block_limit is None else section.blocks[:block_limit]
+    for block in blocks:
+        excerpt = _block_excerpt(
+            block.type, block.text, block.items, block.caption, block.asset_path
+        )
+        if excerpt:
+            lines.append(f"  span_id={block.id}; type={block.type}; text={excerpt}")
+    return lines
+
+
+def assessment_required(turn: AgentTurnInput) -> bool:
+    active_gate = turn.active_gate
+    context = turn.coaching_context
+    return (
+        active_gate is not None
+        and context.pending_check_gate_id == active_gate.id
+        and context.pending_check_gate_revision == active_gate.revision
+        and context.pending_check_issued_at is not None
+    )
+
+
+def checkpoint_assessment_required(turn: AgentTurnInput) -> bool:
+    return (
+        assessment_required(turn)
+        and turn.checkpoint_gate_id is not None
+        and turn.checkpoint_gate_id == turn.active_gate.id
+    )
+
+
+def validate_quality_gate_decision(
+    decision: QualityGateDecision | None,
+    turn: AgentTurnInput,
+) -> QualityGateDecision | None:
+    active_gate = turn.active_gate
+    bound = checkpoint_assessment_required(turn)
+    if active_gate is None:
+        if decision is not None:
+            raise ProviderConfigurationError(
+                "Model returned a quality gate without an active gate."
+            )
+        return None
+    if not bound:
+        if decision is not None:
+            raise ProviderConfigurationError("Model assessed a turn without a bound pending check.")
+        return None
+    if decision is None:
+        return None
+    if decision.gate_id != active_gate.id or decision.gate_revision != active_gate.revision:
+        raise ProviderConfigurationError("Model quality gate does not match the active contract.")
+    allowed = {criterion.id for criterion in active_gate.evidence_criteria}
+    required = [criterion.id for criterion in active_gate.evidence_criteria if criterion.required]
+    if len(set(decision.evidence_ids)) != len(decision.evidence_ids) or len(
+        set(decision.missing_evidence_ids)
+    ) != len(decision.missing_evidence_ids):
+        raise ProviderConfigurationError("Model quality-gate evidence IDs must be unique.")
+    if not set(decision.evidence_ids + decision.missing_evidence_ids) <= allowed:
+        raise ProviderConfigurationError("Model returned unknown quality-gate evidence IDs.")
+    evidence = decision.evidence_ids
+    missing = [evidence_id for evidence_id in required if evidence_id not in evidence]
+    if decision.missing_evidence_ids != missing:
+        raise ProviderConfigurationError("Model missing-evidence IDs do not match the gate rubric.")
+    if decision.status == QualityGateStatus.PASSED and missing:
+        raise ProviderConfigurationError("Model passed a gate without all required evidence.")
+    return decision
+
+
+def select_next_check(
+    turn: AgentTurnInput,
+    decision: QualityGateDecision | None,
+) -> NextCheck | None:
+    gate = turn.active_gate
+    if decision is None:
+        return None
+    if gate is None:
+        raise ProviderConfigurationError("Model returned a next check without an active gate.")
+    stage = turn.coaching_context.pending_check_stage
+    if stage is None:
+        raise ProviderConfigurationError("Assessed turn is missing its pending assessment stage.")
+    transition = derive_next_transition(
+        gate,
+        current_stage=stage,
+        status=decision.status,
+        missing_evidence_ids=decision.missing_evidence_ids,
+        exposed_hint_levels=turn.coaching_context.exposed_hint_levels,
+        exposed_task_ids=turn.coaching_context.exposed_task_ids,
+        current_task_id=turn.coaching_context.pending_check_task_id,
+    )
+    return transition.check if transition else None
+
+
+def resolve_provider_canvas_commands(
+    commands: list[CanvasCommand], turn: AgentTurnInput
+) -> list[CanvasCommand]:
+    focus = [command for command in commands if command.type == "focus_section"]
+    highlights = [command for command in commands if command.type == "highlight_span"]
+    if len(focus) != 1 or len(highlights) != 1:
+        raise ProviderConfigurationError(
+            "Model response requires exactly one focus and one highlight command."
+        )
+    allowed_sections = _allowed_section_ids(turn)
+    allowed_spans = _allowed_span_ids(turn)
+    if not allowed_sections or not allowed_spans:
+        raise ProviderConfigurationError("Canvas navigation cannot be validated without context.")
+    if focus[0].section_id not in allowed_sections:
+        raise ProviderConfigurationError("Model focus target is not in the canvas context.")
+    highlight = highlights[0]
+    if highlight.span_id not in allowed_spans:
+        raise ProviderConfigurationError("Model highlight target is not in the canvas context.")
+    expected_section = _section_for_span(turn, highlight.span_id or "")
+    return [
+        command.model_copy(update={"section_id": expected_section})
+        if command is highlight
+        else command
+        for command in commands
+    ]
+
+
+def _allowed_section_ids(turn: AgentTurnInput) -> set[str]:
+    if turn.canvas_context is None:
+        return set()
+    return {section.id for section in turn.canvas_context.sections}
+
+
+def _allowed_span_ids(turn: AgentTurnInput) -> set[str]:
+    if turn.canvas_context is None:
+        return set()
+    return {block.id for section in turn.canvas_context.sections for block in section.blocks}
+
+
+def _section_for_span(turn: AgentTurnInput, span_id: str) -> str | None:
+    if turn.canvas_context is None:
+        return None
+    for section in turn.canvas_context.sections:
+        if any(block.id == span_id for block in section.blocks):
+            return section.id
+    return None
+
+
+def _block_excerpt(
+    block_type: str, text: str | None, items: list[str], caption: str | None, asset_path: str | None
+) -> str:
+    if block_type == "asset":
+        return _trim_text(caption or asset_path or "asset", 180)
+    if items:
+        return _trim_text("; ".join(items[:5]), 260)
+    return _trim_text(text or "", 260)
+
+
+def _trim_text(value: str, limit: int) -> str:
+    cleaned = " ".join(value.split())
+    if len(cleaned) <= limit:
+        return cleaned
+    return cleaned[: limit - 3].rstrip() + "..."

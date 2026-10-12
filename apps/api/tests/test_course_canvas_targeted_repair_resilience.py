@@ -1,8 +1,8 @@
 from authoring_test_helpers import current_draft, fix_math, install_author, markdown
 from auth_helpers import professor_headers
 from approved_practice_design_helpers import revised_design, store_design
-from lecturepilot.course_practice_design_store import PracticeDesignStore
-from lecturepilot.model_client import ModelExecutionError
+from lecturepilot.learning_design.course_practice_design_store import PracticeDesignStore
+from lecturepilot.llm.model_client import ModelExecutionError
 from test_course_canvas_targeted_repair import (
     _TargetedRepairPlanner,
     _client_contract_headers,
@@ -101,7 +101,7 @@ def test_completed_repair_replays_without_another_model_request(tmp_path, monkey
 
 
 def test_approved_design_conflict_replays_as_review_required(tmp_path):
-    from lecturepilot.authoring_models import AuthoringDesignConflict
+    from lecturepilot.authoring.authoring_models import AuthoringDesignConflict
 
     client, path = setup_failed_job(tmp_path)
     layout = client.app.state.canvas_workspace.layout

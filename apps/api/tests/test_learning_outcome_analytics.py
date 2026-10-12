@@ -4,17 +4,17 @@ from pathlib import Path
 
 from auth_helpers import professor_headers, student_headers
 from canvas_workspace_fixtures import publish_course_canvas
-from lecturepilot.agent_gate_persistence import persist_quality_gate
-from lecturepilot.coaching_orchestration import prepare_coaching_turn
-from lecturepilot.coaching_progress import CoachingTurnEvent
-from lecturepilot.models import (
+from lecturepilot.tutor.agent_gate_persistence import persist_quality_gate
+from lecturepilot.learner.coaching_orchestration import prepare_coaching_turn
+from lecturepilot.learner.coaching_progress import CoachingTurnEvent
+from lecturepilot.core.models import (
     AgentTurnInput,
     AgentTurnResult,
     AttendanceStatus,
     QualityGateDecision,
     QualityGateStatus,
 )
-from lecturepilot.observability import Observability
+from lecturepilot.core.observability import Observability
 from test_analytics_routes import _canvas_document, _client
 
 

@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
 
-from lecturepilot.course_source_evidence import selection_detail_files, source_file_excerpt
-from lecturepilot.source_index_models import IndexedSourceFile
+from lecturepilot.sources.course_source_evidence import selection_detail_files, source_file_excerpt
+from lecturepilot.sources.source_index_models import IndexedSourceFile
 
 
 def test_routing_evidence_reads_normalized_office_text_and_inert_code(tmp_path: Path) -> None:

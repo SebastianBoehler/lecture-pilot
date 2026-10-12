@@ -1,6 +1,6 @@
 import pytest
 
-from lecturepilot.workspace import WorkspacePolicy, WorkspacePolicyError
+from lecturepilot.core.workspace import WorkspacePolicy, WorkspacePolicyError
 
 
 def test_workspace_policy_allows_only_typed_learning_artifacts() -> None:

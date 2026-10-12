@@ -5,8 +5,8 @@ from fastapi.testclient import TestClient
 from auth_helpers import student_headers
 from canvas_workspace_fixtures import configure_canvas_workspace, publish_course_canvas
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import CanvasBlock
-from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.canvas.canvas_models import CanvasBlock
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
 
 
 def test_canvas_endpoint_loads_private_course_source_for_student(tmp_path: Path) -> None:

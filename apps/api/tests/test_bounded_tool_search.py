@@ -1,5 +1,5 @@
-from lecturepilot.agent_tool_executor import AgentToolExecutor
-from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.tutor.agent_tool_executor import AgentToolExecutor
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
 
 
 def test_grep_returns_an_error_for_catastrophic_or_invalid_patterns(tmp_path):

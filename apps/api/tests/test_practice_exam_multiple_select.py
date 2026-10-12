@@ -4,20 +4,20 @@ from uuid import uuid4
 import pytest
 from pydantic import ValidationError
 
-from lecturepilot.practice_exam_attempts import PracticeAttemptStore, PracticeSubmission
-from lecturepilot.practice_exam_models import (
+from lecturepilot.exams.practice_exam_attempts import PracticeAttemptStore, PracticeSubmission
+from lecturepilot.exams.practice_exam_models import (
     PracticeExamQuestion,
     practice_exam_solution_sheet,
     public_practice_exam,
 )
-from lecturepilot.practice_exam_prompt import practice_exam_review_messages
-from lecturepilot.practice_exam_solution_latex import render_practice_exam_solution_tex
-from lecturepilot.practice_exam_store import PracticeExamStore
-from lecturepilot.practice_exam_validation import (
+from lecturepilot.exams.practice_exam_prompt import practice_exam_review_messages
+from lecturepilot.exams.practice_exam_solution_latex import render_practice_exam_solution_tex
+from lecturepilot.exams.practice_exam_store import PracticeExamStore
+from lecturepilot.exams.practice_exam_validation import (
     PracticeExamValidationError,
     validate_practice_exam_review,
 )
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.core.storage_layout import StorageLayout
 from test_practice_exam_review import EVIDENCE, _review
 from test_practice_exam_validation import _exam
 
@@ -117,7 +117,7 @@ async def test_planner_generates_selected_format_and_repairs_a_wrong_multiple_an
         _review_payload,
         _solution_review_payload,
     )
-    from lecturepilot.practice_exam_planner import PracticeExamPlanner
+    from lecturepilot.exams.practice_exam_planner import PracticeExamPlanner
 
     payload = _payload()
     review = _review_payload()
@@ -175,7 +175,7 @@ def test_multiple_selections_persist_immutably_without_grading(tmp_path):
 
 
 def test_fixed_multiple_select_points_hide_answer_count_without_mutating_legacy_exam():
-    from lecturepilot.practice_exam_latex import render_practice_exam_tex
+    from lecturepilot.exams.practice_exam_latex import render_practice_exam_tex
 
     exam = multi_exam()
     for indices in ([0], [0, 1], [0, 1, 2, 3]):
@@ -198,7 +198,7 @@ def test_open_answer_review_is_blind():
 
 
 def test_german_exam_labels():
-    from lecturepilot.practice_exam_latex import render_practice_exam_tex
+    from lecturepilot.exams.practice_exam_latex import render_practice_exam_tex
 
     exam = multi_exam().model_copy(update={"language": "de"})
     tex = render_practice_exam_tex(public_practice_exam(exam))

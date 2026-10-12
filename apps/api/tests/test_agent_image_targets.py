@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from canvas_workspace_fixtures import published_martius_workspace
-from lecturepilot.agent_tool_executor import AgentToolExecutor
-from lecturepilot.canvas_models import CanvasBlock, CanvasSection
-from lecturepilot.canvas_signatures import is_student_section
-from lecturepilot.image_generation import GeneratedImage
-from lecturepilot.models import CanvasSectionPlacement
+from lecturepilot.tutor.agent_tool_executor import AgentToolExecutor
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasSection
+from lecturepilot.canvas.canvas_signatures import is_student_section
+from lecturepilot.llm.image_generation import GeneratedImage
+from lecturepilot.core.models import CanvasSectionPlacement
 
 
 def test_generate_image_prefers_the_focused_learner_section(tmp_path) -> None:

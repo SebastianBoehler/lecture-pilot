@@ -9,16 +9,16 @@ from fastapi.testclient import TestClient
 import httpx
 import pytest
 
-from lecturepilot.app_exception_handlers import register_exception_handlers
-from lecturepilot.course_canvas_generation_http import run_canvas_generation_request
-from lecturepilot.course_canvas_generation_jobs import CanvasGenerationStore
-from lecturepilot.document_converter_client import (
+from lecturepilot.core.app_exception_handlers import register_exception_handlers
+from lecturepilot.authoring.course_canvas_generation_http import run_canvas_generation_request
+from lecturepilot.authoring.course_canvas_generation_jobs import CanvasGenerationStore
+from lecturepilot.sources.document_converter_client import (
     DocumentConverterClient,
     DocumentConverterUnavailable,
 )
-from lecturepilot.pdf_page_ocr import PdfPageRecord, page_text
-from lecturepilot.storage_layout import StorageLayout
-from lecturepilot.tenancy import TenantContext
+from lecturepilot.sources.pdf_page_ocr import PdfPageRecord, page_text
+from lecturepilot.core.storage_layout import StorageLayout
+from lecturepilot.identity.tenancy import TenantContext
 
 
 def _unreachable(request: httpx.Request) -> httpx.Response:

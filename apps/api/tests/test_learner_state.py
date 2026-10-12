@@ -3,9 +3,9 @@ from pathlib import Path
 
 import pytest
 
-from lecturepilot.learner_state import InvalidLearnerGateStateError, LearnerStateStore
-from lecturepilot.models import QualityGateDecision, QualityGateStatus
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.learner.learner_state import InvalidLearnerGateStateError, LearnerStateStore
+from lecturepilot.core.models import QualityGateDecision, QualityGateStatus
+from lecturepilot.core.storage_layout import StorageLayout
 
 
 def test_concurrent_quality_gate_updates_preserve_every_gate(tmp_path: Path) -> None:

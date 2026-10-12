@@ -1,8 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from lecturepilot.canvas_component_catalog import component_spec_issue
-from lecturepilot.canvas_models import CanvasBlock, CanvasComponentData
+from lecturepilot.canvas.canvas_component_catalog import component_spec_issue
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasComponentData
 
 
 def test_component_catalog_accepts_composable_visual_artifact() -> None:

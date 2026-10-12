@@ -1,5 +1,12 @@
-from lecturepilot.exam_readiness import build_exam_readiness_check, public_exam_readiness_check
-from lecturepilot.learning_map_models import LearningMap, LearningMapGate, LearningMapNode
+from lecturepilot.exams.exam_readiness import (
+    build_exam_readiness_check,
+    public_exam_readiness_check,
+)
+from lecturepilot.learning_design.learning_map_models import (
+    LearningMap,
+    LearningMapGate,
+    LearningMapNode,
+)
 from test_exam_readiness import _document
 
 

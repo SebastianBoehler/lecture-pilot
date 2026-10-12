@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from lecturepilot.canvas_markdown_blocks import block_to_markdown
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.course_canvas_math import validate_section_math
-from lecturepilot.course_canvas_validation import validate_planned_document
-from lecturepilot.providers import ProviderConfigurationError
+from lecturepilot.canvas.canvas_markdown_blocks import block_to_markdown
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.authoring.course_canvas_math import validate_section_math
+from lecturepilot.authoring.course_canvas_validation import validate_planned_document
+from lecturepilot.llm.providers import ProviderConfigurationError
 
 
 def test_clean_aligned_display_equation_is_accepted_unchanged() -> None:

@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from lecturepilot.learning_map import (
+from lecturepilot.learning_design.learning_map import (
     LearningMap,
     LearningMapGate,
     read_strict_published_learning_map,

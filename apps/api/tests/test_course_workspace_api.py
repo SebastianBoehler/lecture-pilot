@@ -13,12 +13,12 @@ from auth_helpers import (
 )
 from practice_design_test_helpers import save_approved_design
 from canvas_workspace_fixtures import publish_course_canvas, published_course_canvas
-from lecturepilot.canvas_models import CanvasBlock, CanvasSection
-from lecturepilot.course_builder_source import course_builder_source_document
-from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT_VERSION
-from lecturepilot.logging_observability import LOGGER_NAME, LoggingObservability
-from lecturepilot.models import LectureScheduleItem, LectureScheduleProposal
-from lecturepilot.university_models import ExternalCourseCandidate, UniversityLoginResult
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasSection
+from lecturepilot.sources.course_builder_source import course_builder_source_document
+from lecturepilot.core.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT_VERSION
+from lecturepilot.core.logging_observability import LOGGER_NAME, LoggingObservability
+from lecturepilot.core.models import LectureScheduleItem, LectureScheduleProposal
+from lecturepilot.courses.university_models import ExternalCourseCandidate, UniversityLoginResult
 from api_test_client import workspace_client as _client
 
 

@@ -1,8 +1,8 @@
 import pytest
 
-from lecturepilot.agent_context_models import AgentConversationMessage
-from lecturepilot.models import AgentTurnInput, AttendanceStatus
-from lecturepilot.tutor_turn_budget import (
+from lecturepilot.tutor.agent_context_models import AgentConversationMessage
+from lecturepilot.core.models import AgentTurnInput, AttendanceStatus
+from lecturepilot.tutor.tutor_turn_budget import (
     CHAT_OUTPUT_TOKEN_LIMIT,
     WRITING_OUTPUT_TOKEN_LIMIT,
     tutor_quota_reservation,

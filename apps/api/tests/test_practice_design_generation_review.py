@@ -5,12 +5,12 @@ from types import SimpleNamespace
 import pytest
 from fastapi import HTTPException
 
-from lecturepilot import course_canvas_generation_precheck
-from lecturepilot import course_canvas_generation as generation
+from lecturepilot.authoring import course_canvas_generation_precheck
+from lecturepilot.authoring import course_canvas_generation as generation
 from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.course_canvas_generation_ownership import CanvasGenerationOwnershipError
-from lecturepilot.course_canvas_repairs import lecture_source_revision
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.authoring.course_canvas_generation_ownership import CanvasGenerationOwnershipError
+from lecturepilot.authoring.course_canvas_repairs import lecture_source_revision
 from approved_practice_design_helpers import approved_practice_design, store_design
 from practice_design_test_helpers import proposal
 from test_learning_design_review_routes import _document

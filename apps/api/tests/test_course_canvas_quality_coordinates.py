@@ -1,10 +1,10 @@
 import pytest
 
-from lecturepilot.course_canvas_quality import (
+from lecturepilot.authoring.course_canvas_quality import (
     CanvasQualityReviewer,
     canvas_quality_response_format,
 )
-from lecturepilot.model_client import ModelExecutionError
+from lecturepilot.llm.model_client import ModelExecutionError
 from test_course_canvas_quality import _QualityClient, _settings, _source_document
 
 

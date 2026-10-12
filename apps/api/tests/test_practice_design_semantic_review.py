@@ -5,10 +5,10 @@ from pydantic_ai.messages import ModelResponse, TextPart
 
 import pytest
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.course_practice_design_review_models import REVIEW_DIMENSIONS
-from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.models import ProviderCapability, ProviderSettings
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.learning_design.course_practice_design_review_models import REVIEW_DIMENSIONS
+from lecturepilot.llm.model_client import ModelExecutionError
+from lecturepilot.core.models import ProviderCapability, ProviderSettings
 from practice_design_test_helpers import proposal
 
 
@@ -17,7 +17,7 @@ SOURCE_REVISION = "a" * 64
 
 @pytest.mark.asyncio
 async def test_native_review_client_uses_a_strict_dimension_complete_schema() -> None:
-    from lecturepilot.course_practice_design_review_client import (
+    from lecturepilot.learning_design.course_practice_design_review_client import (
         NativePracticeDesignReviewClient,
     )
 
@@ -54,7 +54,7 @@ async def test_native_review_client_uses_a_strict_dimension_complete_schema() ->
 
 @pytest.mark.asyncio
 async def test_review_provider_failure_is_returned_without_a_reviewed_proposal() -> None:
-    from lecturepilot.course_practice_design_planner import PracticeDesignPlanner
+    from lecturepilot.learning_design.course_practice_design_planner import PracticeDesignPlanner
 
     planner = PracticeDesignPlanner(
         provider_registry=_Registry(),
@@ -72,7 +72,7 @@ async def test_review_provider_failure_is_returned_without_a_reviewed_proposal()
 
 @pytest.mark.asyncio
 async def test_critic_issue_support_must_quote_the_exact_routed_source() -> None:
-    from lecturepilot.course_practice_design_planner import PracticeDesignPlanner
+    from lecturepilot.learning_design.course_practice_design_planner import PracticeDesignPlanner
 
     payload = _review_payload()
     payload["checks"][0].update(

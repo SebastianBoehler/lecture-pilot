@@ -1,8 +1,8 @@
 from pathlib import Path
 
 from auth_helpers import professor_headers
-from lecturepilot.agent_context_models import AgentConversationMessage
-from lecturepilot.coaching_state_models import CoachingProgress
+from lecturepilot.tutor.agent_context_models import AgentConversationMessage
+from lecturepilot.learner.coaching_state_models import CoachingProgress
 from test_learner_lesson_state_routes import COURSE_ID, _client, _write_progress
 
 

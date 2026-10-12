@@ -3,8 +3,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from lecturepilot import model_rate_limits
-from lecturepilot.model_usage import complete_with_usage
+from lecturepilot.llm import model_rate_limits
+from lecturepilot.llm.model_usage import complete_with_usage
 
 
 @pytest.mark.asyncio

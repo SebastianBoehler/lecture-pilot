@@ -2,14 +2,17 @@ import json
 
 import pytest
 
-from lecturepilot.canvas_models import CanvasBlock
-from lecturepilot.course_practice_design_models import PracticeDesignProposal
+from lecturepilot.canvas.canvas_models import CanvasBlock
+from lecturepilot.learning_design.course_practice_design_models import PracticeDesignProposal
 from practice_design_test_helpers import proposal
 from test_practice_design_planner import _source
 
 
 def test_catalogue_maps_provider_ids_to_exact_routed_evidence_without_mutation():
-    from lecturepilot.practice_evidence_catalogue import evidence_catalogue, expand_evidence_ids
+    from lecturepilot.learning_design.practice_evidence_catalogue import (
+        evidence_catalogue,
+        expand_evidence_ids,
+    )
 
     catalogue = evidence_catalogue(_source(), ("lecture.md",))
     assert catalogue == {"e0": {"source_path": "lecture.md", "excerpt": "Posterior evidence."}}
@@ -35,7 +38,7 @@ def test_catalogue_maps_provider_ids_to_exact_routed_evidence_without_mutation()
 
 @pytest.mark.parametrize("anchor", ["unknown", {"source_path": "lecture.md", "excerpt": "Fake"}])
 def test_unknown_or_inline_anchor_cannot_bypass_the_catalogue(anchor):
-    from lecturepilot.practice_evidence_catalogue import expand_evidence_ids
+    from lecturepilot.learning_design.practice_evidence_catalogue import expand_evidence_ids
 
     with pytest.raises(ValueError, match="evidence"):
         expand_evidence_ids({"outcome_anchor": anchor}, {})
@@ -52,15 +55,17 @@ def test_unknown_or_inline_anchor_cannot_bypass_the_catalogue(anchor):
     ],
 )
 def test_malformed_provider_collections_fail_with_validation_error(payload):
-    from lecturepilot.course_practice_design_validation import PracticeDesignValidationError
-    from lecturepilot.practice_evidence_catalogue import expand_evidence_ids
+    from lecturepilot.learning_design.course_practice_design_validation import (
+        PracticeDesignValidationError,
+    )
+    from lecturepilot.learning_design.practice_evidence_catalogue import expand_evidence_ids
 
     with pytest.raises(PracticeDesignValidationError):
         expand_evidence_ids(payload, {}, derive_source_refs=True)
 
 
 def test_catalogue_excludes_unrouted_sources_and_bounds_packet_without_front_loading():
-    from lecturepilot.practice_evidence_catalogue import evidence_catalogue
+    from lecturepilot.learning_design.practice_evidence_catalogue import evidence_catalogue
 
     source = _source()
     first = source.sections[0]

@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
 
-from lecturepilot.source_bundle import SourceBundleFile
-from lecturepilot.source_bundle_canvas import import_source_bundle_canvas
+from lecturepilot.sources.source_bundle import SourceBundleFile
+from lecturepilot.sources.source_bundle_canvas import import_source_bundle_canvas
 from test_source_bundle_canvas import _write, _write_pdf
 
 

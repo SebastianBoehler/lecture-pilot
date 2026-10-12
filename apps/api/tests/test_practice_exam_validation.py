@@ -4,8 +4,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from lecturepilot.practice_exam_models import PracticeExam, PracticeExamQuestion
-from lecturepilot.practice_exam_validation import (
+from lecturepilot.exams.practice_exam_models import PracticeExam, PracticeExamQuestion
+from lecturepilot.exams.practice_exam_validation import (
     PracticeExamValidationError,
     validate_practice_exam,
 )

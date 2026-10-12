@@ -6,8 +6,8 @@ import json
 from math import isfinite
 from time import perf_counter
 
-from lecturepilot.model_usage import usage_tokens_from_response
-from lecturepilot.native_completion import native_completion
+from lecturepilot.llm.model_usage import usage_tokens_from_response
+from lecturepilot.llm.native_completion import native_completion
 
 
 class BenchmarkBudgetExceeded(ValueError):

@@ -6,7 +6,7 @@ from zipfile import ZipFile
 import pytest
 
 from auth_helpers import professor_headers
-from lecturepilot.course_builder_source import course_builder_source_document
+from lecturepilot.sources.course_builder_source import course_builder_source_document
 from test_course_source_partitioning import (
     _client,
     _confirm_routing,
@@ -53,7 +53,7 @@ def test_powerpoint_flows_from_upload_through_routing_to_canvas(
         (revision / "rendered.pdf").write_bytes(_pdf("Rendered PowerPoint slide"))
 
     monkeypatch.setattr(
-        "lecturepilot.source_document_normalization.DocumentConverterClient.convert",
+        "lecturepilot.sources.source_document_normalization.DocumentConverterClient.convert",
         convert,
     )
     _confirm_routing(client)

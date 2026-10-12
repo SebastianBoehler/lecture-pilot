@@ -5,12 +5,12 @@ from typing import Annotated, Literal
 
 from pydantic import BeforeValidator, Field, model_validator
 
-from lecturepilot.course_practice_design_contract import (
+from lecturepilot.learning_design.course_practice_design_contract import (
     NonblankText,
     StrictPracticeDesignModel,
     freeze_collection,
 )
-from lecturepilot.course_practice_design_evidence import PracticeSourceAnchor
+from lecturepilot.learning_design.course_practice_design_evidence import PracticeSourceAnchor
 
 
 BenchmarkDimension = Literal[

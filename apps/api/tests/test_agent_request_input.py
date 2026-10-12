@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from lecturepilot.models import AgentTurnRequest
+from lecturepilot.core.models import AgentTurnRequest
 
 
 @pytest.mark.parametrize("message", ["", " ", "\t\n", "\u2003\u00a0", "x" * 4001])

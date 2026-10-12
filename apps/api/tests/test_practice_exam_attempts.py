@@ -4,10 +4,10 @@ from uuid import uuid4
 import pytest
 
 from auth_helpers import professor_headers, student_headers
-from lecturepilot.assessment_history import load_assessment_history
-from lecturepilot.practice_exam_attempts import PracticeAttemptStore, PracticeSubmission
-from lecturepilot.practice_exam_store import PracticeExamStore
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.learner.assessment_history import load_assessment_history
+from lecturepilot.exams.practice_exam_attempts import PracticeAttemptStore, PracticeSubmission
+from lecturepilot.exams.practice_exam_store import PracticeExamStore
+from lecturepilot.core.storage_layout import StorageLayout
 from test_practice_exam_store import _exam
 from test_practice_exam_api import _client, _generate
 
@@ -107,8 +107,8 @@ def test_tutor_receives_only_private_current_lecture_answers_without_keys(tmp_pa
 
 
 def test_existing_readiness_results_are_loaded_with_provenance_not_rubrics(tmp_path: Path):
-    from lecturepilot.durable_files import atomic_write_json
-    from lecturepilot.models import AgentTurnRequest
+    from lecturepilot.core.durable_files import atomic_write_json
+    from lecturepilot.core.models import AgentTurnRequest
 
     layout = StorageLayout(tmp_path)
     event = dict(
@@ -155,12 +155,12 @@ def test_existing_readiness_results_are_loaded_with_provenance_not_rubrics(tmp_p
 
 
 def test_tutor_prompt_carries_historical_observations_without_gate_authority(tmp_path: Path):
-    from lecturepilot.assessment_history_models import (
+    from lecturepilot.learner.assessment_history_models import (
         AssessmentHistoryContext,
         AssessmentObservation,
     )
-    from lecturepilot.tutor_prompt import tutor_messages as _messages
-    from lecturepilot.models import AgentTurnInput
+    from lecturepilot.tutor.tutor_prompt import tutor_messages as _messages
+    from lecturepilot.core.models import AgentTurnInput
 
     observation = AssessmentObservation(
         kind="readiness",

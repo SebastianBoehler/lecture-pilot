@@ -6,11 +6,11 @@ from auth_helpers import placeholder_approval_input, confirm_source_routing, pro
 from canvas_planner_test_helpers import RepairingCoursePlanner
 from canvas_workspace_fixtures import published_course_canvas, write_canvas_draft
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import MAX_SOURCE_REF_LENGTH, CanvasBlock, CanvasDocument
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT_VERSION
-from lecturepilot.course_canvas_repairs import lecture_source_revision
-from lecturepilot import course_canvas_generation
+from lecturepilot.canvas.canvas_models import MAX_SOURCE_REF_LENGTH, CanvasBlock, CanvasDocument
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.core.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT_VERSION
+from lecturepilot.authoring.course_canvas_repairs import lecture_source_revision
+from lecturepilot.authoring import course_canvas_generation
 from practice_design_test_helpers import save_approved_design, write_manifest
 
 

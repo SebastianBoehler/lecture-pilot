@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from lecturepilot.source_bundle import scan_source_bundle
-from lecturepilot.workspace_capability import CapabilityRoot, WorkspaceCapability
-from lecturepilot.workspace_fs import WorkspaceFS, WorkspaceFSError
+from lecturepilot.sources.source_bundle import scan_source_bundle
+from lecturepilot.core.workspace_capability import CapabilityRoot, WorkspaceCapability
+from lecturepilot.core.workspace_fs import WorkspaceFS, WorkspaceFSError
 
 
 def test_workspace_fs_rejects_nested_file_and_directory_symlinks(tmp_path: Path) -> None:

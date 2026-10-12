@@ -3,9 +3,9 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import CanvasBlock, CanvasSection
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT_VERSION
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasSection
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.core.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT_VERSION
 from auth_helpers import (
     approve_and_publish,
     install_test_source_routing_planner,

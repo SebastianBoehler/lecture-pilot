@@ -1,5 +1,5 @@
-from lecturepilot.course_workspace import merge_course_workspace, resolve_course_workspace
-from lecturepilot.models import CourseWorkspaceSetupInput
+from lecturepilot.courses.course_workspace import merge_course_workspace, resolve_course_workspace
+from lecturepilot.core.models import CourseWorkspaceSetupInput
 
 
 def _workspace(target, **values):

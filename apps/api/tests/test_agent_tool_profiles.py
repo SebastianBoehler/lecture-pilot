@@ -1,4 +1,4 @@
-from lecturepilot.agent_tool_schemas import (
+from lecturepilot.tutor.agent_tool_schemas import (
     agent_tool_names,
     agent_tool_schemas,
     tutor_tool_profile_for_message,

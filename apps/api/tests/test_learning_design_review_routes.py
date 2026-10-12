@@ -5,9 +5,9 @@ from fastapi.testclient import TestClient
 
 from auth_helpers import approval_input, professor_headers
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.course_canvas_repairs import lecture_source_revision
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.authoring.course_canvas_repairs import lecture_source_revision
 from practice_design_test_helpers import approved_design_document
 
 

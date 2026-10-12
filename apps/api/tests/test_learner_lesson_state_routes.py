@@ -11,21 +11,21 @@ from canvas_workspace_fixtures import (
     published_course_canvas,
 )
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import CanvasBlock
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.coaching_state_models import (
+from lecturepilot.canvas.canvas_models import CanvasBlock
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.learner.coaching_state_models import (
     CoachingProgress,
     DelayedReview,
     PendingCheck,
     review_key,
 )
-from lecturepilot.course_schedule_store import write_course_workspace
-from lecturepilot.durable_files import atomic_write_json
-from lecturepilot.learner_state import LearnerStateStore
-from lecturepilot.lecture_access_models import LectureAccessRule
-from lecturepilot.models import Course, CourseWorkspaceResult, Lecture, QualityGateDecision
-from lecturepilot.professor_preview import professor_preview_user_id
-from lecturepilot.quality_gate_models import QualityGateStatus
+from lecturepilot.courses.course_schedule_store import write_course_workspace
+from lecturepilot.core.durable_files import atomic_write_json
+from lecturepilot.learner.learner_state import LearnerStateStore
+from lecturepilot.courses.lecture_access_models import LectureAccessRule
+from lecturepilot.core.models import Course, CourseWorkspaceResult, Lecture, QualityGateDecision
+from lecturepilot.courses.professor_preview import professor_preview_user_id
+from lecturepilot.learner.quality_gate_models import QualityGateStatus
 
 
 COURSE_ID = "learner-state-course"

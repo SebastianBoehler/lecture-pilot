@@ -3,12 +3,12 @@ from pathlib import Path
 
 
 from auth_helpers import professor_headers, student_headers
-from lecturepilot.coaching_assistance import NextCheck, NextCheckAssistance
-from lecturepilot.coaching_progress import CoachingProgressStore
-from lecturepilot.coaching_state_models import review_key
-from lecturepilot.models import QualityGateDecision
-from lecturepilot.quality_gate_models import QualityGateStatus
-from lecturepilot.scaffold_policy import scaffold_policy_for_tutor_turn
+from lecturepilot.learner.coaching_assistance import NextCheck, NextCheckAssistance
+from lecturepilot.learner.coaching_progress import CoachingProgressStore
+from lecturepilot.learner.coaching_state_models import review_key
+from lecturepilot.core.models import QualityGateDecision
+from lecturepilot.learner.quality_gate_models import QualityGateStatus
+from lecturepilot.learner.scaffold_policy import scaffold_policy_for_tutor_turn
 from review_queue_test_helpers import (
     COURSE_ID,
     NOW,

@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from lecturepilot.learning_goal_outcomes import require_operational_outcomes
+from lecturepilot.learning_design.learning_goal_outcomes import require_operational_outcomes
 
 
 def _proposal(*outcomes):

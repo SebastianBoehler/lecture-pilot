@@ -21,6 +21,6 @@ the university account. LecturePilot never stores either credential or the PPI
 session. Existing entitlements download without a token; new borrowing requires
 an explicit one-token confirmation and a fresh remote state check.
 
-The adapter code is in `apps/api/src/lecturepilot/tuebingen_adapter.py`; account
+The adapter code is in `apps/api/src/lecturepilot/identity/tuebingen_adapter.py`; account
 and matching policy is documented in
 [`../../docs/tenancy-security.md`](../../docs/tenancy-security.md).

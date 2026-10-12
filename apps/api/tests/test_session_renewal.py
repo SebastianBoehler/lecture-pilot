@@ -8,16 +8,16 @@ from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from lecturepilot.app import create_app
-from lecturepilot.db_models import (
+from lecturepilot.core.db_models import (
     Base,
     ExternalIdentityRecord,
     SessionRecord,
     TenantMembershipRecord,
     UserRecord,
 )
-from lecturepilot.identity_repository import IdentityRepository
-from lecturepilot.session_auth import SESSION_COOKIE_NAME
-from lecturepilot.session_store import SessionStore
+from lecturepilot.identity.identity_repository import IdentityRepository
+from lecturepilot.identity.session_auth import SESSION_COOKIE_NAME
+from lecturepilot.identity.session_store import SessionStore
 
 
 def test_active_cookie_session_renews_near_idle_timeout(monkeypatch, tmp_path) -> None:

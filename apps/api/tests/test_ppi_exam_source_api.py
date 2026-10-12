@@ -8,9 +8,9 @@ from zipfile import ZipFile
 from fastapi.testclient import TestClient
 from auth_helpers import professor_headers, student_headers
 from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.ppi_exam_source_service import PpiCredentialsError, PpiExamSourceService
-from lecturepilot.ppi_exam_source_store import PpiExamSourceStore
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.exams.ppi_exam_source_service import PpiCredentialsError, PpiExamSourceService
+from lecturepilot.exams.ppi_exam_source_store import PpiExamSourceStore
 
 
 def test_cached_sources_are_private_and_listed_without_credentials(tmp_path: Path) -> None:

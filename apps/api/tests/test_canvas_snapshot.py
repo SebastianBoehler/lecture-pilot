@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from lecturepilot import canvas_snapshot
-from lecturepilot.canvas_snapshot import locked_canvas_paths, replace_canvas_snapshot
+from lecturepilot.canvas import canvas_snapshot
+from lecturepilot.canvas.canvas_snapshot import locked_canvas_paths, replace_canvas_snapshot
 
 
 def test_failed_snapshot_swap_restores_previous_directory(

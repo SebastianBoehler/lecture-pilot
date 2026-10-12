@@ -8,8 +8,10 @@ from practice_design_benchmark.evaluator import (
     validate_practice_design_benchmark_evaluation,
 )
 from practice_design_benchmark.models import BENCHMARK_DIMENSIONS
-from lecturepilot.course_practice_design_validation import PracticeDesignValidationError
-from lecturepilot.models import ProviderCapability, ProviderSettings
+from lecturepilot.learning_design.course_practice_design_validation import (
+    PracticeDesignValidationError,
+)
+from lecturepilot.core.models import ProviderCapability, ProviderSettings
 from practice_design_review_test_helpers import passing_review, source_document
 from practice_design_test_helpers import proposal
 

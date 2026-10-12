@@ -4,8 +4,8 @@ from types import SimpleNamespace
 import pytest
 from sqlalchemy.dialects.postgresql import dialect
 
-from lecturepilot.model_usage import complete_with_usage
-from lecturepilot.model_usage_total import model_usage_total
+from lecturepilot.llm.model_usage import complete_with_usage
+from lecturepilot.llm.model_usage_total import model_usage_total
 from test_usage_quota_accounting import quota, scope
 
 
@@ -66,7 +66,7 @@ async def test_unknown_attempt_remains_unknown_after_successful_retry(monkeypatc
     async def no_wait(seconds):
         pass
 
-    monkeypatch.setattr("lecturepilot.model_usage.asyncio.sleep", no_wait)
+    monkeypatch.setattr("lecturepilot.llm.model_usage.asyncio.sleep", no_wait)
     with model_usage_total() as total:
         await complete_with_usage(None, completion, model="openai/test")
         assert calls == 2

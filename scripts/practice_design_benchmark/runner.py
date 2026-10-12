@@ -25,19 +25,19 @@ from practice_design_benchmark.report import (
     PracticeDesignBenchmarkReport,
     PracticeDesignBenchmarkReviewerResult,
 )
-from lecturepilot.course_practice_design_models import PracticeDesignProposal
-from lecturepilot.course_practice_design_pipeline import GoalsFirstPracticeDesignPipeline
-from lecturepilot.course_practice_design_planner import (
+from lecturepilot.learning_design.course_practice_design_models import PracticeDesignProposal
+from lecturepilot.learning_design.course_practice_design_pipeline import GoalsFirstPracticeDesignPipeline
+from lecturepilot.learning_design.course_practice_design_planner import (
     PracticeDesignPlanner,
     ReviewedPracticeDesignProposal,
 )
-from lecturepilot.course_practice_design_review_models import PracticeDesignReviewResult
-from lecturepilot.course_practice_design_validation import (
+from lecturepilot.learning_design.course_practice_design_review_models import PracticeDesignReviewResult
+from lecturepilot.learning_design.course_practice_design_validation import (
     validate_practice_design,
     validate_practice_design_review,
 )
-from lecturepilot.models import ProviderCapability
-from lecturepilot.providers import ProviderRegistry
+from lecturepilot.core.models import ProviderCapability
+from lecturepilot.llm.providers import ProviderRegistry
 
 
 class PracticeDesignBenchmarkPlanner(Protocol):

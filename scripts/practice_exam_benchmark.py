@@ -4,23 +4,23 @@ from __future__ import annotations
 
 from time import perf_counter
 
-from lecturepilot.canvas_models import CanvasDocument
-from lecturepilot.models import ProviderCapability
-from lecturepilot.practice_exam_models import PracticeExam
-from lecturepilot.practice_exam_planner import (
+from lecturepilot.canvas.canvas_models import CanvasDocument
+from lecturepilot.core.models import ProviderCapability
+from lecturepilot.exams.practice_exam_models import PracticeExam
+from lecturepilot.exams.practice_exam_planner import (
     PracticeExamPlanner,
     _exam_review_token_budget,
 )
-from lecturepilot.practice_exam_prompt import (
+from lecturepilot.exams.practice_exam_prompt import (
     authoritative_canvas_evidence,
     practice_exam_review_messages,
 )
-from lecturepilot.practice_exam_schema import practice_exam_review_response_format
-from lecturepilot.practice_exam_validation import (
+from lecturepilot.exams.practice_exam_schema import practice_exam_review_response_format
+from lecturepilot.exams.practice_exam_validation import (
     PracticeExamValidationError,
     validate_practice_exam_review,
 )
-from lecturepilot.providers import ProviderRegistry
+from lecturepilot.llm.providers import ProviderRegistry
 from practice_exam_benchmark_client import BenchmarkExamClient
 
 

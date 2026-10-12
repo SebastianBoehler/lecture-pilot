@@ -2,7 +2,7 @@ from auth_helpers import professor_headers
 from practice_design_route_test_helpers import design_path
 from test_learning_intent_routes import goal_client
 
-from lecturepilot import course_builder_source
+from lecturepilot.sources import course_builder_source
 
 
 def test_readiness_and_approval_hash_sources_without_importing_documents(tmp_path, monkeypatch):

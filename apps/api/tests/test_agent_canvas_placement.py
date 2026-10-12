@@ -1,5 +1,5 @@
-from lecturepilot.agent_tool_executor import AgentToolExecutor
-from lecturepilot.canvas_markdown import read_section_frontmatter
+from lecturepilot.tutor.agent_tool_executor import AgentToolExecutor
+from lecturepilot.canvas.canvas_markdown import read_section_frontmatter
 from test_canvas_api import _workspace
 
 

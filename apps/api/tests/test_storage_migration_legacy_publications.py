@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
 
-from lecturepilot.storage_layout import StorageLayout
-from lecturepilot.storage_migration_legacy_publications import migrate
+from lecturepilot.core.storage_layout import StorageLayout
+from lecturepilot.migrations_storage.storage_migration_legacy_publications import migrate
 
 
 def _publication(path: Path, payload: dict) -> None:

@@ -1,5 +1,5 @@
-from lecturepilot.coaching_transitions import derive_next_transition
-from lecturepilot.quality_gate_models import QualityGateStatus
+from lecturepilot.learner.coaching_transitions import derive_next_transition
+from lecturepilot.learner.quality_gate_models import QualityGateStatus
 from practice_gate_coaching_test_helpers import practice_gate
 
 

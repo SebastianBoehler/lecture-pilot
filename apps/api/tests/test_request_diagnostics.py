@@ -6,7 +6,7 @@ import logging
 from fastapi.testclient import TestClient
 
 from lecturepilot.app import create_app
-from lecturepilot.metadata_events import LOGGER_NAME
+from lecturepilot.core.metadata_events import LOGGER_NAME
 from auth_helpers import student_headers
 
 

@@ -1,4 +1,4 @@
-from lecturepilot.university_course_search import alma_term_key
+from lecturepilot.courses.university_course_search import alma_term_key
 
 
 def test_alma_term_key_matches_lecturepilot_and_alma_labels() -> None:

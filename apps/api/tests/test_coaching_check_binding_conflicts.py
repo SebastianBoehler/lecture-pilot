@@ -2,7 +2,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from auth_helpers import student_headers
-from lecturepilot.coaching_progress import CoachingProgressStore
+from lecturepilot.learner.coaching_progress import CoachingProgressStore
 from review_queue_test_helpers import (
     COURSE_ID,
     NOW,

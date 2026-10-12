@@ -4,8 +4,8 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from auth_helpers import professor_headers, student_headers
-from lecturepilot.course_schedule_store import write_course_workspace
-from lecturepilot.models import Course, CourseWorkspaceResult, Lecture
+from lecturepilot.courses.course_schedule_store import write_course_workspace
+from lecturepilot.core.models import Course, CourseWorkspaceResult, Lecture
 from canvas_workspace_fixtures import publish_course_canvas
 from test_analytics_routes import _canvas_document, _client
 

@@ -2,23 +2,23 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
-from lecturepilot.canvas_models import CanvasDocument
-from lecturepilot.native_completion import native_completion
-from lecturepilot.canvas_source_evidence import source_evidence
+from lecturepilot.canvas.canvas_models import CanvasDocument
+from lecturepilot.llm.native_completion import native_completion
+from lecturepilot.canvas.canvas_source_evidence import source_evidence
 from practice_design_benchmark.models import (
     BENCHMARK_DIMENSIONS,
     SCORE_ANCHORS,
     PracticeDesignBenchmarkEvaluation,
 )
-from lecturepilot.course_practice_design_models import PracticeDesignProposal
-from lecturepilot.course_practice_design_review_models import PracticeDesignReviewResult
-from lecturepilot.course_practice_design_validation import (
+from lecturepilot.learning_design.course_practice_design_models import PracticeDesignProposal
+from lecturepilot.learning_design.course_practice_design_review_models import PracticeDesignReviewResult
+from lecturepilot.learning_design.course_practice_design_validation import (
     PracticeDesignValidationError,
     validate_source_anchors,
 )
-from lecturepilot.model_provider_schema import strict_pydantic_response_format
-from lecturepilot.model_usage import ModelUsageRecorder
-from lecturepilot.models import ProviderSettings
+from lecturepilot.llm.model_provider_schema import strict_pydantic_response_format
+from lecturepilot.llm.model_usage import ModelUsageRecorder
+from lecturepilot.core.models import ProviderSettings
 
 
 def practice_design_benchmark_messages(

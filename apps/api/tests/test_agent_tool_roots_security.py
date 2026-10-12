@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from lecturepilot.agent_tool_executor import AgentToolExecutor
-from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.tutor.agent_tool_executor import AgentToolExecutor
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
 from source_capability_test_helpers import published_source_workspace
 
 

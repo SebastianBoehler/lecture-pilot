@@ -9,7 +9,7 @@ from practice_exam_planner_fixtures import (
     _review_payload,
     _solution_review_payload,
 )
-from lecturepilot.practice_exam_planner import PracticeExamPlanner
+from lecturepilot.exams.practice_exam_planner import PracticeExamPlanner
 
 
 @pytest.mark.asyncio

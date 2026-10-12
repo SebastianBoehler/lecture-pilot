@@ -3,13 +3,13 @@ from datetime import UTC, datetime
 
 import pytest
 
-from lecturepilot.checkpoint_evidence_audit import (
+from lecturepilot.learner.checkpoint_evidence_audit import (
     CriterionQuote,
     validate_evidence_quotes,
     append_assessment_audit,
 )
-from lecturepilot.models import QualityGateDecision, QualityGateStatus
-from lecturepilot.providers import ProviderConfigurationError
+from lecturepilot.core.models import QualityGateDecision, QualityGateStatus
+from lecturepilot.llm.providers import ProviderConfigurationError
 from types import SimpleNamespace
 
 

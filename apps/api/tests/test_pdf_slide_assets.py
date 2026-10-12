@@ -1,7 +1,7 @@
 import hashlib
 from pathlib import Path
 
-from lecturepilot.pdf_slide_assets import MAX_RENDERED_SLIDES, render_pdf_slide_blocks
+from lecturepilot.sources.pdf_slide_assets import MAX_RENDERED_SLIDES, render_pdf_slide_blocks
 
 
 def test_render_pdf_slide_blocks_creates_course_asset_pngs(tmp_path: Path) -> None:

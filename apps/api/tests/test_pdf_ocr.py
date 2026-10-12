@@ -2,8 +2,8 @@ from pathlib import Path
 
 import fitz
 
-from lecturepilot.document_converter_client import DocumentConverterError, OcrPageResult
-from lecturepilot.pdf_extract import read_pdf_page_range_result
+from lecturepilot.sources.document_converter_client import DocumentConverterError, OcrPageResult
+from lecturepilot.sources.pdf_extract import read_pdf_page_range_result
 
 
 def _ocr_result(request: dict, text: str) -> OcrPageResult:
@@ -38,7 +38,9 @@ def test_scanned_page_is_recognized_outside_the_bounded_parser(monkeypatch, tmp_
         assert request["raster_ratio"] > 0.9
         return _ocr_result(request, "Bayes-Regel aus dem Scan")
 
-    monkeypatch.setattr("lecturepilot.pdf_page_ocr.DocumentConverterClient.ocr_page", ocr_page)
+    monkeypatch.setattr(
+        "lecturepilot.sources.pdf_page_ocr.DocumentConverterClient.ocr_page", ocr_page
+    )
 
     result = _read(source)
 
@@ -58,7 +60,9 @@ def test_recognized_pages_are_cached_but_failures_retry(monkeypatch, tmp_path) -
             raise DocumentConverterError("converter restarting")
         return _ocr_result(request, "Recognized once")
 
-    monkeypatch.setattr("lecturepilot.pdf_page_ocr.DocumentConverterClient.ocr_page", ocr_page)
+    monkeypatch.setattr(
+        "lecturepilot.sources.pdf_page_ocr.DocumentConverterClient.ocr_page", ocr_page
+    )
     cache = tmp_path / "ocr-cache"
 
     failed = _read(source, cache)
@@ -102,11 +106,11 @@ def _write_scanned_pdf(path: Path, text: str) -> None:
 
 
 def test_native_text_stays_verbatim_and_ocr_only_adds_new_lines(monkeypatch, tmp_path) -> None:
-    from lecturepilot.pdf_page_ocr import PdfPageRecord, page_text
+    from lecturepilot.sources.pdf_page_ocr import PdfPageRecord, page_text
 
     monkeypatch.setenv("LECTUREPILOT_DOCUMENT_CONVERTER_URL", "http://converter:8080")
     monkeypatch.setattr(
-        "lecturepilot.pdf_page_ocr.DocumentConverterClient.ocr_page",
+        "lecturepilot.sources.pdf_page_ocr.DocumentConverterClient.ocr_page",
         lambda _self, **request: _ocr_result(request, "Choosing a colour map\nGrayscale for CT"),
     )
     record = PdfPageRecord(

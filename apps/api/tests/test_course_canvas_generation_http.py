@@ -4,14 +4,14 @@ from typing import NoReturn
 from fastapi import HTTPException
 import pytest
 
-from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
-from lecturepilot.course_canvas_generation_http import run_canvas_generation_request
-from lecturepilot.course_canvas_generation_jobs import CanvasGenerationStore
-from lecturepilot.course_canvas_generation_service import CANVAS_GENERATION_LEASE_SECONDS
-from lecturepilot.providers import ProviderConfigurationError
-from lecturepilot.authoring_models import AuthoringDesignConflict
-from lecturepilot.storage_layout import StorageLayout
-from lecturepilot.tenancy import TenantContext
+from lecturepilot.authoring.course_canvas_errors import CanvasGenerationRepairableError
+from lecturepilot.authoring.course_canvas_generation_http import run_canvas_generation_request
+from lecturepilot.authoring.course_canvas_generation_jobs import CanvasGenerationStore
+from lecturepilot.authoring.course_canvas_generation_service import CANVAS_GENERATION_LEASE_SECONDS
+from lecturepilot.llm.providers import ProviderConfigurationError
+from lecturepilot.authoring.authoring_models import AuthoringDesignConflict
+from lecturepilot.core.storage_layout import StorageLayout
+from lecturepilot.identity.tenancy import TenantContext
 
 
 @pytest.mark.asyncio

@@ -3,13 +3,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from lecturepilot.agent_side_effect_tools import _explicit_memory_request
-from lecturepilot.authoring_limits import AuthoringBudgetExceeded
-from lecturepilot.model_usage import complete_with_usage
-from lecturepilot.model_usage_total import model_usage_total
-from lecturepilot.readiness_progress import ReadinessProgressStore
-from lecturepilot.review_queue_order import interleave_lectures
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.tutor.agent_side_effect_tools import _explicit_memory_request
+from lecturepilot.authoring.authoring_limits import AuthoringBudgetExceeded
+from lecturepilot.llm.model_usage import complete_with_usage
+from lecturepilot.llm.model_usage_total import model_usage_total
+from lecturepilot.exams.readiness_progress import ReadinessProgressStore
+from lecturepilot.learner.review_queue_order import interleave_lectures
+from lecturepilot.core.storage_layout import StorageLayout
 from test_source_capability_binding import _executor
 from source_capability_test_helpers import published_source_workspace
 

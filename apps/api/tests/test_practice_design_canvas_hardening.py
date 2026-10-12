@@ -3,20 +3,20 @@ import pytest
 from pydantic import ValidationError
 from pathlib import Path
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.canvas_markdown import read_document_source, write_document_source
-from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
-from lecturepilot.course_canvas_practice_contract import (
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.canvas.canvas_markdown import read_document_source, write_document_source
+from lecturepilot.authoring.course_canvas_errors import CanvasGenerationRepairableError
+from lecturepilot.authoring.course_canvas_practice_contract import (
     practice_prompt_instruction,
     section_target_assignments,
     validate_practice_candidate,
 )
-from lecturepilot.course_practice_design_models import PracticeDesign
-from lecturepilot.course_practice_design_validation import (
+from lecturepilot.learning_design.course_practice_design_models import PracticeDesign
+from lecturepilot.learning_design.course_practice_design_validation import (
     PracticeDesignValidationError,
     validate_learning_map_practice_contract,
 )
-from lecturepilot.learning_map import LearningMapGate, build_learning_map
+from lecturepilot.learning_design.learning_map import LearningMapGate, build_learning_map
 from practice_design_test_helpers import proposal, target
 
 

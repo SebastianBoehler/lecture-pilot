@@ -1,8 +1,8 @@
 from datetime import UTC, datetime
 
-from lecturepilot.coaching_orchestration import select_due_review_gate
-from lecturepilot.coaching_state_models import CoachingProgress, DelayedReview, PendingCheck
-from lecturepilot.learning_map import LearningMap, LearningMapGate, LearningMapNode
+from lecturepilot.learner.coaching_orchestration import select_due_review_gate
+from lecturepilot.learner.coaching_state_models import CoachingProgress, DelayedReview, PendingCheck
+from lecturepilot.learning_design.learning_map import LearningMap, LearningMapGate, LearningMapNode
 
 
 def test_due_review_reactivates_current_gate_contract() -> None:

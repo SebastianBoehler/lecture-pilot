@@ -1,9 +1,9 @@
 import pytest
 
-from lecturepilot.canvas_predictions import PredictionStore
-from lecturepilot.canvas_markdown_blocks import block_to_markdown, read_blocks
-from lecturepilot.canvas_models import CanvasBlock
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.canvas.canvas_predictions import PredictionStore
+from lecturepilot.canvas.canvas_markdown_blocks import block_to_markdown, read_blocks
+from lecturepilot.canvas.canvas_models import CanvasBlock
+from lecturepilot.core.storage_layout import StorageLayout
 from test_canvas_annotations import document
 
 
@@ -61,8 +61,8 @@ def test_predictions_reject_symlinked_storage(tmp_path):
 
 
 def test_predictions_do_not_replace_assessments_or_multiply():
-    from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
-    from lecturepilot.course_canvas_validation import validate_planned_document
+    from lecturepilot.authoring.course_canvas_errors import CanvasGenerationRepairableError
+    from lecturepilot.authoring.course_canvas_validation import validate_planned_document
 
     doc = prediction_document()
     with pytest.raises(CanvasGenerationRepairableError, match="checkpoint"):

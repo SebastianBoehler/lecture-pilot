@@ -4,11 +4,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from lecturepilot import course_canvas_generation_service as service
-from lecturepilot.canvas_models import CanvasDocument
-from lecturepilot.course_canvas_generation_jobs import CanvasGenerationStore
-from lecturepilot.generation_slots import BACKGROUND_GENERATION_SLOTS, background_generation_slot
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.authoring import course_canvas_generation_service as service
+from lecturepilot.canvas.canvas_models import CanvasDocument
+from lecturepilot.authoring.course_canvas_generation_jobs import CanvasGenerationStore
+from lecturepilot.llm.generation_slots import (
+    BACKGROUND_GENERATION_SLOTS,
+    background_generation_slot,
+)
+from lecturepilot.core.storage_layout import StorageLayout
 from test_course_canvas_generation_service import _canvas
 
 
@@ -77,7 +80,7 @@ async def test_background_jobs_queue_for_two_shared_slots(tmp_path, monkeypatch)
 
 @pytest.mark.asyncio
 async def test_practice_exams_wait_for_slots_held_by_other_jobs(monkeypatch) -> None:
-    from lecturepilot import practice_exam_generation_service as exams
+    from lecturepilot.exams import practice_exam_generation_service as exams
 
     app = SimpleNamespace(
         state=SimpleNamespace(

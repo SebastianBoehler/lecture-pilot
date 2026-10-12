@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from lecturepilot.course_canvas_publication import CanvasPublicationMetadata
+from lecturepilot.authoring.course_canvas_publication import CanvasPublicationMetadata
 
 
 def _metadata_payload() -> dict:

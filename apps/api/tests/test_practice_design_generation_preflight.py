@@ -5,22 +5,22 @@ from pathlib import Path
 import pytest
 
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import CanvasDocument
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.course_canvas_generation import (
+from lecturepilot.canvas.canvas_models import CanvasDocument
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.authoring.course_canvas_generation import (
     generate_course_canvas_draft,
     repair_targeted_course_canvas_draft,
 )
-from lecturepilot.course_canvas_generation_jobs import CanvasGenerationJob
-from lecturepilot.course_canvas_repair_target import CanvasGenerationRepairTarget
-from lecturepilot.course_canvas_repairs import lecture_source_revision
-from lecturepilot.course_canvas_store import InvalidCanvasDraftError
-from lecturepilot.course_practice_design_store import (
+from lecturepilot.authoring.course_canvas_generation_jobs import CanvasGenerationJob
+from lecturepilot.authoring.course_canvas_repair_target import CanvasGenerationRepairTarget
+from lecturepilot.authoring.course_canvas_repairs import lecture_source_revision
+from lecturepilot.canvas.course_canvas_store import InvalidCanvasDraftError
+from lecturepilot.learning_design.course_practice_design_store import (
     PracticeDesignApprovalRequired,
     PracticeDesignStale,
     PracticeDesignStore,
 )
-from lecturepilot.tenancy import TenantContext, TenantRole
+from lecturepilot.identity.tenancy import TenantContext, TenantRole
 from approved_practice_design_helpers import approved_practice_design, revised_design, store_design
 from practice_design_test_helpers import proposal
 from test_learning_design_review_routes import _document

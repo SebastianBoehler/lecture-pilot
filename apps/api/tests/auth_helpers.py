@@ -1,8 +1,11 @@
 from dataclasses import dataclass
 
-from lecturepilot.course_source_partition import is_course_wide_source, select_lecture_source_files
-from lecturepilot.course_source_routing_models import CourseSourceRoute, SourceRouteRole
-from lecturepilot.university_models import UniversityLoginResult
+from lecturepilot.sources.course_source_partition import (
+    is_course_wide_source,
+    select_lecture_source_files,
+)
+from lecturepilot.sources.course_source_routing_models import CourseSourceRoute, SourceRouteRole
+from lecturepilot.courses.university_models import UniversityLoginResult
 
 
 DEFAULT_STUDENT_COURSE_IDS = (

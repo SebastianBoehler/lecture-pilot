@@ -3,23 +3,23 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from lecturepilot.course_practice_design_models import (
+from lecturepilot.learning_design.course_practice_design_models import (
     PracticeDesign,
     PracticeDesignProposal,
     PracticeHint,
     PracticeTarget,
 )
-from lecturepilot.course_practice_design_store import (
+from lecturepilot.learning_design.course_practice_design_store import (
     PracticeDesignApprovalRequired,
     PracticeDesignStale,
     PracticeDesignStore,
     PracticeDesignUnavailable,
 )
-from lecturepilot.course_practice_design_validation import (
+from lecturepilot.learning_design.course_practice_design_validation import (
     PracticeDesignValidationError,
     validate_canvas_practice_contract,
 )
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.core.storage_layout import StorageLayout
 from practice_design_test_helpers import document as _document
 from practice_design_test_helpers import proposal as _proposal
 from approved_practice_design_helpers import approved_practice_design, store_design

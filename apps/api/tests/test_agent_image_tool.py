@@ -3,8 +3,8 @@ from __future__ import annotations
 import pytest
 
 from canvas_workspace_fixtures import published_martius_workspace
-from lecturepilot.agent_tool_executor import AgentToolExecutor
-from lecturepilot.image_generation import GeneratedImage
+from lecturepilot.tutor.agent_tool_executor import AgentToolExecutor
+from lecturepilot.llm.image_generation import GeneratedImage
 
 
 def test_generate_image_does_not_append_a_generic_section_without_a_target(tmp_path) -> None:

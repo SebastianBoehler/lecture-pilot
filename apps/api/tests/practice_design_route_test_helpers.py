@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 from auth_helpers import confirm_source_routing, professor_headers
 from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
 
 
 COURSE_ID = "practice-course"

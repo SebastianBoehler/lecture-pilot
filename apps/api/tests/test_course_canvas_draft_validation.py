@@ -4,9 +4,9 @@ import pytest
 
 from auth_helpers import professor_headers
 from canvas_workspace_fixtures import published_course_canvas, write_canvas_draft
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.course_canvas_store import InvalidCanvasDraftError
-from lecturepilot.course_practice_design_store import PracticeDesignStore
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.canvas.course_canvas_store import InvalidCanvasDraftError
+from lecturepilot.learning_design.course_practice_design_store import PracticeDesignStore
 from test_course_canvas_draft_integrity import (
     _InvalidCoursePlanner,
     _client_contract_headers,

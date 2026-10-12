@@ -74,7 +74,7 @@ def _png():
 
 def test_cleanup_failure_restores_uploads_index_and_routing(tmp_path, monkeypatch):
     import pytest
-    import lecturepilot.course_source_cleanup as cleanup
+    import lecturepilot.sources.course_source_cleanup as cleanup
 
     client = _client(tmp_path)
     _upload(client, "Lecture03.md", b"# Bayes")
@@ -104,10 +104,10 @@ def test_cleanup_failure_restores_uploads_index_and_routing(tmp_path, monkeypatc
 
 
 def test_cleanup_preserves_transitive_tex_dependencies(tmp_path):
-    from lecturepilot.source_index import refresh_course_source_index
-    from lecturepilot.source_retention import retained_source_paths
-    from lecturepilot.course_source_routing_models import CourseSourceRoute
-    from lecturepilot.storage_layout import StorageLayout
+    from lecturepilot.sources.source_index import refresh_course_source_index
+    from lecturepilot.sources.source_retention import retained_source_paths
+    from lecturepilot.sources.course_source_routing_models import CourseSourceRoute
+    from lecturepilot.core.storage_layout import StorageLayout
 
     layout = StorageLayout(tmp_path)
     uploads = layout.course_uploads_dir(COURSE_ID)
@@ -139,7 +139,7 @@ def test_cleanup_preserves_transitive_tex_dependencies(tmp_path):
 
 def test_storage_only_cleanup_preserves_teaching_revision_but_new_upload_invalidates(tmp_path):
     import json
-    from lecturepilot.course_canvas_repairs import lecture_source_revision
+    from lecturepilot.authoring.course_canvas_repairs import lecture_source_revision
 
     client = _client(tmp_path)
     _upload(client, "Lecture03.md", b"# Bayes")

@@ -4,7 +4,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy.dialects.postgresql import dialect
-from lecturepilot.usage_quota import UsageQuota, UsageLimits, UsageQuotaExceeded
+from lecturepilot.llm.usage_quota import UsageQuota, UsageLimits, UsageQuotaExceeded
 
 
 class Database:

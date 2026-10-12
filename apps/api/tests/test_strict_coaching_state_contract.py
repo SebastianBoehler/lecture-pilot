@@ -4,16 +4,16 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from pydantic import ValidationError
 
-from lecturepilot.agent_context_models import AgentConversationMessage
-from lecturepilot.coaching_episode import schedule_delayed_review
-from lecturepilot.coaching_progress import CoachingProgressStore
-from lecturepilot.coaching_state_models import (
+from lecturepilot.tutor.agent_context_models import AgentConversationMessage
+from lecturepilot.learner.coaching_episode import schedule_delayed_review
+from lecturepilot.learner.coaching_progress import CoachingProgressStore
+from lecturepilot.learner.coaching_state_models import (
     CoachingProgress,
     CoachingTurnEvent,
     DelayedReview,
     PendingCheck,
 )
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.core.storage_layout import StorageLayout
 
 IDS = {"user_id": "student-1", "course_id": "course-1", "lecture_id": "lecture-1"}
 

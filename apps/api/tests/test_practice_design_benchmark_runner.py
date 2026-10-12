@@ -12,8 +12,10 @@ from practice_design_benchmark.models import (
 )
 from practice_design_benchmark.report import PracticeDesignBenchmarkReport
 from practice_design_benchmark.runner import run_practice_design_benchmark
-from lecturepilot.course_practice_design_planner import ReviewedPracticeDesignProposal
-from lecturepilot.model_client import ModelExecutionError
+from lecturepilot.learning_design.course_practice_design_planner import (
+    ReviewedPracticeDesignProposal,
+)
+from lecturepilot.llm.model_client import ModelExecutionError
 from practice_design_review_test_helpers import passing_review
 from practice_design_test_helpers import proposal, target
 

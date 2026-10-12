@@ -1,5 +1,5 @@
-from lecturepilot.lecture_slide_source import resolve_lecture_slide_source
-from lecturepilot.source_bundle import SourceBundleFile
+from lecturepilot.sources.lecture_slide_source import resolve_lecture_slide_source
+from lecturepilot.sources.source_bundle import SourceBundleFile
 
 
 def test_exact_companion_pdf_is_authoritative() -> None:

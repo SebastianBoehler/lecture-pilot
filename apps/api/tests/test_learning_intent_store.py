@@ -1,9 +1,9 @@
 import pytest
 
-from lecturepilot.course_learning_intent_store import LearningIntentStore
-from lecturepilot.course_practice_design_models import PracticeDesignProposal
-from lecturepilot.course_practice_design_store import PracticeDesignStore
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.learning_design.course_learning_intent_store import LearningIntentStore
+from lecturepilot.learning_design.course_practice_design_models import PracticeDesignProposal
+from lecturepilot.learning_design.course_practice_design_store import PracticeDesignStore
+from lecturepilot.core.storage_layout import StorageLayout
 from approved_practice_design_helpers import approved_practice_design, store_design
 from practice_design_test_helpers import passing_review, proposal, source_document
 
@@ -159,7 +159,7 @@ def test_implementation_report_records_exact_changes_without_changing_goals(tmp_
 
 
 def test_professor_removal_rebinds_remaining_teaching_and_fixed_targets(tmp_path):
-    from lecturepilot.course_learning_intent_proposal import LearningIntentProposal
+    from lecturepilot.learning_design.course_learning_intent_proposal import LearningIntentProposal
 
     store, design = stored(tmp_path)
     first = design.targets[0]

@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from lecturepilot.exam_answer_evaluation import _evaluation_messages
-from lecturepilot.exam_revision_plan import _guidance_level
+from lecturepilot.exams.exam_answer_evaluation import _evaluation_messages
+from lecturepilot.exams.exam_revision_plan import _guidance_level
 from test_exam_answer_evaluation import _item
 
 
@@ -25,8 +25,8 @@ def test_prior_attempt_count_never_increases_guidance(score):
 async def test_provider_grades_each_answer_in_a_separate_context():
     from pydantic_ai.messages import ModelResponse, TextPart, UserPromptPart
     from pydantic_ai.models.function import FunctionModel
-    from lecturepilot.exam_answer_evaluation import NativeOpenAnswerEvaluationClient
-    from lecturepilot.models import ProviderSettings
+    from lecturepilot.exams.exam_answer_evaluation import NativeOpenAnswerEvaluationClient
+    from lecturepilot.core.models import ProviderSettings
 
     calls = []
 

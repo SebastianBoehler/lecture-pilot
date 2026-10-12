@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 from auth_helpers import approval_input, professor_headers, student_headers
 from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
 from canvas_workspace_fixtures import write_canvas_draft
 
 from test_learning_design_review_routes import _document, _update_payload

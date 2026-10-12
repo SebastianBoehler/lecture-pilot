@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.course_canvas_validation import (
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.authoring.course_canvas_validation import (
     source_topic_sections,
     validate_planned_document,
 )
-from lecturepilot.latex_canvas_importer import import_latex_canvas
+from lecturepilot.sources.latex_canvas_importer import import_latex_canvas
 
 
 def test_validation_does_not_enforce_a_section_or_character_quota() -> None:

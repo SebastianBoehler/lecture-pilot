@@ -1,5 +1,5 @@
-from lecturepilot.canvas_models import CanvasDocument
-from lecturepilot.course_practice_design_review_models import (
+from lecturepilot.canvas.canvas_models import CanvasDocument
+from lecturepilot.learning_design.course_practice_design_review_models import (
     REVIEW_DIMENSIONS,
     PracticeDesignReviewResult,
 )

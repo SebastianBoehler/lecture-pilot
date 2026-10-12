@@ -2,8 +2,8 @@ from io import BytesIO
 from pathlib import Path
 from zipfile import ZipFile
 
-from lecturepilot.ppi_exam_source_store import PpiExamSourceStore
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.exams.ppi_exam_source_store import PpiExamSourceStore
+from lecturepilot.core.storage_layout import StorageLayout
 
 
 def test_generation_reads_only_a_bounded_protocol_excerpt(tmp_path: Path) -> None:

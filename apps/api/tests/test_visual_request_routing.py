@@ -1,13 +1,13 @@
 import pytest
 from pydantic import ValidationError
 
-from lecturepilot.agent_tool_instructions import _with_tool_instruction
-from lecturepilot.canvas_models import (
+from lecturepilot.tutor.agent_tool_instructions import _with_tool_instruction
+from lecturepilot.canvas.canvas_models import (
     CanvasComponentData,
     CanvasComponentFrame,
 )
-from lecturepilot.provider_canvas_models import ProviderCanvasBlock
-from lecturepilot.raster_request_intent import is_explicit_raster_request
+from lecturepilot.tutor.provider_canvas_models import ProviderCanvasBlock
+from lecturepilot.tutor.raster_request_intent import is_explicit_raster_request
 
 
 def test_tool_instruction_only_requires_image_tool_for_raster_requests() -> None:

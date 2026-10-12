@@ -16,13 +16,13 @@ from practice_design_benchmark.models import (
     summarize_dimension_scores,
     validate_benchmark_model_independence,
 )
-from lecturepilot.course_practice_design_contract import (
+from lecturepilot.learning_design.course_practice_design_contract import (
     NonblankText,
     StrictPracticeDesignModel,
     freeze_collection,
 )
-from lecturepilot.course_practice_design_models import PracticeDesignProposal
-from lecturepilot.course_practice_design_review_models import PracticeDesignReviewResult
+from lecturepilot.learning_design.course_practice_design_models import PracticeDesignProposal
+from lecturepilot.learning_design.course_practice_design_review_models import PracticeDesignReviewResult
 
 
 class PracticeDesignBenchmarkScaleAnchor(StrictPracticeDesignModel):

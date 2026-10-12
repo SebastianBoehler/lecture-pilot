@@ -3,15 +3,18 @@ from __future__ import annotations
 import json
 
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.course_canvas_quality import NativeCanvasQualityClient, _quality_messages
-from lecturepilot.course_canvas_quality_prompt import MAX_QUALITY_PROMPT_CHARS
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.authoring.course_canvas_quality import (
+    NativeCanvasQualityClient,
+    _quality_messages,
+)
+from lecturepilot.authoring.course_canvas_quality_prompt import MAX_QUALITY_PROMPT_CHARS
 
 
 async def test_quality_review_native_schema_has_output_cap_and_critic_reasoning():
     from pydantic_ai.messages import ModelResponse, TextPart
     from pydantic_ai.models.function import FunctionModel
-    from lecturepilot.models import ProviderSettings
+    from lecturepilot.core.models import ProviderSettings
 
     calls = []
 
@@ -36,7 +39,7 @@ async def test_quality_review_native_schema_has_output_cap_and_critic_reasoning(
 async def test_quality_review_native_schema_repairs_unknown_coordinates():
     from pydantic_ai.messages import ModelResponse, TextPart
     from pydantic_ai.models.function import FunctionModel
-    from lecturepilot.models import ProviderSettings
+    from lecturepilot.core.models import ProviderSettings
 
     calls = 0
 
@@ -112,8 +115,8 @@ def test_quality_review_prompt_never_clips_a_candidate_line_mid_expression() -> 
 async def test_quality_review_retries_an_unverifiable_checkpoint_decision():
     from pydantic_ai.messages import ModelResponse, TextPart
     from pydantic_ai.models.function import FunctionModel
-    from lecturepilot.course_canvas_quality_checkpoints import CheckpointContract
-    from lecturepilot.models import ProviderSettings
+    from lecturepilot.authoring.course_canvas_quality_checkpoints import CheckpointContract
+    from lecturepilot.core.models import ProviderSettings
 
     contract = CheckpointContract(
         block_id="claim",

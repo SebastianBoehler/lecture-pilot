@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from auth_helpers import confirm_source_routing, professor_headers
-from lecturepilot.course_builder_source import course_builder_source_document
+from lecturepilot.sources.course_builder_source import course_builder_source_document
 from test_course_workspace_api import _client
 
 

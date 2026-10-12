@@ -3,17 +3,20 @@ from pathlib import Path
 
 import pytest
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.course_canvas_store import InvalidCanvasDraftError
-from lecturepilot.course_practice_design_binding import read_practice_design_binding
-from lecturepilot.course_practice_design_models import PracticeDesign
-from lecturepilot.course_canvas_repairs import lecture_source_revision
-from lecturepilot.course_practice_design_validation import (
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.canvas.course_canvas_store import InvalidCanvasDraftError
+from lecturepilot.learning_design.course_practice_design_binding import read_practice_design_binding
+from lecturepilot.learning_design.course_practice_design_models import PracticeDesign
+from lecturepilot.authoring.course_canvas_repairs import lecture_source_revision
+from lecturepilot.learning_design.course_practice_design_validation import (
     PracticeDesignValidationError,
     validate_learning_map_practice_contract,
 )
-from lecturepilot.learning_map import LearningMapEvidenceCriterion, build_learning_map
+from lecturepilot.learning_design.learning_map import (
+    LearningMapEvidenceCriterion,
+    build_learning_map,
+)
 from approved_practice_design_helpers import approved_practice_design, revised_design, store_design
 from practice_design_test_helpers import target
 

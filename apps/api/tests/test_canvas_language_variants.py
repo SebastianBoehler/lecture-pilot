@@ -1,8 +1,8 @@
 import pytest
 
 from auth_helpers import professor_headers, student_headers
-from lecturepilot.canvas_language_store import CanvasLanguageStore
-from lecturepilot.canvas_language_variants import (
+from lecturepilot.canvas.canvas_language_store import CanvasLanguageStore
+from lecturepilot.canvas.canvas_language_variants import (
     TeachingText,
     TranslationOutput,
     mask,
@@ -52,7 +52,7 @@ def test_assessments_excluded_and_protected_content_exact(tmp_path):
     ["Compute $x^2$ using 12 cases", "Run `f(2)`", "Read [source](https://example.com/a)"],
 )
 def test_translation_cannot_add_or_remove_protected_content(original):
-    from lecturepilot.canvas_language_variants import restore
+    from lecturepilot.canvas.canvas_language_variants import restore
 
     masked, _ = mask(original)
     assert restore(masked, original) == original
@@ -139,7 +139,7 @@ def test_language_listing_uses_one_canonical_snapshot(tmp_path, monkeypatch):
 
 
 def test_translation_rejects_operator_change_even_when_numbers_match():
-    from lecturepilot.canvas_language_variants import restore
+    from lecturepilot.canvas.canvas_language_variants import restore
 
     original = "The ratio is 48/(48+12)."
     masked, _ = mask(original)

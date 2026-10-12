@@ -1,0 +1,277 @@
+from __future__ import annotations
+
+from collections.abc import Callable
+
+from fastapi import Depends, FastAPI, HTTPException, Request
+
+from lecturepilot.identity.api_auth import (
+    request_context,
+    require_course_manager,
+)
+from lecturepilot.core.audit import record_audit_event
+from lecturepilot.canvas.canvas_models import CanvasDocument
+from lecturepilot.canvas.canvas_language_routes import register_canvas_language_routes
+from lecturepilot.canvas.canvas_response import published_canvas_payload
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspaceError
+from lecturepilot.courses.course_access import require_course_id_access, require_lecture_id_access
+from lecturepilot.authoring.course_canvas_draft_routes import register_course_canvas_draft_routes
+from lecturepilot.authoring.course_canvas_repair_routes import register_course_canvas_repair_routes
+from lecturepilot.canvas.course_canvas_store import InvalidCanvasDraftError
+from lecturepilot.learning_design.course_practice_design_routes import (
+    register_course_practice_design_routes,
+)
+from lecturepilot.authoring.course_canvas_publication import CanvasPublicationMetadata
+from lecturepilot.learning_design.course_learning_design_routes import (
+    register_course_learning_design_routes,
+)
+from lecturepilot.authoring.course_canvas_approval_publication import approve_and_publish
+from lecturepilot.learning_design.course_learning_design_models import LearningDesignApprovalInput
+from lecturepilot.learning_design.course_learning_design_store import (
+    LearningDesignError,
+    LearningDesignUnavailableError,
+)
+from lecturepilot.learner.learner_workspace_reset import (
+    LearnerWorkspaceResetInput,
+    LearnerWorkspaceResetResult,
+    reset_learner_workspace,
+)
+from lecturepilot.learner.learner_learning_map import LearnerLearningMap, learner_learning_map
+from lecturepilot.core.models import CanvasPublicationResult, Course, Lecture
+from lecturepilot.courses.professor_preview import (
+    is_professor_preview_user_id,
+    resolve_learner_workspace_access,
+)
+from lecturepilot.canvas.quiz_identity import validate_unique_quiz_ids
+from lecturepilot.identity.tenancy import TenantContext
+
+
+def register_course_canvas_routes(
+    app: FastAPI,
+    *,
+    course_tenant_id: str,
+    lectures: list[Lecture],
+    seeded_course: Course,
+    source_document: Callable[[str, str], CanvasDocument],
+) -> None:
+    register_canvas_language_routes(
+        app, course_tenant_id=course_tenant_id, seeded_course=seeded_course, lectures=lectures
+    )
+    register_course_practice_design_routes(
+        app,
+        course_tenant_id=course_tenant_id,
+        source_document=source_document,
+    )
+    register_course_canvas_draft_routes(
+        app,
+        course_tenant_id=course_tenant_id,
+        source_document=source_document,
+    )
+    register_course_canvas_repair_routes(
+        app,
+        course_tenant_id=course_tenant_id,
+        source_document=source_document,
+    )
+    register_course_learning_design_routes(app, course_tenant_id=course_tenant_id)
+
+    @app.post(
+        "/admin/courses/{course_id}/lectures/{lecture_id}/canvas/publish",
+        response_model=CanvasPublicationResult,
+    )
+    def publish_course_canvas_draft(
+        course_id: str,
+        lecture_id: str,
+        approval: LearningDesignApprovalInput,
+        request: Request,
+        context: TenantContext = Depends(request_context),
+    ) -> CanvasPublicationResult:
+        """Approve & publish the exact reviewed draft in one fail-closed action."""
+        try:
+            _require_owner(request, context, course_id, course_tenant_id)
+            metadata = approve_and_publish(
+                app.state.canvas_workspace,
+                course_id=course_id,
+                lecture_id=lecture_id,
+                approval=approval,
+                published_by=context.user_id,
+            )
+            record_audit_event(
+                app.state.database,
+                context,
+                event_type="course.canvas_published",
+                target_type="lecture",
+                target_id=f"{course_id}:{lecture_id}",
+            )
+            return _publication_result(course_id, lecture_id, metadata)
+        except InvalidCanvasDraftError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+        except (LearningDesignUnavailableError, CanvasWorkspaceError) as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except LearningDesignError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @app.get(
+        "/courses/{course_id}/lectures/{lecture_id}/canvas/publication",
+        response_model=CanvasPublicationResult,
+    )
+    def course_canvas_publication(
+        course_id: str,
+        lecture_id: str,
+        context: TenantContext = Depends(request_context),
+    ) -> CanvasPublicationResult:
+        require_lecture_id_access(
+            app,
+            context,
+            course_id=course_id,
+            lecture_id=lecture_id,
+            course_tenant_id=course_tenant_id,
+            seeded_course=seeded_course,
+            seeded_lectures=lectures,
+        )
+        if context.tenant_id != course_tenant_id:
+            raise HTTPException(
+                status_code=403, detail="Resource does not belong to the active tenant."
+            )
+        metadata = app.state.canvas_workspace.course_canvas_publication(
+            course_id=course_id,
+            lecture_id=lecture_id,
+        )
+        return _publication_result(course_id, lecture_id, metadata)
+
+    @app.get("/courses/{course_id}/lectures/{lecture_id}/canvas")
+    def lecture_canvas(
+        course_id: str,
+        lecture_id: str,
+        request: Request,
+        context: TenantContext = Depends(request_context),
+    ) -> dict:
+        access = resolve_learner_workspace_access(
+            request,
+            context,
+            course_id=course_id,
+            course_tenant_id=course_tenant_id,
+        )
+        require_lecture_id_access(
+            app,
+            context,
+            course_id=course_id,
+            lecture_id=lecture_id,
+            course_tenant_id=course_tenant_id,
+            seeded_course=seeded_course,
+            seeded_lectures=lectures,
+        )
+        try:
+            snapshot = app.state.canvas_workspace.read_published_canvas_view(
+                course_id=course_id,
+                lecture_id=lecture_id,
+                user_id=access.user_id,
+            )
+        except CanvasWorkspaceError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        if snapshot is None:
+            raise HTTPException(status_code=404, detail="Canvas has not been published.")
+        validate_unique_quiz_ids(snapshot.document)
+        return published_canvas_payload(
+            snapshot.document,
+            publication_version=snapshot.version,
+            learning_map_revision=snapshot.learning_map_revision,
+            include_answers=is_professor_preview_user_id(access.user_id),
+        )
+
+    @app.get(
+        "/courses/{course_id}/lectures/{lecture_id}/learning-map",
+        response_model=LearnerLearningMap,
+    )
+    def lecture_learning_map(
+        course_id: str,
+        lecture_id: str,
+        context: TenantContext = Depends(request_context),
+    ) -> LearnerLearningMap:
+        require_lecture_id_access(
+            app,
+            context,
+            course_id=course_id,
+            lecture_id=lecture_id,
+            course_tenant_id=course_tenant_id,
+            seeded_course=seeded_course,
+            seeded_lectures=lectures,
+        )
+        with app.state.canvas_workspace.course_canvas_store.locked_published_learning_map(
+            course_id=course_id,
+            lecture_id=lecture_id,
+        ) as learning_map:
+            if learning_map is None:
+                raise HTTPException(status_code=404, detail="Canvas has not been published.")
+            return learner_learning_map(learning_map)
+
+    @app.post(
+        "/courses/{course_id}/learner-workspace/reset",
+        response_model=LearnerWorkspaceResetResult,
+    )
+    def reset_course_learner_workspace(
+        course_id: str,
+        reset_request: LearnerWorkspaceResetInput,
+        request: Request,
+        context: TenantContext = Depends(request_context),
+    ) -> LearnerWorkspaceResetResult:
+        access = resolve_learner_workspace_access(
+            request,
+            context,
+            course_id=course_id,
+            course_tenant_id=course_tenant_id,
+        )
+        require_course_id_access(
+            app,
+            context,
+            course_id=course_id,
+            course_tenant_id=course_tenant_id,
+            seeded_course=seeded_course,
+            seeded_lectures=lectures,
+        )
+        result = reset_learner_workspace(
+            layout=app.state.canvas_workspace.layout,
+            course_id=course_id,
+            user_id=access.user_id,
+            request=reset_request,
+        )
+        record_audit_event(
+            app.state.database,
+            context,
+            event_type="learner.workspace_reset",
+            target_type="course",
+            target_id=course_id,
+            details={
+                "reset_canvas": reset_request.reset_canvas,
+                "reset_course_memory": reset_request.reset_course_memory,
+                "reset_progress": reset_request.reset_progress,
+                "reset_practice_exams": reset_request.reset_practice_exams,
+            },
+        )
+        return result
+
+
+def _publication_result(
+    course_id: str,
+    lecture_id: str,
+    metadata: CanvasPublicationMetadata | None,
+) -> CanvasPublicationResult:
+    return CanvasPublicationResult(
+        course_id=course_id,
+        lecture_id=lecture_id,
+        published=metadata is not None,
+        version=metadata.version if metadata else None,
+        published_at=metadata.published_at.isoformat() if metadata else None,
+    )
+
+
+def _require_owner(
+    request: Request,
+    context: TenantContext,
+    course_id: str,
+    tenant_id: str,
+) -> None:
+    require_course_manager(
+        context,
+        course_tenant_id=tenant_id,
+        request=request,
+        course_id=course_id,
+    )

@@ -78,7 +78,7 @@ specifically to Grok without further documentation.
 Existing LecturePilot authoring guidance contains capability-specific targets,
 source-grounding and separation of hidden exit tasks from hints; these are
 design properties, not evidence of learning efficacy. See
-`apps/api/src/lecturepilot/course_teaching_instructions.py` and the
+`apps/api/src/lecturepilot/authoring/course_teaching_instructions.py` and the
 existing learning-science brief (archived presentation material).
 Stronger experimental precedents and implementation detail are collected in
 [controlled tutoring studies](2026-09-06-ai-tutoring-controlled-studies.md).

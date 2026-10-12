@@ -3,9 +3,9 @@ from datetime import timedelta
 import pytest
 
 from auth_helpers import professor_headers, student_headers
-from lecturepilot.coaching_goal_evidence import GoalEvidence
-from lecturepilot.coaching_state_models import CoachingProgress, PendingCheck
-from lecturepilot.learner_lesson_state import _goal_evidence
+from lecturepilot.learner.coaching_goal_evidence import GoalEvidence
+from lecturepilot.learner.coaching_state_models import CoachingProgress, PendingCheck
+from lecturepilot.learner.learner_lesson_state import _goal_evidence
 from practice_gate_coaching_test_helpers import IDS, NOW, bank_gate
 from test_learner_lesson_state_routes import _client, COURSE_ID
 
@@ -67,8 +67,8 @@ def test_focused_state_hides_missing_evidence_on_server_without_discarding_histo
 
 
 def test_navigation_projection_omits_entire_supplemental_bank_and_rubric():
-    from lecturepilot.learner_learning_map import learner_learning_map
-    from lecturepilot.learning_map import LearningMap
+    from lecturepilot.learner.learner_learning_map import learner_learning_map
+    from lecturepilot.learning_design.learning_map import LearningMap
 
     gate = bank_gate()
     full = LearningMap.create(

@@ -3,9 +3,9 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from lecturepilot.learner_state import LearnerStateStore
-from lecturepilot.models import QualityGateDecision
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.learner.learner_state import LearnerStateStore
+from lecturepilot.core.models import QualityGateDecision
+from lecturepilot.core.storage_layout import StorageLayout
 
 
 def test_quality_gate_decision_requires_revision_and_forbids_prompt_compatibility() -> None:

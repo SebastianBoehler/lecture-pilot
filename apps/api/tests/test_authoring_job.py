@@ -1,11 +1,11 @@
 from pydantic_ai.models.function import FunctionModel
 import pytest
-from lecturepilot.authoring_provider import MeteredAuthoringModel
+from lecturepilot.authoring.authoring_provider import MeteredAuthoringModel
 
-from lecturepilot.authoring_job import AuthoringJob, run_authoring_job
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.course_canvas_quality import CanvasQualityReviewer
-from lecturepilot.models import ProviderSettings
+from lecturepilot.authoring.authoring_job import AuthoringJob, run_authoring_job
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.authoring.course_canvas_quality import CanvasQualityReviewer
+from lecturepilot.core.models import ProviderSettings
 from authoring_test_helpers import drafted_path, is_repair, markdown
 from practice_design_test_helpers import practice_design_for_canvas
 

@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from lecturepilot.document_converter_client import DocumentConverterError
-from lecturepilot.source_bundle import SourceBundleFile
-from lecturepilot.source_document_normalization import normalize_selected_documents
+from lecturepilot.sources.document_converter_client import DocumentConverterError
+from lecturepilot.sources.source_bundle import SourceBundleFile
+from lecturepilot.sources.source_document_normalization import normalize_selected_documents
 
 
 def test_normalizes_only_native_office_sources_by_revision(
@@ -24,7 +24,8 @@ def test_normalizes_only_native_office_sources_by_revision(
 
     monkeypatch.setenv("LECTUREPILOT_DOCUMENT_CONVERTER_URL", "http://converter:8080")
     monkeypatch.setattr(
-        "lecturepilot.source_document_normalization.DocumentConverterClient.convert", convert
+        "lecturepilot.sources.source_document_normalization.DocumentConverterClient.convert",
+        convert,
     )
 
     normalize_selected_documents(

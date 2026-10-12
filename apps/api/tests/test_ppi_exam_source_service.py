@@ -3,7 +3,7 @@ import sys
 
 import pytest
 
-from lecturepilot.ppi_exam_source_service import PpiCredentialsError, _authenticated_client
+from lecturepilot.exams.ppi_exam_source_service import PpiCredentialsError, _authenticated_client
 
 
 def test_failed_ppi_login_closes_the_short_lived_client(monkeypatch: pytest.MonkeyPatch) -> None:

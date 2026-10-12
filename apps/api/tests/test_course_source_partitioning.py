@@ -6,8 +6,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from auth_helpers import install_test_source_routing_planner, professor_headers
-from lecturepilot.course_builder_source import course_builder_source_document
-from lecturepilot.source_bundle import scan_source_bundle
+from lecturepilot.sources.course_builder_source import course_builder_source_document
+from lecturepilot.sources.source_bundle import scan_source_bundle
 from api_test_client import workspace_client as _client
 
 
@@ -68,7 +68,9 @@ def test_tex_only_lecture_uses_compiled_slide_previews(
         output.write_bytes(_pdf("Compiled slide preview"))
         return output
 
-    monkeypatch.setattr("lecturepilot.course_builder_source.compile_latex_deck", compile_deck)
+    monkeypatch.setattr(
+        "lecturepilot.sources.course_builder_source.compile_latex_deck", compile_deck
+    )
 
     document = course_builder_source_document(client.app, "partitioned-course", "lecture-01")
 
@@ -89,7 +91,7 @@ def test_tex_only_lecture_uses_compiled_slide_previews(
 def test_tex_compile_failure_keeps_text_canvas_and_adds_actionable_warning(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from lecturepilot.latex_compilation_client import LatexCompilationError
+    from lecturepilot.sources.latex_compilation_client import LatexCompilationError
 
     client = _client(tmp_path)
     path = "Lecture01.tex"
@@ -100,7 +102,9 @@ def test_tex_compile_failure_keeps_text_canvas_and_adds_actionable_warning(
     def fail_compile(**kwargs) -> Path:
         raise LatexCompilationError("private compiler detail")
 
-    monkeypatch.setattr("lecturepilot.course_builder_source.compile_latex_deck", fail_compile)
+    monkeypatch.setattr(
+        "lecturepilot.sources.course_builder_source.compile_latex_deck", fail_compile
+    )
 
     document = course_builder_source_document(client.app, "partitioned-course", "lecture-01")
 
@@ -126,7 +130,9 @@ def test_numbered_handout_pdf_skips_compilation_and_is_not_duplicated(
     def unexpected_compile(**kwargs) -> Path:
         raise AssertionError("matching PDF must prevent compilation")
 
-    monkeypatch.setattr("lecturepilot.course_builder_source.compile_latex_deck", unexpected_compile)
+    monkeypatch.setattr(
+        "lecturepilot.sources.course_builder_source.compile_latex_deck", unexpected_compile
+    )
 
     document = course_builder_source_document(client.app, "partitioned-course", "lecture-02")
 
@@ -155,7 +161,9 @@ def test_reviewed_route_for_generic_pdf_is_authoritative(
     def unexpected_compile(**kwargs) -> Path:
         raise AssertionError("assigned PDF must prevent compilation")
 
-    monkeypatch.setattr("lecturepilot.course_builder_source.compile_latex_deck", unexpected_compile)
+    monkeypatch.setattr(
+        "lecturepilot.sources.course_builder_source.compile_latex_deck", unexpected_compile
+    )
 
     document = course_builder_source_document(client.app, "partitioned-course", "lecture-02")
 

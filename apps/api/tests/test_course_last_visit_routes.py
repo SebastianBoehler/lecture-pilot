@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 
 from auth_helpers import professor_headers, student_headers
 from learner_study_test_helpers import COURSE_ID, learner, study_client
-from lecturepilot.course_last_visit import (
+from lecturepilot.courses.course_last_visit import (
     CourseVisitStore,
     ReleasedLecture,
     new_lecture_ids,

@@ -1,8 +1,8 @@
 import pytest
 
-from lecturepilot.canvas_annotations import AnnotationStore
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.canvas.canvas_annotations import AnnotationStore
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.core.storage_layout import StorageLayout
 
 
 def document(text="Classification predicts a discrete label."):

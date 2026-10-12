@@ -8,11 +8,16 @@ Teaching: happy 5 (4 goals + review), worst 9 (+ 4 repairs; was 10 with an annot
 import pytest
 from pydantic_ai.models.function import FunctionModel
 
-from lecturepilot.course_learning_intent import LearningIntent, digest, goal_for
-from lecturepilot.course_practice_design_review_models import PracticeDesignReviewResult
-from lecturepilot.practice_evidence_catalogue import evidence_catalogue
-from lecturepilot.teaching_design_job import TeachingDesignJob, run_teaching_design_job
-from lecturepilot.teaching_design_workspace import TeachingDesignWorkspace
+from lecturepilot.learning_design.course_learning_intent import LearningIntent, digest, goal_for
+from lecturepilot.learning_design.course_practice_design_review_models import (
+    PracticeDesignReviewResult,
+)
+from lecturepilot.learning_design.practice_evidence_catalogue import evidence_catalogue
+from lecturepilot.learning_design.teaching_design_job import (
+    TeachingDesignJob,
+    run_teaching_design_job,
+)
+from lecturepilot.learning_design.teaching_design_workspace import TeachingDesignWorkspace
 from auth_helpers import professor_headers
 from practice_design_review_test_helpers import passing_review
 from practice_design_route_test_helpers import design_path
