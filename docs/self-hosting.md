@@ -128,8 +128,9 @@ under the normalized source directory.
 
 DOCX, PPTX, and XLSX normalization runs in the separate `document-converter` service with no
 application secrets, a read-only root filesystem, dropped capabilities, bounded temporary storage,
-and explicit CPU/RAM/process limits. Selective OCR is off by default. To enable it on CPU, set
-`LECTUREPILOT_OCR_ENGINE=rapidocr`: the converter then recognizes image-only pages in-process
+and explicit CPU/RAM/process limits. Selective OCR is on by default
+(`LECTUREPILOT_OCR_ENGINE=rapidocr`; set it to an empty value to disable): the converter
+recognizes image-only pages in-process
 with small PP-OCR models baked into the image, keeps only lines with confidence ≥ 0.85, and sizes
 its ONNX thread pool to the container's CPU quota (not the host's cores). Measured in the
 hardened container (2 CPUs, 3 GB): about 1.5–2 s per text slide, about 0.2 s for a blank page,

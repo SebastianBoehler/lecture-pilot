@@ -153,8 +153,8 @@ time budget, and caches clean results by page-image hash in
 layout-parsing API (`LECTUREPILOT_OCR_URL`), marks returned text as `ocr`, and
 keeps a page/slide bounding locator. If OCR is not configured or fails,
 ingestion keeps the rendered artifact and reports `OCR required but unavailable`,
-compacted to one line per unit with page ranges; unrelated files continue. OCR
-is off by default. See
+compacted to one line per unit with page ranges; unrelated files continue.
+Compose enables in-process RapidOCR by default. See
 [`benchmarks/document-ocr/README.md`](../benchmarks/document-ocr/README.md).
 
 Source parsing (conversion, LaTeX, PDF text and OCR) never runs while the course
