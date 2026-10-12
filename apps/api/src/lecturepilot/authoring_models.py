@@ -20,6 +20,7 @@ class AuthoringMetrics(BaseModel):
     output_tokens: int = 0
     elapsed_seconds: float = 0
     resumes: int = 0
+    reused_sections: int = 0
 
 
 @dataclass(frozen=True)

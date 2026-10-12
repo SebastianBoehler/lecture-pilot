@@ -3,13 +3,15 @@
 Workflow, not agent: one structured call per missing goal, one lecture review and at most one
 targeted repair per flagged goal. Repairs are not reviewed again. Deterministic validation
 rejects teaching; the single review's findings stay visible as warnings (labelled when a repair
-addressed them) and never fail the job.
+addressed them) and never fail the job. A canvas design conflict reuses the current
+implementation's review and repairs only the goals whose checkpoints it names.
 """
 
 import asyncio
 from copy import deepcopy
 from dataclasses import dataclass
 import json
+import re
 from pathlib import Path
 from collections.abc import Awaitable, Callable
 
@@ -57,6 +59,8 @@ class TeachingDesignJob:
     review: Callable[[PracticeDesignProposal], Awaitable[PracticeDesignReviewResult]]
     authorize: Callable[[], None]
     repair_context: str | None = None
+    # The review already bound to `initial`; set for a canvas design-conflict repair.
+    initial_review: PracticeDesignReviewResult | None = None
 
 
 async def run_teaching_design_job(job: TeachingDesignJob, *, model):
@@ -84,8 +88,13 @@ async def _run(job, *, model):
     repaired = set(progress.get("repaired", []))
     step = _TeachingStep(job, workspace, catalogue, model)
 
+    reviewed = job.initial_review is not None and not workspace.missing()
     await step.bounded(workspace.missing(), step.write_goal)
-    if "flagged" not in progress:
+    if "flagged" not in progress and reviewed:
+        # The implementation's single review is spent: repair only the conflicting goals.
+        step.adopt_review(job.initial_review)
+        progress = {"flagged": step.conflict_goals()}
+    elif "flagged" not in progress:
         # The single review. Saved progress makes a resumed job continue its repairs instead
         # of reviewing partly repaired teaching again.
         await step.ensure_review()
@@ -233,6 +242,20 @@ class _TeachingStep:
             warning_count=len(self.workspace.defects()),
             requested_count=len(proposal.targets),
         )
+
+    def adopt_review(self, review):
+        self.workspace.review = review
+        self.workspace.review_digest = digest(self.workspace.proposal().model_dump(mode="json"))
+        self.workspace.save()
+
+    def conflict_goals(self):
+        context = self.job.repair_context or ""
+        return [
+            goal_id
+            for goal_id in self.workspace.goals
+            if goal_id not in self.workspace.fixed
+            and re.search(rf"(?<![\w-])practice-{re.escape(goal_id)}(?![\w-])", context)
+        ]
 
     def flagged_goals(self):
         editable = [goal for goal in self.workspace.goals if goal not in self.workspace.fixed]

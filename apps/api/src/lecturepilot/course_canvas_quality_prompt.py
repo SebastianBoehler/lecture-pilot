@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 import json
 
 from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 
 
-MAX_QUALITY_PROMPT_CHARS = 19_500
+# Bounds one critic request; a typical lecture fits one call, larger drafts split by section.
+MAX_QUALITY_PROMPT_CHARS = 48_000
 
 
 def compact_quality_evidence(
@@ -29,12 +31,15 @@ def compact_quality_evidence(
 def quality_review_batches(
     source_document: CanvasDocument,
     candidate_document: CanvasDocument,
+    *,
+    extra_size: Callable[[CanvasSection], int] = lambda section: 0,
 ) -> list[list[CanvasSection]]:
     batches: list[list[CanvasSection]] = []
     active: list[CanvasSection] = []
     used = 0
     for section in candidate_document.sections:
         size = len(_complete_section_unit(section, source_document.sections))
+        size += extra_size(section)
         if active and used + size + 2 > MAX_QUALITY_PROMPT_CHARS:
             batches.append(active)
             active = []
