@@ -89,24 +89,26 @@ function CourseDemandTable({ rows }: { rows: CourseDemandRow[] }) {
             return (
               <tr key={`${row.source}:${row.external_course_id}:${row.term}`}>
                 <th scope="row">
-                  <span className="course-demand-title">{row.title}</span>
-                  <span className="course-demand-meta">
-                    {[row.number, row.term, row.organization, source].filter(Boolean).join(" · ")}
-                  </span>
-                  {row.has_workspace ? (
-                    <span className="course-demand-tag">{t("courseDemand.linked")}</span>
-                  ) : null}
-                  {link ? (
-                    <a
-                      className="course-demand-link"
-                      href={link}
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      {t("courseDemand.openSource", { source })}
-                      <ExternalLink aria-hidden="true" size={12} />
-                    </a>
-                  ) : null}
+                  <div className="course-demand-course">
+                    <span className="course-demand-title">{row.title}</span>
+                    <span className="course-demand-meta">
+                      {[row.number, row.term, row.organization, source].filter(Boolean).join(" · ")}
+                    </span>
+                    {row.has_workspace ? (
+                      <span className="course-demand-tag">{t("courseDemand.linked")}</span>
+                    ) : null}
+                    {link ? (
+                      <a
+                        className="course-demand-link"
+                        href={link}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                      >
+                        {t("courseDemand.openSource", { source })}
+                        <ExternalLink aria-hidden="true" size={12} />
+                      </a>
+                    ) : null}
+                  </div>
                 </th>
                 <td>{row.instructor ?? "–"}</td>
                 <td className="course-demand-number">{row.request_count}</td>

@@ -39,10 +39,13 @@
 }
 
 .course-demand-table tbody th {
+  min-width: 260px;
+}
+
+.course-demand-course {
   display: grid;
   justify-items: start;
   gap: 3px;
-  min-width: 260px;
 }
 
 .course-demand-title {
