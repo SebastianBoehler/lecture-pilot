@@ -4,6 +4,7 @@ import { refreshSession, SessionRefreshError } from "./sessionApi";
 import type { LoginSession } from "./types";
 
 const loginSessionKey = "lecturepilot.loginSession";
+const SESSION_CHECK_MS = 5 * 60_000;
 
 export function useStoredLoginSession() {
   const [initialSession] = useState<LoginSession | null>(readStoredLoginSession);
@@ -37,12 +38,38 @@ export function useStoredLoginSession() {
     return () => controller.abort();
   }, [initialSession, shouldRestore]);
 
+  const [expired, setExpired] = useState(false);
+  useEffect(() => {
+    // Cookie sessions can expire mid-workflow; detect it before an upload or save fails.
+    if (session?.auth_transport !== "cookie") return;
+    let checking = false;
+    const check = () => {
+      if (checking || document.visibilityState === "hidden") return;
+      checking = true;
+      void refreshSession(session)
+        .then(() => setExpired(false))
+        .catch((error: unknown) => {
+          if (error instanceof SessionRefreshError && error.status === 401) setExpired(true);
+        })
+        .finally(() => {
+          checking = false;
+        });
+    };
+    const timer = window.setInterval(check, SESSION_CHECK_MS);
+    window.addEventListener("focus", check);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", check);
+    };
+  }, [session]);
+
   const setSession = useCallback((nextSession: LoginSession | null) => {
     writeStoredLoginSession(nextSession);
     setSessionState(nextSession);
+    setExpired(false);
   }, []);
 
-  return [session, setSession, restoring] as const;
+  return [session, setSession, restoring, expired] as const;
 }
 
 function readStoredLoginSession() {

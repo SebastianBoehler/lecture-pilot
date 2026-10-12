@@ -63,6 +63,7 @@ from lecturepilot.practice_exam_pdf import PracticeExamPdfService
 from lecturepilot.practice_exam_routes import register_practice_exam_routes
 from lecturepilot.practice_exam_solution_routes import register_practice_exam_solution_routes
 from lecturepilot.practice_exam_store import PracticeExamStore
+from lecturepilot.course_invites import register_course_invite_routes
 from lecturepilot.rate_limit import RateLimitMiddleware
 from lecturepilot.release_info import release_info
 from lecturepilot.request_diagnostics import RequestDiagnosticsMiddleware
@@ -244,6 +245,7 @@ def create_app() -> FastAPI:
         ),
     )
     register_course_deletion_routes(app, course_tenant_id=COURSE_TENANT_ID)
+    register_course_invite_routes(app, course_tenant_id=COURSE_TENANT_ID)
     register_lecture_access_routes(
         app,
         course_tenant_id=COURSE_TENANT_ID,

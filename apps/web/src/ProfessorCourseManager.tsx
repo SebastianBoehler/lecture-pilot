@@ -24,6 +24,7 @@ type ProfessorCourseManagerProps = {
   onRefresh: () => void;
   onPreviewLecture: (courseId: string, lecture: Lecture) => void;
   onResumeCourse: (workspace: ManagedCourseWorkspaceResult) => void;
+  onShareCourse: (workspace: ManagedCourseWorkspaceResult) => void;
   onUpdateCourse: (courseId: string) => void;
   session: LoginSession;
   workspaces: ManagedCourseWorkspaceResult[];
@@ -39,6 +40,7 @@ export function ProfessorCourseManager({
   onRefresh,
   onPreviewLecture,
   onResumeCourse,
+  onShareCourse,
   onUpdateCourse,
   session,
   workspaces,
@@ -112,6 +114,14 @@ export function ProfessorCourseManager({
                         {t("professor.setup.resume")}
                       </button>
                     ) : null}
+                    <button
+                      className="refresh-button"
+                      type="button"
+                      aria-label={t("share.actionAria", { course: workspace.course.title })}
+                      onClick={() => onShareCourse(workspace)}
+                    >
+                      {t("share.action")}
+                    </button>
                     {courseSetupState(workspace).published > 0 ? (
                       <button
                         className="refresh-button"

@@ -12,10 +12,16 @@ export type AppRoute =
       updateCourseId?: string;
     }
   | {
-      view: Exclude<View, "lesson" | "course-management">;
+      /** Shared course link (QR code); `code` is present only for explicit join links. */
+      view: "course-link";
+      courseId: string;
+      code?: string;
+    }
+  | {
+      view: Exclude<View, "lesson" | "course-management" | "course-link">;
     };
 
-const VIEW_PATHS: Record<Exclude<View, "lesson">, string> = {
+const VIEW_PATHS: Record<Exclude<View, "lesson" | "course-link">, string> = {
   login: "/",
   dashboard: "/workspaces",
   profile: "/profile",
@@ -55,6 +61,12 @@ export function readAppRoute(location: Pick<Location, "pathname" | "search">): A
       lessonMode: "learner",
     };
   }
+  if (segments[0] === "courses" && segments.length === 2) {
+    return { view: "course-link", courseId: segments[1] };
+  }
+  if (segments[0] === "join" && segments.length === 3) {
+    return { view: "course-link", courseId: segments[1], code: segments[2] };
+  }
   if (segments[0] === "professor" && segments[1] === "courses" && segments[3] === "update") {
     return { view: "course-management", updateCourseId: segments[2] };
   }
@@ -63,11 +75,13 @@ export function readAppRoute(location: Pick<Location, "pathname" | "search">): A
   if (path === VIEW_PATHS["course-management"]) return { view: "course-management" };
   const match = Object.entries(VIEW_PATHS).find(([, routePath]) => routePath === path);
   return {
-    view: (match?.[0] as Exclude<View, "lesson" | "course-management"> | undefined) ?? "login",
+    view:
+      (match?.[0] as Exclude<View, "lesson" | "course-management" | "course-link"> | undefined) ??
+      "login",
   };
 }
 
-export function pathForView(view: Exclude<View, "lesson">) {
+export function pathForView(view: Exclude<View, "lesson" | "course-link">) {
   return VIEW_PATHS[view];
 }
 
@@ -89,7 +103,14 @@ export function courseUpdatePath(courseId: string) {
 }
 
 export function requiresSession(view: View) {
-  return !["login", "changelog", "how-it-works", "learning-science", "privacy"].includes(view);
+  return ![
+    "login",
+    "changelog",
+    "how-it-works",
+    "learning-science",
+    "privacy",
+    "course-link",
+  ].includes(view);
 }
 
 function legacyDraftRoute(search: string): AppRoute | null {

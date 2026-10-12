@@ -3,6 +3,7 @@ import { practiceHistoryMessages } from "./practiceHistoryMessages";
 import { outlineMessages } from "./outlineMessages";
 import { learningIntentMessages } from "./learningIntentMessages";
 import { courseSetupMessages } from "./courseSetupMessages";
+import { shareMessages } from "./shareMessages";
 import { tutorMessages } from "./tutorMessages";
 import { deMessages } from "./i18nMessages.de";
 import { enMessages } from "./i18nMessages.en";
@@ -22,6 +23,7 @@ export const messages = {
     ...enMessages,
     ...learningIntentMessages.en,
     ...courseSetupMessages.en,
+    ...shareMessages.en,
     ...courseAccessMessages.en,
     ...interactiveComponentMessages.en,
     ...learnerStateMessages.en,
@@ -37,6 +39,7 @@ export const messages = {
     ...deMessages,
     ...learningIntentMessages.de,
     ...courseSetupMessages.de,
+    ...shareMessages.de,
     ...courseAccessMessages.de,
     ...interactiveComponentMessages.de,
     ...learnerStateMessages.de,

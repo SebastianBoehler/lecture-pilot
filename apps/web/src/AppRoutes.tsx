@@ -1,3 +1,5 @@
+import { CourseLinkView } from "./CourseLinkView";
+import { rememberReturnPath } from "./returnPath";
 import { clearSavedFlow, writeResumeFlow } from "./professorBuilderState";
 import { lazy, Suspense, type ReactNode } from "react";
 
@@ -86,6 +88,7 @@ type AppRoutesProps = {
   onOpenLecture: (courseId: string, lecture: Lecture, review?: GateReviewOpening) => void;
   onPreviewLecture: (courseId: string, lecture: Lecture) => void;
   onOpenProfessorDemo: () => void;
+  onOpenCourseLink: (courseId: string) => void;
   onPracticeSubmitted: (result: LearnerQuizAnswerResult) => void | Promise<void>;
   onPublishWorkspace: (courseId: string, lectureId: string) => Promise<CanvasPublicationResult>;
   onResetWorkspace: (options: WorkspaceResetSelection) => Promise<void>;
@@ -128,6 +131,20 @@ export function AppRoutes(props: AppRoutesProps) {
   const learnerProfileState = useLearnerProfile(session, learnerProfileEnabled);
 
   if (restoringSession) return <ViewLoadingState />;
+  if (route.view === "course-link") {
+    return (
+      <CourseLinkView
+        code={route.code}
+        courseId={route.courseId}
+        session={session}
+        onOpenCourse={props.onOpenCourseLink}
+        onSignIn={(returnPath) => {
+          rememberReturnPath(returnPath);
+          props.onViewChange("login");
+        }}
+      />
+    );
+  }
   if (view === "login") {
     return (
       <LoginView
@@ -167,7 +184,6 @@ export function AppRoutes(props: AppRoutesProps) {
         onPublishWorkspace={props.onPublishWorkspace}
         onWorkspacePublished={props.onWorkspacePublished}
         previewWorkspaceUrl={draftPreviewUrl}
-        publishedLectureIds={publishedLectureIds}
       />,
     );
   }

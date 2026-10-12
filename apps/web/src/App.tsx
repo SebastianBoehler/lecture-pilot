@@ -29,6 +29,8 @@ import { resetLearnerWorkspace } from "./learnerWorkspaceApi";
 import { readLocalePreference, writeLocalePreference } from "./localePreference";
 import { useLessonState } from "./useLessonState";
 import { clearSavedFlow } from "./professorBuilderState";
+import { rememberReturnPath, takeReturnPath } from "./returnPath";
+import { SessionExpiredNotice } from "./SessionExpiredNotice";
 import { useStoredLoginSession } from "./loginSessionStorage";
 import { withLocalDemoCourses } from "./localDemoCourses";
 import { lectures } from "./sampleData";
@@ -61,7 +63,7 @@ function App() {
   const [theme, setTheme] = useState<Theme>("light");
   const [locale, setLocale] = useState<Locale>(() => readLocalePreference());
   const { navigate, route } = useAppRoute();
-  const [session, setSession, restoringSession] = useStoredLoginSession();
+  const [session, setSession, restoringSession, sessionExpired] = useStoredLoginSession();
   const sessionRef = useRef(session);
   useEffect(() => {
     sessionRef.current = session;
@@ -141,7 +143,7 @@ function App() {
 
   useEffect(() => {
     if (session && route.view === "login") {
-      navigate(pathForView(landingView(session)), { replace: true });
+      navigate(takeReturnPath() ?? pathForView(landingView(session)), { replace: true });
       setPanelMode(null);
     }
   }, [navigate, route.view, session]);
@@ -444,9 +446,20 @@ function App() {
   }
 
   const courseManagerSession = canManageCourses(session) ? session : null;
+  const openCourseLink = useCallback(
+    (courseId: string) => {
+      if (!session) return;
+      void loadWorkspaceCourse(session, courseId).then(() =>
+        navigate(pathForView("dashboard"), { replace: true }),
+      );
+    },
+    // loadWorkspaceCourse only reads current state setters and the given session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [navigate, session],
+  );
 
   function changeView(nextView: View, replace = false) {
-    if (nextView === "lesson") return;
+    if (nextView === "lesson" || nextView === "course-link") return;
     navigate(pathForView(nextView), { replace });
     setPanelMode(null);
   }
@@ -454,6 +467,15 @@ function App() {
   return (
     <I18nProvider locale={locale} setLocale={setLocale}>
       <div className="app-shell">
+        {sessionExpired ? (
+          <SessionExpiredNotice
+            onSignIn={() => {
+              rememberReturnPath(window.location.pathname);
+              setSession(null);
+              navigate(pathForView("login"), { replace: true });
+            }}
+          />
+        ) : null}
         {webMcpError ? (
           <p role="alert" className="form-error">
             {webMcpError}
@@ -556,6 +578,7 @@ function App() {
             setSession(localDemoSession);
             if (route.view === "login") changeView("dashboard", true);
           }}
+          onOpenCourseLink={openCourseLink}
           onOpenProfessorDemo={() => {
             setSession(localProfessorSession);
             if (route.view === "login") changeView("professor", true);
@@ -618,7 +641,7 @@ function App() {
 
 export default App;
 
-function landingView(session: LoginSession | null): Exclude<View, "lesson"> {
+function landingView(session: LoginSession | null): Exclude<View, "lesson" | "course-link"> {
   if (!session) return "login";
   if ((session.account_type ?? "student") === "professor") {
     return canManageCourses(session) ? "professor" : "profile";

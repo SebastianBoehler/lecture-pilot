@@ -9,6 +9,7 @@ import {
 } from "./ProfessorCourseAccessDialog";
 import { ProfessorCourseManager } from "./ProfessorCourseManager";
 import { ProfessorCourseUpdate } from "./ProfessorCourseUpdate";
+import { ProfessorShareCourseDialog } from "./ProfessorShareCourseDialog";
 import { deleteCourseWorkspace, listCourseWorkspaces } from "./professorApi";
 import { useProfessorWorkflowRun } from "./professorWorkflowRun";
 import type { CourseWorkspaceResult, LoginSession, ManagedCourseWorkspaceResult } from "./types";
@@ -37,6 +38,7 @@ export function ProfessorCourseManagement({
   const [isLoading, setIsLoading] = useState(false);
   const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null);
   const [accessTarget, setAccessTarget] = useState<ProfessorAccessTarget | null>(null);
+  const [sharing, setSharing] = useState<ManagedCourseWorkspaceResult | null>(null);
   const [accessSaving, setAccessSaving] = useState(false);
   const [accessError, setAccessError] = useState<string | null>(null);
   const [accessNotice, setAccessNotice] = useState<string | null>(null);
@@ -84,6 +86,7 @@ export function ProfessorCourseManagement({
         isLoading={isLoading}
         onCreateCourse={onCreateCourse}
         onResumeCourse={onResumeCourse}
+        onShareCourse={setSharing}
         onDeleteCourse={(courseId) => {
           void handleDeleteCourse(courseId);
         }}
@@ -107,6 +110,13 @@ export function ProfessorCourseManagement({
         session={session}
         workspaces={workspaces}
       />
+      {sharing ? (
+        <ProfessorShareCourseDialog
+          session={session}
+          workspace={sharing}
+          onClose={() => setSharing(null)}
+        />
+      ) : null}
       {accessTarget ? (
         <ProfessorCourseAccessDialog
           error={accessError}

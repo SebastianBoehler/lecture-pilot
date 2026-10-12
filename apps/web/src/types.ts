@@ -47,6 +47,7 @@ export type View =
   | "performance"
   | "usage"
   | "course-management"
+  | "course-link"
   | InfoPageKind;
 export type LessonPanelMode = "chat" | "outline" | "files";
 export type LearnerWorkspaceMode = "learner" | "professor-preview";
