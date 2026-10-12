@@ -4,8 +4,8 @@ import re
 from pydantic_ai.messages import ModelResponse, TextPart
 from pydantic_ai.models.function import FunctionModel
 
-from lecturepilot.authoring_runtime import CourseCanvasAuthor
-from lecturepilot.course_canvas_quality import CanvasQualityReviewer
+from lecturepilot.authoring.authoring_runtime import CourseCanvasAuthor
+from lecturepilot.authoring.course_canvas_quality import CanvasQualityReviewer
 
 
 def install_author(client, monkeypatch, respond, reviewer):
@@ -17,7 +17,7 @@ def install_author(client, monkeypatch, respond, reviewer):
     async def model(*args, **kwargs):
         yield FunctionModel(respond)
 
-    monkeypatch.setattr("lecturepilot.authoring_runtime.authoring_model", model)
+    monkeypatch.setattr("lecturepilot.authoring.authoring_runtime.authoring_model", model)
     author = CourseCanvasAuthor()
     author.reviewer = CanvasQualityReviewer(reviewer)
     client.app.state.course_planner = author

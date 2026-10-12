@@ -1,5 +1,5 @@
-from lecturepilot.canvas_models import CanvasBlock
-from lecturepilot.course_canvas_practice_contract import section_target_assignments
+from lecturepilot.canvas.canvas_models import CanvasBlock
+from lecturepilot.authoring.course_canvas_practice_contract import section_target_assignments
 from test_practice_design_canvas_planner import _source, _design
 
 

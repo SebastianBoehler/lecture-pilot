@@ -4,10 +4,10 @@ from fastapi.testclient import TestClient
 
 from auth_helpers import confirm_source_routing, professor_headers
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT_VERSION
-from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.core.client_contract import CLIENT_CONTRACT_HEADER, CLIENT_CONTRACT_VERSION
+from lecturepilot.authoring.course_canvas_errors import CanvasGenerationRepairableError
 from practice_design_test_helpers import save_approved_design, write_manifest
 from targeted_repair_test_helpers import invalid_candidate
 from authoring_test_helpers import fix_math, install_author

@@ -5,8 +5,8 @@ from pathlib import Path
 import fitz
 
 from auth_helpers import student_headers
-from lecturepilot.latex_compilation_client import LatexCompilationError
-from lecturepilot.practice_exam_pdf import PracticeExamPdfService
+from lecturepilot.sources.latex_compilation_client import LatexCompilationError
+from lecturepilot.exams.practice_exam_pdf import PracticeExamPdfService
 from test_practice_exam_api import _client, _generate
 
 
@@ -17,7 +17,7 @@ def test_pdf_endpoint_is_authenticated_and_user_isolated(tmp_path: Path, monkeyp
     )
     exam_id = _generate(client).json()["id"]
     monkeypatch.setattr(
-        "lecturepilot.practice_exam_pdf.compile_latex_document",
+        "lecturepilot.exams.practice_exam_pdf.compile_latex_document",
         lambda source, output: _write_pdf(output),
     )
 
@@ -48,7 +48,9 @@ def test_solution_pdf_is_a_separate_authenticated_document(tmp_path: Path, monke
         rendered.append(source)
         return _write_pdf(output)
 
-    monkeypatch.setattr("lecturepilot.practice_exam_pdf.compile_latex_document", compile_document)
+    monkeypatch.setattr(
+        "lecturepilot.exams.practice_exam_pdf.compile_latex_document", compile_document
+    )
 
     own = client.get(
         f"/courses/martius-ml/practice-exams/{exam_id}/solutions/pdf",
@@ -84,7 +86,9 @@ def test_pdf_sources_use_tectonic_native_unicode_fonts(tmp_path: Path, monkeypat
         rendered.append(source)
         return _write_pdf(output)
 
-    monkeypatch.setattr("lecturepilot.practice_exam_pdf.compile_latex_document", compile_document)
+    monkeypatch.setattr(
+        "lecturepilot.exams.practice_exam_pdf.compile_latex_document", compile_document
+    )
 
     exam_pdf = client.get(
         f"/courses/martius-ml/practice-exams/{exam_id}/pdf",
@@ -117,7 +121,9 @@ def test_pdf_retries_transient_compiler_error_before_failing(tmp_path: Path, mon
             raise LatexCompilationError("compiler offline", code="compiler_unavailable")
         return _write_pdf(output)
 
-    monkeypatch.setattr("lecturepilot.practice_exam_pdf.compile_latex_document", compile_document)
+    monkeypatch.setattr(
+        "lecturepilot.exams.practice_exam_pdf.compile_latex_document", compile_document
+    )
     first = client.get(
         f"/courses/martius-ml/practice-exams/{exam_id}/pdf",
         headers=student_headers("student-a"),
@@ -144,7 +150,9 @@ def test_pdf_fallback_without_markup_after_compilation_error(tmp_path: Path, mon
             raise LatexCompilationError("latex failed", code="compile_failed")
         return _write_pdf(output)
 
-    monkeypatch.setattr("lecturepilot.practice_exam_pdf.compile_latex_document", compile_document)
+    monkeypatch.setattr(
+        "lecturepilot.exams.practice_exam_pdf.compile_latex_document", compile_document
+    )
     first = client.get(
         f"/courses/martius-ml/practice-exams/{exam_id}/pdf",
         headers=student_headers("student-a"),
@@ -172,7 +180,9 @@ def test_solution_pdf_retry_failure_maps_compilation_status(tmp_path: Path, monk
             raise LatexCompilationError("source modified", code="source_changed")
         return _write_pdf(output)
 
-    monkeypatch.setattr("lecturepilot.practice_exam_pdf.compile_latex_document", compile_document)
+    monkeypatch.setattr(
+        "lecturepilot.exams.practice_exam_pdf.compile_latex_document", compile_document
+    )
     first = client.get(
         f"/courses/martius-ml/practice-exams/{exam_id}/solutions/pdf",
         headers=student_headers("student-a"),

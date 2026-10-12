@@ -1,7 +1,7 @@
 import pytest
 
-from lecturepilot.models import ProviderSettings
-from lecturepilot.providers import workload_settings, ProviderConfigurationError
+from lecturepilot.core.models import ProviderSettings
+from lecturepilot.llm.providers import workload_settings, ProviderConfigurationError
 
 
 @pytest.fixture

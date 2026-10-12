@@ -2,16 +2,18 @@ from types import SimpleNamespace
 
 import pytest
 
-from lecturepilot.authoring_models import AuthoringDesignConflict
-from lecturepilot.authoring_runtime import _scope as authoring_scope_var
-from lecturepilot.course_canvas_generation_ownership import (
+from lecturepilot.authoring.authoring_models import AuthoringDesignConflict
+from lecturepilot.authoring.authoring_runtime import _scope as authoring_scope_var
+from lecturepilot.authoring.course_canvas_generation_ownership import (
     begin_owned_generation_source,
     revoke_generation_ownership,
 )
-from lecturepilot.course_learning_intent_store import LearningIntentStore
-from lecturepilot.course_practice_design_planner import ReviewedPracticeDesignProposal
-from lecturepilot.course_practice_design_store import PracticeDesignStore
-from lecturepilot.course_teaching_implementation import (
+from lecturepilot.learning_design.course_learning_intent_store import LearningIntentStore
+from lecturepilot.learning_design.course_practice_design_planner import (
+    ReviewedPracticeDesignProposal,
+)
+from lecturepilot.learning_design.course_practice_design_store import PracticeDesignStore
+from lecturepilot.authoring.course_teaching_implementation import (
     author_with_implementation,
     repair_implementation,
 )
@@ -108,7 +110,7 @@ async def test_confirmed_conflict_repairs_owned_implementation_and_fences_races(
     app.state.course_planner = SimpleNamespace(plan_canvas=plan_canvas)
     app.state.practice_design_planner = SimpleNamespace()
     monkeypatch.setattr(
-        "lecturepilot.course_teaching_implementation.run_implementation_repair", repair
+        "lecturepilot.authoring.course_teaching_implementation.run_implementation_repair", repair
     )
     operation = author_with_implementation(
         app, source=source, design=design, ownership=owner, output_language="en"
@@ -171,7 +173,7 @@ async def test_unresolved_review_findings_do_not_block_authoring(tmp_path, monke
         return ReviewedPracticeDesignProposal(initial, type(passing_review())(checks=tuple(checks)))
 
     monkeypatch.setattr(
-        "lecturepilot.course_teaching_implementation.run_implementation_repair", repair
+        "lecturepilot.authoring.course_teaching_implementation.run_implementation_repair", repair
     )
     app.state.practice_design_planner = SimpleNamespace()
     changed, _ = await repair_implementation(

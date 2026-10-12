@@ -1,5 +1,5 @@
-from lecturepilot.canvas_models import CanvasBlock
-from lecturepilot.model_commands import canvas_outline_stable, focused_section_blocks
+from lecturepilot.canvas.canvas_models import CanvasBlock
+from lecturepilot.tutor.model_commands import canvas_outline_stable, focused_section_blocks
 from test_strict_model_payload import _turn
 
 

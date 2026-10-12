@@ -10,12 +10,12 @@ import time
 
 import fitz
 
-from lecturepilot.latex_compilation_client import (
+from lecturepilot.sources.latex_compilation_client import (
     LatexCompilationError,
     compile_latex_deck,
 )
-from lecturepilot.latex_dependency_bundle import resolve_latex_compiler_inputs
-from lecturepilot.source_index import refresh_course_source_index
+from lecturepilot.sources.latex_dependency_bundle import resolve_latex_compiler_inputs
+from lecturepilot.sources.source_index import refresh_course_source_index
 
 
 DEFAULT_PATTERN = r"(?:Lecture|tutorial)\d+-eng\.tex"

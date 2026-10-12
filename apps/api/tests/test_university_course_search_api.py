@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 
 from auth_helpers import professor_headers, student_headers
 from lecturepilot.app import create_app
-from lecturepilot.university_course_search import (
+from lecturepilot.courses.university_course_search import (
     UniversityCourseSearchError,
     UniversityCourseSuggestion,
 )

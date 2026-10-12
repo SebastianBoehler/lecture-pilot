@@ -6,10 +6,10 @@ from fastapi.testclient import TestClient
 
 from auth_helpers import install_test_source_routing_planner, professor_headers
 from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.course_builder_source import course_builder_source_document
-from lecturepilot.lecture_source_manifest import read_lecture_source_manifest
-from lecturepilot.source_bundle_canvas import SourceBundleCanvasError
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.sources.course_builder_source import course_builder_source_document
+from lecturepilot.sources.lecture_source_manifest import read_lecture_source_manifest
+from lecturepilot.sources.source_bundle_canvas import SourceBundleCanvasError
 
 
 COURSE_ID = "routing-course"

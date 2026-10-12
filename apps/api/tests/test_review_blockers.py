@@ -5,14 +5,14 @@ import pytest
 from jsonschema import validate, ValidationError
 from pydantic import BaseModel
 
-from lecturepilot import agent_turn_orchestration
-from lecturepilot.agent_response_schema import lecturepilot_response_format
-from lecturepilot.coaching_transitions import derive_next_transition
-from lecturepilot.model_payload import agent_result_from_content
-from lecturepilot.practice_exam_latex import _safe_math, render_exam_markup
-from lecturepilot.provider_json_schema import provider_json_schema
-from lecturepilot.providers import ProviderConfigurationError
-from lecturepilot.quality_gate_models import QualityGateStatus
+from lecturepilot.tutor import agent_turn_orchestration
+from lecturepilot.tutor.agent_response_schema import lecturepilot_response_format
+from lecturepilot.learner.coaching_transitions import derive_next_transition
+from lecturepilot.llm.model_payload import agent_result_from_content
+from lecturepilot.exams.practice_exam_latex import _safe_math, render_exam_markup
+from lecturepilot.llm.provider_json_schema import provider_json_schema
+from lecturepilot.llm.providers import ProviderConfigurationError
+from lecturepilot.learner.quality_gate_models import QualityGateStatus
 from test_strict_model_payload import _gate, _payload, _turn
 from test_strict_model_payload import _append_section_command
 

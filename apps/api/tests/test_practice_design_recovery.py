@@ -3,11 +3,11 @@ from pathlib import Path
 import pytest
 
 from auth_helpers import professor_headers
-from lecturepilot.course_learning_intent import goal_for
-from lecturepilot.course_learning_intent_proposal import LearningIntentProposal
-from lecturepilot.course_learning_intent_store import LearningIntentStore
-from lecturepilot.course_practice_design_store import PracticeDesignStale
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.learning_design.course_learning_intent import goal_for
+from lecturepilot.learning_design.course_learning_intent_proposal import LearningIntentProposal
+from lecturepilot.learning_design.course_learning_intent_store import LearningIntentStore
+from lecturepilot.learning_design.course_practice_design_store import PracticeDesignStale
+from lecturepilot.core.storage_layout import StorageLayout
 from practice_design_route_test_helpers import COURSE_ID, design_path
 from practice_design_test_helpers import proposal, source_document
 from test_learning_intent_routes import goal_client

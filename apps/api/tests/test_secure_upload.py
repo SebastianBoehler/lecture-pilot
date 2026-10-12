@@ -3,7 +3,7 @@ import unicodedata
 
 import pytest
 
-import lecturepilot.secure_upload as secure_upload
+import lecturepilot.core.secure_upload as secure_upload
 from auth_helpers import professor_headers
 from api_test_client import workspace_client as _client
 

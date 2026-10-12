@@ -6,12 +6,12 @@ import logging
 from fastapi.testclient import TestClient
 
 from lecturepilot.app import create_app
-from lecturepilot.logging_observability import LoggingObservability
-from lecturepilot.metadata_events import LOGGER_NAME
-from lecturepilot.session_auth import SESSION_COOKIE_NAME
-from lecturepilot.session_store import SessionStoreError
-from lecturepilot.tuebingen_adapter import TuebingenIntegrationUnavailable
-from lecturepilot.university_models import ExternalCourseCandidate, UniversityLoginResult
+from lecturepilot.core.logging_observability import LoggingObservability
+from lecturepilot.core.metadata_events import LOGGER_NAME
+from lecturepilot.identity.session_auth import SESSION_COOKIE_NAME
+from lecturepilot.identity.session_store import SessionStoreError
+from lecturepilot.identity.tuebingen_adapter import TuebingenIntegrationUnavailable
+from lecturepilot.courses.university_models import ExternalCourseCandidate, UniversityLoginResult
 from auth_helpers import pending_university_login
 
 

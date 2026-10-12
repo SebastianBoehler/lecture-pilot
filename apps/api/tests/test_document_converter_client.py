@@ -6,7 +6,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 import httpx
 import pytest
 
-from lecturepilot.document_converter_client import (
+from lecturepilot.sources.document_converter_client import (
     DocumentConverterClient,
     DocumentConverterError,
 )

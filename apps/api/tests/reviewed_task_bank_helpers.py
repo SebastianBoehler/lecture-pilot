@@ -1,4 +1,4 @@
-from lecturepilot.course_practice_target import PracticeTarget
+from lecturepilot.learning_design.course_practice_target import PracticeTarget
 
 
 def with_bank(target):

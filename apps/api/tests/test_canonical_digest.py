@@ -1,5 +1,5 @@
-from lecturepilot.canonical_digest import canonical_json_digest
-from lecturepilot.course_learning_intent import digest as learning_intent_digest
+from lecturepilot.learning_design.canonical_digest import canonical_json_digest
+from lecturepilot.learning_design.course_learning_intent import digest as learning_intent_digest
 
 
 PAYLOAD = {"b": [1, "Grüße", None], "a": {"z": 1.5, "y": True}}

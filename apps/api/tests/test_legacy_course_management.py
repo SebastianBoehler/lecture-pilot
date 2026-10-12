@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from auth_helpers import professor_headers, student_headers
 from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
 
 
 def test_legacy_publication_remains_manageable_but_unavailable(tmp_path: Path) -> None:

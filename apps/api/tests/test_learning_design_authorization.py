@@ -4,7 +4,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
 from security_db_helpers import FakeUniversityAdapter, login, mutation_headers
 from canvas_workspace_fixtures import write_canvas_draft
 

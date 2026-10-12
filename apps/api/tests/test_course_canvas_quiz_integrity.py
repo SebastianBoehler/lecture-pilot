@@ -1,8 +1,8 @@
 import pytest
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
-from lecturepilot.course_canvas_validation import validate_planned_document
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.authoring.course_canvas_errors import CanvasGenerationRepairableError
+from lecturepilot.authoring.course_canvas_validation import validate_planned_document
 
 
 def test_canvas_validation_rejects_quiz_without_two_options() -> None:

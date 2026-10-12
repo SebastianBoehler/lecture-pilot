@@ -1,7 +1,10 @@
-from lecturepilot.canvas_models import CanvasBlock
-from lecturepilot.course_canvas_quality import _quality_messages, canvas_quality_response_format
-from lecturepilot.course_canvas_quality_checkpoints import checkpoint_contracts
-from lecturepilot.course_practice_design_evidence import PracticeSourceAnchor
+from lecturepilot.canvas.canvas_models import CanvasBlock
+from lecturepilot.authoring.course_canvas_quality import (
+    _quality_messages,
+    canvas_quality_response_format,
+)
+from lecturepilot.authoring.course_canvas_quality_checkpoints import checkpoint_contracts
+from lecturepilot.learning_design.course_practice_design_evidence import PracticeSourceAnchor
 from practice_design_test_helpers import practice_design_for_canvas
 from practice_design_review_test_helpers import source_document
 

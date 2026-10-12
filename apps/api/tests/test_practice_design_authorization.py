@@ -1,8 +1,8 @@
 from fastapi.testclient import TestClient
 
 from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.course_learning_intent import goal_for
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.learning_design.course_learning_intent import goal_for
 from practice_design_test_helpers import proposal
 from security_db_helpers import FakeUniversityAdapter, login, mutation_headers
 

@@ -1,8 +1,8 @@
 from datetime import timedelta
 from types import SimpleNamespace
 
-from lecturepilot.coaching_goal_evidence import accumulate_goal_evidence
-from lecturepilot.coaching_state_models import CoachingProgress
+from lecturepilot.learner.coaching_goal_evidence import accumulate_goal_evidence
+from lecturepilot.learner.coaching_state_models import CoachingProgress
 from practice_gate_coaching_test_helpers import NOW, bank_gate
 
 
@@ -36,7 +36,10 @@ def test_later_independent_failure_clears_current_mastery_but_keeps_supported_ev
 
 
 def test_successful_transfer_schedules_fresh_review_with_expanded_interval():
-    from lecturepilot.coaching_episode import schedule_delayed_review, complete_delayed_review
+    from lecturepilot.learner.coaching_episode import (
+        schedule_delayed_review,
+        complete_delayed_review,
+    )
 
     gate = bank_gate()
     progress = CoachingProgress.empty(course_id="course", lecture_id="lecture")
@@ -69,8 +72,8 @@ def test_successful_transfer_schedules_fresh_review_with_expanded_interval():
 
 
 def test_failure_resets_next_interval_and_task_exhaustion_stays_completed():
-    from lecturepilot.coaching_review_schedule import advance_review
-    from lecturepilot.coaching_state_models import DelayedReview
+    from lecturepilot.learner.coaching_review_schedule import advance_review
+    from lecturepilot.learner.coaching_state_models import DelayedReview
 
     gate = bank_gate()
     current = DelayedReview(
@@ -95,9 +98,12 @@ def test_failure_resets_next_interval_and_task_exhaustion_stays_completed():
 
 
 def test_review_interval_caps_a_base_interval_above_sixty_days():
-    from lecturepilot.coaching_review_schedule import MAX_REVIEW_INTERVAL_DAYS, advance_review
-    from lecturepilot.coaching_state_models import DelayedReview
-    from lecturepilot.learning_map import LearningMapGate
+    from lecturepilot.learner.coaching_review_schedule import (
+        MAX_REVIEW_INTERVAL_DAYS,
+        advance_review,
+    )
+    from lecturepilot.learner.coaching_state_models import DelayedReview
+    from lecturepilot.learning_design.learning_map import LearningMapGate
 
     gate = bank_gate()
     long_gate = LearningMapGate.create(
@@ -123,7 +129,7 @@ def test_review_interval_caps_a_base_interval_above_sixty_days():
 
 
 def test_review_queue_interleaves_lectures_and_keeps_each_lecture_in_order():
-    from lecturepilot.review_queue_order import interleave_lectures
+    from lecturepilot.learner.review_queue_order import interleave_lectures
 
     items = [
         SimpleNamespace(lecture_id=lecture, id=identity)

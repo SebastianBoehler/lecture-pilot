@@ -2,8 +2,8 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from lecturepilot.practice_exam_generation_jobs import PracticeExamGenerationStore
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.exams.practice_exam_generation_jobs import PracticeExamGenerationStore
+from lecturepilot.core.storage_layout import StorageLayout
 
 
 def test_renewed_exam_lease_prevents_a_second_paid_attempt(tmp_path):

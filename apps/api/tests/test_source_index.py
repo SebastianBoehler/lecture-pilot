@@ -5,8 +5,8 @@ from pathlib import Path
 
 
 from auth_helpers import professor_headers
-import lecturepilot.course_routes as course_routes
-from lecturepilot.source_index_models import CourseSourceIndex
+import lecturepilot.courses.course_routes as course_routes
+from lecturepilot.sources.source_index_models import CourseSourceIndex
 from api_test_client import workspace_client as _client
 
 

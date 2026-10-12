@@ -1,13 +1,13 @@
 import pytest
 
-from lecturepilot.models import TenantMembership, TenantRole, UserProfile
-from lecturepilot.tenancy import (
+from lecturepilot.core.models import TenantMembership, TenantRole, UserProfile
+from lecturepilot.identity.tenancy import (
     TenantAccessError,
     TenantContext,
     assert_can_manage_course,
     tenant_storage_prefix,
 )
-from lecturepilot.workspace import WorkspacePolicy, WorkspacePolicyError
+from lecturepilot.core.workspace import WorkspacePolicy, WorkspacePolicyError
 
 
 def test_profile_membership_creates_tenant_context() -> None:

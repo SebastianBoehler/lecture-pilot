@@ -8,16 +8,16 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.db_models import (
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.core.db_models import (
     CourseEnrollmentRecord,
     ExternalIdentityRecord,
     CourseRecord,
     SessionRecord,
 )
-from lecturepilot.external_course_sync import sync_external_courses
-from lecturepilot.identity_repository import IdentityRepository
-from lecturepilot.university_models import ExternalCourseSource, UniversityLoginResult
+from lecturepilot.courses.external_course_sync import sync_external_courses
+from lecturepilot.identity.identity_repository import IdentityRepository
+from lecturepilot.courses.university_models import ExternalCourseSource, UniversityLoginResult
 from security_db_helpers import FakeUniversityAdapter, candidate, login, mutation_headers
 
 

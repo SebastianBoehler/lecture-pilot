@@ -3,7 +3,7 @@ from pathlib import Path
 from threading import Barrier
 
 from canvas_workspace_fixtures import publish_course_canvas, published_course_canvas
-from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
 
 
 def test_concurrent_real_publishes_are_serialized_and_increment_versions(

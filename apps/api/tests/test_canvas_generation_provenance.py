@@ -5,10 +5,10 @@ from pathlib import Path
 import pytest
 
 from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.course_canvas_generation import generate_course_canvas_draft
-from lecturepilot.course_canvas_store import InvalidCanvasDraftError
-from lecturepilot.tenancy import TenantContext, TenantRole
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.authoring.course_canvas_generation import generate_course_canvas_draft
+from lecturepilot.canvas.course_canvas_store import InvalidCanvasDraftError
+from lecturepilot.identity.tenancy import TenantContext, TenantRole
 from practice_design_test_helpers import canvas_with_practice_design, save_approved_design
 
 from test_learning_design_review_routes import _document

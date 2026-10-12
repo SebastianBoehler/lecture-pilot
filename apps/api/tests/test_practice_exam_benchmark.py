@@ -68,7 +68,7 @@ def test_benchmark_cost_counts_reasoning_once_and_discounts_cached_input(monkeyp
 async def test_benchmark_uses_requested_model_for_reviews_despite_production_critic(monkeypatch):
     _benchmark(monkeypatch)
     import practice_exam_benchmark_client as module
-    from lecturepilot.models import ProviderSettings, ProviderCapability
+    from lecturepilot.core.models import ProviderSettings, ProviderCapability
 
     monkeypatch.setenv("LECTUREPILOT_CRITIC_MODEL", "openai/other-critic")
     calls = []

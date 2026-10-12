@@ -4,13 +4,13 @@ from dataclasses import dataclass
 
 from gate_benchmark_adversarial_cases import ADDITIONAL_SCENARIOS
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.learning_map_models import (
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.learning_design.learning_map_models import (
     LearningMap,
     LearningMapGate,
     LearningMapNode,
 )
-from lecturepilot.models import (
+from lecturepilot.core.models import (
     AgentAnalyticsContext,
     AgentCoachingContext,
     AgentTurnInput,

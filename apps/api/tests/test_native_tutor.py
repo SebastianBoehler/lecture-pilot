@@ -4,8 +4,8 @@ from types import SimpleNamespace
 from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart, ToolReturnPart
 from pydantic_ai.models.function import FunctionModel
 
-from lecturepilot.native_tutor import native_tutor_turn
-from lecturepilot.models import ProviderSettings
+from lecturepilot.tutor.native_tutor import native_tutor_turn
+from lecturepilot.core.models import ProviderSettings
 from test_strict_model_payload import _payload, _turn
 
 

@@ -3,15 +3,15 @@ from pathlib import Path
 
 import pytest
 
-from lecturepilot.practice_exam_models import (
+from lecturepilot.exams.practice_exam_models import (
     PracticeExam,
     PracticeExamGenerationInput,
     PracticeExamQuestion,
     practice_exam_solution_sheet,
     public_practice_exam,
 )
-from lecturepilot.practice_exam_store import PracticeExamStore
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.exams.practice_exam_store import PracticeExamStore
+from lecturepilot.core.storage_layout import StorageLayout
 
 
 def test_public_exam_hides_authoring_data() -> None:

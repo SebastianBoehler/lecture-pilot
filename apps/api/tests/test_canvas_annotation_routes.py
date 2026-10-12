@@ -1,9 +1,9 @@
 import json
 from auth_helpers import professor_headers, student_headers
 from test_learner_lesson_state_routes import _client, COURSE_ID, PREVIEW
-from lecturepilot.agent_tool_executor import AgentToolExecutor
+from lecturepilot.tutor.agent_tool_executor import AgentToolExecutor
 from datetime import UTC, datetime
-from lecturepilot.coaching_state_models import CoachingProgress, PendingCheck
+from lecturepilot.learner.coaching_state_models import CoachingProgress, PendingCheck
 from test_learner_lesson_state_routes import _gate, _write_progress
 
 URL = f"/courses/{COURSE_ID}/lectures/lecture-open/annotations"

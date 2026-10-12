@@ -18,15 +18,15 @@ from pathlib import Path
 from fastapi import FastAPI
 from starlette.concurrency import run_in_threadpool
 
-from lecturepilot import (
+from lecturepilot.migrations_storage import (
     storage_migration_canvas_boilerplate,
     storage_migration_learning_design_approval,
     storage_migration_legacy_publications,
     storage_migration_legacy_workspaces,
     storage_migration_practice_design_schema,
 )
-from lecturepilot.canvas_workspace_config import default_workspace_root
-from lecturepilot.durable_files import atomic_write_json
+from lecturepilot.canvas.canvas_workspace_config import default_workspace_root
+from lecturepilot.core.durable_files import atomic_write_json
 
 
 logger = logging.getLogger(__name__)

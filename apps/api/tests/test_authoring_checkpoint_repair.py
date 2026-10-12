@@ -1,10 +1,10 @@
 import pytest
 from pydantic_ai.models.function import FunctionModel
 
-from lecturepilot.authoring_job import run_authoring_job
-from lecturepilot.canvas_models import CanvasBlock, CanvasSection
-from lecturepilot.course_canvas_approved_checkpoints import assemble_approved_checkpoints
-from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
+from lecturepilot.authoring.authoring_job import run_authoring_job
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasSection
+from lecturepilot.authoring.course_canvas_approved_checkpoints import assemble_approved_checkpoints
+from lecturepilot.authoring.course_canvas_errors import CanvasGenerationRepairableError
 from authoring_test_helpers import markdown
 from practice_design_test_helpers import target
 from test_authoring_job import authoring_job

@@ -2,8 +2,8 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 
 import App from "./App";
-import { mockLoginFetch } from "./testFixtures";
-import type { LoginSession } from "./types";
+import { mockLoginFetch } from "./shared/testFixtures";
+import type { LoginSession } from "./shared/types";
 
 const storedSession: LoginSession = {
   username: "student01",

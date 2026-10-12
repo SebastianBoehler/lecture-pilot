@@ -1,9 +1,9 @@
 import pytest
 from pydantic_ai.models.function import FunctionModel
 
-from lecturepilot.authoring_job import run_authoring_job
-from lecturepilot.authoring_models import AuthoringDesignConflict
-from lecturepilot.course_canvas_quality import CanvasQualityReviewer
+from lecturepilot.authoring.authoring_job import run_authoring_job
+from lecturepilot.authoring.authoring_models import AuthoringDesignConflict
+from lecturepilot.authoring.course_canvas_quality import CanvasQualityReviewer
 from authoring_test_helpers import markdown
 from test_authoring_job import authoring_job
 

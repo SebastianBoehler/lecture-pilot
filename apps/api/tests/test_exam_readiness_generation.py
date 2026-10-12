@@ -2,7 +2,7 @@ from pathlib import Path
 
 from auth_helpers import professor_headers, student_headers
 from canvas_workspace_fixtures import publish_course_canvas
-from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
 from test_exam_readiness import _client, _document
 
 

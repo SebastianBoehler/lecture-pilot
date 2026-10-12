@@ -6,9 +6,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.db_models import AuditEventRecord, ExternalIdentityRecord, UserRecord
-from lecturepilot.university_models import UniversityLoginResult
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.core.db_models import AuditEventRecord, ExternalIdentityRecord, UserRecord
+from lecturepilot.courses.university_models import UniversityLoginResult
 from auth_helpers import pending_university_login
 from security_db_helpers import mutation_headers
 

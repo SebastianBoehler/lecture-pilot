@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from canvas_workspace_fixtures import publish_course_canvas
-from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
 
 
 def test_publishes_all_available_demo_lecture_sources(tmp_path: Path) -> None:

@@ -1,5 +1,5 @@
-from lecturepilot.harness import LecturePilotHarness
-from lecturepilot.models import (
+from lecturepilot.tutor.harness import LecturePilotHarness
+from lecturepilot.core.models import (
     AgentTurnInput,
     AgentTurnResult,
     AttendanceStatus,
@@ -8,7 +8,7 @@ from lecturepilot.models import (
     ProviderCapability,
     ProviderSettings,
 )
-from lecturepilot.providers import DEFAULT_MODEL, ProviderRegistry
+from lecturepilot.llm.providers import DEFAULT_MODEL, ProviderRegistry
 
 
 async def test_harness_uses_model_client_for_agent_turn(monkeypatch) -> None:

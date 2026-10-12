@@ -4,12 +4,12 @@ import sys
 from types import SimpleNamespace
 from typing import Any
 
-from lecturepilot.models import (
+from lecturepilot.core.models import (
     AgentTurnInput,
     AgentTurnResult,
 )
-from lecturepilot.observability import observability_from_env
-from lecturepilot.providers import DEFAULT_MODEL
+from lecturepilot.core.observability import observability_from_env
+from lecturepilot.llm.providers import DEFAULT_MODEL
 
 
 def test_observability_is_disabled_by_default(monkeypatch) -> None:

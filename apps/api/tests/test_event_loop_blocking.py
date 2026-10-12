@@ -44,7 +44,7 @@ def _direct_calls(function: ast.AsyncFunctionDef) -> set[str]:
 
 def test_async_functions_keep_blocking_course_work_off_the_event_loop() -> None:
     offenders = []
-    for path in sorted(Path(lecturepilot.__file__).parent.glob("*.py")):
+    for path in sorted(Path(lecturepilot.__file__).parent.rglob("*.py")):
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
             if isinstance(node, ast.AsyncFunctionDef) and (calls := _direct_calls(node)):
                 offenders.append(f"{path.name}:{node.lineno} {node.name} -> {sorted(calls)}")
@@ -64,7 +64,7 @@ PARSING = {
 
 def test_source_parsing_never_runs_while_the_course_lock_is_held() -> None:
     offenders = []
-    for path in sorted(Path(lecturepilot.__file__).parent.glob("*.py")):
+    for path in sorted(Path(lecturepilot.__file__).parent.rglob("*.py")):
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
             if not isinstance(node, ast.With) or not any(
                 isinstance(item.context_expr, ast.Call)
@@ -84,9 +84,9 @@ def _name(func: ast.AST) -> str | None:
 
 LEASE_STORE_CALLS = {"begin", "touch", "renew", "complete", "fail"}
 LEASE_MODULES = (
-    "course_canvas_generation_service.py",
-    "practice_exam_generation_service.py",
-    "practice_exam_lease.py",
+    "authoring/course_canvas_generation_service.py",
+    "exams/practice_exam_generation_service.py",
+    "exams/practice_exam_lease.py",
 )
 # One claim per HTTP request; it must stay atomic with registering the background task, so
 # a cancelled request cannot leave a claimed attempt without a worker.

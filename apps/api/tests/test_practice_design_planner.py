@@ -1,6 +1,6 @@
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 from practice_design_test_helpers import proposal, target
-from lecturepilot.practice_evidence_catalogue import evidence_catalogue
+from lecturepilot.learning_design.practice_evidence_catalogue import evidence_catalogue
 
 
 SOURCE_REVISION = "a" * 64
@@ -27,8 +27,10 @@ def _source() -> CanvasDocument:
 
 
 def test_teaching_prompt_states_the_contract_and_exact_authoritative_source_paths() -> None:
-    from lecturepilot.course_practice_design_prompt import practice_design_messages
-    from lecturepilot.course_practice_design_review_prompt import practice_design_review_messages
+    from lecturepilot.learning_design.course_practice_design_prompt import practice_design_messages
+    from lecturepilot.learning_design.course_practice_design_review_prompt import (
+        practice_design_review_messages,
+    )
 
     source = _source().model_copy(
         update={
@@ -78,7 +80,9 @@ def test_teaching_prompt_states_the_contract_and_exact_authoritative_source_path
 
 
 def test_response_schema_describes_the_assessment_and_scaffold_contract() -> None:
-    from lecturepilot.course_practice_design_prompt import practice_design_response_format
+    from lecturepilot.learning_design.course_practice_design_prompt import (
+        practice_design_response_format,
+    )
 
     schema = practice_design_response_format(evidence_catalogue(_source(), ("lecture.md",)))[
         "json_schema"

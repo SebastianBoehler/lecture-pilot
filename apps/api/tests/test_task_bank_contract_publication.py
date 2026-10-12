@@ -4,12 +4,14 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from lecturepilot.course_canvas_practice_contract import practice_prompt_instruction
-from lecturepilot.course_learning_intent import LearningIntent
-from lecturepilot.course_practice_design_models import PracticeDesign
-from lecturepilot.course_practice_design_review_prompt import practice_design_review_messages
-from lecturepilot.course_practice_design_validation import validate_practice_design
-from lecturepilot.learning_map import LearningMapGate
+from lecturepilot.authoring.course_canvas_practice_contract import practice_prompt_instruction
+from lecturepilot.learning_design.course_learning_intent import LearningIntent
+from lecturepilot.learning_design.course_practice_design_models import PracticeDesign
+from lecturepilot.learning_design.course_practice_design_review_prompt import (
+    practice_design_review_messages,
+)
+from lecturepilot.learning_design.course_practice_design_validation import validate_practice_design
+from lecturepilot.learning_design.learning_map import LearningMapGate
 from practice_design_test_helpers import proposal, target
 from reviewed_task_bank_helpers import with_bank
 from test_practice_design_semantic_review import _source
@@ -76,7 +78,7 @@ def test_supplemental_task_sources_receive_exact_existing_validation():
     task = with_bank(target())
     payload = task.model_dump(mode="json")
     payload["supplemental_tasks"][0]["source_anchor"]["excerpt"] = "Invented absent quotation."
-    from lecturepilot.course_practice_target import PracticeTarget
+    from lecturepilot.learning_design.course_practice_target import PracticeTarget
 
     bad = PracticeTarget.model_validate(payload)
     with pytest.raises(ValueError, match="verbatim excerpt"):
@@ -91,7 +93,7 @@ def test_duplicate_bank_prompt_and_reserved_identity_are_rejected():
     task = with_bank(target())
     payload = task.model_dump(mode="json")
     payload["supplemental_tasks"][0]["prompt"] = task.independent_exit_task
-    from lecturepilot.course_practice_target import PracticeTarget
+    from lecturepilot.learning_design.course_practice_target import PracticeTarget
 
     with pytest.raises(ValidationError, match="differ"):
         PracticeTarget.model_validate(payload)
@@ -101,8 +103,8 @@ def test_duplicate_bank_prompt_and_reserved_identity_are_rejected():
 
 
 def test_assessment_prompt_is_exact_fresh_task_and_uses_published_criteria():
-    from lecturepilot.checkpoint_assessment_prompt import assessment_messages
-    from lecturepilot.tutor_gate_context import gate_rubric_context
+    from lecturepilot.learner.checkpoint_assessment_prompt import assessment_messages
+    from lecturepilot.tutor.tutor_gate_context import gate_rubric_context
     from test_strict_model_payload import _turn
     from practice_gate_coaching_test_helpers import bank_gate
 

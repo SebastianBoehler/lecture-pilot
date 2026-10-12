@@ -2,8 +2,8 @@ from copy import deepcopy
 
 import pytest
 
-from lecturepilot.practice_exam_prompt import practice_exam_review_messages
-from lecturepilot.practice_exam_validation import (
+from lecturepilot.exams.practice_exam_prompt import practice_exam_review_messages
+from lecturepilot.exams.practice_exam_validation import (
     PracticeExamValidationError,
     validate_practice_exam_review,
 )

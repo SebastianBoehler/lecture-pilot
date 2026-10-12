@@ -7,10 +7,10 @@ from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
 from pydantic_ai.models.function import FunctionModel
 from pydantic_ai.usage import RequestUsage
 
-from lecturepilot.metadata_events import LOGGER_NAME
-from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.models import ProviderSettings
-from lecturepilot.native_tutor import native_tutor_turn
+from lecturepilot.core.metadata_events import LOGGER_NAME
+from lecturepilot.llm.model_client import ModelExecutionError
+from lecturepilot.core.models import ProviderSettings
+from lecturepilot.tutor.native_tutor import native_tutor_turn
 from test_strict_model_payload import _payload, _turn
 
 SETTINGS = ProviderSettings(

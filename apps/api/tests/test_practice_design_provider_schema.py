@@ -7,7 +7,7 @@ from openai.lib._pydantic import to_strict_json_schema
 from pydantic import BaseModel, ValidationError
 
 import practice_design_benchmark.evaluator as benchmark_client_module
-import lecturepilot.course_practice_design_review_client as review_client_module
+import lecturepilot.learning_design.course_practice_design_review_client as review_client_module
 from practice_design_benchmark.evaluator import (
     NativePracticeDesignBenchmarkClient,
     practice_design_benchmark_response_format,
@@ -16,17 +16,21 @@ from practice_design_benchmark.models import (
     BENCHMARK_DIMENSIONS,
     PracticeDesignBenchmarkEvaluation,
 )
-from lecturepilot.course_practice_design_models import PracticeDesignProposal
-from lecturepilot.course_practice_design_prompt import practice_design_response_format
-from lecturepilot.course_practice_design_review_client import NativePracticeDesignReviewClient
-from lecturepilot.course_practice_design_review_models import (
+from lecturepilot.learning_design.course_practice_design_models import PracticeDesignProposal
+from lecturepilot.learning_design.course_practice_design_prompt import (
+    practice_design_response_format,
+)
+from lecturepilot.learning_design.course_practice_design_review_client import (
+    NativePracticeDesignReviewClient,
+)
+from lecturepilot.learning_design.course_practice_design_review_models import (
     PracticeDesignReviewResult,
 )
-from lecturepilot.course_practice_design_review_prompt import (
+from lecturepilot.learning_design.course_practice_design_review_prompt import (
     practice_design_review_response_format,
 )
-from lecturepilot.models import ProviderCapability, ProviderSettings
-from lecturepilot.providers import ProviderConfigurationError
+from lecturepilot.core.models import ProviderCapability, ProviderSettings
+from lecturepilot.llm.providers import ProviderConfigurationError
 from practice_design_test_helpers import passing_review, proposal
 
 

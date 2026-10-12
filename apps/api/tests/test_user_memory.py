@@ -1,7 +1,7 @@
-from lecturepilot.storage_layout import StorageLayout
-from lecturepilot.user_memory import UserMemoryStore
+from lecturepilot.core.storage_layout import StorageLayout
+from lecturepilot.learner.user_memory import UserMemoryStore
 import pytest
-from lecturepilot.agent_side_effect_tools import _explicit_memory_request
+from lecturepilot.tutor.agent_side_effect_tools import _explicit_memory_request
 
 
 def test_user_memory_context_includes_global_and_course_memory(tmp_path) -> None:

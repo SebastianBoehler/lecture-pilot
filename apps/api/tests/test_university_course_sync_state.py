@@ -1,6 +1,6 @@
 from lecturepilot.app import create_app
-from lecturepilot.identity_repository import IdentityRepository
-from lecturepilot.university_models import ExternalCourseSource, UniversityLoginResult
+from lecturepilot.identity.identity_repository import IdentityRepository
+from lecturepilot.courses.university_models import ExternalCourseSource, UniversityLoginResult
 from security_db_helpers import candidate
 
 

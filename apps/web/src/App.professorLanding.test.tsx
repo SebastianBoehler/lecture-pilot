@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 
 import App from "./App";
-import { localProfessorSession } from "./appDefaults";
+import { localProfessorSession } from "./shell/appDefaults";
 
 afterEach(() => {
   window.localStorage.clear();

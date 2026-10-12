@@ -1,5 +1,5 @@
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.course_slide_interleaving import interleave_original_slides
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.sources.course_slide_interleaving import interleave_original_slides
 
 
 def test_interleave_original_slides_matches_pages_from_the_cited_pdf() -> None:

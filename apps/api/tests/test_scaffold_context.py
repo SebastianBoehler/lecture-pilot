@@ -1,6 +1,6 @@
-from lecturepilot.exam_revision_plan import ExamRevisionTask
-from lecturepilot.tutor_prompt import tutor_messages as _messages
-from lecturepilot.models import AgentTurnInput, AttendanceStatus, CanvasState
+from lecturepilot.exams.exam_revision_plan import ExamRevisionTask
+from lecturepilot.tutor.tutor_prompt import tutor_messages as _messages
+from lecturepilot.core.models import AgentTurnInput, AttendanceStatus, CanvasState
 
 
 def test_model_prompt_includes_active_scaffold_policy() -> None:

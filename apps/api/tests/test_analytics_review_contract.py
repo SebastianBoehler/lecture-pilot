@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from auth_helpers import professor_headers, student_headers
 from canvas_workspace_fixtures import publish_course_canvas
-from lecturepilot.canvas_models import CanvasBlock
+from lecturepilot.canvas.canvas_models import CanvasBlock
 from test_analytics_routes import _canvas_document, _client
 
 

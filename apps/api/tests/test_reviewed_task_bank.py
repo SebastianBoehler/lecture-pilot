@@ -1,8 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from lecturepilot.coaching_transitions import derive_next_transition
-from lecturepilot.quality_gate_models import QualityGateStatus
+from lecturepilot.learner.coaching_transitions import derive_next_transition
+from lecturepilot.learner.quality_gate_models import QualityGateStatus
 from practice_gate_coaching_test_helpers import practice_gate
 
 
@@ -21,7 +21,7 @@ def test_supported_exit_never_reuses_exposed_canonical_task():
 
 
 def test_numeric_assertions_are_bounded_and_check_only_explicit_arithmetic():
-    from lecturepilot.practice_task_bank import NumericConsistencyAssertion
+    from lecturepilot.learning_design.practice_task_bank import NumericConsistencyAssertion
 
     NumericConsistencyAssertion(operation="divide", operands=[6.0, 3.0], expected=2.0)
     with pytest.raises(ValidationError, match="consistency"):

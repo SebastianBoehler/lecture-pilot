@@ -4,12 +4,12 @@ from zipfile import ZipFile
 
 import pytest
 
-from lecturepilot.latex_compilation_client import (
+from lecturepilot.sources.latex_compilation_client import (
     COMPILATION_PROTOCOL_VERSION,
     LatexCompilationError,
     compile_latex_deck,
 )
-from lecturepilot.source_index_models import CourseSourceIndex, IndexedSourceFile
+from lecturepilot.sources.source_index_models import CourseSourceIndex, IndexedSourceFile
 
 
 def test_cache_protocol_identifies_tectonic_engine_and_bundle() -> None:
@@ -35,7 +35,7 @@ def test_compiler_bundle_contains_tex_dependencies_but_not_video(
         return _pdf_bytes("compiled")
 
     monkeypatch.setattr(
-        "lecturepilot.latex_compilation_client._request_compilation", compile_request
+        "lecturepilot.sources.latex_compilation_client._request_compilation", compile_request
     )
 
     output = compile_latex_deck(
@@ -71,7 +71,7 @@ def test_compiled_pdf_cache_changes_when_a_dependency_changes(
         return _pdf_bytes(f"compiled {calls}")
 
     monkeypatch.setattr(
-        "lecturepilot.latex_compilation_client._request_compilation", compile_request
+        "lecturepilot.sources.latex_compilation_client._request_compilation", compile_request
     )
     first_index = _index(root)
     first = compile_latex_deck(
@@ -109,7 +109,7 @@ def test_invalid_compiler_response_is_rejected_without_writing_output(
     root = tmp_path / "uploads"
     _write(root / "Lecture02.tex", "lecture")
     monkeypatch.setattr(
-        "lecturepilot.latex_compilation_client._request_compilation",
+        "lecturepilot.sources.latex_compilation_client._request_compilation",
         lambda archive, size, main_path: b"not a pdf",
     )
 
@@ -134,7 +134,7 @@ def test_source_mutation_after_indexing_is_rejected(
     index = _index(root)
     _write(source, "version two")
     monkeypatch.setattr(
-        "lecturepilot.latex_compilation_client._request_compilation",
+        "lecturepilot.sources.latex_compilation_client._request_compilation",
         lambda archive, size, main_path: _pdf_bytes("unreachable"),
     )
 
@@ -158,7 +158,7 @@ def test_cached_pdf_is_not_reused_after_unindexed_source_mutation(
     _write(source, "version one")
     index = _index(root)
     monkeypatch.setattr(
-        "lecturepilot.latex_compilation_client._request_compilation",
+        "lecturepilot.sources.latex_compilation_client._request_compilation",
         lambda archive, size, main_path: _pdf_bytes("compiled"),
     )
     compile_latex_deck(

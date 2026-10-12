@@ -1,12 +1,12 @@
 from datetime import datetime, timedelta
 
-from lecturepilot.coaching_assistance import NextCheck
-from lecturepilot.coaching_check_binding import bind_delayed_review
-from lecturepilot.coaching_progress import CoachingProgressStore
-from lecturepilot.learning_map import LearningMapGate
-from lecturepilot.models import QualityGateDecision, QualityGateStatus
-from lecturepilot.scaffold_policy import scaffold_policy_for_tutor_turn
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.learner.coaching_assistance import NextCheck
+from lecturepilot.learner.coaching_check_binding import bind_delayed_review
+from lecturepilot.learner.coaching_progress import CoachingProgressStore
+from lecturepilot.learning_design.learning_map import LearningMapGate
+from lecturepilot.core.models import QualityGateDecision, QualityGateStatus
+from lecturepilot.learner.scaffold_policy import scaffold_policy_for_tutor_turn
+from lecturepilot.core.storage_layout import StorageLayout
 from practice_gate_coaching_test_helpers import (
     bank_gate as _bank_gate,
     IDS,

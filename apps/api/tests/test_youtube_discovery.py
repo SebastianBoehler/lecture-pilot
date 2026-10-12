@@ -4,7 +4,7 @@ from urllib.error import HTTPError
 
 import pytest
 
-from lecturepilot.youtube_discovery import YoutubeDiscovery, YoutubeDiscoveryError
+from lecturepilot.courses.youtube_discovery import YoutubeDiscovery, YoutubeDiscoveryError
 
 
 def test_youtube_discovery_normalizes_and_ranks_video_candidates() -> None:
@@ -100,7 +100,7 @@ def test_youtube_failures_explain_the_next_step_without_raw_http_detail(
     def fail(*args, **kwargs):
         raise error
 
-    monkeypatch.setattr("lecturepilot.youtube_discovery.urlopen", fail)
+    monkeypatch.setattr("lecturepilot.courses.youtube_discovery.urlopen", fail)
     with pytest.raises(YoutubeDiscoveryError) as raised:
         YoutubeDiscovery(api_key="test").search("clustering", max_results=1)
     assert message in str(raised.value)

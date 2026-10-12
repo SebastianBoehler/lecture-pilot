@@ -1,18 +1,21 @@
-from lecturepilot.course_learning_design_models import LearningDesignApprovalInput
+from lecturepilot.learning_design.course_learning_design_models import LearningDesignApprovalInput
 import json
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
-from lecturepilot.course_canvas_publication import CanvasPublicationMetadata
-from lecturepilot.course_canvas_context import InvalidPublishedCanvasContextError
-from lecturepilot.course_canvas_publication import publication_path
-from lecturepilot.course_canvas_store import InvalidCanvasDraftError
-from lecturepilot.course_learning_design_store import CourseLearningDesignStore
-from lecturepilot.course_practice_design_binding import PracticeDesignBinding, binding_path
+from lecturepilot.authoring.course_canvas_publication import CanvasPublicationMetadata
+from lecturepilot.canvas.course_canvas_context import InvalidPublishedCanvasContextError
+from lecturepilot.authoring.course_canvas_publication import publication_path
+from lecturepilot.canvas.course_canvas_store import InvalidCanvasDraftError
+from lecturepilot.learning_design.course_learning_design_store import CourseLearningDesignStore
+from lecturepilot.learning_design.course_practice_design_binding import (
+    PracticeDesignBinding,
+    binding_path,
+)
 from test_practice_design_canvas_binding import _approved_design, _document
-from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
 from approved_practice_design_helpers import revised_design, store_design
 
 

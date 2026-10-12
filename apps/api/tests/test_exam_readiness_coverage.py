@@ -1,5 +1,5 @@
-from lecturepilot.exam_readiness import build_exam_readiness_check
-from lecturepilot.canvas_models import CanvasBlock
+from lecturepilot.exams.exam_readiness import build_exam_readiness_check
+from lecturepilot.canvas.canvas_models import CanvasBlock
 from test_exam_readiness import _document
 from test_readiness_approved_criteria import map_for_document
 

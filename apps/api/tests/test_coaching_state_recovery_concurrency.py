@@ -3,10 +3,10 @@ from pathlib import Path
 from threading import Barrier
 
 from auth_helpers import student_headers
-from lecturepilot.coaching_progress import CoachingProgressStore
-from lecturepilot.coaching_state_models import CoachingProgress
-from lecturepilot.durable_files import atomic_write_json, exclusive_file_lock
-from lecturepilot.learner_state import LearnerStateStore
+from lecturepilot.learner.coaching_progress import CoachingProgressStore
+from lecturepilot.learner.coaching_state_models import CoachingProgress
+from lecturepilot.core.durable_files import atomic_write_json, exclusive_file_lock
+from lecturepilot.learner.learner_state import LearnerStateStore
 from test_coaching_state_recovery_routes import (
     COURSE_ID,
     LECTURE_ID,

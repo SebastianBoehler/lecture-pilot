@@ -4,7 +4,7 @@ from pydantic_ai.messages import ModelResponse, TextPart
 from pydantic_ai.models.function import FunctionModel
 
 from auth_helpers import professor_headers
-from lecturepilot.course_practice_design_planner import PracticeDesignPlanner
+from lecturepilot.learning_design.course_practice_design_planner import PracticeDesignPlanner
 from practice_design_route_test_helpers import client, design_path
 from practice_design_test_helpers import proposal
 from test_practice_design_semantic_review import _Registry

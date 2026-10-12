@@ -1,4 +1,4 @@
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
 
 
 def invalid_candidate(source_document: CanvasDocument) -> CanvasDocument:

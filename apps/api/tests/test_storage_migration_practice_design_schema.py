@@ -1,9 +1,9 @@
 import json
 
-from lecturepilot.course_learning_intent import digest, has_approved_intent
-from lecturepilot.course_practice_design_store import PracticeDesignStore
-from lecturepilot.storage_layout import StorageLayout
-from lecturepilot.storage_migration_practice_design_schema import migrate
+from lecturepilot.learning_design.course_learning_intent import digest, has_approved_intent
+from lecturepilot.learning_design.course_practice_design_store import PracticeDesignStore
+from lecturepilot.core.storage_layout import StorageLayout
+from lecturepilot.migrations_storage.storage_migration_practice_design_schema import migrate
 from practice_design_review_test_helpers import passing_review
 from practice_design_test_helpers import proposal
 

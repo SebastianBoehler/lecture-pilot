@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from auth_helpers import student_headers
 from canvas_workspace_fixtures import publish_course_canvas, published_course_canvas
 from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
 
 
 def _client(tmp_path: Path) -> TestClient:

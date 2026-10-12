@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from lecturepilot.canvas_markdown import read_document_source, write_document_source
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.storage_layout import StorageLayout
-from lecturepilot.storage_migration_canvas_boilerplate import migrate
+from lecturepilot.canvas.canvas_markdown import read_document_source, write_document_source
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.core.storage_layout import StorageLayout
+from lecturepilot.migrations_storage.storage_migration_canvas_boilerplate import migrate
 
 
 TITLE = "Measuring Binary Classifier Performance"

@@ -178,6 +178,35 @@ deploy/                   Docker Compose starter
 integrations/tuebingen/   TUE API wrapper integration notes
 ```
 
+Backend packages under `apps/api/src/lecturepilot/` (entry points such as `app.py`,
+`database.py`, `production_preflight.py`, `bootstrap_admin.py` and
+`storage_migrations.py` stay at the package root):
+
+```txt
+analytics/           learner and professor analytics, outcome events
+authoring/           canvas draft generation, quality, repair, publication
+canvas/              canvas Markdown/models/store, annotations, predictions, languages
+core/                shared API models, storage layout, durable files, audit, observability
+courses/             course access, schedules, updates, sharing, university courses
+exams/               exam readiness, practice exams, PPI exam sources
+identity/            auth, sessions, CSRF, tenancy, accounts, Tuebingen adapter
+learner/             gates, coaching, assessments, review queue, profile and memory
+learning_design/     learning intent, goals, practice and teaching design, learning maps
+llm/                 model clients, provider routing, image generation, usage quotas
+migrations_storage/  storage migration steps run by storage_migrations.py
+sources/             source upload, routing, normalization, PDF/LaTeX/OCR processing
+tutor/               tutor agent turn, typed tools, prompts and response schema
+```
+
+Frontend folders under `apps/web/src/` (`main.tsx`, `App.tsx`, `AppRoutes.tsx`, App
+integration tests and global entry stylesheets stay at the root; tests and CSS sit
+beside their owners):
+
+```txt
+auth/ canvas/ dashboard/ exam/ i18n/ info/ lesson/ performance/
+professor/ profile/ shared/ shell/ speech/ test/
+```
+
 ## Agent Harness Rules
 
 - Authoring contract: every lecture ends as a professor-reviewable draft or one concrete

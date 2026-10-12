@@ -1,9 +1,9 @@
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.course_canvas_quality import (
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.authoring.course_canvas_quality import (
     CanvasQualityReviewer,
     _quality_messages,
 )
-from lecturepilot.models import ProviderSettings
+from lecturepilot.core.models import ProviderSettings
 
 
 async def test_quality_reviewer_rejects_a_wrong_selected_quiz_answer() -> None:

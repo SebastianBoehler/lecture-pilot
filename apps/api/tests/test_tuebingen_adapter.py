@@ -4,10 +4,10 @@ from types import SimpleNamespace
 import pytest
 from pydantic import ValidationError
 
-from lecturepilot.ilias_identity import parse_ilias_identity_profile
-from lecturepilot.tuebingen_adapter import PendingUniversityLogin, TuebingenCourseAdapter
-from lecturepilot.tuebingen_courses import _alma_courses, _ilias_courses
-from lecturepilot.university_models import ExternalCourseCandidate, UniversityLoginResult
+from lecturepilot.identity.ilias_identity import parse_ilias_identity_profile
+from lecturepilot.identity.tuebingen_adapter import PendingUniversityLogin, TuebingenCourseAdapter
+from lecturepilot.courses.tuebingen_courses import _alma_courses, _ilias_courses
+from lecturepilot.courses.university_models import ExternalCourseCandidate, UniversityLoginResult
 
 
 def test_alma_timetable_courses_use_stable_title_ids_without_detail_pages() -> None:
@@ -142,7 +142,7 @@ def test_course_sync_reports_each_source_without_waiting_for_the_other(monkeypat
         return [], False, ["Alma unavailable"]
 
     def load_ilias(_api, term):
-        from lecturepilot.tuebingen_adapter import _IliasSync
+        from lecturepilot.identity.tuebingen_adapter import _IliasSync
 
         return _IliasSync(
             courses=[
@@ -159,8 +159,8 @@ def test_course_sync_reports_each_source_without_waiting_for_the_other(monkeypat
             warnings=[],
         )
 
-    monkeypatch.setattr("lecturepilot.tuebingen_adapter._load_alma_courses", load_alma)
-    monkeypatch.setattr("lecturepilot.tuebingen_adapter._load_ilias_account", load_ilias)
+    monkeypatch.setattr("lecturepilot.identity.tuebingen_adapter._load_alma_courses", load_alma)
+    monkeypatch.setattr("lecturepilot.identity.tuebingen_adapter._load_ilias_account", load_ilias)
     client = SimpleNamespace(alma=object(), ilias=object(), close=lambda: None)
     pending = PendingUniversityLogin(
         client=client,

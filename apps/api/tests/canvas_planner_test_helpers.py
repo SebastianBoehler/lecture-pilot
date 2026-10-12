@@ -1,5 +1,5 @@
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument
-from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument
+from lecturepilot.authoring.course_canvas_errors import CanvasGenerationRepairableError
 
 
 class RepairingCoursePlanner:

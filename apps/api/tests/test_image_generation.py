@@ -1,10 +1,10 @@
 import base64
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasSection
-from lecturepilot.image_generation_gemini import GeminiImageGenerator
-from lecturepilot.image_generation_huggingface import HuggingFaceImageGenerator
-from lecturepilot.image_generation_openrouter import OpenRouterImageGenerator
-from lecturepilot.image_generation_registry import image_generator_from_env
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasSection
+from lecturepilot.llm.image_generation_gemini import GeminiImageGenerator
+from lecturepilot.llm.image_generation_huggingface import HuggingFaceImageGenerator
+from lecturepilot.llm.image_generation_openrouter import OpenRouterImageGenerator
+from lecturepilot.llm.image_generation_registry import image_generator_from_env
 
 
 def test_gemini_image_generator_posts_native_image_request(monkeypatch) -> None:
@@ -38,7 +38,7 @@ def test_gemini_image_generator_posts_native_image_request(monkeypatch) -> None:
             ]
         }
 
-    monkeypatch.setattr("lecturepilot.image_generation_gemini.post_json", fake_post_json)
+    monkeypatch.setattr("lecturepilot.llm.image_generation_gemini.post_json", fake_post_json)
     generator = GeminiImageGenerator(
         api_key="gemini-key",
         model="gemini-3.1-flash-image",
@@ -81,7 +81,7 @@ def test_openrouter_image_generator_reads_data_url(monkeypatch) -> None:
         data_url = "data:image/png;base64," + base64.b64encode(b"router-png").decode("ascii")
         return {"choices": [{"message": {"images": [{"image_url": {"url": data_url}}]}}]}
 
-    monkeypatch.setattr("lecturepilot.image_generation_openrouter.post_json", fake_post_json)
+    monkeypatch.setattr("lecturepilot.llm.image_generation_openrouter.post_json", fake_post_json)
     result = OpenRouterImageGenerator(api_key="openrouter-key").generate_infographic(
         prompt="Create an infographic.",
         section=_section(),
@@ -102,7 +102,7 @@ def test_huggingface_image_generator_reads_raw_bytes(monkeypatch) -> None:
         return b"hf-image", "image/webp"
 
     monkeypatch.setattr(
-        "lecturepilot.image_generation_huggingface.post_image_bytes",
+        "lecturepilot.llm.image_generation_huggingface.post_image_bytes",
         fake_post_image_bytes,
     )
     result = HuggingFaceImageGenerator(

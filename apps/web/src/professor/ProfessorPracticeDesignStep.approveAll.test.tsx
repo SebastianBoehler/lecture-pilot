@@ -1,0 +1,134 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { expect, it, vi } from "vitest";
+import { I18nProvider } from "../i18n/i18n";
+import { ProfessorPracticeDesignStep } from "./ProfessorPracticeDesignStep";
+import { practiceDesignFixture } from "./practiceDesignTestFixtures";
+import type { PracticeDesign } from "./practiceDesignTypes";
+
+function intentDesign(lectureId: string): PracticeDesign {
+  return practiceDesignFixture({ approvedBy: null, lectureId, lectureTitle: lectureId });
+}
+
+it("approves every open current learning plan with one action", async () => {
+  const designs = Object.fromEntries(
+    ["lecture-01", "lecture-02", "lecture-03"].map((id) => [id, intentDesign(id)]),
+  );
+  const stale = designs["lecture-03"];
+  const approve = vi.fn();
+  render(
+    <I18nProvider locale="en" setLocale={() => {}}>
+      <ProfessorPracticeDesignStep
+        designs={designs}
+        readiness={{
+          "lecture-03": {
+            lecture_id: "lecture-03",
+            current_source_revision: "b".repeat(64),
+            practice_design_revision: stale.revision,
+            ready_for_generation: false,
+          },
+        }}
+        lectures={Object.keys(designs).map((id) => ({ id, label: id }))}
+        error={null}
+        pendingAction={null}
+        pendingLectureId={null}
+        routingReady
+        onApprove={approve}
+        onSave={vi.fn()}
+        onPropose={vi.fn()}
+      />
+    </I18nProvider>,
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Approve all open goals (2)" }));
+  expect(approve.mock.calls).toEqual([
+    ["lecture-01", { fixed_target_ids: [] }],
+    ["lecture-02", { fixed_target_ids: [] }],
+  ]);
+});
+
+it("shows advisory source findings next to the affected learning goal", () => {
+  const design = intentDesign("lecture-01");
+  const goal = design.learning_intent.goals[0];
+  render(
+    <I18nProvider locale="en" setLocale={() => {}}>
+      <ProfessorPracticeDesignStep
+        designs={{
+          "lecture-01": {
+            ...design,
+            goal_findings: [{ goal_id: goal.id, reason: "The slides only name it." }],
+          },
+        }}
+        lectures={[{ id: "lecture-01", label: "lecture-01" }]}
+        error={null}
+        pendingAction={null}
+        pendingLectureId={null}
+        routingReady
+        onApprove={vi.fn()}
+        onSave={vi.fn()}
+        onPropose={vi.fn()}
+      />
+    </I18nProvider>,
+  );
+  expect(screen.getByRole("note")).toHaveTextContent("The slides only name it.");
+  expect(screen.getByRole("button", { name: "Approve learning goals" })).toBeEnabled();
+});
+
+it("makes approving all goals the primary action, even for one open lecture", async () => {
+  const approve = vi.fn();
+  render(
+    <I18nProvider locale="en" setLocale={() => {}}>
+      <ProfessorPracticeDesignStep
+        designs={{ "lecture-01": intentDesign("lecture-01") }}
+        lectures={[{ id: "lecture-01", label: "lecture-01" }]}
+        error={null}
+        pendingAction={null}
+        pendingLectureId={null}
+        routingReady
+        onApprove={approve}
+        onSave={vi.fn()}
+        onPropose={vi.fn()}
+      />
+    </I18nProvider>,
+  );
+  const approveAll = screen.getByRole("button", { name: "Approve all open goals (1)" });
+  expect(approveAll).toHaveClass("primary-action");
+  expect(screen.getByRole("button", { name: "Approve learning goals" })).not.toHaveClass(
+    "primary-action",
+  );
+  await userEvent.click(approveAll);
+  expect(approve).toHaveBeenCalledWith("lecture-01", { fixed_target_ids: [] });
+});
+
+it("labels a finding the single repair addressed as not re-checked", () => {
+  const design = intentDesign("lecture-01");
+  const goal = design.learning_intent!.goals[0];
+  render(
+    <I18nProvider locale="en" setLocale={() => {}}>
+      <ProfessorPracticeDesignStep
+        designs={{
+          "lecture-01": {
+            ...design,
+            goal_findings: [
+              {
+                goal_id: goal.id,
+                reason: "The slides only name it.",
+                status: "repaired_unchecked",
+              },
+            ],
+          },
+        }}
+        lectures={[{ id: "lecture-01", label: "lecture-01" }]}
+        error={null}
+        pendingAction={null}
+        pendingLectureId={null}
+        routingReady
+        onApprove={vi.fn()}
+        onSave={vi.fn()}
+        onPropose={vi.fn()}
+      />
+    </I18nProvider>,
+  );
+  const note = screen.getByRole("note");
+  expect(note).toHaveTextContent("The slides only name it.");
+  expect(note).toHaveTextContent("AI revised this goal once; the revision was not re-checked.");
+});

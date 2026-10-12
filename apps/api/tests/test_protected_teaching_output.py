@@ -1,7 +1,9 @@
-from lecturepilot.course_learning_intent import LearningIntent, goal_for, digest
-from lecturepilot.course_practice_design_prompt import practice_design_response_format
-from lecturepilot.practice_evidence_catalogue import evidence_catalogue
-from lecturepilot.protected_teaching_output import teaching_output_schema
+from lecturepilot.learning_design.course_learning_intent import LearningIntent, goal_for, digest
+from lecturepilot.learning_design.course_practice_design_prompt import (
+    practice_design_response_format,
+)
+from lecturepilot.learning_design.practice_evidence_catalogue import evidence_catalogue
+from lecturepilot.authoring.protected_teaching_output import teaching_output_schema
 from practice_design_test_helpers import proposal, target
 from reviewed_task_bank_helpers import with_bank
 from test_practice_design_semantic_review import _source

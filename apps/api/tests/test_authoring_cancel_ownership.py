@@ -4,12 +4,12 @@ from types import SimpleNamespace
 import pytest
 from pydantic_ai.models.function import FunctionModel
 
-from lecturepilot.authoring_job import run_authoring_job
-from lecturepilot.course_canvas_generation_cancel import cancel_canvas_generation
-from lecturepilot.course_canvas_generation_jobs import CanvasGenerationStore
-from lecturepilot.course_canvas_generation_ownership import CanvasGenerationOwnershipError
-from lecturepilot.course_canvas_generation_service import run_idempotent_canvas_generation
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.authoring.authoring_job import run_authoring_job
+from lecturepilot.authoring.course_canvas_generation_cancel import cancel_canvas_generation
+from lecturepilot.authoring.course_canvas_generation_jobs import CanvasGenerationStore
+from lecturepilot.authoring.course_canvas_generation_ownership import CanvasGenerationOwnershipError
+from lecturepilot.authoring.course_canvas_generation_service import run_idempotent_canvas_generation
+from lecturepilot.core.storage_layout import StorageLayout
 from test_authoring_job import authoring_job
 
 

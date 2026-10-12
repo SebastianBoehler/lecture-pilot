@@ -1,17 +1,17 @@
 from datetime import timedelta
 
 from auth_helpers import student_headers
-from lecturepilot.coaching_assistance import NextCheck, NextCheckAssistance
-from lecturepilot.coaching_check_binding import bind_delayed_review
-from lecturepilot.coaching_progress import CoachingProgressStore
-from lecturepilot.course_learning_design_models import LearningDesignGateInput
-from lecturepilot.learning_map import LearningMap
-from lecturepilot.learner_lesson_state import lesson_state_snapshot
-from lecturepilot.learner_state import LearnerStateStore
-from lecturepilot.models import QualityGateDecision, QualityGateStatus
-from lecturepilot.review_queue_models import GateReviewOpening
-from lecturepilot.scaffold_policy import scaffold_policy_for_assessment_stage
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.learner.coaching_assistance import NextCheck, NextCheckAssistance
+from lecturepilot.learner.coaching_check_binding import bind_delayed_review
+from lecturepilot.learner.coaching_progress import CoachingProgressStore
+from lecturepilot.learning_design.course_learning_design_models import LearningDesignGateInput
+from lecturepilot.learning_design.learning_map import LearningMap
+from lecturepilot.learner.learner_lesson_state import lesson_state_snapshot
+from lecturepilot.learner.learner_state import LearnerStateStore
+from lecturepilot.core.models import QualityGateDecision, QualityGateStatus
+from lecturepilot.learner.review_queue_models import GateReviewOpening
+from lecturepilot.learner.scaffold_policy import scaffold_policy_for_assessment_stage
+from lecturepilot.core.storage_layout import StorageLayout
 from practice_gate_coaching_test_helpers import IDS, NOW, practice_gate
 from review_queue_test_helpers import (
     COURSE_ID as REVIEW_COURSE_ID,

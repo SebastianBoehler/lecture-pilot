@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from lecturepilot.course_practice_design_models import PracticeDesignProposal
+from lecturepilot.learning_design.course_practice_design_models import PracticeDesignProposal
 from practice_design_test_helpers import proposal, target
 
 

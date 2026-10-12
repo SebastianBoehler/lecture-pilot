@@ -5,9 +5,9 @@ from fastapi.testclient import TestClient
 from auth_helpers import professor_headers, student_headers
 from canvas_workspace_fixtures import publish_course_canvas
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.exam_answer_evaluation import OpenAnswerEvaluation
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.exams.exam_answer_evaluation import OpenAnswerEvaluation
 
 
 def test_professor_reads_privacy_preserving_readiness_summary(tmp_path: Path) -> None:

@@ -3,13 +3,13 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import (
+from lecturepilot.canvas.canvas_models import (
     CanvasBlock,
     CanvasSection,
 )
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.models import AgentTurnInput, AgentTurnResult, CanvasCommand
-from lecturepilot.providers import DEFAULT_MODEL
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.core.models import AgentTurnInput, AgentTurnResult, CanvasCommand
+from lecturepilot.llm.providers import DEFAULT_MODEL
 from auth_helpers import student_headers
 from canvas_workspace_fixtures import (
     configure_canvas_workspace,

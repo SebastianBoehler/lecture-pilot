@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from lecturepilot.canvas_component_blocks import read_component_block
+from lecturepilot.canvas.canvas_component_blocks import read_component_block
 
 
 def test_component_without_authored_title_uses_readable_id(tmp_path: Path) -> None:

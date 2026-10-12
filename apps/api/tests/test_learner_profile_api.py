@@ -3,8 +3,8 @@ import json
 from fastapi.testclient import TestClient
 
 from lecturepilot.app import create_app
-from lecturepilot.storage_layout import StorageLayout
-from lecturepilot.user_memory import UserMemoryStore
+from lecturepilot.core.storage_layout import StorageLayout
+from lecturepilot.learner.user_memory import UserMemoryStore
 
 from auth_helpers import professor_headers, student_headers
 

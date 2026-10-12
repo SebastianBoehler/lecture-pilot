@@ -1,5 +1,5 @@
 from authoring_test_helpers import install_author, markdown
-from lecturepilot.model_client import ModelExecutionError
+from lecturepilot.llm.model_client import ModelExecutionError
 from test_course_canvas_targeted_repair import _course_client
 from test_course_canvas_targeted_repair_resilience import Reviewer, headers
 

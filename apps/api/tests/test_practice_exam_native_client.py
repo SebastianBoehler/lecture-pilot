@@ -1,8 +1,8 @@
 import pytest
-from lecturepilot import practice_exam_planner
-from lecturepilot.practice_exam_planner import NativePracticeExamClient
+from lecturepilot.exams import practice_exam_planner
+from lecturepilot.exams.practice_exam_planner import NativePracticeExamClient
 from practice_exam_planner_fixtures import _Registry
-from lecturepilot.models import ProviderCapability
+from lecturepilot.core.models import ProviderCapability
 
 
 @pytest.mark.asyncio

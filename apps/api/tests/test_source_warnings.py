@@ -1,6 +1,6 @@
 import pytest
 
-from lecturepilot.source_warnings import compact_source_warnings
+from lecturepilot.sources.source_warnings import compact_source_warnings
 
 
 def page(number, unit="page"):
@@ -39,7 +39,7 @@ def test_non_ocr_warnings_pass_through_unchanged(warnings):
 
 
 def test_draft_save_compacts_an_overflowing_warning_list(tmp_path):
-    from lecturepilot.canvas_workspace import CanvasWorkspace
+    from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
     from test_practice_design_canvas_binding import _approved_design, _document
 
     workspace = CanvasWorkspace(

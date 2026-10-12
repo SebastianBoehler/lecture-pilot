@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from auth_helpers import approval_input, professor_headers
-from lecturepilot.course_practice_design_store import PracticeDesignStore
+from lecturepilot.learning_design.course_practice_design_store import PracticeDesignStore
 from test_learning_design_review_routes import (
     _client_with_draft,
     _publish_path,

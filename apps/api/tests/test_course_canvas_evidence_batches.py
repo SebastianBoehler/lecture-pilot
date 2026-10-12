@@ -1,6 +1,6 @@
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.course_canvas_evidence_batches import group_evidence_sections
-from lecturepilot.course_canvas_quality_prompt import compact_quality_evidence
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.authoring.course_canvas_evidence_batches import group_evidence_sections
+from lecturepilot.authoring.course_canvas_quality_prompt import compact_quality_evidence
 
 
 def test_evidence_batches_keep_specific_refs_for_quality_matching() -> None:

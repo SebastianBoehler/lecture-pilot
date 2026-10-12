@@ -7,8 +7,8 @@ import {
   openLecture03FromDashboard,
   showAllPublishedLectures,
   soccerCanvasSection,
-} from "./testLessonActions";
-import { mockLoginAndTutorFetch, mockLoginFetch } from "./testFixtures";
+} from "./lesson/testLessonActions";
+import { mockLoginAndTutorFetch, mockLoginFetch } from "./shared/testFixtures";
 
 describe("LecturePilot attendance tutor intro", () => {
   afterEach(() => {

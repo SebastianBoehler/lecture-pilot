@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from lecturepilot.canvas_workspace import CanvasWorkspace
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
 
 
 def test_pdf_course_asset_preview_renders_png(tmp_path: Path) -> None:

@@ -1,7 +1,7 @@
 import pytest
 
-from lecturepilot.models import ProviderCapability
-from lecturepilot.providers import DEFAULT_MODEL, ProviderConfigurationError, ProviderRegistry
+from lecturepilot.core.models import ProviderCapability
+from lecturepilot.llm.providers import DEFAULT_MODEL, ProviderConfigurationError, ProviderRegistry
 
 
 def test_provider_registry_defaults_to_openai_gpt_5_6_luna(

@@ -6,10 +6,10 @@ from pathlib import Path
 
 import yaml
 
-from lecturepilot.logging_observability import LOGGER_NAME, logger, operation_scope
-from lecturepilot.metadata_events import configure_metadata_file_logging
-from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.observability import observability_from_env
+from lecturepilot.core.logging_observability import LOGGER_NAME, logger, operation_scope
+from lecturepilot.core.metadata_events import configure_metadata_file_logging
+from lecturepilot.llm.model_client import ModelExecutionError
+from lecturepilot.core.observability import observability_from_env
 
 
 def test_logging_observability_emits_allowlisted_metadata_only(monkeypatch, caplog) -> None:

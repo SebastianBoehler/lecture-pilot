@@ -195,7 +195,7 @@ independently labelled course fixtures.
 The [documentation map](docs/README.md) points to current architecture,
 security, operations, observability, and integration guidance while separating
 dated design records. User-facing changes are maintained in
-[`apps/web/src/productChangelog.json`](apps/web/src/productChangelog.json) and
+[`apps/web/src/info/productChangelog.json`](apps/web/src/info/productChangelog.json) and
 rendered into [`CHANGELOG.md`](CHANGELOG.md).
 
 LecturePilot has been deployed as a live pilot, but that is not blanket

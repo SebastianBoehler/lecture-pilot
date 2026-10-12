@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from lecturepilot import practice_exam_generation_jobs
-from lecturepilot.practice_exam_generation_jobs import PracticeExamGenerationStore
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.exams import practice_exam_generation_jobs
+from lecturepilot.exams.practice_exam_generation_jobs import PracticeExamGenerationStore
+from lecturepilot.core.storage_layout import StorageLayout
 
 
 def test_generation_begin_replays_same_active_job(tmp_path) -> None:

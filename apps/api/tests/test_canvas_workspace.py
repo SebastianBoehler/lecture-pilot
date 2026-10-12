@@ -3,9 +3,9 @@ from pathlib import Path
 import pytest
 
 from canvas_workspace_fixtures import course_canvas, publish_course_canvas
-from lecturepilot.canvas_models import CanvasBlock, CanvasSection
-from lecturepilot.canvas_workspace import CanvasWorkspace, CanvasWorkspaceError
-from lecturepilot.models import CanvasSectionPlacement
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasSection
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace, CanvasWorkspaceError
+from lecturepilot.core.models import CanvasSectionPlacement
 
 
 def test_published_canvas_reads_do_not_materialize_learner_copies(tmp_path: Path) -> None:

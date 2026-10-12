@@ -4,10 +4,10 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.course_schedule_store import write_course_workspace
-from lecturepilot.models import Course, CourseWorkspaceResult, Lecture
-from lecturepilot.metadata_events import LOGGER_NAME
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.courses.course_schedule_store import write_course_workspace
+from lecturepilot.core.models import Course, CourseWorkspaceResult, Lecture
+from lecturepilot.core.metadata_events import LOGGER_NAME
 from auth_helpers import professor_headers, student_headers
 from canvas_workspace_fixtures import publish_course_canvas
 from api_test_client import workspace_client as _client

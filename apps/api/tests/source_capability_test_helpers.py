@@ -3,14 +3,17 @@ from hashlib import sha256
 
 from canvas_workspace_fixtures import approve_canvas_draft, published_course_canvas
 from practice_design_test_helpers import approved_design_document
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.course_canvas_repairs import lecture_source_revision
-from lecturepilot.course_schedule_store import write_course_workspace
-from lecturepilot.course_source_routing import source_revision
-from lecturepilot.course_source_routing_models import CourseSourceRoute, CourseSourceRoutingManifest
-from lecturepilot.lecture_source_manifest import LectureSourceFile, LectureSourceManifest
-from lecturepilot.models import Course, CourseWorkspaceResult, Lecture
-from lecturepilot.source_index_models import CourseSourceIndex, IndexedSourceFile
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.authoring.course_canvas_repairs import lecture_source_revision
+from lecturepilot.courses.course_schedule_store import write_course_workspace
+from lecturepilot.sources.course_source_routing import source_revision
+from lecturepilot.sources.course_source_routing_models import (
+    CourseSourceRoute,
+    CourseSourceRoutingManifest,
+)
+from lecturepilot.sources.lecture_source_manifest import LectureSourceFile, LectureSourceManifest
+from lecturepilot.core.models import Course, CourseWorkspaceResult, Lecture
+from lecturepilot.sources.source_index_models import CourseSourceIndex, IndexedSourceFile
 
 
 def published_source_workspace(tmp_path):

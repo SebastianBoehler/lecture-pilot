@@ -3,7 +3,9 @@ import json
 from pydantic_ai.messages import ModelResponse, TextPart
 from pydantic_ai.models.function import FunctionModel
 
-from lecturepilot.course_practice_design_review_client import NativePracticeDesignReviewClient
+from lecturepilot.learning_design.course_practice_design_review_client import (
+    NativePracticeDesignReviewClient,
+)
 from test_practice_design_semantic_review import _review_payload, _settings, _source
 from practice_design_test_helpers import proposal
 

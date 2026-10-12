@@ -1,8 +1,8 @@
 from approved_practice_design_helpers import approved_practice_design
 import pytest
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.authoring.course_canvas_errors import CanvasGenerationRepairableError
 from practice_design_test_helpers import proposal, target as build_target
 
 
@@ -35,7 +35,9 @@ def test_shared_contract_rejects_practice_id_on_non_checkpoint() -> None:
     )
 
     with pytest.raises(CanvasGenerationRepairableError, match="only be a checkpoint"):
-        from lecturepilot.course_canvas_practice_contract import validate_practice_candidate
+        from lecturepilot.authoring.course_canvas_practice_contract import (
+            validate_practice_candidate,
+        )
 
         validate_practice_candidate(document, design)
 

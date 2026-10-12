@@ -5,12 +5,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from lecturepilot import model_rate_limits
-from lecturepilot.model_request_options import (
+from lecturepilot.llm import model_rate_limits
+from lecturepilot.llm.model_request_options import (
     tool_reasoning_effort,
 )
-from lecturepilot.model_usage import complete_with_usage
-from lecturepilot.models import ProviderCapability, ProviderSettings
+from lecturepilot.llm.model_usage import complete_with_usage
+from lecturepilot.core.models import ProviderCapability, ProviderSettings
 
 
 def test_gpt5_tool_reasoning_remains_low() -> None:
@@ -35,7 +35,7 @@ async def test_timeout_retries_once_with_a_fresh_provider_request(monkeypatch) -
     async def no_wait(_seconds: float) -> None:
         return None
 
-    monkeypatch.setattr("lecturepilot.model_usage.asyncio.sleep", no_wait)
+    monkeypatch.setattr("lecturepilot.llm.model_usage.asyncio.sleep", no_wait)
 
     with pytest.raises(TimeoutError, match="provider timeout"):
         await complete_with_usage(None, completion, model="gemini/test-model")
@@ -58,7 +58,7 @@ async def test_long_request_can_disable_automatic_provider_retry(monkeypatch) ->
     async def no_wait(_seconds: float) -> None:
         raise AssertionError("single-attempt requests must not back off")
 
-    monkeypatch.setattr("lecturepilot.model_usage.asyncio.sleep", no_wait)
+    monkeypatch.setattr("lecturepilot.llm.model_usage.asyncio.sleep", no_wait)
 
     with pytest.raises(TimeoutError, match="provider timeout"):
         await complete_with_usage(
@@ -89,7 +89,7 @@ async def test_usage_guard_follows_the_requested_provider_timeout(monkeypatch) -
     async def completion(**_kwargs):
         return SimpleNamespace(usage=None)
 
-    monkeypatch.setattr("lecturepilot.model_usage.asyncio.timeout", timeout)
+    monkeypatch.setattr("lecturepilot.llm.model_usage.asyncio.timeout", timeout)
 
     await complete_with_usage(None, completion, model="openai/test-model", timeout=60)
 
@@ -150,9 +150,9 @@ async def test_rate_limit_retry_waits_for_provider_retry_after(monkeypatch) -> N
         waits.append(seconds)
         now += seconds
 
-    monkeypatch.setattr("lecturepilot.model_usage.asyncio.sleep", record_wait)
-    monkeypatch.setattr("lecturepilot.model_usage.uniform", lambda _low, _high: 0.0)
-    monkeypatch.setattr("lecturepilot.model_rate_limits.monotonic", lambda: now)
+    monkeypatch.setattr("lecturepilot.llm.model_usage.asyncio.sleep", record_wait)
+    monkeypatch.setattr("lecturepilot.llm.model_usage.uniform", lambda _low, _high: 0.0)
+    monkeypatch.setattr("lecturepilot.llm.model_rate_limits.monotonic", lambda: now)
 
     await complete_with_usage(None, completion, model="openai/test-model")
 
@@ -185,7 +185,7 @@ async def test_provider_headers_expand_concurrency_within_request_and_token_budg
 @pytest.mark.asyncio
 async def test_rate_limit_reset_supports_project_token_budget(monkeypatch) -> None:
     monkeypatch.setattr(model_rate_limits, "_blocked_until", {})
-    monkeypatch.setattr("lecturepilot.model_rate_limits.monotonic", lambda: 10.0)
+    monkeypatch.setattr("lecturepilot.llm.model_rate_limits.monotonic", lambda: 10.0)
 
     delay = model_rate_limits.observe_provider_response(
         "openai/test-model",
@@ -214,7 +214,7 @@ async def test_nontransient_provider_error_is_not_retried(monkeypatch) -> None:
     async def no_wait(_seconds: float) -> None:
         raise AssertionError("nontransient errors must not wait")
 
-    monkeypatch.setattr("lecturepilot.model_usage.asyncio.sleep", no_wait)
+    monkeypatch.setattr("lecturepilot.llm.model_usage.asyncio.sleep", no_wait)
 
     with pytest.raises(ValueError):
         await complete_with_usage(None, completion, model="gemini/test-model")
@@ -237,7 +237,7 @@ async def test_exhausted_provider_credits_are_not_retried(monkeypatch) -> None:
     async def no_wait(_seconds: float) -> None:
         raise AssertionError("exhausted credits cannot recover through an immediate retry")
 
-    monkeypatch.setattr("lecturepilot.model_usage.asyncio.sleep", no_wait)
+    monkeypatch.setattr("lecturepilot.llm.model_usage.asyncio.sleep", no_wait)
 
     with pytest.raises(_QuotaError):
         await complete_with_usage(None, completion, model="openai/gpt-5.6-luna")

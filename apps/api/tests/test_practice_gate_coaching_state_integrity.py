@@ -2,16 +2,16 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from lecturepilot.coaching_progress import InvalidCoachingStateError
-from lecturepilot.coaching_episode import record_review_attempt, schedule_delayed_review
-from lecturepilot.coaching_state_models import (
+from lecturepilot.learner.coaching_progress import InvalidCoachingStateError
+from lecturepilot.learner.coaching_episode import record_review_attempt, schedule_delayed_review
+from lecturepilot.learner.coaching_state_models import (
     CoachingProgress,
     HintExposure,
     PendingCheck,
     hint_exposure_key,
 )
-from lecturepilot.learning_map import LearningMap, LearningMapNode
-from lecturepilot.learning_state_preflight import validate_coaching_bindings
+from lecturepilot.learning_design.learning_map import LearningMap, LearningMapNode
+from lecturepilot.learner.learning_state_preflight import validate_coaching_bindings
 from practice_gate_coaching_test_helpers import practice_gate
 
 

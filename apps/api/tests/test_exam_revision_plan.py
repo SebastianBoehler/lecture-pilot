@@ -1,13 +1,13 @@
 import pytest
 from pydantic import ValidationError
 
-from lecturepilot.exam_readiness import (
+from lecturepilot.exams.exam_readiness import (
     ExamReadinessCheck,
     ExamReadinessCoverage,
     ExamReadinessQuestion,
 )
-from lecturepilot.exam_answer_evaluation import OpenAnswerEvaluation
-from lecturepilot.exam_revision_plan import ExamReadinessAnswer, build_exam_revision_plan
+from lecturepilot.exams.exam_answer_evaluation import OpenAnswerEvaluation
+from lecturepilot.exams.exam_revision_plan import ExamReadinessAnswer, build_exam_revision_plan
 
 
 def test_revision_plan_uses_evaluated_open_answer_scores() -> None:

@@ -4,10 +4,10 @@ from fastapi.testclient import TestClient
 
 from auth_helpers import professor_headers, student_headers
 from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.course_update_apply import apply_course_update
-from lecturepilot.course_update_models import CourseUpdateApplyInput
-from lecturepilot.course_update_storage import CourseUpdateRecoveryError
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.courses.course_update_apply import apply_course_update
+from lecturepilot.courses.course_update_models import CourseUpdateApplyInput
+from lecturepilot.courses.course_update_storage import CourseUpdateRecoveryError
 
 
 def test_course_update_detects_unchanged_files_without_creating_work(tmp_path: Path) -> None:
@@ -184,7 +184,7 @@ def test_course_update_rolls_back_files_and_schedule_if_metadata_write_fails(
         raise OSError("simulated manifest failure")
 
     monkeypatch.setattr(
-        "lecturepilot.course_update_apply.write_lecture_source_manifest", fail_manifest
+        "lecturepilot.courses.course_update_apply.write_lecture_source_manifest", fail_manifest
     )
     payload = CourseUpdateApplyInput.model_validate(
         {
@@ -223,7 +223,7 @@ def test_course_update_surfaces_recovery_id_when_automatic_rollback_fails(
         raise CourseUpdateRecoveryError("recovery-test-id")
 
     monkeypatch.setattr(
-        "lecturepilot.course_update_routes.apply_course_update",
+        "lecturepilot.courses.course_update_routes.apply_course_update",
         fail_with_recovery,
     )
 

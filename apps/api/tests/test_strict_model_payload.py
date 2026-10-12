@@ -2,12 +2,12 @@ import json
 
 import pytest
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.learning_map import LearningMapGate
-from lecturepilot.agent_response_schema import lecturepilot_response_format
-from lecturepilot.model_payload import agent_result_from_content
-from lecturepilot.models import AgentCoachingContext, AgentTurnInput, AttendanceStatus
-from lecturepilot.providers import ProviderConfigurationError
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.learning_design.learning_map import LearningMapGate
+from lecturepilot.tutor.agent_response_schema import lecturepilot_response_format
+from lecturepilot.llm.model_payload import agent_result_from_content
+from lecturepilot.core.models import AgentCoachingContext, AgentTurnInput, AttendanceStatus
+from lecturepilot.llm.providers import ProviderConfigurationError
 
 
 def _gate() -> LearningMapGate:

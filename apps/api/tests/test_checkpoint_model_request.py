@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from lecturepilot.model_client import NativeModelClient
-from lecturepilot.models import ProviderSettings
+from lecturepilot.llm.model_client import NativeModelClient
+from lecturepilot.core.models import ProviderSettings
 from test_strict_model_payload import _payload, _turn
 
 

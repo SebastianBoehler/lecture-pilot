@@ -5,17 +5,17 @@ import pytest
 from fastapi.testclient import TestClient
 
 from auth_helpers import student_headers
-from lecturepilot.coaching_progress import CoachingProgressStore
-from lecturepilot.coaching_state_models import (
+from lecturepilot.learner.coaching_progress import CoachingProgressStore
+from lecturepilot.learner.coaching_state_models import (
     CoachingProgress,
     DelayedReview,
     PendingCheck,
     review_key,
 )
-from lecturepilot.durable_files import atomic_write_json
-from lecturepilot.exam_revision_plan import ExamRevisionTask
-from lecturepilot.model_payload import agent_result_from_content
-from lecturepilot.scaffold_policy import scaffold_policy_for_assessment_stage
+from lecturepilot.core.durable_files import atomic_write_json
+from lecturepilot.exams.exam_revision_plan import ExamRevisionTask
+from lecturepilot.llm.model_payload import agent_result_from_content
+from lecturepilot.learner.scaffold_policy import scaffold_policy_for_assessment_stage
 from test_agent_stream import _published_app, _write_bound_coaching_state
 
 

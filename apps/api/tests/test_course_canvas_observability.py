@@ -8,18 +8,18 @@ from types import SimpleNamespace
 
 import pytest
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.course_canvas_generation import generate_course_canvas_draft
-from lecturepilot.logging_observability import (
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.authoring.course_canvas_generation import generate_course_canvas_draft
+from lecturepilot.core.logging_observability import (
     LOGGER_NAME,
     LoggingObservability,
     current_operation_id,
 )
-from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
-from lecturepilot.source_bundle_canvas import SourceBundleCanvasError
-from lecturepilot.tenancy import TenantContext
+from lecturepilot.llm.model_client import ModelExecutionError
+from lecturepilot.authoring.course_canvas_errors import CanvasGenerationRepairableError
+from lecturepilot.sources.source_bundle_canvas import SourceBundleCanvasError
+from lecturepilot.identity.tenancy import TenantContext
 
 
 async def test_source_resolution_failure_logs_generation_stage_without_content(

@@ -6,12 +6,12 @@ from fastapi.testclient import TestClient
 
 from auth_helpers import professor_headers, student_headers
 from canvas_workspace_fixtures import publish_course_canvas
-from lecturepilot.canvas_models import CanvasBlock, CanvasSection
-from lecturepilot.coaching_orchestration import prepare_coaching_turn
-from lecturepilot.course_canvas_context import InvalidPublishedCanvasContextError
-from lecturepilot.harness import LOCAL_PREVIEW_USER_ID
-from lecturepilot.models import AgentTurnInput, AttendanceStatus
-from lecturepilot.observability import Observability
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasSection
+from lecturepilot.learner.coaching_orchestration import prepare_coaching_turn
+from lecturepilot.canvas.course_canvas_context import InvalidPublishedCanvasContextError
+from lecturepilot.tutor.harness import LOCAL_PREVIEW_USER_ID
+from lecturepilot.core.models import AgentTurnInput, AttendanceStatus
+from lecturepilot.core.observability import Observability
 from test_quiz_learner_overlay import (
     COURSE_ID,
     LECTURE_ID,

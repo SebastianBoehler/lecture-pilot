@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 from fastapi.testclient import TestClient
 
-from lecturepilot.university_models import ExternalCourseCandidate, UniversityLoginResult
+from lecturepilot.courses.university_models import ExternalCourseCandidate, UniversityLoginResult
 from auth_helpers import pending_university_login
 
 

@@ -1,5 +1,5 @@
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.learning_map import build_learning_map
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.learning_design.learning_map import build_learning_map
 from practice_design_test_helpers import canvas_with_practice_design
 
 

@@ -1,8 +1,8 @@
 from datetime import date
 
-from lecturepilot.course_source_partition import select_lecture_source_files
-from lecturepilot.models import Lecture
-from lecturepilot.source_bundle import SourceBundleFile
+from lecturepilot.sources.course_source_partition import select_lecture_source_files
+from lecturepilot.core.models import Lecture
+from lecturepilot.sources.source_bundle import SourceBundleFile
 
 
 def _file(path: str, kind: str = "markdown") -> SourceBundleFile:

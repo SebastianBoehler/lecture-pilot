@@ -5,14 +5,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.course_canvas_generation_jobs import CanvasGenerationStore
-from lecturepilot.course_canvas_generation_service import (
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.authoring.course_canvas_generation_jobs import CanvasGenerationStore
+from lecturepilot.authoring.course_canvas_generation_service import (
     CANVAS_GENERATION_LEASE_SECONDS,
     CanvasGenerationReplayError,
     run_idempotent_canvas_generation,
 )
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.core.storage_layout import StorageLayout
 
 
 @pytest.mark.asyncio

@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
-const sourcePath = resolve(root, "apps/web/src/productChangelog.json");
+const sourcePath = resolve(root, "apps/web/src/info/productChangelog.json");
 const markdownPath = resolve(root, "CHANGELOG.md");
 const changelog = JSON.parse(readFileSync(sourcePath, "utf8"));
 const [command = "check", versionArg, outputArg] = process.argv.slice(2);

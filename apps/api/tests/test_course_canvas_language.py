@@ -3,9 +3,9 @@ from pathlib import Path
 
 
 from auth_helpers import confirm_source_routing, professor_headers
-from lecturepilot.course_builder_source import course_builder_source_document
-from lecturepilot.course_workspace import resolve_course_workspace
-from lecturepilot.models import CourseWorkspaceSetupInput
+from lecturepilot.sources.course_builder_source import course_builder_source_document
+from lecturepilot.courses.course_workspace import resolve_course_workspace
+from lecturepilot.core.models import CourseWorkspaceSetupInput
 from test_course_workspace_api import _client
 
 

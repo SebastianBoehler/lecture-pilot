@@ -1,12 +1,14 @@
 import pytest
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasSection
-from lecturepilot.course_canvas_errors import CanvasGenerationRepairableError
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasSection
+from lecturepilot.authoring.course_canvas_errors import CanvasGenerationRepairableError
 from practice_design_test_helpers import target
 
 
 def test_backend_assembles_all_assigned_checkpoints_before_generated_instruction():
-    from lecturepilot.course_canvas_approved_checkpoints import assemble_approved_checkpoints
+    from lecturepilot.authoring.course_canvas_approved_checkpoints import (
+        assemble_approved_checkpoints,
+    )
 
     targets = (target(id="t2"), target(id="t3"))
     section = CanvasSection(
@@ -33,7 +35,9 @@ def test_backend_assembles_all_assigned_checkpoints_before_generated_instruction
     ],
 )
 def test_assembly_rejects_claimed_unapproved_or_modified_canonical_content(block):
-    from lecturepilot.course_canvas_approved_checkpoints import assemble_approved_checkpoints
+    from lecturepilot.authoring.course_canvas_approved_checkpoints import (
+        assemble_approved_checkpoints,
+    )
 
     section = CanvasSection(id="s", title="Models", source_ref="lecture-01.md", blocks=[block])
     with pytest.raises(CanvasGenerationRepairableError):
@@ -41,7 +45,9 @@ def test_assembly_rejects_claimed_unapproved_or_modified_canonical_content(block
 
 
 def test_orientation_stays_with_exact_target_and_teaching_follows_all_diagnostics():
-    from lecturepilot.course_canvas_approved_checkpoints import assemble_approved_checkpoints
+    from lecturepilot.authoring.course_canvas_approved_checkpoints import (
+        assemble_approved_checkpoints,
+    )
 
     targets = (target(id="t2"), target(id="t3"))
     section = CanvasSection(
@@ -71,7 +77,9 @@ def test_orientation_stays_with_exact_target_and_teaching_follows_all_diagnostic
 
 
 def test_assessment_cannot_be_used_as_orientation():
-    from lecturepilot.course_canvas_approved_checkpoints import assemble_approved_checkpoints
+    from lecturepilot.authoring.course_canvas_approved_checkpoints import (
+        assemble_approved_checkpoints,
+    )
 
     section = CanvasSection(
         id="s",
@@ -84,7 +92,9 @@ def test_assessment_cannot_be_used_as_orientation():
 
 
 def test_duplicate_orientation_is_not_silently_discarded():
-    from lecturepilot.course_canvas_approved_checkpoints import assemble_approved_checkpoints
+    from lecturepilot.authoring.course_canvas_approved_checkpoints import (
+        assemble_approved_checkpoints,
+    )
 
     context = CanvasBlock(id="check-context-t2", type="paragraph", text="Identify the task.")
     section = CanvasSection(

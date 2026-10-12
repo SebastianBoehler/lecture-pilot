@@ -1,6 +1,6 @@
 import pytest
 
-from lecturepilot.canvas_checkpoint_sequence import checkpoint_block
+from lecturepilot.canvas.canvas_checkpoint_sequence import checkpoint_block
 
 
 def test_sequence_keeps_question_and_choices_separate() -> None:

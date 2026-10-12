@@ -5,11 +5,11 @@ from fastapi.testclient import TestClient
 from auth_helpers import professor_headers, student_headers
 from canvas_workspace_fixtures import publish_course_canvas
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.course_schedule_store import write_course_workspace
-from lecturepilot.models import Course, CourseWorkspaceResult, Lecture
-from lecturepilot.professor_preview import professor_preview_user_id
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.courses.course_schedule_store import write_course_workspace
+from lecturepilot.core.models import Course, CourseWorkspaceResult, Lecture
+from lecturepilot.courses.professor_preview import professor_preview_user_id
 
 
 def test_normalized_course_asset_requires_authentication(tmp_path: Path) -> None:
@@ -189,7 +189,9 @@ def test_course_asset_resolves_legacy_graphicspath_reference(tmp_path: Path, mon
     def reject_recursive_scan(*_args, **_kwargs):
         raise AssertionError("scheduled source lookup must not scan every uploaded file")
 
-    monkeypatch.setattr("lecturepilot.canvas_asset_store.WorkspaceFS.files", reject_recursive_scan)
+    monkeypatch.setattr(
+        "lecturepilot.canvas.canvas_asset_store.WorkspaceFS.files", reject_recursive_scan
+    )
     response = TestClient(app).get(
         "/course-assets/martius-ml/lecture-02/examples/mnistExamples.png",
         headers=student_headers("student01"),

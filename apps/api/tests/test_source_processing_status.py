@@ -1,5 +1,5 @@
-from lecturepilot import source_processing_status
-from lecturepilot.course_source_routing_models import (
+from lecturepilot.sources import source_processing_status
+from lecturepilot.sources.course_source_routing_models import (
     CourseSourceRoutingManifest,
     SourceProcessingStatus,
 )

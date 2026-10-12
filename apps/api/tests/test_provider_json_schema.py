@@ -1,10 +1,10 @@
-from lecturepilot.agent_response_schema import (
+from lecturepilot.tutor.agent_response_schema import (
     lecturepilot_response_format,
     source_routing_response_format,
 )
-from lecturepilot.provider_json_schema import provider_json_schema
-from lecturepilot.provider_turn_result import ProviderAgentTurnResult
-from lecturepilot.provider_source_routes import SourceRoutingProposal
+from lecturepilot.llm.provider_json_schema import provider_json_schema
+from lecturepilot.tutor.provider_turn_result import ProviderAgentTurnResult
+from lecturepilot.tutor.provider_source_routes import SourceRoutingProposal
 from test_strict_model_payload import _turn
 
 

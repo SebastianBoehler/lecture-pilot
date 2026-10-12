@@ -2,21 +2,21 @@ from datetime import date
 
 import pytest
 
-from lecturepilot.course_source_routing_planner import (
+from lecturepilot.sources.course_source_routing_planner import (
     _read_selected_routes,
     _routing_evidence,
     _routing_messages,
 )
-from lecturepilot.agent_response_schema import source_routing_response_format
-from lecturepilot.course_source_routing_models import CourseSourceRoute, SourceRouteRole
-from lecturepilot.course_source_routing_review import (
+from lecturepilot.tutor.agent_response_schema import source_routing_response_format
+from lecturepilot.sources.course_source_routing_models import CourseSourceRoute, SourceRouteRole
+from lecturepilot.sources.course_source_routing_review import (
     apply_review_corrections,
     routing_review_messages,
 )
-from lecturepilot.models import Lecture
-from lecturepilot.providers import ProviderConfigurationError
-from lecturepilot.course_source_evidence import selection_detail_files
-from lecturepilot.source_index_models import IndexedSourceFile
+from lecturepilot.core.models import Lecture
+from lecturepilot.llm.providers import ProviderConfigurationError
+from lecturepilot.sources.course_source_evidence import selection_detail_files
+from lecturepilot.sources.source_index_models import IndexedSourceFile
 
 
 def test_source_selection_builds_complete_least_privilege_manifest() -> None:

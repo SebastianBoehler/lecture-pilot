@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from lecturepilot.canvas_markdown import read_document_source, write_document_source
-from lecturepilot.source_bundle_canvas import (
+from lecturepilot.canvas.canvas_markdown import read_document_source, write_document_source
+from lecturepilot.sources.source_bundle_canvas import (
     SourceBundleCanvasError,
     import_source_bundle_canvas,
 )

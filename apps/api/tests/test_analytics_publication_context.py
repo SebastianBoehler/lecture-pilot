@@ -3,18 +3,18 @@ from datetime import UTC, datetime
 from pathlib import Path
 from threading import Barrier, Event
 
-from lecturepilot.agent_gate_persistence import persist_quality_gate
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.coaching_orchestration import prepare_coaching_turn
-from lecturepilot.coaching_progress import CoachingTurnEvent
-from lecturepilot.models import (
+from lecturepilot.tutor.agent_gate_persistence import persist_quality_gate
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.learner.coaching_orchestration import prepare_coaching_turn
+from lecturepilot.learner.coaching_progress import CoachingTurnEvent
+from lecturepilot.core.models import (
     AgentTurnInput,
     AgentTurnResult,
     AttendanceStatus,
     QualityGateDecision,
     QualityGateStatus,
 )
-from lecturepilot.observability import Observability
+from lecturepilot.core.observability import Observability
 from test_quiz_publication_integrity import _client, _publish
 
 

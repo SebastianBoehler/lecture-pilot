@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 import os
 
-import lecturepilot.bounded_processing as bounded_processing
+import lecturepilot.sources.bounded_processing as bounded_processing
 
 
 def _burn_cpu(seconds: float) -> tuple[int, float]:

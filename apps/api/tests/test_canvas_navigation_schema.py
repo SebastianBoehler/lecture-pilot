@@ -2,10 +2,10 @@ import json
 
 import pytest
 
-from lecturepilot.agent_response_schema import lecturepilot_response_format
-from lecturepilot.canvas_models import CanvasBlock, CanvasSection
-from lecturepilot.model_payload import agent_result_from_content
-from lecturepilot.providers import ProviderConfigurationError
+from lecturepilot.tutor.agent_response_schema import lecturepilot_response_format
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasSection
+from lecturepilot.llm.model_payload import agent_result_from_content
+from lecturepilot.llm.providers import ProviderConfigurationError
 from test_strict_model_payload import _payload, _turn
 
 

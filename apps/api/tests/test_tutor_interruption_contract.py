@@ -2,13 +2,13 @@ import json
 
 import pytest
 
-from lecturepilot.agent_response_schema import lecturepilot_response_format
-from lecturepilot.native_tutor import native_tutor_turn
+from lecturepilot.tutor.agent_response_schema import lecturepilot_response_format
+from lecturepilot.tutor.native_tutor import native_tutor_turn
 from pydantic_ai.models.function import FunctionModel
 from pydantic_ai.messages import ModelResponse, TextPart
-from lecturepilot.model_payload import agent_result_from_content
-from lecturepilot.models import ProviderSettings
-from lecturepilot.observability import Observability
+from lecturepilot.llm.model_payload import agent_result_from_content
+from lecturepilot.core.models import ProviderSettings
+from lecturepilot.core.observability import Observability
 from test_strict_model_payload import _payload, _turn
 
 

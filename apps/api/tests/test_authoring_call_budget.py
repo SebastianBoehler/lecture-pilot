@@ -8,8 +8,8 @@ sections whose inputs a teaching repair changed are written again.
 
 import pytest
 
-from lecturepilot.authoring_job import run_authoring_job
-from lecturepilot.authoring_models import AuthoringDesignConflict
+from lecturepilot.authoring.authoring_job import run_authoring_job
+from lecturepilot.authoring.authoring_models import AuthoringDesignConflict
 from authoring_lecture_fixture import (
     SECTION_COUNT,
     ScriptedAuthor,

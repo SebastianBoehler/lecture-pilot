@@ -2,7 +2,7 @@ from pathlib import Path
 
 import fitz
 
-from lecturepilot.pdf_extract import read_pdf_text
+from lecturepilot.sources.pdf_extract import read_pdf_text
 
 
 def test_pdf_text_includes_safe_embedded_links(tmp_path: Path) -> None:

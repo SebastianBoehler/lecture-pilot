@@ -6,15 +6,15 @@ from fastapi.testclient import TestClient
 from auth_helpers import professor_headers, student_headers
 from canvas_workspace_fixtures import configure_canvas_workspace, publish_course_canvas
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.course_schedule_store import write_course_workspace
-from lecturepilot.models import (
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.courses.course_schedule_store import write_course_workspace
+from lecturepilot.core.models import (
     Course,
     CourseWorkspaceResult,
     Lecture,
 )
-from lecturepilot.professor_preview import professor_preview_user_id
+from lecturepilot.courses.professor_preview import professor_preview_user_id
 
 
 PREVIEW_HEADER = {"X-LecturePilot-Learner-Preview": "professor"}

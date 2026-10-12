@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from lecturepilot.model_usage import complete_with_usage, usage_tokens_from_response
+from lecturepilot.llm.model_usage import complete_with_usage, usage_tokens_from_response
 
 
 def test_extracts_actual_and_detailed_tokens_from_provider_response() -> None:
@@ -51,7 +51,7 @@ async def test_model_request_emits_stage_latency_queue_and_token_metadata(monkey
         )
 
     monkeypatch.setattr(
-        "lecturepilot.model_usage.emit_metadata_event",
+        "lecturepilot.llm.model_usage.emit_metadata_event",
         lambda event, **values: events.append((event, values)),
     )
 

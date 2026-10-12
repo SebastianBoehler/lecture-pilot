@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from canvas_workspace_fixtures import published_martius_workspace
-from lecturepilot.agent_canvas_write import normalize_student_canvas_markdown
-from lecturepilot.agent_turn_orchestration import _apply_generated_sections
-from lecturepilot.agent_tool_executor import AgentToolExecutor
-from lecturepilot.canvas_models import CanvasBlock, CanvasSection
-from lecturepilot.models import AgentTurnInput, AgentTurnResult, CanvasCommand
-from lecturepilot.observability import Observability
+from lecturepilot.tutor.agent_canvas_write import normalize_student_canvas_markdown
+from lecturepilot.tutor.agent_turn_orchestration import _apply_generated_sections
+from lecturepilot.tutor.agent_tool_executor import AgentToolExecutor
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasSection
+from lecturepilot.core.models import AgentTurnInput, AgentTurnResult, CanvasCommand
+from lecturepilot.core.observability import Observability
 from test_analytics_routes import _client
 
 

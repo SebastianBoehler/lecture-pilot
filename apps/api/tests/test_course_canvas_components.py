@@ -1,5 +1,5 @@
-from lecturepilot.canvas_component_catalog import component_spec_issue
-from lecturepilot.canvas_models import (
+from lecturepilot.canvas.canvas_component_catalog import component_spec_issue
+from lecturepilot.canvas.canvas_models import (
     CanvasBlock,
     CanvasComponentData,
     CanvasComponentFrame,

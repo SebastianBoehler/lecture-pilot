@@ -5,7 +5,7 @@ from threading import Barrier
 
 from auth_helpers import student_headers
 from canvas_workspace_fixtures import approve_canvas_draft, write_canvas_draft
-from lecturepilot.canvas_models import CanvasBlock
+from lecturepilot.canvas.canvas_models import CanvasBlock
 from review_queue_test_helpers import (
     COURSE_ID,
     NOW,

@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 import json
 from types import SimpleNamespace as NS
 
-from lecturepilot.practice_exam_focus import practice_exam_goal_focus
+from lecturepilot.exams.practice_exam_focus import practice_exam_goal_focus
 
 NOW = datetime(2026, 10, 7, tzinfo=UTC)
 REV = "a" * 64
@@ -92,7 +92,7 @@ def test_focus_excludes_unsupported_sections_and_completed_reviews():
 
 
 def test_generation_prompt_prioritizes_goals_after_required_coverage():
-    from lecturepilot.practice_exam_prompt import practice_exam_messages
+    from lecturepilot.exams.practice_exam_prompt import practice_exam_messages
 
     messages = practice_exam_messages(
         course_title="ML",

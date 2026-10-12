@@ -4,12 +4,12 @@ from datetime import timedelta
 import pytest
 from pydantic import ValidationError
 
-from lecturepilot.coaching_progress import CoachingProgressStore
-from lecturepilot.coaching_transitions import derive_next_transition
-from lecturepilot.learning_map import LearningMapGate
-from lecturepilot.models import QualityGateDecision, QualityGateStatus
-from lecturepilot.scaffold_policy import scaffold_policy_for_assessment_stage
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.learner.coaching_progress import CoachingProgressStore
+from lecturepilot.learner.coaching_transitions import derive_next_transition
+from lecturepilot.learning_design.learning_map import LearningMapGate
+from lecturepilot.core.models import QualityGateDecision, QualityGateStatus
+from lecturepilot.learner.scaffold_policy import scaffold_policy_for_assessment_stage
+from lecturepilot.core.storage_layout import StorageLayout
 from practice_design_test_helpers import target
 from practice_gate_coaching_test_helpers import IDS, NOW, practice_gate
 
@@ -134,7 +134,7 @@ def test_selection_and_reason_survive_reload_then_require_independent_exit(tmp_p
 
 def test_provider_assessment_drives_server_selection():
     from types import SimpleNamespace
-    from lecturepilot.model_commands import select_next_check
+    from lecturepilot.tutor.model_commands import select_next_check
 
     gate = targeted_gate()
     turn = SimpleNamespace(
@@ -158,8 +158,8 @@ def test_provider_assessment_drives_server_selection():
 
 
 def test_learning_map_preserves_binding_and_rejects_changed_approved_binding():
-    from lecturepilot.learning_map import build_learning_map, LearningMap
-    from lecturepilot.course_practice_design_validation import (
+    from lecturepilot.learning_design.learning_map import build_learning_map, LearningMap
+    from lecturepilot.learning_design.course_practice_design_validation import (
         validate_learning_map_practice_contract,
         PracticeDesignValidationError,
     )

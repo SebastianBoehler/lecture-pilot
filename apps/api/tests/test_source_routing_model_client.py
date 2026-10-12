@@ -2,8 +2,8 @@ import json
 from pydantic_ai.messages import ModelResponse, TextPart
 from pydantic_ai.models.function import FunctionModel
 
-from lecturepilot.course_source_routing_client import NativeSourceRoutingClient
-from lecturepilot.models import ProviderSettings
+from lecturepilot.sources.course_source_routing_client import NativeSourceRoutingClient
+from lecturepilot.core.models import ProviderSettings
 
 
 async def test_source_routing_client_sends_native_strict_schema_requests():

@@ -5,12 +5,12 @@ import pytest
 from openai import APIConnectionError, APITimeoutError, AuthenticationError, RateLimitError
 from pydantic_ai.exceptions import ModelAPIError
 
-from lecturepilot.model_provider_errors import (
+from lecturepilot.llm.model_provider_errors import (
     is_provider_timeout,
     is_retryable_provider_error,
     model_provider_error_message,
 )
-from lecturepilot.model_usage import complete_with_usage
+from lecturepilot.llm.model_usage import complete_with_usage
 
 
 def wrapped(cause):
@@ -35,7 +35,7 @@ async def test_native_wrapped_transport_error_retries_then_succeeds(monkeypatch,
     async def no_wait(seconds):
         pass
 
-    monkeypatch.setattr("lecturepilot.model_usage.asyncio.sleep", no_wait)
+    monkeypatch.setattr("lecturepilot.llm.model_usage.asyncio.sleep", no_wait)
     await complete_with_usage(None, completion, model="openai/test-wrapped")
     assert calls == 2
     message = model_provider_error_message(wrapped(cause), provider="openai")

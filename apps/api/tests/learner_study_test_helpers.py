@@ -10,11 +10,11 @@ from canvas_workspace_fixtures import (
     published_course_canvas,
 )
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import CanvasBlock, CanvasSection
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.course_schedule_store import write_course_workspace
-from lecturepilot.lecture_access_models import LectureAccessRule
-from lecturepilot.models import Course, CourseWorkspaceResult, Lecture
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasSection
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.courses.course_schedule_store import write_course_workspace
+from lecturepilot.courses.lecture_access_models import LectureAccessRule
+from lecturepilot.core.models import Course, CourseWorkspaceResult, Lecture
 
 COURSE_ID = "study-course"
 PAST = date(2020, 1, 1)

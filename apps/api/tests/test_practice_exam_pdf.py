@@ -6,12 +6,12 @@ from pathlib import Path
 import fitz
 import pytest
 
-from lecturepilot.latex_compilation_client import (
+from lecturepilot.sources.latex_compilation_client import (
     LatexCompilationError,
     compile_latex_document,
 )
-from lecturepilot.practice_exam_latex import render_practice_exam_tex
-from lecturepilot.practice_exam_models import (
+from lecturepilot.exams.practice_exam_latex import render_practice_exam_tex
+from lecturepilot.exams.practice_exam_models import (
     PracticeExamPublic,
     PracticeExamPublicQuestion,
 )
@@ -114,7 +114,7 @@ def test_generic_document_compiler_uses_content_fingerprint_cache(
         return _pdf_bytes(f"compiled-{calls}")
 
     monkeypatch.setattr(
-        "lecturepilot.latex_compilation_client._request_compilation", compile_request
+        "lecturepilot.sources.latex_compilation_client._request_compilation", compile_request
     )
     output = tmp_path / "exam.pdf"
 
@@ -130,7 +130,7 @@ def test_generic_document_compiler_rejects_invalid_pdf_without_cache(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(
-        "lecturepilot.latex_compilation_client._request_compilation",
+        "lecturepilot.sources.latex_compilation_client._request_compilation",
         lambda archive, size, main_path: b"not-pdf",
     )
 

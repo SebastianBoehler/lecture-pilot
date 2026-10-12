@@ -6,13 +6,17 @@ import yaml
 from fastapi.testclient import TestClient
 
 from lecturepilot.app import create_app
-from lecturepilot.csrf import allowed_origins
+from lecturepilot.identity.csrf import allowed_origins
 from lecturepilot.database import DatabaseConfigurationError, DatabaseSettings
 from lecturepilot.production_preflight import deployed_runtime_errors
 from lecturepilot.production_preflight import main as production_preflight_main
 from lecturepilot.production_preflight import validate_production_environment
-from lecturepilot.security_headers import allowed_hosts, hsts_enabled, production_fastapi_kwargs
-from lecturepilot.session_auth import SessionAuthError, SessionAuthSettings
+from lecturepilot.core.security_headers import (
+    allowed_hosts,
+    hsts_enabled,
+    production_fastapi_kwargs,
+)
+from lecturepilot.identity.session_auth import SessionAuthError, SessionAuthSettings
 
 
 def test_security_headers_are_applied() -> None:

@@ -4,7 +4,7 @@ import threading
 import httpx
 
 from auth_helpers import professor_headers
-from lecturepilot.course_update_recovery import locked_course_state
+from lecturepilot.courses.course_update_recovery import locked_course_state
 from test_learning_intent_routes import goal_client
 from practice_design_route_test_helpers import COURSE_ID
 
@@ -40,8 +40,8 @@ async def test_api_keeps_answering_while_a_course_lock_is_held(tmp_path) -> None
 
 
 def test_lecture_sources_are_parsed_without_holding_the_course_lock(tmp_path, monkeypatch):
-    from lecturepilot import course_builder_source
-    from lecturepilot.course_update_storage import course_update_lock_held
+    from lecturepilot.sources import course_builder_source
+    from lecturepilot.courses.course_update_storage import course_update_lock_held
     from practice_design_route_test_helpers import design_path
 
     api, _ = goal_client(tmp_path)
@@ -63,7 +63,7 @@ def test_lecture_sources_are_parsed_without_holding_the_course_lock(tmp_path, mo
 def test_reading_a_course_workspace_never_waits_for_the_course_lock(tmp_path) -> None:
     from time import perf_counter
 
-    from lecturepilot.course_schedule_store import read_course_workspace
+    from lecturepilot.courses.course_schedule_store import read_course_workspace
 
     api, _ = goal_client(tmp_path)
     course_root = api.app.state.canvas_workspace.layout.course_root(COURSE_ID)

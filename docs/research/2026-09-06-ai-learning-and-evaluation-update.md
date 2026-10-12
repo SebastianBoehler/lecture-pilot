@@ -155,7 +155,7 @@ The read-only benchmark construction check can be reproduced from the repo root:
 ```bash
 .venv/bin/python - <<'PY'
 import runpy
-from lecturepilot.model_commands import checkpoint_assessment_required
+from lecturepilot.tutor.model_commands import checkpoint_assessment_required
 
 benchmark = runpy.run_path("scripts/benchmark_gate_models.py")
 build_turn = benchmark["_turn_for_scenario"]

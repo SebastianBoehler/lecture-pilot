@@ -6,11 +6,11 @@ from types import SimpleNamespace
 from pydantic_ai.messages import CachePoint, ModelResponse, TextPart
 from pydantic_ai.models.function import FunctionModel
 
-from lecturepilot.agent_context_models import AgentConversationMessage, UserMemoryContext
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.learning_map import LearningMapGate
-from lecturepilot.model_client import NativeModelClient
-from lecturepilot.models import (
+from lecturepilot.tutor.agent_context_models import AgentConversationMessage, UserMemoryContext
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.learning_design.learning_map import LearningMapGate
+from lecturepilot.llm.model_client import NativeModelClient
+from lecturepilot.core.models import (
     AgentCoachingContext,
     AgentTurnInput,
     AttendanceStatus,

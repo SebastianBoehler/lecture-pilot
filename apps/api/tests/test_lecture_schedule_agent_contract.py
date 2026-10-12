@@ -2,15 +2,15 @@ from datetime import date
 
 import pytest
 
-from lecturepilot.lecture_schedule_planner import (
+from lecturepilot.courses.lecture_schedule_planner import (
     NativeScheduleClient,
     _read_proposal,
     _source_evidence,
 )
-from lecturepilot.model_client import ModelExecutionError
-from lecturepilot.models import ProviderCapability, ProviderSettings
-from lecturepilot.providers import ProviderConfigurationError
-from lecturepilot.source_bundle import SourceBundleFile
+from lecturepilot.llm.model_client import ModelExecutionError
+from lecturepilot.core.models import ProviderCapability, ProviderSettings
+from lecturepilot.llm.providers import ProviderConfigurationError
+from lecturepilot.sources.source_bundle import SourceBundleFile
 
 
 def test_schedule_agent_receives_complete_inventory_without_regex_seed() -> None:

@@ -9,15 +9,15 @@ import pytest
 
 from auth_helpers import professor_headers, student_headers
 from lecturepilot.app import create_app
-from lecturepilot.course_repository import CourseRepository
+from lecturepilot.courses.course_repository import CourseRepository
 from lecturepilot.database import Database
-from lecturepilot.identity_repository import IdentityRepository
-from lecturepilot.model_usage import ModelUsageRecorder, model_usage_scope
-from lecturepilot.models import CourseWorkspaceSetupInput
-from lecturepilot.professor_usage import ProfessorUsageRepository
-from lecturepilot.university_models import UniversityLoginResult
-from lecturepilot.usage_models import ProfessorUsageSummary, UsageLimitSummary, UsageTotals
-from lecturepilot.usage_quota import UsageQuota
+from lecturepilot.identity.identity_repository import IdentityRepository
+from lecturepilot.llm.model_usage import ModelUsageRecorder, model_usage_scope
+from lecturepilot.core.models import CourseWorkspaceSetupInput
+from lecturepilot.llm.professor_usage import ProfessorUsageRepository
+from lecturepilot.courses.university_models import UniversityLoginResult
+from lecturepilot.llm.usage_models import ProfessorUsageSummary, UsageLimitSummary, UsageTotals
+from lecturepilot.llm.usage_quota import UsageQuota
 
 
 def test_usage_route_is_professor_only() -> None:

@@ -1,36 +1,38 @@
 import { lazy, Suspense, useCallback, useEffect, useEffectEvent, useState } from "react";
 
-import { publishLectureCanvas } from "./api";
-import { AppFooter } from "./AppFooter";
-import { AppHeader } from "./AppHeader";
-import { landingView, resolveLandingView } from "./appLanding";
+import { publishLectureCanvas } from "./shared/api";
+import { AppFooter } from "./shell/AppFooter";
+import { AppHeader } from "./shell/AppHeader";
+import { landingView, resolveLandingView } from "./shell/appLanding";
 import { AppRoutes } from "./AppRoutes";
-import { pathForView, readAppRoute, requiresSession } from "./appRoute";
-import { FeedbackDialog } from "./FeedbackDialog";
-import { localDemoSession, localProfessorSession } from "./appDefaults";
-import { canManageCourses } from "./authz";
-import { clearDemoWorkspaceCourse } from "./demoWorkspaceAccess";
-import { I18nProvider, type Locale } from "./i18n";
-import { readLocalePreference, writeLocalePreference } from "./localePreference";
-import { clearSavedFlow } from "./professorBuilderState";
-import { rememberReturnPath, takeReturnPath } from "./returnPath";
-import { SessionExpiredNotice } from "./SessionExpiredNotice";
-import { useStoredLoginSession } from "./loginSessionStorage";
-import { logoutSession } from "./sessionApi";
-import { clearAllPracticeExamDrafts } from "./practiceExamDraft";
-import { usePublicMetadata } from "./usePublicMetadata";
-import { useAppRoute } from "./useAppRoute";
-import { useCourseWorkspace } from "./useCourseWorkspace";
-import { useLessonSession } from "./useLessonSession";
-import { useUniversityCourseSync } from "./useUniversityCourseSync";
-import { useFeedbackPrompt } from "./useFeedbackPrompt";
-import { useViewTransitionReset } from "./useViewTransitionReset";
-import { useVersionUpdateActivity } from "./VersionUpdateBoundary";
-import type { LoginSession, Theme, View } from "./types";
+import { pathForView, readAppRoute, requiresSession } from "./shell/appRoute";
+import { FeedbackDialog } from "./shell/FeedbackDialog";
+import { localDemoSession, localProfessorSession } from "./shell/appDefaults";
+import { canManageCourses } from "./shared/authz";
+import { clearDemoWorkspaceCourse } from "./auth/demoWorkspaceAccess";
+import { I18nProvider, type Locale } from "./i18n/i18n";
+import { readLocalePreference, writeLocalePreference } from "./i18n/localePreference";
+import { clearSavedFlow } from "./professor/professorBuilderState";
+import { rememberReturnPath, takeReturnPath } from "./shell/returnPath";
+import { SessionExpiredNotice } from "./auth/SessionExpiredNotice";
+import { useStoredLoginSession } from "./auth/loginSessionStorage";
+import { logoutSession } from "./auth/sessionApi";
+import { clearAllPracticeExamDrafts } from "./exam/practiceExamDraft";
+import { usePublicMetadata } from "./info/usePublicMetadata";
+import { useAppRoute } from "./shell/useAppRoute";
+import { useCourseWorkspace } from "./dashboard/useCourseWorkspace";
+import { useLessonSession } from "./lesson/useLessonSession";
+import { useUniversityCourseSync } from "./professor/useUniversityCourseSync";
+import { useFeedbackPrompt } from "./shell/useFeedbackPrompt";
+import { useViewTransitionReset } from "./shell/useViewTransitionReset";
+import { useVersionUpdateActivity } from "./shell/VersionUpdateBoundary";
+import type { LoginSession, Theme, View } from "./shared/types";
 
 // The guided tour (and its positioning library) only ever loads for course managers.
 const ProfessorWalkthrough = lazy(() =>
-  import("./ProfessorWalkthrough").then((module) => ({ default: module.ProfessorWalkthrough })),
+  import("./professor/ProfessorWalkthrough").then((module) => ({
+    default: module.ProfessorWalkthrough,
+  })),
 );
 
 type ManagedView = "performance" | "usage" | "course-management" | "professor";

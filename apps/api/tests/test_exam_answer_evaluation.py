@@ -8,16 +8,16 @@ from pydantic_ai.models.function import FunctionModel
 from auth_helpers import professor_headers, student_headers
 from canvas_workspace_fixtures import publish_course_canvas
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.exam_answer_evaluation import (
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.exams.exam_answer_evaluation import (
     NativeOpenAnswerEvaluationClient,
     OpenAnswerEvaluation,
     OpenAnswerEvaluationInput,
     OpenAnswerEvaluator,
 )
-from lecturepilot.models import ProviderSettings
-from lecturepilot.providers import ProviderConfigurationError, ProviderRegistry
+from lecturepilot.core.models import ProviderSettings
+from lecturepilot.llm.providers import ProviderConfigurationError, ProviderRegistry
 from fastapi.testclient import TestClient
 
 

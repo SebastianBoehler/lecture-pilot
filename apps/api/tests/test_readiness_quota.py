@@ -3,8 +3,8 @@ from types import SimpleNamespace
 import pytest
 from fastapi import HTTPException
 
-from lecturepilot.exam_answer_evaluation import OpenAnswerEvaluation
-from lecturepilot.usage_quota import UsageQuotaExceeded
+from lecturepilot.exams.exam_answer_evaluation import OpenAnswerEvaluation
+from lecturepilot.llm.usage_quota import UsageQuotaExceeded
 from test_exam_answer_evaluation import _item
 
 
@@ -39,7 +39,7 @@ class Evaluator:
 
 @pytest.mark.parametrize("fail", [False, True])
 async def test_readiness_releases_concurrent_quota_after_success_or_failure(fail):
-    from lecturepilot.readiness_evaluation_request import evaluate_readiness_answers
+    from lecturepilot.exams.readiness_evaluation_request import evaluate_readiness_answers
 
     quota, evaluator = Quota(), Evaluator(fail=fail)
     app = SimpleNamespace(
@@ -60,7 +60,7 @@ async def test_readiness_releases_concurrent_quota_after_success_or_failure(fail
 
 
 async def test_readiness_does_not_call_provider_when_quota_is_exhausted():
-    from lecturepilot.readiness_evaluation_request import evaluate_readiness_answers
+    from lecturepilot.exams.readiness_evaluation_request import evaluate_readiness_answers
 
     quota, evaluator = Quota(exhausted=True), Evaluator()
     app = SimpleNamespace(

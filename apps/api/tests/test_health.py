@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 import lecturepilot.release_info as release_info_module
 from lecturepilot.app import create_app
-from lecturepilot.runtime_readiness import ReadinessResult
+from lecturepilot.core.runtime_readiness import ReadinessResult
 
 
 def test_health_endpoint(tmp_path: Path, monkeypatch) -> None:

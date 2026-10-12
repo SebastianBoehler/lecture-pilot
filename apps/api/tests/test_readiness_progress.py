@@ -1,10 +1,10 @@
-from lecturepilot.exam_revision_plan import (
+from lecturepilot.exams.exam_revision_plan import (
     ExamReadinessAttemptResult,
     ExamReadinessQuestionResult,
     ExamRevisionTask,
 )
-from lecturepilot.readiness_progress import ReadinessProgressStore
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.exams.readiness_progress import ReadinessProgressStore
+from lecturepilot.core.storage_layout import StorageLayout
 
 
 def test_progress_store_records_theory_aligned_attempt_events(tmp_path) -> None:

@@ -3,8 +3,8 @@ from datetime import UTC, datetime, timedelta
 
 from api_test_client import workspace_client
 from auth_helpers import professor_headers
-from lecturepilot.course_canvas_generation_jobs import CanvasGenerationStore
-from lecturepilot.course_canvas_generation_service import CANVAS_GENERATION_LEASE_SECONDS
+from lecturepilot.authoring.course_canvas_generation_jobs import CanvasGenerationStore
+from lecturepilot.authoring.course_canvas_generation_service import CANVAS_GENERATION_LEASE_SECONDS
 
 
 def test_running_job_without_a_worker_is_reported_as_interrupted_and_resumes(tmp_path):

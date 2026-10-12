@@ -2,11 +2,11 @@ import json
 
 import pytest
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.learning_map import LearningMapGate
-from lecturepilot.model_payload import agent_result_from_content
-from lecturepilot.models import AgentCoachingContext, AgentTurnInput, AttendanceStatus
-from lecturepilot.providers import ProviderConfigurationError
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.learning_design.learning_map import LearningMapGate
+from lecturepilot.llm.model_payload import agent_result_from_content
+from lecturepilot.core.models import AgentCoachingContext, AgentTurnInput, AttendanceStatus
+from lecturepilot.llm.providers import ProviderConfigurationError
 from practice_gate_coaching_test_helpers import practice_gate
 
 

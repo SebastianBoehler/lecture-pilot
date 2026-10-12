@@ -5,12 +5,12 @@ from threading import Event
 
 import pytest
 
-from lecturepilot.native_tutor import native_tutor_turn
+from lecturepilot.tutor.native_tutor import native_tutor_turn
 from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
 from pydantic_ai.models.function import FunctionModel
-from lecturepilot.agent_turn_orchestration import _run_agent_harness
-from lecturepilot.models import ProviderSettings
-from lecturepilot.observability import Observability
+from lecturepilot.tutor.agent_turn_orchestration import _run_agent_harness
+from lecturepilot.core.models import ProviderSettings
+from lecturepilot.core.observability import Observability
 from test_strict_model_payload import _payload, _turn
 
 

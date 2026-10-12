@@ -7,7 +7,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from lecturepilot.database import _psycopg_url
-from lecturepilot.db_models import Base
+from lecturepilot.core.db_models import Base
 
 
 config = context.config

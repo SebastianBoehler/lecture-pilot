@@ -3,14 +3,18 @@ from types import SimpleNamespace
 from fastapi.testclient import TestClient
 
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.course_media import (
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.courses.course_media import (
     add_course_youtube_selection,
     add_youtube_selection,
     apply_course_media,
     course_media_evidence,
 )
-from lecturepilot.models import YoutubeSearchResponse, YoutubeSelectionInput, YoutubeVideoCandidate
+from lecturepilot.core.models import (
+    YoutubeSearchResponse,
+    YoutubeSelectionInput,
+    YoutubeVideoCandidate,
+)
 
 
 HEADERS = {

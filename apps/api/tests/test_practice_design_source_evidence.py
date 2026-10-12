@@ -1,8 +1,8 @@
 import pytest
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.course_practice_design_models import PracticeDesignProposal
-from lecturepilot.course_practice_design_validation import (
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.learning_design.course_practice_design_models import PracticeDesignProposal
+from lecturepilot.learning_design.course_practice_design_validation import (
     PracticeDesignValidationError,
     validate_practice_design,
 )

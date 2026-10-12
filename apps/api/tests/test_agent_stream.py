@@ -11,9 +11,9 @@ from canvas_workspace_fixtures import (
     write_course_source,
 )
 from lecturepilot.app import create_app
-from lecturepilot.canvas_models import CanvasBlock
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.coaching_state_models import (
+from lecturepilot.canvas.canvas_models import CanvasBlock
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.learner.coaching_state_models import (
     CoachingProgress,
     DelayedReview,
     PendingCheck,

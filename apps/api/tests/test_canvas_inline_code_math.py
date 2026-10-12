@@ -2,8 +2,8 @@ import pytest
 from pydantic_ai.models.function import FunctionModel
 
 from authoring_test_helpers import markdown
-from lecturepilot.authoring_job import run_authoring_job
-from lecturepilot.canvas_inline_code_math import latex_in_inline_code
+from lecturepilot.authoring.authoring_job import run_authoring_job
+from lecturepilot.canvas.canvas_inline_code_math import latex_in_inline_code
 from test_authoring_job import VALID, authoring_job
 
 

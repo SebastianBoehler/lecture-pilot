@@ -1,24 +1,24 @@
 from __future__ import annotations
 
-from lecturepilot.course_learning_design_models import LearningDesignApprovalInput
+from lecturepilot.learning_design.course_learning_design_models import LearningDesignApprovalInput
 
 from pathlib import Path
 
 from fastapi import FastAPI
 
-from lecturepilot.analytics import AnalyticsStore
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.course_canvas_publication import CanvasPublicationMetadata
-from lecturepilot.course_canvas_repairs import lecture_source_revision
-from lecturepilot.course_learning_design_store import CourseLearningDesignStore
-from lecturepilot.course_practice_design_store import PracticeDesignStore
-from lecturepilot.latex_canvas_importer import CANVAS_IMPORT_VERSION
-from lecturepilot.learner_state import LearnerStateStore
-from lecturepilot.lecture_source_manifest import write_lecture_source_manifest
-from lecturepilot.source_index_models import CourseSourceIndex, IndexedSourceFile
-from lecturepilot.course_source_ownership import routed_source_owner
-from lecturepilot.user_memory import UserMemoryStore
+from lecturepilot.analytics.analytics import AnalyticsStore
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.authoring.course_canvas_publication import CanvasPublicationMetadata
+from lecturepilot.authoring.course_canvas_repairs import lecture_source_revision
+from lecturepilot.learning_design.course_learning_design_store import CourseLearningDesignStore
+from lecturepilot.learning_design.course_practice_design_store import PracticeDesignStore
+from lecturepilot.sources.latex_canvas_importer import CANVAS_IMPORT_VERSION
+from lecturepilot.learner.learner_state import LearnerStateStore
+from lecturepilot.sources.lecture_source_manifest import write_lecture_source_manifest
+from lecturepilot.sources.source_index_models import CourseSourceIndex, IndexedSourceFile
+from lecturepilot.sources.course_source_ownership import routed_source_owner
+from lecturepilot.learner.user_memory import UserMemoryStore
 from practice_design_test_helpers import approved_design_document
 
 

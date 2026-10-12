@@ -1,6 +1,6 @@
 import pytest
 
-from lecturepilot.assessment_prompts import assessment_prompt_issue
+from lecturepilot.authoring.assessment_prompts import assessment_prompt_issue
 
 
 def test_checkpoint_accepts_create_as_a_concrete_task_after_context() -> None:

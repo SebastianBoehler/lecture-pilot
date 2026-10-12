@@ -1,12 +1,12 @@
-from lecturepilot.learning_map import LearningMapGate
-from lecturepilot.tutor_prompt import tutor_messages as _messages
-from lecturepilot.models import (
+from lecturepilot.learning_design.learning_map import LearningMapGate
+from lecturepilot.tutor.tutor_prompt import tutor_messages as _messages
+from lecturepilot.core.models import (
     AgentCoachingContext,
     AgentTurnInput,
     AttendanceStatus,
     CanvasState,
 )
-from lecturepilot.scaffold_policy import scaffold_policy_for_tutor_turn
+from lecturepilot.learner.scaffold_policy import scaffold_policy_for_tutor_turn
 
 
 def _turn() -> AgentTurnInput:

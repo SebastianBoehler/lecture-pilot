@@ -1,12 +1,12 @@
-import type { PublishedCanvasView } from "./publishedCanvasView";
+import type { PublishedCanvasView } from "./lesson/publishedCanvasView";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import App from "./App";
-import type { LearnerQuizState } from "./learnerLessonStateTypes";
-import { openLecture03FromDashboard } from "./testLessonActions";
-import { mockLoginAndTutorFetch, mockLoginFetch } from "./testFixtures";
+import type { LearnerQuizState } from "./lesson/learnerLessonStateTypes";
+import { openLecture03FromDashboard } from "./lesson/testLessonActions";
+import { mockLoginAndTutorFetch, mockLoginFetch } from "./shared/testFixtures";
 
 describe("durable learner lesson state", () => {
   it("hydrates persisted gate, quiz, and goal state again after reload", async () => {

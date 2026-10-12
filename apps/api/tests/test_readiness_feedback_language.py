@@ -8,12 +8,12 @@ from pydantic_ai.models.function import FunctionModel
 from auth_helpers import professor_headers, student_headers
 from canvas_workspace_fixtures import publish_course_canvas
 from lecturepilot.app import create_app
-from lecturepilot.canvas_workspace import CanvasWorkspace
-from lecturepilot.exam_answer_evaluation import (
+from lecturepilot.canvas.canvas_workspace import CanvasWorkspace
+from lecturepilot.exams.exam_answer_evaluation import (
     NativeOpenAnswerEvaluationClient,
     OpenAnswerEvaluator,
 )
-from lecturepilot.providers import ProviderRegistry
+from lecturepilot.llm.providers import ProviderRegistry
 from test_exam_answer_evaluation import _FailingEvaluator, _item, _route_document
 
 

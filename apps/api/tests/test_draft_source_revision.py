@@ -1,18 +1,18 @@
 from datetime import date
 from pathlib import Path
 
-from lecturepilot.course_canvas_repairs import lecture_source_revision
-from lecturepilot.course_schedule_store import overwrite_course_workspace
-from lecturepilot.course_source_routing import source_revision
-from lecturepilot.course_source_routing_models import (
+from lecturepilot.authoring.course_canvas_repairs import lecture_source_revision
+from lecturepilot.courses.course_schedule_store import overwrite_course_workspace
+from lecturepilot.sources.course_source_routing import source_revision
+from lecturepilot.sources.course_source_routing_models import (
     CourseSourceRoute,
     CourseSourceRoutingManifest,
     SourceRouteRole,
 )
-from lecturepilot.lecture_source_manifest import write_lecture_source_manifest
-from lecturepilot.models import Course, CourseWorkspaceResult, Lecture
-from lecturepilot.source_index_models import CourseSourceIndex, IndexedSourceFile
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.sources.lecture_source_manifest import write_lecture_source_manifest
+from lecturepilot.core.models import Course, CourseWorkspaceResult, Lecture
+from lecturepilot.sources.source_index_models import CourseSourceIndex, IndexedSourceFile
+from lecturepilot.core.storage_layout import StorageLayout
 
 
 def test_draft_source_revision_includes_current_schedule_and_semantic_routing(

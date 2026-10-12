@@ -1,7 +1,7 @@
 from importlib import import_module
 
-from lecturepilot.learning_map import LearningMap, LearningMapGate, LearningMapNode
-from lecturepilot.models import QualityGateDecision, QualityGateStatus
+from lecturepilot.learning_design.learning_map import LearningMap, LearningMapGate, LearningMapNode
+from lecturepilot.core.models import QualityGateDecision, QualityGateStatus
 
 
 def _map(first_criterion_description: str = "Explain the first concept.") -> LearningMap:
@@ -65,7 +65,7 @@ def _map(first_criterion_description: str = "Explain the first concept.") -> Lea
 
 
 def _select(learning_map: LearningMap | None = None, **kwargs):
-    return import_module("lecturepilot.learning_gate_selector").select_active_gate(
+    return import_module("lecturepilot.learner.learning_gate_selector").select_active_gate(
         learning_map or _map(), **kwargs
     )
 

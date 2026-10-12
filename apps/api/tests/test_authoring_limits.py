@@ -3,10 +3,10 @@ import asyncio
 import pytest
 from pydantic_ai.models.function import FunctionModel
 
-from lecturepilot.authoring_job import run_authoring_job
-from lecturepilot.authoring_limits import AuthoringBudgetExceeded, authoring_budget
-from lecturepilot.authoring_provider import MeteredAuthoringModel
-from lecturepilot.authoring_state import load_state
+from lecturepilot.authoring.authoring_job import run_authoring_job
+from lecturepilot.authoring.authoring_limits import AuthoringBudgetExceeded, authoring_budget
+from lecturepilot.authoring.authoring_provider import MeteredAuthoringModel
+from lecturepilot.authoring.authoring_state import load_state
 from authoring_test_helpers import markdown
 from test_authoring_job import authoring_job
 
@@ -31,7 +31,7 @@ async def test_request_budget_covers_nested_metered_calls(tmp_path):
 async def test_authoring_deadline_cancels_provider_and_keeps_previous_checkpoint(
     tmp_path, monkeypatch
 ):
-    import lecturepilot.authoring_job as module
+    import lecturepilot.authoring.authoring_job as module
 
     job = authoring_job(tmp_path)
     calls = 0

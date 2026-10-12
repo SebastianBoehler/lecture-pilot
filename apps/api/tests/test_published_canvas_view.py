@@ -4,7 +4,7 @@ from threading import Barrier
 
 from auth_helpers import student_headers
 from canvas_workspace_fixtures import publish_course_canvas
-from lecturepilot.canvas_models import CanvasBlock, CanvasSection
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasSection
 from test_quiz_attempt_review_fixes import COURSE_ID, LECTURE_ID, _client, _document, _publish
 
 

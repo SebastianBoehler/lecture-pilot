@@ -2,10 +2,10 @@ from datetime import UTC, datetime
 
 from auth_helpers import student_headers
 from canvas_workspace_fixtures import publish_course_canvas
-from lecturepilot.canvas_models import CanvasBlock
-from lecturepilot.canvas_predictions import prediction_context
-from lecturepilot.coaching_state_models import CoachingProgress, PendingCheck
-from lecturepilot.models import AgentTurnInput
+from lecturepilot.canvas.canvas_models import CanvasBlock
+from lecturepilot.canvas.canvas_predictions import prediction_context
+from lecturepilot.learner.coaching_state_models import CoachingProgress, PendingCheck
+from lecturepilot.core.models import AgentTurnInput
 from test_learner_lesson_state_routes import _client, _gate, _write_progress, COURSE_ID
 
 URL = f"/courses/{COURSE_ID}/lectures/lecture-open/predictions"

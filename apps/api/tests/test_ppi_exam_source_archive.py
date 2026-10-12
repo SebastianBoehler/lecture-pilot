@@ -7,7 +7,7 @@ from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 import fitz
 import pytest
 
-from lecturepilot.ppi_exam_source_archive import PpiArchiveError, normalize_ppi_archive
+from lecturepilot.exams.ppi_exam_source_archive import PpiArchiveError, normalize_ppi_archive
 
 
 def test_archive_normalizes_valid_pdf_text_and_markdown(tmp_path: Path) -> None:

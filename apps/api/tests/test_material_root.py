@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from lecturepilot.canvas_workspace import _default_material_root
+from lecturepilot.canvas.canvas_workspace import _default_material_root
 
 
 def test_default_material_root_prefers_repo_local_copy(

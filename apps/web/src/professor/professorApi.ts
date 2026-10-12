@@ -1,0 +1,295 @@
+import { apiUrl, readApiError } from "../shared/api";
+import { authRequestInit } from "../shared/authz";
+import {
+  normalizeCourseWorkspaceResult,
+  normalizeManagedCourseWorkspaceResult,
+} from "./lectureMapping";
+import type { CourseSetup } from "./professorBuilderState";
+import type {
+  CourseWorkspaceResult,
+  CourseSourceRoutingManifest,
+  LectureScheduleItem,
+  LectureScheduleProposal,
+  LoginSession,
+  ManagedCourseWorkspaceResult,
+  SourceBundleManifest,
+  YoutubeVideoCandidate,
+} from "../shared/types";
+
+export class SourceRoutingRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "SourceRoutingRequestError";
+  }
+}
+
+export async function listCourseWorkspaces(
+  session: LoginSession,
+): Promise<ManagedCourseWorkspaceResult[]> {
+  const response = await fetch(apiUrl("/admin/courses"), authRequestInit(session));
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(readApiError(payload, "Course workspace loading failed."));
+  return Array.isArray(payload) ? payload.map(normalizeManagedCourseWorkspaceResult) : [];
+}
+
+export type AlmaCourseSuggestion = {
+  title: string;
+  number?: string | null;
+  instructor?: string | null;
+};
+
+export async function searchAlmaCourseTitles(
+  query: string,
+  term: string,
+  session: LoginSession,
+  signal?: AbortSignal,
+): Promise<AlmaCourseSuggestion[]> {
+  const params = new URLSearchParams({ q: query, term, limit: "8" });
+  const response = await fetch(
+    apiUrl(`/admin/university-courses/search?${params}`),
+    authRequestInit(session, { signal }),
+  );
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(readApiError(payload, "Alma course search failed."));
+  return Array.isArray(payload?.items) ? payload.items : [];
+}
+
+export async function createCourseWorkspace(
+  setup: CourseSetup,
+  session: LoginSession,
+  lectures: LectureScheduleItem[] = [],
+  courseId?: string,
+): Promise<CourseWorkspaceResult> {
+  const response = await professorFetch(
+    "/admin/course-workspaces",
+    session,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(courseWorkspaceBody(setup, lectures, courseId, session.term)),
+    },
+    "Cannot reach the local LecturePilot API while creating the course workspace.",
+  );
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "Course workspace creation failed."));
+  return normalizeCourseWorkspaceResult(payload);
+}
+
+export async function deleteCourseWorkspace(courseId: string, session: LoginSession) {
+  const response = await fetch(apiUrl(`/admin/courses/${courseId}`), {
+    ...authRequestInit(session, { method: "DELETE" }),
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(readApiError(payload, "Course deletion failed."));
+  return payload as { course_id: string; deleted: boolean };
+}
+
+export async function proposeLectureSchedule(input: {
+  courseId: string;
+  count?: number | null;
+  firstLectureDate?: string;
+  session: LoginSession;
+}): Promise<LectureScheduleProposal> {
+  const params = new URLSearchParams();
+  if (input.firstLectureDate) params.set("first_lecture_date", input.firstLectureDate);
+  if (input.count) params.set("count", String(input.count));
+  const query = params.toString();
+  const response = await fetch(
+    apiUrl(`/admin/courses/${input.courseId}/lecture-schedule${query ? `?${query}` : ""}`),
+    authRequestInit(input.session),
+  );
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "Lecture schedule proposal failed."));
+  return payload as LectureScheduleProposal;
+}
+
+export async function getSourceBundle(
+  courseId: string,
+  session: LoginSession,
+): Promise<SourceBundleManifest> {
+  const response = await fetch(
+    apiUrl(`/courses/${courseId}/source-bundle`),
+    authRequestInit(session),
+  );
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "Source scan failed."));
+  return payload as SourceBundleManifest;
+}
+
+export async function proposeSourceRouting(
+  courseId: string,
+  session: LoginSession,
+  refresh = false,
+): Promise<CourseSourceRoutingManifest> {
+  const response = await fetch(
+    apiUrl(`/admin/courses/${courseId}/source-routing/proposal${refresh ? "?refresh=true" : ""}`),
+    authRequestInit(session, { method: "POST" }),
+  );
+  const payload = await response.json();
+  if (!response.ok)
+    throw new Error(readApiError(payload, "Source assignment proposal failed to generate."));
+  return payload as CourseSourceRoutingManifest;
+}
+
+export async function getSourceRouting(
+  courseId: string,
+  session: LoginSession,
+): Promise<CourseSourceRoutingManifest> {
+  const response = await fetch(
+    apiUrl(`/admin/courses/${courseId}/source-routing`),
+    authRequestInit(session),
+  );
+  const payload = await response.json();
+  if (!response.ok)
+    throw new SourceRoutingRequestError(
+      readApiError(payload, "Source assignments are not ready."),
+      response.status,
+    );
+  return payload as CourseSourceRoutingManifest;
+}
+
+export async function confirmSourceRouting(
+  courseId: string,
+  routing: CourseSourceRoutingManifest,
+  session: LoginSession,
+): Promise<CourseSourceRoutingManifest> {
+  const response = await fetch(
+    apiUrl(`/admin/courses/${courseId}/source-routing`),
+    authRequestInit(session, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        source_revision: routing.source_revision,
+        routes: routing.routes,
+      }),
+    }),
+  );
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "Source routing confirmation failed."));
+  return payload as CourseSourceRoutingManifest;
+}
+
+export async function uploadCourseMaterial(input: {
+  courseId: string;
+  path: string;
+  file: File;
+  refreshIndex?: boolean;
+  session: LoginSession;
+}) {
+  const body = new FormData();
+  body.append("path", input.path);
+  body.append("file", input.file);
+  if (input.refreshIndex !== undefined) {
+    body.append("refresh_index", String(input.refreshIndex));
+  }
+  const response = await fetch(apiUrl(`/admin/courses/${input.courseId}/materials`), {
+    ...authRequestInit(input.session, { method: "POST", body }),
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "Material upload failed."));
+  return payload as { path: string; kind: string; size_bytes: number };
+}
+
+export async function searchYoutubeMedia(
+  courseId: string,
+  query: string,
+  session: LoginSession,
+  maxResults = 5,
+) {
+  const params = new URLSearchParams({ q: query, max_results: String(maxResults) });
+  const response = await fetch(
+    apiUrl(`/admin/courses/${courseId}/media/youtube/search?${params}`),
+    authRequestInit(session),
+  );
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "YouTube search failed."));
+  return payload as { items: YoutubeVideoCandidate[] };
+}
+
+export async function includeYoutubeMedia(input: {
+  courseId: string;
+  lectureId: string;
+  video: YoutubeVideoCandidate;
+  session: LoginSession;
+}) {
+  const response = await fetch(
+    apiUrl(`/admin/courses/${input.courseId}/lectures/${input.lectureId}/media/youtube`),
+    authRequestInit(input.session, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ section_id: null, video: input.video }),
+    }),
+  );
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "YouTube include failed."));
+  return payload as { block_id: string };
+}
+
+export async function listYoutubeMedia(input: {
+  courseId: string;
+  lectureId: string;
+  session: LoginSession;
+}): Promise<{ video: YoutubeVideoCandidate }[]> {
+  const response = await fetch(
+    apiUrl(`/admin/courses/${input.courseId}/lectures/${input.lectureId}/media/youtube`),
+    authRequestInit(input.session),
+  );
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "YouTube selections failed to load."));
+  if (!Array.isArray(payload)) throw new Error("YouTube selections returned an invalid response.");
+  return payload as { video: YoutubeVideoCandidate }[];
+}
+
+export async function removeYoutubeMedia(input: {
+  courseId: string;
+  lectureId: string;
+  videoId: string;
+  session: LoginSession;
+}) {
+  const response = await fetch(
+    apiUrl(
+      `/admin/courses/${input.courseId}/lectures/${input.lectureId}/media/youtube/${encodeURIComponent(input.videoId)}`,
+    ),
+    authRequestInit(input.session, { method: "DELETE" }),
+  );
+  const payload = await response.json();
+  if (!response.ok) throw new Error(readApiError(payload, "YouTube selection removal failed."));
+  return payload as { deleted: number };
+}
+
+async function professorFetch(
+  path: string,
+  session: LoginSession,
+  init: RequestInit,
+  networkMessage: string,
+) {
+  try {
+    return await fetch(apiUrl(path), authRequestInit(session, init));
+  } catch {
+    throw new Error(`${networkMessage} Is the backend running at ${apiUrl("")}?`);
+  }
+}
+
+function courseWorkspaceBody(
+  setup: CourseSetup,
+  lectures: LectureScheduleItem[],
+  courseId?: string,
+  term?: string,
+) {
+  return {
+    course_id: courseId ?? null,
+    term: term ?? null,
+    access_policy: setup.accessPolicy,
+    canvas_language: setup.canvasLanguage,
+    course_title: setup.courseTitle,
+    lecture_title: setup.lectureTitle || null,
+    lecture_number: setup.lectureNumber || null,
+    lecture_count: Number(setup.lectureCount) || null,
+    lectures,
+    replace_lectures: Boolean(courseId && setup.target === "full-course" && lectures.length),
+    target: setup.target,
+  };
+}

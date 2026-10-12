@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 import json
 
-from lecturepilot.course_practice_design_models import (
+from lecturepilot.learning_design.course_practice_design_models import (
     PracticeDesign,
     PracticeDesignProposal,
     PracticeEvidenceCriterion,
@@ -9,16 +9,16 @@ from lecturepilot.course_practice_design_models import (
     PracticeMisconception,
     PracticeTarget,
 )
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument
-from lecturepilot.course_canvas_evidence_batches import group_evidence_sections
-from lecturepilot.course_canvas_repairs import lecture_source_revision
-from lecturepilot.course_canvas_validation import source_topic_sections
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument
+from lecturepilot.authoring.course_canvas_evidence_batches import group_evidence_sections
+from lecturepilot.authoring.course_canvas_repairs import lecture_source_revision
+from lecturepilot.authoring.course_canvas_validation import source_topic_sections
 from approved_practice_design_helpers import approved_practice_design, store_design
-from lecturepilot.course_practice_design_store import PracticeDesignStore
+from lecturepilot.learning_design.course_practice_design_store import PracticeDesignStore
 from practice_design_review_test_helpers import passing_review, source_document
 
 __all__ = ["passing_review", "source_document"]
-from lecturepilot.storage_layout import StorageLayout
+from lecturepilot.core.storage_layout import StorageLayout
 
 
 def proposal() -> PracticeDesignProposal:

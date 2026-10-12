@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.canvas_markdown import read_document_source, write_document_source
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.canvas.canvas_markdown import read_document_source, write_document_source
 
 
 def test_canvas_markdown_parses_rich_learning_blocks(tmp_path: Path) -> None:

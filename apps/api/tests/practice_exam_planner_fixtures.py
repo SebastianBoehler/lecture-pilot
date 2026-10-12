@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-from lecturepilot.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
-from lecturepilot.models import ProviderCapability, ProviderSettings
+from lecturepilot.canvas.canvas_models import CanvasBlock, CanvasDocument, CanvasSection
+from lecturepilot.core.models import ProviderCapability, ProviderSettings
 
 
 def _plan_args() -> dict:

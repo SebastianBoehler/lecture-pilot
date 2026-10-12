@@ -1,7 +1,7 @@
 from datetime import date
 
-from lecturepilot.lecture_schedule import propose_lecture_schedule
-from lecturepilot.source_bundle import SourceBundleFile
+from lecturepilot.courses.lecture_schedule import propose_lecture_schedule
+from lecturepilot.sources.source_bundle import SourceBundleFile
 
 
 def test_schedule_infers_all_detected_lectures_before_requested_count(tmp_path) -> None:
